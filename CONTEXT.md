@@ -94,6 +94,7 @@ _Avoid_: mandatory, default, extra.
 - "Central" means *curated/production-ready*, not merely "stored in one place." A draft is not central until curated.
 - "Deploy" (Maestro's verb, intent-level) vs "install" (APM's verb, mechanism-level) are deliberately distinct. Don't collapse them.
 - "Dashboard" vs "cockpit": prefer **cockpit** in docs because the value is steering, not only viewing.
+- "Where Maestro runs" (the cockpit's own host — your laptop in MVP1, possibly a VPS later) is **not** a **Target**. A Target is where a *primitive* is deployed (a consuming repo or a tool config); Maestro's hosting is about the product itself. Don't conflate them. See ADR-0002.
 
 ## Open design questions
 
