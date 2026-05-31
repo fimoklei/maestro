@@ -19,19 +19,29 @@ Maestro is the cockpit above it and never reimplements it (ADR-0001).
 
 ## Where Things Live
 
-- `CONTEXT.md` — canonical glossary.
-- `docs/brief.md` — product thesis and MVP1 bet.
-- `docs/operating-model.md` — workflow, decision hierarchy, and scope rules.
-- `docs/jobs/job-map.md` — job and subjob definitions.
-- `docs/adr/` — accepted architecture and product decisions.
-- `docs/roadmap/` — active roadmap files when scope is committed.
-- `packages/core` — domain logic.
-- `packages/server` — local Hono service.
-- `packages/web` — React/Vite cockpit UI.
+```text
+.
+├── AGENTS.md              # repo-local agent entrypoint
+├── CLAUDE.md              # Claude Code adapter; imports AGENTS.md
+├── LEARNINGS.md           # project-specific agent learnings
+├── CONTEXT.md             # canonical glossary
+├── .claude/rules/         # Claude-specific project rules
+├── docs/
+│   ├── brief.md           # product thesis and MVP1 bet
+│   ├── operating-model.md # workflow, decision hierarchy, scope rules
+│   ├── jobs/job-map.md    # job and subjob definitions
+│   ├── adr/               # accepted architecture and product decisions
+│   └── roadmap/           # active roadmap files when scope is committed
+├── packages/
+│   ├── core/              # domain logic
+│   ├── server/            # local Hono service
+│   └── web/               # React/Vite cockpit UI
+└── tests/                 # acceptance and integration tests
+```
 
 ## Current implementation shape
 
-ADR-0002 makes Maestro a local-first client/server web app:
+Maestro is a local-first client/server web app:
 
 - `packages/core` — framework-free TypeScript domain logic.
 - `packages/server` — Hono service that reads local state and drives local
@@ -41,16 +51,20 @@ ADR-0002 makes Maestro a local-first client/server web app:
 Do not add product behavior outside this shape unless a later accepted ADR or
 active roadmap changes it.
 
-## Hard Rules
+## Behavioral Rules
+
+### When writing code → Read `.claude/rules/coding-rules.md`
+### When writing tests → Read `.claude/rules/testing.md`
+### When committing → Use `workflow-commit`
+### When shipping → Use `workflow-ship`
+
+### Hard Rules
 
 - **Never reimplement APM.** Drive it; read its lockfiles. Install, sync,
   pinning, lockfiles, and multi-tool targeting are APM's.
 - **Follow `docs/operating-model.md`.** It owns reading order, decision
   hierarchy, MVP scope, job mapping, and file naming.
 - **TDD is blocking for code changes.** Docs-only changes are exempt.
-
-## Working approach
-
 - When editing docs: prefer condensing over expanding. Drift toward feature lists is the failure mode to watch for.
 - When touching code: keep behavior in `packages/core` unless it is genuinely
   transport or UI work. The server and web packages should not become product
@@ -73,12 +87,6 @@ Run from the repo root.
 
 Before declaring document work complete, check the touched docs against the
 decision hierarchy in `docs/operating-model.md`.
-
-## Commit & Pull Request Guidelines
-
-Concise conventional-style commits, e.g. `docs: rewrite brief for the cockpit reframe`.
-For PRs: short summary, list changed files, name the mapped subjob or say why
-the change is exempt, and call out intentional out-of-scope items.
 
 ## LEARNINGS.md
 
