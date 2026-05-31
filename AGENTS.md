@@ -54,9 +54,21 @@ active roadmap changes it.
 ## Behavioral Rules
 
 ### When writing code → Read `.claude/rules/coding-rules.md`
+### When touching package boundaries (core/server/web) → Read `.claude/rules/architecture.md`
 ### When writing tests → Read `.claude/rules/testing.md`
+### When shelling out to APM or reading external files/lockfiles → Read `.claude/rules/security.md`
 ### When committing → Use `workflow-commit`
 ### When shipping → Use `workflow-ship`
+
+### Deferred rule files (write when the trigger fires, not before)
+
+- `frontend.md` — trigger: the first React component. Start from a 2026 React 19
+  best practice (server-state vs UI-state, data-fetching, component/hook
+  conventions, accessibility). The boundary (UI only, HTTP only, no filesystem)
+  already lives in `architecture.md`.
+- `apm-driver.md` — trigger: the first code that drives `apm` or reads a real
+  lockfile. Write it from observed `apm` behavior, not guessed (avoids the RTK
+  trap in `LEARNINGS.md`).
 
 ### Hard Rules
 

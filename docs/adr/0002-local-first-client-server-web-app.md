@@ -17,7 +17,7 @@ The candidate forms each carried a real trade-off: a native desktop app (Tauri/E
 
 - **Client (the screen):** a React single-page app (built with Vite). Renders the three views; knows nothing about the local filesystem.
 - **Server (the data-half):** a small Hono service. Reads the local `agent-harness` clone, reads APM lockfiles from the local filesystem, and drives the local `apm` CLI. Client and server talk over HTTP.
-- **Core (the brains):** a framework-free TypeScript package (inventory model, lockfile reader, APM driver, drift calculation). It depends on neither React nor Hono and is independently testable.
+- **Core (the brains):** a framework-free TypeScript package (inventory model, lockfile reader, APM driver, drift calculation). It depends on neither React nor Hono and is independently testable. *Framework-free* means no React and no Hono — not I/O-free: `core` may use Node built-ins (`node:fs`, `node:child_process`) behind a port, so the pure logic stays unit-testable while the adapters are covered by integration tests.
 - **Local-first:** in MVP1 both client and server run on the user's machine (`localhost`). No backend, no cloud.
 - **Architected for central, not built for it:** the client↔server HTTP boundary means the server can later move to a VPS without re-architecting. No auth, multi-tenancy, or remote-Git reading is built in MVP1. *Where* the inventory is read from sits behind a single adapter (port); today it reads the local clone, later it can read remote Git.
 - **"Where Maestro runs"** (a local process now, a VPS later) is distinct from a deploy **Target** (a consuming repo or a tool config). See `CONTEXT.md`.
