@@ -53,7 +53,6 @@ active roadmap changes it.
 
 ## Behavioral Rules
 
-### When writing code → Read `.claude/rules/coding-rules.md`
 ### When touching package boundaries (core/server/web) → Read `.claude/rules/architecture.md`
 ### When writing tests → Read `.claude/rules/testing.md`
 ### When shelling out to APM or reading external files/lockfiles → Read `.claude/rules/security.md`
@@ -72,6 +71,7 @@ active roadmap changes it.
 
 ### Hard Rules
 
+- **Do not take shortcuts.** We want the best version possible even if it takes longer.
 - **Never reimplement APM.** Drive it; read its lockfiles. Install, sync,
   pinning, lockfiles, and multi-tool targeting are APM's.
 - **Follow `docs/operating-model.md`.** It owns reading order, decision
