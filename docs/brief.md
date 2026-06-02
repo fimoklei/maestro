@@ -104,6 +104,20 @@ What ships first within that bet (e.g. skills+bundles before hooks/MCP, or read-
 
 ---
 
+## What success looks like
+
+MVP1 is a falsifiable bet, not a feature list. It succeeds — or dies — on one observable behaviour, tested on a real repo, not in a demo.
+
+**The proof — see.** In one glance I can answer the two questions APM scatters across lockfiles: *what do I have centrally?* and *what is deployed where, at which version?* If I still open per-repo lockfiles to know the truth, the bet has failed.
+
+**The necessary condition — steer.** And I can act on that view: deploy or update a primitive or bundle, local or global, without bumping pins by hand. Seeing without steering is a read-only report, not a cockpit; steering clunky enough to send me back to the CLI kills the bet just as surely. Both halves must hold — without deploy, the view is worthless.
+
+Success is therefore behavioural, not a metric: I reach for Maestro instead of hand-editing my setup, because it is faster and clearer. No usage count or retention figure means anything at N=1 — the only honest signal is whether the one user switches.
+
+This section defines what winning *is*. The concrete, testable exit criteria — the gate that calls MVP1 done — are set when MVP1 scope is committed, in `docs/roadmap/01-*.md`.
+
+---
+
 ## Vision (post-MVP)
 
 The MVP1 cockpit grows into a control plane. These are the deliberately-deferred layers:
