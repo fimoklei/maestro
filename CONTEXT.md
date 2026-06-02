@@ -64,6 +64,10 @@ _Avoid_: system-wide, machine install.
 A project that receives locally-deployed primitives from the central inventory.
 _Avoid_: target repo (ambiguous with "target"), client repo.
 
+**Consuming-repo registry**:
+The explicit list of consuming-repo paths Maestro tracks to build the per-repo deploy-state view. User-maintained — Maestro adds nothing by scanning the disk. Resolves the "registry vs directory scan" question in favour of an explicit list.
+_Avoid_: scan list, project index, workspace.
+
 **Deploy-state**:
 The answer to "what is deployed where, and at which version" — across consuming repos and across global tool configs. The view that restores the mental model APM scatters across lockfiles.
 _Avoid_: status, adoption (adoption is the future team-scale framing of the same idea).
@@ -101,6 +105,9 @@ _Avoid_: mandatory, default, extra.
 Named but not yet specified (surface, don't bury):
 
 - **Bundle nesting** — flat for now; revisit if a real need surfaces.
-- **How Maestro discovers consuming repos** for the deploy-state view (registry vs directory scan) — a roadmap/how question.
-- **Whether APM supports global deploy** natively, or Maestro adds it — verify in the roadmap grill; "global" is in-scope conceptually regardless.
 - **Bundle-level metadata** (description, owner, ordering) — reserved, not built yet.
+
+Resolved (kept for traceability):
+
+- **How Maestro discovers consuming repos** — resolved in `roadmap/01`: an explicit **Consuming-repo registry**, not a directory scan.
+- **Whether APM supports global deploy** — resolved: native via user scope `~/.apm/` (own `apm.lock.yaml`; `-g` flag on `install`/`outdated`). Maestro drives it, does not add it.

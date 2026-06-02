@@ -5,7 +5,7 @@
 Keep product development job-driven, not feature-driven:
 
 ```text
-Product brief → Job map → MVP roadmap → Specs / code / tasks
+Product brief → Job map → MVP roadmap (sub-steps) → PRD spec (tracker) → issues → TDD
 ```
 
 Designed for use with an LLM or coding agent: enough product context to act, not enough rope to invent features outside the active MVP.
@@ -34,7 +34,6 @@ maestro/                     # THE PRODUCT — generic; can conduct any inventor
     jobs/job-map.md
     adr/NNNN-<slug>.md       # binding decisions (4-digit)
     roadmap/NN-<slug>.md     # one per committed MVP
-    specs/*.md               # created when an active MVP job needs one
   (product code added later)
 
 agent-harness/               # THE CENTRAL INVENTORY — the content Maestro conducts
@@ -72,7 +71,9 @@ Rules:
 5. Future jobs don't leak into the active MVP.
 
 ### `roadmap/NN-<slug>.md`
-Release contract for one MVP: what we prove, selected subjobs, in/out of scope, exit criteria, risks. References subjob IDs from the job map; does not redefine them.
+Release contract for one MVP: what we prove, selected subjobs, in/out of scope, exit criteria, risks. References subjob IDs from the job map; does not redefine them. Lists the MVP's **sub-steps** (vertical slices) with their PRD links; live build status stays in the tracker, not in this file.
+
+Two grill altitudes feed this chain: a **step-grill** sets a roadmap's scope (this file); a **sub-step-grill** designs one sub-step and produces its PRD.
 
 ### `CONTEXT.md`
 Canonical glossary. One sentence per term, aliases to avoid, ambiguous terms flagged. No implementation. When a doc disagrees with `CONTEXT.md`, `CONTEXT.md` wins. Updated inline as terms resolve, never in batch.
@@ -80,8 +81,8 @@ Canonical glossary. One sentence per term, aliases to avoid, ambiguous terms fla
 ### `docs/adr/NNNN-<slug>.md`
 Binding decisions that are hard to reverse, surprising without context, and the product of a real trade-off. Accepted ADRs override `brief.md` and `operating-model.md` on the topic they decide. Each records: context, decision, consequences, rejected alternatives. Do not write ADRs for easy, obvious, or trade-off-free decisions.
 
-### `specs/*.md`
-Concrete behavior (inventory model, deploy mechanism over APM, deploy-state reading, bundle format, cockpit interactions). Written only when an active MVP job needs one.
+### PRD (tracker issue) — the spec
+Concrete behavior for a roadmap sub-step (inventory model, deploy mechanism over APM, deploy-state reading, cockpit interactions). Lives as a **PRD issue in the tracker**, produced by a sub-step grill and sliced into implementation issues. There is no `docs/specs/` tree; durable cross-cutting decisions become ADRs, not specs.
 
 ---
 
