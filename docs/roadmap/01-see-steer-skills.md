@@ -19,7 +19,8 @@ criteria*.
 
 ## Selected subjobs
 
-`J01`, `J02`, `J03`, `J04`, `J06`, `J07`, `J08`. Definitions live in the job map.
+`J01`, `J02`, `J03`, `J04`, `J06`, `J07`, `J08`, `J10`. Definitions live in the
+job map.
 
 ## Out of scope (this step)
 
@@ -34,6 +35,9 @@ criteria*.
   version diffs.
 - **Directory scan for consuming repos** — explicit registry only (see
   `CONTEXT.md`).
+- **Interactive directory-browser picker for registration** — paste-a-path only
+  this step; a server-side filesystem-listing endpoint is deferred (security
+  surface vs. core value, see *Registry*).
 
 ## Unit and targets
 
@@ -61,7 +65,7 @@ Ship B.
 
 | Sub-step | Delivers (subjobs) | Spec (PRD) | Status |
 |---|---|---|---|
-| 01.1 — Tracer: see skills + deploy to a local repo + see-back | J01, J06, J02 | — | Planned |
+| 01.1 — Tracer: register a repo + see skills + deploy + see-back | J10, J01, J06, J02 | [#8](https://github.com/fimoklei/maestro/issues/8) | Specced |
 | 01.2 — Global as a target | J03, J07 | — | Planned |
 | 01.3 — Drift (binary) | J04 | — | Planned |
 | 01.4 — Update | J08 | — | Planned |
@@ -96,8 +100,14 @@ the per-repo handwork Maestro exists to kill.
 
 ## Registry
 
-A Maestro-owned list of consuming-repo paths, **added explicitly by the user**.
-No scan. Defined as **Consuming-repo registry** in `CONTEXT.md`.
+A Maestro-owned list of consuming-repo paths, **added explicitly by the user**
+(`J10`). No scan. Defined as **Consuming-repo registry** in `CONTEXT.md`.
+
+Registration UX for this step is **paste an absolute path → server validates**
+(exists, is a directory). An interactive directory-browser picker is deferred: a
+browser cannot hand the server a real path, so a picker means a server-side
+filesystem-listing endpoint — the most security-sensitive surface in MVP1 — for
+the least-core subjob. Revisit if it earns it (see out-of-scope).
 
 ## Exit criteria
 
