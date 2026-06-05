@@ -1,0 +1,15 @@
+     Available versions:      
+    fimoklei/agent-harness    
+┏━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━┓
+┃ Name   ┃ Type   ┃ Commit   ┃
+┡━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━┩
+│ v0.5.1 │ tag    │ 471c4b26 │
+│ v0.5.0 │ tag    │ ec491f15 │
+│ v0.4.1 │ tag    │ 10ff6a4f │
+│ v0.4.0 │ tag    │ 9662b03d │
+│ v0.3.0 │ tag    │ 3097ba05 │
+│ v0.2.1 │ tag    │ 7f2fdd41 │
+│ v0.2.0 │ tag    │ e1a5dabd │
+│ v0.1.0 │ tag    │ a08a0daf │
+│ main   │ branch │ 41ecfe81 │
+└────────┴────────┴──────────┘

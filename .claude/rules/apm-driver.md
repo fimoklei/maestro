@@ -68,10 +68,56 @@ Maestro consumes this **binary** (behind / up-to-date), per roadmap 01.
 `apm update` moves a tag-pinned dep to the latest matching tag — same driver port
 as deploy.
 
+## Observed latest-tag resolution (Phase 0 spike, issue #10)
+
+**Spiked against apm 0.16.0 on 2026-06-05, authenticated to the private
+`fimoklei/agent-harness`.** Closes the former "latest tag" open item. Fixtures:
+raw output in `tests/fixtures/apm-view-versions.txt`, a tag-pinned lockfile in
+`tests/fixtures/apm.lock.tag-pinned.yaml`.
+
+### Latest-tag — `apm view <owner>/<repo> versions`
+
+The mechanism; **no git fallback needed.** It queries the remote (needs network
+plus auth for a private repo) and prints every tag and branch with its short
+commit:
+
+```text
+│ v0.5.1 │ tag    │ 471c4b26 │
+│ main   │ branch │ 41ecfe81 │
+```
+
+- **No `--json`** — a human Rich table, like `apm outdated`. The parser sits
+  behind the driver port, integration-tested against the fixture.
+- The table **mixes in branches.** Maestro keeps only `tag` rows of shape
+  `vX.Y.Z` and **semver-sorts them itself**; apm's row order is not contractual
+  (`v0.10.0 > v0.9.0`, which a lexicographic sort gets wrong).
+- The query is **repo-level**: it lists the repo's tags, not the tags whose tree
+  contains `skills/<name>`. The single-harness model needs no per-skill check.
+
+### Package divergence — two kinds, one detectable
+
+- **Version drift** (a newer tag exists) → `apm outdated`, documented above. The
+  tracer consumes only this (binary behind/up-to-date).
+- **Content drift** (deployed files edited or added vs the pinned tag) → **apm
+  detects nothing.** `apm outdated` ignores it. The lockfile `content_hash` is
+  apm-internal and **did not reproduce** (eight hashing schemes, no match) —
+  treat it as opaque, never recompute it. A same-ref `apm install` silently
+  **resets** the tree to the tag, dropping local edits and untracked files, while
+  printing "(files unchanged)": it remediates drift but never reports it.
+  - **Decision:** the tracer detects version drift only. For content drift later,
+    tree-diff the deployed subtree against a fresh export of the pinned tag —
+    never replicate `content_hash`.
+
+### Phase 0 canary (completion gate for the deploy slices)
+
+`apm view fimoklei/agent-harness versions` returning the tag table is the
+real-apm canary. It needs network plus auth to the private repo; lacking either,
+it fails loudly instead of resolving a tag — the intended stop-and-report, not a
+silent wrong answer.
+
 ## Open — observe before relying on it
 
-- **Resolving "latest tag"** for a deploy is not yet observed. `apm view` ("list
-  remote versions") is the likely source; spike it before the deploy code assumes
-  a mechanism.
+- **Content-drift detection** has a recorded decision (above) but no
+  implementation yet — revisit only if a slice needs it.
 - **Hook and MCP deploys** are unobserved. `apm mcp` is a separate command
   surface. Do not drive them until spiked the same way skills were.
