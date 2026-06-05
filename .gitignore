@@ -4,3 +4,7 @@ dist/
 coverage/
 *.tsbuildinfo
 *.log
+
+# Personal, machine-local skill symlinks (point into the user's ~/.agents).
+# Project skills, if ever tracked, should be added explicitly.
+.claude/skills/
