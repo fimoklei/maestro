@@ -25,6 +25,7 @@ The MVP1 bet: one person can **see** their whole agent setup and **steer** it (d
 | ↳ J02 — See per-repo deploy-state with versions | MVP1 | When I work across several repos, I want to see which primitives/bundles are deployed in each repo and at which version, so that I am not guessing what each project runs. | A |
 | ↳ J03 — See global deploy-state | MVP1 | When I rely on tool-level setup, I want to see what is deployed globally for Claude Code and Codex, so that I understand my baseline across all work. | A |
 | ↳ J04 — See drift | MVP1 | When central changes, I want to see which deploys lag behind, so that I know what needs updating. | A, B |
+| ↳ J10 — Register a consuming repo | MVP1 | When I want Maestro to see and steer a project, I want to register that repo's path in the cockpit, so that its deploy-state becomes visible and I can deploy to it. | A, B |
 | ↳ Explain why a primitive is deployed | Future | — | A |
 | ↳ Search and preview the inventory | Future | — | A |
 | ↳ Adoption view across a team | Future | — | A, C |
