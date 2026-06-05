@@ -6,6 +6,7 @@ Maestro runs the `apm` CLI, reads and writes your disk, and serves a local web a
 
 - **Shelling out.** Args array only (`execFile`/`spawn` with a list). Never `exec`, never `shell: true`, never concatenate input into a command. Names, paths, and versions go in as data, not command text. → prevents command injection (a name like `; rm -rf ~`).
 - **Filesystem paths.** Resolve against one fixed allowed root; assert the result stays inside it. Reject `..` and absolute paths from external input. Allowlist the target directories. → prevents path traversal (a name like `../../.ssh/config`).
+  - **Exception — the consuming-repo registry is the allowlist.** Registration deliberately accepts an arbitrary absolute path (the user pastes a project path; there is no fixed root). Compensating controls: registration validates absolute + `realpath` + exists + is-a-directory; **every** path-taking endpoint (deploy *and* deploy-state read) requires exact membership in the registry after `realpath` before any filesystem or `apm` access; CSRF/DNS-rebinding is blocked by localhost-bind + the Host/Origin check below, not by a fixed root. A path not in the registry is rejected.
 - **External data is untrusted.** Lockfiles, `apm.yml`, `apm` stdout: parse → validate with Zod → use. Never `eval`. Safe YAML only (no custom tags). Boundary placement → `architecture.md`; general validation rules → global `code-standards.md`.
 
 ## Captured — enforce when the code exists
