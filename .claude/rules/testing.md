@@ -18,17 +18,18 @@ Why and when to test. The runner is fixed (**Vitest**, see ADR-0002); exact path
 - Snapshot tests unless the output is deliberately stable and large.
 - Coverage as a target. Coverage is a report, not a threshold.
 
-## The three lanes
+## The four lanes
 
-One runner for all of them: **Vitest**. One tool, one config, one mental model.
+One runner for all of them: **Vitest**. One tool, one mental model.
 
 - **Pure (unit)** = sibling file next to source. No fs/git/network. Goal: millisecond-fast, default in the `/tdd` loop. The workhorse; most tests live here.
+- **Web component** = sibling `.test.tsx` in `packages/web`, run in **jsdom** with Testing Library (its own `packages/web/vitest.config.ts` for the React plugin). Tests a component's behavior through the rendered DOM; `fetch` is stubbed, no real network. Goal: the cockpit UI behaves. Browser end-to-end (Playwright) stays deferred until the UI earns it.
 - **Integration** = a dedicated `tests/integration/` tree. Tests a journey across multiple modules with real I/O. Goal: regression safety net, runs in CI.
-- **Acceptance (BDD)** = Gherkin `.feature` files, **one per MVP1 subjob** (`J01`–`J09`), written in Given/When/Then. Goal: prove the cockpit does its jobs, traceable to the job map, and readable by a non-engineer without reading code. Runs end-to-end against the server API (not the browser) under Vitest. Browser end-to-end (Playwright) is deferred until the UI earns it.
+- **Acceptance (BDD)** = Gherkin `.feature` files, **one per MVP1 subjob** (`J01`–`J10`), written in Given/When/Then. Goal: prove the cockpit does its jobs, traceable to the job map, and readable by a non-engineer without reading code. Runs end-to-end against the server API (not the browser) under Vitest.
 
 Heuristic for "is this integration?": if it touches the real filesystem, git, or network → integration. For Maestro specifically, anything that drives APM or reads real lockfiles is integration. An acceptance scenario uses real I/O too, but is organised by subjob and written to read like the job map.
 
-Set up all three lanes at bootstrap with one example each, then fill them as features land — never a batch of tests before the first feature.
+Set up each lane with one example as the first feature in it lands (the web lane arrived with the first UI slice), then fill them as features land — never a batch of tests before the first feature.
 
 ## When to write which test
 

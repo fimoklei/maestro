@@ -1,8 +1,9 @@
 import { app } from "@maestro/server";
 import { describe, expect, it } from "vitest";
 
-// Integratiebaan: drijft de echte Hono-app via app.request, bewijst de server-API
-// én de bedrading server -> core (de health-payload komt uit coreHealth()).
+// Integration lane: drives the real Hono app via app.request, proving the
+// server API and the server -> core wiring (the health payload comes from
+// coreHealth()).
 describe("GET /api/health", () => {
   it("reports the cockpit server as healthy", async () => {
     const res = await app.request("/api/health");

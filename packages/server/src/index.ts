@@ -1,1 +1,1 @@
-export { app } from "./app";
+export { type AppDeps, app, createApp } from "./app";

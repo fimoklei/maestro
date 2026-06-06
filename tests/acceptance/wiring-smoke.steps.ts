@@ -9,7 +9,7 @@ describeFeature(feature, ({ Scenario }) => {
     let response: Response;
 
     Given("the cockpit server is wired to core", () => {
-      // Niets te arrangeren: de app is statisch opgebouwd in app.ts.
+      // Nothing to arrange: the app is built statically in app.ts.
     });
     When("I ask the server for its health", async () => {
       response = await app.request("/api/health");

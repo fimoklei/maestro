@@ -1,39 +1,23 @@
-import { useEffect, useState } from "react";
+import { RegistryPanel } from "./registry/registry-panel";
+import { useHealth } from "./use-health";
 
-// Minimale schil, geen Maestro-UI: haalt /api/health op en toont de status.
-// Het enige doel is bewijzen dat de live HTTP-grens web -> server werkt.
+// Minimal shell, no Maestro UI: reads /api/health and shows the status. Its
+// only purpose is to prove the live web -> server HTTP boundary works.
 type HealthState = "checking" | "healthy" | "unreachable";
 
 export function App() {
-  const [state, setState] = useState<HealthState>("checking");
-
-  useEffect(() => {
-    let cancelled = false;
-
-    fetch("/api/health")
-      .then((res) =>
-        res.ok ? res.json() : Promise.reject(new Error(String(res.status))),
-      )
-      .then((body: { ok?: boolean }) => {
-        if (!cancelled) {
-          setState(body.ok ? "healthy" : "unreachable");
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setState("unreachable");
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const health = useHealth();
+  const state: HealthState = health.isPending
+    ? "checking"
+    : health.isError || !health.data?.ok
+      ? "unreachable"
+      : "healthy";
 
   return (
     <main>
       <h1>Maestro</h1>
       <p>Server: {state}</p>
+      <RegistryPanel />
     </main>
   );
 }

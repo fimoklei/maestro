@@ -8,7 +8,8 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "concurrently -n server,web -c blue,green \"pnpm --filter @maestro/server dev\" \"pnpm --filter @maestro/web dev\"",
+    "dev": "node scripts/dev.mjs",
+    "smoke": "node scripts/dev.mjs --smoke",
     "build": "pnpm -r build",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -19,6 +20,7 @@
   "devDependencies": {
     "@amiceli/vitest-cucumber": "^6.5.0",
     "@biomejs/biome": "^2.4.16",
+    "@maestro/core": "workspace:*",
     "@maestro/server": "workspace:*",
     "@types/node": "^25.9.1",
     "concurrently": "^10.0.0",

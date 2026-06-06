@@ -1,9 +1,12 @@
 import { defineConfig } from "vitest/config";
 
-// Eén runner, drie banen (zie .claude/rules/testing.md): pure/unit, integratie, acceptatie.
+// One runner, four lanes (see .claude/rules/testing.md): pure/unit, integration,
+// acceptance, and the web component lane (jsdom, its own config for the React
+// plugin).
 export default defineConfig({
   test: {
     projects: [
+      "./packages/web/vitest.config.ts",
       {
         test: {
           name: "core",

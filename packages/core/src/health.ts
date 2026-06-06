@@ -1,4 +1,4 @@
-// Triviale health-check: bewijst dat de core-package bouwt en importeerbaar is.
+// Trivial health check: proves the core package builds and is importable.
 export type HealthReport = {
   ok: true;
   component: string;
