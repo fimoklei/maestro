@@ -68,6 +68,20 @@ describe("write-route Origin/Host guard", () => {
     expect(res.status).toBe(415);
   });
 
+  it("guards a write to any route, not only the registry path", async () => {
+    const res = await makeApp().request("/api/not-a-route-yet", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        host: LOCAL_HOST,
+        origin: "http://evil.example.com",
+      },
+      body: JSON.stringify({}),
+    });
+
+    expect(res.status).toBe(403);
+  });
+
   it("allows a write from an allowlisted Host and same Origin", async () => {
     const res = await post({
       "content-type": "application/json",

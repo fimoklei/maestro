@@ -44,6 +44,24 @@ describe("Registry", () => {
     ]);
   });
 
+  it("keeps both repos when two registrations run concurrently", async () => {
+    const fs = new InMemoryFileSystem({
+      directories: {
+        "/Users/me/a": "/Users/me/a",
+        "/Users/me/b": "/Users/me/b",
+      },
+    });
+    const registry = makeRegistry(fs);
+
+    await Promise.all([
+      registry.register("/Users/me/a"),
+      registry.register("/Users/me/b"),
+    ]);
+
+    const paths = (await registry.list()).map((r) => r.path).sort();
+    expect(paths).toEqual(["/Users/me/a", "/Users/me/b"]);
+  });
+
   it("rejects an invalid path with a typed error and persists nothing", async () => {
     const fs = new InMemoryFileSystem();
     const registry = makeRegistry(fs);

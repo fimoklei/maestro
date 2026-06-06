@@ -12,6 +12,10 @@ import {
 import { dirname } from "node:path";
 import type { FileSystemPort } from "./file-system";
 
+// Monotonic suffix so two writes in one process never share a temp filename,
+// independent of any caller-side serialization.
+let writeCounter = 0;
+
 function isNotFound(error: unknown): boolean {
   return (
     typeof error === "object" &&
@@ -46,7 +50,7 @@ export class NodeFileSystem implements FileSystemPort {
 
   async writeFile(path: string, contents: string): Promise<void> {
     await mkdir(dirname(path), { recursive: true });
-    const tmp = `${path}.tmp-${process.pid}`;
+    const tmp = `${path}.tmp-${process.pid}-${writeCounter++}`;
     await writeFile(tmp, contents, "utf8");
     await rename(tmp, path);
   }

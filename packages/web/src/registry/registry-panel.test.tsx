@@ -57,4 +57,17 @@ describe("RegistryPanel", () => {
 
     expect(await screen.findByText("/Users/me/project")).toBeInTheDocument();
   });
+
+  it("shows an error instead of the empty state when the registry fails to load", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ message: "boom" }, 500)),
+    );
+    renderPanel();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /could not load/i,
+    );
+    expect(screen.queryByText(/no repos registered/i)).not.toBeInTheDocument();
+  });
 });

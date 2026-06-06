@@ -24,15 +24,23 @@ export class ConfigError extends Error {
 
 export class ConfigStore {
   private readonly fs: FileSystemPort;
-  private readonly configPath: string;
+  // A thunk so the path is resolved per access, never frozen at construction:
+  // the default app can defer reading MAESTRO_HOME until a request arrives.
+  private readonly resolvePath: () => string;
 
-  constructor(deps: { fs: FileSystemPort; configPath: string }) {
+  constructor(deps: {
+    fs: FileSystemPort;
+    configPath: string | (() => string);
+  }) {
     this.fs = deps.fs;
-    this.configPath = deps.configPath;
+    const { configPath } = deps;
+    this.resolvePath =
+      typeof configPath === "function" ? configPath : () => configPath;
   }
 
   async read(): Promise<MaestroConfig> {
-    const raw = await this.fs.readFile(this.configPath);
+    const configPath = this.resolvePath();
+    const raw = await this.fs.readFile(configPath);
     if (raw === null) {
       return { repos: [] };
     }
@@ -41,7 +49,7 @@ export class ConfigStore {
     try {
       parsed = JSON.parse(raw);
     } catch (cause) {
-      throw new ConfigError(`Config at ${this.configPath} is not valid JSON.`, {
+      throw new ConfigError(`Config at ${configPath} is not valid JSON.`, {
         cause,
       });
     }
@@ -49,7 +57,7 @@ export class ConfigStore {
     const result = configSchema.safeParse(parsed);
     if (!result.success) {
       throw new ConfigError(
-        `Config at ${this.configPath} does not match the expected shape.`,
+        `Config at ${configPath} does not match the expected shape.`,
         { cause: result.error },
       );
     }
@@ -57,6 +65,9 @@ export class ConfigStore {
   }
 
   async write(config: MaestroConfig): Promise<void> {
-    await this.fs.writeFile(this.configPath, JSON.stringify(config, null, 2));
+    await this.fs.writeFile(
+      this.resolvePath(),
+      JSON.stringify(config, null, 2),
+    );
   }
 }

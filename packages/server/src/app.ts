@@ -39,10 +39,13 @@ export function createApp(deps: AppDeps) {
 
   app.get("/api/health", (c) => c.json(coreHealth()));
 
-  // Guard the write routes only; reads are not state-changing.
+  // Guard every state-changing method app-wide, so a new write route is
+  // protected by default instead of safe-only-if-the-author-remembers. Safe
+  // methods (GET/HEAD) are never state-changing and pass straight through.
   if (deps.enforceOriginHost) {
-    app.use("/api/registry/repos", async (c, next) => {
-      if (c.req.method !== "POST") {
+    const safeMethods = new Set(["GET", "HEAD"]);
+    app.use("*", async (c, next) => {
+      if (safeMethods.has(c.req.method)) {
         return next();
       }
       return originHostGuard(c, next);
@@ -82,10 +85,14 @@ export function createApp(deps: AppDeps) {
 
 function realDeps(): AppDeps {
   const fs = new NodeFileSystem();
-  const configPath = resolveMaestroConfigPath(process.env);
+  // Resolve MAESTRO_HOME per access, not at import: importing { app } must not
+  // freeze the config path to whatever env happened to be set at load time.
   const registry = new Registry({
     fs,
-    store: new ConfigStore({ fs, configPath }),
+    store: new ConfigStore({
+      fs,
+      configPath: () => resolveMaestroConfigPath(process.env),
+    }),
   });
   return { registry, enforceOriginHost: true };
 }

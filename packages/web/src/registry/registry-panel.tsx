@@ -18,6 +18,8 @@ export function RegistryPanel() {
       />
       {registry.isLoading ? (
         <p>Loading…</p>
+      ) : registry.isError ? (
+        <p role="alert">Could not load registered repos.</p>
       ) : (
         <RegisteredReposList repos={registry.data?.repos ?? []} />
       )}

@@ -26,6 +26,19 @@ describe("ConfigStore", () => {
     });
   });
 
+  it("resolves a lazily-provided config path on each access", async () => {
+    const fs = new InMemoryFileSystem();
+    let path = "/home/me/.maestro/config.json";
+    const store = new ConfigStore({ fs, configPath: () => path });
+
+    await store.write({ repos: [{ path: "/Users/me/project" }] });
+    // Repoint the location after construction: a fresh read must use the new
+    // path, proving the path is resolved per access, not frozen at construction.
+    path = "/sandbox/.maestro/config.json";
+
+    await expect(store.read()).resolves.toEqual({ repos: [] });
+  });
+
   it("throws a blocking error on unparseable JSON rather than reading empty", async () => {
     const fs = new InMemoryFileSystem({
       files: { [CONFIG_PATH]: "{ not json" },
