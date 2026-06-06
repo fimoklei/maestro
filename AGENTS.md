@@ -36,6 +36,7 @@ Maestro is the cockpit above it and never reimplements it (ADR-0001).
 │   ├── core/              # domain logic
 │   ├── server/            # local Hono service
 │   └── web/               # React/Vite cockpit UI
+├── scripts/               # dev launcher (single-instance; frees ports)
 └── tests/                 # acceptance and integration tests
 ```
 
@@ -80,7 +81,10 @@ active roadmap changes it.
 
 Run from the repo root.
 
-- `pnpm dev` — start server and web.
+- `pnpm dev` — start server and web (single instance: kills a previous run
+  and frees ports 3000/5173 first).
+- `pnpm smoke` — same as `dev` but against an isolated sandbox config
+  (`MAESTRO_HOME=.maestro-sandbox`), so it never touches the real `~/.maestro`.
 - `pnpm test` — run tests.
 - `pnpm typecheck` — typecheck all packages.
 - `pnpm build` — build all packages.

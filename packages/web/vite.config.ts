@@ -1,9 +1,9 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-// Dev-proxy houdt de client<->server HTTP-grens echt en CORS-vrij: alles onder
-// /api gaat naar de Hono-server. Leest dezelfde env-var (PORT) als server.ts,
-// zodat een niet-default poort niet uit elkaar loopt.
+// The dev proxy keeps the client<->server HTTP boundary real and CORS-free:
+// everything under /api goes to the Hono server. Reads the same env var (PORT)
+// as server.ts so a non-default port does not drift apart.
 const serverPort = process.env.PORT ?? "3000";
 
 export default defineConfig({

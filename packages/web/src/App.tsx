@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+import { RegistryPanel } from "./registry/registry-panel";
 
-// Minimale schil, geen Maestro-UI: haalt /api/health op en toont de status.
-// Het enige doel is bewijzen dat de live HTTP-grens web -> server werkt.
+// Minimal shell, no Maestro UI: fetches /api/health and shows the status. Its
+// only purpose is to prove the live web -> server HTTP boundary works.
 type HealthState = "checking" | "healthy" | "unreachable";
 
 export function App() {
@@ -34,6 +35,7 @@ export function App() {
     <main>
       <h1>Maestro</h1>
       <p>Server: {state}</p>
+      <RegistryPanel />
     </main>
   );
 }
