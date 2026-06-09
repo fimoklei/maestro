@@ -12,11 +12,14 @@ export const parseGitOrigin = (url: string): GitOrigin | null => {
   if (match === null) {
     return null;
   }
-  const host = match[1];
+  const rawHost = match[1];
   const path = match[2];
-  if (host === undefined || path === undefined) {
+  if (rawHost === undefined || path === undefined) {
     return null;
   }
+  // Strip any userinfo (a credentialed HTTPS remote is `user:token@host`), so a
+  // token never reaches the host, the apm package ref, or argv.
+  const host = rawHost.slice(rawHost.lastIndexOf("@") + 1);
   const segments = path.split("/").filter((s) => s.length > 0);
   if (segments.length !== 2) {
     return null;
