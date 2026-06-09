@@ -10,6 +10,7 @@ import {
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { stubDeploy } from "../helpers/stub-deploy";
 
 // Integration lane: drives the real Hono app via app.request against real temp
 // dirs. The deploy-state route is registry-gated — membership is checked before
@@ -38,6 +39,7 @@ describe("deploy-state HTTP route", () => {
       registry,
       inventory,
       deployState,
+      deploy: stubDeploy({ inventory, registry }),
       enforceOriginHost: false,
     });
     return { app, registry };

@@ -11,6 +11,7 @@ import {
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { expect } from "vitest";
+import { stubDeploy } from "../helpers/stub-deploy";
 
 const feature = await loadFeature("tests/acceptance/j01-see-inventory.feature");
 
@@ -32,6 +33,7 @@ function buildApp(configPath: string, inventoryPath: string | undefined) {
     registry,
     inventory,
     deployState,
+    deploy: stubDeploy({ inventory, registry }),
     enforceOriginHost: false,
   });
 }

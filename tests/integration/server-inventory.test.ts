@@ -10,6 +10,7 @@ import {
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { stubDeploy } from "../helpers/stub-deploy";
 
 // Integration lane: drives the real Hono app via app.request against a real
 // agent-harness-shaped clone on a temp dir. The Origin/Host guard is disabled
@@ -50,6 +51,7 @@ describe("inventory HTTP route", () => {
       registry,
       inventory,
       deployState,
+      deploy: stubDeploy({ inventory, registry }),
       enforceOriginHost: false,
     });
   }

@@ -11,6 +11,7 @@ import {
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { expect } from "vitest";
+import { stubDeploy } from "../helpers/stub-deploy";
 
 const feature = await loadFeature("tests/acceptance/j10-register-repo.feature");
 
@@ -29,6 +30,7 @@ function buildApp(configPath: string) {
     registry,
     inventory,
     deployState,
+    deploy: stubDeploy({ inventory, registry }),
     enforceOriginHost: false,
   });
 }

@@ -1,3 +1,12 @@
+export { ApmCliDriver } from "./deploy/apm-cli-driver";
+export {
+  type ApmDriverPort,
+  DeploySkill,
+  type DeploySkillError,
+  type DeploySkillInput,
+  type DeploySkillResult,
+} from "./deploy/deploy-skill";
+export { readGitOriginUrl } from "./deploy/git-origin-url";
 export {
   type DeployedPrimitive,
   DeployStateReader,
