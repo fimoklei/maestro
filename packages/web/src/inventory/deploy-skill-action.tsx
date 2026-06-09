@@ -14,8 +14,17 @@ export function DeploySkillAction({
   skillName,
   repos,
 }: DeploySkillActionProps) {
-  const [repoPath, setRepoPath] = useState(repos[0]?.path ?? "");
+  // The user's explicit pick, or null until they choose. The effective
+  // selection is derived below so a pick made before the registry loaded — or
+  // none yet — falls back to the first available repo instead of freezing on
+  // an empty value (which left the deploy button stuck disabled).
+  const [chosen, setChosen] = useState<string | null>(null);
   const deploy = useDeploySkill();
+
+  const repoPath =
+    chosen !== null && repos.some((repo) => repo.path === chosen)
+      ? chosen
+      : (repos[0]?.path ?? "");
 
   const selectId = `deploy-${skillName}-repo`;
 
@@ -25,7 +34,7 @@ export function DeploySkillAction({
       <select
         id={selectId}
         value={repoPath}
-        onChange={(event) => setRepoPath(event.target.value)}
+        onChange={(event) => setChosen(event.target.value)}
       >
         {repos.map((repo) => (
           <option key={repo.path} value={repo.path}>

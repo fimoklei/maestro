@@ -26,6 +26,13 @@ function renderAction(ui: React.ReactNode) {
   );
 }
 
+function wrap(ui: React.ReactNode) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>;
+}
+
 describe("DeploySkillAction", () => {
   it("deploys the skill to the chosen repo", async () => {
     const fetchMock = vi.fn(async () =>
@@ -55,6 +62,43 @@ describe("DeploySkillAction", () => {
       type: "skill",
       name: "tdd",
       repoPath: "/projects/beta",
+    });
+  });
+
+  it("becomes usable when registered repos arrive after the first render", async () => {
+    // The registry query resolves after the inventory, so this component first
+    // mounts with no repos. When they arrive it must select one, not stay
+    // stuck disabled on a frozen empty choice.
+    const fetchMock = vi.fn(async () =>
+      jsonResponse({
+        deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const { rerender } = render(
+      wrap(<DeploySkillAction skillName="tdd" repos={[]} />),
+    );
+    expect(screen.getByRole("button", { name: /deploy/i })).toBeDisabled();
+
+    rerender(
+      wrap(
+        <DeploySkillAction
+          skillName="tdd"
+          repos={[{ path: "/projects/alpha" }]}
+        />,
+      ),
+    );
+
+    expect(screen.getByRole("button", { name: /deploy/i })).toBeEnabled();
+    await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
+    const [, init] = fetchMock.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+    expect(JSON.parse(init.body as string)).toEqual({
+      type: "skill",
+      name: "tdd",
+      repoPath: "/projects/alpha",
     });
   });
 
