@@ -1,11 +1,15 @@
 import {
+  ApmCliDriver,
   ConfigStore,
   coreHealth,
+  DeploySkill,
+  type DeploySkillError,
   DeployStateReader,
   InventoryReader,
   NodeFileSystem,
   Registry,
   type RepoPathError,
+  readGitOriginUrl,
   resolveInventoryPath,
   resolveMaestroConfigPath,
 } from "@maestro/core";
@@ -14,6 +18,49 @@ import { z } from "zod";
 import { originHostGuard } from "./origin-host-guard";
 
 const registerBodySchema = z.object({ path: z.string() });
+
+const deployBodySchema = z.object({
+  type: z.literal("skill"),
+  name: z.string(),
+  repoPath: z.string(),
+});
+
+// Transport-layer mapping from the deploy use-case's typed errors to HTTP.
+// Business rules live in core; this table only chooses status codes and
+// readable messages (none of which echo paths or raw apm output).
+const deployErrorResponses: Record<
+  DeploySkillError,
+  { status: 400 | 403 | 404 | 409 | 502; message: string }
+> = {
+  "invalid-name": {
+    status: 400,
+    message: "Skill name must be a lowercase slug.",
+  },
+  "unknown-skill": {
+    status: 404,
+    message: "That skill is not in the inventory.",
+  },
+  "inventory-not-configured": {
+    status: 409,
+    message: "No inventory is configured. Set the agent-harness clone path.",
+  },
+  "repo-not-registered": {
+    status: 403,
+    message: "That repo is not registered with Maestro.",
+  },
+  "inventory-origin-unavailable": {
+    status: 502,
+    message: "The inventory clone has no readable origin remote.",
+  },
+  "no-deployable-tag": {
+    status: 409,
+    message: "The inventory has no published version tag to deploy.",
+  },
+  "deploy-failed": {
+    status: 502,
+    message: "The deploy could not be completed. Check apm and try again.",
+  },
+};
 
 // Transport-layer mapping from the domain's typed validation errors to readable
 // text the cockpit shows next to the path field.
@@ -34,6 +81,7 @@ export type AppDeps = {
   registry: Registry;
   inventory: InventoryReader;
   deployState: DeployStateReader;
+  deploy: DeploySkill;
   // Production always enables the Origin/Host guard on write routes; tests
   // construct it disabled. There is no static bypass header.
   enforceOriginHost: boolean;
@@ -110,6 +158,30 @@ export function createApp(deps: AppDeps) {
     return c.json({ primitives: result.primitives, skipped: result.skipped });
   });
 
+  // Deploy a skill into a registered repo. All business rules (slug check,
+  // inventory membership, registry gate, tag resolution) live in the core
+  // use-case; this route validates the body shape and maps typed errors.
+  app.post("/api/deploy", async (c) => {
+    const body = await c.req.json().catch(() => null);
+    const parsed = deployBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json(
+        {
+          error: "invalid-body",
+          message: "Expected a JSON body with type, name, and repoPath.",
+        },
+        400,
+      );
+    }
+
+    const result = await deps.deploy.execute(parsed.data);
+    if (!result.ok) {
+      const { status, message } = deployErrorResponses[result.error];
+      return c.json({ error: result.error, message }, status);
+    }
+    return c.json({ deployed: result.deployed });
+  });
+
   app.get("/api/registry/repos", async (c) =>
     c.json({ repos: await deps.registry.list() }),
   );
@@ -158,7 +230,18 @@ function realDeps(): AppDeps {
       resolveInventoryPath(await store.read(), process.env),
   });
   const deployState = new DeployStateReader({ fs });
-  return { registry, inventory, deployState, enforceOriginHost: true };
+  // Owner/repo for package references come from the inventory clone's origin
+  // remote, resolved per deploy so a path saved after startup is picked up.
+  const deploy = new DeploySkill({
+    inventory,
+    registry,
+    apm: new ApmCliDriver(),
+    inventoryOriginUrl: async () => {
+      const root = resolveInventoryPath(await store.read(), process.env);
+      return root === undefined ? null : readGitOriginUrl(root);
+    },
+  });
+  return { registry, inventory, deployState, deploy, enforceOriginHost: true };
 }
 
 // Default composition root: existing health/wiring-smoke tests import { app }.

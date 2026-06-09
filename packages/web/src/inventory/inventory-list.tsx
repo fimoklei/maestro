@@ -1,8 +1,17 @@
+import type { RegisteredRepo } from "../registry/use-registry";
+import { DeploySkillAction } from "./deploy-skill-action";
 import type { Primitive } from "./use-inventory";
 
-// Presentational list of central skills. Empty state is explicit so a correctly
-// configured but empty inventory never shows a bare, ambiguous blank.
-export function InventoryList({ primitives }: { primitives: Primitive[] }) {
+// Presentational list of central skills, each row carrying its deploy action.
+// Empty state is explicit so a correctly configured but empty inventory never
+// shows a bare, ambiguous blank.
+export function InventoryList({
+  primitives,
+  repos,
+}: {
+  primitives: Primitive[];
+  repos: RegisteredRepo[];
+}) {
   if (primitives.length === 0) {
     return <p>No skills found in the inventory.</p>;
   }
@@ -12,7 +21,8 @@ export function InventoryList({ primitives }: { primitives: Primitive[] }) {
       {primitives.map((primitive) => (
         <li key={primitive.name}>
           <strong>{primitive.name}</strong>:{" "}
-          <span>{primitive.description}</span>
+          <span>{primitive.description}</span>{" "}
+          <DeploySkillAction skillName={primitive.name} repos={repos} />
         </li>
       ))}
     </ul>

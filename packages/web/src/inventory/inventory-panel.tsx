@@ -1,4 +1,5 @@
 import { HttpError } from "../api/http";
+import { useRegistry } from "../registry/use-registry";
 import { InventoryList } from "./inventory-list";
 import { useInventory } from "./use-inventory";
 
@@ -7,6 +8,7 @@ import { useInventory } from "./use-inventory";
 // a generic load failure, so the user knows to set the clone path.
 export function InventoryPanel() {
   const inventory = useInventory();
+  const registry = useRegistry();
 
   if (inventory.isLoading) {
     return (
@@ -35,7 +37,10 @@ export function InventoryPanel() {
   return (
     <section>
       <h2>Central inventory</h2>
-      <InventoryList primitives={inventory.data?.primitives ?? []} />
+      <InventoryList
+        primitives={inventory.data?.primitives ?? []}
+        repos={registry.data?.repos ?? []}
+      />
     </section>
   );
 }
