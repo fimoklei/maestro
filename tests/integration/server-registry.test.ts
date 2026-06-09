@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   ConfigStore,
+  DeployStateReader,
   InventoryReader,
   NodeFileSystem,
   Registry,
@@ -36,7 +37,13 @@ describe("registry HTTP routes", () => {
       store: new ConfigStore({ fs, configPath: join(dir, "config.json") }),
     });
     const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
-    return createApp({ registry, inventory, enforceOriginHost: false });
+    const deployState = new DeployStateReader({ fs });
+    return createApp({
+      registry,
+      inventory,
+      deployState,
+      enforceOriginHost: false,
+    });
   }
 
   it("GET /api/registry/repos returns an empty registry initially", async () => {

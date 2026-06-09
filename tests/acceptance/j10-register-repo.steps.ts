@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describeFeature, loadFeature } from "@amiceli/vitest-cucumber";
 import {
   ConfigStore,
+  DeployStateReader,
   InventoryReader,
   NodeFileSystem,
   Registry,
@@ -23,7 +24,13 @@ function buildApp(configPath: string) {
     store: new ConfigStore({ fs, configPath }),
   });
   const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
-  return createApp({ registry, inventory, enforceOriginHost: false });
+  const deployState = new DeployStateReader({ fs });
+  return createApp({
+    registry,
+    inventory,
+    deployState,
+    enforceOriginHost: false,
+  });
 }
 
 function postRepo(app: ReturnType<typeof buildApp>, path: string) {

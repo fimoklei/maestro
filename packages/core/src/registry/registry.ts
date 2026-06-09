@@ -32,6 +32,22 @@ export class Registry {
     return (await this.store.read()).repos;
   }
 
+  // The path allowlist check every path-taking endpoint (deploy, deploy-state
+  // read) must call before any filesystem or apm access. Canonicalizes the
+  // input with realpath, then requires an exact match against a stored repo
+  // (which were themselves canonicalized at registration). A path that does not
+  // exist, or resolves outside the registry, is not registered — never throws.
+  async isRegistered(input: string): Promise<boolean> {
+    let real: string;
+    try {
+      real = await this.fs.realpath(input);
+    } catch {
+      return false;
+    }
+    const { repos } = await this.store.read();
+    return repos.some((repo) => repo.path === real);
+  }
+
   async register(input: string): Promise<RegisterResult> {
     const result = this.tail.then(() => this.registerExclusive(input));
     // Keep the chain alive even when a registration rejects.

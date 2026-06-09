@@ -1,6 +1,7 @@
 import {
   ConfigStore,
   coreHealth,
+  DeployStateReader,
   InventoryReader,
   NodeFileSystem,
   Registry,
@@ -32,6 +33,7 @@ const repoPathErrorMessages: Record<RepoPathError, string> = {
 export type AppDeps = {
   registry: Registry;
   inventory: InventoryReader;
+  deployState: DeployStateReader;
   // Production always enables the Origin/Host guard on write routes; tests
   // construct it disabled. There is no static bypass header.
   enforceOriginHost: boolean;
@@ -70,6 +72,42 @@ export function createApp(deps: AppDeps) {
       );
     }
     return c.json({ primitives: result.primitives });
+  });
+
+  // Per-repo deploy-state, registry-gated: a repo not in the registry is
+  // refused before any filesystem access, so a local request can never read an
+  // arbitrary <path>/apm.lock.yaml. The version returned is the human tag, never
+  // a commit hash (DeployStateReader owns that).
+  app.get("/api/deploy-state", async (c) => {
+    const repo = c.req.query("repo");
+    if (repo === undefined || repo.trim() === "") {
+      return c.json(
+        { error: "missing-repo", message: "A repo path is required." },
+        400,
+      );
+    }
+    if (!(await deps.registry.isRegistered(repo))) {
+      return c.json(
+        {
+          error: "not-registered",
+          message: "That repo is not registered with Maestro.",
+        },
+        403,
+      );
+    }
+    const result = await deps.deployState.read(repo);
+    if (!result.ok) {
+      // 422: the lockfile exists but could not be read. An empty list must
+      // never stand in for "I couldn't read this".
+      return c.json(
+        {
+          error: result.error,
+          message: "The repo's lockfile could not be read.",
+        },
+        422,
+      );
+    }
+    return c.json({ primitives: result.primitives, skipped: result.skipped });
   });
 
   app.get("/api/registry/repos", async (c) =>
@@ -119,7 +157,8 @@ function realDeps(): AppDeps {
     resolvePath: async () =>
       resolveInventoryPath(await store.read(), process.env),
   });
-  return { registry, inventory, enforceOriginHost: true };
+  const deployState = new DeployStateReader({ fs });
+  return { registry, inventory, deployState, enforceOriginHost: true };
 }
 
 // Default composition root: existing health/wiring-smoke tests import { app }.

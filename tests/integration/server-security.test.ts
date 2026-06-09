@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   ConfigStore,
+  DeployStateReader,
   InventoryReader,
   NodeFileSystem,
   Registry,
@@ -34,7 +35,13 @@ describe("write-route Origin/Host guard", () => {
       store: new ConfigStore({ fs, configPath: join(dir, "config.json") }),
     });
     const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
-    return createApp({ registry, inventory, enforceOriginHost: true });
+    const deployState = new DeployStateReader({ fs });
+    return createApp({
+      registry,
+      inventory,
+      deployState,
+      enforceOriginHost: true,
+    });
   }
 
   function post(headers: Record<string, string>) {
