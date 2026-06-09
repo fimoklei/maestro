@@ -1,3 +1,4 @@
+import { DeployStateSection } from "./deploy-state/deploy-state-section";
 import { InventoryPanel } from "./inventory/inventory-panel";
 import { RegistryPanel } from "./registry/registry-panel";
 import { useHealth } from "./use-health";
@@ -19,6 +20,7 @@ export function App() {
       <h1>Maestro</h1>
       <p>Server: {state}</p>
       <RegistryPanel />
+      <DeployStateSection />
       <InventoryPanel />
     </main>
   );

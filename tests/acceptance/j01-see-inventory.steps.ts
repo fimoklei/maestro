@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describeFeature, loadFeature } from "@amiceli/vitest-cucumber";
 import {
   ConfigStore,
+  DeployStateReader,
   InventoryReader,
   NodeFileSystem,
   Registry,
@@ -26,7 +27,13 @@ function buildApp(configPath: string, inventoryPath: string | undefined) {
     fs,
     resolvePath: () => inventoryPath,
   });
-  return createApp({ registry, inventory, enforceOriginHost: false });
+  const deployState = new DeployStateReader({ fs });
+  return createApp({
+    registry,
+    inventory,
+    deployState,
+    enforceOriginHost: false,
+  });
 }
 
 async function writeSkill(root: string, name: string, body: string) {

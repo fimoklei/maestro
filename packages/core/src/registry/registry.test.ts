@@ -71,4 +71,56 @@ describe("Registry", () => {
     expect(result).toEqual({ ok: false, error: "relative" });
     await expect(registry.list()).resolves.toEqual([]);
   });
+
+  describe("isRegistered", () => {
+    it("is true for a path that was registered", async () => {
+      const fs = new InMemoryFileSystem({
+        directories: { "/Users/me/project": "/Users/me/project" },
+      });
+      const registry = makeRegistry(fs);
+      await registry.register("/Users/me/project");
+
+      await expect(registry.isRegistered("/Users/me/project")).resolves.toBe(
+        true,
+      );
+    });
+
+    it("is false for a path that was never registered", async () => {
+      const fs = new InMemoryFileSystem({
+        directories: {
+          "/Users/me/project": "/Users/me/project",
+          "/Users/me/other": "/Users/me/other",
+        },
+      });
+      const registry = makeRegistry(fs);
+      await registry.register("/Users/me/project");
+
+      await expect(registry.isRegistered("/Users/me/other")).resolves.toBe(
+        false,
+      );
+    });
+
+    it("is false for a path that does not exist", async () => {
+      const fs = new InMemoryFileSystem();
+      const registry = makeRegistry(fs);
+
+      await expect(registry.isRegistered("/Users/me/ghost")).resolves.toBe(
+        false,
+      );
+    });
+
+    it("canonicalizes the input before comparing, so a symlink to a registered repo matches", async () => {
+      const fs = new InMemoryFileSystem({
+        directories: {
+          "/Users/me/project": "/Users/me/project",
+          // A symlink whose realpath is the registered repo.
+          "/Users/me/link": "/Users/me/project",
+        },
+      });
+      const registry = makeRegistry(fs);
+      await registry.register("/Users/me/project");
+
+      await expect(registry.isRegistered("/Users/me/link")).resolves.toBe(true);
+    });
+  });
 });

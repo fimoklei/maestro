@@ -1,3 +1,9 @@
+export {
+  type DeployedPrimitive,
+  DeployStateReader,
+  type DeployStateResult,
+  type SkippedEntry,
+} from "./deploy-state/deploy-state-reader";
 export type { HealthReport } from "./health";
 export { coreHealth } from "./health";
 export {

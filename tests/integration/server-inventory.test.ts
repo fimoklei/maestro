@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   ConfigStore,
+  DeployStateReader,
   InventoryReader,
   NodeFileSystem,
   Registry,
@@ -44,7 +45,13 @@ describe("inventory HTTP route", () => {
       fs,
       resolvePath: () => inventoryPath,
     });
-    return createApp({ registry, inventory, enforceOriginHost: false });
+    const deployState = new DeployStateReader({ fs });
+    return createApp({
+      registry,
+      inventory,
+      deployState,
+      enforceOriginHost: false,
+    });
   }
 
   it("GET /api/inventory/primitives lists the central skills", async () => {
