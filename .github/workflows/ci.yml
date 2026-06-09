@@ -1,6 +1,6 @@
 name: CI
 
-# De enige afgedwongen gate (geen lokale git-hooks): install -> lint -> typecheck -> test -> build.
+# The only enforced gate (no local git hooks): install -> lint -> typecheck -> test -> build.
 on:
   push:
     branches: [main]
