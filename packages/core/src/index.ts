@@ -1,5 +1,11 @@
 export type { HealthReport } from "./health";
 export { coreHealth } from "./health";
+export {
+  InventoryReader,
+  type InventoryResult,
+  type Primitive,
+} from "./inventory/inventory-reader";
+export { resolveInventoryPath } from "./inventory/resolve-inventory-path";
 export { resolveMaestroConfigPath } from "./registry/config-path";
 export {
   ConfigError,

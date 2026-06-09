@@ -1,9 +1,11 @@
 import {
   ConfigStore,
   coreHealth,
+  InventoryReader,
   NodeFileSystem,
   Registry,
   type RepoPathError,
+  resolveInventoryPath,
   resolveMaestroConfigPath,
 } from "@maestro/core";
 import { Hono } from "hono";
@@ -29,6 +31,7 @@ const repoPathErrorMessages: Record<RepoPathError, string> = {
 
 export type AppDeps = {
   registry: Registry;
+  inventory: InventoryReader;
   // Production always enables the Origin/Host guard on write routes; tests
   // construct it disabled. There is no static bypass header.
   enforceOriginHost: boolean;
@@ -51,6 +54,23 @@ export function createApp(deps: AppDeps) {
       return originHostGuard(c, next);
     });
   }
+
+  app.get("/api/inventory/primitives", async (c) => {
+    const result = await deps.inventory.read();
+    if (!result.ok) {
+      // 409: the inventory path is unset / missing / not a directory. The
+      // message never echoes the path — it may be a misconfigured secret.
+      return c.json(
+        {
+          error: result.error,
+          message:
+            "No inventory is configured. Set the agent-harness clone path.",
+        },
+        409,
+      );
+    }
+    return c.json({ primitives: result.primitives });
+  });
 
   app.get("/api/registry/repos", async (c) =>
     c.json({ repos: await deps.registry.list() }),
@@ -87,14 +107,19 @@ function realDeps(): AppDeps {
   const fs = new NodeFileSystem();
   // Resolve MAESTRO_HOME per access, not at import: importing { app } must not
   // freeze the config path to whatever env happened to be set at load time.
-  const registry = new Registry({
+  const store = new ConfigStore({
     fs,
-    store: new ConfigStore({
-      fs,
-      configPath: () => resolveMaestroConfigPath(process.env),
-    }),
+    configPath: () => resolveMaestroConfigPath(process.env),
   });
-  return { registry, enforceOriginHost: true };
+  const registry = new Registry({ fs, store });
+  // Resolve the inventory path per read (config wins, else MAESTRO_INVENTORY_PATH)
+  // so a path saved after startup is picked up without a restart.
+  const inventory = new InventoryReader({
+    fs,
+    resolvePath: async () =>
+      resolveInventoryPath(await store.read(), process.env),
+  });
+  return { registry, inventory, enforceOriginHost: true };
 }
 
 // Default composition root: existing health/wiring-smoke tests import { app }.

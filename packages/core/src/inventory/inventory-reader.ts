@@ -1,0 +1,87 @@
+// Reads the central inventory: every skill in the local agent-harness clone,
+// surfaced as { type, name, description }. Offline by design — it reads the
+// clone through the FileSystemPort, never the network. A malformed or missing
+// SKILL.md is skipped, never fatal, so one bad skill cannot hide the rest.
+import { join } from "node:path";
+import { parse } from "yaml";
+import { z } from "zod";
+import type { FileSystemPort } from "../registry/file-system";
+
+export type Primitive = { type: "skill"; name: string; description: string };
+
+// "not-configured" is the single failure the cockpit shows: inventoryPath is
+// unset, missing, or not a directory. Everything else is a successful list.
+export type InventoryResult =
+  | { ok: true; primitives: Primitive[] }
+  | { ok: false; error: "not-configured" };
+
+const frontmatterSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+});
+
+// Extracts and validates the name/description from a SKILL.md's YAML
+// frontmatter. Returns null on anything malformed — no frontmatter, invalid
+// YAML, or missing fields — so the caller can skip the skill.
+function parseSkillFrontmatter(
+  raw: string,
+): { name: string; description: string } | null {
+  const match = /^---\n([\s\S]*?)\n---/.exec(raw);
+  const block = match?.[1];
+  if (block === undefined) {
+    return null;
+  }
+  let data: unknown;
+  try {
+    data = parse(block);
+  } catch {
+    return null;
+  }
+  const result = frontmatterSchema.safeParse(data);
+  return result.success ? result.data : null;
+}
+
+export class InventoryReader {
+  private readonly fs: FileSystemPort;
+  // A thunk so the inventory path is resolved per read (config-or-env), never
+  // frozen at construction — mirrors ConfigStore's lazy configPath. Async
+  // because resolving it reads config.json from disk.
+  private readonly resolvePath: () =>
+    | Promise<string | undefined>
+    | (string | undefined);
+
+  constructor(deps: {
+    fs: FileSystemPort;
+    resolvePath: () => Promise<string | undefined> | (string | undefined);
+  }) {
+    this.fs = deps.fs;
+    this.resolvePath = deps.resolvePath;
+  }
+
+  async read(): Promise<InventoryResult> {
+    const root = await this.resolvePath();
+    if (root === undefined || !(await this.fs.isDirectory(root))) {
+      return { ok: false, error: "not-configured" };
+    }
+
+    const skillsDir = join(root, "skills");
+    const names = await this.fs.listDirectoryNames(skillsDir);
+    const primitives: Primitive[] = [];
+    for (const name of names) {
+      const raw = await this.fs.readFile(join(skillsDir, name, "SKILL.md"));
+      if (raw === null) {
+        continue;
+      }
+      const parsed = parseSkillFrontmatter(raw);
+      if (parsed === null) {
+        continue;
+      }
+      primitives.push({
+        type: "skill",
+        name: parsed.name,
+        description: parsed.description,
+      });
+    }
+    return { ok: true, primitives };
+  }
+}

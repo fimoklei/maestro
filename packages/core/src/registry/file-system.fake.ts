@@ -7,15 +7,19 @@ type FakeSeed = {
   directories?: Record<string, string>;
   // Paths that exist but are not directories (e.g. files).
   files?: Record<string, string>;
+  // Maps a directory path to the entry names directly inside it.
+  listings?: Record<string, string[]>;
 };
 
 export class InMemoryFileSystem implements FileSystemPort {
   private readonly directories: Map<string, string>;
   private readonly files: Map<string, string>;
+  private readonly listings: Map<string, string[]>;
 
   constructor(seed: FakeSeed = {}) {
     this.directories = new Map(Object.entries(seed.directories ?? {}));
     this.files = new Map(Object.entries(seed.files ?? {}));
+    this.listings = new Map(Object.entries(seed.listings ?? {}));
   }
 
   async realpath(path: string): Promise<string> {
@@ -35,6 +39,10 @@ export class InMemoryFileSystem implements FileSystemPort {
 
   async readFile(path: string): Promise<string | null> {
     return this.files.get(path) ?? null;
+  }
+
+  async listDirectoryNames(path: string): Promise<string[]> {
+    return this.listings.get(path) ?? [];
   }
 
   async writeFile(path: string, contents: string): Promise<void> {

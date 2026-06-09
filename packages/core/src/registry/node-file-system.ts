@@ -3,6 +3,7 @@
 // write never leaves a half-written config behind.
 import {
   mkdir,
+  readdir,
   readFile,
   realpath,
   rename,
@@ -43,6 +44,18 @@ export class NodeFileSystem implements FileSystemPort {
     } catch (error) {
       if (isNotFound(error)) {
         return null;
+      }
+      throw error;
+    }
+  }
+
+  async listDirectoryNames(path: string): Promise<string[]> {
+    try {
+      const entries = await readdir(path, { withFileTypes: true });
+      return entries.filter((e) => e.isDirectory()).map((e) => e.name);
+    } catch (error) {
+      if (isNotFound(error)) {
+        return [];
       }
       throw error;
     }
