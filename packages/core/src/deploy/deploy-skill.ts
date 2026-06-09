@@ -53,16 +53,19 @@ export class DeploySkill {
       return { ok: false, error: "invalid-name" };
     }
 
+    // Registry gate first: a path-taking endpoint must reject an unregistered
+    // repo before any filesystem or apm access, so an unregistered path can
+    // neither probe inventory state nor reach apm (security.md).
+    if (!(await this.deps.registry.isRegistered(input.repoPath))) {
+      return { ok: false, error: "repo-not-registered" };
+    }
+
     const inventory = await this.deps.inventory.read();
     if (!inventory.ok) {
       return { ok: false, error: "inventory-not-configured" };
     }
     if (!inventory.primitives.some((p) => p.name === input.name)) {
       return { ok: false, error: "unknown-skill" };
-    }
-
-    if (!(await this.deps.registry.isRegistered(input.repoPath))) {
-      return { ok: false, error: "repo-not-registered" };
     }
 
     const originUrl = await this.deps.inventoryOriginUrl();

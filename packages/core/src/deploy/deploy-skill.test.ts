@@ -109,6 +109,28 @@ describe("DeploySkill", () => {
     expect(deployed).toEqual([]);
   });
 
+  it("gates on registry membership before reading the inventory", async () => {
+    // Security rule: a path-taking endpoint must reject an unregistered repo
+    // before any filesystem access. So an unregistered path must never even
+    // reach inventory.read() — proven by making that read throw if called.
+    const { deps } = buildDeps({
+      inventory: {
+        read: async () => {
+          throw new Error(
+            "inventory must not be read for an unregistered repo",
+          );
+        },
+      },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      repoPath: "/somewhere/else",
+    });
+
+    expect(result).toEqual({ ok: false, error: "repo-not-registered" });
+  });
+
   it("reports an unavailable or unparseable inventory origin", async () => {
     const { deps } = buildDeps({ inventoryOriginUrl: async () => null });
     const result = await new DeploySkill(deps).execute({
