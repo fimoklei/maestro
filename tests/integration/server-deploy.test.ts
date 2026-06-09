@@ -58,7 +58,7 @@ describe("deploy HTTP route", () => {
       "",
     ].join("\n");
 
-  function makeApp() {
+  function makeApp(options?: { failApm?: boolean }) {
     const fs = new NodeFileSystem();
     const registry = new Registry({
       fs,
@@ -73,6 +73,9 @@ describe("deploy HTTP route", () => {
       apm: {
         resolveLatestTag: async () => "v0.5.1",
         deploySkill: async (input) => {
+          if (options?.failApm) {
+            throw new Error("apm install failed: token in stderr");
+          }
           deployCalls.push(input);
           await writeFile(
             join(input.repoPath, "apm.lock.yaml"),
@@ -165,5 +168,21 @@ describe("deploy HTTP route", () => {
 
     expect(res.status).toBe(400);
     expect(deployCalls).toEqual([]);
+  });
+
+  it("returns a sanitized 502 when apm fails, never leaking its output", async () => {
+    const { app, registry } = makeApp({ failApm: true });
+    await registry.register(repo);
+
+    const res = await post(app, { type: "skill", name: "tdd", repoPath: repo });
+
+    expect(res.status).toBe(502);
+    const body = await res.json();
+    expect(body).toEqual({
+      error: "deploy-failed",
+      message: expect.stringMatching(/\S/),
+    });
+    // The raw apm error (which may carry a token) never reaches the client.
+    expect(JSON.stringify(body)).not.toContain("token in stderr");
   });
 });

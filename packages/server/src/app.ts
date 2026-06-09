@@ -56,6 +56,10 @@ const deployErrorResponses: Record<
     status: 409,
     message: "The inventory has no published version tag to deploy.",
   },
+  "deploy-failed": {
+    status: 502,
+    message: "The deploy could not be completed. Check apm and try again.",
+  },
 };
 
 // Transport-layer mapping from the domain's typed validation errors to readable

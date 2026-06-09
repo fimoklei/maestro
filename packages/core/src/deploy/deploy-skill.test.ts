@@ -141,4 +141,44 @@ describe("DeploySkill", () => {
     expect(result).toEqual({ ok: false, error: "no-deployable-tag" });
     expect(deployed).toEqual([]);
   });
+
+  it("turns an apm install failure into a typed deploy-failed error", async () => {
+    // apm can reject (CLI missing, no auth/network, skill absent at the tag).
+    // The use-case must own that as a typed error, never let it escape as an
+    // unhandled rejection the route would surface as a raw 500.
+    const { deps } = buildDeps({
+      apm: {
+        resolveLatestTag: async () => "v0.5.1",
+        deploySkill: async () => {
+          throw new Error("apm exited 1 with a token in stderr");
+        },
+      },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      repoPath: "/registered/repo",
+    });
+
+    expect(result).toEqual({ ok: false, error: "deploy-failed" });
+  });
+
+  it("turns an apm tag-resolution failure into a typed deploy-failed error", async () => {
+    const { deps, deployed } = buildDeps({
+      apm: {
+        resolveLatestTag: async () => {
+          throw new Error("apm view failed: no network");
+        },
+        deploySkill: async () => undefined,
+      },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      repoPath: "/registered/repo",
+    });
+
+    expect(result).toEqual({ ok: false, error: "deploy-failed" });
+    expect(deployed).toEqual([]);
+  });
 });

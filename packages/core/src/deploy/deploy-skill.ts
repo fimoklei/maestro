@@ -26,7 +26,11 @@ export type DeploySkillError =
   | "inventory-not-configured"
   | "repo-not-registered"
   | "inventory-origin-unavailable"
-  | "no-deployable-tag";
+  | "no-deployable-tag"
+  // A single catch-all for any apm execution failure (CLI missing, no
+  // auth/network, skill absent at the tag). This slice keeps the happy path;
+  // the follow-up (issue #15) differentiates the causes into actionable errors.
+  | "deploy-failed";
 
 export type DeploySkillResult =
   | { ok: true; deployed: { type: "skill"; name: string; version: string } }
@@ -67,22 +71,29 @@ export class DeploySkill {
       return { ok: false, error: "inventory-origin-unavailable" };
     }
 
-    const tag = await this.deps.apm.resolveLatestTag(origin.ownerRepo);
-    if (tag === null) {
-      return { ok: false, error: "no-deployable-tag" };
+    // From here on we drive apm, which can reject. Own that as a typed error
+    // so it never escapes as an unhandled rejection (and the raw apm message,
+    // which may carry a token, never reaches the transport layer).
+    try {
+      const tag = await this.deps.apm.resolveLatestTag(origin.ownerRepo);
+      if (tag === null) {
+        return { ok: false, error: "no-deployable-tag" };
+      }
+
+      const ref = buildSkillPackageRef({
+        host: origin.host,
+        ownerRepo: origin.ownerRepo,
+        name: input.name,
+        tag,
+      });
+      await this.deps.apm.deploySkill({ repoPath: input.repoPath, ref });
+
+      return {
+        ok: true,
+        deployed: { type: "skill", name: input.name, version: tag },
+      };
+    } catch {
+      return { ok: false, error: "deploy-failed" };
     }
-
-    const ref = buildSkillPackageRef({
-      host: origin.host,
-      ownerRepo: origin.ownerRepo,
-      name: input.name,
-      tag,
-    });
-    await this.deps.apm.deploySkill({ repoPath: input.repoPath, ref });
-
-    return {
-      ok: true,
-      deployed: { type: "skill", name: input.name, version: tag },
-    };
   }
 }
