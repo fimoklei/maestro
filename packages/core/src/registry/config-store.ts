@@ -8,6 +8,9 @@ import type { FileSystemPort } from "./file-system";
 
 const configSchema = z.object({
   repos: z.array(z.object({ path: z.string() })),
+  // Optional: the local agent-harness clone the central inventory reads from.
+  // Absent on a fresh config; the inventory then falls back to the env var.
+  inventoryPath: z.string().optional(),
 });
 
 export type MaestroConfig = z.infer<typeof configSchema>;

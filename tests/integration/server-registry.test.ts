@@ -6,7 +6,12 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ConfigStore, NodeFileSystem, Registry } from "@maestro/core";
+import {
+  ConfigStore,
+  InventoryReader,
+  NodeFileSystem,
+  Registry,
+} from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -30,7 +35,8 @@ describe("registry HTTP routes", () => {
       fs,
       store: new ConfigStore({ fs, configPath: join(dir, "config.json") }),
     });
-    return createApp({ registry, enforceOriginHost: false });
+    const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
+    return createApp({ registry, inventory, enforceOriginHost: false });
   }
 
   it("GET /api/registry/repos returns an empty registry initially", async () => {

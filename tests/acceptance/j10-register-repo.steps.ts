@@ -2,7 +2,12 @@ import { mkdtemp, realpath as nodeRealpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describeFeature, loadFeature } from "@amiceli/vitest-cucumber";
-import { ConfigStore, NodeFileSystem, Registry } from "@maestro/core";
+import {
+  ConfigStore,
+  InventoryReader,
+  NodeFileSystem,
+  Registry,
+} from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { expect } from "vitest";
 
@@ -17,7 +22,8 @@ function buildApp(configPath: string) {
     fs,
     store: new ConfigStore({ fs, configPath }),
   });
-  return createApp({ registry, enforceOriginHost: false });
+  const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
+  return createApp({ registry, inventory, enforceOriginHost: false });
 }
 
 function postRepo(app: ReturnType<typeof buildApp>, path: string) {
