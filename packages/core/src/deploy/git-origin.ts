@@ -1,28 +1,40 @@
-// Derives host + owner/repo from a git origin url (SSH or HTTPS), the two
-// pieces apm's package reference needs. Anything it cannot parse is null —
-// the caller treats that as "origin unavailable", never a guess.
+// Derives host + owner/repo from a git origin url, the two pieces apm's package
+// reference needs. Two remote shapes exist: scheme URLs (https://, ssh://,
+// http://) and the scp-like SSH form (git@host:owner/repo). Anything it cannot
+// parse is null — the caller treats that as "origin unavailable", never a guess.
 
 export type GitOrigin = { host: string; ownerRepo: string };
 
-const sshPattern = /^git@([^:]+):(.+?)(?:\.git)?$/;
-const httpsPattern = /^https?:\/\/([^/]+)\/(.+?)(?:\.git)?$/;
+// scp-like SSH form has no `://` and uses a colon before the path.
+const scpPattern = /^[^/]+@([^:]+):(.+?)(?:\.git)?$/;
 
-export const parseGitOrigin = (url: string): GitOrigin | null => {
-  const match = sshPattern.exec(url) ?? httpsPattern.exec(url);
-  if (match === null) {
-    return null;
-  }
-  const rawHost = match[1];
-  const path = match[2];
-  if (rawHost === undefined || path === undefined) {
-    return null;
-  }
-  // Strip any userinfo (a credentialed HTTPS remote is `user:token@host`), so a
-  // token never reaches the host, the apm package ref, or argv.
-  const host = rawHost.slice(rawHost.lastIndexOf("@") + 1);
-  const segments = path.split("/").filter((s) => s.length > 0);
+const fromHostAndPath = (host: string, path: string): GitOrigin | null => {
+  const segments = path
+    .replace(/\.git$/, "")
+    .split("/")
+    .filter((s) => s.length > 0);
   if (segments.length !== 2) {
     return null;
   }
   return { host, ownerRepo: segments.join("/") };
+};
+
+export const parseGitOrigin = (url: string): GitOrigin | null => {
+  // Scheme URLs (https/ssh/http) go through URL, which drops any userinfo from
+  // the host for free — so a credentialed remote never leaks its token into
+  // the host, the apm package ref, or argv.
+  if (url.includes("://")) {
+    try {
+      const parsed = new URL(url);
+      return fromHostAndPath(parsed.hostname, parsed.pathname);
+    } catch {
+      return null;
+    }
+  }
+
+  const match = scpPattern.exec(url);
+  if (match?.[1] === undefined || match[2] === undefined) {
+    return null;
+  }
+  return fromHostAndPath(match[1], match[2]);
 };

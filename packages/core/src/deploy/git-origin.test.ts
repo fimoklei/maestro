@@ -26,6 +26,16 @@ describe("parseGitOrigin", () => {
     );
   });
 
+  it("parses an ssh:// origin url, with or without userinfo", () => {
+    expect(
+      parseGitOrigin("ssh://git@github.com/fimoklei/agent-harness.git"),
+    ).toEqual({ host: "github.com", ownerRepo: "fimoklei/agent-harness" });
+    expect(parseGitOrigin("ssh://github.com/fimoklei/agent-harness")).toEqual({
+      host: "github.com",
+      ownerRepo: "fimoklei/agent-harness",
+    });
+  });
+
   it("strips embedded credentials from an HTTPS host so no token leaks", () => {
     // A credentialed remote must never put its token into the host (and thus
     // into the apm package ref / argv). Only the real hostname survives.
