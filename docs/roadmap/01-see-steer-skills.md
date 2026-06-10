@@ -63,19 +63,19 @@ Each sub-step is a vertical slice that runs the execution pipeline: **grill → 
 (the spec, a tracker issue) → issues → TDD**. `01.1` is Ship A; `01.2`–`01.4` are
 Ship B.
 
-| Sub-step | Delivers (subjobs) | Spec (PRD) | Status |
-|---|---|---|---|
-| 01.1 — Tracer: register a repo + see skills + deploy + see-back | J10, J01, J06, J02 | [#8](https://github.com/fimoklei/maestro/issues/8) | Done |
-| 01.2 — Global as a target | J03, J07 | — | Planned |
-| 01.3 — Drift (binary) | J04 | — | Planned |
-| 01.4 — Update | J08 | — | Planned |
+| Sub-step | Delivers (subjobs) | Spec (PRD) |
+|---|---|---|
+| 01.1 — Tracer: register a repo + see skills + deploy + see-back | J10, J01, J06, J02 | [#8](https://github.com/fimoklei/maestro/issues/8) |
+| 01.2 — Global as a target | J03, J07 | — |
+| 01.3 — Drift (binary) | J04 | — |
+| 01.4 — Update | J08 | — |
 
-Status: **Planned → Specced (PRD #) → Building (sub-issues) → Done.**
-
-This table is a **map, not a dashboard.** The stable columns (sub-step, subjobs,
-PRD link) live here. Live progress — which issues are open or closed — lives in
-the issue tracker, never re-typed here. Hand-maintaining status in markdown is
-the per-repo handwork Maestro exists to kill.
+This table is a **map, not a dashboard.** Only the stable columns (sub-step,
+subjobs, PRD link) live here. Status is **derived from the tracker, never
+written here**: no PRD link = planned; PRD issue open = specced or building
+(sub-issues tell which); PRD issue closed = done. Hand-maintaining status in
+markdown is the per-repo handwork Maestro exists to kill — do not add a status
+column back.
 
 ## How drift and update work (APM-delegated)
 
