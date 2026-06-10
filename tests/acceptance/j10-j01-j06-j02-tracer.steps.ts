@@ -52,7 +52,12 @@ function buildApp(configPath: string, inventoryPath: string) {
         );
       },
     },
+    inventoryGit: {
+      skillExistsAtTag: async () => true,
+      skillDivergesFromTag: async () => false,
+    },
     inventoryOriginUrl: async () => "git@github.com:fimoklei/agent-harness.git",
+    canonicalPath: (path) => fs.realpath(path),
   });
   return createApp({
     registry,

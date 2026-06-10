@@ -109,6 +109,50 @@ describe("DeploySkillAction", () => {
     expect(screen.getByRole("button", { name: /deploy/i })).toBeDisabled();
   });
 
+  it("shows the server's error message when a deploy is refused", async () => {
+    // The server crafts an actionable message per typed error (issue #15);
+    // a generic "Deploy failed." would throw that guidance away.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              error: "local-diverged-from-tag",
+              message:
+                "Your local skill differs from its latest published tag. Tag and push your change first.",
+            }),
+            {
+              status: 409,
+              headers: { "content-type": "application/json" },
+            },
+          ),
+      ),
+    );
+    renderAction(<DeploySkillAction skillName="tdd" repos={repos} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /tag and push your change/i,
+    );
+  });
+
+  it("disables the deploy action while a deploy is pending", async () => {
+    // Never resolves: the deploy stays pending for the rest of the test.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => undefined)),
+    );
+    renderAction(<DeploySkillAction skillName="tdd" repos={repos} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
+
+    expect(
+      await screen.findByRole("button", { name: /deploying/i }),
+    ).toBeDisabled();
+  });
+
   it("refreshes the deploy-state panel after a successful deploy", async () => {
     // fetch sequence: deploy-state (empty) → deploy → deploy-state (skill at tag).
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {

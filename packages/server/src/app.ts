@@ -5,6 +5,7 @@ import {
   DeploySkill,
   type DeploySkillError,
   DeployStateReader,
+  InventoryGitAdapter,
   InventoryReader,
   NodeFileSystem,
   Registry,
@@ -20,7 +21,9 @@ import { originHostGuard } from "./origin-host-guard";
 const registerBodySchema = z.object({ path: z.string() });
 
 const deployBodySchema = z.object({
-  type: z.literal("skill"),
+  // Any string passes the edge; "skills only" is a business rule in core, so
+  // a non-skill type gets an honest 422 instead of a shape-level 400.
+  type: z.string(),
   name: z.string(),
   repoPath: z.string(),
 });
@@ -30,8 +33,12 @@ const deployBodySchema = z.object({
 // readable messages (none of which echo paths or raw apm output).
 const deployErrorResponses: Record<
   DeploySkillError,
-  { status: 400 | 403 | 404 | 409 | 502; message: string }
+  { status: 400 | 403 | 404 | 409 | 422 | 502; message: string }
 > = {
+  "unsupported-primitive-type": {
+    status: 422,
+    message: "Only skills can be deployed yet.",
+  },
   "invalid-name": {
     status: 400,
     message: "Skill name must be a lowercase slug.",
@@ -52,9 +59,19 @@ const deployErrorResponses: Record<
     status: 502,
     message: "The inventory clone has no readable origin remote.",
   },
-  "no-deployable-tag": {
+  "no-published-tag": {
+    status: 422,
+    message:
+      "No published tag contains this skill. Tag and push the central harness first.",
+  },
+  "local-diverged-from-tag": {
     status: 409,
-    message: "The inventory has no published version tag to deploy.",
+    message:
+      "Your local skill differs from its latest published tag. Tag and push your change first.",
+  },
+  "deploy-in-progress": {
+    status: 409,
+    message: "A deploy to this repo is already running. Wait for it to finish.",
   },
   "deploy-failed": {
     status: 502,
@@ -236,10 +253,15 @@ function realDeps(): AppDeps {
     inventory,
     registry,
     apm: new ApmCliDriver(),
+    inventoryGit: new InventoryGitAdapter({
+      resolveRoot: async () =>
+        resolveInventoryPath(await store.read(), process.env),
+    }),
     inventoryOriginUrl: async () => {
       const root = resolveInventoryPath(await store.read(), process.env);
       return root === undefined ? null : readGitOriginUrl(root);
     },
+    canonicalPath: (path) => fs.realpath(path),
   });
   return { registry, inventory, deployState, deploy, enforceOriginHost: true };
 }

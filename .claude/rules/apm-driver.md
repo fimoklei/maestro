@@ -117,7 +117,9 @@ silent wrong answer.
 
 ## Open — observe before relying on it
 
-- **Content-drift detection** has a recorded decision (above) but no
-  implementation yet — revisit only if a slice needs it.
+- **Content-drift detection** is implemented at deploy time only: the deploy
+  use-case refuses when the local `skills/<name>` tree differs from the latest
+  tag (tree-diff via `InventoryGitAdapter`, per the decision above). The
+  deploy-state/tracer view still shows version drift only.
 - **Hook and MCP deploys** are unobserved. `apm mcp` is a separate command
   surface. Do not drive them until spiked the same way skills were.

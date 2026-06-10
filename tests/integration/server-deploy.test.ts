@@ -58,7 +58,12 @@ describe("deploy HTTP route", () => {
       "",
     ].join("\n");
 
-  function makeApp(options?: { failApm?: boolean }) {
+  function makeApp(options?: {
+    failApm?: boolean;
+    skillAtTag?: boolean;
+    diverged?: boolean;
+    holdApm?: Promise<void>;
+  }) {
     const fs = new NodeFileSystem();
     const registry = new Registry({
       fs,
@@ -76,6 +81,9 @@ describe("deploy HTTP route", () => {
           if (options?.failApm) {
             throw new Error("apm install failed: token in stderr");
           }
+          if (options?.holdApm) {
+            await options.holdApm;
+          }
           deployCalls.push(input);
           await writeFile(
             join(input.repoPath, "apm.lock.yaml"),
@@ -84,6 +92,11 @@ describe("deploy HTTP route", () => {
           );
         },
       },
+      inventoryGit: {
+        skillExistsAtTag: async () => options?.skillAtTag ?? true,
+        skillDivergesFromTag: async () => options?.diverged ?? false,
+      },
+      canonicalPath: (path) => fs.realpath(path),
       inventoryOriginUrl: async () =>
         "git@github.com:fimoklei/agent-harness.git",
     });
@@ -148,6 +161,20 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(404);
   });
 
+  it("returns 422 with an honest message for a non-skill type", async () => {
+    const { app, registry, deployCalls } = makeApp();
+    await registry.register(repo);
+
+    const res = await post(app, { type: "hook", name: "tdd", repoPath: repo });
+
+    expect(res.status).toBe(422);
+    expect(await res.json()).toEqual({
+      error: "unsupported-primitive-type",
+      message: expect.stringMatching(/skill/i),
+    });
+    expect(deployCalls).toEqual([]);
+  });
+
   it("returns 400 for an invalid body", async () => {
     const { app } = makeApp();
 
@@ -168,6 +195,62 @@ describe("deploy HTTP route", () => {
 
     expect(res.status).toBe(400);
     expect(deployCalls).toEqual([]);
+  });
+
+  it("returns 422 when the latest tag does not contain the skill", async () => {
+    const { app, registry, deployCalls } = makeApp({ skillAtTag: false });
+    await registry.register(repo);
+
+    const res = await post(app, { type: "skill", name: "tdd", repoPath: repo });
+
+    expect(res.status).toBe(422);
+    expect(await res.json()).toEqual({
+      error: "no-published-tag",
+      message: expect.stringMatching(/tag/i),
+    });
+    expect(deployCalls).toEqual([]);
+  });
+
+  it("returns 409 when the local skill diverges from the latest tag", async () => {
+    const { app, registry, deployCalls } = makeApp({ diverged: true });
+    await registry.register(repo);
+
+    const res = await post(app, { type: "skill", name: "tdd", repoPath: repo });
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      error: "local-diverged-from-tag",
+      message: expect.stringMatching(/tag/i),
+    });
+    expect(deployCalls).toEqual([]);
+  });
+
+  it("returns 409 for a concurrent deploy to the same repo", async () => {
+    let release: () => void = () => undefined;
+    const holdApm = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { app, registry, deployCalls } = makeApp({ holdApm });
+    await registry.register(repo);
+
+    const first = post(app, { type: "skill", name: "tdd", repoPath: repo });
+    // Give the first request time to pass the lock before the second lands.
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const second = await post(app, {
+      type: "skill",
+      name: "tdd",
+      repoPath: repo,
+    });
+
+    expect(second.status).toBe(409);
+    expect(await second.json()).toEqual({
+      error: "deploy-in-progress",
+      message: expect.stringMatching(/\S/),
+    });
+
+    release();
+    expect((await first).status).toBe(200);
+    expect(deployCalls).toHaveLength(1);
   });
 
   it("returns a sanitized 502 when apm fails, never leaking its output", async () => {

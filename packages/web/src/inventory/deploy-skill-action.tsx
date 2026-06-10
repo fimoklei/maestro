@@ -56,7 +56,11 @@ export function DeploySkillAction({
           Deployed {deploy.data.deployed.name} {deploy.data.deployed.version}
         </span>
       ) : null}
-      {deploy.isError ? <span role="alert">Deploy failed.</span> : null}
+      {deploy.isError ? (
+        // The server's message is actionable ("tag and push…"); show it
+        // instead of a generic failure line.
+        <span role="alert">{deploy.error.message}</span>
+      ) : null}
     </span>
   );
 }
