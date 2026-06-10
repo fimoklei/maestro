@@ -17,5 +17,10 @@ export const stubDeploy = (deps: {
       resolveLatestTag: async () => null,
       deploySkill: async () => undefined,
     },
+    inventoryGit: {
+      skillExistsAtTag: async () => false,
+      skillDivergesFromTag: async () => false,
+    },
     inventoryOriginUrl: async () => null,
+    canonicalPath: async (path) => path,
   });

@@ -5,8 +5,10 @@ export {
   type DeploySkillError,
   type DeploySkillInput,
   type DeploySkillResult,
+  type InventoryGitPort,
 } from "./deploy/deploy-skill";
 export { readGitOriginUrl } from "./deploy/git-origin-url";
+export { InventoryGitAdapter } from "./deploy/inventory-git";
 export {
   type DeployedPrimitive,
   DeployStateReader,
