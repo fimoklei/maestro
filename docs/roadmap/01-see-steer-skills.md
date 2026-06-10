@@ -66,7 +66,7 @@ Ship B.
 | Sub-step | Delivers (subjobs) | Spec (PRD) |
 |---|---|---|
 | 01.1 — Tracer: register a repo + see skills + deploy + see-back | J10, J01, J06, J02 | [#8](https://github.com/fimoklei/maestro/issues/8) |
-| 01.2 — Global as a target | J03, J07 | — |
+| 01.2 — Global as a target | J03, J07 | [#26](https://github.com/fimoklei/maestro/issues/26) |
 | 01.3 — Drift (binary) | J04 | — |
 | 01.4 — Update | J08 | — |
 

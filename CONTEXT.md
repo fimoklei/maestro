@@ -111,3 +111,4 @@ Resolved (kept for traceability):
 
 - **How Maestro discovers consuming repos** — resolved in `roadmap/01`: an explicit **Consuming-repo registry**, not a directory scan.
 - **Whether APM supports global deploy** — resolved: native via user scope `~/.apm/` (own `apm.lock.yaml`; `-g` flag on `install`/`outdated`). Maestro drives it, does not add it.
+- **Which tools a deploy targets** — resolved in `roadmap/01` (sub-step 01.2): every deploy targets both Claude Code and Codex; no per-tool choice in the cockpit.
