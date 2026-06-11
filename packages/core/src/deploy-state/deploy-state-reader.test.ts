@@ -1,6 +1,17 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { InMemoryFileSystem } from "../registry/file-system.fake";
 import { DeployStateReader } from "./deploy-state-reader";
+
+// The exact apm output a two-tool install (-t claude,codex) writes: one entry,
+// package_type claude_skill, two deployed_files. Captured by the 01.2 spike.
+const TWO_TOOL_LOCKFILE = readFileSync(
+  new URL(
+    "../../../../tests/fixtures/apm.lock.global-two-tool.yaml",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 const REPO = "/repo";
 const LOCKFILE = `${REPO}/apm.lock.yaml`;
@@ -49,6 +60,19 @@ describe("DeployStateReader", () => {
         { type: "skill", name: "tdd", version: "v0.5.0" },
         { type: "skill", name: "diagnose", version: "v1.2.0" },
       ],
+      skipped: [],
+    });
+  });
+
+  it("surfaces a two-tool install as one skill, not one per deployed file", async () => {
+    const fs = new InMemoryFileSystem({
+      files: { [LOCKFILE]: TWO_TOOL_LOCKFILE },
+    });
+    const reader = new DeployStateReader({ fs });
+
+    await expect(reader.read(REPO)).resolves.toEqual({
+      ok: true,
+      primitives: [{ type: "skill", name: "tdd", version: "v0.5.1" }],
       skipped: [],
     });
   });
