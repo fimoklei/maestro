@@ -115,6 +115,51 @@ real-apm canary. It needs network plus auth to the private repo; lacking either,
 it fails loudly instead of resolving a tag — the intended stop-and-report, not a
 silent wrong answer.
 
+## Global + two-tool behavior (01.2 spike, issue #28)
+
+**apm 0.16.0, 2026-06-11, authenticated to `fimoklei/agent-harness`, run with
+`HOME` redirected to a throwaway dir** (never the real home — see safety below).
+Fixtures: `apm.lock.global-two-tool.yaml`, `apm-outdated-global.txt`,
+`apm-outdated-global-uptodate.txt`.
+
+### Global scope — `-g`
+
+`apm install <REF> -g -t claude,codex` installs to user scope. Metadata and
+primitives both derive from `Path.home()` (`core/scope.py`, no env override):
+
+- Metadata root `~/.apm/` holds `apm.yml`, `apm.lock.yaml`, `apm_modules/`.
+  Lockfile shape is identical to per-repo; a missing lockfile means nothing is
+  deployed (empty, not an error).
+- A global install needs no repo, but still appends `apm_modules/` to the
+  **cwd's** `.gitignore`. Run global deploys from a neutral cwd.
+
+### Two-tool install — `claude_skill` filter survives
+
+`-t claude,codex` (local and global) writes **one** entry, not two:
+`package_type: claude_skill` with two `deployed_files` — `.claude/skills/<name>`
+(claude) and `.agents/skills/<name>` (codex, via the cross-client agent-skills
+dir; there is no `.codex/skills`). The harness skill lands usable for Codex.
+
+- The reader's `package_type === "claude_skill"` filter is **not** a silent
+  breaker. The change: `deployed_files` now holds multiple paths, so surface a
+  skill once per entry, not once per file.
+- Each target is a real copied directory, not a symlink.
+- `-t` takes a comma list; repeating the flag (`-t a -t b`) is unsupported (last
+  wins).
+
+### Drift, test lane, safety
+
+- `apm outdated -g` prints the same table as per-repo `apm outdated`, scoped to
+  user deps. Consumed binary in 01.3.
+- **Test lane:** user scope is `HOME`-redirectable, auth via
+  `GITHUB_TOKEN=$(gh auth token)` (gh's keyring is HOME-independent). The
+  integration lane runs real `-g` installs against a sandbox `HOME` — no
+  fixture-only fallback.
+- **Safety:** `apm uninstall -g` deleted 19 pre-existing skill dirs from a real
+  `~/.claude/skills/` while the global lockfile read `dependencies: []` — it
+  cleans beyond its lockfile. Never run spike `apm -g` against the real home (see
+  `LEARNINGS.md`).
+
 ## Open — observe before relying on it
 
 - **Content-drift detection** is implemented at deploy time only: the deploy
@@ -123,3 +168,5 @@ silent wrong answer.
   deploy-state/tracer view still shows version drift only.
 - **Hook and MCP deploys** are unobserved. `apm mcp` is a separate command
   surface. Do not drive them until spiked the same way skills were.
+- **apm 0.16.0 is the observed version; 0.19.0 is available** (not yet adopted).
+  Re-verify this doc on upgrade.
