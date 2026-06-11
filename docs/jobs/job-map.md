@@ -27,6 +27,7 @@ The MVP1 bet: one person can **see** their whole agent setup and **steer** it (d
 | ↳ J04 — See drift | MVP1 | When central changes, I want to see which deploys lag behind, so that I know what needs updating. | A, B |
 | ↳ J10 — Register a consuming repo | MVP1 | When I want Maestro to see and steer a project, I want to register that repo's path in the cockpit, so that its deploy-state becomes visible and I can deploy to it. | A, B |
 | ↳ See local divergence from central | Future | When I have edited a deployed primitive locally, I want to see that it no longer matches central, so that I know which copies are modified before I reset or update them. | A |
+| ↳ See global↔local duplication | Future | When a skill is deployed both globally and in a repo, I want the cockpit to flag that overlap in both the global and the per-repo view, so that I can spot and remove a redundant copy instead of running two versions unaware. | A |
 | ↳ Explain why a primitive is deployed | Future | — | A |
 | ↳ Search and preview the inventory | Future | — | A |
 | ↳ Adoption view across a team | Future | — | A, C |
@@ -36,6 +37,7 @@ The MVP1 bet: one person can **see** their whole agent setup and **steer** it (d
 | ↳ J07 — Deploy a primitive/bundle globally | MVP1 | When something should apply everywhere, I want to deploy it globally for Claude Code and Codex, so that it is available across all my work. | B, A |
 | ↳ J08 — Update a deploy to latest | MVP1 | When central changes, I want to bring a repo or global target up to date from the cockpit, so that I am not bumping pins by hand. | B, A |
 | ↳ J09 — Add or edit a primitive in central | MVP1 | When I create or improve a skill/hook/MCP, I want to add or edit it in the central inventory, so that it becomes reusable and deployable. | B |
+| ↳ Guard against duplicate deploy | Future | When I deploy a skill that is already deployed on the other scope (local while global exists, or global while a repo has it), I want the cockpit to warn me and ask for confirmation before proceeding, so that I don't create accidental duplicates but can still keep a deliberate one. | B |
 | ↳ Remove / undeploy a primitive from a target | Future | — | B |
 | ↳ Recommend primitives from project context | Future | — | B |
 | **C — Curate team contributions into production-ready central** | Main (future) | When teammates contribute custom primitives, I want them to enter centrally and be curated before they become deployable, so that only production-ready capabilities reach projects. The governed lifecycle — review, approval, adoption visibility — is the team/org differentiator. | — |
