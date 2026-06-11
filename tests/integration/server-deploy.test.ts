@@ -4,8 +4,8 @@ import { join } from "node:path";
 import {
   ConfigStore,
   DeploySkill,
-  type DeployTarget,
   DeployStateReader,
+  type DeployTarget,
   InventoryReader,
   NodeFileSystem,
   Registry,
