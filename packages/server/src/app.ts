@@ -12,6 +12,7 @@ import {
   type RepoPathError,
   readGitOriginUrl,
   resolveApmGlobalRoot,
+  resolveApmScratchCwd,
   resolveInventoryPath,
   resolveMaestroConfigPath,
 } from "@maestro/core";
@@ -26,7 +27,12 @@ const deployBodySchema = z.object({
   // a non-skill type gets an honest 422 instead of a shape-level 400.
   type: z.string(),
   name: z.string(),
-  repoPath: z.string(),
+  // Discriminated target: a repo carries a path the registry gate validates in
+  // core; global carries none, so no untrusted path crosses the boundary (J07).
+  target: z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("repo"), repoPath: z.string() }),
+    z.object({ kind: z.literal("global") }),
+  ]),
 });
 
 // Transport-layer mapping from the deploy use-case's typed errors to HTTP.
@@ -208,7 +214,8 @@ export function createApp(deps: AppDeps) {
       return c.json(
         {
           error: "invalid-body",
-          message: "Expected a JSON body with type, name, and repoPath.",
+          message:
+            'Expected a JSON body with type, name, and target ({ kind: "repo", repoPath } or { kind: "global" }).',
         },
         400,
       );
@@ -275,7 +282,15 @@ function realDeps(): AppDeps {
   const deploy = new DeploySkill({
     inventory,
     registry,
-    apm: new ApmCliDriver(),
+    apm: new ApmCliDriver({
+      // A global install runs from a scratch dir under MAESTRO_HOME, created on
+      // demand so apm's .gitignore side-effect never lands in a real repo.
+      prepareGlobalCwd: async () => {
+        const cwd = resolveApmScratchCwd(process.env);
+        await fs.ensureDir(cwd);
+        return cwd;
+      },
+    }),
     inventoryGit: new InventoryGitAdapter({
       resolveRoot: async () =>
         resolveInventoryPath(await store.read(), process.env),

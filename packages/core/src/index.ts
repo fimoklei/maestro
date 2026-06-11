@@ -1,10 +1,12 @@
 export { ApmCliDriver } from "./deploy/apm-cli-driver";
+export { resolveApmScratchCwd } from "./deploy/apm-scratch-cwd";
 export {
   type ApmDriverPort,
   DeploySkill,
   type DeploySkillError,
   type DeploySkillInput,
   type DeploySkillResult,
+  type DeployTarget,
   type InventoryGitPort,
 } from "./deploy/deploy-skill";
 export { readGitOriginUrl } from "./deploy/git-origin-url";

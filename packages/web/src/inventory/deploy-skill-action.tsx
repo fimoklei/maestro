@@ -1,41 +1,53 @@
 import { useState } from "react";
 import type { RegisteredRepo } from "../registry/use-registry";
-import { useDeploySkill } from "./use-deploy-skill";
+import { type DeployTarget, useDeploySkill } from "./use-deploy-skill";
 
-// The deploy action on a skill row: pick a registered repo, deploy with one
-// click. The chosen repo is UI-state (useState); the deploy itself is a
-// server-state mutation that refreshes the repo's deploy-state panel.
+// The deploy action on a skill row: pick a target — "Global" or a registered
+// repo — and deploy with one click. The chosen target is UI-state (useState);
+// the deploy itself is a server-state mutation that refreshes the matching
+// deploy-state panel.
 type DeploySkillActionProps = {
   skillName: string;
   repos: RegisteredRepo[];
 };
+
+// The select value for the global target. A repo's value is its path, which is
+// always absolute, so it can never collide with this literal.
+const GLOBAL_VALUE = "global";
 
 export function DeploySkillAction({
   skillName,
   repos,
 }: DeploySkillActionProps) {
   // The user's explicit pick, or null until they choose. The effective
-  // selection is derived below so a pick made before the registry loaded — or
-  // none yet — falls back to the first available repo instead of freezing on
-  // an empty value (which left the deploy button stuck disabled).
+  // selection is derived below: a pick made before the registry loaded falls
+  // back to the first repo, or to Global when no repo is registered yet — so
+  // the deploy is always available (Global needs no repo).
   const [chosen, setChosen] = useState<string | null>(null);
   const deploy = useDeploySkill();
 
-  const repoPath =
-    chosen !== null && repos.some((repo) => repo.path === chosen)
-      ? chosen
-      : (repos[0]?.path ?? "");
+  const isKnown =
+    chosen === GLOBAL_VALUE || repos.some((repo) => repo.path === chosen);
+  const selected = isKnown
+    ? (chosen as string)
+    : (repos[0]?.path ?? GLOBAL_VALUE);
 
-  const selectId = `deploy-${skillName}-repo`;
+  const target: DeployTarget =
+    selected === GLOBAL_VALUE
+      ? { kind: "global" }
+      : { kind: "repo", repoPath: selected };
+
+  const selectId = `deploy-${skillName}-target`;
 
   return (
     <span>
       <label htmlFor={selectId}>Deploy {skillName} to</label>
       <select
         id={selectId}
-        value={repoPath}
+        value={selected}
         onChange={(event) => setChosen(event.target.value)}
       >
+        <option value={GLOBAL_VALUE}>Global</option>
         {repos.map((repo) => (
           <option key={repo.path} value={repo.path}>
             {repo.path}
@@ -44,9 +56,9 @@ export function DeploySkillAction({
       </select>
       <button
         type="button"
-        disabled={repoPath === "" || deploy.isPending}
+        disabled={deploy.isPending}
         onClick={() =>
-          deploy.mutate({ type: "skill", name: skillName, repoPath })
+          deploy.mutate({ type: "skill", name: skillName, target })
         }
       >
         {deploy.isPending ? "Deploying…" : "Deploy"}

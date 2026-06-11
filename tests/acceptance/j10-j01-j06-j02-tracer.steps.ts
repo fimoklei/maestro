@@ -44,9 +44,12 @@ function buildApp(configPath: string, inventoryPath: string) {
     registry,
     apm: {
       resolveLatestTag: async () => FIXTURE_TAG,
-      deploySkill: async ({ repoPath }) => {
+      deploySkill: async ({ target }) => {
+        if (target.kind !== "repo") {
+          throw new Error("this journey deploys to a repo only");
+        }
         await writeFile(
-          join(repoPath, "apm.lock.yaml"),
+          join(target.repoPath, "apm.lock.yaml"),
           lockfileFixture,
           "utf8",
         );
@@ -110,7 +113,11 @@ describeFeature(
       return app.request("/api/deploy", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ type: "skill", name: "tdd", repoPath: repo }),
+        body: JSON.stringify({
+          type: "skill",
+          name: "tdd",
+          target: { kind: "repo", repoPath: repo },
+        }),
       });
     }
 

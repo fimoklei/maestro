@@ -4,6 +4,7 @@ import { join } from "node:path";
 import {
   ConfigStore,
   DeploySkill,
+  type DeployTarget,
   DeployStateReader,
   InventoryReader,
   NodeFileSystem,
@@ -14,18 +15,20 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 // Integration lane: the deploy route over the real Hono app, real temp dirs,
 // real inventory files. Only the ApmDriver is faked — its deploySkill writes
-// the captured real lockfile into the target repo, the same contract the
-// acceptance journey relies on. Origin/Host guard enforcement lives in
-// server-security.test.ts.
+// the captured real lockfile into the target (repo or global root), the same
+// contract the acceptance journey relies on. Origin/Host guard enforcement
+// lives in server-security.test.ts.
 describe("deploy HTTP route", () => {
   let home: string;
   let harness: string;
   let repo: string;
+  let globalRoot: string;
 
   beforeEach(async () => {
     home = await mkdtemp(join(tmpdir(), "maestro-deploy-home-"));
     harness = await mkdtemp(join(tmpdir(), "maestro-harness-"));
     repo = await mkdtemp(join(tmpdir(), "maestro-target-"));
+    globalRoot = await mkdtemp(join(tmpdir(), "maestro-global-"));
     await mkdir(join(harness, "skills", "tdd"), { recursive: true });
     await writeFile(
       join(harness, "skills", "tdd", "SKILL.md"),
@@ -35,10 +38,16 @@ describe("deploy HTTP route", () => {
   });
 
   afterEach(async () => {
-    for (const dir of [home, harness, repo]) {
+    for (const dir of [home, harness, repo, globalRoot]) {
       await rm(dir, { recursive: true, force: true });
     }
   });
+
+  const repoTarget = (repoPath: string): DeployTarget => ({
+    kind: "repo",
+    repoPath,
+  });
+  const globalTarget: DeployTarget = { kind: "global" };
 
   const capturedLockfile = (ref: string) =>
     [
@@ -71,7 +80,7 @@ describe("deploy HTTP route", () => {
     });
     const inventory = new InventoryReader({ fs, resolvePath: () => harness });
     const deployState = new DeployStateReader({ fs });
-    const deployCalls: Array<{ repoPath: string; ref: string }> = [];
+    const deployCalls: Array<{ target: DeployTarget; ref: string }> = [];
     const deploy = new DeploySkill({
       inventory,
       registry,
@@ -85,8 +94,12 @@ describe("deploy HTTP route", () => {
             await options.holdApm;
           }
           deployCalls.push(input);
+          // Where the lockfile lands mirrors apm: the repo for a repo install,
+          // the user-scope root for a global one.
+          const dest =
+            input.target.kind === "repo" ? input.target.repoPath : globalRoot;
           await writeFile(
-            join(input.repoPath, "apm.lock.yaml"),
+            join(dest, "apm.lock.yaml"),
             capturedLockfile("v0.5.1"),
             "utf8",
           );
@@ -105,7 +118,7 @@ describe("deploy HTTP route", () => {
       inventory,
       deployState,
       deploy,
-      resolveGlobalRoot: () => "/nonexistent-apm-root",
+      resolveGlobalRoot: () => globalRoot,
       enforceOriginHost: false,
     });
     return { app, registry, deployCalls };
@@ -122,7 +135,11 @@ describe("deploy HTTP route", () => {
     const { app, registry, deployCalls } = makeApp();
     await registry.register(repo);
 
-    const res = await post(app, { type: "skill", name: "tdd", repoPath: repo });
+    const res = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: repoTarget(repo),
+    });
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
@@ -130,7 +147,7 @@ describe("deploy HTTP route", () => {
     });
     expect(deployCalls).toEqual([
       {
-        repoPath: repo,
+        target: repoTarget(repo),
         ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
       },
     ]);
@@ -140,10 +157,40 @@ describe("deploy HTTP route", () => {
     );
   });
 
+  it("deploys a skill globally, with no repo registered", async () => {
+    // Global crosses no client path, so it needs no registry entry: the deploy
+    // succeeds against zero registered repos (J07).
+    const { app, deployCalls } = makeApp();
+
+    const res = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+    });
+    expect(deployCalls).toEqual([
+      {
+        target: globalTarget,
+        ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+      },
+    ]);
+    expect(await readFile(join(globalRoot, "apm.lock.yaml"), "utf8")).toContain(
+      "v0.5.1",
+    );
+  });
+
   it("refuses to deploy into a repo that is not registered", async () => {
     const { app, deployCalls } = makeApp();
 
-    const res = await post(app, { type: "skill", name: "tdd", repoPath: repo });
+    const res = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: repoTarget(repo),
+    });
 
     expect(res.status).toBe(403);
     expect(deployCalls).toEqual([]);
@@ -156,7 +203,7 @@ describe("deploy HTTP route", () => {
     const res = await post(app, {
       type: "skill",
       name: "nope",
-      repoPath: repo,
+      target: repoTarget(repo),
     });
 
     expect(res.status).toBe(404);
@@ -166,7 +213,11 @@ describe("deploy HTTP route", () => {
     const { app, registry, deployCalls } = makeApp();
     await registry.register(repo);
 
-    const res = await post(app, { type: "hook", name: "tdd", repoPath: repo });
+    const res = await post(app, {
+      type: "hook",
+      name: "tdd",
+      target: repoTarget(repo),
+    });
 
     expect(res.status).toBe(422);
     expect(await res.json()).toEqual({
@@ -191,7 +242,7 @@ describe("deploy HTTP route", () => {
     const res = await post(app, {
       type: "skill",
       name: "../escape",
-      repoPath: repo,
+      target: repoTarget(repo),
     });
 
     expect(res.status).toBe(400);
@@ -202,7 +253,11 @@ describe("deploy HTTP route", () => {
     const { app, registry, deployCalls } = makeApp({ skillAtTag: false });
     await registry.register(repo);
 
-    const res = await post(app, { type: "skill", name: "tdd", repoPath: repo });
+    const res = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: repoTarget(repo),
+    });
 
     expect(res.status).toBe(422);
     expect(await res.json()).toEqual({
@@ -216,7 +271,29 @@ describe("deploy HTTP route", () => {
     const { app, registry, deployCalls } = makeApp({ diverged: true });
     await registry.register(repo);
 
-    const res = await post(app, { type: "skill", name: "tdd", repoPath: repo });
+    const res = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: repoTarget(repo),
+    });
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      error: "local-diverged-from-tag",
+      message: expect.stringMatching(/tag/i),
+    });
+    expect(deployCalls).toEqual([]);
+  });
+
+  it("refuses a global deploy when the local skill diverges from the tag", async () => {
+    // The content-drift guard is target-agnostic — global gets the same 409.
+    const { app, deployCalls } = makeApp({ diverged: true });
+
+    const res = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
 
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({
@@ -234,13 +311,49 @@ describe("deploy HTTP route", () => {
     const { app, registry, deployCalls } = makeApp({ holdApm });
     await registry.register(repo);
 
-    const first = post(app, { type: "skill", name: "tdd", repoPath: repo });
+    const first = post(app, {
+      type: "skill",
+      name: "tdd",
+      target: repoTarget(repo),
+    });
     // Give the first request time to pass the lock before the second lands.
     await new Promise((resolve) => setTimeout(resolve, 10));
     const second = await post(app, {
       type: "skill",
       name: "tdd",
-      repoPath: repo,
+      target: repoTarget(repo),
+    });
+
+    expect(second.status).toBe(409);
+    expect(await second.json()).toEqual({
+      error: "deploy-in-progress",
+      message: expect.stringMatching(/\S/),
+    });
+
+    release();
+    expect((await first).status).toBe(200);
+    expect(deployCalls).toHaveLength(1);
+  });
+
+  it("returns 409 for a concurrent global deploy", async () => {
+    // Two clicks on "Global" race the same user-scope lockfile — the second is
+    // refused, like the repo case (J07).
+    let release: () => void = () => undefined;
+    const holdApm = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { app, deployCalls } = makeApp({ holdApm });
+
+    const first = post(app, {
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const second = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
     });
 
     expect(second.status).toBe(409);
@@ -258,7 +371,11 @@ describe("deploy HTTP route", () => {
     const { app, registry } = makeApp({ failApm: true });
     await registry.register(repo);
 
-    const res = await post(app, { type: "skill", name: "tdd", repoPath: repo });
+    const res = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: repoTarget(repo),
+    });
 
     expect(res.status).toBe(502);
     const body = await res.json();
@@ -267,6 +384,24 @@ describe("deploy HTTP route", () => {
       message: expect.stringMatching(/\S/),
     });
     // The raw apm error (which may carry a token) never reaches the client.
+    expect(JSON.stringify(body)).not.toContain("token in stderr");
+  });
+
+  it("returns a sanitized 502 when a global apm install fails", async () => {
+    const { app } = makeApp({ failApm: true });
+
+    const res = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
+
+    expect(res.status).toBe(502);
+    const body = await res.json();
+    expect(body).toEqual({
+      error: "deploy-failed",
+      message: expect.stringMatching(/\S/),
+    });
     expect(JSON.stringify(body)).not.toContain("token in stderr");
   });
 });

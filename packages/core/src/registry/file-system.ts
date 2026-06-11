@@ -22,4 +22,8 @@ export interface FileSystemPort {
   // Writes a UTF-8 file atomically (temp file + rename), creating parent
   // directories as needed.
   writeFile(path: string, contents: string): Promise<void>;
+
+  // Creates a directory and any missing parents. A no-op when it already
+  // exists (mirrors mkdir recursive).
+  ensureDir(path: string): Promise<void>;
 }
