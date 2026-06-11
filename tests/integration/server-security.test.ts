@@ -42,6 +42,7 @@ describe("write-route Origin/Host guard", () => {
       inventory,
       deployState,
       deploy: stubDeploy({ inventory, registry }),
+      resolveGlobalRoot: () => "/nonexistent-apm-root",
       enforceOriginHost: true,
     });
   }

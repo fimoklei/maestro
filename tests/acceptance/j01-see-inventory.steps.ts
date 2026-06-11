@@ -34,6 +34,7 @@ function buildApp(configPath: string, inventoryPath: string | undefined) {
     inventory,
     deployState,
     deploy: stubDeploy({ inventory, registry }),
+    resolveGlobalRoot: () => "/nonexistent-apm-root",
     enforceOriginHost: false,
   });
 }

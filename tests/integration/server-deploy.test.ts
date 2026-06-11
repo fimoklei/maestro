@@ -105,6 +105,7 @@ describe("deploy HTTP route", () => {
       inventory,
       deployState,
       deploy,
+      resolveGlobalRoot: () => "/nonexistent-apm-root",
       enforceOriginHost: false,
     });
     return { app, registry, deployCalls };

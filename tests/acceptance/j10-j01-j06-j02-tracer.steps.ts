@@ -64,6 +64,7 @@ function buildApp(configPath: string, inventoryPath: string) {
     inventory,
     deployState,
     deploy,
+    resolveGlobalRoot: () => "/nonexistent-apm-root",
     enforceOriginHost: false,
   });
 }

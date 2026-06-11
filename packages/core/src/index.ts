@@ -15,6 +15,7 @@ export {
   type DeployStateResult,
   type SkippedEntry,
 } from "./deploy-state/deploy-state-reader";
+export { resolveApmGlobalRoot } from "./deploy-state/resolve-apm-global-root";
 export type { HealthReport } from "./health";
 export { coreHealth } from "./health";
 export {
