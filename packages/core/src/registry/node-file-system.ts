@@ -67,4 +67,8 @@ export class NodeFileSystem implements FileSystemPort {
     await writeFile(tmp, contents, "utf8");
     await rename(tmp, path);
   }
+
+  async ensureDir(path: string): Promise<void> {
+    await mkdir(path, { recursive: true });
+  }
 }

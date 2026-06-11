@@ -6,7 +6,7 @@
 import { execFile } from "node:child_process";
 import { basename } from "node:path";
 import { promisify } from "node:util";
-import type { ApmDriverPort } from "./deploy-skill";
+import type { ApmDriverPort, DeployTarget } from "./deploy-skill";
 import { resolveLatestTagFromVersionsTable } from "./latest-tag";
 
 const defaultRun = promisify(execFile);
@@ -29,13 +29,23 @@ type RunFn = (
 export class ApmCliDriver implements ApmDriverPort {
   private readonly log: (entry: SanitizedLogEntry) => void;
   private readonly run: RunFn;
+  // Resolves (creating if needed) the neutral cwd for a global install. apm
+  // appends apm_modules/ to the cwd's .gitignore even for -g, so this must be
+  // a scratch dir, never a real repo (apm-driver.md, J07).
+  private readonly prepareGlobalCwd: () => Promise<string>;
 
   constructor(deps?: {
     log?: (entry: SanitizedLogEntry) => void;
     run?: RunFn;
+    prepareGlobalCwd?: () => Promise<string>;
   }) {
     this.log = deps?.log ?? (() => undefined);
     this.run = deps?.run ?? defaultRun;
+    this.prepareGlobalCwd =
+      deps?.prepareGlobalCwd ??
+      (() => {
+        throw new Error("global deploy requires a prepareGlobalCwd resolver");
+      });
   }
 
   async resolveLatestTag(ownerRepo: string): Promise<string | null> {
@@ -50,19 +60,43 @@ export class ApmCliDriver implements ApmDriverPort {
     return resolveLatestTagFromVersionsTable(stdout);
   }
 
-  async deploySkill(input: { repoPath: string; ref: string }): Promise<void> {
+  async deploySkill(input: {
+    target: DeployTarget;
+    ref: string;
+  }): Promise<void> {
     const started = Date.now();
     // One action targets both tools (-t claude,codex). apm writes a single
     // lockfile entry with two deployed_files; see apm-driver.md (01.2 spike).
-    await this.run("apm", ["install", input.ref, "-t", "claude,codex"], {
-      cwd: input.repoPath,
-    });
+    // A global install adds -g and runs from a neutral scratch cwd.
+    const { cwd, args, logTarget } = await this.commandFor(
+      input.target,
+      input.ref,
+    );
+    await this.run("apm", args, { cwd });
     this.log({
       operation: "deploy-skill",
-      // Repo basename only — never the full path or raw apm output.
-      target: basename(input.repoPath),
+      // Repo basename or "global" — never the full path or raw apm output.
+      target: logTarget,
       exitCode: 0,
       durationMs: Date.now() - started,
     });
+  }
+
+  private async commandFor(
+    target: DeployTarget,
+    ref: string,
+  ): Promise<{ cwd: string; args: string[]; logTarget: string }> {
+    if (target.kind === "repo") {
+      return {
+        cwd: target.repoPath,
+        args: ["install", ref, "-t", "claude,codex"],
+        logTarget: basename(target.repoPath),
+      };
+    }
+    return {
+      cwd: await this.prepareGlobalCwd(),
+      args: ["install", ref, "-g", "-t", "claude,codex"],
+      logTarget: "global",
+    };
   }
 }

@@ -20,25 +20,43 @@ function fakeRun(stdout = "") {
 }
 
 describe("ApmCliDriver.deploySkill", () => {
-  it("installs the ref targeting both claude and codex in one action", async () => {
+  const ref = "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1";
+
+  it("installs the ref targeting both claude and codex in the repo", async () => {
     const { run, calls } = fakeRun();
     const driver = new ApmCliDriver({ run });
 
     await driver.deploySkill({
-      repoPath: "/repo",
-      ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+      target: { kind: "repo", repoPath: "/repo" },
+      ref,
     });
 
     expect(calls).toEqual([
       {
         file: "apm",
-        args: [
-          "install",
-          "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
-          "-t",
-          "claude,codex",
-        ],
+        args: ["install", ref, "-t", "claude,codex"],
         cwd: "/repo",
+      },
+    ]);
+  });
+
+  it("installs globally with -g from the prepared scratch cwd", async () => {
+    // A global install adds -g and runs from a neutral scratch dir, because apm
+    // appends apm_modules/ to the cwd's .gitignore even for -g — never a real
+    // repo (apm-driver.md, J07).
+    const { run, calls } = fakeRun();
+    const driver = new ApmCliDriver({
+      run,
+      prepareGlobalCwd: async () => "/scratch/.apm-scratch",
+    });
+
+    await driver.deploySkill({ target: { kind: "global" }, ref });
+
+    expect(calls).toEqual([
+      {
+        file: "apm",
+        args: ["install", ref, "-g", "-t", "claude,codex"],
+        cwd: "/scratch/.apm-scratch",
       },
     ]);
   });

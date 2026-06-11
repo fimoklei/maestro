@@ -48,4 +48,9 @@ export class InMemoryFileSystem implements FileSystemPort {
   async writeFile(path: string, contents: string): Promise<void> {
     this.files.set(path, contents);
   }
+
+  // Records the directory as existing so a later isDirectory() sees it.
+  async ensureDir(path: string): Promise<void> {
+    this.directories.set(path, path);
+  }
 }

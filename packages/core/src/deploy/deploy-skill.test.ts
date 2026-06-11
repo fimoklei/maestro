@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { DeploySkill } from "./deploy-skill";
+import { DeploySkill, type DeployTarget } from "./deploy-skill";
+
+const repo = (repoPath: string): DeployTarget => ({ kind: "repo", repoPath });
+const globalTarget: DeployTarget = { kind: "global" };
 
 // In-memory fakes: real objects honoring the ports, no I/O.
 const buildDeps = (
   overrides?: Partial<ConstructorParameters<typeof DeploySkill>[0]>,
 ) => {
-  const deployed: Array<{ repoPath: string; ref: string }> = [];
+  const deployed: Array<{ target: DeployTarget; ref: string }> = [];
   const deps = {
     inventory: {
       read: async () => ({
@@ -24,7 +27,7 @@ const buildDeps = (
     },
     apm: {
       resolveLatestTag: async (_ownerRepo: string) => "v0.5.1",
-      deploySkill: async (input: { repoPath: string; ref: string }) => {
+      deploySkill: async (input: { target: DeployTarget; ref: string }) => {
         deployed.push(input);
       },
     },
@@ -45,7 +48,7 @@ describe("DeploySkill", () => {
     const result = await new DeploySkill(deps).execute({
       type: "skill",
       name: "tdd",
-      repoPath: "/registered/repo",
+      target: repo("/registered/repo"),
     });
 
     expect(result).toEqual({
@@ -54,10 +57,55 @@ describe("DeploySkill", () => {
     });
     expect(deployed).toEqual([
       {
-        repoPath: "/registered/repo",
+        target: repo("/registered/repo"),
         ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
       },
     ]);
+  });
+
+  it("deploys a known skill globally at the latest tag", async () => {
+    // Global carries no path, so the registry never gates it; it shares the
+    // inventory, origin, tag, and drift checks with a repo deploy (J07).
+    const { deps, deployed } = buildDeps();
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+    });
+    expect(deployed).toEqual([
+      {
+        target: globalTarget,
+        ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+      },
+    ]);
+  });
+
+  it("deploys globally without consulting the registry", async () => {
+    // A global deploy crosses no client-supplied path, so the registry gate
+    // must not run — proven by making it throw if touched (security.md, J07).
+    const { deps, deployed } = buildDeps({
+      registry: {
+        isRegistered: async () => {
+          throw new Error("registry must not be consulted for a global deploy");
+        },
+      },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+    });
+    expect(deployed).toHaveLength(1);
   });
 
   it("rejects a non-skill primitive type, before touching any port", async () => {
@@ -68,7 +116,7 @@ describe("DeploySkill", () => {
     const result = await new DeploySkill(deps).execute({
       type: "hook",
       name: "tdd",
-      repoPath: "/registered/repo",
+      target: repo("/registered/repo"),
     });
 
     expect(result).toEqual({ ok: false, error: "unsupported-primitive-type" });
@@ -80,7 +128,7 @@ describe("DeploySkill", () => {
     const result = await new DeploySkill(deps).execute({
       type: "skill",
       name: "; rm -rf ~",
-      repoPath: "/registered/repo",
+      target: repo("/registered/repo"),
     });
 
     expect(result).toEqual({ ok: false, error: "invalid-name" });
@@ -92,7 +140,7 @@ describe("DeploySkill", () => {
     const result = await new DeploySkill(deps).execute({
       type: "skill",
       name: "unknown-skill",
-      repoPath: "/registered/repo",
+      target: repo("/registered/repo"),
     });
 
     expect(result).toEqual({ ok: false, error: "unknown-skill" });
@@ -111,7 +159,7 @@ describe("DeploySkill", () => {
     const result = await new DeploySkill(deps).execute({
       type: "skill",
       name: "tdd",
-      repoPath: "/registered/repo",
+      target: repo("/registered/repo"),
     });
 
     expect(result).toEqual({ ok: false, error: "inventory-not-configured" });
@@ -122,7 +170,7 @@ describe("DeploySkill", () => {
     const result = await new DeploySkill(deps).execute({
       type: "skill",
       name: "tdd",
-      repoPath: "/somewhere/else",
+      target: repo("/somewhere/else"),
     });
 
     expect(result).toEqual({ ok: false, error: "repo-not-registered" });
@@ -145,7 +193,7 @@ describe("DeploySkill", () => {
     const result = await new DeploySkill(deps).execute({
       type: "skill",
       name: "tdd",
-      repoPath: "/somewhere/else",
+      target: repo("/somewhere/else"),
     });
 
     expect(result).toEqual({ ok: false, error: "repo-not-registered" });
@@ -156,7 +204,7 @@ describe("DeploySkill", () => {
     const result = await new DeploySkill(deps).execute({
       type: "skill",
       name: "tdd",
-      repoPath: "/registered/repo",
+      target: repo("/registered/repo"),
     });
 
     expect(result).toEqual({
@@ -177,7 +225,7 @@ describe("DeploySkill", () => {
     const result = await new DeploySkill(deps).execute({
       type: "skill",
       name: "tdd",
-      repoPath: "/registered/repo",
+      target: repo("/registered/repo"),
     });
 
     expect(result).toEqual({ ok: false, error: "no-published-tag" });
@@ -197,7 +245,7 @@ describe("DeploySkill", () => {
     const result = await new DeploySkill(deps).execute({
       type: "skill",
       name: "tdd",
-      repoPath: "/registered/repo",
+      target: repo("/registered/repo"),
     });
 
     expect(result).toEqual({ ok: false, error: "no-published-tag" });
@@ -217,13 +265,32 @@ describe("DeploySkill", () => {
     const result = await new DeploySkill(deps).execute({
       type: "skill",
       name: "tdd",
-      repoPath: "/registered/repo",
+      target: repo("/registered/repo"),
     });
 
     expect(result).toEqual({
       ok: false,
       error: "local-diverged-from-tag",
     });
+    expect(deployed).toEqual([]);
+  });
+
+  it("refuses a global deploy when the local tree diverges from the tag", async () => {
+    // The content-drift guard is target-agnostic: shipping stale content
+    // globally is as wrong as shipping it to a repo (J07).
+    const { deps, deployed } = buildDeps({
+      inventoryGit: {
+        skillExistsAtTag: async () => true,
+        skillDivergesFromTag: async () => true,
+      },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
+
+    expect(result).toEqual({ ok: false, error: "local-diverged-from-tag" });
     expect(deployed).toEqual([]);
   });
 
@@ -246,12 +313,47 @@ describe("DeploySkill", () => {
     const first = useCase.execute({
       type: "skill",
       name: "tdd",
-      repoPath: "/registered/repo",
+      target: repo("/registered/repo"),
     });
     const second = await useCase.execute({
       type: "skill",
       name: "tdd",
-      repoPath: "/registered/repo",
+      target: repo("/registered/repo"),
+    });
+
+    expect(second).toEqual({ ok: false, error: "deploy-in-progress" });
+
+    release();
+    await expect(first).resolves.toEqual({
+      ok: true,
+      deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+    });
+  });
+
+  it("rejects a concurrent global deploy while one is in progress", async () => {
+    // Global locks on its own fixed key, so two clicks on "Global" cannot race
+    // the user-scope apm.lock.yaml (J07).
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { deps } = buildDeps({
+      apm: {
+        resolveLatestTag: async () => "v0.5.1",
+        deploySkill: async () => gate,
+      },
+    });
+    const useCase = new DeploySkill(deps);
+
+    const first = useCase.execute({
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
+    const second = await useCase.execute({
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
     });
 
     expect(second).toEqual({ ok: false, error: "deploy-in-progress" });
@@ -280,7 +382,7 @@ describe("DeploySkill", () => {
     const input = {
       type: "skill",
       name: "tdd",
-      repoPath: "/registered/repo",
+      target: repo("/registered/repo"),
     };
 
     await expect(useCase.execute(input)).resolves.toEqual({
@@ -308,7 +410,7 @@ describe("DeploySkill", () => {
     const result = await new DeploySkill(deps).execute({
       type: "skill",
       name: "tdd",
-      repoPath: "/registered/repo",
+      target: repo("/registered/repo"),
     });
 
     expect(result).toEqual({ ok: false, error: "deploy-failed" });
@@ -326,7 +428,7 @@ describe("DeploySkill", () => {
     const result = await new DeploySkill(deps).execute({
       type: "skill",
       name: "tdd",
-      repoPath: "/registered/repo",
+      target: repo("/registered/repo"),
     });
 
     expect(result).toEqual({ ok: false, error: "deploy-failed" });

@@ -8,11 +8,23 @@ import type { InventoryResult } from "../inventory/inventory-reader";
 import { parseGitOrigin } from "./git-origin";
 import { buildSkillPackageRef, isValidSkillSlug } from "./package-ref";
 
+// The in-flight lock key for the single user (global) scope. A canonical repo
+// path is always absolute, so it can never collide with this literal.
+const GLOBAL_LOCK_KEY = "global";
+
+// Where a skill is deployed to. A repo carries a client-supplied path (gated by
+// the registry); global carries none — the user-scope location is apm's own,
+// resolved server-side, so no untrusted path crosses the boundary (J07).
+export type DeployTarget =
+  | { kind: "repo"; repoPath: string }
+  | { kind: "global" };
+
 // The port the real apm CLI adapter implements. resolveLatestTag wraps
-// `apm view <owner>/<repo> versions`; deploySkill wraps `apm install <ref>`.
+// `apm view <owner>/<repo> versions`; deploySkill wraps `apm install <ref>`
+// (a repo install runs in that repo; a global install runs `-g`).
 export type ApmDriverPort = {
   resolveLatestTag(ownerRepo: string): Promise<string | null>;
-  deploySkill(input: { repoPath: string; ref: string }): Promise<void>;
+  deploySkill(input: { target: DeployTarget; ref: string }): Promise<void>;
 };
 
 // Git questions apm cannot answer (apm view is repo-level): whether a tag's
@@ -30,7 +42,7 @@ export type DeploySkillInput = {
   // rule here, not a schema shape, so the user gets an honest message.
   type: string;
   name: string;
-  repoPath: string;
+  target: DeployTarget;
 };
 
 export type DeploySkillError =
@@ -68,8 +80,9 @@ export class DeploySkill {
     canonicalPath: (path: string) => Promise<string>;
   };
 
-  // In-process deploy lock: canonical repo paths with a deploy in flight.
-  // Per-instance is enough — the server composes one DeploySkill.
+  // In-process deploy lock: lock keys with a deploy in flight — a canonical
+  // repo path, or the literal "global" for the user scope. Per-instance is
+  // enough — the server composes one DeploySkill.
   private readonly inFlight = new Set<string>();
 
   constructor(deps: DeploySkill["deps"]) {
@@ -84,29 +97,37 @@ export class DeploySkill {
       return { ok: false, error: "invalid-name" };
     }
 
-    // Registry gate first: a path-taking endpoint must reject an unregistered
-    // repo before any filesystem or apm access, so an unregistered path can
-    // neither probe inventory state nor reach apm (security.md).
-    if (!(await this.deps.registry.isRegistered(input.repoPath))) {
-      return { ok: false, error: "repo-not-registered" };
+    // Resolve the lock key per target. A repo install is gated and
+    // canonicalized; a global install crosses no untrusted path, so it skips
+    // the registry and locks on a fixed key (security.md, J07).
+    let lockKey: string;
+    if (input.target.kind === "repo") {
+      const repoPath = input.target.repoPath;
+      // Registry gate first: a path-taking endpoint must reject an
+      // unregistered repo before any filesystem or apm access, so an
+      // unregistered path can neither probe inventory state nor reach apm.
+      if (!(await this.deps.registry.isRegistered(repoPath))) {
+        return { ok: false, error: "repo-not-registered" };
+      }
+      // Registration guarantees the path exists, so canonicalizing only fails
+      // on a genuinely broken environment — owned as the catch-all error.
+      try {
+        lockKey = await this.deps.canonicalPath(repoPath);
+      } catch {
+        return { ok: false, error: "deploy-failed" };
+      }
+    } else {
+      lockKey = GLOBAL_LOCK_KEY;
     }
 
-    // Registration guarantees the path exists, so canonicalizing only fails
-    // on a genuinely broken environment — owned as the catch-all error.
-    let canonical: string;
-    try {
-      canonical = await this.deps.canonicalPath(input.repoPath);
-    } catch {
-      return { ok: false, error: "deploy-failed" };
-    }
-    if (this.inFlight.has(canonical)) {
+    if (this.inFlight.has(lockKey)) {
       return { ok: false, error: "deploy-in-progress" };
     }
-    this.inFlight.add(canonical);
+    this.inFlight.add(lockKey);
     try {
       return await this.deploy(input);
     } finally {
-      this.inFlight.delete(canonical);
+      this.inFlight.delete(lockKey);
     }
   }
 
@@ -146,7 +167,7 @@ export class DeploySkill {
         name: input.name,
         tag,
       });
-      await this.deps.apm.deploySkill({ repoPath: input.repoPath, ref });
+      await this.deps.apm.deploySkill({ target: input.target, ref });
 
       return {
         ok: true,
