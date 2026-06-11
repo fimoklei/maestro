@@ -1,10 +1,17 @@
 // Single-instance dev launcher. Before starting it kills the previous dev run
 // (tracked by PID file, group-killed) and frees the server/web ports as a
 // fallback, so there is only ever one Maestro running and a stale process never
-// blocks a fresh start. Pass --smoke to point MAESTRO_HOME at a gitignored
-// sandbox dir so the run never touches real ~/.maestro data.
+// blocks a fresh start. Pass --smoke to point MAESTRO_HOME and HOME at a
+// gitignored sandbox dir, so the run never touches real ~/.maestro data nor the
+// real ~/.apm and ~/.claude that apm writes to on a global deploy.
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -75,9 +82,16 @@ if (freedSomething) {
 // 3. Start server + web as one detached group so we can kill the whole tree.
 const env = { ...process.env };
 if (smoke) {
-  env.MAESTRO_HOME = join(repoRoot, ".maestro-sandbox");
+  const sandbox = join(repoRoot, ".maestro-sandbox");
+  env.MAESTRO_HOME = sandbox;
+  // apm derives its global (user-scope) location from HOME, not MAESTRO_HOME,
+  // so a global deploy would otherwise write into the real ~/.apm and
+  // ~/.claude/skills. Redirect HOME too, so smoke isolates the tools Maestro
+  // drives as well as Maestro's own state (.claude/rules/apm-driver.md).
+  env.HOME = join(sandbox, "home");
+  mkdirSync(env.HOME, { recursive: true });
   console.log(
-    `[smoke] MAESTRO_HOME=${env.MAESTRO_HOME} (isolated from real data)`,
+    `[smoke] MAESTRO_HOME=${env.MAESTRO_HOME} HOME=${env.HOME} (isolated from real data)`,
   );
 }
 
