@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describeFeature, loadFeature } from "@amiceli/vitest-cucumber";
@@ -14,14 +14,14 @@ import { expect } from "vitest";
 import { stubDeploy } from "../helpers/stub-deploy";
 
 const feature = await loadFeature(
-  "tests/acceptance/j02-see-deploy-state.feature",
+  "tests/acceptance/j03-see-global-deploy-state.feature",
 );
 
-// Acceptance lane for J02: drives the real server API against temp repos (never
-// a real project), with the Origin/Host guard disabled — these scenarios read
-// like the job map, not like server internals. A repo is made visible by
-// registering it through the same API a user would use.
-function buildApp(configPath: string) {
+// Acceptance lane for J03: drives the real server API against a sandbox apm
+// user-scope root (never the real ~/.apm), with the Origin/Host guard disabled.
+// The server resolves the global location itself; the sandbox is injected as the
+// resolveGlobalRoot dependency, exactly the seam the slice prescribes.
+function buildApp(configPath: string, apmRoot: string) {
   const fs = new NodeFileSystem();
   const registry = new Registry({
     fs,
@@ -34,7 +34,7 @@ function buildApp(configPath: string) {
     inventory,
     deployState,
     deploy: stubDeploy({ inventory, registry }),
-    resolveGlobalRoot: () => "/nonexistent-apm-root",
+    resolveGlobalRoot: () => apmRoot,
     enforceOriginHost: false,
   });
 }
@@ -52,6 +52,7 @@ const skillLockfile = [
   "  package_type: claude_skill",
   "  deployed_files:",
   "  - .claude/skills/tdd",
+  "  - .agents/skills/tdd",
   "  content_hash: sha256:abc",
   "",
 ].join("\n");
@@ -62,46 +63,36 @@ describeFeature(
   feature,
   ({ Scenario, BeforeEachScenario, AfterEachScenario }) => {
     let workspace: string;
-    let repo: string;
+    let apmRoot: string;
     let app: ReturnType<typeof buildApp>;
     let response: Response;
 
     BeforeEachScenario(async () => {
-      workspace = await mkdtemp(join(tmpdir(), "maestro-j02-"));
-      repo = await mkdtemp(join(tmpdir(), "maestro-j02-repo-"));
-      app = buildApp(join(workspace, "config.json"));
+      workspace = await mkdtemp(join(tmpdir(), "maestro-j03-"));
+      apmRoot = join(workspace, ".apm");
+      await mkdir(apmRoot, { recursive: true });
+      app = buildApp(join(workspace, "config.json"), apmRoot);
     });
 
     AfterEachScenario(async () => {
       await rm(workspace, { recursive: true, force: true });
-      await rm(repo, { recursive: true, force: true });
     });
 
-    async function register(path: string) {
-      await app.request("/api/registry/repos", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ path }),
-      });
-    }
-
-    async function openDeployState() {
-      response = await app.request(
-        `/api/deploy-state?repo=${encodeURIComponent(repo)}`,
-      );
+    async function openGlobal(query = "") {
+      response = await app.request(`/api/deploy-state/global${query}`);
     }
 
     Scenario(
-      "I see what is deployed in a repo, at which version",
+      "I see what is deployed globally, at which version",
       ({ Given, When, Then }) => {
-        Given(
-          "a registered repo with a skill deployed at tag v0.5.0",
-          async () => {
-            await writeFile(join(repo, "apm.lock.yaml"), skillLockfile, "utf8");
-            await register(repo);
-          },
-        );
-        When("I open that repo's deploy-state", openDeployState);
+        Given("a skill deployed globally at tag v0.5.0", async () => {
+          await writeFile(
+            join(apmRoot, "apm.lock.yaml"),
+            skillLockfile,
+            "utf8",
+          );
+        });
+        When("I open the global deploy-state", () => openGlobal());
         Then(
           "I see the skill with its name and the human tag version",
           async () => {
@@ -112,7 +103,6 @@ describeFeature(
             expect(primitives).toEqual([
               { type: "skill", name: "tdd", version: "v0.5.0" },
             ]);
-            // The version is a human tag, never the commit hash.
             expect(primitives[0]?.version).toMatch(/^v\d+\.\d+\.\d+$/);
           },
         );
@@ -120,12 +110,12 @@ describeFeature(
     );
 
     Scenario(
-      "A repo with nothing deployed shows an honest empty state",
+      "Nothing deployed globally shows an honest empty state",
       ({ Given, When, Then }) => {
-        Given("a registered repo with nothing deployed", async () => {
-          await register(repo);
+        Given("nothing deployed globally", async () => {
+          // No apm.lock.yaml in the user-scope root: nothing deployed yet.
         });
-        When("I open that repo's deploy-state", openDeployState);
+        When("I open the global deploy-state", () => openGlobal());
         Then("I see an empty list, not an error", async () => {
           expect(response.status).toBe(200);
           const { primitives } = (await response.json()) as {
@@ -137,39 +127,50 @@ describeFeature(
     );
 
     Scenario(
-      "A repo Maestro does not know is refused before any file is read",
+      "A broken global lockfile is surfaced as an error, never a blank list",
       ({ Given, When, Then }) => {
-        Given(
-          "a repo that has a lockfile but was never registered",
-          async () => {
-            await writeFile(join(repo, "apm.lock.yaml"), skillLockfile, "utf8");
-          },
-        );
-        When("I open that repo's deploy-state", openDeployState);
-        Then("I am refused and none of its lockfile leaks back", async () => {
-          expect(response.status).toBe(403);
-          expect(JSON.stringify(await response.json())).not.toContain("v0.5.0");
-        });
-      },
-    );
-
-    Scenario(
-      "A broken lockfile is surfaced as an error, never a blank list",
-      ({ Given, When, Then }) => {
-        Given("a registered repo whose lockfile is malformed", async () => {
+        Given("a malformed global lockfile", async () => {
           await writeFile(
-            join(repo, "apm.lock.yaml"),
+            join(apmRoot, "apm.lock.yaml"),
             "dependencies: not-a-list\n",
             "utf8",
           );
-          await register(repo);
         });
-        When("I open that repo's deploy-state", openDeployState);
+        When("I open the global deploy-state", () => openGlobal());
         Then("I see a visible error instead of an empty list", async () => {
           expect(response.status).toBe(422);
           const body = (await response.json()) as { message: string };
           expect(body.message).toMatch(/\S/);
         });
+      },
+    );
+
+    Scenario(
+      "The global read uses the server's own location, not a client path",
+      ({ Given, When, Then }) => {
+        Given("a skill deployed globally at tag v0.5.0", async () => {
+          await writeFile(
+            join(apmRoot, "apm.lock.yaml"),
+            skillLockfile,
+            "utf8",
+          );
+        });
+        When(
+          "I open the global deploy-state with a bogus repo path in the query",
+          () => openGlobal("?repo=/etc/passwd"),
+        );
+        Then(
+          "I still see the skill, because the server ignored the client path",
+          async () => {
+            expect(response.status).toBe(200);
+            const { primitives } = (await response.json()) as {
+              primitives: DeployedPrimitive[];
+            };
+            expect(primitives).toEqual([
+              { type: "skill", name: "tdd", version: "v0.5.0" },
+            ]);
+          },
+        );
       },
     );
   },

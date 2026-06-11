@@ -44,7 +44,7 @@ describe("DeployStateSection", () => {
     );
     renderSection();
 
-    expect(screen.getByText(/loading/i)).toBeInTheDocument();
+    expect(screen.getByText(/loading registered repos/i)).toBeInTheDocument();
     expect(screen.queryByText(/register a repo/i)).not.toBeInTheDocument();
   });
 
@@ -55,9 +55,26 @@ describe("DeployStateSection", () => {
     );
     renderSection();
 
-    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(
+      await screen.findByText(/could not load registered repos/i),
+    ).toBeInTheDocument();
     // A failed registry read must not masquerade as "no repos registered".
     expect(screen.queryByText(/register a repo/i)).not.toBeInTheDocument();
+  });
+
+  it("always renders the fixed Global panel, even when no repos are registered", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse({ repos: [], primitives: [], skipped: [] }, 200),
+      ),
+    );
+    renderSection();
+
+    // Global is the baseline: its heading is present regardless of the registry.
+    expect(
+      await screen.findByRole("heading", { name: /global/i }),
+    ).toBeInTheDocument();
   });
 
   it("shows a deploy-state panel for each registered repo", async () => {

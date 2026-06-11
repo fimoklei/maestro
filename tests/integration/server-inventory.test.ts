@@ -52,6 +52,7 @@ describe("inventory HTTP route", () => {
       inventory,
       deployState,
       deploy: stubDeploy({ inventory, registry }),
+      resolveGlobalRoot: () => "/nonexistent-apm-root",
       enforceOriginHost: false,
     });
   }

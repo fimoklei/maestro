@@ -11,6 +11,7 @@ import {
   Registry,
   type RepoPathError,
   readGitOriginUrl,
+  resolveApmGlobalRoot,
   resolveInventoryPath,
   resolveMaestroConfigPath,
 } from "@maestro/core";
@@ -99,6 +100,10 @@ export type AppDeps = {
   inventory: InventoryReader;
   deployState: DeployStateReader;
   deploy: DeploySkill;
+  // Resolves apm's user-scope (global) root server-side. No client-supplied path
+  // reaches the global read; tests inject a sandbox so the real ~/.apm is never
+  // touched (see .claude/rules/apm-driver.md).
+  resolveGlobalRoot: () => string;
   // Production always enables the Origin/Host guard on write routes; tests
   // construct it disabled. There is no static bypass header.
   enforceOriginHost: boolean;
@@ -168,6 +173,24 @@ export function createApp(deps: AppDeps) {
         {
           error: result.error,
           message: "The repo's lockfile could not be read.",
+        },
+        422,
+      );
+    }
+    return c.json({ primitives: result.primitives, skipped: result.skipped });
+  });
+
+  // Global (user-scope) deploy-state. The server resolves apm's user-scope root
+  // itself, so no client path crosses the boundary — any ?repo is ignored. A
+  // missing global lockfile is an honest empty state, never an error; a malformed
+  // one is a visible 422, the same contract as the per-repo read.
+  app.get("/api/deploy-state/global", async (c) => {
+    const result = await deps.deployState.read(deps.resolveGlobalRoot());
+    if (!result.ok) {
+      return c.json(
+        {
+          error: result.error,
+          message: "The global lockfile could not be read.",
         },
         422,
       );
@@ -263,7 +286,14 @@ function realDeps(): AppDeps {
     },
     canonicalPath: (path) => fs.realpath(path),
   });
-  return { registry, inventory, deployState, deploy, enforceOriginHost: true };
+  return {
+    registry,
+    inventory,
+    deployState,
+    deploy,
+    resolveGlobalRoot: () => resolveApmGlobalRoot(process.env),
+    enforceOriginHost: true,
+  };
 }
 
 // Default composition root: existing health/wiring-smoke tests import { app }.

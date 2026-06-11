@@ -1,9 +1,11 @@
 import { useRegistry } from "../registry/use-registry";
 import { DeployStatePanel } from "./deploy-state-panel";
+import { GlobalDeployStatePanel } from "./global-deploy-state-panel";
 
-// Container: one deploy-state panel per registered repo. It reuses the registry
-// server-state (TanStack Query dedupes the shared key with RegistryPanel), so a
-// newly registered repo gets its own deploy-state panel without a reload.
+// Container: a fixed Global panel (the baseline, always present) above one
+// deploy-state panel per registered repo. It reuses the registry server-state
+// (TanStack Query dedupes the shared key with RegistryPanel), so a newly
+// registered repo gets its own deploy-state panel without a reload.
 export function DeployStateSection() {
   const registry = useRegistry();
   const repos = registry.data?.repos ?? [];
@@ -11,8 +13,9 @@ export function DeployStateSection() {
   return (
     <section>
       <h2>Deploy-state</h2>
+      <GlobalDeployStatePanel />
       {registry.isLoading ? (
-        <p>Loading…</p>
+        <p>Loading registered repos…</p>
       ) : registry.isError ? (
         // A failed registry read must surface as an error, never collapse into
         // "no repos registered" — that would hide a broken read indefinitely.

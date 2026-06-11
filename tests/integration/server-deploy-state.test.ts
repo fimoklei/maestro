@@ -40,6 +40,7 @@ describe("deploy-state HTTP route", () => {
       inventory,
       deployState,
       deploy: stubDeploy({ inventory, registry }),
+      resolveGlobalRoot: () => "/nonexistent-apm-root",
       enforceOriginHost: false,
     });
     return { app, registry };
