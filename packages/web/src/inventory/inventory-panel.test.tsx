@@ -66,6 +66,54 @@ describe("InventoryPanel", () => {
     expect(screen.getByRole("button", { name: /deploy/i })).toBeEnabled();
   });
 
+  it("disables the deploy action while the registry is still loading", async () => {
+    // Inventory resolves, registry never does: the button must wait for the
+    // registry instead of treating "not loaded yet" as "no repos" (#37).
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input).startsWith("/api/registry")
+          ? new Promise<Response>(() => undefined)
+          : jsonResponse(
+              {
+                primitives: [
+                  { type: "skill", name: "tdd", description: "TDD loop" },
+                ],
+              },
+              200,
+            ),
+      ),
+    );
+    renderPanel();
+
+    expect(
+      await screen.findByRole("button", { name: /loading targets/i }),
+    ).toBeDisabled();
+  });
+
+  it("disables the deploy action when the registry failed to load", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input).startsWith("/api/registry")
+          ? jsonResponse({ message: "boom" }, 500)
+          : jsonResponse(
+              {
+                primitives: [
+                  { type: "skill", name: "tdd", description: "TDD loop" },
+                ],
+              },
+              200,
+            ),
+      ),
+    );
+    renderPanel();
+
+    expect(
+      await screen.findByRole("button", { name: /loading targets/i }),
+    ).toBeDisabled();
+  });
+
   it("shows an actionable message when the inventory is not configured", async () => {
     vi.stubGlobal(
       "fetch",
