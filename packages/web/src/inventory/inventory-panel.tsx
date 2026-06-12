@@ -40,6 +40,7 @@ export function InventoryPanel() {
       <InventoryList
         primitives={inventory.data?.primitives ?? []}
         repos={registry.data?.repos ?? []}
+        registryReady={registry.isSuccess}
       />
     </section>
   );

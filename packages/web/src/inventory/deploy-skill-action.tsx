@@ -9,6 +9,10 @@ import { type DeployTarget, useDeploySkill } from "./use-deploy-skill";
 type DeploySkillActionProps = {
   skillName: string;
   repos: RegisteredRepo[];
+  // False while the registry query is pending or failed. An unloaded registry
+  // yields the same empty repos list as a genuinely empty one, and the empty
+  // fallback selects Global — so deploying must wait until this is true.
+  registryReady: boolean;
 };
 
 // The select value for the global target. A repo's value is its path, which is
@@ -18,11 +22,11 @@ const GLOBAL_VALUE = "global";
 export function DeploySkillAction({
   skillName,
   repos,
+  registryReady,
 }: DeploySkillActionProps) {
   // The user's explicit pick, or null until they choose. The effective
-  // selection is derived below: a pick made before the registry loaded falls
-  // back to the first repo, or to Global when no repo is registered yet — so
-  // the deploy is always available (Global needs no repo).
+  // selection is derived below: an unknown pick falls back to the first repo,
+  // or to Global when the loaded registry has no repos (Global needs no repo).
   const [chosen, setChosen] = useState<string | null>(null);
   const deploy = useDeploySkill();
 
@@ -38,6 +42,12 @@ export function DeploySkillAction({
       : { kind: "repo", repoPath: selected };
 
   const selectId = `deploy-${skillName}-target`;
+
+  const buttonLabel = !registryReady
+    ? "Loading targets…"
+    : deploy.isPending
+      ? "Deploying…"
+      : "Deploy";
 
   return (
     <span>
@@ -56,12 +66,12 @@ export function DeploySkillAction({
       </select>
       <button
         type="button"
-        disabled={deploy.isPending}
+        disabled={!registryReady || deploy.isPending}
         onClick={() =>
           deploy.mutate({ type: "skill", name: skillName, target })
         }
       >
-        {deploy.isPending ? "Deploying…" : "Deploy"}
+        {buttonLabel}
       </button>
       {deploy.isSuccess ? (
         <span role="status">

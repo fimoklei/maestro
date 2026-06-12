@@ -8,9 +8,11 @@ import type { Primitive } from "./use-inventory";
 export function InventoryList({
   primitives,
   repos,
+  registryReady,
 }: {
   primitives: Primitive[];
   repos: RegisteredRepo[];
+  registryReady: boolean;
 }) {
   if (primitives.length === 0) {
     return <p>No skills found in the inventory.</p>;
@@ -22,7 +24,11 @@ export function InventoryList({
         <li key={primitive.name}>
           <strong>{primitive.name}</strong>:{" "}
           <span>{primitive.description}</span>{" "}
-          <DeploySkillAction skillName={primitive.name} repos={repos} />
+          <DeploySkillAction
+            skillName={primitive.name}
+            repos={repos}
+            registryReady={registryReady}
+          />
         </li>
       ))}
     </ul>

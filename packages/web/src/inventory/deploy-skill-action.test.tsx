@@ -28,6 +28,22 @@ function renderAction(ui: React.ReactNode) {
 }
 
 describe("DeploySkillAction", () => {
+  it("disables the deploy button until the registry has loaded", async () => {
+    // A pending or failed registry yields an empty repos list that is
+    // indistinguishable from "no repos registered"; without this guard a fast
+    // click would fall back to Global and deploy globally by accident (#37).
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    renderAction(
+      <DeploySkillAction skillName="tdd" repos={[]} registryReady={false} />,
+    );
+
+    const button = screen.getByRole("button", { name: /loading targets/i });
+    expect(button).toBeDisabled();
+    await userEvent.click(button);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("deploys the skill to the chosen repo", async () => {
     const fetchMock = vi.fn(async () =>
       jsonResponse({
@@ -35,7 +51,9 @@ describe("DeploySkillAction", () => {
       }),
     );
     vi.stubGlobal("fetch", fetchMock);
-    renderAction(<DeploySkillAction skillName="tdd" repos={repos} />);
+    renderAction(
+      <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
+    );
 
     await userEvent.selectOptions(
       screen.getByLabelText(/deploy tdd to/i),
@@ -61,7 +79,9 @@ describe("DeploySkillAction", () => {
 
   it("offers Global as the first target option", async () => {
     vi.stubGlobal("fetch", vi.fn());
-    renderAction(<DeploySkillAction skillName="tdd" repos={repos} />);
+    renderAction(
+      <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
+    );
 
     const options = within(
       screen.getByLabelText(/deploy tdd to/i),
@@ -78,7 +98,9 @@ describe("DeploySkillAction", () => {
       }),
     );
     vi.stubGlobal("fetch", fetchMock);
-    renderAction(<DeploySkillAction skillName="tdd" repos={[]} />);
+    renderAction(
+      <DeploySkillAction skillName="tdd" repos={[]} registryReady />,
+    );
 
     const button = screen.getByRole("button", { name: /deploy/i });
     expect(button).toBeEnabled();
@@ -102,7 +124,9 @@ describe("DeploySkillAction", () => {
       }),
     );
     vi.stubGlobal("fetch", fetchMock);
-    renderAction(<DeploySkillAction skillName="tdd" repos={repos} />);
+    renderAction(
+      <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
+    );
 
     await userEvent.selectOptions(
       screen.getByLabelText(/deploy tdd to/i),
@@ -141,7 +165,9 @@ describe("DeploySkillAction", () => {
           ),
       ),
     );
-    renderAction(<DeploySkillAction skillName="tdd" repos={repos} />);
+    renderAction(
+      <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
+    );
 
     await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
 
@@ -156,7 +182,9 @@ describe("DeploySkillAction", () => {
       "fetch",
       vi.fn(() => new Promise<Response>(() => undefined)),
     );
-    renderAction(<DeploySkillAction skillName="tdd" repos={repos} />);
+    renderAction(
+      <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
+    );
 
     await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
 
@@ -189,6 +217,7 @@ describe("DeploySkillAction", () => {
         <DeploySkillAction
           skillName="tdd"
           repos={[{ path: "/projects/alpha" }]}
+          registryReady
         />
         <DeployStatePanel repo="/projects/alpha" />
       </>,
@@ -226,7 +255,7 @@ describe("DeploySkillAction", () => {
     vi.stubGlobal("fetch", fetchMock);
     renderAction(
       <>
-        <DeploySkillAction skillName="tdd" repos={[]} />
+        <DeploySkillAction skillName="tdd" repos={[]} registryReady />
         <GlobalDeployStatePanel />
       </>,
     );
