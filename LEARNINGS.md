@@ -20,7 +20,7 @@ Project-specific observations an agent discovered through doing in this repo.
 
 Confirmed patterns. Apply as rules. Newest on top.
 
-- **2026-05-30 · tooling/RTK-masks-output** (reconfirmed 2026-06-11) — RTK (the global command-rewriting hook) replaces Biome's stdout with a canned `Lint: No issues found` line for EVERY subcommand and corrupts the captured exit code, so `pnpm exec biome check .` looks green locally while it actually fails. This shipped a broken commit twice — second time a biome import-sort error reached `main` and turned CI red after merge. → Never trust `pnpm exec biome`/`biome` output under RTK. Run the real binary directly (`./node_modules/.bin/biome check .`) or via `rtk proxy pnpm exec biome check .` before every ship; that is the CI-parity check.
+_(none yet — the RTK-masks-output entry was retired to Archive on 2026-06-13)_
 
 ## Tentative
 
@@ -38,4 +38,4 @@ Single observations. Consider but do not auto-apply. Promote to Active on reconf
 
 Entries proven wrong or no longer relevant. Kept for historical context.
 
-_(none yet)_
+- **2026-05-30 · tooling/RTK-masks-output** (archived 2026-06-13) — Was Active: claimed RTK replaced Biome's stdout with a canned `Lint: No issues found` line and corrupted the exit code, so `pnpm exec biome check .` looked green while it actually failed (blamed for two broken commits). **Not reproducible at rtk 0.42.0 on 2026-06-13.** Differential in maestro: `pnpm lint` (= `biome check .`) through the live RTK hook returns honest output — an injected real error gave exit 1 with full detail; `pnpm exec biome check .` showed real output, not the canned line. The hook is still live (it rewrites git/ls/find/grep) but no longer intercepts `pnpm lint`/`pnpm exec biome` — they pass through to the real Biome. → Stop treating `pnpm lint` as untrustworthy under RTK. Cheap insurance only: if ever in doubt, run `./node_modules/.bin/biome check .` directly. Re-open this entry if masking returns on an rtk upgrade.
