@@ -3,8 +3,9 @@
 How `apm` actually behaves, captured by running it — not guessed (the trap in
 `LEARNINGS.md`). Read before writing code that drives `apm` or parses its
 lockfile/output. Pair with `security.md` (how to shell out safely) and ADR-0003
-(why tag-pinned git refs). **Observed against apm 0.16.0 on 2026-06-02;
-re-verify on an apm upgrade.**
+(why tag-pinned git refs). **Re-verified against apm 0.20.0 on 2026-06-13;
+re-verify on an apm upgrade.** The spike sections below keep their original
+0.16.0 observation dates; deltas confirmed on 0.20.0 are called out inline.
 
 ## Deploy command
 
@@ -43,17 +44,35 @@ Parse → validate with Zod → use (`security.md`). A tag-pinned skill entry:
   virtual_path: skills/tdd
   is_virtual: true
   package_type: claude_skill    # only type observed; hooks/MCP UNobserved
-  deployed_files: [.claude/skills/tdd]
+  deployed_files:               # 0.20.0: enumerates the dir AND every file
+  - .claude/skills/tdd
+  - .claude/skills/tdd/SKILL.md
+  - .claude/skills/tdd/refactoring.md   # …one line per materialized file
+  deployed_file_hashes:         # 0.20.0: NEW — per-file sha256 of content
+    .claude/skills/tdd/SKILL.md: sha256:<hex>
   content_hash: sha256:<hex>
 ```
 
-Deploy-state reads `resolved_ref` as the version, `virtual_path`/`deployed_files`
-for identity and location, `package_type` for the primitive type.
+Deploy-state reads `resolved_ref` as the version, `virtual_path` for identity,
+`package_type` for the primitive type. It does **not** read `deployed_files`
+(uses `virtual_path` for the name), so the 0.20.0 shape change is inert for the
+reader — its Zod schema ignores unknown keys, confirmed by the suite passing
+against the refreshed fixtures.
+
+**0.20.0 deltas (vs 0.16.0):** two new things. `deployed_files` now lists the
+directory *and* every materialized file (was just the dir); `deployed_file_hashes`
+is new. Unlike the opaque `content_hash`, these per-file hashes **are a plain
+sha256 of file content** — identical across the `.claude`/`.agents` copies of the
+same file — so they look reproducible. See content-drift note below.
 
 ## Drift — `apm outdated`
 
-**No `--json`.** Output is a human table; the parser lives behind the driver port
-and is integration-tested against captured output. Observed states:
+**No `--json`** (still absent on 0.20.0; new flags `-v` shows available tags, `-j`
+sets parallel-check count). Output is a human table; the parser lives behind the
+driver port and is integration-tested against captured output. **Rich truncates
+the Package column to terminal width** — a narrow run shows `fimoklei/agent-harn…`.
+Capture and parse non-TTY with a fixed `COLUMNS` (fixtures use 120); never key the
+parser on the full package name surviving. Observed states:
 
 - Tag-pinned, newer tag exists → row: `Package | Current v0.5.0 | Latest v0.5.1 |
   Status outdated | Source git tags`.
@@ -107,6 +126,12 @@ commit:
   - **Decision:** the tracer detects version drift only. For content drift later,
     tree-diff the deployed subtree against a fresh export of the pinned tag —
     never replicate `content_hash`.
+  - **0.20.0 opening:** the new `deployed_file_hashes` map is a plain per-file
+    sha256 of content (verified reproducible — same hash for the same file across
+    the `.claude`/`.agents` copies). Content drift could be detected by hashing
+    each deployed file and comparing to this map — no fresh tag export needed.
+    Still unproven end-to-end and out of scope for 01.3 (version drift only);
+    spike before relying on it.
 
 ### Phase 0 canary (completion gate for the deploy slices)
 
@@ -117,8 +142,9 @@ silent wrong answer.
 
 ## Global + two-tool behavior (01.2 spike, issue #28)
 
-**apm 0.16.0, 2026-06-11, authenticated to `fimoklei/agent-harness`, run with
-`HOME` redirected to a throwaway dir** (never the real home — see safety below).
+**apm 0.16.0, 2026-06-11 (re-verified on 0.20.0, 2026-06-13), authenticated to
+`fimoklei/agent-harness`, run with `HOME` redirected to a throwaway dir** (never
+the real home — see safety below).
 Fixtures: `apm.lock.global-two-tool.yaml`, `apm-outdated-global.txt`,
 `apm-outdated-global-uptodate.txt`.
 
@@ -168,5 +194,5 @@ dir; there is no `.codex/skills`). The harness skill lands usable for Codex.
   deploy-state/tracer view still shows version drift only.
 - **Hook and MCP deploys** are unobserved. `apm mcp` is a separate command
   surface. Do not drive them until spiked the same way skills were.
-- **apm 0.16.0 is the observed version; 0.19.0 is available** (not yet adopted).
-  Re-verify this doc on upgrade.
+- **apm 0.20.0 is the observed version** (upgraded from 0.16.0 on 2026-06-13;
+  installed via `uv tool`). Re-verify this doc on the next upgrade.

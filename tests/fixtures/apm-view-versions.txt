@@ -11,5 +11,5 @@
 │ v0.2.1 │ tag    │ 7f2fdd41 │
 │ v0.2.0 │ tag    │ e1a5dabd │
 │ v0.1.0 │ tag    │ a08a0daf │
-│ main   │ branch │ 41ecfe81 │
+│ main   │ branch │ fcc07e7a │
 └────────┴────────┴──────────┘
