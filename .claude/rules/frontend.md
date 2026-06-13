@@ -3,7 +3,7 @@
 How the `web` package is built. Read before adding or changing a React component
 or any client-side data access. The layer boundary (UI only, HTTP only, never
 filesystem/`apm`) lives in `architecture.md` and is not repeated here. React 19,
-TypeScript, Vite.
+TypeScript, Vite, **Tailwind v4 + shadcn/ui** (ADR-0004).
 
 ## Server-state vs UI-state — the core split
 
@@ -42,19 +42,30 @@ screens come from.
 - Custom hooks hold data and logic; components stay mostly presentational.
 - Co-locate a component's pure helpers and its sibling unit test.
 
+## Styling & components (ADR-0004)
+
+- **Tokens are the source of truth.** The design system's tokens (colour,
+  spacing, type) live as CSS variables via Tailwind v4 `@theme`. Style from
+  tokens, never hard-coded values.
+- **shadcn/ui components are owned, not imported.** They are copied into the repo
+  and restyled to our tokens. Do not add a ready-made, externally-themed
+  component library (MUI/Mantine) — it fights our design.
+- **Catalogue.** Components are documented in a Storybook-style catalogue
+  (level-3 scope, per ADR-0004). New components land with a story.
+- **Sequencing.** Styled UI lands in one pass *after* the drift/update capability
+  exists (ADR-0004) — do not style ahead of working behaviour.
+
 ## Accessibility (baseline, not polish)
 
 - Semantic HTML: real `<button>`, `<form>`, `<label htmlFor>`. Never a clickable
-  `<div>`.
+  `<div>`. shadcn builds on Radix primitives — keep their accessibility, don't
+  strip it.
 - Every input has an associated label; errors are readable text tied to the
   field.
-- This baseline holds even though the tracer is unstyled. Design comes later;
-  correctness does not.
 
 ## What this step does NOT add
 
-- No design system, component library, or theming — the tracer is functional,
-  not polished.
-- No client-side router until there is more than one screen.
 - No global client-state library (Redux/Zustand): server-state is Query's,
   UI-state is local. Revisit only if genuinely shared UI-state appears.
+- A client-side router arrives with the multi-view structure (ADR-0004); until
+  that pass lands, the app stays single-page.
