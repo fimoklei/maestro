@@ -45,17 +45,22 @@ job map.
 - **Targets:** one local consuming repo (from the registry) **and** global
   (`~/.apm/`, which is APM-native — verified, see ADR-0001 consequence).
 
-## Build order — two ships, one step
+## Build order — two ships and a design pass
 
 - **Ship A — the tracer.** See central skills → deploy one skill to one
   registered local repo → see it in deploy-state. All layers. No global, no
   drift, no update. One acceptance test covers the journey.
 - **Ship B — fast-follow, same step.** Add the global target, add drift
   (binary), add update.
+- **Pass C — the design pass.** *After every job above lands*, one pass realizes
+  the working cockpit in the owner's designed system (ADR-0004 owns the stack and
+  sequencing). Not a subjob — it delivers no new behaviour; it makes the
+  behaviour that already works frictionless to use. See *Design principle* below.
 
 Rationale: the tracer proves the architecture and surfaces **real `apm` output**
 before drift is built on top of it. Drift on an understood foundation, not on an
-assumption.
+assumption. The design pass comes last, over a complete and working product, so
+it styles real behaviour — never a façade with dead controls.
 
 ## Sub-steps and tracking
 
@@ -69,6 +74,7 @@ Ship B.
 | 01.2 — Global as a target | J03, J07 | [#26](https://github.com/fimoklei/maestro/issues/26) |
 | 01.3 — Drift (binary) | J04 | — |
 | 01.4 — Update | J08 | — |
+| 01.5 — Design pass: realize the working cockpit in the designed system | — (design principle, not a subjob) | — |
 
 This table is a **map, not a dashboard.** Only the stable columns (sub-step,
 subjobs, PRD link) live here. Status is **derived from the tracker, never
@@ -76,6 +82,16 @@ written here**: no PRD link = planned; PRD issue open = specced or building
 (sub-issues tell which); PRD issue closed = done. Hand-maintaining status in
 markdown is the per-repo handwork Maestro exists to kill — do not add a status
 column back.
+
+## Design principle — frictionless experience
+
+`01.5` is governed by a principle, not a job story: **using the cockpit should
+feel frictionless.** Once every job above works, one design pass realizes that
+working product in the owner's designed system so the experience matches the
+capability. It adds no new behaviour and traces to no subjob — it is the quality
+bar the finished step is held to. The stack and the capability-before-UI
+sequencing live in ADR-0004. (If this principle proves cross-cutting beyond this
+step, graduate it to `brief.md`; for now it scopes the design pass only.)
 
 ## How drift and update work (APM-delegated)
 
@@ -121,6 +137,8 @@ the least-core subjob. Revisit if it earns it (see out-of-scope).
   reflects it.
 - The cockpit shows behind / up-to-date per skill, and I update to latest with
   one action.
+- The design pass (`01.5`) has realized this working cockpit in the designed
+  system, so the experience is frictionless — not a raw prototype.
 - **Kill condition:** if I still open a lockfile or run an `apm` command by hand
   to *know* or *change* what is deployed, the step has failed.
 
