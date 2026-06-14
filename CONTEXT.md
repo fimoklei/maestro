@@ -73,8 +73,16 @@ The answer to "what is deployed where, and at which version" — across consumin
 _Avoid_: status, adoption (adoption is the future team-scale framing of the same idea).
 
 **Drift**:
-A deployed primitive whose version lags the central inventory, or whose deployed config has diverged from what was declared. Surfaced by the deploy-state view.
+The umbrella term for a deployed primitive that no longer matches the central inventory. Has two facets, surfaced by the deploy-state view: **Version drift** and **Content drift**. When unqualified, "drift" means the union; in a feature that only covers one facet, qualify it.
 _Avoid_: staleness, out-of-sync.
+
+**Version drift**:
+A deployed primitive whose pinned version lags the latest tag in the central inventory. Detectable via `apm outdated`; the cockpit shows it **binary** (behind / up-to-date), never a version diff. This is the facet MVP1 surfaces.
+_Avoid_: outdated (that is APM's word for the mechanism).
+
+**Content drift**:
+A deployed primitive whose materialized files have diverged from the pinned tag's tree (edited or added locally). `apm outdated` does **not** detect it; deploy-time refusal does (tree-diff, ADR-0003). Not surfaced by the deploy-state view yet (future; see job map "See local divergence from central").
+_Avoid_: local edit, dirty.
 
 **Shadow skill** _(future-relevance)_:
 Any AI-instruction artifact in use outside the central inventory — personal dotfiles, ad-hoc rules, copied prompts. The anti-pattern the team/org-scale version of Maestro exists to eliminate. Not an MVP1 concern (solo has no shadow problem yet).
