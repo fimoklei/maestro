@@ -12,6 +12,7 @@ import {
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { expect } from "vitest";
+import { stubDrift } from "../helpers/stub-drift";
 
 const feature = await loadFeature(
   "tests/acceptance/j07-deploy-globally.feature",
@@ -102,6 +103,7 @@ describeFeature(
         inventory,
         deployState,
         deploy,
+        drift: stubDrift({ registry }),
         resolveGlobalRoot: () => apmRoot,
         enforceOriginHost: false,
       });

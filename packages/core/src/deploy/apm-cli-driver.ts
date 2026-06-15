@@ -6,13 +6,19 @@
 import { execFile } from "node:child_process";
 import { basename } from "node:path";
 import { promisify } from "node:util";
+import { parseOutdated } from "../drift/parse-outdated";
 import type { ApmDriverPort, DeployTarget } from "./deploy-skill";
 import { resolveLatestTagFromVersionsTable } from "./latest-tag";
 
 const defaultRun = promisify(execFile);
 
+// Rich truncates the Package column to terminal width; a narrow run drops the
+// skill name. Pin a wide non-TTY width so the full owner/repo/skills/<name>
+// survives for the parser (apm-driver.md).
+const WIDE_COLUMNS = "200";
+
 type SanitizedLogEntry = {
-  operation: "resolve-latest-tag" | "deploy-skill";
+  operation: "resolve-latest-tag" | "deploy-skill" | "check-outdated";
   target: string;
   exitCode: number;
   durationMs: number;
@@ -23,7 +29,7 @@ type SanitizedLogEntry = {
 type RunFn = (
   file: string,
   args: string[],
-  options?: { cwd?: string },
+  options?: { cwd?: string; env?: NodeJS.ProcessEnv },
 ) => Promise<{ stdout: string; stderr: string }>;
 
 export class ApmCliDriver implements ApmDriverPort {
@@ -80,6 +86,35 @@ export class ApmCliDriver implements ApmDriverPort {
       exitCode: 0,
       durationMs: Date.now() - started,
     });
+  }
+
+  async checkOutdated(
+    target: DeployTarget,
+  ): Promise<{ ok: true; behind: string[] } | { ok: false }> {
+    const started = Date.now();
+    const cwd =
+      target.kind === "repo" ? target.repoPath : await this.prepareGlobalCwd();
+    const args = target.kind === "repo" ? ["outdated"] : ["outdated", "-g"];
+    try {
+      const { stdout } = await this.run("apm", args, {
+        cwd,
+        env: { ...process.env, COLUMNS: WIDE_COLUMNS },
+      });
+      this.log({
+        operation: "check-outdated",
+        target: target.kind === "repo" ? basename(target.repoPath) : "global",
+        exitCode: 0,
+        durationMs: Date.now() - started,
+      });
+      // The run succeeded; the parser still owns whether the output is a
+      // recognised shape — an unrecognised table reads as { ok: false }, never
+      // a false empty behind set.
+      return parseOutdated(stdout);
+    } catch {
+      // CLI missing, no auth/network, or a non-zero exit — a flat failure. The
+      // raw apm error (which may carry a token) is deliberately not logged.
+      return { ok: false };
+    }
   }
 
   private async commandFor(

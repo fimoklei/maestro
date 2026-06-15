@@ -1,20 +1,50 @@
+import {
+  type DriftStatus,
+  type DriftView,
+  orphanBehind,
+  skillDriftStatus,
+} from "../drift/drift-status";
 import type { DeployedPrimitive, SkippedEntry } from "./use-deploy-state";
+
+// Unstyled per-skill drift badge. Nothing renders while the check is still
+// pending — the badge fills in when drift resolves; the rest of the row is
+// already on screen.
+const driftLabels: Record<Exclude<DriftStatus, "pending">, string> = {
+  behind: "behind",
+  "up-to-date": "up-to-date",
+  unknown: "unknown",
+};
+
+function DriftBadge({ status }: { status: DriftStatus }) {
+  if (status === "pending") {
+    return null;
+  }
+  return <span> [{driftLabels[status]}]</span>;
+}
 
 // Presentational deploy-state for one repo. The empty state is explicit so a
 // registered-but-empty repo never shows a bare blank. Skipped entries are shown
 // as a warning, never dropped silently, so the cockpit cannot quietly hide a
-// primitive it does not yet understand.
+// primitive it does not yet understand. The optional `drift` adds a per-skill
+// badge; omitted (e.g. the global panel) means no badges.
 export function DeployStateList({
   primitives,
   skipped,
+  drift = { status: "pending" },
 }: {
   primitives: DeployedPrimitive[];
   skipped: SkippedEntry[];
+  drift?: DriftView;
 }) {
   // "Nothing deployed" only when there is genuinely nothing — not when entries
   // exist but were skipped as unsupported. Showing it alongside a skipped
   // warning would be the cockpit lying about an empty repo.
   const isEmpty = primitives.length === 0 && skipped.length === 0;
+  // Behind names with no matching deployed skill — surfaced, never dropped.
+  const orphans = orphanBehind(
+    primitives.map((primitive) => primitive.name),
+    drift,
+  );
 
   return (
     <>
@@ -25,9 +55,13 @@ export function DeployStateList({
             <li key={primitive.name}>
               <strong>{primitive.name}</strong>:{" "}
               <span>{primitive.version}</span>
+              <DriftBadge status={skillDriftStatus(primitive.name, drift)} />
             </li>
           ))}
         </ul>
+      )}
+      {orphans.length > 0 && (
+        <p>Also behind (not deployed here): {orphans.join(", ")}</p>
       )}
       {skipped.length > 0 && (
         <ul>

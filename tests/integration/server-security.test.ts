@@ -11,6 +11,7 @@ import {
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { stubDeploy } from "../helpers/stub-deploy";
+import { stubDrift } from "../helpers/stub-drift";
 
 // Integration lane with the Origin/Host guard ENABLED (production posture).
 // Blocks DNS-rebinding / CSRF: a malicious site POSTing to localhost to make
@@ -42,6 +43,7 @@ describe("write-route Origin/Host guard", () => {
       inventory,
       deployState,
       deploy: stubDeploy({ inventory, registry }),
+      drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
       enforceOriginHost: true,
     });

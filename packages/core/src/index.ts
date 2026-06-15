@@ -18,6 +18,12 @@ export {
   type SkippedEntry,
 } from "./deploy-state/deploy-state-reader";
 export { resolveApmGlobalRoot } from "./deploy-state/resolve-apm-global-root";
+export {
+  CheckVersionDrift,
+  type CheckVersionDriftInput,
+  type CheckVersionDriftResult,
+} from "./drift/check-version-drift";
+export { type OutdatedResult, parseOutdated } from "./drift/parse-outdated";
 export type { HealthReport } from "./health";
 export { coreHealth } from "./health";
 export {

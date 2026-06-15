@@ -12,6 +12,7 @@ import {
 import { createApp } from "@maestro/server";
 import { expect } from "vitest";
 import { stubDeploy } from "../helpers/stub-deploy";
+import { stubDrift } from "../helpers/stub-drift";
 
 const feature = await loadFeature(
   "tests/acceptance/j03-see-global-deploy-state.feature",
@@ -34,6 +35,7 @@ function buildApp(configPath: string, apmRoot: string) {
     inventory,
     deployState,
     deploy: stubDeploy({ inventory, registry }),
+    drift: stubDrift({ registry }),
     resolveGlobalRoot: () => apmRoot,
     enforceOriginHost: false,
   });

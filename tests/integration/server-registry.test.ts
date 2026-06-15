@@ -16,6 +16,7 @@ import {
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { stubDeploy } from "../helpers/stub-deploy";
+import { stubDrift } from "../helpers/stub-drift";
 
 // Integration lane: drives the real Hono app via app.request, backed by a real
 // Registry on a temp config dir. The Origin/Host guard is constructed disabled
@@ -44,6 +45,7 @@ describe("registry HTTP routes", () => {
       inventory,
       deployState,
       deploy: stubDeploy({ inventory, registry }),
+      drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
       enforceOriginHost: false,
     });

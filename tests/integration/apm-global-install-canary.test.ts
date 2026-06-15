@@ -27,6 +27,7 @@ import {
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { stubDeploy } from "../helpers/stub-deploy";
+import { stubDrift } from "../helpers/stub-drift";
 
 const run = promisify(execFile);
 
@@ -122,6 +123,7 @@ function makeGlobalApp(home: string) {
     inventory,
     deployState,
     deploy: stubDeploy({ inventory, registry }),
+    drift: stubDrift({ registry }),
     resolveGlobalRoot: () => join(home, ".apm"),
     enforceOriginHost: false,
   });
