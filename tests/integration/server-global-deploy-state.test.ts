@@ -11,6 +11,7 @@ import {
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { stubDeploy } from "../helpers/stub-deploy";
+import { stubDrift } from "../helpers/stub-drift";
 
 // Integration lane for global (user-scope) deploy-state. The server resolves the
 // user-scope location itself — no client-supplied path crosses the boundary — so
@@ -43,6 +44,7 @@ describe("global deploy-state HTTP route", () => {
       inventory,
       deployState,
       deploy: stubDeploy({ inventory, registry }),
+      drift: stubDrift({ registry }),
       resolveGlobalRoot: () => apmRoot,
       enforceOriginHost: false,
     });

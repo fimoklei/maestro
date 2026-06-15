@@ -1,5 +1,6 @@
 import {
   ApmCliDriver,
+  CheckVersionDrift,
   ConfigStore,
   coreHealth,
   DeploySkill,
@@ -106,6 +107,7 @@ export type AppDeps = {
   inventory: InventoryReader;
   deployState: DeployStateReader;
   deploy: DeploySkill;
+  drift: CheckVersionDrift;
   // Resolves apm's user-scope (global) root server-side. No client-supplied path
   // reaches the global read; tests inject a sandbox so the real ~/.apm is never
   // touched (see .claude/rules/apm-driver.md).
@@ -229,6 +231,39 @@ export function createApp(deps: AppDeps) {
     return c.json({ deployed: result.deployed });
   });
 
+  // Per-repo version drift, registry-gated like deploy-state. The judgment is
+  // delegated to `apm outdated` (ADR-0001) and shown binary (behind vs not),
+  // never a version diff. A check that could not run is a 200 with { ok: false }
+  // — a legitimate "unknown" the web maps to a badge, not an HTTP error: a
+  // screen showing "up-to-date" when the check actually failed would falsely
+  // reassure. Up-to-date is derived (check ran + skill not behind), never read
+  // positively here.
+  app.get("/api/drift", async (c) => {
+    const repo = c.req.query("repo");
+    if (repo === undefined || repo.trim() === "") {
+      return c.json(
+        { error: "missing-repo", message: "A repo path is required." },
+        400,
+      );
+    }
+    if (!(await deps.registry.isRegistered(repo))) {
+      return c.json(
+        {
+          error: "not-registered",
+          message: "That repo is not registered with Maestro.",
+        },
+        403,
+      );
+    }
+    const result = await deps.drift.execute({
+      target: { kind: "repo", repoPath: repo },
+    });
+    if (!result.ok) {
+      return c.json({ ok: false });
+    }
+    return c.json({ behind: result.behind });
+  });
+
   app.get("/api/registry/repos", async (c) =>
     c.json({ repos: await deps.registry.list() }),
   );
@@ -277,20 +312,27 @@ function realDeps(): AppDeps {
       resolveInventoryPath(await store.read(), process.env),
   });
   const deployState = new DeployStateReader({ fs });
+  // One apm driver, shared by deploy and drift. A global install/check runs
+  // from a scratch dir under MAESTRO_HOME, created on demand so apm's .gitignore
+  // side-effect never lands in a real repo (apm-driver.md, J07).
+  const apm = new ApmCliDriver({
+    prepareGlobalCwd: async () => {
+      const cwd = resolveApmScratchCwd(process.env);
+      await fs.ensureDir(cwd);
+      return cwd;
+    },
+  });
+  const drift = new CheckVersionDrift({
+    registry,
+    apm,
+    canonicalPath: (path) => fs.realpath(path),
+  });
   // Owner/repo for package references come from the inventory clone's origin
   // remote, resolved per deploy so a path saved after startup is picked up.
   const deploy = new DeploySkill({
     inventory,
     registry,
-    apm: new ApmCliDriver({
-      // A global install runs from a scratch dir under MAESTRO_HOME, created on
-      // demand so apm's .gitignore side-effect never lands in a real repo.
-      prepareGlobalCwd: async () => {
-        const cwd = resolveApmScratchCwd(process.env);
-        await fs.ensureDir(cwd);
-        return cwd;
-      },
-    }),
+    apm,
     inventoryGit: new InventoryGitAdapter({
       resolveRoot: async () =>
         resolveInventoryPath(await store.read(), process.env),
@@ -306,6 +348,7 @@ function realDeps(): AppDeps {
     inventory,
     deployState,
     deploy,
+    drift,
     resolveGlobalRoot: () => resolveApmGlobalRoot(process.env),
     enforceOriginHost: true,
   };

@@ -25,6 +25,12 @@ export type DeployTarget =
 export type ApmDriverPort = {
   resolveLatestTag(ownerRepo: string): Promise<string | null>;
   deploySkill(input: { target: DeployTarget; ref: string }): Promise<void>;
+  // Wraps `apm outdated` for a target and returns the skills behind the latest
+  // central tag. A failed run (CLI missing, no auth/network, non-zero exit) is
+  // a flat `{ ok: false }` — never raw apm output, never a taxonomy.
+  checkOutdated(
+    target: DeployTarget,
+  ): Promise<{ ok: true; behind: string[] } | { ok: false }>;
 };
 
 // Git questions apm cannot answer (apm view is repo-level): whether a tag's
@@ -72,7 +78,9 @@ export class DeploySkill {
   private readonly deps: {
     inventory: { read(): Promise<InventoryResult> };
     registry: { isRegistered(path: string): Promise<boolean> };
-    apm: ApmDriverPort;
+    // Depends only on the port methods it uses, so growing ApmDriverPort (e.g.
+    // checkOutdated for drift) never breaks this use-case or its fakes.
+    apm: Pick<ApmDriverPort, "resolveLatestTag" | "deploySkill">;
     inventoryGit: InventoryGitPort;
     inventoryOriginUrl: () => Promise<string | null>;
     // Resolves a path to its canonical form (realpath), so the in-flight
