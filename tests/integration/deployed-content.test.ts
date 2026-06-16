@@ -95,6 +95,21 @@ describe("DeployedContentAdapter", () => {
     ).resolves.toBe("unverifiable");
   });
 
+  it("reports unverifiable when deployed files exist with no lockfile entry", async () => {
+    // No entry at all, but a deployed copy sits on disk (manually copied, stale
+    // or deleted lockfile, an install never recorded for this target). The
+    // deploy would overwrite it, so refuse rather than treat it as a clean first
+    // install — there is no baseline to verify it against (#56).
+    await writeDeployed(".claude/skills/tdd/SKILL.md", "manually placed\n");
+
+    await expect(
+      adapter().classify({
+        target: { kind: "repo", repoPath: root },
+        name: "tdd",
+      }),
+    ).resolves.toBe("unverifiable");
+  });
+
   it("reports not-deployed when the lockfile has no entry for the skill", async () => {
     await writeLockfile("other", { ".claude/skills/other/SKILL.md": sha("x") });
     await expect(

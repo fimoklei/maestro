@@ -89,7 +89,7 @@ const deployErrorResponses: Record<
   "deployed-unverifiable": {
     status: 409,
     message:
-      "The deployed copy predates content tracking, so edits cannot be verified. Remove the deployed copy, then deploy fresh.",
+      "An existing deployed copy has no recorded baseline, so edits cannot be verified. Remove the deployed copy, then deploy fresh.",
   },
   "deploy-in-progress": {
     status: 409,

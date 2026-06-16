@@ -56,26 +56,23 @@ export class DeployedContentAdapter implements DeployedContentPort {
     target: DeployTarget;
     name: string;
   }): Promise<DeployedContentState> {
-    const baseline = await this.readBaseline(input.target, input.name);
-    // No lockfile or no matching entry: genuinely nothing deployed — a first
-    // deploy has nothing to overwrite, so let it through.
-    if (baseline.kind === "none") {
-      return "not-deployed";
-    }
-    // A matching entry but no recorded hashes (a pre-0.20.0 install): the
-    // deployed copy could hold edits we cannot detect. Refuse rather than risk
-    // a silent reset.
-    if (baseline.kind === "unverifiable") {
-      return "unverifiable";
-    }
-
-    // Scan every subtree the deploy will overwrite (.claude AND .agents), so an
-    // edit to either copy is caught — including a copy the lockfile never
-    // recorded, which would otherwise be reset silently (#56).
+    // The real invariant is the deploy targets on disk, not what the lockfile
+    // recorded. Scan every subtree the deploy will overwrite (.claude AND
+    // .agents) first, then decide against the baseline (#56).
     const root = this.deps.resolveDeployedRoot(input.target);
     const liveHashes: DeployedFileHashes = {};
     for (const subtree of deployTargetSubtrees(input.name)) {
       Object.assign(liveHashes, await this.hashSubtree(root, subtree));
+    }
+    const hasDeployedFiles = Object.keys(liveHashes).length > 0;
+
+    const baseline = await this.readBaseline(input.target, input.name);
+    // No recorded hashes (no entry, or a pre-0.20.0 entry): if files already
+    // sit in the deploy targets we have no baseline to verify them against, so
+    // a deploy would overwrite them blindly — refuse. Only an empty target is a
+    // genuine first deploy that is safe to proceed.
+    if (baseline.kind !== "hashes") {
+      return hasDeployedFiles ? "unverifiable" : "not-deployed";
     }
     return classifyDeployedDrift(baseline.hashes, liveHashes);
   }
