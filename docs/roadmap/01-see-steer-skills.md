@@ -73,7 +73,7 @@ Ship B.
 | 01.1 — Tracer: register a repo + see skills + deploy + see-back | J10, J01, J06, J02 | [#8](https://github.com/fimoklei/maestro/issues/8) |
 | 01.2 — Global as a target | J03, J07 | [#26](https://github.com/fimoklei/maestro/issues/26) |
 | 01.3 — Drift (binary) | J04 | [#44](https://github.com/fimoklei/maestro/issues/44) |
-| 01.4 — Update | J08 | — |
+| 01.4 — Update | J08 | [#52](https://github.com/fimoklei/maestro/issues/52) |
 | 01.5 — Design pass: realize the working cockpit in the designed system | — (design principle, not a subjob) | — |
 
 This table is a **map, not a dashboard.** Only the stable columns (sub-step,
@@ -105,7 +105,10 @@ step, graduate it to `brief.md`; for now it scopes the design pass only.)
   (no lockfile exists anywhere yet) before the parser is written — this is the
   `apm-driver.md` trigger in `AGENTS.md`. The tracer ship forces that real
   install early.
-- **Update is APM's `update`** — the same driver port as deploy (`install`).
+- **Update is a re-install at the latest tag**, not `apm update`. Maestro pins
+  exact tags (ADR-0003), and `apm update` is a no-op on an exact pin (spiked
+  2026-06-16, see `apm-driver.md`). Update = resolve the latest tag, then
+  `apm install …#<latest-tag>` — reusing the deploy driver, no new apm command.
 
 ## How "see" reads (per ADR-0002)
 

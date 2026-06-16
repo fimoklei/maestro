@@ -82,10 +82,44 @@ parser on the full package name surviving. Observed states:
 
 Maestro consumes this **binary** (behind / up-to-date), per roadmap 01.
 
-## Update
+## Update — re-install at the latest tag, NOT `apm update`
 
-`apm update` moves a tag-pinned dep to the latest matching tag — same driver port
-as deploy.
+**Spiked against apm 0.20.0 on 2026-06-16**, authenticated to
+`fimoklei/agent-harness` (scratch repo, tag-pinned `skills/tdd#v0.5.0` while
+`v0.5.1` existed). Fixture: `tests/fixtures/apm-update-noop.txt`.
+
+`apm update` **does not move an exact tag pin** — the Maestro form (ADR-0003).
+`apm update [-y -t claude,codex]` on a `#v0.5.0` dep with `v0.5.1` available
+printed `No dependency changes were applied.`; `apm.yml` stayed `#v0.5.0`, the
+lockfile stayed `resolved_ref: v0.5.0`. `apm update` means "refresh to the latest
+*matching* ref", and an exact tag's only matching ref is the tag itself — so it is
+a **no-op** for us. The former one-liner here ("moves a tag-pinned dep to the
+latest matching tag") was wrong; verified, not guessed.
+
+**What actually bumps a pin: re-install at the new tag.**
+
+`apm install <host/owner/repo/subpath>#<latest-tag> -t claude,codex`, same args
+array and cwd rules as deploy (`security.md`). It rewrites the `apm.yml` dep
+(`updated ref in apm.yml`), the lockfile (`resolved_ref` + `resolved_commit` →
+the new tag), and `apm outdated` then reads `All dependencies are up-to-date`.
+
+**Maestro's update = resolve-latest-tag + install at that tag** — both driver
+methods already exist (`resolve-latest-tag` via `apm view … versions`;
+`deploy-skill` via `install`). No new apm command. Global update is the same with
+`-g` from a neutral cwd (the existing global-deploy path).
+
+- **`-t` is mandatory**, as for deploy: a bare `apm update`/`install` with both
+  harnesses present fails `Multiple harnesses detected: claude, codex`. Always
+  pass `-t claude,codex`.
+- **Same-tag re-install is idempotent *only on a clean subtree*** — prints
+  `(files unchanged)` and leaves the pin where it is. **Not safe when the deployed
+  subtree has local edits or untracked files:** a same-ref `apm install` silently
+  resets the tree to the tag and drops those changes while still printing
+  `(files unchanged)` (see "Package divergence" below). The deploy use-case guards
+  this at deploy time (`local-diverged-from-tag`, tree-diff); update inherits that
+  refusal, so it never overwrites local edits unannounced.
+- Real updates **need network + auth** (clone from GitHub), like deploy — keep
+  out of the fast test loop.
 
 ## Observed latest-tag resolution (Phase 0 spike, issue #10)
 
