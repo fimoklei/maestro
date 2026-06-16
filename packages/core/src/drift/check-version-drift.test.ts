@@ -72,4 +72,19 @@ describe("CheckVersionDrift", () => {
 
     expect(result).toEqual({ ok: true, behind: ["tdd"] });
   });
+
+  it("checks global drift without consulting the registry", async () => {
+    const { deps, calls } = makeDeps({
+      isRegistered: async () => {
+        throw new Error("registry must not be consulted for global drift");
+      },
+      outcome: { ok: true, behind: ["tdd"] },
+    });
+    const useCase = new CheckVersionDrift(deps);
+
+    const result = await useCase.execute({ target: { kind: "global" } });
+
+    expect(result).toEqual({ ok: true, behind: ["tdd"] });
+    expect(calls).toEqual([{ kind: "global" }]);
+  });
 });

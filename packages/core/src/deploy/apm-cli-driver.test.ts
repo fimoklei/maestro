@@ -61,3 +61,23 @@ describe("ApmCliDriver.deploySkill", () => {
     ]);
   });
 });
+
+describe("ApmCliDriver.checkOutdated", () => {
+  it("checks global drift with -g from the prepared scratch cwd", async () => {
+    const { run, calls } = fakeRun("[*] All dependencies are up-to-date");
+    const driver = new ApmCliDriver({
+      run,
+      prepareGlobalCwd: async () => "/scratch/.apm-scratch",
+    });
+
+    await driver.checkOutdated({ kind: "global" });
+
+    expect(calls).toEqual([
+      {
+        file: "apm",
+        args: ["outdated", "-g"],
+        cwd: "/scratch/.apm-scratch",
+      },
+    ]);
+  });
+});

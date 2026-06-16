@@ -18,3 +18,13 @@ Feature: See version drift per deployed skill (J04)
     Given a registered repo where the apm check cannot run
     When I check that repo's drift
     Then I see the check reported as failed, not an empty up-to-date result
+
+  Scenario: A globally deployed skill behind the latest tag is seen as behind
+    Given global apm reports "tdd" is behind
+    When I check global drift with a bogus repo path in the query
+    Then I see "tdd" reported as globally behind
+
+  Scenario: A global check that could not run is seen as unknown, never up-to-date
+    Given global apm cannot check drift
+    When I check global drift
+    Then I see the global check reported as failed, not an empty up-to-date result

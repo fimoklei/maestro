@@ -1,3 +1,5 @@
+import { toDriftView } from "../drift/drift-query-view";
+import { useGlobalDrift } from "../drift/use-drift";
 import { DeployStateList } from "./deploy-state-list";
 import { useGlobalDeployState } from "./use-global-deploy-state";
 
@@ -7,6 +9,7 @@ import { useGlobalDeployState } from "./use-global-deploy-state";
 // read this" (the lie J03 exists to prevent).
 export function GlobalDeployStatePanel() {
   const deployState = useGlobalDeployState();
+  const drift = useGlobalDrift();
 
   return (
     <section>
@@ -19,6 +22,7 @@ export function GlobalDeployStatePanel() {
         <DeployStateList
           primitives={deployState.data?.primitives ?? []}
           skipped={deployState.data?.skipped ?? []}
+          drift={toDriftView(drift)}
         />
       )}
     </section>

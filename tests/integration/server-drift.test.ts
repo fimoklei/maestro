@@ -30,6 +30,9 @@ describe("drift HTTP route", () => {
 
   function makeApp(outcome: { ok: true; behind: string[] } | { ok: false }) {
     const fs = new NodeFileSystem();
+    const calls: Array<
+      { kind: "repo"; repoPath: string } | { kind: "global" }
+    > = [];
     const registry = new Registry({
       fs,
       store: new ConfigStore({ fs, configPath: join(home, "config.json") }),
@@ -37,7 +40,12 @@ describe("drift HTTP route", () => {
     const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
     const drift = new CheckVersionDrift({
       registry,
-      apm: { checkOutdated: async () => outcome },
+      apm: {
+        checkOutdated: async (target) => {
+          calls.push(target);
+          return outcome;
+        },
+      },
       canonicalPath: (path) => fs.realpath(path),
     });
     const app = createApp({
@@ -49,7 +57,7 @@ describe("drift HTTP route", () => {
       resolveGlobalRoot: () => "/nonexistent-apm-root",
       enforceOriginHost: false,
     });
-    return { app, registry };
+    return { app, registry, calls };
   }
 
   it("returns the behind set for a registered repo", async () => {
@@ -98,5 +106,24 @@ describe("drift HTTP route", () => {
     const res = await app.request("/api/drift");
 
     expect(res.status).toBe(400);
+  });
+
+  it("returns the global behind set without reading a client path", async () => {
+    const { app, calls } = makeApp({ ok: true, behind: ["tdd"] });
+
+    const res = await app.request("/api/drift/global?repo=/tmp/not-used");
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ behind: ["tdd"] });
+    expect(calls).toEqual([{ kind: "global" }]);
+  });
+
+  it("returns 200 with ok:false when the global check could not run", async () => {
+    const { app } = makeApp({ ok: false });
+
+    const res = await app.request("/api/drift/global");
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: false });
   });
 });

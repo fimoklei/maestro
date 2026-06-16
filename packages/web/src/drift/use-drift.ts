@@ -23,3 +23,11 @@ export function useDrift(repo: string) {
     staleTime: FIVE_MINUTES,
   });
 }
+
+export function useGlobalDrift() {
+  return useQuery({
+    queryKey: ["drift", "global"],
+    queryFn: () => requestJson<DriftResponse>("/api/drift/global"),
+    staleTime: FIVE_MINUTES,
+  });
+}

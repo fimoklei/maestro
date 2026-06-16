@@ -81,6 +81,10 @@ describeFeature(
       );
     }
 
+    async function checkGlobalDrift(query = "") {
+      response = await app.request(`/api/drift/global${query}`);
+    }
+
     Scenario(
       "A skill behind the latest tag is seen as behind",
       ({ Given, When, Then }) => {
@@ -133,6 +137,42 @@ describeFeature(
             // The distinct "unknown" shape — never { behind: [] }, which would
             // falsely read as up-to-date.
             expect(body).toEqual({ ok: false });
+          },
+        );
+      },
+    );
+
+    Scenario(
+      "A globally deployed skill behind the latest tag is seen as behind",
+      ({ Given, When, Then }) => {
+        Given('global apm reports "tdd" is behind', () => {
+          outcome = { ok: true, behind: ["tdd"] };
+        });
+        When(
+          "I check global drift with a bogus repo path in the query",
+          async () => {
+            await checkGlobalDrift("?repo=/tmp/not-used");
+          },
+        );
+        Then('I see "tdd" reported as globally behind', async () => {
+          expect(response.status).toBe(200);
+          expect(await response.json()).toEqual({ behind: ["tdd"] });
+        });
+      },
+    );
+
+    Scenario(
+      "A global check that could not run is seen as unknown, never up-to-date",
+      ({ Given, When, Then }) => {
+        Given("global apm cannot check drift", () => {
+          outcome = { ok: false };
+        });
+        When("I check global drift", () => checkGlobalDrift());
+        Then(
+          "I see the global check reported as failed, not an empty up-to-date result",
+          async () => {
+            expect(response.status).toBe(200);
+            expect(await response.json()).toEqual({ ok: false });
           },
         );
       },
