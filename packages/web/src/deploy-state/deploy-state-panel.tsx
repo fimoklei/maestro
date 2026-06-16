@@ -25,6 +25,7 @@ export function DeployStatePanel({ repo }: { repo: string }) {
           primitives={deployState.data?.primitives ?? []}
           skipped={deployState.data?.skipped ?? []}
           drift={toDriftView(drift)}
+          target={{ kind: "repo", repoPath: repo }}
         />
       )}
     </section>

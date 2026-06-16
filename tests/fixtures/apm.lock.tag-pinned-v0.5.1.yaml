@@ -1,0 +1,27 @@
+lockfile_version: '1'
+generated_at: '2026-06-16T10:00:00.000000+00:00'
+apm_version: 0.20.0
+dependencies:
+- repo_url: fimoklei/agent-harness
+  host: github.com
+  resolved_commit: 471c4b26b8f0a3d1e2c5f6a7b8c9d0e1f2a3b4c5
+  resolved_ref: v0.5.1
+  virtual_path: skills/tdd
+  is_virtual: true
+  package_type: claude_skill
+  deployed_files:
+  - .claude/skills/tdd
+  - .claude/skills/tdd/SKILL.md
+  - .claude/skills/tdd/deep-modules.md
+  - .claude/skills/tdd/interface-design.md
+  - .claude/skills/tdd/mocking.md
+  - .claude/skills/tdd/refactoring.md
+  - .claude/skills/tdd/tests.md
+  deployed_file_hashes:
+    .claude/skills/tdd/SKILL.md: sha256:af059705061156fd4845ddbb736fe92b564118ac5f03551e09ef9e8f6d970638
+    .claude/skills/tdd/deep-modules.md: sha256:f2123700bf953db1740625686c75bdd145efd486357c47c6818c869fee657a32
+    .claude/skills/tdd/interface-design.md: sha256:764c5ff0e3fa6b4ab7095eb65ccc7201e090baf19fa16051dfdb72c06d27417d
+    .claude/skills/tdd/mocking.md: sha256:3ceb807fdf4a47d6a93d4d9a891e5ba6d362a6247bd08adc451feebfc17361ef
+    .claude/skills/tdd/refactoring.md: sha256:54fced22dd1911b7094c3fe7979b7c1a40d40be307482c4adf7dc0588f27d6cc
+    .claude/skills/tdd/tests.md: sha256:e12182f5c4c6a844b7c6ab4b8d2623b642aaaae5460fe58ed087efd4f3d5fb8a
+  content_hash: sha256:b74dc2e8e6f7a91be14c922300e51dd9f63d4e5cebbfe169df3696db35afd123

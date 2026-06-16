@@ -4,6 +4,8 @@ import {
   orphanBehind,
   skillDriftStatus,
 } from "../drift/drift-status";
+import type { DeployTarget } from "../inventory/use-deploy-skill";
+import { UpdateSkillAction } from "./update-skill-action";
 import type { DeployedPrimitive, SkippedEntry } from "./use-deploy-state";
 
 // Unstyled per-skill drift badge. Nothing renders while the check is still
@@ -26,15 +28,19 @@ function DriftBadge({ status }: { status: DriftStatus }) {
 // registered-but-empty repo never shows a bare blank. Skipped entries are shown
 // as a warning, never dropped silently, so the cockpit cannot quietly hide a
 // primitive it does not yet understand. The optional `drift` adds a per-skill
-// badge; omitted (e.g. the global panel) means no badges.
+// badge; omitted (e.g. the global panel) means no badges. The `target` names
+// the scope these primitives are deployed to (this repo, or global), so a
+// behind row can offer a one-click Update against it.
 export function DeployStateList({
   primitives,
   skipped,
   drift = { status: "pending" },
+  target,
 }: {
   primitives: DeployedPrimitive[];
   skipped: SkippedEntry[];
   drift?: DriftView;
+  target: DeployTarget;
 }) {
   // "Nothing deployed" only when there is genuinely nothing — not when entries
   // exist but were skipped as unsupported. Showing it alongside a skipped
@@ -51,13 +57,25 @@ export function DeployStateList({
       {isEmpty && <p>Nothing deployed here.</p>}
       {primitives.length > 0 && (
         <ul>
-          {primitives.map((primitive) => (
-            <li key={primitive.name}>
-              <strong>{primitive.name}</strong>:{" "}
-              <span>{primitive.version}</span>
-              <DriftBadge status={skillDriftStatus(primitive.name, drift)} />
-            </li>
-          ))}
+          {primitives.map((primitive) => {
+            const status = skillDriftStatus(primitive.name, drift);
+            return (
+              <li key={primitive.name}>
+                <strong>{primitive.name}</strong>:{" "}
+                <span>{primitive.version}</span>
+                <DriftBadge status={status} />
+                {/* Update is offered only when behind — never for up-to-date,
+                    pending, or unknown (the J04 rule: unknown is not
+                    actionable). */}
+                {status === "behind" ? (
+                  <UpdateSkillAction
+                    skillName={primitive.name}
+                    target={target}
+                  />
+                ) : null}
+              </li>
+            );
+          })}
         </ul>
       )}
       {orphans.length > 0 && (

@@ -1,0 +1,235 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { DeployStatePanel } from "./deploy-state-panel";
+import { GlobalDeployStatePanel } from "./global-deploy-state-panel";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
+}
+
+// Routes the panel's two read queries (deploy-state and drift) by URL, so each
+// scenario can pin one deployed skill and a distinct drift outcome. The deploy
+// POST is handled by the caller's own stub where a click is exercised.
+function stubReads(deployState: unknown, drift: unknown, driftStatus = 200) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/api/drift")) {
+        return jsonResponse(drift, driftStatus);
+      }
+      return jsonResponse(deployState, 200);
+    }),
+  );
+}
+
+function renderPanel(repo: string) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <DeployStatePanel repo={repo} />
+    </QueryClientProvider>,
+  );
+}
+
+function renderGlobalPanel() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <GlobalDeployStatePanel />
+    </QueryClientProvider>,
+  );
+}
+
+const tddDeployed = {
+  primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+  skipped: [],
+};
+
+describe("Update action on a behind skill", () => {
+  it("offers an Update action for a skill the check reports behind", async () => {
+    stubReads(tddDeployed, { behind: ["tdd"] });
+    renderPanel("/Users/me/project");
+
+    expect(
+      await screen.findByRole("button", { name: /update tdd/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers no Update action for an up-to-date skill", async () => {
+    stubReads(tddDeployed, { behind: [] });
+    renderPanel("/Users/me/project");
+
+    expect(await screen.findByText(/up-to-date/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /update tdd/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers no Update action when the drift check could not run (unknown)", async () => {
+    // J04 cardinal rule: an unknown skill is never treated as actionable.
+    stubReads(tddDeployed, { ok: false });
+    renderPanel("/Users/me/project");
+
+    expect(await screen.findByText(/unknown/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /update tdd/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers no Update action while the drift check is still pending", async () => {
+    // deploy-state resolves; drift never does, so the badge stays pending and
+    // the row must not yet offer an Update.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/drift")) {
+          return new Promise<Response>(() => undefined);
+        }
+        return jsonResponse(tddDeployed, 200);
+      }),
+    );
+    renderPanel("/Users/me/project");
+
+    expect(await screen.findByText("tdd")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /update tdd/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("updates a behind skill against its repo on click", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/deploy") && !url.includes("deploy-state")) {
+        return jsonResponse({
+          deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+        });
+      }
+      if (url.includes("/api/drift")) {
+        return jsonResponse({ behind: ["tdd"] });
+      }
+      return jsonResponse(tddDeployed, 200);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderPanel("/Users/me/project");
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /update tdd/i }),
+    );
+
+    const deployCall = fetchMock.mock.calls.find(
+      ([url]) =>
+        String(url).startsWith("/api/deploy") &&
+        !String(url).includes("deploy-state"),
+    ) as unknown as [string, RequestInit];
+    expect(deployCall[0]).toBe("/api/deploy");
+    expect(deployCall[1].method).toBe("POST");
+    expect(JSON.parse(deployCall[1].body as string)).toEqual({
+      type: "skill",
+      name: "tdd",
+      target: { kind: "repo", repoPath: "/Users/me/project" },
+    });
+  });
+
+  it("updates a behind skill globally on click in the Global panel", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/deploy") && !url.includes("deploy-state")) {
+        return jsonResponse({
+          deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+        });
+      }
+      if (url.includes("/api/drift")) {
+        return jsonResponse({ behind: ["tdd"] });
+      }
+      return jsonResponse(tddDeployed, 200);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderGlobalPanel();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /update tdd/i }),
+    );
+
+    const deployCall = fetchMock.mock.calls.find(
+      ([url]) =>
+        String(url).startsWith("/api/deploy") &&
+        !String(url).includes("deploy-state"),
+    ) as unknown as [string, RequestInit];
+    expect(JSON.parse(deployCall[1].body as string)).toEqual({
+      type: "skill",
+      name: "tdd",
+      target: { kind: "global" },
+    });
+  });
+
+  it("disables the Update action while an update is in flight", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/deploy") && !url.includes("deploy-state")) {
+        // Never resolves: the update stays pending for the rest of the test.
+        return new Promise<Response>(() => undefined);
+      }
+      if (url.includes("/api/drift")) {
+        return jsonResponse({ behind: ["tdd"] });
+      }
+      return jsonResponse(tddDeployed, 200);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderPanel("/Users/me/project");
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /update tdd/i }),
+    );
+
+    expect(
+      await screen.findByRole("button", { name: /updating tdd/i }),
+    ).toBeDisabled();
+  });
+
+  it("surfaces the server's message when an update is refused", async () => {
+    // The deploy use-case refuses a diverged local copy with an actionable
+    // tag-and-push message (inherited from deploy); show it, not a generic line.
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/deploy") && !url.includes("deploy-state")) {
+        return new Response(
+          JSON.stringify({
+            error: "local-diverged-from-tag",
+            message:
+              "Your local skill differs from its latest published tag. Tag and push your change first.",
+          }),
+          { status: 409, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (url.includes("/api/drift")) {
+        return jsonResponse({ behind: ["tdd"] });
+      }
+      return jsonResponse(tddDeployed, 200);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderPanel("/Users/me/project");
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /update tdd/i }),
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /tag and push your change/i,
+    );
+  });
+});
