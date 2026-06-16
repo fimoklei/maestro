@@ -111,8 +111,13 @@ methods already exist (`resolve-latest-tag` via `apm view … versions`;
 - **`-t` is mandatory**, as for deploy: a bare `apm update`/`install` with both
   harnesses present fails `Multiple harnesses detected: claude, codex`. Always
   pass `-t claude,codex`.
-- **Same-tag re-install is safe and idempotent** — prints `(files unchanged)`,
-  leaves the pin where it is.
+- **Same-tag re-install is idempotent *only on a clean subtree*** — prints
+  `(files unchanged)` and leaves the pin where it is. **Not safe when the deployed
+  subtree has local edits or untracked files:** a same-ref `apm install` silently
+  resets the tree to the tag and drops those changes while still printing
+  `(files unchanged)` (see "Package divergence" below). The deploy use-case guards
+  this at deploy time (`local-diverged-from-tag`, tree-diff); update inherits that
+  refusal, so it never overwrites local edits unannounced.
 - Real updates **need network + auth** (clone from GitHub), like deploy — keep
   out of the fast test loop.
 

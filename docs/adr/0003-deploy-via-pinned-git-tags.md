@@ -23,7 +23,8 @@ three different lockfiles and three different drift outcomes:
 - **Git ref, pinned to a tag** (`…/skills/tdd#v0.5.0`). The lockfile records
   `resolved_ref: v0.5.0` **and** `resolved_commit`. `apm outdated` prints a table
   with Current / Latest / Status against *git tags* (observed: `v0.5.0` →
-  `v0.5.1`, Status `outdated`). Update moves to the latest tag.
+  `v0.5.1`, Status `outdated`). Bringing a deploy current means re-pinning to the
+  latest tag.
 
 The central inventory (`agent-harness`) already publishes semver tags
 (`v0.1.0`…`v0.5.1`), so the tagging discipline this requires already exists.
@@ -40,7 +41,10 @@ resolved from the central inventory's Git remote.**
 - The deploy-state version shown to the user is the tag (`v0.5.0`), not a commit
   hash.
 - **Drift is delegated to `apm outdated`** (per ADR-0001); Maestro never computes
-  it. Update is `apm update` to the latest tag.
+  it. **Update re-installs at the latest tag** (`apm install …#<latest-tag>`),
+  **not** `apm update` — which is a no-op on an exact tag pin (spiked apm 0.20.0;
+  see `.claude/rules/apm-driver.md` → "Update"). Corrected from the original
+  "Update is `apm update`" on that evidence.
 - The "see central" inventory view reads the **local** `agent-harness` clone;
   **deploy** pulls the tagged ref from the **remote**. Maestro must surface any
   gap between the two, never hide it.
