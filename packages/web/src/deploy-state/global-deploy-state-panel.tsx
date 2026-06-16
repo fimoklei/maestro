@@ -23,6 +23,7 @@ export function GlobalDeployStatePanel() {
           primitives={deployState.data?.primitives ?? []}
           skipped={deployState.data?.skipped ?? []}
           drift={toDriftView(drift)}
+          target={{ kind: "global" }}
         />
       )}
     </section>
