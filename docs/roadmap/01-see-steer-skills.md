@@ -105,7 +105,10 @@ step, graduate it to `brief.md`; for now it scopes the design pass only.)
   (no lockfile exists anywhere yet) before the parser is written — this is the
   `apm-driver.md` trigger in `AGENTS.md`. The tracer ship forces that real
   install early.
-- **Update is APM's `update`** — the same driver port as deploy (`install`).
+- **Update is a re-install at the latest tag**, not `apm update`. Maestro pins
+  exact tags (ADR-0003), and `apm update` is a no-op on an exact pin (spiked
+  2026-06-16, see `apm-driver.md`). Update = resolve the latest tag, then
+  `apm install …#<latest-tag>` — reusing the deploy driver, no new apm command.
 
 ## How "see" reads (per ADR-0002)
 
