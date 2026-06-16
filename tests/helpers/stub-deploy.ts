@@ -21,6 +21,7 @@ export const stubDeploy = (deps: {
       skillExistsAtTag: async () => false,
       skillDivergesFromTag: async () => false,
     },
+    deployedContent: { classify: async () => "not-deployed" },
     inventoryOriginUrl: async () => null,
     canonicalPath: async (path) => path,
   });

@@ -94,6 +94,7 @@ describeFeature(
           skillExistsAtTag: async () => true,
           skillDivergesFromTag: async () => diverged,
         },
+        deployedContent: { classify: async () => "not-deployed" },
         inventoryOriginUrl: async () =>
           "git@github.com:fimoklei/agent-harness.git",
         canonicalPath: (path) => fs.realpath(path),

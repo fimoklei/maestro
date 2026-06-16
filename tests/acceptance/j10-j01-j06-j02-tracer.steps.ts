@@ -60,6 +60,7 @@ function buildApp(configPath: string, inventoryPath: string) {
       skillExistsAtTag: async () => true,
       skillDivergesFromTag: async () => false,
     },
+    deployedContent: { classify: async () => "not-deployed" },
     inventoryOriginUrl: async () => "git@github.com:fimoklei/agent-harness.git",
     canonicalPath: (path) => fs.realpath(path),
   });
