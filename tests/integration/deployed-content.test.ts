@@ -192,6 +192,26 @@ describe("DeployedContentAdapter", () => {
     ).resolves.toBe("diverged");
   });
 
+  it("diverges on an edited .agents copy the lockfile never recorded", async () => {
+    // A prior single-tool install recorded only .claude hashes, but the deploy
+    // runs -t claude,codex and will overwrite .agents too. An edited .agents
+    // copy on disk must be caught even though no lock entry mentions it — scan
+    // the deploy targets, not just the recorded paths (#56).
+    const body = "---\nname: tdd\n---\nbody\n";
+    await writeDeployed(".claude/skills/tdd/SKILL.md", body);
+    await writeDeployed(".agents/skills/tdd/SKILL.md", "edited codex copy\n");
+    await writeLockfile("tdd", {
+      ".claude/skills/tdd/SKILL.md": sha(body),
+    });
+
+    await expect(
+      adapter().classify({
+        target: { kind: "repo", repoPath: root },
+        name: "tdd",
+      }),
+    ).resolves.toBe("diverged");
+  });
+
   it("hashes file bytes, so a clean non-UTF-8 asset is not falsely diverged", async () => {
     // apm records a byte-for-byte sha256; reading as utf8 would mangle a binary
     // asset and block its deploy forever. Hash the raw bytes (#56).

@@ -20,19 +20,12 @@ import {
   type DeployedFileHashes,
 } from "./deployed-content-drift";
 
-// The distinct deployed subtree roots a lockfile records for a skill, derived
-// from its hash keys — e.g. ".claude/skills/tdd" and ".agents/skills/tdd" for a
-// two-tool install. Walking each catches an untracked file in either copy.
-function deployedSubtrees(lockKeys: string[], name: string): string[] {
-  const marker = `skills/${name}`;
-  const roots = new Set<string>();
-  for (const key of lockKeys) {
-    const idx = key.indexOf(marker);
-    if (idx !== -1) {
-      roots.add(key.slice(0, idx + marker.length));
-    }
-  }
-  return [...roots];
+// The deployed subtrees a deploy will overwrite for a skill. Fixed by the
+// driver's `-t claude,codex`, not by what the lockfile recorded: scanning these
+// catches an edited copy even when a prior single-tool install left it
+// unrecorded (apm writes claude to .claude and codex to .agents — apm-driver.md).
+function deployTargetSubtrees(name: string): string[] {
+  return [`.claude/skills/${name}`, `.agents/skills/${name}`];
 }
 
 const lockfileSchema = z.object({
@@ -76,15 +69,12 @@ export class DeployedContentAdapter implements DeployedContentPort {
       return "unverifiable";
     }
 
-    // A deploy runs `-t claude,codex`, overwriting every recorded copy (.claude
-    // AND .agents). Walk each distinct deployed subtree the lockfile records, so
-    // an edit to either copy is caught — not just the .claude one (#56).
+    // Scan every subtree the deploy will overwrite (.claude AND .agents), so an
+    // edit to either copy is caught — including a copy the lockfile never
+    // recorded, which would otherwise be reset silently (#56).
     const root = this.deps.resolveDeployedRoot(input.target);
     const liveHashes: DeployedFileHashes = {};
-    for (const subtree of deployedSubtrees(
-      Object.keys(baseline.hashes),
-      input.name,
-    )) {
+    for (const subtree of deployTargetSubtrees(input.name)) {
       Object.assign(liveHashes, await this.hashSubtree(root, subtree));
     }
     return classifyDeployedDrift(baseline.hashes, liveHashes);
