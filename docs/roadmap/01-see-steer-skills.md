@@ -73,7 +73,7 @@ Ship B.
 | 01.1 — Tracer: register a repo + see skills + deploy + see-back | J10, J01, J06, J02 | [#8](https://github.com/fimoklei/maestro/issues/8) |
 | 01.2 — Global as a target | J03, J07 | [#26](https://github.com/fimoklei/maestro/issues/26) |
 | 01.3 — Drift (binary) | J04 | [#44](https://github.com/fimoklei/maestro/issues/44) |
-| 01.4 — Update | J08 | — |
+| 01.4 — Update | J08 | [#52](https://github.com/fimoklei/maestro/issues/52) |
 | 01.5 — Design pass: realize the working cockpit in the designed system | — (design principle, not a subjob) | — |
 
 This table is a **map, not a dashboard.** Only the stable columns (sub-step,
