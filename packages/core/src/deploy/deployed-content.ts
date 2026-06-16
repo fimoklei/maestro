@@ -63,11 +63,17 @@ export class DeployedContentAdapter implements DeployedContentPort {
     target: DeployTarget;
     name: string;
   }): Promise<DeployedContentState> {
-    const lockHashes = await this.readLockHashes(input.target, input.name);
-    // No lockfile, no entry, or no recorded hashes (a pre-0.20.0 install): we
-    // have no baseline to compare, so there is nothing to overwrite-protect.
-    if (lockHashes === null) {
+    const baseline = await this.readBaseline(input.target, input.name);
+    // No lockfile or no matching entry: genuinely nothing deployed — a first
+    // deploy has nothing to overwrite, so let it through.
+    if (baseline.kind === "none") {
       return "not-deployed";
+    }
+    // A matching entry but no recorded hashes (a pre-0.20.0 install): the
+    // deployed copy could hold edits we cannot detect. Refuse rather than risk
+    // a silent reset.
+    if (baseline.kind === "unverifiable") {
+      return "unverifiable";
     }
 
     // A deploy runs `-t claude,codex`, overwriting every recorded copy (.claude
@@ -76,48 +82,55 @@ export class DeployedContentAdapter implements DeployedContentPort {
     const root = this.deps.resolveDeployedRoot(input.target);
     const liveHashes: DeployedFileHashes = {};
     for (const subtree of deployedSubtrees(
-      Object.keys(lockHashes),
+      Object.keys(baseline.hashes),
       input.name,
     )) {
       Object.assign(liveHashes, await this.hashSubtree(root, subtree));
     }
-    return classifyDeployedDrift(lockHashes, liveHashes);
+    return classifyDeployedDrift(baseline.hashes, liveHashes);
   }
 
-  // The skill's recorded per-file hashes across every deployed copy, or null
-  // when there is no baseline (no lockfile, no matching entry, or a pre-0.20.0
-  // install that recorded no hashes).
-  private async readLockHashes(
+  // The skill's recorded baseline: "none" (no lockfile or no matching entry),
+  // "unverifiable" (an entry with no recorded hashes — a pre-0.20.0 install), or
+  // the per-file hashes across every deployed copy.
+  private async readBaseline(
     target: DeployTarget,
     name: string,
-  ): Promise<DeployedFileHashes | null> {
+  ): Promise<
+    | { kind: "none" }
+    | { kind: "unverifiable" }
+    | { kind: "hashes"; hashes: DeployedFileHashes }
+  > {
     let raw: string;
     try {
       raw = await readFile(this.deps.resolveLockfilePath(target), "utf8");
     } catch {
-      return null;
+      return { kind: "none" };
     }
 
     let data: unknown;
     try {
       data = parse(raw);
     } catch {
-      return null;
+      return { kind: "none" };
     }
     const parsed = lockfileSchema.safeParse(data);
     if (!parsed.success) {
-      return null;
+      return { kind: "none" };
     }
 
     const entry = parsed.data.dependencies.find(
       (e) =>
         e.package_type === "claude_skill" && basename(e.virtual_path) === name,
     );
-    if (entry?.deployed_file_hashes === undefined) {
-      return null;
+    if (entry === undefined) {
+      return { kind: "none" };
     }
     const hashes = entry.deployed_file_hashes;
-    return Object.keys(hashes).length === 0 ? null : hashes;
+    if (hashes === undefined || Object.keys(hashes).length === 0) {
+      return { kind: "unverifiable" };
+    }
+    return { kind: "hashes", hashes };
   }
 
   // Recursively sha256 every file under <root>/<subtree>, keyed by the path

@@ -321,6 +321,27 @@ describe("DeploySkill", () => {
     expect(deployed).toEqual([]);
   });
 
+  it("refuses when the deployed copy cannot be verified (legacy lockfile)", async () => {
+    // A pre-0.20.0 entry has no deployed_file_hashes, so we have no baseline to
+    // tell whether the deployed copy was edited. Refuse rather than let a
+    // same-ref install silently reset possible local edits — the user reconciles
+    // (e.g. removes the deployed copy) so a clean re-install can proceed (#56).
+    const { deps, deployed } = buildDeps({
+      deployedContent: { classify: async () => "unverifiable" as const },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "deployed-unverifiable",
+    });
+    expect(deployed).toEqual([]);
+  });
+
   it("deploys when the deployed copy is clean (an unedited re-deploy)", async () => {
     // A clean deployed copy has nothing to lose to a same-ref install, so an
     // update/re-deploy proceeds — the guard bites only on local edits (#56).

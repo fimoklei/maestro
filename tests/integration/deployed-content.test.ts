@@ -70,6 +70,31 @@ describe("DeployedContentAdapter", () => {
     ).resolves.toBe("not-deployed");
   });
 
+  it("reports unverifiable for a legacy entry with no recorded hashes", async () => {
+    // A pre-0.20.0 install records the entry but no deployed_file_hashes, so the
+    // deployed copy could hold edits we cannot detect. Distinct from a true
+    // first deploy: refuse rather than silently overwrite (#56).
+    await writeDeployed(".claude/skills/tdd/SKILL.md", "deployed long ago\n");
+    await writeFile(
+      join(root, "apm.lock.yaml"),
+      [
+        "dependencies:",
+        "  - virtual_path: skills/tdd",
+        "    package_type: claude_skill",
+        "    resolved_ref: v0.4.0",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    await expect(
+      adapter().classify({
+        target: { kind: "repo", repoPath: root },
+        name: "tdd",
+      }),
+    ).resolves.toBe("unverifiable");
+  });
+
   it("reports not-deployed when the lockfile has no entry for the skill", async () => {
     await writeLockfile("other", { ".claude/skills/other/SKILL.md": sha("x") });
     await expect(

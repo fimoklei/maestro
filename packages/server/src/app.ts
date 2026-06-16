@@ -86,6 +86,11 @@ const deployErrorResponses: Record<
     message:
       "The deployed copy has local edits. Deploying would overwrite them. Discard or save those edits first.",
   },
+  "deployed-unverifiable": {
+    status: 409,
+    message:
+      "The deployed copy predates content tracking, so edits cannot be verified. Remove the deployed copy, then deploy fresh.",
+  },
   "deploy-in-progress": {
     status: 409,
     message: "A deploy to this repo is already running. Wait for it to finish.",

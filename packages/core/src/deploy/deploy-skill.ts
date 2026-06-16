@@ -47,7 +47,14 @@ export type InventoryGitPort = {
 // it in the target lockfile's deployed_file_hashes. "not-deployed" means no
 // lockfile entry yet (a first deploy — nothing to overwrite). Detects the
 // silent-overwrite risk the source-side InventoryGitPort cannot see (#56).
-export type DeployedContentState = "not-deployed" | "clean" | "diverged";
+// "unverifiable" — a deployed entry exists but carries no recorded hashes (a
+// pre-0.20.0 lockfile), so drift cannot be checked. Distinct from
+// "not-deployed" (no entry at all) so the guard refuses instead of proceeding.
+export type DeployedContentState =
+  | "not-deployed"
+  | "clean"
+  | "diverged"
+  | "unverifiable";
 
 export type DeployedContentPort = {
   classify(input: {
@@ -81,6 +88,10 @@ export type DeploySkillError =
   // lockfile: a same-ref apm install would silently reset them. Refuse so the
   // user reconciles those edits first (refuse-only, #56).
   | "deployed-diverged-from-lock"
+  // The deployed copy exists but carries no recorded hashes (a pre-0.20.0
+  // lockfile), so drift cannot be verified. Refuse rather than risk a silent
+  // reset; the user reconciles (e.g. removes the deployed copy) first (#56).
+  | "deployed-unverifiable"
   // A deploy to the same repo is already running (double-click, second tab,
   // retry) — racing it would corrupt the same apm.lock.yaml.
   | "deploy-in-progress"
@@ -196,6 +207,9 @@ export class DeploySkill {
       });
       if (deployedState === "diverged") {
         return { ok: false, error: "deployed-diverged-from-lock" };
+      }
+      if (deployedState === "unverifiable") {
+        return { ok: false, error: "deployed-unverifiable" };
       }
 
       const ref = buildSkillPackageRef({
