@@ -36,6 +36,10 @@ const buildDeps = (
       skillExistsAtTag: async (_tag: string, _name: string) => true,
       skillDivergesFromTag: async (_tag: string, _name: string) => false,
     },
+    deployedContent: {
+      classify: async (_input: { target: DeployTarget; name: string }) =>
+        "not-deployed" as const,
+    },
     canonicalPath: async (path: string) => path,
     ...overrides,
   };
@@ -291,6 +295,85 @@ describe("DeploySkill", () => {
     });
 
     expect(result).toEqual({ ok: false, error: "local-diverged-from-tag" });
+    expect(deployed).toEqual([]);
+  });
+
+  it("refuses to deploy when the deployed copy diverges from the lockfile", async () => {
+    // The source guard checks the inventory clone; this guards the destination.
+    // A same-ref apm install silently resets a locally-edited deployed subtree
+    // to the tag (apm-driver.md). Refuse so those edits are never dropped
+    // unannounced — refuse-only, the user reconciles before re-deploying (#56).
+    const { deps, deployed } = buildDeps({
+      deployedContent: {
+        classify: async () => "diverged" as const,
+      },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "deployed-diverged-from-lock",
+    });
+    expect(deployed).toEqual([]);
+  });
+
+  it("refuses when the deployed copy cannot be verified (legacy lockfile)", async () => {
+    // A pre-0.20.0 entry has no deployed_file_hashes, so we have no baseline to
+    // tell whether the deployed copy was edited. Refuse rather than let a
+    // same-ref install silently reset possible local edits — the user reconciles
+    // (e.g. removes the deployed copy) so a clean re-install can proceed (#56).
+    const { deps, deployed } = buildDeps({
+      deployedContent: { classify: async () => "unverifiable" as const },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "deployed-unverifiable",
+    });
+    expect(deployed).toEqual([]);
+  });
+
+  it("deploys when the deployed copy is clean (an unedited re-deploy)", async () => {
+    // A clean deployed copy has nothing to lose to a same-ref install, so an
+    // update/re-deploy proceeds — the guard bites only on local edits (#56).
+    const { deps, deployed } = buildDeps({
+      deployedContent: { classify: async () => "clean" as const },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result.ok).toBe(true);
+    expect(deployed).toHaveLength(1);
+  });
+
+  it("refuses a global deploy when the deployed copy diverges", async () => {
+    // The destination guard is target-agnostic: a locally-edited global subtree
+    // (~/.claude/skills/<name>) must not be silently reset either (J07, #56).
+    const { deps, deployed } = buildDeps({
+      deployedContent: { classify: async () => "diverged" as const },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "deployed-diverged-from-lock",
+    });
     expect(deployed).toEqual([]);
   });
 

@@ -72,6 +72,7 @@ describe("deploy HTTP route", () => {
     failApm?: boolean;
     skillAtTag?: boolean;
     diverged?: boolean;
+    destDiverged?: boolean;
     holdApm?: Promise<void>;
   }) {
     const fs = new NodeFileSystem();
@@ -109,6 +110,10 @@ describe("deploy HTTP route", () => {
       inventoryGit: {
         skillExistsAtTag: async () => options?.skillAtTag ?? true,
         skillDivergesFromTag: async () => options?.diverged ?? false,
+      },
+      deployedContent: {
+        classify: async () =>
+          options?.destDiverged ? "diverged" : "not-deployed",
       },
       canonicalPath: (path) => fs.realpath(path),
       inventoryOriginUrl: async () =>
@@ -301,6 +306,26 @@ describe("deploy HTTP route", () => {
     expect(await res.json()).toEqual({
       error: "local-diverged-from-tag",
       message: expect.stringMatching(/tag/i),
+    });
+    expect(deployCalls).toEqual([]);
+  });
+
+  it("returns 409 when the deployed copy has local edits vs the lockfile", async () => {
+    // Destination guard: refuse rather than let a same-ref apm install silently
+    // reset a locally-edited deployed subtree (apm-driver.md, #56).
+    const { app, registry, deployCalls } = makeApp({ destDiverged: true });
+    await registry.register(repo);
+
+    const res = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: repoTarget(repo),
+    });
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      error: "deployed-diverged-from-lock",
+      message: expect.stringMatching(/overwrite/i),
     });
     expect(deployCalls).toEqual([]);
   });

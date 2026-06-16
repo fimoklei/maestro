@@ -43,6 +43,26 @@ export type InventoryGitPort = {
   skillDivergesFromTag(tag: string, name: string): Promise<boolean>;
 };
 
+// State of the *deployed* copy (the destination) vs what apm last recorded for
+// it in the target lockfile's deployed_file_hashes. "not-deployed" means no
+// lockfile entry yet (a first deploy — nothing to overwrite). Detects the
+// silent-overwrite risk the source-side InventoryGitPort cannot see (#56).
+// "unverifiable" — a deployed entry exists but carries no recorded hashes (a
+// pre-0.20.0 lockfile), so drift cannot be checked. Distinct from
+// "not-deployed" (no entry at all) so the guard refuses instead of proceeding.
+export type DeployedContentState =
+  | "not-deployed"
+  | "clean"
+  | "diverged"
+  | "unverifiable";
+
+export type DeployedContentPort = {
+  classify(input: {
+    target: DeployTarget;
+    name: string;
+  }): Promise<DeployedContentState>;
+};
+
 export type DeploySkillInput = {
   // Accepted as a plain string at the edge; the skill-only rule is a business
   // rule here, not a schema shape, so the user gets an honest message.
@@ -64,6 +84,14 @@ export type DeploySkillError =
   // The local skill tree differs from the latest tag: deploying would ship
   // stale content. The cure is to tag & push the local change.
   | "local-diverged-from-tag"
+  // The deployed copy (destination) has local edits or untracked files vs the
+  // lockfile: a same-ref apm install would silently reset them. Refuse so the
+  // user reconciles those edits first (refuse-only, #56).
+  | "deployed-diverged-from-lock"
+  // The deployed copy exists but carries no recorded hashes (a pre-0.20.0
+  // lockfile), so drift cannot be verified. Refuse rather than risk a silent
+  // reset; the user reconciles (e.g. removes the deployed copy) first (#56).
+  | "deployed-unverifiable"
   // A deploy to the same repo is already running (double-click, second tab,
   // retry) — racing it would corrupt the same apm.lock.yaml.
   | "deploy-in-progress"
@@ -82,6 +110,7 @@ export class DeploySkill {
     // checkOutdated for drift) never breaks this use-case or its fakes.
     apm: Pick<ApmDriverPort, "resolveLatestTag" | "deploySkill">;
     inventoryGit: InventoryGitPort;
+    deployedContent: DeployedContentPort;
     inventoryOriginUrl: () => Promise<string | null>;
     // Resolves a path to its canonical form (realpath), so the in-flight
     // lock cannot be sidestepped by a symlinked spelling of the same repo.
@@ -167,6 +196,20 @@ export class DeploySkill {
       }
       if (await this.deps.inventoryGit.skillDivergesFromTag(tag, input.name)) {
         return { ok: false, error: "local-diverged-from-tag" };
+      }
+      // Destination guard: a clean source can still overwrite a locally-edited
+      // deployed copy, since a same-ref apm install resets it to the tag
+      // silently. Refuse on divergence; first deploy ("not-deployed") and a
+      // clean copy proceed (#56).
+      const deployedState = await this.deps.deployedContent.classify({
+        target: input.target,
+        name: input.name,
+      });
+      if (deployedState === "diverged") {
+        return { ok: false, error: "deployed-diverged-from-lock" };
+      }
+      if (deployedState === "unverifiable") {
+        return { ok: false, error: "deployed-unverifiable" };
       }
 
       const ref = buildSkillPackageRef({

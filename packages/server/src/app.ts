@@ -1,11 +1,15 @@
+import { homedir } from "node:os";
+import { join } from "node:path";
 import {
   ApmCliDriver,
   CheckVersionDrift,
   ConfigStore,
   coreHealth,
+  DeployedContentAdapter,
   DeploySkill,
   type DeploySkillError,
   DeployStateReader,
+  type DeployTarget,
   InventoryGitAdapter,
   InventoryReader,
   NodeFileSystem,
@@ -76,6 +80,16 @@ const deployErrorResponses: Record<
     status: 409,
     message:
       "Your local skill differs from its latest published tag. Tag and push your change first.",
+  },
+  "deployed-diverged-from-lock": {
+    status: 409,
+    message:
+      "The deployed copy has local edits. Deploying would overwrite them. Discard or save those edits first.",
+  },
+  "deployed-unverifiable": {
+    status: 409,
+    message:
+      "An existing deployed copy has no recorded baseline, so edits cannot be verified. Remove the deployed copy, then deploy fresh.",
   },
   "deploy-in-progress": {
     status: 409,
@@ -348,6 +362,19 @@ function realDeps(): AppDeps {
     inventoryGit: new InventoryGitAdapter({
       resolveRoot: async () =>
         resolveInventoryPath(await store.read(), process.env),
+    }),
+    // Destination guard: a repo's lockfile and deployed tree both sit in the
+    // repo; a global deploy reads ~/.apm/apm.lock.yaml but deploys to
+    // ~/.claude/skills, so its two roots differ (apm-driver.md, #56).
+    deployedContent: new DeployedContentAdapter({
+      resolveLockfilePath: (target: DeployTarget) =>
+        target.kind === "repo"
+          ? join(target.repoPath, "apm.lock.yaml")
+          : join(resolveApmGlobalRoot(process.env), "apm.lock.yaml"),
+      resolveDeployedRoot: (target: DeployTarget) =>
+        target.kind === "repo"
+          ? target.repoPath
+          : (process.env.HOME ?? homedir()),
     }),
     inventoryOriginUrl: async () => {
       const root = resolveInventoryPath(await store.read(), process.env);

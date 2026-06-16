@@ -164,8 +164,25 @@ commit:
     sha256 of content (verified reproducible — same hash for the same file across
     the `.claude`/`.agents` copies). Content drift could be detected by hashing
     each deployed file and comparing to this map — no fresh tag export needed.
-    Still unproven end-to-end and out of scope for 01.3 (version drift only);
-    spike before relying on it.
+  - **Spiked end-to-end against apm 0.20.0 on 2026-06-16** (issue #56), real
+    `apm install github.com/fimoklei/agent-harness/skills/tdd#v0.5.1 -t claude`
+    in a scratch per-repo install. Result — **the map is a reliable
+    destination-drift mechanism:**
+    - **Clean tree:** all six `deployed_file_hashes` entries equalled a plain
+      `sha256` of the live deployed file content. The hash reproduces; it is not
+      apm-internal like `content_hash`.
+    - **Edited deployed file:** re-hashing the live file no longer matched its
+      lock entry → an edit to the deployed copy **is detectable**.
+    - **Untracked extra file** added inside the deployed subtree has **no** lock
+      entry → detectable as a live file the map does not cover.
+    - **Verdict for #56:** detect destination content drift by reading
+      `deployed_file_hashes` for the skill and comparing to a fresh `sha256` of
+      each live deployed file (mismatch, missing live file, or live file with no
+      entry → diverged). No fresh tag export. **Per-repo `claude` only was run;**
+      the global (`-g`) and two-tool (`.agents` copy) paths reuse the identical
+      lockfile shape but were not spiked here — the `.agents` copy shares the same
+      per-file hash, so the same compare applies; confirm when the global adapter
+      lands.
 
 ### Phase 0 canary (completion gate for the deploy slices)
 
