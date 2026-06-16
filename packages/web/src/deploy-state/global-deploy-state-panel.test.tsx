@@ -81,4 +81,52 @@ describe("GlobalDeployStatePanel", () => {
       /could not read/i,
     );
   });
+
+  it("shows global drift badges without needing a repo path", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url === "/api/drift/global") {
+          return jsonResponse({ behind: ["tdd"] }, 200);
+        }
+        return jsonResponse(
+          {
+            primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+            skipped: [],
+          },
+          200,
+        );
+      }),
+    );
+    renderPanel();
+
+    expect(await screen.findByText("tdd")).toBeInTheDocument();
+    expect(await screen.findByText(/behind/i)).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith("/api/drift/global", expect.anything());
+  });
+
+  it("shows unknown, never up-to-date, when global drift cannot be checked", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url === "/api/drift/global") {
+          return jsonResponse({ ok: false }, 200);
+        }
+        return jsonResponse(
+          {
+            primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+            skipped: [],
+          },
+          200,
+        );
+      }),
+    );
+    renderPanel();
+
+    expect(await screen.findByText("tdd")).toBeInTheDocument();
+    expect(await screen.findByText(/unknown/i)).toBeInTheDocument();
+    expect(screen.queryByText(/up-to-date/i)).not.toBeInTheDocument();
+  });
 });

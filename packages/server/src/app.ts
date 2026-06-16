@@ -264,6 +264,18 @@ export function createApp(deps: AppDeps) {
     return c.json({ behind: result.behind });
   });
 
+  // Global version drift. The server sends no path to core — user-scope is
+  // APM's global target, so any ?repo in the URL is ignored rather than trusted.
+  app.get("/api/drift/global", async (c) => {
+    const result = await deps.drift.execute({
+      target: { kind: "global" },
+    });
+    if (!result.ok) {
+      return c.json({ ok: false });
+    }
+    return c.json({ behind: result.behind });
+  });
+
   app.get("/api/registry/repos", async (c) =>
     c.json({ repos: await deps.registry.list() }),
   );
