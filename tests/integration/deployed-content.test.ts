@@ -1,7 +1,8 @@
 // The destination content-drift guard, against a real deployed subtree on disk:
-// does the deployed copy (.claude/skills/<name>) still match the per-file
-// sha256 apm recorded in the lockfile's deployed_file_hashes? (Mechanism spiked
-// in .claude/rules/apm-driver.md; refuse-only behaviour wired in DeploySkill.)
+// does the deployed copy still match the per-file sha256 apm recorded in the
+// lockfile's deployed_file_hashes? A deploy runs `-t claude,codex`, so BOTH the
+// .claude and .agents copies are overwritten — the guard must check both.
+// (Mechanism spiked in .claude/rules/apm-driver.md; refuse-only in DeploySkill.)
 import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -9,7 +10,7 @@ import { join } from "node:path";
 import { DeployedContentAdapter } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-const sha = (contents: string) =>
+const sha = (contents: Buffer | string) =>
   `sha256:${createHash("sha256").update(contents).digest("hex")}`;
 
 describe("DeployedContentAdapter", () => {
@@ -24,10 +25,10 @@ describe("DeployedContentAdapter", () => {
       resolveDeployedRoot: () => root,
     });
 
-  const writeDeployed = async (relPath: string, contents: string) => {
+  const writeDeployed = async (relPath: string, contents: Buffer | string) => {
     const abs = join(root, relPath);
     await mkdir(join(abs, ".."), { recursive: true });
-    await writeFile(abs, contents, "utf8");
+    await writeFile(abs, contents);
   };
 
   // Writes a lockfile with one tag-pinned claude_skill entry carrying the given
@@ -128,14 +129,51 @@ describe("DeployedContentAdapter", () => {
     ).resolves.toBe("diverged");
   });
 
-  it("ignores the .agents copy a two-tool install also records", async () => {
-    // A claude target must classify only its own .claude subtree; the codex
-    // .agents copy shares the same per-file hash but is not this tree (J07).
+  it("is clean when both the .claude and .agents copies match", async () => {
+    // A deploy runs -t claude,codex, so a two-tool install records and overwrites
+    // both copies. Both clean -> nothing to lose -> clean (J07).
     const body = "---\nname: tdd\n---\nbody\n";
     await writeDeployed(".claude/skills/tdd/SKILL.md", body);
+    await writeDeployed(".agents/skills/tdd/SKILL.md", body);
     await writeLockfile("tdd", {
       ".claude/skills/tdd/SKILL.md": sha(body),
       ".agents/skills/tdd/SKILL.md": sha(body),
+    });
+
+    await expect(
+      adapter().classify({
+        target: { kind: "repo", repoPath: root },
+        name: "tdd",
+      }),
+    ).resolves.toBe("clean");
+  });
+
+  it("diverges when the codex .agents copy is edited but .claude is clean", async () => {
+    // The guard must cover BOTH copies the deploy overwrites: editing only the
+    // .agents copy is still data a same-ref install would silently reset (#56).
+    const body = "---\nname: tdd\n---\nbody\n";
+    await writeDeployed(".claude/skills/tdd/SKILL.md", body);
+    await writeDeployed(".agents/skills/tdd/SKILL.md", "edited codex copy\n");
+    await writeLockfile("tdd", {
+      ".claude/skills/tdd/SKILL.md": sha(body),
+      ".agents/skills/tdd/SKILL.md": sha(body),
+    });
+
+    await expect(
+      adapter().classify({
+        target: { kind: "repo", repoPath: root },
+        name: "tdd",
+      }),
+    ).resolves.toBe("diverged");
+  });
+
+  it("hashes file bytes, so a clean non-UTF-8 asset is not falsely diverged", async () => {
+    // apm records a byte-for-byte sha256; reading as utf8 would mangle a binary
+    // asset and block its deploy forever. Hash the raw bytes (#56).
+    const bytes = Buffer.from([0xff, 0xfe, 0x00, 0x10, 0x80]);
+    await writeDeployed(".claude/skills/tdd/logo.png", bytes);
+    await writeLockfile("tdd", {
+      ".claude/skills/tdd/logo.png": sha(bytes),
     });
 
     await expect(

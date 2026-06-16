@@ -20,6 +20,21 @@ import {
   type DeployedFileHashes,
 } from "./deployed-content-drift";
 
+// The distinct deployed subtree roots a lockfile records for a skill, derived
+// from its hash keys — e.g. ".claude/skills/tdd" and ".agents/skills/tdd" for a
+// two-tool install. Walking each catches an untracked file in either copy.
+function deployedSubtrees(lockKeys: string[], name: string): string[] {
+  const marker = `skills/${name}`;
+  const roots = new Set<string>();
+  for (const key of lockKeys) {
+    const idx = key.indexOf(marker);
+    if (idx !== -1) {
+      roots.add(key.slice(0, idx + marker.length));
+    }
+  }
+  return [...roots];
+}
+
 const lockfileSchema = z.object({
   dependencies: z.array(
     z.object({
@@ -55,15 +70,23 @@ export class DeployedContentAdapter implements DeployedContentPort {
       return "not-deployed";
     }
 
+    // A deploy runs `-t claude,codex`, overwriting every recorded copy (.claude
+    // AND .agents). Walk each distinct deployed subtree the lockfile records, so
+    // an edit to either copy is caught — not just the .claude one (#56).
     const root = this.deps.resolveDeployedRoot(input.target);
-    const subtree = `.claude/skills/${input.name}`;
-    const liveHashes = await this.hashSubtree(root, subtree);
+    const liveHashes: DeployedFileHashes = {};
+    for (const subtree of deployedSubtrees(
+      Object.keys(lockHashes),
+      input.name,
+    )) {
+      Object.assign(liveHashes, await this.hashSubtree(root, subtree));
+    }
     return classifyDeployedDrift(lockHashes, liveHashes);
   }
 
-  // The claude copy's recorded hashes for the skill, or null when there is no
-  // baseline. A two-tool install also records the .agents copy; that is not
-  // this target's tree, so it is filtered out.
+  // The skill's recorded per-file hashes across every deployed copy, or null
+  // when there is no baseline (no lockfile, no matching entry, or a pre-0.20.0
+  // install that recorded no hashes).
   private async readLockHashes(
     target: DeployTarget,
     name: string,
@@ -93,14 +116,7 @@ export class DeployedContentAdapter implements DeployedContentPort {
     if (entry?.deployed_file_hashes === undefined) {
       return null;
     }
-
-    const subtree = `.claude/skills/${name}`;
-    const hashes: DeployedFileHashes = {};
-    for (const [path, hash] of Object.entries(entry.deployed_file_hashes)) {
-      if (path === subtree || path.startsWith(`${subtree}/`)) {
-        hashes[path] = hash;
-      }
-    }
+    const hashes = entry.deployed_file_hashes;
     return Object.keys(hashes).length === 0 ? null : hashes;
   }
 
@@ -123,9 +139,11 @@ export class DeployedContentAdapter implements DeployedContentPort {
         if (entry.isDirectory()) {
           await walk(childRel);
         } else {
-          const contents = await readFile(join(root, childRel), "utf8");
+          // Hash the raw bytes: apm records a byte-for-byte sha256, so reading
+          // as utf8 would mangle a binary asset and falsely flag it as drift.
+          const bytes = await readFile(join(root, childRel));
           out[childRel] =
-            `sha256:${createHash("sha256").update(contents).digest("hex")}`;
+            `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
         }
       }
     };
