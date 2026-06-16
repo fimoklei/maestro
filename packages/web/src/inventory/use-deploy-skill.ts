@@ -29,13 +29,14 @@ export function useDeploySkill() {
         body: JSON.stringify(request),
       }),
     onSuccess: (_data, request) => {
-      // The query key matches the panel for this target: a repo's path, or the
-      // fixed "global" key the global panel uses.
-      const queryKey =
-        request.target.kind === "repo"
-          ? ["deploy-state", request.target.repoPath]
-          : ["deploy-state", "global"];
-      queryClient.invalidateQueries({ queryKey });
+      // The target half of both query keys: a repo's path, or the fixed
+      // "global" key. deploy-state shows the skill at its tag; drift is a
+      // separate query that must refetch too, or the new skill keeps its stale
+      // "unknown" badge (#48).
+      const target =
+        request.target.kind === "repo" ? request.target.repoPath : "global";
+      queryClient.invalidateQueries({ queryKey: ["deploy-state", target] });
+      queryClient.invalidateQueries({ queryKey: ["drift", target] });
     },
   });
 }

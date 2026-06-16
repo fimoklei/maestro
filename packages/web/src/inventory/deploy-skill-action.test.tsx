@@ -233,6 +233,50 @@ describe("DeploySkillAction", () => {
     expect(await screen.findByText("v0.5.1")).toBeInTheDocument();
   });
 
+  it("refreshes the repo drift badge after a successful deploy", async () => {
+    // Drift is a separate query from deploy-state; a deploy must invalidate it
+    // too, or a freshly deployed skill keeps its stale "unknown" badge (#48).
+    // The skill is already deployed at a tag so a badge renders before and
+    // after; drift goes unknown → behind once the refetch lands.
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/api/drift")) {
+        return fetchMock.mock.calls.filter((c) =>
+          String(c[0]).includes("/api/drift"),
+        ).length <= 1
+          ? jsonResponse({ ok: false })
+          : jsonResponse({ behind: ["tdd"] });
+      }
+      if (url.startsWith("/api/deploy-state")) {
+        return jsonResponse({
+          primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+          skipped: [],
+        });
+      }
+      return jsonResponse({
+        deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderAction(
+      <>
+        <DeploySkillAction
+          skillName="tdd"
+          repos={[{ path: "/projects/alpha" }]}
+          registryReady
+        />
+        <DeployStatePanel repo="/projects/alpha" />
+      </>,
+    );
+
+    expect(await screen.findByText(/unknown/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
+
+    // The drift query refetched because the deploy invalidated it.
+    expect(await screen.findByText(/behind/i)).toBeInTheDocument();
+  });
+
   it("refreshes the global deploy-state panel after a global deploy", async () => {
     // A global deploy invalidates the global query, so the Global panel
     // refetches without a reload (J07).
@@ -267,5 +311,42 @@ describe("DeploySkillAction", () => {
     await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
 
     expect(await screen.findByText("v0.5.1")).toBeInTheDocument();
+  });
+
+  it("refreshes the global drift badge after a global deploy", async () => {
+    // Same symmetry as the repo case: a global deploy must invalidate the
+    // global drift query, not only deploy-state (#48).
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/api/drift/global")) {
+        return fetchMock.mock.calls.filter((c) =>
+          String(c[0]).includes("/api/drift/global"),
+        ).length <= 1
+          ? jsonResponse({ ok: false })
+          : jsonResponse({ behind: ["tdd"] });
+      }
+      if (url.startsWith("/api/deploy-state/global")) {
+        return jsonResponse({
+          primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+          skipped: [],
+        });
+      }
+      return jsonResponse({
+        deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderAction(
+      <>
+        <DeploySkillAction skillName="tdd" repos={[]} registryReady />
+        <GlobalDeployStatePanel />
+      </>,
+    );
+
+    expect(await screen.findByText(/unknown/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
+
+    expect(await screen.findByText(/behind/i)).toBeInTheDocument();
   });
 });
