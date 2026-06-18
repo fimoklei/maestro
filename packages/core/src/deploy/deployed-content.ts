@@ -28,6 +28,19 @@ function deployTargetSubtrees(name: string): string[] {
   return [`.claude/skills/${name}`, `.agents/skills/${name}`];
 }
 
+// Thrown when a deploy subtree exists but cannot be walked or read (anything but
+// a genuinely-missing directory). classify catches it and reports "unreadable"
+// so the guard refuses, rather than letting the error swallow to empty and a
+// deploy silently overwrite what we could not verify (#59).
+class DeployedSubtreeUnreadableError extends Error {}
+
+// A missing directory (ENOENT) is the intended "nothing deployed here" case and
+// reads as empty. Any other failure means the destination exists but cannot be
+// read — that must fail loud, not pass as empty.
+function isMissing(error: unknown): boolean {
+  return (error as NodeJS.ErrnoException)?.code === "ENOENT";
+}
+
 const lockfileSchema = z.object({
   dependencies: z.array(
     z.object({
@@ -61,18 +74,32 @@ export class DeployedContentAdapter implements DeployedContentPort {
     // .agents) first, then decide against the baseline (#56).
     const root = this.deps.resolveDeployedRoot(input.target);
     const liveHashes: DeployedFileHashes = {};
-    for (const subtree of deployTargetSubtrees(input.name)) {
-      Object.assign(liveHashes, await this.hashSubtree(root, subtree));
+    try {
+      for (const subtree of deployTargetSubtrees(input.name)) {
+        Object.assign(liveHashes, await this.hashSubtree(root, subtree));
+      }
+    } catch (error) {
+      // An existing-but-unreadable subtree is not "nothing deployed": we cannot
+      // prove it safe to overwrite, so refuse instead of proceeding (#59).
+      if (error instanceof DeployedSubtreeUnreadableError) {
+        return "unreadable";
+      }
+      throw error;
     }
-    const hasDeployedFiles = Object.keys(liveHashes).length > 0;
+    // Nothing on disk across both deploy targets: there is nothing a deploy
+    // could overwrite, so this is a first deploy regardless of what the lockfile
+    // recorded. A fully-deleted copy that still has recorded hashes lands here
+    // too — restore it, don't refuse it as "local edits" (ADR-0006, #65).
+    if (Object.keys(liveHashes).length === 0) {
+      return "not-deployed";
+    }
 
     const baseline = await this.readBaseline(input.target, input.name);
-    // No recorded hashes (no entry, or a pre-0.20.0 entry): if files already
-    // sit in the deploy targets we have no baseline to verify them against, so
-    // a deploy would overwrite them blindly — refuse. Only an empty target is a
-    // genuine first deploy that is safe to proceed.
+    // Files sit in the deploy targets but there are no recorded hashes to verify
+    // them against (no entry, or a pre-0.20.0 entry): a deploy would overwrite
+    // them blindly, so refuse rather than treat them as a clean first install.
     if (baseline.kind !== "hashes") {
-      return hasDeployedFiles ? "unverifiable" : "not-deployed";
+      return "unverifiable";
     }
     return classifyDeployedDrift(baseline.hashes, liveHashes);
   }
@@ -129,19 +156,32 @@ export class DeployedContentAdapter implements DeployedContentPort {
   ): Promise<DeployedFileHashes> {
     const out: DeployedFileHashes = {};
     const walk = async (rel: string): Promise<void> => {
-      // A missing subtree (deployed copy deleted) yields no entries, so every
-      // recorded file reads as gone downstream — diverged, not a crash.
+      // A missing directory (deployed copy deleted, or never created) yields no
+      // entries — the intended empty case. Any other readdir failure means the
+      // directory exists but cannot be read: fail loud so the guard refuses.
       const entries = await readdir(join(root, rel), {
         withFileTypes: true,
-      }).catch(() => []);
+      }).catch((error: unknown) => {
+        if (isMissing(error)) {
+          return [];
+        }
+        throw new DeployedSubtreeUnreadableError();
+      });
       for (const entry of entries) {
         const childRel = `${rel}/${entry.name}`;
         if (entry.isDirectory()) {
           await walk(childRel);
         } else {
           // Hash the raw bytes: apm records a byte-for-byte sha256, so reading
-          // as utf8 would mangle a binary asset and falsely flag it as drift.
-          const bytes = await readFile(join(root, childRel));
+          // as utf8 would mangle a binary asset and falsely flag it as drift. A
+          // read that fails mid-walk is an unreadable destination, not absence —
+          // refuse rather than miscategorise it as an apm execution failure (#59).
+          let bytes: Buffer;
+          try {
+            bytes = await readFile(join(root, childRel));
+          } catch {
+            throw new DeployedSubtreeUnreadableError();
+          }
           out[childRel] =
             `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
         }

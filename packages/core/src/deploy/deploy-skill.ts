@@ -50,11 +50,16 @@ export type InventoryGitPort = {
 // "unverifiable" — a deployed entry exists but carries no recorded hashes (a
 // pre-0.20.0 lockfile), so drift cannot be checked. Distinct from
 // "not-deployed" (no entry at all) so the guard refuses instead of proceeding.
+// "unreadable" — a deploy subtree exists but cannot be read (permission denied,
+// I/O error, a file where a directory was expected). Distinct from a genuinely
+// missing subtree, which reads as empty: refuse rather than swallow the error to
+// "not-deployed" and let a deploy silently overwrite what we could not read (#59).
 export type DeployedContentState =
   | "not-deployed"
   | "clean"
   | "diverged"
-  | "unverifiable";
+  | "unverifiable"
+  | "unreadable";
 
 export type DeployedContentPort = {
   classify(input: {
@@ -92,6 +97,10 @@ export type DeploySkillError =
   // lockfile), so drift cannot be verified. Refuse rather than risk a silent
   // reset; the user reconciles (e.g. removes the deployed copy) first (#56).
   | "deployed-unverifiable"
+  // The deployed copy exists but cannot be read (permission denied, I/O error,
+  // a file where a directory was expected). We cannot prove it safe to
+  // overwrite, so refuse instead of swallowing the error to a blind deploy (#59).
+  | "deployed-unreadable"
   // A deploy to the same repo is already running (double-click, second tab,
   // retry) — racing it would corrupt the same apm.lock.yaml.
   | "deploy-in-progress"
@@ -210,6 +219,9 @@ export class DeploySkill {
       }
       if (deployedState === "unverifiable") {
         return { ok: false, error: "deployed-unverifiable" };
+      }
+      if (deployedState === "unreadable") {
+        return { ok: false, error: "deployed-unreadable" };
       }
 
       const ref = buildSkillPackageRef({
