@@ -1,5 +1,3 @@
-import { homedir } from "node:os";
-import { join } from "node:path";
 import {
   ApmCliDriver,
   CheckVersionDrift,
@@ -9,7 +7,6 @@ import {
   DeploySkill,
   type DeploySkillError,
   DeployStateReader,
-  type DeployTarget,
   InventoryGitAdapter,
   InventoryReader,
   NodeFileSystem,
@@ -18,6 +15,8 @@ import {
   readGitOriginUrl,
   resolveApmGlobalRoot,
   resolveApmScratchCwd,
+  resolveDeployedLockfilePath,
+  resolveDeployedRoot,
   resolveInventoryPath,
   resolveMaestroConfigPath,
 } from "@maestro/core";
@@ -378,17 +377,13 @@ function realDeps(): AppDeps {
         resolveInventoryPath(await store.read(), process.env),
     }),
     // Destination guard: a repo's lockfile and deployed tree both sit in the
-    // repo; a global deploy reads ~/.apm/apm.lock.yaml but deploys to
-    // ~/.claude/skills, so its two roots differ (apm-driver.md, #56).
+    // repo; a global deploy reads ~/.apm/apm.lock.yaml but deploys under HOME
+    // (~/.claude/skills, ~/.agents/skills) where apm keys the hashes, so its two
+    // roots differ. The resolution lives in core (apm-driver.md, #56/#61).
     deployedContent: new DeployedContentAdapter({
-      resolveLockfilePath: (target: DeployTarget) =>
-        target.kind === "repo"
-          ? join(target.repoPath, "apm.lock.yaml")
-          : join(resolveApmGlobalRoot(process.env), "apm.lock.yaml"),
-      resolveDeployedRoot: (target: DeployTarget) =>
-        target.kind === "repo"
-          ? target.repoPath
-          : (process.env.HOME ?? homedir()),
+      resolveLockfilePath: (target) =>
+        resolveDeployedLockfilePath(target, process.env),
+      resolveDeployedRoot: (target) => resolveDeployedRoot(target, process.env),
     }),
     inventoryOriginUrl: async () => {
       const root = resolveInventoryPath(await store.read(), process.env);

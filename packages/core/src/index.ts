@@ -12,6 +12,10 @@ export {
   type InventoryGitPort,
 } from "./deploy/deploy-skill";
 export { DeployedContentAdapter } from "./deploy/deployed-content";
+export {
+  resolveDeployedLockfilePath,
+  resolveDeployedRoot,
+} from "./deploy/deployed-content-roots";
 export { readGitOriginUrl } from "./deploy/git-origin-url";
 export { InventoryGitAdapter } from "./deploy/inventory-git";
 export {

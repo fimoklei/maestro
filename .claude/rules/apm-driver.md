@@ -164,8 +164,18 @@ auth for a private repo), prints every tag and branch with its short commit:
       (mismatch, missing file, or live file with no entry → diverged). No fresh
       tag export. **Per-repo `claude` only was run;** the global (`-g`) and
       two-tool (`.agents`) paths reuse the identical lockfile shape — the
-      `.agents` copy shares the per-file hash, so the same compare applies;
-      confirm when the global adapter lands.
+      `.agents` copy shares the per-file hash, so the same compare applies.
+    - **0.20.0 — global (`-g`) path confirmed (2026-06-18, issue #61).** Real
+      `apm install …/skills/tdd#v0.5.1 -g -t claude,codex` against a sandbox
+      `HOME` (never the real home). The global lockfile at `~/.apm/apm.lock.yaml`
+      keys `deployed_file_hashes` **`HOME`-relative** — `.claude/skills/tdd/…`
+      and `.agents/skills/tdd/…`, the *same* form as a per-repo install (keys
+      relative to the deployed root, not to `~/.apm`). A live `sha256` of each
+      deployed file under `HOME` matched its lockfile entry exactly. So the
+      destination guard's global wiring is correct as built: deployed root =
+      `HOME`, lockfile = `~/.apm/apm.lock.yaml`; a clean global skill classifies
+      `clean`, not `diverged`. No wiring change was needed — the feared
+      false-refusal does not occur.
 
 ### Phase 0 canary (completion gate for the deploy slices)
 
