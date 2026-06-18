@@ -100,6 +100,11 @@ const deployErrorResponses: Record<
     message:
       "The deployed copy exists but could not be read. Check its permissions and that it is a directory, then try again.",
   },
+  "lockfile-malformed": {
+    status: 409,
+    message:
+      "The repo's lockfile (apm.lock.yaml) is present but could not be parsed. Fix or remove it, then try again.",
+  },
   "deploy-in-progress": {
     status: 409,
     message: "A deploy to this repo is already running. Wait for it to finish.",

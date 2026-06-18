@@ -360,6 +360,42 @@ describe("DeploySkill", () => {
     expect(deployed).toEqual([]);
   });
 
+  it("refuses when the target lockfile cannot be parsed", async () => {
+    // A present but malformed apm.lock.yaml gives no trustworthy baseline. The
+    // guard surfaces it distinctly so a deploy never proceeds against an unknown
+    // recorded state — a malformed lockfile is a visible error, not "nothing
+    // deployed" (#58).
+    const { deps, deployed } = buildDeps({
+      deployedContent: { classify: async () => "lockfile-malformed" as const },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({ ok: false, error: "lockfile-malformed" });
+    expect(deployed).toEqual([]);
+  });
+
+  it("force still refuses a malformed lockfile", async () => {
+    // force overrides only the not-proven-clean states (diverged, unverifiable).
+    // A malformed lockfile is not non-precious drift: we cannot read the baseline
+    // at all, so a forced overwrite would be blind. Refuse even under force (#58).
+    const { deps, deployed } = buildDeps({
+      deployedContent: { classify: async () => "lockfile-malformed" as const },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+      force: true,
+    });
+
+    expect(result).toEqual({ ok: false, error: "lockfile-malformed" });
+    expect(deployed).toEqual([]);
+  });
+
   it("deploys when the deployed copy is clean (an unedited re-deploy)", async () => {
     // A clean deployed copy has nothing to lose to a same-ref install, so an
     // update/re-deploy proceeds — the guard bites only on local edits (#56).

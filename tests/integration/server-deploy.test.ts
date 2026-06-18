@@ -75,6 +75,7 @@ describe("deploy HTTP route", () => {
     destDiverged?: boolean;
     destUnverifiable?: boolean;
     destUnreadable?: boolean;
+    destLockfileMalformed?: boolean;
     holdApm?: Promise<void>;
   }) {
     const fs = new NodeFileSystem();
@@ -115,6 +116,7 @@ describe("deploy HTTP route", () => {
       },
       deployedContent: {
         classify: async () => {
+          if (options?.destLockfileMalformed) return "lockfile-malformed";
           if (options?.destUnreadable) return "unreadable";
           if (options?.destUnverifiable) return "unverifiable";
           return options?.destDiverged ? "diverged" : "not-deployed";
@@ -392,6 +394,29 @@ describe("deploy HTTP route", () => {
     expect(await res.json()).toEqual({
       error: "deployed-unreadable",
       message: expect.stringMatching(/read/i),
+    });
+    expect(deployCalls).toEqual([]);
+  });
+
+  it("returns 409 when the target lockfile cannot be parsed", async () => {
+    // A present but malformed apm.lock.yaml leaves no trustworthy baseline, so
+    // the guard refuses distinctly rather than letting a deploy proceed against
+    // an unknown recorded state (#58).
+    const { app, registry, deployCalls } = makeApp({
+      destLockfileMalformed: true,
+    });
+    await registry.register(repo);
+
+    const res = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: repoTarget(repo),
+    });
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      error: "lockfile-malformed",
+      message: expect.stringMatching(/lockfile/i),
     });
     expect(deployCalls).toEqual([]);
   });
