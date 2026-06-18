@@ -14,6 +14,10 @@ export type DeployRequest = {
   type: "skill";
   name: string;
   target: DeployTarget;
+  // The cockpit-confirmed reinstall: skip the destination guard and reinstall at
+  // the latest tag, discarding any local edits. Set only by the inline
+  // "Reinstall fresh" confirm, never by a plain deploy/update (ADR-0006, #66).
+  force?: boolean;
 };
 
 type DeployResponse = {

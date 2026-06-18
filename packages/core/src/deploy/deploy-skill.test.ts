@@ -395,6 +395,86 @@ describe("DeploySkill", () => {
     expect(deployed).toEqual([]);
   });
 
+  it("force-deploys past a diverged deployed copy (confirm-and-proceed)", async () => {
+    // ADR-0006: a not-proven-clean deployed copy is non-precious generated
+    // content. With an explicit force (the cockpit's confirmed reinstall), the
+    // destination guard is skipped and the skill reinstalls at the latest tag,
+    // discarding the local edits — never the default, always opt-in (#66).
+    const { deps, deployed } = buildDeps({
+      deployedContent: { classify: async () => "diverged" as const },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+      force: true,
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+    });
+    expect(deployed).toHaveLength(1);
+  });
+
+  it("force-deploys past an unverifiable deployed copy (self-healing)", async () => {
+    // A pre-0.20.0 copy has no baseline to verify; a confirmed force reinstalls
+    // fresh, after which apm writes deployed_file_hashes and the copy becomes
+    // verifiable on the next pass — no bulk update-all (ADR-0006, #66).
+    const { deps, deployed } = buildDeps({
+      deployedContent: { classify: async () => "unverifiable" as const },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+      force: true,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(deployed).toHaveLength(1);
+  });
+
+  it("force skips only the destination guard — source divergence still refuses", async () => {
+    // force is a narrow override of the destination guard, not a master switch.
+    // A source tree that diverges from the tag would ship stale content, so that
+    // guard still bites even under force (#66).
+    const { deps, deployed } = buildDeps({
+      inventoryGit: {
+        skillExistsAtTag: async () => true,
+        skillDivergesFromTag: async () => true,
+      },
+      deployedContent: { classify: async () => "diverged" as const },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+      force: true,
+    });
+
+    expect(result).toEqual({ ok: false, error: "local-diverged-from-tag" });
+    expect(deployed).toEqual([]);
+  });
+
+  it("force still refuses an unreadable deployed copy", async () => {
+    // unreadable (#59) is not non-precious drift — we cannot read what is there,
+    // so a forced overwrite would be a blind one, not an informed choice. The
+    // confirm-and-proceed path covers diverged/unverifiable only (ADR-0006, #66).
+    const { deps, deployed } = buildDeps({
+      deployedContent: { classify: async () => "unreadable" as const },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+      force: true,
+    });
+
+    expect(result).toEqual({ ok: false, error: "deployed-unreadable" });
+    expect(deployed).toEqual([]);
+  });
+
   it("rejects a concurrent deploy to the same repo while one is in progress", async () => {
     // The lock keys on the canonical path, so a symlinked spelling of the
     // same repo cannot race the same apm.lock.yaml (issue #15).
