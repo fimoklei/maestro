@@ -5,8 +5,10 @@
 // directory tree and hashes files, which no shared port models. The source-side
 // guard (InventoryGitPort) cannot see this: it checks the inventory clone, not
 // the deployed tree a same-ref apm install would silently reset (#56).
+
 import { createHash } from "node:crypto";
-import { readdir, readFile } from "node:fs/promises";
+import { constants } from "node:fs";
+import { access, readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { claudeSkillName, parseLockfile } from "../lockfile/lockfile";
 import type {
@@ -14,18 +16,11 @@ import type {
   DeployedContentState,
   DeployTarget,
 } from "./deploy-skill";
+import { deployTargetSubtrees } from "./deploy-tools";
 import {
   classifyDeployedDrift,
   type DeployedFileHashes,
 } from "./deployed-content-drift";
-
-// The deployed subtrees a deploy will overwrite for a skill. Fixed by the
-// driver's `-t claude,codex`, not by what the lockfile recorded: scanning these
-// catches an edited copy even when a prior single-tool install left it
-// unrecorded (apm writes claude to .claude and codex to .agents — apm-driver.md).
-function deployTargetSubtrees(name: string): string[] {
-  return [`.claude/skills/${name}`, `.agents/skills/${name}`];
-}
 
 // Thrown when a deploy subtree exists but cannot be walked or read (anything but
 // a genuinely-missing directory). classify catches it and reports "unreadable"
@@ -39,6 +34,12 @@ class DeployedSubtreeUnreadableError extends Error {}
 function isMissing(error: unknown): boolean {
   return (error as NodeJS.ErrnoException)?.code === "ENOENT";
 }
+
+// What a walk of the deploy subtrees found: the per-file hashes (empty unless
+// hashing was requested) and how many files exist. fileCount is what tells a
+// first deploy (nothing to overwrite) from a copy on disk, independent of
+// whether we hashed anything.
+type SubtreeScan = { hashes: DeployedFileHashes; fileCount: number };
 
 export class DeployedContentAdapter implements DeployedContentPort {
   private readonly deps: {
@@ -58,36 +59,39 @@ export class DeployedContentAdapter implements DeployedContentPort {
     target: DeployTarget;
     name: string;
   }): Promise<DeployedContentState> {
-    // The real invariant is the deploy targets on disk, not what the lockfile
-    // recorded. Scan every subtree the deploy will overwrite (.claude AND
-    // .agents) first, then decide against the baseline (#56).
+    // Read the cheap one-file baseline first: it decides whether the deploy
+    // subtrees need their contents hashed at all. With no recorded hashes to
+    // compare against, only the existence of deployed files matters, so the scan
+    // skips the content hashing entirely (#63).
+    const baseline = await this.readBaseline(input.target, input.name);
     const root = this.deps.resolveDeployedRoot(input.target);
-    const liveHashes: DeployedFileHashes = {};
+    let scan: SubtreeScan;
     try {
-      for (const subtree of deployTargetSubtrees(input.name)) {
-        Object.assign(liveHashes, await this.hashSubtree(root, subtree));
-      }
+      scan = await this.scanSubtrees(root, input.name, {
+        hash: baseline.kind === "hashes",
+      });
     } catch (error) {
       // An existing-but-unreadable subtree is not "nothing deployed": we cannot
-      // prove it safe to overwrite, so refuse instead of proceeding (#59).
+      // prove it safe to overwrite, so refuse instead of proceeding (#59). This
+      // is checked before the baseline branches so an unreadable destination
+      // outranks a malformed lockfile, exactly as before the reorder.
       if (error instanceof DeployedSubtreeUnreadableError) {
         return "unreadable";
       }
       throw error;
     }
 
-    const baseline = await this.readBaseline(input.target, input.name);
-    // A present but unparseable lockfile is a visible error, checked before the
-    // empty-disk shortcut below: a malformed lockfile must never pass as
-    // "not-deployed" and let a deploy proceed against an unknown baseline (#58).
+    // A present but unparseable lockfile is a visible error: a malformed lockfile
+    // must never pass as "not-deployed" and let a deploy proceed against an
+    // unknown baseline (#58).
     if (baseline.kind === "malformed") {
       return "lockfile-malformed";
     }
-    // Nothing on disk across both deploy targets: there is nothing a deploy
-    // could overwrite, so this is a first deploy regardless of what the lockfile
+    // Nothing on disk across both deploy targets: there is nothing a deploy could
+    // overwrite, so this is a first deploy regardless of what the lockfile
     // recorded. A fully-deleted copy that still has recorded hashes lands here
     // too — restore it, don't refuse it as "local edits" (ADR-0006, #65).
-    if (Object.keys(liveHashes).length === 0) {
+    if (scan.fileCount === 0) {
       return "not-deployed";
     }
     // Files sit in the deploy targets but there are no recorded hashes to verify
@@ -96,20 +100,22 @@ export class DeployedContentAdapter implements DeployedContentPort {
     if (baseline.kind !== "hashes") {
       return "unverifiable";
     }
-    return classifyDeployedDrift(baseline.hashes, liveHashes);
+    return classifyDeployedDrift(baseline.hashes, scan.hashes);
   }
 
-  // The skill's recorded baseline: "none" (no lockfile or no matching entry),
-  // "malformed" (a present lockfile that does not parse — a visible error, never
-  // swallowed to empty), "unverifiable" (an entry with no recorded hashes — a
-  // pre-0.20.0 install), or the per-file hashes across every deployed copy.
+  // The skill's recorded baseline: "malformed" (a present lockfile that does not
+  // parse — a visible error, never swallowed to empty), the per-file "hashes"
+  // across every deployed copy, or "none" for everything else (no lockfile, no
+  // matching entry, or a pre-0.20.0 entry with no recorded hashes). The last
+  // three all mean the same thing to the classifier — no per-file baseline to
+  // verify against — so they share one kind rather than a distinction that never
+  // changes the outcome (#63).
   private async readBaseline(
     target: DeployTarget,
     name: string,
   ): Promise<
     | { kind: "none" }
     | { kind: "malformed" }
-    | { kind: "unverifiable" }
     | { kind: "hashes"; hashes: DeployedFileHashes }
   > {
     let raw: string;
@@ -136,19 +142,26 @@ export class DeployedContentAdapter implements DeployedContentPort {
     }
     const hashes = entry.deployed_file_hashes;
     if (hashes === undefined || Object.keys(hashes).length === 0) {
-      return { kind: "unverifiable" };
+      // A pre-0.20.0 entry with no recorded hashes: an entry exists but carries
+      // no per-file baseline, so it verifies no better than no entry at all.
+      return { kind: "none" };
     }
     return { kind: "hashes", hashes };
   }
 
-  // Recursively sha256 every file under <root>/<subtree>, keyed by the path
-  // relative to <root> with forward slashes — matching the lockfile keys. A
-  // missing subtree yields {}, so every recorded file reads as gone (diverged).
-  private async hashSubtree(
+  // Walk every deploy subtree for the skill and report what's there. When
+  // `hash` is set, sha256 each file's raw bytes (keyed relative to <root>, with
+  // forward slashes, matching the lockfile keys) so the result can be compared
+  // against the recorded baseline. When it is not, the content is never read —
+  // only existence and readability matter — so the expensive hashing is skipped
+  // (#63). A missing subtree yields nothing (the intended empty case).
+  private async scanSubtrees(
     root: string,
-    subtree: string,
-  ): Promise<DeployedFileHashes> {
-    const out: DeployedFileHashes = {};
+    name: string,
+    opts: { hash: boolean },
+  ): Promise<SubtreeScan> {
+    const hashes: DeployedFileHashes = {};
+    let fileCount = 0;
     const walk = async (rel: string): Promise<void> => {
       // A missing directory (deployed copy deleted, or never created) yields no
       // entries — the intended empty case. Any other readdir failure means the
@@ -165,23 +178,39 @@ export class DeployedContentAdapter implements DeployedContentPort {
         const childRel = `${rel}/${entry.name}`;
         if (entry.isDirectory()) {
           await walk(childRel);
-        } else {
-          // Hash the raw bytes: apm records a byte-for-byte sha256, so reading
-          // as utf8 would mangle a binary asset and falsely flag it as drift. A
-          // read that fails mid-walk is an unreadable destination, not absence —
+          continue;
+        }
+        fileCount++;
+        const abs = join(root, childRel);
+        if (opts.hash) {
+          // Hash the raw bytes: apm records a byte-for-byte sha256, so reading as
+          // utf8 would mangle a binary asset and falsely flag it as drift. A read
+          // that fails mid-walk is an unreadable destination, not absence —
           // refuse rather than miscategorise it as an apm execution failure (#59).
           let bytes: Buffer;
           try {
-            bytes = await readFile(join(root, childRel));
+            bytes = await readFile(abs);
           } catch {
             throw new DeployedSubtreeUnreadableError();
           }
-          out[childRel] =
+          hashes[childRel] =
             `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+        } else {
+          // No baseline to compare against, so the content is irrelevant — but an
+          // unreadable file is still an unreadable destination, not a blindly
+          // overwritable one. Probe readability without reading the bytes so the
+          // unreadable refusal (#59) survives skipping the hash (#63).
+          try {
+            await access(abs, constants.R_OK);
+          } catch {
+            throw new DeployedSubtreeUnreadableError();
+          }
         }
       }
     };
-    await walk(subtree);
-    return out;
+    for (const subtree of deployTargetSubtrees(name)) {
+      await walk(subtree);
+    }
+    return { hashes, fileCount };
   }
 }
