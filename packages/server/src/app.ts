@@ -38,6 +38,10 @@ const deployBodySchema = z.object({
     z.object({ kind: z.literal("repo"), repoPath: z.string() }),
     z.object({ kind: z.literal("global") }),
   ]),
+  // The cockpit-confirmed reinstall. Validated at the edge as an optional
+  // boolean; core treats it as the deliberate override of the destination guard
+  // (ADR-0006, #66). Absent or false means the guard runs normally.
+  force: z.boolean().optional(),
 });
 
 // Transport-layer mapping from the deploy use-case's typed errors to HTTP.
@@ -84,12 +88,12 @@ const deployErrorResponses: Record<
   "deployed-diverged-from-lock": {
     status: 409,
     message:
-      "The deployed copy has local edits. Deploying would overwrite them. Discard or save those edits first.",
+      "The deployed copy has local changes that never went through central. Updating discards them and reinstalls at the latest tag.",
   },
   "deployed-unverifiable": {
     status: 409,
     message:
-      "An existing deployed copy has no recorded baseline, so edits cannot be verified. Remove the deployed copy, then deploy fresh.",
+      "This copy predates content tracking, so local changes can't be checked. Updating reinstalls fresh at the latest tag; any local changes are discarded.",
   },
   "deployed-unreadable": {
     status: 409,

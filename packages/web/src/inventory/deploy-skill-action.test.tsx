@@ -176,6 +176,103 @@ describe("DeploySkillAction", () => {
     );
   });
 
+  it("offers an inline Reinstall-fresh confirm that re-deploys with force", async () => {
+    // ADR-0006: a not-proven-clean copy is confirm-and-proceed at the Deploy
+    // entry point too, not a refusal. The inline button re-runs the same deploy
+    // with force: true — one behaviour, both entry points (#66).
+    let deployCalls = 0;
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, _init?: RequestInit) => {
+        const url = String(input);
+        if (url.startsWith("/api/deploy") && !url.includes("deploy-state")) {
+          deployCalls += 1;
+          if (deployCalls === 1) {
+            return new Response(
+              JSON.stringify({
+                error: "deployed-unverifiable",
+                message:
+                  "This copy predates content tracking, so local changes can't be checked. Updating reinstalls fresh at the latest tag; any local changes are discarded.",
+              }),
+              { status: 409, headers: { "content-type": "application/json" } },
+            );
+          }
+          return jsonResponse({
+            deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+          });
+        }
+        return jsonResponse({ primitives: [], skipped: [] });
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    renderAction(
+      <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /predates content tracking/i,
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: /reinstall fresh/i }),
+    );
+
+    const deployBodies = fetchMock.mock.calls
+      .filter(
+        ([url]) =>
+          String(url).startsWith("/api/deploy") &&
+          !String(url).includes("deploy-state"),
+      )
+      .map(([, init]) => JSON.parse((init as RequestInit).body as string));
+    expect(deployBodies).toHaveLength(2);
+    expect(deployBodies[1].force).toBe(true);
+  });
+
+  it("clears the Reinstall affordance when the target changes after a refusal", async () => {
+    // The forced reinstall must apply to the target the user just confirmed, not
+    // a different one. Switching the dropdown after a not-proven-clean refusal
+    // clears the affordance, so a force can never reach a target whose own
+    // refusal was never shown (#66, Codex P2).
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/deploy") && !url.includes("deploy-state")) {
+        return new Response(
+          JSON.stringify({
+            error: "deployed-diverged-from-lock",
+            message:
+              "The deployed copy has local changes that never went through central. Updating discards them and reinstalls at the latest tag.",
+          }),
+          { status: 409, headers: { "content-type": "application/json" } },
+        );
+      }
+      return jsonResponse({ primitives: [], skipped: [] });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderAction(
+      <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
+    );
+
+    await userEvent.selectOptions(
+      screen.getByLabelText(/deploy tdd to/i),
+      "/projects/alpha",
+    );
+    await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
+
+    expect(
+      await screen.findByRole("button", { name: /reinstall fresh/i }),
+    ).toBeInTheDocument();
+
+    await userEvent.selectOptions(
+      screen.getByLabelText(/deploy tdd to/i),
+      "/projects/beta",
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /reinstall fresh/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("disables the deploy action while a deploy is pending", async () => {
     // Never resolves: the deploy stays pending for the rest of the test.
     vi.stubGlobal(

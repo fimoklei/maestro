@@ -232,4 +232,128 @@ describe("Update action on a behind skill", () => {
       /tag and push your change/i,
     );
   });
+
+  it("offers an inline Reinstall-fresh confirm when the copy cannot be proven clean", async () => {
+    // ADR-0006: a not-proven-clean deployed copy is confirm-and-proceed, not a
+    // dead end. The refusal carries its distinct message and an inline button —
+    // not a terminal handoff (#66).
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/deploy") && !url.includes("deploy-state")) {
+        return new Response(
+          JSON.stringify({
+            error: "deployed-diverged-from-lock",
+            message:
+              "The deployed copy has local changes that never went through central. Updating discards them and reinstalls at the latest tag.",
+          }),
+          { status: 409, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (url.includes("/api/drift")) {
+        return jsonResponse({ behind: ["tdd"] });
+      }
+      return jsonResponse(tddDeployed, 200);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderPanel("/Users/me/project");
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /update tdd/i }),
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /never went through central/i,
+    );
+    expect(
+      await screen.findByRole("button", { name: /reinstall fresh/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("confirming the reinstall re-runs the update with force", async () => {
+    // Clicking the inline button re-runs the same deploy with force: true, the
+    // deliberate override that skips the destination guard (#66).
+    let deployCalls = 0;
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, _init?: RequestInit) => {
+        const url = String(input);
+        if (url.startsWith("/api/deploy") && !url.includes("deploy-state")) {
+          deployCalls += 1;
+          if (deployCalls === 1) {
+            return new Response(
+              JSON.stringify({
+                error: "deployed-diverged-from-lock",
+                message:
+                  "The deployed copy has local changes that never went through central. Updating discards them and reinstalls at the latest tag.",
+              }),
+              { status: 409, headers: { "content-type": "application/json" } },
+            );
+          }
+          return jsonResponse({
+            deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+          });
+        }
+        if (url.includes("/api/drift")) {
+          return jsonResponse({ behind: ["tdd"] });
+        }
+        return jsonResponse(tddDeployed, 200);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    renderPanel("/Users/me/project");
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /update tdd/i }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: /reinstall fresh/i }),
+    );
+
+    const deployBodies = fetchMock.mock.calls
+      .filter(
+        ([url]) =>
+          String(url).startsWith("/api/deploy") &&
+          !String(url).includes("deploy-state"),
+      )
+      .map(([, init]) => JSON.parse((init as RequestInit).body as string));
+    expect(deployBodies).toHaveLength(2);
+    expect(deployBodies[1]).toEqual({
+      type: "skill",
+      name: "tdd",
+      target: { kind: "repo", repoPath: "/Users/me/project" },
+      force: true,
+    });
+  });
+
+  it("offers no Reinstall button on a tag-and-push refusal", async () => {
+    // local-diverged-from-tag is a source problem the user fixes centrally —
+    // force would not help, so no reinstall affordance is offered (#66).
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/deploy") && !url.includes("deploy-state")) {
+        return new Response(
+          JSON.stringify({
+            error: "local-diverged-from-tag",
+            message:
+              "Your local skill differs from its latest published tag. Tag and push your change first.",
+          }),
+          { status: 409, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (url.includes("/api/drift")) {
+        return jsonResponse({ behind: ["tdd"] });
+      }
+      return jsonResponse(tddDeployed, 200);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderPanel("/Users/me/project");
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /update tdd/i }),
+    );
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /reinstall fresh/i }),
+    ).not.toBeInTheDocument();
+  });
 });

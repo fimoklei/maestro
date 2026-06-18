@@ -4,11 +4,16 @@
 
 export class HttpError extends Error {
   readonly status: number;
+  // The server's typed error code (e.g. "deployed-diverged-from-lock"), when it
+  // sends one. Lets a component branch on the *kind* of refusal — to offer a
+  // confirmed-reinstall affordance, say — without string-matching the message.
+  readonly code?: string;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.name = "HttpError";
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -24,10 +29,12 @@ export async function requestJson<T>(
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as {
       message?: string;
+      error?: string;
     } | null;
     throw new HttpError(
       res.status,
       body?.message ?? `Request failed with status ${res.status}.`,
+      body?.error,
     );
   }
 

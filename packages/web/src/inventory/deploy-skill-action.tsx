@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { RegisteredRepo } from "../registry/use-registry";
+import { DeployRefusalNotice } from "./deploy-refusal-notice";
 import { type DeployTarget, useDeploySkill } from "./use-deploy-skill";
 
 // The deploy action on a skill row: pick a target — "Global" or a registered
@@ -55,7 +56,13 @@ export function DeploySkillAction({
       <select
         id={selectId}
         value={selected}
-        onChange={(event) => setChosen(event.target.value)}
+        onChange={(event) => {
+          // Picking a different target discards the previous deploy outcome, so
+          // a forced reinstall can never carry over to a target whose own
+          // not-proven-clean refusal was never shown (#66).
+          deploy.reset();
+          setChosen(event.target.value);
+        }}
       >
         <option value={GLOBAL_VALUE}>Global</option>
         {repos.map((repo) => (
@@ -79,9 +86,21 @@ export function DeploySkillAction({
         </span>
       ) : null}
       {deploy.isError ? (
-        // The server's message is actionable ("tag and push…"); show it
-        // instead of a generic failure line.
-        <span role="alert">{deploy.error.message}</span>
+        // The server's message is actionable; a not-proven-clean deployed copy
+        // additionally offers an inline confirmed reinstall (force) instead of
+        // dead-ending the user (ADR-0006, #66).
+        <DeployRefusalNotice
+          error={deploy.error}
+          reinstalling={deploy.isPending}
+          onReinstall={() =>
+            deploy.mutate({
+              type: "skill",
+              name: skillName,
+              target,
+              force: true,
+            })
+          }
+        />
       ) : null}
     </span>
   );

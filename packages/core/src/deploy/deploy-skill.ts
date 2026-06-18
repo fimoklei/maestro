@@ -74,6 +74,11 @@ export type DeploySkillInput = {
   type: string;
   name: string;
   target: DeployTarget;
+  // Confirmed reinstall: skip the destination guard for a not-proven-clean copy
+  // (diverged or unverifiable) and reinstall at the latest tag, discarding any
+  // local edits. A deliberate cockpit-confirmed override of a safety guard,
+  // never a default — every other guard still runs (ADR-0006, #66).
+  force?: boolean;
 };
 
 export type DeploySkillError =
@@ -214,10 +219,14 @@ export class DeploySkill {
         target: input.target,
         name: input.name,
       });
-      if (deployedState === "diverged") {
+      // A confirmed reinstall (force) overrides the two not-proven-clean states
+      // — diverged and unverifiable — since a deployed copy is non-precious
+      // generated content (ADR-0006). It never overrides "unreadable": we cannot
+      // read what is there, so a forced overwrite would be blind, not informed.
+      if (deployedState === "diverged" && !input.force) {
         return { ok: false, error: "deployed-diverged-from-lock" };
       }
-      if (deployedState === "unverifiable") {
+      if (deployedState === "unverifiable" && !input.force) {
         return { ok: false, error: "deployed-unverifiable" };
       }
       if (deployedState === "unreadable") {

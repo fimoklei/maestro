@@ -73,6 +73,7 @@ describe("deploy HTTP route", () => {
     skillAtTag?: boolean;
     diverged?: boolean;
     destDiverged?: boolean;
+    destUnverifiable?: boolean;
     destUnreadable?: boolean;
     holdApm?: Promise<void>;
   }) {
@@ -115,6 +116,7 @@ describe("deploy HTTP route", () => {
       deployedContent: {
         classify: async () => {
           if (options?.destUnreadable) return "unreadable";
+          if (options?.destUnverifiable) return "unverifiable";
           return options?.destDiverged ? "diverged" : "not-deployed";
         },
       },
@@ -328,9 +330,49 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({
       error: "deployed-diverged-from-lock",
-      message: expect.stringMatching(/overwrite/i),
+      message: expect.stringMatching(/never went through central/i),
     });
     expect(deployCalls).toEqual([]);
+  });
+
+  it("surfaces a distinct message for an unverifiable deployed copy", async () => {
+    // diverged and unverifiable share the confirm-and-proceed action but carry
+    // distinct messages: one knows there is drift, the other cannot tell. The
+    // user must be able to tell the two apart (ADR-0006, #66).
+    const { app, registry } = makeApp({ destUnverifiable: true });
+    await registry.register(repo);
+
+    const res = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: repoTarget(repo),
+    });
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      error: "deployed-unverifiable",
+      message: expect.stringMatching(/predates content tracking/i),
+    });
+  });
+
+  it("force-deploys past a diverged deployed copy, reinstalling at the tag", async () => {
+    // The confirmed reinstall: the route carries force through to the use-case,
+    // which skips the destination guard and reinstalls at the latest tag (#66).
+    const { app, registry, deployCalls } = makeApp({ destDiverged: true });
+    await registry.register(repo);
+
+    const res = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: repoTarget(repo),
+      force: true,
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+    });
+    expect(deployCalls).toHaveLength(1);
   });
 
   it("returns 409 when the deployed copy cannot be read", async () => {

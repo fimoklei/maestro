@@ -1,3 +1,4 @@
+import { DeployRefusalNotice } from "../inventory/deploy-refusal-notice";
 import {
   type DeployTarget,
   useDeploySkill,
@@ -31,9 +32,21 @@ export function UpdateSkillAction({
         {deploy.isPending ? `Updating ${skillName}…` : `Update ${skillName}`}
       </button>
       {deploy.isError ? (
-        // The server's message is actionable (e.g. tag-and-push on a diverged
-        // local copy); show it instead of a generic failure line.
-        <span role="alert">{deploy.error.message}</span>
+        // The server's message is actionable; a not-proven-clean deployed copy
+        // additionally offers an inline confirmed reinstall (force) instead of
+        // dead-ending the user (ADR-0006, #66).
+        <DeployRefusalNotice
+          error={deploy.error}
+          reinstalling={deploy.isPending}
+          onReinstall={() =>
+            deploy.mutate({
+              type: "skill",
+              name: skillName,
+              target,
+              force: true,
+            })
+          }
+        />
       ) : null}
     </span>
   );
