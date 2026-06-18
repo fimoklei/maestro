@@ -8,6 +8,7 @@ import { basename } from "node:path";
 import { promisify } from "node:util";
 import { parseOutdated } from "../drift/parse-outdated";
 import type { ApmDriverPort, DeployTarget } from "./deploy-skill";
+import { APM_DEPLOY_TARGET_FLAG } from "./deploy-tools";
 import { resolveLatestTagFromVersionsTable } from "./latest-tag";
 
 const defaultRun = promisify(execFile);
@@ -124,13 +125,13 @@ export class ApmCliDriver implements ApmDriverPort {
     if (target.kind === "repo") {
       return {
         cwd: target.repoPath,
-        args: ["install", ref, "-t", "claude,codex"],
+        args: ["install", ref, "-t", APM_DEPLOY_TARGET_FLAG],
         logTarget: basename(target.repoPath),
       };
     }
     return {
       cwd: await this.prepareGlobalCwd(),
-      args: ["install", ref, "-g", "-t", "claude,codex"],
+      args: ["install", ref, "-g", "-t", APM_DEPLOY_TARGET_FLAG],
       logTarget: "global",
     };
   }
