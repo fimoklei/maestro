@@ -228,6 +228,51 @@ describe("DeploySkillAction", () => {
     expect(deployBodies[1].force).toBe(true);
   });
 
+  it("clears the Reinstall affordance when the target changes after a refusal", async () => {
+    // The forced reinstall must apply to the target the user just confirmed, not
+    // a different one. Switching the dropdown after a not-proven-clean refusal
+    // clears the affordance, so a force can never reach a target whose own
+    // refusal was never shown (#66, Codex P2).
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/deploy") && !url.includes("deploy-state")) {
+        return new Response(
+          JSON.stringify({
+            error: "deployed-diverged-from-lock",
+            message:
+              "The deployed copy has local changes that never went through central. Updating discards them and reinstalls at the latest tag.",
+          }),
+          { status: 409, headers: { "content-type": "application/json" } },
+        );
+      }
+      return jsonResponse({ primitives: [], skipped: [] });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderAction(
+      <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
+    );
+
+    await userEvent.selectOptions(
+      screen.getByLabelText(/deploy tdd to/i),
+      "/projects/alpha",
+    );
+    await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
+
+    expect(
+      await screen.findByRole("button", { name: /reinstall fresh/i }),
+    ).toBeInTheDocument();
+
+    await userEvent.selectOptions(
+      screen.getByLabelText(/deploy tdd to/i),
+      "/projects/beta",
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /reinstall fresh/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("disables the deploy action while a deploy is pending", async () => {
     // Never resolves: the deploy stays pending for the rest of the test.
     vi.stubGlobal(

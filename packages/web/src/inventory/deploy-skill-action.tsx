@@ -56,7 +56,13 @@ export function DeploySkillAction({
       <select
         id={selectId}
         value={selected}
-        onChange={(event) => setChosen(event.target.value)}
+        onChange={(event) => {
+          // Picking a different target discards the previous deploy outcome, so
+          // a forced reinstall can never carry over to a target whose own
+          // not-proven-clean refusal was never shown (#66).
+          deploy.reset();
+          setChosen(event.target.value);
+        }}
       >
         <option value={GLOBAL_VALUE}>Global</option>
         {repos.map((repo) => (
