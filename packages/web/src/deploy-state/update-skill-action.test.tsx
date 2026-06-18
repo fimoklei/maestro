@@ -324,6 +324,38 @@ describe("Update action on a behind skill", () => {
     });
   });
 
+  it("flips the row from behind to up-to-date after a successful update", async () => {
+    // The whole point of the update: drift is not constant. The first drift read
+    // reports behind, the update succeeds, the mutation invalidates the drift
+    // query, and the refetch now reports nothing behind — so the row flips to
+    // up-to-date and stops offering an Update, with no manual reload.
+    let updated = false;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/deploy") && !url.includes("deploy-state")) {
+        updated = true;
+        return jsonResponse({
+          deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+        });
+      }
+      if (url.includes("/api/drift")) {
+        return jsonResponse({ behind: updated ? [] : ["tdd"] });
+      }
+      return jsonResponse(tddDeployed, 200);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderPanel("/Users/me/project");
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /update tdd/i }),
+    );
+
+    expect(await screen.findByText(/up-to-date/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /update tdd/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("offers no Reinstall button on a tag-and-push refusal", async () => {
     // local-diverged-from-tag is a source problem the user fixes centrally —
     // force would not help, so no reinstall affordance is offered (#66).
