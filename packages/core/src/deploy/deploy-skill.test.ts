@@ -342,6 +342,24 @@ describe("DeploySkill", () => {
     expect(deployed).toEqual([]);
   });
 
+  it("refuses when the deployed copy cannot be read", async () => {
+    // The destination exists but cannot be walked or read (permission denied, a
+    // file where a directory was expected). We cannot prove it safe to
+    // overwrite, so refuse with a distinct error rather than proceed or
+    // miscategorise it as a generic apm execution failure (#59).
+    const { deps, deployed } = buildDeps({
+      deployedContent: { classify: async () => "unreadable" as const },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({ ok: false, error: "deployed-unreadable" });
+    expect(deployed).toEqual([]);
+  });
+
   it("deploys when the deployed copy is clean (an unedited re-deploy)", async () => {
     // A clean deployed copy has nothing to lose to a same-ref install, so an
     // update/re-deploy proceeds — the guard bites only on local edits (#56).

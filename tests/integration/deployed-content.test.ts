@@ -4,7 +4,7 @@
 // .claude and .agents copies are overwritten — the guard must check both.
 // (Mechanism spiked in .claude/rules/apm-driver.md; refuse-only in DeploySkill.)
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DeployedContentAdapter } from "@maestro/core";
@@ -119,6 +119,83 @@ describe("DeployedContentAdapter", () => {
       }),
     ).resolves.toBe("not-deployed");
   });
+
+  it("reports not-deployed when the deployed copy was fully deleted", async () => {
+    // The lockfile still records hashes, but every deployed file is gone (the
+    // user deleted .claude/skills/<name>). Nothing sits on disk to overwrite, so
+    // a re-deploy restores it — this is a first deploy, not a divergence to
+    // refuse. Treating it as diverged was a factually-wrong "local edits"
+    // refusal that blocked the very re-deploy that fixes it (ADR-0006, #65).
+    await writeLockfile("tdd", {
+      ".claude/skills/tdd/SKILL.md": sha("body\n"),
+      ".agents/skills/tdd/SKILL.md": sha("body\n"),
+    });
+
+    await expect(
+      adapter().classify({
+        target: { kind: "repo", repoPath: root },
+        name: "tdd",
+      }),
+    ).resolves.toBe("not-deployed");
+  });
+
+  it("diverges when only some recorded files were deleted (partial)", async () => {
+    // One of two recorded files is gone, one remains. This is not an empty
+    // target — a surviving file may carry a local edit a deploy would silently
+    // reset, so it must route to the refuse/confirm path, not auto-proceed.
+    // "Nothing to lose" applies only to a fully-empty target (ADR-0006, #65).
+    const body = "body\n";
+    await writeDeployed(".claude/skills/tdd/SKILL.md", body);
+    await writeLockfile("tdd", {
+      ".claude/skills/tdd/SKILL.md": sha(body),
+      ".claude/skills/tdd/refactoring.md": sha("reference\n"),
+    });
+
+    await expect(
+      adapter().classify({
+        target: { kind: "repo", repoPath: root },
+        name: "tdd",
+      }),
+    ).resolves.toBe("diverged");
+  });
+
+  it("reports unreadable when a deploy subtree is a file, not a directory", async () => {
+    // A regular file sits where .claude/skills/<name> should be a directory, so
+    // readdir fails ENOTDIR. That is not "missing" — the destination cannot be
+    // read, so we cannot prove it safe to overwrite. Refuse rather than swallow
+    // it to empty and let the deploy proceed (the silent-overwrite #59 closes).
+    await writeDeployed(".claude/skills/tdd", "a file, not a directory\n");
+
+    await expect(
+      adapter().classify({
+        target: { kind: "repo", repoPath: root },
+        name: "tdd",
+      }),
+    ).resolves.toBe("unreadable");
+  });
+
+  // chmod 000 has no effect when the process runs as root (CI sometimes does),
+  // so a read still succeeds there — skip rather than assert a false negative.
+  const runsAsRoot = process.getuid?.() === 0;
+  it.skipIf(runsAsRoot)(
+    "reports unreadable when a deployed file cannot be read mid-walk",
+    async () => {
+      // The directory walks fine but a file inside it is unreadable (EACCES). A
+      // read failure mid-walk is an unreadable destination, not absence: refuse,
+      // never miscategorise it as a generic apm execution failure (#59).
+      const body = "body\n";
+      await writeDeployed(".claude/skills/tdd/SKILL.md", body);
+      await writeLockfile("tdd", { ".claude/skills/tdd/SKILL.md": sha(body) });
+      await chmod(join(root, ".claude/skills/tdd/SKILL.md"), 0o000);
+
+      await expect(
+        adapter().classify({
+          target: { kind: "repo", repoPath: root },
+          name: "tdd",
+        }),
+      ).resolves.toBe("unreadable");
+    },
+  );
 
   it("is clean when every deployed file matches its recorded hash", async () => {
     const body = "---\nname: tdd\n---\nbody\n";

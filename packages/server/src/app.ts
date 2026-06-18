@@ -91,6 +91,11 @@ const deployErrorResponses: Record<
     message:
       "An existing deployed copy has no recorded baseline, so edits cannot be verified. Remove the deployed copy, then deploy fresh.",
   },
+  "deployed-unreadable": {
+    status: 409,
+    message:
+      "The deployed copy exists but could not be read. Check its permissions and that it is a directory, then try again.",
+  },
   "deploy-in-progress": {
     status: 409,
     message: "A deploy to this repo is already running. Wait for it to finish.",

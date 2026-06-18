@@ -73,6 +73,7 @@ describe("deploy HTTP route", () => {
     skillAtTag?: boolean;
     diverged?: boolean;
     destDiverged?: boolean;
+    destUnreadable?: boolean;
     holdApm?: Promise<void>;
   }) {
     const fs = new NodeFileSystem();
@@ -112,8 +113,10 @@ describe("deploy HTTP route", () => {
         skillDivergesFromTag: async () => options?.diverged ?? false,
       },
       deployedContent: {
-        classify: async () =>
-          options?.destDiverged ? "diverged" : "not-deployed",
+        classify: async () => {
+          if (options?.destUnreadable) return "unreadable";
+          return options?.destDiverged ? "diverged" : "not-deployed";
+        },
       },
       canonicalPath: (path) => fs.realpath(path),
       inventoryOriginUrl: async () =>
@@ -326,6 +329,27 @@ describe("deploy HTTP route", () => {
     expect(await res.json()).toEqual({
       error: "deployed-diverged-from-lock",
       message: expect.stringMatching(/overwrite/i),
+    });
+    expect(deployCalls).toEqual([]);
+  });
+
+  it("returns 409 when the deployed copy cannot be read", async () => {
+    // The destination exists but cannot be walked/read; we cannot prove it safe
+    // to overwrite. Surface a distinct refusal, not the generic deploy-failed
+    // (502) that an apm execution error would produce (#59).
+    const { app, registry, deployCalls } = makeApp({ destUnreadable: true });
+    await registry.register(repo);
+
+    const res = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: repoTarget(repo),
+    });
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      error: "deployed-unreadable",
+      message: expect.stringMatching(/read/i),
     });
     expect(deployCalls).toEqual([]);
   });
