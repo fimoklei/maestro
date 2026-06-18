@@ -6,9 +6,8 @@
 // entry of an unsupported package_type is skipped (and surfaced), and a
 // malformed lockfile is a visible error — an empty list must never stand in for
 // "I couldn't read this".
-import { basename, join } from "node:path";
-import { parse } from "yaml";
-import { z } from "zod";
+import { join } from "node:path";
+import { claudeSkillName, parseLockfile } from "../lockfile/lockfile";
 import type { FileSystemPort } from "../registry/file-system";
 
 export type DeployedPrimitive = {
@@ -25,16 +24,6 @@ export type DeployStateResult =
   | { ok: true; primitives: DeployedPrimitive[]; skipped: SkippedEntry[] }
   | { ok: false; error: "malformed" };
 
-const lockfileEntrySchema = z.object({
-  resolved_ref: z.string(),
-  virtual_path: z.string(),
-  package_type: z.string(),
-});
-
-const lockfileSchema = z.object({
-  dependencies: z.array(lockfileEntrySchema),
-});
-
 export class DeployStateReader {
   private readonly fs: FileSystemPort;
 
@@ -48,22 +37,16 @@ export class DeployStateReader {
       return { ok: true, primitives: [], skipped: [] };
     }
 
-    let data: unknown;
-    try {
-      data = parse(raw);
-    } catch {
-      return { ok: false, error: "malformed" };
-    }
-
-    const parsed = lockfileSchema.safeParse(data);
-    if (!parsed.success) {
+    const parsed = parseLockfile(raw);
+    if (!parsed.ok) {
       return { ok: false, error: "malformed" };
     }
 
     const primitives: DeployedPrimitive[] = [];
     const skipped: SkippedEntry[] = [];
-    for (const entry of parsed.data.dependencies) {
-      if (entry.package_type !== "claude_skill") {
+    for (const entry of parsed.entries) {
+      const name = claudeSkillName(entry);
+      if (name === null) {
         skipped.push({
           virtualPath: entry.virtual_path,
           packageType: entry.package_type,
@@ -72,7 +55,7 @@ export class DeployStateReader {
       }
       primitives.push({
         type: "skill",
-        name: basename(entry.virtual_path),
+        name,
         version: entry.resolved_ref,
       });
     }

@@ -7,9 +7,8 @@
 // the deployed tree a same-ref apm install would silently reset (#56).
 import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
-import { basename, join } from "node:path";
-import { parse } from "yaml";
-import { z } from "zod";
+import { join } from "node:path";
+import { claudeSkillName, parseLockfile } from "../lockfile/lockfile";
 import type {
   DeployedContentPort,
   DeployedContentState,
@@ -40,16 +39,6 @@ class DeployedSubtreeUnreadableError extends Error {}
 function isMissing(error: unknown): boolean {
   return (error as NodeJS.ErrnoException)?.code === "ENOENT";
 }
-
-const lockfileSchema = z.object({
-  dependencies: z.array(
-    z.object({
-      virtual_path: z.string(),
-      package_type: z.string(),
-      deployed_file_hashes: z.record(z.string(), z.string()).optional(),
-    }),
-  ),
-});
 
 export class DeployedContentAdapter implements DeployedContentPort {
   private readonly deps: {
@@ -86,6 +75,14 @@ export class DeployedContentAdapter implements DeployedContentPort {
       }
       throw error;
     }
+
+    const baseline = await this.readBaseline(input.target, input.name);
+    // A present but unparseable lockfile is a visible error, checked before the
+    // empty-disk shortcut below: a malformed lockfile must never pass as
+    // "not-deployed" and let a deploy proceed against an unknown baseline (#58).
+    if (baseline.kind === "malformed") {
+      return "lockfile-malformed";
+    }
     // Nothing on disk across both deploy targets: there is nothing a deploy
     // could overwrite, so this is a first deploy regardless of what the lockfile
     // recorded. A fully-deleted copy that still has recorded hashes lands here
@@ -93,8 +90,6 @@ export class DeployedContentAdapter implements DeployedContentPort {
     if (Object.keys(liveHashes).length === 0) {
       return "not-deployed";
     }
-
-    const baseline = await this.readBaseline(input.target, input.name);
     // Files sit in the deploy targets but there are no recorded hashes to verify
     // them against (no entry, or a pre-0.20.0 entry): a deploy would overwrite
     // them blindly, so refuse rather than treat them as a clean first install.
@@ -105,38 +100,37 @@ export class DeployedContentAdapter implements DeployedContentPort {
   }
 
   // The skill's recorded baseline: "none" (no lockfile or no matching entry),
-  // "unverifiable" (an entry with no recorded hashes — a pre-0.20.0 install), or
-  // the per-file hashes across every deployed copy.
+  // "malformed" (a present lockfile that does not parse — a visible error, never
+  // swallowed to empty), "unverifiable" (an entry with no recorded hashes — a
+  // pre-0.20.0 install), or the per-file hashes across every deployed copy.
   private async readBaseline(
     target: DeployTarget,
     name: string,
   ): Promise<
     | { kind: "none" }
+    | { kind: "malformed" }
     | { kind: "unverifiable" }
     | { kind: "hashes"; hashes: DeployedFileHashes }
   > {
     let raw: string;
     try {
       raw = await readFile(this.deps.resolveLockfilePath(target), "utf8");
-    } catch {
-      return { kind: "none" };
+    } catch (error) {
+      // A genuinely missing lockfile is the legitimate "nothing recorded" case.
+      // Any other read failure means the file is there but we cannot read it —
+      // that is a visible error, not an absent baseline (#58).
+      if (isMissing(error)) {
+        return { kind: "none" };
+      }
+      return { kind: "malformed" };
     }
 
-    let data: unknown;
-    try {
-      data = parse(raw);
-    } catch {
-      return { kind: "none" };
-    }
-    const parsed = lockfileSchema.safeParse(data);
-    if (!parsed.success) {
-      return { kind: "none" };
+    const parsed = parseLockfile(raw);
+    if (!parsed.ok) {
+      return { kind: "malformed" };
     }
 
-    const entry = parsed.data.dependencies.find(
-      (e) =>
-        e.package_type === "claude_skill" && basename(e.virtual_path) === name,
-    );
+    const entry = parsed.entries.find((e) => claudeSkillName(e) === name);
     if (entry === undefined) {
       return { kind: "none" };
     }

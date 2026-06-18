@@ -70,6 +70,44 @@ describe("DeployedContentAdapter", () => {
     ).resolves.toBe("not-deployed");
   });
 
+  it("reports lockfile-malformed for a present but non-YAML lockfile", async () => {
+    // A present lockfile that does not parse must surface as a distinct error,
+    // never as the empty-disk "not-deployed" shortcut — an unreadable lockfile
+    // can never stand in for "nothing is deployed" and let a deploy proceed (#58).
+    await writeFile(
+      join(root, "apm.lock.yaml"),
+      "dependencies: [unterminated\n",
+      "utf8",
+    );
+
+    await expect(
+      adapter().classify({
+        target: { kind: "repo", repoPath: root },
+        name: "tdd",
+      }),
+    ).resolves.toBe("lockfile-malformed");
+  });
+
+  it("reports lockfile-malformed for a present lockfile of the wrong shape", async () => {
+    // Valid YAML, but dependencies is not the expected array of entries. With a
+    // deployed copy on disk this used to swallow to "unverifiable"; a malformed
+    // lockfile is its own visible refusal, distinct from a verifiable-but-legacy
+    // copy (#58).
+    await writeDeployed(".claude/skills/tdd/SKILL.md", "deployed\n");
+    await writeFile(
+      join(root, "apm.lock.yaml"),
+      "dependencies: not-a-list\n",
+      "utf8",
+    );
+
+    await expect(
+      adapter().classify({
+        target: { kind: "repo", repoPath: root },
+        name: "tdd",
+      }),
+    ).resolves.toBe("lockfile-malformed");
+  });
+
   it("reports unverifiable for a legacy entry with no recorded hashes", async () => {
     // A pre-0.20.0 install records the entry but no deployed_file_hashes, so the
     // deployed copy could hold edits we cannot detect. Distinct from a true

@@ -54,12 +54,16 @@ export type InventoryGitPort = {
 // I/O error, a file where a directory was expected). Distinct from a genuinely
 // missing subtree, which reads as empty: refuse rather than swallow the error to
 // "not-deployed" and let a deploy silently overwrite what we could not read (#59).
+// "lockfile-malformed" — the target's apm.lock.yaml is present but does not parse
+// (bad YAML or wrong shape). A malformed lockfile is a visible error, never the
+// empty-disk "not-deployed" stand-in that would let a deploy proceed (#58).
 export type DeployedContentState =
   | "not-deployed"
   | "clean"
   | "diverged"
   | "unverifiable"
-  | "unreadable";
+  | "unreadable"
+  | "lockfile-malformed";
 
 export type DeployedContentPort = {
   classify(input: {
@@ -106,6 +110,10 @@ export type DeploySkillError =
   // a file where a directory was expected). We cannot prove it safe to
   // overwrite, so refuse instead of swallowing the error to a blind deploy (#59).
   | "deployed-unreadable"
+  // The target's apm.lock.yaml is present but does not parse (bad YAML or wrong
+  // shape), so there is no trustworthy baseline. Refuse rather than treat a
+  // malformed lockfile as "nothing deployed" and proceed blindly (#58).
+  | "lockfile-malformed"
   // A deploy to the same repo is already running (double-click, second tab,
   // retry) — racing it would corrupt the same apm.lock.yaml.
   | "deploy-in-progress"
@@ -231,6 +239,11 @@ export class DeploySkill {
       }
       if (deployedState === "unreadable") {
         return { ok: false, error: "deployed-unreadable" };
+      }
+      // Like unreadable, never force-overridable: a malformed lockfile leaves no
+      // baseline to verify against, so a forced overwrite would be blind (#58).
+      if (deployedState === "lockfile-malformed") {
+        return { ok: false, error: "lockfile-malformed" };
       }
 
       const ref = buildSkillPackageRef({
