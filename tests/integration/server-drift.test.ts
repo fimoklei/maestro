@@ -11,6 +11,7 @@ import {
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 
 // Integration lane: drives the real Hono app via app.request. The drift route
@@ -64,6 +65,7 @@ describe("drift HTTP route", () => {
       deploy: stubDeploy({ inventory, registry }),
       drift,
       resolveGlobalRoot: () => "/nonexistent-apm-root",
+      connect: stubConnect(),
       enforceOriginHost: false,
     });
     return { app, registry, calls };

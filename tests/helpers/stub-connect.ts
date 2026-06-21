@@ -1,0 +1,17 @@
+// Shared test helper: a ConnectInventory wired to a throwaway config path, for
+// tests that exercise other routes but must satisfy createApp's connect
+// dependency. The connect route is never hit in those scenarios, so the path is
+// inert; the connect endpoint itself is covered in server-inventory-connect and
+// the J11 acceptance feature.
+import { ConfigStore, ConnectInventory, NodeFileSystem } from "@maestro/core";
+
+export function stubConnect(): ConnectInventory {
+  const fs = new NodeFileSystem();
+  return new ConnectInventory({
+    fs,
+    store: new ConfigStore({
+      fs,
+      configPath: "/nonexistent-maestro/config.json",
+    }),
+  });
+}

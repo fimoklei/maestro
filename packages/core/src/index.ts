@@ -38,6 +38,11 @@ export {
 export type { HealthReport } from "./health";
 export { coreHealth } from "./health";
 export {
+  ConnectInventory,
+  type ConnectInventoryError,
+  type ConnectInventoryResult,
+} from "./inventory/connect-inventory";
+export {
   InventoryReader,
   type InventoryResult,
   type Primitive,
