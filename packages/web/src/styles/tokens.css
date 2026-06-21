@@ -1,0 +1,96 @@
+/* Control Room raw colour tokens — the single source of truth for everything
+   that flips between dark and light, ported verbatim from
+   docs/design/control-room/tokens/colors.css. Names match the design system
+   exactly so a re-sync from the design tool stays a straight copy. The Tailwind
+   utility layer (theme.css, @theme inline) aliases these to clean utility names;
+   components use the utilities, never these raw names directly.
+
+   Theme-independent tokens (fonts, type scale, radii, spacing) are NOT here —
+   they live as literal values in theme.css's @theme block, since they never
+   switch and Tailwind needs them declared in @theme to emit utilities. */
+
+/* ── dark (default) ──────────────────────────────────────────────────────── */
+:root,
+[data-theme="dark"] {
+  /* base surfaces (darkest → lightest) */
+  --bg-0: #0b0d10;
+  --bg-1: #0d1014;
+  --surface-card: #0f1318;
+  --surface-inset: #11161c;
+  --surface-active: #171d24;
+
+  /* borders */
+  --border-faint: #13181e;
+  --border-row: #161b22;
+  --border-strong: #1d232b;
+  --border-chip: #232a33;
+  --border-dashed: #2a313a;
+  --border-drift: #4a3a1c;
+  --border-amber-dim: #3a3327;
+
+  /* text */
+  --text-1: #e6e9ed;
+  --text-2: #c3cad2;
+  --text-3: #aeb6bf;
+  --text-muted: #8a94a0;
+  --text-dim: #5a6470;
+
+  /* signal colours */
+  --amber: #e8a33d;
+  --amber-bg: rgba(232, 163, 61, 0.1);
+  --amber-border: rgba(232, 163, 61, 0.3);
+  --green: #62c47e;
+  --green-bg: rgba(98, 196, 126, 0.1);
+  --green-border: rgba(98, 196, 126, 0.25);
+  --dim-bg: rgba(138, 148, 160, 0.08);
+  --on-accent: #0b0d10;
+  /* ink = signal-as-text. On dark the bright fill already reads as text. */
+  --amber-ink: var(--amber);
+  --green-ink: var(--green);
+
+  /* primitive type colours */
+  --type-skill: #7aa5d8;
+  --type-hook: #b48ad6;
+  --type-mcp: #5fbfb0;
+  --type-bundle: #e8a33d;
+}
+
+/* ── light ───────────────────────────────────────────────────────────────── */
+:root[data-theme="light"],
+[data-theme="light"] {
+  --bg-0: #eceef2;
+  --bg-1: #f5f7f9;
+  --surface-card: #ffffff;
+  --surface-inset: #f3f5f8;
+  --surface-active: #e6ebf1;
+
+  --border-faint: #eef1f4;
+  --border-row: #e6eaef;
+  --border-strong: #dce1e8;
+  --border-chip: #ccd3dc;
+  --border-dashed: #bfc8d2;
+  --border-drift: #e6cfa0;
+  --border-amber-dim: #ecddbf;
+
+  --text-1: #1a212b;
+  --text-2: #343e4b;
+  --text-3: #48525f;
+  --text-muted: #687482;
+  --text-dim: #8b95a1;
+
+  --amber: #e0a43c;
+  --amber-ink: #b0700f;
+  --amber-bg: rgba(176, 112, 15, 0.12);
+  --amber-border: rgba(176, 112, 15, 0.3);
+  --green: #3dba75;
+  --green-ink: #178a4c;
+  --green-bg: rgba(23, 138, 76, 0.12);
+  --green-border: rgba(23, 138, 76, 0.28);
+  --dim-bg: rgba(104, 116, 130, 0.09);
+  --on-accent: #241d09;
+
+  --type-skill: #3163cc;
+  --type-hook: #8a55ce;
+  --type-mcp: #1a8e82;
+  --type-bundle: #b0700f;
+}
