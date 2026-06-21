@@ -2,6 +2,8 @@ import {
   ApmCliDriver,
   CheckVersionDrift,
   ConfigStore,
+  ConnectInventory,
+  type ConnectInventoryError,
   coreHealth,
   DeployedContentAdapter,
   DeploySkill,
@@ -25,6 +27,8 @@ import { z } from "zod";
 import { originHostGuard } from "./origin-host-guard";
 
 const registerBodySchema = z.object({ path: z.string() });
+
+const connectBodySchema = z.object({ path: z.string() });
 
 const deployBodySchema = z.object({
   // Any string passes the edge; "skills only" is a business rule in core, so
@@ -123,6 +127,27 @@ const repoPathErrorMessages: Record<RepoPathError, string> = {
   "not-a-directory": "That path is not a directory.",
 };
 
+// Transport-layer mapping for the connect use-case. Path-shape failures are
+// 400 (client sent a bad path); a real directory that simply is not an
+// inventory is 422 (the request was well-formed but unprocessable). No message
+// echoes the path — it may be a misconfigured secret.
+const connectErrorResponses: Record<
+  ConnectInventoryError,
+  { status: 400 | 422; message: string }
+> = {
+  missing: { status: 400, message: repoPathErrorMessages.missing },
+  relative: { status: 400, message: repoPathErrorMessages.relative },
+  "not-found": { status: 400, message: repoPathErrorMessages["not-found"] },
+  "not-a-directory": {
+    status: 400,
+    message: repoPathErrorMessages["not-a-directory"],
+  },
+  "not-an-inventory": {
+    status: 422,
+    message: "That directory has no skills/ folder, so it is not an inventory.",
+  },
+};
+
 // Builds the Hono app from injected dependencies so routes are testable in
 // isolation (see tests/integration). The dependencies that reach the outside
 // world — the registry and the Origin/Host enforcement — are passed in; tests
@@ -132,6 +157,7 @@ const repoPathErrorMessages: Record<RepoPathError, string> = {
 export type AppDeps = {
   registry: Registry;
   inventory: InventoryReader;
+  connect: ConnectInventory;
   deployState: DeployStateReader;
   deploy: DeploySkill;
   drift: CheckVersionDrift;
@@ -177,6 +203,29 @@ export function createApp(deps: AppDeps) {
       );
     }
     return c.json({ primitives: result.primitives });
+  });
+
+  // Offline connect: persist a user-pasted path to an existing local
+  // agent-harness clone as the inventory. A state-changing route, so the
+  // app-wide Origin/Host guard above already covers it. No git clone (J11,
+  // deferred per the job map).
+  app.post("/api/inventory/connect", async (c) => {
+    const body = await c.req.json().catch(() => null);
+    const parsed = connectBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json(
+        { error: "invalid-body", message: "Expected a JSON body with a path." },
+        400,
+      );
+    }
+
+    const result = await deps.connect.connect(parsed.data.path);
+    if (!result.ok) {
+      const { status, message } = connectErrorResponses[result.error];
+      return c.json({ error: result.error, message }, status);
+    }
+
+    return c.json({ inventoryPath: result.inventoryPath });
   });
 
   // Per-repo deploy-state, registry-gated: a repo not in the registry is
@@ -395,6 +444,7 @@ function realDeps(): AppDeps {
   return {
     registry,
     inventory,
+    connect: new ConnectInventory({ fs, store }),
     deployState,
     deploy,
     drift,

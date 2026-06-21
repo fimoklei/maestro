@@ -10,6 +10,7 @@ import {
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
 
@@ -45,6 +46,7 @@ describe("write-route Origin/Host guard", () => {
       deploy: stubDeploy({ inventory, registry }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
+      connect: stubConnect(),
       enforceOriginHost: true,
     });
   }
@@ -95,6 +97,20 @@ describe("write-route Origin/Host guard", () => {
         origin: "http://evil.example.com",
       },
       body: JSON.stringify({}),
+    });
+
+    expect(res.status).toBe(403);
+  });
+
+  it("rejects a connect from a foreign Origin", async () => {
+    const res = await makeApp().request("/api/inventory/connect", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        host: LOCAL_HOST,
+        origin: "http://evil.example.com",
+      },
+      body: JSON.stringify({ path: dir }),
     });
 
     expect(res.status).toBe(403);

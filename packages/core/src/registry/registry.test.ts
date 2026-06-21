@@ -62,6 +62,25 @@ describe("Registry", () => {
     expect(paths).toEqual(["/Users/me/a", "/Users/me/b"]);
   });
 
+  it("preserves a previously connected inventoryPath when registering a repo", async () => {
+    const configPath = CONFIG_PATH;
+    const fs = new InMemoryFileSystem({
+      directories: { "/Users/me/project": "/Users/me/project" },
+      files: {
+        [configPath]: JSON.stringify({ repos: [], inventoryPath: "/inv" }),
+      },
+    });
+    const store = new ConfigStore({ fs, configPath });
+    const registry = new Registry({ fs, store });
+
+    await registry.register("/Users/me/project");
+
+    await expect(store.read()).resolves.toEqual({
+      repos: [{ path: "/Users/me/project" }],
+      inventoryPath: "/inv",
+    });
+  });
+
   it("rejects an invalid path with a typed error and persists nothing", async () => {
     const fs = new InMemoryFileSystem();
     const registry = makeRegistry(fs);

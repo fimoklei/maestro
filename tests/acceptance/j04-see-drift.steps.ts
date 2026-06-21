@@ -12,6 +12,7 @@ import {
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { expect } from "vitest";
+import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 
 const feature = await loadFeature("tests/acceptance/j04-see-drift.feature");
@@ -49,6 +50,7 @@ function buildApp(configPath: string, getOutcome: () => OutdatedOutcome) {
     deploy: stubDeploy({ inventory, registry }),
     drift,
     resolveGlobalRoot: () => "/nonexistent-apm-root",
+    connect: stubConnect(),
     enforceOriginHost: false,
   });
 }

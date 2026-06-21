@@ -13,6 +13,7 @@ import {
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { expect } from "vitest";
+import { stubConnect } from "../helpers/stub-connect";
 
 const feature = await loadFeature("tests/acceptance/j08-update.feature");
 
@@ -110,6 +111,7 @@ describeFeature(
         deploy,
         drift,
         resolveGlobalRoot: () => "/nonexistent-apm-root",
+        connect: stubConnect(),
         enforceOriginHost: false,
       });
     });

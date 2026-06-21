@@ -11,6 +11,7 @@ import {
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { expect } from "vitest";
+import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
 
@@ -37,6 +38,7 @@ function buildApp(configPath: string) {
     deploy: stubDeploy({ inventory, registry }),
     drift: stubDrift({ registry }),
     resolveGlobalRoot: () => "/nonexistent-apm-root",
+    connect: stubConnect(),
     enforceOriginHost: false,
   });
 }

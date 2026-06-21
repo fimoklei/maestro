@@ -61,13 +61,16 @@ export class Registry {
       return { ok: false, error: validated.error };
     }
 
-    const { repos } = await this.store.read();
+    const config = await this.store.read();
     const repo: RegisteredRepo = { path: validated.path };
-    const next = repos.some((r) => r.path === repo.path)
-      ? repos
-      : [...repos, repo];
+    const next = config.repos.some((r) => r.path === repo.path)
+      ? config.repos
+      : [...config.repos, repo];
 
-    await this.store.write({ repos: next });
+    // Preserve every other config field (e.g. a connected inventoryPath): the
+    // store rewrites the whole file, so spreading the read config keeps a
+    // registration from wiping a value another use-case persisted.
+    await this.store.write({ ...config, repos: next });
     return { ok: true, repos: next };
   }
 }

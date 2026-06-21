@@ -12,6 +12,7 @@ import {
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { expect } from "vitest";
+import { stubConnect } from "../helpers/stub-connect";
 import { stubDrift } from "../helpers/stub-drift";
 
 const feature = await loadFeature(
@@ -106,6 +107,7 @@ describeFeature(
         deploy,
         drift: stubDrift({ registry }),
         resolveGlobalRoot: () => apmRoot,
+        connect: stubConnect(),
         enforceOriginHost: false,
       });
     });

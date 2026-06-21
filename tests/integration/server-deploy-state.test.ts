@@ -10,6 +10,7 @@ import {
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
 
@@ -43,6 +44,7 @@ describe("deploy-state HTTP route", () => {
       deploy: stubDeploy({ inventory, registry }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
+      connect: stubConnect(),
       enforceOriginHost: false,
     });
     return { app, registry };

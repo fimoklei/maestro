@@ -12,6 +12,7 @@ import {
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { stubConnect } from "../helpers/stub-connect";
 import { stubDrift } from "../helpers/stub-drift";
 
 // Integration lane: the deploy route over the real Hono app, real temp dirs,
@@ -133,6 +134,7 @@ describe("deploy HTTP route", () => {
       deploy,
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => globalRoot,
+      connect: stubConnect(),
       enforceOriginHost: false,
     });
     return { app, registry, deployCalls };
