@@ -26,10 +26,12 @@ The MVP1 bet: one person can **see** their whole agent setup and **steer** it (d
 | ↳ J03 — See global deploy-state | MVP1 | When I rely on tool-level setup, I want to see what is deployed globally for Claude Code and Codex, so that I understand my baseline across all work. | A |
 | ↳ J04 — See drift | MVP1 | When central changes, I want to see which deploys lag behind, so that I know what needs updating. | A, B |
 | ↳ J10 — Register a consuming repo | MVP1 | When I want Maestro to see and steer a project, I want to register that repo's path in the cockpit, so that its deploy-state becomes visible and I can deploy to it. | A, B |
+| ↳ J11 — Connect the inventory (point at a local clone) | MVP1 | When Maestro does not yet know where my inventory is, I want to point it at my existing local `agent-harness` clone, so that the cockpit can read and show it instead of dead-ending on "not configured". Offline: pointing at a local clone only; cloning from a git URL is the Future "Connect & sync" job below. | A |
 | ↳ See local divergence from central | Future | When I have edited a deployed primitive locally, I want to see that it no longer matches central, so that I know which copies are modified before I reset or update them. | A |
 | ↳ See global↔local duplication | Future | When a skill is deployed both globally and in a repo, I want the cockpit to flag that overlap in both the global and the per-repo view, so that I can spot and remove a redundant copy instead of running two versions unaware. | A |
 | ↳ Explain why a primitive is deployed | Future | — | A |
 | ↳ Search and preview the inventory | Future | — | A |
+| ↳ Connect & sync the central inventory from git | Future | When the `agent-harness` inventory lives in a remote repo I have not cloned, I want to point Maestro at its git URL and have it clone and re-sync the inventory read-only, so that I can set up the cockpit without cloning the inventory by hand first. Reverses "offline by design"; adds network, auth, and storage — keep it inventory-source only, never deploy retrieval (ADR-0001). | A |
 | ↳ Adoption view across a team | Future | — | A, C |
 | **B — Get the right capabilities to the right place** | Main | When a project or tool needs capabilities, I want to provision the right primitives there without per-repo handwork, so that each context has what it needs and stays current. | — |
 | ↳ J05 — Compose a bundle from the inventory | MVP1 | When I have recurring sets of primitives, I want to assemble a bundle from central, so that I can deploy them together. | B |

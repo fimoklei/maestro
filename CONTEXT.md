@@ -77,7 +77,7 @@ The umbrella term for a deployed primitive that no longer matches the central in
 _Avoid_: staleness, out-of-sync.
 
 **Version drift**:
-A deployed primitive whose pinned version lags the latest tag in the central inventory. Detectable via `apm outdated`; the cockpit shows it **binary** (behind / up-to-date), never a version diff. This is the facet MVP1 surfaces.
+A deployed primitive whose pinned version lags the latest tag in the central inventory. Detectable via `apm outdated`; the cockpit shows it as the **deployed → latest version pair** (e.g. `2.1.0 → 2.3.1`), read straight from `apm outdated`'s output — not a binary flag, and not a "versions behind" distance (ADR-0007). This is the facet MVP1 surfaces.
 _Avoid_: outdated (that is APM's word for the mechanism).
 
 **Content drift**:

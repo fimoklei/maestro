@@ -1,0 +1,22 @@
+<!-- @dsCard group="Spacing" viewport="700x160" name="Radii" subtitle="Tight 3–6px scale; nothing pill-shaped, no shadows" -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 18px 20px; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .sw { height: 64px; background: var(--surface-inset); border: 1px solid var(--border-chip); display: grid; place-items: center; font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+  .meta { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); margin-top: 6px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="grid">
+  <div><div class="sw" style="border-radius: var(--radius-tag);">3px</div><div class="meta">--radius-tag<br>type tags</div></div>
+  <div><div class="sw" style="border-radius: var(--radius-control);">4px</div><div class="meta">--radius-control<br>chips, buttons</div></div>
+  <div><div class="sw" style="border-radius: var(--radius-item);">5px</div><div class="meta">--radius-item<br>nav items, CTAs</div></div>
+  <div><div class="sw" style="border-radius: var(--radius-card);">6px</div><div class="meta">--radius-card<br>cards, panels</div></div>
+</div>
+</body>
+</html>

@@ -19,8 +19,9 @@ criteria*.
 
 ## Selected subjobs
 
-`J01`, `J02`, `J03`, `J04`, `J06`, `J07`, `J08`, `J10`. Definitions live in the
-job map.
+`J01`, `J02`, `J03`, `J04`, `J06`, `J07`, `J08`, `J10`, `J11`. Definitions live
+in the job map. (`J11` — connect the inventory, offline — joined at the 01.5
+re-scope; see *01.5 scope* below.)
 
 ## Out of scope (this step)
 
@@ -31,8 +32,10 @@ job map.
 - **Hooks and MCP servers** — skills only. A hook runs code at a lifecycle point
   (more risk, more validation); an MCP server touches tool config. Skills are
   files only — the cleanest tracer.
-- **Rich drift** — drift is shown **binary** (up-to-date / behind), not as
-  version diffs.
+- **"N versions behind" distance** — drift shows the deployed → latest version
+  pair (ADR-0007, read from `apm outdated`), but **not** how many tags lie
+  between them, nor progress bars. (The original binary-only scope was widened to
+  the version pair at the 01.5 re-scope; the distance stays out.)
 - **Directory scan for consuming repos** — explicit registry only (see
   `CONTEXT.md`).
 - **Interactive directory-browser picker for registration** — paste-a-path only
@@ -50,12 +53,14 @@ job map.
 - **Ship A — the tracer.** See central skills → deploy one skill to one
   registered local repo → see it in deploy-state. All layers. No global, no
   drift, no update. One acceptance test covers the journey.
-- **Ship B — fast-follow, same step.** Add the global target, add drift
-  (binary), add update.
-- **Pass C — the design pass.** *After every job above lands*, one pass realizes
-  the working cockpit in the owner's designed system (ADR-0004 owns the stack and
-  sequencing). Not a subjob — it delivers no new behaviour; it makes the
-  behaviour that already works frictionless to use. See *Design principle* below.
+- **Ship B — fast-follow, same step.** Add the global target, add drift, add
+  update.
+- **Pass C — the design pass (01.5).** *After every job above lands*, one pass
+  realizes the working cockpit in the owner's designed system (ADR-0004 +
+  ADR-0008 own the stack and sequencing). Re-scoped 2026-06-19: it carries two
+  small capability deltas (version-pair drift, offline connect — see *01.5
+  scope*) built capability-first, then makes the whole working product
+  frictionless in one styled UI pass. See *Design principle* below.
 
 Rationale: the tracer proves the architecture and surfaces **real `apm` output**
 before drift is built on top of it. Drift on an understood foundation, not on an
@@ -74,7 +79,7 @@ Ship B.
 | 01.2 — Global as a target | J03, J07 | [#26](https://github.com/fimoklei/maestro/issues/26) |
 | 01.3 — Drift (binary) | J04 | [#44](https://github.com/fimoklei/maestro/issues/44) |
 | 01.4 — Update | J08 | [#52](https://github.com/fimoklei/maestro/issues/52) |
-| 01.5 — Design pass: realize the working cockpit in the designed system | — (design principle, not a subjob) | — |
+| 01.5 — Design pass + two capability deltas (see *01.5 scope* below) | J04 (version-pair), J11 (offline connect) | [#75](https://github.com/fimoklei/maestro/issues/75) |
 
 This table is a **map, not a dashboard.** Only the stable columns (sub-step,
 subjobs, PRD link) live here. Status is **derived from the tracker, never
@@ -85,13 +90,52 @@ column back.
 
 ## Design principle — frictionless experience
 
-`01.5` is governed by a principle, not a job story: **using the cockpit should
-feel frictionless.** Once every job above works, one design pass realizes that
-working product in the owner's designed system so the experience matches the
-capability. It adds no new behaviour and traces to no subjob — it is the quality
-bar the finished step is held to. The stack and the capability-before-UI
+`01.5` is governed by a principle as much as by its two subjobs: **using the
+cockpit should feel frictionless.** Once every job above works, one design pass
+realizes that working product in the owner's designed system so the experience
+matches the capability. Beyond its two capability deltas (see *01.5 scope*), the
+pass adds no further behaviour — the frictionless bar is the quality the finished
+step is held to. The stack and the capability-before-UI
 sequencing live in ADR-0004. (If this principle proves cross-cutting beyond this
 step, graduate it to `brief.md`; for now it scopes the design pass only.)
+
+## 01.5 scope — design pass + two capability deltas (decided 2026-06-19)
+
+A design grill against the owner's "Control Room" design reconciled it with this
+step's committed scope. `01.5` stays the closing **design pass**, but absorbs two
+small capability deltas the design justified. The design is **input, not a
+spec** — it is not copied 1:1.
+
+**Design system.** Control Room is adopted as the project's design system
+(ADR-0008, amending ADR-0004): tokens via Tailwind `@theme`, owned components,
+catalogue + theming imported, shadcn only where interaction earns it.
+
+**Two capability deltas (both small, core/server-first):**
+
+- **Version-pair drift** (J04) — show the deployed → latest pair, read from the
+  `apm outdated` output already parsed (ADR-0007). No new `apm` call. Drops the
+  design's "N versions behind" bars.
+- **Offline connect-inventory** (J11) — a UI + config-write endpoint to point
+  Maestro at an **existing local** `agent-harness` clone (validate, persist
+  `inventoryPath`), turning the existing "not-configured" dead-end into a
+  first-run flow. **Stays offline.** Cloning from a git URL is deferred — job map
+  Future "Connect & sync the central inventory from git".
+
+**Held to existing scope.** Skills only; no Compose, no hooks/MCP/bundles, no
+dead nav. Components stay type-aware (`TypeTag`) so future primitive types slot
+in additively without rework.
+
+**App shell.** A light client-side router; sidebar with **Deploy-state as home**
+(landing) + Inventory; Targets + register inline; connect as a Settings screen
+plus a first-run gate when not configured.
+
+**Build route (binding order, honours ADR-0004).** 1 — the two capability deltas
+in core/server, TDD, no styling; 2 — design-system foundation (tokens +
+components); 3 — one styled UI pass over the complete working capability. No
+styled UI lands before the capability is real; no façade with dead controls.
+
+The PRD for `01.5` is tracker issue #75, sliced into implementation issues
+per this scope.
 
 ## How drift and update work (APM-delegated)
 
@@ -138,8 +182,8 @@ the least-core subjob. Revisit if it earns it (see out-of-scope).
   which version, without opening a lockfile.
 - I deploy a skill to a repo and to global from the cockpit, and deploy-state
   reflects it.
-- The cockpit shows behind / up-to-date per skill, and I update to latest with
-  one action.
+- The cockpit shows the deployed → latest version pair per skill, and I update
+  to latest with one action.
 - The design pass (`01.5`) has realized this working cockpit in the designed
   system, so the experience is frictionless — not a raw prototype.
 - **Kill condition:** if I still open a lockfile or run an `apm` command by hand
@@ -156,7 +200,8 @@ the least-core subjob. Revisit if it earns it (see out-of-scope).
 
 - **`apm outdated` has no machine output.** Table parsing is brittle and breaks
   if APM reformats. Mitigation: isolate behind the driver port, integration-test
-  against captured output, consume binary-only.
+  against captured output, and consume only the two version fields it already
+  prints (deployed → latest; no tag-distance — ADR-0007).
 - **APM behavior assumed where unobserved** (no lockfile exists yet). Mitigation:
   the tracer ship forces a real deploy early; write `apm-driver.md` from observed
   output, not guesses.

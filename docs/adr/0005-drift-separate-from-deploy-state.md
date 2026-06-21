@@ -36,6 +36,9 @@ skill list, which never needed the network.
   check could not run). It returns **only** the "behind" set — identity of which
   skills exist stays with deploy-state's lockfile read, never the `apm outdated`
   table (whose Package column truncates; see `apm-driver.md`).
+  - **Payload superseded by ADR-0007:** each behind entry is now a
+    `{ name, current, latest }` pair, not a bare name. The separate-read and
+    `{ ok: false }` "unknown" decisions in this ADR are unchanged.
 - The web layer runs two queries on one screen: deploy-state renders the skill
   list immediately, and the drift query fills in a per-skill badge
   (behind / up-to-date / unknown) when it returns. "unknown" is a per-target
