@@ -88,7 +88,10 @@ describe("GlobalDeployStatePanel", () => {
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
         if (url === "/api/drift/global") {
-          return jsonResponse({ behind: ["tdd"] }, 200);
+          return jsonResponse(
+            { behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }] },
+            200,
+          );
         }
         return jsonResponse(
           {

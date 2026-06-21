@@ -12,7 +12,15 @@
 // parses and apm did not print one of its two empty-state banners (a format
 // change, an error message), we fail instead of reporting an empty behind set.
 
-export type OutdatedResult = { ok: true; behind: string[] } | { ok: false };
+// One behind skill as the deployed -> latest version pair apm already prints on
+// the row (Current / Latest cells). Identity is still the skill name; the pair
+// is kept rather than reduced to a binary flag (ADR-0007). The behind/up-to-date
+// judgment stays derivable downstream (latest !== current).
+export type VersionDrift = { name: string; current: string; latest: string };
+
+export type OutdatedResult =
+  | { ok: true; behind: VersionDrift[] }
+  | { ok: false };
 
 // apm's terminal banners for the two empty outcomes — its own statement that
 // there is genuinely nothing behind. Their absence (with no parsed rows either)
@@ -31,18 +39,23 @@ const cellsOf = (line: string): string[] =>
 const lastSegment = (packageCell: string): string =>
   packageCell.split("/").at(-1) ?? packageCell;
 
-const behindFromRows = (output: string): string[] => {
-  const behind: string[] = [];
+const behindFromRows = (output: string): VersionDrift[] => {
+  const behind: VersionDrift[] = [];
   for (const line of output.split("\n")) {
     const cells = cellsOf(line);
     if (cells.length !== 5) {
       continue;
     }
-    const [packageCell, , , status] = cells;
-    if (status !== "outdated" || packageCell === undefined) {
+    const [packageCell, current, latest, status] = cells;
+    if (
+      status !== "outdated" ||
+      packageCell === undefined ||
+      current === undefined ||
+      latest === undefined
+    ) {
       continue;
     }
-    behind.push(lastSegment(packageCell));
+    behind.push({ name: lastSegment(packageCell), current, latest });
   }
   return behind;
 };

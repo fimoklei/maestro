@@ -3,14 +3,17 @@
 // cardinal rule (J04): a check that could not run is "unknown", never
 // "up-to-date" — up-to-date is only ever derived from a check that ran.
 
+import type { VersionDrift } from "./use-drift";
+
 export type DriftView =
   // The drift query is still in flight or has no data yet.
   | { status: "pending" }
   // The check could not run (server reported { ok: false }, or the request
   // itself failed). Every deployed skill is "unknown".
   | { status: "unknown" }
-  // The check ran: `behind` is the set of skill names behind the latest tag.
-  | { status: "ready"; behind: string[] };
+  // The check ran: `behind` carries one deployed -> latest pair per skill behind
+  // the latest tag (ADR-0007). The per-skill status still derives from the name.
+  | { status: "ready"; behind: VersionDrift[] };
 
 export type DriftStatus = "behind" | "up-to-date" | "unknown" | "pending";
 
@@ -24,7 +27,9 @@ export const skillDriftStatus = (
     case "unknown":
       return "unknown";
     case "ready":
-      return drift.behind.includes(name) ? "behind" : "up-to-date";
+      return drift.behind.some((entry) => entry.name === name)
+        ? "behind"
+        : "up-to-date";
   }
 };
 
@@ -39,5 +44,7 @@ export const orphanBehind = (
     return [];
   }
   const deployed = new Set(deployedNames);
-  return drift.behind.filter((name) => !deployed.has(name));
+  return drift.behind
+    .map((entry) => entry.name)
+    .filter((name) => !deployed.has(name));
 };

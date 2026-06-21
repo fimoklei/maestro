@@ -8,10 +8,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 
+// One behind skill as the deployed -> latest version pair the server forwards
+// from `apm outdated` (ADR-0007). Identity is the name; the pair lets the screen
+// show "v0.5.0 -> v0.5.1" without a second apm call. Mirrors core's VersionDrift
+// at the HTTP boundary (web never imports core types).
+export type VersionDrift = { name: string; current: string; latest: string };
+
 // The two honest server outcomes: the check ran (a behind set, possibly empty),
 // or it could not run ({ ok: false }) — which the screen shows as "unknown",
 // never as up-to-date.
-export type DriftResponse = { behind: string[] } | { ok: false };
+export type DriftResponse = { behind: VersionDrift[] } | { ok: false };
 
 const FIVE_MINUTES = 5 * 60 * 1000;
 

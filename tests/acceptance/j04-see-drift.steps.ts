@@ -21,7 +21,14 @@ const feature = await loadFeature("tests/acceptance/j04-see-drift.feature");
 // real ApmCliDriver fills. The fake's outcome is set per scenario, so a behind
 // skill, a current skill, and a check that could not run each read like the job
 // map rather than like server internals.
-type OutdatedOutcome = { ok: true; behind: string[] } | { ok: false };
+type VersionDrift = { name: string; current: string; latest: string };
+type OutdatedOutcome = { ok: true; behind: VersionDrift[] } | { ok: false };
+
+const tddBehind: VersionDrift = {
+  name: "tdd",
+  current: "v0.5.0",
+  latest: "v0.5.1",
+};
 
 function buildApp(configPath: string, getOutcome: () => OutdatedOutcome) {
   const fs = new NodeFileSystem();
@@ -86,19 +93,19 @@ describeFeature(
     }
 
     Scenario(
-      "A skill behind the latest tag is seen as behind",
+      "A skill behind the latest tag is seen with its deployed -> latest pair",
       ({ Given, When, Then }) => {
         Given(
-          'a registered repo where apm reports "tdd" is behind',
+          'a registered repo where apm reports "tdd" behind from v0.5.0 to v0.5.1',
           async () => {
-            outcome = { ok: true, behind: ["tdd"] };
+            outcome = { ok: true, behind: [tddBehind] };
             await register(repo);
           },
         );
         When("I check that repo's drift", checkDrift);
-        Then('I see "tdd" reported as behind', async () => {
+        Then('I see "tdd" reported behind from v0.5.0 to v0.5.1', async () => {
           expect(response.status).toBe(200);
-          expect(await response.json()).toEqual({ behind: ["tdd"] });
+          expect(await response.json()).toEqual({ behind: [tddBehind] });
         });
       },
     );
@@ -143,10 +150,10 @@ describeFeature(
     );
 
     Scenario(
-      "A globally deployed skill behind the latest tag is seen as behind",
+      "A globally deployed skill behind the latest tag is seen with its pair",
       ({ Given, When, Then }) => {
-        Given('global apm reports "tdd" is behind', () => {
-          outcome = { ok: true, behind: ["tdd"] };
+        Given('global apm reports "tdd" behind from v0.5.0 to v0.5.1', () => {
+          outcome = { ok: true, behind: [tddBehind] };
         });
         When(
           "I check global drift with a bogus repo path in the query",
@@ -154,10 +161,13 @@ describeFeature(
             await checkGlobalDrift("?repo=/tmp/not-used");
           },
         );
-        Then('I see "tdd" reported as globally behind', async () => {
-          expect(response.status).toBe(200);
-          expect(await response.json()).toEqual({ behind: ["tdd"] });
-        });
+        Then(
+          'I see "tdd" reported as globally behind from v0.5.0 to v0.5.1',
+          async () => {
+            expect(response.status).toBe(200);
+            expect(await response.json()).toEqual({ behind: [tddBehind] });
+          },
+        );
       },
     );
 

@@ -28,7 +28,16 @@ describe("drift HTTP route", () => {
     await rm(home, { recursive: true, force: true });
   });
 
-  function makeApp(outcome: { ok: true; behind: string[] } | { ok: false }) {
+  const tddBehind = { name: "tdd", current: "v0.5.0", latest: "v0.5.1" };
+
+  function makeApp(
+    outcome:
+      | {
+          ok: true;
+          behind: Array<{ name: string; current: string; latest: string }>;
+        }
+      | { ok: false },
+  ) {
     const fs = new NodeFileSystem();
     const calls: Array<
       { kind: "repo"; repoPath: string } | { kind: "global" }
@@ -60,9 +69,9 @@ describe("drift HTTP route", () => {
     return { app, registry, calls };
   }
 
-  it("returns the behind set for a registered repo", async () => {
+  it("returns the deployed -> latest pair for a registered repo", async () => {
     const repo = await mkdtemp(join(tmpdir(), "maestro-repo-"));
-    const { app, registry } = makeApp({ ok: true, behind: ["tdd"] });
+    const { app, registry } = makeApp({ ok: true, behind: [tddBehind] });
     await registry.register(repo);
 
     const res = await app.request(
@@ -70,7 +79,7 @@ describe("drift HTTP route", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ behind: ["tdd"] });
+    expect(await res.json()).toEqual({ behind: [tddBehind] });
     await rm(repo, { recursive: true, force: true });
   });
 
@@ -90,7 +99,7 @@ describe("drift HTTP route", () => {
 
   it("rejects a repo that is not registered", async () => {
     const repo = await mkdtemp(join(tmpdir(), "maestro-repo-"));
-    const { app } = makeApp({ ok: true, behind: ["tdd"] });
+    const { app } = makeApp({ ok: true, behind: [tddBehind] });
 
     const res = await app.request(
       `/api/drift?repo=${encodeURIComponent(repo)}`,
@@ -108,13 +117,13 @@ describe("drift HTTP route", () => {
     expect(res.status).toBe(400);
   });
 
-  it("returns the global behind set without reading a client path", async () => {
-    const { app, calls } = makeApp({ ok: true, behind: ["tdd"] });
+  it("returns the global behind pair without reading a client path", async () => {
+    const { app, calls } = makeApp({ ok: true, behind: [tddBehind] });
 
     const res = await app.request("/api/drift/global?repo=/tmp/not-used");
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ behind: ["tdd"] });
+    expect(await res.json()).toEqual({ behind: [tddBehind] });
     expect(calls).toEqual([{ kind: "global" }]);
   });
 

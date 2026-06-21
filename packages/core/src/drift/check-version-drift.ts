@@ -7,13 +7,14 @@
 // { ok: false } when it could not — one failure, no taxonomy. The web layer
 // maps { ok: false } to "unknown" so a failed check never reads as up-to-date.
 import type { ApmDriverPort, DeployTarget } from "../deploy/deploy-skill";
+import type { VersionDrift } from "./parse-outdated";
 
 export type CheckVersionDriftInput = {
   target: DeployTarget;
 };
 
 export type CheckVersionDriftResult =
-  | { ok: true; behind: string[] }
+  | { ok: true; behind: VersionDrift[] }
   | { ok: false };
 
 export class CheckVersionDrift {

@@ -95,7 +95,10 @@ describeFeature(
         apm: {
           checkOutdated: async () => ({
             ok: true,
-            behind: deployedRef === LATEST_TAG ? [] : ["tdd"],
+            behind:
+              deployedRef === LATEST_TAG
+                ? []
+                : [{ name: "tdd", current: deployedRef, latest: LATEST_TAG }],
           }),
         },
         canonicalPath: (path) => fs.realpath(path),
@@ -166,7 +169,9 @@ describeFeature(
           ]);
         });
         And('apm reports "tdd" is behind the latest tag v0.5.1', async () => {
-          expect(await repoDrift()).toEqual({ behind: ["tdd"] });
+          expect(await repoDrift()).toEqual({
+            behind: [{ name: "tdd", current: "v0.5.0", latest: LATEST_TAG }],
+          });
         });
         When('I update "tdd" in that repo', async () => {
           response = await app.request("/api/deploy", {
