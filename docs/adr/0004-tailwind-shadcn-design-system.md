@@ -1,6 +1,8 @@
 # ADR-0004 — Adopt Tailwind v4 + shadcn/ui for a custom design system
 
-- **Status:** Accepted
+- **Status:** Accepted — component layer and level-3-from-scratch scope
+  **superseded in part by ADR-0008** (2026-06-19). Tailwind v4 `@theme` for
+  tokens, capability-before-UI, and the single UI pass still stand.
 - **Date:** 2026-06-13
 
 ## Context

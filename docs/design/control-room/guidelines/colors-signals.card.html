@@ -1,0 +1,27 @@
+<!-- @dsCard group="Colors" viewport="700x160" name="Signal colors" subtitle="Amber = drift & brand & primary action · green = in sync & confirm" -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 18px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .sw { height: 44px; border-radius: var(--radius-card); display: flex; align-items: center; padding: 0 14px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--on-accent); }
+  .meta { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); margin-top: 6px; line-height: 1.7; }
+  .chips { display: flex; gap: 8px; margin-top: 8px; }
+  .chip { font-family: var(--font-mono); font-size: 11px; padding: 2px 7px; border-radius: var(--radius-control); }
+</style>
+</head>
+<body>
+<div>
+  <div class="sw" style="background: var(--amber);">--amber #e8a33d</div>
+  <div class="meta">drift · brand · primary action · type "bundle"</div>
+  <div class="chips"><span class="chip" style="color: var(--amber); background: var(--amber-bg); border: 1px solid var(--amber-border);">▲ 3 drift detected</span></div>
+</div>
+<div>
+  <div class="sw" style="background: var(--green);">--green #62c47e</div>
+  <div class="meta">in sync · healthy · confirm deploy</div>
+  <div class="chips"><span class="chip" style="color: var(--green); background: var(--green-bg); border: 1px solid var(--green-border);">● in sync</span></div>
+</div>
+</body>
+</html>

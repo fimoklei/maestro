@@ -1,0 +1,25 @@
+<!-- @dsCard group="Colors" viewport="700x160" name="Borders" subtitle="1px lines do all structural work — plus the amber drift outline" -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 18px 20px; }
+  .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+  .sw { height: 58px; border-radius: var(--radius-card); background: var(--surface-card); }
+  .meta { font-family: var(--font-mono); font-size: 9.5px; color: var(--text-dim); margin-top: 6px; line-height: 1.6; }
+  .name { color: var(--text-3); }
+</style>
+</head>
+<body>
+<div class="grid">
+  <div><div class="sw" style="border: 1px solid var(--border-faint);"></div><div class="meta"><span class="name">--border-faint</span><br>hairline dividers</div></div>
+  <div><div class="sw" style="border: 1px solid var(--border-row);"></div><div class="meta"><span class="name">--border-row</span><br>table rows</div></div>
+  <div><div class="sw" style="border: 1px solid var(--border-strong);"></div><div class="meta"><span class="name">--border-strong</span><br>cards, panels</div></div>
+  <div><div class="sw" style="border: 1px solid var(--border-chip);"></div><div class="meta"><span class="name">--border-chip</span><br>chips, segments</div></div>
+  <div><div class="sw" style="border: 1px dashed var(--border-dashed);"></div><div class="meta"><span class="name">--border-dashed</span><br>drop zones, add</div></div>
+  <div><div class="sw" style="border: 1px solid var(--border-drift);"></div><div class="meta"><span class="name">--border-drift</span><br>drift outline</div></div>
+</div>
+</body>
+</html>

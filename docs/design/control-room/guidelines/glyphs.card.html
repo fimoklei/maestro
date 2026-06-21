@@ -1,0 +1,96 @@
+<!-- @dsCard group="Brand" viewport="700x170" name="Glyph set" subtitle="Iconography = unicode glyphs in mono type; no SVG icon sets, no emoji" -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="./tweaks-panel.jsx"></script>
+<style>
+  body { margin: 0; padding: 18px 20px; }
+  .grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; }
+  .cell { text-align: center; transition: background .18s ease, border-color .18s ease, padding .18s ease; }
+  .g { display: block; color: var(--text-1); line-height: 1.4; }
+  .n { font-family: var(--font-mono); font-size: 9.5px; color: var(--text-dim); display: block; margin-top: 5px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const GLYPHS = [
+  { g: "▤", n: "inventory", tone: "neutral" },
+  { g: "⇶", n: "deploy",    tone: "neutral" },
+  { g: "⧉", n: "compose",   tone: "neutral" },
+  { g: "▲", n: "drift",     tone: "amber"   },
+  { g: "●", n: "in sync",   tone: "green", shrink: 0.78 },
+  { g: "→", n: "action",    tone: "neutral" },
+  { g: "+",      n: "add",       tone: "neutral" },
+  { g: "✕", n: "remove",    tone: "dim"     },
+];
+
+const SCALE = {
+  compact: { size: 13, labels: true },
+  roomy:   { size: 16, labels: true },
+  hero:    { size: 26, labels: false },
+};
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "treatment": "boxed",
+  "scale": "compact",
+  "signals": true
+}/*EDITMODE-END*/;
+
+function cellStyle(treatment, hasLabels) {
+  const pad = hasLabels ? "10px 0 8px" : "12px 0";
+  if (treatment === "bare")  return { background: "transparent", border: "1px solid transparent", borderRadius: 0, padding: pad };
+  if (treatment === "plate") return { background: "var(--bg-1)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius-card)", padding: pad, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)" };
+  return { background: "var(--surface-card)", border: "1px solid var(--border-strong)", borderRadius: "var(--radius-card)", padding: pad };
+}
+
+function glyphColor(tone, signals) {
+  if (tone === "dim") return "var(--text-dim)";
+  if (!signals) return tone === "neutral" ? "var(--text-1)" : "var(--text-dim)";
+  if (tone === "amber") return "var(--amber)";
+  if (tone === "green") return "var(--green)";
+  return "var(--text-1)";
+}
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const sc = SCALE[t.scale] || SCALE.roomy;
+
+  return (
+    <React.Fragment>
+      <div className="grid">
+        {GLYPHS.map((it, i) => (
+          <div className="cell" key={i} style={cellStyle(t.treatment, sc.labels)}>
+            <span className="g" style={{
+              fontSize: Math.round(sc.size * (it.shrink || 1)),
+              color: glyphColor(it.tone, t.signals),
+            }}>{it.g}</span>
+            {sc.labels && <span className="n">{it.n}</span>}
+          </div>
+        ))}
+      </div>
+
+      <TweaksPanel>
+        <TweakSection label="Glyph grid" />
+        <TweakRadio label="Treatment" value={t.treatment}
+                    options={["boxed", "bare", "plate"]}
+                    onChange={(v) => setTweak("treatment", v)} />
+        <TweakRadio label="Presence" value={t.scale}
+                    options={["compact", "roomy", "hero"]}
+                    onChange={(v) => setTweak("scale", v)} />
+        <TweakToggle label="Signals lit" value={t.signals}
+                     onChange={(v) => setTweak("signals", v)} />
+      </TweaksPanel>
+    </React.Fragment>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
