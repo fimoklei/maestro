@@ -56,6 +56,17 @@ describe("DeployStatePanel drift badge", () => {
     expect(await screen.findByText(/behind/i)).toBeInTheDocument();
   });
 
+  it("shows the deployed -> latest version pair for a behind skill", async () => {
+    stubFetch(tddDeployed, {
+      behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+    });
+    renderPanel("/Users/me/project");
+
+    expect(
+      await screen.findByText(/v0\.5\.0\s*→\s*v0\.5\.1/),
+    ).toBeInTheDocument();
+  });
+
   it("shows up-to-date for a skill the check does not report behind", async () => {
     stubFetch(tddDeployed, { behind: [] });
     renderPanel("/Users/me/project");

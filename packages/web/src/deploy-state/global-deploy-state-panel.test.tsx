@@ -26,16 +26,16 @@ function renderPanel() {
 }
 
 describe("GlobalDeployStatePanel", () => {
-  it("always shows a Global heading, even while loading", () => {
+  it("always shows the Global target card title, even while loading", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(() => new Promise(() => {})),
     );
     renderPanel();
 
-    expect(
-      screen.getByRole("heading", { name: /global/i }),
-    ).toBeInTheDocument();
+    // The card (with its title) is the baseline: it renders regardless of the
+    // read state, so the title is present even before any data arrives.
+    expect(screen.getByText("Global")).toBeInTheDocument();
   });
 
   it("lists globally deployed skills with their human tag version", async () => {
