@@ -50,10 +50,30 @@ screens come from.
 - **shadcn/ui components are owned, not imported.** They are copied into the repo
   and restyled to our tokens. Do not add a ready-made, externally-themed
   component library (MUI/Mantine) — it fights our design.
-- **Catalogue.** Components are documented in a Storybook-style catalogue
-  (level-3 scope, per ADR-0004). New components land with a story.
+- **Catalogue.** Components are documented in a Storybook catalogue (per
+  ADR-0004, amended by ADR-0008). New components land with a story.
 - **Sequencing.** Styled UI lands in one pass *after* the drift/update capability
   exists (ADR-0004) — do not style ahead of working behaviour.
+
+## Stories (Storybook)
+
+A story shows a component in a real state on the token layer; it is
+documentation, not a test (behaviour is tested in `.test.tsx` — see
+`testing.md`). The catalogue is verified by a `build-storybook` step in CI.
+
+- **Presentational only.** No data-fetching, no TanStack Query, no live hooks in
+  a story. A component that needs server data gets it through `args`, not a real
+  hook — a story has no `QueryClientProvider` and must not depend on one.
+- **Tokens apply in stories too.** No hard-coded colours/hex. Inline `style` is
+  for layout scaffolding only (flex, gap, width), never component appearance.
+- **Behaviour lives in `.test.tsx`, not stories.** No play/interaction tests in
+  stories for now; do not duplicate what the sibling test already covers.
+- **One story per meaningful state, not per prop permutation** — mirror the
+  "no permutation explosions" rule in `testing.md`.
+- **Format is CSF3** — `satisfies Meta<typeof X>` and `StoryObj`, as the
+  existing stories do. No legacy `storiesOf`.
+- **Title is `Group/Component`** — reuse the existing groups (Core, Shell, …);
+  do not invent new top-level groups without reason.
 
 ## Accessibility (baseline, not polish)
 

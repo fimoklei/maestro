@@ -1,6 +1,6 @@
 name: CI
 
-# The only enforced gate (no local git hooks): install -> lint -> typecheck -> test -> build.
+# The only enforced gate (no local git hooks): install -> lint -> typecheck -> test -> build -> build-storybook.
 on:
   push:
     branches: [main]
@@ -33,3 +33,9 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      # Smoke test that the component catalogue assembles (ADR-0008). Catches
+      # broken imports/config; a runtime render crash needs the deferred
+      # browser lane (story-as-test).
+      - name: Build Storybook
+        run: pnpm --filter @maestro/web build-storybook
