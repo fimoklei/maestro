@@ -1,0 +1,117 @@
+/* Maestro web styling entry — Control Room design system on Tailwind v4.
+   Loads Tailwind, the raw colour tokens, then maps everything to clean Tailwind
+   utility names. Two @theme blocks, on purpose:
+
+   - @theme inline  → colours. `inline` makes utilities reference the raw token
+     directly (e.g. bg-card → var(--surface-card)), so flipping data-theme on the
+     root re-skins everything because only the raw value changes.
+   - @theme         → theme-independent constants (fonts, type scale, radii,
+     spacing). Literal values; they never switch per theme. */
+
+/* Fonts are self-hosted via @fontsource-variable, imported as a side-effect from
+   whatever entry loads this stylesheet (Storybook's preview, later the app
+   entry) — never a runtime CDN fetch, which would break the local-first/offline
+   scope. The token stacks below name the variable families first. */
+@import "tailwindcss";
+@import "./tokens.css";
+
+@theme inline {
+  /* surfaces → bg-canvas / bg-chrome / bg-card / bg-inset / bg-active */
+  --color-canvas: var(--bg-0);
+  --color-chrome: var(--bg-1);
+  --color-card: var(--surface-card);
+  --color-inset: var(--surface-inset);
+  --color-active: var(--surface-active);
+
+  /* text → text-fg / text-fg-2 / text-fg-3 / text-muted / text-dim */
+  --color-fg: var(--text-1);
+  --color-fg-2: var(--text-2);
+  --color-fg-3: var(--text-3);
+  --color-muted: var(--text-muted);
+  --color-dim: var(--text-dim);
+
+  /* borders → border-line / border-line-chip / … */
+  --color-line-faint: var(--border-faint);
+  --color-line-row: var(--border-row);
+  --color-line: var(--border-strong);
+  --color-line-chip: var(--border-chip);
+  --color-line-dashed: var(--border-dashed);
+  --color-line-drift: var(--border-drift);
+  --color-line-amber-dim: var(--border-amber-dim);
+
+  /* signals → bg-amber / text-amber-ink / border-amber-border / … */
+  --color-amber: var(--amber);
+  --color-amber-ink: var(--amber-ink);
+  --color-amber-bg: var(--amber-bg);
+  --color-amber-border: var(--amber-border);
+  --color-green: var(--green);
+  --color-green-ink: var(--green-ink);
+  --color-green-bg: var(--green-bg);
+  --color-green-border: var(--green-border);
+  --color-dim-bg: var(--dim-bg);
+  --color-on-accent: var(--on-accent);
+
+  /* primitive type colours → text-type-skill / border-type-hook / … */
+  --color-type-skill: var(--type-skill);
+  --color-type-hook: var(--type-hook);
+  --color-type-mcp: var(--type-mcp);
+  --color-type-bundle: var(--type-bundle);
+}
+
+@theme {
+  /* fonts → font-ui / font-mono */
+  --font-ui:
+    "Space Grotesk Variable", "Space Grotesk", "Helvetica Neue", Helvetica,
+    sans-serif;
+  --font-mono:
+    "JetBrains Mono Variable", "JetBrains Mono", "SFMono-Regular", Menlo,
+    monospace;
+
+  /* type scale (dense cockpit — small but never below 10px) → text-title … text-tag */
+  --text-title: 16px;
+  --text-subtitle: 14px;
+  --text-body: 13.5px;
+  --text-data: 13px;
+  --text-desc: 12.5px;
+  --text-mono-sm: 11.5px;
+  --text-chip: 11px;
+  --text-tag: 10px;
+
+  /* letter-spacing → tracking-label / tracking-tag */
+  --tracking-label: 0.12em;
+  --tracking-tag: 0.08em;
+
+  /* corner radii — tight, nothing pill-shaped → rounded-tag … rounded-card */
+  --radius-tag: 3px;
+  --radius-control: 4px;
+  --radius-item: 5px;
+  --radius-card: 6px;
+
+  /* recurring paddings → px-card-x / py-row-y / py-header-y */
+  --spacing-card-x: 14px;
+  --spacing-row-y: 9px;
+  --spacing-header-y: 10px;
+}
+
+@layer base {
+  body {
+    margin: 0;
+    background: var(--bg-0);
+    color: var(--text-1);
+    font-family: var(--font-ui);
+  }
+}
+
+/* uppercase mono micro-label, e.g. "TARGETS", "DEPLOY TO" */
+.m-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-tag);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* mono data text */
+.m-mono {
+  font-family: var(--font-mono);
+}
