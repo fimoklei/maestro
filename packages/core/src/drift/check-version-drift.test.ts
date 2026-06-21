@@ -4,7 +4,14 @@ import { CheckVersionDrift } from "./check-version-drift";
 
 const registeredRepo = "/repos/app";
 
-type OutdatedResult = { ok: true; behind: string[] } | { ok: false };
+type VersionDrift = { name: string; current: string; latest: string };
+type OutdatedResult = { ok: true; behind: VersionDrift[] } | { ok: false };
+
+const tddBehind: VersionDrift = {
+  name: "tdd",
+  current: "v0.5.0",
+  latest: "v0.5.1",
+};
 
 // Plain-object fakes (the house style — no mocking framework). `calls` records
 // the targets apm was asked about, so a test can assert apm was never reached.
@@ -62,15 +69,15 @@ describe("CheckVersionDrift", () => {
     expect(result).toEqual({ ok: false });
   });
 
-  it("returns the behind set for a registered repo", async () => {
-    const { deps } = makeDeps({ outcome: { ok: true, behind: ["tdd"] } });
+  it("returns the behind pair for a registered repo", async () => {
+    const { deps } = makeDeps({ outcome: { ok: true, behind: [tddBehind] } });
     const useCase = new CheckVersionDrift(deps);
 
     const result = await useCase.execute({
       target: { kind: "repo", repoPath: registeredRepo },
     });
 
-    expect(result).toEqual({ ok: true, behind: ["tdd"] });
+    expect(result).toEqual({ ok: true, behind: [tddBehind] });
   });
 
   it("checks global drift without consulting the registry", async () => {
@@ -78,13 +85,13 @@ describe("CheckVersionDrift", () => {
       isRegistered: async () => {
         throw new Error("registry must not be consulted for global drift");
       },
-      outcome: { ok: true, behind: ["tdd"] },
+      outcome: { ok: true, behind: [tddBehind] },
     });
     const useCase = new CheckVersionDrift(deps);
 
     const result = await useCase.execute({ target: { kind: "global" } });
 
-    expect(result).toEqual({ ok: true, behind: ["tdd"] });
+    expect(result).toEqual({ ok: true, behind: [tddBehind] });
     expect(calls).toEqual([{ kind: "global" }]);
   });
 });

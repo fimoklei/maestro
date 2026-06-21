@@ -12,10 +12,11 @@ const query = (state: {
 });
 
 describe("toDriftView", () => {
-  it("maps a ran check to ready with its behind set", () => {
-    expect(toDriftView(query({ data: { behind: ["tdd"] } }))).toEqual({
+  it("maps a ran check to ready with its behind pairs", () => {
+    const behind = [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }];
+    expect(toDriftView(query({ data: { behind } }))).toEqual({
       status: "ready",
-      behind: ["tdd"],
+      behind,
     });
   });
 

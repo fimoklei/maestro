@@ -16,8 +16,11 @@ const outdatedTable = `
 `;
 
 describe("parseOutdated", () => {
-  it("returns the behind skill name from an outdated table", () => {
-    expect(parseOutdated(outdatedTable)).toEqual({ ok: true, behind: ["tdd"] });
+  it("returns the deployed -> latest version pair per behind skill", () => {
+    expect(parseOutdated(outdatedTable)).toEqual({
+      ok: true,
+      behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+    });
   });
 
   it("recognises 'all dependencies are up-to-date' as an empty behind set", () => {
@@ -34,10 +37,13 @@ describe("parseOutdated", () => {
     });
   });
 
-  it("recovers the name from a narrow-width row whose name still fits", () => {
+  it("recovers the pair from a narrow-width row whose name still fits", () => {
     const narrow =
       "│ fimoklei/agent-harness/skills/tdd │ v0.5.0 │ v0.5.1 │ outdated │ git tags │";
-    expect(parseOutdated(narrow)).toEqual({ ok: true, behind: ["tdd"] });
+    expect(parseOutdated(narrow)).toEqual({
+      ok: true,
+      behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+    });
   });
 
   it("ignores rows whose status is not outdated", () => {
@@ -45,7 +51,10 @@ describe("parseOutdated", () => {
       "│ owner/repo/skills/tdd      │ v1.0.0 │ v1.1.0 │ outdated  │ git tags │",
       "│ owner/repo/skills/diagnose │ v2.0.0 │ v2.0.0 │ up-to-date│ git tags │",
     ].join("\n");
-    expect(parseOutdated(mixed)).toEqual({ ok: true, behind: ["tdd"] });
+    expect(parseOutdated(mixed)).toEqual({
+      ok: true,
+      behind: [{ name: "tdd", current: "v1.0.0", latest: "v1.1.0" }],
+    });
   });
 
   it("fails when apm reports outdated deps but no row parses", () => {

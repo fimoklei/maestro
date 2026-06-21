@@ -61,7 +61,9 @@ const tddDeployed = {
 
 describe("Update action on a behind skill", () => {
   it("offers an Update action for a skill the check reports behind", async () => {
-    stubReads(tddDeployed, { behind: ["tdd"] });
+    stubReads(tddDeployed, {
+      behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+    });
     renderPanel("/Users/me/project");
 
     expect(
@@ -120,7 +122,9 @@ describe("Update action on a behind skill", () => {
         });
       }
       if (url.includes("/api/drift")) {
-        return jsonResponse({ behind: ["tdd"] });
+        return jsonResponse({
+          behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+        });
       }
       return jsonResponse(tddDeployed, 200);
     });
@@ -154,7 +158,9 @@ describe("Update action on a behind skill", () => {
         });
       }
       if (url.includes("/api/drift")) {
-        return jsonResponse({ behind: ["tdd"] });
+        return jsonResponse({
+          behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+        });
       }
       return jsonResponse(tddDeployed, 200);
     });
@@ -185,7 +191,9 @@ describe("Update action on a behind skill", () => {
         return new Promise<Response>(() => undefined);
       }
       if (url.includes("/api/drift")) {
-        return jsonResponse({ behind: ["tdd"] });
+        return jsonResponse({
+          behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+        });
       }
       return jsonResponse(tddDeployed, 200);
     });
@@ -217,7 +225,9 @@ describe("Update action on a behind skill", () => {
         );
       }
       if (url.includes("/api/drift")) {
-        return jsonResponse({ behind: ["tdd"] });
+        return jsonResponse({
+          behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+        });
       }
       return jsonResponse(tddDeployed, 200);
     });
@@ -250,7 +260,9 @@ describe("Update action on a behind skill", () => {
         );
       }
       if (url.includes("/api/drift")) {
-        return jsonResponse({ behind: ["tdd"] });
+        return jsonResponse({
+          behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+        });
       }
       return jsonResponse(tddDeployed, 200);
     });
@@ -293,7 +305,9 @@ describe("Update action on a behind skill", () => {
           });
         }
         if (url.includes("/api/drift")) {
-          return jsonResponse({ behind: ["tdd"] });
+          return jsonResponse({
+            behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+          });
         }
         return jsonResponse(tddDeployed, 200);
       },
@@ -339,7 +353,11 @@ describe("Update action on a behind skill", () => {
         });
       }
       if (url.includes("/api/drift")) {
-        return jsonResponse({ behind: updated ? [] : ["tdd"] });
+        return jsonResponse({
+          behind: updated
+            ? []
+            : [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+        });
       }
       return jsonResponse(tddDeployed, 200);
     });
@@ -372,7 +390,9 @@ describe("Update action on a behind skill", () => {
         );
       }
       if (url.includes("/api/drift")) {
-        return jsonResponse({ behind: ["tdd"] });
+        return jsonResponse({
+          behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+        });
       }
       return jsonResponse(tddDeployed, 200);
     });

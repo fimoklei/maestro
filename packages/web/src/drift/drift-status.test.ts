@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { type DriftView, orphanBehind, skillDriftStatus } from "./drift-status";
 
-const ready = (behind: string[]): DriftView => ({ status: "ready", behind });
+// Behind names are carried as deployed -> latest version pairs (ADR-0007); the
+// per-skill status derives from the name, so these tests name the behind skills
+// and let the helper attach a placeholder pair.
+const ready = (names: string[]): DriftView => ({
+  status: "ready",
+  behind: names.map((name) => ({ name, current: "v1.0.0", latest: "v1.1.0" })),
+});
 
 describe("skillDriftStatus", () => {
   it("reports a deployed skill in the behind set as behind", () => {

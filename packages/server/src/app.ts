@@ -259,12 +259,13 @@ export function createApp(deps: AppDeps) {
   });
 
   // Per-repo version drift, registry-gated like deploy-state. The judgment is
-  // delegated to `apm outdated` (ADR-0001) and shown binary (behind vs not),
-  // never a version diff. A check that could not run is a 200 with { ok: false }
-  // — a legitimate "unknown" the web maps to a badge, not an HTTP error: a
-  // screen showing "up-to-date" when the check actually failed would falsely
-  // reassure. Up-to-date is derived (check ran + skill not behind), never read
-  // positively here.
+  // delegated to `apm outdated` (ADR-0001); each behind skill carries its
+  // deployed -> latest version pair (ADR-0007), with the binary behind/up-to-date
+  // judgment still derivable (latest !== current). A check that could not run is
+  // a 200 with { ok: false } — a legitimate "unknown" the web maps to a badge,
+  // not an HTTP error: a screen showing "up-to-date" when the check actually
+  // failed would falsely reassure. Up-to-date is derived (check ran + skill not
+  // behind), never read positively here.
   app.get("/api/drift", async (c) => {
     const repo = c.req.query("repo");
     if (repo === undefined || repo.trim() === "") {

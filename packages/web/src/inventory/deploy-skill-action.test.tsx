@@ -342,7 +342,9 @@ describe("DeploySkillAction", () => {
           String(c[0]).includes("/api/drift"),
         ).length <= 1
           ? jsonResponse({ ok: false })
-          : jsonResponse({ behind: ["tdd"] });
+          : jsonResponse({
+              behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+            });
       }
       if (url.startsWith("/api/deploy-state")) {
         return jsonResponse({
@@ -420,7 +422,9 @@ describe("DeploySkillAction", () => {
           String(c[0]).includes("/api/drift/global"),
         ).length <= 1
           ? jsonResponse({ ok: false })
-          : jsonResponse({ behind: ["tdd"] });
+          : jsonResponse({
+              behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+            });
       }
       if (url.startsWith("/api/deploy-state/global")) {
         return jsonResponse({

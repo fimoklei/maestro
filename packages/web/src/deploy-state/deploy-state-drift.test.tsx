@@ -47,7 +47,9 @@ const tddDeployed = {
 
 describe("DeployStatePanel drift badge", () => {
   it("shows a behind badge for a skill the check reports behind", async () => {
-    stubFetch(tddDeployed, { behind: ["tdd"] });
+    stubFetch(tddDeployed, {
+      behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+    });
     renderPanel("/Users/me/project");
 
     expect(await screen.findByText("tdd")).toBeInTheDocument();
@@ -72,7 +74,12 @@ describe("DeployStatePanel drift badge", () => {
   });
 
   it("surfaces a behind name that is not a deployed skill, instead of dropping it", async () => {
-    stubFetch(tddDeployed, { behind: ["tdd", "foo"] });
+    stubFetch(tddDeployed, {
+      behind: [
+        { name: "tdd", current: "v0.5.0", latest: "v0.5.1" },
+        { name: "foo", current: "v1.0.0", latest: "v1.1.0" },
+      ],
+    });
     renderPanel("/Users/me/project");
 
     expect(await screen.findByText("tdd")).toBeInTheDocument();

@@ -30,7 +30,11 @@ export {
   type CheckVersionDriftInput,
   type CheckVersionDriftResult,
 } from "./drift/check-version-drift";
-export { type OutdatedResult, parseOutdated } from "./drift/parse-outdated";
+export {
+  type OutdatedResult,
+  parseOutdated,
+  type VersionDrift,
+} from "./drift/parse-outdated";
 export type { HealthReport } from "./health";
 export { coreHealth } from "./health";
 export {

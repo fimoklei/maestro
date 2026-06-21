@@ -4,6 +4,7 @@
 // local skill diverges from it, and hand the tag-pinned reference (ADR-0003)
 // to the ApmDriver under a per-repo lock. Business rules live here; the
 // server route only carries it over HTTP.
+import type { VersionDrift } from "../drift/parse-outdated";
 import type { InventoryResult } from "../inventory/inventory-reader";
 import { parseGitOrigin } from "./git-origin";
 import { buildSkillPackageRef, isValidSkillSlug } from "./package-ref";
@@ -26,11 +27,12 @@ export type ApmDriverPort = {
   resolveLatestTag(ownerRepo: string): Promise<string | null>;
   deploySkill(input: { target: DeployTarget; ref: string }): Promise<void>;
   // Wraps `apm outdated` for a target and returns the skills behind the latest
-  // central tag. A failed run (CLI missing, no auth/network, non-zero exit) is
-  // a flat `{ ok: false }` — never raw apm output, never a taxonomy.
+  // central tag, each as a deployed -> latest version pair (ADR-0007). A failed
+  // run (CLI missing, no auth/network, non-zero exit) is a flat `{ ok: false }`
+  // — never raw apm output, never a taxonomy.
   checkOutdated(
     target: DeployTarget,
-  ): Promise<{ ok: true; behind: string[] } | { ok: false }>;
+  ): Promise<{ ok: true; behind: VersionDrift[] } | { ok: false }>;
 };
 
 // Git questions apm cannot answer (apm view is repo-level): whether a tag's
