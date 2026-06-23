@@ -16,6 +16,29 @@ function jsonResponse(body: unknown, status: number) {
   });
 }
 
+// Routes the fetch stub by URL: the view reads the current config (to show what
+// is connected and pre-fill the field) and posts to connect on submit. configPath
+// defaults to null — the first-run/not-connected state most tests assume.
+function stubApi({
+  configPath = null,
+  connect,
+}: {
+  configPath?: string | null;
+  connect?: () => Response;
+} = {}) {
+  const fetchMock = vi.fn(
+    async (input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = String(input);
+      if (url.startsWith("/api/inventory/config")) {
+        return jsonResponse({ inventoryPath: configPath }, 200);
+      }
+      return connect ? connect() : jsonResponse({ inventoryPath: "/x" }, 200);
+    },
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
 // Renders the view at /connect with a marker at /inventory so a successful
 // connect's navigation is observable without pulling in the real Inventory view.
 function renderView() {
@@ -35,43 +58,53 @@ function renderView() {
 }
 
 describe("ConnectView", () => {
-  it("offers a labelled path field and a connect action", () => {
+  it("offers a labelled path field and a connect action", async () => {
+    stubApi();
     renderView();
 
-    expect(screen.getByLabelText(/inventory path/i)).toBeInTheDocument();
+    expect(await screen.findByLabelText(/inventory path/i)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /connect/i }),
     ).toBeInTheDocument();
   });
 
-  it("connects the pasted path and lands on Inventory", async () => {
-    const fetchMock = vi.fn(
-      async (_input: RequestInfo | URL, _init?: RequestInit) =>
-        jsonResponse({ inventoryPath: "/home/me/agent-harness" }, 200),
+  it("pre-fills the field and shows connected when an inventory is set", async () => {
+    stubApi({ configPath: "/home/me/agent-harness" });
+    renderView();
+
+    expect(await screen.findByLabelText(/inventory path/i)).toHaveValue(
+      "/home/me/agent-harness",
     );
-    vi.stubGlobal("fetch", fetchMock);
+    expect(screen.getByText(/connected/i)).toBeInTheDocument();
+  });
+
+  it("connects the pasted path and lands on Inventory", async () => {
+    const fetchMock = stubApi({
+      connect: () =>
+        jsonResponse({ inventoryPath: "/home/me/agent-harness" }, 200),
+    });
     renderView();
 
     await userEvent.type(
-      screen.getByLabelText(/inventory path/i),
+      await screen.findByLabelText(/inventory path/i),
       "/home/me/agent-harness",
     );
     await userEvent.click(screen.getByRole("button", { name: /connect/i }));
 
     expect(await screen.findByText("inventory-landed")).toBeInTheDocument();
 
-    const call = fetchMock.mock.calls[0];
-    expect(String(call?.[0])).toBe("/api/inventory/connect");
-    expect(call?.[1]?.method).toBe("POST");
-    expect(JSON.parse(call?.[1]?.body as string)).toEqual({
+    const connectCall = fetchMock.mock.calls.find((c) =>
+      String(c[0]).startsWith("/api/inventory/connect"),
+    );
+    expect(connectCall?.[1]?.method).toBe("POST");
+    expect(JSON.parse(connectCall?.[1]?.body as string)).toEqual({
       path: "/home/me/agent-harness",
     });
   });
 
   it("shows the server's validation message tied to the field", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
+    stubApi({
+      connect: () =>
         jsonResponse(
           {
             error: "not-an-inventory",
@@ -80,12 +113,11 @@ describe("ConnectView", () => {
           },
           422,
         ),
-      ),
-    );
+    });
     renderView();
 
     await userEvent.type(
-      screen.getByLabelText(/inventory path/i),
+      await screen.findByLabelText(/inventory path/i),
       "/home/me/not-a-clone",
     );
     await userEvent.click(screen.getByRole("button", { name: /connect/i }));
@@ -100,14 +132,11 @@ describe("ConnectView", () => {
   });
 
   it("surfaces an unexpected server error as readable text", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => jsonResponse({ message: "boom" }, 500)),
-    );
+    stubApi({ connect: () => jsonResponse({ message: "boom" }, 500) });
     renderView();
 
     await userEvent.type(
-      screen.getByLabelText(/inventory path/i),
+      await screen.findByLabelText(/inventory path/i),
       "/home/me/agent-harness",
     );
     await userEvent.click(screen.getByRole("button", { name: /connect/i }));

@@ -8,16 +8,18 @@ import { Button } from "../ui/button";
 // to the field via aria-describedby. Styled from Control Room tokens.
 type ConnectInventoryFormProps = {
   onSubmit: (path: string) => void;
+  initialPath?: string;
   error?: string | null;
   isPending?: boolean;
 };
 
 export function ConnectInventoryForm({
   onSubmit,
+  initialPath = "",
   error,
   isPending = false,
 }: ConnectInventoryFormProps) {
-  const [path, setPath] = useState("");
+  const [path, setPath] = useState(initialPath);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

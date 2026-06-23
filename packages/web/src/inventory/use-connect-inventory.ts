@@ -4,7 +4,7 @@
 // skills (see .claude/rules/frontend.md). Mirrors useRegisterRepo.
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
-import { INVENTORY_KEY } from "./use-inventory";
+import { INVENTORY_CONFIG_KEY, INVENTORY_KEY } from "./use-inventory";
 
 type ConnectResponse = { inventoryPath: string };
 
@@ -18,6 +18,7 @@ export function useConnectInventory() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: INVENTORY_KEY });
+      queryClient.invalidateQueries({ queryKey: INVENTORY_CONFIG_KEY });
     },
   });
 }

@@ -19,3 +19,19 @@ export function useInventory() {
     queryFn: () => requestJson<InventoryResponse>("/api/inventory/primitives"),
   });
 }
+
+type InventoryConfigResponse = { inventoryPath: string | null };
+
+// The currently configured inventory path (or null). Exported so the connect
+// mutation invalidates it after a re-point, keeping the Settings screen in sync.
+export const INVENTORY_CONFIG_KEY = ["inventory", "config"] as const;
+
+// Server-state hook for the configured inventory path. The Settings screen reads
+// it to show what is connected and pre-fill the re-point field.
+export function useInventoryConfig() {
+  return useQuery({
+    queryKey: INVENTORY_CONFIG_KEY,
+    queryFn: () =>
+      requestJson<InventoryConfigResponse>("/api/inventory/config"),
+  });
+}
