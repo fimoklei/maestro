@@ -26,9 +26,9 @@ export function InventoryList({
   }
 
   return (
-    <div className="py-1.5">
+    <ul className="list-none py-1.5">
       {primitives.map((primitive) => (
-        <div
+        <li
           key={primitive.name}
           className="flex items-center gap-3 px-card-x py-row-y"
         >
@@ -44,8 +44,8 @@ export function InventoryList({
             repos={repos}
             registryReady={registryReady}
           />
-        </div>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }

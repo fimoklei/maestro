@@ -71,6 +71,23 @@ describe("InventoryPanel", () => {
     expect(screen.getAllByText("skill")).toHaveLength(2);
   });
 
+  it("exposes the skills as a list, one item per skill", async () => {
+    // The inventory is a real list, so it keeps list semantics for assistive
+    // tech (frontend.md a11y baseline) — not generic divs (#80, Codex P2).
+    stubApi(
+      [
+        { type: "skill", name: "tdd", description: "TDD loop" },
+        { type: "skill", name: "diagnose", description: "Diagnosis loop" },
+      ],
+      [],
+    );
+    renderPanel();
+
+    await screen.findByText("tdd");
+    expect(screen.getByRole("list")).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+  });
+
   it("offers a deploy action with a repo choice on every skill row", async () => {
     stubApi(
       [{ type: "skill", name: "tdd", description: "TDD loop" }],
