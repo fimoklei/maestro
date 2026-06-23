@@ -15,15 +15,18 @@ function jsonResponse(body: unknown, status: number) {
   });
 }
 
-// The inventory read drives the gate. notConfigured=true returns a 409 from the
-// primitives endpoint (the server's "no inventory configured" signal); every
-// other shell query resolves to an empty-but-valid body.
+// The config endpoint drives the gate: it answers 200 with inventoryPath null
+// when nothing is connected (no retry delay, unlike an error signal). Every other
+// shell query resolves to an empty-but-valid body.
 function stubServer({ notConfigured }: { notConfigured: boolean }) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) =>
-      String(input).startsWith("/api/inventory/primitives") && notConfigured
-        ? jsonResponse({ error: "not-configured", message: "irrelevant" }, 409)
+      String(input).startsWith("/api/inventory/config")
+        ? jsonResponse(
+            { inventoryPath: notConfigured ? null : "/home/me/agent-harness" },
+            200,
+          )
         : jsonResponse(
             { ok: true, repos: [], primitives: [], skipped: [], behind: [] },
             200,
