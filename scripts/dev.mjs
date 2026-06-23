@@ -58,6 +58,7 @@ function sleep(ms) {
 if (existsSync(pidFile)) {
   const previous = Number(readFileSync(pidFile, "utf8").trim());
   if (Number.isInteger(previous) && previous > 0 && isAlive(previous)) {
+    console.log(`[dev] evicting previous dev run (pid ${previous})`);
     killGroup(previous, "SIGTERM");
   }
   rmSync(pidFile, { force: true });
@@ -69,6 +70,7 @@ for (const port of [serverPort, webPort]) {
   for (const pid of pidsOnPort(port)) {
     try {
       process.kill(pid, "SIGKILL");
+      console.log(`[dev] freeing port ${port} (pid ${pid})`);
       freedSomething = true;
     } catch {
       // already gone
