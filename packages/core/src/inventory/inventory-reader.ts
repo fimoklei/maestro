@@ -58,6 +58,14 @@ export class InventoryReader {
     this.resolvePath = deps.resolvePath;
   }
 
+  // The currently configured inventory path (config-or-env), or null when none
+  // is set. The cockpit's Settings screen reads this to show what is connected
+  // and to pre-fill the re-point field. It is the same resolution `read` uses,
+  // so the displayed path is exactly the one the reader would load.
+  async configuredPath(): Promise<string | null> {
+    return (await this.resolvePath()) ?? null;
+  }
+
   async read(): Promise<InventoryResult> {
     const root = await this.resolvePath();
     if (root === undefined || !(await this.fs.isDirectory(root))) {

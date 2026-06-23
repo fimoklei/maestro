@@ -205,6 +205,15 @@ export function createApp(deps: AppDeps) {
     return c.json({ primitives: result.primitives });
   });
 
+  // The currently configured inventory path (or null), for the Settings screen
+  // to show what is connected and pre-fill the re-point field. A GET, so it
+  // bypasses the Origin/Host guard. Unlike connect's error responses, returning
+  // the user's own configured path to the local cockpit is intentional — it is
+  // the same path the inventory read already uses, not an attacker probe.
+  app.get("/api/inventory/config", async (c) => {
+    return c.json({ inventoryPath: await deps.inventory.configuredPath() });
+  });
+
   // Offline connect: persist a user-pasted path to an existing local
   // agent-harness clone as the inventory. A state-changing route, so the
   // app-wide Origin/Host guard above already covers it. No git clone (J11,

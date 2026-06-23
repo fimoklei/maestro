@@ -94,6 +94,19 @@
 }
 
 @layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  /* The cockpit shell owns scrolling: the routed main region scrolls, the page
+     itself never does. Without this the long inventory list leaks past main and
+     scrolls the whole document, dragging the status bar and sidebar nav
+     off-screen. Lock must sit on <html> — overflow on <body> does not propagate
+     to the viewport here. */
+  html {
+    overflow: hidden;
+  }
   body {
     margin: 0;
     background: var(--bg-0);

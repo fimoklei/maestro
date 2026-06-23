@@ -91,4 +91,22 @@ describe("inventory HTTP route", () => {
     // The path is never echoed back — it may be a misconfigured secret.
     expect(body.message).not.toContain(dir);
   });
+
+  it("GET /api/inventory/config returns the configured path", async () => {
+    const app = makeApp(dir);
+
+    const res = await app.request("/api/inventory/config");
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ inventoryPath: dir });
+  });
+
+  it("GET /api/inventory/config returns null when no inventory is configured", async () => {
+    const app = makeApp(undefined);
+
+    const res = await app.request("/api/inventory/config");
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ inventoryPath: null });
+  });
 });
