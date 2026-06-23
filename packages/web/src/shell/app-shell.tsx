@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { FirstRunGate } from "./first-run-gate";
 import { Sidebar } from "./sidebar";
 import { StatusBar } from "./status-bar";
 
@@ -11,7 +11,7 @@ export function AppShell() {
       <div className="flex min-h-0 flex-1">
         <Sidebar />
         <main className="min-w-0 flex-1 overflow-auto p-6">
-          <Outlet />
+          <FirstRunGate />
         </main>
       </div>
     </div>

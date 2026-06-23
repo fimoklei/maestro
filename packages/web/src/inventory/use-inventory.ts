@@ -8,7 +8,10 @@ export type Primitive = { type: "skill"; name: string; description: string };
 
 type InventoryResponse = { primitives: Primitive[] };
 
-const INVENTORY_KEY = ["inventory", "primitives"] as const;
+// The inventory query key, exported so the connect mutation invalidates the very
+// same cache entry this query owns (a drifting copy would silently break the
+// post-connect refetch).
+export const INVENTORY_KEY = ["inventory", "primitives"] as const;
 
 export function useInventory() {
   return useQuery({
