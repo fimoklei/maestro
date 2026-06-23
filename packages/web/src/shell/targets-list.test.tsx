@@ -33,25 +33,43 @@ function rowFor(label: string) {
   return node;
 }
 
+// Routes the list's queries by URL: the registry, plus a drift and a
+// deploy-state outcome for the global target and for the one registered repo.
+// The roll-up joins drift against deploy-state, so a repo only reads as "needs
+// update" when a behind name is actually deployed there.
+function stubFetch(repoDeployState: unknown, repoDrift: unknown) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string) => {
+      const target = String(url);
+      if (target.includes("/api/registry/repos")) {
+        return jsonResponse({ repos: [{ path: "/Users/me/app" }] }, 200);
+      }
+      if (target.includes("/api/deploy-state/global")) {
+        return jsonResponse({ primitives: [], skipped: [] }, 200);
+      }
+      if (target.includes("/api/deploy-state")) {
+        return jsonResponse(repoDeployState, 200);
+      }
+      if (target.includes("/api/drift/global")) {
+        return jsonResponse({ behind: [] }, 200);
+      }
+      return jsonResponse(repoDrift, 200);
+    }),
+  );
+}
+
+const tddDeployed = {
+  primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+  skipped: [],
+};
+
 describe("TargetsList", () => {
   it("lists the global target and every registered repo with a status", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) => {
-        const target = String(url);
-        if (target.includes("/api/registry/repos")) {
-          return jsonResponse({ repos: [{ path: "/Users/me/app" }] }, 200);
-        }
-        if (target.includes("/api/drift/global")) {
-          return jsonResponse({ behind: [] }, 200);
-        }
-        // per-repo drift: behind -> the repo target reads as needing an update.
-        return jsonResponse(
-          { behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }] },
-          200,
-        );
-      }),
-    );
+    // The repo deploys tdd and the check reports tdd behind -> needs update.
+    stubFetch(tddDeployed, {
+      behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+    });
     renderTargets();
 
     // Global is in sync (drift check ran, nothing behind).
@@ -63,5 +81,23 @@ describe("TargetsList", () => {
     expect(
       await within(rowFor("/Users/me/app")).findByText(/needs update/i),
     ).toBeInTheDocument();
+  });
+
+  it("does not mark a repo as needing update for a behind primitive it has not deployed", async () => {
+    // The repo deploys tdd, but the check reports a different (orphan) name
+    // behind -> nothing deployed here can be updated, so it stays in sync.
+    stubFetch(tddDeployed, {
+      behind: [{ name: "foo", current: "v1.0.0", latest: "v1.1.0" }],
+    });
+    renderTargets();
+
+    // Wait for the repo row to render (its registry query resolves first).
+    await screen.findByText("/Users/me/app");
+    expect(
+      await within(rowFor("/Users/me/app")).findByText(/in sync/i),
+    ).toBeInTheDocument();
+    expect(
+      within(rowFor("/Users/me/app")).queryByText(/needs update/i),
+    ).not.toBeInTheDocument();
   });
 });

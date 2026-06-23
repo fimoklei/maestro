@@ -1,7 +1,9 @@
 import { toDriftView } from "../drift/drift-query-view";
+import { targetDriftIndicator } from "../drift/target-drift-indicator";
 import { useDrift } from "../drift/use-drift";
 import { Card } from "../ui/card";
 import { DeployStateList } from "./deploy-state-list";
+import { toDeployedView } from "./deployed-view";
 import { TargetStatusChip } from "./target-status-chip";
 import { useDeployState } from "./use-deploy-state";
 
@@ -14,13 +16,17 @@ export function DeployStatePanel({ repo }: { repo: string }) {
   const deployState = useDeployState(repo);
   const drift = useDrift(repo);
   const driftView = toDriftView(drift);
+  const indicator = targetDriftIndicator(
+    toDeployedView(deployState),
+    driftView,
+  );
 
   return (
     <Card
       title={repo}
       kind="local"
-      drift={driftView.status === "ready" && driftView.behind.length > 0}
-      status={<TargetStatusChip drift={driftView} />}
+      drift={indicator === "drift"}
+      status={<TargetStatusChip indicator={indicator} />}
     >
       {deployState.isLoading ? (
         <p className="px-card-x py-row-y text-dim text-tag">Loading…</p>
