@@ -26,17 +26,9 @@ function renderSection() {
 }
 
 describe("DeployStateSection", () => {
-  it("invites the user to register a repo when none are registered", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => jsonResponse({ repos: [] }, 200)),
-    );
-    renderSection();
-
-    expect(await screen.findByText(/register a repo/i)).toBeInTheDocument();
-  });
-
-  it("shows a loading state, not the register hint, while the registry loads", () => {
+  // Inviting the user to register a repo lives in the sidebar (SidebarRegister)
+  // and the cold-start nudge now — the section no longer duplicates that hint.
+  it("shows a loading state, not a register hint, while the registry loads", () => {
     // A fetch that never resolves keeps the query pending.
     vi.stubGlobal(
       "fetch",
@@ -62,7 +54,7 @@ describe("DeployStateSection", () => {
     expect(screen.queryByText(/register a repo/i)).not.toBeInTheDocument();
   });
 
-  it("always renders the fixed Global panel, even when no repos are registered", async () => {
+  it("always renders the fixed Global card, even when no repos are registered", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
@@ -71,10 +63,9 @@ describe("DeployStateSection", () => {
     );
     renderSection();
 
-    // Global is the baseline: its heading is present regardless of the registry.
-    expect(
-      await screen.findByRole("heading", { name: /global/i }),
-    ).toBeInTheDocument();
+    // Global is the baseline: its target card is present regardless of the
+    // registry.
+    expect(await screen.findByText("Global")).toBeInTheDocument();
   });
 
   it("shows a deploy-state panel for each registered repo", async () => {

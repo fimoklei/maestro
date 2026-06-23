@@ -1,27 +1,12 @@
-import { DeployStateSection } from "./deploy-state/deploy-state-section";
-import { InventoryPanel } from "./inventory/inventory-panel";
-import { RegistryPanel } from "./registry/registry-panel";
-import { useHealth } from "./use-health";
+import { BrowserRouter } from "react-router-dom";
+import { AppRoutes } from "./shell/app-router";
 
-// Minimal shell, no Maestro UI: reads /api/health and shows the status. Its
-// only purpose is to prove the live web -> server HTTP boundary works.
-type HealthState = "checking" | "healthy" | "unreachable";
-
+// The cockpit entry: the router renders the shell (status bar + sidebar) around
+// the active view, with Deploy-state as the landing route.
 export function App() {
-  const health = useHealth();
-  const state: HealthState = health.isPending
-    ? "checking"
-    : health.isError || !health.data?.ok
-      ? "unreachable"
-      : "healthy";
-
   return (
-    <main>
-      <h1>Maestro</h1>
-      <p>Server: {state}</p>
-      <RegistryPanel />
-      <DeployStateSection />
-      <InventoryPanel />
-    </main>
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
   );
 }
