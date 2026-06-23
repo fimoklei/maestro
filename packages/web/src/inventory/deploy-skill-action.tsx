@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { RegisteredRepo } from "../registry/use-registry";
+import { Button } from "../ui/button";
 import { DeployRefusalNotice } from "./deploy-refusal-notice";
 import { type DeployTarget, useDeploySkill } from "./use-deploy-skill";
 
@@ -48,11 +49,13 @@ export function DeploySkillAction({
     ? "Loading targets…"
     : deploy.isPending
       ? "Deploying…"
-      : "Deploy";
+      : "Deploy →";
 
   return (
-    <span>
-      <label htmlFor={selectId}>Deploy {skillName} to</label>
+    <span className="flex items-center gap-2">
+      <label htmlFor={selectId} className="sr-only">
+        Deploy {skillName} to
+      </label>
       <select
         id={selectId}
         value={selected}
@@ -63,6 +66,7 @@ export function DeploySkillAction({
           deploy.reset();
           setChosen(event.target.value);
         }}
+        className="max-w-40 truncate rounded-control border border-line-chip bg-transparent px-2 py-[3px] font-mono text-muted text-tag"
       >
         <option value={GLOBAL_VALUE}>Global</option>
         {repos.map((repo) => (
@@ -71,17 +75,18 @@ export function DeploySkillAction({
           </option>
         ))}
       </select>
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="sm"
         disabled={!registryReady || deploy.isPending}
         onClick={() =>
           deploy.mutate({ type: "skill", name: skillName, target })
         }
       >
         {buttonLabel}
-      </button>
+      </Button>
       {deploy.isSuccess ? (
-        <span role="status">
+        <span role="status" className="text-green-ink text-tag">
           Deployed {deploy.data.deployed.name} {deploy.data.deployed.version}
         </span>
       ) : null}
