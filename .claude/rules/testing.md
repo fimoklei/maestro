@@ -27,6 +27,8 @@ One runner for all of them: **Vitest**. One tool, one mental model.
 - **Integration** = a dedicated `tests/integration/` tree. Tests a journey across multiple modules with real I/O. Goal: regression safety net, runs in CI.
 - **Acceptance (BDD)** = Gherkin `.feature` files, **one per MVP1 subjob** (`J01`–`J11`), written in Given/When/Then. Goal: prove the cockpit does its jobs, traceable to the job map, and readable by a non-engineer without reading code. Runs end-to-end against the server API (not the browser) under Vitest.
 
+Storybook stories are **not** a lane: they are documentation, not test coverage. A `.stories.tsx` shows a component's states; behaviour is still tested in the sibling `.test.tsx` (see `frontend.md`). Writing a story does not count as testing the component.
+
 Heuristic for "is this integration?": if it touches the real filesystem, git, or network → integration. For Maestro specifically, anything that drives APM or reads real lockfiles is integration. An acceptance scenario uses real I/O too, but is organised by subjob and written to read like the job map.
 
 Set up each lane with one example as the first feature in it lands (the web lane arrived with the first UI slice), then fill them as features land — never a batch of tests before the first feature.
