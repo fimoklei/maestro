@@ -1,7 +1,9 @@
 import { toDriftView } from "../drift/drift-query-view";
+import { targetDriftIndicator } from "../drift/target-drift-indicator";
 import { useGlobalDrift } from "../drift/use-drift";
 import { Card } from "../ui/card";
 import { DeployStateList } from "./deploy-state-list";
+import { toDeployedView } from "./deployed-view";
 import { TargetStatusChip } from "./target-status-chip";
 import { useGlobalDeployState } from "./use-global-deploy-state";
 
@@ -13,13 +15,17 @@ export function GlobalDeployStatePanel() {
   const deployState = useGlobalDeployState();
   const drift = useGlobalDrift();
   const driftView = toDriftView(drift);
+  const indicator = targetDriftIndicator(
+    toDeployedView(deployState),
+    driftView,
+  );
 
   return (
     <Card
       title="Global"
       kind="global"
-      drift={driftView.status === "ready" && driftView.behind.length > 0}
-      status={<TargetStatusChip drift={driftView} />}
+      drift={indicator === "drift"}
+      status={<TargetStatusChip indicator={indicator} />}
     >
       {deployState.isLoading ? (
         <p className="px-card-x py-row-y text-dim text-tag">Loading…</p>

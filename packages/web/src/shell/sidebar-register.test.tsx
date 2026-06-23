@@ -17,7 +17,8 @@ function jsonResponse(body: unknown, status: number) {
 }
 
 // A stateful registry: empty until a POST registers a repo, after which the
-// list (and so the Targets list) refetches it. Drift checks resolve to in-sync.
+// list (and so the Targets list) refetches it. Drift checks resolve to in-sync
+// and deploy-state to nothing deployed, so each target reads as in sync.
 function stubStatefulRegistry() {
   let repos: { path: string }[] = [];
   vi.stubGlobal(
@@ -30,6 +31,9 @@ function stubStatefulRegistry() {
           repos = [{ path }];
         }
         return jsonResponse({ repos }, 200);
+      }
+      if (target.includes("/api/deploy-state")) {
+        return jsonResponse({ primitives: [], skipped: [] }, 200);
       }
       if (target.includes("/api/drift")) {
         return jsonResponse({ behind: [] }, 200);

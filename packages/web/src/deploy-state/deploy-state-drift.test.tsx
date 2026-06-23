@@ -16,7 +16,11 @@ function jsonResponse(body: unknown, status: number) {
 
 // Routes the panel's two queries (deploy-state and drift) by URL, so each
 // scenario can pin one deployed skill and a distinct drift outcome.
-function stubFetch(deployState: unknown, drift: unknown, driftStatus = 200) {
+function stubFetch(
+  deployState: unknown,
+  drift: unknown,
+  { driftStatus = 200, deployStateStatus = 200 } = {},
+) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
@@ -24,7 +28,7 @@ function stubFetch(deployState: unknown, drift: unknown, driftStatus = 200) {
       if (url.includes("/api/drift")) {
         return jsonResponse(drift, driftStatus);
       }
-      return jsonResponse(deployState, 200);
+      return jsonResponse(deployState, deployStateStatus);
     }),
   );
 }
@@ -84,6 +88,16 @@ describe("DeployStatePanel drift badge", () => {
     expect(screen.queryByText(/up-to-date/i)).not.toBeInTheDocument();
   });
 
+  it("does not mark the target as drift when the only behind primitive is not deployed here", async () => {
+    stubFetch(tddDeployed, {
+      behind: [{ name: "foo", current: "v1.0.0", latest: "v1.1.0" }],
+    });
+    renderPanel("/Users/me/project");
+
+    expect(await screen.findByText(/in sync/i)).toBeInTheDocument();
+    expect(screen.queryByText(/▲ drift/)).not.toBeInTheDocument();
+  });
+
   it("surfaces a behind name that is not a deployed skill, instead of dropping it", async () => {
     stubFetch(tddDeployed, {
       behind: [
@@ -97,5 +111,22 @@ describe("DeployStatePanel drift badge", () => {
     expect(await screen.findByText(/not deployed here/i)).toHaveTextContent(
       /foo/,
     );
+  });
+
+  it("does not claim in sync when deploy-state could not be read, even if drift reports behind", async () => {
+    // Drift says tdd is behind, but the deployed set is unknown (read failed).
+    // The header must not silently read "in sync" / hide the update (J04).
+    stubFetch(
+      tddDeployed,
+      { behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }] },
+      { deployStateStatus: 500 },
+    );
+    renderPanel("/Users/me/project");
+
+    expect(
+      await screen.findByText(/could not read this repo's deploy-state/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/in sync/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/▲ drift/)).not.toBeInTheDocument();
   });
 });
