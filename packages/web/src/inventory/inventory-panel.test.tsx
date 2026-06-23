@@ -55,6 +55,22 @@ describe("InventoryPanel", () => {
     expect(screen.getByText("Diagnosis loop")).toBeInTheDocument();
   });
 
+  it("shows a type tag on each skill row", async () => {
+    // The view is type-aware (TypeTag per primitive) though only skills render
+    // today, so a future hook/mcp/bundle slots in additively (#80).
+    stubApi(
+      [
+        { type: "skill", name: "tdd", description: "TDD loop" },
+        { type: "skill", name: "diagnose", description: "Diagnosis loop" },
+      ],
+      [],
+    );
+    renderPanel();
+
+    await screen.findByText("tdd");
+    expect(screen.getAllByText("skill")).toHaveLength(2);
+  });
+
   it("offers a deploy action with a repo choice on every skill row", async () => {
     stubApi(
       [{ type: "skill", name: "tdd", description: "TDD loop" }],
