@@ -1,4 +1,5 @@
 import {
+  chmod,
   mkdir,
   mkdtemp,
   realpath as nodeRealpath,
@@ -152,6 +153,26 @@ describe("filesystem browse HTTP route", () => {
     expect(((await res.json()) as { error: string }).error).toBe(
       "not-a-directory",
     );
+  });
+
+  it("returns 422 for a real directory inside home that cannot be read", async () => {
+    // A user can select a directory under home that exists but denies listing
+    // (permission denied). The endpoint must answer a controlled error, never a
+    // 500 (issue #94: "a readable error, not a crash").
+    const locked = join(home, "locked");
+    await mkdir(locked, { recursive: true });
+    await chmod(locked, 0o000);
+    try {
+      const res = await postBrowse(makeApp(), { path: locked });
+
+      expect(res.status).toBe(422);
+      expect(((await res.json()) as { error: string }).error).toBe(
+        "unreadable",
+      );
+    } finally {
+      // Restore so afterEach can remove it.
+      await chmod(locked, 0o700);
+    }
   });
 
   it("rejects a malformed body with a 400", async () => {

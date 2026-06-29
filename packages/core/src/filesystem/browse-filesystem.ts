@@ -9,7 +9,11 @@ import { join, resolve } from "node:path";
 import type { FileSystemPort } from "../registry/file-system";
 import { isWithinRoot } from "./browse-path";
 
-export type BrowseError = "outside-root" | "not-found" | "not-a-directory";
+export type BrowseError =
+  | "outside-root"
+  | "not-found"
+  | "not-a-directory"
+  | "unreadable";
 
 export type BrowseEntry = { name: string; path: string };
 
@@ -74,7 +78,15 @@ export class BrowseFilesystem {
 
     // listDirectoryNames returns child directory names only (the Node adapter
     // filters non-directories and unresolved symlinks); sort for a stable picker.
-    const names = await this.fs.listDirectoryNames(real);
+    // A real directory the user can select may still be unreadable (permission
+    // denied under home, e.g. parts of ~/Library), which rejects here — map it
+    // to a typed error so the route answers a controlled status, never a 500.
+    let names: string[];
+    try {
+      names = await this.fs.listDirectoryNames(real);
+    } catch {
+      return { ok: false, error: "unreadable" };
+    }
     const entries = names
       .map((name) => ({ name, path: join(real, name) }))
       .sort((a, b) => a.name.localeCompare(b.name));

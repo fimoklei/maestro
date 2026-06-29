@@ -83,6 +83,20 @@ describe("BrowseFilesystem", () => {
     expect(result).toEqual({ ok: false, error: "not-found" });
   });
 
+  it("rejects an unreadable directory with a typed error, not a crash", async () => {
+    const browse = makeBrowse({
+      directories: {
+        "/home/user": "/home/user",
+        "/home/user/locked": "/home/user/locked",
+      },
+      unreadable: ["/home/user/locked"],
+    });
+
+    const result = await browse.browse("/home/user/locked");
+
+    expect(result).toEqual({ ok: false, error: "unreadable" });
+  });
+
   it("rejects a path that is not a directory", async () => {
     const browse = makeBrowse({
       directories: { "/home/user": "/home/user" },

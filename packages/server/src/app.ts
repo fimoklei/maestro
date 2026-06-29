@@ -159,7 +159,7 @@ const connectErrorResponses: Record<
 // — it may be a misconfigured secret (security.md).
 const browseErrorResponses: Record<
   BrowseError,
-  { status: 400 | 403 | 404; message: string }
+  { status: 400 | 403 | 404 | 422; message: string }
 > = {
   "outside-root": {
     status: 403,
@@ -169,6 +169,12 @@ const browseErrorResponses: Record<
   "not-a-directory": {
     status: 400,
     message: "That path is not a directory.",
+  },
+  // Exists and is a directory, but its contents could not be read (e.g.
+  // permission denied). 422: the request was well-formed but unprocessable.
+  unreadable: {
+    status: 422,
+    message: "That directory could not be read.",
   },
 };
 
