@@ -60,7 +60,20 @@ describe("BrowseFilesystem", () => {
     expect(result).toEqual({ ok: false, error: "outside-root" });
   });
 
-  it("rejects a non-existent path", async () => {
+  it("rejects a non-existent path outside the root without leaking its absence", async () => {
+    // The ceiling must bound disclosure: a missing path outside home must look
+    // identical to an existing one (both outside-root), or callers could probe
+    // existence beyond the home ceiling (ADR-0009).
+    const browse = makeBrowse({
+      directories: { "/home/user": "/home/user" },
+    });
+
+    const result = await browse.browse("/etc/secret-that-does-not-exist");
+
+    expect(result).toEqual({ ok: false, error: "outside-root" });
+  });
+
+  it("rejects a non-existent path inside the root as not-found", async () => {
     const browse = makeBrowse({
       directories: { "/home/user": "/home/user" },
     });

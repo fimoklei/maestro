@@ -5,7 +5,7 @@
 // any listing happens. `..` and symlink escapes collapse under realpath and are
 // then caught by the root check (isWithinRoot). An empty path defaults to the
 // root so the picker has a sensible starting point.
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import type { FileSystemPort } from "../registry/file-system";
 import { isWithinRoot } from "./browse-path";
 
@@ -27,20 +27,43 @@ export class BrowseFilesystem {
   }
 
   async browse(input: string): Promise<BrowseResult> {
-    const requested = input.trim() === "" ? this.homeRoot() : input.trim();
+    const rawRoot = this.homeRoot();
+    const requested = input.trim() === "" ? rawRoot : input.trim();
 
-    let real: string;
+    // Resolve the home ceiling first; it always exists, so this leaks nothing.
     let realRoot: string;
     try {
-      real = await this.fs.realpath(requested);
-      realRoot = await this.fs.realpath(this.homeRoot());
+      realRoot = await this.fs.realpath(rawRoot);
     } catch {
       return { ok: false, error: "not-found" };
     }
 
-    // The ceiling check runs before any directory listing — info disclosure is
-    // bounded to the user's own home, the only protection the Origin/Host guard
-    // does not give (ADR-0009).
+    // Lexical ceiling check BEFORE probing the requested path. Collapsing `..`
+    // and rejecting anything outside the root without touching disk stops the
+    // endpoint leaking whether an *outside* path exists — realpath would throw
+    // for a missing one and resolve a present one, telling them apart beyond the
+    // ceiling (ADR-0009). Accept a path lexically inside either the raw or the
+    // resolved home: the two differ when home sits under a symlinked prefix
+    // (e.g. macOS /var -> /private/var), and the picker feeds back resolved
+    // paths while a test or a user may pass the raw form.
+    const normalized = resolve(requested);
+    if (
+      !isWithinRoot(normalized, realRoot) &&
+      !isWithinRoot(normalized, rawRoot)
+    ) {
+      return { ok: false, error: "outside-root" };
+    }
+
+    // Now resolve symlinks. The path is lexically inside home, so a throw here
+    // discloses only a missing entry within the ceiling — acceptable.
+    let real: string;
+    try {
+      real = await this.fs.realpath(normalized);
+    } catch {
+      return { ok: false, error: "not-found" };
+    }
+
+    // A symlink lexically inside home but resolving outside is caught here.
     if (!isWithinRoot(real, realRoot)) {
       return { ok: false, error: "outside-root" };
     }

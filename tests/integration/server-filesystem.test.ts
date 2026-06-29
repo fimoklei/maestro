@@ -123,11 +123,24 @@ describe("filesystem browse HTTP route", () => {
     );
   });
 
-  it("returns 404 for a non-existent path", async () => {
+  it("returns 404 for a non-existent path inside the home root", async () => {
     const res = await postBrowse(makeApp(), { path: join(home, "missing") });
 
     expect(res.status).toBe(404);
     expect(((await res.json()) as { error: string }).error).toBe("not-found");
+  });
+
+  it("rejects a non-existent path outside the home root with 403, not 404", async () => {
+    // A missing outside path must look identical to an existing one — otherwise
+    // the endpoint leaks existence beyond the home ceiling (ADR-0009).
+    const res = await postBrowse(makeApp(), {
+      path: join(outside, "definitely-missing"),
+    });
+
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { error: string }).error).toBe(
+      "outside-root",
+    );
   });
 
   it("returns 400 for a path that is not a directory", async () => {
