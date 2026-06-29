@@ -80,6 +80,7 @@ Ship B.
 | 01.3 — Drift (binary) | J04 | [#44](https://github.com/fimoklei/maestro/issues/44) |
 | 01.4 — Update | J08 | [#52](https://github.com/fimoklei/maestro/issues/52) |
 | 01.5 — Design pass + two capability deltas (see *01.5 scope* below) | J04 (version-pair), J11 (offline connect) | [#75](https://github.com/fimoklei/maestro/issues/75) |
+| 01.6 — First-run wizard: guided cold-start + browse picker + Inventory source view | J11, J10 | [#93](https://github.com/fimoklei/maestro/issues/93) |
 
 This table is a **map, not a dashboard.** Only the stable columns (sub-step,
 subjobs, PRD link) live here. Status is **derived from the tracker, never
