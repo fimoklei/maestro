@@ -36,6 +36,10 @@ _Avoid_: integration, connector.
 The single curated, production-ready collection of primitives, held in the `agent-harness` Git repository. The source you deploy *from*. "Central" means curated and ready to deploy — not a draft scratchpad.
 _Avoid_: skills repo, library, catalog (a catalog is passive; the inventory is the governed source).
 
+**Inventory source**:
+The connection that points Maestro at the central inventory — the local path it reads primitives from (a git URL is the Future "Connect & sync" form), managed behind the ⚙ settings view. Distinct from the **Central inventory** itself: the source is the *pointer*, the inventory is *what it points at*. Read-only; Maestro never writes back to it.
+_Avoid_: inventory path (too narrow — names only today's local-path form), connection.
+
 **Curated / Production-ready**:
 The quality bar for anything in the **central inventory**: reviewed and deemed safe to deploy. In MVP1 the curator is one person (the owner). The path from contribution to curated is the future governed lifecycle.
 _Avoid_: published, approved (those name the future lifecycle step, not the state).
