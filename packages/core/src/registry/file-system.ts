@@ -15,8 +15,10 @@ export interface FileSystemPort {
   // failures reject.
   readFile(path: string): Promise<string | null>;
 
-  // Lists the entry names directly inside a directory. Empty when the directory
-  // does not exist — a missing skills/ folder is "no skills", not an error.
+  // Lists the names of the child *directories* directly inside a directory;
+  // files and unresolved symlinks are excluded (the browse capability relies on
+  // this — ADR-0009). Empty when the directory does not exist — a missing
+  // skills/ folder is "no skills", not an error.
   listDirectoryNames(path: string): Promise<string[]>;
 
   // Writes a UTF-8 file atomically (temp file + rename), creating parent

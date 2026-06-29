@@ -9,17 +9,22 @@ type FakeSeed = {
   files?: Record<string, string>;
   // Maps a directory path to the entry names directly inside it.
   listings?: Record<string, string[]>;
+  // Directories that exist but reject when listed (e.g. permission denied),
+  // so callers can exercise the unreadable-directory path.
+  unreadable?: string[];
 };
 
 export class InMemoryFileSystem implements FileSystemPort {
   private readonly directories: Map<string, string>;
   private readonly files: Map<string, string>;
   private readonly listings: Map<string, string[]>;
+  private readonly unreadable: Set<string>;
 
   constructor(seed: FakeSeed = {}) {
     this.directories = new Map(Object.entries(seed.directories ?? {}));
     this.files = new Map(Object.entries(seed.files ?? {}));
     this.listings = new Map(Object.entries(seed.listings ?? {}));
+    this.unreadable = new Set(seed.unreadable ?? []);
   }
 
   async realpath(path: string): Promise<string> {
@@ -42,6 +47,9 @@ export class InMemoryFileSystem implements FileSystemPort {
   }
 
   async listDirectoryNames(path: string): Promise<string[]> {
+    if (this.unreadable.has(path)) {
+      throw new Error(`EACCES: permission denied, scandir '${path}'`);
+    }
     return this.listings.get(path) ?? [];
   }
 

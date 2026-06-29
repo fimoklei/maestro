@@ -11,6 +11,7 @@ import {
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 
@@ -66,6 +67,7 @@ describe("drift HTTP route", () => {
       drift,
       resolveGlobalRoot: () => "/nonexistent-apm-root",
       connect: stubConnect(),
+      browse: stubBrowse(),
       enforceOriginHost: false,
     });
     return { app, registry, calls };

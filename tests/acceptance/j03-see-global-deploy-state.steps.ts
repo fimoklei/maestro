@@ -11,6 +11,7 @@ import {
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { expect } from "vitest";
+import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
@@ -39,6 +40,7 @@ function buildApp(configPath: string, apmRoot: string) {
     drift: stubDrift({ registry }),
     resolveGlobalRoot: () => apmRoot,
     connect: stubConnect(),
+    browse: stubBrowse(),
     enforceOriginHost: false,
   });
 }
