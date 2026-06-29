@@ -18,6 +18,7 @@ import {
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { stubBrowse } from "../helpers/stub-browse";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
 
@@ -63,6 +64,7 @@ describe("inventory connect HTTP route", () => {
       deploy: stubDeploy({ inventory, registry }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
+      browse: stubBrowse(),
       enforceOriginHost: false,
     });
   }

@@ -1,5 +1,8 @@
+import { homedir } from "node:os";
 import {
   ApmCliDriver,
+  type BrowseError,
+  BrowseFilesystem,
   CheckVersionDrift,
   ConfigStore,
   ConnectInventory,
@@ -29,6 +32,8 @@ import { originHostGuard } from "./origin-host-guard";
 const registerBodySchema = z.object({ path: z.string() });
 
 const connectBodySchema = z.object({ path: z.string() });
+
+const browseBodySchema = z.object({ path: z.string() });
 
 const deployBodySchema = z.object({
   // Any string passes the edge; "skills only" is a business rule in core, so
@@ -148,6 +153,25 @@ const connectErrorResponses: Record<
   },
 };
 
+// Transport-layer mapping for the browse use-case. outside-root is a 403 (the
+// home-root ceiling refused it — the info-disclosure boundary), a missing path
+// is 404, and a non-directory path is a 400 bad path. No message echoes the path
+// — it may be a misconfigured secret (security.md).
+const browseErrorResponses: Record<
+  BrowseError,
+  { status: 400 | 403 | 404; message: string }
+> = {
+  "outside-root": {
+    status: 403,
+    message: "That path is outside the area Maestro can browse.",
+  },
+  "not-found": { status: 404, message: "No directory exists at that path." },
+  "not-a-directory": {
+    status: 400,
+    message: "That path is not a directory.",
+  },
+};
+
 // Builds the Hono app from injected dependencies so routes are testable in
 // isolation (see tests/integration). The dependencies that reach the outside
 // world — the registry and the Origin/Host enforcement — are passed in; tests
@@ -158,6 +182,7 @@ export type AppDeps = {
   registry: Registry;
   inventory: InventoryReader;
   connect: ConnectInventory;
+  browse: BrowseFilesystem;
   deployState: DeployStateReader;
   deploy: DeploySkill;
   drift: CheckVersionDrift;
@@ -235,6 +260,30 @@ export function createApp(deps: AppDeps) {
     }
 
     return c.json({ inventoryPath: result.inventoryPath });
+  });
+
+  // Read-only directory browser for the first-run path pickers (ADR-0009).
+  // A POST, deliberately, so the app-wide Origin/Host guard above covers it:
+  // this is MVP1's widest read surface and a GET would bypass that guard. The
+  // home-root ceiling and all path safety live in core; this route only maps the
+  // shape and the typed errors. An empty path lists the home root.
+  app.post("/api/filesystem/children", async (c) => {
+    const body = await c.req.json().catch(() => null);
+    const parsed = browseBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json(
+        { error: "invalid-body", message: "Expected a JSON body with a path." },
+        400,
+      );
+    }
+
+    const result = await deps.browse.browse(parsed.data.path);
+    if (!result.ok) {
+      const { status, message } = browseErrorResponses[result.error];
+      return c.json({ error: result.error, message }, status);
+    }
+
+    return c.json({ path: result.path, entries: result.entries });
   });
 
   // Per-repo deploy-state, registry-gated: a repo not in the registry is
@@ -454,6 +503,9 @@ function realDeps(): AppDeps {
     registry,
     inventory,
     connect: new ConnectInventory({ fs, store }),
+    // The browse ceiling is the user's home directory (ADR-0009), resolved per
+    // access so it is never frozen at import time.
+    browse: new BrowseFilesystem({ fs, homeRoot: () => homedir() }),
     deployState,
     deploy,
     drift,

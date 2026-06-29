@@ -12,6 +12,7 @@ import {
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { expect } from "vitest";
+import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDrift } from "../helpers/stub-drift";
 
@@ -108,6 +109,7 @@ describeFeature(
         drift: stubDrift({ registry }),
         resolveGlobalRoot: () => apmRoot,
         connect: stubConnect(),
+        browse: stubBrowse(),
         enforceOriginHost: false,
       });
     });

@@ -35,6 +35,13 @@ export {
   parseOutdated,
   type VersionDrift,
 } from "./drift/parse-outdated";
+export {
+  type BrowseEntry,
+  type BrowseError,
+  BrowseFilesystem,
+  type BrowseResult,
+} from "./filesystem/browse-filesystem";
+export { isWithinRoot } from "./filesystem/browse-path";
 export type { HealthReport } from "./health";
 export { coreHealth } from "./health";
 export {
