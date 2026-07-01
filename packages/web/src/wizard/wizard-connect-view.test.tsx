@@ -152,6 +152,13 @@ describe("WizardConnectView", () => {
     stubApi({ configuredPath: "/home/me/agent-harness" });
     renderView();
 
+    // Checked synchronously, before the config fetch has had a chance to
+    // resolve: the form must not render even for the brief pending window
+    // while the cockpit doesn't yet know whether this user is configured
+    // (Codex review finding — a flash of the first-run form before the
+    // redirect effect fires would still violate "the wizard never shows").
+    expect(screen.queryByLabelText(/inventory path/i)).not.toBeInTheDocument();
+
     expect(await screen.findByText("deploy-state-landed")).toBeInTheDocument();
     expect(screen.queryByLabelText(/inventory path/i)).not.toBeInTheDocument();
   });

@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { connectErrorMessage } from "../inventory/connect-error-message";
 import { useConnectInventory } from "../inventory/use-connect-inventory";
+import { useInventoryConfig } from "../inventory/use-inventory";
 import { BrowseDialog } from "../shell/browse-dialog";
 import { ConnectInventoryForm } from "../shell/connect-inventory-form";
 import { useBrowsePicker } from "../shell/use-browse-picker";
-import { useIsConfigured } from "../shell/use-first-run";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { SectionHeader } from "../ui/section-header";
@@ -23,22 +23,26 @@ import { WizardProgress } from "./wizard-progress";
 // continuing skips straight to landing.
 export function WizardConnectView() {
   const connect = useConnectInventory();
+  const config = useInventoryConfig();
   const navigate = useNavigate();
-  const configured = useIsConfigured();
   const [path, setPath] = useState("");
   const browse = useBrowsePicker(setPath);
-
-  // Guards a deep link/bookmark into this step by an already-configured user
+  // Blocks a deep link/bookmark into this step by an already-configured user
   // (the gate only guards /welcome itself, not this nested route — see
   // first-run-gate.tsx). Keyed off *this component's own* mutation, not just
   // "configured", so a connect that succeeds mid-flow (unconfigured ->
   // configured, right here) still shows its confirmation instead of being
-  // yanked to "/" the instant the config re-fetch catches up.
+  // yanked to "/" the instant the config re-fetch catches up. While config is
+  // still pending we don't yet know which case this is, so this also stays
+  // true — the form must not flash into view before the answer arrives.
+  const blocked =
+    !connect.isSuccess && (config.isPending || config.data?.inventoryPath);
+
   useEffect(() => {
-    if (configured && !connect.isSuccess) {
+    if (blocked && config.isSuccess) {
       navigate("/", { replace: true });
     }
-  }, [configured, connect.isSuccess, navigate]);
+  }, [blocked, config.isSuccess, navigate]);
 
   function handleSubmit(submittedPath: string) {
     connect.mutate(submittedPath);
@@ -46,8 +50,8 @@ export function WizardConnectView() {
 
   const error = connectErrorMessage(connect.error);
 
-  if (configured && !connect.isSuccess) {
-    return null;
+  if (blocked) {
+    return <p className="text-dim text-tag">Loading…</p>;
   }
 
   return (
