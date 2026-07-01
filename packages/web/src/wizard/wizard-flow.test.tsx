@@ -92,6 +92,65 @@ describe("first-run wizard sequence", () => {
     ).toBeInTheDocument();
   });
 
+  it("lands on Deploy-state even when the config refetch after connect is still in flight", async () => {
+    // Reproduces a race (Codex review finding): invalidateQueries only marks
+    // the config query stale and schedules a refetch — it does not update the
+    // cache synchronously. If the user clicks Continue before that refetch
+    // resolves, the gate's useFirstRun would still read the pre-connect
+    // cached "unconfigured" answer and bounce back to /welcome. The connect
+    // mutation's own response already carries the new inventoryPath, so the
+    // fix is to seed the cache from it directly — this test holds the config
+    // refetch open indefinitely to prove landing does not depend on it
+    // resolving.
+    let inventoryPath: string | null = null;
+    let configRequests = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.startsWith("/api/inventory/config")) {
+          configRequests += 1;
+          if (configRequests > 1) {
+            return new Promise<Response>(() => {}); // never resolves
+          }
+          return jsonResponse({ inventoryPath }, 200);
+        }
+        if (
+          url.startsWith("/api/inventory/connect") &&
+          init?.method === "POST"
+        ) {
+          inventoryPath = "/home/me/agent-harness";
+          return jsonResponse({ inventoryPath, primitiveCount: 3 }, 200);
+        }
+        return jsonResponse(
+          { ok: true, repos: [], primitives: [], skipped: [], behind: [] },
+          200,
+        );
+      }),
+    );
+    renderApp("/welcome/connect");
+
+    await userEvent.type(
+      await screen.findByLabelText(/inventory path/i),
+      "/home/me/agent-harness",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /^connect inventory$/i }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: /continue/i }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: /deploy-state/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", {
+        name: /connect your central inventory/i,
+      }),
+    ).not.toBeInTheDocument();
+  });
+
   it("never shows the wizard to an already-configured user", async () => {
     vi.stubGlobal(
       "fetch",

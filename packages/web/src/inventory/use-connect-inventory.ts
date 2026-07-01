@@ -16,7 +16,19 @@ export function useConnectInventory() {
         method: "POST",
         body: JSON.stringify({ path }),
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Seed the config cache synchronously from the mutation's own response,
+      // not just invalidateQueries: invalidation only marks the query stale
+      // and schedules a background refetch, it does not update the cache
+      // itself. The wizard navigates to "/" the moment the user clicks
+      // Continue, which can be before that refetch resolves — without this,
+      // useFirstRun would still read the pre-connect cached answer at that
+      // instant and the gate would bounce the user straight back to /welcome
+      // (Codex review finding). invalidateQueries still runs after, so the
+      // cache reconciles with the server's own view once the refetch lands.
+      queryClient.setQueryData(INVENTORY_CONFIG_KEY, {
+        inventoryPath: data.inventoryPath,
+      });
       queryClient.invalidateQueries({ queryKey: INVENTORY_KEY });
       queryClient.invalidateQueries({ queryKey: INVENTORY_CONFIG_KEY });
     },
