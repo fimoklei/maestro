@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describeFeature, loadFeature } from "@amiceli/vitest-cucumber";
 import {
+  BrowseFilesystem,
   ConfigStore,
   ConnectInventory,
   DeployStateReader,
@@ -13,7 +14,6 @@ import {
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { expect } from "vitest";
-import { stubBrowse } from "../helpers/stub-browse";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
 
@@ -43,8 +43,19 @@ function buildApp(configPath: string) {
     deploy: stubDeploy({ inventory, registry }),
     drift: stubDrift({ registry }),
     resolveGlobalRoot: () => "/nonexistent-apm-root",
-    browse: stubBrowse(),
+    // Rooted at the OS temp dir (not the real home) so the browsed-path
+    // scenario can list this suite's own temp directories — the acceptance
+    // lane never touches the real home, mirroring buildApp's config isolation.
+    browse: new BrowseFilesystem({ fs, homeRoot: () => tmpdir() }),
     enforceOriginHost: false,
+  });
+}
+
+function browseChildren(app: ReturnType<typeof buildApp>, path: string) {
+  return app.request("/api/filesystem/children", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ path }),
   });
 }
 
@@ -126,6 +137,45 @@ describeFeature(
         And("the central inventory is still not configured", async () => {
           const res = await app.request("/api/inventory/primitives");
           expect(res.status).toBe(409);
+        });
+      },
+    );
+
+    Scenario(
+      "I connect via a path found by browsing",
+      ({ Given, When, Then, And }) => {
+        Given("a cockpit with no inventory configured", async () => {
+          const before = await app.request("/api/inventory/primitives");
+          expect(before.status).toBe(409);
+        });
+        When(
+          "I browse to the clone's parent directory and connect the listed clone",
+          async () => {
+            const parent = await mkdtemp(join(tmpdir(), "maestro-j11-parent-"));
+            await writeSkill(join(parent, "agent-harness"), "tdd", "TDD loop");
+
+            const browseRes = await browseChildren(app, parent);
+            expect(browseRes.status).toBe(200);
+            const { entries } = (await browseRes.json()) as {
+              entries: { name: string; path: string }[];
+            };
+            const found = entries.find((e) => e.name === "agent-harness");
+            expect(found).toBeDefined();
+
+            response = await connect(app, found?.path ?? "");
+          },
+        );
+        Then("the connect succeeds", () => {
+          expect(response.status).toBe(200);
+        });
+        And("the central inventory lists that clone's skills", async () => {
+          const res = await app.request("/api/inventory/primitives");
+          expect(res.status).toBe(200);
+          expect(await res.json()).toEqual({
+            primitives: [
+              { type: "skill", name: "tdd", description: "TDD loop" },
+            ],
+          });
         });
       },
     );

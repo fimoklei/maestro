@@ -1,34 +1,35 @@
-import { type FormEvent, useState } from "react";
+import type { FormEvent } from "react";
 import { Button } from "../ui/button";
 
 // Presentational form for the offline connect flow: a labelled path input + a
 // connect action. Extracted so the first-run wizard's connect step and the
-// future ⚙ Inventory source re-point view can share it instead of duplicating
-// it (PRD #93) — today both roles are still served by one ConnectView, but the
-// form itself no longer assumes that. The path is local UI-state (useState);
-// connecting is delegated to onSubmit so the data logic stays in the container
-// hook (see .claude/rules/frontend.md). onBrowse is an optional hook point for
-// a "browse…" picker — omit it and the form behaves exactly as the path-only
-// variant; wiring the picker itself is a later slice. A validation error
-// renders as readable text tied to the field via aria-describedby. Styled from
-// Control Room tokens.
+// ⚙ Inventory source re-point view share it instead of duplicating it (PRD
+// #93). The path is now a controlled prop, not local state — both the wizard's
+// connect step and Settings need to seed/overwrite it from a "browse…" picker
+// selection, which only a container-owned value allows (see frontend.md: this
+// is UI-state, just owned one level up so two screens can drive it).
+// Connecting is delegated to onSubmit so the data logic stays in the container
+// hook. onBrowse is an optional hook point for a "browse…" picker — omit it and
+// the form behaves exactly as the path-only variant. A validation error renders
+// as readable text tied to the field via aria-describedby. Styled from Control
+// Room tokens.
 type ConnectInventoryFormProps = {
+  path: string;
+  onPathChange: (path: string) => void;
   onSubmit: (path: string) => void;
-  initialPath?: string;
   error?: string | null;
   isPending?: boolean;
   onBrowse?: () => void;
 };
 
 export function ConnectInventoryForm({
+  path,
+  onPathChange,
   onSubmit,
-  initialPath = "",
   error,
   isPending = false,
   onBrowse,
 }: ConnectInventoryFormProps) {
-  const [path, setPath] = useState(initialPath);
-
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     onSubmit(path);
@@ -44,7 +45,7 @@ export function ConnectInventoryForm({
           id="inventory-path"
           name="inventory-path"
           value={path}
-          onChange={(event) => setPath(event.target.value)}
+          onChange={(event) => onPathChange(event.target.value)}
           placeholder="/path/to/agent-harness"
           aria-describedby={error ? "inventory-path-error" : undefined}
           aria-invalid={error ? true : undefined}

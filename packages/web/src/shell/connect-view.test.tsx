@@ -22,9 +22,11 @@ function jsonResponse(body: unknown, status: number) {
 function stubApi({
   configPath = null,
   connect,
+  browse,
 }: {
   configPath?: string | null;
   connect?: () => Response;
+  browse?: () => Response;
 } = {}) {
   const fetchMock = vi.fn(
     async (input: RequestInfo | URL, _init?: RequestInit) => {
@@ -32,7 +34,14 @@ function stubApi({
       if (url.startsWith("/api/inventory/config")) {
         return jsonResponse({ inventoryPath: configPath }, 200);
       }
-      return connect ? connect() : jsonResponse({ inventoryPath: "/x" }, 200);
+      if (url.startsWith("/api/filesystem/children")) {
+        return browse
+          ? browse()
+          : jsonResponse({ path: "/home/me", entries: [] }, 200);
+      }
+      return connect
+        ? connect()
+        : jsonResponse({ inventoryPath: "/x", primitiveCount: 0 }, 200);
     },
   );
   vi.stubGlobal("fetch", fetchMock);
@@ -142,5 +151,31 @@ describe("ConnectView", () => {
     await userEvent.click(screen.getByRole("button", { name: /connect/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/boom/i);
+  });
+
+  it("fills the path field from a folder picked via browse", async () => {
+    // The dialog's own navigation (stepping into a child directory) is covered
+    // by browse-dialog.test.tsx; this test only checks the wiring — a selection
+    // lands in the field — so the stub answers every browse request with the
+    // folder already "browsed into".
+    stubApi({
+      browse: () =>
+        jsonResponse({ path: "/home/me/agent-harness", entries: [] }, 200),
+    });
+    renderView();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /browse/i }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: /select this folder/i }),
+    );
+
+    expect(screen.getByLabelText(/inventory path/i)).toHaveValue(
+      "/home/me/agent-harness",
+    );
+    expect(
+      screen.queryByRole("dialog", { name: /browse/i }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -15,3 +15,9 @@ Feature: Connect the central inventory offline (J11)
     When I connect a directory that has no skills folder
     Then the connect is rejected with a readable error
     And the central inventory is still not configured
+
+  Scenario: I connect via a path found by browsing
+    Given a cockpit with no inventory configured
+    When I browse to the clone's parent directory and connect the listed clone
+    Then the connect succeeds
+    And the central inventory lists that clone's skills

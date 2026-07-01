@@ -265,7 +265,23 @@ export function createApp(deps: AppDeps) {
       return c.json({ error: result.error, message }, status);
     }
 
-    return c.json({ inventoryPath: result.inventoryPath });
+    // The primitive count is the connect confirmation's single source of
+    // truth: re-read through the same InventoryReader the primitives route
+    // uses, rather than counting independently (no second counting path to
+    // drift out of sync). The connect above already persisted the new path —
+    // that state change is done and real — so a failure in this *follow-up*
+    // read (e.g. skills/ passed connect's is-a-directory check but turns out
+    // unreadable, EACCES) must not turn an already-successful connect into a
+    // 500. It degrades to a 0 count instead of failing the whole response.
+    let primitiveCount = 0;
+    try {
+      const read = await deps.inventory.read();
+      primitiveCount = read.ok ? read.primitives.length : 0;
+    } catch {
+      primitiveCount = 0;
+    }
+
+    return c.json({ inventoryPath: result.inventoryPath, primitiveCount });
   });
 
   // Read-only directory browser for the first-run path pickers (ADR-0009).

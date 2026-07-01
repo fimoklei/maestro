@@ -28,4 +28,12 @@ describe("NavItem", () => {
       "page",
     );
   });
+
+  it("does not call onClick when disabled", async () => {
+    const onClick = vi.fn();
+    render(<NavItem label="Inventory" onClick={onClick} disabled />);
+    await userEvent.click(screen.getByRole("button", { name: "Inventory" }));
+    expect(onClick).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Inventory" })).toBeDisabled();
+  });
 });

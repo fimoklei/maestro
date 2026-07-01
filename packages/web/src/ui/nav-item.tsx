@@ -12,6 +12,8 @@ export interface NavItemProps {
   label: ReactNode;
   /** Active view. */
   active?: boolean;
+  /** Inert (first-run welcome): visually dimmed and non-interactive. */
+  disabled?: boolean;
   onClick?: MouseEventHandler<HTMLButtonElement>;
   className?: string;
 }
@@ -20,6 +22,7 @@ export function NavItem({
   icon,
   label,
   active = false,
+  disabled = false,
   onClick,
   className,
 }: NavItemProps) {
@@ -27,9 +30,11 @@ export function NavItem({
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex w-full cursor-pointer items-center gap-2.5 rounded-item border px-3 py-2 text-left font-ui text-body",
+        "flex w-full items-center gap-2.5 rounded-item border px-3 py-2 text-left font-ui text-body",
+        disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
         active
           ? "border-line-chip bg-active text-fg"
           : "border-transparent bg-transparent text-muted",
