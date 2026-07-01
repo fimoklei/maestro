@@ -49,12 +49,14 @@ function renderAt(path: string) {
 }
 
 describe("first-run gate", () => {
-  it("routes the landing to the connect screen when no inventory is configured", async () => {
+  it("routes the landing to the first-run wizard when no inventory is configured", async () => {
     stubServer({ notConfigured: true });
     renderAt("/");
 
     expect(
-      await screen.findByRole("heading", { name: /connect inventory/i }),
+      await screen.findByRole("heading", {
+        name: /connect your central inventory/i,
+      }),
     ).toBeInTheDocument();
   });
 
@@ -77,5 +79,19 @@ describe("first-run gate", () => {
     expect(
       await screen.findByRole("heading", { name: /connect inventory/i }),
     ).toBeInTheDocument();
+  });
+
+  it("never shows the wizard to a configured user, even navigating there directly", async () => {
+    stubServer({ notConfigured: false });
+    renderAt("/welcome");
+
+    expect(
+      await screen.findByRole("heading", { name: /deploy-state/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", {
+        name: /connect your central inventory/i,
+      }),
+    ).not.toBeInTheDocument();
   });
 });

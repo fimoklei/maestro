@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { HttpError } from "../api/http";
+import { connectErrorMessage } from "../inventory/connect-error-message";
 import { useConnectInventory } from "../inventory/use-connect-inventory";
 import { useInventoryConfig } from "../inventory/use-inventory";
 import { Card } from "../ui/card";
 import { SectionHeader } from "../ui/section-header";
+import { BrowseDialog } from "./browse-dialog";
 import { ConnectInventoryForm } from "./connect-inventory-form";
+import { useBrowsePicker } from "./use-browse-picker";
 
 // The connect/settings view: point Maestro at an existing local agent-harness
 // clone. Doubles as the first-run target (the gate routes here when no inventory
@@ -16,21 +19,24 @@ export function ConnectView() {
   const config = useInventoryConfig();
   const connect = useConnectInventory();
   const navigate = useNavigate();
+  const currentPath = config.data?.inventoryPath ?? null;
+  // Lifted out of the form (which is now controlled, see connect-inventory-form
+  // .tsx) so a browse-dialog selection can overwrite it the same way typing
+  // does. Starts undefined ("not yet touched") rather than seeding from
+  // currentPath directly — the config query is still pending on first render,
+  // so seeding eagerly would freeze the field at "" before the real path
+  // arrives. Once the user types or browses, that edit wins over config.
+  const [editedPath, setEditedPath] = useState<string | undefined>(undefined);
+  const path = editedPath ?? currentPath ?? "";
+  const browse = useBrowsePicker(setEditedPath);
 
-  function handleSubmit(path: string) {
-    connect.mutate(path, {
+  function handleSubmit(submittedPath: string) {
+    connect.mutate(submittedPath, {
       onSuccess: () => navigate("/inventory"),
     });
   }
 
-  const error =
-    connect.error instanceof HttpError
-      ? connect.error.message
-      : connect.error
-        ? "Could not connect the inventory."
-        : null;
-
-  const currentPath = config.data?.inventoryPath ?? null;
+  const error = connectErrorMessage(connect.error);
 
   return (
     <section>
@@ -45,18 +51,26 @@ export function ConnectView() {
           </p>
         ) : null}
         {/* Mount the form only once the config has resolved so its field seeds
-            from the current path (the input is uncontrolled-by-prop after mount). */}
+            from the current path. */}
         {config.isPending ? (
           <p className="text-dim text-tag">Loading…</p>
         ) : (
           <ConnectInventoryForm
+            path={path}
+            onPathChange={setEditedPath}
             onSubmit={handleSubmit}
-            initialPath={currentPath ?? ""}
             error={error}
             isPending={connect.isPending}
+            onBrowse={browse.openBrowse}
           />
         )}
       </Card>
+      {browse.open ? (
+        <BrowseDialog
+          onSelect={browse.selectBrowse}
+          onClose={browse.closeBrowse}
+        />
+      ) : null}
     </section>
   );
 }

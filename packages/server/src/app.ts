@@ -265,7 +265,14 @@ export function createApp(deps: AppDeps) {
       return c.json({ error: result.error, message }, status);
     }
 
-    return c.json({ inventoryPath: result.inventoryPath });
+    // The primitive count is the connect confirmation's single source of
+    // truth: re-read through the same InventoryReader the primitives route
+    // uses, rather than counting independently (no second counting path to
+    // drift out of sync).
+    const read = await deps.inventory.read();
+    const primitiveCount = read.ok ? read.primitives.length : 0;
+
+    return c.json({ inventoryPath: result.inventoryPath, primitiveCount });
   });
 
   // Read-only directory browser for the first-run path pickers (ADR-0009).

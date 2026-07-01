@@ -86,6 +86,7 @@ describe("inventory connect HTTP route", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       inventoryPath: await nodeRealpath(clone),
+      primitiveCount: 1,
     });
   });
 
