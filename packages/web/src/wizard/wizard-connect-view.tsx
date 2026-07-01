@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { connectErrorMessage } from "../inventory/connect-error-message";
 import { useConnectInventory } from "../inventory/use-connect-inventory";
 import { BrowseDialog } from "../shell/browse-dialog";
 import { ConnectInventoryForm } from "../shell/connect-inventory-form";
 import { useBrowsePicker } from "../shell/use-browse-picker";
+import { useIsConfigured } from "../shell/use-first-run";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { SectionHeader } from "../ui/section-header";
@@ -23,14 +24,31 @@ import { WizardProgress } from "./wizard-progress";
 export function WizardConnectView() {
   const connect = useConnectInventory();
   const navigate = useNavigate();
+  const configured = useIsConfigured();
   const [path, setPath] = useState("");
   const browse = useBrowsePicker(setPath);
+
+  // Guards a deep link/bookmark into this step by an already-configured user
+  // (the gate only guards /welcome itself, not this nested route — see
+  // first-run-gate.tsx). Keyed off *this component's own* mutation, not just
+  // "configured", so a connect that succeeds mid-flow (unconfigured ->
+  // configured, right here) still shows its confirmation instead of being
+  // yanked to "/" the instant the config re-fetch catches up.
+  useEffect(() => {
+    if (configured && !connect.isSuccess) {
+      navigate("/", { replace: true });
+    }
+  }, [configured, connect.isSuccess, navigate]);
 
   function handleSubmit(submittedPath: string) {
     connect.mutate(submittedPath);
   }
 
   const error = connectErrorMessage(connect.error);
+
+  if (configured && !connect.isSuccess) {
+    return null;
+  }
 
   return (
     <div className="flex flex-col gap-4">

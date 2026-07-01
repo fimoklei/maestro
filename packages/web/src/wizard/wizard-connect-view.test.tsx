@@ -19,15 +19,17 @@ function jsonResponse(body: unknown, status: number) {
 function stubApi({
   connect,
   browse,
+  configuredPath = null,
 }: {
   connect?: () => Response;
   browse?: () => Response;
+  configuredPath?: string | null;
 } = {}) {
   const fetchMock = vi.fn(
     async (input: RequestInfo | URL, _init?: RequestInit) => {
       const url = String(input);
       if (url.startsWith("/api/inventory/config")) {
-        return jsonResponse({ inventoryPath: null }, 200);
+        return jsonResponse({ inventoryPath: configuredPath }, 200);
       }
       if (url.startsWith("/api/filesystem/children")) {
         return browse
@@ -144,5 +146,13 @@ describe("WizardConnectView", () => {
     expect(screen.getByLabelText(/inventory path/i)).toHaveValue(
       "/home/me/agent-harness",
     );
+  });
+
+  it("redirects an already-configured user away instead of showing the connect form", async () => {
+    stubApi({ configuredPath: "/home/me/agent-harness" });
+    renderView();
+
+    expect(await screen.findByText("deploy-state-landed")).toBeInTheDocument();
+    expect(screen.queryByLabelText(/inventory path/i)).not.toBeInTheDocument();
   });
 });

@@ -1,4 +1,5 @@
 import {
+  chmod,
   mkdir,
   mkdtemp,
   realpath as nodeRealpath,
@@ -136,5 +137,32 @@ describe("inventory connect HTTP route", () => {
 
     expect(res.status).toBe(400);
     expect(((await res.json()) as { error: string }).error).toBe("relative");
+  });
+
+  it("still reports success when the persisted path connects but its skills/ becomes unreadable before the count re-read", async () => {
+    // stat (isDirectory, what connect checks) only needs +x on the *parent*
+    // path components, so a 0o000 skills/ dir still passes connect's own
+    // is-an-inventory check; readdir (what the count re-read needs) requires
+    // +r on the directory itself and fails. The path is already persisted by
+    // the time that second read runs — the response must not turn into a 500
+    // for a state change that already succeeded (Codex review finding).
+    const clone = await makeClone();
+    const skillsDir = join(clone, "skills");
+    await chmod(skillsDir, 0o000);
+    const app = makeApp();
+
+    try {
+      const res = await postConnect(app, { path: clone });
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        inventoryPath: string;
+        primitiveCount: number;
+      };
+      expect(body.inventoryPath).toBe(await nodeRealpath(clone));
+      expect(body.primitiveCount).toBe(0);
+    } finally {
+      await chmod(skillsDir, 0o700);
+    }
   });
 });
