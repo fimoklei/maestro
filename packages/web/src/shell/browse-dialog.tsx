@@ -12,9 +12,14 @@ import { useBrowseFilesystem } from "./use-browse-filesystem";
 type BrowseDialogProps = {
   onSelect: (path: string) => void;
   onClose: () => void;
+  label?: string;
 };
 
-export function BrowseDialog({ onSelect, onClose }: BrowseDialogProps) {
+export function BrowseDialog({
+  onSelect,
+  onClose,
+  label = "Browse for inventory folder",
+}: BrowseDialogProps) {
   const [stack, setStack] = useState<string[]>([""]);
   const currentRequest = stack[stack.length - 1] ?? "";
   const browse = useBrowseFilesystem(currentRequest);
@@ -30,7 +35,7 @@ export function BrowseDialog({ onSelect, onClose }: BrowseDialogProps) {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Browse for inventory folder"
+      aria-label={label}
       className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 p-6"
     >
       <div className="flex max-h-[70vh] w-full max-w-md flex-col gap-2 rounded-card border border-line bg-card p-card-x">

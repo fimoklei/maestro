@@ -16,12 +16,14 @@ function jsonResponse(body: unknown, status: number) {
   });
 }
 
-// A stateful inventory config: starts unconfigured, then "connects" once
-// /api/inventory/connect is POSTed — so the cockpit's own queries observe the
-// same state transition a real connect would cause (see frontend.md: this is
+// A stateful server: the inventory config starts unconfigured and "connects"
+// once /api/inventory/connect is POSTed, and the registry accumulates repos as
+// they are registered — so the cockpit's own queries observe the same state
+// transitions a real server would cause (see frontend.md: this is
 // server-state, not a hand-rolled fixture).
 function stubServer() {
   let inventoryPath: string | null = null;
+  const registered: Array<{ path: string }> = [];
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -32,6 +34,14 @@ function stubServer() {
       if (url.startsWith("/api/inventory/connect") && init?.method === "POST") {
         inventoryPath = "/home/me/agent-harness";
         return jsonResponse({ inventoryPath, primitiveCount: 3 }, 200);
+      }
+      if (url.startsWith("/api/registry/repos")) {
+        if (init?.method === "POST") {
+          const { path } = JSON.parse(String(init.body)) as { path: string };
+          registered.push({ path });
+          return jsonResponse({ repos: registered }, 201);
+        }
+        return jsonResponse({ repos: registered }, 200);
       }
       return jsonResponse(
         { ok: true, repos: [], primitives: [], skipped: [], behind: [] },
@@ -55,7 +65,7 @@ function renderApp(path: string) {
 }
 
 describe("first-run wizard sequence", () => {
-  it("walks an unconfigured user from the gate through welcome and connect to landing", async () => {
+  it("walks an unconfigured user from the gate through welcome, connect and register to landing", async () => {
     stubServer();
     renderApp("/");
 
@@ -76,7 +86,7 @@ describe("first-run wizard sequence", () => {
       }),
     ).toBeInTheDocument();
 
-    // connect -> confirmation -> land
+    // connect -> confirmation -> register step
     await userEvent.type(
       screen.getByLabelText(/inventory path/i),
       "/home/me/agent-harness",
@@ -88,11 +98,54 @@ describe("first-run wizard sequence", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /continue/i }));
     expect(
+      await screen.findByRole("heading", { name: /register consuming repos/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/2 · register repos/i)).toHaveAttribute(
+      "aria-current",
+      "step",
+    );
+
+    // register a repo -> finish -> land
+    await userEvent.type(
+      screen.getByLabelText(/repo path/i),
+      "/home/me/acme-web",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /register repo/i }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: /continue to deploy-state/i }),
+    );
+    expect(
       await screen.findByRole("heading", { name: /deploy-state/i }),
     ).toBeInTheDocument();
   });
 
-  it("lands on Deploy-state even when the config refetch after connect is still in flight", async () => {
+  it("lands on Deploy-state when the register step is skipped", async () => {
+    stubServer();
+    renderApp("/welcome/connect");
+
+    await userEvent.type(
+      await screen.findByLabelText(/inventory path/i),
+      "/home/me/agent-harness",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /^connect inventory$/i }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: /continue/i }),
+    );
+    expect(
+      await screen.findByRole("heading", { name: /register consuming repos/i }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /skip/i }));
+    expect(
+      await screen.findByRole("heading", { name: /deploy-state/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("reaches the register step and lands even when the config refetch after connect is still in flight", async () => {
     // Reproduces a race (Codex review finding): invalidateQueries only marks
     // the config query stale and schedules a refetch — it does not update the
     // cache synchronously. If the user clicks Continue before that refetch
@@ -140,6 +193,13 @@ describe("first-run wizard sequence", () => {
     await userEvent.click(
       await screen.findByRole("button", { name: /continue/i }),
     );
+
+    // The register step renders from the seeded config cache, without the
+    // held-open refetch resolving; skipping then lands on Deploy-state.
+    expect(
+      await screen.findByRole("heading", { name: /register consuming repos/i }),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /skip/i }));
 
     expect(
       await screen.findByRole("heading", { name: /deploy-state/i }),

@@ -57,6 +57,10 @@ function renderView() {
       <MemoryRouter initialEntries={["/welcome/connect"]}>
         <Routes>
           <Route path="/welcome/connect" element={<WizardConnectView />} />
+          <Route
+            path="/welcome/repos"
+            element={<div>register-step-landed</div>}
+          />
           <Route path="/" element={<div>deploy-state-landed</div>} />
         </Routes>
       </MemoryRouter>
@@ -83,7 +87,7 @@ describe("WizardConnectView", () => {
     ).toBeInTheDocument();
   });
 
-  it("lands on Deploy-state once the user continues past the confirmation", async () => {
+  it("moves on to the register step once the user continues past the confirmation", async () => {
     stubApi();
     renderView();
 
@@ -98,7 +102,7 @@ describe("WizardConnectView", () => {
       await screen.findByRole("button", { name: /continue/i }),
     );
 
-    expect(await screen.findByText("deploy-state-landed")).toBeInTheDocument();
+    expect(await screen.findByText("register-step-landed")).toBeInTheDocument();
   });
 
   it("shows a readable error for an invalid path and stays on the step", async () => {
