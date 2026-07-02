@@ -94,9 +94,18 @@ export function InventorySourceView() {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            <p className="rounded-control border border-green-border bg-green-bg px-3 py-2 text-green-ink text-tag">
-              ● connected · {countLabel}
-            </p>
+            {inventory.isError ? (
+              <p
+                role="alert"
+                className="rounded-control border border-amber-border bg-amber-bg px-3 py-2 text-amber-ink text-tag"
+              >
+                ● could not read the inventory — re-read to retry
+              </p>
+            ) : (
+              <p className="rounded-control border border-green-border bg-green-bg px-3 py-2 text-green-ink text-tag">
+                ● connected · {countLabel}
+              </p>
+            )}
             <div className="flex flex-col gap-1">
               <span className="m-label">Source · local folder</span>
               <span className="font-mono text-fg text-mono-sm">

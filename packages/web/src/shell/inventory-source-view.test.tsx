@@ -148,6 +148,35 @@ describe("InventorySourceView", () => {
     expect(screen.queryByText(/undefined/i)).not.toBeInTheDocument();
   });
 
+  it("surfaces an inventory read failure instead of an endless 'reading…'", async () => {
+    // A configured path whose inventory read fails (moved/unreadable on disk)
+    // must not masquerade as a pending read forever — show a failure with the
+    // re-read button as the retry.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/inventory/config")) {
+          return jsonResponse({ inventoryPath: "/home/me/agent-harness" }, 200);
+        }
+        if (url.startsWith("/api/inventory/primitives")) {
+          return jsonResponse({ message: "cannot read inventory" }, 500);
+        }
+        return jsonResponse({ path: "/home/me", entries: [] }, 200);
+      }),
+    );
+    renderView();
+
+    expect(
+      await screen.findByText(/could not read the inventory/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/reading…/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/connected ·/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /re-read/i }),
+    ).toBeInTheDocument();
+  });
+
   it("re-points via the shared form and returns to the connected view", async () => {
     let configPath = "/home/me/agent-harness";
     const fetchMock = vi.fn(
