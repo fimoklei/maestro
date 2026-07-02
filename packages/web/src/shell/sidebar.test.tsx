@@ -32,13 +32,13 @@ function stubServer({ notConfigured }: { notConfigured: boolean }) {
   );
 }
 
-function renderSidebar() {
+function renderSidebar(path = "/welcome") {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={["/welcome"]}>
+      <MemoryRouter initialEntries={[path]}>
         <Sidebar />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -59,12 +59,25 @@ describe("Sidebar first-run rendering", () => {
 
   it("renders the interactive nav and register affordance when configured", async () => {
     stubServer({ notConfigured: false });
-    renderSidebar();
+    renderSidebar("/");
 
     expect(await screen.findByLabelText(/repo path/i)).toBeInTheDocument();
     for (const name of ["Deploy-state", "Inventory", "Connect"]) {
       expect(screen.getByRole("button", { name })).toBeEnabled();
     }
     expect(screen.queryByText(/none yet/i)).not.toBeInTheDocument();
+  });
+
+  it("hides the register affordance on a wizard route even when configured", async () => {
+    // The wizard's register step mounts the same form as its main card;
+    // showing it in the sidebar too would duplicate the input's id and
+    // compete with the step (issue #97).
+    stubServer({ notConfigured: false });
+    renderSidebar("/welcome/repos");
+
+    expect(
+      await screen.findByRole("button", { name: "Deploy-state" }),
+    ).toBeEnabled();
+    expect(screen.queryByLabelText(/repo path/i)).not.toBeInTheDocument();
   });
 });

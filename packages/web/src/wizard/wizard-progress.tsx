@@ -1,9 +1,9 @@
 import { cn } from "../ui/cn";
 
 // The first-run wizard's 3-step progress strip (issue #96, design f1-empty):
-// connect inventory -> register repos -> deploy. Step 2 has no screen yet
-// (issue #96 builds the connect step only — "minus the register step"); it
-// still lists here as an inert step so the user knows what's ahead.
+// connect inventory -> register repos -> deploy. Steps 1 and 2 have screens
+// (issues #96/#97); step 3 is the landing on Deploy-state itself, listed as an
+// inert step so the user knows what's ahead.
 const STEPS = ["connect inventory", "register repos", "deploy"] as const;
 
 export type WizardProgressProps = {

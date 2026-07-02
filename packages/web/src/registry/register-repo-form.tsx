@@ -1,24 +1,31 @@
-import { type FormEvent, useState } from "react";
+import type { FormEvent } from "react";
 import { Button } from "../ui/button";
 
-// Presentational form: a labelled path input + submit. The path is local
-// UI-state (useState); registering is delegated to onSubmit so the data logic
-// stays in the container hook (see .claude/rules/frontend.md). Errors render as
-// readable text tied to the field via aria-describedby. Styled from tokens so it
-// reads in the cockpit sidebar (the input is visible on the dark surface).
+// Presentational form: a labelled path input + submit. The path is a controlled
+// prop, not local state — the wizard's register step needs to seed it from a
+// "browse…" picker selection and clear it after a successful add, which only a
+// container-owned value allows (mirrors ConnectInventoryForm). Registering is
+// delegated to onSubmit so the data logic stays in the container hook (see
+// .claude/rules/frontend.md). onBrowse is an optional hook point for a
+// "browse…" picker — omit it and the form behaves as the path-only variant.
+// Errors render as readable text tied to the field via aria-describedby.
 type RegisterRepoFormProps = {
+  path: string;
+  onPathChange: (path: string) => void;
   onSubmit: (path: string) => void;
   error?: string | null;
   isPending?: boolean;
+  onBrowse?: () => void;
 };
 
 export function RegisterRepoForm({
+  path,
+  onPathChange,
   onSubmit,
   error,
   isPending = false,
+  onBrowse,
 }: RegisterRepoFormProps) {
-  const [path, setPath] = useState("");
-
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     onSubmit(path);
@@ -29,15 +36,22 @@ export function RegisterRepoForm({
       <label htmlFor="repo-path" className="m-label">
         Repo path
       </label>
-      <input
-        id="repo-path"
-        name="repo-path"
-        value={path}
-        onChange={(event) => setPath(event.target.value)}
-        aria-describedby={error ? "repo-path-error" : undefined}
-        aria-invalid={error ? true : undefined}
-        className="rounded-control border border-line bg-inset px-2 py-1.5 font-mono text-fg text-mono-sm outline-none focus:border-line-chip"
-      />
+      <div className="flex items-end gap-2">
+        <input
+          id="repo-path"
+          name="repo-path"
+          value={path}
+          onChange={(event) => onPathChange(event.target.value)}
+          aria-describedby={error ? "repo-path-error" : undefined}
+          aria-invalid={error ? true : undefined}
+          className="flex-1 rounded-control border border-line bg-inset px-2 py-1.5 font-mono text-fg text-mono-sm outline-none focus:border-line-chip"
+        />
+        {onBrowse ? (
+          <Button type="button" variant="quiet" size="sm" onClick={onBrowse}>
+            browse…
+          </Button>
+        ) : null}
+      </div>
       <Button type="submit" variant="dashed" size="sm" disabled={isPending}>
         + register repo
       </Button>

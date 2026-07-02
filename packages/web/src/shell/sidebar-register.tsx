@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { RegisterRepoForm } from "../registry/register-repo-form";
 import { useRegisterRepo } from "../registry/use-registry";
 
@@ -7,9 +8,17 @@ import { useRegisterRepo } from "../registry/use-registry";
 // (frontend.md). No list here — the Targets list is the list.
 export function SidebarRegister() {
   const register = useRegisterRepo();
+  const [path, setPath] = useState("");
+
+  function handleSubmit(submittedPath: string) {
+    register.mutate(submittedPath, { onSuccess: () => setPath("") });
+  }
+
   return (
     <RegisterRepoForm
-      onSubmit={(path) => register.mutate(path)}
+      path={path}
+      onPathChange={setPath}
+      onSubmit={handleSubmit}
       error={register.error ? (register.error as Error).message : null}
       isPending={register.isPending}
     />

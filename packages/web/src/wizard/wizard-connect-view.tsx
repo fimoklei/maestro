@@ -18,9 +18,8 @@ import { WizardProgress } from "./wizard-progress";
 // navigate-to-Inventory. The explicit "Continue" (rather than auto-navigating
 // the instant the mutation resolves) is deliberate: the confirmation is the
 // acceptance-criterion payload ("shows the primitive count"), so it must stay
-// on screen long enough to read, not flash past on the way to "/". Register
-// (step 2) does not exist yet (issue #96 builds the connect step only), so
-// continuing skips straight to landing.
+// on screen long enough to read, not flash past on the way to the register
+// step (issue #97), the wizard's second and final screen.
 export function WizardConnectView() {
   const connect = useConnectInventory();
   const config = useInventoryConfig();
@@ -68,8 +67,12 @@ export function WizardConnectView() {
               never writes back
             </p>
             <div>
-              <Button variant="primary" size="sm" onClick={() => navigate("/")}>
-                Continue to Deploy-state →
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => navigate("/welcome/repos")}
+              >
+                Continue to register repos →
               </Button>
             </div>
           </div>
