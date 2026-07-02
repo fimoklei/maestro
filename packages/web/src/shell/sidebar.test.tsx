@@ -51,7 +51,7 @@ describe("Sidebar first-run rendering", () => {
     renderSidebar();
 
     expect(await screen.findByText(/none yet/i)).toBeInTheDocument();
-    for (const name of ["Deploy-state", "Inventory", "Connect"]) {
+    for (const name of ["Deploy-state", "Inventory", "Inventory source"]) {
       expect(screen.getByRole("button", { name })).toBeDisabled();
     }
     expect(screen.queryByLabelText(/repo path/i)).not.toBeInTheDocument();
@@ -62,7 +62,7 @@ describe("Sidebar first-run rendering", () => {
     renderSidebar("/");
 
     expect(await screen.findByLabelText(/repo path/i)).toBeInTheDocument();
-    for (const name of ["Deploy-state", "Inventory", "Connect"]) {
+    for (const name of ["Deploy-state", "Inventory", "Inventory source"]) {
       expect(screen.getByRole("button", { name })).toBeEnabled();
     }
     expect(screen.queryByText(/none yet/i)).not.toBeInTheDocument();
