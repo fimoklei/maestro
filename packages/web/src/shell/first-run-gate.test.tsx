@@ -104,13 +104,29 @@ describe("first-run gate", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("keeps the connect screen reachable as settings when configured", async () => {
+  it("keeps the Inventory source view reachable when configured", async () => {
     stubServer({ notConfigured: false });
-    renderAt("/connect");
+    renderAt("/source");
 
     expect(
-      await screen.findByRole("heading", { name: /connect inventory/i }),
+      await screen.findByRole("heading", { name: /inventory source/i }),
     ).toBeInTheDocument();
+  });
+
+  it("routes an unconfigured user off the source view into the wizard", async () => {
+    // The source view is connected-only ("connected · N primitives"), so an
+    // unconfigured visitor belongs in the wizard, not on an empty source view.
+    stubServer({ notConfigured: true });
+    renderAt("/source");
+
+    expect(
+      await screen.findByRole("heading", {
+        name: /connect your central inventory/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /inventory source/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("never shows the wizard to a configured user, even navigating there directly", async () => {

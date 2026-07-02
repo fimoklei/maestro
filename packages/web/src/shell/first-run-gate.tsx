@@ -6,8 +6,10 @@ import { useFirstRun, useIsConfigured } from "./use-first-run";
 // First-run gate: when no inventory path is configured the cockpit would
 // dead-end on a "not configured" panel. Instead we route to the first-run
 // wizard — the guided welcome → connect flow (issue #96) — unless the user is
-// already inside it, or on the Settings connect screen reached directly (so
-// either form can do its job). The signal is useFirstRun, backed by the config
+// already inside it. The ⚙ Inventory source view (/source) is deliberately not
+// exempt: it is connected-only (it shows "connected · N primitives"), so an
+// unconfigured visitor belongs in the wizard, not on a source view with nothing
+// to show. The signal is useFirstRun, backed by the config
 // endpoint's 200-with-inventoryPath-null answer: a success response, so there
 // is no retry delay before the redirect (unlike keying off an error). While the
 // config is still loading, every route *other than the welcome root* renders
@@ -29,7 +31,6 @@ import { useFirstRun, useIsConfigured } from "./use-first-run";
 // locally instead (see wizard-connect-view.tsx), because only it can tell
 // "already configured on arrival" apart from "just connected here".
 const WIZARD_PATH = "/welcome";
-const CONNECT_PATH = "/connect";
 
 function isWizardRoute(pathname: string): boolean {
   return pathname === WIZARD_PATH || pathname.startsWith(`${WIZARD_PATH}/`);
@@ -41,10 +42,7 @@ export function FirstRunGate() {
   const firstRun = useFirstRun();
   const configured = useIsConfigured();
 
-  const alreadyOnAFirstRunRoute =
-    pathname === CONNECT_PATH || isWizardRoute(pathname);
-
-  if (firstRun && !alreadyOnAFirstRunRoute) {
+  if (firstRun && !isWizardRoute(pathname)) {
     return <Navigate to={WIZARD_PATH} replace />;
   }
 
