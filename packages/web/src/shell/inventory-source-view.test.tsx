@@ -177,6 +177,46 @@ describe("InventorySourceView", () => {
     ).toBeInTheDocument();
   });
 
+  it("surfaces a failed re-read even after a count was already shown", async () => {
+    // The stale-cache trap: TanStack Query keeps the last good data on a failed
+    // refetch. After showing a count, a re-read that fails must flip to the
+    // failure state, not keep the now-stale "connected · N".
+    let ok = true;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/inventory/config")) {
+          return jsonResponse({ inventoryPath: "/home/me/agent-harness" }, 200);
+        }
+        if (url.startsWith("/api/inventory/primitives")) {
+          return ok
+            ? jsonResponse(
+                { primitives: [skill("tdd"), skill("frontend")] },
+                200,
+              )
+            : jsonResponse({ message: "cannot read inventory" }, 500);
+        }
+        return jsonResponse({ path: "/home/me", entries: [] }, 200);
+      }),
+    );
+    renderView();
+
+    expect(
+      await screen.findByText(/connected · 2 primitives/i),
+    ).toBeInTheDocument();
+
+    ok = false;
+    await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
+
+    expect(
+      await screen.findByText(/could not read the inventory/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/connected · 2 primitives/i),
+    ).not.toBeInTheDocument();
+  });
+
   it("re-points via the shared form and returns to the connected view", async () => {
     let configPath = "/home/me/agent-harness";
     const fetchMock = vi.fn(
