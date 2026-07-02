@@ -1,4 +1,6 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { ConfigUnreachableNotice } from "../inventory/config-unreachable-notice";
+import { useInventoryConfig } from "../inventory/use-inventory";
 import { useFirstRun, useIsConfigured } from "./use-first-run";
 
 // First-run gate: when no inventory path is configured the cockpit would
@@ -35,6 +37,7 @@ function isWizardRoute(pathname: string): boolean {
 
 export function FirstRunGate() {
   const { pathname } = useLocation();
+  const config = useInventoryConfig();
   const firstRun = useFirstRun();
   const configured = useIsConfigured();
 
@@ -48,6 +51,12 @@ export function FirstRunGate() {
   if (pathname === WIZARD_PATH) {
     if (configured) {
       return <Navigate to="/" replace />;
+    }
+    if (config.isError) {
+      // The gate's neutral hold waits for a *successful* config answer to
+      // decide welcome vs redirect; a failed query would otherwise sit on
+      // "Loading…" forever. Offer a readable error + retry instead (#103).
+      return <ConfigUnreachableNotice onRetry={() => config.refetch()} />;
     }
     if (!firstRun) {
       // Config hasn't resolved yet, so it's not yet known whether this

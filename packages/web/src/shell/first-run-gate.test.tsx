@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppRoutes } from "./app-router";
@@ -32,6 +33,37 @@ function stubServer({ notConfigured }: { notConfigured: boolean }) {
             200,
           ),
     ),
+  );
+}
+
+// The config endpoint fails its first call, then recovers. Every other shell
+// query resolves to an empty-but-valid body throughout. Drives the "readable
+// error + retry" path: the gate can't wait for a success that never comes.
+function stubServerConfigFailsOnce({
+  notConfigured,
+}: {
+  notConfigured: boolean;
+}) {
+  let configCalls = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).startsWith("/api/inventory/config")) {
+        configCalls += 1;
+        return configCalls === 1
+          ? jsonResponse({ message: "unreachable" }, 500)
+          : jsonResponse(
+              {
+                inventoryPath: notConfigured ? null : "/home/me/agent-harness",
+              },
+              200,
+            );
+      }
+      return jsonResponse(
+        { ok: true, repos: [], primitives: [], skipped: [], behind: [] },
+        200,
+      );
+    }),
   );
 }
 
@@ -103,5 +135,33 @@ describe("first-run gate", () => {
         name: /connect your central inventory/i,
       }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows a readable error with retry on /welcome when the config fetch fails, instead of hanging on Loading", async () => {
+    stubServerConfigFailsOnce({ notConfigured: true });
+    renderAt("/welcome");
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/could not (be )?reach.*maestro/i);
+    // The dead-end this replaces: it must not sit on the neutral "Loading…".
+    expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /try again/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("resumes the gate's welcome behavior once a retried config fetch succeeds", async () => {
+    stubServerConfigFailsOnce({ notConfigured: true });
+    renderAt("/welcome");
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /try again/i }),
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: /connect your central inventory/i,
+      }),
+    ).toBeInTheDocument();
   });
 });

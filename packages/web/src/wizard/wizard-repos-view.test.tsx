@@ -21,17 +21,24 @@ function stubApi({
   register,
   browse,
   configuredPath = "/home/me/agent-harness",
+  configFailsOnce = false,
 }: {
   repos?: Array<{ path: string }>;
   register?: () => Response;
   browse?: () => Response;
   configuredPath?: string | null;
+  configFailsOnce?: boolean;
 } = {}) {
   const registered = [...repos];
+  let configCalls = 0;
   const fetchMock = vi.fn(
     async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.startsWith("/api/inventory/config")) {
+        configCalls += 1;
+        if (configFailsOnce && configCalls === 1) {
+          return jsonResponse({ message: "unreachable" }, 500);
+        }
         return jsonResponse({ inventoryPath: configuredPath }, 200);
       }
       if (url.startsWith("/api/filesystem/children")) {
@@ -174,5 +181,32 @@ describe("WizardReposView", () => {
 
     expect(await screen.findByText("welcome-landed")).toBeInTheDocument();
     expect(screen.queryByLabelText(/repo path/i)).not.toBeInTheDocument();
+  });
+
+  it("shows a readable error with retry when the config fetch fails, instead of hanging on Loading", async () => {
+    stubApi({ configFailsOnce: true });
+    renderView();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/could not (be )?reach.*maestro/i);
+    expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/repo path/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /try again/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the register step once a retried config fetch succeeds", async () => {
+    stubApi({ configFailsOnce: true });
+    renderView();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /try again/i }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: /register consuming repos/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
