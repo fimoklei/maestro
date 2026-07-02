@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ConfigUnreachableNotice } from "../inventory/config-unreachable-notice";
 import { useInventoryConfig } from "../inventory/use-inventory";
 import { RegisterRepoForm } from "../registry/register-repo-form";
 import { useRegisterRepo, useRegistry } from "../registry/use-registry";
@@ -38,6 +39,13 @@ export function WizardReposView() {
 
   function handleSubmit(submittedPath: string) {
     register.mutate(submittedPath, { onSuccess: () => setPath("") });
+  }
+
+  if (config.isError) {
+    // The guard waits for a *successful* config answer to know whether this
+    // user is configured; a failed query would otherwise hang on "Loading…".
+    // Offer a readable error + retry instead (#103).
+    return <ConfigUnreachableNotice onRetry={() => config.refetch()} />;
   }
 
   if (blocked) {
