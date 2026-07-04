@@ -46,6 +46,7 @@ The MVP1 bet: one person can **see** their whole agent setup and **steer** it (d
 | ↳ Recommend primitives from project context | Future | — | B |
 | **C — Curate team contributions into production-ready central** | Main (future) | When teammates contribute custom primitives, I want them to enter centrally and be curated before they become deployable, so that only production-ready capabilities reach projects. The governed lifecycle — review, approval, adoption visibility — is the team/org differentiator. | — |
 | ↳ Submit a primitive for review | Future | — | C |
+| ↳ Sync a local skill edit back to central for review | Future | When I have manually edited a skill that came from the inventory, I want to open a pull request that syncs my edit back to the central inventory for review, so that after approval and merge the improved skill is available for everyone to deploy. Divergence detection (Job A) is the trigger; the reviewed-PR-then-merge lifecycle is Job C's and adds git write + auth, reversing "offline by design". | C, A |
 | ↳ Approve and publish a primitive | Future | — | C |
 | ↳ Manage ownership and required/optional scope | Future | — | C |
 | ↳ Deprecate outdated primitives | Future | — | C |
