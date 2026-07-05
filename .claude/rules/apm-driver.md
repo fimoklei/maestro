@@ -77,8 +77,24 @@ on the full package name surviving. Observed states:
 - Local-path dep → `No remote dependencies to check` (drift impossible — why
   ADR-0003 forbids local paths).
 - Git unpinned → `All dependencies are up-to-date` (tracks the branch, not tags).
+- **Tag-pinned, remote unreachable (no auth/network) → a row with `Latest -`,
+  `Status unknown` and the summary `[i] Some dependencies could not be checked
+  (branch/commit refs)`, exit 0** (spiked 2026-07-05, issue #108; fixture
+  `tests/fixtures/apm-outdated-could-not-check.txt`). apm reached the tool but
+  could not resolve the tag against the remote. **This is the root of a cockpit
+  "unknown" that a manual `apm outdated` contradicts:** the interactive shell has
+  the gh credential helper, a `pnpm dev` server may not — same repo, different
+  auth. The `unknown`-status row carries an empty Source cell, so it survives
+  `cellsOf` as **four** cells, not five — never key the uncheckable detector on
+  the 5-cell row shape. The parser reports this as `{ ok:false, reason:
+  "unverified" }` (its own state, distinct from a bare failure), and precedes row
+  parsing so a mix of outdated + uncheckable never drops the uncheckable one to a
+  false up-to-date (J04).
 
-Maestro consumes this **binary** (behind / up-to-date), per roadmap 01.
+Maestro consumes this as **behind / up-to-date / unverified**, per roadmap 01:
+up-to-date and behind derive from a check that resolved; `unverified` is apm's
+own could-not-check, shown distinct from a bare `unknown` (a crashed/unreadable
+check) so the cockpit points at auth/network, not a generic failure.
 
 ## Update — re-install at the latest tag, NOT `apm update`
 

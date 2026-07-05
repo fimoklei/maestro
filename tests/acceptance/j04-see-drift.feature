@@ -20,6 +20,11 @@ Feature: See version drift per deployed skill (J04)
     When I check that repo's drift
     Then I see the check reported as failed, not an empty up-to-date result
 
+  Scenario: A skill apm could not reach the source for is seen as unverified
+    Given a registered repo where apm could not reach the source to check the skill
+    When I check that repo's drift
+    Then I see the check reported as unverified, not an empty up-to-date result
+
   Scenario: A globally deployed skill behind the latest tag is seen with its pair
     Given global apm reports "tdd" behind from v0.5.0 to v0.5.1
     When I check global drift with a bogus repo path in the query

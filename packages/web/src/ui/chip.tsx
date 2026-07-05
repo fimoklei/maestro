@@ -10,6 +10,8 @@ export interface ChipProps {
   tone?: "ok" | "drift" | "dim";
   children?: ReactNode;
   className?: string;
+  /** Optional hover hint (native title) for a state the label alone can't explain. */
+  title?: string;
 }
 
 const toneClasses: Record<NonNullable<ChipProps["tone"]>, string> = {
@@ -18,9 +20,10 @@ const toneClasses: Record<NonNullable<ChipProps["tone"]>, string> = {
   dim: "text-muted bg-dim-bg border-line-chip",
 };
 
-export function Chip({ tone = "dim", children, className }: ChipProps) {
+export function Chip({ tone = "dim", children, className, title }: ChipProps) {
   return (
     <span
+      title={title}
       className={cn(
         "inline-block whitespace-nowrap rounded-control border px-[7px] py-0.5 font-mono text-chip",
         toneClasses[tone],

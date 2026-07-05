@@ -11,7 +11,12 @@
 import type { DeployedView } from "../deploy-state/deployed-view";
 import type { DriftView } from "./drift-status";
 
-export type TargetDriftIndicator = "ok" | "drift" | "unknown" | "pending";
+export type TargetDriftIndicator =
+  | "ok"
+  | "drift"
+  | "unknown"
+  | "unverified"
+  | "pending";
 
 export const targetDriftIndicator = (
   deployed: DeployedView,
@@ -22,6 +27,8 @@ export const targetDriftIndicator = (
       return "pending";
     case "unknown":
       return "unknown";
+    case "unverified":
+      return "unverified";
     case "ready":
       switch (deployed.status) {
         case "pending":

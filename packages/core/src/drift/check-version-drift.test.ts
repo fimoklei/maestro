@@ -5,7 +5,9 @@ import { CheckVersionDrift } from "./check-version-drift";
 const registeredRepo = "/repos/app";
 
 type VersionDrift = { name: string; current: string; latest: string };
-type OutdatedResult = { ok: true; behind: VersionDrift[] } | { ok: false };
+type OutdatedResult =
+  | { ok: true; behind: VersionDrift[] }
+  | { ok: false; reason?: "unverified" };
 
 const tddBehind: VersionDrift = {
   name: "tdd",
@@ -67,6 +69,20 @@ describe("CheckVersionDrift", () => {
     });
 
     expect(result).toEqual({ ok: false });
+  });
+
+  it("propagates the driver's unverified reason unchanged", async () => {
+    // A reachability failure apm reported (could-not-check) must reach the web
+    // as its own reason, not be flattened to a bare failure — so the cockpit can
+    // show "unverified" rather than a generic "unknown".
+    const { deps } = makeDeps({ outcome: { ok: false, reason: "unverified" } });
+    const useCase = new CheckVersionDrift(deps);
+
+    const result = await useCase.execute({
+      target: { kind: "repo", repoPath: registeredRepo },
+    });
+
+    expect(result).toEqual({ ok: false, reason: "unverified" });
   });
 
   it("returns the behind pair for a registered repo", async () => {

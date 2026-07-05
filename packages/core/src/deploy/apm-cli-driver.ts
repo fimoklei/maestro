@@ -6,7 +6,7 @@
 import { execFile } from "node:child_process";
 import { basename } from "node:path";
 import { promisify } from "node:util";
-import { parseOutdated, type VersionDrift } from "../drift/parse-outdated";
+import { type OutdatedResult, parseOutdated } from "../drift/parse-outdated";
 import type { ApmDriverPort, DeployTarget } from "./deploy-skill";
 import { APM_DEPLOY_TARGET_FLAG } from "./deploy-tools";
 import { resolveLatestTagFromVersionsTable } from "./latest-tag";
@@ -89,9 +89,7 @@ export class ApmCliDriver implements ApmDriverPort {
     });
   }
 
-  async checkOutdated(
-    target: DeployTarget,
-  ): Promise<{ ok: true; behind: VersionDrift[] } | { ok: false }> {
+  async checkOutdated(target: DeployTarget): Promise<OutdatedResult> {
     const started = Date.now();
     const cwd =
       target.kind === "repo" ? target.repoPath : await this.prepareGlobalCwd();

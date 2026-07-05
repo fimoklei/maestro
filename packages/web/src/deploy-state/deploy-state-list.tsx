@@ -16,19 +16,31 @@ import type { DeployedPrimitive, SkippedEntry } from "./use-deploy-state";
 // pending — the badge fills in when drift resolves.
 const driftBadge: Record<
   Exclude<DriftStatus, "pending">,
-  { tone: "ok" | "drift" | "dim"; label: string }
+  { tone: "ok" | "drift" | "dim"; label: string; hint?: string }
 > = {
   behind: { tone: "drift", label: "behind" },
   "up-to-date": { tone: "ok", label: "up-to-date" },
   unknown: { tone: "dim", label: "unknown" },
+  // Same neutral tone as unknown (state is carried in text, not colour), but a
+  // distinct label + hint so a reachability failure reads as auth/network, not a
+  // generic unknown — and never as up-to-date (J04).
+  unverified: {
+    tone: "dim",
+    label: "unverified",
+    hint: "Couldn't reach the source to check for updates — verify apm auth/network.",
+  },
 };
 
 function DriftBadge({ status }: { status: DriftStatus }) {
   if (status === "pending") {
     return null;
   }
-  const { tone, label } = driftBadge[status];
-  return <Chip tone={tone}>{label}</Chip>;
+  const { tone, label, hint } = driftBadge[status];
+  return (
+    <Chip tone={tone} title={hint}>
+      {label}
+    </Chip>
+  );
 }
 
 // The deployed version, warmed to amber when behind and shown as the
@@ -37,6 +49,7 @@ const versionColor: Record<DriftStatus, string> = {
   behind: "text-amber-ink",
   "up-to-date": "text-green-ink",
   unknown: "text-muted",
+  unverified: "text-muted",
   pending: "text-muted",
 };
 

@@ -38,7 +38,7 @@ describe("drift HTTP route", () => {
           ok: true;
           behind: Array<{ name: string; current: string; latest: string }>;
         }
-      | { ok: false },
+      | { ok: false; reason?: "unverified" },
   ) {
     const fs = new NodeFileSystem();
     const calls: Array<
@@ -101,6 +101,22 @@ describe("drift HTTP route", () => {
     await rm(repo, { recursive: true, force: true });
   });
 
+  it("forwards the unverified reason when apm could not reach the remote", async () => {
+    const repo = await mkdtemp(join(tmpdir(), "maestro-repo-"));
+    const { app, registry } = makeApp({ ok: false, reason: "unverified" });
+    await registry.register(repo);
+
+    const res = await app.request(
+      `/api/drift?repo=${encodeURIComponent(repo)}`,
+    );
+
+    expect(res.status).toBe(200);
+    // Distinct from a bare { ok: false }: the web shows "unverified", pointing at
+    // auth/network rather than a generic "unknown".
+    expect(await res.json()).toEqual({ ok: false, reason: "unverified" });
+    await rm(repo, { recursive: true, force: true });
+  });
+
   it("rejects a repo that is not registered", async () => {
     const repo = await mkdtemp(join(tmpdir(), "maestro-repo-"));
     const { app } = makeApp({ ok: true, behind: [tddBehind] });
@@ -138,5 +154,14 @@ describe("drift HTTP route", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: false });
+  });
+
+  it("forwards the unverified reason on the global route", async () => {
+    const { app } = makeApp({ ok: false, reason: "unverified" });
+
+    const res = await app.request("/api/drift/global");
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: false, reason: "unverified" });
   });
 });

@@ -3,9 +3,10 @@
 // before any apm access (a path-taking operation must reject an unregistered
 // repo first, per security.md), then delegate the judgment to `apm outdated`
 // via the driver port (ADR-0001; we never compute a version diff ourselves).
-// The result is deliberately flat: { ok: true; behind } when the check ran, or
-// { ok: false } when it could not — one failure, no taxonomy. The web layer
-// maps { ok: false } to "unknown" so a failed check never reads as up-to-date.
+// The result is { ok: true; behind } when the check ran, else { ok: false } —
+// bare for a genuine failure (web maps it to "unknown"), or carrying
+// reason: "unverified" when apm reached the tool but could not resolve against
+// the remote (web maps it to its own state). Neither ever reads as up-to-date.
 import type { ApmDriverPort, DeployTarget } from "../deploy/deploy-skill";
 import type { VersionDrift } from "./parse-outdated";
 
@@ -15,7 +16,10 @@ export type CheckVersionDriftInput = {
 
 export type CheckVersionDriftResult =
   | { ok: true; behind: VersionDrift[] }
-  | { ok: false };
+  // `reason: "unverified"` is apm's own could-not-check outcome, forwarded from
+  // the driver unchanged; the use-case's own refusals (unregistered repo, a
+  // realpath that threw) are a bare failure with no reason.
+  | { ok: false; reason?: "unverified" };
 
 export class CheckVersionDrift {
   private readonly deps: {

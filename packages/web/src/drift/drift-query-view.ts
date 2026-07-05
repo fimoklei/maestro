@@ -19,5 +19,10 @@ export function toDriftView(
   if ("behind" in drift.data) {
     return { status: "ready", behind: drift.data.behind };
   }
+  // apm reached the tool but could not resolve against the remote: its own
+  // state, so the badge points at auth/network rather than a bare "unknown".
+  if (drift.data.reason === "unverified") {
+    return { status: "unverified" };
+  }
   return { status: "unknown" };
 }
