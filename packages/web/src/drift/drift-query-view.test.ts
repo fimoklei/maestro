@@ -45,6 +45,15 @@ describe("toDriftView", () => {
     });
   });
 
+  it("maps a reachability failure (reason: unverified) to its own state", () => {
+    // Distinct from a bare { ok: false }: apm reached the tool but could not
+    // resolve against the remote, so the badge reads "unverified" (an
+    // auth/network hint), never a generic "unknown" and never up-to-date.
+    expect(
+      toDriftView(query({ data: { ok: false, reason: "unverified" } })),
+    ).toEqual({ status: "unverified" });
+  });
+
   it("never derives up-to-date from a check that could not run", () => {
     // The J04 failure mode: { ok: false } must read as unknown, never as a
     // ready+empty behind set that the badge would show as up-to-date.

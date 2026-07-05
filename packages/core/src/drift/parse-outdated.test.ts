@@ -72,4 +72,34 @@ describe("parseOutdated", () => {
   it("fails on unrecognised output that is neither a known empty state nor a table", () => {
     expect(parseOutdated("apm: command not found\n")).toEqual({ ok: false });
   });
+
+  it("reports a dep apm could not check as unverified, never up-to-date", () => {
+    // apm reached the tool but could not resolve the tag-pinned dep against its
+    // remote (no auth/network): exit 0, a row with Status "unknown" / Latest "-"
+    // and a "could not be checked" summary. This is a reachability failure — not
+    // up-to-date and not a crash — so it must read as unverified, distinct from a
+    // bare failure, and never as an empty behind set (the J04 lie).
+    const couldNotCheck = [
+      "                                          Dependency Status",
+      "│ fimoklei/agent-harness/skills/tdd │ v0.5.1 │ - │ unknown │ │",
+      "[i] Some dependencies could not be checked (branch/commit refs)",
+    ].join("\n");
+    expect(parseOutdated(couldNotCheck)).toEqual({
+      ok: false,
+      reason: "unverified",
+    });
+  });
+
+  it("never lets an uncheckable dep hide behind a checkable outdated one", () => {
+    // A mix of one outdated (resolved) and one uncheckable dep. Parsing only the
+    // outdated row would drop the uncheckable one, silently rendering it
+    // up-to-date. When any dep could not be checked the whole result is
+    // unverified — the outdated pair is not worth a false up-to-date on the other.
+    const mixed = [
+      "│ owner/repo/skills/tdd │ v0.5.0 │ v0.5.1 │ outdated │ git tags │",
+      "│ owner/repo/skills/foo │ v1.0.0 │ - │ unknown │ │",
+      "[i] Some dependencies could not be checked (branch/commit refs)",
+    ].join("\n");
+    expect(parseOutdated(mixed)).toEqual({ ok: false, reason: "unverified" });
+  });
 });

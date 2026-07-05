@@ -14,10 +14,14 @@ import { requestJson } from "../api/http";
 // at the HTTP boundary (web never imports core types).
 export type VersionDrift = { name: string; current: string; latest: string };
 
-// The two honest server outcomes: the check ran (a behind set, possibly empty),
-// or it could not run ({ ok: false }) — which the screen shows as "unknown",
-// never as up-to-date.
-export type DriftResponse = { behind: VersionDrift[] } | { ok: false };
+// The honest server outcomes: the check ran (a behind set, possibly empty), or
+// it could not — either apm reached the tool but could not resolve against the
+// remote (`reason: "unverified"`, shown as its own auth/network state) or a bare
+// failure (shown as "unknown"). Never up-to-date. Mirrors core's OutdatedResult
+// at the HTTP boundary (web never imports core types).
+export type DriftResponse =
+  | { behind: VersionDrift[] }
+  | { ok: false; reason?: "unverified" };
 
 const FIVE_MINUTES = 5 * 60 * 1000;
 

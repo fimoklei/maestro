@@ -24,7 +24,9 @@ const feature = await loadFeature("tests/acceptance/j04-see-drift.feature");
 // skill, a current skill, and a check that could not run each read like the job
 // map rather than like server internals.
 type VersionDrift = { name: string; current: string; latest: string };
-type OutdatedOutcome = { ok: true; behind: VersionDrift[] } | { ok: false };
+type OutdatedOutcome =
+  | { ok: true; behind: VersionDrift[] }
+  | { ok: false; reason?: "unverified" };
 
 const tddBehind: VersionDrift = {
   name: "tdd",
@@ -148,6 +150,32 @@ describeFeature(
             // The distinct "unknown" shape — never { behind: [] }, which would
             // falsely read as up-to-date.
             expect(body).toEqual({ ok: false });
+          },
+        );
+      },
+    );
+
+    Scenario(
+      "A skill apm could not reach the source for is seen as unverified",
+      ({ Given, When, Then }) => {
+        Given(
+          "a registered repo where apm could not reach the source to check the skill",
+          async () => {
+            outcome = { ok: false, reason: "unverified" };
+            await register(repo);
+          },
+        );
+        When("I check that repo's drift", checkDrift);
+        Then(
+          "I see the check reported as unverified, not an empty up-to-date result",
+          async () => {
+            expect(response.status).toBe(200);
+            // Distinct from both { behind: [] } (a false up-to-date) and a bare
+            // { ok: false }: the reason points the cockpit at auth/network.
+            expect(await response.json()).toEqual({
+              ok: false,
+              reason: "unverified",
+            });
           },
         );
       },

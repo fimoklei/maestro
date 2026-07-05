@@ -52,6 +52,16 @@ const deployBodySchema = z.object({
   force: z.boolean().optional(),
 });
 
+// A failed drift check answers 200 with a body the web maps to a badge, not an
+// HTTP error (a screen reading "up-to-date" when the check failed would falsely
+// reassure). `reason: "unverified"` — apm reached the tool but could not resolve
+// against the remote — is forwarded so the cockpit shows "unverified" (an
+// auth/network hint) rather than a bare "unknown"; a genuine failure omits it.
+const driftFailureBody = (result: { reason?: "unverified" }) =>
+  result.reason
+    ? { ok: false as const, reason: result.reason }
+    : { ok: false as const };
+
 // Transport-layer mapping from the deploy use-case's typed errors to HTTP.
 // Business rules live in core; this table only chooses status codes and
 // readable messages (none of which echo paths or raw apm output).
@@ -416,7 +426,7 @@ export function createApp(deps: AppDeps) {
       target: { kind: "repo", repoPath: repo },
     });
     if (!result.ok) {
-      return c.json({ ok: false });
+      return c.json(driftFailureBody(result));
     }
     return c.json({ behind: result.behind });
   });
@@ -428,7 +438,7 @@ export function createApp(deps: AppDeps) {
       target: { kind: "global" },
     });
     if (!result.ok) {
-      return c.json({ ok: false });
+      return c.json(driftFailureBody(result));
     }
     return c.json({ behind: result.behind });
   });

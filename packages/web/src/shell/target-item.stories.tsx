@@ -9,7 +9,7 @@ const meta = {
     kind: { control: "inline-radio", options: ["global", "local"] },
     indicator: {
       control: "inline-radio",
-      options: ["ok", "drift", "unknown", "pending"],
+      options: ["ok", "drift", "unknown", "unverified", "pending"],
     },
   },
   // A target row is a list item; wrap it so the story renders valid markup.
@@ -33,5 +33,9 @@ export const InSync: Story = {
 export const NeedsUpdate: Story = { args: { indicator: "drift" } };
 
 export const Unknown: Story = { args: { indicator: "unknown" } };
+
+// apm reached the tool but could not resolve against the remote (no auth/network)
+// — distinct from a crashed check, and never read as in sync.
+export const Unverified: Story = { args: { indicator: "unverified" } };
 
 export const Checking: Story = { args: { indicator: "pending" } };

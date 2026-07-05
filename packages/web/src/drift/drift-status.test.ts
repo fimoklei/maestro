@@ -26,6 +26,18 @@ describe("skillDriftStatus", () => {
     expect(skillDriftStatus("tdd", { status: "pending" })).toBe("pending");
   });
 
+  it("reports unverified when apm could not reach the source", () => {
+    expect(skillDriftStatus("tdd", { status: "unverified" })).toBe(
+      "unverified",
+    );
+  });
+
+  it("never derives up-to-date from an unverified check", () => {
+    expect(skillDriftStatus("tdd", { status: "unverified" })).not.toBe(
+      "up-to-date",
+    );
+  });
+
   it("never derives up-to-date from an unknown check", () => {
     // The failure mode J04 exists to prevent: a failed check must not read as
     // up-to-date.

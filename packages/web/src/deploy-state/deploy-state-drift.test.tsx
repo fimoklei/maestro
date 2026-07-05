@@ -88,6 +88,17 @@ describe("DeployStatePanel drift badge", () => {
     expect(screen.queryByText(/up-to-date/i)).not.toBeInTheDocument();
   });
 
+  it("shows unverified, distinct from unknown and never up-to-date, when apm could not reach the source", async () => {
+    stubFetch(tddDeployed, { ok: false, reason: "unverified" });
+    renderPanel("/Users/me/project");
+
+    expect(await screen.findByText("tdd")).toBeInTheDocument();
+    expect(await screen.findByText(/unverified/i)).toBeInTheDocument();
+    expect(screen.queryByText(/up-to-date/i)).not.toBeInTheDocument();
+    // A reachability failure reads as its own state, not the generic "unknown".
+    expect(screen.queryByText(/^unknown$/i)).not.toBeInTheDocument();
+  });
+
   it("does not mark the target as drift when the only behind primitive is not deployed here", async () => {
     stubFetch(tddDeployed, {
       behind: [{ name: "foo", current: "v1.0.0", latest: "v1.1.0" }],

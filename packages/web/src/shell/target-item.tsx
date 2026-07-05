@@ -18,6 +18,7 @@ const STATUS_TEXT: Record<TargetDriftIndicator, string> = {
   ok: "in sync",
   drift: "needs update",
   unknown: "unknown",
+  unverified: "unverified",
   pending: "checking…",
 };
 

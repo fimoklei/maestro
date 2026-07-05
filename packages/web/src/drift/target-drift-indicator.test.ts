@@ -40,6 +40,14 @@ describe("targetDriftIndicator", () => {
     );
   });
 
+  it("reports unverified when apm could not reach the source", () => {
+    // Surfaces regardless of the deployed set — like unknown, it must never read
+    // as in sync (J04), but stays distinct so the roll-up reflects auth/network.
+    expect(
+      targetDriftIndicator(deployed(["tdd"]), { status: "unverified" }),
+    ).toBe("unverified");
+  });
+
   it("stays pending when deploy-state is still loading, even with a behind entry", () => {
     expect(
       targetDriftIndicator(
