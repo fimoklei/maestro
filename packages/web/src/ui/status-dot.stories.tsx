@@ -6,7 +6,7 @@ const meta = {
   component: StatusDot,
   args: { status: "ok", size: 6 },
   argTypes: {
-    status: { control: "inline-radio", options: ["ok", "drift"] },
+    status: { control: "inline-radio", options: ["ok", "drift", "muted"] },
   },
 } satisfies Meta<typeof StatusDot>;
 
@@ -17,6 +17,8 @@ type Story = StoryObj<typeof meta>;
 export const Ok: Story = {};
 
 export const Drift: Story = { args: { status: "drift" } };
+
+export const Muted: Story = { args: { status: "muted" } };
 
 export const InContext: Story = {
   render: () => (
