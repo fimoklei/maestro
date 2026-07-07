@@ -8,7 +8,7 @@ const meta = {
   argTypes: {
     connection: {
       control: "inline-radio",
-      options: ["checking", "connected", "disconnected"],
+      options: ["checking", "setup-required", "connected", "disconnected"],
     },
   },
 } satisfies Meta<typeof StatusBarView>;
@@ -18,6 +18,8 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Connected: Story = {};
+
+export const SetupRequired: Story = { args: { connection: "setup-required" } };
 
 export const Disconnected: Story = { args: { connection: "disconnected" } };
 
