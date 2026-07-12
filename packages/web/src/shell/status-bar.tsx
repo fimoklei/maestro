@@ -1,7 +1,9 @@
-import { useInventoryConfig } from "../inventory/use-inventory";
+import { useNavigate } from "react-router-dom";
+import { useInventory, useInventoryConfig } from "../inventory/use-inventory";
 import { Logo } from "../ui/logo";
 import { StatusDot, type StatusDotProps } from "../ui/status-dot";
 import { useHealth } from "../use-health";
+import { primitiveCountLabel } from "./primitive-count-label";
 
 // Top status bar: the wordmark plus the header's setup/connection state. It reads
 // two server-state signals (TanStack Query) and never conflates them: /api/health
@@ -50,20 +52,72 @@ function deriveConnection(
   return config.data.inventoryPath === null ? "setup-required" : "connected";
 }
 
+// The header's inventory-source entry: the connected source's name + live
+// primitive count, plus the action that opens the source view. Null unless
+// connected — there is no source to point at during setup/first-run.
+export interface SourceEntry {
+  name: string;
+  countLabel: string;
+  onOpen: () => void;
+}
+
 export function StatusBar() {
   const health = useHealth();
   const config = useInventoryConfig();
+  const inventory = useInventory();
+  const navigate = useNavigate();
+  const connection = deriveConnection(health, config);
 
-  return <StatusBarView connection={deriveConnection(health, config)} />;
+  // The source moved from the sidebar into the header (issue #109). Only a
+  // connected inventory has a source; the entry point is the whole source view
+  // (status · re-read · change source), reached at /source.
+  const path = config.data?.inventoryPath ?? null;
+  const source: SourceEntry | null =
+    connection === "connected" && path !== null
+      ? {
+          name: basename(path),
+          countLabel: primitiveCountLabel(inventory.data?.primitives.length),
+          onOpen: () => navigate("/source"),
+        }
+      : null;
+
+  return <StatusBarView connection={connection} source={source} />;
+}
+
+// The trailing path segment stands in for the source name in the header, so the
+// long absolute path doesn't crowd the bar; the full path still shows in the
+// source view.
+function basename(path: string): string {
+  const segments = path.split("/").filter(Boolean);
+  return segments.at(-1) ?? path;
 }
 
 // Presentational: the dot is decorative, so the connection state is also carried
-// in text.
-export function StatusBarView({ connection }: { connection: Connection }) {
+// in text. The source entry is optional and driven by a callback, so the header
+// stays storyable without a live hook or router.
+export function StatusBarView({
+  connection,
+  source = null,
+}: {
+  connection: Connection;
+  source?: SourceEntry | null;
+}) {
   const view = CONNECTION_VIEW[connection];
   return (
     <header className="flex items-center justify-between gap-3 border-line-chip border-b px-4 py-2.5">
-      <Logo wordmark />
+      <div className="flex items-center gap-3">
+        <Logo wordmark />
+        {source ? (
+          <button
+            type="button"
+            aria-label="Inventory source"
+            onClick={source.onOpen}
+            className="rounded-control border border-transparent px-2 py-1 font-mono text-chip text-dim transition-colors hover:border-line-chip hover:bg-active"
+          >
+            {source.name} · {source.countLabel}
+          </button>
+        ) : null}
+      </div>
       <span className="flex items-center gap-2 font-ui text-tag text-muted">
         <StatusDot status={view.dot} />
         {view.text}

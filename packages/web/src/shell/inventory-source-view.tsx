@@ -7,6 +7,7 @@ import { Card } from "../ui/card";
 import { SectionHeader } from "../ui/section-header";
 import { BrowseDialog } from "./browse-dialog";
 import { ConnectInventoryForm } from "./connect-inventory-form";
+import { primitiveCountLabel } from "./primitive-count-label";
 import { useBrowsePicker } from "./use-browse-picker";
 import { useRereadInventory } from "./use-reread-inventory";
 
@@ -29,14 +30,7 @@ export function InventorySourceView() {
   const connect = useConnectInventory();
   const reread = useRereadInventory();
   const currentPath = config.data?.inventoryPath ?? null;
-  // The count comes from a separate query than the config, so it can still be
-  // resolving after the path is known — show "reading…" rather than a bare
-  // "undefined", and singularise a count of one.
-  const count = inventory.data?.primitives.length;
-  const countLabel =
-    count === undefined
-      ? "reading…"
-      : `${count} ${count === 1 ? "primitive" : "primitives"}`;
+  const countLabel = primitiveCountLabel(inventory.data?.primitives.length);
 
   const [isChanging, setIsChanging] = useState(false);
   // The field seeds from the current path (edit it to re-point) but a browse

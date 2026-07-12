@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { StatusBar } from "./status-bar";
 
@@ -21,6 +22,7 @@ function jsonResponse(body: unknown, status: number) {
 function stubServer(opts: {
   health?: "ok" | "down";
   config?: { inventoryPath: string | null } | "error";
+  primitives?: unknown[];
 }) {
   vi.stubGlobal(
     "fetch",
@@ -36,6 +38,9 @@ function stubServer(opts: {
           ? jsonResponse({ message: "boom" }, 500)
           : jsonResponse(opts.config ?? { inventoryPath: null }, 200);
       }
+      if (url.startsWith("/api/inventory/primitives")) {
+        return jsonResponse({ primitives: opts.primitives ?? [] }, 200);
+      }
       return jsonResponse({}, 200);
     }),
   );
@@ -47,7 +52,9 @@ function renderStatusBar() {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <StatusBar />
+      <MemoryRouter>
+        <StatusBar />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -99,5 +106,35 @@ describe("StatusBar", () => {
     renderStatusBar();
 
     expect(await screen.findByText("Connected")).toBeInTheDocument();
+  });
+
+  it("presents the inventory source as a header entry point when connected", async () => {
+    // Issue #109: the source moved from the sidebar into the header. It shows
+    // the connected source name and its live primitive count, and is the entry
+    // point to the source view (re-read / change source).
+    stubServer({
+      health: "ok",
+      config: { inventoryPath: "/home/me/agent-harness" },
+      primitives: [{}, {}, {}],
+    });
+    renderStatusBar();
+
+    const entry = await screen.findByRole("button", {
+      name: /inventory source/i,
+    });
+    expect(entry).toHaveTextContent("agent-harness");
+    expect(entry).toHaveTextContent(/3 primitives/i);
+  });
+
+  it("omits the source entry point when setup is still required", async () => {
+    // No inventory yet means no source to point at — the header shows only the
+    // setup-required status, never a bare source button.
+    stubServer({ health: "ok", config: { inventoryPath: null } });
+    renderStatusBar();
+
+    expect(await screen.findByText(/setup required/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /inventory source/i }),
+    ).not.toBeInTheDocument();
   });
 });
