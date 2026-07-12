@@ -13,10 +13,15 @@ type InventoryResponse = { primitives: Primitive[] };
 // post-connect refetch).
 export const INVENTORY_KEY = ["inventory", "primitives"] as const;
 
-export function useInventory() {
+// `enabled` gates the read for callers that only have a source some of the time
+// (the header, which must not fetch primitives during first-run when the path is
+// still null and the endpoint 409s). Defaults to on, so callers that always have
+// a configured inventory (the source view) stay unchanged.
+export function useInventory({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: INVENTORY_KEY,
     queryFn: () => requestJson<InventoryResponse>("/api/inventory/primitives"),
+    enabled,
   });
 }
 

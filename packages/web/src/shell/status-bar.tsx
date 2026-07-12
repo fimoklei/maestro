@@ -64,16 +64,19 @@ export interface SourceEntry {
 export function StatusBar() {
   const health = useHealth();
   const config = useInventoryConfig();
-  const inventory = useInventory();
   const navigate = useNavigate();
   const connection = deriveConnection(health, config);
 
   // The source moved from the sidebar into the header (issue #109). Only a
   // connected inventory has a source; the entry point is the whole source view
-  // (status · re-read · change source), reached at /source.
+  // (status · re-read · change source), reached at /source. Gate the primitive
+  // read on being connected: during first-run /api/inventory/primitives 409s,
+  // and an ungated query would retry that failure behind the wizard.
+  const connected = connection === "connected";
+  const inventory = useInventory({ enabled: connected });
   const path = config.data?.inventoryPath ?? null;
   const source: SourceEntry | null =
-    connection === "connected" && path !== null
+    connected && path !== null
       ? {
           name: basename(path),
           countLabel: primitiveCountLabel(inventory.data?.primitives.length),
@@ -111,10 +114,12 @@ export function StatusBarView({
           <button
             type="button"
             aria-label="Inventory source"
+            title={source.name}
             onClick={source.onOpen}
-            className="rounded-control border border-transparent px-2 py-1 font-mono text-chip text-dim transition-colors hover:border-line-chip hover:bg-active"
+            className="flex min-w-0 max-w-xs items-center rounded-control border border-transparent px-2 py-1 font-mono text-chip text-dim transition-colors hover:border-line-chip hover:bg-active"
           >
-            {source.name} · {source.countLabel}
+            <span className="truncate">{source.name}</span>
+            <span className="shrink-0">&nbsp;· {source.countLabel}</span>
           </button>
         ) : null}
       </div>
