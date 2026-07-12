@@ -51,9 +51,13 @@ describe("Sidebar first-run rendering", () => {
     renderSidebar();
 
     expect(await screen.findByText(/none yet/i)).toBeInTheDocument();
-    for (const name of ["Deploy-state", "Inventory", "Inventory source"]) {
+    for (const name of ["Deploy-state", "Inventory"]) {
       expect(screen.getByRole("button", { name })).toBeDisabled();
     }
+    // Inventory source lives in the header now (issue #109), not the sidebar.
+    expect(
+      screen.queryByRole("button", { name: "Inventory source" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/repo path/i)).not.toBeInTheDocument();
   });
 
@@ -62,9 +66,12 @@ describe("Sidebar first-run rendering", () => {
     renderSidebar("/");
 
     expect(await screen.findByLabelText(/repo path/i)).toBeInTheDocument();
-    for (const name of ["Deploy-state", "Inventory", "Inventory source"]) {
+    for (const name of ["Deploy-state", "Inventory"]) {
       expect(screen.getByRole("button", { name })).toBeEnabled();
     }
+    expect(
+      screen.queryByRole("button", { name: "Inventory source" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/none yet/i)).not.toBeInTheDocument();
   });
 

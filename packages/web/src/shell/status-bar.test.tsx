@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { StatusBar } from "./status-bar";
 
@@ -21,6 +22,7 @@ function jsonResponse(body: unknown, status: number) {
 function stubServer(opts: {
   health?: "ok" | "down";
   config?: { inventoryPath: string | null } | "error";
+  primitives?: unknown[];
 }) {
   vi.stubGlobal(
     "fetch",
@@ -36,6 +38,9 @@ function stubServer(opts: {
           ? jsonResponse({ message: "boom" }, 500)
           : jsonResponse(opts.config ?? { inventoryPath: null }, 200);
       }
+      if (url.startsWith("/api/inventory/primitives")) {
+        return jsonResponse({ primitives: opts.primitives ?? [] }, 200);
+      }
       return jsonResponse({}, 200);
     }),
   );
@@ -47,7 +52,9 @@ function renderStatusBar() {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <StatusBar />
+      <MemoryRouter>
+        <StatusBar />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -99,5 +106,90 @@ describe("StatusBar", () => {
     renderStatusBar();
 
     expect(await screen.findByText("Connected")).toBeInTheDocument();
+  });
+
+  it("presents the inventory source as a header entry point when connected", async () => {
+    // Issue #109: the source moved from the sidebar into the header. It shows
+    // the connected source name and its live primitive count, and is the entry
+    // point to the source view (re-read / change source).
+    stubServer({
+      health: "ok",
+      config: { inventoryPath: "/home/me/agent-harness" },
+      primitives: [{}, {}, {}],
+    });
+    renderStatusBar();
+
+    // The count lands a tick after connect (the primitive read is gated on being
+    // connected), so wait for the resolved label rather than the initial
+    // "reading…".
+    const entry = await screen.findByRole("button", {
+      name: /inventory source/i,
+    });
+    await screen.findByText(/3 primitives/i);
+    expect(entry).toHaveTextContent(/agent-harness · 3 primitives/i);
+  });
+
+  it("omits the source entry point when setup is still required", async () => {
+    // No inventory yet means no source to point at — the header shows only the
+    // setup-required status, never a bare source button.
+    stubServer({ health: "ok", config: { inventoryPath: null } });
+    renderStatusBar();
+
+    expect(await screen.findByText(/setup required/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /inventory source/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the full source name in the title so truncation stays reversible", async () => {
+    // A basename is user-controlled and can be long; the header truncates it
+    // visually (so it never pushes the connection state off-screen) but must
+    // preserve the whole name on hover via title. The full path still lives on
+    // the source view.
+    const longName = "a".repeat(120);
+    stubServer({
+      health: "ok",
+      config: { inventoryPath: `/home/me/${longName}` },
+      primitives: [{}],
+    });
+    renderStatusBar();
+
+    const entry = await screen.findByRole("button", {
+      name: /inventory source/i,
+    });
+    expect(entry).toHaveAttribute("title", longName);
+  });
+
+  it("does not read the inventory until a source is configured", async () => {
+    // First-run: with no configured path, /api/inventory/primitives 409s and
+    // the production client would retry it repeatedly behind the wizard. The
+    // header must gate that read on a connected config, not fire it blind.
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/health")) return jsonResponse({ ok: true }, 200);
+      if (url.startsWith("/api/inventory/config")) {
+        return jsonResponse({ inventoryPath: null }, 200);
+      }
+      return jsonResponse({}, 200);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(
+      <QueryClientProvider
+        client={
+          new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        }
+      >
+        <MemoryRouter>
+          <StatusBar />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText(/setup required/i)).toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.some((c) =>
+        String(c[0]).startsWith("/api/inventory/primitives"),
+      ),
+    ).toBe(false);
   });
 });

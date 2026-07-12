@@ -18,7 +18,6 @@ import { useFirstRun } from "./use-first-run";
 const NAV_ITEMS = [
   { to: "/", label: "Deploy-state", icon: "⇶" },
   { to: "/inventory", label: "Inventory", icon: "▤" },
-  { to: "/source", label: "Inventory source", icon: "⚙" },
 ] as const;
 
 export function Sidebar() {

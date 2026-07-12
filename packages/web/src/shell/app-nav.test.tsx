@@ -28,6 +28,25 @@ function stubEmptyServer() {
   );
 }
 
+// A configured server: the header exposes the inventory-source entry, so the
+// source view is reachable from the header (issue #109) rather than a sidebar
+// nav item.
+function stubConfiguredServer() {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/inventory/config")) {
+        return jsonResponse({ inventoryPath: "/home/me/agent-harness" }, 200);
+      }
+      return jsonResponse(
+        { ok: true, repos: [], primitives: [], skipped: [], behind: [] },
+        200,
+      );
+    }),
+  );
+}
+
 function renderApp() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -58,5 +77,18 @@ describe("cockpit navigation", () => {
     expect(
       screen.queryByRole("heading", { name: /deploy-state/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("opens the Inventory source view from the header entry point", async () => {
+    stubConfiguredServer();
+    renderApp();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /inventory source/i }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: /inventory source/i }),
+    ).toBeInTheDocument();
   });
 });
