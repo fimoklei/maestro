@@ -1,9 +1,5 @@
-// Single-instance dev launcher. Before starting it kills the previous dev run
-// (tracked by PID file, group-killed) and frees the server/web ports as a
-// fallback, so there is only ever one Maestro running and a stale process never
-// blocks a fresh start. Pass --smoke to point MAESTRO_HOME and HOME at a
-// gitignored sandbox dir, so the run never touches real ~/.maestro data nor the
-// real ~/.apm and ~/.claude that apm writes to on a global deploy.
+// Single-instance dev launcher: keeps only one Maestro running at a time, and
+// with --smoke, runs an ephemeral, isolated rehearsal environment (ADR-0010).
 import { execFileSync, spawn } from "node:child_process";
 import {
   existsSync,
@@ -83,8 +79,17 @@ if (freedSomething) {
 
 // 3. Start server + web as one detached group so we can kill the whole tree.
 const env = { ...process.env };
+const sandbox = join(repoRoot, ".maestro-sandbox");
+
+function wipeSandbox() {
+  rmSync(sandbox, { recursive: true, force: true });
+}
+
 if (smoke) {
-  const sandbox = join(repoRoot, ".maestro-sandbox");
+  // Bare start: wipe any sandbox left behind by a run that died before
+  // teardown, so smoke always begins from a clean, unconfigured state.
+  wipeSandbox();
+
   env.MAESTRO_HOME = sandbox;
   // apm derives its global (user-scope) location from HOME, not MAESTRO_HOME,
   // so a global deploy would otherwise write into the real ~/.apm and
@@ -95,6 +100,34 @@ if (smoke) {
   console.log(
     `[smoke] MAESTRO_HOME=${env.MAESTRO_HOME} HOME=${env.HOME} (isolated from real data)`,
   );
+
+  // Only this dev-tooling harness bridges credentials to apm — the product
+  // never does (.claude/rules/security.md). gh's token is HOME-independent,
+  // so it survives the redirect above and lets a real deploy clone succeed.
+  try {
+    const token = execFileSync("gh", ["auth", "token"], {
+      encoding: "utf8",
+    }).trim();
+    if (token) {
+      env.GITHUB_TOKEN = token;
+      console.log("[smoke] bridged GITHUB_TOKEN from gh auth token");
+    } else {
+      console.warn(
+        "[smoke] gh not authenticated — connect/register/UI work, but a real deploy will fail",
+      );
+    }
+  } catch {
+    console.warn(
+      "[smoke] gh not authenticated — connect/register/UI work, but a real deploy will fail",
+    );
+  }
+
+  // A bare temp consuming repo as a valid deploy target. Left unregistered:
+  // connect + registration stay UI use-cases the rehearsal exercises.
+  const consumingRepo = join(sandbox, "consuming-repo");
+  mkdirSync(consumingRepo, { recursive: true });
+  execFileSync("git", ["init"], { cwd: consumingRepo, stdio: "ignore" });
+  console.log(`[smoke] seeded temp consuming repo at ${consumingRepo}`);
 }
 
 const child = spawn(
@@ -114,9 +147,18 @@ const child = spawn(
 
 writeFileSync(pidFile, String(child.pid));
 
+function teardownSandbox() {
+  if (!smoke) return;
+  // Best-effort: never apm uninstall -g (it deletes beyond its lockfile —
+  // apm-driver.md). Because HOME points into the sandbox, wiping it cannot
+  // touch the real ~/.claude or ~/.apm.
+  wipeSandbox();
+}
+
 function shutdown() {
   killGroup(child.pid, "SIGTERM");
   rmSync(pidFile, { force: true });
+  teardownSandbox();
   process.exit(0);
 }
 
@@ -124,5 +166,6 @@ process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 child.on("exit", (code) => {
   rmSync(pidFile, { force: true });
+  teardownSandbox();
   process.exit(code ?? 0);
 });
