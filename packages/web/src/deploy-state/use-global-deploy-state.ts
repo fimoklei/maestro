@@ -11,9 +11,10 @@ type DeployStateResponse = {
   skipped: SkippedEntry[];
 };
 
-export function useGlobalDeployState() {
+export function useGlobalDeployState(enabled = true) {
   return useQuery({
     queryKey: ["deploy-state", "global"],
     queryFn: () => requestJson<DeployStateResponse>("/api/deploy-state/global"),
+    enabled,
   });
 }
