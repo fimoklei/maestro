@@ -46,13 +46,13 @@ function stubServer(opts: {
   );
 }
 
-function renderStatusBar() {
+function renderStatusBar(initialPath = "/") {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[initialPath]}>
         <StatusBar />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -90,12 +90,16 @@ describe("StatusBar", () => {
 
   it("reads as Setup required when the server is healthy but no inventory is configured", async () => {
     // The core fix: a healthy server with inventoryPath null is first-run, not
-    // "Connected" — this is where the old conflation showed as a live bug.
+    // "Connected" — this is where the old conflation showed as a live bug. The
+    // design's first-run header spells this out: an empty-context wordmark, a
+    // "setup required" chip, and a "not configured" note.
     stubServer({ health: "ok", config: { inventoryPath: null } });
     renderStatusBar();
 
-    expect(await screen.findByText(/setup required/i)).toBeInTheDocument();
-    expect(screen.queryByText("Connected")).not.toBeInTheDocument();
+    expect(await screen.findByText("setup required")).toBeInTheDocument();
+    expect(screen.getByText("no inventory connected")).toBeInTheDocument();
+    expect(screen.getByText("not configured")).toBeInTheDocument();
+    expect(screen.queryByText("connected")).not.toBeInTheDocument();
   });
 
   it("reads as Connected when the server is healthy and an inventory is configured", async () => {
@@ -105,13 +109,13 @@ describe("StatusBar", () => {
     });
     renderStatusBar();
 
-    expect(await screen.findByText("Connected")).toBeInTheDocument();
+    expect(await screen.findByText("connected")).toBeInTheDocument();
   });
 
-  it("presents the inventory source as a header entry point when connected", async () => {
-    // Issue #109: the source moved from the sidebar into the header. It shows
-    // the connected source name and its live primitive count, and is the entry
-    // point to the source view (re-read / change source).
+  it("shows the connected source name and live count as header context", async () => {
+    // Issue #109: the source moved from the sidebar into the header. Per the
+    // Control Room design it is plain context text beside the wordmark — the
+    // connected source name and its live primitive count — not a button.
     stubServer({
       health: "ok",
       config: { inventoryPath: "/home/me/agent-harness" },
@@ -122,20 +126,54 @@ describe("StatusBar", () => {
     // The count lands a tick after connect (the primitive read is gated on being
     // connected), so wait for the resolved label rather than the initial
     // "reading…".
-    const entry = await screen.findByRole("button", {
-      name: /inventory source/i,
-    });
     await screen.findByText(/3 primitives/i);
-    expect(entry).toHaveTextContent(/agent-harness · 3 primitives/i);
+    expect(screen.getByRole("banner")).toHaveTextContent(
+      /agent-harness · 3 primitives/i,
+    );
   });
 
-  it("omits the source entry point when setup is still required", async () => {
+  it("opens the source view from the header gear when connected", async () => {
+    // The gear is the entry point to the /source view (status · re-read · change
+    // source). It is a real button labelled for its destination, present only
+    // once there is a source to manage.
+    stubServer({
+      health: "ok",
+      config: { inventoryPath: "/home/me/agent-harness" },
+      primitives: [{}],
+    });
+    renderStatusBar();
+
+    const gear = await screen.findByRole("button", {
+      name: /inventory source/i,
+    });
+    expect(gear).toBeInTheDocument();
+    // Not the active view yet — the header was rendered at the landing route.
+    expect(gear).not.toHaveAttribute("aria-current", "page");
+  });
+
+  it("marks the gear as the active view while on the source route", async () => {
+    // On /source the gear reads as the current page so the header reflects where
+    // the user is (the design highlights it amber via settingsActive).
+    stubServer({
+      health: "ok",
+      config: { inventoryPath: "/home/me/agent-harness" },
+      primitives: [{}],
+    });
+    renderStatusBar("/source");
+
+    const gear = await screen.findByRole("button", {
+      name: /inventory source/i,
+    });
+    expect(gear).toHaveAttribute("aria-current", "page");
+  });
+
+  it("omits the source gear when setup is still required", async () => {
     // No inventory yet means no source to point at — the header shows only the
-    // setup-required status, never a bare source button.
+    // setup-required status, never a bare gear that would dead-end on the wizard.
     stubServer({ health: "ok", config: { inventoryPath: null } });
     renderStatusBar();
 
-    expect(await screen.findByText(/setup required/i)).toBeInTheDocument();
+    expect(await screen.findByText("setup required")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /inventory source/i }),
     ).not.toBeInTheDocument();
@@ -154,10 +192,8 @@ describe("StatusBar", () => {
     });
     renderStatusBar();
 
-    const entry = await screen.findByRole("button", {
-      name: /inventory source/i,
-    });
-    expect(entry).toHaveAttribute("title", longName);
+    const nameEl = await screen.findByText(longName);
+    expect(nameEl).toHaveAttribute("title", longName);
   });
 
   it("does not read the inventory until a source is configured", async () => {
@@ -185,7 +221,7 @@ describe("StatusBar", () => {
       </QueryClientProvider>,
     );
 
-    expect(await screen.findByText(/setup required/i)).toBeInTheDocument();
+    expect(await screen.findByText("setup required")).toBeInTheDocument();
     expect(
       fetchMock.mock.calls.some((c) =>
         String(c[0]).startsWith("/api/inventory/primitives"),
