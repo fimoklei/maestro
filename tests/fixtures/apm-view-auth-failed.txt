@@ -1,0 +1,16 @@
+[!] A new version of APM is available: 0.25.0 (current: 0.20.0)
+Run apm update to upgrade
+
+[x] Failed to list versions for 'fimoklei/agent-harness': Failed to list remote 
+refs for fimoklei/agent-harness. Authentication failed for list refs on 
+github.com.
+No token available.
+Set GITHUB_APM_PAT or GITHUB_TOKEN, or run 'gh auth login'.
+If packages span multiple organizations, set per-org tokens: 
+GITHUB_APM_PAT_FIMOKLEI
+Run with --verbose for detailed auth diagnostics. Last error: Cmd('git') failed 
+due to: exit code(128)
+  cmdline: git ls-remote --tags --heads 
+https://github.com/fimoklei/agent-harness
+  stderr: 'fatal: could not read Username for 'https://github.com': terminal 
+prompts disabled'
