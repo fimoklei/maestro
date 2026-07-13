@@ -1,0 +1,58 @@
+[
+  {
+    "target": "claude",
+    "status": "active",
+    "source": ".claude/",
+    "deploy_dir": ".claude/",
+    "needs": null
+  },
+  {
+    "target": "copilot",
+    "status": "inactive",
+    "source": null,
+    "deploy_dir": ".github/",
+    "needs": ".github/copilot-instructions.md"
+  },
+  {
+    "target": "cursor",
+    "status": "inactive",
+    "source": null,
+    "deploy_dir": ".cursor/",
+    "needs": ".cursor/"
+  },
+  {
+    "target": "codex",
+    "status": "inactive",
+    "source": null,
+    "deploy_dir": ".codex/",
+    "needs": ".codex/"
+  },
+  {
+    "target": "gemini",
+    "status": "inactive",
+    "source": null,
+    "deploy_dir": ".gemini/",
+    "needs": "GEMINI.md"
+  },
+  {
+    "target": "opencode",
+    "status": "inactive",
+    "source": null,
+    "deploy_dir": ".opencode/",
+    "needs": ".opencode/"
+  },
+  {
+    "target": "windsurf",
+    "status": "inactive",
+    "source": null,
+    "deploy_dir": ".windsurf/",
+    "needs": ".windsurf/"
+  },
+  {
+    "target": "kiro",
+    "status": "inactive",
+    "source": null,
+    "deploy_dir": ".kiro/",
+    "needs": ".kiro/"
+  }
+]
