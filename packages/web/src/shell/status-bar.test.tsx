@@ -91,14 +91,15 @@ describe("StatusBar", () => {
   it("reads as Setup required when the server is healthy but no inventory is configured", async () => {
     // The core fix: a healthy server with inventoryPath null is first-run, not
     // "Connected" — this is where the old conflation showed as a live bug. The
-    // design's first-run header spells this out: an empty-context wordmark, a
-    // "setup required" chip, and a "not configured" note.
+    // first-run header spells this out with an empty-context wordmark and a
+    // "setup required" chip; the redundant "not configured" note is dropped so
+    // onboarding reads cleanly.
     stubServer({ health: "ok", config: { inventoryPath: null } });
     renderStatusBar();
 
     expect(await screen.findByText("setup required")).toBeInTheDocument();
     expect(screen.getByText("no inventory connected")).toBeInTheDocument();
-    expect(screen.getByText("not configured")).toBeInTheDocument();
+    expect(screen.queryByText("not configured")).not.toBeInTheDocument();
     expect(screen.queryByText("connected")).not.toBeInTheDocument();
   });
 

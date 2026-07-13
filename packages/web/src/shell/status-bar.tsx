@@ -24,18 +24,16 @@ export type Connection =
   | "disconnected";
 
 // One entry per state keeps its chip tone, dot tone, label, and the design's
-// context/config notes together. Dot + chip semantics: green = go, grey =
+// wordmark context note together. Dot + chip semantics: green = go, grey =
 // neutral/waiting, amber = problem. "connecting…" and "setup required" are both
 // neutral (nothing is wrong); only a real reachability failure is amber. Loading
-// is not drift. `context` is the design's wordmark note; `config` is the small
-// dim line to its right ("not configured" during first-run). Connected's context
-// is dynamic (the source name + count), so it carries no static context here.
+// is not drift. `context` is the design's wordmark note. Connected's context is
+// dynamic (the source name + count), so it carries no static context here.
 interface ConnectionView {
   label: string;
   tone: ChipProps["tone"];
   dot: StatusDotProps["status"];
   context?: string;
-  config?: string;
 }
 
 // One label for the source gear, reused as its accessible name and hover title.
@@ -48,7 +46,6 @@ const CONNECTION_VIEW: Record<Connection, ConnectionView> = {
     tone: "dim",
     dot: "muted",
     context: "no inventory connected",
-    config: "not configured",
   },
   connected: { label: "connected", tone: "ok", dot: "ok" },
   disconnected: { label: "disconnected", tone: "drift", dot: "drift" },
@@ -150,9 +147,6 @@ export function StatusBarView({
           {view.label}
         </span>
       </Chip>
-      {view.config ? (
-        <span className="font-mono text-chip text-dim">{view.config}</span>
-      ) : null}
       {source ? (
         <button
           type="button"
