@@ -1,0 +1,15 @@
+[*] Created apm.yml
+[*] Validating 1 package...
+[+] fimoklei/agent-harness/skills/tdd#v0.5.0
+[*] Updated apm.yml with 1 new package(s)
+[>] Installing 1 new package...
+[>] Resolving agent-harness-tdd...
+Partial clone (--filter=blob:none) failed for 
+https://github.com/fimoklei/agent-harness; retrying with full bare clone. Server
+may not support filter v2.
+[i] Targets: claude  (source: --target flag)
+  [+] github.com/fimoklei/agent-harness/skills/tdd#v0.5.0 #v0.5.0 @ec491f15
+  |-- Skill integrated -> .claude/skills/
+[i] Added apm_modules/ to .gitignore
+
+[*] Installed 1 APM dependency in 10.4s.
