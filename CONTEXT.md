@@ -53,7 +53,7 @@ The act of reproducing a primitive or bundle from the central inventory into a t
 _Avoid_: install (that is APM's verb for the mechanism), copy, sync.
 
 **Target**:
-Where a deploy lands. Two kinds: **local** (a consuming repo) or **global** (a tool's user-level config).
+Where a deploy lands. Two kinds: **local** (a consuming repo) or **global** (the user-level config of a present tool). A global deploy resolves to one target per detected tool, so "global" can be several targets on a two-tool machine and one on a single-tool machine (ADR-0011).
 _Avoid_: destination, environment.
 
 **Local deploy**:
@@ -61,8 +61,8 @@ A deploy scoped to one **consuming repo** — the primitive becomes available on
 _Avoid_: repo install, project-level.
 
 **Global deploy**:
-A deploy scoped to a tool at the user level (e.g. Claude Code and Codex on this machine) — the primitive becomes available across all of that user's work in that tool.
-_Avoid_: system-wide, machine install.
+A deploy scoped to the user-level config of the AI coding tools the user actually has — the primitive becomes available across all of that user's work in those tools. The tools are **detected live** (ADR-0011): a machine with both Claude Code and Codex targets both; a Claude-only machine targets only Claude Code, and no `.agents` copy is written. "Global" is the set of present tools, not a single opaque destination.
+_Avoid_: system-wide, machine install, "always both tools" (the reversed pre-ADR-0011 rule).
 
 **Consuming repo**:
 A project that receives locally-deployed primitives from the central inventory.
@@ -123,4 +123,4 @@ Resolved (kept for traceability):
 
 - **How Maestro discovers consuming repos** — resolved in `roadmap/01`: an explicit **Consuming-repo registry**, not a directory scan.
 - **Whether APM supports global deploy** — resolved: native via user scope `~/.apm/` (own `apm.lock.yaml`; `-g` flag on `install`/`outdated`). Maestro drives it, does not add it.
-- **Which tools a deploy targets** — resolved in `roadmap/01` (sub-step 01.2): every deploy targets both Claude Code and Codex; no per-tool choice in the cockpit.
+- **Which tools a global deploy targets** — resolved in `roadmap/01` (01.2) as "always both Claude Code and Codex", then **revised by ADR-0011**: a global deploy targets the tools **detected present** on the machine (both, or just one), still with no manual per-tool choice. The "always both" rule is superseded; single-tool machines no longer get a dead `.agents` copy. Local (per-repo) deploys are unaffected.
