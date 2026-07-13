@@ -105,6 +105,29 @@ describe("TargetsList", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("does not read a target with only skipped, unsupported primitives as empty", async () => {
+    // Zero supported primitives but a non-empty skipped set: the target does hold
+    // deployed content, so it must not read "empty" (the deploy-state panel shows
+    // the skipped warning and never calls it empty). With a clean check it is in
+    // sync.
+    stubFetch(
+      {
+        primitives: [],
+        skipped: [{ virtualPath: "hooks/pre-commit", packageType: "hook" }],
+      },
+      { behind: [] },
+    );
+    renderTargets();
+
+    await screen.findByText("/Users/me/app");
+    expect(
+      await within(rowFor("/Users/me/app")).findByText(/in sync/i),
+    ).toBeInTheDocument();
+    expect(
+      within(rowFor("/Users/me/app")).queryByText(/empty/i),
+    ).not.toBeInTheDocument();
+  });
+
   it("does not mark a repo as needing update for a behind primitive it has not deployed", async () => {
     // The repo deploys tdd, but the check reports a different (orphan) name
     // behind -> nothing deployed here can be updated, so it stays in sync.

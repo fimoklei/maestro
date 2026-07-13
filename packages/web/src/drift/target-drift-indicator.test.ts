@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { targetDriftIndicator } from "./target-drift-indicator";
 
-const deployed = (names: string[]) => ({ status: "ready", names }) as const;
+const deployed = (names: string[], skippedCount = 0) =>
+  ({ status: "ready", names, skippedCount }) as const;
 
 describe("targetDriftIndicator", () => {
   it("reports drift when a deployed skill is behind", () => {
@@ -56,6 +57,16 @@ describe("targetDriftIndicator", () => {
     expect(targetDriftIndicator(deployed([]), { status: "pending" })).toBe(
       "empty",
     );
+  });
+
+  it("does not report empty for a target that has only skipped, unsupported primitives", () => {
+    // A lockfile of only unsupported types comes back as zero primitives but a
+    // non-empty skipped set — the target does contain deployed content, so it is
+    // not empty (mirrors deploy-state-list's isEmpty rule). It falls through to
+    // the drift-derived status instead; with a clean check that is "ok".
+    expect(
+      targetDriftIndicator(deployed([], 1), { status: "ready", behind: [] }),
+    ).toBe("ok");
   });
 
   it("does not claim empty until deploy-state is confirmed, even with a clean check", () => {

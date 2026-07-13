@@ -9,14 +9,17 @@
 // behind.
 //
 // "empty" comes first: a target with nothing deployed (deployed read cleanly,
-// zero primitives) can't drift — there is nothing to be behind — so a
-// confirmed-empty deployment wins over the drift check, even a failed or
-// still-loading one. This is the fresh-repo case: it must read "empty", not the
-// "unknown" that a failed check would otherwise show (and not "ok", which would
-// imply deployed content that matches). Emptiness only counts once deployed is
-// *confirmed* (status "ready"); while it is pending/unknown we don't yet know it
-// is empty, so the drift-based logic below still runs. Pure and framework-free,
-// sibling-tested.
+// zero primitives and zero skipped entries) can't drift — there is nothing to be
+// behind — so a confirmed-empty deployment wins over the drift check, even a
+// failed or still-loading one. This is the fresh-repo case: it must read
+// "empty", not the "unknown" that a failed check would otherwise show (and not
+// "ok", which would imply deployed content that matches). A lockfile of only
+// unsupported types comes back as zero primitives but a non-empty skipped set —
+// that target does contain deployed content, so it is not empty (the same rule
+// deploy-state-list applies to its "Nothing deployed" message); it falls through
+// to the drift-derived status. Emptiness only counts once deployed is *confirmed*
+// (status "ready"); while it is pending/unknown we don't yet know it is empty, so
+// the drift-based logic below still runs. Pure and framework-free, sibling-tested.
 
 import type { DeployedView } from "../deploy-state/deployed-view";
 import type { DriftView } from "./drift-status";
@@ -33,7 +36,11 @@ export const targetDriftIndicator = (
   deployed: DeployedView,
   drift: DriftView,
 ): TargetDriftIndicator => {
-  if (deployed.status === "ready" && deployed.names.length === 0) {
+  if (
+    deployed.status === "ready" &&
+    deployed.names.length === 0 &&
+    deployed.skippedCount === 0
+  ) {
     return "empty";
   }
   switch (drift.status) {
