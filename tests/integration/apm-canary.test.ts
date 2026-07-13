@@ -13,8 +13,13 @@ describe.runIf(enabled)("real apm canary", () => {
     timeout: 30_000,
   }, async () => {
     const driver = new ApmCliDriver();
-    const tag = await driver.resolveLatestTag("fimoklei/agent-harness");
-    expect(tag).toMatch(/^v\d+\.\d+\.\d+$/);
+    const result = await driver.resolveLatestTag("fimoklei/agent-harness");
+    // With live network + auth the resolve must succeed; the discriminated
+    // result carries the tag (auth-required/no-tag/failed would fail loudly).
+    expect(result.ok).toBe(true);
+    if (!result.ok)
+      throw new Error(`expected a resolved tag, got ${result.reason}`);
+    expect(result.tag).toMatch(/^v\d+\.\d+\.\d+$/);
   });
 });
 
