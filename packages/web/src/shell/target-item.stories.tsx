@@ -9,7 +9,7 @@ const meta = {
     kind: { control: "inline-radio", options: ["global", "local"] },
     indicator: {
       control: "inline-radio",
-      options: ["ok", "drift", "unknown", "unverified", "pending"],
+      options: ["ok", "drift", "empty", "unknown", "unverified", "pending"],
     },
   },
   // A target row is a list item; wrap it so the story renders valid markup.
@@ -31,6 +31,10 @@ export const InSync: Story = {
 };
 
 export const NeedsUpdate: Story = { args: { indicator: "drift" } };
+
+// Nothing deployed here yet — the first-run reading of a freshly-registered
+// repo. Neutral, not a problem: distinct from "unknown" (a check that failed).
+export const Empty: Story = { args: { indicator: "empty" } };
 
 export const Unknown: Story = { args: { indicator: "unknown" } };
 
