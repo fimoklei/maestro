@@ -18,12 +18,13 @@ type DeployStateResponse = {
   skipped: SkippedEntry[];
 };
 
-export function useDeployState(repo: string) {
+export function useDeployState(repo: string, enabled = true) {
   return useQuery({
     queryKey: ["deploy-state", repo],
     queryFn: () =>
       requestJson<DeployStateResponse>(
         `/api/deploy-state?repo=${encodeURIComponent(repo)}`,
       ),
+    enabled,
   });
 }

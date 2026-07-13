@@ -64,10 +64,9 @@ describe("DeploySkillAction", () => {
     expect(
       await screen.findByText(/deployed tdd v0\.5\.1/i),
     ).toBeInTheDocument();
-    const [url, init] = fetchMock.mock.calls[0] as unknown as [
-      string,
-      RequestInit,
-    ];
+    const [url, init] = fetchMock.mock.calls.find(
+      ([url]) => url === "/api/deploy",
+    ) as unknown as [string, RequestInit];
     expect(url).toBe("/api/deploy");
     expect(init.method).toBe("POST");
     expect(JSON.parse(init.body as string)).toEqual({
@@ -106,10 +105,9 @@ describe("DeploySkillAction", () => {
     expect(button).toBeEnabled();
     await userEvent.click(button);
 
-    const [, init] = fetchMock.mock.calls[0] as unknown as [
-      string,
-      RequestInit,
-    ];
+    const [, init] = fetchMock.mock.calls.find(
+      ([url]) => url === "/api/deploy",
+    ) as unknown as [string, RequestInit];
     expect(JSON.parse(init.body as string)).toEqual({
       type: "skill",
       name: "tdd",
@@ -134,15 +132,98 @@ describe("DeploySkillAction", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
 
-    const [, init] = fetchMock.mock.calls[0] as unknown as [
-      string,
-      RequestInit,
-    ];
+    const [, init] = fetchMock.mock.calls.find(
+      ([url]) => url === "/api/deploy",
+    ) as unknown as [string, RequestInit];
     expect(JSON.parse(init.body as string)).toEqual({
       type: "skill",
       name: "tdd",
       target: { kind: "global" },
     });
+  });
+
+  it("shows already synced and offers Re-deploy for a proven current target", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/deploy-state")) {
+          return jsonResponse({
+            primitives: [{ type: "skill", name: "tdd", version: "v0.5.1" }],
+            skipped: [],
+          });
+        }
+        if (url.startsWith("/api/drift")) {
+          return jsonResponse({ behind: [] });
+        }
+        if (url === "/api/deploy") {
+          return jsonResponse({
+            deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+          });
+        }
+        throw new Error(`Unexpected request: ${url}`);
+      }),
+    );
+    renderAction(
+      <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
+    );
+
+    expect(await screen.findByText("● already synced")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Re-deploy" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Deploy →" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Re-deploy" }));
+
+    const deployCall = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
+      ([url]) => url === "/api/deploy",
+    );
+    expect(JSON.parse((deployCall?.[1] as RequestInit).body as string)).toEqual(
+      {
+        type: "skill",
+        name: "tdd",
+        target: { kind: "repo", repoPath: "/projects/alpha" },
+      },
+    );
+  });
+
+  it("returns to Deploy when the selected target is not synced", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/deploy-state")) {
+          return jsonResponse({
+            primitives: url.includes("beta")
+              ? []
+              : [{ type: "skill", name: "tdd", version: "v0.5.1" }],
+            skipped: [],
+          });
+        }
+        if (url.startsWith("/api/drift")) {
+          return jsonResponse({ behind: [] });
+        }
+        throw new Error(`Unexpected request: ${url}`);
+      }),
+    );
+    renderAction(
+      <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
+    );
+
+    expect(await screen.findByText("● already synced")).toBeInTheDocument();
+
+    await userEvent.selectOptions(
+      screen.getByLabelText(/deploy tdd to/i),
+      "/projects/beta",
+    );
+
+    expect(
+      await screen.findByRole("button", { name: "Deploy →" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("● already synced")).not.toBeInTheDocument();
   });
 
   it("shows the server's error message when a deploy is refused", async () => {

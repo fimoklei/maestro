@@ -25,19 +25,21 @@ export type DriftResponse =
 
 const FIVE_MINUTES = 5 * 60 * 1000;
 
-export function useDrift(repo: string) {
+export function useDrift(repo: string, enabled = true) {
   return useQuery({
     queryKey: ["drift", repo],
     queryFn: () =>
       requestJson<DriftResponse>(`/api/drift?repo=${encodeURIComponent(repo)}`),
     staleTime: FIVE_MINUTES,
+    enabled,
   });
 }
 
-export function useGlobalDrift() {
+export function useGlobalDrift(enabled = true) {
   return useQuery({
     queryKey: ["drift", "global"],
     queryFn: () => requestJson<DriftResponse>("/api/drift/global"),
     staleTime: FIVE_MINUTES,
+    enabled,
   });
 }
