@@ -65,7 +65,7 @@ describeFeature(
         inventory,
         registry,
         apm: {
-          resolveLatestTag: async () => LATEST_TAG,
+          resolveLatestTag: async () => ({ ok: true, tag: LATEST_TAG }),
           // Update = re-install at the latest tag: write the new pinned
           // lockfile where the repo's deploy-state reads it, and advance the
           // deployed ref so the next drift check reads current.

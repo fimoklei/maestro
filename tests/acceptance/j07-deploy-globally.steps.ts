@@ -78,7 +78,7 @@ describeFeature(
         inventory,
         registry,
         apm: {
-          resolveLatestTag: async () => FIXTURE_TAG,
+          resolveLatestTag: async () => ({ ok: true, tag: FIXTURE_TAG }),
           // A global install lands the lockfile in the user-scope root, exactly
           // where the global deploy-state endpoint then reads it.
           deploySkill: async ({ target }) => {

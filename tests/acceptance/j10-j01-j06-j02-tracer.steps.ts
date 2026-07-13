@@ -46,7 +46,7 @@ function buildApp(configPath: string, inventoryPath: string) {
     inventory,
     registry,
     apm: {
-      resolveLatestTag: async () => FIXTURE_TAG,
+      resolveLatestTag: async () => ({ ok: true, tag: FIXTURE_TAG }),
       deploySkill: async ({ target }) => {
         if (target.kind !== "repo") {
           throw new Error("this journey deploys to a repo only");

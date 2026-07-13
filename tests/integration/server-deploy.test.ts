@@ -72,6 +72,7 @@ describe("deploy HTTP route", () => {
 
   function makeApp(options?: {
     failApm?: boolean;
+    authRequired?: boolean;
     skillAtTag?: boolean;
     diverged?: boolean;
     destDiverged?: boolean;
@@ -92,7 +93,10 @@ describe("deploy HTTP route", () => {
       inventory,
       registry,
       apm: {
-        resolveLatestTag: async () => "v0.5.1",
+        resolveLatestTag: async () =>
+          options?.authRequired
+            ? { ok: false, reason: "auth-required" }
+            : { ok: true, tag: "v0.5.1" },
         deploySkill: async (input) => {
           if (options?.failApm) {
             throw new Error("apm install failed: token in stderr");
@@ -525,5 +529,26 @@ describe("deploy HTTP route", () => {
       message: expect.stringMatching(/\S/),
     });
     expect(JSON.stringify(body)).not.toContain("token in stderr");
+  });
+
+  it("surfaces missing GitHub auth as a distinct 502 with a re-auth message", async () => {
+    // Auth failure is classified in the driver (at apm view) and mapped to a
+    // 502 whose message names the fix — distinct from the generic deploy-failed
+    // so the cockpit points at auth, not a vague apm error (#119).
+    const { app, registry } = makeApp({ authRequired: true });
+    await registry.register(repo);
+
+    const res = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: repoTarget(repo),
+    });
+
+    expect(res.status).toBe(502);
+    expect(await res.json()).toEqual({
+      error: "auth-required",
+      message:
+        "GitHub authentication is missing or expired. Run 'gh auth login' (or set GITHUB_TOKEN) and try again.",
+    });
   });
 });
