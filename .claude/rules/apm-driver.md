@@ -30,6 +30,41 @@ Real git installs **need network** (clone from GitHub ~3–4s; partial clone may
 fail → retries full bare clone). Keep real `apm` out of the fast test loop
 (`testing.md`, canary only).
 
+### Deploy failure & success signals (spiked 2026-07-13, apm 0.20.0, issue #119)
+
+Redirected `HOME`, no gh helper, private `agent-harness`. Two facts break the
+naive "execFile throws on failure" model — the deploy path must not trust the
+exit code:
+
+1. **Auth bites earlier, at `resolveLatestTag` (`apm view … versions`), exit 1** —
+   never at `install`. The throw carries apm's two **fixed auth phrases**,
+   `Authentication failed` and `No token available`. Classify auth here on
+   either phrase (case-insensitive); do **not** match the git passthrough line
+   (`could not read Username`) or the env hints (`Set GITHUB_APM_PAT…`), and
+   never echo the matched text (`security.md`). Fixture:
+   `apm-view-auth-failed.txt`.
+2. **`apm install` exits 0 even when the install fails.** A failed install
+   prints `all probes failed … Nothing to install`, writes no lockfile, and
+   still exits 0 — so a `void`-on-throw driver reports a **failed install as
+   success**. Detect success by the **positive** marker `Installed \d+ APM
+   dependenc`, never the exit code; absent marker = failure (fail-closed).
+   Fixtures: `apm-install-probes-failed.txt` (failure), `apm-install-ok.txt`
+   (`[*] Installed 1 APM dependency`).
+
+**Auth-only scope.** Only the two phrases classify `auth-required`; network /
+host-down / CLI-missing stay the generic failure. A nonexistent-but-authorized
+ref produces the *same* `all probes failed … verify the path and ref` text at
+exit 0 as a missing-auth install would, so the **install stage cannot classify
+auth** (ambiguous with a typo'd ref) — which is why auth is caught at `view`,
+where the signal is clean. Deliberately unlike the drift side's `unverified`,
+which lumps auth+network because `outdated`'s summary forces it.
+
+`resolveLatestTag` returns a discriminated result — `{ ok:true; tag } |
+{ ok:false; reason:"no-tag"|"auth-required"|"failed" }` — mirroring
+`checkOutdated`, so there is no control-flow-by-exception. The use-case maps
+`no-tag → no-published-tag`, `auth-required → auth-required` (HTTP 502),
+`failed → deploy-failed`.
+
 ## Lockfile shape — `apm.lock.yaml`
 
 Top level: `lockfile_version`, `generated_at`, `apm_version`, `dependencies: []`.

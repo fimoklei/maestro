@@ -10,6 +10,7 @@ export {
   type DeploySkillResult,
   type DeployTarget,
   type InventoryGitPort,
+  type ResolveLatestTagResult,
 } from "./deploy/deploy-skill";
 export { DeployedContentAdapter } from "./deploy/deployed-content";
 export {

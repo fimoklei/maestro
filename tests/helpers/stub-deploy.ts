@@ -14,7 +14,7 @@ export const stubDeploy = (deps: {
     inventory: deps.inventory,
     registry: deps.registry,
     apm: {
-      resolveLatestTag: async () => null,
+      resolveLatestTag: async () => ({ ok: false, reason: "no-tag" }),
       deploySkill: async () => undefined,
     },
     inventoryGit: {

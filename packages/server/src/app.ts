@@ -127,6 +127,13 @@ const deployErrorResponses: Record<
     status: 409,
     message: "A deploy to this repo is already running. Wait for it to finish.",
   },
+  "auth-required": {
+    // 502, not 401: the failure is between apm and GitHub, not an unauthorized
+    // request to Maestro (#119).
+    status: 502,
+    message:
+      "GitHub authentication is missing or expired. Run 'gh auth login' (or set GITHUB_TOKEN) and try again.",
+  },
   "deploy-failed": {
     status: 502,
     message: "The deploy could not be completed. Check apm and try again.",

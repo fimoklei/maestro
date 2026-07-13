@@ -62,7 +62,12 @@ describe.runIf(enabled)("real apm outdated canary", () => {
         }),
     });
 
-    const tag = await driver.resolveLatestTag(HARNESS);
+    const resolved = await driver.resolveLatestTag(HARNESS);
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) {
+      throw new Error(`expected a resolved tag, got ${resolved.reason}`);
+    }
+    const tag = resolved.tag;
     expect(tag).toMatch(/^v\d+\.\d+\.\d+$/);
 
     const ref = `github.com/${HARNESS}/skills/${SKILL}#${tag}`;

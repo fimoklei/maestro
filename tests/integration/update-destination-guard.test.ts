@@ -95,7 +95,10 @@ describe("update journey against the real destination guard", () => {
     return new DeploySkill({
       inventory,
       registry: { isRegistered: async () => true },
-      apm: { resolveLatestTag: async () => LATEST_TAG, deploySkill },
+      apm: {
+        resolveLatestTag: async () => ({ ok: true, tag: LATEST_TAG }),
+        deploySkill,
+      },
       inventoryGit: {
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => false,

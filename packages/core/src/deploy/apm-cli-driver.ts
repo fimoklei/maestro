@@ -7,7 +7,11 @@ import { execFile } from "node:child_process";
 import { basename } from "node:path";
 import { promisify } from "node:util";
 import { type OutdatedResult, parseOutdated } from "../drift/parse-outdated";
-import type { ApmDriverPort, DeployTarget } from "./deploy-skill";
+import type {
+  ApmDriverPort,
+  DeployTarget,
+  ResolveLatestTagResult,
+} from "./deploy-skill";
 import { APM_DEPLOY_TARGET_FLAG } from "./deploy-tools";
 import { resolveLatestTagFromVersionsTable } from "./latest-tag";
 
@@ -17,6 +21,18 @@ const defaultRun = promisify(execFile);
 // skill name. Pin a wide non-TTY width so the full owner/repo/skills/<name>
 // survives for the parser (apm-driver.md).
 const WIDE_COLUMNS = "200";
+
+// apm's own fixed phrases when GitHub auth is missing or expired, matched
+// case-insensitively; either one classifies auth-required. We match only these
+// two — never the git passthrough line or the env hints — and never echo the
+// matched text (security.md, #119). Auth-only scope: a network/host error stays
+// the generic failure.
+const APM_AUTH_PHRASES = ["authentication failed", "no token available"];
+
+// The positive marker apm prints on a successful install (`Installed N APM
+// dependency`). Its presence — not the exit code — proves the install happened:
+// apm exits 0 even when every probe fails and nothing is written (#119).
+const INSTALL_SUCCESS_MARKER = /Installed \d+ APM dependenc/;
 
 type SanitizedLogEntry = {
   operation: "resolve-latest-tag" | "deploy-skill" | "check-outdated";
@@ -55,16 +71,28 @@ export class ApmCliDriver implements ApmDriverPort {
       });
   }
 
-  async resolveLatestTag(ownerRepo: string): Promise<string | null> {
+  async resolveLatestTag(ownerRepo: string): Promise<ResolveLatestTagResult> {
     const started = Date.now();
-    const { stdout } = await this.run("apm", ["view", ownerRepo, "versions"]);
+    let stdout: string;
+    try {
+      ({ stdout } = await this.run("apm", ["view", ownerRepo, "versions"]));
+    } catch (error) {
+      // apm exits non-zero here. Classify auth on the fixed phrases; anything
+      // else is the generic failure. The raw error (which may carry a token in a
+      // git URL) is never logged or returned — only the sanitized reason.
+      return {
+        ok: false,
+        reason: hasAuthPhrase(error) ? "auth-required" : "failed",
+      };
+    }
     this.log({
       operation: "resolve-latest-tag",
       target: ownerRepo,
       exitCode: 0,
       durationMs: Date.now() - started,
     });
-    return resolveLatestTagFromVersionsTable(stdout);
+    const tag = resolveLatestTagFromVersionsTable(stdout);
+    return tag === null ? { ok: false, reason: "no-tag" } : { ok: true, tag };
   }
 
   async deploySkill(input: {
@@ -79,7 +107,14 @@ export class ApmCliDriver implements ApmDriverPort {
       input.target,
       input.ref,
     );
-    await this.run("apm", args, { cwd });
+    const { stdout } = await this.run("apm", args, { cwd });
+    // Fail-closed: apm install exits 0 even when the install fails, so trust the
+    // positive marker, not the exit code. An absent marker (or any unrecognised
+    // output) reads as failure — never a false success (#119). The raw output,
+    // which may carry a token, is deliberately not included in the error.
+    if (!INSTALL_SUCCESS_MARKER.test(stdout)) {
+      throw new Error("apm install did not report a completed installation");
+    }
     this.log({
       operation: "deploy-skill",
       // Repo basename or "global" — never the full path or raw apm output.
@@ -133,4 +168,14 @@ export class ApmCliDriver implements ApmDriverPort {
       logTarget: "global",
     };
   }
+}
+
+// True when a rejected apm run carries one of apm's fixed auth phrases on its
+// stdout or stderr. promisify(execFile) rejects with an error carrying both.
+// Case-insensitive; the raw text is inspected here and never leaves this scope.
+function hasAuthPhrase(error: unknown): boolean {
+  const { stdout, stderr } = error as { stdout?: unknown; stderr?: unknown };
+  const haystack =
+    `${String(stdout ?? "")}\n${String(stderr ?? "")}`.toLowerCase();
+  return APM_AUTH_PHRASES.some((phrase) => haystack.includes(phrase));
 }

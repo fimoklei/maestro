@@ -20,11 +20,21 @@ export type DeployTarget =
   | { kind: "repo"; repoPath: string }
   | { kind: "global" };
 
+// Outcome of resolving the latest tag. A discriminated result, not
+// `string | null`, so the auth case is carried explicitly instead of thrown —
+// mirroring checkOutdated's result-with-reason shape (no control-flow-by-
+// exception). "no-tag": apm answered but published no deployable vX.Y.Z tag.
+// "auth-required": apm said GitHub auth is missing/expired (its two fixed
+// phrases). "failed": any other apm/git error (network, host down, CLI missing).
+export type ResolveLatestTagResult =
+  | { ok: true; tag: string }
+  | { ok: false; reason: "no-tag" | "auth-required" | "failed" };
+
 // The port the real apm CLI adapter implements. resolveLatestTag wraps
 // `apm view <owner>/<repo> versions`; deploySkill wraps `apm install <ref>`
 // (a repo install runs in that repo; a global install runs `-g`).
 export type ApmDriverPort = {
-  resolveLatestTag(ownerRepo: string): Promise<string | null>;
+  resolveLatestTag(ownerRepo: string): Promise<ResolveLatestTagResult>;
   deploySkill(input: { target: DeployTarget; ref: string }): Promise<void>;
   // Wraps `apm outdated` for a target and returns the skills behind the latest
   // central tag, each as a deployed -> latest version pair (ADR-0007). A run apm
@@ -119,6 +129,10 @@ export type DeploySkillError =
   // A deploy to the same repo is already running (double-click, second tab,
   // retry) — racing it would corrupt the same apm.lock.yaml.
   | "deploy-in-progress"
+  // apm could not authenticate to GitHub (missing or expired token), detected
+  // at resolveLatestTag via apm's fixed auth phrases. Distinct from the generic
+  // deploy-failed so the cockpit points at auth, not a vague apm error (#119).
+  | "auth-required"
   // Catch-all for apm/git execution failures (CLI missing, no auth/network).
   | "deploy-failed";
 
@@ -211,10 +225,20 @@ export class DeploySkill {
     // so it never escapes as an unhandled rejection (and the raw apm message,
     // which may carry a token, never reaches the transport layer).
     try {
-      const tag = await this.deps.apm.resolveLatestTag(origin.ownerRepo);
-      if (tag === null) {
-        return { ok: false, error: "no-published-tag" };
+      const tagResult = await this.deps.apm.resolveLatestTag(origin.ownerRepo);
+      if (!tagResult.ok) {
+        // Map apm's resolve outcome to a domain error. auth-required is surfaced
+        // distinct; a resolved-but-untagged repo is "tag central first"; any
+        // other resolve failure is the generic apm error (#119).
+        if (tagResult.reason === "auth-required") {
+          return { ok: false, error: "auth-required" };
+        }
+        if (tagResult.reason === "no-tag") {
+          return { ok: false, error: "no-published-tag" };
+        }
+        return { ok: false, error: "deploy-failed" };
       }
+      const tag = tagResult.tag;
       if (!(await this.deps.inventoryGit.skillExistsAtTag(tag, input.name))) {
         return { ok: false, error: "no-published-tag" };
       }

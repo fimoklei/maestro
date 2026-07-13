@@ -26,7 +26,10 @@ const buildDeps = (
       isRegistered: async (path: string) => path === "/registered/repo",
     },
     apm: {
-      resolveLatestTag: async (_ownerRepo: string) => "v0.5.1",
+      resolveLatestTag: async (_ownerRepo: string) => ({
+        ok: true as const,
+        tag: "v0.5.1",
+      }),
       deploySkill: async (input: { target: DeployTarget; ref: string }) => {
         deployed.push(input);
       },
@@ -220,7 +223,7 @@ describe("DeploySkill", () => {
   it("reports no-published-tag when the inventory has no tag at all", async () => {
     const { deps, deployed } = buildDeps({
       apm: {
-        resolveLatestTag: async () => null,
+        resolveLatestTag: async () => ({ ok: false, reason: "no-tag" }),
         deploySkill: async () => {
           throw new Error("must not deploy without a tag");
         },
@@ -233,6 +236,49 @@ describe("DeploySkill", () => {
     });
 
     expect(result).toEqual({ ok: false, error: "no-published-tag" });
+    expect(deployed).toEqual([]);
+  });
+
+  it("reports auth-required when apm cannot authenticate to GitHub", async () => {
+    // Missing/expired GitHub auth bites at resolveLatestTag (apm view), never
+    // reaching install. Surface it as its own error, not the generic
+    // deploy-failed, so the cockpit tells the user to re-auth (#119).
+    const { deps, deployed } = buildDeps({
+      apm: {
+        resolveLatestTag: async () => ({ ok: false, reason: "auth-required" }),
+        deploySkill: async () => {
+          throw new Error("must not deploy without an authenticated resolve");
+        },
+      },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({ ok: false, error: "auth-required" });
+    expect(deployed).toEqual([]);
+  });
+
+  it("falls back to deploy-failed for a generic resolve failure", async () => {
+    // Network down / host unreachable / CLI missing — anything that is not auth
+    // stays the generic apm failure (auth-only classification scope, #119).
+    const { deps, deployed } = buildDeps({
+      apm: {
+        resolveLatestTag: async () => ({ ok: false, reason: "failed" }),
+        deploySkill: async () => {
+          throw new Error("must not deploy after a failed resolve");
+        },
+      },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({ ok: false, error: "deploy-failed" });
     expect(deployed).toEqual([]);
   });
 
@@ -520,7 +566,7 @@ describe("DeploySkill", () => {
     });
     const { deps } = buildDeps({
       apm: {
-        resolveLatestTag: async () => "v0.5.1",
+        resolveLatestTag: async () => ({ ok: true, tag: "v0.5.1" }),
         deploySkill: async () => gate,
       },
       canonicalPath: async (_path: string) => "/canonical/repo",
@@ -556,7 +602,7 @@ describe("DeploySkill", () => {
     });
     const { deps } = buildDeps({
       apm: {
-        resolveLatestTag: async () => "v0.5.1",
+        resolveLatestTag: async () => ({ ok: true, tag: "v0.5.1" }),
         deploySkill: async () => gate,
       },
     });
@@ -586,7 +632,7 @@ describe("DeploySkill", () => {
     let failFirst = true;
     const { deps } = buildDeps({
       apm: {
-        resolveLatestTag: async () => "v0.5.1",
+        resolveLatestTag: async () => ({ ok: true, tag: "v0.5.1" }),
         deploySkill: async () => {
           if (failFirst) {
             failFirst = false;
@@ -618,7 +664,7 @@ describe("DeploySkill", () => {
     // unhandled rejection the route would surface as a raw 500.
     const { deps } = buildDeps({
       apm: {
-        resolveLatestTag: async () => "v0.5.1",
+        resolveLatestTag: async () => ({ ok: true, tag: "v0.5.1" }),
         deploySkill: async () => {
           throw new Error("apm exited 1 with a token in stderr");
         },
