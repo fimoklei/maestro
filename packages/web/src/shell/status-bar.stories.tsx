@@ -19,12 +19,26 @@ type Story = StoryObj<typeof meta>;
 
 export const Connected: Story = {};
 
-// Connected with the inventory-source entry shown in the header (issue #109).
+// Connected with the inventory-source entry shown in the header (issue #109):
+// the source name + count as context text, and the ⚙ gear that opens /source.
 export const ConnectedWithSource: Story = {
   args: {
     source: {
       name: "agent-harness",
       countLabel: "9 primitives",
+      active: false,
+      onOpen: () => {},
+    },
+  },
+};
+
+// On the source route the gear reads as the active view (amber).
+export const ViewingSource: Story = {
+  args: {
+    source: {
+      name: "agent-harness",
+      countLabel: "9 primitives",
+      active: true,
       onOpen: () => {},
     },
   },
