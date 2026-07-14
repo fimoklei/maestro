@@ -46,7 +46,13 @@ function stubFetch(repoDeployState: unknown, repoDrift: unknown) {
         return jsonResponse({ repos: [{ path: "/Users/me/app" }] }, 200);
       }
       if (target.includes("/api/deploy-state/global")) {
-        return jsonResponse({ primitives: [], skipped: [] }, 200);
+        return jsonResponse(
+          {
+            primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+            skipped: [],
+          },
+          200,
+        );
       }
       if (target.includes("/api/deploy-state")) {
         return jsonResponse(repoDeployState, 200);
@@ -81,6 +87,45 @@ describe("TargetsList", () => {
     expect(
       await within(rowFor("/Users/me/app")).findByText(/needs update/i),
     ).toBeInTheDocument();
+  });
+
+  it("reads a target with nothing deployed as empty, not unknown", async () => {
+    // A freshly-added repo has nothing deployed and its drift check cannot run
+    // (it reports failure). The row must read "empty" — nothing is deployed to
+    // drift — rather than the "unknown" that reads as something went wrong.
+    stubFetch({ primitives: [], skipped: [] }, { ok: false });
+    renderTargets();
+
+    await screen.findByText("/Users/me/app");
+    expect(
+      await within(rowFor("/Users/me/app")).findByText(/empty/i),
+    ).toBeInTheDocument();
+    expect(
+      within(rowFor("/Users/me/app")).queryByText(/unknown/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not read a target with only skipped, unsupported primitives as empty", async () => {
+    // Zero supported primitives but a non-empty skipped set: the target does hold
+    // deployed content, so it must not read "empty" (the deploy-state panel shows
+    // the skipped warning and never calls it empty). With a clean check it is in
+    // sync.
+    stubFetch(
+      {
+        primitives: [],
+        skipped: [{ virtualPath: "hooks/pre-commit", packageType: "hook" }],
+      },
+      { behind: [] },
+    );
+    renderTargets();
+
+    await screen.findByText("/Users/me/app");
+    expect(
+      await within(rowFor("/Users/me/app")).findByText(/in sync/i),
+    ).toBeInTheDocument();
+    expect(
+      within(rowFor("/Users/me/app")).queryByText(/empty/i),
+    ).not.toBeInTheDocument();
   });
 
   it("does not mark a repo as needing update for a behind primitive it has not deployed", async () => {

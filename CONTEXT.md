@@ -56,6 +56,10 @@ _Avoid_: install (that is APM's verb for the mechanism), copy, sync.
 Where a deploy lands. Two kinds: **local** (a consuming repo) or **global** (the user-level config of a present tool). A global deploy resolves to one target per detected tool, so "global" can be several targets on a two-tool machine and one on a single-tool machine (ADR-0011).
 _Avoid_: destination, environment.
 
+**Empty target**:
+A target with nothing deployed to it yet — its deploy-state read cleanly and found zero primitives. Its own state, distinct from **Drift**'s "unknown" (a check that could not run) and from "in sync" (deployed primitives that all match the central inventory): an empty target has nothing to be behind, so a confirmed-empty deploy-state overrides the drift check. The first reading a freshly-registered consuming repo shows.
+_Avoid_: unknown, uninitialized.
+
 **Local deploy**:
 A deploy scoped to one **consuming repo** — the primitive becomes available only inside that project.
 _Avoid_: repo install, project-level.
