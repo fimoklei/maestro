@@ -403,6 +403,58 @@ The one wrinkle to carry into #111: a `-t codex` deploy leaves an empty
 `~/.codex/`, so the Codex signal must be the `config.toml`, not the directory —
 otherwise a past deploy could read back as "Codex installed".
 
+## Reconciling a narrowed global install (issue #136)
+
+Follow-up to #131: a global deploy now targets only the detected tools, but two
+gaps remain for a machine that already ran the old always-`claude,codex` global
+install. Both are **global-path only**; per-repo deploys are unaffected.
+
+### The two leftovers apm does not clean
+
+1. **Lockfile hashes survive a narrowing `-t`.** `apm install -g -t claude` over
+   a lockfile written by `-t claude,codex` **keeps the `.agents` (codex)
+   `deployed_file_hashes`** — apm does not prune targets outside the current
+   `-t`. So the destination guard, if it scans every `DEPLOY_TOOLS` subtree,
+   compares those retained `.agents` hashes against a `.agents` copy that is no
+   longer on disk and mis-reads the absence as `diverged` → a legitimate
+   single-tool redeploy is falsely refused (`deployed-diverged-from-lock`).
+   - **Fix (built):** the guard is **scoped to the detected tools** on the global
+     path. `deployTargetSubtrees(name, tools?)` filters to those tools, and
+     `DeployedContentAdapter.classify({ …, tools })` filters the recorded baseline
+     to the same subtrees, so an untargeted tool's retained hashes never count as
+     this deploy's drift. Absent `tools` (repo path, #111 read-path) still scans
+     every tool — unchanged.
+2. **The dead files survive too.** The `.agents/skills/<name>` tree apm wrote on
+   the old two-tool install stays on disk after the narrowed redeploy — exactly
+   the dead tree ADR-0011 exists to eliminate.
+
+### Safe cleanup mechanism — direct subtree `rm`, NOT `apm uninstall -g`
+
+**Decision (grounded in the `apm uninstall -g` danger already recorded above —
+it deleted 19 real skill dirs beyond its lockfile; never re-run it against the
+real home).** Maestro reconciles the obsolete copy with a **direct,
+subtree-scoped filesystem removal**: after a *successful* global install (the
+driver verifies apm's positive `Installed N APM dependenc` marker, so a failed
+install never triggers removal), `DeployedCleanupAdapter.removeSkillTargets`
+`rm -rf`s exactly `<HOME>/<prefix>/skills/<name>` for each **untargeted** tool
+(`untargetedTools(detected)` = `DEPLOY_TOOLS` minus detected). `force: true`
+makes an already-gone copy a no-op, so a Claude-only machine reconciles on every
+global deploy idempotently. **Best-effort:** the install already succeeded, so a
+cleanup error does not invert the result to `deploy-failed` — it leaves the
+pre-existing dead tree (no regression), which the next deploy retries. The retained lockfile hashes are left as-is (apm
+owns the lockfile); scoping the guard (fix 1) makes them inert for the reader, so
+hand-editing apm's lockfile — fragile and out of scope — is unnecessary.
+
+- **Why not `apm uninstall -g -t codex`?** Unspiked and, given the recorded
+  over-deletion, unsafe to trust; a filesystem `rm` of the exact known subtree is
+  narrower and auditable. If a future spike proves a per-tool `apm uninstall`
+  safe, it can replace the `rm` behind the same `DeployedCleanupPort`.
+- **Test lane:** unit (`deploy-skill.test.ts` — cleanup invoked with the obsolete
+  tool only after a successful narrowed install, never on repo deploys or a
+  failed install) + integration (`deployed-cleanup.test.ts` — real `rm` under a
+  sandbox HOME removes the codex subtree, leaves claude, no-op when already gone)
+  + acceptance (J07 narrowing scenario). **Never the real home.**
+
 ## Open — observe before relying on it
 
 - **Content-drift detection** is implemented at deploy/update time, two guards

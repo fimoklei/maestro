@@ -88,6 +88,7 @@ describeFeature(
         // The update journey re-installs over an unedited deployed copy, so the
         // destination guard sees it clean and lets the update proceed (#56).
         deployedContent: { classify: async () => "clean" },
+        deployedCleanup: { removeSkillTargets: async () => undefined },
         toolPresence: { detectGlobalTools: async () => ["claude", "codex"] },
         inventoryOriginUrl: async () =>
           "git@github.com:fimoklei/agent-harness.git",

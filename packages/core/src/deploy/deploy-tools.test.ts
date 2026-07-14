@@ -4,6 +4,7 @@ import {
   apmTargetFlagForTools,
   DEPLOY_TOOLS,
   deployTargetSubtrees,
+  untargetedTools,
 } from "./deploy-tools";
 
 // One fact — which tools a skill deploy targets — feeds two consumers: the apm
@@ -40,6 +41,35 @@ describe("deploy tools", () => {
     ]);
   });
 
+  it("scopes the scanned subtrees to a given tool set", () => {
+    // The GLOBAL destination guard must scan only the tools the deploy targets
+    // (ADR-0011, #136). A Claude-only redeploy over a prior two-tool lockfile
+    // must not scan .agents — otherwise the absent .agents copy reads as drift.
+    expect(deployTargetSubtrees("tdd", ["claude"])).toEqual([
+      ".claude/skills/tdd",
+    ]);
+    expect(deployTargetSubtrees("tdd", ["codex"])).toEqual([
+      ".agents/skills/tdd",
+    ]);
+  });
+
+  it("filters and orders the scoped subtrees against DEPLOY_TOOLS", () => {
+    // An out-of-order or unknown token cannot change the subtree set or its
+    // order — the single source of truth owns both (mirrors apmTargetFlagForTools).
+    expect(deployTargetSubtrees("tdd", ["codex", "claude"])).toEqual([
+      ".claude/skills/tdd",
+      ".agents/skills/tdd",
+    ]);
+  });
+
+  it("defaults to every tool's subtree when no set is given", () => {
+    // Absent tools = the repo path and the #111 read-path, which target every
+    // DEPLOY_TOOLS tool — the pre-#136 behaviour must be unchanged.
+    expect(deployTargetSubtrees("tdd")).toEqual(
+      deployTargetSubtrees("tdd", ["claude", "codex"]),
+    );
+  });
+
   it("carries a deploy-immune presence marker per tool", () => {
     // The signal is the tool's own config file (spike #127), never a skills dir
     // a Maestro deploy would create — otherwise a past deploy reads back as an
@@ -68,5 +98,26 @@ describe("apmTargetFlagForTools", () => {
 
   it("is empty when no supported tool is detected", () => {
     expect(apmTargetFlagForTools([])).toBe("");
+  });
+});
+
+// The tools a global deploy must reconcile away: every DEPLOY_TOOLS tool the
+// machine does NOT have, so their obsolete deployed copy is removed when a
+// global deploy narrows the target set (ADR-0011, #136).
+describe("untargetedTools", () => {
+  it("returns the tools not in the detected set, in DEPLOY_TOOLS order", () => {
+    // A Claude-only machine leaves codex obsolete; its dead .agents copy is
+    // what a narrowing global deploy removes.
+    expect(untargetedTools(["claude"])).toEqual(["codex"]);
+    expect(untargetedTools(["codex"])).toEqual(["claude"]);
+  });
+
+  it("is empty when every supported tool is detected", () => {
+    // A full two-tool machine narrows nothing away.
+    expect(untargetedTools(["claude", "codex"])).toEqual([]);
+  });
+
+  it("returns every tool when none is detected", () => {
+    expect(untargetedTools([])).toEqual(DEPLOY_TOOLS.map((t) => t.apmTarget));
   });
 });

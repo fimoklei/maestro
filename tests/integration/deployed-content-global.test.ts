@@ -89,6 +89,40 @@ describe("DeployedContentAdapter — global target", () => {
     );
   });
 
+  it("does not refuse a single-tool redeploy over a prior two-tool lockfile", async () => {
+    // ADR-0011 / #136: a machine that once ran `-t claude,codex` globally has
+    // .agents hashes in the lockfile, but after dropping Codex only the .claude
+    // copy remains on disk. Scoping the guard to the detected tools (claude) must
+    // classify clean — the absent, untargeted .agents copy is not this deploy's
+    // drift. Unscoped, the missing .agents file would falsely read as diverged.
+    const skill = "---\nname: tdd\n---\n";
+    await writeGlobalLockfile({
+      ".claude/skills/tdd/SKILL.md": sha(skill),
+      ".agents/skills/tdd/SKILL.md": sha(skill),
+    });
+    // Only the claude copy is on disk; the .agents copy is gone (Codex removed).
+    await writeDeployed(".claude/skills/tdd/SKILL.md", skill);
+
+    await expect(
+      adapter().classify({ target, name: "tdd", tools: ["claude"] }),
+    ).resolves.toBe("clean");
+  });
+
+  it("still catches an edit in a targeted tool when scoped", async () => {
+    // Scoping must not blind the guard: an edited .claude copy is still drift
+    // even when the deploy targets claude only.
+    const skill = "---\nname: tdd\n---\n";
+    await writeGlobalLockfile({
+      ".claude/skills/tdd/SKILL.md": sha(skill),
+      ".agents/skills/tdd/SKILL.md": sha(skill),
+    });
+    await writeDeployed(".claude/skills/tdd/SKILL.md", `${skill}edited\n`);
+
+    await expect(
+      adapter().classify({ target, name: "tdd", tools: ["claude"] }),
+    ).resolves.toBe("diverged");
+  });
+
   it("classifies an edited global deployed copy as diverged", async () => {
     const skill = "---\nname: tdd\n---\n";
     await writeGlobalLockfile({

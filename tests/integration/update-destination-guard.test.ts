@@ -107,6 +107,7 @@ describe("update journey against the real destination guard", () => {
         resolveLockfilePath: () => join(root, "apm.lock.yaml"),
         resolveDeployedRoot: () => root,
       }),
+      deployedCleanup: { removeSkillTargets: async () => undefined },
       toolPresence: { detectGlobalTools: async () => ["claude", "codex"] },
       inventoryOriginUrl: async () =>
         "git@github.com:fimoklei/agent-harness.git",

@@ -8,6 +8,7 @@ import {
   ConnectInventory,
   type ConnectInventoryError,
   coreHealth,
+  DeployedCleanupAdapter,
   DeployedContentAdapter,
   DeploySkill,
   type DeploySkillError,
@@ -539,6 +540,13 @@ function realDeps(): AppDeps {
     deployedContent: new DeployedContentAdapter({
       resolveLockfilePath: (target) =>
         resolveDeployedLockfilePath(target, process.env),
+      resolveDeployedRoot: (target) => resolveDeployedRoot(target, process.env),
+    }),
+    // Reconciles away an untargeted tool's leftover copy after a narrowed global
+    // deploy (ADR-0011, #136). Shares the deployed-root resolution with the guard
+    // above so both agree on which tree they mean; a direct subtree rm, never
+    // `apm uninstall -g` (apm-driver.md).
+    deployedCleanup: new DeployedCleanupAdapter({
       resolveDeployedRoot: (target) => resolveDeployedRoot(target, process.env),
     }),
     // Global tool presence: probe HOME live per deploy so a global install

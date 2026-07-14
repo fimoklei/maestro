@@ -1,9 +1,10 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describeFeature, loadFeature } from "@amiceli/vitest-cucumber";
 import {
   ConfigStore,
+  DeployedCleanupAdapter,
   DeploySkill,
   DeployStateReader,
   InventoryReader,
@@ -106,6 +107,12 @@ describeFeature(
           skillDivergesFromTag: async () => diverged,
         },
         deployedContent: { classify: async () => "not-deployed" },
+        // Real cleanup adapter, but resolved to the sandbox workspace as the
+        // deployed root — never the real HOME. So a narrowing global deploy
+        // removes the obsolete tool's copy under the sandbox, provably (#136).
+        deployedCleanup: new DeployedCleanupAdapter({
+          resolveDeployedRoot: () => workspace,
+        }),
         toolPresence: { detectGlobalTools: async () => presentTools },
         inventoryOriginUrl: async () =>
           "git@github.com:fimoklei/agent-harness.git",
@@ -135,6 +142,23 @@ describeFeature(
         "---\nname: tdd\ndescription: Test-driven development\n---\n",
         "utf8",
       );
+    }
+
+    // Materializes a deployed skill copy under the sandbox deployed root, as a
+    // prior global install would have left it (e.g. .agents/skills/tdd/SKILL.md).
+    async function seedDeployedCopy(prefix: string) {
+      const dir = join(workspace, prefix, "skills", "tdd");
+      await mkdir(dir, { recursive: true });
+      await writeFile(join(dir, "SKILL.md"), "deployed\n", "utf8");
+    }
+
+    async function deployedCopyExists(prefix: string): Promise<boolean> {
+      try {
+        await access(join(workspace, prefix, "skills", "tdd"));
+        return true;
+      } catch {
+        return false;
+      }
     }
 
     function deployGlobally() {
@@ -211,6 +235,43 @@ describeFeature(
           // -t claude only: apm writes no dead .agents/ tree (ADR-0011).
           expect(targetedTools).toEqual(["claude"]);
         });
+      },
+    );
+
+    Scenario(
+      "Narrowing a two-tool machine to one removes the dead Codex tree",
+      ({ Given, And, When, Then }) => {
+        Given('the central inventory has the skill "tdd"', () =>
+          seedInventory(),
+        );
+        And(
+          "a prior global install left both the Claude and Codex copies on disk",
+          async () => {
+            await seedDeployedCopy(".claude");
+            await seedDeployedCopy(".agents");
+          },
+        );
+        And("only Claude Code is installed on this machine", () => {
+          presentTools = ["claude"];
+        });
+        When('I deploy "tdd" globally', async () => {
+          response = await deployGlobally();
+        });
+        Then("the global deploy succeeds at the latest tag", async () => {
+          expect(response.status).toBe(200);
+        });
+        And('apm is told to target "claude"', () => {
+          expect(targetedTools).toEqual(["claude"]);
+        });
+        And(
+          "the obsolete Codex copy is gone while the Claude copy remains",
+          async () => {
+            // The dead .agents tree ADR-0011 exists to eliminate is removed;
+            // the targeted .claude copy is untouched (#136).
+            expect(await deployedCopyExists(".agents")).toBe(false);
+            expect(await deployedCopyExists(".claude")).toBe(true);
+          },
+        );
       },
     );
 

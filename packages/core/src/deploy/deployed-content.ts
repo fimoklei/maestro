@@ -16,7 +16,7 @@ import type {
   DeployedContentState,
   DeployTarget,
 } from "./deploy-skill";
-import { deployTargetSubtrees } from "./deploy-tools";
+import { deployTargetSubtrees, type SupportedTool } from "./deploy-tools";
 import {
   classifyDeployedDrift,
   type DeployedFileHashes,
@@ -58,16 +58,27 @@ export class DeployedContentAdapter implements DeployedContentPort {
   async classify(input: {
     target: DeployTarget;
     name: string;
+    tools?: readonly SupportedTool[];
   }): Promise<DeployedContentState> {
+    // Which deployed copies this deploy touches. The global path scopes to the
+    // detected tools; the repo path and #111 read-path leave it undefined and
+    // scan every tool (deployTargetSubtrees defaults to all — #136).
+    const subtrees = deployTargetSubtrees(input.name, input.tools);
     // Read the cheap one-file baseline first: it decides whether the deploy
     // subtrees need their contents hashed at all. With no recorded hashes to
     // compare against, only the existence of deployed files matters, so the scan
-    // skips the content hashing entirely (#63).
-    const baseline = await this.readBaseline(input.target, input.name);
+    // skips the content hashing entirely (#63). The recorded baseline is scoped
+    // to the same subtrees, so an untargeted tool's hashes — left by a prior
+    // two-tool install — never count as this deploy's drift (ADR-0011, #136).
+    const baseline = await this.readBaseline(
+      input.target,
+      input.name,
+      subtrees,
+    );
     const root = this.deps.resolveDeployedRoot(input.target);
     let scan: SubtreeScan;
     try {
-      scan = await this.scanSubtrees(root, input.name, {
+      scan = await this.scanSubtrees(root, subtrees, {
         hash: baseline.kind === "hashes",
       });
     } catch (error) {
@@ -113,6 +124,7 @@ export class DeployedContentAdapter implements DeployedContentPort {
   private async readBaseline(
     target: DeployTarget,
     name: string,
+    subtrees: string[],
   ): Promise<
     | { kind: "none" }
     | { kind: "malformed" }
@@ -140,10 +152,20 @@ export class DeployedContentAdapter implements DeployedContentPort {
     if (entry === undefined) {
       return { kind: "none" };
     }
-    const hashes = entry.deployed_file_hashes;
-    if (hashes === undefined || Object.keys(hashes).length === 0) {
+    const recorded = entry.deployed_file_hashes;
+    if (recorded === undefined || Object.keys(recorded).length === 0) {
       // A pre-0.20.0 entry with no recorded hashes: an entry exists but carries
       // no per-file baseline, so it verifies no better than no entry at all.
+      return { kind: "none" };
+    }
+    // Keep only the hashes under the targeted subtrees. On the scoped global
+    // path this drops an untargeted tool's recorded copy so its absence on disk
+    // is not read as drift; unscoped, every subtree is targeted so nothing drops
+    // (ADR-0011, #136).
+    const hashes = scopeHashesToSubtrees(recorded, subtrees);
+    if (Object.keys(hashes).length === 0) {
+      // The lockfile records copies, but none under a targeted subtree — no
+      // per-file baseline for this deploy, same as a pre-0.20.0 entry.
       return { kind: "none" };
     }
     return { kind: "hashes", hashes };
@@ -157,7 +179,7 @@ export class DeployedContentAdapter implements DeployedContentPort {
   // (#63). A missing subtree yields nothing (the intended empty case).
   private async scanSubtrees(
     root: string,
-    name: string,
+    subtrees: string[],
     opts: { hash: boolean },
   ): Promise<SubtreeScan> {
     const hashes: DeployedFileHashes = {};
@@ -208,9 +230,25 @@ export class DeployedContentAdapter implements DeployedContentPort {
         }
       }
     };
-    for (const subtree of deployTargetSubtrees(name)) {
+    for (const subtree of subtrees) {
       await walk(subtree);
     }
     return { hashes, fileCount };
   }
+}
+
+// Keep only the recorded hashes whose key sits inside one of the targeted
+// subtrees (`<prefix>/skills/<name>/...`). A subtree path is itself the prefix;
+// appending "/" avoids a sibling like ".claude/skills/tddx" matching ".../tdd".
+function scopeHashesToSubtrees(
+  hashes: DeployedFileHashes,
+  subtrees: string[],
+): DeployedFileHashes {
+  const scoped: DeployedFileHashes = {};
+  for (const [path, hash] of Object.entries(hashes)) {
+    if (subtrees.some((subtree) => path.startsWith(`${subtree}/`))) {
+      scoped[path] = hash;
+    }
+  }
+  return scoped;
 }

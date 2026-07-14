@@ -97,6 +97,11 @@ describe("deploy HTTP route", () => {
       ref: string;
       tools?: readonly SupportedTool[];
     }> = [];
+    const cleanupCalls: Array<{
+      target: DeployTarget;
+      name: string;
+      tools: readonly SupportedTool[];
+    }> = [];
     const deploy = new DeploySkill({
       inventory,
       registry,
@@ -136,6 +141,11 @@ describe("deploy HTTP route", () => {
           return options?.destDiverged ? "diverged" : "not-deployed";
         },
       },
+      deployedCleanup: {
+        removeSkillTargets: async (input) => {
+          cleanupCalls.push(input);
+        },
+      },
       toolPresence: {
         detectGlobalTools: async () =>
           options?.globalTools ?? ["claude", "codex"],
@@ -155,7 +165,7 @@ describe("deploy HTTP route", () => {
       browse: stubBrowse(),
       enforceOriginHost: false,
     });
-    return { app, registry, deployCalls };
+    return { app, registry, deployCalls, cleanupCalls };
   }
 
   const post = (app: ReturnType<typeof makeApp>["app"], body: unknown) =>
@@ -222,7 +232,9 @@ describe("deploy HTTP route", () => {
   it("targets only the detected tool for a single-tool machine", async () => {
     // ADR-0011: a Claude-only machine gets -t claude, never a dead .agents/
     // tree. The route passes the detected subset through to the driver (#131).
-    const { app, deployCalls } = makeApp({ globalTools: ["claude"] });
+    const { app, deployCalls, cleanupCalls } = makeApp({
+      globalTools: ["claude"],
+    });
 
     const res = await post(app, {
       type: "skill",
@@ -238,6 +250,25 @@ describe("deploy HTTP route", () => {
         tools: ["claude"],
       },
     ]);
+    // Narrowing to claude reconciles away the obsolete codex copy (#136).
+    expect(cleanupCalls).toEqual([
+      { target: globalTarget, name: "tdd", tools: ["codex"] },
+    ]);
+  });
+
+  it("cleans no obsolete copy when both tools are present", async () => {
+    // A full two-tool machine narrows nothing away, so the cleanup step is
+    // skipped entirely (#136).
+    const { app, cleanupCalls } = makeApp({ globalTools: ["claude", "codex"] });
+
+    const res = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
+
+    expect(res.status).toBe(200);
+    expect(cleanupCalls).toEqual([]);
   });
 
   it("refuses a global deploy when no supported tool is detected", async () => {

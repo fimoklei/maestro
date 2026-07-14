@@ -55,8 +55,31 @@ export function apmTargetFlagForTools(tools: readonly SupportedTool[]): string {
     .join(",");
 }
 
-// The deployed subtrees a skill of <name> occupies — one per deploy tool, keyed
-// relative to the deployed root, matching the lockfile's deployed_file_hashes.
-export function deployTargetSubtrees(name: string): string[] {
-  return DEPLOY_TOOLS.map((tool) => `${tool.skillsDirPrefix}/skills/${name}`);
+// The deployed subtrees a skill of <name> occupies, keyed relative to the
+// deployed root and matching the lockfile's deployed_file_hashes. With `tools`,
+// the set is scoped to exactly those tools' copies — the GLOBAL destination
+// guard must scan only the tools a deploy targets, so an absent untargeted copy
+// (a Claude-only redeploy over a prior two-tool lockfile) is never read as drift
+// (ADR-0011, #136). Without `tools` (repo path, #111 read-path) it stays every
+// DEPLOY_TOOLS tool — the pre-#136 behaviour. Filters and orders against
+// DEPLOY_TOOLS so this file still owns the set and its order; unknown tokens drop.
+export function deployTargetSubtrees(
+  name: string,
+  tools?: readonly SupportedTool[],
+): string[] {
+  return DEPLOY_TOOLS.filter(
+    (tool) => tools === undefined || tools.includes(tool.apmTarget),
+  ).map((tool) => `${tool.skillsDirPrefix}/skills/${name}`);
+}
+
+// The supported tools a machine does NOT have, in DEPLOY_TOOLS order — the ones
+// a global deploy narrowed away. apm leaves their deployed copy and lockfile
+// hashes behind (apm-driver.md), so Maestro removes exactly these obsolete
+// subtrees after a global deploy to detected tools (ADR-0011, #136).
+export function untargetedTools(
+  detected: readonly SupportedTool[],
+): SupportedTool[] {
+  return DEPLOY_TOOLS.map((tool) => tool.apmTarget).filter(
+    (target) => !detected.includes(target),
+  );
 }
