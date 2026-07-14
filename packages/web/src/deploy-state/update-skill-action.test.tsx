@@ -162,7 +162,13 @@ describe("Update action on a behind skill", () => {
           behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
         });
       }
-      return jsonResponse(tddDeployed, 200);
+      return jsonResponse(
+        {
+          tools: [{ tool: "claude", primitives: tddDeployed.primitives }],
+          skipped: [],
+        },
+        200,
+      );
     });
     vi.stubGlobal("fetch", fetchMock);
     renderGlobalPanel();

@@ -8,15 +8,18 @@ import { basename } from "node:path";
 import { parse } from "yaml";
 import { z } from "zod";
 
-// The fields both readers need across every entry. resolved_ref is the human tag
-// (apm-driver.md) the deploy-state view shows; deployed_file_hashes is apm
-// 0.20.0's per-file sha256 map the destination guard verifies against — optional
-// because a pre-0.20.0 entry omits it. Unknown keys (content_hash, deployed_files)
-// are ignored by Zod, as both layers already relied on.
+// The fields the readers need across every entry. resolved_ref is the human tag
+// (apm-driver.md) the deploy-state view shows; deployed_files lists every path a
+// copy materialized to (the `.claude`/`.agents` prefix is how the global read
+// groups a skill per tool); deployed_file_hashes is apm 0.20.0's per-file sha256
+// map the destination guard verifies against. Both file fields are optional
+// because a pre-0.20.0 entry omits them. Unknown keys (content_hash) are ignored
+// by Zod, as the layers already relied on.
 const lockfileEntrySchema = z.object({
   resolved_ref: z.string(),
   virtual_path: z.string(),
   package_type: z.string(),
+  deployed_files: z.array(z.string()).optional(),
   deployed_file_hashes: z.record(z.string(), z.string()).optional(),
 });
 

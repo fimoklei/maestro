@@ -44,7 +44,12 @@ describe("GlobalDeployStatePanel", () => {
       vi.fn(async () =>
         jsonResponse(
           {
-            primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+            tools: [
+              {
+                tool: "claude",
+                primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+              },
+            ],
             skipped: [],
           },
           200,
@@ -60,7 +65,7 @@ describe("GlobalDeployStatePanel", () => {
   it("shows an explicit empty state, not an error, when nothing is deployed globally", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => jsonResponse({ primitives: [], skipped: [] }, 200)),
+      vi.fn(async () => jsonResponse({ tools: [], skipped: [] }, 200)),
     );
     renderPanel();
 
@@ -95,7 +100,12 @@ describe("GlobalDeployStatePanel", () => {
         }
         return jsonResponse(
           {
-            primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+            tools: [
+              {
+                tool: "claude",
+                primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+              },
+            ],
             skipped: [],
           },
           200,
@@ -119,7 +129,12 @@ describe("GlobalDeployStatePanel", () => {
         }
         return jsonResponse(
           {
-            primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+            tools: [
+              {
+                tool: "claude",
+                primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+              },
+            ],
             skipped: [],
           },
           200,

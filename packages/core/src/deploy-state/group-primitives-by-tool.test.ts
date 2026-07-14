@@ -1,0 +1,108 @@
+import { describe, expect, it } from "vitest";
+import type { LockfileEntry } from "../lockfile/lockfile";
+import { groupPrimitivesByTool } from "./group-primitives-by-tool";
+
+// Builds a claude_skill lockfile entry the way apm writes it: a human tag, a
+// virtual_path (whose basename is the skill name), and the deployed_files list
+// whose prefixes decide which tool the copy belongs to.
+function skillEntry(
+  name: string,
+  ref: string,
+  deployedFiles: string[],
+): LockfileEntry {
+  return {
+    resolved_ref: ref,
+    virtual_path: `skills/${name}`,
+    package_type: "claude_skill",
+    deployed_files: deployedFiles,
+  };
+}
+
+describe("groupPrimitivesByTool", () => {
+  it("lists every detected tool, even one with nothing deployed", () => {
+    const result = groupPrimitivesByTool([], ["claude", "codex"]);
+
+    expect(result.tools).toEqual([
+      { tool: "claude", primitives: [] },
+      { tool: "codex", primitives: [] },
+    ]);
+    expect(result.skipped).toEqual([]);
+  });
+
+  it("does not list a tool that is not detected", () => {
+    const entry = skillEntry("tdd", "v0.5.0", [
+      ".claude/skills/tdd",
+      ".agents/skills/tdd",
+    ]);
+
+    const result = groupPrimitivesByTool([entry], ["claude"]);
+
+    expect(result.tools).toEqual([
+      {
+        tool: "claude",
+        primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+      },
+    ]);
+  });
+
+  it("attributes a two-tool skill to each tool whose prefix it carries", () => {
+    const entry = skillEntry("tdd", "v0.5.1", [
+      ".claude/skills/tdd",
+      ".claude/skills/tdd/SKILL.md",
+      ".agents/skills/tdd",
+      ".agents/skills/tdd/SKILL.md",
+    ]);
+
+    const result = groupPrimitivesByTool([entry], ["claude", "codex"]);
+
+    expect(result.tools).toEqual([
+      {
+        tool: "claude",
+        primitives: [{ type: "skill", name: "tdd", version: "v0.5.1" }],
+      },
+      {
+        tool: "codex",
+        primitives: [{ type: "skill", name: "tdd", version: "v0.5.1" }],
+      },
+    ]);
+  });
+
+  it("does not back-fill a claude-only skill under codex", () => {
+    const entry = skillEntry("tdd", "v0.5.0", [
+      ".claude/skills/tdd",
+      ".claude/skills/tdd/SKILL.md",
+    ]);
+
+    const result = groupPrimitivesByTool([entry], ["claude", "codex"]);
+
+    expect(result.tools).toEqual([
+      {
+        tool: "claude",
+        primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+      },
+      { tool: "codex", primitives: [] },
+    ]);
+  });
+
+  it("skips an entry of an unsupported package_type and surfaces it once", () => {
+    const hook: LockfileEntry = {
+      resolved_ref: "v0.5.0",
+      virtual_path: "hooks/format",
+      package_type: "claude_hook",
+      deployed_files: [".claude/hooks/format"],
+    };
+    const skill = skillEntry("tdd", "v0.5.0", [".claude/skills/tdd"]);
+
+    const result = groupPrimitivesByTool([hook, skill], ["claude"]);
+
+    expect(result.tools).toEqual([
+      {
+        tool: "claude",
+        primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+      },
+    ]);
+    expect(result.skipped).toEqual([
+      { virtualPath: "hooks/format", packageType: "claude_hook" },
+    ]);
+  });
+});
