@@ -97,8 +97,20 @@ if (smoke) {
   // drives as well as Maestro's own state (.claude/rules/apm-driver.md).
   env.HOME = join(sandbox, "home");
   mkdirSync(env.HOME, { recursive: true });
+  // Seed the tool-presence markers Maestro probes for a global deploy
+  // (~/.claude.json, ~/.codex/config.toml — .claude/rules/apm-driver.md, #131).
+  // Without them the redirected HOME reads as "no tool installed" and every
+  // global deploy is refused, so the rehearsal could not exercise J07. These are
+  // config-file stand-ins, never the skills dirs a deploy creates, so they stay
+  // deploy-immune; the sandbox is still the isolated APM destination.
+  writeFileSync(join(env.HOME, ".claude.json"), "{}\n");
+  mkdirSync(join(env.HOME, ".codex"), { recursive: true });
+  writeFileSync(join(env.HOME, ".codex", "config.toml"), "");
   console.log(
     `[smoke] MAESTRO_HOME=${env.MAESTRO_HOME} HOME=${env.HOME} (isolated from real data)`,
+  );
+  console.log(
+    "[smoke] seeded claude + codex presence markers for global deploy",
   );
 
   // Only this dev-tooling harness bridges credentials to apm — the product

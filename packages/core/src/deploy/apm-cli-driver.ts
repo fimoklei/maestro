@@ -12,7 +12,11 @@ import type {
   DeployTarget,
   ResolveLatestTagResult,
 } from "./deploy-skill";
-import { APM_DEPLOY_TARGET_FLAG } from "./deploy-tools";
+import {
+  APM_DEPLOY_TARGET_FLAG,
+  apmTargetFlagForTools,
+  type SupportedTool,
+} from "./deploy-tools";
 import { resolveLatestTagFromVersionsTable } from "./latest-tag";
 
 const defaultRun = promisify(execFile);
@@ -98,14 +102,17 @@ export class ApmCliDriver implements ApmDriverPort {
   async deploySkill(input: {
     target: DeployTarget;
     ref: string;
+    tools?: readonly SupportedTool[];
   }): Promise<void> {
     const started = Date.now();
-    // One action targets both tools (-t claude,codex). apm writes a single
-    // lockfile entry with two deployed_files; see apm-driver.md (01.2 spike).
-    // A global install adds -g and runs from a neutral scratch cwd.
+    // A repo install targets every tool (-t claude,codex) and writes a single
+    // lockfile entry with two deployed_files (apm-driver.md, 01.2 spike). A
+    // global install adds -g, runs from a neutral scratch cwd, and scopes -t to
+    // the tools the caller detected on the machine (ADR-0011, #131).
     const { cwd, args, logTarget } = await this.commandFor(
       input.target,
       input.ref,
+      input.tools,
     );
     const { stdout } = await this.run("apm", args, { cwd });
     // Fail-closed: apm install exits 0 even when the install fails, so trust the
@@ -154,17 +161,28 @@ export class ApmCliDriver implements ApmDriverPort {
   private async commandFor(
     target: DeployTarget,
     ref: string,
+    tools?: readonly SupportedTool[],
   ): Promise<{ cwd: string; args: string[]; logTarget: string }> {
     if (target.kind === "repo") {
+      // The repo path is unaffected by presence scoping: it always targets every
+      // DEPLOY_TOOLS tool, so a stray `tools` value here is deliberately ignored.
       return {
         cwd: target.repoPath,
         args: ["install", ref, "-t", APM_DEPLOY_TARGET_FLAG],
         logTarget: basename(target.repoPath),
       };
     }
+    // Global: scope -t to exactly the detected tools. Fail closed on an
+    // empty/absent set rather than defaulting to every tool — targeting a tool
+    // the machine lacks writes the dead .agents/ tree ADR-0011 exists to prevent
+    // (#131). DeploySkill already refuses a tool-less machine upstream, so this
+    // only bites a driver misuse, and it bites loudly instead of silently.
+    if (!tools || tools.length === 0) {
+      throw new Error("global install requires at least one detected tool");
+    }
     return {
       cwd: await this.prepareGlobalCwd(),
-      args: ["install", ref, "-g", "-t", APM_DEPLOY_TARGET_FLAG],
+      args: ["install", ref, "-g", "-t", apmTargetFlagForTools(tools)],
       logTarget: "global",
     };
   }

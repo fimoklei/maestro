@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DeploySkill, type DeployTarget } from "./deploy-skill";
+import type { SupportedTool } from "./deploy-tools";
 
 const repo = (repoPath: string): DeployTarget => ({ kind: "repo", repoPath });
 const globalTarget: DeployTarget = { kind: "global" };
@@ -8,7 +9,11 @@ const globalTarget: DeployTarget = { kind: "global" };
 const buildDeps = (
   overrides?: Partial<ConstructorParameters<typeof DeploySkill>[0]>,
 ) => {
-  const deployed: Array<{ target: DeployTarget; ref: string }> = [];
+  const deployed: Array<{
+    target: DeployTarget;
+    ref: string;
+    tools?: readonly SupportedTool[];
+  }> = [];
   const deps = {
     inventory: {
       read: async () => ({
@@ -30,7 +35,11 @@ const buildDeps = (
         ok: true as const,
         tag: "v0.5.1",
       }),
-      deploySkill: async (input: { target: DeployTarget; ref: string }) => {
+      deploySkill: async (input: {
+        target: DeployTarget;
+        ref: string;
+        tools?: readonly SupportedTool[];
+      }) => {
         deployed.push(input);
       },
     },
@@ -42,6 +51,14 @@ const buildDeps = (
     deployedContent: {
       classify: async (_input: { target: DeployTarget; name: string }) =>
         "not-deployed" as const,
+    },
+    // A two-tool machine by default; individual tests narrow this to prove the
+    // global `-t` follows detected presence (ADR-0011, #131).
+    toolPresence: {
+      detectGlobalTools: async (): Promise<SupportedTool[]> => [
+        "claude",
+        "codex",
+      ],
     },
     canonicalPath: async (path: string) => path,
     ...overrides,
@@ -87,6 +104,82 @@ describe("DeploySkill", () => {
     expect(deployed).toEqual([
       {
         target: globalTarget,
+        ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+        tools: ["claude", "codex"],
+      },
+    ]);
+  });
+
+  it("targets only the detected tool on a single-tool machine", async () => {
+    // ADR-0011: a Claude-only machine must get -t claude, never claude,codex —
+    // otherwise apm writes a dead .agents/ tree for a tool the user lacks. The
+    // detected subset is passed straight through to the driver (#131).
+    const { deps, deployed } = buildDeps({
+      toolPresence: { detectGlobalTools: async () => ["claude"] },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(deployed).toEqual([
+      {
+        target: globalTarget,
+        ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+        tools: ["claude"],
+      },
+    ]);
+  });
+
+  it("refuses a global deploy when no supported tool is detected, before apm", async () => {
+    // No Claude, no Codex → there is nothing to deploy to. Refuse with a typed
+    // error and never invoke apm (proven by making both apm methods throw) — a
+    // bare install would otherwise fail on "Multiple harnesses" or write nothing
+    // (ADR-0011, #131).
+    const { deps, deployed } = buildDeps({
+      toolPresence: { detectGlobalTools: async () => [] },
+      apm: {
+        resolveLatestTag: async () => {
+          throw new Error("apm must not run when no tool is detected");
+        },
+        deploySkill: async () => {
+          throw new Error("apm must not run when no tool is detected");
+        },
+      },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
+
+    expect(result).toEqual({ ok: false, error: "no-supported-tool" });
+    expect(deployed).toEqual([]);
+  });
+
+  it("never consults tool presence for a repo deploy", async () => {
+    // Presence gating is the global path only; a repo deploy is unaffected
+    // (#131). Proven by making detection throw if touched.
+    const { deps, deployed } = buildDeps({
+      toolPresence: {
+        detectGlobalTools: async () => {
+          throw new Error("presence must not be probed for a repo deploy");
+        },
+      },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result.ok).toBe(true);
+    // The repo path passes no tools; the driver keeps its own -t claude,codex.
+    expect(deployed).toEqual([
+      {
+        target: repo("/registered/repo"),
         ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
       },
     ]);

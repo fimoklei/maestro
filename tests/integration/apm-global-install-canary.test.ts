@@ -85,7 +85,14 @@ describe.runIf(enabled)("real apm global install canary", () => {
     expect(tag).toMatch(/^v\d+\.\d+\.\d+$/);
 
     const ref = `github.com/${HARNESS}/skills/${SKILL}#${tag}`;
-    await driver.deploySkill({ target: { kind: "global" }, ref });
+    // A global install targets exactly the detected tools (ADR-0011); the driver
+    // fails closed on an empty set, so this canary passes the two-tool set it
+    // asserts on below (both .claude and .agents copies land).
+    await driver.deploySkill({
+      target: { kind: "global" },
+      ref,
+      tools: ["claude", "codex"],
+    });
 
     // Both deployed targets land under the sandbox home: the claude skills dir
     // and the cross-client agents dir (-t claude,codex writes one lockfile

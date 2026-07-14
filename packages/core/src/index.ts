@@ -12,6 +12,11 @@ export {
   type InventoryGitPort,
   type ResolveLatestTagResult,
 } from "./deploy/deploy-skill";
+export {
+  apmTargetFlagForTools,
+  DEPLOY_TOOLS,
+  type SupportedTool,
+} from "./deploy/deploy-tools";
 export { DeployedContentAdapter } from "./deploy/deployed-content";
 export {
   resolveDeployedLockfilePath,
@@ -74,3 +79,5 @@ export {
   type RepoPathError,
   validateRepoPath,
 } from "./registry/repo-path";
+export { ToolPresenceAdapter } from "./tools/tool-presence";
+export type { ToolPresencePort } from "./tools/tool-presence-port";

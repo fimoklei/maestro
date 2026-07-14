@@ -22,6 +22,7 @@ export const stubDeploy = (deps: {
       skillDivergesFromTag: async () => false,
     },
     deployedContent: { classify: async () => "not-deployed" },
+    toolPresence: { detectGlobalTools: async () => ["claude", "codex"] },
     inventoryOriginUrl: async () => null,
     canonicalPath: async (path) => path,
   });

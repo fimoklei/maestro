@@ -280,6 +280,129 @@ dir; no `.codex/skills`). The skill lands usable for Codex.
   cleans beyond its lockfile. Never run spike `apm -g` against the real home
   (`LEARNINGS.md`).
 
+## Global tool presence + single-tool `-t` scoping (issue #127 spike)
+
+**Spiked against apm 0.20.0 on 2026-07-13, auth to `fimoklei/agent-harness`,
+`HOME` redirected to throwaway sandbox dirs** (never the real home). Gates
+ADR-0011 (Global = the tools you actually have) and its implementation (#111).
+Fixtures: `apm.lock.global-single-tool.yaml` (the `-t claude`-only lockfile),
+`apm-targets-claude.json` (project-scoped `apm targets --json`, the *rejected*
+apm-command signal). Verdict up front: **go — every ADR-0011 assumption holds.**
+
+### `-t` is scoped literally; apm never filters by tool presence
+
+`apm install <REF> -g -t <tokens>` writes exactly the tools named in `-t`, with
+**no check that the tool is installed**. Target resolution takes the `-t` flag as
+Priority 1 and returns those tokens verbatim
+(`core/target_detection.py::resolve_targets`) — the filesystem scan only runs
+when `-t` is absent. Observed on a sandbox HOME with no tools present:
+
+- `-t claude` → integrates to `.claude/skills/` **only**. No `.agents/`, no
+  `.codex/`. Lockfile: 7 `deployed_files`, all `.claude/`-prefixed
+  (`apm.lock.global-single-tool.yaml`). Exit 0.
+- `-t claude,codex` → integrates to **both** `.agents/skills/` and
+  `.claude/skills/`, exit 0, **even though Codex is not installed** — the dead
+  `.agents/` directory ADR-0011 exists to stop. Same 14-file two-tool shape as
+  the 01.2 section above (`apm.lock.global-two-tool.yaml`); the new fact here is
+  that apm writes it on a machine with no Codex.
+- **No error when targeting an absent tool.** apm honours `-t` as intent, not as
+  a claim about the machine. So *Maestro* must do the presence-filtering and pass
+  only present tools in `-t`; apm will not do it and will not complain.
+
+**Side effect — `-t codex` creates an empty `~/.codex/`.** The two-tool install
+left an **empty** `~/.codex/` directory (off-lockfile; not in `deployed_files`,
+which only list `.agents/` + `.claude/`). So a Maestro codex deploy can *create*
+the very marker one might use to detect Codex — see the signal choice below.
+
+### apm cannot report which *global* tools are installed
+
+There is **no apm command that lists user-level installed tools.** The candidates
+both fail:
+
+- `apm targets --json` is **project-scoped**: it scans the current working
+  directory for markers (`.claude/`, `.codex/`, …) and reports each canonical
+  target `active`/`inactive`. The fixture `apm-targets-claude.json` was captured
+  from a `.claude/`-only project — `claude` is `active`, every other target
+  `inactive` on the *cwd's* contents. It answers "what does *this project*
+  target", not "what tools does this *machine* have"; pointed at HOME it would
+  read HOME as if it were a project, which it is not.
+- A bare `apm install -g` (no `-t`) from a neutral cwd **ignores HOME entirely**:
+  with `~/.claude.json` and `~/.codex/` both present in the sandbox HOME it did
+  not detect either — it fell back to the cross-client `agent-skills` meta-target
+  and deployed to `.agents/skills/` only. apm's auto-detect reads the *project*
+  cwd, never `Path.home()`. (This is also why "Multiple harnesses detected"
+  only ever fires on a project dir, not on a global install.)
+
+**Conclusion: Maestro detects global tool presence itself, on the filesystem.**
+apm gives no signal; a stored list would go stale (ADR-0011 rejects it). The
+check is a cheap `HOME`-relative filesystem probe, read live per request.
+
+### The presence signals (deploy-immune, verified)
+
+Pick a marker each tool *owns*, that a Maestro skill deploy never creates:
+
+| Tool | Signal (present ⇒ installed) | Positive (real install) | Deploy-immune (Maestro never creates it) |
+|---|---|---|---|
+| Claude Code | `~/.claude.json` is a file | Present on the owner's machine (Claude Code's user config). | Neither sandbox HOME had it after a `-t claude` install — a skill deploy writes only `~/.claude/skills/…`. Do **not** key on `~/.claude/` (the dir a deploy creates). |
+| Codex | `~/.codex/config.toml` is a file | Present on the owner's machine, beside `history.jsonl` + `log/` (Codex's own runtime). | A `-t codex` deploy creates only an **empty** `~/.codex/` (no `config.toml`) and writes skills to `~/.agents/skills/` — so the bare dir is NOT a signal; the `config.toml` inside it is. Never key on `~/.agents/` (the deploy target itself). |
+
+Both halves were observed, not inferred: the config files exist on the owner's
+real machine (positive), and the sandbox deploys created neither `~/.claude.json`
+nor a populated `~/.codex/` (deploy-immune). The `~/.agents/skills/` trap from
+the issue is real and confirmed: `~/.agents/` exists on the owner's machine
+purely as a deploy target, alongside a genuine `~/.codex/` — keying Codex on
+`~/.agents/` would false-positive after any global deploy. Key on the tool's
+config file, not on a skills directory.
+
+### Recommended core tool-presence port (for #111)
+
+A port in `core` (adapter reads the filesystem; pure logic depends on the
+interface — `architecture.md`), returning the set of detected supported tools:
+
+```ts
+// core/tools/tool-presence-port.ts (name illustrative)
+export type SupportedTool = "claude" | "codex"; // apm `-t` token = identity
+export interface ToolPresencePort {
+  // Live filesystem probe under the deploy root (HOME, or the sandbox HOME
+  // under `pnpm smoke`). No caching, no stored list (ADR-0011: live detection).
+  detectGlobalTools(): Promise<SupportedTool[]>; // subset, in DEPLOY_TOOLS order
+}
+```
+
+Contract, grounded in the observations above:
+
+- **Signal per tool** (adapter): `claude` ⇔ `~/.claude.json` is a file;
+  `codex` ⇔ `~/.codex/config.toml` is a file. Both resolved against the same
+  home the deploy uses (respect the sandbox HOME so `pnpm smoke` stays honest,
+  ADR-0010).
+- **Returns a subset of `DEPLOY_TOOLS`** (`deploy-tools.ts` — the existing single
+  source of truth for `{apmTarget, skillsDirPrefix}`). Empty set is valid:
+  "no supported tool" → ADR-0011's disabled-global state, no `-t`, no install.
+- **Feeds the `-t` flag.** The global deploy stops hardcoding
+  `APM_DEPLOY_TARGET_FLAG` (`claude,codex`) and instead joins the *detected*
+  tools' `apmTarget`s. A Claude-only machine gets `-t claude` → no `.agents/`.
+- **Feeds the deploy-state read (J03).** Per-tool cards group the lockfile's
+  `deployed_files` by `skillsDirPrefix` (`.claude/` vs `.agents/`); a tool with
+  no matching prefix shows the honest empty card (ADR-0011, no back-fill).
+- **Pure, so unit-testable** with a fake port (in-memory tool set); the real
+  filesystem adapter is exercised in `tests/integration/` (`testing.md`).
+
+### Go / no-go for ADR-0011
+
+**GO.** No assumption was falsified:
+
+- apm scopes cleanly to a single tool (`-t claude` → `.claude/` only) ✔
+- "always both" genuinely writes dead `.agents/` for single-tool users ✔ (the
+  defect is real, not just UI confusion)
+- single-tool lockfile groups by directory prefix, so per-tool counts are
+  truthful ✔
+- live detection is required (apm offers no global-presence signal) and feasible
+  (two config-file probes) ✔
+
+The one wrinkle to carry into #111: a `-t codex` deploy leaves an empty
+`~/.codex/`, so the Codex signal must be the `config.toml`, not the directory —
+otherwise a past deploy could read back as "Codex installed".
+
 ## Open — observe before relying on it
 
 - **Content-drift detection** is implemented at deploy/update time, two guards

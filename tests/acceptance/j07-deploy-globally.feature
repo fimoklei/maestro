@@ -6,10 +6,26 @@ Feature: Deploy a skill globally (J07)
 
   Scenario: I deploy a skill globally and see it in my baseline, with no repo registered
     Given the central inventory has the skill "tdd"
+    And both Claude Code and Codex are installed on this machine
     And no repo is registered
     When I deploy "tdd" globally
     Then the global deploy succeeds at the latest tag
+    And apm is told to target "claude,codex"
     And I see "tdd" in the global deploy-state at that version
+
+  Scenario: A single-tool machine deploys to only that tool, with no dead directory
+    Given the central inventory has the skill "tdd"
+    And only Claude Code is installed on this machine
+    When I deploy "tdd" globally
+    Then the global deploy succeeds at the latest tag
+    And apm is told to target "claude"
+
+  Scenario: A machine with no supported tool refuses the global deploy
+    Given the central inventory has the skill "tdd"
+    And no supported tool is installed on this machine
+    When I deploy "tdd" globally
+    Then the global deploy is refused because no supported tool was found
+    And the global deploy-state stays empty
 
   Scenario: A global deploy is refused when my local skill has diverged from its tag
     Given the central inventory has the skill "tdd"

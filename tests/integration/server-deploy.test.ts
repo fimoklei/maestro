@@ -9,6 +9,7 @@ import {
   InventoryReader,
   NodeFileSystem,
   Registry,
+  type SupportedTool,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -80,6 +81,9 @@ describe("deploy HTTP route", () => {
     destUnreadable?: boolean;
     destLockfileMalformed?: boolean;
     holdApm?: Promise<void>;
+    // Which tools a global deploy detects on the machine (ADR-0011). Defaults to
+    // both; an empty list drives the no-supported-tool refusal (#131).
+    globalTools?: SupportedTool[];
   }) {
     const fs = new NodeFileSystem();
     const registry = new Registry({
@@ -88,7 +92,11 @@ describe("deploy HTTP route", () => {
     });
     const inventory = new InventoryReader({ fs, resolvePath: () => harness });
     const deployState = new DeployStateReader({ fs });
-    const deployCalls: Array<{ target: DeployTarget; ref: string }> = [];
+    const deployCalls: Array<{
+      target: DeployTarget;
+      ref: string;
+      tools?: readonly SupportedTool[];
+    }> = [];
     const deploy = new DeploySkill({
       inventory,
       registry,
@@ -127,6 +135,10 @@ describe("deploy HTTP route", () => {
           if (options?.destUnverifiable) return "unverifiable";
           return options?.destDiverged ? "diverged" : "not-deployed";
         },
+      },
+      toolPresence: {
+        detectGlobalTools: async () =>
+          options?.globalTools ?? ["claude", "codex"],
       },
       canonicalPath: (path) => fs.realpath(path),
       inventoryOriginUrl: async () =>
@@ -198,11 +210,53 @@ describe("deploy HTTP route", () => {
       {
         target: globalTarget,
         ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+        // Both tools present on this machine, so both are targeted (ADR-0011).
+        tools: ["claude", "codex"],
       },
     ]);
     expect(await readFile(join(globalRoot, "apm.lock.yaml"), "utf8")).toContain(
       "v0.5.1",
     );
+  });
+
+  it("targets only the detected tool for a single-tool machine", async () => {
+    // ADR-0011: a Claude-only machine gets -t claude, never a dead .agents/
+    // tree. The route passes the detected subset through to the driver (#131).
+    const { app, deployCalls } = makeApp({ globalTools: ["claude"] });
+
+    const res = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
+
+    expect(res.status).toBe(200);
+    expect(deployCalls).toEqual([
+      {
+        target: globalTarget,
+        ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+        tools: ["claude"],
+      },
+    ]);
+  });
+
+  it("refuses a global deploy when no supported tool is detected", async () => {
+    // No Claude, no Codex → 409 with a clear message and no apm invocation
+    // (ADR-0011, #131).
+    const { app, deployCalls } = makeApp({ globalTools: [] });
+
+    const res = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      error: "no-supported-tool",
+      message: expect.stringMatching(/no supported tool/i),
+    });
+    expect(deployCalls).toEqual([]);
   });
 
   it("refuses to deploy into a repo that is not registered", async () => {

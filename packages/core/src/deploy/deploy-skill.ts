@@ -6,6 +6,8 @@
 // server route only carries it over HTTP.
 import type { OutdatedResult } from "../drift/parse-outdated";
 import type { InventoryResult } from "../inventory/inventory-reader";
+import type { ToolPresencePort } from "../tools/tool-presence-port";
+import type { SupportedTool } from "./deploy-tools";
 import { parseGitOrigin } from "./git-origin";
 import { buildSkillPackageRef, isValidSkillSlug } from "./package-ref";
 
@@ -35,7 +37,14 @@ export type ResolveLatestTagResult =
 // (a repo install runs in that repo; a global install runs `-g`).
 export type ApmDriverPort = {
   resolveLatestTag(ownerRepo: string): Promise<ResolveLatestTagResult>;
-  deploySkill(input: { target: DeployTarget; ref: string }): Promise<void>;
+  // `tools` scopes the apm `-t` flag to exactly those tokens. Present on the
+  // global path (the tools detected on the machine, ADR-0011); absent on the
+  // repo path, where the driver keeps targeting every DEPLOY_TOOLS tool (#131).
+  deploySkill(input: {
+    target: DeployTarget;
+    ref: string;
+    tools?: readonly SupportedTool[];
+  }): Promise<void>;
   // Wraps `apm outdated` for a target and returns the skills behind the latest
   // central tag, each as a deployed -> latest version pair (ADR-0007). A run apm
   // could not complete against the remote (no auth/network) is
@@ -129,6 +138,11 @@ export type DeploySkillError =
   // A deploy to the same repo is already running (double-click, second tab,
   // retry) — racing it would corrupt the same apm.lock.yaml.
   | "deploy-in-progress"
+  // A global deploy was requested but no supported AI coding tool (Claude Code
+  // or Codex) is installed on the machine, so there is nothing to deploy to.
+  // Refuse before apm runs rather than write a dead tree (global path only,
+  // ADR-0011, #131).
+  | "no-supported-tool"
   // apm could not authenticate to GitHub (missing or expired token), detected
   // at resolveLatestTag via apm's fixed auth phrases. Distinct from the generic
   // deploy-failed so the cockpit points at auth, not a vague apm error (#119).
@@ -149,6 +163,9 @@ export class DeploySkill {
     apm: Pick<ApmDriverPort, "resolveLatestTag" | "deploySkill">;
     inventoryGit: InventoryGitPort;
     deployedContent: DeployedContentPort;
+    // Answers which supported tools the machine has, for the global path only
+    // (ADR-0011). A repo deploy never consults it.
+    toolPresence: ToolPresencePort;
     inventoryOriginUrl: () => Promise<string | null>;
     // Resolves a path to its canonical form (realpath), so the in-flight
     // lock cannot be sidestepped by a symlinked spelling of the same repo.
@@ -225,6 +242,19 @@ export class DeploySkill {
     // so it never escapes as an unhandled rejection (and the raw apm message,
     // which may carry a token, never reaches the transport layer).
     try {
+      // Global path only: a global install must target the tools the machine
+      // actually has, never the always-both constant (ADR-0011). Detect presence
+      // before any apm call so a tool-less machine is refused without running apm
+      // for nothing. A repo deploy skips this entirely.
+      let globalTools: readonly SupportedTool[] | undefined;
+      if (input.target.kind === "global") {
+        const detected = await this.deps.toolPresence.detectGlobalTools();
+        if (detected.length === 0) {
+          return { ok: false, error: "no-supported-tool" };
+        }
+        globalTools = detected;
+      }
+
       const tagResult = await this.deps.apm.resolveLatestTag(origin.ownerRepo);
       if (!tagResult.ok) {
         // Map apm's resolve outcome to a domain error. auth-required is surfaced
@@ -278,7 +308,13 @@ export class DeploySkill {
         name: input.name,
         tag,
       });
-      await this.deps.apm.deploySkill({ target: input.target, ref });
+      await this.deps.apm.deploySkill({
+        target: input.target,
+        ref,
+        // Present on the global path (the detected tools); undefined for a repo
+        // deploy, where the driver keeps targeting every DEPLOY_TOOLS tool.
+        tools: globalTools,
+      });
 
       return {
         ok: true,

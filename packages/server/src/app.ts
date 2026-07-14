@@ -24,6 +24,7 @@ import {
   resolveDeployedRoot,
   resolveInventoryPath,
   resolveMaestroConfigPath,
+  ToolPresenceAdapter,
 } from "@maestro/core";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -126,6 +127,14 @@ const deployErrorResponses: Record<
   "deploy-in-progress": {
     status: 409,
     message: "A deploy to this repo is already running. Wait for it to finish.",
+  },
+  "no-supported-tool": {
+    // 409, not 502: the machine simply has no Claude Code or Codex to deploy to,
+    // so there is nothing to install — a precondition the user resolves by
+    // installing a tool, not an apm failure (ADR-0011, #131).
+    status: 409,
+    message:
+      "No supported tool (Claude Code or Codex) was found on this machine, so there is nothing to deploy to globally.",
   },
   "auth-required": {
     // 502, not 401: the failure is between apm and GitHub, not an unauthorized
@@ -532,6 +541,11 @@ function realDeps(): AppDeps {
         resolveDeployedLockfilePath(target, process.env),
       resolveDeployedRoot: (target) => resolveDeployedRoot(target, process.env),
     }),
+    // Global tool presence: probe HOME live per deploy so a global install
+    // targets only the tools the machine actually has (ADR-0011). The adapter's
+    // default home resolution (process.env.HOME ?? homedir) already matches the
+    // deploy's, so a sandbox HOME under `pnpm smoke` stays honest (ADR-0010).
+    toolPresence: new ToolPresenceAdapter(),
     inventoryOriginUrl: async () => {
       const root = resolveInventoryPath(await store.read(), process.env);
       return root === undefined ? null : readGitOriginUrl(root);

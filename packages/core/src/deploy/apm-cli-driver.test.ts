@@ -132,13 +132,100 @@ describe("ApmCliDriver.deploySkill", () => {
       prepareGlobalCwd: async () => "/scratch/.apm-scratch",
     });
 
-    await driver.deploySkill({ target: { kind: "global" }, ref });
+    await driver.deploySkill({
+      target: { kind: "global" },
+      ref,
+      tools: ["claude", "codex"],
+    });
 
     expect(calls).toEqual([
       {
         file: "apm",
         args: ["install", ref, "-g", "-t", "claude,codex"],
         cwd: "/scratch/.apm-scratch",
+      },
+    ]);
+  });
+
+  it("fails closed on a global install with no detected tools", async () => {
+    // The driver must never default a global install to every tool: a tool-less
+    // (or misused) global call throws rather than writing the dead .agents/ tree
+    // ADR-0011 forbids. DeploySkill refuses upstream, so this is a loud backstop.
+    const { run, calls } = fakeRun(installOkOutput);
+    const driver = new ApmCliDriver({
+      run,
+      prepareGlobalCwd: async () => "/scratch/.apm-scratch",
+    });
+
+    await expect(
+      driver.deploySkill({ target: { kind: "global" }, ref, tools: [] }),
+    ).rejects.toThrow();
+    expect(calls).toEqual([]);
+  });
+
+  it("scopes the global -t flag to the tools passed in", async () => {
+    // ADR-0011: a global install targets only the detected tools. A Claude-only
+    // machine gets -t claude, so apm writes no dead .agents/ tree (#131).
+    const { run, calls } = fakeRun(installOkOutput);
+    const driver = new ApmCliDriver({
+      run,
+      prepareGlobalCwd: async () => "/scratch/.apm-scratch",
+    });
+
+    await driver.deploySkill({
+      target: { kind: "global" },
+      ref,
+      tools: ["claude"],
+    });
+
+    expect(calls).toEqual([
+      {
+        file: "apm",
+        args: ["install", ref, "-g", "-t", "claude"],
+        cwd: "/scratch/.apm-scratch",
+      },
+    ]);
+  });
+
+  it("targets both tools globally when both are passed in", async () => {
+    const { run, calls } = fakeRun(installOkOutput);
+    const driver = new ApmCliDriver({
+      run,
+      prepareGlobalCwd: async () => "/scratch/.apm-scratch",
+    });
+
+    await driver.deploySkill({
+      target: { kind: "global" },
+      ref,
+      tools: ["claude", "codex"],
+    });
+
+    expect(calls).toEqual([
+      {
+        file: "apm",
+        args: ["install", ref, "-g", "-t", "claude,codex"],
+        cwd: "/scratch/.apm-scratch",
+      },
+    ]);
+  });
+
+  it("ignores tools on a repo install — the repo path targets every tool", async () => {
+    // Presence scoping is the global path only (#131); a stray tools value must
+    // not narrow a repo install, which always targets every DEPLOY_TOOLS tool.
+    const { run, calls } = fakeRun(installOkOutput);
+    const driver = new ApmCliDriver({ run });
+
+    await driver.deploySkill({
+      target: { kind: "repo", repoPath: "/repo" },
+      ref,
+      tools: ["claude"],
+    });
+
+    expect(calls).toEqual([
+      {
+        file: "apm",
+        args: ["install", ref, "-t", "claude,codex"],
+        cwd: "/repo",
       },
     ]);
   });
