@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   APM_DEPLOY_TARGET_FLAG,
+  apmTargetFlagForTools,
   DEPLOY_TOOLS,
   deployTargetSubtrees,
 } from "./deploy-tools";
@@ -37,5 +38,35 @@ describe("deploy tools", () => {
       ".claude/skills/tdd",
       ".agents/skills/tdd",
     ]);
+  });
+
+  it("carries a deploy-immune presence marker per tool", () => {
+    // The signal is the tool's own config file (spike #127), never a skills dir
+    // a Maestro deploy would create — otherwise a past deploy reads back as an
+    // installed tool (ADR-0011). Pinned so the trap cannot creep back in.
+    expect(
+      DEPLOY_TOOLS.map((tool) => [tool.apmTarget, tool.globalPresenceMarker]),
+    ).toEqual([
+      ["claude", ".claude.json"],
+      ["codex", ".codex/config.toml"],
+    ]);
+  });
+});
+
+// The global `-t` value is built from the tools detected on the machine, not the
+// always-both constant (ADR-0011). It stays derived from DEPLOY_TOOLS so the
+// token set and its order remain owned by the single source of truth (#131).
+describe("apmTargetFlagForTools", () => {
+  it("emits every detected tool's token in DEPLOY_TOOLS order", () => {
+    expect(apmTargetFlagForTools(["codex", "claude"])).toBe("claude,codex");
+  });
+
+  it("emits a single token for a single-tool machine (no dead .agents)", () => {
+    expect(apmTargetFlagForTools(["claude"])).toBe("claude");
+    expect(apmTargetFlagForTools(["codex"])).toBe("codex");
+  });
+
+  it("is empty when no supported tool is detected", () => {
+    expect(apmTargetFlagForTools([])).toBe("");
   });
 });

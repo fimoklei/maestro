@@ -9,6 +9,7 @@ import {
   InventoryReader,
   NodeFileSystem,
   Registry,
+  type SupportedTool,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { expect } from "vitest";
@@ -54,6 +55,11 @@ describeFeature(
     let harness: string;
     let apmRoot: string;
     let diverged: boolean;
+    // The tools the machine has, and the tokens apm was told to target. A
+    // fake presence port drives the first; the deploy captures the second so a
+    // scenario can assert the `-t` scoping (ADR-0011, #131).
+    let presentTools: SupportedTool[];
+    let targetedTools: readonly SupportedTool[] | undefined;
     let app: ReturnType<typeof createApp>;
     let response: Response;
 
@@ -63,6 +69,8 @@ describeFeature(
       apmRoot = join(workspace, ".apm");
       await mkdir(apmRoot, { recursive: true });
       diverged = false;
+      presentTools = ["claude", "codex"];
+      targetedTools = undefined;
 
       const fs = new NodeFileSystem();
       const registry = new Registry({
@@ -81,10 +89,11 @@ describeFeature(
           resolveLatestTag: async () => ({ ok: true, tag: FIXTURE_TAG }),
           // A global install lands the lockfile in the user-scope root, exactly
           // where the global deploy-state endpoint then reads it.
-          deploySkill: async ({ target }) => {
+          deploySkill: async ({ target, tools }) => {
             if (target.kind !== "global") {
               throw new Error("this journey deploys globally only");
             }
+            targetedTools = tools;
             await writeFile(
               join(apmRoot, "apm.lock.yaml"),
               globalLockfile,
@@ -97,6 +106,7 @@ describeFeature(
           skillDivergesFromTag: async () => diverged,
         },
         deployedContent: { classify: async () => "not-deployed" },
+        toolPresence: { detectGlobalTools: async () => presentTools },
         inventoryOriginUrl: async () =>
           "git@github.com:fimoklei/agent-harness.git",
         canonicalPath: (path) => fs.realpath(path),
@@ -153,6 +163,9 @@ describeFeature(
         Given('the central inventory has the skill "tdd"', () =>
           seedInventory(),
         );
+        And("both Claude Code and Codex are installed on this machine", () => {
+          presentTools = ["claude", "codex"];
+        });
         And("no repo is registered", () => {
           // The registry starts empty; global needs no entry in it.
         });
@@ -165,6 +178,9 @@ describeFeature(
             deployed: { type: "skill", name: "tdd", version: FIXTURE_TAG },
           });
         });
+        And('apm is told to target "claude,codex"', () => {
+          expect(targetedTools).toEqual(["claude", "codex"]);
+        });
         And(
           'I see "tdd" in the global deploy-state at that version',
           async () => {
@@ -173,6 +189,54 @@ describeFeature(
             ]);
           },
         );
+      },
+    );
+
+    Scenario(
+      "A single-tool machine deploys to only that tool, with no dead directory",
+      ({ Given, And, When, Then }) => {
+        Given('the central inventory has the skill "tdd"', () =>
+          seedInventory(),
+        );
+        And("only Claude Code is installed on this machine", () => {
+          presentTools = ["claude"];
+        });
+        When('I deploy "tdd" globally', async () => {
+          response = await deployGlobally();
+        });
+        Then("the global deploy succeeds at the latest tag", async () => {
+          expect(response.status).toBe(200);
+        });
+        And('apm is told to target "claude"', () => {
+          // -t claude only: apm writes no dead .agents/ tree (ADR-0011).
+          expect(targetedTools).toEqual(["claude"]);
+        });
+      },
+    );
+
+    Scenario(
+      "A machine with no supported tool refuses the global deploy",
+      ({ Given, And, When, Then }) => {
+        Given('the central inventory has the skill "tdd"', () =>
+          seedInventory(),
+        );
+        And("no supported tool is installed on this machine", () => {
+          presentTools = [];
+        });
+        When('I deploy "tdd" globally', async () => {
+          response = await deployGlobally();
+        });
+        Then(
+          "the global deploy is refused because no supported tool was found",
+          async () => {
+            expect(response.status).toBe(409);
+            const body = (await response.json()) as { message: string };
+            expect(body.message).toMatch(/no supported tool/i);
+          },
+        );
+        And("the global deploy-state stays empty", async () => {
+          expect(await globalPrimitives()).toEqual([]);
+        });
       },
     );
 
