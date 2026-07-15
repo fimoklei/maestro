@@ -7,7 +7,7 @@
 import type { OutdatedResult } from "../drift/parse-outdated";
 import type { InventoryResult } from "../inventory/inventory-reader";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
-import type { SupportedTool } from "./deploy-tools";
+import { type SupportedTool, untargetedTools } from "./deploy-tools";
 import { parseGitOrigin } from "./git-origin";
 import { buildSkillPackageRef, isValidSkillSlug } from "./package-ref";
 
@@ -87,10 +87,30 @@ export type DeployedContentState =
   | "lockfile-malformed";
 
 export type DeployedContentPort = {
+  // `tools` scopes the scan (and the recorded baseline it is compared against) to
+  // exactly those tools' deployed copies. Present on the global path (the detected
+  // tools) so an untargeted tool's absent copy — left in the lockfile by a prior
+  // two-tool install — cannot force a false `diverged` (ADR-0011, #136). Absent on
+  // the repo path and the #111 read-path, which scan every DEPLOY_TOOLS copy.
   classify(input: {
     target: DeployTarget;
     name: string;
+    tools?: readonly SupportedTool[];
   }): Promise<DeployedContentState>;
+};
+
+// Removes the deployed copies of `tools` for a skill under the target's deployed
+// root. Used on the global path to reconcile away an untargeted tool's copy that
+// apm leaves behind when a deploy narrows the target set (ADR-0011, #136). A
+// direct, subtree-scoped filesystem removal — never `apm uninstall -g`, which
+// deletes beyond its lockfile (apm-driver.md). Idempotent: a missing copy is a
+// no-op, not an error.
+export type DeployedCleanupPort = {
+  removeSkillTargets(input: {
+    target: DeployTarget;
+    name: string;
+    tools: readonly SupportedTool[];
+  }): Promise<void>;
 };
 
 export type DeploySkillInput = {
@@ -163,6 +183,9 @@ export class DeploySkill {
     apm: Pick<ApmDriverPort, "resolveLatestTag" | "deploySkill">;
     inventoryGit: InventoryGitPort;
     deployedContent: DeployedContentPort;
+    // Removes an untargeted tool's leftover deployed copy after a narrowed
+    // global deploy (ADR-0011, #136). Global path only.
+    deployedCleanup: DeployedCleanupPort;
     // Answers which supported tools the machine has, for the global path only
     // (ADR-0011). A repo deploy never consults it.
     toolPresence: ToolPresencePort;
@@ -282,6 +305,10 @@ export class DeploySkill {
       const deployedState = await this.deps.deployedContent.classify({
         target: input.target,
         name: input.name,
+        // Global: scope the guard to the detected tools so an untargeted tool's
+        // absent copy (left in the lockfile by a prior two-tool install) cannot
+        // force a false refusal. Repo: undefined — scan every tool (#136).
+        tools: globalTools,
       });
       // A confirmed reinstall (force) overrides the two not-proven-clean states
       // — diverged and unverifiable — since a deployed copy is non-precious
@@ -315,6 +342,33 @@ export class DeploySkill {
         // deploy, where the driver keeps targeting every DEPLOY_TOOLS tool.
         tools: globalTools,
       });
+
+      // Reconcile away any obsolete copy left by a prior wider global install:
+      // apm preserves the untargeted tool's files and lockfile hashes, so a
+      // Claude-only redeploy would otherwise leave the dead .agents tree ADR-0011
+      // exists to eliminate. Global path only, after a proven-successful install
+      // (the driver verifies apm's positive marker), so a failed install never
+      // reconciles. A missing copy is a no-op (#136).
+      if (globalTools !== undefined) {
+        const obsolete = untargetedTools(globalTools);
+        if (obsolete.length > 0) {
+          // Best-effort: the install already succeeded, so a cleanup failure must
+          // not invert the result to deploy-failed. It leaves the pre-existing
+          // dead tree — no worse than before this deploy — which the next deploy
+          // retries idempotently (force-rm). Swallowed here rather than surfaced
+          // because DeploySkill has no logging channel; the guard scoping keeps
+          // the leftover inert for the reader meanwhile (#136).
+          try {
+            await this.deps.deployedCleanup.removeSkillTargets({
+              target: input.target,
+              name: input.name,
+              tools: obsolete,
+            });
+          } catch {
+            // Intentionally ignored — see above.
+          }
+        }
+      }
 
       return {
         ok: true,

@@ -14,6 +14,16 @@ const buildDeps = (
     ref: string;
     tools?: readonly SupportedTool[];
   }> = [];
+  const classified: Array<{
+    target: DeployTarget;
+    name: string;
+    tools?: readonly SupportedTool[];
+  }> = [];
+  const cleaned: Array<{
+    target: DeployTarget;
+    name: string;
+    tools: readonly SupportedTool[];
+  }> = [];
   const deps = {
     inventory: {
       read: async () => ({
@@ -49,8 +59,23 @@ const buildDeps = (
       skillDivergesFromTag: async (_tag: string, _name: string) => false,
     },
     deployedContent: {
-      classify: async (_input: { target: DeployTarget; name: string }) =>
-        "not-deployed" as const,
+      classify: async (input: {
+        target: DeployTarget;
+        name: string;
+        tools?: readonly SupportedTool[];
+      }) => {
+        classified.push(input);
+        return "not-deployed" as const;
+      },
+    },
+    deployedCleanup: {
+      removeSkillTargets: async (input: {
+        target: DeployTarget;
+        name: string;
+        tools: readonly SupportedTool[];
+      }) => {
+        cleaned.push(input);
+      },
     },
     // A two-tool machine by default; individual tests narrow this to prove the
     // global `-t` follows detected presence (ADR-0011, #131).
@@ -63,7 +88,7 @@ const buildDeps = (
     canonicalPath: async (path: string) => path,
     ...overrides,
   };
-  return { deps, deployed };
+  return { deps, deployed, classified, cleaned };
 };
 
 describe("DeploySkill", () => {
@@ -131,6 +156,133 @@ describe("DeploySkill", () => {
         tools: ["claude"],
       },
     ]);
+  });
+
+  it("scopes the destination guard to the detected tools on a global deploy", async () => {
+    // #136: a Claude-only machine must ask the guard about the claude copy only,
+    // so an untargeted .agents copy left by a prior two-tool install cannot force
+    // a false refusal. The detected set is passed straight into classify.
+    const { deps, classified } = buildDeps({
+      toolPresence: { detectGlobalTools: async () => ["claude"] },
+    });
+    await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
+
+    expect(classified).toEqual([
+      { target: globalTarget, name: "tdd", tools: ["claude"] },
+    ]);
+  });
+
+  it("passes no tool scope to the guard for a repo deploy", async () => {
+    // The repo path scans every DEPLOY_TOOLS copy (#136): classify is called
+    // without a tools scope, preserving the pre-#136 behaviour.
+    const { deps, classified } = buildDeps();
+    await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(classified).toEqual([
+      { target: repo("/registered/repo"), name: "tdd", tools: undefined },
+    ]);
+  });
+
+  it("removes the obsolete tool's copy after narrowing a global deploy", async () => {
+    // ADR-0011 / #136: a Claude-only machine that once ran a two-tool global
+    // install has a dead .agents copy apm leaves behind. After the narrowed
+    // install succeeds, Maestro removes exactly the untargeted (codex) copy.
+    const { deps, cleaned, deployed } = buildDeps({
+      toolPresence: { detectGlobalTools: async () => ["claude"] },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(deployed).toHaveLength(1);
+    expect(cleaned).toEqual([
+      { target: globalTarget, name: "tdd", tools: ["codex"] },
+    ]);
+  });
+
+  it("cleans nothing when the global deploy targets every tool", async () => {
+    // A full two-tool machine narrows nothing away — there is no obsolete copy,
+    // so the cleanup step is skipped entirely.
+    const { deps, cleaned } = buildDeps();
+    await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
+
+    expect(cleaned).toEqual([]);
+  });
+
+  it("never cleans on a repo deploy", async () => {
+    // Obsolete-target reconciliation is the global path only (#136); a repo
+    // deploy targets every tool and touches no untargeted copy.
+    const { deps, cleaned } = buildDeps();
+    await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(cleaned).toEqual([]);
+  });
+
+  it("does not clean when the global install fails", async () => {
+    // Cleanup runs only after a proven-successful install: a failed apm install
+    // must not trigger removal of an untargeted copy (no half-reconciled state).
+    const { deps, cleaned } = buildDeps({
+      toolPresence: { detectGlobalTools: async () => ["claude"] },
+      apm: {
+        resolveLatestTag: async () => ({ ok: true, tag: "v0.5.1" }),
+        deploySkill: async () => {
+          throw new Error("apm install failed");
+        },
+      },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
+
+    expect(result).toEqual({ ok: false, error: "deploy-failed" });
+    expect(cleaned).toEqual([]);
+  });
+
+  it("still reports success when the obsolete-copy cleanup fails", async () => {
+    // The install already succeeded; reconciling the dead copy is best-effort.
+    // A cleanup failure must not invert a proven-successful deploy to
+    // deploy-failed — it leaves the pre-existing dead tree, which the next
+    // deploy retries idempotently (#136).
+    const { deps, deployed } = buildDeps({
+      toolPresence: { detectGlobalTools: async () => ["claude"] },
+      deployedCleanup: {
+        removeSkillTargets: async () => {
+          throw new Error("fs error removing the obsolete copy");
+        },
+      },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+    });
+    expect(deployed).toHaveLength(1);
   });
 
   it("refuses a global deploy when no supported tool is detected, before apm", async () => {

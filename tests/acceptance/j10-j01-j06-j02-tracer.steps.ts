@@ -63,6 +63,7 @@ function buildApp(configPath: string, inventoryPath: string) {
       skillDivergesFromTag: async () => false,
     },
     deployedContent: { classify: async () => "not-deployed" },
+    deployedCleanup: { removeSkillTargets: async () => undefined },
     toolPresence: { detectGlobalTools: async () => ["claude", "codex"] },
     inventoryOriginUrl: async () => "git@github.com:fimoklei/agent-harness.git",
     canonicalPath: (path) => fs.realpath(path),

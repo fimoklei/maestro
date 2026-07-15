@@ -2,6 +2,7 @@ export { ApmCliDriver } from "./deploy/apm-cli-driver";
 export { resolveApmScratchCwd } from "./deploy/apm-scratch-cwd";
 export {
   type ApmDriverPort,
+  type DeployedCleanupPort,
   type DeployedContentPort,
   type DeployedContentState,
   DeploySkill,
@@ -16,7 +17,9 @@ export {
   apmTargetFlagForTools,
   DEPLOY_TOOLS,
   type SupportedTool,
+  untargetedTools,
 } from "./deploy/deploy-tools";
+export { DeployedCleanupAdapter } from "./deploy/deployed-cleanup";
 export { DeployedContentAdapter } from "./deploy/deployed-content";
 export {
   resolveDeployedLockfilePath,
