@@ -48,7 +48,12 @@ function stubFetch(repoDeployState: unknown, repoDrift: unknown) {
       if (target.includes("/api/deploy-state/global")) {
         return jsonResponse(
           {
-            primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+            tools: [
+              {
+                tool: "claude",
+                primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+              },
+            ],
             skipped: [],
           },
           200,

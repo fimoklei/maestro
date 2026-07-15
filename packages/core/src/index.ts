@@ -31,8 +31,13 @@ export {
   type DeployedPrimitive,
   DeployStateReader,
   type DeployStateResult,
+  type GlobalDeployStateResult,
   type SkippedEntry,
 } from "./deploy-state/deploy-state-reader";
+// Only the type is public; groupPrimitivesByTool is an internal helper of
+// DeployStateReader (its test imports the module directly), so it stays off the
+// package barrel.
+export type { ToolDeployState } from "./deploy-state/group-primitives-by-tool";
 export { resolveApmGlobalRoot } from "./deploy-state/resolve-apm-global-root";
 export {
   CheckVersionDrift,

@@ -371,12 +371,15 @@ export function createApp(deps: AppDeps) {
     return c.json({ primitives: result.primitives, skipped: result.skipped });
   });
 
-  // Global (user-scope) deploy-state. The server resolves apm's user-scope root
-  // itself, so no client path crosses the boundary — any ?repo is ignored. A
-  // missing global lockfile is an honest empty state, never an error; a malformed
-  // one is a visible 422, the same contract as the per-repo read.
+  // Global (user-scope) deploy-state, grouped per detected tool (ADR-0011). The
+  // server resolves apm's user-scope root itself, so no client path crosses the
+  // boundary — any ?repo is ignored. The response carries the per-tool structure
+  // plus the detected-tool set (implicit in `tools`), the single source the
+  // cockpit reads. A missing global lockfile is an honest empty state (each
+  // detected tool an empty group), never an error; a malformed one is a visible
+  // 422, the same contract as the per-repo read.
   app.get("/api/deploy-state/global", async (c) => {
-    const result = await deps.deployState.read(deps.resolveGlobalRoot());
+    const result = await deps.deployState.readGlobal(deps.resolveGlobalRoot());
     if (!result.ok) {
       return c.json(
         {
@@ -386,7 +389,7 @@ export function createApp(deps: AppDeps) {
         422,
       );
     }
-    return c.json({ primitives: result.primitives, skipped: result.skipped });
+    return c.json({ tools: result.tools, skipped: result.skipped });
   });
 
   // Deploy a skill into a registered repo. All business rules (slug check,
@@ -507,7 +510,13 @@ function realDeps(): AppDeps {
     resolvePath: async () =>
       resolveInventoryPath(await store.read(), process.env),
   });
-  const deployState = new DeployStateReader({ fs });
+  // The per-repo read needs only fs; the global read groups per detected tool,
+  // so it gets a live tool-presence probe against HOME (ADR-0011). The adapter's
+  // default home resolution matches the deploy's, so `pnpm smoke` stays honest.
+  const deployState = new DeployStateReader({
+    fs,
+    toolPresence: new ToolPresenceAdapter(),
+  });
   // One apm driver, shared by deploy and drift. A global install/check runs
   // from a scratch dir under MAESTRO_HOME, created on demand so apm's .gitignore
   // side-effect never lands in a real repo (apm-driver.md, J07).

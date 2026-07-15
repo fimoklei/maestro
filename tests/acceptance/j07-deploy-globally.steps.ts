@@ -82,7 +82,12 @@ describeFeature(
         }),
       });
       const inventory = new InventoryReader({ fs, resolvePath: () => harness });
-      const deployState = new DeployStateReader({ fs });
+      // The global deploy-state read groups per detected tool, so it needs the
+      // same presence signal the deploy uses — the scenario's presentTools.
+      const deployState = new DeployStateReader({
+        fs,
+        toolPresence: { detectGlobalTools: async () => presentTools },
+      });
       const deploy = new DeploySkill({
         inventory,
         registry,
@@ -175,10 +180,23 @@ describeFeature(
 
     async function globalPrimitives() {
       const res = await app.request("/api/deploy-state/global");
-      const { primitives } = (await res.json()) as {
-        primitives: DeployedPrimitive[];
+      const { tools } = (await res.json()) as {
+        tools: { tool: string; primitives: DeployedPrimitive[] }[];
       };
-      return primitives;
+      // Flatten the per-tool groups to the deduped set of deployed skills this
+      // journey asserts on (name+version), regardless of how many tools carry it.
+      const seen = new Set<string>();
+      const flat: DeployedPrimitive[] = [];
+      for (const group of tools) {
+        for (const primitive of group.primitives) {
+          const key = `${primitive.name}@${primitive.version}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            flat.push(primitive);
+          }
+        }
+      }
+      return flat;
     }
 
     Scenario(

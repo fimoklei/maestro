@@ -34,7 +34,7 @@ describe("DeployStateView cold start", () => {
       "fetch",
       vi.fn(async () =>
         jsonResponse(
-          { repos: [], primitives: [], skipped: [], behind: [] },
+          { repos: [], tools: [], primitives: [], skipped: [], behind: [] },
           200,
         ),
       ),
@@ -54,7 +54,14 @@ describe("DeployStateView cold start", () => {
         if (target.includes("/api/deploy-state/global")) {
           return jsonResponse(
             {
-              primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+              tools: [
+                {
+                  tool: "claude",
+                  primitives: [
+                    { type: "skill", name: "tdd", version: "v0.5.0" },
+                  ],
+                },
+              ],
               skipped: [],
             },
             200,

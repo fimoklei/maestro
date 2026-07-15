@@ -469,9 +469,19 @@ describe("DeploySkillAction", () => {
         return fetchMock.mock.calls.filter((c) =>
           String(c[0]).startsWith("/api/deploy-state/global"),
         ).length <= 1
-          ? jsonResponse({ primitives: [], skipped: [] })
+          ? jsonResponse({
+              tools: [{ tool: "claude", primitives: [] }],
+              skipped: [],
+            })
           : jsonResponse({
-              primitives: [{ type: "skill", name: "tdd", version: "v0.5.1" }],
+              tools: [
+                {
+                  tool: "claude",
+                  primitives: [
+                    { type: "skill", name: "tdd", version: "v0.5.1" },
+                  ],
+                },
+              ],
               skipped: [],
             });
       }
@@ -512,7 +522,12 @@ describe("DeploySkillAction", () => {
       }
       if (url.startsWith("/api/deploy-state/global")) {
         return jsonResponse({
-          primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+          tools: [
+            {
+              tool: "claude",
+              primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+            },
+          ],
           skipped: [],
         });
       }
