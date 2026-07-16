@@ -178,6 +178,11 @@ const connectErrorResponses: Record<
     status: 422,
     message: "That directory has no skills/ folder, so it is not an inventory.",
   },
+  "no-usable-origin": {
+    status: 422,
+    message:
+      "That folder has skills/ but no usable git origin, so deploys could not resolve versions from it. Point Maestro at a git clone of the central inventory.",
+  },
 };
 
 // Transport-layer mapping for the browse use-case. outside-root is a 403 (the
@@ -572,7 +577,10 @@ function realDeps(): AppDeps {
   return {
     registry,
     inventory,
-    connect: new ConnectInventory({ fs, store }),
+    // Connect reuses the deploy side's origin reader: one truth for "usable
+    // origin", checked offline against local git config at connect time so the
+    // error lands before the first deploy (#147).
+    connect: new ConnectInventory({ fs, store, originUrl: readGitOriginUrl }),
     // The browse ceiling is the user's home directory (ADR-0009), resolved per
     // access so it is never frozen at import time.
     browse: new BrowseFilesystem({ fs, homeRoot: () => homedir() }),

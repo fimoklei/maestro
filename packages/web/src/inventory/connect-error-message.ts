@@ -11,3 +11,10 @@ export function connectErrorMessage(error: unknown): string | null {
   }
   return error ? "Could not connect the inventory." : null;
 }
+
+// The connect-time origin refusal (#147) gets its own affordance — an amber
+// card with a "browse again…" call to action — so both connect surfaces need
+// to recognise it by typed code, never by string-matching the message.
+export function isNoUsableOriginError(error: unknown): boolean {
+  return error instanceof HttpError && error.code === "no-usable-origin";
+}

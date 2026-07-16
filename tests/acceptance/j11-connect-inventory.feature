@@ -16,6 +16,12 @@ Feature: Connect the central inventory offline (J11)
     Then the connect is rejected with a readable error
     And the central inventory is still not configured
 
+  Scenario: A folder with skills but no usable git origin is refused
+    Given a cockpit with no inventory configured
+    When I connect a folder that has skills but no usable git origin
+    Then the connect is rejected with a readable error
+    And the central inventory is still not configured
+
   Scenario: I connect via a path found by browsing
     Given a cockpit with no inventory configured
     When I browse to the clone's parent directory and connect the listed clone

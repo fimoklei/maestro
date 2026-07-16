@@ -37,7 +37,7 @@ The single curated, production-ready collection of primitives, held in the `agen
 _Avoid_: skills repo, library, catalog (a catalog is passive; the inventory is the governed source).
 
 **Inventory source**:
-The connection that points Maestro at the central inventory — the local path it reads primitives from (a git URL is the Future "Connect & sync" form), managed behind the ⚙ settings view. Distinct from the **Central inventory** itself: the source is the *pointer*, the inventory is *what it points at*. Read-only; Maestro never writes back to it.
+The connection that points Maestro at the central inventory — the path of a local *clone* of the Central inventory, not any folder that happens to hold skills (a git URL is the Future "Connect & sync" form), managed behind the ⚙ settings view. Connect requires the clone to have a parseable git origin remote, checked offline, so deploys can resolve versions from it later. Distinct from the **Central inventory** itself: the source is the *pointer*, the inventory is *what it points at*. Read-only; Maestro never writes back to it.
 _Avoid_: inventory path (too narrow — names only today's local-path form), connection.
 
 **Curated / Production-ready**:

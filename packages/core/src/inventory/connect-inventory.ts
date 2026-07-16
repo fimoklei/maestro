@@ -1,15 +1,21 @@
 // Connects the central inventory offline: validates a user-pasted absolute path
 // to an existing local agent-harness clone and persists it as inventoryPath via
 // the ConfigStore. Mirrors the consuming-repo registry's path model (realpath +
-// exists + is-a-directory, see .claude/rules/security.md) and adds one check —
-// a skills/ subdirectory — so the path is plausibly an inventory. Offline only:
-// no git clone (deferred per the job map). Errors are typed and path-free.
+// exists + is-a-directory, see .claude/rules/security.md) and adds two checks —
+// a skills/ subdirectory so the path is plausibly an inventory, and a parseable
+// git origin remote so deploys can resolve versions later. Offline only: the
+// origin check reads local git config, never the network (no clone, no fetch).
+// Errors are typed and path-free.
 import { join } from "node:path";
+import { parseGitOrigin } from "../deploy/git-origin";
 import type { ConfigStore } from "../registry/config-store";
 import type { FileSystemPort } from "../registry/file-system";
 import { type RepoPathError, validateRepoPath } from "../registry/repo-path";
 
-export type ConnectInventoryError = RepoPathError | "not-an-inventory";
+export type ConnectInventoryError =
+  | RepoPathError
+  | "not-an-inventory"
+  | "no-usable-origin";
 
 export type ConnectInventoryResult =
   | { ok: true; inventoryPath: string }
@@ -18,10 +24,16 @@ export type ConnectInventoryResult =
 export class ConnectInventory {
   private readonly fs: FileSystemPort;
   private readonly store: ConfigStore;
+  private readonly originUrl: (path: string) => Promise<string | null>;
 
-  constructor(deps: { fs: FileSystemPort; store: ConfigStore }) {
+  constructor(deps: {
+    fs: FileSystemPort;
+    store: ConfigStore;
+    originUrl: (path: string) => Promise<string | null>;
+  }) {
     this.fs = deps.fs;
     this.store = deps.store;
+    this.originUrl = deps.originUrl;
   }
 
   async connect(input: string): Promise<ConnectInventoryResult> {
@@ -32,6 +44,11 @@ export class ConnectInventory {
 
     if (!(await this.fs.isDirectory(join(validated.path, "skills")))) {
       return { ok: false, error: "not-an-inventory" };
+    }
+
+    const originUrl = await this.originUrl(validated.path);
+    if (originUrl === null || parseGitOrigin(originUrl) === null) {
+      return { ok: false, error: "no-usable-origin" };
     }
 
     const config = await this.store.read();

@@ -133,6 +133,39 @@ describe("WizardConnectView", () => {
     expect(screen.queryByText("deploy-state-landed")).not.toBeInTheDocument();
   });
 
+  it("shows the no-usable-origin card and reopens browse from its call to action", async () => {
+    stubApi({
+      connect: () =>
+        jsonResponse(
+          {
+            error: "no-usable-origin",
+            message:
+              "That folder has skills/ but no usable git origin, so deploys could not resolve versions from it.",
+          },
+          422,
+        ),
+    });
+    renderView();
+
+    await userEvent.type(
+      await screen.findByLabelText(/inventory path/i),
+      "/home/me/skills-only-folder",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /^connect inventory$/i }),
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /no usable git origin/i,
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /browse again/i }),
+    );
+    expect(
+      await screen.findByRole("button", { name: /select this folder/i }),
+    ).toBeInTheDocument();
+  });
+
   it("fills the path field from a folder picked via browse", async () => {
     stubApi({
       browse: () =>

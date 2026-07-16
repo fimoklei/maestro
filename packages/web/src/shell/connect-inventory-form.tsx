@@ -11,13 +11,16 @@ import { Button } from "../ui/button";
 // Connecting is delegated to onSubmit so the data logic stays in the container
 // hook. onBrowse is an optional hook point for a "browse…" picker — omit it and
 // the form behaves exactly as the path-only variant. A validation error renders
-// as readable text tied to the field via aria-describedby. Styled from Control
-// Room tokens.
+// as readable text tied to the field via aria-describedby; the no-usable-origin
+// refusal (#147) upgrades that text to an amber card with a "browse again…"
+// call to action, since the fix is picking a different folder, not editing the
+// path by hand. Styled from Control Room tokens.
 type ConnectInventoryFormProps = {
   path: string;
   onPathChange: (path: string) => void;
   onSubmit: (path: string) => void;
   error?: string | null;
+  noUsableOrigin?: boolean;
   isPending?: boolean;
   onBrowse?: () => void;
 };
@@ -27,6 +30,7 @@ export function ConnectInventoryForm({
   onPathChange,
   onSubmit,
   error,
+  noUsableOrigin = false,
   isPending = false,
   onBrowse,
 }: ConnectInventoryFormProps) {
@@ -63,13 +67,42 @@ export function ConnectInventoryForm({
         </Button>
       </div>
       {error ? (
-        <p
-          id="inventory-path-error"
-          role="alert"
-          className="text-amber-ink text-tag"
-        >
-          {error}
-        </p>
+        noUsableOrigin ? (
+          // Design f1-connect-reject: ▲ + bold title, explanation in muted
+          // text, "browse again…" as the primary next action. The submit
+          // button above stays (unlike the design frame) so a hand-corrected
+          // path can still be resubmitted.
+          <div
+            id="inventory-path-error"
+            role="alert"
+            className="flex flex-col gap-1.5 rounded-control border border-amber-border bg-amber-bg px-3 py-2.5"
+          >
+            <span className="font-semibold text-amber-ink text-tag">
+              ▲ no usable git origin
+            </span>
+            <span className="text-fg-2 text-tag">{error}</span>
+            {onBrowse ? (
+              <div className="mt-1">
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={onBrowse}
+                >
+                  browse again…
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <p
+            id="inventory-path-error"
+            role="alert"
+            className="text-amber-ink text-tag"
+          >
+            {error}
+          </p>
+        )
       ) : null}
     </form>
   );
