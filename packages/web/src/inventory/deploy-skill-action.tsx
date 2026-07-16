@@ -8,6 +8,7 @@ import type { RegisteredRepo } from "../registry/use-registry";
 import { Button } from "../ui/button";
 import { Chip } from "../ui/chip";
 import { DeployRefusalNotice } from "./deploy-refusal-notice";
+import { globalOptionLabel } from "./global-option-label";
 import { type DeployTarget, useDeploySkill } from "./use-deploy-skill";
 
 // The deploy action on a skill row: pick a target — "Global" or a registered
@@ -53,7 +54,11 @@ export function DeploySkillAction({
     isGlobal ? "" : target.repoPath,
     registryReady && !isGlobal,
   );
-  const globalDeployState = useGlobalDeployState(registryReady && isGlobal);
+  // Fetched as soon as the registry is ready — not only when Global is the
+  // current pick — because the Global OPTION must name and gate itself before
+  // the user selects it (#134). One query key, so every skill row's picker
+  // shares a single request.
+  const globalDeployState = useGlobalDeployState(registryReady);
   const repoDrift = useDrift(
     isGlobal ? "" : target.repoPath,
     registryReady && !isGlobal,
@@ -66,6 +71,17 @@ export function DeploySkillAction({
     toDriftView(drift),
     skillName,
   );
+
+  // The detected-tool set drives the Global option's label and disabled state.
+  // Undefined while the global deploy-state is loading or unreadable — the label
+  // then stays plain "Global" and the option enabled (never gate on a tool set
+  // we cannot prove).
+  const globalTools = globalDeployState.data?.detectedTools;
+  const globalDisabled = globalTools !== undefined && globalTools.length === 0;
+  // Deploying globally with zero detected tools would write files for a tool
+  // that is not there, so block it at the effective-target level too — not just
+  // the option — for the empty-registry case where Global is the default pick.
+  const globalUnavailable = isGlobal && globalDisabled;
 
   const selectId = `deploy-${skillName}-target`;
 
@@ -92,7 +108,9 @@ export function DeploySkillAction({
         }}
         className="max-w-40 truncate rounded-control border border-line-chip bg-transparent px-2 py-[3px] font-mono text-muted text-tag"
       >
-        <option value={GLOBAL_VALUE}>Global</option>
+        <option value={GLOBAL_VALUE} disabled={globalDisabled}>
+          {globalOptionLabel(globalTools)}
+        </option>
         {repos.map((repo) => (
           <option key={repo.path} value={repo.path}>
             {repo.path}
@@ -117,7 +135,7 @@ export function DeploySkillAction({
         <Button
           variant="ghost"
           size="sm"
-          disabled={!registryReady || deploy.isPending}
+          disabled={!registryReady || deploy.isPending || globalUnavailable}
           onClick={() =>
             deploy.mutate({ type: "skill", name: skillName, target })
           }

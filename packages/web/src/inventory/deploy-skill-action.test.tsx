@@ -44,6 +44,84 @@ describe("DeploySkillAction", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("names the tools the Global option will hit on a two-tool machine", async () => {
+    // #134: the single Global option tells you where it lands before you click,
+    // read from the global deploy-state's detected-tool set (no stored list).
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/deploy-state/global")) {
+          return jsonResponse({
+            tools: [
+              { tool: "claude", primitives: [] },
+              { tool: "codex", primitives: [] },
+            ],
+            skipped: [],
+          });
+        }
+        return jsonResponse({ primitives: [], skipped: [] });
+      }),
+    );
+    renderAction(
+      <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
+    );
+
+    const globalOption = await within(
+      screen.getByLabelText(/deploy tdd to/i),
+    ).findByRole("option", { name: /Global \(Claude Code \+ Codex\)/ });
+    expect(globalOption).toBeEnabled();
+  });
+
+  it("names the single tool the Global option will hit on a one-tool machine", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/deploy-state/global")) {
+          return jsonResponse({
+            tools: [{ tool: "claude", primitives: [] }],
+            skipped: [],
+          });
+        }
+        return jsonResponse({ primitives: [], skipped: [] });
+      }),
+    );
+    renderAction(
+      <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
+    );
+
+    const globalOption = await within(
+      screen.getByLabelText(/deploy tdd to/i),
+    ).findByRole("option", { name: /Global \(Claude Code\)/ });
+    expect(globalOption).toBeInTheDocument();
+  });
+
+  it("disables the Global option and deploy when no tool is detected", async () => {
+    // #134: with zero detected tools a global deploy would write files for a
+    // tool that is not there, so the option is disabled — and since an empty
+    // registry makes Global the effective target, the deploy button is too.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/deploy-state/global")) {
+          return jsonResponse({ tools: [], skipped: [] });
+        }
+        return jsonResponse({ primitives: [], skipped: [] });
+      }),
+    );
+    renderAction(
+      <DeploySkillAction skillName="tdd" repos={[]} registryReady />,
+    );
+
+    const globalOption = await within(
+      screen.getByLabelText(/deploy tdd to/i),
+    ).findByRole("option", { name: /Global \(no tools detected\)/ });
+    expect(globalOption).toBeDisabled();
+    expect(screen.getByRole("button", { name: /deploy/i })).toBeDisabled();
+  });
+
   it("deploys the skill to the chosen repo", async () => {
     const fetchMock = vi.fn(
       async (_input: RequestInfo | URL, _init?: RequestInit) =>
