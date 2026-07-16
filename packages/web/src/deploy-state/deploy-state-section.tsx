@@ -2,16 +2,18 @@ import { useRegistry } from "../registry/use-registry";
 import { SectionHeader } from "../ui/section-header";
 import { DeployStatePanel } from "./deploy-state-panel";
 import { GlobalDeployStatePanel } from "./global-deploy-state-panel";
+import { useGlobalDeployState } from "./use-global-deploy-state";
 
 // The Deploy-state view body: a SectionHeader over a grid of target cards — the
-// fixed Global card (the baseline, always present) plus one card per registered
-// repo. It reuses the registry server-state (TanStack Query dedupes the shared
-// key with the sidebar Targets list), so a newly registered repo gets its own
-// card without a reload.
+// detected Global cards plus one card per registered repo. It reuses server
+// state (TanStack Query dedupes the shared keys), so a newly registered repo or
+// detected tool updates the count without a reload.
 export function DeployStateSection() {
   const registry = useRegistry();
+  const globalDeployState = useGlobalDeployState();
   const repos = registry.data?.repos ?? [];
-  const targetCount = 1 + repos.length;
+  const targetCount =
+    (globalDeployState.data?.tools.length ?? 0) + repos.length;
 
   return (
     <section>

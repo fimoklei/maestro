@@ -74,6 +74,52 @@ describe("DeployStateSection", () => {
     expect(await screen.findByText("Claude Code")).toBeInTheDocument();
   });
 
+  it("counts detected global tools and registered repos", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        String(url).includes("/api/registry/repos")
+          ? jsonResponse(
+              { repos: [{ path: "/Users/me/a" }, { path: "/Users/me/b" }] },
+              200,
+            )
+          : String(url).includes("/api/deploy-state/global")
+            ? jsonResponse(
+                {
+                  tools: [
+                    { tool: "claude", primitives: [] },
+                    { tool: "codex", primitives: [] },
+                  ],
+                  skipped: [],
+                },
+                200,
+              )
+            : jsonResponse({ primitives: [], skipped: [] }, 200),
+      ),
+    );
+    renderSection();
+
+    expect(
+      await screen.findByText("read from lockfiles · 4 targets"),
+    ).toBeInTheDocument();
+  });
+
+  it("counts zero targets when no global tools or repos are registered", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        String(url).includes("/api/deploy-state/global")
+          ? jsonResponse({ tools: [], skipped: [] }, 200)
+          : jsonResponse({ repos: [] }, 200),
+      ),
+    );
+    renderSection();
+
+    expect(
+      await screen.findByText("read from lockfiles · 0 targets"),
+    ).toBeInTheDocument();
+  });
+
   it("shows a deploy-state panel for each registered repo", async () => {
     vi.stubGlobal(
       "fetch",
