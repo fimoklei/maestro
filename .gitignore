@@ -16,3 +16,6 @@ storybook-static/
 
 # Local knowledge-graph output from the understand-anything skill (not source).
 .understand-anything/
+
+# Supacode session artifacts (local tool state, not source).
+.sc/

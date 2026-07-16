@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!docs/design"]
+    "includes": ["**", "!docs/design", "!.sc"]
   },
   "formatter": {
     "enabled": true,
