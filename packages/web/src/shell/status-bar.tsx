@@ -9,7 +9,7 @@ import { useHealth } from "../use-health";
 import { primitiveCountLabel } from "./primitive-count-label";
 
 // Top status bar: the wordmark plus the header's setup/connection state, laid
-// out to the Control Room design (docs/design/first-run) — a context line beside
+// out to the Control Room design — a context line beside
 // the wordmark, a status Chip on the right, and, once connected, a ⚙ gear that
 // opens the Inventory source view. It reads two server-state signals (TanStack
 // Query) and never conflates them: /api/health says "the app reached its own
