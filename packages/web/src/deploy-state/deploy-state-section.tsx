@@ -21,12 +21,17 @@ export function DeployStateSection() {
           targetCount === 1 ? "target" : "targets"
         }`}
       />
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <GlobalDeployStatePanel />
-        {repos.map((repo) => (
-          <DeployStatePanel key={repo.path} repo={repo.path} />
-        ))}
-      </div>
+      {/* Global fans out to one card per detected tool (ADR-0011), so it renders
+          its own "GLOBAL TARGETS" sub-section above the per-repo grid rather than
+          sitting as a single grid cell. */}
+      <GlobalDeployStatePanel />
+      {repos.length > 0 ? (
+        <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {repos.map((repo) => (
+            <DeployStatePanel key={repo.path} repo={repo.path} />
+          ))}
+        </div>
+      ) : null}
       {registry.isLoading ? (
         <p className="mt-3 text-dim text-tag">Loading registered repos…</p>
       ) : registry.isError ? (

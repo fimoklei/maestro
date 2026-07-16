@@ -1,46 +1,25 @@
 import { toDriftView } from "../drift/drift-query-view";
-import { targetDriftIndicator } from "../drift/target-drift-indicator";
 import { useGlobalDrift } from "../drift/use-drift";
-import { Card } from "../ui/card";
-import { DeployStateList } from "./deploy-state-list";
-import { toDeployedView } from "./deployed-view";
-import { TargetStatusChip } from "./target-status-chip";
+import { GlobalTargets } from "./global-targets";
 import { useGlobalDeployState } from "./use-global-deploy-state";
 
-// Fixed "Global" target card: global is the baseline, so the card (with its
-// title) always renders — even while loading and even when nothing is deployed
-// globally yet. A failed read gets a visible error; an empty list must never
-// stand in for "I couldn't read this" (the lie J03 exists to prevent).
+// Container for the "GLOBAL TARGETS" section: it owns the two server-state
+// queries (per-tool deploy-state and the single global drift check) and hands
+// their state to the presentational GlobalTargets (frontend.md). A global deploy
+// invalidates the ["deploy-state","global"] and ["drift","global"] queries, so
+// the cards refetch without a reload. The drift check is one apm-outdated run for
+// all global skills; each tool card filters it to its own skills.
 export function GlobalDeployStatePanel() {
   const deployState = useGlobalDeployState();
   const drift = useGlobalDrift();
-  const driftView = toDriftView(drift);
-  const indicator = targetDriftIndicator(
-    toDeployedView(deployState),
-    driftView,
-  );
 
   return (
-    <Card
-      title="Global"
-      kind="global"
-      drift={indicator === "drift"}
-      status={<TargetStatusChip indicator={indicator} />}
-    >
-      {deployState.isLoading ? (
-        <p className="px-card-x py-row-y text-dim text-tag">Loading…</p>
-      ) : deployState.isError ? (
-        <p role="alert" className="px-card-x py-row-y text-amber-ink text-tag">
-          Could not read the global deploy-state.
-        </p>
-      ) : (
-        <DeployStateList
-          primitives={deployState.data?.primitives ?? []}
-          skipped={deployState.data?.skipped ?? []}
-          drift={driftView}
-          target={{ kind: "global" }}
-        />
-      )}
-    </Card>
+    <GlobalTargets
+      isLoading={deployState.isLoading}
+      isError={deployState.isError}
+      tools={deployState.data?.tools ?? []}
+      skipped={deployState.data?.skipped ?? []}
+      drift={toDriftView(drift)}
+    />
   );
 }
