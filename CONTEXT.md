@@ -89,7 +89,7 @@ A deployed primitive whose pinned version lags the latest tag in the central inv
 _Avoid_: outdated (that is APM's word for the mechanism).
 
 **Content drift**:
-A deployed primitive whose materialized files have diverged from the pinned tag's tree (edited or added locally). `apm outdated` does **not** detect it; deploy-time refusal does (tree-diff, ADR-0003). Not surfaced by the deploy-state view yet (future; see job map "See local divergence from central").
+A deployed primitive whose materialized files have diverged from the pinned tag's tree (edited or added locally). `apm outdated` does **not** detect it; deploy-time refusal does (tree-diff, ADR-0003). Not surfaced by the deploy-state view yet (see "See local divergence from central" on the board, `docs/jobs.md`).
 _Avoid_: local edit, dirty.
 
 **Shadow skill** _(future-relevance)_:
@@ -125,6 +125,6 @@ Named but not yet specified (surface, don't bury):
 
 Resolved (kept for traceability):
 
-- **How Maestro discovers consuming repos** — resolved in `roadmap/01`: an explicit **Consuming-repo registry**, not a directory scan.
+- **How Maestro discovers consuming repos** — resolved during roadmap 01 (2026-06): an explicit **Consuming-repo registry**, not a directory scan.
 - **Whether APM supports global deploy** — resolved: native via user scope `~/.apm/` (own `apm.lock.yaml`; `-g` flag on `install`/`outdated`). Maestro drives it, does not add it.
-- **Which tools a global deploy targets** — resolved in `roadmap/01` (01.2) as "always both Claude Code and Codex", then **revised by ADR-0011**: a global deploy targets the tools **detected present** on the machine (both, or just one), still with no manual per-tool choice. The "always both" rule is superseded; single-tool machines no longer get a dead `.agents` copy. Local (per-repo) deploys are unaffected.
+- **Which tools a global deploy targets** — resolved during roadmap 01 (01.2, 2026-06) as "always both Claude Code and Codex", then **revised by ADR-0011**: a global deploy targets the tools **detected present** on the machine (both, or just one), still with no manual per-tool choice. The "always both" rule is superseded; single-tool machines no longer get a dead `.agents` copy. Local (per-repo) deploys are unaffected.

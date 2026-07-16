@@ -5,7 +5,7 @@ Codex, Cursor, etc.). Claude Code reads this through `CLAUDE.md`, which is only
 an adapter.
 
 Use this file for repo-local agent rules. Use `docs/operating-model.md` for
-the product workflow and decision hierarchy.
+how the product is run (the board, the loop, the conflict rule).
 
 ## What Maestro is
 
@@ -27,11 +27,10 @@ Maestro is the cockpit above it and never reimplements it (ADR-0001).
 ├── CONTEXT.md             # canonical glossary
 ├── .claude/rules/         # Claude-specific project rules
 ├── docs/
-│   ├── brief.md           # product thesis and MVP1 bet
-│   ├── operating-model.md # workflow, decision hierarchy, scope rules
-│   ├── jobs/job-map.md    # job and subjob definitions
+│   ├── brief.md           # product thesis and the bet
+│   ├── operating-model.md # how the product is run: the board and the loop
+│   ├── jobs.md            # the board: NOW / NEXT / LATER / DONE
 │   ├── adr/               # accepted architecture and product decisions
-│   └── roadmap/           # active roadmap files when scope is committed
 ├── packages/
 │   ├── core/              # domain logic
 │   ├── server/            # local Hono service
@@ -50,7 +49,7 @@ Maestro is a local-first client/server web app:
 - `packages/web` — React/Vite cockpit UI.
 
 Do not add product behavior outside this shape unless a later accepted ADR or
-active roadmap changes it.
+a job on the board changes it.
 
 ## Behavioral Rules
 
@@ -60,6 +59,8 @@ active roadmap changes it.
 ### When writing a React component or client-side data access → Read `.claude/rules/frontend.md`
 ### When building UI to a design screen → Read `.claude/rules/design.md`
 ### When driving `apm` or parsing its lockfile/output → Read `.claude/rules/apm-driver.md`
+### When starting a grill or picking the next job → Read `.claude/rules/job-loop.md`
+### When creating a spec issue, or shipping work that closes one → Read `.claude/rules/job-loop.md`
 ### When committing → Use `workflow-commit`
 ### When shipping → Use `workflow-ship`
 
@@ -68,8 +69,9 @@ active roadmap changes it.
 - **Do not take shortcuts.** We want the best version possible even if it takes longer.
 - **Never reimplement APM.** Drive it; read its lockfiles. Install, sync,
   pinning, lockfiles, and multi-tool targeting are APM's.
-- **Follow `docs/operating-model.md`.** It owns reading order, decision
-  hierarchy, MVP scope, job mapping, and file naming.
+- **Follow `docs/operating-model.md`.** It owns the board, the loop, and the
+  conflict rule. Build only through jobs on the board (`docs/jobs.md`); small
+  fixes need only a tracker issue (see `.claude/rules/job-loop.md`).
 - **TDD is blocking for code changes.** Docs-only changes are exempt.
 - When editing docs: prefer condensing over expanding. Drift toward feature lists is the failure mode to watch for.
 - When touching code: keep behavior in `packages/core` unless it is genuinely
@@ -95,7 +97,7 @@ Run from the repo root.
 ## Verification
 
 Before declaring document work complete, check the touched docs against the
-decision hierarchy in `docs/operating-model.md`.
+conflict rule in `docs/operating-model.md`.
 
 ## Browser Automation
 

@@ -25,11 +25,11 @@ One runner for all of them: **Vitest**. One tool, one mental model.
 - **Pure (unit)** = sibling file next to source. No fs/git/network. Goal: millisecond-fast, default in the `/tdd` loop. The workhorse; most tests live here.
 - **Web component** = sibling `.test.tsx` in `packages/web`, run in **jsdom** with Testing Library (its own `packages/web/vitest.config.ts` for the React plugin). Tests a component's behavior through the rendered DOM; `fetch` is stubbed, no real network. Goal: the cockpit UI behaves. Browser end-to-end (Playwright) stays deferred until the UI earns it.
 - **Integration** = a dedicated `tests/integration/` tree. Tests a journey across multiple modules with real I/O. Goal: regression safety net, runs in CI.
-- **Acceptance (BDD)** = Gherkin `.feature` files, **one per MVP1 subjob** (`J01`–`J11`), written in Given/When/Then. Goal: prove the cockpit does its jobs, traceable to the job map, and readable by a non-engineer without reading code. Runs end-to-end against the server API (not the browser) under Vitest.
+- **Acceptance (BDD)** = Gherkin `.feature` files, **one per shipped job** (the DONE lane in `docs/jobs.md`), written in Given/When/Then. Goal: prove the cockpit does its jobs, readable by a non-engineer without reading code. Runs end-to-end against the server API (not the browser) under Vitest. Existing files keep their historical `jNN-` prefixes; new features are named after the job's behavior.
 
 Storybook stories are **not** a lane: they are documentation, not test coverage. A `.stories.tsx` shows a component's states; behaviour is still tested in the sibling `.test.tsx` (see `frontend.md`). Writing a story does not count as testing the component.
 
-Heuristic for "is this integration?": if it touches the real filesystem, git, or network → integration. For Maestro specifically, anything that drives APM or reads real lockfiles is integration. An acceptance scenario uses real I/O too, but is organised by subjob and written to read like the job map.
+Heuristic for "is this integration?": if it touches the real filesystem, git, or network → integration. For Maestro specifically, anything that drives APM or reads real lockfiles is integration. An acceptance scenario uses real I/O too, but is organised by job and written to read like the board.
 
 Set up each lane with one example as the first feature in it lands (the web lane arrived with the first UI slice), then fill them as features land — never a batch of tests before the first feature.
 
@@ -37,7 +37,7 @@ Set up each lane with one example as the first feature in it lands (the web lane
 
 - New pure function or module with clear input/output → pure test, sibling.
 - New multi-module behavior (a deploy flow, a deploy-state read) → integration test.
-- A subjob becomes deliverable end-to-end → acceptance `.feature` for that `Jxx`.
+- A job ships end-to-end → an acceptance `.feature` for that job.
 - Bug fix → reproduce first, in the layer where the bug lives. When in doubt: pure.
 
 ## Mocking
@@ -48,6 +48,6 @@ Set up each lane with one example as the first feature in it lands (the web lane
 
 ## Test naming
 
-- File: `foo.test.<ext>` (pure), `tests/integration/<scenario>.test.<ext>`, or `tests/acceptance/<jNN>-<slug>.feature` (BDD).
+- File: `foo.test.<ext>` (pure), `tests/integration/<scenario>.test.<ext>`, or `tests/acceptance/<job-slug>.feature` (BDD; existing files keep their historical `jNN-` prefix).
 - Description: behavior statement without "should". Example: `"rejects primitive with missing description"`, not `"should return false when description is missing"`.
-- Gherkin scenario: phrase from the subjob's intent. Example: `Scenario: I see every primitive available centrally` for `J01`.
+- Gherkin scenario: phrase from the job's intent. Example: `Scenario: I see every primitive available centrally` for "See the central inventory".
