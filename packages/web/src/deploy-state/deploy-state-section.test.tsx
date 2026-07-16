@@ -54,18 +54,24 @@ describe("DeployStateSection", () => {
     expect(screen.queryByText(/register a repo/i)).not.toBeInTheDocument();
   });
 
-  it("always renders the fixed Global card, even when no repos are registered", async () => {
+  it("always renders the Global targets section, even when no repos are registered", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () =>
-        jsonResponse({ repos: [], primitives: [], skipped: [] }, 200),
+      vi.fn(async (url: string) =>
+        String(url).includes("/api/deploy-state/global")
+          ? jsonResponse(
+              { tools: [{ tool: "claude", primitives: [] }], skipped: [] },
+              200,
+            )
+          : jsonResponse({ repos: [] }, 200),
       ),
     );
     renderSection();
 
-    // Global is the baseline: its target card is present regardless of the
-    // registry.
-    expect(await screen.findByText("Global")).toBeInTheDocument();
+    // Global is the baseline: its section (and a card for the detected tool) is
+    // present regardless of the registry.
+    expect(await screen.findByText(/global targets/i)).toBeInTheDocument();
+    expect(await screen.findByText("Claude Code")).toBeInTheDocument();
   });
 
   it("shows a deploy-state panel for each registered repo", async () => {
@@ -77,7 +83,9 @@ describe("DeployStateSection", () => {
               { repos: [{ path: "/Users/me/a" }, { path: "/Users/me/b" }] },
               200,
             )
-          : jsonResponse({ primitives: [], skipped: [] }, 200),
+          : String(url).includes("/api/deploy-state/global")
+            ? jsonResponse({ tools: [], skipped: [] }, 200)
+            : jsonResponse({ primitives: [], skipped: [] }, 200),
       ),
     );
     renderSection();

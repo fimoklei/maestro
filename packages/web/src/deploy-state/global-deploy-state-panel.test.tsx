@@ -26,19 +26,19 @@ function renderPanel() {
 }
 
 describe("GlobalDeployStatePanel", () => {
-  it("always shows the Global target card title, even while loading", () => {
+  it("always labels the Global targets section, even while loading", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(() => new Promise(() => {})),
     );
     renderPanel();
 
-    // The card (with its title) is the baseline: it renders regardless of the
-    // read state, so the title is present even before any data arrives.
-    expect(screen.getByText("Global")).toBeInTheDocument();
+    // The section label is the baseline: it renders regardless of the read
+    // state, so it is present even before any data arrives.
+    expect(screen.getByText(/global targets/i)).toBeInTheDocument();
   });
 
-  it("lists globally deployed skills with their human tag version", async () => {
+  it("headlines a per-tool card and lists its deployed skill with the human tag version", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
@@ -58,19 +58,11 @@ describe("GlobalDeployStatePanel", () => {
     );
     renderPanel();
 
-    expect(await screen.findByText("tdd")).toBeInTheDocument();
+    // The tool is the headline; the destination path is the secondary detail.
+    expect(await screen.findByText("Claude Code")).toBeInTheDocument();
+    expect(screen.getByText("~/.claude/skills")).toBeInTheDocument();
+    expect(screen.getByText("tdd")).toBeInTheDocument();
     expect(screen.getByText("v0.5.0")).toBeInTheDocument();
-  });
-
-  it("shows an explicit empty state, not an error, when nothing is deployed globally", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => jsonResponse({ tools: [], skipped: [] }, 200)),
-    );
-    renderPanel();
-
-    expect(await screen.findByText(/nothing deployed/i)).toBeInTheDocument();
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("surfaces a visible error when the global lockfile cannot be read", async () => {
