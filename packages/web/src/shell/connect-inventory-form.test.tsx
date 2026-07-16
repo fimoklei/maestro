@@ -65,15 +65,15 @@ describe("ConnectInventoryForm", () => {
         path="/home/me/skills-only-folder"
         onPathChange={vi.fn()}
         onSubmit={vi.fn()}
-        error="That folder has skills/ but no usable git origin."
+        error="Server explanation of the refusal."
         noUsableOrigin
         onBrowse={onBrowse}
       />,
     );
 
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      /no usable git origin/i,
-    );
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent(/no usable git origin/i);
+    expect(alert).toHaveTextContent("Server explanation of the refusal.");
     await userEvent.click(
       screen.getByRole("button", { name: /browse again/i }),
     );

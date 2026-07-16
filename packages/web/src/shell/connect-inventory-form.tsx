@@ -68,17 +68,24 @@ export function ConnectInventoryForm({
       </div>
       {error ? (
         noUsableOrigin ? (
+          // Design f1-connect-reject: ▲ + bold title, explanation in muted
+          // text, "browse again…" as the primary next action. The submit
+          // button above stays (unlike the design frame) so a hand-corrected
+          // path can still be resubmitted.
           <div
             id="inventory-path-error"
             role="alert"
-            className="flex flex-col gap-2 rounded-control border border-amber-border bg-amber-bg px-3 py-2 text-amber-ink text-tag"
+            className="flex flex-col gap-1.5 rounded-control border border-amber-border bg-amber-bg px-3 py-2.5"
           >
-            <span>● {error}</span>
+            <span className="font-semibold text-amber-ink text-tag">
+              ▲ no usable git origin
+            </span>
+            <span className="text-fg-2 text-tag">{error}</span>
             {onBrowse ? (
-              <div>
+              <div className="mt-1">
                 <Button
                   type="button"
-                  variant="quiet"
+                  variant="primary"
                   size="sm"
                   onClick={onBrowse}
                 >
