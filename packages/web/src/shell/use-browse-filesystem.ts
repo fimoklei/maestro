@@ -7,7 +7,17 @@ import { requestJson } from "../api/http";
 
 export type BrowseEntry = { name: string; path: string };
 
-type BrowseResponse = { path: string; entries: BrowseEntry[] };
+export type BrowseCrumb = { name: string; path: string };
+
+// `parent` is absent at the home ceiling — that absence is the "up is
+// disabled" signal. Breadcrumbs arrive server-derived; the client never
+// splits a path itself (issue #146).
+type BrowseResponse = {
+  path: string;
+  parent?: string;
+  breadcrumbs: BrowseCrumb[];
+  entries: BrowseEntry[];
+};
 
 export function useBrowseFilesystem(path: string) {
   return useQuery({

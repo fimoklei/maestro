@@ -50,6 +50,7 @@ export {
   type VersionDrift,
 } from "./drift/parse-outdated";
 export {
+  type BrowseCrumb,
   type BrowseEntry,
   type BrowseError,
   BrowseFilesystem,
