@@ -58,6 +58,45 @@ describe("ConnectInventoryForm", () => {
     expect(onPathChange).toHaveBeenCalledWith("/x");
   });
 
+  it("renders the no-usable-origin card with a browse-again call to action", async () => {
+    const onBrowse = vi.fn();
+    render(
+      <ConnectInventoryForm
+        path="/home/me/skills-only-folder"
+        onPathChange={vi.fn()}
+        onSubmit={vi.fn()}
+        error="That folder has skills/ but no usable git origin."
+        noUsableOrigin
+        onBrowse={onBrowse}
+      />,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /no usable git origin/i,
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /browse again/i }),
+    );
+    expect(onBrowse).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the plain error text for errors other than no-usable-origin", () => {
+    render(
+      <ConnectInventoryForm
+        path=""
+        onPathChange={vi.fn()}
+        onSubmit={vi.fn()}
+        error="That directory has no skills/ folder, so it is not an inventory."
+        onBrowse={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/no skills\/ folder/i);
+    expect(
+      screen.queryByRole("button", { name: /browse again/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("submits the path passed in via props, not stale internal state", async () => {
     const onSubmit = vi.fn();
     render(

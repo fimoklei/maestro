@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { connectErrorMessage } from "../inventory/connect-error-message";
+import {
+  connectErrorMessage,
+  isNoUsableOriginError,
+} from "../inventory/connect-error-message";
 import { useConnectInventory } from "../inventory/use-connect-inventory";
 import { useInventory, useInventoryConfig } from "../inventory/use-inventory";
 import { Button } from "../ui/button";
@@ -72,6 +75,7 @@ export function InventorySourceView() {
               onPathChange={setEditedPath}
               onSubmit={handleSubmit}
               error={connectErrorMessage(connect.error)}
+              noUsableOrigin={isNoUsableOriginError(connect.error)}
               isPending={connect.isPending}
               onBrowse={browse.openBrowse}
             />

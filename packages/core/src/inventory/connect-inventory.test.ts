@@ -4,11 +4,16 @@ import { InMemoryFileSystem } from "../registry/file-system.fake";
 import { ConnectInventory } from "./connect-inventory";
 
 const CONFIG_PATH = "/home/me/.maestro/config.json";
+const PARSEABLE_ORIGIN = "git@github.com:fimoklei/agent-harness.git";
 
-function makeConnect(fs: InMemoryFileSystem): ConnectInventory {
+function makeConnect(
+  fs: InMemoryFileSystem,
+  originUrl: string | null = PARSEABLE_ORIGIN,
+): ConnectInventory {
   return new ConnectInventory({
     fs,
     store: new ConfigStore({ fs, configPath: CONFIG_PATH }),
+    originUrl: async () => originUrl,
   });
 }
 
@@ -49,6 +54,40 @@ describe("ConnectInventory", () => {
       configPath: CONFIG_PATH,
     }).read();
     expect(stored.inventoryPath).toBeUndefined();
+  });
+
+  it("rejects a clone without an origin remote as no-usable-origin and persists nothing", async () => {
+    const fs = new InMemoryFileSystem({
+      directories: {
+        "/Users/me/agent-harness": "/Users/me/agent-harness",
+        "/Users/me/agent-harness/skills": "/Users/me/agent-harness/skills",
+      },
+    });
+    const connect = makeConnect(fs, null);
+
+    const result = await connect.connect("/Users/me/agent-harness");
+
+    expect(result).toEqual({ ok: false, error: "no-usable-origin" });
+    const stored = await new ConfigStore({
+      fs,
+      configPath: CONFIG_PATH,
+    }).read();
+    expect(stored.inventoryPath).toBeUndefined();
+  });
+
+  it("rejects a clone whose origin is unparseable as no-usable-origin", async () => {
+    const fs = new InMemoryFileSystem({
+      directories: {
+        "/Users/me/agent-harness": "/Users/me/agent-harness",
+        "/Users/me/agent-harness/skills": "/Users/me/agent-harness/skills",
+      },
+    });
+    const connect = makeConnect(fs, "/Users/me/some-local-mirror");
+
+    await expect(connect.connect("/Users/me/agent-harness")).resolves.toEqual({
+      ok: false,
+      error: "no-usable-origin",
+    });
   });
 
   it("rejects a relative or traversal path as relative", async () => {

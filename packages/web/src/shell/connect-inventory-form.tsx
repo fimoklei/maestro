@@ -11,13 +11,16 @@ import { Button } from "../ui/button";
 // Connecting is delegated to onSubmit so the data logic stays in the container
 // hook. onBrowse is an optional hook point for a "browse…" picker — omit it and
 // the form behaves exactly as the path-only variant. A validation error renders
-// as readable text tied to the field via aria-describedby. Styled from Control
-// Room tokens.
+// as readable text tied to the field via aria-describedby; the no-usable-origin
+// refusal (#147) upgrades that text to an amber card with a "browse again…"
+// call to action, since the fix is picking a different folder, not editing the
+// path by hand. Styled from Control Room tokens.
 type ConnectInventoryFormProps = {
   path: string;
   onPathChange: (path: string) => void;
   onSubmit: (path: string) => void;
   error?: string | null;
+  noUsableOrigin?: boolean;
   isPending?: boolean;
   onBrowse?: () => void;
 };
@@ -27,6 +30,7 @@ export function ConnectInventoryForm({
   onPathChange,
   onSubmit,
   error,
+  noUsableOrigin = false,
   isPending = false,
   onBrowse,
 }: ConnectInventoryFormProps) {
@@ -63,13 +67,35 @@ export function ConnectInventoryForm({
         </Button>
       </div>
       {error ? (
-        <p
-          id="inventory-path-error"
-          role="alert"
-          className="text-amber-ink text-tag"
-        >
-          {error}
-        </p>
+        noUsableOrigin ? (
+          <div
+            id="inventory-path-error"
+            role="alert"
+            className="flex flex-col gap-2 rounded-control border border-amber-border bg-amber-bg px-3 py-2 text-amber-ink text-tag"
+          >
+            <span>● {error}</span>
+            {onBrowse ? (
+              <div>
+                <Button
+                  type="button"
+                  variant="quiet"
+                  size="sm"
+                  onClick={onBrowse}
+                >
+                  browse again…
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <p
+            id="inventory-path-error"
+            role="alert"
+            className="text-amber-ink text-tag"
+          >
+            {error}
+          </p>
+        )
       ) : null}
     </form>
   );

@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { connectErrorMessage } from "../inventory/connect-error-message";
+import {
+  connectErrorMessage,
+  isNoUsableOriginError,
+} from "../inventory/connect-error-message";
 import { useConnectInventory } from "../inventory/use-connect-inventory";
 import { useInventoryConfig } from "../inventory/use-inventory";
 import { BrowseDialog } from "../shell/browse-dialog";
@@ -82,6 +85,7 @@ export function WizardConnectView() {
             onPathChange={setPath}
             onSubmit={handleSubmit}
             error={error}
+            noUsableOrigin={isNoUsableOriginError(connect.error)}
             isPending={connect.isPending}
             onBrowse={browse.openBrowse}
           />

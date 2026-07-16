@@ -10,10 +10,12 @@ import {
   InventoryReader,
   NodeFileSystem,
   Registry,
+  readGitOriginUrl,
   resolveInventoryPath,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { expect } from "vitest";
+import { initGitClone } from "../helpers/git-fixture";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
 
@@ -38,7 +40,7 @@ function buildApp(configPath: string) {
   return createApp({
     registry,
     inventory,
-    connect: new ConnectInventory({ fs, store }),
+    connect: new ConnectInventory({ fs, store, originUrl: readGitOriginUrl }),
     deployState,
     deploy: stubDeploy({ inventory, registry }),
     drift: stubDrift({ registry }),
@@ -105,6 +107,7 @@ describeFeature(
         });
         When("I connect a local clone that has a skills folder", async () => {
           await writeSkill(clone, "tdd", "TDD loop");
+          await initGitClone(clone);
           response = await connect(app, clone);
         });
         Then("the connect succeeds", () => {
@@ -142,6 +145,29 @@ describeFeature(
     );
 
     Scenario(
+      "A folder with skills but no usable git origin is refused",
+      ({ Given, When, Then, And }) => {
+        Given("a cockpit with no inventory configured", () => {});
+        When(
+          "I connect a folder that has skills but no usable git origin",
+          async () => {
+            await writeSkill(clone, "tdd", "TDD loop");
+            response = await connect(app, clone);
+          },
+        );
+        Then("the connect is rejected with a readable error", async () => {
+          expect(response.status).toBe(422);
+          const body = (await response.json()) as { message: string };
+          expect(body.message).toMatch(/\S/);
+        });
+        And("the central inventory is still not configured", async () => {
+          const res = await app.request("/api/inventory/primitives");
+          expect(res.status).toBe(409);
+        });
+      },
+    );
+
+    Scenario(
       "I connect via a path found by browsing",
       ({ Given, When, Then, And }) => {
         Given("a cockpit with no inventory configured", async () => {
@@ -153,6 +179,7 @@ describeFeature(
           async () => {
             const parent = await mkdtemp(join(tmpdir(), "maestro-j11-parent-"));
             await writeSkill(join(parent, "agent-harness"), "tdd", "TDD loop");
+            await initGitClone(join(parent, "agent-harness"));
 
             const browseRes = await browseChildren(app, parent);
             expect(browseRes.status).toBe(200);

@@ -15,10 +15,12 @@ import {
   InventoryReader,
   NodeFileSystem,
   Registry,
+  readGitOriginUrl,
   resolveInventoryPath,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { initGitClone } from "../helpers/git-fixture";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
@@ -37,7 +39,7 @@ describe("inventory connect HTTP route", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  async function makeClone(): Promise<string> {
+  async function makeClone(options?: { origin?: boolean }): Promise<string> {
     const clone = join(dir, "agent-harness");
     await mkdir(join(clone, "skills", "tdd"), { recursive: true });
     await writeFile(
@@ -45,6 +47,7 @@ describe("inventory connect HTTP route", () => {
       "---\nname: tdd\ndescription: Test-driven development loop\n---\n\n# tdd\n",
       "utf8",
     );
+    await initGitClone(clone, options);
     return clone;
   }
 
@@ -60,7 +63,7 @@ describe("inventory connect HTTP route", () => {
     return createApp({
       registry,
       inventory,
-      connect: new ConnectInventory({ fs, store }),
+      connect: new ConnectInventory({ fs, store, originUrl: readGitOriginUrl }),
       deployState,
       deploy: stubDeploy({ inventory, registry }),
       drift: stubDrift({ registry }),
@@ -130,6 +133,18 @@ describe("inventory connect HTTP route", () => {
     expect(body.error).toBe("not-an-inventory");
     expect(body.message).toMatch(/\S/);
     expect(body.message).not.toContain(plain);
+  });
+
+  it("rejects a skills/ folder without a usable git origin as 422 no-usable-origin", async () => {
+    const clone = await makeClone({ origin: false });
+
+    const res = await postConnect(makeApp(), { path: clone });
+
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { error: string; message: string };
+    expect(body.error).toBe("no-usable-origin");
+    expect(body.message).toMatch(/\S/);
+    expect(body.message).not.toContain(clone);
   });
 
   it("rejects a relative path with a 400", async () => {

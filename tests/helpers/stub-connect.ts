@@ -13,5 +13,6 @@ export function stubConnect(): ConnectInventory {
       fs,
       configPath: "/nonexistent-maestro/config.json",
     }),
+    originUrl: async () => null,
   });
 }
