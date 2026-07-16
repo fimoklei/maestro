@@ -54,4 +54,13 @@ describe("parseGitOrigin", () => {
     expect(parseGitOrigin("/local/path/to/clone")).toBeNull();
     expect(parseGitOrigin("https://github.com/only-owner")).toBeNull();
   });
+
+  it("returns null for remote schemes apm cannot resolve", () => {
+    // These parse cleanly (file://server/owner/repo even carries a hostname)
+    // but can never become a resolvable apm package ref: file remotes are
+    // unreachable for apm and git:// daemon refs are unsupported by apm 0.20.
+    expect(parseGitOrigin("file:///tmp/agent-harness")).toBeNull();
+    expect(parseGitOrigin("file://server/owner/repo")).toBeNull();
+    expect(parseGitOrigin("git://git.example/acme/inventory.git")).toBeNull();
+  });
 });
