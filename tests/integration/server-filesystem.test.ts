@@ -75,12 +75,18 @@ describe("filesystem browse HTTP route", () => {
     await mkdir(join(home, "dev", "repo-a"), { recursive: true });
     await writeFile(join(home, "dev", "notes.txt"), "ignore me", "utf8");
     const realDev = await nodeRealpath(join(home, "dev"));
+    const realHome = await nodeRealpath(home);
 
     const res = await postBrowse(makeApp(), { path: join(home, "dev") });
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       path: realDev,
+      parent: realHome,
+      breadcrumbs: [
+        { name: "~", path: realHome },
+        { name: "dev", path: realDev },
+      ],
       entries: [
         { name: "repo-a", path: join(realDev, "repo-a") },
         { name: "repo-b", path: join(realDev, "repo-b") },
@@ -88,7 +94,9 @@ describe("filesystem browse HTTP route", () => {
     });
   });
 
-  it("defaults an empty path to the home root", async () => {
+  it("defaults an empty path to the home root, without a parent", async () => {
+    // At the home ceiling the JSON carries no parent key at all — the client
+    // reads its absence as "up is disabled" (issue #146).
     await mkdir(join(home, "dev"), { recursive: true });
     const realHome = await nodeRealpath(home);
 
@@ -97,6 +105,7 @@ describe("filesystem browse HTTP route", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       path: realHome,
+      breadcrumbs: [{ name: "~", path: realHome }],
       entries: [{ name: "dev", path: join(realHome, "dev") }],
     });
   });

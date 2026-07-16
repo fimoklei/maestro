@@ -44,7 +44,14 @@ function stubApi({
       if (url.startsWith("/api/filesystem/children")) {
         return browse
           ? browse()
-          : jsonResponse({ path: "/home/me", entries: [] }, 200);
+          : jsonResponse(
+              {
+                path: "/home/me",
+                breadcrumbs: [{ name: "~", path: "/home/me" }],
+                entries: [],
+              },
+              200,
+            );
       }
       if (url.startsWith("/api/registry/repos")) {
         if (init?.method === "POST") {
@@ -154,7 +161,18 @@ describe("WizardReposView", () => {
   it("fills the repo path field from a folder picked via browse", async () => {
     stubApi({
       browse: () =>
-        jsonResponse({ path: "/home/me/acme-web", entries: [] }, 200),
+        jsonResponse(
+          {
+            path: "/home/me/acme-web",
+            parent: "/home/me",
+            breadcrumbs: [
+              { name: "~", path: "/home/me" },
+              { name: "acme-web", path: "/home/me/acme-web" },
+            ],
+            entries: [],
+          },
+          200,
+        ),
     });
     renderView();
 
@@ -162,7 +180,7 @@ describe("WizardReposView", () => {
       await screen.findByRole("button", { name: /browse/i }),
     );
     await userEvent.click(
-      await screen.findByRole("button", { name: /select this folder/i }),
+      await screen.findByRole("button", { name: /use this folder/i }),
     );
 
     expect(screen.getByLabelText(/repo path/i)).toHaveValue(

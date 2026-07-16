@@ -58,6 +58,7 @@ active roadmap changes it.
 ### When writing tests → Read `.claude/rules/testing.md`
 ### When shelling out to APM or reading external files/lockfiles → Read `.claude/rules/security.md`
 ### When writing a React component or client-side data access → Read `.claude/rules/frontend.md`
+### When building UI to a design screen → Read `.claude/rules/design.md`
 ### When driving `apm` or parsing its lockfile/output → Read `.claude/rules/apm-driver.md`
 ### When committing → Use `workflow-commit`
 ### When shipping → Use `workflow-ship`

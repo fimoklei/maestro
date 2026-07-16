@@ -337,7 +337,14 @@ export function createApp(deps: AppDeps) {
       return c.json({ error: result.error, message }, status);
     }
 
-    return c.json({ path: result.path, entries: result.entries });
+    // `parent` is undefined at the home ceiling; JSON.stringify drops the key,
+    // which is the contract — the client reads its absence as "up is disabled".
+    return c.json({
+      path: result.path,
+      parent: result.parent,
+      breadcrumbs: result.breadcrumbs,
+      entries: result.entries,
+    });
   });
 
   // Per-repo deploy-state, registry-gated: a repo not in the registry is

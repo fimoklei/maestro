@@ -34,7 +34,14 @@ function stubApi({
       if (url.startsWith("/api/filesystem/children")) {
         return browse
           ? browse()
-          : jsonResponse({ path: "/home/me", entries: [] }, 200);
+          : jsonResponse(
+              {
+                path: "/home/me",
+                breadcrumbs: [{ name: "~", path: "/home/me" }],
+                entries: [],
+              },
+              200,
+            );
       }
       return connect
         ? connect()
@@ -162,14 +169,25 @@ describe("WizardConnectView", () => {
       screen.getByRole("button", { name: /browse again/i }),
     );
     expect(
-      await screen.findByRole("button", { name: /select this folder/i }),
+      await screen.findByRole("button", { name: /use this folder/i }),
     ).toBeInTheDocument();
   });
 
   it("fills the path field from a folder picked via browse", async () => {
     stubApi({
       browse: () =>
-        jsonResponse({ path: "/home/me/agent-harness", entries: [] }, 200),
+        jsonResponse(
+          {
+            path: "/home/me/agent-harness",
+            parent: "/home/me",
+            breadcrumbs: [
+              { name: "~", path: "/home/me" },
+              { name: "agent-harness", path: "/home/me/agent-harness" },
+            ],
+            entries: [],
+          },
+          200,
+        ),
     });
     renderView();
 
@@ -177,7 +195,7 @@ describe("WizardConnectView", () => {
       await screen.findByRole("button", { name: /browse/i }),
     );
     await userEvent.click(
-      await screen.findByRole("button", { name: /select this folder/i }),
+      await screen.findByRole("button", { name: /use this folder/i }),
     );
 
     expect(screen.getByLabelText(/inventory path/i)).toHaveValue(

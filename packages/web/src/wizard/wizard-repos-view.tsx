@@ -97,7 +97,7 @@ export function WizardReposView() {
       <WizardProgress activeStep={2} />
       {browse.open ? (
         <BrowseDialog
-          label="Browse for repo folder"
+          label="Select repo folder"
           onSelect={browse.selectBrowse}
           onClose={browse.closeBrowse}
         />

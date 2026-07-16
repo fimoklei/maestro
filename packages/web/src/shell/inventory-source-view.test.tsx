@@ -43,7 +43,14 @@ function stubApi({
       if (url.startsWith("/api/filesystem/children")) {
         return browse
           ? browse()
-          : jsonResponse({ path: "/home/me", entries: [] }, 200);
+          : jsonResponse(
+              {
+                path: "/home/me",
+                breadcrumbs: [{ name: "~", path: "/home/me" }],
+                entries: [],
+              },
+              200,
+            );
       }
       return connect
         ? connect()
@@ -139,7 +146,14 @@ describe("InventorySourceView", () => {
         if (url.startsWith("/api/inventory/primitives")) {
           return new Promise<Response>(() => {});
         }
-        return jsonResponse({ path: "/home/me", entries: [] }, 200);
+        return jsonResponse(
+          {
+            path: "/home/me",
+            breadcrumbs: [{ name: "~", path: "/home/me" }],
+            entries: [],
+          },
+          200,
+        );
       }),
     );
     renderView();
@@ -162,7 +176,14 @@ describe("InventorySourceView", () => {
         if (url.startsWith("/api/inventory/primitives")) {
           return jsonResponse({ message: "cannot read inventory" }, 500);
         }
-        return jsonResponse({ path: "/home/me", entries: [] }, 200);
+        return jsonResponse(
+          {
+            path: "/home/me",
+            breadcrumbs: [{ name: "~", path: "/home/me" }],
+            entries: [],
+          },
+          200,
+        );
       }),
     );
     renderView();
@@ -197,7 +218,14 @@ describe("InventorySourceView", () => {
               )
             : jsonResponse({ message: "cannot read inventory" }, 500);
         }
-        return jsonResponse({ path: "/home/me", entries: [] }, 200);
+        return jsonResponse(
+          {
+            path: "/home/me",
+            breadcrumbs: [{ name: "~", path: "/home/me" }],
+            entries: [],
+          },
+          200,
+        );
       }),
     );
     renderView();
@@ -229,7 +257,14 @@ describe("InventorySourceView", () => {
           return jsonResponse({ primitives: [skill("tdd")] }, 200);
         }
         if (url.startsWith("/api/filesystem/children")) {
-          return jsonResponse({ path: "/home/me", entries: [] }, 200);
+          return jsonResponse(
+            {
+              path: "/home/me",
+              breadcrumbs: [{ name: "~", path: "/home/me" }],
+              entries: [],
+            },
+            200,
+          );
         }
         const body = JSON.parse(String(init?.body)) as { path: string };
         configPath = body.path;
