@@ -14,13 +14,22 @@ export type ToolDeployState = {
   primitives: DeployedPrimitive[];
 };
 
+// This hook does not Zod-validate the wire shape (that boundary is the server —
+// see .claude/rules/architecture.md), so `tools` is treated as possibly absent
+// and defaulted once in `select`. A present-but-empty array is the meaningful
+// "detected zero tools" signal; a fully absent array is "not read yet".
 type GlobalDeployStateResponse = {
-  tools: ToolDeployState[];
+  tools?: ToolDeployState[];
   skipped: SkippedEntry[];
 };
 
 export type GlobalDeployStateView = {
   tools: ToolDeployState[];
+  // The detected-tool set for the deploy picker's Global option (#134).
+  // Undefined until the read resolves; an empty array once it does means the
+  // machine has no supported tool. Derived here so the picker stays
+  // presentational (frontend.md: hooks hold logic).
+  detectedTools: string[] | undefined;
   primitives: DeployedPrimitive[];
   skipped: SkippedEntry[];
 };
@@ -30,11 +39,15 @@ export function useGlobalDeployState(enabled = true) {
     queryKey: ["deploy-state", "global"],
     queryFn: () =>
       requestJson<GlobalDeployStateResponse>("/api/deploy-state/global"),
-    select: (data): GlobalDeployStateView => ({
-      tools: data.tools,
-      skipped: data.skipped,
-      primitives: flattenPrimitives(data.tools),
-    }),
+    select: (data): GlobalDeployStateView => {
+      const tools = data.tools ?? [];
+      return {
+        tools,
+        detectedTools: data.tools?.map((group) => group.tool),
+        skipped: data.skipped,
+        primitives: flattenPrimitives(tools),
+      };
+    },
     enabled,
   });
 }
