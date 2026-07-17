@@ -21,10 +21,8 @@ Start here, in order:
 
 1. [`CONTEXT.md`](CONTEXT.md) — glossary
 2. [`docs/brief.md`](docs/brief.md) — why Maestro exists, the problem, what it is
-3. [`docs/jobs/job-map.md`](docs/jobs/job-map.md) — the job hierarchy and MVP1 coverage
-4. [`docs/operating-model.md`](docs/operating-model.md) — how product development is run
+3. [`docs/jobs.md`](docs/jobs.md) — the board: what is built now, next, later, and done
+4. [`docs/operating-model.md`](docs/operating-model.md) — how product development is run: one board, one loop
 5. [`docs/adr/`](docs/adr/) — binding decisions
 
-The MVP roadmap (`docs/roadmap/`) is developed next.
-
-> **Status:** concept locked, MVP1 = solo "see + steer" cockpit. Roadmap pending.
+> **Status:** the see-and-steer cockpit works for skills — see the DONE lane on [the board](docs/jobs.md).
