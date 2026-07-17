@@ -48,6 +48,13 @@ Paste-a-path stays supported. Browse is **additive**, not a replacement.
   registration through the shared form.
 - Moderately hard to reverse once dogfooded: removing the picker (keeping paste)
   is a capability regression, not a no-op.
+- **Amendment (issue #150):** the endpoint also reports per-entry facts — is a
+  git repo, has a `skills/` subdirectory — computed for every child while still
+  bounded by the same home-root ceiling; no new surface beyond what the picker
+  already lists. The endpoint stays fact-only: it never decides what to badge.
+  That decision (register mode badges `git` repos and already-registered ones;
+  connect mode badges folders that look like an inventory) lives entirely on
+  the client, keeping the server registry-agnostic.
 
 ## Rejected alternatives
 

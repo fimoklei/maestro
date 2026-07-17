@@ -15,7 +15,19 @@ export type BrowseError =
   | "not-a-directory"
   | "unreadable";
 
-export type BrowseEntry = { name: string; path: string };
+// Facts about a browse entry — never a badge decision. The client decides
+// what to badge per mode (register vs. connect); the server only reports
+// what it observed on disk (issue #150).
+export type BrowseEntryFacts = {
+  isGitRepo: boolean;
+  hasSkillsSubdir: boolean;
+};
+
+export type BrowseEntry = {
+  name: string;
+  path: string;
+  facts: BrowseEntryFacts;
+};
 
 // One clickable breadcrumb segment. The home-root segment is named "~" (the
 // file-browser convention); every other segment carries its directory name.
@@ -100,9 +112,24 @@ export class BrowseFilesystem {
     } catch {
       return { ok: false, error: "unreadable" };
     }
-    const entries = names
-      .map((name) => ({ name, path: join(real, name) }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    // Facts cost a couple of extra syscalls per entry (a repo directory and
+    // a permission-denied listing are both bounded in size — see ADR-0009's
+    // amendment); enrichment is always on rather than opt-in, and stays
+    // parallel per entry so the picker isn't gated on a slow serial scan.
+    const entries = await Promise.all(
+      names
+        .map((name) => ({ name, path: join(real, name) }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(async (entry) => ({
+          ...entry,
+          facts: {
+            isGitRepo: await this.fs.exists(join(entry.path, ".git")),
+            hasSkillsSubdir: await this.fs.isDirectory(
+              join(entry.path, "skills"),
+            ),
+          },
+        })),
+    );
 
     // Parent and breadcrumbs derive from the *resolved* path — a symlinked
     // request must not produce an "up" that lands on a non-existent path. Both

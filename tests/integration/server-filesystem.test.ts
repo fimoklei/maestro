@@ -88,10 +88,64 @@ describe("filesystem browse HTTP route", () => {
         { name: "dev", path: realDev },
       ],
       entries: [
-        { name: "repo-a", path: join(realDev, "repo-a") },
-        { name: "repo-b", path: join(realDev, "repo-b") },
+        {
+          name: "repo-a",
+          path: join(realDev, "repo-a"),
+          facts: { isGitRepo: false, hasSkillsSubdir: false },
+        },
+        {
+          name: "repo-b",
+          path: join(realDev, "repo-b"),
+          facts: { isGitRepo: false, hasSkillsSubdir: false },
+        },
       ],
     });
+  });
+
+  it("reports git-repo and skills/-subdir facts for real directories", async () => {
+    // A directory-form .git (the common case).
+    await mkdir(join(home, "repo", ".git"), { recursive: true });
+    // A file-form .git, as a git worktree has.
+    await mkdir(join(home, "worktree"), { recursive: true });
+    await writeFile(
+      join(home, "worktree", ".git"),
+      "gitdir: ../repo/.git/worktrees/x",
+      "utf8",
+    );
+    // A folder that looks like an inventory.
+    await mkdir(join(home, "inventory", "skills"), { recursive: true });
+    // A plain folder with neither.
+    await mkdir(join(home, "plain"), { recursive: true });
+    const realHome = await nodeRealpath(home);
+
+    const res = await postBrowse(makeApp(), { path: home });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      entries: { name: string; facts: unknown }[];
+    };
+    expect(body.entries).toEqual([
+      {
+        name: "inventory",
+        path: join(realHome, "inventory"),
+        facts: { isGitRepo: false, hasSkillsSubdir: true },
+      },
+      {
+        name: "plain",
+        path: join(realHome, "plain"),
+        facts: { isGitRepo: false, hasSkillsSubdir: false },
+      },
+      {
+        name: "repo",
+        path: join(realHome, "repo"),
+        facts: { isGitRepo: true, hasSkillsSubdir: false },
+      },
+      {
+        name: "worktree",
+        path: join(realHome, "worktree"),
+        facts: { isGitRepo: true, hasSkillsSubdir: false },
+      },
+    ]);
   });
 
   it("defaults an empty path to the home root, without a parent", async () => {
@@ -106,7 +160,13 @@ describe("filesystem browse HTTP route", () => {
     expect(await res.json()).toEqual({
       path: realHome,
       breadcrumbs: [{ name: "~", path: realHome }],
-      entries: [{ name: "dev", path: join(realHome, "dev") }],
+      entries: [
+        {
+          name: "dev",
+          path: join(realHome, "dev"),
+          facts: { isGitRepo: false, hasSkillsSubdir: false },
+        },
+      ],
     });
   });
 

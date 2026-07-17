@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ConfigUnreachableNotice } from "../inventory/config-unreachable-notice";
 import { useInventoryConfig } from "../inventory/use-inventory";
@@ -22,6 +22,13 @@ export function WizardReposView() {
   const [path, setPath] = useState("");
   const browse = useBrowsePicker(setPath);
   const repos = registry.data?.repos ?? [];
+  // Client-side join for the browse dialog's "● registered" badge (issue
+  // #150) — the server stays registry-agnostic; this is a hint, not a
+  // guarantee (a stale set just skips the badge, never blocks registration).
+  const registeredPaths = useMemo(
+    () => new Set(repos.map((repo) => repo.path)),
+    [repos],
+  );
   // Blocks a deep link/bookmark into this step by a still-unconfigured user —
   // the register step only makes sense after connect (the gate only guards
   // /welcome itself, not this nested route; see first-run-gate.tsx). The
@@ -97,7 +104,8 @@ export function WizardReposView() {
       <WizardProgress activeStep={2} />
       {browse.open ? (
         <BrowseDialog
-          label="Select repo folder"
+          mode="register"
+          registeredPaths={registeredPaths}
           onSelect={browse.selectBrowse}
           onClose={browse.closeBrowse}
         />

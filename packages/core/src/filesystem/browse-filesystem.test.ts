@@ -33,8 +33,55 @@ describe("BrowseFilesystem", () => {
         { name: "dev", path: "/home/user/dev" },
       ],
       entries: [
-        { name: "repo-a", path: "/home/user/dev/repo-a" },
-        { name: "repo-b", path: "/home/user/dev/repo-b" },
+        {
+          name: "repo-a",
+          path: "/home/user/dev/repo-a",
+          facts: { isGitRepo: false, hasSkillsSubdir: false },
+        },
+        {
+          name: "repo-b",
+          path: "/home/user/dev/repo-b",
+          facts: { isGitRepo: false, hasSkillsSubdir: false },
+        },
+      ],
+    });
+  });
+
+  it("reports each entry's git-repo and skills/-subdir facts", async () => {
+    // A repo with a directory-form .git (the common case), a worktree with a
+    // file-form .git (`.git` points at the main repo's worktrees dir instead
+    // of being a directory itself), a folder with a skills/ subdir (looks
+    // like an inventory), and a plain folder with neither.
+    const browse = makeBrowse({
+      directories: {
+        "/home/user": "/home/user",
+        "/home/user/dev": "/home/user/dev",
+        "/home/user/dev/repo/.git": "/home/user/dev/repo/.git",
+        "/home/user/dev/inventory/skills": "/home/user/dev/inventory/skills",
+      },
+      files: {
+        "/home/user/dev/worktree/.git": "gitdir: ../repo/.git/worktrees/x",
+      },
+      listings: {
+        "/home/user/dev": ["repo", "worktree", "inventory", "plain"],
+      },
+    });
+
+    const result = await browse.browse("/home/user/dev");
+
+    expect(result).toMatchObject({
+      ok: true,
+      entries: [
+        {
+          name: "inventory",
+          facts: { isGitRepo: false, hasSkillsSubdir: true },
+        },
+        { name: "plain", facts: { isGitRepo: false, hasSkillsSubdir: false } },
+        { name: "repo", facts: { isGitRepo: true, hasSkillsSubdir: false } },
+        {
+          name: "worktree",
+          facts: { isGitRepo: true, hasSkillsSubdir: false },
+        },
       ],
     });
   });
@@ -51,7 +98,13 @@ describe("BrowseFilesystem", () => {
       ok: true,
       path: "/home/user",
       breadcrumbs: [{ name: "~", path: "/home/user" }],
-      entries: [{ name: "dev", path: "/home/user/dev" }],
+      entries: [
+        {
+          name: "dev",
+          path: "/home/user/dev",
+          facts: { isGitRepo: false, hasSkillsSubdir: false },
+        },
+      ],
     });
   });
 

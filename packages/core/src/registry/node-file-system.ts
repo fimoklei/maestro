@@ -38,6 +38,15 @@ export class NodeFileSystem implements FileSystemPort {
     }
   }
 
+  async exists(path: string): Promise<boolean> {
+    try {
+      await stat(path);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async readFile(path: string): Promise<string | null> {
     try {
       return await readFile(path, "utf8");

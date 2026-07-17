@@ -132,6 +132,7 @@ export function InventorySourceView() {
       </Card>
       {browse.open ? (
         <BrowseDialog
+          mode="connect"
           onSelect={browse.selectBrowse}
           onClose={browse.closeBrowse}
         />

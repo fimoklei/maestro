@@ -5,7 +5,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 
-export type BrowseEntry = { name: string; path: string };
+// Facts the server observed on disk — never a badge decision. The client
+// decides what to badge per mode (issue #150).
+export type BrowseEntryFacts = { isGitRepo: boolean; hasSkillsSubdir: boolean };
+
+export type BrowseEntry = {
+  name: string;
+  path: string;
+  facts: BrowseEntryFacts;
+};
 
 export type BrowseCrumb = { name: string; path: string };
 

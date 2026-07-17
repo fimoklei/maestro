@@ -42,6 +42,12 @@ export class InMemoryFileSystem implements FileSystemPort {
     return [...this.directories.values()].includes(path);
   }
 
+  async exists(path: string): Promise<boolean> {
+    return (
+      [...this.directories.values()].includes(path) || this.files.has(path)
+    );
+  }
+
   async readFile(path: string): Promise<string | null> {
     return this.files.get(path) ?? null;
   }
