@@ -2,6 +2,7 @@
 // that touches node:fs. Writes atomically (temp file + rename) so a crash mid-
 // write never leaves a half-written config behind.
 import {
+  lstat,
   mkdir,
   readdir,
   readFile,
@@ -38,9 +39,14 @@ export class NodeFileSystem implements FileSystemPort {
     }
   }
 
+  // lstat, not stat: a caller asking "is there an entry here" must not follow
+  // a symlink to find out — that would resolve (and so disclose whether it
+  // exists) a target the caller never validated against any root ceiling
+  // (e.g. the browse facts probe, ADR-0009). The entry itself existing is
+  // reported regardless of where it points.
   async exists(path: string): Promise<boolean> {
     try {
-      await stat(path);
+      await lstat(path);
       return true;
     } catch {
       return false;

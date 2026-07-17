@@ -148,6 +148,62 @@ describe("filesystem browse HTTP route", () => {
     ]);
   });
 
+  it("never leaks whether a symlinked .git or skills/ target outside home exists (Codex review, #150)", async () => {
+    // A fact probe that follows a symlink turns a boolean into an oracle: an
+    // attacker who can already plant a symlink inside home (the only
+    // precondition) could otherwise learn whether an arbitrary path outside
+    // the home ceiling exists by pointing ".git"/"skills" at it and reading
+    // the fact back. Both an existing and a non-existent outside target must
+    // report identically — that sameness is the proof there is no leak.
+    await mkdir(join(home, "git-to-existing"), { recursive: true });
+    await symlink(outside, join(home, "git-to-existing", ".git"));
+    await mkdir(join(home, "git-to-missing"), { recursive: true });
+    await symlink(
+      join(outside, "does-not-exist"),
+      join(home, "git-to-missing", ".git"),
+    );
+    await mkdir(join(home, "skills-to-existing"), { recursive: true });
+    await symlink(outside, join(home, "skills-to-existing", "skills"));
+    await mkdir(join(home, "skills-to-missing"), { recursive: true });
+    await symlink(
+      join(outside, "does-not-exist"),
+      join(home, "skills-to-missing", "skills"),
+    );
+
+    const res = await postBrowse(makeApp(), { path: home });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      entries: {
+        name: string;
+        facts: { isGitRepo: boolean; hasSkillsSubdir: boolean };
+      }[];
+    };
+    const factsFor = (name: string) =>
+      body.entries.find((e) => e.name === name)?.facts;
+
+    // A symlinked .git reports true unconditionally — its target is never
+    // resolved, so an existing and a missing outside target read the same.
+    expect(factsFor("git-to-existing")).toEqual({
+      isGitRepo: true,
+      hasSkillsSubdir: false,
+    });
+    expect(factsFor("git-to-missing")).toEqual({
+      isGitRepo: true,
+      hasSkillsSubdir: false,
+    });
+    // A symlinked skills/ is invisible to the directory listing this fact
+    // reads from — never true, regardless of what it points at.
+    expect(factsFor("skills-to-existing")).toEqual({
+      isGitRepo: false,
+      hasSkillsSubdir: false,
+    });
+    expect(factsFor("skills-to-missing")).toEqual({
+      isGitRepo: false,
+      hasSkillsSubdir: false,
+    });
+  });
+
   it("defaults an empty path to the home root, without a parent", async () => {
     // At the home ceiling the JSON carries no parent key at all — the client
     // reads its absence as "up is disabled" (issue #146).

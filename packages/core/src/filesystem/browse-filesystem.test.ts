@@ -57,13 +57,16 @@ describe("BrowseFilesystem", () => {
         "/home/user": "/home/user",
         "/home/user/dev": "/home/user/dev",
         "/home/user/dev/repo/.git": "/home/user/dev/repo/.git",
-        "/home/user/dev/inventory/skills": "/home/user/dev/inventory/skills",
       },
       files: {
         "/home/user/dev/worktree/.git": "gitdir: ../repo/.git/worktrees/x",
       },
       listings: {
         "/home/user/dev": ["repo", "worktree", "inventory", "plain"],
+        // hasSkillsSubdir reads the directory listing (not a direct
+        // isDirectory probe) so a symlinked "skills" can never be resolved
+        // and disclosed — see the comment in browse-filesystem.ts.
+        "/home/user/dev/inventory": ["skills"],
       },
     });
 

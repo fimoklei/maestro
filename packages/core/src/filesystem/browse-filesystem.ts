@@ -116,19 +116,30 @@ export class BrowseFilesystem {
     // a permission-denied listing are both bounded in size — see ADR-0009's
     // amendment); enrichment is always on rather than opt-in, and stays
     // parallel per entry so the picker isn't gated on a slow serial scan.
+    //
+    // Neither probe follows a symlink to a target outside the home ceiling:
+    // `exists` never follows the final symlink (Node adapter uses lstat), and
+    // `hasSkillsSubdir` reuses listDirectoryNames rather than isDirectory —
+    // the same dirent-based check that already excludes symlinked entries
+    // from a directory's own listing — so a "skills" symlink pointing outside
+    // home is invisible here too, not silently resolved and disclosed.
     const entries = await Promise.all(
       names
         .map((name) => ({ name, path: join(real, name) }))
         .sort((a, b) => a.name.localeCompare(b.name))
-        .map(async (entry) => ({
-          ...entry,
-          facts: {
-            isGitRepo: await this.fs.exists(join(entry.path, ".git")),
-            hasSkillsSubdir: await this.fs.isDirectory(
-              join(entry.path, "skills"),
-            ),
-          },
-        })),
+        .map(async (entry) => {
+          const [isGitRepo, children] = await Promise.all([
+            this.fs.exists(join(entry.path, ".git")),
+            this.fs.listDirectoryNames(entry.path).catch(() => [] as string[]),
+          ]);
+          return {
+            ...entry,
+            facts: {
+              isGitRepo,
+              hasSkillsSubdir: children.includes("skills"),
+            },
+          };
+        }),
     );
 
     // Parent and breadcrumbs derive from the *resolved* path — a symlinked

@@ -11,8 +11,10 @@ export interface FileSystemPort {
   // True when the path exists and is a directory.
   isDirectory(path: string): Promise<boolean>;
 
-  // True when the path exists, regardless of whether it is a file or a
-  // directory (e.g. a git worktree's ".git" is a file, not a directory).
+  // True when the path has a filesystem entry — file, directory, or symlink
+  // — WITHOUT following a trailing symlink to check what it points at (e.g.
+  // a git worktree's ".git" is a file, not a directory; a symlinked ".git"
+  // still counts, but its target is never resolved or disclosed).
   exists(path: string): Promise<boolean>;
 
   // Reads a UTF-8 file, or null when the file does not exist. Other read
