@@ -123,11 +123,26 @@ export class BrowseFilesystem {
     // the same dirent-based check that already excludes symlinked entries
     // from a directory's own listing — so a "skills" symlink pointing outside
     // home is invisible here too, not silently resolved and disclosed.
+    //
+    // `entry.path` itself was a genuine directory when `real` was listed
+    // above, but a concurrent process with write access to `real` could
+    // since have swapped it for a symlink out of home (a TOCTOU race —
+    // Codex review, #150). isDirectoryEntry is re-checked immediately before
+    // probing each entry, right up against the point of use, to shrink that
+    // window as far as Node's fs/promises API allows without O_NOFOLLOW file
+    // descriptors; on a lost race the entry reports no facts rather than
+    // resolving anything through the swapped-in symlink.
     const entries = await Promise.all(
       names
         .map((name) => ({ name, path: join(real, name) }))
         .sort((a, b) => a.name.localeCompare(b.name))
         .map(async (entry) => {
+          if (!(await this.fs.isDirectoryEntry(entry.path))) {
+            return {
+              ...entry,
+              facts: { isGitRepo: false, hasSkillsSubdir: false },
+            };
+          }
           const [isGitRepo, children] = await Promise.all([
             this.fs.exists(join(entry.path, ".git")),
             this.fs.listDirectoryNames(entry.path).catch(() => [] as string[]),

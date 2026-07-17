@@ -56,7 +56,11 @@ describe("BrowseFilesystem", () => {
       directories: {
         "/home/user": "/home/user",
         "/home/user/dev": "/home/user/dev",
+        "/home/user/dev/repo": "/home/user/dev/repo",
         "/home/user/dev/repo/.git": "/home/user/dev/repo/.git",
+        "/home/user/dev/worktree": "/home/user/dev/worktree",
+        "/home/user/dev/inventory": "/home/user/dev/inventory",
+        "/home/user/dev/plain": "/home/user/dev/plain",
       },
       files: {
         "/home/user/dev/worktree/.git": "gitdir: ../repo/.git/worktrees/x",
@@ -84,6 +88,39 @@ describe("BrowseFilesystem", () => {
         {
           name: "worktree",
           facts: { isGitRepo: true, hasSkillsSubdir: false },
+        },
+      ],
+    });
+  });
+
+  it("reports no facts for an entry that raced away from being a directory before probing", async () => {
+    // A directory that was genuine when `dev` was first listed but that a
+    // concurrent process swapped for a symlink out of home before the facts
+    // probe ran (TOCTOU — Codex review, #150). isDirectoryEntry must be
+    // rechecked immediately before probing; on a lost race, no probe runs
+    // and no fact is reported, rather than resolving through the swap.
+    const browse = makeBrowse({
+      directories: {
+        "/home/user": "/home/user",
+        "/home/user/dev": "/home/user/dev",
+        "/home/user/dev/swapped": "/home/user/dev/swapped",
+        "/home/user/dev/swapped/.git": "/home/user/dev/swapped/.git",
+      },
+      listings: {
+        "/home/user/dev": ["swapped"],
+        "/home/user/dev/swapped": ["skills"],
+      },
+      racedAwayAsDirectory: ["/home/user/dev/swapped"],
+    });
+
+    const result = await browse.browse("/home/user/dev");
+
+    expect(result).toMatchObject({
+      ok: true,
+      entries: [
+        {
+          name: "swapped",
+          facts: { isGitRepo: false, hasSkillsSubdir: false },
         },
       ],
     });

@@ -39,6 +39,14 @@ export class NodeFileSystem implements FileSystemPort {
     }
   }
 
+  async isDirectoryEntry(path: string): Promise<boolean> {
+    try {
+      return (await lstat(path)).isDirectory();
+    } catch {
+      return false;
+    }
+  }
+
   // lstat, not stat: a caller asking "is there an entry here" must not follow
   // a symlink to find out — that would resolve (and so disclose whether it
   // exists) a target the caller never validated against any root ceiling
