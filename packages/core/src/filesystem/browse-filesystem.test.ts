@@ -33,8 +33,95 @@ describe("BrowseFilesystem", () => {
         { name: "dev", path: "/home/user/dev" },
       ],
       entries: [
-        { name: "repo-a", path: "/home/user/dev/repo-a" },
-        { name: "repo-b", path: "/home/user/dev/repo-b" },
+        {
+          name: "repo-a",
+          path: "/home/user/dev/repo-a",
+          facts: { isGitRepo: false, hasSkillsSubdir: false },
+        },
+        {
+          name: "repo-b",
+          path: "/home/user/dev/repo-b",
+          facts: { isGitRepo: false, hasSkillsSubdir: false },
+        },
+      ],
+    });
+  });
+
+  it("reports each entry's git-repo and skills/-subdir facts", async () => {
+    // A repo with a directory-form .git (the common case), a worktree with a
+    // file-form .git (`.git` points at the main repo's worktrees dir instead
+    // of being a directory itself), a folder with a skills/ subdir (looks
+    // like an inventory), and a plain folder with neither.
+    const browse = makeBrowse({
+      directories: {
+        "/home/user": "/home/user",
+        "/home/user/dev": "/home/user/dev",
+        "/home/user/dev/repo": "/home/user/dev/repo",
+        "/home/user/dev/repo/.git": "/home/user/dev/repo/.git",
+        "/home/user/dev/worktree": "/home/user/dev/worktree",
+        "/home/user/dev/inventory": "/home/user/dev/inventory",
+        "/home/user/dev/plain": "/home/user/dev/plain",
+      },
+      files: {
+        "/home/user/dev/worktree/.git": "gitdir: ../repo/.git/worktrees/x",
+      },
+      listings: {
+        "/home/user/dev": ["repo", "worktree", "inventory", "plain"],
+        // hasSkillsSubdir reads the directory listing (not a direct
+        // isDirectory probe) so a symlinked "skills" can never be resolved
+        // and disclosed — see the comment in browse-filesystem.ts.
+        "/home/user/dev/inventory": ["skills"],
+      },
+    });
+
+    const result = await browse.browse("/home/user/dev");
+
+    expect(result).toMatchObject({
+      ok: true,
+      entries: [
+        {
+          name: "inventory",
+          facts: { isGitRepo: false, hasSkillsSubdir: true },
+        },
+        { name: "plain", facts: { isGitRepo: false, hasSkillsSubdir: false } },
+        { name: "repo", facts: { isGitRepo: true, hasSkillsSubdir: false } },
+        {
+          name: "worktree",
+          facts: { isGitRepo: true, hasSkillsSubdir: false },
+        },
+      ],
+    });
+  });
+
+  it("reports no facts for an entry that raced away from being a directory before probing", async () => {
+    // A directory that was genuine when `dev` was first listed but that a
+    // concurrent process swapped for a symlink out of home before the facts
+    // probe ran (TOCTOU — Codex review, #150). isDirectoryEntry must be
+    // rechecked immediately before probing; on a lost race, no probe runs
+    // and no fact is reported, rather than resolving through the swap.
+    const browse = makeBrowse({
+      directories: {
+        "/home/user": "/home/user",
+        "/home/user/dev": "/home/user/dev",
+        "/home/user/dev/swapped": "/home/user/dev/swapped",
+        "/home/user/dev/swapped/.git": "/home/user/dev/swapped/.git",
+      },
+      listings: {
+        "/home/user/dev": ["swapped"],
+        "/home/user/dev/swapped": ["skills"],
+      },
+      racedAwayAsDirectory: ["/home/user/dev/swapped"],
+    });
+
+    const result = await browse.browse("/home/user/dev");
+
+    expect(result).toMatchObject({
+      ok: true,
+      entries: [
+        {
+          name: "swapped",
+          facts: { isGitRepo: false, hasSkillsSubdir: false },
+        },
       ],
     });
   });
@@ -51,7 +138,13 @@ describe("BrowseFilesystem", () => {
       ok: true,
       path: "/home/user",
       breadcrumbs: [{ name: "~", path: "/home/user" }],
-      entries: [{ name: "dev", path: "/home/user/dev" }],
+      entries: [
+        {
+          name: "dev",
+          path: "/home/user/dev",
+          facts: { isGitRepo: false, hasSkillsSubdir: false },
+        },
+      ],
     });
   });
 

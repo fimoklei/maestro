@@ -15,7 +15,19 @@ export type BrowseError =
   | "not-a-directory"
   | "unreadable";
 
-export type BrowseEntry = { name: string; path: string };
+// Facts about a browse entry — never a badge decision. The client decides
+// what to badge per mode (register vs. connect); the server only reports
+// what it observed on disk (issue #150).
+export type BrowseEntryFacts = {
+  isGitRepo: boolean;
+  hasSkillsSubdir: boolean;
+};
+
+export type BrowseEntry = {
+  name: string;
+  path: string;
+  facts: BrowseEntryFacts;
+};
 
 // One clickable breadcrumb segment. The home-root segment is named "~" (the
 // file-browser convention); every other segment carries its directory name.
@@ -100,9 +112,50 @@ export class BrowseFilesystem {
     } catch {
       return { ok: false, error: "unreadable" };
     }
-    const entries = names
-      .map((name) => ({ name, path: join(real, name) }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    // Facts cost a couple of extra syscalls per entry (a repo directory and
+    // a permission-denied listing are both bounded in size — see ADR-0009's
+    // amendment); enrichment is always on rather than opt-in, and stays
+    // parallel per entry so the picker isn't gated on a slow serial scan.
+    //
+    // Neither probe follows a symlink to a target outside the home ceiling:
+    // `exists` never follows the final symlink (Node adapter uses lstat), and
+    // `hasSkillsSubdir` reuses listDirectoryNames rather than isDirectory —
+    // the same dirent-based check that already excludes symlinked entries
+    // from a directory's own listing — so a "skills" symlink pointing outside
+    // home is invisible here too, not silently resolved and disclosed.
+    //
+    // `entry.path` itself was a genuine directory when `real` was listed
+    // above, but a concurrent process with write access to `real` could
+    // since have swapped it for a symlink out of home (a TOCTOU race —
+    // Codex review, #150). isDirectoryEntry is re-checked immediately before
+    // probing each entry, right up against the point of use, to shrink that
+    // window as far as Node's fs/promises API allows without O_NOFOLLOW file
+    // descriptors; on a lost race the entry reports no facts rather than
+    // resolving anything through the swapped-in symlink.
+    const entries = await Promise.all(
+      names
+        .map((name) => ({ name, path: join(real, name) }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(async (entry) => {
+          if (!(await this.fs.isDirectoryEntry(entry.path))) {
+            return {
+              ...entry,
+              facts: { isGitRepo: false, hasSkillsSubdir: false },
+            };
+          }
+          const [isGitRepo, children] = await Promise.all([
+            this.fs.exists(join(entry.path, ".git")),
+            this.fs.listDirectoryNames(entry.path).catch(() => [] as string[]),
+          ]);
+          return {
+            ...entry,
+            facts: {
+              isGitRepo,
+              hasSkillsSubdir: children.includes("skills"),
+            },
+          };
+        }),
+    );
 
     // Parent and breadcrumbs derive from the *resolved* path — a symlinked
     // request must not produce an "up" that lands on a non-existent path. Both

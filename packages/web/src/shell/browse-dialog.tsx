@@ -2,6 +2,7 @@ import { useState } from "react";
 import { HttpError } from "../api/http";
 import { Button } from "../ui/button";
 import { BrowseBreadcrumbs } from "./browse-breadcrumbs";
+import { EntryBadges } from "./entry-badges";
 import { useBrowseFilesystem } from "./use-browse-filesystem";
 
 // A read-only directory picker (ADR-0009): lists the current directory's
@@ -12,17 +13,37 @@ import { useBrowseFilesystem } from "./use-browse-filesystem";
 // separator math to get wrong (issue #146). The anatomy — header, toolbar,
 // listing, footer separated by row dividers — mirrors the Control Room design
 // (First run story flow, screens 02b/02c/03b).
+//
+// The dialog is mode-aware (issue #150): the server only reports per-entry
+// facts (is a git repo, has a skills/ subdir) — never a badge decision. This
+// component decides what to badge per mode: register mode badges `git` repos
+// and already-registered ones; connect mode badges folders that look like an
+// inventory. The inventory badge is a hint, not a guarantee — connect
+// validation remains the authority.
+export type BrowseDialogMode = "register" | "connect";
+
+const dialogTitle: Record<BrowseDialogMode, string> = {
+  connect: "Select inventory folder",
+  register: "Select repo folder",
+};
+
 type BrowseDialogProps = {
+  mode: BrowseDialogMode;
   onSelect: (path: string) => void;
   onClose: () => void;
-  label?: string;
+  // Register mode only: entry paths already in the registry, for the
+  // client-side "● registered" join (issue #150) — the server stays
+  // registry-agnostic.
+  registeredPaths?: ReadonlySet<string>;
 };
 
 export function BrowseDialog({
+  mode,
   onSelect,
   onClose,
-  label = "Select inventory folder",
+  registeredPaths,
 }: BrowseDialogProps) {
+  const label = dialogTitle[mode];
   // The path being requested; "" asks the server for the home root.
   const [currentRequest, setCurrentRequest] = useState("");
   // The footer's paste-a-path field: confirming it hands the typed path to the
@@ -123,8 +144,15 @@ export function BrowseDialog({
                 <span className="min-w-0 flex-1 truncate font-mono text-desc text-fg">
                   {entry.name}/
                 </span>
-                <span className="w-3.5 text-right font-mono text-data text-dim">
-                  →
+                <span className="flex shrink-0 items-center gap-1.5">
+                  <EntryBadges
+                    mode={mode}
+                    entry={entry}
+                    registeredPaths={registeredPaths}
+                  />
+                  <span className="w-3.5 text-right font-mono text-data text-dim">
+                    →
+                  </span>
                 </span>
               </button>
             ))

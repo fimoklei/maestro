@@ -12,6 +12,11 @@ type FakeSeed = {
   // Directories that exist but reject when listed (e.g. permission denied),
   // so callers can exercise the unreadable-directory path.
   unreadable?: string[];
+  // Paths that were a genuine directory when first listed but no longer
+  // report as one on a later isDirectoryEntry recheck — models a TOCTOU
+  // race where a concurrent process swaps the directory for a symlink
+  // between listing and probing it (browse-filesystem.ts, ADR-0009).
+  racedAwayAsDirectory?: string[];
 };
 
 export class InMemoryFileSystem implements FileSystemPort {
@@ -19,12 +24,14 @@ export class InMemoryFileSystem implements FileSystemPort {
   private readonly files: Map<string, string>;
   private readonly listings: Map<string, string[]>;
   private readonly unreadable: Set<string>;
+  private readonly racedAwayAsDirectory: Set<string>;
 
   constructor(seed: FakeSeed = {}) {
     this.directories = new Map(Object.entries(seed.directories ?? {}));
     this.files = new Map(Object.entries(seed.files ?? {}));
     this.listings = new Map(Object.entries(seed.listings ?? {}));
     this.unreadable = new Set(seed.unreadable ?? []);
+    this.racedAwayAsDirectory = new Set(seed.racedAwayAsDirectory ?? []);
   }
 
   async realpath(path: string): Promise<string> {
@@ -40,6 +47,22 @@ export class InMemoryFileSystem implements FileSystemPort {
 
   async isDirectory(path: string): Promise<boolean> {
     return [...this.directories.values()].includes(path);
+  }
+
+  // Matches isDirectory unless the path was seeded as raced away — the fake
+  // has no real symlink concept, so that seed is the only way to model a
+  // directory no longer being one by the time of a second check.
+  async isDirectoryEntry(path: string): Promise<boolean> {
+    if (this.racedAwayAsDirectory.has(path)) {
+      return false;
+    }
+    return [...this.directories.values()].includes(path);
+  }
+
+  async exists(path: string): Promise<boolean> {
+    return (
+      [...this.directories.values()].includes(path) || this.files.has(path)
+    );
   }
 
   async readFile(path: string): Promise<string | null> {

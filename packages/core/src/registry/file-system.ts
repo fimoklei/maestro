@@ -11,6 +11,20 @@ export interface FileSystemPort {
   // True when the path exists and is a directory.
   isDirectory(path: string): Promise<boolean>;
 
+  // True when the path *itself* is a directory — never following a trailing
+  // symlink. Unlike isDirectory, a directory-shaped symlink here reports
+  // false: this is the check a caller uses to revalidate that a previously
+  // observed directory hasn't since been swapped for a symlink before it
+  // probes anything relative to it (a TOCTOU guard, e.g. the browse facts
+  // probe re-checking each entry right before it — ADR-0009).
+  isDirectoryEntry(path: string): Promise<boolean>;
+
+  // True when the path has a filesystem entry — file, directory, or symlink
+  // — WITHOUT following a trailing symlink to check what it points at (e.g.
+  // a git worktree's ".git" is a file, not a directory; a symlinked ".git"
+  // still counts, but its target is never resolved or disclosed).
+  exists(path: string): Promise<boolean>;
+
   // Reads a UTF-8 file, or null when the file does not exist. Other read
   // failures reject.
   readFile(path: string): Promise<string | null>;

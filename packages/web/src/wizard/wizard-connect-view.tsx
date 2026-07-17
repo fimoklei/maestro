@@ -94,6 +94,7 @@ export function WizardConnectView() {
       <WizardProgress activeStep={1} />
       {browse.open ? (
         <BrowseDialog
+          mode="connect"
           onSelect={browse.selectBrowse}
           onClose={browse.closeBrowse}
         />

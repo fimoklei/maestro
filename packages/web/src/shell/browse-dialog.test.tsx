@@ -15,23 +15,39 @@ function jsonResponse(body: unknown, status: number) {
   });
 }
 
-function renderDialog({ onSelect = vi.fn(), onClose = vi.fn() } = {}) {
+function renderDialog({
+  mode = "connect" as "connect" | "register",
+  onSelect = vi.fn(),
+  onClose = vi.fn(),
+  registeredPaths = undefined as ReadonlySet<string> | undefined,
+} = {}) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   render(
     <QueryClientProvider client={queryClient}>
-      <BrowseDialog onSelect={onSelect} onClose={onClose} />
+      <BrowseDialog
+        mode={mode}
+        onSelect={onSelect}
+        onClose={onClose}
+        registeredPaths={registeredPaths}
+      />
     </QueryClientProvider>,
   );
   return { onSelect, onClose };
 }
 
+const noFacts = { isGitRepo: false, hasSkillsSubdir: false };
+
 // The home-ceiling response shape: no parent key, a single "~" breadcrumb.
 const homeResponse = {
   path: "/home/me",
   breadcrumbs: [{ name: "~", path: "/home/me" }],
-  entries: [] as { name: string; path: string }[],
+  entries: [] as {
+    name: string;
+    path: string;
+    facts: typeof noFacts;
+  }[],
 };
 
 describe("BrowseDialog", () => {
@@ -43,8 +59,12 @@ describe("BrowseDialog", () => {
           {
             ...homeResponse,
             entries: [
-              { name: "agent-harness", path: "/home/me/agent-harness" },
-              { name: "projects", path: "/home/me/projects" },
+              {
+                name: "agent-harness",
+                path: "/home/me/agent-harness",
+                facts: noFacts,
+              },
+              { name: "projects", path: "/home/me/projects", facts: noFacts },
             ],
           },
           200,
@@ -87,7 +107,13 @@ describe("BrowseDialog", () => {
                 { name: "~", path: "/home/me" },
                 { name: "projects", path: "/home/me/projects" },
               ],
-              entries: [{ name: "maestro", path: "/home/me/projects/maestro" }],
+              entries: [
+                {
+                  name: "maestro",
+                  path: "/home/me/projects/maestro",
+                  facts: noFacts,
+                },
+              ],
             },
             200,
           );
@@ -95,7 +121,9 @@ describe("BrowseDialog", () => {
         return jsonResponse(
           {
             ...homeResponse,
-            entries: [{ name: "projects", path: "/home/me/projects" }],
+            entries: [
+              { name: "projects", path: "/home/me/projects", facts: noFacts },
+            ],
           },
           200,
         );
@@ -123,7 +151,9 @@ describe("BrowseDialog", () => {
           return jsonResponse(
             {
               ...homeResponse,
-              entries: [{ name: "projects", path: "/home/me/projects" }],
+              entries: [
+                { name: "projects", path: "/home/me/projects", facts: noFacts },
+              ],
             },
             200,
           );
@@ -167,7 +197,9 @@ describe("BrowseDialog", () => {
                 { name: "~", path: "/home/me" },
                 { name: "dev", path: "/home/me/dev" },
               ],
-              entries: [{ name: "repos", path: "/home/me/dev/repos" }],
+              entries: [
+                { name: "repos", path: "/home/me/dev/repos", facts: noFacts },
+              ],
             },
             200,
           );
@@ -281,6 +313,82 @@ describe("BrowseDialog", () => {
     ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /close/i }));
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("shows the register-mode title", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse(homeResponse, 200)),
+    );
+    renderDialog({ mode: "register" });
+
+    expect(
+      await screen.findByRole("heading", { name: "Select repo folder" }),
+    ).toBeInTheDocument();
+  });
+
+  it("badges a git repo and an already-registered repo in register mode, never the inventory badge", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse(
+          {
+            ...homeResponse,
+            entries: [
+              {
+                name: "acme-web",
+                path: "/home/me/acme-web",
+                facts: { isGitRepo: true, hasSkillsSubdir: true },
+              },
+              { name: "notes", path: "/home/me/notes", facts: noFacts },
+            ],
+          },
+          200,
+        ),
+      ),
+    );
+    renderDialog({
+      mode: "register",
+      registeredPaths: new Set(["/home/me/acme-web"]),
+    });
+
+    const row = await screen.findByRole("button", { name: "acme-web" });
+    expect(row).toHaveTextContent("git");
+    expect(row).toHaveTextContent("● registered");
+    expect(row).not.toHaveTextContent("◆ inventory");
+    const other = await screen.findByRole("button", { name: "notes" });
+    expect(other).not.toHaveTextContent("git");
+    expect(other).not.toHaveTextContent("● registered");
+  });
+
+  it("badges an inventory-looking folder in connect mode, never git or registered badges", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse(
+          {
+            ...homeResponse,
+            entries: [
+              {
+                name: "agent-harness",
+                path: "/home/me/agent-harness",
+                facts: { isGitRepo: true, hasSkillsSubdir: true },
+              },
+            ],
+          },
+          200,
+        ),
+      ),
+    );
+    renderDialog({
+      mode: "connect",
+      registeredPaths: new Set(["/home/me/agent-harness"]),
+    });
+
+    const row = await screen.findByRole("button", { name: "agent-harness" });
+    expect(row).toHaveTextContent("◆ inventory");
+    expect(row).not.toHaveTextContent("git");
+    expect(row).not.toHaveTextContent("● registered");
   });
 
   it("calls onClose when cancel is activated", async () => {

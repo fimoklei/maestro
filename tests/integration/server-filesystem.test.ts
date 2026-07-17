@@ -88,9 +88,119 @@ describe("filesystem browse HTTP route", () => {
         { name: "dev", path: realDev },
       ],
       entries: [
-        { name: "repo-a", path: join(realDev, "repo-a") },
-        { name: "repo-b", path: join(realDev, "repo-b") },
+        {
+          name: "repo-a",
+          path: join(realDev, "repo-a"),
+          facts: { isGitRepo: false, hasSkillsSubdir: false },
+        },
+        {
+          name: "repo-b",
+          path: join(realDev, "repo-b"),
+          facts: { isGitRepo: false, hasSkillsSubdir: false },
+        },
       ],
+    });
+  });
+
+  it("reports git-repo and skills/-subdir facts for real directories", async () => {
+    // A directory-form .git (the common case).
+    await mkdir(join(home, "repo", ".git"), { recursive: true });
+    // A file-form .git, as a git worktree has.
+    await mkdir(join(home, "worktree"), { recursive: true });
+    await writeFile(
+      join(home, "worktree", ".git"),
+      "gitdir: ../repo/.git/worktrees/x",
+      "utf8",
+    );
+    // A folder that looks like an inventory.
+    await mkdir(join(home, "inventory", "skills"), { recursive: true });
+    // A plain folder with neither.
+    await mkdir(join(home, "plain"), { recursive: true });
+    const realHome = await nodeRealpath(home);
+
+    const res = await postBrowse(makeApp(), { path: home });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      entries: { name: string; facts: unknown }[];
+    };
+    expect(body.entries).toEqual([
+      {
+        name: "inventory",
+        path: join(realHome, "inventory"),
+        facts: { isGitRepo: false, hasSkillsSubdir: true },
+      },
+      {
+        name: "plain",
+        path: join(realHome, "plain"),
+        facts: { isGitRepo: false, hasSkillsSubdir: false },
+      },
+      {
+        name: "repo",
+        path: join(realHome, "repo"),
+        facts: { isGitRepo: true, hasSkillsSubdir: false },
+      },
+      {
+        name: "worktree",
+        path: join(realHome, "worktree"),
+        facts: { isGitRepo: true, hasSkillsSubdir: false },
+      },
+    ]);
+  });
+
+  it("never leaks whether a symlinked .git or skills/ target outside home exists (Codex review, #150)", async () => {
+    // A fact probe that follows a symlink turns a boolean into an oracle: an
+    // attacker who can already plant a symlink inside home (the only
+    // precondition) could otherwise learn whether an arbitrary path outside
+    // the home ceiling exists by pointing ".git"/"skills" at it and reading
+    // the fact back. Both an existing and a non-existent outside target must
+    // report identically — that sameness is the proof there is no leak.
+    await mkdir(join(home, "git-to-existing"), { recursive: true });
+    await symlink(outside, join(home, "git-to-existing", ".git"));
+    await mkdir(join(home, "git-to-missing"), { recursive: true });
+    await symlink(
+      join(outside, "does-not-exist"),
+      join(home, "git-to-missing", ".git"),
+    );
+    await mkdir(join(home, "skills-to-existing"), { recursive: true });
+    await symlink(outside, join(home, "skills-to-existing", "skills"));
+    await mkdir(join(home, "skills-to-missing"), { recursive: true });
+    await symlink(
+      join(outside, "does-not-exist"),
+      join(home, "skills-to-missing", "skills"),
+    );
+
+    const res = await postBrowse(makeApp(), { path: home });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      entries: {
+        name: string;
+        facts: { isGitRepo: boolean; hasSkillsSubdir: boolean };
+      }[];
+    };
+    const factsFor = (name: string) =>
+      body.entries.find((e) => e.name === name)?.facts;
+
+    // A symlinked .git reports true unconditionally — its target is never
+    // resolved, so an existing and a missing outside target read the same.
+    expect(factsFor("git-to-existing")).toEqual({
+      isGitRepo: true,
+      hasSkillsSubdir: false,
+    });
+    expect(factsFor("git-to-missing")).toEqual({
+      isGitRepo: true,
+      hasSkillsSubdir: false,
+    });
+    // A symlinked skills/ is invisible to the directory listing this fact
+    // reads from — never true, regardless of what it points at.
+    expect(factsFor("skills-to-existing")).toEqual({
+      isGitRepo: false,
+      hasSkillsSubdir: false,
+    });
+    expect(factsFor("skills-to-missing")).toEqual({
+      isGitRepo: false,
+      hasSkillsSubdir: false,
     });
   });
 
@@ -106,7 +216,13 @@ describe("filesystem browse HTTP route", () => {
     expect(await res.json()).toEqual({
       path: realHome,
       breadcrumbs: [{ name: "~", path: realHome }],
-      entries: [{ name: "dev", path: join(realHome, "dev") }],
+      entries: [
+        {
+          name: "dev",
+          path: join(realHome, "dev"),
+          facts: { isGitRepo: false, hasSkillsSubdir: false },
+        },
+      ],
     });
   });
 
