@@ -59,8 +59,8 @@ a job on the board changes it.
 ### When writing a React component or client-side data access → Read `.claude/rules/frontend.md`
 ### When building UI to a design screen → Read `.claude/rules/design.md`
 ### When driving `apm` or parsing its lockfile/output → Read `.claude/rules/apm-driver.md`
-### When starting a grill or picking the next job → Read `.claude/rules/job-loop.md`
-### When creating a spec issue, or shipping work that closes one → Read `.claude/rules/job-loop.md`
+### When starting a grill or picking the next job → Use the `jobs` skill; the board's Legend (`docs/jobs.md`) holds the transition rules
+### When creating a spec issue, or shipping work that closes one → Use the `jobs` skill to record the board transition
 ### When committing → Use `workflow-commit`
 ### When shipping → Use `workflow-ship`
 
@@ -71,7 +71,7 @@ a job on the board changes it.
   pinning, lockfiles, and multi-tool targeting are APM's.
 - **Follow `docs/operating-model.md`.** It owns the board, the loop, and the
   conflict rule. Build only through jobs on the board (`docs/jobs.md`); small
-  fixes need only a tracker issue (see `.claude/rules/job-loop.md`).
+  fixes need only a tracker issue.
 - **TDD is blocking for code changes.** Docs-only changes are exempt.
 - When editing docs: prefer condensing over expanding. Drift toward feature lists is the failure mode to watch for.
 - When touching code: keep behavior in `packages/core` unless it is genuinely

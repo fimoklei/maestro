@@ -1,8 +1,8 @@
 # Operating Model — Maestro
 
 How this product is run: **one board, one loop, five terms.** This page is the
-shape and the why; the mechanics an agent executes live in
-`.claude/rules/job-loop.md`.
+shape and the why; the transition mechanics live in the board's Legend
+(`docs/jobs.md`), executed by the `jobs` skill.
 
 ## The idea
 
