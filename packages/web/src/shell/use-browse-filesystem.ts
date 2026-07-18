@@ -2,38 +2,29 @@
 // endpoint is a POST (the Origin/Host guard only covers state-changing
 // methods), so this models it as a useQuery keyed by the requested path rather
 // than a useMutation — it is a read, just shaped as a POST on the wire.
+import type {
+  BrowseCrumb,
+  BrowseEntry,
+  BrowseEntryFacts,
+  BrowseSuccess,
+} from "@maestro/core";
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 
-// Facts the server observed on disk — never a badge decision. The client
-// decides what to badge per mode (issue #150).
-export type BrowseEntryFacts = { isGitRepo: boolean; hasSkillsSubdir: boolean };
+// The wire shape is owned by core, which produces it — re-exported here so the
+// dialog's components keep importing it from their own package (issue #156).
+// Type-only: `verbatimModuleSyntax` erases these, so no core runtime code
+// reaches the browser bundle. Values from core stay off-limits to web
+// (`.claude/rules/architecture.md`).
+export type { BrowseCrumb, BrowseEntry, BrowseEntryFacts };
 
-export type BrowseEntry = {
-  name: string;
-  path: string;
-  // Dot-prefixed name; the dialog filters these out by default and offers a
-  // show-hidden toggle to bring them back, dimmed (issue #148).
-  isHidden: boolean;
-  // True when this entry's own listing slot is a symlink whose target the
-  // server already resolved and checked against the home ceiling — the
-  // dialog only ever renders the "↳ symlink" tag from this, never resolves
-  // anything itself.
-  isSymlink: boolean;
-  facts: BrowseEntryFacts;
-};
-
-export type BrowseCrumb = { name: string; path: string };
-
-// `parent` is absent at the home ceiling — that absence is the "up is
-// disabled" signal. Breadcrumbs arrive server-derived; the client never
-// splits a path itself (issue #146).
-type BrowseResponse = {
-  path: string;
-  parent?: string;
-  breadcrumbs: BrowseCrumb[];
-  entries: BrowseEntry[];
-};
+// The same type the route binds its response to (issue #156), so the client
+// cannot read a field the server never agreed to send.
+//
+// `parent` is absent at the home ceiling; that absence is the "up is disabled"
+// signal. Breadcrumbs arrive server-derived, so the client never splits a path
+// itself (issue #146).
+type BrowseResponse = BrowseSuccess;
 
 export function useBrowseFilesystem(path: string) {
   return useQuery({

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import type { BrowseDialogMode } from "./browse-dialog";
 import { readLastFolder, writeLastFolder } from "./browse-last-folder";
+import type { BrowseDialogMode } from "./browse-modes";
 import { isFolderMissing } from "./browse-remembered-error";
 import { useBrowseFilesystem } from "./use-browse-filesystem";
 

@@ -52,9 +52,11 @@ export {
 export {
   type BrowseCrumb,
   type BrowseEntry,
+  type BrowseEntryFacts,
   type BrowseError,
   BrowseFilesystem,
   type BrowseResult,
+  type BrowseSuccess,
 } from "./filesystem/browse-filesystem";
 export { isWithinRoot } from "./filesystem/browse-path";
 export type { HealthReport } from "./health";

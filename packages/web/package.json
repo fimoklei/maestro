@@ -20,6 +20,7 @@
     "react-router-dom": "^7.18.0"
   },
   "devDependencies": {
+    "@maestro/core": "workspace:*",
     "@storybook/react-vite": "^10.4.6",
     "@tailwindcss/vite": "^4.3.1",
     "@testing-library/jest-dom": "^6.6.3",

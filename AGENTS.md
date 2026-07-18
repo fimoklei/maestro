@@ -73,6 +73,8 @@ a job on the board changes it.
   conflict rule. Build only through jobs on the board (`docs/jobs.md`); small
   fixes need only a tracker issue.
 - **TDD is blocking for code changes.** Docs-only changes are exempt.
+- **Never write to `AGENTS.md`, `CLAUDE.md`, or `.claude/rules/`.** Michiel owns
+  them. Quote the lines you would change and wait for his yes.
 - When editing docs: prefer condensing over expanding. Drift toward feature lists is the failure mode to watch for.
 - When touching code: keep behavior in `packages/core` unless it is genuinely
   transport or UI work. The server and web packages should not become product

@@ -3,6 +3,7 @@ import { HttpError } from "../api/http";
 import { Button } from "../ui/button";
 import { BrowseBreadcrumbs } from "./browse-breadcrumbs";
 import { BrowseEntryRow } from "./browse-entry-row";
+import { type BrowseDialogMode, browseModes } from "./browse-modes";
 import { useBrowseNavigation } from "./use-browse-navigation";
 import { useFolderFilter } from "./use-folder-filter";
 
@@ -16,11 +17,11 @@ import { useFolderFilter } from "./use-folder-filter";
 // (First run story flow, screens 02b/02c/03b).
 //
 // The dialog is mode-aware (issue #150): the server only reports per-entry
-// facts (is a git repo, has a skills/ subdir) — never a badge decision. This
-// component decides what to badge per mode: register mode badges `git` repos
-// and already-registered ones; connect mode badges folders that look like an
-// inventory. The inventory badge is a hint, not a guarantee — connect
-// validation remains the authority.
+// facts (is a git repo, has a skills/ subdir) — never a badge decision; the
+// client decides. Everything that differs per mode — the title, the confirm
+// label, the row badges — lives in one config in `browse-modes.tsx`, so a
+// third mode is one entry there rather than a hunt through this file
+// (issue #156).
 //
 // Hidden entries (dot-prefixed) are filtered out by default; the toolbar's
 // show-hidden toggle and the "N hidden items not shown · show" hint both flip
@@ -36,12 +37,6 @@ import { useFolderFilter } from "./use-folder-filter";
 // at once. The dialog stays presentational — it returns paths and never
 // registers anything itself; the host owns the registration loop and its
 // per-repo outcomes.
-export type BrowseDialogMode = "register" | "connect";
-
-const dialogTitle: Record<BrowseDialogMode, string> = {
-  connect: "Select inventory folder",
-  register: "Select repos to register",
-};
 
 type BrowseDialogProps = {
   mode: BrowseDialogMode;
@@ -61,7 +56,7 @@ export function BrowseDialog({
   onClose,
   registeredPaths,
 }: BrowseDialogProps) {
-  const label = dialogTitle[mode];
+  const { title, confirmLabel } = browseModes[mode];
   // Owns the requested path, its query, and the last-used-folder memory
   // (issue #149) — connect and register never share a memory.
   const { currentRequest, setCurrentRequest, browse } =
@@ -138,13 +133,13 @@ export function BrowseDialog({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={label}
+      aria-label={title}
       className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 p-6"
     >
       <div className="flex max-h-[70vh] w-full max-w-[620px] flex-col overflow-hidden rounded-card border border-line bg-chrome">
         <div className="flex items-center gap-2.5 border-line-row border-b px-3.5 py-3">
           <h2 className="font-semibold font-ui text-fg text-subtitle">
-            {label}
+            {title}
           </h2>
           <span className="flex-1" />
           <button
@@ -289,9 +284,7 @@ export function BrowseDialog({
             disabled={confirmedPaths.length === 0}
             onClick={confirm}
           >
-            {mode === "register"
-              ? `register ${confirmedPaths.length} selected →`
-              : "use this folder →"}
+            {confirmLabel(confirmedPaths.length)}
           </Button>
         </div>
       </div>

@@ -61,6 +61,12 @@ export type BrowseResult =
     }
   | { ok: false; error: BrowseError };
 
+// What a successful browse puts on the wire: the result above without its `ok`
+// tag, which the transport carries as a status code instead. The route binds
+// its response to this and the client reads it, so a field added above either
+// reaches both or fails to compile (issue #156).
+export type BrowseSuccess = Omit<Extract<BrowseResult, { ok: true }>, "ok">;
+
 export class BrowseFilesystem {
   private readonly fs: FileSystemPort;
   private readonly homeRoot: () => string;

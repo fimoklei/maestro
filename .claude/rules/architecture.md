@@ -1,6 +1,6 @@
 # Architecture boundaries (project-specific for Maestro)
 
-Where each kind of code lives. Read before adding code to `core`, `server`, or `web`, or before adding a dependency to any of them. The package shape is fixed by ADR-0002; the compiler and pnpm enforce import direction — this file states the rest.
+Where each kind of code lives. Read before adding code to `core`, `server`, or `web`, or before adding a dependency to any of them. The package shape is fixed by ADR-0002. pnpm blocks an import between packages that declare no dependency on each other; the rest of this file is convention, and only review upholds it.
 
 ## The three layers
 
@@ -9,6 +9,8 @@ Where each kind of code lives. Read before adding code to `core`, `server`, or `
 - **`web` — the screen.** UI only: React, talks to `server` over HTTP. Never touches the filesystem, never shells out.
 
 Direction: `web` → HTTP → `server` → `core`. Never the reverse. `core` depends on nothing else in this repo.
+
+**`web` may import types from `core` — types only.** A wire shape `core` produces and `web` renders lives in `core`; `web` re-exports it from `use-browse-filesystem.ts` rather than copying it. Write `import type`. Importing a *value* stays forbidden: call `server` instead.
 
 ## Ports & adapters
 
