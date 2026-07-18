@@ -232,26 +232,65 @@ describe("BrowseFilesystem", () => {
     expect(realpathSpy).not.toHaveBeenCalledWith("/home/user/dev/notes.txt");
   });
 
-  it("reports each entry's git-repo and skills/-subdir facts", async () => {
-    // A repo with a directory-form .git (the common case), a worktree with a
-    // file-form .git (`.git` points at the main repo's worktrees dir instead
-    // of being a directory itself), a folder with a skills/ subdir (looks
-    // like an inventory), and a plain folder with neither.
+  it("reports a directory-form .git as a git repo", async () => {
     const browse = makeBrowse({
       directories: {
         "/home/user": "/home/user",
         "/home/user/dev": "/home/user/dev",
         "/home/user/dev/repo": "/home/user/dev/repo",
         "/home/user/dev/repo/.git": "/home/user/dev/repo/.git",
+      },
+      listings: { "/home/user/dev": ["repo"] },
+    });
+
+    const result = await browse.browse("/home/user/dev");
+
+    expect(result).toMatchObject({
+      ok: true,
+      entries: [
+        { name: "repo", facts: { isGitRepo: true, hasSkillsSubdir: false } },
+      ],
+    });
+  });
+
+  it("reports a file-form .git worktree as a git repo", async () => {
+    // A linked worktree's `.git` is a file pointing at the main repo's
+    // worktrees dir, not a directory of its own — so the probe must not
+    // require a directory.
+    const browse = makeBrowse({
+      directories: {
+        "/home/user": "/home/user",
+        "/home/user/dev": "/home/user/dev",
         "/home/user/dev/worktree": "/home/user/dev/worktree",
-        "/home/user/dev/inventory": "/home/user/dev/inventory",
-        "/home/user/dev/plain": "/home/user/dev/plain",
       },
       files: {
         "/home/user/dev/worktree/.git": "gitdir: ../repo/.git/worktrees/x",
       },
+      listings: { "/home/user/dev": ["worktree"] },
+    });
+
+    const result = await browse.browse("/home/user/dev");
+
+    expect(result).toMatchObject({
+      ok: true,
+      entries: [
+        {
+          name: "worktree",
+          facts: { isGitRepo: true, hasSkillsSubdir: false },
+        },
+      ],
+    });
+  });
+
+  it("reports a folder holding a skills/ subdir", async () => {
+    const browse = makeBrowse({
+      directories: {
+        "/home/user": "/home/user",
+        "/home/user/dev": "/home/user/dev",
+        "/home/user/dev/inventory": "/home/user/dev/inventory",
+      },
       listings: {
-        "/home/user/dev": ["repo", "worktree", "inventory", "plain"],
+        "/home/user/dev": ["inventory"],
         // hasSkillsSubdir reads the directory listing (not a direct
         // isDirectory probe) so a symlinked "skills" can never be resolved
         // and disclosed — see the comment in browse-filesystem.ts.
@@ -268,12 +307,26 @@ describe("BrowseFilesystem", () => {
           name: "inventory",
           facts: { isGitRepo: false, hasSkillsSubdir: true },
         },
+      ],
+    });
+  });
+
+  it("reports no facts for a folder that is neither a repo nor an inventory", async () => {
+    const browse = makeBrowse({
+      directories: {
+        "/home/user": "/home/user",
+        "/home/user/dev": "/home/user/dev",
+        "/home/user/dev/plain": "/home/user/dev/plain",
+      },
+      listings: { "/home/user/dev": ["plain"] },
+    });
+
+    const result = await browse.browse("/home/user/dev");
+
+    expect(result).toMatchObject({
+      ok: true,
+      entries: [
         { name: "plain", facts: { isGitRepo: false, hasSkillsSubdir: false } },
-        { name: "repo", facts: { isGitRepo: true, hasSkillsSubdir: false } },
-        {
-          name: "worktree",
-          facts: { isGitRepo: true, hasSkillsSubdir: false },
-        },
       ],
     });
   });

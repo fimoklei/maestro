@@ -1,13 +1,14 @@
-import type { BrowseDialogMode } from "./browse-dialog";
-import { EntryBadges } from "./entry-badges";
+import { type BrowseDialogMode, browseModes } from "./browse-modes";
 import type { BrowseEntry } from "./use-browse-filesystem";
 
 // One row of the browse listing: an optional selection checkbox, the folder
 // name, its symlink tag, its mode-aware badges, and the step-in affordance.
 // Selecting and stepping in are deliberately two separate controls — ticking a
 // repo to register it must never navigate away from the folder you are
-// reading (issue #151). Tested through browse-dialog.test.tsx, the same
-// pattern as the sibling BrowseBreadcrumbs and EntryBadges components.
+// reading (issue #151). The badges come from the mode's own config
+// (issue #156), so this row renders them without knowing either mode's rules.
+// Tested through browse-dialog.test.tsx, the same pattern as the sibling
+// BrowseBreadcrumbs component.
 export function BrowseEntryRow({
   mode,
   entry,
@@ -74,11 +75,7 @@ export function BrowseEntryRow({
           ) : null}
         </span>
         <span className="flex shrink-0 items-center gap-1.5">
-          <EntryBadges
-            mode={mode}
-            entry={entry}
-            registeredPaths={registeredPaths}
-          />
+          {browseModes[mode].badges({ entry, isRegistered })}
           <span className="w-3.5 text-right font-mono text-data text-dim">
             →
           </span>

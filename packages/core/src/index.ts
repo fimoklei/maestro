@@ -52,6 +52,7 @@ export {
 export {
   type BrowseCrumb,
   type BrowseEntry,
+  type BrowseEntryFacts,
   type BrowseError,
   BrowseFilesystem,
   type BrowseResult,

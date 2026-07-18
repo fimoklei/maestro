@@ -1,4 +1,4 @@
-import type { BrowseDialogMode } from "./browse-dialog";
+import type { BrowseDialogMode } from "./browse-modes";
 
 // Client-only "last folder used" memory for the browse dialog (issue #149).
 // One key per mode — connect and register remember independently, so
