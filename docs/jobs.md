@@ -31,12 +31,13 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 ## NEXT
 
-Why now: deploy is half a lifecycle — removing a deploy is still handwork, so
-the bet's kill question still answers "yes".
+Why now: global deploys on the owner's machine fail with a blind error; #170 is
+the smallest slice of the sequenced trio #170 → #171 → #172 from the
+symlink-topology grill (research: `docs/research/apm-0.25-symlink-topology-impact.md`).
 
 | Job | Main | Job story |
 |---|---|---|
-| Remove a primitive from a target · [#158](https://github.com/fimoklei/maestro/issues/158) | B | *When* a deployed primitive is no longer needed, *I want to* remove it from its target, *so I can* keep that target clean. |
+| Hear why a deploy failed · [#170](https://github.com/fimoklei/maestro/issues/170) | B | *When* a deploy fails, *I want to* hear apm's actual reason in the cockpit, *so I can* fix the cause instead of guessing. |
 
 ## LATER
 
@@ -44,6 +45,10 @@ Detail lives in tracker issues; elaboration happens in the grill.
 
 | Job | Main | Job story |
 |---|---|---|
+| Adopt apm 0.25 · [#171](https://github.com/fimoklei/maestro/issues/171) | B | *When* the engine moves ahead of Maestro's observed knowledge, *I want to* have the driver re-verified against the installed apm, *so I can* trust that cockpit behavior matches what the engine really does. |
+| Read the shared skills directory truthfully · [#172](https://github.com/fimoklei/maestro/issues/172) | A, B | *When* my tools read one shared skills directory, *I want to* have the cockpit show one source read by many tools, *so I can* trust deploy-state, drift, and cleanup on my real machine. |
+| Remove a primitive from a target · [#158](https://github.com/fimoklei/maestro/issues/158) | B | *When* a deployed primitive is no longer needed, *I want to* remove it from its target, *so I can* keep that target clean. |
+| Connect a registry as inventory source | A | *When* my central inventory is published to an apm registry, *I want to* point Maestro at it as the inventory source, *so I can* run the cockpit without a local clone. |
 | Compose a bundle (J05) | B | *When* I have recurring sets of primitives, *I want to* compose them into a bundle from the central inventory, *so I can* deploy them together. |
 | Add or edit a primitive in central (J09) | B | *When* I create or improve a primitive, *I want to* have it enter the central inventory, *so I can* make it reusable and deployable to any target. |
 | Deploy hooks and MCP servers | B, A | *When* my setup needs more than skills, *I want to* deploy hook and MCP server primitives too, *so I can* provision every primitive type, not just skills. |
