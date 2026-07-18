@@ -12,7 +12,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { dirname } from "node:path";
-import type { FileSystemPort } from "./file-system";
+import type { FileSystemPort, RawDirEntry } from "./file-system";
 
 // Monotonic suffix so two writes in one process never share a temp filename,
 // independent of any caller-side serialization.
@@ -24,6 +24,20 @@ function isNotFound(error: unknown): boolean {
     error !== null &&
     (error as { code?: string }).code === "ENOENT"
   );
+}
+
+// A missing directory reads as "nothing there" (empty), never an error — a
+// missing skills/ folder is "no skills", not a failure to browse it. Shared
+// by every readdir-shaped listing method below.
+async function readdirOrEmpty<T>(op: () => Promise<T[]>): Promise<T[]> {
+  try {
+    return await op();
+  } catch (error) {
+    if (isNotFound(error)) {
+      return [];
+    }
+    throw error;
+  }
 }
 
 export class NodeFileSystem implements FileSystemPort {
@@ -73,15 +87,19 @@ export class NodeFileSystem implements FileSystemPort {
   }
 
   async listDirectoryNames(path: string): Promise<string[]> {
-    try {
-      const entries = await readdir(path, { withFileTypes: true });
-      return entries.filter((e) => e.isDirectory()).map((e) => e.name);
-    } catch (error) {
-      if (isNotFound(error)) {
-        return [];
-      }
-      throw error;
-    }
+    const entries = await this.listRawEntries(path);
+    return entries.filter((e) => e.isDirectory).map((e) => e.name);
+  }
+
+  async listRawEntries(path: string): Promise<RawDirEntry[]> {
+    const entries = await readdirOrEmpty(() =>
+      readdir(path, { withFileTypes: true }),
+    );
+    return entries.map((e) => ({
+      name: e.name,
+      isDirectory: e.isDirectory(),
+      isSymlink: e.isSymbolicLink(),
+    }));
   }
 
   async writeFile(path: string, contents: string): Promise<void> {

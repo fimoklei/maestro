@@ -21,6 +21,14 @@ import { useFolderFilter } from "./use-folder-filter";
 // and already-registered ones; connect mode badges folders that look like an
 // inventory. The inventory badge is a hint, not a guarantee — connect
 // validation remains the authority.
+//
+// Hidden entries (dot-prefixed) are filtered out by default; the toolbar's
+// show-hidden toggle and the "N hidden items not shown · show" hint both flip
+// the same local `showHidden` flag — one response shape from the server
+// serves both toggle states, filtering happens entirely client-side. A
+// symlinked entry the server resolved inside the home ceiling renders a
+// "↳ symlink" tag; the server already dropped anything escaping the ceiling,
+// so the client never resolves or judges a symlink itself (issue #148).
 export type BrowseDialogMode = "register" | "connect";
 
 const dialogTitle: Record<BrowseDialogMode, string> = {
@@ -52,13 +60,24 @@ export function BrowseDialog({
   // The footer's paste-a-path field: confirming it hands the typed path to the
   // host form as-is, bypassing the listing (the host validates on submit).
   const [pastedPath, setPastedPath] = useState("");
-  // Narrows the listing client-side as the user types (issue #149).
-  const { filter, setFilter, visibleEntries } = useFolderFilter(
-    currentRequest,
-    browse.data?.entries,
-  );
+  // Hidden entries are filtered client-side by default; the server sends one
+  // response shape (every entry, each carrying isHidden) and this toggle
+  // decides what the listing shows — no second request (issue #148).
+  const [showHidden, setShowHidden] = useState(false);
   const atCeiling =
     browse.data !== undefined && browse.data.parent === undefined;
+  const allEntries = browse.data?.entries ?? [];
+  const hiddenCount = allEntries.filter((entry) => entry.isHidden).length;
+  const hiddenFilteredEntries = showHidden
+    ? allEntries
+    : allEntries.filter((entry) => !entry.isHidden);
+  // Narrows the listing client-side as the user types (issue #149), on top
+  // of the hidden-entry filter above — typing still searches only what the
+  // hidden toggle currently allows through.
+  const { filter, setFilter, visibleEntries } = useFolderFilter(
+    currentRequest,
+    hiddenFilteredEntries,
+  );
 
   const error =
     browse.error instanceof HttpError
@@ -132,6 +151,19 @@ export function BrowseDialog({
                 · home ceiling
               </span>
             ) : null}
+            <span className="flex-1" />
+            <button
+              type="button"
+              aria-pressed={showHidden}
+              onClick={() => setShowHidden((current) => !current)}
+              className={`shrink-0 whitespace-nowrap rounded-control border px-2.5 py-[5px] font-mono text-mono-sm ${
+                showHidden
+                  ? "border-amber-border bg-amber-bg text-amber-ink"
+                  : "border-line-chip text-dim"
+              }`}
+            >
+              {showHidden ? "◑" : "◐"} hidden
+            </button>
           </div>
           <div className="flex items-center gap-2 rounded-control border border-line bg-inset px-2.5 py-[7px]">
             <label htmlFor="browse-filter" className="sr-only">
@@ -164,8 +196,19 @@ export function BrowseDialog({
                 onClick={() => setCurrentRequest(entry.path)}
                 className="flex items-center gap-2.5 rounded-control px-2.5 py-[7px] text-left hover:bg-active"
               >
-                <span className="min-w-0 flex-1 truncate font-mono text-desc text-fg">
-                  {entry.name}/
+                <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                  <span
+                    className={`truncate font-mono text-desc ${
+                      entry.isHidden ? "text-dim" : "text-fg"
+                    }`}
+                  >
+                    {entry.name}/
+                  </span>
+                  {entry.isSymlink ? (
+                    <span className="shrink-0 font-mono text-dim text-tag">
+                      ↳ symlink
+                    </span>
+                  ) : null}
                 </span>
                 <span className="flex shrink-0 items-center gap-1.5">
                   <EntryBadges
@@ -180,6 +223,19 @@ export function BrowseDialog({
               </button>
             ))
           )}
+          {!showHidden && !browse.isPending && hiddenCount > 0 ? (
+            <button
+              type="button"
+              onClick={() => setShowHidden(true)}
+              className="flex items-center gap-2 rounded-control px-2.5 py-2 text-left"
+            >
+              <span className="font-mono text-dim text-tag">
+                {hiddenCount} hidden item{hiddenCount === 1 ? "" : "s"} not
+                shown
+              </span>
+              <span className="font-mono text-amber-ink text-tag">· show</span>
+            </button>
+          ) : null}
         </div>
 
         {/* in-dialog error banner — never an empty listing (story 22) */}

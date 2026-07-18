@@ -5,8 +5,15 @@
 // any listing happens. `..` and symlink escapes collapse under realpath and are
 // then caught by the root check (isWithinRoot). An empty path defaults to the
 // root so the picker has a sensible starting point.
+//
+// A child that is itself a symlink is included when its target resolves
+// inside the ceiling (tagged `isSymlink`) and dropped from the listing
+// entirely when its target escapes it — the same normalize/realpath/assert
+// order applied per entry, not just to the browsed path itself (issue #148).
+// Every entry also carries `isHidden` (a dot-prefixed name); the dialog does
+// the actual hidden-by-default filtering client-side from that flag.
 import { dirname, join, relative, resolve, sep } from "node:path";
-import type { FileSystemPort } from "../registry/file-system";
+import type { FileSystemPort, RawDirEntry } from "../registry/file-system";
 import { isWithinRoot } from "./browse-path";
 
 export type BrowseError =
@@ -26,6 +33,14 @@ export type BrowseEntryFacts = {
 export type BrowseEntry = {
   name: string;
   path: string;
+  // Dot-prefixed name — a pure string check, never a filesystem fact. The
+  // dialog filters these out by default and offers a show-hidden toggle;
+  // one response shape serves both toggle states (issue #148).
+  isHidden: boolean;
+  // True when this entry's own directory listing slot is a symlink (its
+  // target, not this flag, decided whether it was included at all — see the
+  // classification pass below). Never set for a plain directory.
+  isSymlink: boolean;
   facts: BrowseEntryFacts;
 };
 
@@ -101,17 +116,59 @@ export class BrowseFilesystem {
       return { ok: false, error: "not-a-directory" };
     }
 
-    // listDirectoryNames returns child directory names only (the Node adapter
-    // filters non-directories and unresolved symlinks); sort for a stable picker.
-    // A real directory the user can select may still be unreadable (permission
-    // denied under home, e.g. parts of ~/Library), which rejects here — map it
-    // to a typed error so the route answers a controlled status, never a 500.
-    let names: string[];
+    // listRawEntries is unfiltered — files, directories, and symlinks alike —
+    // unlike listDirectoryNames, which the Node adapter already narrows to
+    // real (non-symlink) directories. The unfiltered list is what lets a
+    // symlinked directory reach the listing at all (issue #148); a locked
+    // directory rejects here with a typed error, never a 500. Each entry
+    // already carries its dirent-level type facts from that one read, so a
+    // plain file never needs a separate probe to rule it out below.
+    let rawEntries: RawDirEntry[];
     try {
-      names = await this.fs.listDirectoryNames(real);
+      rawEntries = await this.fs.listRawEntries(real);
     } catch {
       return { ok: false, error: "unreadable" };
     }
+
+    // Classify each raw entry: a genuine directory (isDirectory true) is
+    // included outright, no further disk access needed. A plain file
+    // (neither isDirectory nor isSymlink) is dropped immediately, same as
+    // before — nothing to resolve. Only a symlink is worth the extra work:
+    // resolve it, assert the *resolved* target is inside the home ceiling
+    // BEFORE touching it any further, then confirm it is a directory —
+    // mirroring the endpoint's own normalize -> realpath -> assert-inside-
+    // root order (ADR-0009). Checking the ceiling before isDirectory means an
+    // out-of-ceiling target is never stat'd, not even to immediately discard
+    // the result. A symlink whose target is missing, escapes the ceiling, or
+    // is not a directory is dropped here and never reaches the client.
+    const classified = (
+      await Promise.all(
+        rawEntries.map(async (raw) => {
+          const path = join(real, raw.name);
+          if (raw.isDirectory) {
+            return { name: raw.name, path, isSymlink: false };
+          }
+          if (!raw.isSymlink) {
+            return null; // a plain file — never worth resolving
+          }
+          let target: string;
+          try {
+            target = await this.fs.realpath(path);
+          } catch {
+            return null; // broken / dangling symlink
+          }
+          if (!isWithinRoot(target, realRoot)) {
+            return null; // symlink escapes the ceiling — never shown, never stat'd
+          }
+          if (!(await this.fs.isDirectory(target))) {
+            return null; // symlink to a file, or something else entirely
+          }
+          return { name: raw.name, path, isSymlink: true };
+        }),
+      )
+    ).filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+    classified.sort((a, b) => a.name.localeCompare(b.name));
+
     // Facts cost a couple of extra syscalls per entry (a repo directory and
     // a permission-denied listing are both bounded in size — see ADR-0009's
     // amendment); enrichment is always on rather than opt-in, and stays
@@ -124,37 +181,38 @@ export class BrowseFilesystem {
     // from a directory's own listing — so a "skills" symlink pointing outside
     // home is invisible here too, not silently resolved and disclosed.
     //
-    // `entry.path` itself was a genuine directory when `real` was listed
-    // above, but a concurrent process with write access to `real` could
-    // since have swapped it for a symlink out of home (a TOCTOU race —
-    // Codex review, #150). isDirectoryEntry is re-checked immediately before
-    // probing each entry, right up against the point of use, to shrink that
-    // window as far as Node's fs/promises API allows without O_NOFOLLOW file
-    // descriptors; on a lost race the entry reports no facts rather than
-    // resolving anything through the swapped-in symlink.
-    const entries = await Promise.all(
-      names
-        .map((name) => ({ name, path: join(real, name) }))
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .map(async (entry) => {
-          if (!(await this.fs.isDirectoryEntry(entry.path))) {
-            return {
-              ...entry,
-              facts: { isGitRepo: false, hasSkillsSubdir: false },
-            };
-          }
-          const [isGitRepo, children] = await Promise.all([
-            this.fs.exists(join(entry.path, ".git")),
-            this.fs.listDirectoryNames(entry.path).catch(() => [] as string[]),
-          ]);
+    // A plain-directory entry was genuine when classified above, but a
+    // concurrent process with write access to `real` could since have
+    // swapped it for a symlink out of home (a TOCTOU race — Codex review,
+    // #150). isDirectoryEntry is re-checked immediately before probing each
+    // entry, right up against the point of use, to shrink that window as far
+    // as Node's fs/promises API allows without O_NOFOLLOW file descriptors;
+    // on a lost race the entry reports no facts rather than resolving
+    // anything through the swapped-in symlink. A symlink entry never reaches
+    // this probe at all — it already required following one symlink to
+    // classify; probing its resolved target's own children would reopen a
+    // fresh, unvalidated ceiling window one hop deeper, so it always reports
+    // no facts and shows only the "↳ symlink" tag (issue #148).
+    const entries: BrowseEntry[] = await Promise.all(
+      classified.map(async (entry) => {
+        const isHidden = entry.name.startsWith(".");
+        if (entry.isSymlink || !(await this.fs.isDirectoryEntry(entry.path))) {
           return {
             ...entry,
-            facts: {
-              isGitRepo,
-              hasSkillsSubdir: children.includes("skills"),
-            },
+            isHidden,
+            facts: { isGitRepo: false, hasSkillsSubdir: false },
           };
-        }),
+        }
+        const [isGitRepo, children] = await Promise.all([
+          this.fs.exists(join(entry.path, ".git")),
+          this.fs.listDirectoryNames(entry.path).catch(() => [] as string[]),
+        ]);
+        return {
+          ...entry,
+          isHidden,
+          facts: { isGitRepo, hasSkillsSubdir: children.includes("skills") },
+        };
+      }),
     );
 
     // Parent and breadcrumbs derive from the *resolved* path — a symlinked

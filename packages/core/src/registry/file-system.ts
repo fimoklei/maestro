@@ -3,6 +3,14 @@
 // Node adapter stays the single place that touches the real disk (ports &
 // adapters, see .claude/rules/architecture.md).
 
+// One raw directory entry as a single dirent read reports it — lstat-based
+// facts, never following a trailing symlink (see listRawEntries).
+export type RawDirEntry = {
+  name: string;
+  isDirectory: boolean;
+  isSymlink: boolean;
+};
+
 export interface FileSystemPort {
   // Resolves a path to its canonical absolute form. Rejects if it does not
   // exist (mirrors node:fs realpath).
@@ -34,6 +42,22 @@ export interface FileSystemPort {
   // this — ADR-0009). Empty when the directory does not exist — a missing
   // skills/ folder is "no skills", not an error.
   listDirectoryNames(path: string): Promise<string[]>;
+
+  // Lists EVERY entry directly inside a directory — files, directories, and
+  // symlinks alike, completely unfiltered — each carrying the type facts a
+  // single dirent read already knows for free (never following a trailing
+  // symlink): `isDirectory` true only for a genuine, non-symlink directory;
+  // `isSymlink` true regardless of what the symlink points at (or whether its
+  // target even exists). Unlike listDirectoryNames, nothing is dropped here:
+  // the browse capability uses this to discover symlinked-directory
+  // candidates listDirectoryNames would silently hide, then classifies each
+  // one itself (realpath + isDirectory + the home-ceiling check) so a symlink
+  // is only ever shown once its target has been validated (issue #148).
+  // Carrying the type facts from this one read means a plain file is never
+  // mistaken for a possible symlink and sent through that extra resolution —
+  // only entries this call already marked `isSymlink` are. Empty when the
+  // directory does not exist.
+  listRawEntries(path: string): Promise<RawDirEntry[]>;
 
   // Writes a UTF-8 file atomically (temp file + rename), creating parent
   // directories as needed.

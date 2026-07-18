@@ -12,6 +12,14 @@ export type BrowseEntryFacts = { isGitRepo: boolean; hasSkillsSubdir: boolean };
 export type BrowseEntry = {
   name: string;
   path: string;
+  // Dot-prefixed name; the dialog filters these out by default and offers a
+  // show-hidden toggle to bring them back, dimmed (issue #148).
+  isHidden: boolean;
+  // True when this entry's own listing slot is a symlink whose target the
+  // server already resolved and checked against the home ceiling — the
+  // dialog only ever renders the "↳ symlink" tag from this, never resolves
+  // anything itself.
+  isSymlink: boolean;
   facts: BrowseEntryFacts;
 };
 

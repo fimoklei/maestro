@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { InMemoryFileSystem } from "../registry/file-system.fake";
 import { BrowseFilesystem } from "./browse-filesystem";
 
@@ -18,6 +18,8 @@ describe("BrowseFilesystem", () => {
       directories: {
         "/home/user": "/home/user",
         "/home/user/dev": "/home/user/dev",
+        "/home/user/dev/repo-a": "/home/user/dev/repo-a",
+        "/home/user/dev/repo-b": "/home/user/dev/repo-b",
       },
       listings: { "/home/user/dev": ["repo-b", "repo-a"] },
     });
@@ -36,15 +38,198 @@ describe("BrowseFilesystem", () => {
         {
           name: "repo-a",
           path: "/home/user/dev/repo-a",
+          isHidden: false,
+          isSymlink: false,
           facts: { isGitRepo: false, hasSkillsSubdir: false },
         },
         {
           name: "repo-b",
           path: "/home/user/dev/repo-b",
+          isHidden: false,
+          isSymlink: false,
           facts: { isGitRepo: false, hasSkillsSubdir: false },
         },
       ],
     });
+  });
+
+  it("marks a dot-prefixed entry as hidden", async () => {
+    const browse = makeBrowse({
+      directories: {
+        "/home/user": "/home/user",
+        "/home/user/dev": "/home/user/dev",
+        "/home/user/dev/.config": "/home/user/dev/.config",
+        "/home/user/dev/repo": "/home/user/dev/repo",
+      },
+      listings: { "/home/user/dev": [".config", "repo"] },
+    });
+
+    const result = await browse.browse("/home/user/dev");
+
+    expect(result).toMatchObject({
+      ok: true,
+      entries: [
+        { name: ".config", isHidden: true },
+        { name: "repo", isHidden: false },
+      ],
+    });
+  });
+
+  it("includes a symlinked directory that resolves inside the ceiling, tagged as a symlink", async () => {
+    const browse = makeBrowse({
+      directories: {
+        "/home/user": "/home/user",
+        "/home/user/dev": "/home/user/dev",
+        // "linked" is a symlink alias: its own path is a key, never a value,
+        // so isDirectoryEntry (lstat-based) reports it is not a genuine
+        // directory itself — only its realpath target is.
+        "/home/user/dev/linked": "/home/user/dev/actual",
+        "/home/user/dev/actual": "/home/user/dev/actual",
+      },
+      listings: { "/home/user/dev": ["linked"] },
+    });
+
+    const result = await browse.browse("/home/user/dev");
+
+    expect(result).toMatchObject({
+      ok: true,
+      entries: [
+        {
+          name: "linked",
+          path: "/home/user/dev/linked",
+          isHidden: false,
+          isSymlink: true,
+          facts: { isGitRepo: false, hasSkillsSubdir: false },
+        },
+      ],
+    });
+  });
+
+  it("excludes a symlinked entry whose target resolves outside the home ceiling", async () => {
+    const browse = makeBrowse({
+      directories: {
+        "/home/user": "/home/user",
+        "/home/user/dev": "/home/user/dev",
+        "/home/user/dev/escape": "/etc/secret",
+        "/etc/secret": "/etc/secret",
+      },
+      listings: { "/home/user/dev": ["escape"] },
+    });
+
+    const result = await browse.browse("/home/user/dev");
+
+    expect(result).toMatchObject({ ok: true, entries: [] });
+  });
+
+  it("excludes a symlink pointing at a file, not a directory", async () => {
+    const browse = makeBrowse({
+      directories: {
+        "/home/user": "/home/user",
+        "/home/user/dev": "/home/user/dev",
+        "/home/user/dev/link-to-file": "/home/user/dev/notes.txt",
+      },
+      files: { "/home/user/dev/notes.txt": "hi" },
+      listings: { "/home/user/dev": ["link-to-file"] },
+    });
+
+    const result = await browse.browse("/home/user/dev");
+
+    expect(result).toMatchObject({ ok: true, entries: [] });
+  });
+
+  it("excludes a broken (dangling) symlink", async () => {
+    const browse = makeBrowse({
+      directories: {
+        "/home/user": "/home/user",
+        "/home/user/dev": "/home/user/dev",
+      },
+      listings: { "/home/user/dev": ["dangling"] },
+    });
+
+    const result = await browse.browse("/home/user/dev");
+
+    expect(result).toMatchObject({ ok: true, entries: [] });
+  });
+
+  it("never probes git/skills facts for a symlinked entry", async () => {
+    // Facts stay unconditionally false for a symlink, even when its resolved
+    // target looks exactly like a git repo with a skills/ subdir — probing
+    // through the symlink a second time would reopen a fresh TOCTOU/ceiling
+    // window this endpoint has not validated for a read that deep (#148).
+    const browse = makeBrowse({
+      directories: {
+        "/home/user": "/home/user",
+        "/home/user/dev": "/home/user/dev",
+        "/home/user/dev/linked": "/home/user/dev/actual",
+        "/home/user/dev/actual": "/home/user/dev/actual",
+        "/home/user/dev/actual/.git": "/home/user/dev/actual/.git",
+      },
+      listings: {
+        "/home/user/dev": ["linked"],
+        "/home/user/dev/actual": ["skills"],
+      },
+    });
+
+    const result = await browse.browse("/home/user/dev");
+
+    expect(result).toMatchObject({
+      ok: true,
+      entries: [
+        {
+          name: "linked",
+          isSymlink: true,
+          facts: { isGitRepo: false, hasSkillsSubdir: false },
+        },
+      ],
+    });
+  });
+
+  it("never stats a symlink's target before checking it against the home ceiling", async () => {
+    // The endpoint's own security order is normalize -> realpath -> assert
+    // inside root; classification must apply that per entry too. An
+    // out-of-ceiling symlink target must never be touched again after
+    // realpath — not even by a discard-the-result isDirectory call — or the
+    // endpoint has stat'd a path outside the area it is bounded to (Codex
+    // review, #148).
+    const fs = new InMemoryFileSystem({
+      directories: {
+        "/home/user": "/home/user",
+        "/home/user/dev": "/home/user/dev",
+        "/home/user/dev/escape": "/etc/secret",
+        "/etc/secret": "/etc/secret",
+      },
+      listings: { "/home/user/dev": ["escape"] },
+    });
+    const isDirectorySpy = vi.spyOn(fs, "isDirectory");
+    const browse = new BrowseFilesystem({ fs, homeRoot: () => "/home/user" });
+
+    const result = await browse.browse("/home/user/dev");
+
+    expect(result).toMatchObject({ ok: true, entries: [] });
+    expect(isDirectorySpy).not.toHaveBeenCalledWith("/etc/secret");
+  });
+
+  it("never resolves a plain file as a possible symlink", async () => {
+    // A raw listing name that listRawEntries already reports as neither a
+    // directory nor a symlink (a plain file) must be dropped immediately,
+    // with no realpath/isDirectory round trip spent resolving it — large,
+    // ordinary directories (e.g. a Downloads folder full of files) must not
+    // pay a symlink-resolution cost per file (Codex review, #148).
+    const fs = new InMemoryFileSystem({
+      directories: {
+        "/home/user": "/home/user",
+        "/home/user/dev": "/home/user/dev",
+      },
+      files: { "/home/user/dev/notes.txt": "hi" },
+      listings: { "/home/user/dev": ["notes.txt"] },
+    });
+    const realpathSpy = vi.spyOn(fs, "realpath");
+    const browse = new BrowseFilesystem({ fs, homeRoot: () => "/home/user" });
+
+    const result = await browse.browse("/home/user/dev");
+
+    expect(result).toMatchObject({ ok: true, entries: [] });
+    expect(realpathSpy).not.toHaveBeenCalledWith("/home/user/dev/notes.txt");
   });
 
   it("reports each entry's git-repo and skills/-subdir facts", async () => {
@@ -128,7 +313,10 @@ describe("BrowseFilesystem", () => {
 
   it("defaults an empty path to the home root", async () => {
     const browse = makeBrowse({
-      directories: { "/home/user": "/home/user" },
+      directories: {
+        "/home/user": "/home/user",
+        "/home/user/dev": "/home/user/dev",
+      },
       listings: { "/home/user": ["dev"] },
     });
 
@@ -142,6 +330,8 @@ describe("BrowseFilesystem", () => {
         {
           name: "dev",
           path: "/home/user/dev",
+          isHidden: false,
+          isSymlink: false,
           facts: { isGitRepo: false, hasSkillsSubdir: false },
         },
       ],
