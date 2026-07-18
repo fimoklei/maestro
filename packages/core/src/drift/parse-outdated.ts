@@ -2,7 +2,9 @@
 // the set of skills behind the latest central tag. Identity is the skill name —
 // the last path segment of the Package cell — so a deployed skill can be matched
 // without keying on the full owner/repo/skills/<name> string (which Rich
-// truncates at narrow widths).
+// truncates at narrow widths). Every claim here about what apm prints is
+// recorded, with its observed apm version, in .claude/rules/apm-driver.md —
+// re-verify there on an apm upgrade.
 //
 // The result is deliberately a discriminated union, not a bare array: an empty
 // set that actually means "I didn't understand the output" would render as
@@ -29,7 +31,7 @@ export type OutdatedResult =
 
 // apm's terminal banners for the two empty outcomes — its own statement that
 // there is genuinely nothing behind. Their absence (with no parsed rows either)
-// means the output is unrecognised, not empty.
+// means the output is unrecognised, not empty (apm-driver.md).
 const UP_TO_DATE = /All dependencies are up-to-date/;
 const NO_REMOTE = /No remote dependencies to check/;
 
@@ -41,7 +43,8 @@ const COULD_NOT_CHECK = /could not be checked/;
 const UNCHECKABLE_STATUS = "unknown";
 
 // A data row: five │-separated cells. We split on the light vertical bar, which
-// only data rows use — the header and separators use heavy box-drawing glyphs.
+// only data rows use — the header and separators use heavy box-drawing glyphs
+// (apm-driver.md).
 const cellsOf = (line: string): string[] =>
   line
     .split("│")
@@ -54,7 +57,7 @@ const lastSegment = (packageCell: string): string =>
 // True when apm flagged any dep as uncheckable — its "could not be checked"
 // summary, or a data row whose status cell is "unknown". The row carries an
 // empty Source cell, so it survives as four cells (not five) and is matched by
-// the status token directly rather than by column position.
+// the status token directly rather than by column position (apm-driver.md).
 const hasUncheckable = (output: string): boolean =>
   COULD_NOT_CHECK.test(output) ||
   output.split("\n").some((line) => cellsOf(line).includes(UNCHECKABLE_STATUS));

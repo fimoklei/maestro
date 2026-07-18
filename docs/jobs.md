@@ -31,7 +31,12 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 ## NEXT
 
-*(none picked — choose the next job from LATER)*
+Why now: deploy is half a lifecycle — removing a deploy is still handwork, so
+the bet's kill question still answers "yes".
+
+| Job | Main | Job story |
+|---|---|---|
+| Remove a primitive from a target · [#158](https://github.com/fimoklei/maestro/issues/158) | B | *When* a deployed primitive is no longer needed, *I want to* remove it from its target, *so I can* keep that target clean. |
 
 ## LATER
 
@@ -47,7 +52,6 @@ Detail lives in tracker issues; elaboration happens in the grill.
 | Guard against duplicate deploy | B | *When* I deploy a skill already deployed on the other scope, *I want to* have the cockpit warn me before it proceeds, *so I can* avoid an accidental duplicate while still keeping a deliberate one. |
 | Backfill a newly-detected global tool | B, A | *When* I install a second tool after already deploying globally, *I want to* have the cockpit offer to bring the new tool up to the same set, *so I can* keep my tools in sync instead of the new one starting empty. |
 | Update every behind target in one action | B, A | *When* several targets lag the central inventory, *I want to* bring them all current in one action, *so I can* stay up to date without going target by target. |
-| Remove / undeploy a primitive from a target | B | *When* a deployed primitive is no longer needed, *I want to* remove it from its target, *so I can* keep that target clean. |
 | Connect & sync the inventory from git | A | *When* my central inventory lives in a remote repo I have not cloned, *I want to* point Maestro at its git URL as the inventory source, *so I can* set up the cockpit without cloning by hand first. |
 
 ## DONE

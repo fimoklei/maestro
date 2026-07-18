@@ -206,7 +206,8 @@ export class DeployedContentAdapter implements DeployedContentPort {
         const abs = join(root, childRel);
         if (opts.hash) {
           // Hash the raw bytes: apm records a byte-for-byte sha256, so reading as
-          // utf8 would mangle a binary asset and falsely flag it as drift. A read
+          // utf8 would mangle a binary asset and falsely flag it as drift
+          // (apm-driver.md). A read
           // that fails mid-walk is an unreadable destination, not absence —
           // refuse rather than miscategorise it as an apm execution failure (#59).
           let bytes: Buffer;

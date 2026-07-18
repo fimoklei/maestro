@@ -30,12 +30,13 @@ const WIDE_COLUMNS = "200";
 // case-insensitively; either one classifies auth-required. We match only these
 // two — never the git passthrough line or the env hints — and never echo the
 // matched text (security.md, #119). Auth-only scope: a network/host error stays
-// the generic failure.
+// the generic failure (apm-driver.md).
 const APM_AUTH_PHRASES = ["authentication failed", "no token available"];
 
 // The positive marker apm prints on a successful install (`Installed N APM
 // dependency`). Its presence — not the exit code — proves the install happened:
-// apm exits 0 even when every probe fails and nothing is written (#119).
+// apm exits 0 even when every probe fails and nothing is written (#119,
+// apm-driver.md).
 const INSTALL_SUCCESS_MARKER = /Installed \d+ APM dependenc/;
 
 type SanitizedLogEntry = {
@@ -117,7 +118,8 @@ export class ApmCliDriver implements ApmDriverPort {
     const { stdout } = await this.run("apm", args, { cwd });
     // Fail-closed: apm install exits 0 even when the install fails, so trust the
     // positive marker, not the exit code. An absent marker (or any unrecognised
-    // output) reads as failure — never a false success (#119). The raw output,
+    // output) reads as failure — never a false success (#119, apm-driver.md).
+    // The raw output,
     // which may carry a token, is deliberately not included in the error.
     if (!INSTALL_SUCCESS_MARKER.test(stdout)) {
       throw new Error("apm install did not report a completed installation");

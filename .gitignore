@@ -19,3 +19,6 @@ storybook-static/
 
 # Supacode session artifacts (local tool state, not source).
 .sc/
+
+# Codex CLI hook config written per machine (local tool state, not source).
+.codex/

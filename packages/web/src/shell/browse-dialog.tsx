@@ -106,7 +106,6 @@ export function BrowseDialog({
       className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 p-6"
     >
       <div className="flex max-h-[70vh] w-full max-w-[620px] flex-col overflow-hidden rounded-card border border-line bg-chrome">
-        {/* header — mode title + close */}
         <div className="flex items-center gap-2.5 border-line-row border-b px-3.5 py-3">
           <h2 className="font-semibold font-ui text-fg text-subtitle">
             {label}
@@ -122,7 +121,6 @@ export function BrowseDialog({
           </button>
         </div>
 
-        {/* toolbar — up + breadcrumbs (+ home-ceiling hint), then the filter */}
         <div className="flex flex-col gap-2.5 border-line-row border-b px-3.5 py-3">
           <div className="flex items-center gap-2.5">
             <button
@@ -181,7 +179,6 @@ export function BrowseDialog({
           </div>
         </div>
 
-        {/* listing */}
         <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-auto px-2.5 py-2">
           {browse.isPending ? (
             <p className="px-2.5 py-1.5 font-mono text-dim text-tag">
@@ -249,7 +246,6 @@ export function BrowseDialog({
           </div>
         ) : null}
 
-        {/* footer — paste-a-path alongside cancel/confirm */}
         <div className="flex items-center gap-2.5 border-line-row border-t px-3.5 py-3">
           <form
             className="flex min-w-0 flex-1 items-center gap-2 rounded-control border border-line bg-inset px-2.5 py-[7px]"

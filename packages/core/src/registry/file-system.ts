@@ -16,7 +16,6 @@ export interface FileSystemPort {
   // exist (mirrors node:fs realpath).
   realpath(path: string): Promise<string>;
 
-  // True when the path exists and is a directory.
   isDirectory(path: string): Promise<boolean>;
 
   // True when the path *itself* is a directory — never following a trailing

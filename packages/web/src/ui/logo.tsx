@@ -7,7 +7,6 @@ import type { ReactNode } from "react";
 export interface LogoProps {
   /** Tile size in px. Default 26 (status-bar scale). */
   size?: number;
-  /** Show the "Maestro" wordmark next to the tile. */
   wordmark?: boolean;
   /** Dim mono context after the wordmark, e.g. "agent-harness · main · 9 primitives". */
   context?: ReactNode;
