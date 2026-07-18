@@ -14,7 +14,8 @@ export interface TypeTagProps {
 }
 
 // Static per-type classes (Tailwind cannot scan interpolated class names).
-// /27 border and /8 fill mirror the design source's color-mix alphas.
+// /27 border and /8 fill mirror the color-mix alphas in the live design system
+// (read it as .claude/rules/design.md describes; the live source wins).
 const typeClasses: Record<PrimitiveType, string> = {
   skill: "text-type-skill border-type-skill/27 bg-type-skill/8",
   hook: "text-type-hook border-type-hook/27 bg-type-hook/8",

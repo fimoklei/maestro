@@ -27,7 +27,8 @@ export type DeployTarget =
 // mirroring checkOutdated's result-with-reason shape (no control-flow-by-
 // exception). "no-tag": apm answered but published no deployable vX.Y.Z tag.
 // "auth-required": apm said GitHub auth is missing/expired (its two fixed
-// phrases). "failed": any other apm/git error (network, host down, CLI missing).
+// phrases, listed in apm-driver.md). "failed": any other apm/git error
+// (network, host down, CLI missing).
 export type ResolveLatestTagResult =
   | { ok: true; tag: string }
   | { ok: false; reason: "no-tag" | "auth-required" | "failed" };
@@ -55,7 +56,8 @@ export type ApmDriverPort = {
 };
 
 // Git questions apm cannot answer (apm view is repo-level): whether a tag's
-// tree contains skills/<name>. Implemented against the local inventory clone.
+// tree contains skills/<name> (apm-driver.md). Implemented against the local
+// inventory clone.
 export type InventoryGitPort = {
   skillExistsAtTag(tag: string, name: string): Promise<boolean>;
   // Whether the local skills/<name> working tree differs from the tag's

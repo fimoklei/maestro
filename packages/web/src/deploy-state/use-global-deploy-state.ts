@@ -1,9 +1,9 @@
 // Server-state hook for the global (user-scope) deploy-state. The server reads
 // apm's user-scope apm.lock.yaml and resolves that location itself, so this hook
 // sends no path. As of #132 the API groups state per detected tool; this hook
-// exposes that `tools` grouping AND, until the per-tool cockpit rendering lands
-// (a separate ticket), a flattened `primitives` list so the current panel and
-// drift roll-up keep working unchanged. Its own query key sits alongside the
+// exposes that `tools` grouping AND a flattened `primitives` list so the
+// current panel and drift roll-up keep working unchanged. Its own query key
+// sits alongside the
 // per-repo ones (see .claude/rules/frontend.md).
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";

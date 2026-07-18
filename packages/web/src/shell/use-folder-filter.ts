@@ -3,7 +3,8 @@ import type { BrowseEntry } from "./use-browse-filesystem";
 
 // Narrows the current folder's entries as the user types (issue #149). The
 // reset-on-navigate is adjusted during render rather than an Effect — React's
-// documented pattern for state that depends on another value changing — so a
+// documented pattern for state that depends on another value changing
+// (react.dev/learn/you-might-not-need-an-effect) — so a
 // stale filter from the previous folder never hides an unrelated folder's
 // entries.
 export function useFolderFilter(

@@ -10,7 +10,6 @@ export interface NavItemProps {
   icon?: ReactNode;
   /** View name in sentence case, e.g. "Deploy-state". */
   label: ReactNode;
-  /** Active view. */
   active?: boolean;
   /** Inert (first-run welcome): visually dimmed and non-interactive. */
   disabled?: boolean;

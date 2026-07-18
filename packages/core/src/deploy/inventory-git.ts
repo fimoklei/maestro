@@ -1,5 +1,6 @@
 // Adapter: ask the local inventory clone the git questions apm cannot answer
-// (apm view is repo-level). execFile with an args array and a `--` path
+// (apm view is repo-level — apm-driver.md). execFile with an args array and a
+// `--` path
 // separator — tag and name go in as data, never command text (security.md).
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
