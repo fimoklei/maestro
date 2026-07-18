@@ -1,11 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { BrowseDialog } from "./browse-dialog";
+import { readLastFolder, writeLastFolder } from "./browse-last-folder";
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  window.localStorage.clear();
 });
 
 function jsonResponse(body: unknown, status: number) {
@@ -422,5 +424,229 @@ describe("BrowseDialog", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       /outside the area/i,
     );
+  });
+
+  describe("last-used folder (issue #149)", () => {
+    it("opens at the folder remembered for this mode", async () => {
+      writeLastFolder("connect", "/home/me/dev");
+      const fetchMock = vi.fn(
+        async (_input: RequestInfo | URL, init?: RequestInit) => {
+          const body = JSON.parse(String(init?.body ?? "{}")) as {
+            path: string;
+          };
+          if (body.path === "/home/me/dev") {
+            return jsonResponse(
+              {
+                path: "/home/me/dev",
+                parent: "/home/me",
+                breadcrumbs: [
+                  { name: "~", path: "/home/me" },
+                  { name: "dev", path: "/home/me/dev" },
+                ],
+                entries: [
+                  { name: "repos", path: "/home/me/dev/repos", facts: noFacts },
+                ],
+              },
+              200,
+            );
+          }
+          return jsonResponse(homeResponse, 200);
+        },
+      );
+      vi.stubGlobal("fetch", fetchMock);
+      renderDialog({ mode: "connect" });
+
+      expect(
+        await screen.findByRole("button", { name: "repos" }),
+      ).toBeInTheDocument();
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/filesystem/children",
+        expect.objectContaining({
+          body: JSON.stringify({ path: "/home/me/dev" }),
+        }),
+      );
+    });
+
+    it("remembers connect and register folders independently", async () => {
+      writeLastFolder("connect", "/home/me/connect-folder");
+      writeLastFolder("register", "/home/me/register-folder");
+      const fetchMock = vi.fn(async () => jsonResponse(homeResponse, 200));
+      vi.stubGlobal("fetch", fetchMock);
+
+      renderDialog({ mode: "register" });
+
+      await waitFor(() =>
+        expect(fetchMock).toHaveBeenCalledWith(
+          "/api/filesystem/children",
+          expect.objectContaining({
+            body: JSON.stringify({ path: "/home/me/register-folder" }),
+          }),
+        ),
+      );
+      expect(fetchMock).not.toHaveBeenCalledWith(
+        "/api/filesystem/children",
+        expect.objectContaining({
+          body: JSON.stringify({ path: "/home/me/connect-folder" }),
+        }),
+      );
+    });
+
+    it("falls back to home when the remembered folder no longer exists", async () => {
+      writeLastFolder("connect", "/home/me/gone");
+      const fetchMock = vi.fn(
+        async (_input: RequestInfo | URL, init?: RequestInit) => {
+          const body = JSON.parse(String(init?.body ?? "{}")) as {
+            path: string;
+          };
+          if (body.path === "/home/me/gone") {
+            return jsonResponse(
+              { error: "not-found", message: "That folder no longer exists." },
+              404,
+            );
+          }
+          return jsonResponse(homeResponse, 200);
+        },
+      );
+      vi.stubGlobal("fetch", fetchMock);
+      renderDialog({ mode: "connect" });
+
+      expect(await screen.findByText(/home ceiling/i)).toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    it("shows the error banner, not a silent fallback, when the remembered folder fails for a reason other than not-found", async () => {
+      // "no longer exists" (story 4/5's fallback) is narrower than "any
+      // error" — an unreadable folder is a real problem the user should see
+      // (story 22), not one silently swapped for home behind their back.
+      writeLastFolder("connect", "/home/me/locked");
+      const fetchMock = vi.fn(
+        async (_input: RequestInfo | URL, init?: RequestInit) => {
+          const body = JSON.parse(String(init?.body ?? "{}")) as {
+            path: string;
+          };
+          if (body.path === "/home/me/locked") {
+            return jsonResponse(
+              { error: "unreadable", message: "Permission denied." },
+              403,
+            );
+          }
+          return jsonResponse(homeResponse, 200);
+        },
+      );
+      vi.stubGlobal("fetch", fetchMock);
+      renderDialog({ mode: "connect" });
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        /permission denied/i,
+      );
+      // Flush any pending effects/microtasks so a wrongful fallback (which
+      // would fire asynchronously) has had its chance before asserting its
+      // absence — avoids a race between this assertion and the effect.
+      await act(async () => {});
+
+      expect(screen.getByRole("alert")).toHaveTextContent(/permission denied/i);
+      expect(fetchMock).not.toHaveBeenCalledWith(
+        "/api/filesystem/children",
+        expect.objectContaining({ body: JSON.stringify({ path: "" }) }),
+      );
+    });
+
+    it("remembers the folder navigated into, for next time", async () => {
+      const fetchMock = vi.fn(
+        async (_input: RequestInfo | URL, init?: RequestInit) => {
+          const body = JSON.parse(String(init?.body ?? "{}")) as {
+            path: string;
+          };
+          if (body.path === "/home/me/projects") {
+            return jsonResponse(
+              {
+                path: "/home/me/projects",
+                parent: "/home/me",
+                breadcrumbs: [
+                  { name: "~", path: "/home/me" },
+                  { name: "projects", path: "/home/me/projects" },
+                ],
+                entries: [],
+              },
+              200,
+            );
+          }
+          return jsonResponse(
+            {
+              ...homeResponse,
+              entries: [
+                { name: "projects", path: "/home/me/projects", facts: noFacts },
+              ],
+            },
+            200,
+          );
+        },
+      );
+      vi.stubGlobal("fetch", fetchMock);
+      renderDialog({ mode: "connect" });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "projects" }),
+      );
+
+      await waitFor(() =>
+        expect(readLastFolder("connect")).toBe("/home/me/projects"),
+      );
+    });
+  });
+
+  describe("filter (issue #149)", () => {
+    function entriesResponse() {
+      return {
+        ...homeResponse,
+        entries: [
+          {
+            name: "agent-harness",
+            path: "/home/me/agent-harness",
+            facts: noFacts,
+          },
+          { name: "projects", path: "/home/me/projects", facts: noFacts },
+        ],
+      };
+    }
+
+    it("narrows the current folder's entries as the user types", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => jsonResponse(entriesResponse(), 200)),
+      );
+      renderDialog();
+
+      await screen.findByRole("button", { name: "agent-harness" });
+      const filter = screen.getByRole("textbox", { name: /filter/i });
+      await userEvent.type(filter, "proj");
+
+      expect(
+        screen.getByRole("button", { name: "projects" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "agent-harness" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("restores the full listing when the filter is cleared", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => jsonResponse(entriesResponse(), 200)),
+      );
+      renderDialog();
+
+      await screen.findByRole("button", { name: "agent-harness" });
+      const filter = screen.getByRole("textbox", { name: /filter/i });
+      await userEvent.type(filter, "proj");
+      await userEvent.clear(filter);
+
+      expect(
+        screen.getByRole("button", { name: "agent-harness" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "projects" }),
+      ).toBeInTheDocument();
+    });
   });
 });
