@@ -47,7 +47,16 @@ export function RegisterRepoForm({
           className="flex-1 rounded-control border border-line bg-inset px-2 py-1.5 font-mono text-fg text-mono-sm outline-none focus:border-line-chip"
         />
         {onBrowse ? (
-          <Button type="button" variant="quiet" size="sm" onClick={onBrowse}>
+          // Closed while a registration is in flight: reopening the picker
+          // mid-run would start a second registration loop alongside the
+          // first, interleaving their outcomes (issue #151).
+          <Button
+            type="button"
+            variant="quiet"
+            size="sm"
+            onClick={onBrowse}
+            disabled={isPending}
+          >
             browse…
           </Button>
         ) : null}

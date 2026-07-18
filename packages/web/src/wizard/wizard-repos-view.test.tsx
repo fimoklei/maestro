@@ -237,6 +237,45 @@ describe("WizardReposView", () => {
       expect(outcomes).toHaveTextContent("registered");
     });
 
+    it("drops a stale manual-registration error once a selection registers", async () => {
+      // Otherwise the failed paste's error sits underneath a list of ticks,
+      // telling the user two contradictory things at once.
+      let posts = 0;
+      stubApi({
+        browse: repoListing,
+        register: (path) => {
+          posts += 1;
+          return posts === 1
+            ? jsonResponse(
+                {
+                  error: "relative",
+                  message: "Path must be an absolute path.",
+                },
+                400,
+              )
+            : jsonResponse({ repos: [{ path }] }, 201);
+        },
+      });
+      renderView();
+
+      // A hand-typed path that the server rejects.
+      await userEvent.type(
+        await screen.findByLabelText(/repo path/i),
+        "./not-absolute",
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: /register repo/i }),
+      );
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        /absolute path/i,
+      );
+
+      await selectBothRepos();
+
+      await screen.findByRole("list", { name: /registration results/i });
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
     it("keeps registering after one repo fails, and says why it was skipped", async () => {
       let posts = 0;
       stubApi({

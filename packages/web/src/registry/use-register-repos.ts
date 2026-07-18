@@ -27,6 +27,12 @@ export function useRegisterRepos() {
   const [isRegistering, setIsRegistering] = useState(false);
 
   async function registerRepos(paths: string[]) {
+    // Two overlapping runs would interleave their outcomes and let the first
+    // to finish declare the whole thing done. The hook owns that invariant,
+    // not the button that happens to be disabled.
+    if (isRegistering) {
+      return;
+    }
     setIsRegistering(true);
     // A fresh run reports on its own selection, not on the previous one.
     setOutcomes([]);

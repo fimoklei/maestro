@@ -24,9 +24,13 @@ export function WizardReposView() {
   // Confirming the picker registers the whole selection here — the dialog only
   // hands over the paths (issue #151).
   const registerSelection = useRegisterRepos();
-  const browse = useBrowsePicker((paths) =>
-    registerSelection.registerRepos(paths),
-  );
+  const browse = useBrowsePicker((paths) => {
+    // The form's own error belongs to a hand-typed path that is no longer
+    // what the screen is about — leaving it would contradict the ticks the
+    // batch is about to render underneath it.
+    register.reset();
+    registerSelection.registerRepos(paths);
+  });
   const repos = registry.data?.repos ?? [];
   // Client-side join for the browse dialog's "● registered" badge (issue
   // #150) — the server stays registry-agnostic; this is a hint, not a
