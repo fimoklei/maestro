@@ -3,6 +3,7 @@ import {
   ApmCliDriver,
   type BrowseError,
   BrowseFilesystem,
+  type BrowseSuccess,
   CheckVersionDrift,
   ConfigStore,
   ConnectInventory,
@@ -339,12 +340,16 @@ export function createApp(deps: AppDeps) {
 
     // `parent` is undefined at the home ceiling; JSON.stringify drops the key,
     // which is the contract — the client reads its absence as "up is disabled".
+    //
+    // `satisfies BrowseSuccess` binds this route to the shape core owns and the
+    // client reads, so a field added to one side and not sent here fails to
+    // compile rather than arriving undefined (issue #156).
     return c.json({
       path: result.path,
       parent: result.parent,
       breadcrumbs: result.breadcrumbs,
       entries: result.entries,
-    });
+    } satisfies BrowseSuccess);
   });
 
   // Per-repo deploy-state, registry-gated: a repo not in the registry is

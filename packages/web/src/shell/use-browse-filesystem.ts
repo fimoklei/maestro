@@ -6,7 +6,7 @@ import type {
   BrowseCrumb,
   BrowseEntry,
   BrowseEntryFacts,
-  BrowseResult,
+  BrowseSuccess,
 } from "@maestro/core";
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
@@ -18,14 +18,13 @@ import { requestJson } from "../api/http";
 // (`.claude/rules/architecture.md`).
 export type { BrowseCrumb, BrowseEntry, BrowseEntryFacts };
 
-// The endpoint returns core's successful browse result minus its `ok` tag, so
-// derive the shape instead of restating it — a field added in core reaches the
-// client without a second edit (issue #156).
+// The same type the route binds its response to (issue #156), so the client
+// cannot read a field the server never agreed to send.
 //
 // `parent` is absent at the home ceiling; that absence is the "up is disabled"
 // signal. Breadcrumbs arrive server-derived, so the client never splits a path
 // itself (issue #146).
-type BrowseResponse = Omit<Extract<BrowseResult, { ok: true }>, "ok">;
+type BrowseResponse = BrowseSuccess;
 
 export function useBrowseFilesystem(path: string) {
   return useQuery({
