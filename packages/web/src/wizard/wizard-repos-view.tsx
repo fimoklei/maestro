@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ConfigUnreachableNotice } from "../inventory/config-unreachable-notice";
 import { useInventoryConfig } from "../inventory/use-inventory";
 import { RegisterRepoForm } from "../registry/register-repo-form";
+import { useRegisterRepos } from "../registry/use-register-repos";
 import { useRegisterRepo, useRegistry } from "../registry/use-registry";
 import { BrowseDialog } from "../shell/browse-dialog";
 import { useBrowsePicker } from "../shell/use-browse-picker";
@@ -20,7 +21,12 @@ export function WizardReposView() {
   const navigate = useNavigate();
   const config = useInventoryConfig();
   const [path, setPath] = useState("");
-  const browse = useBrowsePicker(setPath);
+  // Confirming the picker registers the whole selection here — the dialog only
+  // hands over the paths (issue #151).
+  const registerSelection = useRegisterRepos();
+  const browse = useBrowsePicker((paths) =>
+    registerSelection.registerRepos(paths),
+  );
   const repos = registry.data?.repos ?? [];
   // Client-side join for the browse dialog's "● registered" badge (issue
   // #150) — the server stays registry-agnostic; this is a hint, not a
@@ -71,11 +77,51 @@ export function WizardReposView() {
           onPathChange={setPath}
           onSubmit={handleSubmit}
           error={register.error ? (register.error as Error).message : null}
-          isPending={register.isPending}
+          // A selection registering repo-by-repo blocks the form too: both
+          // paths write the same registry, and the run is the visible answer.
+          isPending={register.isPending || registerSelection.isRegistering}
           onBrowse={browse.openBrowse}
         />
+        {registerSelection.outcomes.length > 0 ? (
+          <div className="flex flex-col gap-1 border-line-row border-t pt-3">
+            <span className="m-label">Results of last selection</span>
+            <ul
+              aria-label="Registration results"
+              className="flex flex-col gap-1"
+            >
+              {registerSelection.outcomes.map((outcome) => (
+                <li
+                  key={outcome.path}
+                  className="flex items-baseline justify-between gap-2"
+                >
+                  <span className="flex min-w-0 items-baseline gap-2">
+                    <span
+                      className={
+                        outcome.ok
+                          ? "text-green-ink text-tag"
+                          : "text-amber-ink text-tag"
+                      }
+                    >
+                      {outcome.ok ? "✓" : "✕"}
+                    </span>
+                    <span className="truncate font-mono text-fg-2 text-mono-sm">
+                      {outcome.path}
+                    </span>
+                  </span>
+                  <span
+                    className={`whitespace-nowrap font-mono text-tag ${
+                      outcome.ok ? "text-green-ink" : "text-amber-ink"
+                    }`}
+                  >
+                    {outcome.reason}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         {repos.length > 0 ? (
-          <ul className="flex flex-col gap-1">
+          <ul aria-label="Registered repos" className="flex flex-col gap-1">
             {repos.map((repo) => (
               <li
                 key={repo.path}

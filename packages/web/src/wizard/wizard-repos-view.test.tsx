@@ -24,7 +24,7 @@ function stubApi({
   configFailsOnce = false,
 }: {
   repos?: Array<{ path: string }>;
-  register?: () => Response;
+  register?: (path: string) => Response;
   browse?: () => Response;
   configuredPath?: string | null;
   configFailsOnce?: boolean;
@@ -55,10 +55,15 @@ function stubApi({
       }
       if (url.startsWith("/api/registry/repos")) {
         if (init?.method === "POST") {
-          if (register) {
-            return register();
-          }
           const { path } = JSON.parse(String(init.body)) as { path: string };
+          if (register) {
+            const response = register(path);
+            // Mirror the server: a 201 persists, so a later list call sees it.
+            if (response.status === 201) {
+              registered.push({ path });
+            }
+            return response;
+          }
           registered.push({ path });
           return jsonResponse({ repos: registered }, 201);
         }
@@ -158,34 +163,110 @@ describe("WizardReposView", () => {
     expect(await screen.findByText("deploy-state-landed")).toBeInTheDocument();
   });
 
-  it("fills the repo path field from a folder picked via browse", async () => {
-    stubApi({
-      browse: () =>
-        jsonResponse(
-          {
-            path: "/home/me/acme-web",
-            parent: "/home/me",
-            breadcrumbs: [
-              { name: "~", path: "/home/me" },
-              { name: "acme-web", path: "/home/me/acme-web" },
-            ],
-            entries: [],
-          },
-          200,
-        ),
+  describe("multi-select registration (issue #151)", () => {
+    // A folder of two git repos, so one browse session can register both.
+    const repoListing = () =>
+      jsonResponse(
+        {
+          path: "/home/me",
+          breadcrumbs: [{ name: "~", path: "/home/me" }],
+          entries: [
+            {
+              name: "acme-web",
+              path: "/home/me/acme-web",
+              isHidden: false,
+              isSymlink: false,
+              facts: { isGitRepo: true, hasSkillsSubdir: false },
+            },
+            {
+              name: "payments-api",
+              path: "/home/me/payments-api",
+              isHidden: false,
+              isSymlink: false,
+              facts: { isGitRepo: true, hasSkillsSubdir: false },
+            },
+          ],
+        },
+        200,
+      );
+
+    async function selectBothRepos() {
+      await userEvent.click(
+        await screen.findByRole("button", { name: /browse/i }),
+      );
+      await userEvent.click(
+        await screen.findByRole("checkbox", { name: /acme-web/i }),
+      );
+      await userEvent.click(
+        screen.getByRole("checkbox", { name: /payments-api/i }),
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: /register 2 selected/i }),
+      );
+    }
+
+    it("registers every selected repo and lists them all", async () => {
+      const fetchMock = stubApi({ browse: repoListing });
+      renderView();
+      await selectBothRepos();
+
+      const registered = await screen.findByRole("list", {
+        name: /registered repos/i,
+      });
+      expect(registered).toHaveTextContent("/home/me/acme-web");
+      expect(registered).toHaveTextContent("/home/me/payments-api");
+
+      const registerPosts = fetchMock.mock.calls.filter(
+        ([input, init]) =>
+          String(input).startsWith("/api/registry/repos") &&
+          init?.method === "POST",
+      );
+      expect(registerPosts).toHaveLength(2);
     });
-    renderView();
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: /browse/i }),
-    );
-    await userEvent.click(
-      await screen.findByRole("button", { name: /use this folder/i }),
-    );
+    it("shows a per-repo outcome for the selection", async () => {
+      stubApi({ browse: repoListing });
+      renderView();
+      await selectBothRepos();
 
-    expect(screen.getByLabelText(/repo path/i)).toHaveValue(
-      "/home/me/acme-web",
-    );
+      const outcomes = await screen.findByRole("list", {
+        name: /registration results/i,
+      });
+      expect(outcomes).toHaveTextContent("✓");
+      expect(outcomes).toHaveTextContent("/home/me/acme-web");
+      expect(outcomes).toHaveTextContent("registered");
+    });
+
+    it("keeps registering after one repo fails, and says why it was skipped", async () => {
+      let posts = 0;
+      stubApi({
+        browse: repoListing,
+        register: () => {
+          posts += 1;
+          return posts === 1
+            ? jsonResponse(
+                { error: "not-found", message: "No directory exists there." },
+                400,
+              )
+            : jsonResponse({ repos: [{ path: "/home/me/payments-api" }] }, 201);
+        },
+      });
+      renderView();
+      await selectBothRepos();
+
+      const outcomes = await screen.findByRole("list", {
+        name: /registration results/i,
+      });
+      expect(outcomes).toHaveTextContent("✕");
+      expect(outcomes).toHaveTextContent(/skipped · No directory exists there/);
+      // The failure did not stop the run: the second repo still registered.
+      expect(posts).toBe(2);
+      expect(outcomes).toHaveTextContent("/home/me/payments-api");
+      // …and its success persisted into the registered list.
+      expect(
+        await screen.findByRole("list", { name: /registered repos/i }),
+      ).toHaveTextContent("/home/me/payments-api");
+    });
   });
 
   it("redirects an unconfigured deep link back to the welcome gate", async () => {

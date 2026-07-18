@@ -28,7 +28,8 @@ export function WizardConnectView() {
   const config = useInventoryConfig();
   const navigate = useNavigate();
   const [path, setPath] = useState("");
-  const browse = useBrowsePicker(setPath);
+  // Connect mode confirms exactly one path; the list shape is the dialog's.
+  const browse = useBrowsePicker(([selected]) => setPath(selected ?? ""));
   // Blocks a deep link/bookmark into this step by an already-configured user
   // (the gate only guards /welcome itself, not this nested route — see
   // first-run-gate.tsx). Keyed off *this component's own* mutation, not just

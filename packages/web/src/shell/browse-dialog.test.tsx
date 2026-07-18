@@ -93,7 +93,7 @@ describe("BrowseDialog", () => {
     await userEvent.click(
       await screen.findByRole("button", { name: /use this folder/i }),
     );
-    expect(onSelect).toHaveBeenCalledWith("/home/me");
+    expect(onSelect).toHaveBeenCalledWith(["/home/me"]);
   });
 
   it("navigates into a directory when its entry is clicked", async () => {
@@ -281,7 +281,7 @@ describe("BrowseDialog", () => {
     const paste = await screen.findByRole("textbox", { name: /or paste/i });
     await userEvent.type(paste, "/somewhere/else{Enter}");
 
-    expect(onSelect).toHaveBeenCalledWith("/somewhere/else");
+    expect(onSelect).toHaveBeenCalledWith(["/somewhere/else"]);
   });
 
   it("confirms the pasted path via the primary button, not the listing folder", async () => {
@@ -299,8 +299,8 @@ describe("BrowseDialog", () => {
       screen.getByRole("button", { name: /use this folder/i }),
     );
 
-    expect(onSelect).toHaveBeenCalledWith("/somewhere/else");
-    expect(onSelect).not.toHaveBeenCalledWith("/home/me");
+    expect(onSelect).toHaveBeenCalledWith(["/somewhere/else"]);
+    expect(onSelect).not.toHaveBeenCalledWith(["/home/me"]);
   });
 
   it("shows the mode title in the header and closes via the close affordance", async () => {
@@ -325,7 +325,7 @@ describe("BrowseDialog", () => {
     renderDialog({ mode: "register" });
 
     expect(
-      await screen.findByRole("heading", { name: "Select repo folder" }),
+      await screen.findByRole("heading", { name: "Select repos to register" }),
     ).toBeInTheDocument();
   });
 
@@ -749,6 +749,272 @@ describe("BrowseDialog", () => {
       await waitFor(() =>
         expect(readLastFolder("connect")).toBe("/home/me/projects"),
       );
+    });
+  });
+
+  describe("multi-select registration (issue #151)", () => {
+    const repoEntries = [
+      {
+        name: "acme-web",
+        path: "/home/me/acme-web",
+        isHidden: false,
+        isSymlink: false,
+        facts: { isGitRepo: true, hasSkillsSubdir: false },
+      },
+      {
+        name: "payments-api",
+        path: "/home/me/payments-api",
+        isHidden: false,
+        isSymlink: false,
+        facts: { isGitRepo: true, hasSkillsSubdir: false },
+      },
+      {
+        name: "scratch",
+        path: "/home/me/scratch",
+        isHidden: false,
+        isSymlink: false,
+        facts: noFacts,
+      },
+    ];
+
+    function stubRepoListing() {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () =>
+          jsonResponse({ ...homeResponse, entries: repoEntries }, 200),
+        ),
+      );
+    }
+
+    it("offers a checkbox only on git-repo rows", async () => {
+      stubRepoListing();
+      renderDialog({ mode: "register" });
+
+      expect(
+        await screen.findByRole("checkbox", { name: /acme-web/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("checkbox", { name: /payments-api/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("checkbox", { name: /scratch/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("never offers checkboxes in connect mode", async () => {
+      stubRepoListing();
+      renderDialog({ mode: "connect" });
+
+      await screen.findByRole("button", { name: "acme-web" });
+      expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+    });
+
+    it("disables the checkbox of an already-registered repo", async () => {
+      stubRepoListing();
+      renderDialog({
+        mode: "register",
+        registeredPaths: new Set(["/home/me/acme-web"]),
+      });
+
+      expect(
+        await screen.findByRole("checkbox", { name: /acme-web/i }),
+      ).toBeDisabled();
+      expect(
+        screen.getByRole("checkbox", { name: /payments-api/i }),
+      ).toBeEnabled();
+    });
+
+    it("counts the checked repos in the confirm, and disables it at zero", async () => {
+      stubRepoListing();
+      renderDialog({ mode: "register" });
+
+      const first = await screen.findByRole("checkbox", { name: /acme-web/i });
+      expect(
+        screen.getByRole("button", { name: "register 0 selected →" }),
+      ).toBeDisabled();
+
+      await userEvent.click(first);
+      await userEvent.click(
+        screen.getByRole("checkbox", { name: /payments-api/i }),
+      );
+
+      expect(
+        screen.getByRole("button", { name: "register 2 selected →" }),
+      ).toBeEnabled();
+    });
+
+    it("returns every checked path on confirm, and registers nothing itself", async () => {
+      const fetchMock = vi.fn(async (_input: RequestInfo | URL) =>
+        jsonResponse({ ...homeResponse, entries: repoEntries }, 200),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+      const { onSelect } = renderDialog({ mode: "register" });
+
+      await userEvent.click(
+        await screen.findByRole("checkbox", { name: /acme-web/i }),
+      );
+      await userEvent.click(
+        screen.getByRole("checkbox", { name: /payments-api/i }),
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: /register 2 selected/i }),
+      );
+
+      expect(onSelect).toHaveBeenCalledWith([
+        "/home/me/acme-web",
+        "/home/me/payments-api",
+      ]);
+      // The dialog stays presentational: browsing is the only request it makes.
+      expect(
+        fetchMock.mock.calls.every(([input]) =>
+          String(input).startsWith("/api/filesystem/children"),
+        ),
+      ).toBe(true);
+    });
+
+    it("keeps a repo checked while the user navigates to another folder and back", async () => {
+      const nested = {
+        path: "/home/me/nested",
+        parent: "/home/me",
+        breadcrumbs: [
+          { name: "~", path: "/home/me" },
+          { name: "nested", path: "/home/me/nested" },
+        ],
+        entries: [
+          {
+            name: "billing-svc",
+            path: "/home/me/nested/billing-svc",
+            isHidden: false,
+            isSymlink: false,
+            facts: { isGitRepo: true, hasSkillsSubdir: false },
+          },
+        ],
+      };
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+          const body = JSON.parse(String(init?.body ?? "{}")) as {
+            path: string;
+          };
+          if (body.path === "/home/me/nested") {
+            return jsonResponse(nested, 200);
+          }
+          return jsonResponse(
+            {
+              ...homeResponse,
+              entries: [
+                ...repoEntries,
+                {
+                  name: "nested",
+                  path: "/home/me/nested",
+                  isHidden: false,
+                  isSymlink: false,
+                  facts: noFacts,
+                },
+              ],
+            },
+            200,
+          );
+        }),
+      );
+      const { onSelect } = renderDialog({ mode: "register" });
+
+      await userEvent.click(
+        await screen.findByRole("checkbox", { name: /acme-web/i }),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "nested" }));
+      await userEvent.click(
+        await screen.findByRole("checkbox", { name: /billing-svc/i }),
+      );
+
+      // The count covers what was checked in both folders…
+      expect(
+        screen.getByRole("button", { name: /register 2 selected/i }),
+      ).toBeEnabled();
+
+      // …and stepping back leaves the earlier tick in place.
+      await userEvent.click(screen.getByRole("button", { name: /up/i }));
+      expect(
+        await screen.findByRole("checkbox", { name: /acme-web/i }),
+      ).toBeChecked();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: /register 2 selected/i }),
+      );
+      expect(onSelect).toHaveBeenCalledWith([
+        "/home/me/acme-web",
+        "/home/me/nested/billing-svc",
+      ]);
+    });
+
+    it("unchecks a repo that is clicked twice", async () => {
+      stubRepoListing();
+      renderDialog({ mode: "register" });
+
+      const checkbox = await screen.findByRole("checkbox", {
+        name: /acme-web/i,
+      });
+      await userEvent.click(checkbox);
+      await userEvent.click(checkbox);
+
+      expect(checkbox).not.toBeChecked();
+      expect(
+        screen.getByRole("button", { name: "register 0 selected →" }),
+      ).toBeDisabled();
+    });
+
+    it("counts a pasted path alongside the checked repos", async () => {
+      stubRepoListing();
+      const { onSelect } = renderDialog({ mode: "register" });
+
+      await userEvent.click(
+        await screen.findByRole("checkbox", { name: /acme-web/i }),
+      );
+      await userEvent.type(
+        screen.getByRole("textbox", { name: /or paste/i }),
+        "/elsewhere/repo",
+      );
+
+      await userEvent.click(
+        screen.getByRole("button", { name: /register 2 selected/i }),
+      );
+      expect(onSelect).toHaveBeenCalledWith([
+        "/home/me/acme-web",
+        "/elsewhere/repo",
+      ]);
+    });
+
+    it("counts a pasted path that is already ticked only once", async () => {
+      stubRepoListing();
+      const { onSelect } = renderDialog({ mode: "register" });
+
+      await userEvent.click(
+        await screen.findByRole("checkbox", { name: /acme-web/i }),
+      );
+      await userEvent.type(
+        screen.getByRole("textbox", { name: /or paste/i }),
+        "/home/me/acme-web",
+      );
+
+      await userEvent.click(
+        screen.getByRole("button", { name: /register 1 selected/i }),
+      );
+      expect(onSelect).toHaveBeenCalledWith(["/home/me/acme-web"]);
+    });
+
+    it("keeps checking a repo separate from stepping into it", async () => {
+      stubRepoListing();
+      const { onSelect } = renderDialog({ mode: "register" });
+
+      await userEvent.click(
+        await screen.findByRole("checkbox", { name: /acme-web/i }),
+      );
+
+      // Ticking must not navigate — the listing is still the same folder.
+      expect(
+        screen.getByRole("checkbox", { name: /payments-api/i }),
+      ).toBeInTheDocument();
+      expect(onSelect).not.toHaveBeenCalled();
     });
   });
 

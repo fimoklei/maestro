@@ -14,6 +14,11 @@ Feature: Register a consuming repo (J10)
     Then the registration is rejected with a readable error
     And the registry stays empty
 
+  Scenario: I register a folder of repos in one go, and a bad one does not sink the rest
+    Given a fresh cockpit with an empty registry
+    When I register a selection of repos where one path is bad
+    Then the good repos are registered and the bad one is reported as skipped
+
   Scenario: Registration survives a restart
     Given a fresh cockpit with an empty registry
     And I have registered an existing directory

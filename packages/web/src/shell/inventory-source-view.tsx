@@ -41,7 +41,9 @@ export function InventorySourceView() {
   // wizard's connect step (see connect-inventory-form.tsx).
   const [editedPath, setEditedPath] = useState<string | undefined>(undefined);
   const path = editedPath ?? currentPath ?? "";
-  const browse = useBrowsePicker(setEditedPath);
+  // Connect mode confirms exactly one path; the list shape is the dialog's,
+  // not this form's.
+  const browse = useBrowsePicker(([selected]) => setEditedPath(selected));
 
   function stopChanging() {
     setIsChanging(false);

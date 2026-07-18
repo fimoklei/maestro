@@ -2,7 +2,7 @@ import { useState } from "react";
 import { HttpError } from "../api/http";
 import { Button } from "../ui/button";
 import { BrowseBreadcrumbs } from "./browse-breadcrumbs";
-import { EntryBadges } from "./entry-badges";
+import { BrowseEntryRow } from "./browse-entry-row";
 import { useBrowseNavigation } from "./use-browse-navigation";
 import { useFolderFilter } from "./use-folder-filter";
 
@@ -29,16 +29,25 @@ import { useFolderFilter } from "./use-folder-filter";
 // symlinked entry the server resolved inside the home ceiling renders a
 // "↳ symlink" tag; the server already dropped anything escaping the ceiling,
 // so the client never resolves or judges a symlink itself (issue #148).
+//
+// Register mode is multi-select (issue #151): every git-repo row carries a
+// checkbox, the selection is one set per dialog session that survives
+// navigating between folders, and confirm hands the host every checked path
+// at once. The dialog stays presentational — it returns paths and never
+// registers anything itself; the host owns the registration loop and its
+// per-repo outcomes.
 export type BrowseDialogMode = "register" | "connect";
 
 const dialogTitle: Record<BrowseDialogMode, string> = {
   connect: "Select inventory folder",
-  register: "Select repo folder",
+  register: "Select repos to register",
 };
 
 type BrowseDialogProps = {
   mode: BrowseDialogMode;
-  onSelect: (path: string) => void;
+  // Always a list, in both modes: connect confirms exactly one path, register
+  // confirms every checked one. One shape keeps the host wiring uniform.
+  onSelect: (paths: string[]) => void;
   onClose: () => void;
   // Register mode only: entry paths already in the registry, for the
   // client-side "● registered" join (issue #150) — the server stays
@@ -64,6 +73,10 @@ export function BrowseDialog({
   // response shape (every entry, each carrying isHidden) and this toggle
   // decides what the listing shows — no second request (issue #148).
   const [showHidden, setShowHidden] = useState(false);
+  // Register mode's selection: paths checked anywhere in this dialog session,
+  // in the order they were ticked. An array (not a Set) because confirm hands
+  // the host a list and the order it reads in is the order the user built.
+  const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const atCeiling =
     browse.data !== undefined && browse.data.parent === undefined;
   const allEntries = browse.data?.entries ?? [];
@@ -86,17 +99,40 @@ export function BrowseDialog({
         ? "Could not browse that directory."
         : null;
 
-  // Confirm hands a path to the host form. A non-empty paste field wins over
-  // the listing folder — the paste-a-path escape hatch bypasses the listing,
-  // so the visible confirm and the field's Enter must agree on it.
+  const typedPath = pastedPath.trim();
+  // What confirm would hand the host right now. Connect confirms one path: a
+  // non-empty paste field wins over the listing folder — the escape hatch
+  // bypasses the listing, so the visible confirm and the field's Enter must
+  // agree on it. Register confirms every checked repo, plus a pasted path as
+  // one more selection, so pasting keeps working where checkboxes can't reach.
+  const confirmedPaths =
+    mode === "register"
+      ? // Deduplicated: pasting a path that is already ticked must not
+        // register it twice, nor inflate the count.
+        [
+          ...new Set([
+            ...selectedPaths,
+            ...(typedPath === "" ? [] : [typedPath]),
+          ]),
+        ]
+      : typedPath !== ""
+        ? [typedPath]
+        : browse.data
+          ? [browse.data.path]
+          : [];
+
   const confirm = () => {
-    const typed = pastedPath.trim();
-    if (typed !== "") {
-      onSelect(typed);
-    } else if (browse.data) {
-      onSelect(browse.data.path);
+    if (confirmedPaths.length > 0) {
+      onSelect(confirmedPaths);
     }
   };
+
+  const toggleSelected = (path: string) =>
+    setSelectedPaths((current) =>
+      current.includes(path)
+        ? current.filter((selected) => selected !== path)
+        : [...current, path],
+    );
 
   return (
     <div
@@ -189,38 +225,15 @@ export function BrowseDialog({
             </p>
           ) : (
             visibleEntries.map((entry) => (
-              <button
+              <BrowseEntryRow
                 key={entry.path}
-                type="button"
-                aria-label={entry.name}
-                onClick={() => setCurrentRequest(entry.path)}
-                className="flex items-center gap-2.5 rounded-control px-2.5 py-[7px] text-left hover:bg-active"
-              >
-                <span className="flex min-w-0 flex-1 items-center gap-1.5">
-                  <span
-                    className={`truncate font-mono text-desc ${
-                      entry.isHidden ? "text-dim" : "text-fg"
-                    }`}
-                  >
-                    {entry.name}/
-                  </span>
-                  {entry.isSymlink ? (
-                    <span className="shrink-0 font-mono text-dim text-tag">
-                      ↳ symlink
-                    </span>
-                  ) : null}
-                </span>
-                <span className="flex shrink-0 items-center gap-1.5">
-                  <EntryBadges
-                    mode={mode}
-                    entry={entry}
-                    registeredPaths={registeredPaths}
-                  />
-                  <span className="w-3.5 text-right font-mono text-data text-dim">
-                    →
-                  </span>
-                </span>
-              </button>
+                mode={mode}
+                entry={entry}
+                registeredPaths={registeredPaths}
+                checked={selectedPaths.includes(entry.path)}
+                onToggle={() => toggleSelected(entry.path)}
+                onEnter={() => setCurrentRequest(entry.path)}
+              />
             ))
           )}
           {!showHidden && !browse.isPending && hiddenCount > 0 ? (
@@ -277,10 +290,12 @@ export function BrowseDialog({
             type="button"
             variant="primary"
             size="sm"
-            disabled={!browse.data && pastedPath.trim() === ""}
+            disabled={confirmedPaths.length === 0}
             onClick={confirm}
           >
-            use this folder →
+            {mode === "register"
+              ? `register ${confirmedPaths.length} selected →`
+              : "use this folder →"}
           </Button>
         </div>
       </div>
