@@ -94,7 +94,7 @@ const deployErrorResponses: Record<
   "inventory-origin-unavailable": {
     status: 502,
     message:
-      "The inventory clone's origin remote is missing, unreadable, or in a form apm cannot resolve. Maestro needs an https or ssh origin of the form host/owner/repo, on that scheme's standard port.",
+      "The inventory clone's origin remote is missing, unreadable, or in a form apm cannot resolve. Maestro deploys from GitHub tags, so it needs a GitHub origin over https or ssh.",
   },
   "no-published-tag": {
     status: 422,
@@ -182,7 +182,7 @@ const connectErrorResponses: Record<
   "no-usable-origin": {
     status: 422,
     message:
-      "That folder has skills/, but its git origin is missing, unreadable, or in a form apm cannot resolve. Deploys resolve versions through that origin, so point Maestro at a clone whose origin is https or ssh, of the form host/owner/repo, on that scheme's standard port.",
+      "That folder has skills/, but its git origin is missing, unreadable, or in a form apm cannot resolve. Deploys read versions from GitHub tags, so point Maestro at a clone whose origin is a GitHub repo over https or ssh.",
   },
 };
 
