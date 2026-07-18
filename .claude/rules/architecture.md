@@ -10,7 +10,7 @@ Where each kind of code lives. Read before adding code to `core`, `server`, or `
 
 Direction: `web` → HTTP → `server` → `core`. Never the reverse. `core` depends on nothing else in this repo.
 
-**`web` may import types from `core` — types only.** A wire shape `core` produces and `web` renders lives in `core`; `web` re-exports it instead of copying it (issue #156, `use-browse-filesystem.ts`). Write `import type`: `verbatimModuleSyntax` erases it, so no `core` runtime reaches the browser bundle. Importing a *value* stays forbidden — it puts domain logic on the screen and drags `node:fs` into Vite's graph. Call `server` instead. `web` holds `@maestro/core` as a **devDependency**, so a runtime import shows up as a mislabelled one.
+**`web` may import types from `core` — types only.** A wire shape `core` produces and `web` renders lives in `core`; `web` re-exports it from `use-browse-filesystem.ts` rather than copying it. Write `import type`. Importing a *value* stays forbidden: call `server` instead.
 
 ## Ports & adapters
 
