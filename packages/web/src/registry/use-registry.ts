@@ -6,9 +6,9 @@ import { requestJson } from "../api/http";
 
 export type RegisteredRepo = { path: string };
 
-type RegistryResponse = { repos: RegisteredRepo[] };
+export type RegistryResponse = { repos: RegisteredRepo[] };
 
-const REGISTRY_KEY = ["registry", "repos"] as const;
+export const REGISTRY_KEY = ["registry", "repos"] as const;
 
 export function useRegistry() {
   return useQuery({

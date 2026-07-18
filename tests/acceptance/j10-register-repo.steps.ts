@@ -56,6 +56,7 @@ describeFeature(
     let workspace: string;
     let configPath: string;
     let repoDir: string;
+    let secondRepoDir: string;
     let app: ReturnType<typeof buildApp>;
     let response: Response;
 
@@ -63,12 +64,14 @@ describeFeature(
       workspace = await mkdtemp(join(tmpdir(), "maestro-j10-"));
       configPath = join(workspace, "config.json");
       repoDir = await mkdtemp(join(tmpdir(), "maestro-j10-repo-"));
+      secondRepoDir = await mkdtemp(join(tmpdir(), "maestro-j10-repo2-"));
       app = buildApp(configPath);
     });
 
     AfterEachScenario(async () => {
       await rm(workspace, { recursive: true, force: true });
       await rm(repoDir, { recursive: true, force: true });
+      await rm(secondRepoDir, { recursive: true, force: true });
     });
 
     Scenario(
@@ -114,6 +117,45 @@ describeFeature(
             repos: [],
           });
         });
+      },
+    );
+
+    Scenario(
+      "I register a folder of repos in one go, and a bad one does not sink the rest",
+      ({ Given, When, Then }) => {
+        let outcomes: { path: string; ok: boolean }[];
+
+        Given("a fresh cockpit with an empty registry", () => {});
+        When(
+          "I register a selection of repos where one path is bad",
+          async () => {
+            // What the cockpit does with a browse-picker selection: one POST per
+            // path, in order, never stopping at the first refusal.
+            const selection = [repoDir, "./not-absolute", secondRepoDir];
+            outcomes = [];
+            for (const path of selection) {
+              const result = await postRepo(app, path);
+              outcomes.push({ path, ok: result.status === 201 });
+            }
+          },
+        );
+        Then(
+          "the good repos are registered and the bad one is reported as skipped",
+          async () => {
+            expect(outcomes).toEqual([
+              { path: repoDir, ok: true },
+              { path: "./not-absolute", ok: false },
+              { path: secondRepoDir, ok: true },
+            ]);
+            const list = (await (
+              await app.request("/api/registry/repos")
+            ).json()) as { repos: { path: string }[] };
+            expect(list.repos.map((repo) => repo.path)).toEqual([
+              await nodeRealpath(repoDir),
+              await nodeRealpath(secondRepoDir),
+            ]);
+          },
+        );
       },
     );
 

@@ -10,10 +10,12 @@ function ControlledForm({
   onSubmit,
   onBrowse,
   error,
+  isPending,
 }: {
   onSubmit?: (path: string) => void;
   onBrowse?: () => void;
   error?: string | null;
+  isPending?: boolean;
 }) {
   const [path, setPath] = useState("");
   return (
@@ -23,6 +25,7 @@ function ControlledForm({
       onSubmit={onSubmit ?? vi.fn()}
       onBrowse={onBrowse}
       error={error}
+      isPending={isPending}
     />
   );
 }
@@ -68,5 +71,13 @@ describe("RegisterRepoForm", () => {
     expect(
       screen.queryByRole("button", { name: /browse/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("closes the browse route while a registration is in flight", () => {
+    // Reopening the picker mid-run would start a second registration loop
+    // alongside the first, interleaving their outcomes (issue #151).
+    render(<ControlledForm onBrowse={vi.fn()} isPending />);
+
+    expect(screen.getByRole("button", { name: /browse/i })).toBeDisabled();
   });
 });

@@ -6,15 +6,18 @@ import { useState } from "react";
 // open flag and handler trio. Consuming
 // components still mount <BrowseDialog /> themselves — this only owns the
 // state, keeping the JSX (which differs slightly per container's layout) local.
-export function useBrowsePicker(onSelect: (path: string) => void) {
+// The dialog confirms a list in both modes (issue #151) — one path in connect,
+// every checked repo in register — so the callback takes the list and each
+// container decides what to do with it.
+export function useBrowsePicker(onSelect: (paths: string[]) => void) {
   const [open, setOpen] = useState(false);
 
   return {
     open,
     openBrowse: () => setOpen(true),
     closeBrowse: () => setOpen(false),
-    selectBrowse: (path: string) => {
-      onSelect(path);
+    selectBrowse: (paths: string[]) => {
+      onSelect(paths);
       setOpen(false);
     },
   };
