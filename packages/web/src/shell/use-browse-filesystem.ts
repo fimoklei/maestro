@@ -2,7 +2,12 @@
 // endpoint is a POST (the Origin/Host guard only covers state-changing
 // methods), so this models it as a useQuery keyed by the requested path rather
 // than a useMutation — it is a read, just shaped as a POST on the wire.
-import type { BrowseCrumb, BrowseEntry, BrowseEntryFacts } from "@maestro/core";
+import type {
+  BrowseCrumb,
+  BrowseEntry,
+  BrowseEntryFacts,
+  BrowseResult,
+} from "@maestro/core";
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 
@@ -13,15 +18,14 @@ import { requestJson } from "../api/http";
 // (`.claude/rules/architecture.md`).
 export type { BrowseCrumb, BrowseEntry, BrowseEntryFacts };
 
-// `parent` is absent at the home ceiling — that absence is the "up is
-// disabled" signal. Breadcrumbs arrive server-derived; the client never
-// splits a path itself (issue #146).
-type BrowseResponse = {
-  path: string;
-  parent?: string;
-  breadcrumbs: BrowseCrumb[];
-  entries: BrowseEntry[];
-};
+// The endpoint returns core's successful browse result minus its `ok` tag, so
+// derive the shape instead of restating it — a field added in core reaches the
+// client without a second edit (issue #156).
+//
+// `parent` is absent at the home ceiling; that absence is the "up is disabled"
+// signal. Breadcrumbs arrive server-derived, so the client never splits a path
+// itself (issue #146).
+type BrowseResponse = Omit<Extract<BrowseResult, { ok: true }>, "ok">;
 
 export function useBrowseFilesystem(path: string) {
   return useQuery({
