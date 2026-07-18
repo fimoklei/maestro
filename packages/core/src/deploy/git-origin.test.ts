@@ -77,6 +77,17 @@ describe("parseGitOrigin", () => {
     ).toEqual({ host: "github.com", ownerRepo: "fimoklei/agent-harness" });
   });
 
+  it("returns null for a host outside the GitHub model deploys resolve against", () => {
+    // apm reads `skills/<name>` as a virtual package only for the host shapes
+    // it knows; on any other host the subpath silently becomes part of the
+    // repo name (`gitlab.com/o/r/skills/tdd` -> repo `o/r/skills/tdd`, no
+    // virtual_path). Tag resolution is GitHub-only besides (ADR-0003), so a
+    // non-GitHub origin can only fail at deploy — refuse it at connect.
+    expect(parseGitOrigin("https://gitlab.com/acme/inventory")).toBeNull();
+    expect(parseGitOrigin("ssh://git.example/acme/inventory")).toBeNull();
+    expect(parseGitOrigin("git@bitbucket.org:acme/inventory.git")).toBeNull();
+  });
+
   it("returns null for remote schemes apm cannot resolve", () => {
     // These parse cleanly (file://server/owner/repo even carries a hostname)
     // but can never become a resolvable apm package ref: file remotes are

@@ -27,10 +27,16 @@ const defaultPorts = new Map([
   ["ssh:", "22"],
 ]);
 
+// apm reads a trailing `skills/<name>` as a virtual package only for the host
+// shapes it knows; on any other host that subpath silently becomes part of the
+// repo name, so the ref names a repo that does not exist. Tag resolution is
+// GitHub-only besides (ADR-0003), which leaves exactly one usable host.
+const deployableHosts = new Set(["github.com"]);
+
 const fromHostAndPath = (host: string, path: string): GitOrigin | null => {
-  // A hostless scheme url (ssh:///owner/repo) parses fine but cannot
-  // produce a valid apm package ref — no host, no origin.
-  if (host.length === 0) {
+  // Allowlist, never blocklist (security.md). It also covers the hostless
+  // scheme url (ssh:///owner/repo), which parses fine but names no host.
+  if (!deployableHosts.has(host)) {
     return null;
   }
   const segments = path

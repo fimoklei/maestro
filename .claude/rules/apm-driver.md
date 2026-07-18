@@ -423,6 +423,25 @@ accepts no transport:
 | `ssh://git.example:2222/o/r#v1` | parses (`port=2222`) — but no subpath, so unusable for a skill |
 | `http://git.example/o/r#v1` | parses (`is_insecure=true`) — same limitation |
 
+**The shorthand form is also host-gated.** apm reads a trailing `skills/<name>`
+as a virtual package only for the host shapes it knows — `github.com` (2 path
+segments) and `dev.azure.com` (3). On any other host the subpath silently
+becomes part of the repo name, with no error to catch:
+
+| Ref | `virtual_path` | `repo_url` |
+|---|---|---|
+| `github.com/o/r/skills/tdd#v1` | `skills/tdd` | `o/r` |
+| `dev.azure.com/org/proj/repo/skills/tdd#v1` | `skills/tdd` | `org/proj/repo` |
+| `gitlab.com/o/r/skills/tdd#v1` | **None** | `o/r/skills/tdd` |
+| `git.example/acme/inventory/skills/tdd#v1` | **None** | `acme/inventory/skills/tdd` |
+
+So a non-GitHub origin yields a ref naming a repo that does not exist. Maestro
+narrows this further to `github.com` alone: `DeploySkill` passes only
+`origin.ownerRepo` to `resolveLatestTag`, dropping the host, so `apm view`
+resolves tags against GitHub regardless — the GitHub model ADR-0003 already
+binds us to. `parseGitOrigin` therefore allowlists `github.com` as the one
+deployable host.
+
 So a port survives only in the scheme form, an http-only transport only in the
 scheme form, and neither form may name a skill. apm's escape hatch is the
 apm.yml `git:` + `path:` key pair — **not reachable from the CLI**: `apm install
