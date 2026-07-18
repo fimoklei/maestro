@@ -52,11 +52,15 @@ export function WizardReposView() {
         path: repo.path,
         outcome: byPath.get(repo.path),
       })),
+      // Only a failure with no row of its own: a path still in the registry
+      // (a repo since deleted off disk, re-registered and refused) already
+      // carries its outcome above, and appending it again would list the same
+      // repo twice.
       ...registerSelection.outcomes
-        .filter((outcome) => !outcome.ok)
+        .filter((outcome) => !outcome.ok && !registeredPaths.has(outcome.path))
         .map((outcome) => ({ path: outcome.path, outcome })),
     ];
-  }, [repos, registerSelection.outcomes]);
+  }, [repos, registeredPaths, registerSelection.outcomes]);
   // Blocks a deep link/bookmark into this step by a still-unconfigured user —
   // the register step only makes sense after connect (the gate only guards
   // /welcome itself, not this nested route; see first-run-gate.tsx). The

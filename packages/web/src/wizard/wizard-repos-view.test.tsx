@@ -58,9 +58,18 @@ function stubApi({
           const { path } = JSON.parse(String(init.body)) as { path: string };
           if (register) {
             const response = register(path);
-            // Mirror the server: a 201 persists, so a later list call sees it.
+            // Mirror the server: a 201 answers with the whole registry, and
+            // that answer is what a later list call must agree with — the
+            // stored path is not always the one that was sent.
             if (response.status === 201) {
-              registered.push({ path });
+              registered.length = 0;
+              registered.push(
+                ...(
+                  (await response.clone().json()) as {
+                    repos: { path: string }[];
+                  }
+                ).repos,
+              );
             }
             return response;
           }
@@ -264,19 +273,19 @@ describe("WizardReposView", () => {
       // Otherwise the failed paste's error sits underneath a list of ticks,
       // telling the user two contradictory things at once.
       let posts = 0;
+      const stored: { path: string }[] = [];
       stubApi({
         browse: repoListing,
         register: (path) => {
           posts += 1;
-          return posts === 1
-            ? jsonResponse(
-                {
-                  error: "relative",
-                  message: "Path must be an absolute path.",
-                },
-                400,
-              )
-            : jsonResponse({ repos: [{ path }] }, 201);
+          if (posts === 1) {
+            return jsonResponse(
+              { error: "relative", message: "Path must be an absolute path." },
+              400,
+            );
+          }
+          stored.push({ path });
+          return jsonResponse({ repos: [...stored] }, 201);
         },
       });
       renderView();
@@ -297,6 +306,65 @@ describe("WizardReposView", () => {
 
       await screen.findByText("/home/me/acme-web");
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    it("marks the row the server actually stored when a path resolves elsewhere", async () => {
+      // Registration canonicalizes with realpath, so a symlinked repo lands
+      // under its target. The outcome has to follow the path the registry
+      // holds, not the one the picker sent, or the row never gets its tick.
+      stubApi({
+        browse: repoListing,
+        register: () =>
+          jsonResponse({ repos: [{ path: "/home/me/real-target" }] }, 201),
+      });
+      renderView();
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: /browse/i }),
+      );
+      await userEvent.type(
+        await screen.findByRole("textbox", { name: /or paste/i }),
+        "/home/me/symlinked",
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: /register 1 selected/i }),
+      );
+
+      const row = (await screen.findAllByRole("listitem")).find((item) =>
+        item.textContent?.includes("/home/me/real-target"),
+      );
+      expect(row).toHaveTextContent("✓");
+      expect(screen.queryByText("/home/me/symlinked")).not.toBeInTheDocument();
+    });
+
+    it("gives a failed repo one row even when a stale entry already lists it", async () => {
+      // A registered directory deleted off disk: its path is still in the
+      // registry, so a failed re-registration must decorate that row rather
+      // than add a second one for the same path.
+      stubApi({
+        repos: [{ path: "/home/me/gone" }],
+        browse: repoListing,
+        register: () =>
+          jsonResponse(
+            { error: "not-found", message: "No directory exists there." },
+            400,
+          ),
+      });
+      renderView();
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: /browse/i }),
+      );
+      await userEvent.type(
+        await screen.findByRole("textbox", { name: /or paste/i }),
+        "/home/me/gone",
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: /register 1 selected/i }),
+      );
+
+      await screen.findByText(/skipped · No directory exists there/);
+      expect(screen.getAllByText("/home/me/gone")).toHaveLength(1);
     });
 
     it("keeps registering after one repo fails, and says why it was skipped", async () => {
