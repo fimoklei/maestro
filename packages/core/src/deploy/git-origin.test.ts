@@ -88,6 +88,21 @@ describe("parseGitOrigin", () => {
     expect(parseGitOrigin("git@bitbucket.org:acme/inventory.git")).toBeNull();
   });
 
+  it("accepts a host however it is cased, and reports it lowercased", () => {
+    // DNS is case-insensitive, but `URL` lowercases the host only for the
+    // schemes it knows — ssh:// and the scp-like form keep whatever the remote
+    // was written as. Without normalising, a valid GitHub remote would be
+    // refused on spelling alone.
+    expect(parseGitOrigin("ssh://git@GitHub.com/acme/inventory.git")).toEqual({
+      host: "github.com",
+      ownerRepo: "acme/inventory",
+    });
+    expect(parseGitOrigin("git@GitHub.com:acme/inventory.git")).toEqual({
+      host: "github.com",
+      ownerRepo: "acme/inventory",
+    });
+  });
+
   it("returns null for remote schemes apm cannot resolve", () => {
     // These parse cleanly (file://server/owner/repo even carries a hostname)
     // but can never become a resolvable apm package ref: file remotes are

@@ -33,7 +33,12 @@ const defaultPorts = new Map([
 // GitHub-only besides (ADR-0003), which leaves exactly one usable host.
 const deployableHosts = new Set(["github.com"]);
 
-const fromHostAndPath = (host: string, path: string): GitOrigin | null => {
+const fromHostAndPath = (rawHost: string, path: string): GitOrigin | null => {
+  // DNS is case-insensitive, but `URL` lowercases the host only for the
+  // schemes it knows — ssh:// and the scp-like form keep the remote's own
+  // spelling. Normalize first (code-standards.md) so a valid host is never
+  // refused, and never named back, on casing alone.
+  const host = rawHost.toLowerCase();
   // Allowlist, never blocklist (security.md). It also covers the hostless
   // scheme url (ssh:///owner/repo), which parses fine but names no host.
   if (!deployableHosts.has(host)) {
