@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { InMemoryFileSystem } from "../registry/file-system.fake";
 import { BrowseFilesystem } from "./browse-filesystem";
 
@@ -182,6 +182,54 @@ describe("BrowseFilesystem", () => {
         },
       ],
     });
+  });
+
+  it("never stats a symlink's target before checking it against the home ceiling", async () => {
+    // The endpoint's own security order is normalize -> realpath -> assert
+    // inside root; classification must apply that per entry too. An
+    // out-of-ceiling symlink target must never be touched again after
+    // realpath — not even by a discard-the-result isDirectory call — or the
+    // endpoint has stat'd a path outside the area it is bounded to (Codex
+    // review, #148).
+    const fs = new InMemoryFileSystem({
+      directories: {
+        "/home/user": "/home/user",
+        "/home/user/dev": "/home/user/dev",
+        "/home/user/dev/escape": "/etc/secret",
+        "/etc/secret": "/etc/secret",
+      },
+      listings: { "/home/user/dev": ["escape"] },
+    });
+    const isDirectorySpy = vi.spyOn(fs, "isDirectory");
+    const browse = new BrowseFilesystem({ fs, homeRoot: () => "/home/user" });
+
+    const result = await browse.browse("/home/user/dev");
+
+    expect(result).toMatchObject({ ok: true, entries: [] });
+    expect(isDirectorySpy).not.toHaveBeenCalledWith("/etc/secret");
+  });
+
+  it("never resolves a plain file as a possible symlink", async () => {
+    // A raw listing name that listRawEntries already reports as neither a
+    // directory nor a symlink (a plain file) must be dropped immediately,
+    // with no realpath/isDirectory round trip spent resolving it — large,
+    // ordinary directories (e.g. a Downloads folder full of files) must not
+    // pay a symlink-resolution cost per file (Codex review, #148).
+    const fs = new InMemoryFileSystem({
+      directories: {
+        "/home/user": "/home/user",
+        "/home/user/dev": "/home/user/dev",
+      },
+      files: { "/home/user/dev/notes.txt": "hi" },
+      listings: { "/home/user/dev": ["notes.txt"] },
+    });
+    const realpathSpy = vi.spyOn(fs, "realpath");
+    const browse = new BrowseFilesystem({ fs, homeRoot: () => "/home/user" });
+
+    const result = await browse.browse("/home/user/dev");
+
+    expect(result).toMatchObject({ ok: true, entries: [] });
+    expect(realpathSpy).not.toHaveBeenCalledWith("/home/user/dev/notes.txt");
   });
 
   it("reports each entry's git-repo and skills/-subdir facts", async () => {

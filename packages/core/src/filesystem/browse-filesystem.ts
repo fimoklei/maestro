@@ -13,7 +13,7 @@
 // Every entry also carries `isHidden` (a dot-prefixed name); the dialog does
 // the actual hidden-by-default filtering client-side from that flag.
 import { dirname, join, relative, resolve, sep } from "node:path";
-import type { FileSystemPort } from "../registry/file-system";
+import type { FileSystemPort, RawDirEntry } from "../registry/file-system";
 import { isWithinRoot } from "./browse-path";
 
 export type BrowseError =
@@ -116,33 +116,40 @@ export class BrowseFilesystem {
       return { ok: false, error: "not-a-directory" };
     }
 
-    // listAllNames is unfiltered — files, directories, and symlinks alike —
+    // listRawEntries is unfiltered — files, directories, and symlinks alike —
     // unlike listDirectoryNames, which the Node adapter already narrows to
     // real (non-symlink) directories. The unfiltered list is what lets a
     // symlinked directory reach the listing at all (issue #148); a locked
-    // directory rejects here with a typed error, never a 500.
-    let rawNames: string[];
+    // directory rejects here with a typed error, never a 500. Each entry
+    // already carries its dirent-level type facts from that one read, so a
+    // plain file never needs a separate probe to rule it out below.
+    let rawEntries: RawDirEntry[];
     try {
-      rawNames = await this.fs.listAllNames(real);
+      rawEntries = await this.fs.listRawEntries(real);
     } catch {
       return { ok: false, error: "unreadable" };
     }
 
-    // Classify each raw name: a real directory (isDirectoryEntry, lstat-based,
-    // true) is included outright. Anything else might be a symlink — resolve
-    // it first, then check the *resolved* target, mirroring the endpoint's
-    // own normalize -> realpath -> assert-inside-root order (ADR-0009): a
-    // symlink whose target is missing, is not a directory, or resolves
-    // outside the home ceiling is dropped here and never reaches the client.
-    // isDirectory is only ever called on an already-resolved path (never on
-    // the raw candidate) so a symlink is never trusted before realpath has
-    // run.
+    // Classify each raw entry: a genuine directory (isDirectory true) is
+    // included outright, no further disk access needed. A plain file
+    // (neither isDirectory nor isSymlink) is dropped immediately, same as
+    // before — nothing to resolve. Only a symlink is worth the extra work:
+    // resolve it, assert the *resolved* target is inside the home ceiling
+    // BEFORE touching it any further, then confirm it is a directory —
+    // mirroring the endpoint's own normalize -> realpath -> assert-inside-
+    // root order (ADR-0009). Checking the ceiling before isDirectory means an
+    // out-of-ceiling target is never stat'd, not even to immediately discard
+    // the result. A symlink whose target is missing, escapes the ceiling, or
+    // is not a directory is dropped here and never reaches the client.
     const classified = (
       await Promise.all(
-        rawNames.map(async (name) => {
-          const path = join(real, name);
-          if (await this.fs.isDirectoryEntry(path)) {
-            return { name, path, isSymlink: false };
+        rawEntries.map(async (raw) => {
+          const path = join(real, raw.name);
+          if (raw.isDirectory) {
+            return { name: raw.name, path, isSymlink: false };
+          }
+          if (!raw.isSymlink) {
+            return null; // a plain file — never worth resolving
           }
           let target: string;
           try {
@@ -150,13 +157,13 @@ export class BrowseFilesystem {
           } catch {
             return null; // broken / dangling symlink
           }
+          if (!isWithinRoot(target, realRoot)) {
+            return null; // symlink escapes the ceiling — never shown, never stat'd
+          }
           if (!(await this.fs.isDirectory(target))) {
             return null; // symlink to a file, or something else entirely
           }
-          if (!isWithinRoot(target, realRoot)) {
-            return null; // symlink escapes the ceiling — never shown
-          }
-          return { name, path, isSymlink: true };
+          return { name: raw.name, path, isSymlink: true };
         }),
       )
     ).filter((entry): entry is NonNullable<typeof entry> => entry !== null);

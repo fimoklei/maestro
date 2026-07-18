@@ -12,7 +12,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { dirname } from "node:path";
-import type { FileSystemPort } from "./file-system";
+import type { FileSystemPort, RawDirEntry } from "./file-system";
 
 // Monotonic suffix so two writes in one process never share a temp filename,
 // independent of any caller-side serialization.
@@ -87,14 +87,19 @@ export class NodeFileSystem implements FileSystemPort {
   }
 
   async listDirectoryNames(path: string): Promise<string[]> {
+    const entries = await this.listRawEntries(path);
+    return entries.filter((e) => e.isDirectory).map((e) => e.name);
+  }
+
+  async listRawEntries(path: string): Promise<RawDirEntry[]> {
     const entries = await readdirOrEmpty(() =>
       readdir(path, { withFileTypes: true }),
     );
-    return entries.filter((e) => e.isDirectory()).map((e) => e.name);
-  }
-
-  async listAllNames(path: string): Promise<string[]> {
-    return readdirOrEmpty(() => readdir(path));
+    return entries.map((e) => ({
+      name: e.name,
+      isDirectory: e.isDirectory(),
+      isSymlink: e.isSymbolicLink(),
+    }));
   }
 
   async writeFile(path: string, contents: string): Promise<void> {
