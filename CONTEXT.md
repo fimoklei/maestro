@@ -52,6 +52,10 @@ _Avoid_: skill group, category, tag, profile.
 The act of reproducing a primitive or bundle from the central inventory into a target, via APM. The deployed copy is generated, never hand-edited.
 _Avoid_: install (that is APM's verb for the mechanism), copy, sync.
 
+**Remove**:
+The act of undoing a **Deploy**: the primitive disappears from the target and from the target's lockfile bookkeeping, via APM. Scoped to one target — removing a deploy never touches the central inventory copy. A global remove covers the full set of detected tools, mirroring how a global deploy targets them as one set.
+_Avoid_: undeploy (constructed jargon), uninstall (APM's verb for the mechanism), delete (ambiguous with deleting from the central inventory).
+
 **Target**:
 Where a deploy lands. Two kinds: **local** (a consuming repo) or **global** (the user-level config of a present tool). A global deploy resolves to one target per detected tool, so "global" can be several targets on a two-tool machine and one on a single-tool machine (ADR-0011).
 _Avoid_: destination, environment.
