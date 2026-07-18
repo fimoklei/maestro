@@ -39,6 +39,24 @@ export function WizardReposView() {
     () => new Set(repos.map((repo) => repo.path)),
     [repos],
   );
+  // One list, not two. The registry is the spine: every registered repo gets a
+  // row, and a row that was part of the last selection carries that repo's
+  // outcome instead of the plain note. A failed repo never reached the
+  // registry, so it has no row to decorate and earns its own at the end.
+  const rows = useMemo(() => {
+    const byPath = new Map(
+      registerSelection.outcomes.map((outcome) => [outcome.path, outcome]),
+    );
+    return [
+      ...repos.map((repo) => ({
+        path: repo.path,
+        outcome: byPath.get(repo.path),
+      })),
+      ...registerSelection.outcomes
+        .filter((outcome) => !outcome.ok)
+        .map((outcome) => ({ path: outcome.path, outcome })),
+    ];
+  }, [repos, registerSelection.outcomes]);
   // Blocks a deep link/bookmark into this step by a still-unconfigured user —
   // the register step only makes sense after connect (the gate only guards
   // /welcome itself, not this nested route; see first-run-gate.tsx). The
@@ -86,55 +104,38 @@ export function WizardReposView() {
           isPending={register.isPending || registerSelection.isRegistering}
           onBrowse={browse.openBrowse}
         />
-        {registerSelection.outcomes.length > 0 ? (
-          <div className="flex flex-col gap-1 border-line-row border-t pt-3">
-            <span className="m-label">Results of last selection</span>
-            <ul
-              aria-label="Registration results"
-              className="flex flex-col gap-1"
-            >
-              {registerSelection.outcomes.map((outcome) => (
-                <li
-                  key={outcome.path}
-                  className="flex items-baseline justify-between gap-2"
-                >
-                  <span className="flex min-w-0 items-baseline gap-2">
+        {rows.length > 0 ? (
+          <ul aria-label="Registered repos" className="flex flex-col gap-1">
+            {rows.map((row) => (
+              <li
+                key={row.path}
+                className="flex items-baseline justify-between gap-2"
+              >
+                <span className="flex min-w-0 items-baseline gap-2">
+                  {row.outcome ? (
                     <span
                       className={
-                        outcome.ok
+                        row.outcome.ok
                           ? "text-green-ink text-tag"
                           : "text-amber-ink text-tag"
                       }
                     >
-                      {outcome.ok ? "✓" : "✕"}
+                      {row.outcome.ok ? "✓" : "✕"}
                     </span>
-                    <span className="truncate font-mono text-fg-2 text-mono-sm">
-                      {outcome.path}
-                    </span>
+                  ) : null}
+                  <span className="truncate font-mono text-fg text-mono-sm">
+                    {row.path}
                   </span>
-                  <span
-                    className={`whitespace-nowrap font-mono text-tag ${
-                      outcome.ok ? "text-green-ink" : "text-amber-ink"
-                    }`}
-                  >
-                    {outcome.reason}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-        {repos.length > 0 ? (
-          <ul aria-label="Registered repos" className="flex flex-col gap-1">
-            {repos.map((repo) => (
-              <li
-                key={repo.path}
-                className="flex items-baseline justify-between gap-2"
-              >
-                <span className="font-mono text-fg text-mono-sm">
-                  {repo.path}
                 </span>
-                <span className="font-mono text-dim text-tag">registered</span>
+                <span
+                  className={`whitespace-nowrap font-mono text-tag ${
+                    row.outcome && !row.outcome.ok
+                      ? "text-amber-ink"
+                      : "text-dim"
+                  }`}
+                >
+                  {row.outcome ? row.outcome.reason : "registered"}
+                </span>
               </li>
             ))}
           </ul>

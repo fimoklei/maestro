@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -213,8 +213,10 @@ describe("WizardReposView", () => {
       const registered = await screen.findByRole("list", {
         name: /registered repos/i,
       });
+      await waitFor(() =>
+        expect(registered).toHaveTextContent("/home/me/payments-api"),
+      );
       expect(registered).toHaveTextContent("/home/me/acme-web");
-      expect(registered).toHaveTextContent("/home/me/payments-api");
 
       const registerPosts = fetchMock.mock.calls.filter(
         ([input, init]) =>
@@ -224,17 +226,38 @@ describe("WizardReposView", () => {
       expect(registerPosts).toHaveLength(2);
     });
 
-    it("shows a per-repo outcome for the selection", async () => {
+    it("marks each selected repo's outcome on its row in the repo list", async () => {
+      // One list, not two: the outcome decorates the repo's canonical row
+      // rather than repeating it in a separate results block.
+      stubApi({
+        repos: [{ path: "/home/me/already-there" }],
+        browse: repoListing,
+      });
+      renderView();
+      await selectBothRepos();
+
+      const rows = await screen.findAllByRole("listitem");
+      const acme = rows.find((row) =>
+        row.textContent?.includes("/home/me/acme-web"),
+      );
+      expect(acme).toHaveTextContent("✓");
+      expect(acme).toHaveTextContent("registered");
+
+      // A repo that was not part of this batch keeps its plain row.
+      const untouched = rows.find((row) =>
+        row.textContent?.includes("/home/me/already-there"),
+      );
+      expect(untouched).not.toHaveTextContent("✓");
+    });
+
+    it("lists each selected repo exactly once", async () => {
       stubApi({ browse: repoListing });
       renderView();
       await selectBothRepos();
 
-      const outcomes = await screen.findByRole("list", {
-        name: /registration results/i,
-      });
-      expect(outcomes).toHaveTextContent("✓");
-      expect(outcomes).toHaveTextContent("/home/me/acme-web");
-      expect(outcomes).toHaveTextContent("registered");
+      await screen.findByText("/home/me/acme-web");
+      expect(screen.getAllByText("/home/me/acme-web")).toHaveLength(1);
+      expect(screen.getAllByText("/home/me/payments-api")).toHaveLength(1);
     });
 
     it("drops a stale manual-registration error once a selection registers", async () => {
@@ -272,7 +295,7 @@ describe("WizardReposView", () => {
 
       await selectBothRepos();
 
-      await screen.findByRole("list", { name: /registration results/i });
+      await screen.findByText("/home/me/acme-web");
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
@@ -293,18 +316,16 @@ describe("WizardReposView", () => {
       renderView();
       await selectBothRepos();
 
-      const outcomes = await screen.findByRole("list", {
-        name: /registration results/i,
+      const list = await screen.findByRole("list", {
+        name: /registered repos/i,
       });
-      expect(outcomes).toHaveTextContent("✕");
-      expect(outcomes).toHaveTextContent(/skipped · No directory exists there/);
-      // The failure did not stop the run: the second repo still registered.
+      // The failed repo is not in the registry, so it earns its own row.
+      expect(list).toHaveTextContent("✕");
+      expect(list).toHaveTextContent(/skipped · No directory exists there/);
+      // The failure did not stop the run: the second repo still registered…
       expect(posts).toBe(2);
-      expect(outcomes).toHaveTextContent("/home/me/payments-api");
-      // …and its success persisted into the registered list.
-      expect(
-        await screen.findByRole("list", { name: /registered repos/i }),
-      ).toHaveTextContent("/home/me/payments-api");
+      // …and its success persisted into the same list.
+      expect(list).toHaveTextContent("/home/me/payments-api");
     });
   });
 
