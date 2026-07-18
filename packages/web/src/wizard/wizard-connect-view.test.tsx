@@ -147,7 +147,7 @@ describe("WizardConnectView", () => {
           {
             error: "no-usable-origin",
             message:
-              "That folder has skills/ but no usable git origin, so deploys could not resolve versions from it.",
+              "That folder has skills/, but its git origin is missing, unreadable, or in a form apm cannot resolve.",
           },
           422,
         ),

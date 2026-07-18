@@ -406,6 +406,60 @@ hand-editing apm's lockfile — fragile and out of scope — is unnecessary.
   sandbox HOME removes the codex subtree, leaves claude, no-op when already gone)
   + acceptance (J07 narrowing scenario). **Never the real home.**
 
+## Ref grammar — a skill ref cannot carry transport (issue #152 spike)
+
+**Spiked against apm 0.20.0 on 2026-07-18** by calling apm's own reference
+parser (`DependencyReference.parse`) — no network, so this is repeatable
+offline. A skill is a *virtual package*: `owner/repo` plus the `skills/<name>`
+subpath. Only one input form accepts that subpath, and it is the form that
+accepts no transport:
+
+| Ref | Result |
+|---|---|
+| `github.com/o/r/skills/tdd#v0.5.1` | parses; `virtual_path=skills/tdd` |
+| `git.example:2222/o/r#v1` | **rejected** — `Use 'user/repo' or 'github.com/user/repo' … format` |
+| `ssh://git.example:2222/o/r/skills/tdd#v1` | **rejected** — `A subpath cannot be embedded in a git URL` |
+| `http://git.example/o/r/skills/tdd#v1` | **rejected** — same subpath error |
+| `ssh://git.example:2222/o/r#v1` | parses (`port=2222`) — but no subpath, so unusable for a skill |
+| `http://git.example/o/r#v1` | parses (`is_insecure=true`) — same limitation |
+
+**The shorthand form is also host-gated.** apm reads a trailing `skills/<name>`
+as a virtual package only for the host shapes it knows — `github.com` (2 path
+segments) and `dev.azure.com` (3). On any other host the subpath silently
+becomes part of the repo name, with no error to catch:
+
+| Ref | `virtual_path` | `repo_url` |
+|---|---|---|
+| `github.com/o/r/skills/tdd#v1` | `skills/tdd` | `o/r` |
+| `dev.azure.com/org/proj/repo/skills/tdd#v1` | `skills/tdd` | `org/proj/repo` |
+| `gitlab.com/o/r/skills/tdd#v1` | **None** | `o/r/skills/tdd` |
+| `git.example/acme/inventory/skills/tdd#v1` | **None** | `acme/inventory/skills/tdd` |
+
+So a non-GitHub origin yields a ref naming a repo that does not exist. Maestro
+narrows this further to `github.com` alone: `DeploySkill` passes only
+`origin.ownerRepo` to `resolveLatestTag`, dropping the host, so `apm view`
+resolves tags against GitHub regardless — the GitHub model ADR-0003 already
+binds us to. `parseGitOrigin` therefore allowlists `github.com` as the one
+deployable host.
+
+So a port survives only in the scheme form, an http-only transport only in the
+scheme form, and neither form may name a skill. apm's escape hatch is the
+apm.yml `git:` + `path:` key pair — **not reachable from the CLI**: `apm install
+--help` (0.20.0) exposes no `--path` flag, and Maestro drives `install` by
+argument, never by hand-writing apm.yml.
+
+**Decision (#152): reject at parse time.** `parseGitOrigin` returns null for an
+origin carrying a non-default port or an `http:` scheme, exactly as it already
+does for `file:`/`git:`. **Non-default is the load-bearing word:** JS `URL`
+blanks a default port only for the schemes it knows, and `ssh:` is not one — so
+`ssh://host:22/o/r` keeps `port === "22"` where `https://host:443/o/r` yields
+`""`. A bare `parsed.port.length > 0` test therefore refuses an ordinary SSH
+remote; compare against the scheme's default instead. Connect and deploy share
+that one function, so both
+refuse consistently and the user hears it at connect time instead of at the
+first `apm install`. Representing transport was the alternative; the table above
+rules it out on observed behavior, not on preference.
+
 ## Open — observe before relying on it
 
 - **Content-drift detection** is implemented at deploy/update time, two guards
