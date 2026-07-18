@@ -393,6 +393,163 @@ describe("BrowseDialog", () => {
     expect(row).not.toHaveTextContent("● registered");
   });
 
+  it("filters hidden entries out of the listing by default and shows a hint", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse(
+          {
+            ...homeResponse,
+            entries: [
+              {
+                name: ".config",
+                path: "/home/me/.config",
+                isHidden: true,
+                isSymlink: false,
+                facts: noFacts,
+              },
+              {
+                name: "projects",
+                path: "/home/me/projects",
+                isHidden: false,
+                isSymlink: false,
+                facts: noFacts,
+              },
+            ],
+          },
+          200,
+        ),
+      ),
+    );
+    renderDialog();
+
+    expect(
+      await screen.findByRole("button", { name: "projects" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: ".config" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /1 hidden item.*not shown/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("omits the hidden-items hint when nothing is hidden", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse(
+          {
+            ...homeResponse,
+            entries: [
+              {
+                name: "projects",
+                path: "/home/me/projects",
+                isHidden: false,
+                isSymlink: false,
+                facts: noFacts,
+              },
+            ],
+          },
+          200,
+        ),
+      ),
+    );
+    renderDialog();
+
+    await screen.findByRole("button", { name: "projects" });
+    expect(
+      screen.queryByRole("button", { name: /hidden item/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("reveals hidden entries, dimmed, when the hidden hint or toolbar toggle is used", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse(
+          {
+            ...homeResponse,
+            entries: [
+              {
+                name: ".config",
+                path: "/home/me/.config",
+                isHidden: true,
+                isSymlink: false,
+                facts: noFacts,
+              },
+              {
+                name: "projects",
+                path: "/home/me/projects",
+                isHidden: false,
+                isSymlink: false,
+                facts: noFacts,
+              },
+            ],
+          },
+          200,
+        ),
+      ),
+    );
+    renderDialog();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /1 hidden item.*not shown/i }),
+    );
+
+    const hiddenRow = await screen.findByRole("button", { name: ".config" });
+    expect(hiddenRow).toBeInTheDocument();
+    expect(screen.getByText(".config/")).toHaveClass("text-dim");
+    // The toggle itself now reflects the revealed state.
+    expect(
+      screen.getByRole("button", { name: /hidden/i, pressed: true }),
+    ).toBeInTheDocument();
+
+    // Flipping the toolbar toggle back off hides it again.
+    await userEvent.click(
+      screen.getByRole("button", { name: /hidden/i, pressed: true }),
+    );
+    expect(
+      screen.queryByRole("button", { name: ".config" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the symlink tag on a symlinked entry", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse(
+          {
+            ...homeResponse,
+            entries: [
+              {
+                name: "linked-repo",
+                path: "/home/me/linked-repo",
+                isHidden: false,
+                isSymlink: true,
+                facts: noFacts,
+              },
+              {
+                name: "plain-repo",
+                path: "/home/me/plain-repo",
+                isHidden: false,
+                isSymlink: false,
+                facts: noFacts,
+              },
+            ],
+          },
+          200,
+        ),
+      ),
+    );
+    renderDialog();
+
+    const linked = await screen.findByRole("button", { name: "linked-repo" });
+    expect(linked).toHaveTextContent("↳ symlink");
+    const plain = await screen.findByRole("button", { name: "plain-repo" });
+    expect(plain).not.toHaveTextContent("↳ symlink");
+  });
+
   it("calls onClose when cancel is activated", async () => {
     vi.stubGlobal(
       "fetch",

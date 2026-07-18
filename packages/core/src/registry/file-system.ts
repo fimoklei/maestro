@@ -35,6 +35,16 @@ export interface FileSystemPort {
   // skills/ folder is "no skills", not an error.
   listDirectoryNames(path: string): Promise<string[]>;
 
+  // Lists EVERY entry name directly inside a directory — files, directories,
+  // and symlinks alike, completely unfiltered. Unlike listDirectoryNames, a
+  // symlink is never dropped here: the browse capability uses this to
+  // discover symlinked-directory candidates listDirectoryNames would
+  // silently hide, then classifies each name itself (isDirectoryEntry +
+  // realpath + isDirectory) so a symlink is only ever shown once its target
+  // has been checked against the home ceiling (issue #148). Empty when the
+  // directory does not exist.
+  listAllNames(path: string): Promise<string[]>;
+
   // Writes a UTF-8 file atomically (temp file + rename), creating parent
   // directories as needed.
   writeFile(path: string, contents: string): Promise<void>;

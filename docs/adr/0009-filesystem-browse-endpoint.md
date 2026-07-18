@@ -55,6 +55,20 @@ Paste-a-path stays supported. Browse is **additive**, not a replacement.
   That decision (register mode badges `git` repos and already-registered ones;
   connect mode badges folders that look like an inventory) lives entirely on
   the client, keeping the server registry-agnostic.
+- **Amendment (issue #148):** a child that is itself a symlink is now included
+  in the listing — tagged `isSymlink` — when its *target* resolves inside the
+  home ceiling, following the same normalize → realpath → assert-inside-root
+  order applied per entry, not just to the browsed path. A symlink whose
+  target is missing, is not a directory, or resolves outside the ceiling is
+  dropped from the listing entirely; the endpoint never discloses that it
+  exists. A symlinked entry is never probed for git/skills facts — doing so
+  would mean following it a second time into a target this endpoint has not
+  validated for a read that deep, reopening a fresh, unvalidated ceiling
+  window one hop further than the rest of this ADR accepts; it reports no
+  facts and shows only the tag. Every entry also carries `isHidden` (a
+  dot-prefixed name, a pure string check — no new disk access); hidden
+  filtering happens entirely client-side from that flag, so one response
+  shape serves both the hidden-by-default view and the show-hidden toggle.
 
 ## Rejected alternatives
 

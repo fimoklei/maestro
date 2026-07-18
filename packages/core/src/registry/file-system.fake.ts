@@ -45,8 +45,19 @@ export class InMemoryFileSystem implements FileSystemPort {
     throw new Error(`ENOENT: no such file or directory, realpath '${path}'`);
   }
 
+  // A path is a known directory when it resolves to itself — the seeding
+  // convention every test follows for a genuine directory (e.g.
+  // `"/home/user/dev": "/home/user/dev"`). This is deliberately narrower than
+  // "appears anywhere in directories.values()": a symlink alias's resolution
+  // target (e.g. a symlink pointing at a *file*) also shows up as a value,
+  // but is never itself self-mapped, so it correctly reads as "not a
+  // directory" here.
+  private isKnownDirectory(path: string): boolean {
+    return this.directories.get(path) === path;
+  }
+
   async isDirectory(path: string): Promise<boolean> {
-    return [...this.directories.values()].includes(path);
+    return this.isKnownDirectory(path);
   }
 
   // Matches isDirectory unless the path was seeded as raced away — the fake
@@ -56,13 +67,11 @@ export class InMemoryFileSystem implements FileSystemPort {
     if (this.racedAwayAsDirectory.has(path)) {
       return false;
     }
-    return [...this.directories.values()].includes(path);
+    return this.isKnownDirectory(path);
   }
 
   async exists(path: string): Promise<boolean> {
-    return (
-      [...this.directories.values()].includes(path) || this.files.has(path)
-    );
+    return this.isKnownDirectory(path) || this.files.has(path);
   }
 
   async readFile(path: string): Promise<string | null> {
@@ -74,6 +83,15 @@ export class InMemoryFileSystem implements FileSystemPort {
       throw new Error(`EACCES: permission denied, scandir '${path}'`);
     }
     return this.listings.get(path) ?? [];
+  }
+
+  // The fake has no separate "raw" store: a seed's `listings` entry already
+  // names exactly what a test wants discoverable at that path, whether it
+  // classifies as a plain directory or (via a `directories` alias pointing
+  // elsewhere) a symlink — same source, so this delegates outright rather
+  // than repeating the read.
+  async listAllNames(path: string): Promise<string[]> {
+    return this.listDirectoryNames(path);
   }
 
   async writeFile(path: string, contents: string): Promise<void> {

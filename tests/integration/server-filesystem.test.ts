@@ -24,9 +24,12 @@ import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
 
 // Integration lane: drives the real browse route against a real sandbox
-// filesystem. Home-root ceiling, dirs-only filtering, and symlink escapes are
-// proven here on a live disk — the place those can actually misbehave. The
-// Origin/Host guard is disabled (its enforcement lives in server-security.test).
+// filesystem. Home-root ceiling, dirs-only filtering, and symlink resolution —
+// a real symlinked directory shown when it resolves inside the ceiling,
+// dropped when it escapes it, a file or dangling target, or a broken link
+// (issue #148) — are proven here on a live disk, the place those can actually
+// misbehave. The Origin/Host guard is disabled (its enforcement lives in
+// server-security.test).
 describe("filesystem browse HTTP route", () => {
   let home: string;
   let outside: string;
@@ -91,15 +94,124 @@ describe("filesystem browse HTTP route", () => {
         {
           name: "repo-a",
           path: join(realDev, "repo-a"),
+          isHidden: false,
+          isSymlink: false,
           facts: { isGitRepo: false, hasSkillsSubdir: false },
         },
         {
           name: "repo-b",
           path: join(realDev, "repo-b"),
+          isHidden: false,
+          isSymlink: false,
           facts: { isGitRepo: false, hasSkillsSubdir: false },
         },
       ],
     });
+  });
+
+  it("marks a dot-prefixed entry as hidden", async () => {
+    await mkdir(join(home, ".config"), { recursive: true });
+    await mkdir(join(home, "dev"), { recursive: true });
+    const realHome = await nodeRealpath(home);
+
+    const res = await postBrowse(makeApp(), { path: home });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      entries: { name: string; isHidden: boolean }[];
+    };
+    expect(body.entries).toEqual([
+      {
+        name: ".config",
+        path: join(realHome, ".config"),
+        isHidden: true,
+        isSymlink: false,
+        facts: { isGitRepo: false, hasSkillsSubdir: false },
+      },
+      {
+        name: "dev",
+        path: join(realHome, "dev"),
+        isHidden: false,
+        isSymlink: false,
+        facts: { isGitRepo: false, hasSkillsSubdir: false },
+      },
+    ]);
+  });
+
+  it("lists a real symlinked directory that resolves inside the home ceiling, tagged as a symlink", async () => {
+    await mkdir(join(home, "dev", "actual-repo"), { recursive: true });
+    await symlink(
+      join(home, "dev", "actual-repo"),
+      join(home, "dev", "linked-repo"),
+    );
+    const realDev = await nodeRealpath(join(home, "dev"));
+
+    const res = await postBrowse(makeApp(), { path: join(home, "dev") });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      entries: { name: string; path: string; isSymlink: boolean }[];
+    };
+    expect(body.entries).toEqual([
+      {
+        name: "actual-repo",
+        path: join(realDev, "actual-repo"),
+        isHidden: false,
+        isSymlink: false,
+        facts: { isGitRepo: false, hasSkillsSubdir: false },
+      },
+      {
+        name: "linked-repo",
+        path: join(realDev, "linked-repo"),
+        isHidden: false,
+        isSymlink: true,
+        facts: { isGitRepo: false, hasSkillsSubdir: false },
+      },
+    ]);
+  });
+
+  it("excludes a real symlinked directory whose target resolves outside the home ceiling", async () => {
+    await mkdir(join(outside, "secret-project"), { recursive: true });
+    await mkdir(join(home, "dev", "plain"), { recursive: true });
+    await symlink(
+      join(outside, "secret-project"),
+      join(home, "dev", "escaping-link"),
+    );
+
+    const res = await postBrowse(makeApp(), { path: join(home, "dev") });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { entries: { name: string }[] };
+    expect(body.entries.map((e) => e.name)).toEqual(["plain"]);
+  });
+
+  it("excludes a real symlink pointing at a file, not a directory", async () => {
+    await mkdir(join(home, "dev"), { recursive: true });
+    await writeFile(join(home, "dev", "notes.txt"), "hi", "utf8");
+    await symlink(
+      join(home, "dev", "notes.txt"),
+      join(home, "dev", "link-to-file"),
+    );
+
+    const res = await postBrowse(makeApp(), { path: join(home, "dev") });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { entries: { name: string }[] };
+    expect(body.entries.map((e) => e.name)).toEqual([]);
+  });
+
+  it("excludes a real broken (dangling) symlink from the listing", async () => {
+    await mkdir(join(home, "dev"), { recursive: true });
+    await symlink(
+      join(home, "dev", "does-not-exist"),
+      join(home, "dev", "dangling"),
+    );
+
+    const res = await postBrowse(makeApp(), { path: join(home, "dev") });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { entries: { name: string }[] };
+    expect(body.entries.map((e) => e.name)).toEqual([]);
   });
 
   it("reports git-repo and skills/-subdir facts for real directories", async () => {
@@ -128,21 +240,29 @@ describe("filesystem browse HTTP route", () => {
       {
         name: "inventory",
         path: join(realHome, "inventory"),
+        isHidden: false,
+        isSymlink: false,
         facts: { isGitRepo: false, hasSkillsSubdir: true },
       },
       {
         name: "plain",
         path: join(realHome, "plain"),
+        isHidden: false,
+        isSymlink: false,
         facts: { isGitRepo: false, hasSkillsSubdir: false },
       },
       {
         name: "repo",
         path: join(realHome, "repo"),
+        isHidden: false,
+        isSymlink: false,
         facts: { isGitRepo: true, hasSkillsSubdir: false },
       },
       {
         name: "worktree",
         path: join(realHome, "worktree"),
+        isHidden: false,
+        isSymlink: false,
         facts: { isGitRepo: true, hasSkillsSubdir: false },
       },
     ]);
@@ -220,6 +340,8 @@ describe("filesystem browse HTTP route", () => {
         {
           name: "dev",
           path: join(realHome, "dev"),
+          isHidden: false,
+          isSymlink: false,
           facts: { isGitRepo: false, hasSkillsSubdir: false },
         },
       ],

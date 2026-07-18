@@ -26,6 +26,20 @@ function isNotFound(error: unknown): boolean {
   );
 }
 
+// A missing directory reads as "nothing there" (empty), never an error — a
+// missing skills/ folder is "no skills", not a failure to browse it. Shared
+// by every readdir-shaped listing method below.
+async function readdirOrEmpty<T>(op: () => Promise<T[]>): Promise<T[]> {
+  try {
+    return await op();
+  } catch (error) {
+    if (isNotFound(error)) {
+      return [];
+    }
+    throw error;
+  }
+}
+
 export class NodeFileSystem implements FileSystemPort {
   async realpath(path: string): Promise<string> {
     return realpath(path);
@@ -73,15 +87,14 @@ export class NodeFileSystem implements FileSystemPort {
   }
 
   async listDirectoryNames(path: string): Promise<string[]> {
-    try {
-      const entries = await readdir(path, { withFileTypes: true });
-      return entries.filter((e) => e.isDirectory()).map((e) => e.name);
-    } catch (error) {
-      if (isNotFound(error)) {
-        return [];
-      }
-      throw error;
-    }
+    const entries = await readdirOrEmpty(() =>
+      readdir(path, { withFileTypes: true }),
+    );
+    return entries.filter((e) => e.isDirectory()).map((e) => e.name);
+  }
+
+  async listAllNames(path: string): Promise<string[]> {
+    return readdirOrEmpty(() => readdir(path));
   }
 
   async writeFile(path: string, contents: string): Promise<void> {
