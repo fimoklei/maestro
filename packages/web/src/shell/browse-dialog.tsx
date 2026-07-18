@@ -3,7 +3,8 @@ import { HttpError } from "../api/http";
 import { Button } from "../ui/button";
 import { BrowseBreadcrumbs } from "./browse-breadcrumbs";
 import { EntryBadges } from "./entry-badges";
-import { useBrowseFilesystem } from "./use-browse-filesystem";
+import { useBrowseNavigation } from "./use-browse-navigation";
+import { useFolderFilter } from "./use-folder-filter";
 
 // A read-only directory picker (ADR-0009): lists the current directory's
 // children and lets the user step in, up, or jump via breadcrumbs, then
@@ -44,12 +45,18 @@ export function BrowseDialog({
   registeredPaths,
 }: BrowseDialogProps) {
   const label = dialogTitle[mode];
-  // The path being requested; "" asks the server for the home root.
-  const [currentRequest, setCurrentRequest] = useState("");
+  // Owns the requested path, its query, and the last-used-folder memory
+  // (issue #149) — connect and register never share a memory.
+  const { currentRequest, setCurrentRequest, browse } =
+    useBrowseNavigation(mode);
   // The footer's paste-a-path field: confirming it hands the typed path to the
   // host form as-is, bypassing the listing (the host validates on submit).
   const [pastedPath, setPastedPath] = useState("");
-  const browse = useBrowseFilesystem(currentRequest);
+  // Narrows the listing client-side as the user types (issue #149).
+  const { filter, setFilter, visibleEntries } = useFolderFilter(
+    currentRequest,
+    browse.data?.entries,
+  );
   const atCeiling =
     browse.data !== undefined && browse.data.parent === undefined;
 
@@ -96,34 +103,50 @@ export function BrowseDialog({
           </button>
         </div>
 
-        {/* toolbar — up + breadcrumbs (+ home-ceiling hint) */}
-        <div className="flex items-center gap-2.5 border-line-row border-b px-3.5 py-3">
-          <button
-            type="button"
-            onClick={() => {
-              const parent = browse.data?.parent;
-              if (parent !== undefined) {
-                setCurrentRequest(parent);
-              }
-            }}
-            disabled={browse.data?.parent === undefined}
-            className="shrink-0 rounded-control border px-2.5 py-[5px] font-mono text-mono-sm enabled:cursor-pointer enabled:border-line enabled:bg-inset enabled:text-fg-2 disabled:cursor-not-allowed disabled:border-line-chip disabled:text-dim"
-          >
-            ↑ up
-          </button>
-          {browse.data ? (
-            <BrowseBreadcrumbs
-              crumbs={browse.data.breadcrumbs}
-              onNavigate={setCurrentRequest}
+        {/* toolbar — up + breadcrumbs (+ home-ceiling hint), then the filter */}
+        <div className="flex flex-col gap-2.5 border-line-row border-b px-3.5 py-3">
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                const parent = browse.data?.parent;
+                if (parent !== undefined) {
+                  setCurrentRequest(parent);
+                }
+              }}
+              disabled={browse.data?.parent === undefined}
+              className="shrink-0 rounded-control border px-2.5 py-[5px] font-mono text-mono-sm enabled:cursor-pointer enabled:border-line enabled:bg-inset enabled:text-fg-2 disabled:cursor-not-allowed disabled:border-line-chip disabled:text-dim"
+            >
+              ↑ up
+            </button>
+            {browse.data ? (
+              <BrowseBreadcrumbs
+                crumbs={browse.data.breadcrumbs}
+                onNavigate={setCurrentRequest}
+              />
+            ) : (
+              <span className="font-mono text-dim text-mono-sm">…</span>
+            )}
+            {atCeiling ? (
+              <span className="whitespace-nowrap font-mono text-dim text-tag">
+                · home ceiling
+              </span>
+            ) : null}
+          </div>
+          <div className="flex items-center gap-2 rounded-control border border-line bg-inset px-2.5 py-[7px]">
+            <label htmlFor="browse-filter" className="sr-only">
+              Filter this folder
+            </label>
+            <span className="font-mono text-dim text-mono-sm">⌕</span>
+            <input
+              id="browse-filter"
+              type="text"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value)}
+              placeholder="filter this folder…"
+              className="min-w-0 flex-1 bg-transparent font-mono text-fg text-mono-sm placeholder:text-dim focus:outline-none"
             />
-          ) : (
-            <span className="font-mono text-dim text-mono-sm">…</span>
-          )}
-          {atCeiling ? (
-            <span className="whitespace-nowrap font-mono text-dim text-tag">
-              · home ceiling
-            </span>
-          ) : null}
+          </div>
         </div>
 
         {/* listing */}
@@ -133,7 +156,7 @@ export function BrowseDialog({
               Loading…
             </p>
           ) : (
-            browse.data?.entries.map((entry) => (
+            visibleEntries.map((entry) => (
               <button
                 key={entry.path}
                 type="button"
