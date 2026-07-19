@@ -1,0 +1,311 @@
+<!doctype html>
+<!--
+  PROTOTYPE — throwaway. Issue #163: where do per-repo registration outcomes
+  surface when the sidebar registers several repos in one go?
+
+  Three variants of the same moment (just after confirming a 5-repo selection:
+  3 registered, 2 failed), switchable via ?variant=A|B|C, arrow keys, or the
+  floating bar. Tokens ported from the Control Room design system so density and
+  colour are judged for real, not in a vacuum.
+
+  Not production code: no build, no tests, no state beyond a URL param.
+-->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>PROTOTYPE · register outcomes (#163)</title>
+<style>
+:root {
+  --bg-0:#0b0d10; --bg-1:#0d1014; --surface-card:#0f1318; --surface-inset:#11161c;
+  --surface-active:#171d24;
+  --border-faint:#13181e; --border-row:#161b22; --border-strong:#1d232b;
+  --border-chip:#232a33; --border-dashed:#2a313a;
+  --text-1:#e6e9ed; --text-2:#c3cad2; --text-3:#aeb6bf; --text-muted:#8a94a0; --text-dim:#5a6470;
+  --amber:#e8a33d; --amber-bg:rgba(232,163,61,.10); --amber-border:rgba(232,163,61,.30);
+  --green:#62c47e; --green-bg:rgba(98,196,126,.10); --green-border:rgba(98,196,126,.25);
+  --on-accent:#0b0d10;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --ui: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg-0); color:var(--text-1); font-family:var(--ui); font-size:13px; }
+.app { display:flex; height:100vh; overflow:hidden; }
+
+/* ── sidebar ─────────────────────────────────────────────── */
+.sidebar { width:256px; flex-shrink:0; display:flex; flex-direction:column; gap:2px;
+  border-right:1px solid var(--border-strong); padding:10px; overflow-y:auto; }
+.nav-item { display:flex; align-items:center; gap:8px; padding:7px 12px; border-radius:6px;
+  color:var(--text-muted); font-size:12.5px; cursor:pointer; }
+.nav-item.active { background:var(--surface-active); color:var(--text-1); }
+.m-label { font-family:var(--mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--text-dim); }
+.targets-head { margin:20px 0 6px; padding:0 12px; }
+.target { display:flex; align-items:center; gap:8px; padding:5px 12px; border-radius:6px;
+  font-family:var(--mono); font-size:11.5px; color:var(--text-2); }
+.target .path { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dot { flex-shrink:0; }
+.dot.ok { color:var(--green); } .dot.drift { color:var(--amber); } .dot.dim { color:var(--text-dim); }
+.reg { margin-top:10px; padding:0 12px; display:flex; flex-direction:column; gap:8px; }
+.field { display:flex; gap:8px; align-items:flex-end; }
+input[type=text] { flex:1; min-width:0; background:var(--surface-inset); border:1px solid var(--border-strong);
+  border-radius:6px; padding:6px 8px; color:var(--text-1); font-family:var(--mono); font-size:11.5px; outline:none; }
+.btn { border-radius:6px; padding:5px 10px; font-family:var(--mono); font-size:11.5px; cursor:pointer;
+  border:1px solid var(--border-chip); background:transparent; color:var(--text-3); white-space:nowrap; }
+.btn.dashed { border-style:dashed; border-color:var(--border-dashed); width:100%; }
+.btn.primary { background:var(--amber); border-color:var(--amber); color:var(--on-accent); font-weight:600; }
+.btn.ghost { border-color:var(--amber-border); color:var(--amber); }
+
+/* ── main ────────────────────────────────────────────────── */
+.main { flex:1; padding:22px 26px; overflow-y:auto; }
+.h1 { font-size:15px; font-weight:600; margin-bottom:3px; }
+.meta { font-family:var(--mono); font-size:10.5px; color:var(--text-dim); margin-bottom:18px; }
+.card { background:var(--surface-card); border:1px solid var(--border-strong); border-radius:10px; }
+.card .row { display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:10px 14px; border-bottom:1px solid var(--border-row); font-family:var(--mono); font-size:11.5px; }
+.card .row:last-child { border-bottom:none; }
+.muted { color:var(--text-dim); }
+
+/* ── shared outcome bits ─────────────────────────────────── */
+.ok-ink { color:var(--green); } .bad-ink { color:var(--amber); }
+.notice { border:1px solid var(--amber-border); background:var(--amber-bg); border-radius:8px; }
+
+/* ── dialog ──────────────────────────────────────────────── */
+.scrim { position:fixed; inset:0; background:rgba(11,13,16,.8); display:flex;
+  align-items:center; justify-content:center; padding:24px; z-index:20; }
+.dialog { width:100%; max-width:620px; max-height:74vh; display:flex; flex-direction:column;
+  overflow:hidden; background:var(--bg-1); border:1px solid var(--border-strong); border-radius:10px; }
+.dlg-head { display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--border-row); }
+.dlg-head h2 { font-size:13.5px; font-weight:600; }
+.dlg-bar { display:flex; flex-direction:column; gap:10px; padding:12px 14px; border-bottom:1px solid var(--border-row); }
+.crumbs { font-family:var(--mono); font-size:11.5px; color:var(--text-2); }
+.filter { display:flex; gap:8px; align-items:center; background:var(--surface-inset);
+  border:1px solid var(--border-strong); border-radius:6px; padding:6px 10px;
+  font-family:var(--mono); font-size:11.5px; color:var(--text-dim); }
+.listing { flex:1; min-height:0; overflow:auto; padding:8px 10px; display:flex; flex-direction:column; gap:2px; }
+.entry { display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:6px;
+  font-family:var(--mono); font-size:12px; color:var(--text-2); }
+.entry input { accent-color:var(--amber); }
+.badge { font-family:var(--mono); font-size:10px; padding:1px 6px; border-radius:99px;
+  border:1px solid var(--border-chip); color:var(--text-dim); }
+.dlg-foot { display:flex; align-items:center; gap:10px; padding:12px 14px; border-top:1px solid var(--border-row); }
+
+/* ── switcher ────────────────────────────────────────────── */
+.switcher { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); z-index:50;
+  display:flex; align-items:center; gap:2px; background:#e6e9ed; color:#0b0d10;
+  border-radius:99px; padding:4px; box-shadow:0 6px 24px rgba(0,0,0,.55); font-family:var(--mono); font-size:12px; }
+.switcher button { border:none; background:transparent; cursor:pointer; font-size:14px;
+  padding:4px 10px; border-radius:99px; color:#0b0d10; }
+.switcher button:hover { background:rgba(0,0,0,.08); }
+.switcher .label { padding:4px 8px; font-weight:600; white-space:nowrap; }
+.note { position:fixed; bottom:62px; left:50%; transform:translateX(-50%); z-index:50;
+  max-width:620px; text-align:center; font-family:var(--mono); font-size:10.5px;
+  color:var(--text-dim); background:rgba(11,13,16,.9); padding:5px 12px; border-radius:6px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div class="note" id="note"></div>
+<div class="switcher">
+  <button id="prev" aria-label="Previous variant">←</button>
+  <span class="label" id="label"></span>
+  <button id="next" aria-label="Next variant">→</button>
+</div>
+
+<script>
+// The scenario every variant renders: one selection of five, mid-outcome.
+const OUTCOMES = [
+  { path:"/Users/michielmerks/Projects/maestro",       ok:true,  reason:"registered" },
+  { path:"/Users/michielmerks/Projects/agent-harness", ok:true,  reason:"registered" },
+  { path:"/Users/michielmerks/Projects/old-api",       ok:false, reason:"not a git repo" },
+  { path:"/Users/michielmerks/Projects/cockpit-spike", ok:true,  reason:"registered" },
+  { path:"/Users/michielmerks/tmp/scratch",            ok:false, reason:"path does not exist" },
+];
+const REGISTERED = OUTCOMES.filter(o => o.ok);
+const FAILED     = OUTCOMES.filter(o => !o.ok);
+const short = p => p.replace("/Users/michielmerks", "~");
+// Left-truncation: the tail of an absolute path is the part that identifies it,
+// so a 256px column drops the head, not the repo name.
+const clip = (p, max) => { const s = short(p); return s.length <= max ? s : "…" + s.slice(-max); };
+
+// ── shared chrome ───────────────────────────────────────────
+const nav = `
+  <div class="nav-item active"><span>⇶</span> Deploy-state</div>
+  <div class="nav-item"><span>▤</span> Inventory</div>`;
+
+function targetsList() {
+  return `
+    <div class="target"><span class="dot ok">●</span><span class="path">Global</span></div>
+    ${REGISTERED.map(o => `
+      <div class="target"><span class="dot dim">●</span><span class="path">${clip(o.path, 26)}</span></div>`).join("")}`;
+}
+
+function registerForm(extra = "") {
+  return `
+    <div class="reg">
+      <div class="m-label">Repo path</div>
+      <div class="field">
+        <input type="text" value="" />
+        <button class="btn">browse…</button>
+      </div>
+      <button class="btn dashed">+ register repo</button>
+      ${extra}
+    </div>`;
+}
+
+function mainRegion(banner = "") {
+  return `
+    <div class="main">
+      <div class="h1">Deploy-state</div>
+      <div class="meta">4 targets · 1 behind · last checked 12:41</div>
+      ${banner}
+      <div class="card" style="margin-top:14px">
+        <div class="row"><span>Global</span><span class="ok-ink">● in sync</span></div>
+        ${REGISTERED.map(o => `
+          <div class="row"><span>${short(o.path)}</span><span class="muted">empty target</span></div>`).join("")}
+      </div>
+    </div>`;
+}
+
+function shell(sidebarExtra, banner, overlay = "") {
+  return `
+    <div class="app">
+      <div class="sidebar">
+        <nav>${nav}</nav>
+        <div class="m-label targets-head">Targets</div>
+        ${targetsList()}
+        ${registerForm(sidebarExtra)}
+      </div>
+      ${mainRegion(banner)}
+    </div>
+    ${overlay}`;
+}
+
+// ── VARIANT A — the dialog keeps the result ─────────────────
+// Confirm no longer closes the picker. The 620px dialog it already is becomes
+// the report: the run reads back in the order the user built it, full paths,
+// and the user dismisses it themselves.
+function VariantA() {
+  const overlay = `
+    <div class="scrim"><div class="dialog">
+      <div class="dlg-head">
+        <h2>Register consuming repos</h2><span style="flex:1"></span>
+        <span class="muted" style="font-family:var(--mono)">✕</span>
+      </div>
+      <div class="dlg-bar">
+        <div style="display:flex;align-items:center;gap:10px">
+          <button class="btn">↑ up</button>
+          <span class="crumbs">~ / Projects</span>
+          <span style="flex:1"></span>
+          <button class="btn">◐ hidden</button>
+        </div>
+        <div class="filter">⌕ filter this folder…</div>
+      </div>
+      <div class="listing">
+        ${OUTCOMES.map(o => `
+          <div class="entry">
+            <input type="checkbox" checked disabled />
+            <span>${o.path.split("/").pop()}</span>
+            <span style="flex:1"></span>
+            ${o.ok ? `<span class="badge" style="border-color:var(--green-border);color:var(--green)">● registered</span>` : ``}
+          </div>`).join("")}
+      </div>
+      <div style="border-top:1px solid var(--border-row);padding:10px 14px">
+        <div class="m-label" style="margin-bottom:8px">Result · 3 registered · 2 skipped</div>
+        ${OUTCOMES.map(o => `
+          <div style="display:flex;gap:10px;align-items:baseline;padding:3px 0;font-family:var(--mono);font-size:11.5px">
+            <span class="${o.ok ? "ok-ink" : "bad-ink"}">${o.ok ? "✓" : "✕"}</span>
+            <span style="color:var(--text-2)">${short(o.path)}</span>
+            <span style="flex:1"></span>
+            <span class="${o.ok ? "muted" : "bad-ink"}">${o.reason}</span>
+          </div>`).join("")}
+      </div>
+      <div class="dlg-foot">
+        <div class="filter" style="flex:1"><span class="m-label">or paste</span> /absolute/path…</div>
+        <button class="btn primary">done</button>
+      </div>
+    </div></div>`;
+  return shell("", "", overlay);
+}
+
+// ── VARIANT B — the sidebar carries the failures ────────────
+// The dialog closes on confirm, as it does today. Successes become Targets;
+// the failures land in the existing role="alert" slot under the form, now a
+// list. 256px, so paths truncate from the left.
+function VariantB() {
+  const extra = `
+    <div class="notice" style="padding:8px 10px;display:flex;flex-direction:column;gap:6px">
+      <div class="m-label" style="color:var(--amber)">2 skipped</div>
+      ${FAILED.map(o => `
+        <div style="font-family:var(--mono);font-size:11px;line-height:1.45">
+          <div style="color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${clip(o.path, 24)}</div>
+          <div class="bad-ink">${o.reason}</div>
+        </div>`).join("")}
+    </div>`;
+  return shell(extra, "");
+}
+
+// ── VARIANT C — the main region reports ─────────────────────
+// The sidebar only ever shows Targets. The run's report is a dismissable
+// notice above deploy-state, where 560px+ handles full paths.
+function VariantC() {
+  const banner = `
+    <div class="notice" style="padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="bad-ink">▲</span>
+        <span style="font-weight:600;font-size:12.5px">Registered 3 of 5 repos</span>
+        <span style="flex:1"></span>
+        <button class="btn ghost">dismiss</button>
+      </div>
+      ${FAILED.map(o => `
+        <div style="display:flex;gap:10px;align-items:baseline;font-family:var(--mono);font-size:11.5px">
+          <span class="bad-ink">✕</span>
+          <span style="color:var(--text-2)">${o.path}</span>
+          <span style="flex:1"></span>
+          <span class="bad-ink">${o.reason}</span>
+        </div>`).join("")}
+    </div>`;
+  return shell("", banner);
+}
+
+// ── switcher ────────────────────────────────────────────────
+const VARIANTS = {
+  A: { name:"Dialog keeps the result", render:VariantA,
+       note:"Picker stays open after confirm. 620px, full paths, run reads in order. Closing loses the failures." },
+  B: { name:"Sidebar carries the failures", render:VariantB,
+       note:"Today's alert slot becomes a list. Persists after the dialog closes. 256px forces truncated paths." },
+  C: { name:"Main region reports", render:VariantC,
+       note:"Sidebar stays purely Targets. Full paths, dismissable. Needs a notice surface that does not exist yet." },
+};
+const KEYS = Object.keys(VARIANTS);
+
+function current() {
+  const v = new URLSearchParams(location.search).get("variant");
+  return KEYS.includes(v) ? v : "A";
+}
+function go(key) {
+  history.replaceState(null, "", `?variant=${key}`);
+  paint();
+}
+function paint() {
+  const key = current();
+  const variant = VARIANTS[key];
+  document.getElementById("root").innerHTML = variant.render();
+  document.getElementById("label").textContent = `${key} — ${variant.name}`;
+  document.getElementById("note").textContent = variant.note;
+}
+function cycle(step) {
+  const i = KEYS.indexOf(current());
+  go(KEYS[(i + step + KEYS.length) % KEYS.length]);
+}
+document.getElementById("prev").onclick = () => cycle(-1);
+document.getElementById("next").onclick = () => cycle(1);
+addEventListener("keydown", e => {
+  const t = e.target;
+  if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+  if (e.key === "ArrowLeft") cycle(-1);
+  if (e.key === "ArrowRight") cycle(1);
+});
+paint();
+</script>
+</body>
+</html>
