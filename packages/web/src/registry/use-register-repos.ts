@@ -19,6 +19,11 @@ import {
 } from "./use-registry";
 
 export type RegistrationOutcome = {
+  // The path the picker actually sent. The selection is deduplicated, so this
+  // is unique within a run even where `path` is not — two entries resolving to
+  // one target (a symlink and the directory it points at) share a stored path
+  // but never a requested one.
+  requestedPath: string;
   // The path the registry ended up holding, which is not always the one that
   // was sent: registration canonicalizes with realpath, so a symlinked repo
   // lands under its target. The host joins outcomes onto its repo rows by
@@ -66,7 +71,17 @@ export function useRegisterRepos() {
     }
   }
 
-  return { outcomes, isRegistering, registerRepos };
+  // Clears the last run so a new picker session opens on the listing rather
+  // than on a report the user already dismissed. Refused mid-run for the same
+  // reason a second run is: the outcomes on screen belong to the run producing
+  // them.
+  function reset() {
+    if (!isRegistering) {
+      setOutcomes([]);
+    }
+  }
+
+  return { outcomes, isRegistering, registerRepos, reset };
 }
 
 // The set of paths the registry holds right now, or undefined when the query
@@ -90,6 +105,7 @@ async function registerOne(
     const { repos } = await registerOnePath(path);
     return {
       outcome: {
+        requestedPath: path,
         path: storedPath(path, repos, known),
         ok: true,
         reason: "registered",
@@ -102,7 +118,12 @@ async function registerOne(
         ? error.message
         : "could not reach Maestro to register it";
     return {
-      outcome: { path, ok: false, reason: `skipped · ${message}` },
+      outcome: {
+        requestedPath: path,
+        path,
+        ok: false,
+        reason: `skipped · ${message}`,
+      },
     };
   }
 }

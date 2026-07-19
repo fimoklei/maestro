@@ -35,6 +35,18 @@ function stubServer() {
         inventoryPath = "/home/me/agent-harness";
         return jsonResponse({ inventoryPath, primitiveCount: 3 }, 200);
       }
+      if (url.startsWith("/api/filesystem/children")) {
+        // An empty home folder: the register step reaches the picker for its
+        // paste field, not for anything to click.
+        return jsonResponse(
+          {
+            path: "/home/me",
+            breadcrumbs: [{ name: "~", path: "/home/me" }],
+            entries: [],
+          },
+          200,
+        );
+      }
       if (url.startsWith("/api/registry/repos")) {
         if (init?.method === "POST") {
           const { path } = JSON.parse(String(init.body)) as { path: string };
@@ -105,14 +117,16 @@ describe("first-run wizard sequence", () => {
       "step",
     );
 
-    // register a repo -> finish -> land
+    // register a repo through the picker -> dismiss its report -> finish
+    await userEvent.click(screen.getByRole("button", { name: /\+ repo/i }));
     await userEvent.type(
-      screen.getByLabelText(/repo path/i),
+      await screen.findByRole("textbox", { name: /or paste/i }),
       "/home/me/acme-web",
     );
     await userEvent.click(
-      screen.getByRole("button", { name: /register repo/i }),
+      screen.getByRole("button", { name: /register 1 selected/i }),
     );
+    await userEvent.click(await screen.findByRole("button", { name: /done/i }));
     await userEvent.click(
       await screen.findByRole("button", { name: /continue to deploy-state/i }),
     );

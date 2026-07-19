@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -117,21 +117,37 @@ describe("WizardReposView", () => {
     );
   });
 
-  it("registers a pasted repo path and lists it", async () => {
+  it("offers one + repo button and no path field of its own (issue #175)", async () => {
     stubApi();
     renderView();
 
+    expect(
+      await screen.findByRole("button", { name: /\+ repo/i }),
+    ).toBeInTheDocument();
+    // The picker's own paste field is the only way to hand-type a path now.
+    expect(screen.queryByLabelText(/repo path/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /register repo/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("registers a path pasted into the picker and lists it", async () => {
+    stubApi();
+    renderView();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /\+ repo/i }),
+    );
     await userEvent.type(
-      await screen.findByLabelText(/repo path/i),
+      await screen.findByRole("textbox", { name: /or paste/i }),
       "/home/me/acme-web",
     );
     await userEvent.click(
-      screen.getByRole("button", { name: /register repo/i }),
+      screen.getByRole("button", { name: /register 1 selected/i }),
     );
+    await userEvent.click(await screen.findByRole("button", { name: /done/i }));
 
     expect(await screen.findByText("/home/me/acme-web")).toBeInTheDocument();
-    // The field clears so the next repo can be added without hand-erasing.
-    expect(screen.getByLabelText(/repo path/i)).toHaveValue("");
   });
 
   it("lands on Deploy-state via skip without registering anything", async () => {
@@ -158,13 +174,17 @@ describe("WizardReposView", () => {
       screen.queryByRole("button", { name: /continue/i }),
     ).not.toBeInTheDocument();
 
+    await userEvent.click(
+      await screen.findByRole("button", { name: /\+ repo/i }),
+    );
     await userEvent.type(
-      await screen.findByLabelText(/repo path/i),
+      await screen.findByRole("textbox", { name: /or paste/i }),
       "/home/me/acme-web",
     );
     await userEvent.click(
-      screen.getByRole("button", { name: /register repo/i }),
+      screen.getByRole("button", { name: /register 1 selected/i }),
     );
+    await userEvent.click(await screen.findByRole("button", { name: /done/i }));
 
     await userEvent.click(
       await screen.findByRole("button", { name: /continue/i }),
@@ -201,7 +221,7 @@ describe("WizardReposView", () => {
 
     async function selectBothRepos() {
       await userEvent.click(
-        await screen.findByRole("button", { name: /browse/i }),
+        await screen.findByRole("button", { name: /\+ repo/i }),
       );
       await userEvent.click(
         await screen.findByRole("checkbox", { name: /acme-web/i }),
@@ -214,18 +234,25 @@ describe("WizardReposView", () => {
       );
     }
 
-    it("registers every selected repo and lists them all", async () => {
+    // The run's own list, inside the picker — distinct from the wizard's list
+    // of registered repos behind it.
+    const report = () => screen.findByRole("list", { name: /result/i });
+
+    it("registers every selected repo and lists them all once the picker closes", async () => {
       const fetchMock = stubApi({ browse: repoListing });
       renderView();
       await selectBothRepos();
 
+      await waitFor(async () =>
+        expect(await report()).toHaveTextContent("/home/me/payments-api"),
+      );
+      await userEvent.click(screen.getByRole("button", { name: /done/i }));
+
       const registered = await screen.findByRole("list", {
         name: /registered repos/i,
       });
-      await waitFor(() =>
-        expect(registered).toHaveTextContent("/home/me/payments-api"),
-      );
       expect(registered).toHaveTextContent("/home/me/acme-web");
+      expect(registered).toHaveTextContent("/home/me/payments-api");
 
       const registerPosts = fetchMock.mock.calls.filter(
         ([input, init]) =>
@@ -235,9 +262,7 @@ describe("WizardReposView", () => {
       expect(registerPosts).toHaveLength(2);
     });
 
-    it("marks each selected repo's outcome on its row in the repo list", async () => {
-      // One list, not two: the outcome decorates the repo's canonical row
-      // rather than repeating it in a separate results block.
+    it("reports each repo's outcome in the picker, not on the wizard's rows", async () => {
       stubApi({
         repos: [{ path: "/home/me/already-there" }],
         browse: repoListing,
@@ -245,73 +270,43 @@ describe("WizardReposView", () => {
       renderView();
       await selectBothRepos();
 
-      const rows = await screen.findAllByRole("listitem");
-      const acme = rows.find((row) =>
-        row.textContent?.includes("/home/me/acme-web"),
+      await waitFor(async () =>
+        expect(await report()).toHaveTextContent("/home/me/payments-api"),
       );
-      expect(acme).toHaveTextContent("✓");
-      expect(acme).toHaveTextContent("registered");
+      const reported = within(await report()).getAllByRole("listitem");
+      expect(reported[0]).toHaveTextContent("/home/me/acme-web");
+      expect(reported[0]).toHaveTextContent("✓");
+      expect(reported[0]).toHaveTextContent("registered");
 
-      // A repo that was not part of this batch keeps its plain row.
-      const untouched = rows.find((row) =>
-        row.textContent?.includes("/home/me/already-there"),
-      );
-      expect(untouched).not.toHaveTextContent("✓");
+      // The wizard's own list carries no run outcome — successes speak for
+      // themselves as registered repos (issue #175).
+      await userEvent.click(screen.getByRole("button", { name: /done/i }));
+      const registered = await screen.findByRole("list", {
+        name: /registered repos/i,
+      });
+      expect(registered).not.toHaveTextContent("✓");
+      expect(registered).toHaveTextContent("/home/me/already-there");
     });
 
-    it("lists each selected repo exactly once", async () => {
+    it("lists each registered repo exactly once", async () => {
       stubApi({ browse: repoListing });
       renderView();
       await selectBothRepos();
+
+      await waitFor(async () =>
+        expect(await report()).toHaveTextContent("/home/me/payments-api"),
+      );
+      await userEvent.click(screen.getByRole("button", { name: /done/i }));
 
       await screen.findByText("/home/me/acme-web");
       expect(screen.getAllByText("/home/me/acme-web")).toHaveLength(1);
       expect(screen.getAllByText("/home/me/payments-api")).toHaveLength(1);
     });
 
-    it("drops a stale manual-registration error once a selection registers", async () => {
-      // Otherwise the failed paste's error sits underneath a list of ticks,
-      // telling the user two contradictory things at once.
-      let posts = 0;
-      const stored: { path: string }[] = [];
-      stubApi({
-        browse: repoListing,
-        register: (path) => {
-          posts += 1;
-          if (posts === 1) {
-            return jsonResponse(
-              { error: "relative", message: "Path must be an absolute path." },
-              400,
-            );
-          }
-          stored.push({ path });
-          return jsonResponse({ repos: [...stored] }, 201);
-        },
-      });
-      renderView();
-
-      // A hand-typed path that the server rejects.
-      await userEvent.type(
-        await screen.findByLabelText(/repo path/i),
-        "./not-absolute",
-      );
-      await userEvent.click(
-        screen.getByRole("button", { name: /register repo/i }),
-      );
-      expect(await screen.findByRole("alert")).toHaveTextContent(
-        /absolute path/i,
-      );
-
-      await selectBothRepos();
-
-      await screen.findByText("/home/me/acme-web");
-      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    });
-
-    it("marks the row the server actually stored when a path resolves elsewhere", async () => {
+    it("reports the path the server actually stored when one resolves elsewhere", async () => {
       // Registration canonicalizes with realpath, so a symlinked repo lands
-      // under its target. The outcome has to follow the path the registry
-      // holds, not the one the picker sent, or the row never gets its tick.
+      // under its target. The report has to name the path the registry holds,
+      // not the one the picker sent.
       stubApi({
         browse: repoListing,
         register: () =>
@@ -320,7 +315,7 @@ describe("WizardReposView", () => {
       renderView();
 
       await userEvent.click(
-        await screen.findByRole("button", { name: /browse/i }),
+        await screen.findByRole("button", { name: /\+ repo/i }),
       );
       await userEvent.type(
         await screen.findByRole("textbox", { name: /or paste/i }),
@@ -330,17 +325,15 @@ describe("WizardReposView", () => {
         screen.getByRole("button", { name: /register 1 selected/i }),
       );
 
-      const row = (await screen.findAllByRole("listitem")).find((item) =>
-        item.textContent?.includes("/home/me/real-target"),
-      );
+      const row = within(await report()).getByRole("listitem");
+      expect(row).toHaveTextContent("/home/me/real-target");
       expect(row).toHaveTextContent("✓");
       expect(screen.queryByText("/home/me/symlinked")).not.toBeInTheDocument();
     });
 
-    it("gives a failed repo one row even when a stale entry already lists it", async () => {
+    it("reports a failure even for a path the registry already holds", async () => {
       // A registered directory deleted off disk: its path is still in the
-      // registry, so a failed re-registration must decorate that row rather
-      // than add a second one for the same path.
+      // registry, so the failure has nowhere to show except the run's report.
       stubApi({
         repos: [{ path: "/home/me/gone" }],
         browse: repoListing,
@@ -353,7 +346,7 @@ describe("WizardReposView", () => {
       renderView();
 
       await userEvent.click(
-        await screen.findByRole("button", { name: /browse/i }),
+        await screen.findByRole("button", { name: /\+ repo/i }),
       );
       await userEvent.type(
         await screen.findByRole("textbox", { name: /or paste/i }),
@@ -363,8 +356,9 @@ describe("WizardReposView", () => {
         screen.getByRole("button", { name: /register 1 selected/i }),
       );
 
-      await screen.findByText(/skipped · No directory exists there/);
-      expect(screen.getAllByText("/home/me/gone")).toHaveLength(1);
+      expect(await report()).toHaveTextContent(
+        /skipped · No directory exists there/,
+      );
     });
 
     it("keeps registering after one repo fails, and says why it was skipped", async () => {
@@ -384,16 +378,48 @@ describe("WizardReposView", () => {
       renderView();
       await selectBothRepos();
 
-      const list = await screen.findByRole("list", {
-        name: /registered repos/i,
-      });
-      // The failed repo is not in the registry, so it earns its own row.
+      await waitFor(async () =>
+        expect(await report()).toHaveTextContent("/home/me/payments-api"),
+      );
+      const list = await report();
       expect(list).toHaveTextContent("✕");
       expect(list).toHaveTextContent(/skipped · No directory exists there/);
-      // The failure did not stop the run: the second repo still registered…
+      // The failure did not stop the run: the second repo still registered.
       expect(posts).toBe(2);
-      // …and its success persisted into the same list.
-      expect(list).toHaveTextContent("/home/me/payments-api");
+    });
+
+    it("holds the picker open while the run works, then hands back the exits", async () => {
+      stubApi({ browse: repoListing });
+      renderView();
+      await selectBothRepos();
+
+      // The report is up before the run finishes — the dialog never closes on
+      // confirm in register mode (issue #175).
+      expect(await report()).toBeInTheDocument();
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: /done/i })).toBeEnabled(),
+      );
+      expect(screen.getByRole("button", { name: "Close" })).toBeEnabled();
+      expect(screen.getByRole("button", { name: /cancel/i })).toBeEnabled();
+    });
+
+    it("opens a later picker session on browsing, not on the last run's report", async () => {
+      stubApi({ browse: repoListing });
+      renderView();
+      await selectBothRepos();
+
+      await waitFor(async () =>
+        expect(await report()).toHaveTextContent("/home/me/payments-api"),
+      );
+      await userEvent.click(screen.getByRole("button", { name: /done/i }));
+      await userEvent.click(screen.getByRole("button", { name: /\+ repo/i }));
+
+      expect(
+        await screen.findByRole("checkbox", { name: /acme-web/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("list", { name: /result/i }),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -401,13 +427,17 @@ describe("WizardReposView", () => {
     stubApi({ configuredPath: null });
     renderView();
 
-    // Checked synchronously: the register form must not flash into view while
+    // Checked synchronously: the register step must not flash into view while
     // the cockpit doesn't yet know whether this user is configured (same
     // guard as the connect step).
-    expect(screen.queryByLabelText(/repo path/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /\+ repo/i }),
+    ).not.toBeInTheDocument();
 
     expect(await screen.findByText("welcome-landed")).toBeInTheDocument();
-    expect(screen.queryByLabelText(/repo path/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /\+ repo/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a readable error with retry when the config fetch fails, instead of hanging on Loading", async () => {
@@ -417,7 +447,9 @@ describe("WizardReposView", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent(/could not (be )?reach.*maestro/i);
     expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/repo path/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /\+ repo/i }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /try again/i }),
     ).toBeInTheDocument();

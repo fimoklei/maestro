@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { HttpError } from "../api/http";
+import type { RegistrationOutcome } from "../registry/use-register-repos";
 import { Button } from "../ui/button";
 import { BrowseBreadcrumbs } from "./browse-breadcrumbs";
 import { BrowseEntryRow } from "./browse-entry-row";
 import { type BrowseDialogMode, browseModes } from "./browse-modes";
+import { BrowseRunReport } from "./browse-run-report";
 import { useBrowseNavigation } from "./use-browse-navigation";
 import { useFolderFilter } from "./use-folder-filter";
 
@@ -37,6 +39,12 @@ import { useFolderFilter } from "./use-folder-filter";
 // at once. The dialog stays presentational — it returns paths and never
 // registers anything itself; the host owns the registration loop and its
 // per-repo outcomes.
+//
+// Confirming does not close it (issue #175). Once the host hands back a run,
+// the dialog switches from browsing to reporting: the toolbar and listing give
+// way to one line per repo, and the footer's confirm becomes "done". The host
+// decides whether there is a run at all, so connect — which never registers
+// anything — keeps closing on confirm without a mode entry of its own.
 
 type BrowseDialogProps = {
   mode: BrowseDialogMode;
@@ -48,6 +56,11 @@ type BrowseDialogProps = {
   // client-side "● registered" join (issue #150) — the server stays
   // registry-agnostic.
   registeredPaths?: ReadonlySet<string>;
+  // The host's registration run: what it has finished so far, and whether it
+  // is still going. Either one being live flips the dialog into reporting, so
+  // the report is on screen before the first repo lands.
+  outcomes?: readonly RegistrationOutcome[];
+  isRegistering?: boolean;
 };
 
 export function BrowseDialog({
@@ -55,6 +68,8 @@ export function BrowseDialog({
   onSelect,
   onClose,
   registeredPaths,
+  outcomes = [],
+  isRegistering = false,
 }: BrowseDialogProps) {
   const { title, confirmLabel } = browseModes[mode];
   // Owns the requested path, its query, and the last-used-folder memory
@@ -122,6 +137,15 @@ export function BrowseDialog({
     }
   };
 
+  // A run claims the dialog the moment the host starts one, and keeps it after
+  // the run ends: the outcomes exist nowhere else, so only the user dismisses
+  // them.
+  const reporting = isRegistering || outcomes.length > 0;
+  // Once the listing is gone, "Select repos to register" describes nothing on
+  // screen — and it is the dialog's accessible name, so it is what a screen
+  // reader announces for a surface that has become a report.
+  const heading = reporting ? "Registration result" : title;
+
   const toggleSelected = (path: string) =>
     setSelectedPaths((current) =>
       current.includes(path)
@@ -133,158 +157,182 @@ export function BrowseDialog({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={title}
+      aria-label={heading}
       className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 p-6"
     >
       <div className="flex max-h-[70vh] w-full max-w-[620px] flex-col overflow-hidden rounded-card border border-line bg-chrome">
         <div className="flex items-center gap-2.5 border-line-row border-b px-3.5 py-3">
           <h2 className="font-semibold font-ui text-fg text-subtitle">
-            {title}
+            {heading}
           </h2>
           <span className="flex-1" />
+          {/* The run is the only place its failures are readable, so nothing
+              dismisses the dialog until it has finished (issue #175). */}
           <button
             type="button"
             aria-label="Close"
             onClick={onClose}
-            className="cursor-pointer font-mono text-data text-dim hover:text-fg"
+            disabled={isRegistering}
+            className="cursor-pointer font-mono text-data text-dim hover:text-fg disabled:cursor-not-allowed disabled:text-line-chip"
           >
             ✕
           </button>
         </div>
 
-        <div className="flex flex-col gap-2.5 border-line-row border-b px-3.5 py-3">
-          <div className="flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={() => {
-                const parent = browse.data?.parent;
-                if (parent !== undefined) {
-                  setCurrentRequest(parent);
-                }
-              }}
-              disabled={browse.data?.parent === undefined}
-              className="shrink-0 rounded-control border px-2.5 py-[5px] font-mono text-mono-sm enabled:cursor-pointer enabled:border-line enabled:bg-inset enabled:text-fg-2 disabled:cursor-not-allowed disabled:border-line-chip disabled:text-dim"
-            >
-              ↑ up
-            </button>
-            {browse.data ? (
-              <BrowseBreadcrumbs
-                crumbs={browse.data.breadcrumbs}
-                onNavigate={setCurrentRequest}
-              />
-            ) : (
-              <span className="font-mono text-dim text-mono-sm">…</span>
-            )}
-            {atCeiling ? (
-              <span className="whitespace-nowrap font-mono text-dim text-tag">
-                · home ceiling
-              </span>
+        {reporting ? (
+          <BrowseRunReport outcomes={outcomes} isRegistering={isRegistering} />
+        ) : (
+          <>
+            <div className="flex flex-col gap-2.5 border-line-row border-b px-3.5 py-3">
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const parent = browse.data?.parent;
+                    if (parent !== undefined) {
+                      setCurrentRequest(parent);
+                    }
+                  }}
+                  disabled={browse.data?.parent === undefined}
+                  className="shrink-0 rounded-control border px-2.5 py-[5px] font-mono text-mono-sm enabled:cursor-pointer enabled:border-line enabled:bg-inset enabled:text-fg-2 disabled:cursor-not-allowed disabled:border-line-chip disabled:text-dim"
+                >
+                  ↑ up
+                </button>
+                {browse.data ? (
+                  <BrowseBreadcrumbs
+                    crumbs={browse.data.breadcrumbs}
+                    onNavigate={setCurrentRequest}
+                  />
+                ) : (
+                  <span className="font-mono text-dim text-mono-sm">…</span>
+                )}
+                {atCeiling ? (
+                  <span className="whitespace-nowrap font-mono text-dim text-tag">
+                    · home ceiling
+                  </span>
+                ) : null}
+                <span className="flex-1" />
+                <button
+                  type="button"
+                  aria-pressed={showHidden}
+                  onClick={() => setShowHidden((current) => !current)}
+                  className={`shrink-0 whitespace-nowrap rounded-control border px-2.5 py-[5px] font-mono text-mono-sm ${
+                    showHidden
+                      ? "border-amber-border bg-amber-bg text-amber-ink"
+                      : "border-line-chip text-dim"
+                  }`}
+                >
+                  {showHidden ? "◑" : "◐"} hidden
+                </button>
+              </div>
+              <div className="flex items-center gap-2 rounded-control border border-line bg-inset px-2.5 py-[7px]">
+                <label htmlFor="browse-filter" className="sr-only">
+                  Filter this folder
+                </label>
+                <span className="font-mono text-dim text-mono-sm">⌕</span>
+                <input
+                  id="browse-filter"
+                  type="text"
+                  value={filter}
+                  onChange={(event) => setFilter(event.target.value)}
+                  placeholder="filter this folder…"
+                  className="min-w-0 flex-1 bg-transparent font-mono text-fg text-mono-sm placeholder:text-dim focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-auto px-2.5 py-2">
+              {browse.isPending ? (
+                <p className="px-2.5 py-1.5 font-mono text-dim text-tag">
+                  Loading…
+                </p>
+              ) : (
+                visibleEntries.map((entry) => (
+                  <BrowseEntryRow
+                    key={entry.path}
+                    mode={mode}
+                    entry={entry}
+                    registeredPaths={registeredPaths}
+                    checked={selectedPaths.includes(entry.path)}
+                    onToggle={() => toggleSelected(entry.path)}
+                    onEnter={() => setCurrentRequest(entry.path)}
+                  />
+                ))
+              )}
+              {!showHidden && !browse.isPending && hiddenCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setShowHidden(true)}
+                  className="flex items-center gap-2 rounded-control px-2.5 py-2 text-left"
+                >
+                  <span className="font-mono text-dim text-tag">
+                    {hiddenCount} hidden item{hiddenCount === 1 ? "" : "s"} not
+                    shown
+                  </span>
+                  <span className="font-mono text-amber-ink text-tag">
+                    · show
+                  </span>
+                </button>
+              ) : null}
+            </div>
+
+            {/* in-dialog error banner — never an empty listing (story 22) */}
+            {error ? (
+              <div
+                role="alert"
+                className="mx-3.5 mb-3 flex items-center gap-2 rounded-control border border-amber-border bg-amber-bg px-2.5 py-2.5"
+              >
+                <span className="text-amber-ink text-data">▲</span>
+                <span className="font-mono text-fg-2 text-mono-sm">
+                  {error}
+                </span>
+              </div>
             ) : null}
-            <span className="flex-1" />
-            <button
-              type="button"
-              aria-pressed={showHidden}
-              onClick={() => setShowHidden((current) => !current)}
-              className={`shrink-0 whitespace-nowrap rounded-control border px-2.5 py-[5px] font-mono text-mono-sm ${
-                showHidden
-                  ? "border-amber-border bg-amber-bg text-amber-ink"
-                  : "border-line-chip text-dim"
-              }`}
-            >
-              {showHidden ? "◑" : "◐"} hidden
-            </button>
-          </div>
-          <div className="flex items-center gap-2 rounded-control border border-line bg-inset px-2.5 py-[7px]">
-            <label htmlFor="browse-filter" className="sr-only">
-              Filter this folder
-            </label>
-            <span className="font-mono text-dim text-mono-sm">⌕</span>
-            <input
-              id="browse-filter"
-              type="text"
-              value={filter}
-              onChange={(event) => setFilter(event.target.value)}
-              placeholder="filter this folder…"
-              className="min-w-0 flex-1 bg-transparent font-mono text-fg text-mono-sm placeholder:text-dim focus:outline-none"
-            />
-          </div>
-        </div>
-
-        <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-auto px-2.5 py-2">
-          {browse.isPending ? (
-            <p className="px-2.5 py-1.5 font-mono text-dim text-tag">
-              Loading…
-            </p>
-          ) : (
-            visibleEntries.map((entry) => (
-              <BrowseEntryRow
-                key={entry.path}
-                mode={mode}
-                entry={entry}
-                registeredPaths={registeredPaths}
-                checked={selectedPaths.includes(entry.path)}
-                onToggle={() => toggleSelected(entry.path)}
-                onEnter={() => setCurrentRequest(entry.path)}
-              />
-            ))
-          )}
-          {!showHidden && !browse.isPending && hiddenCount > 0 ? (
-            <button
-              type="button"
-              onClick={() => setShowHidden(true)}
-              className="flex items-center gap-2 rounded-control px-2.5 py-2 text-left"
-            >
-              <span className="font-mono text-dim text-tag">
-                {hiddenCount} hidden item{hiddenCount === 1 ? "" : "s"} not
-                shown
-              </span>
-              <span className="font-mono text-amber-ink text-tag">· show</span>
-            </button>
-          ) : null}
-        </div>
-
-        {/* in-dialog error banner — never an empty listing (story 22) */}
-        {error ? (
-          <div
-            role="alert"
-            className="mx-3.5 mb-3 flex items-center gap-2 rounded-control border border-amber-border bg-amber-bg px-2.5 py-2.5"
-          >
-            <span className="text-amber-ink text-data">▲</span>
-            <span className="font-mono text-fg-2 text-mono-sm">{error}</span>
-          </div>
-        ) : null}
+          </>
+        )}
 
         <div className="flex items-center gap-2.5 border-line-row border-t px-3.5 py-3">
-          <form
-            className="flex min-w-0 flex-1 items-center gap-2 rounded-control border border-line bg-inset px-2.5 py-[7px]"
-            onSubmit={(event) => {
-              event.preventDefault();
-              confirm();
-            }}
+          {reporting ? (
+            // Nothing left to paste into: confirm now only dismisses the run.
+            <span className="flex-1" />
+          ) : (
+            <form
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-control border border-line bg-inset px-2.5 py-[7px]"
+              onSubmit={(event) => {
+                event.preventDefault();
+                confirm();
+              }}
+            >
+              <label htmlFor="browse-paste-path" className="m-label shrink-0">
+                or paste
+              </label>
+              <input
+                id="browse-paste-path"
+                type="text"
+                value={pastedPath}
+                onChange={(event) => setPastedPath(event.target.value)}
+                placeholder="/absolute/path…"
+                className="min-w-0 flex-1 bg-transparent font-mono text-fg text-mono-sm placeholder:text-dim focus:outline-none"
+              />
+            </form>
+          )}
+          <Button
+            type="button"
+            variant="quiet"
+            size="sm"
+            onClick={onClose}
+            disabled={isRegistering}
           >
-            <label htmlFor="browse-paste-path" className="m-label shrink-0">
-              or paste
-            </label>
-            <input
-              id="browse-paste-path"
-              type="text"
-              value={pastedPath}
-              onChange={(event) => setPastedPath(event.target.value)}
-              placeholder="/absolute/path…"
-              className="min-w-0 flex-1 bg-transparent font-mono text-fg text-mono-sm placeholder:text-dim focus:outline-none"
-            />
-          </form>
-          <Button type="button" variant="quiet" size="sm" onClick={onClose}>
             cancel
           </Button>
           <Button
             type="button"
             variant="primary"
             size="sm"
-            disabled={confirmedPaths.length === 0}
-            onClick={confirm}
+            disabled={reporting ? isRegistering : confirmedPaths.length === 0}
+            onClick={reporting ? onClose : confirm}
           >
-            {confirmLabel(confirmedPaths.length)}
+            {reporting ? "done" : confirmLabel(confirmedPaths.length)}
           </Button>
         </div>
       </div>
