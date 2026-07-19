@@ -58,14 +58,18 @@ describe("Sidebar first-run rendering", () => {
     expect(
       screen.queryByRole("button", { name: "Inventory source" }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/repo path/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "+ repo" }),
+    ).not.toBeInTheDocument();
   });
 
   it("renders the interactive nav and register affordance when configured", async () => {
     stubServer({ notConfigured: false });
     renderSidebar("/");
 
-    expect(await screen.findByLabelText(/repo path/i)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "+ repo" }),
+    ).toBeInTheDocument();
     for (const name of ["Deploy-state", "Inventory"]) {
       expect(screen.getByRole("button", { name })).toBeEnabled();
     }
@@ -76,15 +80,17 @@ describe("Sidebar first-run rendering", () => {
   });
 
   it("hides the register affordance on a wizard route even when configured", async () => {
-    // The wizard's register step mounts the same form as its main card;
-    // showing it in the sidebar too would duplicate the input's id and
-    // compete with the step (issue #97).
+    // The wizard's register step teaches this very action as its main card;
+    // a second affordance for it on the same screen competes with the step
+    // (issue #97).
     stubServer({ notConfigured: false });
     renderSidebar("/welcome/repos");
 
     expect(
       await screen.findByRole("button", { name: "Deploy-state" }),
     ).toBeEnabled();
-    expect(screen.queryByLabelText(/repo path/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "+ repo" }),
+    ).not.toBeInTheDocument();
   });
 });

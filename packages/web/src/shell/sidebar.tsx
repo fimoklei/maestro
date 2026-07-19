@@ -12,9 +12,8 @@ import { useFirstRun } from "./use-first-run";
 // the real list, and the register affordance disappears — registering a repo
 // before an inventory exists has nothing to deploy. The register affordance
 // also stays hidden on the wizard routes themselves: the wizard's register
-// step (issue #97) renders the same form as its main card, and mounting it
-// twice would duplicate the input's id (broken labelling) and compete with
-// the step it is teaching.
+// step (issue #97) teaches the same action as its main card, and a second
+// affordance for it on one screen competes with the step it is teaching.
 const NAV_ITEMS = [
   { to: "/", label: "Deploy-state", icon: "⇶" },
   { to: "/inventory", label: "Inventory", icon: "▤" },

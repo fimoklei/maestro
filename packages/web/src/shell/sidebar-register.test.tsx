@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -7,6 +7,7 @@ import { Sidebar } from "./sidebar";
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  window.localStorage.clear();
 });
 
 function jsonResponse(body: unknown, status: number) {
@@ -16,29 +17,53 @@ function jsonResponse(body: unknown, status: number) {
   });
 }
 
-// A stateful registry: empty until a POST registers a repo, after which the
-// list (and so the Targets list) refetches it. Drift checks resolve to in-sync
-// and deploy-state to nothing deployed, so each target reads as in sync.
-function stubStatefulRegistry() {
-  let repos: { path: string }[] = [];
+const repoFacts = { isGitRepo: true, hasSkillsSubdir: false };
+
+// One home folder holding two git repos and one plain directory, plus a
+// stateful registry: empty until a POST registers a repo, after which the list
+// (and so the Targets list) refetches it. A path the server refuses answers
+// 400, so a run can be made to fail one repo and keep the rest.
+function stubServer({
+  rejecting = [] as string[],
+  alreadyRegistered = [] as string[],
+} = {}) {
+  let repos = alreadyRegistered.map((path) => ({ path }));
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (url: string, init?: RequestInit) => {
-      const target = String(url);
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const target = String(input);
+      if (target.includes("/api/inventory/config")) {
+        return jsonResponse({ inventoryPath: "/home/me/agent-harness" }, 200);
+      }
+      if (target.includes("/api/filesystem/children")) {
+        return jsonResponse(
+          {
+            path: "/home/me",
+            breadcrumbs: [{ name: "~", path: "/home/me" }],
+            entries: [
+              { name: "acme-web", path: "/home/me/acme-web", facts: repoFacts },
+              {
+                name: "payments-api",
+                path: "/home/me/payments-api",
+                facts: repoFacts,
+              },
+            ],
+          },
+          200,
+        );
+      }
       if (target.includes("/api/registry/repos")) {
         if (init?.method === "POST") {
-          const { path } = JSON.parse(String(init.body));
-          repos = [{ path }];
+          const { path } = JSON.parse(String(init.body)) as { path: string };
+          if (rejecting.includes(path)) {
+            return jsonResponse({ message: "Path is not a directory." }, 400);
+          }
+          repos = [...repos, { path }];
+          return jsonResponse({ repos }, 201);
         }
         return jsonResponse({ repos }, 200);
       }
-      if (target.includes("/api/deploy-state")) {
-        return jsonResponse({ primitives: [], skipped: [] }, 200);
-      }
-      if (target.includes("/api/drift")) {
-        return jsonResponse({ behind: [] }, 200);
-      }
-      return jsonResponse({}, 200);
+      return jsonResponse({ primitives: [], skipped: [], behind: [] }, 200);
     }),
   );
 }
@@ -56,17 +81,77 @@ function renderSidebar() {
   );
 }
 
-describe("sidebar inline register", () => {
-  it("adds a registered repo to the Targets list", async () => {
-    stubStatefulRegistry();
+async function pickBothRepos() {
+  await userEvent.click(await screen.findByRole("button", { name: "+ repo" }));
+  await userEvent.click(
+    await screen.findByRole("checkbox", { name: /acme-web/i }),
+  );
+  await userEvent.click(
+    screen.getByRole("checkbox", { name: /payments-api/i }),
+  );
+  await userEvent.click(
+    screen.getByRole("button", { name: /register 2 selected/i }),
+  );
+}
+
+describe("sidebar register affordance", () => {
+  it("registers every repo checked in the picker and lists them as targets", async () => {
+    stubServer();
     renderSidebar();
 
-    await userEvent.type(
-      screen.getByLabelText(/repo path/i),
-      "/Users/me/new-repo",
-    );
-    await userEvent.click(screen.getByRole("button", { name: /register/i }));
+    await pickBothRepos();
 
-    expect(await screen.findByText("/Users/me/new-repo")).toBeInTheDocument();
+    const targets = await screen.findByRole("list", { name: "Targets" });
+    expect(
+      await within(targets).findByText("/home/me/acme-web"),
+    ).toBeInTheDocument();
+    expect(
+      await within(targets).findByText("/home/me/payments-api"),
+    ).toBeInTheDocument();
+  });
+
+  it("reports a failed repo inside the picker while the rest still register", async () => {
+    stubServer({ rejecting: ["/home/me/acme-web"] });
+    renderSidebar();
+
+    await pickBothRepos();
+
+    const report = await screen.findByRole("list", {
+      name: "Registration results",
+    });
+    expect(
+      within(report).getByText(/skipped · Path is not a directory/i),
+    ).toBeInTheDocument();
+    const targets = screen.getByRole("list", { name: "Targets" });
+    expect(
+      await within(targets).findByText("/home/me/payments-api"),
+    ).toBeInTheDocument();
+    expect(
+      within(targets).queryByText("/home/me/acme-web"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hands the picker the repos already registered, so they cannot be picked twice", async () => {
+    stubServer({ alreadyRegistered: ["/home/me/acme-web"] });
+    renderSidebar();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "+ repo" }),
+    );
+
+    expect(
+      await screen.findByRole("checkbox", { name: /acme-web/i }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("checkbox", { name: /payments-api/i }),
+    ).toBeEnabled();
+  });
+
+  it("has no path input of its own — the picker's paste field is the one", async () => {
+    stubServer();
+    renderSidebar();
+
+    await screen.findByRole("button", { name: "+ repo" });
+    expect(screen.queryByLabelText(/repo path/i)).not.toBeInTheDocument();
   });
 });

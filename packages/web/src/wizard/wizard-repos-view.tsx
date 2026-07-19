@@ -1,11 +1,9 @@
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ConfigUnreachableNotice } from "../inventory/config-unreachable-notice";
 import { useInventoryConfig } from "../inventory/use-inventory";
-import { useRegisterRepos } from "../registry/use-register-repos";
-import { useRegistry } from "../registry/use-registry";
 import { BrowseDialog } from "../shell/browse-dialog";
-import { useBrowsePicker } from "../shell/use-browse-picker";
+import { useRegisterPicker } from "../shell/use-register-picker";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { SectionHeader } from "../ui/section-header";
@@ -23,31 +21,13 @@ import { WizardProgress } from "./wizard-progress";
 // This deliberately departs from design frame f1-repos, which still draws the
 // path field.
 export function WizardReposView() {
-  const registry = useRegistry();
   const navigate = useNavigate();
   const config = useInventoryConfig();
   // Confirming the picker registers the whole selection here — the dialog only
-  // hands over the paths (issue #151) and then reports what came back.
-  const registerSelection = useRegisterRepos();
-  const browse = useBrowsePicker(
-    (paths) => registerSelection.registerRepos(paths),
-    { closeOnSelect: false },
-  );
-  const repos = registry.data?.repos ?? [];
-  // Client-side join for the browse dialog's "● registered" badge (issue
-  // #150) — the server stays registry-agnostic; this is a hint, not a
-  // guarantee (a stale set just skips the badge, never blocks registration).
-  const registeredPaths = useMemo(
-    () => new Set(repos.map((repo) => repo.path)),
-    [repos],
-  );
-
-  function openPicker() {
-    // The previous run's report would otherwise greet a session that is about
-    // to browse.
-    registerSelection.reset();
-    browse.openBrowse();
-  }
+  // hands over the paths (issue #151) and then reports what came back. The
+  // sidebar mounts the same picker through the same hook (issue #163).
+  const picker = useRegisterPicker();
+  const repos = picker.repos;
   // Blocks a deep link/bookmark into this step by a still-unconfigured user —
   // the register step only makes sense after connect (the gate only guards
   // /welcome itself, not this nested route; see first-run-gate.tsx). The
@@ -84,7 +64,7 @@ export function WizardReposView() {
         <Button
           variant="dashed"
           size="md"
-          onClick={openPicker}
+          onClick={picker.openPicker}
           className="self-start"
         >
           + repo
@@ -119,16 +99,7 @@ export function WizardReposView() {
         )}
       </div>
       <WizardProgress activeStep={2} />
-      {browse.open ? (
-        <BrowseDialog
-          mode="register"
-          registeredPaths={registeredPaths}
-          onSelect={browse.selectBrowse}
-          onClose={browse.closeBrowse}
-          outcomes={registerSelection.outcomes}
-          isRegistering={registerSelection.isRegistering}
-        />
-      ) : null}
+      {picker.open ? <BrowseDialog {...picker.dialogProps} /> : null}
     </div>
   );
 }

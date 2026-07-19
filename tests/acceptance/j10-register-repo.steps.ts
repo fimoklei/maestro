@@ -57,6 +57,7 @@ describeFeature(
     let configPath: string;
     let repoDir: string;
     let secondRepoDir: string;
+    let thirdRepoDir: string;
     let app: ReturnType<typeof buildApp>;
     let response: Response;
 
@@ -65,6 +66,7 @@ describeFeature(
       configPath = join(workspace, "config.json");
       repoDir = await mkdtemp(join(tmpdir(), "maestro-j10-repo-"));
       secondRepoDir = await mkdtemp(join(tmpdir(), "maestro-j10-repo2-"));
+      thirdRepoDir = await mkdtemp(join(tmpdir(), "maestro-j10-repo3-"));
       app = buildApp(configPath);
     });
 
@@ -72,6 +74,7 @@ describeFeature(
       await rm(workspace, { recursive: true, force: true });
       await rm(repoDir, { recursive: true, force: true });
       await rm(secondRepoDir, { recursive: true, force: true });
+      await rm(thirdRepoDir, { recursive: true, force: true });
     });
 
     Scenario(
@@ -153,6 +156,42 @@ describeFeature(
             expect(list.repos.map((repo) => repo.path)).toEqual([
               await nodeRealpath(repoDir),
               await nodeRealpath(secondRepoDir),
+            ]);
+          },
+        );
+      },
+    );
+
+    Scenario(
+      "I register more repos from the sidebar, and re-picking one I already have changes nothing",
+      ({ Given, When, Then }) => {
+        Given("a cockpit that already has a repo registered", async () => {
+          expect((await postRepo(app, repoDir)).status).toBe(201);
+        });
+        When(
+          "I register a further selection that includes the repo I already have",
+          async () => {
+            // The steady-state case the sidebar opened up (issue #163):
+            // registering against a registry that is not empty. The picker
+            // greys out what is already registered, but that badge is a
+            // client-side hint — a path can still arrive twice (a symlink to a
+            // repo already in the list, or a hand-pasted path). The server is
+            // what has to hold the line.
+            for (const path of [secondRepoDir, repoDir, thirdRepoDir]) {
+              expect((await postRepo(app, path)).status).toBe(201);
+            }
+          },
+        );
+        Then(
+          "the new repos join the list and the one I already had is not duplicated",
+          async () => {
+            const list = (await (
+              await app.request("/api/registry/repos")
+            ).json()) as { repos: { path: string }[] };
+            expect(list.repos.map((repo) => repo.path)).toEqual([
+              await nodeRealpath(repoDir),
+              await nodeRealpath(secondRepoDir),
+              await nodeRealpath(thirdRepoDir),
             ]);
           },
         );
