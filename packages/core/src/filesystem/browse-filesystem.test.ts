@@ -105,6 +105,47 @@ describe("BrowseFilesystem", () => {
     });
   });
 
+  it("rejects a browsed path that raced away from being a directory after the ceiling check", async () => {
+    // Same race as the per-entry one below, one level up: `real` is already
+    // realpath'd and ceiling-checked, so a following stat here would list a
+    // swapped-in symlink's target and leak entry names from outside home.
+    const browse = makeBrowse({
+      directories: {
+        "/home/user": "/home/user",
+        "/home/user/dev": "/home/user/dev",
+      },
+      listings: { "/home/user/dev": ["secret"] },
+      racedAwayAsDirectory: ["/home/user/dev"],
+    });
+
+    const result = await browse.browse("/home/user/dev");
+
+    expect(result).toEqual({ ok: false, error: "not-a-directory" });
+  });
+
+  it("excludes a symlink whose target raced away from being a directory after the ceiling check", async () => {
+    // The target was inside the ceiling and a genuine directory when
+    // realpath resolved it, but a concurrent process swapped it for a new
+    // symlink pointing out of home before the directory check ran (TOCTOU —
+    // Codex review, #160). The check must be lstat-based (isDirectoryEntry):
+    // `target` is already fully resolved, so following one more hop would
+    // report on a location isWithinRoot never validated.
+    const browse = makeBrowse({
+      directories: {
+        "/home/user": "/home/user",
+        "/home/user/dev": "/home/user/dev",
+        "/home/user/dev/linked": "/home/user/dev/actual",
+        "/home/user/dev/actual": "/home/user/dev/actual",
+      },
+      listings: { "/home/user/dev": ["linked"] },
+      racedAwayAsDirectory: ["/home/user/dev/actual"],
+    });
+
+    const result = await browse.browse("/home/user/dev");
+
+    expect(result).toMatchObject({ ok: true, entries: [] });
+  });
+
   it("excludes a symlinked entry whose target resolves outside the home ceiling", async () => {
     const browse = makeBrowse({
       directories: {

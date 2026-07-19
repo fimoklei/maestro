@@ -50,7 +50,7 @@ export interface FileSystemPort {
   // target even exists). Unlike listDirectoryNames, nothing is dropped here:
   // the browse capability uses this to discover symlinked-directory
   // candidates listDirectoryNames would silently hide, then classifies each
-  // one itself (realpath + isDirectory + the home-ceiling check) so a symlink
+  // one itself (realpath + isDirectoryEntry + the home-ceiling check) so a symlink
   // is only ever shown once its target has been validated (issue #148).
   // Carrying the type facts from this one read means a plain file is never
   // mistaken for a possible symlink and sent through that extra resolution —

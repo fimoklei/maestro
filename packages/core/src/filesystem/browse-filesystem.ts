@@ -118,7 +118,11 @@ export class BrowseFilesystem {
       return { ok: false, error: "outside-root" };
     }
 
-    if (!(await this.fs.isDirectory(real))) {
+    // lstat, not stat: `real` is canonical and ceiling-checked, so there is
+    // nothing left to legitimately follow. Following one more hop would list
+    // a symlink swapped in since that check and leak entry names from outside
+    // home — the same race as the per-entry probe below (issue #160).
+    if (!(await this.fs.isDirectoryEntry(real))) {
       return { ok: false, error: "not-a-directory" };
     }
 
@@ -143,10 +147,14 @@ export class BrowseFilesystem {
     // resolve it, assert the *resolved* target is inside the home ceiling
     // BEFORE touching it any further, then confirm it is a directory —
     // mirroring the endpoint's own normalize -> realpath -> assert-inside-
-    // root order (ADR-0009). Checking the ceiling before isDirectory means an
-    // out-of-ceiling target is never stat'd, not even to immediately discard
-    // the result. A symlink whose target is missing, escapes the ceiling, or
-    // is not a directory is dropped here and never reaches the client.
+    // root order (ADR-0009). Checking the ceiling before the type probe means
+    // an out-of-ceiling target is never stat'd, not even to immediately
+    // discard the result. A symlink whose target is missing, escapes the
+    // ceiling, or is not a directory is dropped here and never reaches the
+    // client.
+    // That last probe is lstat-based for the same reason as the browsed path
+    // above: `target` is canonical and ceiling-checked, so a symlink swapped
+    // in since then is discarded rather than followed (issue #160).
     const classified = (
       await Promise.all(
         rawEntries.map(async (raw) => {
@@ -166,7 +174,7 @@ export class BrowseFilesystem {
           if (!isWithinRoot(target, realRoot)) {
             return null; // symlink escapes the ceiling — never shown, never stat'd
           }
-          if (!(await this.fs.isDirectory(target))) {
+          if (!(await this.fs.isDirectoryEntry(target))) {
             return null; // symlink to a file, or something else entirely
           }
           return { name: raw.name, path, isSymlink: true };
