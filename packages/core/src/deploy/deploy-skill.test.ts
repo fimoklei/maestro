@@ -51,6 +51,7 @@ const buildDeps = (
         tools?: readonly SupportedTool[];
       }) => {
         deployed.push(input);
+        return { ok: true as const };
       },
     },
     inventoryOriginUrl: async () => "git@github.com:fimoklei/agent-harness.git",
@@ -506,6 +507,49 @@ describe("DeploySkill", () => {
     expect(deployed).toEqual([]);
   });
 
+  it("reports destination-symlinked when apm refuses a symlinked destination", async () => {
+    // apm refuses to deploy into a skill directory that is a symlink. Surface
+    // that classification instead of the generic deploy-failed, so the cockpit
+    // can name the destination and the directory-level symlink fix (#180).
+    const { deps } = buildDeps({
+      apm: {
+        resolveLatestTag: async () => ({ ok: true as const, tag: "v0.5.1" }),
+        deploySkill: async () => ({
+          ok: false as const,
+          reason: "destination-symlinked" as const,
+        }),
+      },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({ ok: false, error: "destination-symlinked" });
+  });
+
+  it("reports deploy-failed for an unclassified install failure", async () => {
+    // Fail-closed: only a recognised refusal gets a typed error; everything else
+    // stays the catch-all (#180).
+    const { deps } = buildDeps({
+      apm: {
+        resolveLatestTag: async () => ({ ok: true as const, tag: "v0.5.1" }),
+        deploySkill: async () => ({
+          ok: false as const,
+          reason: "failed" as const,
+        }),
+      },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({ ok: false, error: "deploy-failed" });
+  });
+
   it("falls back to deploy-failed for a generic resolve failure", async () => {
     // Network down / host unreachable / CLI missing — anything that is not auth
     // stays the generic apm failure (auth-only classification scope, #119).
@@ -812,7 +856,10 @@ describe("DeploySkill", () => {
     const { deps } = buildDeps({
       apm: {
         resolveLatestTag: async () => ({ ok: true, tag: "v0.5.1" }),
-        deploySkill: async () => gate,
+        deploySkill: async () => {
+          await gate;
+          return { ok: true as const };
+        },
       },
       canonicalPath: async (_path: string) => "/canonical/repo",
     });
@@ -848,7 +895,10 @@ describe("DeploySkill", () => {
     const { deps } = buildDeps({
       apm: {
         resolveLatestTag: async () => ({ ok: true, tag: "v0.5.1" }),
-        deploySkill: async () => gate,
+        deploySkill: async () => {
+          await gate;
+          return { ok: true as const };
+        },
       },
     });
     const useCase = new DeploySkill(deps);
@@ -881,8 +931,9 @@ describe("DeploySkill", () => {
         deploySkill: async () => {
           if (failFirst) {
             failFirst = false;
-            throw new Error("apm exited 1");
+            return { ok: false as const, reason: "failed" as const };
           }
+          return { ok: true as const };
         },
       },
     });
@@ -930,7 +981,7 @@ describe("DeploySkill", () => {
         resolveLatestTag: async () => {
           throw new Error("apm view failed: no network");
         },
-        deploySkill: async () => undefined,
+        deploySkill: async () => ({ ok: true as const }),
       },
     });
     const result = await new DeploySkill(deps).execute({

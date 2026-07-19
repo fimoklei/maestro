@@ -105,6 +105,7 @@ describeFeature(
               globalLockfile,
               "utf8",
             );
+            return { ok: true as const };
           },
         },
         inventoryGit: {

@@ -15,7 +15,7 @@ export const stubDeploy = (deps: {
     registry: deps.registry,
     apm: {
       resolveLatestTag: async () => ({ ok: false, reason: "no-tag" }),
-      deploySkill: async () => undefined,
+      deploySkill: async () => ({ ok: true as const }),
     },
     inventoryGit: {
       skillExistsAtTag: async () => false,

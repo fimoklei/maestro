@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  ApmCliDriver,
   ConfigStore,
   DeploySkill,
   DeployStateReader,
@@ -74,6 +75,9 @@ describe("deploy HTTP route", () => {
   function makeApp(options?: {
     failApm?: boolean;
     authRequired?: boolean;
+    // apm refused the install because the destination skill dir is a symlink,
+    // classified by the driver from apm's fixed phrase (#180).
+    symlinkRefused?: boolean;
     skillAtTag?: boolean;
     diverged?: boolean;
     destDiverged?: boolean;
@@ -114,6 +118,23 @@ describe("deploy HTTP route", () => {
           if (options?.failApm) {
             throw new Error("apm install failed: token in stderr");
           }
+          if (options?.symlinkRefused) {
+            // The real driver, fed apm's real refusal output (captured fixture,
+            // with a token-bearing URL appended). Classification and the
+            // no-leak guarantee are then exercised end to end, not stubbed.
+            return new ApmCliDriver({
+              run: async () => {
+                throw Object.assign(new Error("Command failed: apm install"), {
+                  code: 1,
+                  stdout: `${await readFile(
+                    "tests/fixtures/apm-install-symlink-refused.txt",
+                    "utf8",
+                  )}\nhttps://x-access-token:ghp_secret@github.com`,
+                  stderr: "",
+                });
+              },
+            }).deploySkill(input);
+          }
           if (options?.holdApm) {
             await options.holdApm;
           }
@@ -127,6 +148,7 @@ describe("deploy HTTP route", () => {
             capturedLockfile("v0.5.1"),
             "utf8",
           );
+          return { ok: true };
         },
       },
       inventoryGit: {
@@ -635,5 +657,28 @@ describe("deploy HTTP route", () => {
       message:
         "GitHub authentication is missing or expired. Run 'gh auth login' (or set GITHUB_TOKEN) and try again.",
     });
+  });
+
+  it("surfaces a symlinked destination as its own status with a message naming the fix", async () => {
+    // apm refuses to deploy into a skill directory that is a symlink. The
+    // cockpit says exactly that and points at the supported pattern — a
+    // directory-level symlink one level up — instead of "check apm" (#180).
+    const { app, registry } = makeApp({ symlinkRefused: true });
+    await registry.register(repo);
+
+    const res = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: repoTarget(repo),
+    });
+
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { error: string; message: string };
+    expect(body.error).toBe("destination-symlinked");
+    expect(body.message).toContain("symlink");
+    expect(body.message).toContain("skills");
+    // No raw apm output reaches the client; the message is hand-written.
+    expect(JSON.stringify(body)).not.toContain("ghp_secret");
+    expect(JSON.stringify(body)).not.toContain("refusing to deploy");
   });
 });

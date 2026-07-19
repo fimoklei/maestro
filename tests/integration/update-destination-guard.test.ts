@@ -74,8 +74,10 @@ describe("update journey against the real destination guard", () => {
 
   // A real DeploySkill with the real destination guard wired in. Only the apm
   // boundary is faked; classify runs against the live subtree under `root`.
+  // The fake takes the install's side effect on disk; the driver's own success
+  // result is added here, so a test only describes what apm would write.
   const makeDeploy = (
-    deploySkill: (input: {
+    install: (input: {
       target: DeployTarget;
       ref: string;
     }) => Promise<void> = async () => undefined,
@@ -97,7 +99,10 @@ describe("update journey against the real destination guard", () => {
       registry: { isRegistered: async () => true },
       apm: {
         resolveLatestTag: async () => ({ ok: true, tag: LATEST_TAG }),
-        deploySkill,
+        deploySkill: async (input) => {
+          await install(input);
+          return { ok: true };
+        },
       },
       inventoryGit: {
         skillExistsAtTag: async () => true,
