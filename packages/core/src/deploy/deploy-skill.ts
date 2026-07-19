@@ -33,6 +33,15 @@ export type ResolveLatestTagResult =
   | { ok: true; tag: string }
   | { ok: false; reason: "no-tag" | "auth-required" | "failed" };
 
+// Outcome of an `apm install`. A discriminated result, not a throw, so a
+// recognised refusal reaches the use-case as a classification instead of a bare
+// error. "destination-symlinked": apm refused because the skill's destination
+// directory is a symlink (its fixed phrase, apm-driver.md). "failed": any other
+// install failure — unclassified stays unclassified (#180).
+export type DeploySkillDriverResult =
+  | { ok: true }
+  | { ok: false; reason: "destination-symlinked" | "failed" };
+
 // The port the real apm CLI adapter implements. resolveLatestTag wraps
 // `apm view <owner>/<repo> versions`; deploySkill wraps `apm install <ref>`
 // (a repo install runs in that repo; a global install runs `-g`).
@@ -45,7 +54,7 @@ export type ApmDriverPort = {
     target: DeployTarget;
     ref: string;
     tools?: readonly SupportedTool[];
-  }): Promise<void>;
+  }): Promise<DeploySkillDriverResult>;
   // Wraps `apm outdated` for a target and returns the skills behind the latest
   // central tag, each as a deployed -> latest version pair (ADR-0007). A run apm
   // could not complete against the remote (no auth/network) is
@@ -169,6 +178,10 @@ export type DeploySkillError =
   // at resolveLatestTag via apm's fixed auth phrases. Distinct from the generic
   // deploy-failed so the cockpit points at auth, not a vague apm error (#119).
   | "auth-required"
+  // apm refused the install because the skill's destination directory is a
+  // symlink. Distinct from the generic failure so the cockpit can name the
+  // destination and the supported directory-level symlink fix (#180).
+  | "destination-symlinked"
   // Catch-all for apm/git execution failures (CLI missing, no auth/network).
   | "deploy-failed";
 
@@ -337,13 +350,25 @@ export class DeploySkill {
         name: input.name,
         tag,
       });
-      await this.deps.apm.deploySkill({
+      const installed = await this.deps.apm.deploySkill({
         target: input.target,
         ref,
         // Present on the global path (the detected tools); undefined for a repo
         // deploy, where the driver keeps targeting every DEPLOY_TOOLS tool.
         tools: globalTools,
       });
+      if (!installed.ok) {
+        // A classified refusal keeps its own error; anything the driver could not
+        // recognise stays the catch-all, so an unclassified failure is never
+        // dressed up as a diagnosed one (#180).
+        return {
+          ok: false,
+          error:
+            installed.reason === "destination-symlinked"
+              ? "destination-symlinked"
+              : "deploy-failed",
+        };
+      }
 
       // Reconcile away any obsolete copy left by a prior wider global install:
       // apm preserves the untargeted tool's files and lockfile hashes, so a

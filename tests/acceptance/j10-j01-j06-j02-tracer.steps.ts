@@ -56,6 +56,7 @@ function buildApp(configPath: string, inventoryPath: string) {
           lockfileFixture,
           "utf8",
         );
+        return { ok: true as const };
       },
     },
     inventoryGit: {

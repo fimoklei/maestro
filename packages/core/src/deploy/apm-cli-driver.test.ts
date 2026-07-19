@@ -65,6 +65,35 @@ const viewNonAuthNoise = [
   "prompts disabled'",
 ].join("\n");
 
+// Captured stdout of an `apm install ... -g -t claude` refused because the skill
+// destination is a symlink (apm 0.20.0, 2026-07-19; full capture in
+// tests/fixtures/apm-install-symlink-refused.txt). Two traps live here: apm
+// still prints the positive `Installed 1 APM dependency` marker (with an
+// `error(s)` suffix), and Rich wraps the refusal phrase across a line break, so
+// `is a symlink` only matches after whitespace normalization.
+const installSymlinkRefusedOutput = [
+  "[>] Installing 1 new package...",
+  "  [+] github.com/fimoklei/agent-harness/skills/tdd#v0.5.1 #v0.5.1 @471c4b26",
+  "  [x] 1 package failed:",
+  "    +- fimoklei/agent-harness/skills/tdd -- Failed to integrate primitives from ",
+  "cached package: Skill destination /tmp/apm-symlink-fixture/.claude/skills/tdd is",
+  "a symlink -- refusing to deploy",
+  "[!] Installed 1 APM dependency in 3.2s with 1 error(s).",
+  "[!] Install interrupted after 3.2s.",
+].join("\n");
+
+// The same refusal without the success marker. apm 0.25.0 fails this way (an
+// `Installation failed` line, no marker) per
+// docs/research/apm-0.25-symlink-topology-impact.md; the installed apm here is
+// 0.20.0, so that exact wording is unverified. Only the refusal phrase — which
+// both versions print — is asserted on, so the test pins the classifier's
+// independence from the marker, not an invented apm dialect.
+const installRefusedWithoutMarkerOutput = [
+  "[x] Installation failed",
+  "    +- fimoklei/agent-harness/skills/tdd -- Skill destination",
+  "/home/u/.claude/skills/tdd is a symlink -- refusing to deploy",
+].join("\n");
+
 // A captured `apm view ... versions` table with a deployable tag.
 const versionsTableOutput = [
   "┃ Name   ┃ Type   ┃ Commit   ┃",
@@ -230,7 +259,7 @@ describe("ApmCliDriver.deploySkill", () => {
     ]);
   });
 
-  it("throws when apm exits 0 but the success marker is absent", async () => {
+  it("reports a generic failure when apm exits 0 but the success marker is absent", async () => {
     // apm install exits 0 even on a failed install (all probes failed, nothing
     // written). Fail-closed: no positive `Installed N APM dependency` marker
     // means the install did not happen, so a failed install is never reported as
@@ -240,28 +269,83 @@ describe("ApmCliDriver.deploySkill", () => {
 
     await expect(
       driver.deploySkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
-    ).rejects.toThrow();
+    ).resolves.toEqual({ ok: false, reason: "failed" });
   });
 
-  it("resolves when the positive success marker is present", async () => {
+  it("reports success when the positive success marker is present", async () => {
     const { run } = fakeRun(installOkOutput);
     const driver = new ApmCliDriver({ run });
 
     await expect(
       driver.deploySkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual({ ok: true });
   });
 
-  it("does not leak raw apm output in the failure it throws", async () => {
-    // The failed-install output may carry a token-bearing URL; the thrown error
-    // must not echo it (security.md).
-    const tokenBearing = `${installProbesFailedOutput}\nhttps://x-access-token:ghp_secret@github.com`;
-    const { run } = fakeRun(tokenBearing);
+  it("reports a failure when the success marker comes with an error count", async () => {
+    // apm 0.20.0 prints `Installed 1 APM dependency ... with 1 error(s)` on a
+    // refused install. The marker alone would read that as a deployed skill, so
+    // success requires the marker AND no failure signal (#180).
+    const withErrors = installOkOutput.replace(
+      "in 10.4s.",
+      "in 10.4s with 1 error(s).",
+    );
+    const { run } = fakeRun(withErrors);
     const driver = new ApmCliDriver({ run });
 
     await expect(
       driver.deploySkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
-    ).rejects.toThrow(expect.not.stringContaining("ghp_secret"));
+    ).resolves.toEqual({ ok: false, reason: "failed" });
+  });
+
+  it("reports a failure when the error count is wrapped across a line break", async () => {
+    // Rich wraps mid-sentence at the ambient terminal width, and the install
+    // path pins no COLUMNS. A summary broken as `... with 1` / `error(s).` must
+    // still read as a failure — otherwise the marker stands alone and the
+    // false-success hole this fix closes reopens at narrow widths (#180).
+    const wrapped = installOkOutput.replace(
+      "in 10.4s.",
+      "in 10.4s with 1\nerror(s).",
+    );
+    const { run } = fakeRun(wrapped);
+    const driver = new ApmCliDriver({ run });
+
+    await expect(
+      driver.deploySkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
+    ).resolves.toEqual({ ok: false, reason: "failed" });
+  });
+
+  it("classifies apm's symlinked-destination refusal (0.20.0 shape)", async () => {
+    // Exit 1, marker present, phrase wrapped across a line break.
+    const { run } = rejectingRun({ stdout: installSymlinkRefusedOutput });
+    const driver = new ApmCliDriver({ run });
+
+    await expect(
+      driver.deploySkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
+    ).resolves.toEqual({ ok: false, reason: "destination-symlinked" });
+  });
+
+  it("classifies apm's symlinked-destination refusal when no marker is printed", async () => {
+    const { run } = rejectingRun({ stdout: installRefusedWithoutMarkerOutput });
+    const driver = new ApmCliDriver({ run });
+
+    await expect(
+      driver.deploySkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
+    ).resolves.toEqual({ ok: false, reason: "destination-symlinked" });
+  });
+
+  it("does not leak raw apm output in the failure it reports", async () => {
+    // The failed-install output may carry a token-bearing URL; the reported
+    // failure carries a fixed reason and nothing else (security.md).
+    const tokenBearing = `${installSymlinkRefusedOutput}\nhttps://x-access-token:ghp_secret@github.com`;
+    const { run } = rejectingRun({ stdout: tokenBearing });
+    const driver = new ApmCliDriver({ run });
+
+    const result = await driver.deploySkill({
+      target: { kind: "repo", repoPath: "/repo" },
+      ref,
+    });
+
+    expect(JSON.stringify(result)).not.toContain("ghp_secret");
   });
 });
 

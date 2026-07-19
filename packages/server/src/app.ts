@@ -146,6 +146,14 @@ const deployErrorResponses: Record<
     message:
       "GitHub authentication is missing or expired. Run 'gh auth login' (or set GITHUB_TOKEN) and try again.",
   },
+  "destination-symlinked": {
+    // 409, not 502: apm ran fine and refused on purpose. The destination is in a
+    // state the user fixes on their own machine — a conflict with the current
+    // state, not a failure between apm and GitHub (#180).
+    status: 409,
+    message:
+      "The skill's destination directory is a symlink, and apm refuses to deploy into one. Replace that per-skill link with a real directory, or move the link one level up so the whole skills directory is the symlink (for example .claude/skills -> .agents/skills), then try again.",
+  },
   "deploy-failed": {
     status: 502,
     message: "The deploy could not be completed. Check apm and try again.",

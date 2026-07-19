@@ -9,6 +9,7 @@ import { promisify } from "node:util";
 import { type OutdatedResult, parseOutdated } from "../drift/parse-outdated";
 import type {
   ApmDriverPort,
+  DeploySkillDriverResult,
   DeployTarget,
   ResolveLatestTagResult,
 } from "./deploy-skill";
@@ -33,11 +34,35 @@ const WIDE_COLUMNS = "200";
 // the generic failure (apm-driver.md).
 const APM_AUTH_PHRASES = ["authentication failed", "no token available"];
 
+// Every install signal below is matched against whitespace-normalized,
+// lowercased output (see `normalize`): apm's output is Rich-rendered and wraps
+// mid-sentence at the ambient terminal width, so a phrase can straddle a line
+// break. That is observed for the symlink refusal and applies equally to the
+// summary lines — hence the shared normalization, not a per-phrase choice.
+
 // The positive marker apm prints on a successful install (`Installed N APM
 // dependency`). Its presence — not the exit code — proves the install happened:
 // apm exits 0 even when every probe fails and nothing is written (#119,
 // apm-driver.md).
-const INSTALL_SUCCESS_MARKER = /Installed \d+ APM dependenc/;
+const INSTALL_SUCCESS_MARKER = /installed \d+ apm dependenc/;
+
+// apm's fixed failure signals on an install. The marker alone is not enough: on
+// 0.20.0 a refused install prints `Installed 1 APM dependency ... with 1
+// error(s)`, so the marker without this check reads a refusal as a success
+// (#180). `Installation failed` is the 0.25.0 shape, which prints no marker at
+// all (docs/research/apm-0.25-symlink-topology-impact.md). `[1-9]\d*`, not
+// `\d+`: a `with 0 error(s)` summary must not turn a genuine success into a
+// failure.
+const INSTALL_FAILURE_SIGNALS = [
+  /with [1-9]\d* error\(s\)/,
+  /installation failed/,
+];
+
+// apm's fixed refusal phrase when the skill destination is a symlink. apm
+// refuses only a symlink at the leaf skill directory; a directory-level symlink
+// one level up installs fine, which is the fix the cockpit points the user at
+// (#180).
+const INSTALL_SYMLINK_PHRASE = "is a symlink";
 
 type SanitizedLogEntry = {
   operation: "resolve-latest-tag" | "deploy-skill" | "check-outdated";
@@ -104,7 +129,7 @@ export class ApmCliDriver implements ApmDriverPort {
     target: DeployTarget;
     ref: string;
     tools?: readonly SupportedTool[];
-  }): Promise<void> {
+  }): Promise<DeploySkillDriverResult> {
     const started = Date.now();
     // A repo install targets every tool (-t claude,codex) and writes a single
     // lockfile entry with two deployed_files (apm-driver.md, 01.2 spike). A
@@ -115,14 +140,21 @@ export class ApmCliDriver implements ApmDriverPort {
       input.ref,
       input.tools,
     );
-    const { stdout } = await this.run("apm", args, { cwd });
+    let output: string;
+    try {
+      const { stdout, stderr } = await this.run("apm", args, { cwd });
+      output = `${stdout}\n${stderr}`;
+    } catch (error) {
+      // apm exits non-zero on a refused install (0.20.0 symlink refusal, every
+      // 0.25.0 failure). Classify from the rejected run's own output.
+      return { ok: false, reason: classifyInstallFailure(outputOf(error)) };
+    }
     // Fail-closed: apm install exits 0 even when the install fails, so trust the
-    // positive marker, not the exit code. An absent marker (or any unrecognised
-    // output) reads as failure — never a false success (#119, apm-driver.md).
-    // The raw output,
-    // which may carry a token, is deliberately not included in the error.
-    if (!INSTALL_SUCCESS_MARKER.test(stdout)) {
-      throw new Error("apm install did not report a completed installation");
+    // positive marker, not the exit code — and only when no failure signal rides
+    // along with it (#119, #180, apm-driver.md). The raw output, which may carry
+    // a token, never leaves this scope.
+    if (!installSucceeded(output)) {
+      return { ok: false, reason: classifyInstallFailure(output) };
     }
     this.log({
       operation: "deploy-skill",
@@ -131,6 +163,7 @@ export class ApmCliDriver implements ApmDriverPort {
       exitCode: 0,
       durationMs: Date.now() - started,
     });
+    return { ok: true };
   }
 
   async checkOutdated(target: DeployTarget): Promise<OutdatedResult> {
@@ -190,12 +223,46 @@ export class ApmCliDriver implements ApmDriverPort {
   }
 }
 
+// An install succeeded only when apm printed its positive marker AND no failure
+// signal. Either condition alone misreads one of apm's two lying shapes: an
+// exit-0 failure with no marker, or a refusal that prints the marker anyway.
+function installSucceeded(output: string): boolean {
+  const haystack = normalize(output);
+  return (
+    INSTALL_SUCCESS_MARKER.test(haystack) &&
+    !INSTALL_FAILURE_SIGNALS.some((signal) => signal.test(haystack))
+  );
+}
+
+// Classify a failed install on apm's fixed phrases. Only the symlink refusal is
+// classified; every other failure stays generic, so an unrecognised message can
+// never masquerade as a diagnosed one (fail-closed). The inspected text never
+// leaves this scope (security.md).
+function classifyInstallFailure(
+  output: string,
+): "destination-symlinked" | "failed" {
+  return normalize(output).includes(INSTALL_SYMLINK_PHRASE)
+    ? "destination-symlinked"
+    : "failed";
+}
+
+// Lowercase and collapse every whitespace run to a single space, so a phrase
+// Rich wrapped across a line break still matches.
+function normalize(text: string): string {
+  return text.toLowerCase().replace(/\s+/g, " ");
+}
+
+// stdout + stderr of a rejected run. promisify(execFile) rejects with an error
+// carrying both.
+function outputOf(error: unknown): string {
+  const { stdout, stderr } = error as { stdout?: unknown; stderr?: unknown };
+  return `${String(stdout ?? "")}\n${String(stderr ?? "")}`;
+}
+
 // True when a rejected apm run carries one of apm's fixed auth phrases on its
 // stdout or stderr. promisify(execFile) rejects with an error carrying both.
 // Case-insensitive; the raw text is inspected here and never leaves this scope.
 function hasAuthPhrase(error: unknown): boolean {
-  const { stdout, stderr } = error as { stdout?: unknown; stderr?: unknown };
-  const haystack =
-    `${String(stdout ?? "")}\n${String(stderr ?? "")}`.toLowerCase();
+  const haystack = normalize(outputOf(error));
   return APM_AUTH_PHRASES.some((phrase) => haystack.includes(phrase));
 }

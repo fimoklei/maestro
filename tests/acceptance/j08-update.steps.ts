@@ -79,6 +79,7 @@ describeFeature(
               "utf8",
             );
             deployedRef = LATEST_TAG;
+            return { ok: true as const };
           },
         },
         inventoryGit: {
