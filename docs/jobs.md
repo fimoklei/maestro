@@ -27,7 +27,7 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 | Job | Main | Job story |
 |---|---|---|
-| Register a repo without friction · [#145](https://github.com/fimoklei/maestro/issues/145) | A, B | *When* I add a consuming repo to the cockpit, *I want to* find and pick its path without friction, *so I can* register it in seconds instead of fighting the input. |
+| Register repos from the sidebar without friction · [#175](https://github.com/fimoklei/maestro/issues/175) → [#163](https://github.com/fimoklei/maestro/issues/163) | A, B | *When* I register a repo after onboarding, *I want to* pick repos with the same browse picker the wizard gives me, *so I can* add several at once instead of pasting one path at a time. |
 
 ## NEXT
 
@@ -73,6 +73,7 @@ All shipped **skills-only**, solo, local-first.
 | Deploy a skill globally (J07) | B, A | *When* something should apply everywhere, *I want to* deploy a skill to my global targets, *so I can* have it available across all my work. |
 | See drift as a deployed → latest version pair (J04) | A, B | *When* the central inventory moves ahead, *I want to* see which deploys have drifted, shown as deployed → latest, *so I can* tell what needs updating. |
 | Update a deploy to latest (J08) | B, A | *When* central changes, *I want to* bring a target up to the latest version from the cockpit, *so I can* avoid bumping pins by hand. |
+| Register a repo without friction · [#145](https://github.com/fimoklei/maestro/issues/145) | A, B | *When* I add a consuming repo to the cockpit, *I want to* find and pick its path without friction, *so I can* register it in seconds instead of fighting the input. |
 | Connect the inventory — point at a local clone (J11) | A | *When* Maestro does not yet know where my central inventory is, *I want to* point it at my local clone as the inventory source, *so I can* have the cockpit read and show it instead of dead-ending. |
 
 ## Out of scope
