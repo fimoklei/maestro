@@ -19,6 +19,11 @@ Feature: Register a consuming repo (J10)
     When I register a selection of repos where one path is bad
     Then the good repos are registered and the bad one is reported as skipped
 
+  Scenario: I register more repos from the sidebar, and re-picking one I already have changes nothing
+    Given a cockpit that already has a repo registered
+    When I register a further selection that includes the repo I already have
+    Then the new repos join the list and the one I already had is not duplicated
+
   Scenario: Registration survives a restart
     Given a fresh cockpit with an empty registry
     And I have registered an existing directory
