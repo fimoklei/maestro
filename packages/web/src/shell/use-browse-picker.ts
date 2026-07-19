@@ -9,7 +9,13 @@ import { useState } from "react";
 // The dialog confirms a list in both modes (issue #151) — one path in connect,
 // every checked repo in register — so the callback takes the list and each
 // container decides what to do with it.
-export function useBrowsePicker(onSelect: (paths: string[]) => void) {
+// Confirming closes the dialog by default, which is right wherever the
+// selection is the whole answer. A host that reports back into the dialog
+// (register, issue #175) opts out, and owns dismissing it itself.
+export function useBrowsePicker(
+  onSelect: (paths: string[]) => void,
+  { closeOnSelect = true }: { closeOnSelect?: boolean } = {},
+) {
   const [open, setOpen] = useState(false);
 
   return {
@@ -18,7 +24,9 @@ export function useBrowsePicker(onSelect: (paths: string[]) => void) {
     closeBrowse: () => setOpen(false),
     selectBrowse: (paths: string[]) => {
       onSelect(paths);
-      setOpen(false);
+      if (closeOnSelect) {
+        setOpen(false);
+      }
     },
   };
 }
