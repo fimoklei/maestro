@@ -27,17 +27,19 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 | Job | Main | Job story |
 |---|---|---|
-| Register repos from the sidebar without friction · [#175](https://github.com/fimoklei/maestro/issues/175) → [#163](https://github.com/fimoklei/maestro/issues/163) | A, B | *When* I register a repo after onboarding, *I want to* pick repos with the same browse picker the wizard gives me, *so I can* add several at once instead of pasting one path at a time. |
+| Hear why a deploy failed · [#170](https://github.com/fimoklei/maestro/issues/170) | B | *When* a deploy fails, *I want to* hear apm's actual reason in the cockpit, *so I can* fix the cause instead of guessing. |
 
 ## NEXT
 
-Why now: global deploys on the owner's machine fail with a blind error; #170 is
-the smallest slice of the sequenced trio #170 → #171 → #172 from the
-symlink-topology grill (research: `docs/research/apm-0.25-symlink-topology-impact.md`).
+Why now: second slice of the sequenced trio #170 → #171 → #172 from the
+symlink-topology grill (research:
+`docs/research/apm-0.25-symlink-topology-impact.md`) — the driver's observed
+knowledge has to catch up with the installed apm before the shared-directory
+read can be trusted.
 
 | Job | Main | Job story |
 |---|---|---|
-| Hear why a deploy failed · [#170](https://github.com/fimoklei/maestro/issues/170) | B | *When* a deploy fails, *I want to* hear apm's actual reason in the cockpit, *so I can* fix the cause instead of guessing. |
+| Adopt apm 0.25 · [#171](https://github.com/fimoklei/maestro/issues/171) | B | *When* the engine moves ahead of Maestro's observed knowledge, *I want to* have the driver re-verified against the installed apm, *so I can* trust that cockpit behavior matches what the engine really does. |
 
 ## LATER
 
@@ -45,7 +47,6 @@ Detail lives in tracker issues; elaboration happens in the grill.
 
 | Job | Main | Job story |
 |---|---|---|
-| Adopt apm 0.25 · [#171](https://github.com/fimoklei/maestro/issues/171) | B | *When* the engine moves ahead of Maestro's observed knowledge, *I want to* have the driver re-verified against the installed apm, *so I can* trust that cockpit behavior matches what the engine really does. |
 | Read the shared skills directory truthfully · [#172](https://github.com/fimoklei/maestro/issues/172) | A, B | *When* my tools read one shared skills directory, *I want to* have the cockpit show one source read by many tools, *so I can* trust deploy-state, drift, and cleanup on my real machine. |
 | Remove a primitive from a target · [#158](https://github.com/fimoklei/maestro/issues/158) | B | *When* a deployed primitive is no longer needed, *I want to* remove it from its target, *so I can* keep that target clean. |
 | Connect a registry as inventory source | A | *When* my central inventory is published to an apm registry, *I want to* point Maestro at it as the inventory source, *so I can* run the cockpit without a local clone. |
@@ -74,6 +75,7 @@ All shipped **skills-only**, solo, local-first.
 | See drift as a deployed → latest version pair (J04) | A, B | *When* the central inventory moves ahead, *I want to* see which deploys have drifted, shown as deployed → latest, *so I can* tell what needs updating. |
 | Update a deploy to latest (J08) | B, A | *When* central changes, *I want to* bring a target up to the latest version from the cockpit, *so I can* avoid bumping pins by hand. |
 | Register a repo without friction · [#145](https://github.com/fimoklei/maestro/issues/145) | A, B | *When* I add a consuming repo to the cockpit, *I want to* find and pick its path without friction, *so I can* register it in seconds instead of fighting the input. |
+| Register repos from the sidebar without friction · [#175](https://github.com/fimoklei/maestro/issues/175) → [#163](https://github.com/fimoklei/maestro/issues/163) | A, B | *When* I register a repo after onboarding, *I want to* pick repos with the same browse picker the wizard gives me, *so I can* add several at once instead of pasting one path at a time. |
 | Connect the inventory — point at a local clone (J11) | A | *When* Maestro does not yet know where my central inventory is, *I want to* point it at my local clone as the inventory source, *so I can* have the cockpit read and show it instead of dead-ending. |
 
 ## Out of scope
