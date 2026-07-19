@@ -71,10 +71,14 @@ describe.runIf(enabled)("real apm outdated canary", () => {
     expect(tag).toMatch(/^v\d+\.\d+\.\d+$/);
 
     const ref = `github.com/${HARNESS}/skills/${SKILL}#${tag}`;
-    await driver.deploySkill({
+    // Assert the driver's own verdict, not just the side effects: the install
+    // now resolves with a result instead of throwing (#180), so an unasserted
+    // call would let a changed apm output shape pass this canary silently.
+    const installed = await driver.deploySkill({
       target: { kind: "repo", repoPath: repo },
       ref,
     });
+    expect(installed).toEqual({ ok: true });
 
     const result = await driver.checkOutdated({
       kind: "repo",

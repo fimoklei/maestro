@@ -34,11 +34,17 @@ const WIDE_COLUMNS = "200";
 // the generic failure (apm-driver.md).
 const APM_AUTH_PHRASES = ["authentication failed", "no token available"];
 
+// Every install signal below is matched against whitespace-normalized,
+// lowercased output (see `normalize`): apm's output is Rich-rendered and wraps
+// mid-sentence at the ambient terminal width, so a phrase can straddle a line
+// break. That is observed for the symlink refusal and applies equally to the
+// summary lines — hence the shared normalization, not a per-phrase choice.
+
 // The positive marker apm prints on a successful install (`Installed N APM
 // dependency`). Its presence — not the exit code — proves the install happened:
 // apm exits 0 even when every probe fails and nothing is written (#119,
 // apm-driver.md).
-const INSTALL_SUCCESS_MARKER = /Installed \d+ APM dependenc/;
+const INSTALL_SUCCESS_MARKER = /installed \d+ apm dependenc/;
 
 // apm's fixed failure signals on an install. The marker alone is not enough: on
 // 0.20.0 a refused install prints `Installed 1 APM dependency ... with 1
@@ -48,15 +54,14 @@ const INSTALL_SUCCESS_MARKER = /Installed \d+ APM dependenc/;
 // `\d+`: a `with 0 error(s)` summary must not turn a genuine success into a
 // failure.
 const INSTALL_FAILURE_SIGNALS = [
-  /with [1-9]\d* error\(s\)/i,
-  /installation failed/i,
+  /with [1-9]\d* error\(s\)/,
+  /installation failed/,
 ];
 
 // apm's fixed refusal phrase when the skill destination is a symlink. apm
 // refuses only a symlink at the leaf skill directory; a directory-level symlink
 // one level up installs fine, which is the fix the cockpit points the user at
-// (#180). Matched case-insensitively against whitespace-normalized output —
-// Rich wraps the phrase across a line break at narrow widths.
+// (#180).
 const INSTALL_SYMLINK_PHRASE = "is a symlink";
 
 type SanitizedLogEntry = {
@@ -222,9 +227,10 @@ export class ApmCliDriver implements ApmDriverPort {
 // signal. Either condition alone misreads one of apm's two lying shapes: an
 // exit-0 failure with no marker, or a refusal that prints the marker anyway.
 function installSucceeded(output: string): boolean {
+  const haystack = normalize(output);
   return (
-    INSTALL_SUCCESS_MARKER.test(output) &&
-    !INSTALL_FAILURE_SIGNALS.some((signal) => signal.test(output))
+    INSTALL_SUCCESS_MARKER.test(haystack) &&
+    !INSTALL_FAILURE_SIGNALS.some((signal) => signal.test(haystack))
   );
 }
 

@@ -88,11 +88,16 @@ describe.runIf(enabled)("real apm global install canary", () => {
     // A global install targets exactly the detected tools (ADR-0011); the driver
     // fails closed on an empty set, so this canary passes the two-tool set it
     // asserts on below (both .claude and .agents copies land).
-    await driver.deploySkill({
+    // The driver reports its own verdict rather than throwing (#180), so assert
+    // it: otherwise a real apm whose output stopped matching the success shape
+    // would still write the files checked below and pass this canary, while
+    // production reported deploy-failed.
+    const installed = await driver.deploySkill({
       target: { kind: "global" },
       ref,
       tools: ["claude", "codex"],
     });
+    expect(installed).toEqual({ ok: true });
 
     // Both deployed targets land under the sandbox home: the claude skills dir
     // and the cross-client agents dir (-t claude,codex writes one lockfile

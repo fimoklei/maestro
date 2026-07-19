@@ -297,6 +297,23 @@ describe("ApmCliDriver.deploySkill", () => {
     ).resolves.toEqual({ ok: false, reason: "failed" });
   });
 
+  it("reports a failure when the error count is wrapped across a line break", async () => {
+    // Rich wraps mid-sentence at the ambient terminal width, and the install
+    // path pins no COLUMNS. A summary broken as `... with 1` / `error(s).` must
+    // still read as a failure — otherwise the marker stands alone and the
+    // false-success hole this fix closes reopens at narrow widths (#180).
+    const wrapped = installOkOutput.replace(
+      "in 10.4s.",
+      "in 10.4s with 1\nerror(s).",
+    );
+    const { run } = fakeRun(wrapped);
+    const driver = new ApmCliDriver({ run });
+
+    await expect(
+      driver.deploySkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
+    ).resolves.toEqual({ ok: false, reason: "failed" });
+  });
+
   it("classifies apm's symlinked-destination refusal (0.20.0 shape)", async () => {
     // Exit 1, marker present, phrase wrapped across a line break.
     const { run } = rejectingRun({ stdout: installSymlinkRefusedOutput });
