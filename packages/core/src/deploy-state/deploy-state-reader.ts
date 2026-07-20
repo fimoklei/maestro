@@ -18,7 +18,7 @@ import {
 
 export type { DeployedPrimitive, SkippedEntry } from "./deploy-state-types";
 
-export type DeployStateResult =
+type DeployStateResult =
   | { ok: true; primitives: DeployedPrimitive[]; skipped: SkippedEntry[] }
   | { ok: false; error: "malformed" };
 
@@ -26,7 +26,7 @@ export type DeployStateResult =
 // detected-tool set (implicit in `tools`). Same three honest outcomes as the
 // per-repo read — a missing lockfile is each detected tool an empty group (not
 // an error), a malformed one is a visible error (ADR-0011, J03).
-export type GlobalDeployStateResult =
+type GlobalDeployStateResult =
   | { ok: true; tools: ToolDeployState[]; skipped: SkippedEntry[] }
   | { ok: false; error: "malformed" };
 

@@ -29,7 +29,7 @@ const lockfileSchema = z.object({
 
 export type LockfileEntry = z.infer<typeof lockfileEntrySchema>;
 
-export type LockfileParseResult =
+type LockfileParseResult =
   | { ok: true; entries: LockfileEntry[] }
   | { ok: false };
 

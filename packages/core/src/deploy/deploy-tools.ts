@@ -9,7 +9,7 @@
 // The identity of a deployable tool — apm's own `-t` token (apm-driver.md).
 export type SupportedTool = "claude" | "codex";
 
-export type DeployTool = {
+type DeployTool = {
   // The token apm expects in its `-t` flag, and this tool's identity.
   apmTarget: SupportedTool;
   // The directory apm materializes this tool's copy under, relative to the

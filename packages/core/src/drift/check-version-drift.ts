@@ -10,11 +10,11 @@
 import type { ApmDriverPort, DeployTarget } from "../deploy/deploy-skill";
 import type { VersionDrift } from "./parse-outdated";
 
-export type CheckVersionDriftInput = {
+type CheckVersionDriftInput = {
   target: DeployTarget;
 };
 
-export type CheckVersionDriftResult =
+type CheckVersionDriftResult =
   | { ok: true; behind: VersionDrift[] }
   // `reason: "unverified"` is apm's own could-not-check outcome, forwarded from
   // the driver unchanged; the use-case's own refusals (unregistered repo, a

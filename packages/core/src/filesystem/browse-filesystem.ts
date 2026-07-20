@@ -51,7 +51,7 @@ export type BrowseCrumb = { name: string; path: string };
 // `parent` is absent at the home ceiling — the client treats "no parent" as
 // "up is disabled" and never derives a parent (or breadcrumbs) from the path
 // string itself; all path math stays server-side (issue #146).
-export type BrowseResult =
+type BrowseResult =
   | {
       ok: true;
       path: string;

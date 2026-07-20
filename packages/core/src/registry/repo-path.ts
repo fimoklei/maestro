@@ -4,7 +4,7 @@
 import { isAbsolute } from "node:path";
 import type { FileSystemPort } from "./file-system";
 
-export type NormalizedRepoPath =
+type NormalizedRepoPath =
   | { ok: true; path: string }
   | { ok: false; error: "missing" | "relative" };
 
@@ -14,7 +14,7 @@ export type RepoPathError =
   | "not-found"
   | "not-a-directory";
 
-export type ValidatedRepoPath =
+type ValidatedRepoPath =
   | { ok: true; path: string }
   | { ok: false; error: RepoPathError };
 
