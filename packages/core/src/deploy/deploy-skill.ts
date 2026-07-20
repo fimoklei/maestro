@@ -102,7 +102,7 @@ export type DeployedContentPort = {
   // exactly those tools' deployed copies. Present on the global path (the detected
   // tools) so an untargeted tool's absent copy — left in the lockfile by a prior
   // two-tool install — cannot force a false `diverged` (ADR-0011, #136). Absent on
-  // the repo path and the #111 read-path, which scan every DEPLOY_TOOLS copy.
+  // the repo path, which scans every DEPLOY_TOOLS copy.
   classify(input: {
     target: DeployTarget;
     name: string;

@@ -63,8 +63,8 @@ describe("deploy tools", () => {
   });
 
   it("defaults to every tool's subtree when no set is given", () => {
-    // Absent tools = the repo path and the #111 read-path, which target every
-    // DEPLOY_TOOLS tool — the pre-#136 behaviour must be unchanged.
+    // Absent tools = the repo path, which targets every DEPLOY_TOOLS tool — the
+    // pre-#136 behaviour must be unchanged.
     expect(deployTargetSubtrees("tdd")).toEqual(
       deployTargetSubtrees("tdd", ["claude", "codex"]),
     );

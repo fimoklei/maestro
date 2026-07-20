@@ -37,7 +37,7 @@ const NO_REMOTE = /No remote dependencies to check/;
 
 // apm's summary and per-dep status when it could not resolve a tag-pinned dep
 // against its remote: it prints a row with Status "unknown" (Latest "-") and
-// this banner, exit 0 (observed on apm 0.20.0; fixture
+// this banner, exit 0 (observed on apm 0.26.0, 2026-07-20; fixture
 // apm-outdated-could-not-check.txt). Either signal marks the run unverified.
 const COULD_NOT_CHECK = /could not be checked/;
 const UNCHECKABLE_STATUS = "unknown";

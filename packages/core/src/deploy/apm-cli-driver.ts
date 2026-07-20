@@ -41,19 +41,21 @@ const APM_AUTH_PHRASES = ["authentication failed", "no token available"];
 // summary lines — hence the shared normalization, not a per-phrase choice.
 
 // The positive marker apm prints on a successful install (`Installed N APM
-// dependency`). Its presence — not the exit code — proves the install happened:
-// apm exits 0 even when every probe fails and nothing is written (#119,
-// apm-driver.md).
+// dependency`). Its presence — not the exit code — is what proves the install
+// happened, so the driver stays fail-closed against any future exit-code
+// dialect (#119, apm-driver.md).
 const INSTALL_SUCCESS_MARKER = /installed \d+ apm dependenc/;
 
-// apm's fixed failure signals on an install. The marker alone is not enough: on
-// 0.20.0 a refused install prints `Installed 1 APM dependency ... with 1
-// error(s)`, so the marker without this check reads a refusal as a success
-// (#180). `Installation failed` is the shape apm 0.26.0 prints instead — no
-// marker at all, exit 1 (measured 2026-07-20, #183; capture in
-// tests/fixtures/apm-install-symlink-refused.txt). Both signals stay: the
-// driver must classify either dialect. `[1-9]\d*`, not `\d+`: a `with 0
-// error(s)` summary must not turn a genuine success into a failure.
+// apm's fixed failure signals on an install, both only reachable while the
+// success marker is present. On 0.26.0 neither can change an outcome: a failed
+// install prints no marker at all and exits 1 (measured 2026-07-20, #183;
+// captures in tests/fixtures/apm-install-probes-failed.txt and
+// apm-install-symlink-refused.txt), so the missing marker already fails the
+// install. They stay as free insurance against a regression to the 0.20.0
+// dialect, where a refusal printed `Installed 1 APM dependency ... with 1
+// error(s)` and the marker alone read it as a success (#180). `[1-9]\d*`, not
+// `\d+`: a `with 0 error(s)` summary must not turn a genuine success into a
+// failure.
 const INSTALL_FAILURE_SIGNALS = [
   /with [1-9]\d* error\(s\)/,
   /installation failed/,
@@ -146,14 +148,14 @@ export class ApmCliDriver implements ApmDriverPort {
       const { stdout, stderr } = await this.run("apm", args, { cwd });
       output = `${stdout}\n${stderr}`;
     } catch (error) {
-      // apm exits non-zero on a refused install (0.20.0 symlink refusal, every
-      // 0.25.0 failure). Classify from the rejected run's own output.
+      // apm 0.26.0 exits 1 on every observed install failure. Classify from the
+      // rejected run's own output (apm-driver.md, #183).
       return { ok: false, reason: classifyInstallFailure(outputOf(error)) };
     }
-    // Fail-closed: apm install exits 0 even when the install fails, so trust the
-    // positive marker, not the exit code — and only when no failure signal rides
-    // along with it (#119, #180, apm-driver.md). The raw output, which may carry
-    // a token, never leaves this scope.
+    // Fail-closed: an exit-0 run still has to prove itself with the positive
+    // marker, and only when no failure signal rides along with it (#119, #180,
+    // apm-driver.md). The raw output, which may carry a token, never leaves this
+    // scope.
     if (!installSucceeded(output)) {
       return { ok: false, reason: classifyInstallFailure(output) };
     }
@@ -225,8 +227,8 @@ export class ApmCliDriver implements ApmDriverPort {
 }
 
 // An install succeeded only when apm printed its positive marker AND no failure
-// signal. Either condition alone misreads one of apm's two lying shapes: an
-// exit-0 failure with no marker, or a refusal that prints the marker anyway.
+// signal. The marker carries the verdict on 0.26.0; the failure signals guard
+// the 0.20.0 shape, where a refusal printed the marker anyway (#180).
 function installSucceeded(output: string): boolean {
   const haystack = normalize(output);
   return (
