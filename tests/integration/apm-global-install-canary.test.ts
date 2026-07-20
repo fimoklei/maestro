@@ -3,7 +3,11 @@
 // otherwise only exercises against a faked driver. When enabled it shells out
 // to the real apm CLI against a throwaway sandbox HOME, then reads the global
 // deploy-state endpoint back from that same HOME — both deployed targets on
-// disk and the pinned tag surfaced. It needs network plus auth to the private
+// disk and the pinned tag surfaced, grouped per detected tool. The sandbox HOME
+// is seeded with every supported tool's presence marker first, because both the
+// install target and the grouped read derive from live detection (ADR-0011); an
+// unseeded home detects nothing and the round-trip has nothing to prove. It
+// needs network plus auth to the private
 // agent-harness repo, so it is gated behind MAESTRO_REAL_APM=1 (the same switch
 // as apm-canary.test.ts) and stays out of the fast loop; lacking the env it
 // skips loudly rather than passing silently.
@@ -12,17 +16,19 @@
 // real ~/.apm, ~/.claude/skills, and ~/.agents/skills are never touched, and
 // `apm uninstall -g` (which once deleted 19 real skill dirs) is never run.
 import { execFile } from "node:child_process";
-import { access, mkdir, mkdtemp, rm } from "node:fs/promises";
+import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import {
   ApmCliDriver,
   ConfigStore,
+  DEPLOY_TOOLS,
   DeployStateReader,
   InventoryReader,
   NodeFileSystem,
   Registry,
+  ToolPresenceAdapter,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -59,6 +65,21 @@ describe.runIf(enabled)("real apm global install canary", () => {
     const { stdout: tokenOut } = await run("gh", ["auth", "token"]);
     const token = tokenOut.trim();
 
+    // Presence is detected live from each tool's own config file under the
+    // deploy's HOME (ADR-0011), so the sandbox home must look like a machine
+    // that runs every supported tool before deploy and read can agree. The
+    // markers come from DEPLOY_TOOLS rather than literals, so this canary
+    // still follows the single source of truth when a tool is added.
+    for (const tool of DEPLOY_TOOLS) {
+      const marker = join(home, tool.globalPresenceMarker);
+      await mkdir(dirname(marker), { recursive: true });
+      await writeFile(marker, "");
+    }
+    const detected = await new ToolPresenceAdapter({
+      homeRoot: () => home,
+    }).detectGlobalTools();
+    expect(detected).toEqual(DEPLOY_TOOLS.map((tool) => tool.apmTarget));
+
     // Every apm subprocess runs with HOME pointed at the sandbox, so the real
     // home is never touched. The scratch cwd lives under it too: apm appends
     // apm_modules/ to the cwd's .gitignore even for -g, so it must never be a
@@ -85,9 +106,9 @@ describe.runIf(enabled)("real apm global install canary", () => {
     expect(tag).toMatch(/^v\d+\.\d+\.\d+$/);
 
     const ref = `github.com/${HARNESS}/skills/${SKILL}#${tag}`;
-    // A global install targets exactly the detected tools (ADR-0011); the driver
-    // fails closed on an empty set, so this canary passes the two-tool set it
-    // asserts on below (both .claude and .agents copies land).
+    // A global install targets exactly the detected tools (ADR-0011), so the
+    // deploy is fed the same detection the read below groups by — a literal
+    // set here would let the two drift apart unnoticed.
     // The driver reports its own verdict rather than throwing (#180), so assert
     // it: otherwise a real apm whose output stopped matching the success shape
     // would still write the files checked below and pass this canary, while
@@ -95,7 +116,7 @@ describe.runIf(enabled)("real apm global install canary", () => {
     const installed = await driver.deploySkill({
       target: { kind: "global" },
       ref,
-      tools: ["claude", "codex"],
+      tools: detected,
     });
     expect(installed).toEqual({ ok: true });
 
@@ -110,11 +131,22 @@ describe.runIf(enabled)("real apm global install canary", () => {
     ).resolves.toBeUndefined();
 
     // The global deploy-state endpoint reads the same sandbox home and
-    // surfaces the skill at its pinned tag.
+    // surfaces the skill at its pinned tag, grouped per detected tool
+    // (ADR-0011). One lockfile entry carries both copies, so both detected
+    // tools report the same skill.
     const res = await makeGlobalApp(home).request("/api/deploy-state/global");
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
-      primitives: [{ type: "skill", name: SKILL, version: tag }],
+      tools: [
+        {
+          tool: "claude",
+          primitives: [{ type: "skill", name: SKILL, version: tag }],
+        },
+        {
+          tool: "codex",
+          primitives: [{ type: "skill", name: SKILL, version: tag }],
+        },
+      ],
       skipped: [],
     });
   });
@@ -136,7 +168,12 @@ function makeGlobalApp(home: string) {
     store: new ConfigStore({ fs, configPath: join(home, "config.json") }),
   });
   const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
-  const deployState = new DeployStateReader({ fs });
+  // The global read detects tools live under the same sandbox home the deploy
+  // targeted, so the real adapter is wired against that home and never $HOME.
+  const deployState = new DeployStateReader({
+    fs,
+    toolPresence: new ToolPresenceAdapter({ homeRoot: () => home }),
+  });
   return createApp({
     registry,
     inventory,
