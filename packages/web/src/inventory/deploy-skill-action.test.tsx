@@ -503,9 +503,8 @@ describe("DeploySkillAction", () => {
       </>,
     );
 
-    expect(
-      await screen.findByText(/nothing deployed here/i),
-    ).toBeInTheDocument();
+    // The panel has loaded and reads empty before the deploy.
+    expect(await screen.findByText("● empty")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
 
@@ -596,9 +595,8 @@ describe("DeploySkillAction", () => {
       </>,
     );
 
-    expect(
-      await screen.findByText(/nothing deployed here/i),
-    ).toBeInTheDocument();
+    // The panel has loaded and reads empty before the deploy.
+    expect(await screen.findByText("● empty")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
 

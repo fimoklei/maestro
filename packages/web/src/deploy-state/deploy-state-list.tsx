@@ -53,8 +53,9 @@ const versionColor: Record<DriftStatus, string> = {
   pending: "text-muted",
 };
 
-// Presentational deploy-state rows for one target. The empty state is explicit
-// so a registered-but-empty target never shows a bare blank. Skipped entries are
+// Presentational deploy-state rows for one target. A genuinely empty target
+// renders no body at all: its card header carries the "● empty" status chip,
+// which states the same fact without a sentence per card. Skipped entries are
 // shown as a warning, never dropped silently. The optional `drift` adds the
 // per-skill badge and the deployed -> latest pair; the `target` names the scope,
 // so a behind row can offer a one-click Update against it.
@@ -69,10 +70,13 @@ export function DeployStateList({
   drift?: DriftView;
   target: DeployTarget;
 }) {
-  // "Nothing deployed" only when there is genuinely nothing — not when entries
-  // exist but were skipped as unsupported. Showing it alongside a skipped
-  // warning would be the cockpit lying about an empty target.
-  const isEmpty = primitives.length === 0 && skipped.length === 0;
+  // Genuinely nothing — not entries that exist but were skipped as unsupported.
+  // Treating a skipped-only target as empty would be the cockpit lying about it,
+  // so that case falls through and still renders its warning below.
+  if (primitives.length === 0 && skipped.length === 0) {
+    return null;
+  }
+
   // Behind names with no matching deployed skill — surfaced, never dropped.
   const orphans = orphanBehind(
     primitives.map((primitive) => primitive.name),
@@ -87,11 +91,6 @@ export function DeployStateList({
 
   return (
     <div className="py-1.5">
-      {isEmpty && (
-        <p className="px-card-x py-row-y text-dim text-tag">
-          Nothing deployed here.
-        </p>
-      )}
       {primitives.map((primitive) => {
         const status = skillDriftStatus(primitive.name, drift);
         const latest = latestByName.get(primitive.name);

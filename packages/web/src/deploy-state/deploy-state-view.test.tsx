@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DeployStateView } from "./deploy-state-view";
 
@@ -22,31 +23,64 @@ function renderView() {
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={["/"]}>
-        <DeployStateView />
+        <Routes>
+          <Route path="/" element={<DeployStateView />} />
+          <Route path="/inventory" element={<p>inventory view</p>} />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   );
 }
 
-describe("DeployStateView cold start", () => {
-  it("nudges the first deploy when nothing is deployed and no repos exist", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        jsonResponse(
-          { repos: [], tools: [], primitives: [], skipped: [], behind: [] },
-          200,
-        ),
+// Serves both the empty registry and the empty global deploy-state, which is
+// the cold start: nothing deployed anywhere and no repo registered.
+function stubColdStart() {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      jsonResponse(
+        { repos: [], tools: [], primitives: [], skipped: [], behind: [] },
+        200,
       ),
+    ),
+  );
+}
+
+describe("DeployStateView cold start", () => {
+  it("offers the first deploy from the heading row, not from a banner above it", async () => {
+    stubColdStart();
+    renderView();
+
+    const action = await screen.findByRole("button", {
+      name: /deploy a skill/i,
+    });
+    // The action belongs to the view's own heading, so nothing floats above the
+    // title as an orphaned banner.
+    const heading = screen.getByRole("heading", { name: /deploy-state/i });
+    expect(heading.parentElement).toContainElement(action);
+  });
+
+  it("sends the first deploy to the inventory", async () => {
+    stubColdStart();
+    renderView();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /deploy a skill/i }),
     );
+
+    expect(screen.getByText("inventory view")).toBeInTheDocument();
+  });
+
+  it("states plainly that nothing is deployed instead of counting targets", async () => {
+    stubColdStart();
     renderView();
 
     expect(
-      await screen.findByText(/deploy the first skill/i),
+      await screen.findByText("read from lockfiles · nothing deployed"),
     ).toBeInTheDocument();
   });
 
-  it("does not nudge once a skill is deployed globally", async () => {
+  it("drops the first-deploy action once a skill is deployed globally", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string) => {
@@ -75,7 +109,160 @@ describe("DeployStateView cold start", () => {
     // The global panel renders its deployed skill, so we know data has loaded.
     expect(await screen.findByText("tdd")).toBeInTheDocument();
     expect(
-      screen.queryByText(/deploy the first skill/i),
+      screen.queryByRole("button", { name: /deploy a skill/i }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("DeployStateView sections", () => {
+  it("does not count targets before both reads have landed", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderView();
+
+    // An unread target set is not a target set of zero.
+    expect(screen.getByText("read from lockfiles")).toBeInTheDocument();
+  });
+
+  it("shows a loading state, not a register hint, while the registry loads", () => {
+    // A fetch that never resolves keeps the query pending.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderView();
+
+    expect(screen.getByText(/loading registered repos/i)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/consuming repos are registered via/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows an error, not the register hint, when the registry fails to load", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ message: "boom" }, 500)),
+    );
+    renderView();
+
+    expect(
+      await screen.findByText(/could not load registered repos/i),
+    ).toBeInTheDocument();
+    // A failed registry read must not masquerade as "no repos registered".
+    expect(
+      screen.queryByText(/consuming repos are registered via/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("always renders the Global targets section, even when no repos are registered", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        String(url).includes("/api/deploy-state/global")
+          ? jsonResponse(
+              { tools: [{ tool: "claude", primitives: [] }], skipped: [] },
+              200,
+            )
+          : jsonResponse({ repos: [] }, 200),
+      ),
+    );
+    renderView();
+
+    // Global is the baseline: its section (and a card for the detected tool) is
+    // present regardless of the registry.
+    expect(await screen.findByText(/global targets/i)).toBeInTheDocument();
+    expect(await screen.findByText("Claude Code")).toBeInTheDocument();
+  });
+
+  it("counts detected global tools and registered repos once something is deployed", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        String(url).includes("/api/registry/repos")
+          ? jsonResponse(
+              { repos: [{ path: "/Users/me/a" }, { path: "/Users/me/b" }] },
+              200,
+            )
+          : String(url).includes("/api/deploy-state/global")
+            ? jsonResponse(
+                {
+                  tools: [
+                    { tool: "claude", primitives: [] },
+                    { tool: "codex", primitives: [] },
+                  ],
+                  skipped: [],
+                },
+                200,
+              )
+            : jsonResponse({ primitives: [], skipped: [] }, 200),
+      ),
+    );
+    renderView();
+
+    expect(
+      await screen.findByText("read from lockfiles · 4 targets"),
+    ).toBeInTheDocument();
+  });
+
+  it("gives registered repos their own section, naming where they come from when there are none", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        String(url).includes("/api/deploy-state/global")
+          ? jsonResponse({ tools: [], skipped: [] }, 200)
+          : jsonResponse({ repos: [] }, 200),
+      ),
+    );
+    renderView();
+
+    const meta = await screen.findByText(/none registered/i);
+    const heading = screen.getByRole("heading", { name: /repositories/i });
+    // The meta belongs to the Repositories heading, so the empty registry reads
+    // as a state of that section rather than a stray line under Global targets.
+    expect(heading.parentElement).toContainElement(meta);
+    expect(
+      screen.getByText(/consuming repos are registered via/i),
+    ).toBeInTheDocument();
+  });
+
+  it("drops the sidebar hint once a repo is registered", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        String(url).includes("/api/registry/repos")
+          ? jsonResponse({ repos: [{ path: "/Users/me/a" }] }, 200)
+          : String(url).includes("/api/deploy-state/global")
+            ? jsonResponse({ tools: [], skipped: [] }, 200)
+            : jsonResponse({ primitives: [], skipped: [] }, 200),
+      ),
+    );
+    renderView();
+
+    expect(await screen.findByText("/Users/me/a")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/consuming repos are registered via/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a deploy-state panel for each registered repo", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        String(url).includes("/api/registry/repos")
+          ? jsonResponse(
+              { repos: [{ path: "/Users/me/a" }, { path: "/Users/me/b" }] },
+              200,
+            )
+          : String(url).includes("/api/deploy-state/global")
+            ? jsonResponse({ tools: [], skipped: [] }, 200)
+            : jsonResponse({ primitives: [], skipped: [] }, 200),
+      ),
+    );
+    renderView();
+
+    expect(await screen.findByText("/Users/me/a")).toBeInTheDocument();
+    expect(screen.getByText("/Users/me/b")).toBeInTheDocument();
   });
 });
