@@ -6,7 +6,6 @@ import {
   BrowseFilesystem,
   ConfigStore,
   ConnectInventory,
-  DeployStateReader,
   InventoryReader,
   NodeFileSystem,
   Registry,
@@ -17,6 +16,7 @@ import { createApp } from "@maestro/server";
 import { expect } from "vitest";
 import { initGitClone } from "../helpers/git-fixture";
 import { stubDeploy } from "../helpers/stub-deploy";
+import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
 
 const feature = await loadFeature(
@@ -36,7 +36,7 @@ function buildApp(configPath: string) {
     fs,
     resolvePath: async () => resolveInventoryPath(await store.read(), {}),
   });
-  const deployState = new DeployStateReader({ fs });
+  const deployState = stubDeployState({ fs });
   return createApp({
     registry,
     inventory,

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   ConfigStore,
-  DeployStateReader,
+  GlobalDeployStateReader,
   InventoryReader,
   NodeFileSystem,
   Registry,
@@ -69,7 +69,7 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
       store: new ConfigStore({ fs, configPath: join(home, "config.json") }),
     });
     const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
-    const deployState = new DeployStateReader({
+    const deployState = new GlobalDeployStateReader({
       fs,
       toolPresence: new ToolPresenceAdapter({ homeRoot: () => home }),
     });

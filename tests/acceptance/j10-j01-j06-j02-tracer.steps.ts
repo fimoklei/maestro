@@ -5,7 +5,6 @@ import { describeFeature, loadFeature } from "@amiceli/vitest-cucumber";
 import {
   ConfigStore,
   DeploySkill,
-  DeployStateReader,
   InventoryReader,
   NodeFileSystem,
   Registry,
@@ -14,6 +13,7 @@ import { createApp } from "@maestro/server";
 import { expect } from "vitest";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
+import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
 
 const feature = await loadFeature(
@@ -41,7 +41,7 @@ function buildApp(configPath: string, inventoryPath: string) {
     fs,
     resolvePath: () => inventoryPath,
   });
-  const deployState = new DeployStateReader({ fs });
+  const deployState = stubDeployState({ fs });
   const deploy = new DeploySkill({
     inventory,
     registry,

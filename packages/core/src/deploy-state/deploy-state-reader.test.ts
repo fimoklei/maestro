@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import type { SupportedTool } from "../deploy/deploy-tools";
 import { InMemoryFileSystem } from "../registry/file-system.fake";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
-import { DeployStateReader } from "./deploy-state-reader";
+import {
+  DeployStateReader,
+  GlobalDeployStateReader,
+} from "./deploy-state-reader";
 
 // A fake presence port: the global read lists exactly these tools, in order.
 function fakePresence(tools: SupportedTool[]): ToolPresencePort {
@@ -166,12 +169,12 @@ function twoToolEntry(ref: string, name: string): string {
   return `- repo_url: fimoklei/agent-harness\n  host: github.com\n  resolved_commit: ec491f154c9d5c9a6c5db56d1946c4c34f3899bb\n  resolved_ref: ${ref}\n  virtual_path: skills/${name}\n  is_virtual: true\n  package_type: claude_skill\n  deployed_files:\n  - .claude/skills/${name}\n  - .agents/skills/${name}\n  content_hash: sha256:abc\n`;
 }
 
-describe("DeployStateReader.readGlobal", () => {
+describe("GlobalDeployStateReader.readGlobal", () => {
   it("groups deployed skills under each detected tool by their prefix", async () => {
     const fs = new InMemoryFileSystem({
       files: { [GLOBAL_LOCKFILE]: lockfile(twoToolEntry("v0.5.0", "tdd")) },
     });
-    const reader = new DeployStateReader({
+    const reader = new GlobalDeployStateReader({
       fs,
       toolPresence: fakePresence(["claude", "codex"]),
     });
@@ -198,7 +201,7 @@ describe("DeployStateReader.readGlobal", () => {
         [GLOBAL_LOCKFILE]: lockfile(skillEntry("v0.5.0", "skills/tdd")),
       },
     });
-    const reader = new DeployStateReader({
+    const reader = new GlobalDeployStateReader({
       fs,
       toolPresence: fakePresence(["claude", "codex"]),
     });
@@ -218,7 +221,7 @@ describe("DeployStateReader.readGlobal", () => {
 
   it("returns an empty group per detected tool when there is no lockfile", async () => {
     const fs = new InMemoryFileSystem();
-    const reader = new DeployStateReader({
+    const reader = new GlobalDeployStateReader({
       fs,
       toolPresence: fakePresence(["claude", "codex"]),
     });
@@ -237,7 +240,7 @@ describe("DeployStateReader.readGlobal", () => {
     const fs = new InMemoryFileSystem({
       files: { [GLOBAL_LOCKFILE]: "dependencies: not-a-list\n" },
     });
-    const reader = new DeployStateReader({
+    const reader = new GlobalDeployStateReader({
       fs,
       toolPresence: fakePresence(["claude"]),
     });

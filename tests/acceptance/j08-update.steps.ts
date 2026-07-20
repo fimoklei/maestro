@@ -6,7 +6,6 @@ import {
   CheckVersionDrift,
   ConfigStore,
   DeploySkill,
-  DeployStateReader,
   InventoryReader,
   NodeFileSystem,
   Registry,
@@ -15,6 +14,7 @@ import { createApp } from "@maestro/server";
 import { expect } from "vitest";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
+import { stubDeployState } from "../helpers/stub-deploy-state";
 
 const feature = await loadFeature("tests/acceptance/j08-update.feature");
 
@@ -111,7 +111,7 @@ describeFeature(
       app = createApp({
         registry,
         inventory,
-        deployState: new DeployStateReader({ fs }),
+        deployState: stubDeployState({ fs }),
         deploy,
         drift,
         resolveGlobalRoot: () => "/nonexistent-apm-root",

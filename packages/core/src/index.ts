@@ -18,7 +18,10 @@ export {
 } from "./deploy/deployed-content-roots";
 export { readGitOriginUrl } from "./deploy/git-origin-url";
 export { InventoryGitAdapter } from "./deploy/inventory-git";
-export { DeployStateReader } from "./deploy-state/deploy-state-reader";
+export {
+  DeployStateReader,
+  GlobalDeployStateReader,
+} from "./deploy-state/deploy-state-reader";
 export { resolveApmGlobalRoot } from "./deploy-state/resolve-apm-global-root";
 export { CheckVersionDrift } from "./drift/check-version-drift";
 export {
@@ -41,6 +44,7 @@ export {
 export { resolveInventoryPath } from "./inventory/resolve-inventory-path";
 export { resolveMaestroConfigPath } from "./registry/config-path";
 export { ConfigStore } from "./registry/config-store";
+export type { FileSystemPort } from "./registry/file-system";
 export { NodeFileSystem } from "./registry/node-file-system";
 export { Registry } from "./registry/registry";
 export type { RepoPathError } from "./registry/repo-path";

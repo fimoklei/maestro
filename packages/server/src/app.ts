@@ -13,7 +13,7 @@ import {
   DeployedContentAdapter,
   DeploySkill,
   type DeploySkillError,
-  DeployStateReader,
+  GlobalDeployStateReader,
   InventoryGitAdapter,
   InventoryReader,
   NodeFileSystem,
@@ -231,7 +231,10 @@ export type AppDeps = {
   inventory: InventoryReader;
   connect: ConnectInventory;
   browse: BrowseFilesystem;
-  deployState: DeployStateReader;
+  // The app serves both the per-repo and the global deploy-state route, so its
+  // reader is the one that requires tool presence. Omitting that dependency is
+  // a compile error here, not a 500 discovered days later (#187).
+  deployState: GlobalDeployStateReader;
   deploy: DeploySkill;
   drift: CheckVersionDrift;
   // Resolves apm's user-scope (global) root server-side. No client-supplied path
@@ -536,10 +539,11 @@ function realDeps(): AppDeps {
     resolvePath: async () =>
       resolveInventoryPath(await store.read(), process.env),
   });
-  // The per-repo read needs only fs; the global read groups per detected tool,
-  // so it gets a live tool-presence probe against HOME (ADR-0011). The adapter's
-  // default home resolution matches the deploy's, so `pnpm smoke` stays honest.
-  const deployState = new DeployStateReader({
+  // The reader that serves both routes: the global read groups per detected
+  // tool, so it gets a live tool-presence probe against HOME (ADR-0011). The
+  // adapter's default home resolution matches the deploy's, so `pnpm smoke`
+  // stays honest.
+  const deployState = new GlobalDeployStateReader({
     fs,
     toolPresence: new ToolPresenceAdapter(),
   });

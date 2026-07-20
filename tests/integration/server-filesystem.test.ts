@@ -12,7 +12,6 @@ import { join } from "node:path";
 import {
   BrowseFilesystem,
   ConfigStore,
-  DeployStateReader,
   InventoryReader,
   NodeFileSystem,
   Registry,
@@ -21,6 +20,7 @@ import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
+import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
 
 // Integration lane: drives the real browse route against a real sandbox
@@ -51,7 +51,7 @@ describe("filesystem browse HTTP route", () => {
       store: new ConfigStore({ fs, configPath: join(home, "config.json") }),
     });
     const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
-    const deployState = new DeployStateReader({ fs });
+    const deployState = stubDeployState({ fs });
     return createApp({
       registry,
       inventory,

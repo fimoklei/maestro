@@ -5,7 +5,6 @@ import {
   ApmCliDriver,
   ConfigStore,
   DeploySkill,
-  DeployStateReader,
   type DeployTarget,
   InventoryReader,
   NodeFileSystem,
@@ -16,6 +15,7 @@ import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
+import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
 
 // Integration lane: the deploy route over the real Hono app, real temp dirs,
@@ -95,7 +95,7 @@ describe("deploy HTTP route", () => {
       store: new ConfigStore({ fs, configPath: join(home, "config.json") }),
     });
     const inventory = new InventoryReader({ fs, resolvePath: () => harness });
-    const deployState = new DeployStateReader({ fs });
+    const deployState = stubDeployState({ fs });
     const deployCalls: Array<{
       target: DeployTarget;
       ref: string;
