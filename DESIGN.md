@@ -13,6 +13,7 @@ colors:
   border-chip: "#232a33"
   border-dashed: "#2a313a"
   border-drift: "#4a3a1c"
+  border-amber-dim: "#3a3327"
   text-1: "#e6e9ed"
   text-2: "#c3cad2"
   text-3: "#aeb6bf"

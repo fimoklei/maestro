@@ -8,8 +8,6 @@
         "role": "primary",
         "displayName": "Signal Amber",
         "canonical": "#e8a33d",
-        "lightValue": "#e0a43c",
-        "lightInk": "#b0700f",
         "tonalRamp": [
           "#2a1c05",
           "#4a3210",
@@ -21,12 +19,30 @@
           "#fae8c6"
         ]
       },
+      "light-amber": {
+        "role": "primary",
+        "displayName": "Signal Amber (light)",
+        "canonical": "#e0a43c",
+        "tonalRamp": [
+          "#2a1c05",
+          "#4a3210",
+          "#6b481a",
+          "#8c5f24",
+          "#b0700f",
+          "#e8a33d",
+          "#f2c982",
+          "#fae8c6"
+        ]
+      },
+      "light-amber-ink": {
+        "role": "primary",
+        "displayName": "Amber Ink",
+        "canonical": "#b0700f"
+      },
       "green": {
         "role": "secondary",
         "displayName": "Signal Green",
         "canonical": "#62c47e",
-        "lightValue": "#3dba75",
-        "lightInk": "#178a4c",
         "tonalRamp": [
           "#07240f",
           "#0d3d1c",
@@ -38,11 +54,45 @@
           "#d3f1dc"
         ]
       },
+      "light-green": {
+        "role": "secondary",
+        "displayName": "Signal Green (light)",
+        "canonical": "#3dba75",
+        "tonalRamp": [
+          "#07240f",
+          "#0d3d1c",
+          "#13592a",
+          "#178a4c",
+          "#3dba75",
+          "#62c47e",
+          "#9adcae",
+          "#d3f1dc"
+        ]
+      },
+      "light-green-ink": {
+        "role": "secondary",
+        "displayName": "Green Ink",
+        "canonical": "#178a4c"
+      },
       "bg-0": {
         "role": "neutral",
         "displayName": "App Canvas",
         "canonical": "#0b0d10",
-        "lightValue": "#eceef2",
+        "tonalRamp": [
+          "#0b0d10",
+          "#0f1318",
+          "#171d24",
+          "#232a33",
+          "#48525f",
+          "#8a94a0",
+          "#c3cad2",
+          "#eceef2"
+        ]
+      },
+      "light-bg-0": {
+        "role": "neutral",
+        "displayName": "App Canvas (light)",
+        "canonical": "#eceef2",
         "tonalRamp": [
           "#0b0d10",
           "#0f1318",
@@ -58,7 +108,21 @@
         "role": "neutral",
         "displayName": "Card Surface",
         "canonical": "#0f1318",
-        "lightValue": "#ffffff",
+        "tonalRamp": [
+          "#0b0d10",
+          "#0d1014",
+          "#0f1318",
+          "#11161c",
+          "#171d24",
+          "#e6ebf1",
+          "#f3f5f8",
+          "#ffffff"
+        ]
+      },
+      "light-surface-card": {
+        "role": "neutral",
+        "displayName": "Card Surface (light)",
+        "canonical": "#ffffff",
         "tonalRamp": [
           "#0b0d10",
           "#0d1014",
@@ -74,7 +138,21 @@
         "role": "neutral",
         "displayName": "Primary Ink",
         "canonical": "#e6e9ed",
-        "lightValue": "#1a212b",
+        "tonalRamp": [
+          "#1a212b",
+          "#343e4b",
+          "#48525f",
+          "#687482",
+          "#8a94a0",
+          "#aeb6bf",
+          "#c3cad2",
+          "#e6e9ed"
+        ]
+      },
+      "light-text-1": {
+        "role": "neutral",
+        "displayName": "Primary Ink (light)",
+        "canonical": "#1a212b",
         "tonalRamp": [
           "#1a212b",
           "#343e4b",
@@ -90,7 +168,21 @@
         "role": "neutral",
         "displayName": "Muted Ink",
         "canonical": "#8a94a0",
-        "lightValue": "#687482",
+        "tonalRamp": [
+          "#1a212b",
+          "#343e4b",
+          "#48525f",
+          "#687482",
+          "#5a6470",
+          "#8a94a0",
+          "#8b95a1",
+          "#aeb6bf"
+        ]
+      },
+      "light-text-muted": {
+        "role": "neutral",
+        "displayName": "Muted Ink (light)",
+        "canonical": "#687482",
         "tonalRamp": [
           "#1a212b",
           "#343e4b",
@@ -106,7 +198,21 @@
         "role": "neutral",
         "displayName": "Structural Line",
         "canonical": "#1d232b",
-        "lightValue": "#dce1e8",
+        "tonalRamp": [
+          "#13181e",
+          "#161b22",
+          "#1d232b",
+          "#232a33",
+          "#ccd3dc",
+          "#dce1e8",
+          "#e6eaef",
+          "#eef1f4"
+        ]
+      },
+      "light-border-strong": {
+        "role": "neutral",
+        "displayName": "Structural Line (light)",
+        "canonical": "#dce1e8",
         "tonalRamp": [
           "#13181e",
           "#161b22",
@@ -121,26 +227,52 @@
       "border-dashed": {
         "role": "neutral",
         "displayName": "Additive Dashed Line",
-        "canonical": "#2a313a",
-        "lightValue": "#bfc8d2"
+        "canonical": "#2a313a"
+      },
+      "light-border-dashed": {
+        "role": "neutral",
+        "displayName": "Additive Dashed Line (light)",
+        "canonical": "#bfc8d2"
       },
       "border-drift": {
         "role": "primary",
         "displayName": "Drift Outline",
-        "canonical": "#4a3a1c",
-        "lightValue": "#e6cfa0"
+        "canonical": "#4a3a1c"
+      },
+      "light-border-drift": {
+        "role": "primary",
+        "displayName": "Drift Outline (light)",
+        "canonical": "#e6cfa0"
       },
       "border-amber-dim": {
         "role": "primary",
         "displayName": "Dim Amber Line",
-        "canonical": "#3a3327",
-        "lightValue": "#ecddbf"
+        "canonical": "#3a3327"
+      },
+      "light-border-amber-dim": {
+        "role": "primary",
+        "displayName": "Dim Amber Line (light)",
+        "canonical": "#ecddbf"
       },
       "type-skill": {
         "role": "tertiary",
         "displayName": "Skill Blue",
         "canonical": "#7aa5d8",
-        "lightValue": "#3163cc",
+        "tonalRamp": [
+          "#0c1930",
+          "#132749",
+          "#1c3a6b",
+          "#2650a0",
+          "#3163cc",
+          "#5a86d8",
+          "#7aa5d8",
+          "#c2d7ee"
+        ]
+      },
+      "light-type-skill": {
+        "role": "tertiary",
+        "displayName": "Skill Blue (light)",
+        "canonical": "#3163cc",
         "tonalRamp": [
           "#0c1930",
           "#132749",
@@ -156,7 +288,21 @@
         "role": "tertiary",
         "displayName": "Hook Purple",
         "canonical": "#b48ad6",
-        "lightValue": "#8a55ce",
+        "tonalRamp": [
+          "#1b1030",
+          "#2c1a4d",
+          "#41266f",
+          "#5f379e",
+          "#8a55ce",
+          "#a274da",
+          "#b48ad6",
+          "#dfc9ef"
+        ]
+      },
+      "light-type-hook": {
+        "role": "tertiary",
+        "displayName": "Hook Purple (light)",
+        "canonical": "#8a55ce",
         "tonalRamp": [
           "#1b1030",
           "#2c1a4d",
@@ -172,7 +318,21 @@
         "role": "tertiary",
         "displayName": "MCP Teal",
         "canonical": "#5fbfb0",
-        "lightValue": "#1a8e82",
+        "tonalRamp": [
+          "#06231f",
+          "#0a3a34",
+          "#0f544c",
+          "#147268",
+          "#1a8e82",
+          "#3aa89a",
+          "#5fbfb0",
+          "#c0e6e0"
+        ]
+      },
+      "light-type-mcp": {
+        "role": "tertiary",
+        "displayName": "MCP Teal (light)",
+        "canonical": "#1a8e82",
         "tonalRamp": [
           "#06231f",
           "#0a3a34",
@@ -188,7 +348,21 @@
         "role": "tertiary",
         "displayName": "Bundle Amber",
         "canonical": "#e8a33d",
-        "lightValue": "#b0700f",
+        "tonalRamp": [
+          "#2a1c05",
+          "#4a3210",
+          "#6b481a",
+          "#8c5f24",
+          "#b0700f",
+          "#e8a33d",
+          "#f2c982",
+          "#fae8c6"
+        ]
+      },
+      "light-type-bundle": {
+        "role": "tertiary",
+        "displayName": "Bundle Amber (light)",
+        "canonical": "#b0700f",
         "tonalRamp": [
           "#2a1c05",
           "#4a3210",
@@ -235,7 +409,12 @@
         "purpose": "The only motion in the system. Under prefers-reduced-motion the change is instant."
       }
     ],
-    "breakpoints": [{ "name": "design-width", "value": "1440px" }]
+    "breakpoints": [
+      {
+        "name": "design-width",
+        "value": "1440px"
+      }
+    ]
   },
   "components": [
     {
