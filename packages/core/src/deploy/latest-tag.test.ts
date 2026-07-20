@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { resolveLatestTagFromVersionsTable } from "./latest-tag";
 
-// Captured output of `apm view fimoklei/agent-harness versions` (apm 0.16.0).
-// The full file lives in tests/fixtures/apm-view-versions.txt; inlined here so
-// the pure lane stays free of file I/O.
+// Captured output of `apm view fimoklei/agent-harness versions` (apm 0.26.0,
+// 2026-07-20). The full file lives in tests/fixtures/apm-view-versions.txt;
+// inlined here so the pure lane stays free of file I/O.
 const capturedTable = `     Available versions:
     fimoklei/agent-harness
 ┏━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━┓
@@ -17,7 +17,7 @@ const capturedTable = `     Available versions:
 │ v0.2.1 │ tag    │ 7f2fdd41 │
 │ v0.2.0 │ tag    │ e1a5dabd │
 │ v0.1.0 │ tag    │ a08a0daf │
-│ main   │ branch │ 41ecfe81 │
+│ main   │ branch │ 3a82d265 │
 └────────┴────────┴──────────┘
 `;
 

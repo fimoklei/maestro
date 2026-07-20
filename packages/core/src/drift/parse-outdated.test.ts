@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseOutdated } from "./parse-outdated";
 
-// Captured output of `apm outdated` (apm 0.20.0). The full file lives in
+// Captured output of `apm outdated -g` (apm 0.26.0, 2026-07-20). The full file lives in
 // tests/fixtures/apm-outdated-global.txt; inlined here so the pure lane stays
 // free of file I/O. Identity is the skill name — the last path segment of the
 // Package cell — never the full owner/repo/skills/<name> string.

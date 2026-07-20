@@ -61,8 +61,8 @@ export class DeployedContentAdapter implements DeployedContentPort {
     tools?: readonly SupportedTool[];
   }): Promise<DeployedContentState> {
     // Which deployed copies this deploy touches. The global path scopes to the
-    // detected tools; the repo path and #111 read-path leave it undefined and
-    // scan every tool (deployTargetSubtrees defaults to all — #136).
+    // detected tools; the repo path leaves it undefined and scans every tool
+    // (deployTargetSubtrees defaults to all — #136).
     const subtrees = deployTargetSubtrees(input.name, input.tools);
     // Read the cheap one-file baseline first: it decides whether the deploy
     // subtrees need their contents hashed at all. With no recorded hashes to

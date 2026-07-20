@@ -13,7 +13,12 @@ so a `#` comment inside a `.txt` fixture is classified as apm output, not as a
 comment. A header reading "…destination is a symlink" would make a fixture
 match `INSTALL_SYMLINK_PHRASE` on its own. The table-shaped fixtures have the
 same problem with their row parsers. So provenance goes here, and the `.txt`
-fixtures stay byte-exact captures.
+fixtures the driver or a parser reads stay byte-exact captures.
+
+The one exception is `apm-update-noop.txt`: nothing in the codebase parses it —
+it exists so a reader can see why Maestro updates by re-install rather than by
+`apm update` — so it opens with comment lines and the command line that produced
+it. Any fixture that gains a reader loses that licence.
 
 Phrases a fixture comment must never contain: `is a symlink`,
 `installation failed`, `with <n> error(s)`, `installed <n> apm dependenc`,
@@ -53,8 +58,13 @@ production actually sets, so the fixture wraps the way the parser will see it.
 ## Lockfiles
 
 Each is the `apm.lock.yaml` written by the install named below — copied
-verbatim, never hand-edited. Per-repo lockfiles come from the repo root; global
-ones from `<sandbox HOME>/.apm/`.
+verbatim; the YAML body is never hand-edited. Per-repo lockfiles come from the
+repo root; global ones from `<sandbox HOME>/.apm/`. One,
+`apm.lock.global-single-tool.yaml`, carries an added `#` comment header, because
+it is otherwise indistinguishable from its per-repo twin (below). That is safe
+where it would not be in a `.txt` fixture: a lockfile is read by a YAML parser,
+which drops comments, not by the raw-text greps the section above is about.
+`server-global-deploy-state.test.ts` parses this file and is unaffected.
 
 | Fixture | Install |
 |---|---|
@@ -63,9 +73,10 @@ ones from `<sandbox HOME>/.apm/`.
 | `apm.lock.global-two-tool.yaml` | `apm install <ref>#v0.5.1 -g -t claude,codex` |
 | `apm.lock.global-single-tool.yaml` | `apm install <ref>#v0.5.1 -g -t claude` |
 
-Two 0.26.0 facts worth knowing before reading them, both pending write-up in
-#185: the `deployments:` rows record `scope: project` even for a `-g` install,
-so `scope` does not distinguish global from per-repo; and
-`apm.lock.global-single-tool.yaml` is now byte-identical to
-`apm.lock.tag-pinned-v0.5.1.yaml`, because a single-tool global install and a
-single-tool per-repo install produce the same relative paths.
+Two 0.26.0 facts worth knowing before reading them, both written up in
+`.claude/rules/apm-driver.md` (#185): the `deployments:` rows record
+`scope: project` even for a `-g` install, so `scope` does not distinguish global
+from per-repo; and `apm.lock.global-single-tool.yaml` now carries the same
+payload as `apm.lock.tag-pinned-v0.5.1.yaml` — identical apart from
+`generated_at` and the comment header noted above — because a single-tool global
+install and a single-tool per-repo install produce the same relative paths.
