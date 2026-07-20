@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-07-20T00:00:00.000Z",
+  "generatedAt": "2026-07-20T18:51:26.000Z",
   "title": "Design System: Maestro",
   "extensions": {
     "colorMeta": {
@@ -54,6 +54,22 @@
           "#eceef2"
         ]
       },
+      "surface-card": {
+        "role": "neutral",
+        "displayName": "Card Surface",
+        "canonical": "#0f1318",
+        "lightValue": "#ffffff",
+        "tonalRamp": [
+          "#0b0d10",
+          "#0d1014",
+          "#0f1318",
+          "#11161c",
+          "#171d24",
+          "#e6ebf1",
+          "#f3f5f8",
+          "#ffffff"
+        ]
+      },
       "text-1": {
         "role": "neutral",
         "displayName": "Primary Ink",
@@ -69,6 +85,56 @@
           "#c3cad2",
           "#e6e9ed"
         ]
+      },
+      "text-muted": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "canonical": "#8a94a0",
+        "lightValue": "#687482",
+        "tonalRamp": [
+          "#1a212b",
+          "#343e4b",
+          "#48525f",
+          "#687482",
+          "#5a6470",
+          "#8a94a0",
+          "#8b95a1",
+          "#aeb6bf"
+        ]
+      },
+      "border-strong": {
+        "role": "neutral",
+        "displayName": "Structural Line",
+        "canonical": "#1d232b",
+        "lightValue": "#dce1e8",
+        "tonalRamp": [
+          "#13181e",
+          "#161b22",
+          "#1d232b",
+          "#232a33",
+          "#ccd3dc",
+          "#dce1e8",
+          "#e6eaef",
+          "#eef1f4"
+        ]
+      },
+      "border-dashed": {
+        "role": "neutral",
+        "displayName": "Additive Dashed Line",
+        "canonical": "#2a313a",
+        "lightValue": "#bfc8d2"
+      },
+      "border-drift": {
+        "role": "primary",
+        "displayName": "Drift Outline",
+        "canonical": "#4a3a1c",
+        "lightValue": "#e6cfa0"
+      },
+      "border-amber-dim": {
+        "role": "primary",
+        "displayName": "Dim Amber Line",
+        "canonical": "#3a3327",
+        "lightValue": "#ecddbf"
       },
       "type-skill": {
         "role": "tertiary",
