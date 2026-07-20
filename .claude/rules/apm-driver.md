@@ -172,9 +172,10 @@ on the full package name surviving. Observed states:
   could not resolve the tag against the remote. **This is the root of a cockpit
   "unknown" that a manual `apm outdated` contradicts:** the interactive shell has
   the gh credential helper, a `pnpm dev` server may not — same repo, different
-  auth. The `unknown`-status row carries an empty Source cell, so it survives
-  `cellsOf` as **four** cells, not five — never key the uncheckable detector on
-  the 5-cell row shape. The parser reports this as `{ ok:false, reason:
+  auth. The `unknown`-status row carries an empty Source cell, so a parser that
+  drops empty cells collapses it to **four** cells and shifts every later column
+  left — parse the row with empties intact, so Status keeps its column index.
+  The parser reports this as `{ ok:false, reason:
   "unverified" }` (its own state, distinct from a bare failure), and precedes row
   parsing so a mix of outdated + uncheckable never drops the uncheckable one to a
   false up-to-date (J04).
