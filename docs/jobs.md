@@ -38,7 +38,7 @@ read can be trusted.
 
 | Job | Main | Job story |
 |---|---|---|
-| Adopt apm 0.25 · [#171](https://github.com/fimoklei/maestro/issues/171) | B | *When* the engine moves ahead of Maestro's observed knowledge, *I want to* have the driver re-verified against the installed apm, *so I can* trust that cockpit behavior matches what the engine really does. |
+| Adopt apm 0.26 · [#171](https://github.com/fimoklei/maestro/issues/171) | B | *When* the engine moves ahead of Maestro's observed knowledge, *I want to* have the driver re-verified against the installed apm, *so I can* trust that cockpit behavior matches what the engine really does. |
 
 ## LATER
 
