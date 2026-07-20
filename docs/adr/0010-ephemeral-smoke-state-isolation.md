@@ -40,7 +40,8 @@ term — "where Maestro runs" is not a Target, per CONTEXT.md).
   token-bridging into the product.
 - **A bare temp consuming repo** is `git init`-ed inside the sandbox as a valid
   deploy target. It is **not** pre-registered — connect and registration stay
-  UI use-cases the rehearsal exercises.
+  UI use-cases the rehearsal exercises. *(Superseded in what it seeds by the
+  amendment below; "not pre-registered" still stands.)*
 - **Teardown wipes the sandbox dir only.** It never runs `apm uninstall -g`,
   which deletes beyond its lockfile and would hit real dirs (`apm-driver.md`).
   Because `HOME` points into the sandbox, `rm` of that dir cannot touch the real
@@ -56,6 +57,47 @@ term — "where Maestro runs" is not a Target, per CONTEXT.md).
 - The opaque "check apm" deploy error (no hint that gh auth is the cause) is a
   **product** defect, tracked separately from this harness.
 
+## Amendment (issue #168) — what the sandbox seeds
+
+The single bare consuming repo left the rehearsal unable to exercise the flows
+the picker exists for. The browse endpoint's root ceiling is `os.homedir()`
+(ADR-0009), which honours `HOME` — so under smoke the ceiling is
+`.maestro-sandbox/home`, while the seeded repo sat beside it at
+`.maestro-sandbox/consuming-repo`. The picker could not reach it, and pasting an
+absolute path was the only way through. The rehearsal was therefore mis-seeded
+by *placement* before it was mis-seeded by *quantity*.
+
+The rehearsal's purpose is narrowed to the **screen flows** — connect, browse,
+register, and the states those produce. What it seeds:
+
+- **Everything the picker must show lives under the sandbox `HOME`**, never
+  beside it. This is the rule the original seeding broke.
+- **The inventory source is a copy of the owner's real `agent-harness` clone,
+  `.git` included.** A fabricated tree would need a fabricated origin, and
+  connect refuses a clone without a parseable GitHub origin
+  (`connect-inventory.ts`, ADR-0014). Copying is measured at 6 MB / 0.51 s, so
+  the cost does not register next to dev-server startup. If the source clone is
+  absent the harness warns loudly and continues, matching its existing posture
+  for an unauthenticated `gh`.
+- **Deploy stays genuinely functional.** A real clone carries the real origin and
+  real tags, so the credential bridge above keeps working unchanged. Nothing is
+  removed to make the rehearsal offline-pure.
+- **Three or four mixed candidate repos** under `HOME` — git repos, a plain
+  directory, and one name containing a space — so browsing has something to
+  browse and the per-entry facts of ADR-0009's #150 amendment have something to
+  report. **None pre-registered**, unchanged from the original decision: the
+  "already registered" fact is better observed appearing mid-rehearsal than
+  found pre-baked.
+- **Seeding moves to its own `scripts/seed-sandbox.mjs`**, invoked by `dev.mjs`
+  under `--smoke`. The split is by rate of change, not by size: process
+  management is generic and near-static, while seeding is adjusted with every
+  new screen.
+- **Ephemerality is unchanged.** Wipe-and-reseed per run stands; only a
+  prohibitive seeding cost could overturn it, and half a second is not that.
+
+`CONTEXT.md` stays untouched for the same reason as the original decision:
+sandbox seeding is dev tooling, not domain vocabulary.
+
 ## Rejected alternatives
 
 - **Keep smoke persistent, add a second `smoke:fresh`.** Two commands for one
@@ -64,3 +106,13 @@ term — "where Maestro runs" is not a Target, per CONTEXT.md).
   the rehearsal; warn-and-continue keeps connect/register/UI usable offline.
 - **Bridge the token in `ApmCliDriver` (product).** Puts credential handling in
   the product for a dev-only need; rejected in favour of the harness owning it.
+
+Added by the #168 amendment:
+
+- **A hand-built inventory tree with a fake origin.** Becomes a second set of
+  skill fixtures to maintain, and too few entries to exercise list behaviour.
+- **A hand-built tree pointing at the real GitHub origin.** The screen would
+  show skills a deploy would not fetch — a cockpit that lies is worse than one
+  that is empty.
+- **Pre-registering one candidate repo.** Reaches the same badge by removing the
+  step that produces it.
