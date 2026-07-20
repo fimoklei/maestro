@@ -114,6 +114,26 @@ describe("DeployStateView cold start", () => {
   });
 });
 
+describe("DeployStateView heading structure", () => {
+  // The view title owns both target kinds. Global targets and Repositories are
+  // its parts, not its peers — so they nest under it and rank below it, and the
+  // page's outline reads the same way the screen looks.
+  it("ranks both target kinds below the view title", async () => {
+    stubColdStart();
+    renderView();
+
+    expect(
+      await screen.findByRole("heading", { level: 2, name: /deploy-state/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 3, name: /global targets/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 3, name: /repositories/i }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("DeployStateView sections", () => {
   it("does not count targets before both reads have landed", () => {
     vi.stubGlobal(

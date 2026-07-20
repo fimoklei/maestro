@@ -37,42 +37,38 @@ export function DeployStateView() {
     (globalDeployState.data?.tools.length ?? 0) + repos.length;
 
   return (
-    <>
-      <section>
-        <SectionHeader
-          title="Deploy-state"
-          meta={`read from lockfiles${
-            isColdStart
-              ? " · nothing deployed"
-              : isRead
-                ? ` · ${targetCount} ${targetCount === 1 ? "target" : "targets"}`
-                : ""
-          }`}
-        >
-          {isColdStart ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/inventory")}
-            >
-              deploy a skill →
-            </Button>
-          ) : null}
-        </SectionHeader>
-        {/* Global fans out to one card per detected tool (ADR-0011), so it
-            renders its own "GLOBAL TARGETS" sub-section. */}
-        <GlobalDeployStatePanel />
-      </section>
+    <section>
+      <SectionHeader
+        title="Deploy-state"
+        meta={`read from lockfiles${
+          isColdStart
+            ? " · nothing deployed"
+            : isRead
+              ? ` · ${targetCount} ${targetCount === 1 ? "target" : "targets"}`
+              : ""
+        }`}
+      >
+        {isColdStart ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/inventory")}
+          >
+            deploy a skill →
+          </Button>
+        ) : null}
+      </SectionHeader>
+      {/* Global fans out to one card per detected tool (ADR-0011). */}
+      <GlobalDeployStatePanel />
       <RepositoriesSection />
-    </>
+    </section>
   );
 }
 
-// Registered repos are their own section, not a footnote under Global targets:
-// the two target kinds are peers, so they carry the same heading weight and the
-// registration hint sits under the heading it belongs to. It reads the registry
-// itself rather than taking it apart into props — Query dedupes the shared key
-// with the view above (frontend.md).
+// Registered repos are their own sub-section, not a footnote under Global
+// targets, so the registration hint sits under the heading it belongs to. It
+// reads the registry itself rather than taking it apart into props — Query
+// dedupes the shared key with the view above (frontend.md).
 function RepositoriesSection() {
   const { data, isLoading, isError, isSuccess } = useRegistry();
   const repos = data?.repos ?? [];
@@ -80,6 +76,7 @@ function RepositoriesSection() {
   return (
     <section className="mt-section">
       <SectionHeader
+        level={3}
         title="Repositories"
         meta={
           isSuccess
