@@ -11,10 +11,10 @@ audit one:
   what the existing file already held, so nothing was written. Git still shows
   the original 0.16.0/0.20.0 capture date. Three fixtures are in this state,
   marked ✓= in the tables below. Their 0.26.0 grounding rests on the re-run
-  recorded in `apm-driver.md`, not on anything visible in this repo — re-run the
-  command yourself if you need to confirm it.
+  recorded in `docs/apm-behavior.md`, not on anything visible in this repo —
+  re-run the command yourself if you need to confirm it.
 
-What the outputs *mean* lives in `.claude/rules/apm-driver.md`; this file only
+What the outputs *mean* lives in `docs/apm-behavior.md`; this file only
 records how they were taken.
 
 ## Why provenance lives here and not in the files
@@ -89,7 +89,7 @@ which drops comments, not by the raw-text greps the section above is about.
 | `apm.lock.global-single-tool.yaml` | `apm install <ref>#v0.5.1 -g -t claude` |
 
 Two 0.26.0 facts worth knowing before reading them, both written up in
-`.claude/rules/apm-driver.md` (#185): the `deployments:` rows record
+`docs/apm-behavior.md` (#185): the `deployments:` rows record
 `scope: project` even for a `-g` install, so `scope` does not distinguish global
 from per-repo; and `apm.lock.global-single-tool.yaml` now carries the same
 payload as `apm.lock.tag-pinned-v0.5.1.yaml` — identical apart from
