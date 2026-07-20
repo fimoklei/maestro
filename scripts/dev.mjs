@@ -8,8 +8,10 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { seedSandbox } from "./seed-sandbox.mjs";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const pidFile = join(repoRoot, ".maestro-dev.pid");
@@ -97,20 +99,8 @@ if (smoke) {
   // drives as well as Maestro's own state (.claude/rules/apm-driver.md).
   env.HOME = join(sandbox, "home");
   mkdirSync(env.HOME, { recursive: true });
-  // Seed the tool-presence markers Maestro probes for a global deploy
-  // (~/.claude.json, ~/.codex/config.toml — .claude/rules/apm-driver.md, #131).
-  // Without them the redirected HOME reads as "no tool installed" and every
-  // global deploy is refused, so the rehearsal could not exercise J07. These are
-  // config-file stand-ins, never the skills dirs a deploy creates, so they stay
-  // deploy-immune; the sandbox is still the isolated APM destination.
-  writeFileSync(join(env.HOME, ".claude.json"), "{}\n");
-  mkdirSync(join(env.HOME, ".codex"), { recursive: true });
-  writeFileSync(join(env.HOME, ".codex", "config.toml"), "");
   console.log(
     `[smoke] MAESTRO_HOME=${env.MAESTRO_HOME} HOME=${env.HOME} (isolated from real data)`,
-  );
-  console.log(
-    "[smoke] seeded claude + codex presence markers for global deploy",
   );
 
   // Only this dev-tooling harness bridges credentials to apm — the product
@@ -134,12 +124,23 @@ if (smoke) {
     );
   }
 
-  // A bare temp consuming repo as a valid deploy target. Left unregistered:
-  // connect + registration stay UI use-cases the rehearsal exercises.
-  const consumingRepo = join(sandbox, "consuming-repo");
-  mkdirSync(consumingRepo, { recursive: true });
-  execFileSync("git", ["init"], { cwd: consumingRepo, stdio: "ignore" });
-  console.log(`[smoke] seeded temp consuming repo at ${consumingRepo}`);
+  // Everything the picker must reach is seeded under the redirected HOME —
+  // the browse ceiling is os.homedir() (ADR-0009), so anything beside it is
+  // invisible. Nothing is pre-registered: connect and registration stay UI
+  // use-cases the rehearsal exercises (ADR-0010).
+  const seeded = seedSandbox({
+    home: env.HOME,
+    inventorySource: join(homedir(), "Projects", "agent-harness"),
+  });
+  for (const warning of seeded.warnings) {
+    console.warn(`[smoke] ${warning}`);
+  }
+  if (seeded.inventory) {
+    console.log(`[smoke] seeded inventory clone at ${seeded.inventory}`);
+  }
+  console.log(
+    `[smoke] seeded ${seeded.candidates.length} candidate repos under ${env.HOME}`,
+  );
 }
 
 const child = spawn(
