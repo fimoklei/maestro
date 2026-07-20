@@ -192,10 +192,31 @@ describe("DeploySkill", () => {
     ]);
   });
 
-  it("removes the obsolete tool's copy after narrowing a global deploy", async () => {
-    // ADR-0011 / #136: a Claude-only machine that once ran a two-tool global
-    // install has a dead .agents copy apm leaves behind. After the narrowed
-    // install succeeds, Maestro removes exactly the untargeted (codex) copy.
+  it("removes the untargeted tool's copy when that tool owns its directory", async () => {
+    // ADR-0011 / #136: a Codex-only machine that once ran a two-tool global
+    // install has a .claude copy apm leaves behind. Claude Code is the only
+    // reader of .claude/skills/, so its absence proves that copy is dead wood
+    // and the narrowed install removes exactly it.
+    const { deps, cleaned, deployed } = buildDeps({
+      toolPresence: { detectGlobalTools: async () => ["codex"] },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(deployed).toHaveLength(1);
+    expect(cleaned).toEqual([
+      { target: globalTarget, name: "tdd", tools: ["claude"] },
+    ]);
+  });
+
+  it("keeps the untargeted tool's copy when other tools read its directory", async () => {
+    // #202: an undetected Codex leaves .agents/skills/ behind, but Cursor,
+    // Copilot, Gemini and others read that same directory. Maestro cannot prove
+    // the tree is dead, so a Claude-only narrowing removes nothing at all.
     const { deps, cleaned, deployed } = buildDeps({
       toolPresence: { detectGlobalTools: async () => ["claude"] },
     });
@@ -207,9 +228,7 @@ describe("DeploySkill", () => {
 
     expect(result.ok).toBe(true);
     expect(deployed).toHaveLength(1);
-    expect(cleaned).toEqual([
-      { target: globalTarget, name: "tdd", tools: ["codex"] },
-    ]);
+    expect(cleaned).toEqual([]);
   });
 
   it("cleans nothing when the global deploy targets every tool", async () => {
@@ -241,8 +260,9 @@ describe("DeploySkill", () => {
   it("does not clean when the global install fails", async () => {
     // Cleanup runs only after a proven-successful install: a failed apm install
     // must not trigger removal of an untargeted copy (no half-reconciled state).
+    // Codex-only, so a successful install here would have cleaned .claude.
     const { deps, cleaned } = buildDeps({
-      toolPresence: { detectGlobalTools: async () => ["claude"] },
+      toolPresence: { detectGlobalTools: async () => ["codex"] },
       apm: {
         resolveLatestTag: async () => ({ ok: true, tag: "v0.5.1" }),
         deploySkill: async () => {
@@ -266,7 +286,7 @@ describe("DeploySkill", () => {
     // deploy-failed — it leaves the pre-existing dead tree, which the next
     // deploy retries idempotently (#136).
     const { deps, deployed } = buildDeps({
-      toolPresence: { detectGlobalTools: async () => ["claude"] },
+      toolPresence: { detectGlobalTools: async () => ["codex"] },
       deployedCleanup: {
         removeSkillTargets: async () => {
           throw new Error("fs error removing the obsolete copy");

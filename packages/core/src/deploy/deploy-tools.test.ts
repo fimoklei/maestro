@@ -4,7 +4,7 @@ import {
   apmTargetFlagForTools,
   DEPLOY_TOOLS,
   deployTargetSubtrees,
-  untargetedTools,
+  reclaimableUntargetedTools,
 } from "./deploy-tools";
 
 // One fact — which tools a skill deploy targets — feeds two consumers: the apm
@@ -101,23 +101,48 @@ describe("apmTargetFlagForTools", () => {
   });
 });
 
-// The tools a global deploy must reconcile away: every DEPLOY_TOOLS tool the
-// machine does NOT have, so their obsolete deployed copy is removed when a
-// global deploy narrows the target set (ADR-0011, #136).
-describe("untargetedTools", () => {
-  it("returns the tools not in the detected set, in DEPLOY_TOOLS order", () => {
-    // A Claude-only machine leaves codex obsolete; its dead .agents copy is
-    // what a narrowing global deploy removes.
-    expect(untargetedTools(["claude"])).toEqual(["codex"]);
-    expect(untargetedTools(["codex"])).toEqual(["claude"]);
+// The tools a global deploy may reconcile away: a DEPLOY_TOOLS tool the machine
+// does NOT have, AND whose skills directory no other tool reads. An undetected
+// tool proves its own copy is unread; it proves nothing about a directory it
+// shares (#202).
+describe("reclaimableUntargetedTools", () => {
+  it("returns an undetected tool whose skills directory only it reads", () => {
+    // .claude/skills/ is Claude Code's alone, so an undetected Claude Code
+    // means that copy is genuinely dead wood.
+    expect(reclaimableUntargetedTools(["codex"])).toEqual(["claude"]);
+  });
+
+  it("omits an undetected tool that shares its skills directory", () => {
+    // Ten apm targets deploy skills under .agents (docs/apm-behavior.md), so
+    // "codex is absent" does not make that tree dead — a Claude-only machine
+    // reconciles nothing away.
+    expect(reclaimableUntargetedTools(["claude"])).toEqual([]);
   });
 
   it("is empty when every supported tool is detected", () => {
     // A full two-tool machine narrows nothing away.
-    expect(untargetedTools(["claude", "codex"])).toEqual([]);
+    expect(reclaimableUntargetedTools(["claude", "codex"])).toEqual([]);
   });
 
-  it("returns every tool when none is detected", () => {
-    expect(untargetedTools([])).toEqual(DEPLOY_TOOLS.map((t) => t.apmTarget));
+  it("reclaims only the exclusive directory when no tool is detected", () => {
+    // Even with nothing installed, the shared .agents tree stays: its other
+    // readers were never measured, so it is never provably dead.
+    expect(reclaimableUntargetedTools([])).toEqual(["claude"]);
+  });
+});
+
+// Exclusivity is declared once, on the tool definition, so adding a tool forces
+// an answer to "does anything else read this directory?" (#202).
+describe("skills directory exclusivity", () => {
+  it("marks .claude as exclusive and .agents as shared", () => {
+    expect(
+      DEPLOY_TOOLS.map((tool) => [
+        tool.skillsDirPrefix,
+        tool.skillsDirIsExclusive,
+      ]),
+    ).toEqual([
+      [".claude", true],
+      [".agents", false],
+    ]);
   });
 });

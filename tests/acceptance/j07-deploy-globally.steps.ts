@@ -258,7 +258,44 @@ describeFeature(
     );
 
     Scenario(
-      "Narrowing a two-tool machine to one removes the dead Codex tree",
+      "Narrowing to Codex removes the dead Claude Code tree",
+      ({ Given, And, When, Then }) => {
+        Given('the central inventory has the skill "tdd"', () =>
+          seedInventory(),
+        );
+        And(
+          "a prior global install left both the Claude and Codex copies on disk",
+          async () => {
+            await seedDeployedCopy(".claude");
+            await seedDeployedCopy(".agents");
+          },
+        );
+        And("only Codex is installed on this machine", () => {
+          presentTools = ["codex"];
+        });
+        When('I deploy "tdd" globally', async () => {
+          response = await deployGlobally();
+        });
+        Then("the global deploy succeeds at the latest tag", async () => {
+          expect(response.status).toBe(200);
+        });
+        And('apm is told to target "codex"', () => {
+          expect(targetedTools).toEqual(["codex"]);
+        });
+        And(
+          "the obsolete Claude Code copy is gone while the shared copy remains",
+          async () => {
+            // Claude Code alone reads .claude/skills/, so its absence proves
+            // that tree is dead wood and ADR-0011's reconciliation removes it.
+            expect(await deployedCopyExists(".claude")).toBe(false);
+            expect(await deployedCopyExists(".agents")).toBe(true);
+          },
+        );
+      },
+    );
+
+    Scenario(
+      "Narrowing to Claude Code keeps the skills directory other tools read",
       ({ Given, And, When, Then }) => {
         Given('the central inventory has the skill "tdd"', () =>
           seedInventory(),
@@ -282,15 +319,13 @@ describeFeature(
         And('apm is told to target "claude"', () => {
           expect(targetedTools).toEqual(["claude"]);
         });
-        And(
-          "the obsolete Codex copy is gone while the Claude copy remains",
-          async () => {
-            // The dead .agents tree ADR-0011 exists to eliminate is removed;
-            // the targeted .claude copy is untouched (#136).
-            expect(await deployedCopyExists(".agents")).toBe(false);
-            expect(await deployedCopyExists(".claude")).toBe(true);
-          },
-        );
+        And("both copies are still on disk", async () => {
+          // .agents/skills/ is read by Cursor, Copilot, Gemini and more, not by
+          // Codex alone — an absent Codex never makes that tree removable
+          // (#202).
+          expect(await deployedCopyExists(".agents")).toBe(true);
+          expect(await deployedCopyExists(".claude")).toBe(true);
+        });
       },
     );
 
