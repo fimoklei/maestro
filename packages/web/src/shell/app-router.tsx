@@ -1,4 +1,4 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { ConnectView } from "../connect-gate/connect-view";
 import { WelcomeView } from "../connect-gate/welcome-view";
 import { DeployStateView } from "../deploy-state/deploy-state-view";
@@ -14,6 +14,12 @@ import { InventorySourceView } from "./inventory-source-view";
 // connected-user Inventory source view (issue #98): connection status +
 // re-read + change-source re-point. All views nest under AppShell so they
 // share the sidebar + status bar chrome.
+//
+// The catch-all sends every unmatched URL to the landing route, where the
+// first-run gate then decides cockpit vs connect gate. Without it an unknown
+// path matches no route and React Router renders nothing — a blank page. It
+// arrived with ADR-0015, which retired /welcome/repos: a stale bookmark to a
+// URL that worked yesterday is the likeliest way to hit this.
 export function AppRoutes() {
   return (
     <Routes>
@@ -23,6 +29,7 @@ export function AppRoutes() {
         <Route path="source" element={<InventorySourceView />} />
         <Route path="welcome" element={<WelcomeView />} />
         <Route path="welcome/connect" element={<ConnectView />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
   );

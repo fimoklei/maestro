@@ -117,6 +117,24 @@ describe("connect gate", () => {
   });
 
   it.each([
+    "/welcome/repos",
+    "/nonsense",
+  ])("sends %s somewhere real rather than rendering nothing", async (route) => {
+    // /welcome/repos was the retired register step's URL, so a stale
+    // bookmark or a resumed session can still ask for it. With no route
+    // matching and no catch-all, the user would get a blank page.
+    stubServer();
+    renderApp(route);
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: /central inventory not connected/i,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it.each([
     "/welcome",
     "/welcome/connect",
   ])("redirects a configured install away from %s into the cockpit", async (route) => {
