@@ -1,11 +1,10 @@
-[!] A new version of APM is available: 0.25.0 (current: 0.20.0)
-Run apm update to upgrade
-
 [*] Created apm.yml
+[i] Targets set: claude (persisted to apm.yml)
 [*] Validating 1 package...
 [x] github.com/fimoklei/agent-harness/skills/tdd#v0.5.0 -- all probes failed 
 (marker-file, Contents API, git ls-remote, shallow-fetch) -- verify the path and
 ref exist and that your credentials have read access (run with --verbose for the
 full probe log)
 All packages failed validation. Nothing to install.
-[!] Install interrupted after 2.8s.
+[i] Removed apm.yml created by the failed install.
+

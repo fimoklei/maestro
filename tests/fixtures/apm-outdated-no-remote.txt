@@ -1,2 +1,0 @@
-
-[*] No remote dependencies to check

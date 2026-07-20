@@ -66,11 +66,12 @@ const viewNonAuthNoise = [
 ].join("\n");
 
 // Captured stdout of an `apm install ... -g -t claude` refused because the skill
-// destination is a symlink (apm 0.20.0, 2026-07-19; full capture in
-// tests/fixtures/apm-install-symlink-refused.txt). Two traps live here: apm
-// still prints the positive `Installed 1 APM dependency` marker (with an
-// `error(s)` suffix), and Rich wraps the refusal phrase across a line break, so
-// `is a symlink` only matches after whitespace normalization.
+// destination is a symlink, on apm 0.20.0 (2026-07-19). 0.26.0 no longer prints
+// this shape — see installRefusedWithoutMarkerOutput below for the current one —
+// but the trap it guards is the reason the classifier ignores the exit code: apm
+// printed the positive `Installed 1 APM dependency` marker (with an `error(s)`
+// suffix) on a failed install. Rich wraps the refusal phrase across a line
+// break, so `is a symlink` only matches after whitespace normalization.
 const installSymlinkRefusedOutput = [
   "[>] Installing 1 new package...",
   "  [+] github.com/fimoklei/agent-harness/skills/tdd#v0.5.1 #v0.5.1 @471c4b26",
@@ -82,16 +83,21 @@ const installSymlinkRefusedOutput = [
   "[!] Install interrupted after 3.2s.",
 ].join("\n");
 
-// The same refusal without the success marker. apm 0.25.0 fails this way (an
-// `Installation failed` line, no marker) per
-// docs/research/apm-0.25-symlink-topology-impact.md; the installed apm here is
-// 0.20.0, so that exact wording is unverified. Only the refusal phrase — which
-// both versions print — is asserted on, so the test pins the classifier's
-// independence from the marker, not an invented apm dialect.
+// The same refusal without the success marker — the shape apm 0.26.0 actually
+// prints (captured 2026-07-20 against a sandbox HOME whose
+// ~/.claude/skills/tdd was a symlink; full capture in
+// tests/fixtures/apm-install-symlink-refused.txt). 0.26.0 dropped the
+// misleading positive marker: it exits 1 with an `Installation failed` line and
+// no `Installed N APM dependenc`. Rich still wraps the refusal phrase, now
+// splitting it as `is a` / `symlink`, so whitespace normalization stays
+// load-bearing.
 const installRefusedWithoutMarkerOutput = [
-  "[x] Installation failed",
-  "    +- fimoklei/agent-harness/skills/tdd -- Skill destination",
-  "/home/u/.claude/skills/tdd is a symlink -- refusing to deploy",
+  "  [x] 1 package failed:",
+  "    +- fimoklei/agent-harness/skills/tdd -- Failed to integrate primitives from ",
+  "cached package: Skill destination /tmp/apm-fx-symlink/.claude/skills/tdd is a ",
+  "symlink -- refusing to deploy",
+  "[x] Installation failed with 1 error(s) in 3.4s. No install transaction changes ",
+  "were committed.",
 ].join("\n");
 
 // A captured `apm view ... versions` table with a deployable tag.
