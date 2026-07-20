@@ -4,10 +4,11 @@ import { ApmCliDriver } from "./apm-cli-driver";
 // The driver shells out via an injected `run` (promisify(execFile) in
 // production). These tests pin the command construction and output
 // classification without spawning a process: refs and flags are data passed as
-// an args array (security.md), and every apm signal is a captured fixture
+// an args array (security.md), and each apm signal is a captured fixture
 // replayed through `run` (inlined so the pure lane stays free of file I/O). Each
 // constant names its capture below; all but the 0.20.0 refusal have a full file
-// in tests/fixtures/.
+// in tests/fixtures/. One test feeds synthetic output instead, and says so —
+// it guards a branch no current apm dialect reaches.
 type RunCall = { file: string; args: string[]; cwd?: string };
 
 // The closing summary line of a successful install. Named so the tests that
@@ -282,6 +283,21 @@ describe("ApmCliDriver.deploySkill", () => {
         cwd: "/repo",
       },
     ]);
+  });
+
+  it("fails closed on a resolved run that prints no success marker", async () => {
+    // Deliberately NOT an apm 0.26.0 shape — 0.26.0 exits 1 on every observed
+    // failure, so this output is synthetic. It pins the marker check itself,
+    // which stays as fail-closed insurance against a future dialect that
+    // resolves without installing (#119). Nothing else covers that branch: the
+    // error-count tests all supply the marker, so a refactor that trusted every
+    // resolved run would pass without this.
+    const { run } = fakeRun("[*] Created apm.yml\nNothing to install.");
+    const driver = new ApmCliDriver({ run });
+
+    await expect(
+      driver.deploySkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
+    ).resolves.toEqual({ ok: false, reason: "failed" });
   });
 
   it("reports a generic failure when every probe failed", async () => {
