@@ -91,6 +91,9 @@
   --spacing-card-x: 14px;
   --spacing-row-y: 9px;
   --spacing-header-y: 10px;
+
+  /* gap between two peer sections in a view → mt-section */
+  --spacing-section: 24px;
 }
 
 @layer base {

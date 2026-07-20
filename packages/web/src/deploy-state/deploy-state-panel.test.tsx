@@ -45,14 +45,14 @@ describe("DeployStatePanel", () => {
     expect(screen.getByText("v0.5.0")).toBeInTheDocument();
   });
 
-  it("shows an explicit empty state, not an error, when nothing is deployed", async () => {
+  it("states an empty repo in its header status, not as an error", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => jsonResponse({ primitives: [], skipped: [] }, 200)),
     );
     renderPanel("/Users/me/project");
 
-    expect(await screen.findByText(/nothing deployed/i)).toBeInTheDocument();
+    expect(await screen.findByText("● empty")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -76,7 +76,7 @@ describe("DeployStatePanel", () => {
     expect(await screen.findByText(/hooks\/format/)).toBeInTheDocument();
     // Something IS deployed (just unsupported) — the cockpit must not say it is
     // empty, the lie J02 exists to prevent.
-    expect(screen.queryByText(/nothing deployed/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("● empty")).not.toBeInTheDocument();
   });
 
   it("surfaces a visible error when the lockfile cannot be read", async () => {

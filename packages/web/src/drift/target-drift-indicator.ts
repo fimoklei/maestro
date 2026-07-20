@@ -16,8 +16,8 @@
 // "ok", which would imply deployed content that matches). A lockfile of only
 // unsupported types comes back as zero primitives but a non-empty skipped set —
 // that target does contain deployed content, so it is not empty (the same rule
-// deploy-state-list applies to its "Nothing deployed" message); it falls through
-// to the drift-derived status. Emptiness only counts once deployed is *confirmed*
+// deploy-state-list applies before it drops its body); it falls through to the
+// drift-derived status. Emptiness only counts once deployed is *confirmed*
 // (status "ready"); while it is pending/unknown we don't yet know it is empty, so
 // the drift-based logic below still runs. Pure and framework-free, sibling-tested.
 

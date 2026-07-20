@@ -60,11 +60,16 @@ describe("GlobalTargets", () => {
     expect(screen.getAllByText("tdd")).toHaveLength(2);
   });
 
-  it("renders a detected-but-empty tool as an empty card, not a missing one", () => {
+  it("renders a detected-but-empty tool as a header-only card, not a missing one", () => {
     renderTargets({ tools: [{ tool: "codex", primitives: [] }] });
 
     expect(screen.getByText("Codex")).toBeInTheDocument();
-    expect(screen.getByText(/nothing deployed here/i)).toBeInTheDocument();
+    // Emptiness is a header status, not a body sentence, and it uses the same
+    // word the sidebar uses for the same target.
+    expect(screen.getByText("● empty")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/nothing deployed here/i),
+    ).not.toBeInTheDocument();
     // An empty card is not an error.
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -141,7 +146,7 @@ describe("GlobalTargets", () => {
     });
 
     // The codex card reads as a clean empty card, not a drift warning.
-    expect(screen.getByText(/nothing deployed here/i)).toBeInTheDocument();
+    expect(screen.getByText("● empty")).toBeInTheDocument();
     expect(screen.queryByText(/not deployed here/i)).not.toBeInTheDocument();
   });
 });
