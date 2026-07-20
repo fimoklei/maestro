@@ -157,7 +157,8 @@ never from a field inside it.
 parallel-check count). Output is a human table; the parser sits behind the driver
 port, integration-tested against captured output. **Rich truncates the Package
 column to terminal width** (a narrow run shows `fimoklei/agent-harn…`): capture
-and parse non-TTY with a fixed `COLUMNS` (fixtures use 120); never key the parser
+and parse non-TTY with a fixed `COLUMNS` — 200, matching `WIDE_COLUMNS` in
+`apm-cli-driver.ts`, which is the width production sets; never key the parser
 on the full package name surviving. Observed states:
 
 - Tag-pinned, newer tag exists → row: `Package | Current v0.5.0 | Latest v0.5.1 |
@@ -434,8 +435,8 @@ install. Both are **global-path only**; per-repo deploys are unaffected.
      path. `deployTargetSubtrees(name, tools?)` filters to those tools, and
      `DeployedContentAdapter.classify({ …, tools })` filters the recorded baseline
      to the same subtrees, so an untargeted tool's retained hashes never count as
-     this deploy's drift. Absent `tools` (repo path, #111 read-path) still scans
-     every tool — unchanged.
+     this deploy's drift. Absent `tools` (the repo path — the only caller that
+     leaves it undefined) still scans every tool — unchanged.
    - **Still true on 0.26.0** (read against the installed apm source, #191).
      `-t` never reaches the pruning decision: `_read_yaml_targets` sources the
      declared universe from the consumer's `apm.yml` alone, so
