@@ -170,7 +170,7 @@ describe("StatusBar", () => {
 
   it("omits the source gear when setup is still required", async () => {
     // No inventory yet means no source to point at — the header shows only the
-    // setup-required status, never a bare gear that would dead-end on the wizard.
+    // setup-required status, never a bare gear that would dead-end on the connect gate.
     stubServer({ health: "ok", config: { inventoryPath: null } });
     renderStatusBar();
 
@@ -199,7 +199,7 @@ describe("StatusBar", () => {
 
   it("does not read the inventory until a source is configured", async () => {
     // First-run: with no configured path, /api/inventory/primitives 409s and
-    // the production client would retry it repeatedly behind the wizard. The
+    // the production client would retry it repeatedly behind the connect gate. The
     // header must gate that read on a connected config, not fire it blind.
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);

@@ -4,36 +4,36 @@ import { useInventoryConfig } from "../inventory/use-inventory";
 import { useFirstRun, useIsConfigured } from "./use-first-run";
 
 // First-run gate: when no inventory path is configured the cockpit would
-// dead-end on a "not configured" panel. Instead we route to the first-run
-// wizard — the guided welcome → connect flow (issue #96) — unless the user is
-// already inside it. The ⚙ Inventory source view (/source) is deliberately not
+// dead-end on a "not configured" panel. Instead we route to the connect gate —
+// welcome, then the connect screen (ADR-0015) — unless the user is already
+// inside it. The ⚙ Inventory source view (/source) is deliberately not
 // exempt: it is connected-only (it shows "connected · N primitives"), so an
-// unconfigured visitor belongs in the wizard, not on a source view with nothing
-// to show. The signal is useFirstRun, backed by the config
+// unconfigured visitor belongs in the connect gate, not on a source view with
+// nothing to show. The signal is useFirstRun, backed by the config
 // endpoint's 200-with-inventoryPath-null answer: a success response, so there
 // is no retry delay before the redirect (unlike keying off an error). While the
 // config is still loading, every route *other than the welcome root* renders
 // unchanged — but /welcome itself is held on a neutral loading state until the
 // answer is known (see below), so it never flashes for a configured user.
 //
-// The reverse also has to hold ("configured -> the wizard never shows",
+// The reverse also has to hold ("configured -> the connect gate never shows",
 // issue #96): a configured user who deep-links or navigates straight to
 // /welcome (a stale bookmark, browser back/forward) is bounced to the landing
 // route too, not just an unconfigured one bounced in — and this has to hold
 // even during the pending window before the config query resolves, not only
 // once it does (Codex review finding), otherwise WelcomeView renders for one
 // tick before the effect-free redirect below ever runs. This only guards the
-// welcome root, not /welcome/connect: the connect step is where "unconfigured"
+// welcome root, not /welcome/connect: the connect screen is where "unconfigured"
 // flips to "configured" mid-flow (the moment the connect mutation succeeds),
 // and it deliberately keeps showing its confirmation + "Continue" until the
 // user acts — bouncing on that same state change would yank the confirmation
 // away before it can be read. It manages its own pending/redirect guard
-// locally instead (see wizard-connect-view.tsx), because only it can tell
+// locally instead (see connect-view.tsx), because only it can tell
 // "already configured on arrival" apart from "just connected here".
-const WIZARD_PATH = "/welcome";
+const GATE_PATH = "/welcome";
 
-function isWizardRoute(pathname: string): boolean {
-  return pathname === WIZARD_PATH || pathname.startsWith(`${WIZARD_PATH}/`);
+function isGateRoute(pathname: string): boolean {
+  return pathname === GATE_PATH || pathname.startsWith(`${GATE_PATH}/`);
 }
 
 export function FirstRunGate() {
@@ -42,11 +42,11 @@ export function FirstRunGate() {
   const firstRun = useFirstRun();
   const configured = useIsConfigured();
 
-  if (firstRun && !isWizardRoute(pathname)) {
-    return <Navigate to={WIZARD_PATH} replace />;
+  if (firstRun && !isGateRoute(pathname)) {
+    return <Navigate to={GATE_PATH} replace />;
   }
 
-  if (pathname === WIZARD_PATH) {
+  if (pathname === GATE_PATH) {
     if (configured) {
       return <Navigate to="/" replace />;
     }

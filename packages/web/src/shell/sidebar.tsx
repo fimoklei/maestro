@@ -8,12 +8,13 @@ import { useFirstRun } from "./use-first-run";
 // wired here via the router's navigate/location so the active view is driven by
 // the URL, not local state. On a first run (design f1-empty) the sidebar goes
 // inert: nav is dimmed and unclickable (there is nothing behind it yet but the
-// wizard, which the gate already enforces), Targets reads "none yet" instead of
-// the real list, and the register affordance disappears — registering a repo
-// before an inventory exists has nothing to deploy. The register affordance
-// also stays hidden on the wizard routes themselves: the wizard's register
-// step (issue #97) teaches the same action as its main card, and a second
-// affordance for it on one screen competes with the step it is teaching.
+// connect gate, which the gate route already enforces), Targets reads "none
+// yet" instead of the real list, and the register affordance disappears —
+// registering a repo before an inventory exists has nothing to deploy. The
+// register affordance also stays hidden on the gate routes themselves: connect
+// success flips firstRun to false while the user is still reading the gate's
+// confirmation, and `+ repo` appearing mid-beat competes with the one action
+// that screen offers.
 const NAV_ITEMS = [
   { to: "/", label: "Deploy-state", icon: "⇶" },
   { to: "/inventory", label: "Inventory", icon: "▤" },
@@ -23,7 +24,7 @@ export function Sidebar() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const firstRun = useFirstRun();
-  const onWizard = pathname === "/welcome" || pathname.startsWith("/welcome/");
+  const onGate = pathname === "/welcome" || pathname.startsWith("/welcome/");
 
   return (
     <aside className="flex w-64 shrink-0 flex-col gap-0.5 overflow-y-auto border-line border-r p-2.5">
@@ -45,7 +46,7 @@ export function Sidebar() {
       ) : (
         <>
           <TargetsList />
-          {onWizard ? null : (
+          {onGate ? null : (
             <div className="mt-2.5 px-3">
               <SidebarRegister />
             </div>

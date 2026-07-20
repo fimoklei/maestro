@@ -16,10 +16,10 @@ import { useRereadInventory } from "./use-reread-inventory";
 
 // The steady-state ⚙ Inventory source view for a connected user (issue #98,
 // design frames inv-source-path / src-change-path). Distinct from the ▤
-// Inventory catalogue (which lists primitives) and from the first-run wizard:
+// Inventory catalogue (which lists primitives) and from the connect gate:
 // this screen owns the *connection* — it shows what Maestro is pointed at and
 // its live primitive count, re-reads on demand, and is where re-pointing lives
-// now that the wizard owns cold-start. Offline read-on-demand: no sync job, no
+// now that the connect gate owns cold-start. Offline read-on-demand: no sync job, no
 // "synced 2m ago" timestamp — the count is whatever the last inventory read
 // returned, refreshed only when the user re-reads.
 //
@@ -38,7 +38,7 @@ export function InventorySourceView() {
   const [isChanging, setIsChanging] = useState(false);
   // The field seeds from the current path (edit it to re-point) but a browse
   // selection or keystroke overwrites it — same controlled-form pattern as the
-  // wizard's connect step (see connect-inventory-form.tsx).
+  // connect gate's connect screen (see connect-inventory-form.tsx).
   const [editedPath, setEditedPath] = useState<string | undefined>(undefined);
   const path = editedPath ?? currentPath ?? "";
   // Connect mode confirms exactly one path; the list shape is the dialog's,

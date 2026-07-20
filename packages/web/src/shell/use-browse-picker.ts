@@ -1,9 +1,9 @@
 import { useState } from "react";
 
 // The open/select/close state for a BrowseDialog, shared by every container
-// that mounts one (the ⚙ Inventory source view's change-source form and the
-// wizard's connect and register steps) instead of each re-declaring the same
-// open flag and handler trio. Consuming
+// that mounts one (the ⚙ Inventory source view's change-source form, the
+// connect gate's connect screen, and the sidebar's `+ repo`) instead of each
+// re-declaring the same open flag and handler trio. Consuming
 // components still mount <BrowseDialog /> themselves — this only owns the
 // state, keeping the JSX (which differs slightly per container's layout) local.
 // The dialog confirms a list in both modes (issue #151) — one path in connect,

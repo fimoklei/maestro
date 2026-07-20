@@ -81,13 +81,13 @@ function renderAt(path: string) {
 }
 
 describe("first-run gate", () => {
-  it("routes the landing to the first-run wizard when no inventory is configured", async () => {
+  it("routes the landing to the connect gate when no inventory is configured", async () => {
     stubServer({ notConfigured: true });
     renderAt("/");
 
     expect(
       await screen.findByRole("heading", {
-        name: /connect your central inventory/i,
+        name: /central inventory not connected/i,
       }),
     ).toBeInTheDocument();
   });
@@ -113,15 +113,15 @@ describe("first-run gate", () => {
     ).toBeInTheDocument();
   });
 
-  it("routes an unconfigured user off the source view into the wizard", async () => {
+  it("routes an unconfigured user off the source view into the connect gate", async () => {
     // The source view is connected-only ("connected · N primitives"), so an
-    // unconfigured visitor belongs in the wizard, not on an empty source view.
+    // unconfigured visitor belongs in the connect gate, not on an empty source view.
     stubServer({ notConfigured: true });
     renderAt("/source");
 
     expect(
       await screen.findByRole("heading", {
-        name: /connect your central inventory/i,
+        name: /central inventory not connected/i,
       }),
     ).toBeInTheDocument();
     expect(
@@ -129,17 +129,17 @@ describe("first-run gate", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("never shows the wizard to a configured user, even navigating there directly", async () => {
+  it("never shows the connect gate to a configured user, even navigating there directly", async () => {
     stubServer({ notConfigured: false });
     renderAt("/welcome");
 
     // Checked synchronously, before the config fetch resolves: the gate must
     // not render Welcome for even the brief pending window (Codex review
     // finding — mirrors the same fix already applied to /welcome/connect in
-    // wizard-connect-view.tsx).
+    // connect-view.tsx).
     expect(
       screen.queryByRole("heading", {
-        name: /connect your central inventory/i,
+        name: /central inventory not connected/i,
       }),
     ).not.toBeInTheDocument();
 
@@ -148,7 +148,7 @@ describe("first-run gate", () => {
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", {
-        name: /connect your central inventory/i,
+        name: /central inventory not connected/i,
       }),
     ).not.toBeInTheDocument();
   });
@@ -176,7 +176,7 @@ describe("first-run gate", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: /connect your central inventory/i,
+        name: /central inventory not connected/i,
       }),
     ).toBeInTheDocument();
   });

@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { WizardConnectView } from "./wizard-connect-view";
+import { ConnectView } from "./connect-view";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -63,11 +63,8 @@ function renderView() {
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={["/welcome/connect"]}>
         <Routes>
-          <Route path="/welcome/connect" element={<WizardConnectView />} />
-          <Route
-            path="/welcome/repos"
-            element={<div>register-step-landed</div>}
-          />
+          <Route path="/welcome/connect" element={<ConnectView />} />
+          <Route path="/inventory" element={<div>inventory-landed</div>} />
           <Route path="/" element={<div>deploy-state-landed</div>} />
         </Routes>
       </MemoryRouter>
@@ -75,7 +72,19 @@ function renderView() {
   );
 }
 
-describe("WizardConnectView", () => {
+describe("ConnectView", () => {
+  it("opens the document outline with a real h1", async () => {
+    stubApi();
+    renderView();
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: /connect central inventory/i,
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("shows the confirmation with the primitive count after a successful connect", async () => {
     stubApi();
     renderView();
@@ -94,7 +103,7 @@ describe("WizardConnectView", () => {
     ).toBeInTheDocument();
   });
 
-  it("moves on to the register step once the user continues past the confirmation", async () => {
+  it("lands on Inventory once the user continues past the confirmation", async () => {
     stubApi();
     renderView();
 
@@ -109,7 +118,7 @@ describe("WizardConnectView", () => {
       await screen.findByRole("button", { name: /continue/i }),
     );
 
-    expect(await screen.findByText("register-step-landed")).toBeInTheDocument();
+    expect(await screen.findByText("inventory-landed")).toBeInTheDocument();
   });
 
   it("shows a readable error for an invalid path and stays on the step", async () => {
@@ -211,7 +220,7 @@ describe("WizardConnectView", () => {
     // resolve: the form must not render even for the brief pending window
     // while the cockpit doesn't yet know whether this user is configured
     // (Codex review finding — a flash of the first-run form before the
-    // redirect effect fires would still violate "the wizard never shows").
+    // redirect effect fires would still violate "the connect gate never shows").
     expect(screen.queryByLabelText(/inventory path/i)).not.toBeInTheDocument();
 
     expect(await screen.findByText("deploy-state-landed")).toBeInTheDocument();
