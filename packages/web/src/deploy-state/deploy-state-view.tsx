@@ -34,7 +34,7 @@ function ColdStartNudge() {
     >
       <span className="text-fg">Nothing deployed yet.</span>
       <span className="text-muted">
-        Deploy your first skill from the{" "}
+        Deploy the first skill from the{" "}
         <Link to="/inventory" className="text-amber-ink underline">
           Inventory
         </Link>

@@ -1,3 +1,4 @@
+import { RegisterRepoHint } from "../registry/register-repo-hint";
 import { useRegistry } from "../registry/use-registry";
 import { SectionHeader } from "../ui/section-header";
 import { DeployStatePanel } from "./deploy-state-panel";
@@ -33,6 +34,11 @@ export function DeployStateSection() {
             <DeployStatePanel key={repo.path} repo={repo.path} />
           ))}
         </div>
+      ) : null}
+      {/* Only on a proven-empty registry — a pending or failed read yields the
+          same empty list, and both are already reported below. */}
+      {registry.isSuccess && repos.length === 0 ? (
+        <RegisterRepoHint className="mt-3 block" />
       ) : null}
       {registry.isLoading ? (
         <p className="mt-3 text-dim text-tag">Loading registered repos…</p>
