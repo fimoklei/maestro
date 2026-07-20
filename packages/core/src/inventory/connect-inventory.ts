@@ -17,7 +17,7 @@ export type ConnectInventoryError =
   | "not-an-inventory"
   | "no-usable-origin";
 
-export type ConnectInventoryResult =
+type ConnectInventoryResult =
   | { ok: true; inventoryPath: string }
   | { ok: false; error: ConnectInventoryError };
 

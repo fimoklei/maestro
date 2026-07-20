@@ -5,7 +5,7 @@
 // next same-ref apm install would silently reset (apm-driver.md, #56).
 export type DeployedFileHashes = Record<string, string>;
 
-export type DeployedDrift = "clean" | "diverged";
+type DeployedDrift = "clean" | "diverged";
 
 export function classifyDeployedDrift(
   lockHashes: DeployedFileHashes,

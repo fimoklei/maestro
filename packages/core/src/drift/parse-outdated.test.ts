@@ -90,6 +90,30 @@ describe("parseOutdated", () => {
     });
   });
 
+  it("reads 'unknown' outside the Status column as ordinary data, not uncheckable", () => {
+    // Only the Status column states what apm concluded. The other four carry a
+    // package name, two version strings and a source — content apm does not
+    // constrain, so any of them may legitimately read "unknown". A row whose
+    // Status says "outdated" is a resolved check whatever the rest holds;
+    // scanning the whole row for the token would call it a reachability failure.
+    const unknownVersion =
+      "│ owner/repo/skills/tdd │ unknown │ v0.5.1 │ outdated │ git tags │";
+    expect(parseOutdated(unknownVersion)).toEqual({
+      ok: true,
+      behind: [{ name: "tdd", current: "unknown", latest: "v0.5.1" }],
+    });
+  });
+
+  it("finds the Status column on an uncheckable row despite its empty Source cell", () => {
+    // The uncheckable row's Source cell is empty (fixture
+    // apm-outdated-could-not-check.txt), so a parser that drops empty cells
+    // shifts every later column left. Without the summary banner the Status
+    // column is the only signal left, so it must be read by position — an empty
+    // cell has to keep its place.
+    const rowOnly = "│ owner/repo/skills/tdd │ v0.5.0 │ - │ unknown │ │";
+    expect(parseOutdated(rowOnly)).toEqual({ ok: false, reason: "unverified" });
+  });
+
   it("never lets an uncheckable dep hide behind a checkable outdated one", () => {
     // A mix of one outdated (resolved) and one uncheckable dep. Parsing only the
     // outdated row would drop the uncheckable one, silently rendering it

@@ -124,7 +124,7 @@ export type DeployedCleanupPort = {
   }): Promise<void>;
 };
 
-export type DeploySkillInput = {
+type DeploySkillInput = {
   // Accepted as a plain string at the edge; the skill-only rule is a business
   // rule here, not a schema shape, so the user gets an honest message.
   type: string;
@@ -185,7 +185,7 @@ export type DeploySkillError =
   // Catch-all for apm/git execution failures (CLI missing, no auth/network).
   | "deploy-failed";
 
-export type DeploySkillResult =
+type DeploySkillResult =
   | { ok: true; deployed: { type: "skill"; name: string; version: string } }
   | { ok: false; error: DeploySkillError };
 

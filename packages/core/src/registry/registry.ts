@@ -10,7 +10,7 @@ import { type RepoPathError, validateRepoPath } from "./repo-path";
 
 export type RegisteredRepo = { path: string };
 
-export type RegisterResult =
+type RegisterResult =
   | { ok: true; repos: RegisteredRepo[] }
   | { ok: false; error: RepoPathError };
 

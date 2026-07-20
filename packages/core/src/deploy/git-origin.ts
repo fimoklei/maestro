@@ -4,7 +4,7 @@
 // whose transport the ref cannot carry — is null; the caller treats that as
 // "origin unavailable", never a guess.
 
-export type GitOrigin = { host: string; ownerRepo: string };
+type GitOrigin = { host: string; ownerRepo: string };
 
 // scp-like SSH form has no `://` and uses a colon before the path.
 const scpPattern = /^[^/]+@([^:]+):(.+?)(?:\.git)?$/;

@@ -42,36 +42,54 @@ const NO_REMOTE = /No remote dependencies to check/;
 const COULD_NOT_CHECK = /could not be checked/;
 const UNCHECKABLE_STATUS = "unknown";
 
-// A data row: five │-separated cells. We split on the light vertical bar, which
-// only data rows use — the header and separators use heavy box-drawing glyphs
-// (apm-driver.md).
-const cellsOf = (line: string): string[] =>
-  line
+// The table's five columns, in apm's order. Only Status says what apm concluded
+// about a dep; the other four are data whose content apm does not constrain, so
+// every judgment below reads Status by position and never scans the row for a
+// bare token (fixture apm-outdated-could-not-check.txt).
+const [PACKAGE, CURRENT, LATEST, STATUS] = [0, 1, 2, 3];
+const COLUMN_COUNT = 5;
+
+// The cells of one data row, empties included, or null when the line is not a
+// data row. We split on the light vertical bar, which only data rows use — the
+// header and separators use heavy box-drawing glyphs (apm-driver.md). The split
+// yields the text outside the outer bars as a first and last element; dropping
+// those leaves exactly the columns, so an empty cell still holds its place and
+// Status keeps its index. The uncheckable row relies on that: its Source cell is
+// empty (apm-driver.md).
+const cellsOf = (line: string): string[] | null => {
+  if (!line.includes("│")) {
+    return null;
+  }
+  const cells = line
     .split("│")
-    .map((cell) => cell.trim())
-    .filter((cell) => cell.length > 0);
+    .slice(1, -1)
+    .map((cell) => cell.trim());
+  return cells.length === COLUMN_COUNT ? cells : null;
+};
+
+const rowsOf = (output: string): string[][] =>
+  output
+    .split("\n")
+    .map(cellsOf)
+    .filter((cells) => cells !== null);
 
 const lastSegment = (packageCell: string): string =>
   packageCell.split("/").at(-1) ?? packageCell;
 
 // True when apm flagged any dep as uncheckable — its "could not be checked"
-// summary, or a data row whose status cell is "unknown". The row carries an
-// empty Source cell, so it survives as four cells (not five) and is matched by
-// the status token directly rather than by column position (apm-driver.md).
+// summary, or a row whose Status column reads "unknown".
 const hasUncheckable = (output: string): boolean =>
   COULD_NOT_CHECK.test(output) ||
-  output.split("\n").some((line) => cellsOf(line).includes(UNCHECKABLE_STATUS));
+  rowsOf(output).some((cells) => cells[STATUS] === UNCHECKABLE_STATUS);
 
 const behindFromRows = (output: string): VersionDrift[] => {
   const behind: VersionDrift[] = [];
-  for (const line of output.split("\n")) {
-    const cells = cellsOf(line);
-    if (cells.length !== 5) {
-      continue;
-    }
-    const [packageCell, current, latest, status] = cells;
+  for (const cells of rowsOf(output)) {
+    const packageCell = cells[PACKAGE];
+    const current = cells[CURRENT];
+    const latest = cells[LATEST];
     if (
-      status !== "outdated" ||
+      cells[STATUS] !== "outdated" ||
       packageCell === undefined ||
       current === undefined ||
       latest === undefined
