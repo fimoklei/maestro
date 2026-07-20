@@ -49,10 +49,11 @@ const INSTALL_SUCCESS_MARKER = /installed \d+ apm dependenc/;
 // apm's fixed failure signals on an install. The marker alone is not enough: on
 // 0.20.0 a refused install prints `Installed 1 APM dependency ... with 1
 // error(s)`, so the marker without this check reads a refusal as a success
-// (#180). `Installation failed` is the 0.25.0 shape, which prints no marker at
-// all (docs/research/apm-0.25-symlink-topology-impact.md). `[1-9]\d*`, not
-// `\d+`: a `with 0 error(s)` summary must not turn a genuine success into a
-// failure.
+// (#180). `Installation failed` is the shape apm 0.26.0 prints instead — no
+// marker at all, exit 1 (measured 2026-07-20, #183; capture in
+// tests/fixtures/apm-install-symlink-refused.txt). Both signals stay: the
+// driver must classify either dialect. `[1-9]\d*`, not `\d+`: a `with 0
+// error(s)` summary must not turn a genuine success into a failure.
 const INSTALL_FAILURE_SIGNALS = [
   /with [1-9]\d* error\(s\)/,
   /installation failed/,

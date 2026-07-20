@@ -1,4 +1,5 @@
 [*] Created apm.yml
+[i] Targets set: claude (persisted to apm.yml)
 [*] Validating 1 package...
 [+] fimoklei/agent-harness/skills/tdd#v0.5.0
 [*] Updated apm.yml with 1 new package(s)
@@ -12,4 +13,5 @@ may not support filter v2.
   |-- Skill integrated -> .claude/skills/
 [i] Added apm_modules/ to .gitignore
 
-[*] Installed 1 APM dependency in 10.4s.
+[*] Installed 1 APM dependency in 3.8s.
+

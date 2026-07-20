@@ -1,15 +1,11 @@
-# Captured 2026-07-19 from apm 0.20.0: `apm install github.com/fimoklei/agent-harness/skills/tdd#v0.5.1 -g -t claude`
-# against a sandbox HOME whose ~/.claude/skills/tdd was a symlink. Exit code 1.
-[!] A new version of APM is available: 0.26.0 (current: 0.20.0)
-Run apm update to upgrade
-
 [i] Installing to user scope (~/.apm/)
 [!] User-scope primitives are fully supported by claude, kiro, gemini, 
 agent-skills, openclaw, hermes, copilot-cowork, copilot-app. Partially 
-supported: copilot, cursor, opencode, codex, windsurf.
+supported: copilot, cursor, opencode, antigravity, codex, windsurf.
 Some primitives are not supported: cursor (instructions); opencode (hooks); 
-windsurf (instructions)
-[*] Created /tmp/apm-symlink-fixture/.apm/apm.yml
+antigravity (instructions, hooks); windsurf (instructions)
+[*] Created /tmp/apm-fx-symlink/.apm/apm.yml
+[i] Targets set: claude (persisted to /tmp/apm-fx-symlink/.apm/apm.yml)
 [*] Validating 1 package...
 [+] fimoklei/agent-harness/skills/tdd#v0.5.1
 [*] Updated apm.yml with 1 new package(s)
@@ -21,9 +17,11 @@ may not support filter v2.
   [+] github.com/fimoklei/agent-harness/skills/tdd#v0.5.1 #v0.5.1 @471c4b26
   [+] <project root> (local)
   |-- (files unchanged)
+[i] Removed apm.yml created by the failed install.
   [x] 1 package failed:
     +- fimoklei/agent-harness/skills/tdd -- Failed to integrate primitives from 
-cached package: Skill destination /tmp/apm-symlink-fixture/.claude/skills/tdd is
-a symlink -- refusing to deploy
-[!] Installed 1 APM dependency in 3.2s with 1 error(s).
-[!] Install interrupted after 3.2s.
+cached package: Skill destination /tmp/apm-fx-symlink/.claude/skills/tdd is a 
+symlink -- refusing to deploy
+[x] Installation failed with 1 error(s) in 3.4s. No install transaction changes 
+were committed.
+
