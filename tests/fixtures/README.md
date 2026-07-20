@@ -44,7 +44,6 @@ Phrases a fixture comment must never contain: `is a symlink`,
 | `apm-outdated-could-not-check.txt` | `apm outdated` | `COLUMNS=200`, repo pinned at v0.5.0, no credentials | 0 | out |
 | `apm-outdated-global.txt` | `apm outdated -g` | `COLUMNS=200`, global install pinned at v0.5.0, authed | 0 | out |
 | `apm-outdated-global-uptodate.txt` | `apm outdated -g` | `COLUMNS=200`, global install at the latest tag, authed | 0 | out |
-| `apm-outdated-no-remote.txt` | `apm outdated` | `COLUMNS=200`, sole dependency installed from a local path | 0 | out |
 | `apm-update-noop.txt` | `apm update -y -t claude,codex` | `COLUMNS=120`, repo pinned at v0.5.0 while v0.5.1 exists | 0 | out+err |
 | `apm-targets-claude.json` | `apm targets --json` | repo containing `.claude/` only | 0 | out |
 
