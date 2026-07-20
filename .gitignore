@@ -13,6 +13,7 @@ storybook-static/
 # Personal, machine-local skill symlinks (point into the user's ~/.agents).
 # Project skills, if ever tracked, should be added explicitly.
 .claude/skills/
+.agents/skills/
 
 # Per-branch git worktrees created by agent sessions (local checkouts, not source).
 .claude/worktrees/
@@ -25,3 +26,7 @@ storybook-static/
 
 # Codex CLI hook config written per machine (local tool state, not source).
 .codex/
+
+# Impeccable live-mode session journals (local runtime state, not source).
+# The design sidecar and live config are tracked.
+.impeccable/live/sessions/

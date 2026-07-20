@@ -52,12 +52,19 @@ sub-steps, and grill altitudes.
 - **`CONTEXT.md`** — the glossary.
 - **`docs/adr/`** — binding decisions.
 - **`.claude/rules/`** — how agents work in this repo.
+- **`PRODUCT.md`** / **`DESIGN.md`** — the design-facing summaries agents read
+  before building UI. Summaries only; see the conflict rule.
 
 ## Conflict rule
 
 When documents disagree: `docs/jobs.md` (what now) → accepted ADRs (what was
-decided) → `CONTEXT.md` (what words mean) → `docs/brief.md` (why). Unresolvable
-conflict → stop and flag, do not guess.
+decided) → `CONTEXT.md` (what words mean) → `docs/brief.md` (why) → `PRODUCT.md`
+and `DESIGN.md` (the design-facing summaries). Unresolvable conflict → stop and
+flag, do not guess.
+
+`PRODUCT.md` restates `docs/brief.md`; `DESIGN.md` restates the Control Room
+system in `docs/design/control-room/`. Both rank below their source, so a stale
+summary never overrules the original.
 
 ## The five terms
 
