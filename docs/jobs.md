@@ -27,7 +27,6 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 | Job | Main | Job story |
 |---|---|---|
-| Hear why a deploy failed · [#170](https://github.com/fimoklei/maestro/issues/170) | B | *When* a deploy fails, *I want to* hear apm's actual reason in the cockpit, *so I can* fix the cause instead of guessing. |
 
 ## NEXT
 
@@ -77,6 +76,7 @@ All shipped **skills-only**, solo, local-first.
 | Register a repo without friction · [#145](https://github.com/fimoklei/maestro/issues/145) | A, B | *When* I add a consuming repo to the cockpit, *I want to* find and pick its path without friction, *so I can* register it in seconds instead of fighting the input. |
 | Register repos from the sidebar without friction · [#175](https://github.com/fimoklei/maestro/issues/175) → [#163](https://github.com/fimoklei/maestro/issues/163) | A, B | *When* I register a repo after onboarding, *I want to* pick repos with the same browse picker the wizard gives me, *so I can* add several at once instead of pasting one path at a time. |
 | Connect the inventory — point at a local clone (J11) | A | *When* Maestro does not yet know where my central inventory is, *I want to* point it at my local clone as the inventory source, *so I can* have the cockpit read and show it instead of dead-ending. |
+| Hear why a deploy failed · [#170](https://github.com/fimoklei/maestro/issues/170) → [#180](https://github.com/fimoklei/maestro/issues/180) | B | *When* a deploy fails, *I want to* hear apm's actual reason in the cockpit, *so I can* fix the cause instead of guessing. |
 
 ## Out of scope
 

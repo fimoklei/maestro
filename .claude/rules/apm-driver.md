@@ -32,7 +32,7 @@ fail → retries full bare clone). Keep real `apm` out of the fast test loop
 
 ### Deploy failure & success signals (spiked 2026-07-13, apm 0.20.0, issue #119)
 
-Redirected `HOME`, no gh helper, private `agent-harness`. Two facts break the
+Redirected `HOME`, no gh helper, private `agent-harness`. Three facts break the
 naive "execFile throws on failure" model — the deploy path must not trust the
 exit code:
 
@@ -43,13 +43,16 @@ exit code:
    (`could not read Username`) or the env hints (`Set GITHUB_APM_PAT…`), and
    never echo the matched text (`security.md`). Fixture:
    `apm-view-auth-failed.txt`.
-2. **`apm install` exits 0 even when the install fails.** A failed install
-   prints `all probes failed … Nothing to install`, writes no lockfile, and
-   still exits 0 — so a `void`-on-throw driver reports a **failed install as
-   success**. Detect success by the **positive** marker `Installed \d+ APM
-   dependenc`, never the exit code; absent marker = failure (fail-closed).
-   Fixtures: `apm-install-probes-failed.txt` (failure), `apm-install-ok.txt`
-   (`[*] Installed 1 APM dependency`).
+2. **Neither the exit code nor the success marker is trustworthy alone.** A
+   failed install exits 0 with no marker (`apm-install-probes-failed.txt`); a
+   symlink-refused one exits 1 *with* it
+   (`apm-install-symlink-refused.txt`). Success = marker `Installed \d+ APM
+   dependenc` AND no `with <n≥1> error(s)` AND no `Installation failed`; absent
+   marker = failure (fail-closed). Fixture: `apm-install-ok.txt`.
+3. **Phrase `is a symlink` → `destination-symlinked`** (leaf skill dir only; a
+   directory-level symlink installs fine); every other install failure →
+   `failed`. Match all install signals on whitespace-normalized, lowercased
+   output — Rich wraps mid-sentence and `install` pins no `COLUMNS`.
 
 **Auth-only scope.** Only the two phrases classify `auth-required`; network /
 host-down / CLI-missing stay the generic failure. A nonexistent-but-authorized
