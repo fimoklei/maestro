@@ -27,6 +27,7 @@ storybook-static/
 # Codex CLI hook config written per machine (local tool state, not source).
 .codex/
 
-# Impeccable live-mode session journals (local runtime state, not source).
+# Impeccable local runtime state (session journals, per-session hook cache).
 # The design sidecar and live config are tracked.
 .impeccable/live/sessions/
+.impeccable/hook.cache.json

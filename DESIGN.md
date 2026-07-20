@@ -25,6 +25,32 @@ colors:
   type-hook: "#b48ad6"
   type-mcp: "#5fbfb0"
   type-bundle: "#e8a33d"
+  light-bg-0: "#eceef2"
+  light-bg-1: "#f5f7f9"
+  light-surface-card: "#ffffff"
+  light-surface-inset: "#f3f5f8"
+  light-surface-active: "#e6ebf1"
+  light-border-faint: "#eef1f4"
+  light-border-row: "#e6eaef"
+  light-border-strong: "#dce1e8"
+  light-border-chip: "#ccd3dc"
+  light-border-dashed: "#bfc8d2"
+  light-border-drift: "#e6cfa0"
+  light-border-amber-dim: "#ecddbf"
+  light-text-1: "#1a212b"
+  light-text-2: "#343e4b"
+  light-text-3: "#48525f"
+  light-text-muted: "#687482"
+  light-text-dim: "#8b95a1"
+  light-amber: "#e0a43c"
+  light-amber-ink: "#b0700f"
+  light-green: "#3dba75"
+  light-green-ink: "#178a4c"
+  light-on-accent: "#241d09"
+  light-type-skill: "#3163cc"
+  light-type-hook: "#8a55ce"
+  light-type-mcp: "#1a8e82"
+  light-type-bundle: "#b0700f"
 typography:
   title:
     fontFamily: "Space Grotesk Variable, Space Grotesk, Helvetica Neue, sans-serif"
@@ -131,10 +157,15 @@ components:
 
 # Design System: Maestro
 
-Canonical source: the "Control Room" design system in `docs/design/control-room/`
-(mirrored from Claude Design; see ADR-0008) and its port in
-`packages/web/src/styles/`. This file is the agent-facing summary. Where the two
-disagree, the live design system wins.
+The "Control Room" system is designed in Claude Design (project
+`382d1f68-3ef6-49f3-a058-a6eec53e6a86`, "Maestro Design System") and read
+through the DesignSync tool. It is owned in the app as Tailwind v4 `@theme`
+tokens (ADR-0008); `packages/web/src/styles/tokens.css` is what the browser
+actually loads, and therefore what ships.
+
+This file is the agent-facing summary, regenerated from those tokens with
+`/impeccable document`. It is derived, never hand-maintained: on any conflict
+the live design project wins, and `tokens.css` wins over the prose here.
 
 ## 1. Overview
 
@@ -209,9 +240,11 @@ anywhere else in the interface.
 - **Text ramp** (`#e6e9ed` → `#5a6470` dark; `#1a212b` → `#8b95a1` light): five
   steps from primary text down to dim labels. Dim is for micro-labels and
   disabled states only, never for body copy.
-- **Border ramp** (`#13181e` → `#232a33` dark): six steps from hairline to chip
-  outline. A dashed `#2a313a` border marks an additive affordance; a warm
-  `#4a3a1c` outline marks a card whose contents drift.
+- **Border ramp** (`#13181e` → `#232a33` dark; `#eef1f4` → `#ccd3dc` light): six
+  steps from hairline to chip outline. A dashed border marks an additive
+  affordance (`#2a313a` dark / `#bfc8d2` light); a warm outline marks a card
+  whose contents drift (`#4a3a1c` dark / `#e6cfa0` light). The dim amber outline
+  used by the ghost button is `#3a3327` dark / `#ecddbf` light.
 
 ### Named Rules
 

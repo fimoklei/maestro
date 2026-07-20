@@ -1,9 +1,11 @@
-/* Control Room raw colour tokens — the single source of truth for everything
-   that flips between dark and light, ported verbatim from
-   docs/design/control-room/tokens/colors.css. Names match the design system
-   exactly so a re-sync from the design tool stays a straight copy. The Tailwind
-   utility layer (theme.css, @theme inline) aliases these to clean utility names;
-   components use the utilities, never these raw names directly.
+/* Control Room raw colour tokens — the single source of truth in this repo for
+   everything that flips between dark and light. Ported from the Claude Design
+   project 382d1f68-3ef6-49f3-a058-a6eec53e6a86 ("Maestro Design System"), read
+   through the DesignSync tool; names match it exactly so a re-sync stays a
+   straight copy. That project is upstream: when it changes, copy the new values
+   here, then refresh the repo's DESIGN.md summary with `/impeccable document`.
+   The Tailwind utility layer (theme.css, @theme inline) aliases these to clean
+   utility names; components use the utilities, never these raw names directly.
 
    Theme-independent tokens (fonts, type scale, radii, spacing) are NOT here —
    they live as literal values in theme.css's @theme block, since they never

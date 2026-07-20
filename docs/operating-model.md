@@ -63,7 +63,8 @@ and `DESIGN.md` (the design-facing summaries). Unresolvable conflict → stop an
 flag, do not guess.
 
 `PRODUCT.md` restates `docs/brief.md`; `DESIGN.md` restates the Control Room
-system in `docs/design/control-room/`. Both rank below their source, so a stale
+system, which is designed in Claude Design and shipped as
+`packages/web/src/styles/tokens.css`. Both rank below their source, so a stale
 summary never overrules the original.
 
 ## The five terms
