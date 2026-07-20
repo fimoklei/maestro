@@ -2,9 +2,9 @@ import type { FormEvent } from "react";
 import { Button } from "../ui/button";
 
 // Presentational form for the offline connect flow: a labelled path input + a
-// connect action. Extracted so the first-run wizard's connect step and the
+// connect action. Extracted so the connect gate's connect step and the
 // ⚙ Inventory source re-point view share it instead of duplicating it (PRD
-// #93). The path is now a controlled prop, not local state — both the wizard's
+// #93). The path is now a controlled prop, not local state — both the connect gate's
 // connect step and Settings need to seed/overwrite it from a "browse…" picker
 // selection, which only a container-owned value allows (see frontend.md: this
 // is UI-state, just owned one level up so two screens can drive it).

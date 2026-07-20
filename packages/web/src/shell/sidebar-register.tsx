@@ -2,11 +2,11 @@ import { Button } from "../ui/button";
 import { BrowseDialog } from "./browse-dialog";
 import { useRegisterPicker } from "./use-register-picker";
 
-// The sidebar's steady-state "register a repo" affordance (issue #163): one
-// `+ repo` button that opens the browse picker in register mode, so registering
-// several repos in one go works past onboarding too — not only in the wizard's
-// register step, which shipped it first (#151). The wiring is shared with that
-// step (`use-register-picker.ts`); only the button differs.
+// The sidebar's "register a repo" affordance (issue #163): one `+ repo` button
+// that opens the browse picker in register mode, so several repos can be
+// registered in one go. Since ADR-0015 this is registration's only control —
+// the connect gate never registers anything. The wiring lives in
+// `use-register-picker.ts`; this file owns only the button.
 //
 // No path field here, and no list: the picker's own paste field already takes a
 // hand-typed absolute path (including one outside the home directory that

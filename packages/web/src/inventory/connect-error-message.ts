@@ -1,7 +1,7 @@
 import { HttpError } from "../api/http";
 
 // Shared mapping from a connect mutation's error to the readable text shown
-// next to the path field. Both the Settings re-point screen and the wizard's
+// next to the path field. Both the Settings re-point screen and the connect gate's
 // connect step need this, and it must stay identical between them — a server
 // validation message should read the same regardless of which screen it
 // surfaced on.

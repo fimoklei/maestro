@@ -20,7 +20,7 @@ export function useConnectInventory() {
       // Seed the config cache synchronously from the mutation's own response,
       // not just invalidateQueries: invalidation only marks the query stale
       // and schedules a background refetch, it does not update the cache
-      // itself. The wizard navigates to "/" the moment the user clicks
+      // itself. The connect gate navigates onward the moment the user clicks
       // Continue, which can be before that refetch resolves — without this,
       // useFirstRun would still read the pre-connect cached answer at that
       // instant and the gate would bounce the user straight back to /welcome

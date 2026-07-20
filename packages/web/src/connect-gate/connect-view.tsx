@@ -12,25 +12,26 @@ import { useBrowsePicker } from "../shell/use-browse-picker";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { SectionHeader } from "../ui/section-header";
-import { WizardProgress } from "./wizard-progress";
 
-// The wizard's connect step (issue #96, design f1-connect-path): the same
-// shared ConnectInventoryForm the Settings re-point screen uses (PRD #93), but
-// landing differently — a visible confirmation with the primitive count, then
-// an explicit continue onto Deploy-state, rather than Settings' silent
-// navigate-to-Inventory. The explicit "Continue" (rather than auto-navigating
-// the instant the mutation resolves) is deliberate: the confirmation is the
-// acceptance-criterion payload ("shows the primitive count"), so it must stay
-// on screen long enough to read, not flash past on the way to the register
-// step (issue #97), the wizard's second and final screen.
-export function WizardConnectView() {
+// The connect gate's second and final screen (ADR-0015): the same shared
+// ConnectInventoryForm the Settings re-point screen uses (PRD #93), but landing
+// differently — a visible confirmation with the primitive count and the
+// read-only promise, then an explicit continue onto Inventory, rather than
+// Settings' silent navigate. The explicit "Continue" (rather than
+// auto-navigating the instant the mutation resolves) is deliberate: the
+// confirmation is where the read-only promise lives, so it must stay on screen
+// long enough to read. Landing on Inventory rather than Deploy-state is also
+// deliberate — the connected primitives carry their own `deploy →` actions, and
+// a deploy is possible immediately because global targets exist without any
+// registration (ADR-0011).
+export function ConnectView() {
   const connect = useConnectInventory();
   const config = useInventoryConfig();
   const navigate = useNavigate();
   const [path, setPath] = useState("");
   // Connect mode confirms exactly one path; the list shape is the dialog's.
   const browse = useBrowsePicker(([selected]) => setPath(selected ?? ""));
-  // Blocks a deep link/bookmark into this step by an already-configured user
+  // Blocks a deep link/bookmark into this screen by an already-configured user
   // (the gate only guards /welcome itself, not this nested route — see
   // first-run-gate.tsx). Keyed off *this component's own* mutation, not just
   // "configured", so a connect that succeeds mid-flow (unconfigured ->
@@ -60,8 +61,9 @@ export function WizardConnectView() {
   return (
     <div className="flex flex-col gap-4">
       <SectionHeader
+        level={1}
         title="Connect central inventory"
-        meta="step 1 of 3 · point Maestro at a local inventory folder"
+        meta="the path of a local agent-harness clone"
       />
       <Card padded className="max-w-lg">
         {connect.isSuccess ? (
@@ -74,9 +76,9 @@ export function WizardConnectView() {
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => navigate("/welcome/repos")}
+                onClick={() => navigate("/inventory")}
               >
-                Continue to register repos →
+                Continue to inventory →
               </Button>
             </div>
           </div>
@@ -92,7 +94,6 @@ export function WizardConnectView() {
           />
         )}
       </Card>
-      <WizardProgress activeStep={1} />
       {browse.open ? (
         <BrowseDialog
           mode="connect"

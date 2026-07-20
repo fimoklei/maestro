@@ -14,6 +14,17 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
+// The connect gate opts into h1: it is its own document, not a section of the
+// cockpit (ADR-0015). Visually identical to Default — the difference is the
+// document outline, which is what the level prop exists to fix.
+export const AsPageTitle: Story = {
+  args: {
+    level: 1,
+    title: "Connect central inventory",
+    meta: "the path of a local agent-harness clone",
+  },
+};
+
 export const WithAction: Story = {
   args: { title: "Central inventory", meta: "curated · production-ready" },
   render: (args) => (

@@ -79,12 +79,12 @@ describe("Sidebar first-run rendering", () => {
     expect(screen.queryByText(/none yet/i)).not.toBeInTheDocument();
   });
 
-  it("hides the register affordance on a wizard route even when configured", async () => {
-    // The wizard's register step teaches this very action as its main card;
-    // a second affordance for it on the same screen competes with the step
-    // (issue #97).
+  it("hides the register affordance on a gate route even when configured", async () => {
+    // Connect success flips firstRun to false while the user is still reading
+    // the gate's confirmation; `+ repo` appearing mid-beat competes with the
+    // one action that screen offers (ADR-0015).
     stubServer({ notConfigured: false });
-    renderSidebar("/welcome/repos");
+    renderSidebar("/welcome/connect");
 
     expect(
       await screen.findByRole("button", { name: "Deploy-state" }),

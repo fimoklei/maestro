@@ -95,7 +95,7 @@ export function StatusBar() {
   // source view (status · re-read · change source), reached at /source. Gate the
   // primitive read on being connected: during first-run
   // /api/inventory/primitives 409s, and an ungated query would retry that
-  // failure behind the wizard.
+  // failure behind the connect gate.
   const connected = connection === "connected";
   const inventory = useInventory({ enabled: connected });
   const path = config.data?.inventoryPath ?? null;
