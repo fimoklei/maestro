@@ -30,15 +30,8 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 ## NEXT
 
-Why now: second slice of the sequenced trio #170 → #171 → #172 from the
-symlink-topology grill (research:
-`docs/research/apm-0.25-symlink-topology-impact.md`) — the driver's observed
-knowledge has to catch up with the installed apm before the shared-directory
-read can be trusted.
-
 | Job | Main | Job story |
 |---|---|---|
-| Adopt apm 0.26 · [#171](https://github.com/fimoklei/maestro/issues/171) | B | *When* the engine moves ahead of Maestro's observed knowledge, *I want to* have the driver re-verified against the installed apm, *so I can* trust that cockpit behavior matches what the engine really does. |
 
 ## LATER
 
@@ -77,6 +70,7 @@ All shipped **skills-only**, solo, local-first.
 | Register repos from the sidebar without friction · [#175](https://github.com/fimoklei/maestro/issues/175) → [#163](https://github.com/fimoklei/maestro/issues/163) | A, B | *When* I register a repo after onboarding, *I want to* pick repos with the same browse picker the wizard gives me, *so I can* add several at once instead of pasting one path at a time. |
 | Connect the inventory — point at a local clone (J11) | A | *When* Maestro does not yet know where my central inventory is, *I want to* point it at my local clone as the inventory source, *so I can* have the cockpit read and show it instead of dead-ending. |
 | Hear why a deploy failed · [#170](https://github.com/fimoklei/maestro/issues/170) → [#180](https://github.com/fimoklei/maestro/issues/180) | B | *When* a deploy fails, *I want to* hear apm's actual reason in the cockpit, *so I can* fix the cause instead of guessing. |
+| Adopt apm 0.26 · [#171](https://github.com/fimoklei/maestro/issues/171) → [#182](https://github.com/fimoklei/maestro/issues/182)–[#185](https://github.com/fimoklei/maestro/issues/185), [#191](https://github.com/fimoklei/maestro/issues/191) | B | *When* the engine moves ahead of Maestro's observed knowledge, *I want to* have the driver re-verified against the installed apm, *so I can* trust that cockpit behavior matches what the engine really does. |
 
 ## Out of scope
 
