@@ -8,9 +8,9 @@ component or screen to a design.
 The design lives in Claude Design projects, read through the `DesignSync` MCP
 tool (`list_projects` to find them, `get_file` to read one):
 
-- **Design system** — tokens, component contracts, guidelines. Mirrored under
-  `docs/design/control-room/` and owned in the app's Tailwind theme (ADR-0008).
-  Port from these; don't import them.
+- **Design system** — tokens, component contracts, guidelines. Owned in the
+  app's Tailwind theme (ADR-0008); `packages/web/src/styles/tokens.css` is what
+  ships. Port from the live project; don't import it.
 - **Flow screens** — the per-feature layout and copy (for example, the "First
   run story flow"). No local copy exists; read them live. An issue that needs a
   screen links to it and names its frames.
