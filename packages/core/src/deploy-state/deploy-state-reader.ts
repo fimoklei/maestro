@@ -31,14 +31,10 @@ type GlobalDeployStateResult =
   | { ok: false; error: "malformed" };
 
 export class DeployStateReader {
-  private readonly fs: FileSystemPort;
-  // Only the global read needs tool presence; the per-repo read never does, so
-  // it stays optional and per-repo callers construct with just { fs }.
-  private readonly toolPresence?: ToolPresencePort;
+  protected readonly fs: FileSystemPort;
 
-  constructor(deps: { fs: FileSystemPort; toolPresence?: ToolPresencePort }) {
+  constructor(deps: { fs: FileSystemPort }) {
     this.fs = deps.fs;
-    this.toolPresence = deps.toolPresence;
   }
 
   async read(repoPath: string): Promise<DeployStateResult> {
@@ -71,19 +67,26 @@ export class DeployStateReader {
     }
     return { ok: true, primitives, skipped };
   }
+}
+
+// The global read on its own type, so the tool-presence dependency it cannot
+// work without is required by the constructor. A caller that omits it fails to
+// compile instead of answering 500 under a lane nobody runs (#187). The
+// per-repo read stays on the base class, so a caller that never reads global
+// state still constructs with just { fs }.
+export class GlobalDeployStateReader extends DeployStateReader {
+  private readonly toolPresence: ToolPresencePort;
+
+  constructor(deps: { fs: FileSystemPort; toolPresence: ToolPresencePort }) {
+    super(deps);
+    this.toolPresence = deps.toolPresence;
+  }
 
   // Reads the user-scope lockfile at `rootPath` and groups its entries per
   // detected tool (ADR-0011). The server resolves rootPath itself; no client
   // path reaches here. Detection is live per read (the presence port), so a tool
   // installed since startup shows up without a restart.
   async readGlobal(rootPath: string): Promise<GlobalDeployStateResult> {
-    if (this.toolPresence === undefined) {
-      // A programmer-error tripwire: readGlobal is only wired where a presence
-      // port is injected (the global route); it is never reachable in practice.
-      throw new Error(
-        "DeployStateReader.readGlobal requires a toolPresence dependency",
-      );
-    }
     const detected = await this.toolPresence.detectGlobalTools();
     const raw = await this.fs.readFile(join(rootPath, "apm.lock.yaml"));
     if (raw === null) {

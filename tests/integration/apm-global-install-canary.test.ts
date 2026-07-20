@@ -1,13 +1,15 @@
 // The real global-install canary (issue #35): proves the genuine
 // `apm install <ref> -g -t claude,codex` round-trip that the automated suite
 // otherwise only exercises against a faked driver. When enabled it shells out
-// to the real apm CLI against a throwaway sandbox HOME, then reads the global
-// deploy-state endpoint back from that same HOME — both deployed targets on
-// disk and the pinned tag surfaced, grouped per detected tool. The sandbox HOME
-// is seeded with every supported tool's presence marker first, because both the
-// install target and the grouped read derive from live detection (ADR-0011); an
-// unseeded home detects nothing and the round-trip has nothing to prove. It
-// needs network plus auth to the private
+// to the real apm CLI against a throwaway sandbox HOME and asserts what only
+// real apm can prove: the skill lands under both deployed targets on disk, and
+// apm's own global lockfile pins the tag we resolved. Whether the endpoint
+// shapes that lockfile into the right response is the fast lane's job
+// (server-global-deploy-state.test.ts) — a second copy here only rots, because
+// only this file is gated behind an env var (#187). The sandbox HOME is seeded
+// with every supported tool's presence marker first, because the install target
+// derives from live detection (ADR-0011); an unseeded home detects nothing and
+// the round-trip has nothing to prove. It needs network plus auth to the private
 // agent-harness repo, so it is gated behind MAESTRO_REAL_APM=1 (the same switch
 // as apm-canary.test.ts) and stays out of the fast loop; lacking the env it
 // skips loudly rather than passing silently.
@@ -16,26 +18,19 @@
 // real ~/.apm, ~/.claude/skills, and ~/.agents/skills are never touched, and
 // `apm uninstall -g` (which once deleted 19 real skill dirs) is never run.
 import { execFile } from "node:child_process";
-import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import {
+  access,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
-import {
-  ApmCliDriver,
-  ConfigStore,
-  DEPLOY_TOOLS,
-  DeployStateReader,
-  InventoryReader,
-  NodeFileSystem,
-  Registry,
-  ToolPresenceAdapter,
-} from "@maestro/core";
-import { createApp } from "@maestro/server";
+import { ApmCliDriver, DEPLOY_TOOLS, ToolPresenceAdapter } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { stubBrowse } from "../helpers/stub-browse";
-import { stubConnect } from "../helpers/stub-connect";
-import { stubDeploy } from "../helpers/stub-deploy";
-import { stubDrift } from "../helpers/stub-drift";
 
 const run = promisify(execFile);
 
@@ -107,8 +102,8 @@ describe.runIf(enabled)("real apm global install canary", () => {
 
     const ref = `github.com/${HARNESS}/skills/${SKILL}#${tag}`;
     // A global install targets exactly the detected tools (ADR-0011), so the
-    // deploy is fed the same detection the read below groups by — a literal
-    // set here would let the two drift apart unnoticed.
+    // deploy is fed live detection rather than a literal set that could drift
+    // away from what the machine has.
     // The driver reports its own verdict rather than throwing (#180), so assert
     // it: otherwise a real apm whose output stopped matching the success shape
     // would still write the files checked below and pass this canary, while
@@ -130,25 +125,13 @@ describe.runIf(enabled)("real apm global install canary", () => {
       access(join(home, ".agents", "skills", SKILL)),
     ).resolves.toBeUndefined();
 
-    // The global deploy-state endpoint reads the same sandbox home and
-    // surfaces the skill at its pinned tag, grouped per detected tool
-    // (ADR-0011). One lockfile entry carries both copies, so both detected
-    // tools report the same skill.
-    const res = await makeGlobalApp(home).request("/api/deploy-state/global");
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({
-      tools: [
-        {
-          tool: "claude",
-          primitives: [{ type: "skill", name: SKILL, version: tag }],
-        },
-        {
-          tool: "codex",
-          primitives: [{ type: "skill", name: SKILL, version: tag }],
-        },
-      ],
-      skipped: [],
-    });
+    // apm pinned the tag we resolved, recorded in its own global lockfile.
+    // Reading the raw text keeps this canary on what only real apm proves;
+    // parsing that lockfile and shaping it into a response is the fast lane's
+    // job (tests/integration/server-global-deploy-state.test.ts).
+    const lock = await readFile(join(home, ".apm", "apm.lock.yaml"), "utf8");
+    expect(lock).toContain(`virtual_path: skills/${SKILL}`);
+    expect(lock).toContain(`resolved_ref: ${tag}`);
   });
 });
 
@@ -157,32 +140,3 @@ describe.runIf(!enabled)("real apm global install canary (skipped)", () => {
     expect(enabled).toBe(false);
   });
 });
-
-// The deploy-state endpoint wired to read apm's global root under the sandbox
-// home, mirroring the server's production composition (server-side resolution,
-// no client-supplied path).
-function makeGlobalApp(home: string) {
-  const fs = new NodeFileSystem();
-  const registry = new Registry({
-    fs,
-    store: new ConfigStore({ fs, configPath: join(home, "config.json") }),
-  });
-  const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
-  // The global read detects tools live under the same sandbox home the deploy
-  // targeted, so the real adapter is wired against that home and never $HOME.
-  const deployState = new DeployStateReader({
-    fs,
-    toolPresence: new ToolPresenceAdapter({ homeRoot: () => home }),
-  });
-  return createApp({
-    registry,
-    inventory,
-    deployState,
-    deploy: stubDeploy({ inventory, registry }),
-    drift: stubDrift({ registry }),
-    resolveGlobalRoot: () => join(home, ".apm"),
-    connect: stubConnect(),
-    browse: stubBrowse(),
-    enforceOriginHost: false,
-  });
-}

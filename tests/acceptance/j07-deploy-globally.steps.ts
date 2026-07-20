@@ -6,7 +6,7 @@ import {
   ConfigStore,
   DeployedCleanupAdapter,
   DeploySkill,
-  DeployStateReader,
+  GlobalDeployStateReader,
   InventoryReader,
   NodeFileSystem,
   Registry,
@@ -84,7 +84,7 @@ describeFeature(
       const inventory = new InventoryReader({ fs, resolvePath: () => harness });
       // The global deploy-state read groups per detected tool, so it needs the
       // same presence signal the deploy uses — the scenario's presentTools.
-      const deployState = new DeployStateReader({
+      const deployState = new GlobalDeployStateReader({
         fs,
         toolPresence: { detectGlobalTools: async () => presentTools },
       });

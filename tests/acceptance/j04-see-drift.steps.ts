@@ -5,7 +5,6 @@ import { describeFeature, loadFeature } from "@amiceli/vitest-cucumber";
 import {
   CheckVersionDrift,
   ConfigStore,
-  DeployStateReader,
   InventoryReader,
   NodeFileSystem,
   Registry,
@@ -15,6 +14,7 @@ import { expect } from "vitest";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
+import { stubDeployState } from "../helpers/stub-deploy-state";
 
 const feature = await loadFeature("tests/acceptance/j04-see-drift.feature");
 
@@ -49,7 +49,7 @@ function buildApp(configPath: string, getOutcome: () => OutdatedOutcome) {
   return createApp({
     registry,
     inventory,
-    deployState: new DeployStateReader({ fs }),
+    deployState: stubDeployState({ fs }),
     deploy: stubDeploy({ inventory, registry }),
     drift,
     resolveGlobalRoot: () => "/nonexistent-apm-root",

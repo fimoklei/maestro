@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describeFeature, loadFeature } from "@amiceli/vitest-cucumber";
 import {
   ConfigStore,
-  DeployStateReader,
+  GlobalDeployStateReader,
   InventoryReader,
   NodeFileSystem,
   Registry,
@@ -38,7 +38,10 @@ function buildApp(
     store: new ConfigStore({ fs, configPath }),
   });
   const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
-  const deployState = new DeployStateReader({ fs, toolPresence: presence });
+  const deployState = new GlobalDeployStateReader({
+    fs,
+    toolPresence: presence,
+  });
   return createApp({
     registry,
     inventory,

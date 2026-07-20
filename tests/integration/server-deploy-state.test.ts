@@ -3,7 +3,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   ConfigStore,
-  DeployStateReader,
   InventoryReader,
   NodeFileSystem,
   Registry,
@@ -13,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
+import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
 
 // Integration lane: drives the real Hono app via app.request against real temp
@@ -37,7 +37,7 @@ describe("deploy-state HTTP route", () => {
       store: new ConfigStore({ fs, configPath: join(home, "config.json") }),
     });
     const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
-    const deployState = new DeployStateReader({ fs });
+    const deployState = stubDeployState({ fs });
     const app = createApp({
       registry,
       inventory,

@@ -11,7 +11,6 @@ import { join } from "node:path";
 import {
   ConfigStore,
   ConnectInventory,
-  DeployStateReader,
   InventoryReader,
   NodeFileSystem,
   Registry,
@@ -23,6 +22,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { initGitClone } from "../helpers/git-fixture";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubDeploy } from "../helpers/stub-deploy";
+import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
 
 // Integration lane: drives the real Hono connect endpoint via app.request,
@@ -59,7 +59,7 @@ describe("inventory connect HTTP route", () => {
       fs,
       resolvePath: async () => resolveInventoryPath(await store.read(), {}),
     });
-    const deployState = new DeployStateReader({ fs });
+    const deployState = stubDeployState({ fs });
     return createApp({
       registry,
       inventory,

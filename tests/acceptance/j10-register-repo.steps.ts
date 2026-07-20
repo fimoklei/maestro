@@ -4,7 +4,6 @@ import { join } from "node:path";
 import { describeFeature, loadFeature } from "@amiceli/vitest-cucumber";
 import {
   ConfigStore,
-  DeployStateReader,
   InventoryReader,
   NodeFileSystem,
   Registry,
@@ -14,6 +13,7 @@ import { expect } from "vitest";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
+import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
 
 const feature = await loadFeature("tests/acceptance/j10-register-repo.feature");
@@ -28,7 +28,7 @@ function buildApp(configPath: string) {
     store: new ConfigStore({ fs, configPath }),
   });
   const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
-  const deployState = new DeployStateReader({ fs });
+  const deployState = stubDeployState({ fs });
   return createApp({
     registry,
     inventory,
