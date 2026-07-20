@@ -1,10 +1,21 @@
 # apm fixture provenance
 
 What produced each captured file, so a future reader can re-run it instead of
-trusting it. Every fixture below was captured from a real `apm` run on
-**0.26.0, 2026-07-20** (issues #183 / #184), replacing the 0.16.0/0.20.0
-captures. What the outputs *mean* lives in `.claude/rules/apm-driver.md`; this
-file only records how they were taken.
+trusting it. Every fixture below reflects `apm` **0.26.0** as of **2026-07-20**
+(issues #183 / #184), but in one of two ways — the difference matters when you
+audit one:
+
+- **Re-captured** — the command was re-run on 0.26.0 and its output overwrote
+  the older file. Git shows the file changing on 2026-07-20.
+- **Verified unchanged** — the command was re-run on 0.26.0 and printed exactly
+  what the existing file already held, so nothing was written. Git still shows
+  the original 0.16.0/0.20.0 capture date. Three fixtures are in this state,
+  marked ✓= in the tables below. Their 0.26.0 grounding rests on the re-run
+  recorded in `apm-driver.md`, not on anything visible in this repo — re-run the
+  command yourself if you need to confirm it.
+
+What the outputs *mean* lives in `.claude/rules/apm-driver.md`; this file only
+records how they were taken.
 
 ## Why provenance lives here and not in the files
 
@@ -47,10 +58,14 @@ Phrases a fixture comment must never contain: `is a symlink`,
 | `apm-view-versions.txt` | `apm view fimoklei/agent-harness versions` | authed | 0 | out |
 | `apm-view-auth-failed.txt` | `apm view fimoklei/agent-harness versions` | no credentials, `GIT_TERMINAL_PROMPT=0` | 1 | out+err |
 | `apm-outdated-could-not-check.txt` | `apm outdated` | `COLUMNS=200`, repo pinned at v0.5.0, no credentials | 0 | out |
-| `apm-outdated-global.txt` | `apm outdated -g` | `COLUMNS=200`, global install pinned at v0.5.0, authed | 0 | out |
-| `apm-outdated-global-uptodate.txt` | `apm outdated -g` | `COLUMNS=200`, global install at the latest tag, authed | 0 | out |
+| `apm-outdated-global.txt` ✓= | `apm outdated -g` | `COLUMNS=200`, global install pinned at v0.5.0, authed | 0 | out |
+| `apm-outdated-global-uptodate.txt` ✓= | `apm outdated -g` | `COLUMNS=200`, global install at the latest tag, authed | 0 | out |
 | `apm-update-noop.txt` | `apm update -y -t claude,codex` | `COLUMNS=120`, repo pinned at v0.5.0 while v0.5.1 exists | 0 | out+err |
-| `apm-targets-claude.json` | `apm targets --json` | repo containing `.claude/` only | 0 | out |
+| `apm-targets-claude.json` ✓= | `apm targets --json` | repo containing `.claude/` only | 0 | out |
+
+✓= marks a **verified unchanged** fixture (see the top of this file): re-run on
+0.26.0, output identical, file untouched since its 2026-06-11 / 2026-07-13
+capture.
 
 `COLUMNS=200` matches `WIDE_COLUMNS` in `apm-cli-driver.ts` — the width
 production actually sets, so the fixture wraps the way the parser will see it.
