@@ -153,6 +153,17 @@ deployments:                    # one row per deployed file per tool
 - A two-tool install (`-t claude,codex`) writes **one** entry with deployed
   files under both `.claude/skills/<name>` and `.agents/skills/<name>` —
   codex uses the cross-client agent-skills dir; there is no `.codex/skills`.
+- **`.agents/skills/` has ten readers; `.claude/skills/` has one (source).**
+  Read from `apm_cli/integration/targets.py` in 0.26.0 (#202): each target's
+  skills primitive either overrides `deploy_root` to `.agents` — `copilot`,
+  `cursor`, `opencode`, `gemini`, `codex`, `windsurf` — or inherits a
+  `root_dir` of `.agents` — `antigravity`, `agent-skills`, `openclaw`,
+  `hermes`. Only `claude` (`root_dir` `.claude`, no override) and `kiro`
+  (`.kiro`) deploy skills anywhere else. So an undetected codex is one of ten
+  possible readers of `~/.agents/skills/`, while an undetected Claude Code is
+  the sole reader of `~/.claude/skills/`. This asymmetry is what ADR-0011's
+  #202 amendment encodes: reconciliation may reclaim `.claude`, never
+  `.agents`.
 
 ## Drift — `apm outdated`
 
@@ -279,7 +290,8 @@ neutral cwd.
   short-circuits to preserve-all; pruning fires on a contracted `targets:`
   in `apm.yml`, on the install's own active targets, or on ghost rows for a
   known-but-undeclared target — never on `-t`. Maestro's reconciliation is
-  ADR-0013.
+  ADR-0013, and since #202 it reclaims only a single-reader directory: the
+  `.agents` ghost files above are left on disk deliberately.
 - **Danger:** `apm uninstall -g` deletes beyond its lockfile — it wiped 19
   pre-existing skill dirs from a real `~/.claude/skills/` while the global
   lockfile read `dependencies: []`. Never run it; never point a spike `-g`

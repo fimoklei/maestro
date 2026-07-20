@@ -45,8 +45,11 @@ obsolete copy with a direct, subtree-scoped filesystem removal — never
   triggers removal), `DeployedCleanupAdapter.removeSkillTargets` removes
   exactly `<HOME>/<prefix>/skills/<name>` for each untargeted tool
   (`DEPLOY_TOOLS` minus detected). `force: true` makes an already-gone copy
-  a no-op, so a Claude-only machine reconciles idempotently on every global
-  deploy.
+  a no-op, so the machine reconciles idempotently on every global deploy.
+  **Narrowed by ADR-0011's #202 amendment:** only untargeted tools that own
+  their skills directory outright qualify, so in practice this is the
+  `.claude` copy on a machine without Claude Code. `.agents/skills/` has
+  other readers and is never removed.
 - **Best-effort.** The install already succeeded, so a cleanup error does
   not invert the result to `deploy-failed` — it leaves the pre-existing dead
   tree (no regression), which the next deploy retries.

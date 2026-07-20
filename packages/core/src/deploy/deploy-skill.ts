@@ -7,7 +7,7 @@
 import type { OutdatedResult } from "../drift/parse-outdated";
 import type { InventoryResult } from "../inventory/inventory-reader";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
-import { type SupportedTool, untargetedTools } from "./deploy-tools";
+import { reclaimableUntargetedTools, type SupportedTool } from "./deploy-tools";
 import { parseGitOrigin } from "./git-origin";
 import { buildSkillPackageRef, isValidSkillSlug } from "./package-ref";
 
@@ -372,12 +372,15 @@ export class DeploySkill {
 
       // Reconcile away any obsolete copy left by a prior wider global install:
       // apm preserves the untargeted tool's files and lockfile hashes, so a
-      // Claude-only redeploy would otherwise leave the dead .agents tree ADR-0011
-      // exists to eliminate. Global path only, after a proven-successful install
-      // (the driver verifies apm's positive marker), so a failed install never
-      // reconciles. A missing copy is a no-op (#136).
+      // Codex-only redeploy would otherwise leave the dead .claude tree ADR-0011
+      // exists to eliminate. Only a tool that owns its skills directory outright
+      // qualifies — a shared directory keeps its copy, because an absent tool
+      // proves nothing about the others reading it (#202). Global path only,
+      // after a proven-successful install (the driver verifies apm's positive
+      // marker), so a failed install never reconciles. A missing copy is a
+      // no-op (#136).
       if (globalTools !== undefined) {
-        const obsolete = untargetedTools(globalTools);
+        const obsolete = reclaimableUntargetedTools(globalTools);
         if (obsolete.length > 0) {
           // Best-effort: the install already succeeded, so a cleanup failure must
           // not invert the result to deploy-failed. It leaves the pre-existing

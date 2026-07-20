@@ -272,9 +272,25 @@ describe("deploy HTTP route", () => {
         tools: ["claude"],
       },
     ]);
-    // Narrowing to claude reconciles away the obsolete codex copy (#136).
+    // The untargeted codex copy sits in the shared .agents/skills/, which other
+    // tools read, so nothing is reconciled away (#202).
+    expect(cleanupCalls).toEqual([]);
+  });
+
+  it("reconciles away the untargeted tool's exclusive copy", async () => {
+    // Claude Code alone reads .claude/skills/, so narrowing to codex leaves
+    // that copy provably dead and the route removes it (#136, #202).
+    const { app, cleanupCalls } = makeApp({ globalTools: ["codex"] });
+
+    const res = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
+
+    expect(res.status).toBe(200);
     expect(cleanupCalls).toEqual([
-      { target: globalTarget, name: "tdd", tools: ["codex"] },
+      { target: globalTarget, name: "tdd", tools: ["claude"] },
     ]);
   });
 

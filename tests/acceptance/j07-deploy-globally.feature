@@ -20,14 +20,23 @@ Feature: Deploy a skill globally (J07)
     Then the global deploy succeeds at the latest tag
     And apm is told to target "claude"
 
-  Scenario: Narrowing a two-tool machine to one removes the dead Codex tree
+  Scenario: Narrowing to Codex removes the dead Claude Code tree
+    Given the central inventory has the skill "tdd"
+    And a prior global install left both the Claude and Codex copies on disk
+    And only Codex is installed on this machine
+    When I deploy "tdd" globally
+    Then the global deploy succeeds at the latest tag
+    And apm is told to target "codex"
+    And the obsolete Claude Code copy is gone while the shared copy remains
+
+  Scenario: Narrowing to Claude Code keeps the skills directory other tools read
     Given the central inventory has the skill "tdd"
     And a prior global install left both the Claude and Codex copies on disk
     And only Claude Code is installed on this machine
     When I deploy "tdd" globally
     Then the global deploy succeeds at the latest tag
     And apm is told to target "claude"
-    And the obsolete Codex copy is gone while the Claude copy remains
+    And both copies are still on disk
 
   Scenario: A machine with no supported tool refuses the global deploy
     Given the central inventory has the skill "tdd"

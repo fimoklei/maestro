@@ -85,6 +85,46 @@ tools".
 - Per-tool visibility can now show scheefstand between tools (Claude has a skill,
   Codex does not). MVP1 only surfaces it; remediation is the future backfill job.
 
+## Amendment (2026-07-20, issue #202) — dead wood needs an exclusive directory
+
+This ADR's second problem ("always both leaves junk") assumed that an untargeted
+tool's deployed copy is unread. That holds only where the tool is the **sole
+reader** of its skills directory.
+
+It does not. Measured against apm 0.26.0's own target table
+(`apm_cli/integration/targets.py`, recorded in `docs/apm-behavior.md`): ten apm
+targets deploy skills under `.agents` — `copilot`, `cursor`, `opencode`,
+`gemini`, `codex`, `windsurf`, `antigravity`, `agent-skills`, `openclaw`,
+`hermes`. Only `claude` and `kiro` deploy skills elsewhere. So "Codex is not
+detected" says one of ten possible readers is absent — not that the tree is
+dead. On a machine with Cursor and without Codex, the reconciliation this ADR
+motivated would delete skills Cursor reads.
+
+Amended:
+
+- **Removal requires exclusivity, not just absence.** A narrowed global deploy
+  removes an untargeted tool's copy only where that tool owns the directory
+  outright. `.claude/skills/` qualifies; `.agents/skills/` does not, and its copy
+  is retained unconditionally.
+- **Exclusivity is declared per tool**, next to the tool definitions, so adding a
+  tool cannot silently reintroduce the assumption.
+
+Unchanged: presence still drives the install target (`-t`), so a Claude-only
+machine still never *writes* a new `.agents` tree. Only the removal half narrows.
+
+**Accepted cost.** A genuinely dead `.agents/skills/<name>` tree now survives on
+a Claude-Code-only machine. The two errors are not symmetric: a stale directory
+costs disk, a wrong removal costs another tool its skills. The retained tree
+stays inert for the reader — the guard scoping already keeps an untargeted tool's
+recorded hashes out of the destination guard's comparison, so no false drift
+appears.
+
+**Rejected here:** content-hash provenance (apm's own `integration/cleanup.py`
+model) answers *who wrote the content*, not *who reads the directory* — when
+another tool installed the same skill from the same tag, the bytes match and the
+gate passes; and apm 0.25.0's `deployments:` block, which could name every target
+claiming a path but is unmeasured, so driving it is barred until spiked.
+
 ## Rejected alternatives
 
 - **Model A — one deploy unit mirrored to both tools.** Simpler, matches apm's
