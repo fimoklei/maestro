@@ -14,6 +14,9 @@ storybook-static/
 # Project skills, if ever tracked, should be added explicitly.
 .claude/skills/
 
+# Per-branch git worktrees created by agent sessions (local checkouts, not source).
+.claude/worktrees/
+
 # Local knowledge-graph output from the understand-anything skill (not source).
 .understand-anything/
 
