@@ -40,6 +40,10 @@ _Avoid_: skills repo, library, catalog (a catalog is passive; the inventory is t
 The connection that points Maestro at the central inventory — the path of a local *clone* of the Central inventory, not any folder that happens to hold skills (a git URL is the Future "Connect & sync" form), managed behind the ⚙ settings view. Connect requires the clone to have a parseable git origin remote, checked offline, so deploys can resolve versions from it later. Distinct from the **Central inventory** itself: the source is the *pointer*, the inventory is *what it points at*. Read-only; Maestro never writes back to it.
 _Avoid_: inventory path (too narrow — names only today's local-path form), connection.
 
+**Connect gate**:
+The single mandatory first-run moment — a welcome and the connect form — where the **Inventory source** is set; the only thing standing between a fresh install and the cockpit, and unreachable once configured (ADR-0015). Registering targets and deploying are cockpit work, not part of the gate.
+_Avoid_: wizard (the retired multi-step shape), onboarding flow, setup flow.
+
 **Curated / Production-ready**:
 The quality bar for anything in the **central inventory**: reviewed and deemed safe to deploy. In MVP1 the curator is one person (the owner). The path from contribution to curated is the future governed lifecycle.
 _Avoid_: published, approved (those name the future lifecycle step, not the state).
