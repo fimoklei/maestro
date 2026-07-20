@@ -71,7 +71,7 @@ export function BrowseDialog({
   outcomes = [],
   isRegistering = false,
 }: BrowseDialogProps) {
-  const { title, confirmLabel } = browseModes[mode];
+  const { title, confirmLabel, writePromise } = browseModes[mode];
   // Owns the requested path, its query, and the last-used-folder memory
   // (issue #149) — connect and register never share a memory.
   const { currentRequest, setCurrentRequest, browse } =
@@ -145,6 +145,13 @@ export function BrowseDialog({
   // screen — and it is the dialog's accessible name, so it is what a screen
   // reader announces for a surface that has become a report.
   const heading = reporting ? "Registration result" : title;
+
+  // Registering is the moment Maestro is handed a write target, so the mode's
+  // promise about what it writes sits on that action itself (ADR-0015, issue
+  // #218) — wired as the confirm button's accessible description, not
+  // free-floating text. A run already under way has no such action left.
+  const writePromiseId = "browse-write-promise";
+  const shownWritePromise = reporting ? null : writePromise;
 
   const toggleSelected = (path: string) =>
     setSelectedPaths((current) =>
@@ -291,49 +298,57 @@ export function BrowseDialog({
           </>
         )}
 
-        <div className="flex items-center gap-2.5 border-line-row border-t px-3.5 py-3">
-          {reporting ? (
-            // Nothing left to paste into: confirm now only dismisses the run.
-            <span className="flex-1" />
-          ) : (
-            <form
-              className="flex min-w-0 flex-1 items-center gap-2 rounded-control border border-line bg-inset px-2.5 py-[7px]"
-              onSubmit={(event) => {
-                event.preventDefault();
-                confirm();
-              }}
+        <div className="flex flex-col gap-2 border-line-row border-t px-3.5 py-3">
+          {shownWritePromise ? (
+            <p id={writePromiseId} className="font-mono text-dim text-tag">
+              {shownWritePromise}
+            </p>
+          ) : null}
+          <div className="flex items-center gap-2.5">
+            {reporting ? (
+              // Nothing left to paste into: confirm now only dismisses the run.
+              <span className="flex-1" />
+            ) : (
+              <form
+                className="flex min-w-0 flex-1 items-center gap-2 rounded-control border border-line bg-inset px-2.5 py-[7px]"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  confirm();
+                }}
+              >
+                <label htmlFor="browse-paste-path" className="m-label shrink-0">
+                  or paste
+                </label>
+                <input
+                  id="browse-paste-path"
+                  type="text"
+                  value={pastedPath}
+                  onChange={(event) => setPastedPath(event.target.value)}
+                  placeholder="/absolute/path…"
+                  className="min-w-0 flex-1 bg-transparent font-mono text-fg text-mono-sm placeholder:text-dim focus:outline-none"
+                />
+              </form>
+            )}
+            <Button
+              type="button"
+              variant="quiet"
+              size="sm"
+              onClick={onClose}
+              disabled={isRegistering}
             >
-              <label htmlFor="browse-paste-path" className="m-label shrink-0">
-                or paste
-              </label>
-              <input
-                id="browse-paste-path"
-                type="text"
-                value={pastedPath}
-                onChange={(event) => setPastedPath(event.target.value)}
-                placeholder="/absolute/path…"
-                className="min-w-0 flex-1 bg-transparent font-mono text-fg text-mono-sm placeholder:text-dim focus:outline-none"
-              />
-            </form>
-          )}
-          <Button
-            type="button"
-            variant="quiet"
-            size="sm"
-            onClick={onClose}
-            disabled={isRegistering}
-          >
-            cancel
-          </Button>
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            disabled={reporting ? isRegistering : confirmedPaths.length === 0}
-            onClick={reporting ? onClose : confirm}
-          >
-            {reporting ? "done" : confirmLabel(confirmedPaths.length)}
-          </Button>
+              cancel
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              aria-describedby={shownWritePromise ? writePromiseId : undefined}
+              disabled={reporting ? isRegistering : confirmedPaths.length === 0}
+              onClick={reporting ? onClose : confirm}
+            >
+              {reporting ? "done" : confirmLabel(confirmedPaths.length)}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

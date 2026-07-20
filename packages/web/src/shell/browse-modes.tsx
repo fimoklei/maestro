@@ -21,6 +21,10 @@ type BrowseModeConfig = {
   // The row's badges. `isRegistered` is resolved by the caller so a mode that
   // ignores the registry never has to know it exists.
   badges: (context: { entry: BrowseEntry; isRegistered: boolean }) => ReactNode;
+  // What this mode promises about writing, shown on its confirm action
+  // (ADR-0015, issue #218). `null` for a mode that grants no write target, so
+  // a new mode has to state its answer rather than inherit silence.
+  writePromise: string | null;
 };
 
 export const browseModes: Record<BrowseDialogMode, BrowseModeConfig> = {
@@ -33,6 +37,8 @@ export const browseModes: Record<BrowseDialogMode, BrowseModeConfig> = {
         {isRegistered ? <Chip tone="ok">● registered</Chip> : null}
       </>
     ),
+    writePromise:
+      "Registering writes nothing. Writes happen only on an explicit deploy, and touch only the chosen primitive plus apm's bookkeeping.",
   },
   connect: {
     title: "Select inventory folder",
@@ -41,5 +47,8 @@ export const browseModes: Record<BrowseDialogMode, BrowseModeConfig> = {
       entry.facts.hasSkillsSubdir ? (
         <Chip tone="drift">◆ inventory</Chip>
       ) : null,
+    // Connecting an inventory grants a read target, never a write one; that
+    // promise is made on the connect gate itself (ADR-0015).
+    writePromise: null,
   },
 };
