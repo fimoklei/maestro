@@ -27,6 +27,7 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 | Job | Main | Job story |
 |---|---|---|
+| Reach an actionable cockpit on first open · [#208](https://github.com/fimoklei/maestro/issues/208) | A, B | *When* I open Maestro before it knows my inventory or my targets, *I want to* reach a state I can act on, *so I can* get on with my errand instead of completing a setup flow first. |
 
 ## NEXT
 
