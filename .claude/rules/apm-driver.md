@@ -142,9 +142,10 @@ replacement for prefix-sniffing `deployed_files` — and `value` is the deployed
 path, the field actually worth reading; `runtime` was observed `null` in every
 row. **`scope` reads `project` even for a `-g` install**, so it cannot be used
 to distinguish global from per-repo. That matters concretely:
-**`apm.lock.global-single-tool.yaml` (a `-g -t claude` install) is now
-byte-identical to `apm.lock.tag-pinned-v0.5.1.yaml` (a per-repo `-t claude`
-install)** — a single-tool global and a single-tool per-repo install produce
+**`apm.lock.global-single-tool.yaml` (a `-g -t claude` install) now carries the
+same payload as `apm.lock.tag-pinned-v0.5.1.yaml` (a per-repo `-t claude`
+install) — identical modulo `generated_at` and the fixture's comment header**
+— a single-tool global and a single-tool per-repo install produce
 the same relative paths, so neither the dependency entry nor the `deployments`
 rows can tell the two scopes apart from lockfile content alone — scope is only
 known from *which* lockfile you read (`~/.apm/apm.lock.yaml` vs the repo's),
@@ -434,6 +435,17 @@ install. Both are **global-path only**; per-repo deploys are unaffected.
      to the same subtrees, so an untargeted tool's retained hashes never count as
      this deploy's drift. Absent `tools` (repo path, #111 read-path) still scans
      every tool — unchanged.
+   - **Still true on 0.26.0** (read against the installed apm source, #191).
+     `-t` never reaches the pruning decision: `_read_yaml_targets` sources the
+     declared universe from the consumer's `apm.yml` alone, so
+     `declared_target_profiles` returns `None` for a `--target`-only consumer —
+     its docstring names this exact case, *"a `--target`-narrowed sibling
+     target — preserve"* — and `_is_stale` short-circuits to preserve-all on a
+     `None` declared universe. Pruning fires on a contracted `targets:` in
+     `apm.yml`, on the install's own active targets, or on ghost rows for a
+     known-but-undeclared target — never on `-t`. An earlier impact analysis
+     suspected 0.25+ prunes here, making the scoping redundant; that rested on
+     an upstream release note rather than a measurement, and is refuted.
 2. **The dead files survive too.** The `.agents/skills/<name>` tree apm wrote on
    the old two-tool install stays on disk after the narrowed redeploy — exactly
    the dead tree ADR-0011 exists to eliminate.
@@ -464,6 +476,12 @@ hand-editing apm's lockfile — fragile and out of scope — is unnecessary.
   failed install) + integration (`deployed-cleanup.test.ts` — real `rm` under a
   sandbox HOME removes the codex subtree, leaves claude, no-op when already gone)
   + acceptance (J07 narrowing scenario). **Never the real home.**
+- **Both fixes stay, and stay together.** The guard-scoping (fix 1) and this
+  `rm` are current behavior, not 0.20.0 leftovers. Should a future apm version
+  start pruning, the `rm` becomes *more* necessary: pruning without cleanup
+  leaves deployed files on disk with no lockfile baseline, which the
+  destination guard reads as divergence — a new false refusal. Never remove
+  both.
 
 ## Ref grammar — a skill ref cannot carry transport (issue #152 spike, apm 0.20.0; grounding note added 2026-07-20, issue #185)
 
@@ -537,6 +555,12 @@ rules it out on observed behavior, not on preference.
 - **Hook and MCP deploys** are unobserved. `apm mcp` is a separate command
   surface. Do not drive them until spiked the same way skills were.
 - **apm 0.26.0 is the observed version** (upgraded from 0.20.0 on 2026-07-20).
-  Re-verify this doc on the next upgrade. `apm outdated`, `apm outdated -g`,
-  and `apm targets --json` were re-run against 0.26.0 for #183/#184 and
-  confirmed genuinely unchanged from what's documented above — not assumed.
+  Re-verify this doc on the next upgrade. Two grades of evidence back the
+  0.26.0 claims above, and they do not re-verify the same way:
+  - **Re-run as a command** — the install/view signals and their fixtures
+    (#182–#184), plus `apm outdated`, `apm outdated -g` and `apm targets
+    --json` (#183/#184), confirmed unchanged against real output.
+  - **Read against the 0.26.0 source** — ghost-entry retention on a narrowed
+    `-t` (#191): `_read_yaml_targets`, `declared_target_profiles`, `_is_stale`.
+    No install was run for it, so re-read those functions rather than
+    re-running an install if it is ever doubted.
