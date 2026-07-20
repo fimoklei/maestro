@@ -1072,4 +1072,42 @@ describe("BrowseDialog", () => {
       ).toBeInTheDocument();
     });
   });
+
+  // The promise is tied to the register button as its accessible description,
+  // so "sits at the registration action" is asserted, not just "is somewhere
+  // in the dialog" — and a screen reader announces it with the action.
+  describe("write promise (issue #218)", () => {
+    it("describes the register action with both parts of the write promise", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => jsonResponse(homeResponse, 200)),
+      );
+      renderDialog({ mode: "register" });
+
+      const register = await screen.findByRole("button", {
+        name: /register 0 selected/i,
+      });
+      expect(register).toHaveAccessibleDescription(
+        /registering writes nothing/i,
+      );
+      expect(register).toHaveAccessibleDescription(
+        /only on an explicit deploy/i,
+      );
+      expect(register).toHaveAccessibleDescription(/apm's bookkeeping/i);
+    });
+
+    it("omits the write promise in connect mode, which registers nothing", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => jsonResponse(homeResponse, 200)),
+      );
+      renderDialog({ mode: "connect" });
+
+      const confirm = await screen.findByRole("button", {
+        name: /use this folder/i,
+      });
+      expect(confirm).not.toHaveAccessibleDescription(/writes nothing/i);
+      expect(screen.queryByText(/writes nothing/i)).not.toBeInTheDocument();
+    });
+  });
 });

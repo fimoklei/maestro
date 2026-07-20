@@ -101,6 +101,14 @@ describe("registration reporting (issue #175)", () => {
     reason: "skipped · not a directory",
   };
 
+  it("drops the write promise once the run has started, there being nothing left to promise", async () => {
+    stubListing();
+    renderDialog({ mode: "register", isRegistering: true, outcomes: [] });
+
+    await screen.findByRole("list", { name: /result/i });
+    expect(screen.queryByText(/writes nothing/i)).not.toBeInTheDocument();
+  });
+
   it("replaces the listing, breadcrumbs and filter with the run's report", async () => {
     stubListing();
     renderDialog({ mode: "register", isRegistering: true, outcomes: [] });
