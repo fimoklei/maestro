@@ -25,6 +25,17 @@ export const AsPageTitle: Story = {
   },
 };
 
+// A heading inside a view, for a view built from more than one part. It drops
+// to the Subtitle step, so rank and weight agree and the view title stays the
+// heaviest thing on screen.
+export const InsideAView: Story = {
+  args: {
+    level: 3,
+    title: "Global targets",
+    meta: "the tools on this machine",
+  },
+};
+
 export const WithAction: Story = {
   args: { title: "Central inventory", meta: "curated · production-ready" },
   render: (args) => (

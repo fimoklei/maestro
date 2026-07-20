@@ -30,7 +30,11 @@ export function GlobalTargets({
 }) {
   return (
     <section>
-      <SectionHeader title="Global targets" meta="the tools on this machine" />
+      <SectionHeader
+        level={3}
+        title="Global targets"
+        meta="the tools on this machine"
+      />
       {isLoading ? (
         <p className="text-dim text-tag">Loading…</p>
       ) : isError ? (
