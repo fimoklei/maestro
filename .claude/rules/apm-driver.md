@@ -3,9 +3,9 @@
 How `apm` actually behaves, captured by running it — not guessed (the trap in
 `LEARNINGS.md`). Read before writing code that drives `apm` or parses its
 lockfile/output. Pair with `security.md` (how to shell out safely) and ADR-0003
-(why tag-pinned git refs). **Verified against apm 0.20.0 (2026-06-13); re-verify
-on upgrade.** Spike sections keep their original 0.16.0 dates; 0.20.0 deltas are
-inline.
+(why tag-pinned git refs). **Verified against apm 0.26.0 (2026-07-20); re-verify
+on upgrade.** Spike sections keep their original 0.16.0 dates; 0.20.0 and 0.26.0
+deltas are inline.
 
 ## Deploy command
 
@@ -30,7 +30,7 @@ Real git installs **need network** (clone from GitHub ~3–4s; partial clone may
 fail → retries full bare clone). Keep real `apm` out of the fast test loop
 (`testing.md`, canary only).
 
-### Deploy failure & success signals (spiked 2026-07-13, apm 0.20.0, issue #119)
+### Deploy failure & success signals (spiked 2026-07-13, apm 0.20.0, issue #119; re-verified 2026-07-20, apm 0.26.0, issues #182–#184)
 
 Redirected `HOME`, no gh helper, private `agent-harness`. Three facts break the
 naive "execFile throws on failure" model — the deploy path must not trust the
@@ -43,16 +43,35 @@ exit code:
    (`could not read Username`) or the env hints (`Set GITHUB_APM_PAT…`), and
    never echo the matched text (`security.md`). Fixture:
    `apm-view-auth-failed.txt`.
-2. **Neither the exit code nor the success marker is trustworthy alone.** A
-   failed install exits 0 with no marker (`apm-install-probes-failed.txt`); a
-   symlink-refused one exits 1 *with* it
-   (`apm-install-symlink-refused.txt`). Success = marker `Installed \d+ APM
-   dependenc` AND no `with <n≥1> error(s)` AND no `Installation failed`; absent
-   marker = failure (fail-closed). Fixture: `apm-install-ok.txt`.
+2. **The success marker is the signal; the exit code is not load-bearing.** On
+   0.26.0 both failure modes exit **1** with **no marker**: a validation
+   failure (`apm-install-probes-failed.txt`) and a symlink refusal
+   (`apm-install-symlink-refused.txt`, ending `[x] Installation failed with 1
+   error(s) … No install transaction changes were committed.`). This is a
+   correction, not just a re-verification — 0.20.0 had exits split by case
+   (probes-failed exit 0 with no marker, symlink-refused exit 1 *with* the
+   marker present); that split is gone on 0.26.0. Success = marker `Installed
+   \d+ APM dependenc` AND no `with <n≥1> error(s)` AND no `Installation
+   failed`; absent marker = failure (fail-closed), regardless of exit code.
+   Fixture: `apm-install-ok.txt`.
 3. **Phrase `is a symlink` → `destination-symlinked`** (leaf skill dir only; a
    directory-level symlink installs fine); every other install failure →
    `failed`. Match all install signals on whitespace-normalized, lowercased
-   output — Rich wraps mid-sentence and `install` pins no `COLUMNS`.
+   output — Rich wraps mid-sentence and `install` pins no `COLUMNS`. The wrap
+   point itself moved between versions (0.20.0 split `is` / `a symlink`;
+   0.26.0 splits `is a` / `symlink`) without breaking the match, which is the
+   point of normalizing before matching.
+4. **`-g` installs open with a scope-support warning block that no signal
+   reads.** `apm install … -g` (success or failure alike) prints `[!]
+   User-scope primitives are fully supported by …` followed by `Some
+   primitives are not supported: …` before anything else — 0.26.0 lists
+   `antigravity` among the partially-supported tools. A per-repo install skips
+   straight to `[*] Created apm.yml` (compare `apm-install-symlink-refused.txt`,
+   a `-g` run, against `apm-install-ok.txt`, a per-repo run). The block matches
+   none of the phrases above, so the classifier is unaffected — recorded here
+   so the next agent doesn't re-measure it from scratch. It's a different tool
+   list from `apm targets --json` (below), which still reports 8 project
+   targets and never mentions `antigravity`.
 
 **Auth-only scope.** Only the two phrases classify `auth-required`; network /
 host-down / CLI-missing stay the generic failure. A nonexistent-but-authorized
@@ -70,14 +89,17 @@ which lumps auth+network because `outdated`'s summary forces it.
 
 ## Lockfile shape — `apm.lock.yaml`
 
-Top level: `lockfile_version`, `generated_at`, `apm_version`, `dependencies: []`.
-Parse → validate with Zod → use (`security.md`). A tag-pinned skill entry:
+Top level: `lockfile_version`, `generated_at`, `apm_version`, `dependencies: []`,
+and, as of 0.26.0, a top-level `deployments: []` (below). Parse → validate with
+Zod → use (`security.md`). A tag-pinned skill entry:
 
 ```yaml
 - repo_url: fimoklei/agent-harness
+  name: tdd                     # 0.26.0: NEW — the skill name (was the repo name pre-0.26.0)
   host: github.com
   resolved_commit: <40-hex>
-  resolved_ref: v0.5.0          # the human version shown in deploy-state
+  resolved_ref: v0.5.1          # the human version shown in deploy-state
+  version: unknown               # 0.26.0: NEW — deliberate, path-independent (apm PR #2217)
   virtual_path: skills/tdd
   is_virtual: true
   package_type: claude_skill    # only type observed; hooks/MCP UNobserved
@@ -88,11 +110,22 @@ Parse → validate with Zod → use (`security.md`). A tag-pinned skill entry:
   deployed_file_hashes:         # 0.20.0: NEW — per-file sha256 of content
     .claude/skills/tdd/SKILL.md: sha256:<hex>
   content_hash: sha256:<hex>
+deployments:                    # 0.26.0: NEW — top-level, one row per deployed file per tool
+- kind: project-relative
+  target: claude                # the TOOL NAME (claude/codex), not a path prefix
+  value: .claude/skills/tdd/SKILL.md   # the deployed path — the load-bearing field
+  runtime: null
+  scope: project                 # reads "project" even for a -g install — see below
+  owners:
+  - fimoklei/agent-harness/skills/tdd
+  active_owner: fimoklei/agent-harness/skills/tdd
+  content_hash: sha256:<hex>
 ```
 
-Deploy-state reads `resolved_ref` (version), `virtual_path` (identity + name),
-`package_type` (primitive type). It does **not** read `deployed_files`, so the
-0.20.0 shape change is inert for the reader — its Zod schema ignores unknown
+`repo_url` survives unchanged as the entry's first key. Deploy-state reads
+`resolved_ref` (version), `virtual_path` (identity + name), `package_type`
+(primitive type). It does **not** read `deployed_files` or `deployments`, so
+these shape changes are inert for the reader — its Zod schema ignores unknown
 keys (confirmed by the suite passing against refreshed fixtures).
 
 **0.20.0 deltas (vs 0.16.0):** `deployed_files` now lists the directory *and*
@@ -100,6 +133,22 @@ every materialized file (was just the dir); `deployed_file_hashes` is new.
 Unlike the opaque `content_hash`, these per-file hashes **are a plain sha256 of
 file content** — identical across the `.claude`/`.agents` copies — so they look
 reproducible. See content-drift note below.
+
+**0.26.0 deltas (vs 0.20.0), measured refreshing the fixtures for #183/#184:**
+`name` and `version` are new per-dependency keys, and `deployments:` is a new
+top-level block, one row per deployed file per tool. In `deployments[]`,
+`target` is the tool name (`claude` / `codex`) — relevant to #172 as a
+replacement for prefix-sniffing `deployed_files` — and `value` is the deployed
+path, the field actually worth reading; `runtime` was observed `null` in every
+row. **`scope` reads `project` even for a `-g` install**, so it cannot be used
+to distinguish global from per-repo. That matters concretely:
+**`apm.lock.global-single-tool.yaml` (a `-g -t claude` install) is now
+byte-identical to `apm.lock.tag-pinned-v0.5.1.yaml` (a per-repo `-t claude`
+install)** — a single-tool global and a single-tool per-repo install produce
+the same relative paths, so neither the dependency entry nor the `deployments`
+rows can tell the two scopes apart from lockfile content alone — scope is only
+known from *which* lockfile you read (`~/.apm/apm.lock.yaml` vs the repo's),
+never from a field inside it.
 
 ## Drift — `apm outdated`
 
@@ -137,14 +186,18 @@ check) so the cockpit points at auth/network, not a generic failure.
 ## Update — re-install at the latest tag, NOT `apm update`
 
 **Spiked against apm 0.20.0 on 2026-06-16**, auth to `fimoklei/agent-harness`
-(scratch repo, tag-pinned `skills/tdd#v0.5.0` while `v0.5.1` existed). Fixture:
+(scratch repo, tag-pinned `skills/tdd#v0.5.0` while `v0.5.1` existed).
+**Re-verified against apm 0.26.0 on 2026-07-20.** Fixture:
 `tests/fixtures/apm-update-noop.txt`.
 
 `apm update` **does not move an exact tag pin** — the Maestro form (ADR-0003).
 `apm update [-y -t claude,codex]` on a `#v0.5.0` dep with `v0.5.1` available
-printed `No dependency changes were applied.`; `apm.yml` and lockfile stayed at
-`v0.5.0`. `apm update` = "refresh to latest *matching* ref", and an exact tag's
-only matching ref is itself — a **no-op** for us (verified, not guessed).
+prints `[+] All dependencies already at their latest matching refs.`;
+`apm.yml` and lockfile stay at `v0.5.0`. (0.20.0 printed a multi-line update-plan
+table ending `No dependency changes were applied.`; 0.26.0 collapsed that to the
+one line above. The verdict — a no-op on an exact tag pin — is unchanged.)
+`apm update` = "refresh to latest *matching* ref", and an exact tag's only
+matching ref is itself — a **no-op** for us (verified, not guessed).
 
 **What bumps a pin: re-install at the new tag.**
 `apm install <host/owner/repo/subpath>#<latest-tag> -t claude,codex`, same args
@@ -266,7 +319,10 @@ dir; no `.codex/skills`). The skill lands usable for Codex.
 - The reader's `package_type === "claude_skill"` filter is **not** a silent
   breaker. The change: `deployed_files` holds multiple paths, so surface a skill
   once per entry, not once per file.
-- Each target is a real copied directory, not a symlink.
+- Each target is a real copied directory by default — but a directory-level
+  symlink is also a working deploy path (measured on 0.20.0 and 0.25.0, impact
+  analysis); apm only refuses when the *leaf skill dir itself* is a symlink
+  (see the `destination-symlinked` signal above).
 - `-t` takes a comma list; repeating the flag (`-t a -t b`) is unsupported (last
   wins).
 
@@ -409,7 +465,7 @@ hand-editing apm's lockfile — fragile and out of scope — is unnecessary.
   sandbox HOME removes the codex subtree, leaves claude, no-op when already gone)
   + acceptance (J07 narrowing scenario). **Never the real home.**
 
-## Ref grammar — a skill ref cannot carry transport (issue #152 spike)
+## Ref grammar — a skill ref cannot carry transport (issue #152 spike, apm 0.20.0; grounding note added 2026-07-20, issue #185)
 
 **Spiked against apm 0.20.0 on 2026-07-18** by calling apm's own reference
 parser (`DependencyReference.parse`) — no network, so this is repeatable
@@ -445,10 +501,16 @@ resolves tags against GitHub regardless — the GitHub model ADR-0003 already
 binds us to. `parseGitOrigin` therefore allowlists `github.com` as the one
 deployable host.
 
-So a port survives only in the scheme form, an http-only transport only in the
-scheme form, and neither form may name a skill. apm's escape hatch is the
-apm.yml `git:` + `path:` key pair — **not reachable from the CLI**: `apm install
---help` (0.20.0) exposes no `--path` flag, and Maestro drives `install` by
+So on 0.20.0, neither the shorthand nor the scheme form could carry both a
+custom port and a skill subpath. **That grounding is now partly stale: apm PRs
+#2210/#2211 changed apm to preserve and re-parse custom ports in git URLs and
+in the shorthand form**, so the port-handling table above should be re-spiked
+before being relied on for anything beyond Maestro's own decision. What has
+**not** changed is the decision itself — `parseGitOrigin` still allowlists
+`github.com` alone, and that's grounded in ADR-0003 (Maestro deploys only from
+GitHub), not in what apm's ref parser happens to accept. apm's escape hatch is
+the apm.yml `git:` + `path:` key pair — **not reachable from the CLI**: `apm
+install --help` exposes no `--path` flag, and Maestro drives `install` by
 argument, never by hand-writing apm.yml.
 
 **Decision (#152): reject at parse time.** `parseGitOrigin` returns null for an
@@ -474,5 +536,7 @@ rules it out on observed behavior, not on preference.
   The deploy-state/tracer view still shows version drift only.
 - **Hook and MCP deploys** are unobserved. `apm mcp` is a separate command
   surface. Do not drive them until spiked the same way skills were.
-- **apm 0.20.0 is the observed version** (upgraded from 0.16.0 on 2026-06-13;
-  installed via `uv tool`). Re-verify this doc on the next upgrade.
+- **apm 0.26.0 is the observed version** (upgraded from 0.20.0 on 2026-07-20).
+  Re-verify this doc on the next upgrade. `apm outdated`, `apm outdated -g`,
+  and `apm targets --json` were re-run against 0.26.0 for #183/#184 and
+  confirmed genuinely unchanged from what's documented above — not assumed.
