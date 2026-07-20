@@ -1,3 +1,4 @@
+import { RegisterRepoHint } from "../registry/register-repo-hint";
 import type { RegisteredRepo } from "../registry/use-registry";
 import { TypeTag } from "../ui/type-tag";
 import { DeploySkillAction } from "./deploy-skill-action";
@@ -26,26 +27,36 @@ export function InventoryList({
   }
 
   return (
-    <ul className="list-none py-1.5">
-      {primitives.map((primitive) => (
-        <li
-          key={primitive.name}
-          className="flex items-center gap-3 px-card-x py-row-y"
-        >
-          <TypeTag type={primitive.type} />
-          <span className="truncate font-mono text-data text-fg">
-            {primitive.name}
-          </span>
-          <span className="flex-1 truncate text-desc text-muted">
-            {primitive.description}
-          </span>
-          <DeploySkillAction
-            skillName={primitive.name}
-            repos={repos}
-            registryReady={registryReady}
-          />
-        </li>
-      ))}
-    </ul>
+    <>
+      {/* Every row's target picker offers Global and nothing else until a repo
+          is registered, so say once — above the list, not per row — where repo
+          targets come from. Gated on registryReady: an unread registry looks
+          identical to an empty one (#37), and claiming "none registered"
+          before it resolves would be a guess. */}
+      {registryReady && repos.length === 0 ? (
+        <RegisterRepoHint className="block px-card-x pt-row-y" />
+      ) : null}
+      <ul className="list-none py-1.5">
+        {primitives.map((primitive) => (
+          <li
+            key={primitive.name}
+            className="flex items-center gap-3 px-card-x py-row-y"
+          >
+            <TypeTag type={primitive.type} />
+            <span className="truncate font-mono text-data text-fg">
+              {primitive.name}
+            </span>
+            <span className="flex-1 truncate text-desc text-muted">
+              {primitive.description}
+            </span>
+            <DeploySkillAction
+              skillName={primitive.name}
+              repos={repos}
+              registryReady={registryReady}
+            />
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }

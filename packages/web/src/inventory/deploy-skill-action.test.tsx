@@ -44,6 +44,27 @@ describe("DeploySkillAction", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("carries no register hint of its own, so a long list never repeats it", async () => {
+    // The hint belongs to the list (InventoryList), once, above every row —
+    // one per picker would print the same sentence for every skill.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse({ tools: [], primitives: [], skipped: [] }),
+      ),
+    );
+    renderAction(
+      <DeploySkillAction skillName="tdd" repos={[]} registryReady />,
+    );
+
+    expect(
+      await screen.findByRole("button", { name: /deploy/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/consuming repos are registered via/i),
+    ).not.toBeInTheDocument();
+  });
+
   it("names the tools the Global option will hit on a two-tool machine", async () => {
     // #134: the single Global option tells you where it lands before you click,
     // read from the global deploy-state's detected-tool set (no stored list).

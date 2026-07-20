@@ -120,6 +120,41 @@ describe("DeployStateSection", () => {
     ).toBeInTheDocument();
   });
 
+  it("names where repos are registered when the registry loads empty", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        String(url).includes("/api/deploy-state/global")
+          ? jsonResponse({ tools: [], skipped: [] }, 200)
+          : jsonResponse({ repos: [] }, 200),
+      ),
+    );
+    renderSection();
+
+    expect(
+      await screen.findByText(/consuming repos are registered via/i),
+    ).toBeInTheDocument();
+  });
+
+  it("drops the sidebar hint once a repo is registered", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        String(url).includes("/api/registry/repos")
+          ? jsonResponse({ repos: [{ path: "/Users/me/a" }] }, 200)
+          : String(url).includes("/api/deploy-state/global")
+            ? jsonResponse({ tools: [], skipped: [] }, 200)
+            : jsonResponse({ primitives: [], skipped: [] }, 200),
+      ),
+    );
+    renderSection();
+
+    expect(await screen.findByText("/Users/me/a")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/consuming repos are registered via/i),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows a deploy-state panel for each registered repo", async () => {
     vi.stubGlobal(
       "fetch",

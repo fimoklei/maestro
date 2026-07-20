@@ -42,7 +42,7 @@ describe("DeployStateView cold start", () => {
     renderView();
 
     expect(
-      await screen.findByText(/deploy your first skill/i),
+      await screen.findByText(/deploy the first skill/i),
     ).toBeInTheDocument();
   });
 
@@ -75,7 +75,7 @@ describe("DeployStateView cold start", () => {
     // The global panel renders its deployed skill, so we know data has loaded.
     expect(await screen.findByText("tdd")).toBeInTheDocument();
     expect(
-      screen.queryByText(/deploy your first skill/i),
+      screen.queryByText(/deploy the first skill/i),
     ).not.toBeInTheDocument();
   });
 });
