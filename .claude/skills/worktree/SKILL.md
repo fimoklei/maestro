@@ -1,5 +1,5 @@
 ---
-name: maestro-worktree
+name: worktree
 description: "Create and prepare a git worktree for a Maestro backlog issue, then pull the issue so the agent is ready to implement. Use in the Maestro repo when the user asks to make/set up a worktree for an issue — e.g. 'maak een worktree aan voor issue 214 te implementeren', 'worktree voor issue 214', 'start issue 214 in een worktree'. Maestro-specific: worktrees live at ~/Projects/maestro-worktrees/issue<N> on branch feature/issue<N>."
 ---
 
