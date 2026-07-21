@@ -79,18 +79,16 @@ export function InventorySourceView() {
       />
       <Card padded className="max-w-lg">
         {isChanging ? (
-          <div className="flex flex-col gap-3">
-            <ConnectInventoryForm
-              path={path}
-              onPathChange={setEditedPath}
-              onSubmit={handleSubmit}
-              error={connectErrorMessage(connect.error)}
-              noUsableOrigin={isNoUsableOriginError(connect.error)}
-              isPending={connect.isPending}
-              onBrowse={browse.openBrowse}
-              submitLabel="Re-point source"
-            />
-            <div>
+          <ConnectInventoryForm
+            path={path}
+            onPathChange={setEditedPath}
+            onSubmit={handleSubmit}
+            error={connectErrorMessage(connect.error)}
+            noUsableOrigin={isNoUsableOriginError(connect.error)}
+            isPending={connect.isPending}
+            onBrowse={browse.openBrowse}
+            submitLabel="Re-point source"
+            secondaryAction={
               <Button
                 type="button"
                 variant="quiet"
@@ -99,8 +97,8 @@ export function InventorySourceView() {
               >
                 Cancel
               </Button>
-            </div>
-          </div>
+            }
+          />
         ) : (
           <div className="flex flex-col gap-3">
             {/* A read in flight always shows the status region, even when the
@@ -135,7 +133,10 @@ export function InventorySourceView() {
             )}
             <div className="flex flex-col gap-1">
               <span className="m-label">Source · local folder</span>
-              <span className="font-mono text-fg text-mono-sm">
+              <span
+                className="truncate font-mono text-fg text-mono-sm"
+                title={currentPath ?? undefined}
+              >
                 {currentPath}
               </span>
             </div>
