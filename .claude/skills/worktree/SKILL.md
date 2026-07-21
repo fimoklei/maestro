@@ -1,6 +1,6 @@
 ---
 name: worktree
-description: "Create and prepare a git worktree for a Maestro backlog issue, then pull the issue so the agent is ready to implement. Use in the Maestro repo when the user asks to make/set up a worktree for an issue — e.g. 'maak een worktree aan voor issue 214 te implementeren', 'worktree voor issue 214', 'start issue 214 in een worktree'. Maestro-specific: worktrees live at ~/Projects/maestro-worktrees/issue<N> on branch feature/issue<N>."
+description: "Create and prepare a git worktree for a Maestro backlog issue, then pull the issue so the agent is ready to implement. Use in the Maestro repo when the user asks to make/set up a worktree for an issue — e.g. 'maak een worktree aan voor issue 214 te implementeren', 'worktree voor issue 214', 'start issue 214 in een worktree'. Maestro-specific: worktrees live at ~/Projects/maestro/.claude/worktrees/issue<N> on branch feature/issue<N>."
 ---
 
 # Maestro worktree
@@ -8,7 +8,7 @@ description: "Create and prepare a git worktree for a Maestro backlog issue, the
 Create one worktree per backlog issue, prepared and ready to implement. The convention is fixed for this repo.
 
 **Anchor repo:** `~/Projects/maestro` (the primary checkout — run every `git` command with `-C` against it, never rely on cwd).
-**Worktree path:** `~/Projects/maestro-worktrees/issue<N>`
+**Worktree path:** `~/Projects/maestro/.claude/worktrees/issue<N>` (under the repo's `.claude/worktrees/`, so `EnterWorktree` can switch this session into it — paths elsewhere are refused).
 **Branch:** `feature/issue<N>`
 
 ## Steps
@@ -21,20 +21,20 @@ Read `<N>` from the user's message. If no number is present, ask for it and stop
 Fetch, then add the worktree branched off origin's main:
 ```bash
 git -C ~/Projects/maestro fetch origin
-git -C ~/Projects/maestro worktree add ~/Projects/maestro-worktrees/issue<N> -b feature/issue<N> origin/main
+git -C ~/Projects/maestro worktree add ~/Projects/maestro/.claude/worktrees/issue<N> -b feature/issue<N> origin/main
 ```
 Handle what already exists — check first with `git -C ~/Projects/maestro worktree list`:
 - Worktree path already exists → skip creation, report it, continue to step 3.
-- Branch `feature/issue<N>` already exists (but no worktree) → drop `-b origin/main`, check it out instead: `git -C ~/Projects/maestro worktree add ~/Projects/maestro-worktrees/issue<N> feature/issue<N>`.
+- Branch `feature/issue<N>` already exists (but no worktree) → drop `-b origin/main`, check it out instead: `git -C ~/Projects/maestro worktree add ~/Projects/maestro/.claude/worktrees/issue<N> feature/issue<N>`.
 
 **Done when:** `git -C ~/Projects/maestro worktree list` shows the path on branch `feature/issue<N>`.
 
 ### 3. Prepare it
 A fresh worktree has no `node_modules` — install (the pnpm store is shared, so this is fast):
 ```bash
-pnpm -C ~/Projects/maestro-worktrees/issue<N> install
+pnpm -C ~/Projects/maestro/.claude/worktrees/issue<N> install
 ```
-**Done when:** install exits 0 and `~/Projects/maestro-worktrees/issue<N>/node_modules` exists.
+**Done when:** install exits 0 and `~/Projects/maestro/.claude/worktrees/issue<N>/node_modules` exists.
 
 ### 4. Pull the issue and explain it for a product manager
 ```bash
@@ -45,7 +45,7 @@ Explain the issue in two or three sentences a product manager can read aloud: wh
 
 ### 5. Enter the worktree and implement
 Switch this session into the worktree — no manual `cd`, no new session:
-- Call **EnterWorktree** with `path: ~/Projects/maestro-worktrees/issue<N>`. This session now runs there. (It only enters — it never removes your worktree, since you created it with `git worktree add`.)
+- Call **EnterWorktree** with `path: ~/Projects/maestro/.claude/worktrees/issue<N>`. This session now runs there. (It only enters — it never removes your worktree, since you created it with `git worktree add`.)
 - Confirm in Dutch: worktree path, branch, that deps are installed, and the one-line task summary from step 4.
 
 Then hand off to the `implement` skill to build the issue — it runs the work through TDD at the agreed seams and keeps the repo's rules. Do not start `/tdd` directly from here.
