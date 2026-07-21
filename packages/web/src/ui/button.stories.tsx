@@ -41,3 +41,34 @@ export const Sizes: Story = {
     </div>
   ),
 };
+
+export const Disabled: Story = {
+  render: () => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <Button variant="primary">deploy →</Button>
+        <Button variant="success">confirm</Button>
+        <Button variant="ghost">deploy →</Button>
+        <Button variant="quiet">cancel</Button>
+        <Button variant="dashed">+ register repo</Button>
+      </div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <Button variant="primary" disabled>
+          deploy →
+        </Button>
+        <Button variant="success" disabled>
+          confirm
+        </Button>
+        <Button variant="ghost" disabled>
+          deploy →
+        </Button>
+        <Button variant="quiet" disabled>
+          cancel
+        </Button>
+        <Button variant="dashed" disabled>
+          + register repo
+        </Button>
+      </div>
+    </div>
+  ),
+};

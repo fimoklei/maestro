@@ -37,7 +37,8 @@ export function Button({
     <button
       type={type}
       className={cn(
-        "cursor-pointer whitespace-nowrap border font-mono disabled:cursor-not-allowed",
+        "cursor-pointer whitespace-nowrap border font-mono",
+        "disabled:cursor-not-allowed disabled:border-line-chip disabled:bg-dim-bg disabled:text-dim",
         size === "lg" ? "rounded-item" : "rounded-control",
         variantClasses[variant],
         sizeClasses[size],
