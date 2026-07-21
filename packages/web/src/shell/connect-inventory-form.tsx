@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useRef } from "react";
+import { type FormEvent, type ReactNode, useEffect, useRef } from "react";
 import { Button } from "../ui/button";
 
 // Presentational form for the offline connect flow: a labelled path input + a
@@ -29,6 +29,10 @@ type ConnectInventoryFormProps = {
   // Defaults to first-time-setup wording; the re-point flow overrides it so a
   // returning user isn't told to "Connect" a source they already have (#229).
   submitLabel?: string;
+  // Optional trailing action rendered on the same row as submit, so a re-point
+  // flow's "Cancel" pairs with its primary instead of orphaning below it. The
+  // connect gate omits it and the row holds submit alone, exactly as before.
+  secondaryAction?: ReactNode;
 };
 
 export function ConnectInventoryForm({
@@ -40,6 +44,7 @@ export function ConnectInventoryForm({
   isPending = false,
   onBrowse,
   submitLabel = "Connect inventory",
+  secondaryAction,
 }: ConnectInventoryFormProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -123,7 +128,7 @@ export function ConnectInventoryForm({
           </p>
         )
       ) : null}
-      <div>
+      <div className="flex gap-2">
         <Button
           type="submit"
           variant={noUsableOrigin ? "quiet" : "primary"}
@@ -132,6 +137,7 @@ export function ConnectInventoryForm({
         >
           {submitLabel}
         </Button>
+        {secondaryAction}
       </div>
     </form>
   );
