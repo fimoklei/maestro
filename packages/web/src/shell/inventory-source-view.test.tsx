@@ -350,6 +350,59 @@ describe("InventorySourceView", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("announces a successful retry after a failed read", async () => {
+    // The failure→success path: TanStack Query holds isError true while the
+    // retry runs, so the live status must stay mounted through the retry (not
+    // cede to the error alert) and pass "reading…" → "connected · N". A status
+    // region freshly mounted with the count already in it announces nothing;
+    // the mutation is what a screen reader hears (issue #230).
+    let resolveRetry: (r: Response) => void = () => {};
+    let reads = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/inventory/config")) {
+          return jsonResponse({ inventoryPath: "/home/me/agent-harness" }, 200);
+        }
+        if (url.startsWith("/api/inventory/primitives")) {
+          reads += 1;
+          if (reads === 1) {
+            return jsonResponse({ message: "cannot read inventory" }, 500);
+          }
+          return new Promise<Response>((resolve) => {
+            resolveRetry = resolve;
+          });
+        }
+        return jsonResponse(
+          {
+            path: "/home/me",
+            breadcrumbs: [{ name: "~", path: "/home/me" }],
+            entries: [],
+          },
+          200,
+        );
+      }),
+    );
+    renderView();
+
+    expect(
+      await screen.findByText(/could not read the inventory/i),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
+
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent(/reading…/i);
+
+    resolveRetry(
+      jsonResponse({ primitives: [skill("tdd"), skill("frontend")] }, 200),
+    );
+    await waitFor(() =>
+      expect(status).toHaveTextContent(/connected · 2 primitives/i),
+    );
+  });
+
   it("re-points via the shared form and returns to the connected view", async () => {
     let configPath = "/home/me/agent-harness";
     const fetchMock = vi.fn(
