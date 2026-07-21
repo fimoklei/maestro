@@ -12,10 +12,7 @@ export {
 export { DEPLOY_TOOLS, type SupportedTool } from "./deploy/deploy-tools";
 export { DeployedCleanupAdapter } from "./deploy/deployed-cleanup";
 export { DeployedContentAdapter } from "./deploy/deployed-content";
-export {
-  resolveDeployedLockfilePath,
-  resolveDeployedRoot,
-} from "./deploy/deployed-content-roots";
+export { DeployedLocation } from "./deploy/deployed-location";
 export { readGitOriginUrl } from "./deploy/git-origin-url";
 export { InventoryGitAdapter } from "./deploy/inventory-git";
 export {

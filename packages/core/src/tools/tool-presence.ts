@@ -15,7 +15,7 @@ import type { ToolPresencePort } from "./tool-presence-port";
 
 export class ToolPresenceAdapter implements ToolPresencePort {
   // Resolves the home root a global deploy targets. Defaults to $HOME (then the
-  // OS home), matching resolveDeployedRoot/resolveApmGlobalRoot so detection and
+  // OS home), matching DeployedLocation/resolveApmGlobalRoot so detection and
   // the deploy it feeds always agree on which home they mean.
   private readonly homeRoot: () => string;
 

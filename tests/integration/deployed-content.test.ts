@@ -21,8 +21,10 @@ describe("DeployedContentAdapter", () => {
   // install. The global path differs only in these two resolvers.
   const adapter = () =>
     new DeployedContentAdapter({
-      resolveLockfilePath: () => join(root, "apm.lock.yaml"),
-      resolveDeployedRoot: () => root,
+      location: {
+        treeRoot: () => root,
+        lockfilePath: () => join(root, "apm.lock.yaml"),
+      },
     });
 
   const writeDeployed = async (relPath: string, contents: Buffer | string) => {

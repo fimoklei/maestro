@@ -12,8 +12,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   DeployedCleanupAdapter,
+  DeployedLocation,
   type DeployTarget,
-  resolveDeployedRoot,
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -33,7 +33,7 @@ describe("DeployedCleanupAdapter — global target", () => {
   const adapter = () => {
     const env = { HOME: home } as NodeJS.ProcessEnv;
     return new DeployedCleanupAdapter({
-      resolveDeployedRoot: (t) => resolveDeployedRoot(t, env),
+      location: new DeployedLocation(env),
     });
   };
 

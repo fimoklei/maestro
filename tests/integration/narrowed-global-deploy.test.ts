@@ -10,8 +10,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   DeployedCleanupAdapter,
+  DeployedLocation,
   DeploySkill,
-  resolveDeployedRoot,
   type SupportedTool,
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -61,7 +61,7 @@ describe("narrowed global deploy — which copies survive on disk", () => {
       },
       deployedContent: { classify: async () => "not-deployed" as const },
       deployedCleanup: new DeployedCleanupAdapter({
-        resolveDeployedRoot: (t) => resolveDeployedRoot(t, env),
+        location: new DeployedLocation(env),
       }),
       toolPresence: { detectGlobalTools: async () => present },
       canonicalPath: async (path: string) => path,

@@ -109,8 +109,10 @@ describe("update journey against the real destination guard", () => {
         skillDivergesFromTag: async () => false,
       },
       deployedContent: new DeployedContentAdapter({
-        resolveLockfilePath: () => join(root, "apm.lock.yaml"),
-        resolveDeployedRoot: () => root,
+        location: {
+          treeRoot: () => root,
+          lockfilePath: () => join(root, "apm.lock.yaml"),
+        },
       }),
       deployedCleanup: { removeSkillTargets: async () => undefined },
       toolPresence: { detectGlobalTools: async () => ["claude", "codex"] },

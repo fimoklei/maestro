@@ -11,6 +11,7 @@ import {
   coreHealth,
   DeployedCleanupAdapter,
   DeployedContentAdapter,
+  DeployedLocation,
   DeploySkill,
   type DeploySkillError,
   GlobalDeployStateReader,
@@ -22,8 +23,6 @@ import {
   readGitOriginUrl,
   resolveApmGlobalRoot,
   resolveApmScratchCwd,
-  resolveDeployedLockfilePath,
-  resolveDeployedRoot,
   resolveInventoryPath,
   resolveMaestroConfigPath,
   ToolPresenceAdapter,
@@ -574,6 +573,14 @@ function realDeps(): AppDeps {
   });
   // Owner/repo for package references come from the inventory clone's origin
   // remote, resolved per deploy so a path saved after startup is picked up.
+  //
+  // Where a deployed copy lands, resolved once and shared: a repo's lockfile and
+  // tree both sit in the repo; a global deploy reads ~/.apm/apm.lock.yaml but
+  // deploys under HOME (~/.claude/skills, ~/.agents/skills) where apm keys the
+  // hashes, so its two roots differ (apm-driver.md, #56/#61). The guard and the
+  // cleanup take the same instance, so their agreement on the tree is one object,
+  // not a comment to keep in sync.
+  const deployedLocation = new DeployedLocation(process.env);
   const deploy = new DeploySkill({
     inventory,
     registry,
@@ -582,22 +589,14 @@ function realDeps(): AppDeps {
       resolveRoot: async () =>
         resolveInventoryPath(await store.read(), process.env),
     }),
-    // Destination guard: a repo's lockfile and deployed tree both sit in the
-    // repo; a global deploy reads ~/.apm/apm.lock.yaml but deploys under HOME
-    // (~/.claude/skills, ~/.agents/skills) where apm keys the hashes, so its two
-    // roots differ. The resolution lives in core (apm-driver.md, #56/#61).
-    deployedContent: new DeployedContentAdapter({
-      resolveLockfilePath: (target) =>
-        resolveDeployedLockfilePath(target, process.env),
-      resolveDeployedRoot: (target) => resolveDeployedRoot(target, process.env),
-    }),
+    // Destination guard: reads both the lockfile (the recorded hashes) and the
+    // tree those hashes key against.
+    deployedContent: new DeployedContentAdapter({ location: deployedLocation }),
     // Reconciles away an untargeted tool's leftover copy after a narrowed global
-    // deploy (ADR-0011, #136). Shares the deployed-root resolution with the guard
-    // above so both agree on which tree they mean; a direct subtree rm, never
+    // deploy (ADR-0011, #136). Shares the same DeployedLocation as the guard, so
+    // both agree on which tree they mean; a direct subtree rm, never
     // `apm uninstall -g` (apm-driver.md).
-    deployedCleanup: new DeployedCleanupAdapter({
-      resolveDeployedRoot: (target) => resolveDeployedRoot(target, process.env),
-    }),
+    deployedCleanup: new DeployedCleanupAdapter({ location: deployedLocation }),
     // Global tool presence: probe HOME live per deploy so a global install
     // targets only the tools the machine actually has (ADR-0011). The adapter's
     // default home resolution (process.env.HOME ?? homedir) already matches the
