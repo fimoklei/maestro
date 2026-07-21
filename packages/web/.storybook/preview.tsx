@@ -6,31 +6,13 @@ import "@fontsource-variable/space-grotesk/index.css";
 import "@fontsource-variable/jetbrains-mono/index.css";
 import "../src/styles/theme.css";
 
-// A toolbar switch that flips data-theme on <html>; because every component
-// reads tokens (never hard-coded hex), the whole catalogue re-skins. This is
-// how the dark-default / [data-theme="light"] requirement is shown visually.
-export const globalTypes = {
-  theme: {
-    description: "Control Room theme",
-    toolbar: {
-      title: "Theme",
-      icon: "contrast",
-      items: [
-        { value: "dark", title: "Dark" },
-        { value: "light", title: "Light" },
-      ],
-      dynamicTitle: true,
-    },
-  },
-};
-
-export const initialGlobals = { theme: "dark" };
-
-const withTheme: Decorator = (Story, context) => {
-  const theme = (context.globals.theme as string) ?? "dark";
+// Only the dark theme ships (the light ramp was removed from tokens.css — see
+// issue #209 and the note there), so the catalogue renders dark. When a theme
+// toggle and an AA-correct light ramp land, restore the toolbar switch here.
+const withTheme: Decorator = (Story) => {
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-  }, [theme]);
+    document.documentElement.setAttribute("data-theme", "dark");
+  }, []);
   return (
     <div
       className="bg-canvas text-fg font-ui"

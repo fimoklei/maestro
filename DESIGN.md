@@ -18,7 +18,7 @@ colors:
   text-2: "#c3cad2"
   text-3: "#aeb6bf"
   text-muted: "#8a94a0"
-  text-dim: "#5a6470"
+  text-dim: "#7d8794"
   amber: "#e8a33d"
   green: "#62c47e"
   on-accent: "#0b0d10"
@@ -26,32 +26,6 @@ colors:
   type-hook: "#b48ad6"
   type-mcp: "#5fbfb0"
   type-bundle: "#e8a33d"
-  light-bg-0: "#eceef2"
-  light-bg-1: "#f5f7f9"
-  light-surface-card: "#ffffff"
-  light-surface-inset: "#f3f5f8"
-  light-surface-active: "#e6ebf1"
-  light-border-faint: "#eef1f4"
-  light-border-row: "#e6eaef"
-  light-border-strong: "#dce1e8"
-  light-border-chip: "#ccd3dc"
-  light-border-dashed: "#bfc8d2"
-  light-border-drift: "#e6cfa0"
-  light-border-amber-dim: "#ecddbf"
-  light-text-1: "#1a212b"
-  light-text-2: "#343e4b"
-  light-text-3: "#48525f"
-  light-text-muted: "#687482"
-  light-text-dim: "#8b95a1"
-  light-amber: "#e0a43c"
-  light-amber-ink: "#b0700f"
-  light-green: "#3dba75"
-  light-green-ink: "#178a4c"
-  light-on-accent: "#241d09"
-  light-type-skill: "#3163cc"
-  light-type-hook: "#8a55ce"
-  light-type-mcp: "#1a8e82"
-  light-type-bundle: "#b0700f"
 typography:
   title:
     fontFamily: "Space Grotesk Variable, Space Grotesk, Helvetica Neue, sans-serif"
@@ -190,9 +164,10 @@ gradients, pill shapes, cards inside cards), the friendly consumer app
 and heavily animated interfaces. Density here is not decoration — it is how a
 whole agent setup fits on one screen.
 
-The system ships two themes from one token set. Light is the same Control Room
-with the lights on: cool near-white surfaces, the same amber and green signals,
-the same 1px structure, still no shadows.
+The system ships one theme: dark. A light "lights on" variant is designed
+upstream, but it is not shipped — no theme toggle exists yet and its ramp failed
+WCAG 2.2 AA, so it was removed from `tokens.css` until a toggle lands and the
+light ramp is re-derived to AA (issue #209).
 
 **Key Characteristics:**
 
@@ -211,41 +186,42 @@ shadow.
 
 ### Primary
 
-- **Signal Amber** (`#e8a33d` dark / `#e0a43c` light, text `#b0700f` on light):
-  the brand colour and the act colour. Used for drift, the logo tile, and the one
-  amber-filled button per view. Its rarity is what makes it work.
+- **Signal Amber** (`#e8a33d`): the brand colour and the act colour. Used for
+  drift, the logo tile, and the one amber-filled button per view. Its rarity is
+  what makes it work.
 
 ### Secondary
 
-- **Signal Green** (`#62c47e` dark / `#3dba75` light, text `#178a4c` on light):
-  in sync, healthy, and the final confirm on a deploy. Never used decoratively.
+- **Signal Green** (`#62c47e`): in sync, healthy, and the final confirm on a
+  deploy. Never used decoratively.
 
 ### Tertiary
 
 Four fixed hues reserved exclusively for the primitive-type tag — never reused
 anywhere else in the interface.
 
-- **Skill Blue** (`#7aa5d8` dark / `#3163cc` light)
-- **Hook Purple** (`#b48ad6` dark / `#8a55ce` light)
-- **MCP Teal** (`#5fbfb0` dark / `#1a8e82` light)
-- **Bundle Amber** (`#e8a33d` dark / `#b0700f` light)
+Values below are the shipped dark theme; the light equivalents live upstream and
+are deferred (see the note in §1).
+
+- **Skill Blue** (`#7aa5d8`)
+- **Hook Purple** (`#b48ad6`)
+- **MCP Teal** (`#5fbfb0`)
+- **Bundle Amber** (`#e8a33d`)
 
 ### Neutral
 
-- **App Canvas** (`#0b0d10` dark / `#eceef2` light): the page behind everything.
-- **Raised Chrome** (`#0d1014` dark / `#f5f7f9` light): status bar and sidebar.
-- **Card Surface** (`#0f1318` dark / `#ffffff` light): the standard panel fill.
-- **Inset Surface** (`#11161c` dark / `#f3f5f8` light): recessed regions inside a
-  card.
-- **Active Surface** (`#171d24` dark / `#e6ebf1` light): hover and active nav.
-- **Text ramp** (`#e6e9ed` → `#5a6470` dark; `#1a212b` → `#8b95a1` light): five
-  steps from primary text down to dim labels. Dim is for micro-labels and
-  disabled states only, never for body copy.
-- **Border ramp** (`#13181e` → `#232a33` dark; `#eef1f4` → `#ccd3dc` light): six
-  steps from hairline to chip outline. A dashed border marks an additive
-  affordance (`#2a313a` dark / `#bfc8d2` light); a warm outline marks a card
-  whose contents drift (`#4a3a1c` dark / `#e6cfa0` light). The dim amber outline
-  used by the ghost button is `#3a3327` dark / `#ecddbf` light.
+- **App Canvas** (`#0b0d10`): the page behind everything.
+- **Raised Chrome** (`#0d1014`): status bar and sidebar.
+- **Card Surface** (`#0f1318`): the standard panel fill.
+- **Inset Surface** (`#11161c`): recessed regions inside a card.
+- **Active Surface** (`#171d24`): hover and active nav.
+- **Text ramp** (`#e6e9ed` → `#7d8794`): five steps from primary text down to dim
+  labels. Every step clears WCAG 2.2 AA (≥4.5:1) on every surface it renders on.
+  Dim is for micro-labels and disabled states, never for body copy.
+- **Border ramp** (`#13181e` → `#232a33`): six steps from hairline to chip
+  outline. A dashed border marks an additive affordance (`#2a313a`); a warm
+  outline marks a card whose contents drift (`#4a3a1c`). The dim amber outline
+  used by the ghost button is `#3a3327`.
 
 ### Named Rules
 
