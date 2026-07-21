@@ -403,6 +403,81 @@ describe("InventorySourceView", () => {
     );
   });
 
+  it("announces the recovery when a retry succeeds after a failed re-read of an already-shown count", async () => {
+    // Has-data variant: once a count is on screen, TanStack Query keeps isError
+    // true *during* the retry because it still holds the last good count. The
+    // live status must not cede to the error alert while that retry runs, or the
+    // recovered count mounts fresh and goes unannounced to screen readers
+    // (issue #230). Distinct from the no-data path, where Query resets to
+    // pending during the retry.
+    let resolveRetry: (r: Response) => void = () => {};
+    let reads = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/inventory/config")) {
+          return jsonResponse({ inventoryPath: "/home/me/agent-harness" }, 200);
+        }
+        if (url.startsWith("/api/inventory/primitives")) {
+          reads += 1;
+          if (reads === 1) {
+            return jsonResponse(
+              { primitives: [skill("tdd"), skill("frontend")] },
+              200,
+            );
+          }
+          if (reads === 2) {
+            return jsonResponse({ message: "cannot read inventory" }, 500);
+          }
+          return new Promise<Response>((resolve) => {
+            resolveRetry = resolve;
+          });
+        }
+        return jsonResponse(
+          {
+            path: "/home/me",
+            breadcrumbs: [{ name: "~", path: "/home/me" }],
+            entries: [],
+          },
+          200,
+        );
+      }),
+    );
+    renderView();
+
+    expect(
+      await screen.findByText(/connected · 2 primitives/i),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
+    expect(
+      await screen.findByText(/could not read the inventory/i),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent(/reading…/i);
+
+    resolveRetry(
+      jsonResponse(
+        {
+          primitives: [
+            skill("tdd"),
+            skill("frontend"),
+            skill("review"),
+            skill("deploy"),
+            skill("drift"),
+          ],
+        },
+        200,
+      ),
+    );
+    await waitFor(() =>
+      expect(status).toHaveTextContent(/connected · 5 primitives/i),
+    );
+  });
+
   it("re-points via the shared form and returns to the connected view", async () => {
     let configPath = "/home/me/agent-harness";
     const fetchMock = vi.fn(

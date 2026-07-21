@@ -102,7 +102,12 @@ export function InventorySourceView() {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {inventory.isError ? (
+            {/* A read in flight always shows the status region, even when the
+                last read errored: on a retry Query keeps isError true while it
+                still holds the last count, and ceding to the error alert here
+                would unmount the live region so the recovered count mounts
+                fresh and goes unannounced (issue #230). */}
+            {!inventory.isFetching && inventory.isError ? (
               <p
                 role="alert"
                 className="rounded-control border border-amber-border bg-amber-bg px-3 py-2 text-amber-ink text-tag"
