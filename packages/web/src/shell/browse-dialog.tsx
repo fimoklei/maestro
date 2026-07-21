@@ -33,16 +33,17 @@ import { useFolderFilter } from "./use-folder-filter";
 // "↳ symlink" tag; the server already dropped anything escaping the ceiling,
 // so the client never resolves or judges a symlink itself (issue #148).
 //
-// Register mode is multi-select (issue #151): every git-repo row carries a
-// checkbox, the selection is one set per dialog session that survives
-// navigating between folders, and confirm hands the host every checked path
-// at once. The dialog stays presentational — it returns paths and never
-// registers anything itself; the host owns the registration loop and its
+// Register mode is multi-select (issue #151): every folder row makes its
+// registration state visible, with a disabled checkbox and reason where it
+// cannot be registered. The selection is one set per dialog session that
+// survives navigating between folders, and confirm hands the host every
+// checked path at once. The dialog stays presentational — it returns paths and
+// never registers anything itself; the host owns the registration loop and its
 // per-repo outcomes.
 //
 // Confirming does not close it (issue #175). Once the host hands back a run,
 // the dialog switches from browsing to reporting: the toolbar and listing give
-// way to one line per repo, and the footer's confirm becomes "done". The host
+// way to one line per repo, and the footer's confirm becomes "close". The host
 // decides whether there is a run at all, so connect — which never registers
 // anything — keeps closing on confirm without a mode entry of its own.
 
@@ -56,6 +57,10 @@ type BrowseDialogProps = {
   // client-side "● registered" join (issue #150) — the server stays
   // registry-agnostic.
   registeredPaths?: ReadonlySet<string>;
+  // Register mode only: the connected central inventory is not a consuming
+  // repo, so its row is visibly unavailable before the server enforces the
+  // same rule for pasted paths.
+  inventoryPath?: string;
   // The host's registration run: what it has finished so far, and whether it
   // is still going. Either one being live flips the dialog into reporting, so
   // the report is on screen before the first repo lands.
@@ -68,6 +73,7 @@ export function BrowseDialog({
   onSelect,
   onClose,
   registeredPaths,
+  inventoryPath,
   outcomes = [],
   isRegistering = false,
 }: BrowseDialogProps) {
@@ -137,9 +143,8 @@ export function BrowseDialog({
     }
   };
 
-  // A run claims the dialog the moment the host starts one, and keeps it after
-  // the run ends: the outcomes exist nowhere else, so only the user dismisses
-  // them.
+  // A run claims the dialog the moment the host starts one and keeps it until
+  // the user closes the report.
   const reporting = isRegistering || outcomes.length > 0;
   // Once the listing is gone, "Select repos to register" describes nothing on
   // screen — and it is the dialog's accessible name, so it is what a screen
@@ -173,17 +178,16 @@ export function BrowseDialog({
             {heading}
           </h2>
           <span className="flex-1" />
-          {/* The run is the only place its failures are readable, so nothing
-              dismisses the dialog until it has finished (issue #175). */}
-          <button
-            type="button"
-            aria-label="Close"
-            onClick={onClose}
-            disabled={isRegistering}
-            className="cursor-pointer font-mono text-data text-dim hover:text-fg disabled:cursor-not-allowed disabled:text-line-chip"
-          >
-            ✕
-          </button>
+          {!reporting ? (
+            <button
+              type="button"
+              aria-label="Close"
+              onClick={onClose}
+              className="cursor-pointer font-mono text-data text-dim hover:text-fg"
+            >
+              ✕
+            </button>
+          ) : null}
         </div>
 
         {reporting ? (
@@ -201,10 +205,19 @@ export function BrowseDialog({
                     }
                   }}
                   disabled={browse.data?.parent === undefined}
+                  aria-describedby={atCeiling ? "browse-up-reason" : undefined}
                   className="shrink-0 rounded-control border px-2.5 py-[5px] font-mono text-mono-sm enabled:cursor-pointer enabled:border-line enabled:bg-inset enabled:text-fg-2 disabled:cursor-not-allowed disabled:border-line-chip disabled:text-dim"
                 >
                   ↑ up
                 </button>
+                {atCeiling ? (
+                  <span
+                    id="browse-up-reason"
+                    className="whitespace-nowrap font-mono text-dim text-tag"
+                  >
+                    already at home
+                  </span>
+                ) : null}
                 {browse.data ? (
                   <BrowseBreadcrumbs
                     crumbs={browse.data.breadcrumbs}
@@ -213,11 +226,6 @@ export function BrowseDialog({
                 ) : (
                   <span className="font-mono text-dim text-mono-sm">…</span>
                 )}
-                {atCeiling ? (
-                  <span className="whitespace-nowrap font-mono text-dim text-tag">
-                    · home ceiling
-                  </span>
-                ) : null}
                 <span className="flex-1" />
                 <button
                   type="button"
@@ -260,6 +268,7 @@ export function BrowseDialog({
                     mode={mode}
                     entry={entry}
                     registeredPaths={registeredPaths}
+                    inventoryPath={inventoryPath}
                     checked={selectedPaths.includes(entry.path)}
                     onToggle={() => toggleSelected(entry.path)}
                     onEnter={() => setCurrentRequest(entry.path)}
@@ -329,15 +338,11 @@ export function BrowseDialog({
                 />
               </form>
             )}
-            <Button
-              type="button"
-              variant="quiet"
-              size="sm"
-              onClick={onClose}
-              disabled={isRegistering}
-            >
-              cancel
-            </Button>
+            {!reporting ? (
+              <Button type="button" variant="quiet" size="sm" onClick={onClose}>
+                cancel
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="primary"
@@ -346,7 +351,7 @@ export function BrowseDialog({
               disabled={reporting ? isRegistering : confirmedPaths.length === 0}
               onClick={reporting ? onClose : confirm}
             >
-              {reporting ? "done" : confirmLabel(confirmedPaths.length)}
+              {reporting ? "close" : confirmLabel(confirmedPaths.length)}
             </Button>
           </div>
         </div>

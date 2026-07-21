@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useInventoryConfig } from "../inventory/use-inventory";
 import { useRegisterRepos } from "../registry/use-register-repos";
 import { useRegistry } from "../registry/use-registry";
 import { useBrowsePicker } from "./use-browse-picker";
@@ -12,6 +13,7 @@ import { useBrowsePicker } from "./use-browse-picker";
 // browsing state alone.
 export function useRegisterPicker() {
   const registry = useRegistry();
+  const inventory = useInventoryConfig();
   const registerSelection = useRegisterRepos();
   const browse = useBrowsePicker(
     (paths) => registerSelection.registerRepos(paths),
@@ -42,6 +44,7 @@ export function useRegisterPicker() {
     dialogProps: {
       mode: "register",
       registeredPaths,
+      inventoryPath: inventory.data?.inventoryPath ?? undefined,
       onSelect: browse.selectBrowse,
       onClose: browse.closeBrowse,
       outcomes: registerSelection.outcomes,

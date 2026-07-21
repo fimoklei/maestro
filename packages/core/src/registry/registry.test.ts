@@ -81,6 +81,26 @@ describe("Registry", () => {
     });
   });
 
+  it("refuses the connected central inventory as a consuming repo", async () => {
+    const fs = new InMemoryFileSystem({
+      directories: {
+        "/Users/me/agent-harness": "/Users/me/agent-harness",
+      },
+      files: {
+        [CONFIG_PATH]: JSON.stringify({
+          repos: [],
+          inventoryPath: "/Users/me/agent-harness",
+        }),
+      },
+    });
+    const registry = makeRegistry(fs);
+
+    await expect(registry.register("/Users/me/agent-harness")).resolves.toEqual(
+      { ok: false, error: "central-inventory" },
+    );
+    await expect(registry.list()).resolves.toEqual([]);
+  });
+
   it("rejects an invalid path with a typed error and persists nothing", async () => {
     const fs = new InMemoryFileSystem();
     const registry = makeRegistry(fs);

@@ -1,4 +1,10 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  realpath as nodeRealpath,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -94,13 +100,15 @@ describe("inventory HTTP route", () => {
     expect(body.message).not.toContain(dir);
   });
 
-  it("GET /api/inventory/config returns the configured path", async () => {
+  it("GET /api/inventory/config returns the canonical configured path", async () => {
     const app = makeApp(dir);
 
     const res = await app.request("/api/inventory/config");
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ inventoryPath: dir });
+    expect(await res.json()).toEqual({
+      inventoryPath: await nodeRealpath(dir),
+    });
   });
 
   it("GET /api/inventory/config returns null when no inventory is configured", async () => {

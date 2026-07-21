@@ -1,4 +1,5 @@
 import {
+  mkdir,
   mkdtemp,
   realpath as nodeRealpath,
   rm,
@@ -115,5 +116,24 @@ describe("registry HTTP routes", () => {
     expect(((await res.json()) as { error: string }).error).toBe(
       "not-a-directory",
     );
+  });
+
+  it("rejects the configured central inventory with a readable 400", async () => {
+    const inventoryPath = join(dir, "agent-harness");
+    await mkdir(inventoryPath);
+    await writeFile(
+      join(dir, "config.json"),
+      JSON.stringify({ repos: [], inventoryPath }),
+      "utf8",
+    );
+
+    const res = await postPath(makeApp(), inventoryPath);
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error: "central-inventory",
+      message:
+        "The central inventory cannot be registered as a consuming repo.",
+    });
   });
 });

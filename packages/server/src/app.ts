@@ -162,11 +162,16 @@ const deployErrorResponses: Record<
 
 // Transport-layer mapping from the domain's typed validation errors to readable
 // text the cockpit shows next to the path field.
-const repoPathErrorMessages: Record<RepoPathError, string> = {
+const repoPathErrorMessages: Record<
+  RepoPathError | "central-inventory",
+  string
+> = {
   missing: "Path is required.",
   relative: "Path must be an absolute path.",
   "not-found": "No directory exists at that path.",
   "not-a-directory": "That path is not a directory.",
+  "central-inventory":
+    "The central inventory cannot be registered as a consuming repo.",
 };
 
 // Transport-layer mapping for the connect use-case. Path-shape failures are
@@ -531,7 +536,12 @@ function realDeps(): AppDeps {
     fs,
     configPath: () => resolveMaestroConfigPath(process.env),
   });
-  const registry = new Registry({ fs, store });
+  const registry = new Registry({
+    fs,
+    store,
+    resolveCentralInventoryPath: (config) =>
+      resolveInventoryPath(config, process.env),
+  });
   // Resolve the inventory path per read (config wins, else MAESTRO_INVENTORY_PATH)
   // so a path saved after startup is picked up without a restart.
   const inventory = new InventoryReader({

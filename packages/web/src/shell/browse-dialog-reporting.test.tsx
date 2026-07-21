@@ -205,7 +205,7 @@ describe("registration reporting (issue #175)", () => {
     expect(rows).toHaveLength(2);
   });
 
-  it("blocks close and cancel while the run is registering", async () => {
+  it("offers one disabled close action while the run is registering", async () => {
     stubListing();
     const { onClose } = renderDialog({
       mode: "register",
@@ -214,13 +214,12 @@ describe("registration reporting (issue #175)", () => {
     });
 
     await screen.findByRole("list", { name: /result/i });
-    expect(screen.getByRole("button", { name: "Close" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /cancel/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /done/i })).toBeDisabled();
+    expect(screen.getAllByRole("button", { name: /close/i })).toHaveLength(1);
+    expect(screen.getByRole("button", { name: /close/i })).toBeDisabled();
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it("releases close, cancel and done once the run ends", async () => {
+  it("offers one close action once the run ends", async () => {
     stubListing();
     const { onClose, update } = renderDialog({
       mode: "register",
@@ -231,10 +230,11 @@ describe("registration reporting (issue #175)", () => {
     await screen.findByRole("list", { name: /result/i });
     update({ isRegistering: false, outcomes: [registered] });
 
-    await userEvent.click(screen.getByRole("button", { name: /done/i }));
+    const close = screen.getByRole("button", { name: /close/i });
+    expect(screen.getAllByRole("button", { name: /close/i })).toHaveLength(1);
+    expect(close).toBeEnabled();
+    await userEvent.click(close);
     expect(onClose).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("button", { name: "Close" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: /cancel/i })).toBeEnabled();
   });
 
   it("keeps browsing while the host hands it no run, so connect never reports", async () => {

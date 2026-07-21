@@ -39,8 +39,8 @@ export const AlreadyRegistered: Story = {
   args: { registeredPaths: new Set(["/home/me/repos/acme-web"]) },
 };
 
-// Not a git repo: no checkbox at all, just the spacer keeping the name column
-// aligned with its selectable neighbours.
+// Not a git repo: a disabled checkbox and an in-place reason make the refusal
+// clear without hiding the control.
 export const NotARepo: Story = {
   args: {
     entry: {
@@ -51,6 +51,11 @@ export const NotARepo: Story = {
       facts: { isGitRepo: false, hasSkillsSubdir: false },
     },
   },
+};
+
+// The central inventory is the source of primitives, never a consuming repo.
+export const CentralInventory: Story = {
+  args: { inventoryPath: "/home/me/repos/acme-web" },
 };
 
 // Connect mode never selects: no checkbox, no spacer, and an inventory hint

@@ -26,6 +26,7 @@ const repoFacts = { isGitRepo: true, hasSkillsSubdir: false };
 function stubServer({
   rejecting = [] as string[],
   alreadyRegistered = [] as string[],
+  includeInventory = false,
 } = {}) {
   let repos = alreadyRegistered.map((path) => ({ path }));
   vi.stubGlobal(
@@ -47,6 +48,15 @@ function stubServer({
                 path: "/home/me/payments-api",
                 facts: repoFacts,
               },
+              ...(includeInventory
+                ? [
+                    {
+                      name: "agent-harness",
+                      path: "/home/me/agent-harness",
+                      facts: repoFacts,
+                    },
+                  ]
+                : []),
             ],
           },
           200,
@@ -145,6 +155,20 @@ describe("sidebar register affordance", () => {
     expect(
       screen.getByRole("checkbox", { name: /payments-api/i }),
     ).toBeEnabled();
+  });
+
+  it("shows the connected inventory as unavailable in the picker", async () => {
+    stubServer({ includeInventory: true });
+    renderSidebar();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "+ repo" }),
+    );
+
+    expect(
+      await screen.findByRole("checkbox", { name: /agent-harness/i }),
+    ).toBeDisabled();
+    expect(screen.getByText("central inventory")).toBeInTheDocument();
   });
 
   it("has no path input of its own — the picker's paste field is the one", async () => {
