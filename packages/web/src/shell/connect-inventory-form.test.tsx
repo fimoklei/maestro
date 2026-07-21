@@ -43,6 +43,25 @@ describe("ConnectInventoryForm", () => {
     );
   });
 
+  it("gives the path input a tokenized amber focus-visible ring, not the UA default", () => {
+    render(
+      <ConnectInventoryForm
+        path=""
+        onPathChange={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+    const input = screen.getByLabelText(/inventory path/i);
+    expect(input).toHaveClass(
+      "focus-visible:outline-2",
+      "focus-visible:outline-offset-2",
+      "focus-visible:outline-amber",
+    );
+    // outline-none would set --tw-outline-style:none, which outline-2 reads —
+    // silently hiding the ring. Guard against a regression that re-adds it.
+    expect(input).not.toHaveClass("outline-none");
+  });
+
   it("reports edits to the path via onPathChange instead of owning the value", () => {
     const onPathChange = vi.fn();
     render(

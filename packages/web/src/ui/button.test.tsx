@@ -27,6 +27,21 @@ describe("Button", () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 
+  it("shows a tokenized amber focus-visible ring, not the UA default", () => {
+    // The ring lives in the shared base className, not variantClasses, so every
+    // variant inherits it — one assertion covers all five (no per-variant loop).
+    render(<Button>go</Button>);
+    const button = screen.getByRole("button", { name: "go" });
+    expect(button).toHaveClass(
+      "focus-visible:outline-2",
+      "focus-visible:outline-offset-2",
+      "focus-visible:outline-amber",
+    );
+    // outline-none would set --tw-outline-style:none, which outline-2 reads —
+    // silently hiding the ring. Guard against a regression that re-adds it.
+    expect(button).not.toHaveClass("outline-none");
+  });
+
   describe("disabled state", () => {
     const variants = [
       "primary",

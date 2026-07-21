@@ -56,7 +56,10 @@ export function ConnectInventoryForm({
           placeholder="/path/to/agent-harness"
           aria-describedby={error ? "inventory-path-error" : undefined}
           aria-invalid={error ? true : undefined}
-          className="flex-1 rounded-control border border-line bg-inset px-2 py-1.5 font-mono text-fg text-mono-sm outline-none focus:border-line-chip"
+          // Keyboard focus shows the same tokenized amber ring as the shared
+          // Button; the near-invisible border delta is gone (issue #227). No
+          // outline-none: it poisons --tw-outline-style and hides the ring.
+          className="flex-1 rounded-control border border-line bg-inset px-2 py-1.5 font-mono text-fg text-mono-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
         />
         {onBrowse ? (
           <Button type="button" variant="quiet" size="sm" onClick={onBrowse}>

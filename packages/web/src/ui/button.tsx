@@ -38,6 +38,12 @@ export function Button({
       type={type}
       className={cn(
         "cursor-pointer whitespace-nowrap border font-mono",
+        // Keyboard focus shows a tokenized amber ring on every variant, which
+        // replaces the UA default outline. No transition on the ring, so
+        // prefers-reduced-motion is honored by construction (WCAG 2.4.7;
+        // issue #227). Do not add outline-none here: it sets --tw-outline-style
+        // to none, which focus-visible:outline-2 reads, silently hiding the ring.
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber",
         "disabled:cursor-not-allowed disabled:border-line-chip disabled:bg-dim-bg disabled:text-dim",
         size === "lg" ? "rounded-item" : "rounded-control",
         variantClasses[variant],
