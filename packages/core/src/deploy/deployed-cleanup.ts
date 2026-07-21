@@ -10,14 +10,14 @@ import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { DeployedCleanupPort, DeployTarget } from "./deploy-skill";
 import { deployTargetSubtrees, type SupportedTool } from "./deploy-tools";
+import type { DeployedLocation } from "./deployed-location";
 
 export class DeployedCleanupAdapter implements DeployedCleanupPort {
   private readonly deps: {
-    // The root the deployed subtrees sit under. Per-repo: the repo. Global: the
-    // home dir, since apm materializes under ~/.claude/skills, ~/.agents/skills
-    // (apm-driver.md). Shared with DeployedContentAdapter so cleanup and the
-    // guard that feeds it always agree on which tree they mean.
-    resolveDeployedRoot: (target: DeployTarget) => string;
+    // The root the deployed subtrees sit under (Per-repo: the repo; Global: HOME).
+    // Shared with DeployedContentAdapter — the same DeployedLocation instance — so
+    // cleanup and the guard that feeds it always agree on which tree they mean.
+    location: Pick<DeployedLocation, "treeRoot">;
   };
 
   constructor(deps: DeployedCleanupAdapter["deps"]) {
@@ -29,7 +29,7 @@ export class DeployedCleanupAdapter implements DeployedCleanupPort {
     name: string;
     tools: readonly SupportedTool[];
   }): Promise<void> {
-    const root = this.deps.resolveDeployedRoot(input.target);
+    const root = this.deps.location.treeRoot(input.target);
     // One subtree per obsolete tool — the exact <prefix>/skills/<name> dir, never
     // a wider path. `force` makes an already-gone copy a no-op rather than an
     // error (a narrowed redeploy runs this every time); `recursive` clears the

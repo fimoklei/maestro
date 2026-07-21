@@ -1,15 +1,15 @@
 // The destination guard on the GLOBAL path, end-to-end against a real deployed
 // subtree under a sandbox HOME. Unlike deployed-content.test.ts (which hardcodes
 // both roots to one dir, mirroring a per-repo install), this drives the real
-// resolveDeployedRoot/resolveDeployedLockfilePath that production wires into the
-// adapter — the global split where the lockfile lives under ~/.apm but the files
-// live under HOME. apm keys the global deployed_file_hashes HOME-relative
-// (spiked against apm 0.20.0, apm-driver.md #61), so the deployed root must be
-// HOME for those keys to match a live sha256. If the wiring regressed (e.g. the
-// global root flipped to ~/.apm), the files would not be found there and a clean
-// skill would misclassify — these tests would go red.
+// DeployedLocation that production wires into the adapter — the global split
+// where the lockfile lives under ~/.apm but the files live under HOME. apm keys
+// the global deployed_file_hashes HOME-relative (spiked against apm 0.20.0,
+// apm-driver.md #61), so the tree root must be HOME for those keys to match a
+// live sha256. If the wiring regressed (e.g. the global root flipped to ~/.apm),
+// the files would not be found there and a clean skill would misclassify — these
+// tests would go red.
 //
-// Sandbox HOME only: the resolvers take an env, so the real ~/.apm and
+// Sandbox HOME only: DeployedLocation takes an env, so the real ~/.apm and
 // ~/.claude/skills are never read.
 import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -17,9 +17,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   DeployedContentAdapter,
+  DeployedLocation,
   type DeployTarget,
-  resolveDeployedLockfilePath,
-  resolveDeployedRoot,
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -35,8 +34,7 @@ describe("DeployedContentAdapter — global target", () => {
   const adapter = () => {
     const env = { HOME: home } as NodeJS.ProcessEnv;
     return new DeployedContentAdapter({
-      resolveLockfilePath: (t) => resolveDeployedLockfilePath(t, env),
-      resolveDeployedRoot: (t) => resolveDeployedRoot(t, env),
+      location: new DeployedLocation(env),
     });
   };
 

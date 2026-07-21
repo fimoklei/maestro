@@ -21,6 +21,7 @@ import {
   classifyDeployedDrift,
   type DeployedFileHashes,
 } from "./deployed-content-drift";
+import type { DeployedLocation } from "./deployed-location";
 
 // Thrown when a deploy subtree exists but cannot be walked or read (anything but
 // a genuinely-missing directory). classify catches it and reports "unreadable"
@@ -43,12 +44,10 @@ type SubtreeScan = { hashes: DeployedFileHashes; fileCount: number };
 
 export class DeployedContentAdapter implements DeployedContentPort {
   private readonly deps: {
-    // Where the target's apm.lock.yaml lives. Per-repo: <repoPath>/apm.lock.yaml.
-    // Global: <apmGlobalRoot>/apm.lock.yaml.
-    resolveLockfilePath: (target: DeployTarget) => string;
-    // The root the deployed_file_hashes keys are relative to. Per-repo: the repo.
-    // Global: the home dir, since apm deploys to ~/.claude/skills (apm-driver.md).
-    resolveDeployedRoot: (target: DeployTarget) => string;
+    // Where the deployed copy lands: the lockfile that records the hashes and the
+    // tree those hashes key against. Shared with DeployedCleanupAdapter (which
+    // uses only treeRoot) so the guard and the cleanup always agree on the tree.
+    location: Pick<DeployedLocation, "treeRoot" | "lockfilePath">;
   };
 
   constructor(deps: DeployedContentAdapter["deps"]) {
@@ -75,7 +74,7 @@ export class DeployedContentAdapter implements DeployedContentPort {
       input.name,
       subtrees,
     );
-    const root = this.deps.resolveDeployedRoot(input.target);
+    const root = this.deps.location.treeRoot(input.target);
     let scan: SubtreeScan;
     try {
       scan = await this.scanSubtrees(root, subtrees, {
@@ -132,7 +131,7 @@ export class DeployedContentAdapter implements DeployedContentPort {
   > {
     let raw: string;
     try {
-      raw = await readFile(this.deps.resolveLockfilePath(target), "utf8");
+      raw = await readFile(this.deps.location.lockfilePath(target), "utf8");
     } catch (error) {
       // A genuinely missing lockfile is the legitimate "nothing recorded" case.
       // Any other read failure means the file is there but we cannot read it —

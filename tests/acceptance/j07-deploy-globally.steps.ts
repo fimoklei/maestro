@@ -117,7 +117,7 @@ describeFeature(
         // deployed root — never the real HOME. So a narrowing global deploy
         // removes the obsolete tool's copy under the sandbox, provably (#136).
         deployedCleanup: new DeployedCleanupAdapter({
-          resolveDeployedRoot: () => workspace,
+          location: { treeRoot: () => workspace },
         }),
         toolPresence: { detectGlobalTools: async () => presentTools },
         inventoryOriginUrl: async () =>
