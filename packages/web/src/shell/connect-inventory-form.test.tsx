@@ -180,6 +180,36 @@ describe("ConnectInventoryForm", () => {
     expect(input).toHaveFocus();
   });
 
+  it("labels the submit button 'Connect inventory' by default", () => {
+    render(
+      <ConnectInventoryForm
+        path=""
+        onPathChange={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /^connect inventory$/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("uses a caller-supplied submit label so re-pointing reads honestly", () => {
+    render(
+      <ConnectInventoryForm
+        path=""
+        onPathChange={vi.fn()}
+        onSubmit={vi.fn()}
+        submitLabel="Re-point source"
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /^re-point source$/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^connect inventory$/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("submits the path passed in via props, not stale internal state", async () => {
     const onSubmit = vi.fn();
     render(
