@@ -5,14 +5,15 @@
 // (frontend.md). A long staleTime keeps it from re-running on every focus — a
 // drift check shells out and is not free.
 
+import type { VersionDrift } from "@maestro/core";
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 
-// One behind skill as the deployed -> latest version pair the server forwards
-// from `apm outdated` (ADR-0007). Identity is the name; the pair lets the screen
-// show "v0.5.0 -> v0.5.1" without a second apm call. Mirrors core's VersionDrift
-// at the HTTP boundary (web never imports core types).
-export type VersionDrift = { name: string; current: string; latest: string };
+// The version-pair shape (name / current / latest) is owned by core, which parses
+// it from `apm outdated` (ADR-0007). Re-exported here — type-only, so
+// `verbatimModuleSyntax` erases it and no core runtime reaches the bundle — so
+// web components keep importing it from their own package (issue #248, ADR-0012).
+export type { VersionDrift };
 
 // The honest server outcomes: the check ran (a behind set, possibly empty), or
 // it could not — either apm reached the tool but could not resolve against the
