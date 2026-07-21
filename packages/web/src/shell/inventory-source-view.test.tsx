@@ -245,6 +245,48 @@ describe("InventorySourceView", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("leads the healthy state with ● and the read-error with ▲ so shape, not just colour, tells them apart", async () => {
+    // Never-Colour-Alone: the healthy and fault badges shared ● (issue #229),
+    // so a user who can't separate green from amber saw one shape for both.
+    // The codebase already owns ▲ for warnings; the fault badge takes it.
+    stubApi({ primitives: () => [skill("tdd")] });
+    const { unmount } = renderView();
+    expect(
+      await screen.findByText(/^● connected · 1 primitive/i),
+    ).toBeInTheDocument();
+    unmount();
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/inventory/config")) {
+          return jsonResponse({ inventoryPath: "/home/me/agent-harness" }, 200);
+        }
+        if (url.startsWith("/api/inventory/primitives")) {
+          return jsonResponse({ message: "cannot read inventory" }, 500);
+        }
+        return jsonResponse(
+          {
+            path: "/home/me",
+            breadcrumbs: [{ name: "~", path: "/home/me" }],
+            entries: [],
+          },
+          200,
+        );
+      }),
+    );
+    renderView();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/^▲ could not read the inventory/i);
+    expect(alert).toHaveClass(
+      "border-amber-border",
+      "bg-amber-bg",
+      "text-amber-ink",
+    );
+  });
+
   it("re-points via the shared form and returns to the connected view", async () => {
     let configPath = "/home/me/agent-harness";
     const fetchMock = vi.fn(
@@ -289,7 +331,7 @@ describe("InventorySourceView", () => {
     await userEvent.clear(field);
     await userEvent.type(field, "/home/me/other-harness");
     await userEvent.click(
-      screen.getByRole("button", { name: /connect inventory/i }),
+      screen.getByRole("button", { name: /re-point source/i }),
     );
 
     expect(

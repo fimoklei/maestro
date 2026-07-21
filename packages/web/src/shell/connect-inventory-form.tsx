@@ -26,6 +26,9 @@ type ConnectInventoryFormProps = {
   noUsableOrigin?: boolean;
   isPending?: boolean;
   onBrowse?: () => void;
+  // Defaults to first-time-setup wording; the re-point flow overrides it so a
+  // returning user isn't told to "Connect" a source they already have (#229).
+  submitLabel?: string;
 };
 
 export function ConnectInventoryForm({
@@ -36,6 +39,7 @@ export function ConnectInventoryForm({
   noUsableOrigin = false,
   isPending = false,
   onBrowse,
+  submitLabel = "Connect inventory",
 }: ConnectInventoryFormProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -126,7 +130,7 @@ export function ConnectInventoryForm({
           size="sm"
           disabled={isPending}
         >
-          Connect inventory
+          {submitLabel}
         </Button>
       </div>
     </form>
