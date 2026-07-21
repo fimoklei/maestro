@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -121,6 +121,111 @@ describe("InventorySourceView", () => {
     expect(
       await screen.findByText(/connected · 5 primitives/i),
     ).toBeInTheDocument();
+  });
+
+  it("labels the Re-read button 'reading…' while fetching, then 'Re-read' when idle", async () => {
+    // A controllable primitives read: it stays pending until we resolve it, so
+    // we can observe the button mid-fetch (label "reading…", disabled) and after
+    // it settles (label back to "Re-read"). This is the most-repeated action's
+    // in-progress feedback (issue #230).
+    let resolvePrimitives: (r: Response) => void = () => {};
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/inventory/config")) {
+          return jsonResponse({ inventoryPath: "/home/me/agent-harness" }, 200);
+        }
+        if (url.startsWith("/api/inventory/primitives")) {
+          return new Promise<Response>((resolve) => {
+            resolvePrimitives = resolve;
+          });
+        }
+        return jsonResponse(
+          {
+            path: "/home/me",
+            breadcrumbs: [{ name: "~", path: "/home/me" }],
+            entries: [],
+          },
+          200,
+        );
+      }),
+    );
+    renderView();
+
+    const reading = await screen.findByRole("button", { name: /reading…/i });
+    expect(reading).toBeDisabled();
+
+    resolvePrimitives(jsonResponse({ primitives: [skill("tdd")] }, 200));
+
+    const reread = await screen.findByRole("button", { name: /^re-read$/i });
+    expect(reread).toBeEnabled();
+  });
+
+  it("announces a re-read even when the count is unchanged", async () => {
+    // A live region only announces when its text mutates, and TanStack Query
+    // keeps the previous count during a refetch. So a re-read returning the same
+    // N — the common case — must still confirm to a screen reader: the status
+    // passes through "reading…", making the settle back to the count a genuine
+    // mutation the reader hears (issue #230).
+    let resolveSecond: (r: Response) => void = () => {};
+    let reads = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/inventory/config")) {
+          return jsonResponse({ inventoryPath: "/home/me/agent-harness" }, 200);
+        }
+        if (url.startsWith("/api/inventory/primitives")) {
+          reads += 1;
+          if (reads === 1) {
+            return jsonResponse(
+              { primitives: [skill("tdd"), skill("frontend")] },
+              200,
+            );
+          }
+          return new Promise<Response>((resolve) => {
+            resolveSecond = resolve;
+          });
+        }
+        return jsonResponse(
+          {
+            path: "/home/me",
+            breadcrumbs: [{ name: "~", path: "/home/me" }],
+            entries: [],
+          },
+          200,
+        );
+      }),
+    );
+    renderView();
+
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent(/connected · 2 primitives/i);
+
+    await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
+    await waitFor(() => expect(status).toHaveTextContent(/reading…/i));
+
+    resolveSecond(
+      jsonResponse({ primitives: [skill("tdd"), skill("frontend")] }, 200),
+    );
+    await waitFor(() =>
+      expect(status).toHaveTextContent(/connected · 2 primitives/i),
+    );
+  });
+
+  it("announces the connected count as a live status region", async () => {
+    // The refreshed count needs an accessible confirmation: a screen reader must
+    // hear "connected · N primitives" when a re-read lands (issue #230).
+    stubApi({
+      configPath: "/home/me/agent-harness",
+      primitives: () => [skill("tdd"), skill("frontend")],
+    });
+    renderView();
+
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent(/connected · 2 primitives/i);
   });
 
   it("shows no fake sync timestamp and singularises a lone primitive", async () => {
