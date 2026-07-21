@@ -48,5 +48,5 @@ Switch this session into the worktree — no manual `cd`, no new session:
 - Call **EnterWorktree** with `path: ~/Projects/maestro-worktrees/issue<N>`. This session now runs there. (It only enters — it never removes your worktree, since you created it with `git worktree add`.)
 - Confirm in Dutch: worktree path, branch, that deps are installed, and the one-line task summary from step 4.
 
-Then implement the issue, following the repo's rules (TDD is blocking — use the `tdd` skill).
-**Done when:** the session's working directory is the worktree and you have begun the issue.
+Then hand off to the `implement` skill to build the issue — it runs the work through TDD at the agreed seams and keeps the repo's rules. Do not start `/tdd` directly from here.
+**Done when:** the session's working directory is the worktree and the `implement` skill has taken over the issue.
