@@ -79,6 +79,32 @@ function skill(name: string) {
 }
 
 describe("InventorySourceView", () => {
+  it("holds the card frame with a skeleton while the source config loads", async () => {
+    // Config never resolves this render, so the view stays in its loading
+    // state. The frame — the heading and the card — must already be on screen
+    // so nothing jumps when the data lands, and the skeleton must announce
+    // itself to assistive tech rather than showing a bare "Loading…" (#231).
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/inventory/config")) {
+          return new Promise<Response>(() => {});
+        }
+        return jsonResponse({ primitives: [] }, 200);
+      }),
+    );
+    renderView();
+
+    expect(
+      await screen.findByRole("status", { name: /loading source/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /inventory source/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/^Loading…$/)).not.toBeInTheDocument();
+  });
+
   it("shows the connected source path and its live primitive count", async () => {
     stubApi({
       configPath: "/home/me/agent-harness",
@@ -86,9 +112,7 @@ describe("InventorySourceView", () => {
     });
     renderView();
 
-    expect(
-      await screen.findByText(/connected · 3 primitives/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/3 primitives/i)).toBeInTheDocument();
     expect(screen.getByText("/home/me/agent-harness")).toBeInTheDocument();
   });
 
@@ -112,15 +136,11 @@ describe("InventorySourceView", () => {
     });
     renderView();
 
-    expect(
-      await screen.findByText(/connected · 2 primitives/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/2 primitives/i)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
 
-    expect(
-      await screen.findByText(/connected · 5 primitives/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/5 primitives/i)).toBeInTheDocument();
   });
 
   it("labels the Re-read button 'reading…' while fetching, then 'Re-read' when idle", async () => {
@@ -201,8 +221,12 @@ describe("InventorySourceView", () => {
     );
     renderView();
 
-    const status = await screen.findByRole("status");
-    expect(status).toHaveTextContent(/connected · 2 primitives/i);
+    // Wait for the settled count before grabbing the status: the loading
+    // skeleton is also a role="status", so an early findByRole would capture
+    // that node just before it unmounts (#231).
+    await screen.findByText(/2 primitives/i);
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent(/2 primitives/i);
 
     await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
     await waitFor(() => expect(status).toHaveTextContent(/reading…/i));
@@ -210,31 +234,30 @@ describe("InventorySourceView", () => {
     resolveSecond(
       jsonResponse({ primitives: [skill("tdd"), skill("frontend")] }, 200),
     );
-    await waitFor(() =>
-      expect(status).toHaveTextContent(/connected · 2 primitives/i),
-    );
+    await waitFor(() => expect(status).toHaveTextContent(/2 primitives/i));
   });
 
   it("announces the connected count as a live status region", async () => {
     // The refreshed count needs an accessible confirmation: a screen reader must
-    // hear "connected · N primitives" when a re-read lands (issue #230).
+    // hear "● N primitives" when a re-read lands (issue #230).
     stubApi({
       configPath: "/home/me/agent-harness",
       primitives: () => [skill("tdd"), skill("frontend")],
     });
     renderView();
 
-    const status = await screen.findByRole("status");
-    expect(status).toHaveTextContent(/connected · 2 primitives/i);
+    // Wait for the settled count first: the loading skeleton is also a
+    // role="status", so grabbing the role too early captures that node (#231).
+    await screen.findByText(/2 primitives/i);
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent(/2 primitives/i);
   });
 
   it("shows no fake sync timestamp and singularises a lone primitive", async () => {
     stubApi({ primitives: () => [skill("tdd")] });
     renderView();
 
-    expect(
-      await screen.findByText(/connected · 1 primitive\b/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/1 primitive\b/i)).toBeInTheDocument();
     expect(screen.queryByText(/synced/i)).not.toBeInTheDocument();
   });
 
@@ -263,7 +286,7 @@ describe("InventorySourceView", () => {
     );
     renderView();
 
-    expect(await screen.findByText(/connected · reading/i)).toBeInTheDocument();
+    expect(await screen.findByText(/● reading/i)).toBeInTheDocument();
     expect(screen.queryByText(/undefined/i)).not.toBeInTheDocument();
   });
 
@@ -297,7 +320,9 @@ describe("InventorySourceView", () => {
       await screen.findByText(/could not read the inventory/i),
     ).toBeInTheDocument();
     expect(screen.queryByText(/reading…/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/connected ·/i)).not.toBeInTheDocument();
+    // The count pill is a role="status"; a pure read failure cedes it to the
+    // role="alert" above, so no status region is on screen.
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /re-read/i }),
     ).toBeInTheDocument();
@@ -306,7 +331,7 @@ describe("InventorySourceView", () => {
   it("surfaces a failed re-read even after a count was already shown", async () => {
     // The stale-cache trap: TanStack Query keeps the last good data on a failed
     // refetch. After showing a count, a re-read that fails must flip to the
-    // failure state, not keep the now-stale "connected · N".
+    // failure state, not keep the now-stale "● N primitives".
     let ok = true;
     vi.stubGlobal(
       "fetch",
@@ -335,9 +360,7 @@ describe("InventorySourceView", () => {
     );
     renderView();
 
-    expect(
-      await screen.findByText(/connected · 2 primitives/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/2 primitives/i)).toBeInTheDocument();
 
     ok = false;
     await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
@@ -345,9 +368,7 @@ describe("InventorySourceView", () => {
     expect(
       await screen.findByText(/could not read the inventory/i),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText(/connected · 2 primitives/i),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/2 primitives/i)).not.toBeInTheDocument();
   });
 
   it("leads the healthy state with ● and the read-error with ▲ so shape, not just colour, tells them apart", async () => {
@@ -356,9 +377,7 @@ describe("InventorySourceView", () => {
     // The codebase already owns ▲ for warnings; the fault badge takes it.
     stubApi({ primitives: () => [skill("tdd")] });
     const { unmount } = renderView();
-    expect(
-      await screen.findByText(/^● connected · 1 primitive/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/^● 1 primitive/i)).toBeInTheDocument();
     unmount();
 
     vi.stubGlobal(
@@ -395,7 +414,7 @@ describe("InventorySourceView", () => {
   it("announces a successful retry after a failed read", async () => {
     // The failure→success path: TanStack Query holds isError true while the
     // retry runs, so the live status must stay mounted through the retry (not
-    // cede to the error alert) and pass "reading…" → "connected · N". A status
+    // cede to the error alert) and pass "reading…" → "● N primitives". A status
     // region freshly mounted with the count already in it announces nothing;
     // the mutation is what a screen reader hears (issue #230).
     let resolveRetry: (r: Response) => void = () => {};
@@ -440,9 +459,7 @@ describe("InventorySourceView", () => {
     resolveRetry(
       jsonResponse({ primitives: [skill("tdd"), skill("frontend")] }, 200),
     );
-    await waitFor(() =>
-      expect(status).toHaveTextContent(/connected · 2 primitives/i),
-    );
+    await waitFor(() => expect(status).toHaveTextContent(/2 primitives/i));
   });
 
   it("announces the recovery when a retry succeeds after a failed re-read of an already-shown count", async () => {
@@ -488,9 +505,7 @@ describe("InventorySourceView", () => {
     );
     renderView();
 
-    expect(
-      await screen.findByText(/connected · 2 primitives/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/2 primitives/i)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
     expect(
@@ -515,9 +530,7 @@ describe("InventorySourceView", () => {
         200,
       ),
     );
-    await waitFor(() =>
-      expect(status).toHaveTextContent(/connected · 5 primitives/i),
-    );
+    await waitFor(() => expect(status).toHaveTextContent(/5 primitives/i));
   });
 
   it("re-points via the shared form and returns to the connected view", async () => {
@@ -592,9 +605,7 @@ describe("InventorySourceView", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /cancel/i }));
 
-    expect(
-      await screen.findByText(/connected · 1 primitive\b/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/1 primitive\b/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/inventory path/i)).not.toBeInTheDocument();
   });
 });
