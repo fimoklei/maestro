@@ -22,6 +22,7 @@ function renderDialog({
   onSelect = vi.fn(),
   onClose = vi.fn(),
   registeredPaths = undefined as ReadonlySet<string> | undefined,
+  inventoryPath = undefined as string | undefined,
 } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -33,6 +34,7 @@ function renderDialog({
         onSelect={onSelect}
         onClose={onClose}
         registeredPaths={registeredPaths}
+        inventoryPath={inventoryPath}
       />
     </QueryClientProvider>,
   );
@@ -260,14 +262,14 @@ describe("BrowseDialog", () => {
     expect(screen.getByRole("button", { name: "~" })).toBeInTheDocument();
   });
 
-  it("disables up at the home ceiling and shows the ceiling hint", async () => {
+  it("disables up at the home ceiling and explains it beside the control", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => jsonResponse(homeResponse, 200)),
     );
     renderDialog();
 
-    expect(await screen.findByText(/home ceiling/i)).toBeInTheDocument();
+    expect(await screen.findByText("already at home")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /up/i })).toBeDisabled();
   });
 
@@ -359,7 +361,6 @@ describe("BrowseDialog", () => {
     expect(row).toHaveTextContent("● registered");
     expect(row).not.toHaveTextContent("◆ inventory");
     const other = await screen.findByRole("button", { name: "notes" });
-    expect(other).not.toHaveTextContent("git");
     expect(other).not.toHaveTextContent("● registered");
   });
 
@@ -667,7 +668,7 @@ describe("BrowseDialog", () => {
       vi.stubGlobal("fetch", fetchMock);
       renderDialog({ mode: "connect" });
 
-      expect(await screen.findByText(/home ceiling/i)).toBeInTheDocument();
+      expect(await screen.findByText("already at home")).toBeInTheDocument();
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
@@ -786,7 +787,7 @@ describe("BrowseDialog", () => {
       );
     }
 
-    it("offers a checkbox only on git-repo rows", async () => {
+    it("shows a disabled checkbox and reason for a folder that is not a git repo", async () => {
       stubRepoListing();
       renderDialog({ mode: "register" });
 
@@ -796,9 +797,21 @@ describe("BrowseDialog", () => {
       expect(
         screen.getByRole("checkbox", { name: /payments-api/i }),
       ).toBeInTheDocument();
+      expect(screen.getByRole("checkbox", { name: /scratch/i })).toBeDisabled();
+      expect(screen.getByText("not a git repo")).toBeInTheDocument();
+    });
+
+    it("shows the connected central inventory as unavailable", async () => {
+      stubRepoListing();
+      renderDialog({
+        mode: "register",
+        inventoryPath: "/home/me/acme-web",
+      });
+
       expect(
-        screen.queryByRole("checkbox", { name: /scratch/i }),
-      ).not.toBeInTheDocument();
+        await screen.findByRole("checkbox", { name: /acme-web/i }),
+      ).toBeDisabled();
+      expect(screen.getByText("central inventory")).toBeInTheDocument();
     });
 
     it("never offers checkboxes in connect mode", async () => {

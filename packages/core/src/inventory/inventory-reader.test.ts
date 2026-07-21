@@ -114,6 +114,21 @@ describe("InventoryReader", () => {
     });
   });
 
+  it("returns the canonical configured path when the inventory is symlinked", async () => {
+    const fs = new InMemoryFileSystem({
+      directories: {
+        "/home/me/agent-harness": INVENTORY,
+        [INVENTORY]: INVENTORY,
+      },
+    });
+    const reader = new InventoryReader({
+      fs,
+      resolvePath: () => "/home/me/agent-harness",
+    });
+
+    await expect(reader.configuredPath()).resolves.toBe(INVENTORY);
+  });
+
   it("reports not-configured when the path is not a directory", async () => {
     const fs = new InMemoryFileSystem({
       files: { [INVENTORY]: "i am a file, not a dir" },

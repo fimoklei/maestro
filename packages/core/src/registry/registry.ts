@@ -4,28 +4,41 @@
 // membership-check API (e.g. assertRegistered) is deliberately not built yet:
 // the first endpoint that needs it — deploy / deploy-state-read — must add it
 // here as one reusable, realpath-before-compare check, never re-derived per route.
-import type { ConfigStore } from "./config-store";
+import type { ConfigStore, MaestroConfig } from "./config-store";
 import type { FileSystemPort } from "./file-system";
 import { type RepoPathError, validateRepoPath } from "./repo-path";
 
 export type RegisteredRepo = { path: string };
 
+type RegisterError = RepoPathError | "central-inventory";
+
 type RegisterResult =
   | { ok: true; repos: RegisteredRepo[] }
-  | { ok: false; error: RepoPathError };
+  | { ok: false; error: RegisterError };
 
 export class Registry {
   private readonly fs: FileSystemPort;
   private readonly store: ConfigStore;
+  private readonly resolveCentralInventoryPath: (
+    config: MaestroConfig,
+  ) => Promise<string | undefined> | string | undefined;
   // Serializes register's read-modify-write. The store rewrites the whole
   // config file, so two concurrent registrations would each read the same
   // baseline and the second write would clobber the first (a lost repo).
   // Chaining onto a tail promise makes the critical section one-at-a-time.
   private tail: Promise<unknown> = Promise.resolve();
 
-  constructor(deps: { fs: FileSystemPort; store: ConfigStore }) {
+  constructor(deps: {
+    fs: FileSystemPort;
+    store: ConfigStore;
+    resolveCentralInventoryPath?: (
+      config: MaestroConfig,
+    ) => Promise<string | undefined> | string | undefined;
+  }) {
     this.fs = deps.fs;
     this.store = deps.store;
+    this.resolveCentralInventoryPath =
+      deps.resolveCentralInventoryPath ?? ((config) => config.inventoryPath);
   }
 
   async list(): Promise<RegisteredRepo[]> {
@@ -62,6 +75,15 @@ export class Registry {
     }
 
     const config = await this.store.read();
+    const inventoryPath = await this.resolveCentralInventoryPath(config);
+    if (inventoryPath !== undefined) {
+      const canonicalInventoryPath = await this.fs
+        .realpath(inventoryPath)
+        .catch(() => inventoryPath);
+      if (validated.path === canonicalInventoryPath) {
+        return { ok: false, error: "central-inventory" };
+      }
+    }
     const repo: RegisteredRepo = { path: validated.path };
     const next = config.repos.some((r) => r.path === repo.path)
       ? config.repos

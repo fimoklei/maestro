@@ -1,8 +1,10 @@
+import { Chip } from "../ui/chip";
 import { type BrowseDialogMode, browseModes } from "./browse-modes";
 import type { BrowseEntry } from "./use-browse-filesystem";
 
-// One row of the browse listing: an optional selection checkbox, the folder
-// name, its symlink tag, its mode-aware badges, and the step-in affordance.
+// One row of the browse listing: a selection checkbox where registration is
+// possible, the folder name, its symlink tag, its mode-aware badges, and the
+// step-in affordance.
 // Selecting and stepping in are deliberately two separate controls — ticking a
 // repo to register it must never navigate away from the folder you are
 // reading (issue #151). The badges come from the mode's own config
@@ -13,6 +15,7 @@ export function BrowseEntryRow({
   mode,
   entry,
   registeredPaths,
+  inventoryPath,
   checked,
   onToggle,
   onEnter,
@@ -20,15 +23,19 @@ export function BrowseEntryRow({
   mode: BrowseDialogMode;
   entry: BrowseEntry;
   registeredPaths?: ReadonlySet<string>;
+  inventoryPath?: string;
   checked: boolean;
   onToggle: () => void;
   onEnter: () => void;
 }) {
   const isRegistered = registeredPaths?.has(entry.path) ?? false;
-  // Only a git repo can be registered (issue #150's fact), so only a git-repo
-  // row gets a checkbox at all. An already-registered one keeps its box but
-  // disabled — its badge is the answer.
-  const checkable = mode === "register" && entry.facts.isGitRepo;
+  const unavailableReason =
+    mode === "register" && entry.path === inventoryPath
+      ? "central inventory"
+      : mode === "register" && !entry.facts.isGitRepo
+        ? "not a git repo"
+        : undefined;
+  const disabled = isRegistered || unavailableReason !== undefined;
 
   return (
     <div
@@ -38,21 +45,17 @@ export function BrowseEntryRow({
           : "border-transparent hover:bg-active"
       }`}
     >
-      {/* A non-repo row keeps an empty slot so every name in the listing still
-          starts on the same column. */}
       {mode === "register" ? (
-        checkable ? (
-          <input
-            type="checkbox"
-            aria-label={`Select ${entry.name}`}
-            checked={checked}
-            disabled={isRegistered}
-            onChange={onToggle}
-            className="size-4 shrink-0 accent-amber-ink enabled:cursor-pointer disabled:cursor-not-allowed"
-          />
-        ) : (
-          <span aria-hidden="true" className="size-4 shrink-0" />
-        )
+        <input
+          type="checkbox"
+          aria-label={`Select ${entry.name}${
+            unavailableReason ? `: ${unavailableReason}` : ""
+          }`}
+          checked={checked}
+          disabled={disabled}
+          onChange={onToggle}
+          className="size-4 shrink-0 accent-amber-ink enabled:cursor-pointer disabled:cursor-not-allowed"
+        />
       ) : null}
       <button
         type="button"
@@ -76,6 +79,7 @@ export function BrowseEntryRow({
         </span>
         <span className="flex shrink-0 items-center gap-1.5">
           {browseModes[mode].badges({ entry, isRegistered })}
+          {unavailableReason ? <Chip>{unavailableReason}</Chip> : null}
           <span className="w-3.5 text-right font-mono text-data text-dim">
             →
           </span>
