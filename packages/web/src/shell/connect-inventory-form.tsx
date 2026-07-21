@@ -1,4 +1,4 @@
-import type { FormEvent } from "react";
+import { type FormEvent, useEffect, useRef } from "react";
 import { Button } from "../ui/button";
 
 // Presentational form for the offline connect flow: a labelled path input + a
@@ -37,6 +37,17 @@ export function ConnectInventoryForm({
   isPending = false,
   onBrowse,
 }: ConnectInventoryFormProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // A rejected submit must hand focus back to the field to fix, not leave it on
+  // the page (issue #214). The error prop appearing is the signal a submit
+  // failed, so focus follows it in.
+  useEffect(() => {
+    if (error) {
+      inputRef.current?.focus();
+    }
+  }, [error]);
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     onSubmit(path);
@@ -49,6 +60,7 @@ export function ConnectInventoryForm({
       </label>
       <div className="flex items-end gap-2">
         <input
+          ref={inputRef}
           id="inventory-path"
           name="inventory-path"
           value={path}

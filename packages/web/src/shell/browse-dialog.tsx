@@ -8,6 +8,7 @@ import { type BrowseDialogMode, browseModes } from "./browse-modes";
 import { BrowseRunReport } from "./browse-run-report";
 import { useBrowseNavigation } from "./use-browse-navigation";
 import { useFolderFilter } from "./use-folder-filter";
+import { useModalDialog } from "./use-modal-dialog";
 
 // A read-only directory picker (ADR-0009): lists the current directory's
 // children and lets the user step in, up, or jump via breadcrumbs, then
@@ -165,14 +166,34 @@ export function BrowseDialog({
         : [...current, path],
     );
 
+  // Closing is blocked while a registration is in flight — the run's failures
+  // are readable nowhere else (issue #175) — so Escape and the backdrop honour
+  // the same guard as the disabled ✕.
+  const { panelRef, requestClose } = useModalDialog({
+    onClose,
+    closeEnabled: !isRegistering,
+  });
+
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={heading}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 p-6"
-    >
-      <div className="flex max-h-[70vh] w-full max-w-[620px] flex-col overflow-hidden rounded-card border border-line bg-chrome">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 p-6">
+      {/* A real button, hidden from the a11y tree and the tab order, carries the
+          backdrop dismiss: clicking outside the panel closes it, mirroring
+          Escape, without making a static div interactive. */}
+      <button
+        type="button"
+        aria-hidden="true"
+        tabIndex={-1}
+        onClick={requestClose}
+        className="absolute inset-0 cursor-default"
+      />
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={heading}
+        tabIndex={-1}
+        className="relative flex max-h-[70vh] w-full max-w-[620px] flex-col overflow-hidden rounded-card border border-line bg-chrome outline-none"
+      >
         <div className="flex items-center gap-2.5 border-line-row border-b px-3.5 py-3">
           <h2 className="font-semibold font-ui text-fg text-subtitle">
             {heading}
@@ -251,7 +272,7 @@ export function BrowseDialog({
                   value={filter}
                   onChange={(event) => setFilter(event.target.value)}
                   placeholder="filter this folder…"
-                  className="min-w-0 flex-1 bg-transparent font-mono text-fg text-mono-sm placeholder:text-dim focus:outline-none"
+                  className="min-w-0 flex-1 bg-transparent font-mono text-fg text-mono-sm placeholder:text-dim"
                 />
               </div>
             </div>
@@ -334,7 +355,7 @@ export function BrowseDialog({
                   value={pastedPath}
                   onChange={(event) => setPastedPath(event.target.value)}
                   placeholder="/absolute/path…"
-                  className="min-w-0 flex-1 bg-transparent font-mono text-fg text-mono-sm placeholder:text-dim focus:outline-none"
+                  className="min-w-0 flex-1 bg-transparent font-mono text-fg text-mono-sm placeholder:text-dim"
                 />
               </form>
             )}

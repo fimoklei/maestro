@@ -1,7 +1,15 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { RegistrationOutcome } from "../registry/use-register-repos";
 import { BrowseDialog } from "./browse-dialog";
 import { readLastFolder, writeLastFolder } from "./browse-last-folder";
 
@@ -23,6 +31,8 @@ function renderDialog({
   onClose = vi.fn(),
   registeredPaths = undefined as ReadonlySet<string> | undefined,
   inventoryPath = undefined as string | undefined,
+  outcomes = undefined as readonly RegistrationOutcome[] | undefined,
+  isRegistering = undefined as boolean | undefined,
 } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -35,6 +45,8 @@ function renderDialog({
         onClose={onClose}
         registeredPaths={registeredPaths}
         inventoryPath={inventoryPath}
+        outcomes={outcomes}
+        isRegistering={isRegistering}
       />
     </QueryClientProvider>,
   );
@@ -1121,6 +1133,208 @@ describe("BrowseDialog", () => {
       });
       expect(confirm).not.toHaveAccessibleDescription(/writes nothing/i);
       expect(screen.queryByText(/writes nothing/i)).not.toBeInTheDocument();
+    });
+  });
+
+  // Everything a keyboard user expects from a modal (issue #214): focus lands
+  // inside on open and returns to the trigger on close, Escape closes it, and
+  // Tab never escapes to the page behind.
+  describe("keyboard accessibility (issue #214)", () => {
+    // A trigger button that mounts the dialog, so focus-restore-on-close has a
+    // real element to return to — the picker's "browse…" button in the app.
+    function TriggerHarness({
+      isRegistering = false,
+    }: {
+      isRegistering?: boolean;
+    } = {}) {
+      const [open, setOpen] = useState(false);
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      return (
+        <QueryClientProvider client={queryClient}>
+          <button type="button" onClick={() => setOpen(true)}>
+            browse…
+          </button>
+          {open ? (
+            <BrowseDialog
+              mode="connect"
+              onSelect={vi.fn()}
+              onClose={() => setOpen(false)}
+              isRegistering={isRegistering}
+            />
+          ) : null}
+        </QueryClientProvider>
+      );
+    }
+
+    it("moves focus into the dialog when it opens", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => jsonResponse(homeResponse, 200)),
+      );
+      renderDialog();
+
+      const dialog = await screen.findByRole("dialog");
+      await waitFor(() =>
+        expect(dialog.contains(document.activeElement)).toBe(true),
+      );
+      expect(document.activeElement).not.toBe(document.body);
+    });
+
+    it("restores focus to the trigger when it closes", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => jsonResponse(homeResponse, 200)),
+      );
+      render(<TriggerHarness />);
+
+      const trigger = screen.getByRole("button", { name: /browse/i });
+      await userEvent.click(trigger);
+      await screen.findByRole("dialog");
+
+      await userEvent.keyboard("{Escape}");
+
+      await waitFor(() => expect(trigger).toHaveFocus());
+    });
+
+    it("closes on Escape", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => jsonResponse(homeResponse, 200)),
+      );
+      const { onClose } = renderDialog();
+
+      await screen.findByRole("dialog");
+      await userEvent.keyboard("{Escape}");
+
+      expect(onClose).toHaveBeenCalledOnce();
+    });
+
+    it("ignores Escape while a registration is in flight", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => jsonResponse(homeResponse, 200)),
+      );
+      const { onClose } = renderDialog({
+        mode: "register",
+        isRegistering: true,
+      });
+
+      await screen.findByRole("dialog");
+      await userEvent.keyboard("{Escape}");
+
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it("traps Tab within the dialog", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => jsonResponse(homeResponse, 200)),
+      );
+      renderDialog();
+
+      const dialog = await screen.findByRole("dialog");
+      const focusables = dialog.querySelectorAll<HTMLElement>(
+        "button:not([disabled]), input:not([disabled]), [href], textarea, select",
+      );
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (!first || !last) throw new Error("expected focusable controls");
+
+      // Tab off the last control wraps back to the first, never to the page.
+      last.focus();
+      fireEvent.keyDown(dialog, { key: "Tab" });
+      expect(first).toHaveFocus();
+
+      // Shift+Tab off the first wraps to the last.
+      first.focus();
+      fireEvent.keyDown(dialog, { key: "Tab", shiftKey: true });
+      expect(last).toHaveFocus();
+    });
+
+    it("keeps Escape and the Tab trap alive after focus falls back to the page", async () => {
+      // Navigating into a folder unmounts the focused row, dropping focus to
+      // <body> outside the panel. Escape must still close and Tab must still
+      // pull focus back in, never to a control behind the dialog.
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => jsonResponse(homeResponse, 200)),
+      );
+      const { onClose } = renderDialog();
+
+      const dialog = await screen.findByRole("dialog");
+      const first = dialog.querySelector<HTMLElement>(
+        "button:not([disabled]), input:not([disabled])",
+      );
+      if (!first) throw new Error("expected a focusable control");
+
+      // Simulate the focused row unmounting: focus lands on <body>.
+      (document.activeElement as HTMLElement | null)?.blur();
+      expect(dialog.contains(document.activeElement)).toBe(false);
+
+      // Tab from the page pulls focus back into the dialog.
+      fireEvent.keyDown(document.body, { key: "Tab" });
+      expect(first).toHaveFocus();
+
+      // Escape still closes, even when it fires from outside the panel.
+      (document.activeElement as HTMLElement | null)?.blur();
+      fireEvent.keyDown(document.body, { key: "Escape" });
+      expect(onClose).toHaveBeenCalledOnce();
+    });
+
+    it("closes when the backdrop is clicked", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => jsonResponse(homeResponse, 200)),
+      );
+      const { onClose } = renderDialog();
+
+      const dialog = await screen.findByRole("dialog");
+      // The backdrop is a hidden button beside the panel; clicking it closes.
+      const backdrop = dialog.parentElement?.querySelector(
+        'button[aria-hidden="true"]',
+      ) as HTMLElement;
+      await userEvent.click(backdrop);
+
+      expect(onClose).toHaveBeenCalledOnce();
+    });
+
+    it("keeps the backdrop inert while a registration is in flight", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => jsonResponse(homeResponse, 200)),
+      );
+      const { onClose } = renderDialog({
+        mode: "register",
+        isRegistering: true,
+      });
+
+      const dialog = await screen.findByRole("dialog");
+      const backdrop = dialog.parentElement?.querySelector(
+        'button[aria-hidden="true"]',
+      ) as HTMLElement;
+      await userEvent.click(backdrop);
+
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it("puts the modal semantics on the panel, not the overlay", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => jsonResponse(homeResponse, 200)),
+      );
+      renderDialog();
+
+      const dialog = await screen.findByRole("dialog");
+      // The panel carries the semantics and is the focus target (tabindex -1);
+      // its parent overlay is a plain, unlabelled backdrop.
+      expect(dialog).toHaveAttribute("aria-modal", "true");
+      expect(dialog).toHaveAttribute("aria-label");
+      expect(dialog).toHaveAttribute("tabindex", "-1");
+      const overlay = dialog.parentElement as HTMLElement;
+      expect(overlay).not.toHaveAttribute("role");
+      expect(overlay).not.toHaveAttribute("aria-modal");
     });
   });
 });

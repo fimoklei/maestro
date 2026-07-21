@@ -156,6 +156,30 @@ describe("ConnectInventoryForm", () => {
     ).toBeTruthy();
   });
 
+  it("returns focus to the invalid field when a submit fails (issue #214)", () => {
+    const { rerender } = render(
+      <ConnectInventoryForm
+        path="/home/me/not-an-inventory"
+        onPathChange={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+    const input = screen.getByLabelText(/inventory path/i);
+    expect(input).not.toHaveFocus();
+
+    // The parent rejects the submit and feeds back an error — focus must land
+    // on the field the user has to fix, not drop to the page.
+    rerender(
+      <ConnectInventoryForm
+        path="/home/me/not-an-inventory"
+        onPathChange={vi.fn()}
+        onSubmit={vi.fn()}
+        error="That directory has no skills/ folder, so it is not an inventory."
+      />,
+    );
+    expect(input).toHaveFocus();
+  });
+
   it("submits the path passed in via props, not stale internal state", async () => {
     const onSubmit = vi.fn();
     render(
