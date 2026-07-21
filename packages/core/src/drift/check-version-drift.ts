@@ -8,18 +8,13 @@
 // reason: "unverified" when apm reached the tool but could not resolve against
 // the remote (web maps it to its own state). Neither ever reads as up-to-date.
 import type { ApmDriverPort, DeployTarget } from "../deploy/deploy-skill";
-import type { VersionDrift } from "./parse-outdated";
+// The drift-check outcome has one owner: the driver's OutdatedResult, which
+// this use-case forwards unchanged (its meaning is spelled out in the header).
+import type { OutdatedResult } from "./parse-outdated";
 
 type CheckVersionDriftInput = {
   target: DeployTarget;
 };
-
-type CheckVersionDriftResult =
-  | { ok: true; behind: VersionDrift[] }
-  // `reason: "unverified"` is apm's own could-not-check outcome, forwarded from
-  // the driver unchanged; the use-case's own refusals (unregistered repo, a
-  // realpath that threw) are a bare failure with no reason.
-  | { ok: false; reason?: "unverified" };
 
 export class CheckVersionDrift {
   private readonly deps: {
@@ -34,9 +29,7 @@ export class CheckVersionDrift {
     this.deps = deps;
   }
 
-  async execute(
-    input: CheckVersionDriftInput,
-  ): Promise<CheckVersionDriftResult> {
+  async execute(input: CheckVersionDriftInput): Promise<OutdatedResult> {
     let target = input.target;
     if (target.kind === "repo") {
       // Registry gate first: refuse an unregistered repo before any apm access.
