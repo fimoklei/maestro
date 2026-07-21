@@ -14,6 +14,9 @@ type TargetItemProps = {
   label: string;
   kind: "global" | "local";
   indicator: TargetDriftIndicator;
+  // Full, untruncated text shown on hover (native tooltip). A local target's
+  // label is a shortened path, so the whole path stays reachable here (#211).
+  title?: string;
 };
 
 const STATUS_TEXT: Record<TargetDriftIndicator, string> = {
@@ -25,7 +28,7 @@ const STATUS_TEXT: Record<TargetDriftIndicator, string> = {
   pending: "checking…",
 };
 
-export function TargetItem({ label, kind, indicator }: TargetItemProps) {
+export function TargetItem({ label, kind, indicator, title }: TargetItemProps) {
   return (
     <li className="flex items-center justify-between gap-2 px-3 py-1.5">
       <span className="flex items-center gap-2 truncate">
@@ -38,6 +41,7 @@ export function TargetItem({ label, kind, indicator }: TargetItemProps) {
           />
         )}
         <span
+          title={title}
           className={cn(
             "truncate",
             kind === "local"

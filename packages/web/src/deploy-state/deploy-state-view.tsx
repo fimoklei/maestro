@@ -72,6 +72,9 @@ export function DeployStateView() {
 function RepositoriesSection() {
   const { data, isLoading, isError, isSuccess } = useRegistry();
   const repos = data?.repos ?? [];
+  // The whole set drives each card's label so shared-prefix repos stay distinct,
+  // and matches the sidebar's derivation for one consistent scheme (#211).
+  const repoPaths = repos.map((repo) => repo.path);
 
   return (
     <section className="mt-section">
@@ -89,7 +92,11 @@ function RepositoriesSection() {
       {repos.length > 0 ? (
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {repos.map((repo) => (
-            <DeployStatePanel key={repo.path} repo={repo.path} />
+            <DeployStatePanel
+              key={repo.path}
+              repo={repo.path}
+              siblings={repoPaths}
+            />
           ))}
         </div>
       ) : null}

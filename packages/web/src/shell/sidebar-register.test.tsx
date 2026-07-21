@@ -103,10 +103,10 @@ describe("sidebar register affordance", () => {
 
     const targets = await screen.findByRole("list", { name: "Targets" });
     expect(
-      await within(targets).findByText("/home/me/acme-web"),
+      await within(targets).findByTitle("/home/me/acme-web"),
     ).toBeInTheDocument();
     expect(
-      await within(targets).findByText("/home/me/payments-api"),
+      await within(targets).findByTitle("/home/me/payments-api"),
     ).toBeInTheDocument();
   });
 
@@ -124,10 +124,10 @@ describe("sidebar register affordance", () => {
     ).toBeInTheDocument();
     const targets = screen.getByRole("list", { name: "Targets" });
     expect(
-      await within(targets).findByText("/home/me/payments-api"),
+      await within(targets).findByTitle("/home/me/payments-api"),
     ).toBeInTheDocument();
     expect(
-      within(targets).queryByText("/home/me/acme-web"),
+      within(targets).queryByTitle("/home/me/acme-web"),
     ).not.toBeInTheDocument();
   });
 

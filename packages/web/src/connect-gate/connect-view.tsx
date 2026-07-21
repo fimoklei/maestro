@@ -8,6 +8,7 @@ import { useConnectInventory } from "../inventory/use-connect-inventory";
 import { useInventoryConfig } from "../inventory/use-inventory";
 import { BrowseDialog } from "../shell/browse-dialog";
 import { ConnectInventoryForm } from "../shell/connect-inventory-form";
+import { targetLabel } from "../shell/target-label";
 import { useBrowsePicker } from "../shell/use-browse-picker";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
@@ -72,6 +73,18 @@ export function ConnectView() {
               ✓ {connect.data.primitiveCount} primitives found · read-only,
               never writes back
             </p>
+            {/* Name the connected source here, on the surface that confirms it,
+                so it is identifiable beyond its basename without opening the
+                source view (#211). Full path stays available on hover. */}
+            <div className="flex flex-col gap-1">
+              <span className="m-label">Source · local folder</span>
+              <span
+                className="truncate font-mono text-fg text-mono-sm"
+                title={connect.data.inventoryPath}
+              >
+                {targetLabel(connect.data.inventoryPath)}
+              </span>
+            </div>
             <div>
               <Button
                 variant="primary"

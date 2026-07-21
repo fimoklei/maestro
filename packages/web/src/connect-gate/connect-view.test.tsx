@@ -103,6 +103,25 @@ describe("ConnectView", () => {
     ).toBeInTheDocument();
   });
 
+  it("names the connected source on the confirmation, beyond its basename", async () => {
+    // The surface that confirms the connection must identify the source itself
+    // (#211): the shortened path tail is visible, and the whole path stays
+    // reachable on hover, without navigating to the source view.
+    stubApi();
+    renderView();
+
+    await userEvent.type(
+      await screen.findByLabelText(/inventory path/i),
+      "/home/me/agent-harness",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /^connect inventory$/i }),
+    );
+
+    const source = await screen.findByText("…/me/agent-harness");
+    expect(source).toHaveAttribute("title", "/home/me/agent-harness");
+  });
+
   it("lands on Inventory once the user continues past the confirmation", async () => {
     stubApi();
     renderView();

@@ -180,21 +180,21 @@ describe("StatusBar", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("keeps the full source name in the title so truncation stays reversible", async () => {
-    // A basename is user-controlled and can be long; the header truncates it
-    // visually (so it never pushes the connection state off-screen) but must
-    // preserve the whole name on hover via title. The full path still lives on
-    // the source view.
-    const longName = "a".repeat(120);
+  it("labels the source by its path tail and keeps the full path in the title", async () => {
+    // The header shows a shortened path (parent + basename), not a bare
+    // basename, so two similarly-named clones stay distinguishable (#211). The
+    // whole path is preserved on hover via title; it also lives on the source
+    // view.
+    const fullPath = "/Users/me/Projects/agent-harness";
     stubServer({
       health: "ok",
-      config: { inventoryPath: `/home/me/${longName}` },
+      config: { inventoryPath: fullPath },
       primitives: [{}],
     });
     renderStatusBar();
 
-    const nameEl = await screen.findByText(longName);
-    expect(nameEl).toHaveAttribute("title", longName);
+    const nameEl = await screen.findByText("…/Projects/agent-harness");
+    expect(nameEl).toHaveAttribute("title", fullPath);
   });
 
   it("does not read the inventory until a source is configured", async () => {

@@ -24,7 +24,8 @@ export const Connected: Story = {};
 export const ConnectedWithSource: Story = {
   args: {
     source: {
-      name: "agent-harness",
+      name: "…/Projects/agent-harness",
+      title: "/Users/me/Projects/agent-harness",
       countLabel: "9 primitives",
       active: false,
       onOpen: () => {},
@@ -36,7 +37,8 @@ export const ConnectedWithSource: Story = {
 export const ViewingSource: Story = {
   args: {
     source: {
-      name: "agent-harness",
+      name: "…/Projects/agent-harness",
+      title: "/Users/me/Projects/agent-harness",
       countLabel: "9 primitives",
       active: true,
       onOpen: () => {},

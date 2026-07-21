@@ -7,6 +7,7 @@ import { Logo } from "../ui/logo";
 import { StatusDot, type StatusDotProps } from "../ui/status-dot";
 import { useHealth } from "../use-health";
 import { primitiveCountLabel } from "./primitive-count-label";
+import { targetLabel } from "./target-label";
 
 // Top status bar: the wordmark plus the header's setup/connection state, laid
 // out to the Control Room design — a context line beside
@@ -78,6 +79,9 @@ function deriveConnection(
 // setup/first-run. `active` marks the gear as the current view while on /source.
 export interface SourceEntry {
   name: string;
+  // The full source path, shown on hover so the header identifies the source
+  // beyond its shortened label (#211).
+  title: string;
   countLabel: string;
   active: boolean;
   onOpen: () => void;
@@ -102,7 +106,8 @@ export function StatusBar() {
   const source: SourceEntry | null =
     connected && path !== null
       ? {
-          name: basename(path),
+          name: targetLabel(path),
+          title: path,
           countLabel: primitiveCountLabel(inventory.data?.primitives.length),
           active: pathname === "/source",
           onOpen: () => navigate("/source"),
@@ -110,14 +115,6 @@ export function StatusBar() {
       : null;
 
   return <StatusBarView connection={connection} source={source} />;
-}
-
-// The trailing path segment stands in for the source name in the header, so the
-// long absolute path doesn't crowd the bar; the full path still shows in the
-// source view.
-function basename(path: string): string {
-  const segments = path.split("/").filter(Boolean);
-  return segments.at(-1) ?? path;
 }
 
 // Presentational: the status is carried both by the chip's dot (decorative) and
@@ -133,7 +130,11 @@ export function StatusBarView({
 }) {
   const view = CONNECTION_VIEW[connection];
   const context: ReactNode = source ? (
-    <SourceContext name={source.name} countLabel={source.countLabel} />
+    <SourceContext
+      name={source.name}
+      title={source.title}
+      countLabel={source.countLabel}
+    />
   ) : (
     view.context
   );
@@ -170,19 +171,21 @@ export function StatusBarView({
 }
 
 // The connected source name + live primitive count, shown as dim mono context
-// beside the wordmark. The name is user-controlled and can be long, so it
-// truncates visually (keeping the connection state on-screen) while the full
-// name stays available on hover via title; the count never wraps off.
+// beside the wordmark. The name is a shortened path, so the full path stays
+// available on hover via title (#211); it truncates visually (keeping the
+// connection state on-screen) while the count never wraps off.
 function SourceContext({
   name,
+  title,
   countLabel,
 }: {
   name: string;
+  title: string;
   countLabel: string;
 }) {
   return (
     <span className="inline-flex min-w-0 max-w-xs items-center">
-      <span className="truncate" title={name}>
+      <span className="truncate" title={title}>
         {name}
       </span>
       {/* whitespace-pre keeps the " · " separator's leading space, which the
