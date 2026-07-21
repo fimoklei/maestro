@@ -36,12 +36,12 @@ pnpm -C ~/Projects/maestro-worktrees/issue<N> install
 ```
 **Done when:** install exits 0 and `~/Projects/maestro-worktrees/issue<N>/node_modules` exists.
 
-### 4. Pull the issue for context
+### 4. Pull the issue and explain it for a product manager
 ```bash
 gh issue view <N> --repo fimoklei/maestro
 ```
-Summarise the task in two or three plain sentences: what it asks for and the acceptance signal. If the issue names a spec, board job, or linked doc, note it.
-**Done when:** you have restated the issue's ask in your own words.
+Explain the issue in two or three sentences a product manager can read aloud: what will change for the user, and how we will know it's done (the acceptance signal). Use plain words — spell out any technical term. If the issue names a spec, board job, or linked doc, note it.
+**Done when:** you have a plain-language, PM-readable explanation of what the issue will do, covering the user-facing change and the acceptance signal.
 
 ### 5. Enter the worktree and implement
 Switch this session into the worktree — no manual `cd`, no new session:
