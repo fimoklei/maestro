@@ -33,7 +33,15 @@ export function InventorySourceView() {
   const connect = useConnectInventory();
   const reread = useRereadInventory();
   const currentPath = config.data?.inventoryPath ?? null;
-  const countLabel = primitiveCountLabel(inventory.data?.primitives.length);
+  // While a read is in flight the badge shows "reading…" even though Query still
+  // holds the previous count. That in-flight text is what makes the live region
+  // announce on *every* re-read — a same-count refresh settling back from
+  // "reading…" to "N primitives" is still a genuine mutation a screen reader
+  // hears (issue #230). Belt-and-suspenders: primitiveCountLabel also maps an
+  // as-yet-unknown count to "reading…".
+  const countLabel = inventory.isFetching
+    ? "reading…"
+    : primitiveCountLabel(inventory.data?.primitives.length);
 
   const [isChanging, setIsChanging] = useState(false);
   // The field seeds from the current path (edit it to re-point) but a browse
@@ -95,7 +103,12 @@ export function InventorySourceView() {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {inventory.isError ? (
+            {/* A read in flight always shows the status region, even when the
+                last read errored: on a retry Query keeps isError true while it
+                still holds the last count, and ceding to the error alert here
+                would unmount the live region so the recovered count mounts
+                fresh and goes unannounced (issue #230). */}
+            {!inventory.isFetching && inventory.isError ? (
               <p
                 role="alert"
                 className="rounded-control border border-amber-border bg-amber-bg px-3 py-2 text-amber-ink text-tag"
@@ -103,7 +116,20 @@ export function InventorySourceView() {
                 ▲ could not read the inventory — re-read to retry
               </p>
             ) : (
-              <p className="rounded-control border border-green-border bg-green-bg px-3 py-2 text-green-ink text-tag">
+              <p
+                role="status"
+                // The connected badge quiets to a neutral state while a re-read
+                // is in flight, then settles back to green when the fresh count
+                // lands — that colour settle is the confirmation (issue #230).
+                // Only the design system's one allowed motion is used: a
+                // background/border-colour transition, gated behind motion-safe
+                // so prefers-reduced-motion gets the change instantly.
+                className={`rounded-control border px-3 py-2 text-tag motion-safe:transition-colors motion-safe:duration-150 motion-safe:ease-out ${
+                  inventory.isFetching
+                    ? "border-line-chip bg-dim-bg text-dim"
+                    : "border-green-border bg-green-bg text-green-ink"
+                }`}
+              >
                 ● connected · {countLabel}
               </p>
             )}
@@ -120,7 +146,7 @@ export function InventorySourceView() {
                 onClick={reread}
                 disabled={inventory.isFetching}
               >
-                Re-read
+                {inventory.isFetching ? "reading…" : "Re-read"}
               </Button>
               <Button
                 variant="quiet"
