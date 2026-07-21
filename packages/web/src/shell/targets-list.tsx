@@ -6,6 +6,7 @@ import { targetDriftIndicator } from "../drift/target-drift-indicator";
 import { useDrift, useGlobalDrift } from "../drift/use-drift";
 import { useRegistry } from "../registry/use-registry";
 import { TargetItem } from "./target-item";
+import { targetLabel } from "./target-label";
 
 // The sidebar Targets list: the global target (always present) plus one row per
 // registered repo, each carrying its own drift state as a sync indicator. Each
@@ -17,11 +18,15 @@ export function TargetsList() {
   const registry = useRegistry();
   const repos = registry.data?.repos ?? [];
 
+  // The whole registered set drives each label, so a repo's tail grows only far
+  // enough to stay distinct from its siblings (#211).
+  const repoPaths = repos.map((repo) => repo.path);
+
   return (
     <ul aria-label="Targets">
       <GlobalTargetItem />
       {repos.map((repo) => (
-        <RepoTargetItem key={repo.path} repo={repo.path} />
+        <RepoTargetItem key={repo.path} repo={repo.path} siblings={repoPaths} />
       ))}
     </ul>
   );
@@ -42,12 +47,19 @@ function GlobalTargetItem() {
   );
 }
 
-function RepoTargetItem({ repo }: { repo: string }) {
+function RepoTargetItem({
+  repo,
+  siblings,
+}: {
+  repo: string;
+  siblings: string[];
+}) {
   const drift = useDrift(repo);
   const deployState = useDeployState(repo);
   return (
     <TargetItem
-      label={repo}
+      label={targetLabel(repo, siblings)}
+      title={repo}
       kind="local"
       indicator={targetDriftIndicator(
         toDeployedView(deployState),

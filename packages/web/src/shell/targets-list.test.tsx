@@ -25,8 +25,13 @@ function renderTargets() {
   );
 }
 
+// A local target's full path is its title (the visible label is shortened to
+// the path tail — #211), so locate rows by title, falling back to text for the
+// pathless "Global" row.
 function rowFor(label: string) {
-  const node = screen.getByText(label).closest("li");
+  const node = (screen.queryByTitle(label) ?? screen.getByText(label)).closest(
+    "li",
+  );
   if (!node) {
     throw new Error(`no target row for ${label}`);
   }
@@ -101,7 +106,7 @@ describe("TargetsList", () => {
     stubFetch({ primitives: [], skipped: [] }, { ok: false });
     renderTargets();
 
-    await screen.findByText("/Users/me/app");
+    await screen.findByTitle("/Users/me/app");
     expect(
       await within(rowFor("/Users/me/app")).findByText(/empty/i),
     ).toBeInTheDocument();
@@ -124,7 +129,7 @@ describe("TargetsList", () => {
     );
     renderTargets();
 
-    await screen.findByText("/Users/me/app");
+    await screen.findByTitle("/Users/me/app");
     expect(
       await within(rowFor("/Users/me/app")).findByText(/in sync/i),
     ).toBeInTheDocument();
@@ -142,7 +147,7 @@ describe("TargetsList", () => {
     renderTargets();
 
     // Wait for the repo row to render (its registry query resolves first).
-    await screen.findByText("/Users/me/app");
+    await screen.findByTitle("/Users/me/app");
     expect(
       await within(rowFor("/Users/me/app")).findByText(/in sync/i),
     ).toBeInTheDocument();

@@ -260,7 +260,8 @@ describe("DeployStateView sections", () => {
     );
     renderView();
 
-    expect(await screen.findByText("/Users/me/a")).toBeInTheDocument();
+    // The card labels the repo by its path tail; its full path is the title (#211).
+    expect(await screen.findByTitle("/Users/me/a")).toBeInTheDocument();
     expect(
       screen.queryByText(/consuming repos are registered via/i),
     ).not.toBeInTheDocument();
@@ -282,7 +283,41 @@ describe("DeployStateView sections", () => {
     );
     renderView();
 
-    expect(await screen.findByText("/Users/me/a")).toBeInTheDocument();
-    expect(screen.getByText("/Users/me/b")).toBeInTheDocument();
+    // Two repos sharing the "/Users/me" prefix must render as distinct cards;
+    // the tail-based label keeps them apart, the full path lives in the title (#211).
+    expect(await screen.findByTitle("/Users/me/a")).toBeInTheDocument();
+    expect(screen.getByTitle("/Users/me/b")).toBeInTheDocument();
+  });
+
+  it("labels two clones that share their tail with distinct, longer labels", async () => {
+    // Both cards share their last two segments (repos/agent-harness); only the
+    // whole registered set can tell them apart, so the view must feed each card
+    // its siblings and the labels must extend until they differ (#211).
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        String(url).includes("/api/registry/repos")
+          ? jsonResponse(
+              {
+                repos: [
+                  { path: "/Users/me/clientA/repos/agent-harness" },
+                  { path: "/Users/me/clientB/repos/agent-harness" },
+                ],
+              },
+              200,
+            )
+          : String(url).includes("/api/deploy-state/global")
+            ? jsonResponse({ tools: [], skipped: [] }, 200)
+            : jsonResponse({ primitives: [], skipped: [] }, 200),
+      ),
+    );
+    renderView();
+
+    expect(
+      await screen.findByText("…/clientA/repos/agent-harness"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("…/clientB/repos/agent-harness"),
+    ).toBeInTheDocument();
   });
 });

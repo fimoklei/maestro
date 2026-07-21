@@ -1,6 +1,7 @@
 import { toDriftView } from "../drift/drift-query-view";
 import { targetDriftIndicator } from "../drift/target-drift-indicator";
 import { useDrift } from "../drift/use-drift";
+import { targetLabel } from "../shell/target-label";
 import { Card } from "../ui/card";
 import { DeployStateList } from "./deploy-state-list";
 import { toDeployedView } from "./deployed-view";
@@ -12,7 +13,15 @@ import { useDeployState } from "./use-deploy-state";
 // badge fills in when the drift check resolves. A failed deploy-state read (e.g.
 // a malformed lockfile) gets a visible error — an empty list must never stand in
 // for "I couldn't read this".
-export function DeployStatePanel({ repo }: { repo: string }) {
+export function DeployStatePanel({
+  repo,
+  siblings = [],
+}: {
+  repo: string;
+  // Every registered repo path, so this card's label grows only far enough to
+  // stay distinct from the others (#211). Empty when rendered in isolation.
+  siblings?: string[];
+}) {
   const deployState = useDeployState(repo);
   const drift = useDrift(repo);
   const driftView = toDriftView(drift);
@@ -23,7 +32,7 @@ export function DeployStatePanel({ repo }: { repo: string }) {
 
   return (
     <Card
-      title={repo}
+      title={<span title={repo}>{targetLabel(repo, siblings)}</span>}
       kind="local"
       drift={indicator === "drift"}
       status={<TargetStatusChip indicator={indicator} />}
