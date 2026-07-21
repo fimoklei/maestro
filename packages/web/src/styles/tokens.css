@@ -1,5 +1,5 @@
 /* Control Room raw colour tokens — the single source of truth in this repo for
-   everything that flips between dark and light. Ported from the Claude Design
+   the shipped dark theme (see the light-theme note below). Ported from the Claude Design
    project 382d1f68-3ef6-49f3-a058-a6eec53e6a86 ("Maestro Design System"), read
    through the DesignSync tool; names match it exactly so a re-sync stays a
    straight copy. That project is upstream: when it changes, copy the new values
@@ -35,7 +35,10 @@
   --text-2: #c3cad2;
   --text-3: #aeb6bf;
   --text-muted: #8a94a0;
-  --text-dim: #5a6470;
+  /* text-dim carries meaning-bearing micro-labels (e.g. the connected-inventory
+     line) and must clear WCAG 2.2 AA. #7d8794 measures ≥4.66:1 on every surface
+     it renders on, up from #5a6470's failing 2.82–3.24:1 (issue #209). */
+  --text-dim: #7d8794;
 
   /* signal colours */
   --amber: #e8a33d;
@@ -58,41 +61,9 @@
 }
 
 /* ── light ───────────────────────────────────────────────────────────────── */
-:root[data-theme="light"],
-[data-theme="light"] {
-  --bg-0: #eceef2;
-  --bg-1: #f5f7f9;
-  --surface-card: #ffffff;
-  --surface-inset: #f3f5f8;
-  --surface-active: #e6ebf1;
-
-  --border-faint: #eef1f4;
-  --border-row: #e6eaef;
-  --border-strong: #dce1e8;
-  --border-chip: #ccd3dc;
-  --border-dashed: #bfc8d2;
-  --border-drift: #e6cfa0;
-  --border-amber-dim: #ecddbf;
-
-  --text-1: #1a212b;
-  --text-2: #343e4b;
-  --text-3: #48525f;
-  --text-muted: #687482;
-  --text-dim: #8b95a1;
-
-  --amber: #e0a43c;
-  --amber-ink: #b0700f;
-  --amber-bg: rgba(176, 112, 15, 0.12);
-  --amber-border: rgba(176, 112, 15, 0.3);
-  --green: #3dba75;
-  --green-ink: #178a4c;
-  --green-bg: rgba(23, 138, 76, 0.12);
-  --green-border: rgba(23, 138, 76, 0.28);
-  --dim-bg: rgba(104, 116, 130, 0.09);
-  --on-accent: #241d09;
-
-  --type-skill: #3163cc;
-  --type-hook: #8a55ce;
-  --type-mcp: #1a8e82;
-  --type-bundle: #b0700f;
-}
+/* No light theme ships. index.html hard-codes data-theme="dark" and no toggle
+   exists, so a [data-theme="light"] ramp was unreachable code — and its former
+   values failed WCAG 2.2 AA on 13 of 20 text elements (issue #209). The light
+   design intent still lives upstream in the Claude Design project; when a theme
+   toggle lands, re-derive the light ramp here to AA from the start and verify it
+   in the running app before shipping it. */
