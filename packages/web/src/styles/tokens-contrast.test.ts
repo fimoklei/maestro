@@ -152,3 +152,21 @@ describe("danger signal contrast on its tinted refusal card", () => {
     expect(ratio).toBeGreaterThanOrEqual(AA);
   });
 });
+
+// The keyboard focus ring (issue #214) is one amber outline, offset onto the
+// surface behind every control. WCAG 2.2 asks non-text UI indicators to clear
+// 3:1 against what they sit on. This guards the amber accent against a future
+// darkening that would sink the ring below that floor.
+describe("focus ring contrast", () => {
+  const NON_TEXT_AA = 3;
+  const tokens = parseShippedTokens(tokensCss);
+
+  it.each(surfaceTokens)("--amber clears 3:1 on %s", (surfaceToken) => {
+    const amber = tokens.amber;
+    const surface = tokens[surfaceToken];
+    expect(amber, "missing token --amber").toBeDefined();
+    expect(surface, `missing token --${surfaceToken}`).toBeDefined();
+    const ratio = contrastRatio(amber as string, surface as string);
+    expect(ratio).toBeGreaterThanOrEqual(NON_TEXT_AA);
+  });
+});

@@ -119,6 +119,16 @@
     color: var(--text-1);
     font-family: var(--font-ui);
   }
+  /* One keyboard focus ring for every control, on the amber accent (issue #214).
+     Replaces the browser-default blue — off-palette and only 3.2:1 on the near-
+     black canvas — with the accent that already reads on every surface (≥3:1,
+     guarded in tokens-contrast.test.ts). :focus-visible so it appears for
+     keyboard users, not on a mouse press; the outline follows each control's own
+     border-radius. A control that needs no ring opts out with `outline-none`. */
+  :focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 2px;
+  }
 }
 
 /* uppercase mono micro-label, e.g. "TARGETS", "DEPLOY TO" */

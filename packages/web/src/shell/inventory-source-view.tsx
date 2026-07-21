@@ -88,6 +88,7 @@ export function InventorySourceView() {
               noUsableOrigin={isNoUsableOriginError(connect.error)}
               isPending={connect.isPending}
               onBrowse={browse.openBrowse}
+              submitLabel="Re-point source"
             />
             <div>
               <Button
@@ -112,7 +113,7 @@ export function InventorySourceView() {
                 role="alert"
                 className="rounded-control border border-amber-border bg-amber-bg px-3 py-2 text-amber-ink text-tag"
               >
-                ● could not read the inventory — re-read to retry
+                ▲ could not read the inventory — re-read to retry
               </p>
             ) : (
               <p
