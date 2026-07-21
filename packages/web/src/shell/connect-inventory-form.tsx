@@ -11,10 +11,13 @@ import { Button } from "../ui/button";
 // Connecting is delegated to onSubmit so the data logic stays in the container
 // hook. onBrowse is an optional hook point for a "browse…" picker — omit it and
 // the form behaves exactly as the path-only variant. A validation error renders
-// as readable text tied to the field via aria-describedby; the no-usable-origin
-// refusal (#147) upgrades that text to an amber card with a "browse again…"
-// call to action, since the fix is picking a different folder, not editing the
-// path by hand. Styled from Control Room tokens.
+// as danger-red text with a glyph (issue #213: errors no longer wear amber, the
+// act colour), tied to the field via aria-describedby and placed directly under
+// it. The no-usable-origin refusal (#147) upgrades that to a danger card with a
+// "browse again…" call to action, since the fix is picking a different folder,
+// not editing the path by hand; while it shows, the submit action steps down to
+// the quiet variant so the card's "browse again…" is the one amber action.
+// Styled from Control Room tokens.
 type ConnectInventoryFormProps = {
   path: string;
   onPathChange: (path: string) => void;
@@ -61,24 +64,20 @@ export function ConnectInventoryForm({
           </Button>
         ) : null}
       </div>
-      <div>
-        <Button type="submit" variant="primary" size="sm" disabled={isPending}>
-          Connect inventory
-        </Button>
-      </div>
       {error ? (
         noUsableOrigin ? (
-          // Design f1-connect-reject: ▲ + bold title, explanation in muted
+          // Design f1-connect-reject: ✕ + bold title, explanation in muted
           // text, "browse again…" as the primary next action. The submit
-          // button above stays (unlike the design frame) so a hand-corrected
-          // path can still be resubmitted.
+          // button below stays (unlike the design frame) so a hand-corrected
+          // path can still be resubmitted, but steps down to quiet so this
+          // card's "browse again…" is the single amber action.
           <div
             id="inventory-path-error"
             role="alert"
-            className="flex flex-col gap-1.5 rounded-control border border-amber-border bg-amber-bg px-3 py-2.5"
+            className="flex flex-col gap-1.5 rounded-control border border-danger-border bg-danger-bg px-3 py-2.5"
           >
-            <span className="font-semibold text-amber-ink text-tag">
-              ▲ no usable git origin
+            <span className="font-semibold text-danger-ink text-tag">
+              <span aria-hidden="true">✕ </span>no usable git origin
             </span>
             <span className="text-fg-2 text-tag">{error}</span>
             {onBrowse ? (
@@ -98,12 +97,23 @@ export function ConnectInventoryForm({
           <p
             id="inventory-path-error"
             role="alert"
-            className="text-amber-ink text-tag"
+            className="flex items-center gap-1.5 text-danger-ink text-tag"
           >
+            <span aria-hidden="true">✕</span>
             {error}
           </p>
         )
       ) : null}
+      <div>
+        <Button
+          type="submit"
+          variant={noUsableOrigin ? "quiet" : "primary"}
+          size="sm"
+          disabled={isPending}
+        >
+          Connect inventory
+        </Button>
+      </div>
     </form>
   );
 }

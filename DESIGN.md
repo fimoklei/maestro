@@ -21,6 +21,7 @@ colors:
   text-dim: "#7d8794"
   amber: "#e8a33d"
   green: "#62c47e"
+  danger: "#ec5c6a"
   on-accent: "#0b0d10"
   type-skill: "#7aa5d8"
   type-hook: "#b48ad6"
@@ -152,11 +153,13 @@ lines rather than shadows; and almost every piece of text that carries data is
 set in monospace. The effect is an instrument panel: nothing competes for
 attention until something needs it.
 
-Two colours carry all meaning. Amber means *act* — it marks drift, the brand
-mark, and the single primary action in a view. Green means *rest* — in sync,
-healthy, confirmed. Everything else is a step on a grey ramp. Because the palette
-is this narrow, a single amber chip in a long list is impossible to miss, which
-is exactly the product's core signal.
+Two colours carry the working meaning. Amber means *act* — it marks drift, the
+brand mark, and the single primary action in a view. Green means *rest* — in
+sync, healthy, confirmed. A third signal, danger red, is held in reserve for
+validation errors alone, so amber never has to mean both *do this* and *this is
+wrong*. Everything else is a step on a grey ramp. Because the palette is this
+narrow, a single amber chip in a long list is impossible to miss, which is
+exactly the product's core signal.
 
 The system explicitly rejects the generic SaaS dashboard (hero metric tiles,
 gradients, pill shapes, cards inside cards), the friendly consumer app
@@ -173,7 +176,7 @@ light ramp is re-derived to AA (issue #209).
 
 - Cool near-black canvas, five surface steps, zero shadows
 - Monospace is the dominant voice; the sans is only used for chrome
-- Exactly two signal colours, plus four fixed primitive-type colours
+- Two action signals (amber, green) plus a danger red for errors, and four fixed primitive-type colours
 - Tight 3–6px radii; nothing pill-shaped, no circles except status dots
 - Cockpit density: 14px card padding, 9px rows, 12px gaps, 24px between sections
 - Flat fills only — no gradients, textures, blur, or transparency layers
@@ -194,6 +197,10 @@ shadow.
 
 - **Signal Green** (`#62c47e`): in sync, healthy, and the final confirm on a
   deploy. Never used decoratively.
+- **Signal Red** (`#ec5c6a`): the danger signal, reserved for validation errors
+  and nothing else. It renders error text, so it clears WCAG 2.2 AA (≥4.5:1) on
+  every surface it lands on. Never a fill for an action, never decoration — this
+  is what keeps amber as the sole "act" colour.
 
 ### Tertiary
 
@@ -225,17 +232,19 @@ are deferred (see the note in §1).
 
 ### Named Rules
 
-**The Two Signals Rule.** Amber means act, green means rest. No third signal
-colour is introduced, and no signal colour is ever used for decoration. At most
-one amber-filled button exists per view.
+**The Two Signals Rule.** Amber means act, green means rest. One further signal,
+danger red, marks validation errors and nothing else — never a fill for an
+action, never decoration — so amber keeps sole ownership of *do this*. No signal
+colour is ever used for decoration, and at most one amber-filled button exists
+per view.
 
 **The Reserved Hue Rule.** Skill blue, hook purple, mcp teal, and bundle amber
 belong to the primitive-type tag alone. Borrowing them for anything else breaks
 the one place where colour carries a taxonomy.
 
 **The Never-Colour-Alone Rule.** Any state expressed in colour also carries a
-glyph and a word: `● in sync`, `▲ 2 drift`. The signal must survive without
-colour perception.
+glyph and a word: `● in sync`, `▲ 2 drift`, `✕ no directory exists`. The signal
+must survive without colour perception.
 
 ## 3. Typography
 
@@ -345,8 +354,10 @@ Mono-typeset, compact, never pill-shaped. Five variants, each with a fixed job.
 - **Style:** inset surface fill, 1px chip-step border, 4px radius, 13px mono.
 - **Focus:** border moves to the amber dim step; focus is always visibly
   distinct, never removed.
-- **Error:** amber text plus a written message tied to the field — never a red
-  border alone.
+- **Error:** danger-red text with a leading `✕` glyph and a written message,
+  rendered directly under the field it describes and tied to it via
+  `aria-describedby` — never colour alone, never amber (that is the act colour),
+  never a red border alone.
 
 ### Navigation
 
@@ -361,8 +372,8 @@ Mono-typeset, compact, never pill-shaped. Five variants, each with a fixed job.
 There are no icon sets, icon fonts, or emoji. Iconography is a fixed vocabulary
 of unicode glyphs set in the mono font at 12–16px: `▤` inventory, `⇶`
 deploy-state, `⧉` compose, `▲` drift (always amber), `●` in sync or status dot,
-`→` action direction, `+` add, `✕` remove, `✓` done. The logo is typographic — a
-bold mono "M" on an amber rounded tile.
+`→` action direction, `+` add, `✕` remove or validation error (danger red), `✓`
+done. The logo is typographic — a bold mono "M" on an amber rounded tile.
 
 ## 6. Do's and Don'ts
 
@@ -392,8 +403,8 @@ bold mono "M" on an amber rounded tile.
 - **Don't** strip structure down to a bare terminal dump; mono is the voice, but
   hierarchy and alignment still do the reading work.
 - **Don't** add entrance animations, hover scaling, or decorative motion.
-- **Don't** introduce a third signal colour, or borrow a primitive-type hue for
-  anything other than the type tag.
+- **Don't** introduce a fourth signal colour, use danger red for anything but
+  errors, or borrow a primitive-type hue for anything other than the type tag.
 - **Don't** set any text below 10px.
 - **Don't** use `border-left` or `border-right` above 1px as a coloured accent
   stripe.

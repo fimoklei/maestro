@@ -47,11 +47,19 @@
   --green: #62c47e;
   --green-bg: rgba(98, 196, 126, 0.1);
   --green-border: rgba(98, 196, 126, 0.25);
+  /* danger = the error signal, kept apart from amber's "act" (issue #213). It
+     renders validation-error text, so it clears WCAG 2.2 AA (≥4.5:1) on every
+     surface it lands on — #ec5c6a measures ≥5.09:1. Errors only; never a fill
+     for a primary action. */
+  --danger: #ec5c6a;
+  --danger-bg: rgba(236, 92, 106, 0.1);
+  --danger-border: rgba(236, 92, 106, 0.3);
   --dim-bg: rgba(138, 148, 160, 0.08);
   --on-accent: #0b0d10;
   /* ink = signal-as-text. On dark the bright fill already reads as text. */
   --amber-ink: var(--amber);
   --green-ink: var(--green);
+  --danger-ink: var(--danger);
 
   /* primitive type colours */
   --type-skill: #7aa5d8;

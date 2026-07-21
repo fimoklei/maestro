@@ -34,6 +34,21 @@
           "#d3f1dc"
         ]
       },
+      "danger": {
+        "role": "secondary",
+        "displayName": "Signal Red",
+        "canonical": "#ec5c6a",
+        "tonalRamp": [
+          "#2a0d10",
+          "#4a1418",
+          "#6b1c22",
+          "#8c242c",
+          "#c23a44",
+          "#ec5c6a",
+          "#f28f98",
+          "#f9cdd2"
+        ]
+      },
       "bg-0": {
         "role": "neutral",
         "displayName": "App Canvas",
@@ -302,11 +317,11 @@
   ],
   "narrative": {
     "northStar": "The Control Room",
-    "overview": "Maestro is a room you step into to read instruments, not a page you browse. The surfaces are calm near-black with a faint blue cast; structure is drawn with 1px lines rather than shadows; and almost every piece of text that carries data is set in monospace. The effect is an instrument panel: nothing competes for attention until something needs it.\n\nTwo colours carry all meaning. Amber means act — it marks drift, the brand mark, and the single primary action in a view. Green means rest — in sync, healthy, confirmed. Everything else is a step on a grey ramp. Because the palette is this narrow, a single amber chip in a long list is impossible to miss, which is exactly the product's core signal.\n\nThe system explicitly rejects the generic SaaS dashboard, the friendly consumer app, the structureless terminal dump, and heavily animated interfaces. Density here is not decoration — it is how a whole agent setup fits on one screen.",
+    "overview": "Maestro is a room you step into to read instruments, not a page you browse. The surfaces are calm near-black with a faint blue cast; structure is drawn with 1px lines rather than shadows; and almost every piece of text that carries data is set in monospace. The effect is an instrument panel: nothing competes for attention until something needs it.\n\nTwo colours carry the working meaning. Amber means act — it marks drift, the brand mark, and the single primary action in a view. Green means rest — in sync, healthy, confirmed. A third signal, danger red, is held in reserve for validation errors alone, so amber never has to mean both 'do this' and 'this is wrong'. Everything else is a step on a grey ramp. Because the palette is this narrow, a single amber chip in a long list is impossible to miss, which is exactly the product's core signal.\n\nThe system explicitly rejects the generic SaaS dashboard, the friendly consumer app, the structureless terminal dump, and heavily animated interfaces. Density here is not decoration — it is how a whole agent setup fits on one screen.",
     "keyCharacteristics": [
       "Cool near-black canvas, five surface steps, zero shadows",
       "Monospace is the dominant voice; the sans is only used for chrome",
-      "Exactly two signal colours, plus four fixed primitive-type colours",
+      "Two action signals (amber, green) plus a danger red for errors, and four fixed primitive-type colours",
       "Tight 3–6px radii; nothing pill-shaped, no circles except status dots",
       "Cockpit density: 14px card padding, 9px rows, 12px gaps, 24px between sections",
       "Flat fills only — no gradients, textures, blur, or transparency layers"
@@ -314,7 +329,7 @@
     "rules": [
       {
         "name": "The Two Signals Rule",
-        "body": "Amber means act, green means rest. No third signal colour is introduced, and no signal colour is ever used for decoration. At most one amber-filled button exists per view.",
+        "body": "Amber means act, green means rest. One further signal, danger red, marks validation errors and nothing else — it is never a fill for an action and never decoration, so amber keeps sole ownership of 'do this'. No signal colour is ever used for decoration, and at most one amber-filled button exists per view.",
         "section": "colors"
       },
       {
@@ -370,7 +385,7 @@
       "Don't add illustrations, emoji, or reassuring marketing copy.",
       "Don't strip structure down to a bare terminal dump.",
       "Don't add entrance animations, hover scaling, or decorative motion.",
-      "Don't introduce a third signal colour, or borrow a primitive-type hue for anything other than the type tag.",
+      "Don't introduce a fourth signal colour, use danger red for anything but errors, or borrow a primitive-type hue for anything other than the type tag.",
       "Don't set any text below 10px.",
       "Don't use border-left or border-right above 1px as a coloured accent stripe.",
       "Don't use 'you' or 'we' inside the cockpit, or invent synonyms for the fixed vocabulary."
