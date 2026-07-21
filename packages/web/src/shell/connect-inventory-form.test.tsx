@@ -97,6 +97,46 @@ describe("ConnectInventoryForm", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("pairs the validation error with a glyph so colour is never the only signal", () => {
+    render(
+      <ConnectInventoryForm
+        path=""
+        onPathChange={vi.fn()}
+        onSubmit={vi.fn()}
+        error="No directory exists at that path."
+        onBrowse={vi.fn()}
+      />,
+    );
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("No directory exists at that path.");
+    // The Never-Colour-Alone rule: a sighted user who can't tell red from amber
+    // still gets a visual glyph. (The glyph is aria-hidden; the non-visual
+    // signal is the message text under role="alert", covered above.)
+    expect(alert.textContent).toMatch(/✕/);
+  });
+
+  it("renders the validation error above the submit button, next to the field", () => {
+    render(
+      <ConnectInventoryForm
+        path=""
+        onPathChange={vi.fn()}
+        onSubmit={vi.fn()}
+        error="No directory exists at that path."
+        onBrowse={vi.fn()}
+      />,
+    );
+
+    const alert = screen.getByRole("alert");
+    const submit = screen.getByRole("button", { name: /^connect inventory$/i });
+    // The error describes the field, so it belongs under it — above the submit
+    // action, not stranded below it. DOCUMENT_POSITION_FOLLOWING means the
+    // submit button comes after the alert in document order.
+    expect(
+      alert.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("submits the path passed in via props, not stale internal state", async () => {
     const onSubmit = vi.fn();
     render(

@@ -48,6 +48,9 @@
   --color-green-ink: var(--green-ink);
   --color-green-bg: var(--green-bg);
   --color-green-border: var(--green-border);
+  --color-danger-ink: var(--danger-ink);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-border: var(--danger-border);
   --color-dim-bg: var(--dim-bg);
   --color-on-accent: var(--on-accent);
 
