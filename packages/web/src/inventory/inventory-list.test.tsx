@@ -23,6 +23,45 @@ function renderList(ui: React.ReactNode) {
 }
 
 describe("InventoryList", () => {
+  it("renders skills in a table with type, name, and description columns", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderList(
+      <InventoryList
+        primitives={primitives}
+        repos={[{ path: "/projects/alpha" }]}
+        registryReady
+      />,
+    );
+
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Type" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Name" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Description" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "tdd" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("cell", { name: "Test-driven development." }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "caveman" })).toBeInTheDocument();
+  });
+
+  it("shows the explicit empty state instead of a blank table", () => {
+    renderList(<InventoryList primitives={[]} repos={[]} registryReady />);
+
+    expect(
+      screen.getByText("No skills found in the inventory."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
   it("names where repos are registered when the loaded registry has none", () => {
     vi.stubGlobal(
       "fetch",
