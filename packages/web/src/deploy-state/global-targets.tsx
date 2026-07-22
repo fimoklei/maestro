@@ -1,5 +1,4 @@
-import type { DriftView } from "../drift/drift-status";
-import { targetDriftIndicator } from "../drift/target-drift-indicator";
+import type { DriftViewModel } from "../drift/drift-view-model";
 import { Card } from "../ui/card";
 import { SectionHeader } from "../ui/section-header";
 import { DeployStateList } from "./deploy-state-list";
@@ -26,7 +25,7 @@ export function GlobalTargets({
   isError: boolean;
   tools: ToolDeployState[];
   skipped: SkippedEntry[];
-  drift: DriftView;
+  drift: DriftViewModel;
 }) {
   return (
     <section>
@@ -75,25 +74,18 @@ function ToolTargetCard({
   drift,
 }: {
   group: ToolDeployState;
-  drift: DriftView;
+  drift: DriftViewModel;
 }) {
   const { label, destination } = toolPresentation(group.tool);
-  const names = new Set(group.primitives.map((primitive) => primitive.name));
-  const toolDrift: DriftView =
-    drift.status === "ready"
-      ? {
-          status: "ready",
-          behind: drift.behind.filter((entry) => names.has(entry.name)),
-        }
-      : drift;
-  const indicator = targetDriftIndicator(
-    {
-      status: "ready",
-      names: group.primitives.map((primitive) => primitive.name),
-      skippedCount: 0,
-    },
-    toolDrift,
-  );
+  const names = group.primitives.map((primitive) => primitive.name);
+  // The single global drift check is narrowed to this tool's skills, so a skill
+  // behind on another tool never surfaces here as a spurious "also behind".
+  const toolDrift = drift.forTool(names);
+  const indicator = toolDrift.targetIndicator({
+    status: "ready",
+    names,
+    skippedCount: 0,
+  });
 
   return (
     <Card

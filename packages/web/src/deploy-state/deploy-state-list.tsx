@@ -1,9 +1,8 @@
 import {
   type DriftStatus,
-  type DriftView,
-  orphanBehind,
-  skillDriftStatus,
-} from "../drift/drift-status";
+  type DriftViewModel,
+  driftViewModel,
+} from "../drift/drift-view-model";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
@@ -59,15 +58,19 @@ const versionColor: Record<DriftStatus, string> = {
 // shown as a warning, never dropped silently. The optional `drift` adds the
 // per-skill badge and the deployed -> latest pair; the `target` names the scope,
 // so a behind row can offer a one-click Update against it.
+// A pending model is the default so a list rendered before its drift query
+// resolves shows no badge, rather than a spurious one.
+const PENDING_DRIFT = driftViewModel({ data: undefined, isError: false });
+
 export function DeployStateList({
   primitives,
   skipped,
-  drift = { status: "pending" },
+  drift = PENDING_DRIFT,
   target,
 }: {
   primitives: DeployedPrimitive[];
   skipped: SkippedEntry[];
-  drift?: DriftView;
+  drift?: DriftViewModel;
   target: DeployTarget;
 }) {
   // Genuinely nothing — not entries that exist but were skipped as unsupported.
@@ -78,22 +81,17 @@ export function DeployStateList({
   }
 
   // Behind names with no matching deployed skill — surfaced, never dropped.
-  const orphans = orphanBehind(
+  const orphans = drift.orphanBehind(
     primitives.map((primitive) => primitive.name),
-    drift,
   );
-  // The latest tag per behind skill, so a behind row can show the deployed ->
-  // latest pair without a second apm call.
-  const latestByName =
-    drift.status === "ready"
-      ? new Map(drift.behind.map((entry) => [entry.name, entry.latest]))
-      : new Map<string, string>();
 
   return (
     <div className="py-1.5">
       {primitives.map((primitive) => {
-        const status = skillDriftStatus(primitive.name, drift);
-        const latest = latestByName.get(primitive.name);
+        const status = drift.skillStatus(primitive.name);
+        // The latest tag lets a behind row show the deployed -> latest pair
+        // without a second apm call.
+        const latest = drift.latest(primitive.name);
         return (
           <div
             key={primitive.name}

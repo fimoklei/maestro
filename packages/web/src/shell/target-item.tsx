@@ -1,4 +1,4 @@
-import type { TargetDriftIndicator } from "../drift/target-drift-indicator";
+import type { TargetDriftIndicator } from "../drift/drift-view-model";
 import { cn } from "../ui/cn";
 import { StatusDot } from "../ui/status-dot";
 

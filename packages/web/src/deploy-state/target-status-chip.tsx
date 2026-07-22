@@ -1,4 +1,4 @@
-import type { TargetDriftIndicator } from "../drift/target-drift-indicator";
+import type { TargetDriftIndicator } from "../drift/drift-view-model";
 import { Chip } from "../ui/chip";
 
 // The status Chip in a target Card's header: a one-glance roll-up of the whole
