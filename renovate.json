@@ -57,22 +57,6 @@
       ]
     },
     {
-      "matchPackageNames": ["node", "@types/node"],
-      "matchUpdateTypes": ["patch", "minor"],
-      "groupName": "node toolchain",
-      "prBodyNotes": [
-        "**Risk class: toolchain.** Node runtime and its TypeScript definitions move together so typechecking matches the runtime."
-      ]
-    },
-    {
-      "matchPackageNames": ["pnpm"],
-      "matchUpdateTypes": ["patch", "minor"],
-      "groupName": "pnpm toolchain",
-      "prBodyNotes": [
-        "**Risk class: toolchain.** pnpm is maintained as its own toolchain pull request, separate from libraries."
-      ]
-    },
-    {
       "matchPackageNames": [
         "react",
         "react-dom",
@@ -97,6 +81,20 @@
       "prBodyNotes": [
         "**Risk class: MAJOR (breaking).** Kept individual and gated behind Dependency Dashboard approval before this pull request is created. A monorepo family that must move together is approved together on the dashboard.",
         "Browser verification required: give every major smoke and browser checks before merging; green unit tests can hide a broken cockpit."
+      ]
+    },
+    {
+      "matchPackageNames": ["node", "@types/node"],
+      "groupName": "node toolchain",
+      "prBodyNotes": [
+        "**Risk class: toolchain.** Node runtime (sourced from `.nvmrc`) and its TypeScript definitions move together, at every update size, so typechecking always matches the runtime. A toolchain major is still gated on the Dependency Dashboard and reviewed on its own."
+      ]
+    },
+    {
+      "matchPackageNames": ["pnpm"],
+      "groupName": "pnpm toolchain",
+      "prBodyNotes": [
+        "**Risk class: toolchain.** pnpm is maintained as its own toolchain pull request, separate from Node and from libraries."
       ]
     }
   ]
