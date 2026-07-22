@@ -39,15 +39,6 @@ Maestro is the cockpit above it and never reimplements it (ADR-0001).
 └── tests/                 # acceptance and integration tests
 ```
 
-## Current implementation shape
-
-Maestro is a local-first client/server web app:
-
-- `packages/core` — framework-free TypeScript domain logic.
-- `packages/server` — Hono service that reads local state and drives local
-  tools.
-- `packages/web` — React/Vite cockpit UI.
-
 Do not add product behavior outside this shape unless a later accepted ADR or
 a job on the board changes it.
 
@@ -73,9 +64,8 @@ a job on the board changes it.
   conflict rule. Build only through jobs on the board (`docs/jobs.md`); small
   fixes need only a tracker issue.
 - **TDD is blocking for code changes.** Docs-only changes are exempt.
-- **UI work is not done without a browser check.** A change that alters what
-  `packages/web` renders requires an `agent-browser` screenshot of the running
-  app before claiming done.
+- **UI work is not done without a browser check** (`.claude/rules/design.md` →
+  "Verify before done").
 - **Never write to `AGENTS.md`, `CLAUDE.md`, or `.claude/rules/`.** Michiel owns
   them. Quote the lines you would change and wait for his yes.
 - When editing docs: prefer condensing over expanding. Drift toward feature lists is the failure mode to watch for.
@@ -131,9 +121,6 @@ Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agent
 
 ## LEARNINGS.md
 
-When `LEARNINGS.md` exists in the repo root: read it at session start. Apply
-`## Active` entries as rules; for `## Tentative`, consider but do not
-auto-apply. Append an entry only when a future agent would otherwise re-learn
-the same thing. Default new entries to `## Tentative`; promote on
-reconfirmation. Format:
-`- **YYYY-MM-DD · <area>** — <observation>. → <action>.`
+Read `LEARNINGS.md` at session start. Apply `## Active` as rules;
+`## Tentative` is consider-only. Capture and format rules live in the file's
+own header.
