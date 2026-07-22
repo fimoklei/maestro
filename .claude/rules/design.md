@@ -17,6 +17,13 @@ from the tokens.
 
 ## Verify before "done"
 
-Screenshot the built UI and compare it to the design screen. The vitest/jsdom
-suite renders without CSS, so only a screenshot proves visual fidelity (see
-`LEARNINGS.md`).
+Mandatory for any change that alters what `packages/web` renders — not only
+design-screen work:
+
+1. Run the app (`pnpm dev`, or `pnpm smoke` for a sandbox).
+2. Screenshot the changed UI with `agent-browser`.
+3. Compare against the design source; on mismatch, fix before claiming done.
+4. Run the `verify-in-smoke` checks before treating the screenshot as proof.
+
+The vitest/jsdom suite renders without CSS, so only a screenshot proves visual
+fidelity (see `LEARNINGS.md`).
