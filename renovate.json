@@ -1,0 +1,103 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "timezone": "Europe/Paris",
+  "schedule": ["before 9am on monday"],
+  "dependencyDashboard": true,
+  "labels": ["dependencies"],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "minimumReleaseAge": "7 days",
+  "internalChecksFilter": "strict",
+  "automerge": false,
+  "prBodyNotes": [
+    "**Operator guidance.** This is an automated dependency pull request.",
+    "Required checks: the full CI sequence must pass (install, audit, lint, typecheck, test, build, build-storybook).",
+    "Merge policy: a human reviews and squash-merges. Auto-merge is off. Renovate never merges to `main`.",
+    "Browser verification is not required for this change unless a note below says otherwise."
+  ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 9am on the first day of the month"]
+  },
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["dependencies", "security"],
+    "assignees": ["fimoklei"],
+    "minimumReleaseAge": null,
+    "schedule": [],
+    "prBodyNotes": [
+      "**Risk class: SECURITY.** Opened immediately from a vulnerability alert; the 7-day release-age delay is bypassed.",
+      "Review the same day for critical, within seven days for high. Squash-merge yourself once CI is green."
+    ]
+  },
+  "packageRules": [
+    {
+      "matchDepTypes": ["dependencies"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "groupName": "runtime dependencies",
+      "prBodyNotes": [
+        "**Risk class: routine runtime.** Grouped patch/minor updates to production dependencies."
+      ]
+    },
+    {
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "groupName": "dev tooling",
+      "prBodyNotes": [
+        "**Risk class: routine tooling.** Grouped patch/minor updates to development-only dependencies."
+      ]
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["patch", "minor", "digest", "pin", "pinDigest"],
+      "groupName": "github actions",
+      "prBodyNotes": [
+        "**Risk class: CI supply chain.** Actions stay pinned to a full commit SHA; the `# vX.Y.Z` annotation moves with the digest."
+      ]
+    },
+    {
+      "matchPackageNames": ["node", "@types/node"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "groupName": "node toolchain",
+      "prBodyNotes": [
+        "**Risk class: toolchain.** Node runtime and its TypeScript definitions move together so typechecking matches the runtime."
+      ]
+    },
+    {
+      "matchPackageNames": ["pnpm"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "groupName": "pnpm toolchain",
+      "prBodyNotes": [
+        "**Risk class: toolchain.** pnpm is maintained as its own toolchain pull request, separate from libraries."
+      ]
+    },
+    {
+      "matchPackageNames": [
+        "react",
+        "react-dom",
+        "react-router-dom",
+        "@tanstack/react-query",
+        "vite",
+        "@vitejs/plugin-react",
+        "tailwindcss",
+        "@tailwindcss/vite",
+        "storybook",
+        "@storybook/react-vite"
+      ],
+      "prBodyNotes": [
+        "**Browser verification required.** This touches the cockpit UI or its build stack. Run smoke and browser checks before merging at any update size; green unit tests can hide a broken cockpit."
+      ]
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "groupName": null,
+      "dependencyDashboardApproval": true,
+      "addLabels": ["major"],
+      "prBodyNotes": [
+        "**Risk class: MAJOR (breaking).** Kept individual and gated behind Dependency Dashboard approval before this pull request is created. A monorepo family that must move together is approved together on the dashboard.",
+        "Browser verification required: give every major smoke and browser checks before merging; green unit tests can hide a broken cockpit."
+      ]
+    }
+  ]
+}
