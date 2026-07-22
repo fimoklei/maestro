@@ -31,3 +31,12 @@ storybook-static/
 # The design sidecar and live config are tracked.
 .impeccable/live/sessions/
 .impeccable/hook.cache.json
+
+# Graphify local knowledge-graph cache (generated, not source).
+graphify-out/
+
+# Graphify local hook registration (per-machine tool state, not source).
+.claude/settings.json
+
+# Impeccable per-session hook cache in any package (generated local state).
+**/.impeccable/hook.cache.json

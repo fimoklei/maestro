@@ -113,7 +113,13 @@ describe("InventorySourceView", () => {
     renderView();
 
     expect(await screen.findByText(/3 primitives/i)).toBeInTheDocument();
-    expect(screen.getByText("/home/me/agent-harness")).toBeInTheDocument();
+    // The source shows its distinguishing tail, not the raw path, with the full
+    // path on hover — shared with the connect gate's confirmation via SourceLabel
+    // so the two renderings can't drift apart again (#211).
+    expect(screen.getByText("…/me/agent-harness")).toHaveAttribute(
+      "title",
+      "/home/me/agent-harness",
+    );
   });
 
   it("re-reads the inventory on demand, refreshing the count", async () => {
@@ -565,9 +571,7 @@ describe("InventorySourceView", () => {
     vi.stubGlobal("fetch", fetchMock);
     renderView();
 
-    expect(
-      await screen.findByText("/home/me/agent-harness"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("…/me/agent-harness")).toBeInTheDocument();
 
     await userEvent.click(
       screen.getByRole("button", { name: /change source/i }),
@@ -580,9 +584,7 @@ describe("InventorySourceView", () => {
       screen.getByRole("button", { name: /re-point source/i }),
     );
 
-    expect(
-      await screen.findByText("/home/me/other-harness"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("…/me/other-harness")).toBeInTheDocument();
     expect(screen.queryByLabelText(/inventory path/i)).not.toBeInTheDocument();
 
     const connectCall = fetchMock.mock.calls.find((c) =>
