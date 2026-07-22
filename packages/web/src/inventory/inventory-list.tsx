@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { RegisterRepoHint } from "../registry/register-repo-hint";
 import type { RegisteredRepo } from "../registry/use-registry";
+import { SegmentedControl } from "../ui/segmented-control";
 import {
   Table,
   TableBody,
@@ -10,13 +12,20 @@ import {
 } from "../ui/table";
 import { TypeTag } from "../ui/type-tag";
 import { DeploySkillAction } from "./deploy-skill-action";
+import {
+  deriveTypeSegments,
+  filterByType,
+  type TypeFilter,
+} from "./type-filter";
 import type { Primitive } from "./use-inventory";
 
-// Presentational table of central skills: type, name, description, and an
-// actions cell with the row's deploy control (#285). The view stays
-// type-aware (TypeTag carries the type) though only skills render today.
-// Empty state is explicit so a correctly configured but empty inventory
-// never shows a bare, ambiguous blank.
+// Deploy-aware table of central skills: type, name, description, and an actions
+// cell with the row's deploy control (#285). A data-driven type filter sits
+// above it (#288) — `all` plus one segment per type present, so the control
+// reflects the inventory instead of a hardcoded set. The view stays type-aware
+// (TypeTag carries the type) though only skills render today. Empty state is
+// explicit so a correctly configured but empty inventory never shows a bare,
+// ambiguous blank.
 export function InventoryList({
   primitives,
   repos,
@@ -26,6 +35,10 @@ export function InventoryList({
   repos: RegisteredRepo[];
   registryReady: boolean;
 }) {
+  // Which type segment is selected — local UI-state, never server-state. A
+  // segment only exists when its type has data, so any selection yields rows.
+  const [filter, setFilter] = useState<TypeFilter>("all");
+
   if (primitives.length === 0) {
     return (
       <p className="px-card-x py-row-y text-dim text-tag">
@@ -33,6 +46,12 @@ export function InventoryList({
       </p>
     );
   }
+
+  // Segments derive from the full inventory; the table body reads the narrowed
+  // set. Filtering never touches the segment set, so a segment never vanishes
+  // because it is the one selected.
+  const segments = deriveTypeSegments(primitives);
+  const rows = filterByType(primitives, filter);
 
   return (
     <>
@@ -44,6 +63,14 @@ export function InventoryList({
       {registryReady && repos.length === 0 ? (
         <RegisterRepoHint className="block px-card-x pt-row-y" />
       ) : null}
+      <div className="px-card-x pt-row-y">
+        <SegmentedControl
+          label="Filter by type"
+          segments={segments}
+          value={filter}
+          onChange={setFilter}
+        />
+      </div>
       <Table>
         <TableHeader>
           <TableRow>
@@ -54,7 +81,7 @@ export function InventoryList({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {primitives.map((primitive) => (
+          {rows.map((primitive) => (
             <TableRow key={primitive.name}>
               <TableCell>
                 <TypeTag type={primitive.type} />
