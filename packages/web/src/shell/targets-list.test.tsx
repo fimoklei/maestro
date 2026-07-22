@@ -26,8 +26,8 @@ function renderTargets() {
 }
 
 // A local target's full path is its title (the visible label is shortened to
-// the path tail — #211), so locate rows by title, falling back to text for the
-// pathless "Global" row.
+// the path tail — #211), so locate rows by title, falling back to text for a
+// tool row (a plain label with no title).
 function rowFor(label: string) {
   const node = (screen.queryByTitle(label) ?? screen.getByText(label)).closest(
     "li",
@@ -38,121 +38,227 @@ function rowFor(label: string) {
   return node;
 }
 
-// Routes the list's queries by URL: the registry, plus a drift and a
-// deploy-state outcome for the global target and for the one registered repo.
-// The roll-up joins drift against deploy-state, so a repo only reads as "needs
-// update" when a behind name is actually deployed there.
-function stubFetch(repoDeployState: unknown, repoDrift: unknown) {
+// Routes the list's queries by URL. The sidebar now reads one row per detected
+// tool (from the global deploy-state grouping) plus one per registered repo,
+// each joining its drift check against its own deployed set — so a tool or repo
+// only shows `▲N` when a behind name is actually deployed there.
+function stubFetch(options: {
+  tools: unknown;
+  globalBehind: unknown;
+  repos?: unknown;
+  repoDeployState?: unknown;
+  repoDrift?: unknown;
+}) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string) => {
       const target = String(url);
       if (target.includes("/api/registry/repos")) {
-        return jsonResponse({ repos: [{ path: "/Users/me/app" }] }, 200);
+        return jsonResponse({ repos: options.repos ?? [] }, 200);
       }
       if (target.includes("/api/deploy-state/global")) {
+        return jsonResponse({ tools: options.tools, skipped: [] }, 200);
+      }
+      if (target.includes("/api/deploy-state")) {
         return jsonResponse(
-          {
-            tools: [
-              {
-                tool: "claude",
-                primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
-              },
-            ],
-            skipped: [],
-          },
+          options.repoDeployState ?? { primitives: [], skipped: [] },
           200,
         );
       }
-      if (target.includes("/api/deploy-state")) {
-        return jsonResponse(repoDeployState, 200);
-      }
       if (target.includes("/api/drift/global")) {
-        return jsonResponse({ behind: [] }, 200);
+        return jsonResponse(options.globalBehind, 200);
       }
-      return jsonResponse(repoDrift, 200);
+      return jsonResponse(options.repoDrift ?? { behind: [] }, 200);
     }),
   );
 }
 
-const tddDeployed = {
+const tddBehind = {
+  behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+};
+const claudeWithTdd = {
+  tool: "claude",
   primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
-  skipped: [],
+};
+const codexWithTdd = {
+  tool: "codex",
+  primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
 };
 
 describe("TargetsList", () => {
-  it("lists the global target and every registered repo with a status", async () => {
-    // The repo deploys tdd and the check reports tdd behind -> needs update.
-    stubFetch(tddDeployed, {
-      behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+  it("lists one row per detected tool and each registered repo, with no single Global row", async () => {
+    stubFetch({
+      tools: [claudeWithTdd, codexWithTdd],
+      globalBehind: { behind: [] },
+      repos: [{ path: "/Users/me/app" }],
+      repoDeployState: {
+        primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+        skipped: [],
+      },
+      repoDrift: { behind: [] },
     });
     renderTargets();
 
-    // Global is in sync (drift check ran, nothing behind).
-    expect(
-      await within(rowFor("Global")).findByText(/in sync/i),
-    ).toBeInTheDocument();
-
-    // The registered repo is behind, so its target reads as needing an update.
-    expect(
-      await within(rowFor("/Users/me/app")).findByText(/needs update/i),
-    ).toBeInTheDocument();
-  });
-
-  it("reads a target with nothing deployed as empty, not unknown", async () => {
-    // A freshly-added repo has nothing deployed and its drift check cannot run
-    // (it reports failure). The row must read "empty" — nothing is deployed to
-    // drift — rather than the "unknown" that reads as something went wrong.
-    stubFetch({ primitives: [], skipped: [] }, { ok: false });
-    renderTargets();
-
+    expect(await screen.findByText("Claude Code")).toBeInTheDocument();
+    expect(screen.getByText("Codex")).toBeInTheDocument();
     await screen.findByTitle("/Users/me/app");
-    expect(
-      await within(rowFor("/Users/me/app")).findByText(/empty/i),
-    ).toBeInTheDocument();
-    expect(
-      within(rowFor("/Users/me/app")).queryByText(/unknown/i),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Global")).not.toBeInTheDocument();
   });
 
-  it("does not read a target with only skipped, unsupported primitives as empty", async () => {
-    // Zero supported primitives but a non-empty skipped set: the target does hold
-    // deployed content, so it must not read "empty" (the deploy-state panel shows
-    // the skipped warning and never calls it empty). With a clean check it is in
-    // sync.
-    stubFetch(
-      {
-        primitives: [],
-        skipped: [{ virtualPath: "hooks/pre-commit", packageType: "hook" }],
-      },
-      { behind: [] },
+  it("shows a checking row while tool detection is still loading, never a silently empty list", async () => {
+    // The global deploy-state read (which detects installed tools) hangs. With no
+    // tool data yet, the sidebar must still say it is checking — a bare empty list
+    // would read as "no global targets", hiding that detection has not finished.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        const target = String(url);
+        if (target.includes("/api/registry/repos")) {
+          return jsonResponse({ repos: [] }, 200);
+        }
+        if (target.includes("/api/deploy-state/global")) {
+          return new Promise<Response>(() => {});
+        }
+        if (target.includes("/api/drift/global")) {
+          return jsonResponse({ behind: [] }, 200);
+        }
+        return jsonResponse({ behind: [] }, 200);
+      }),
     );
     renderTargets();
 
-    await screen.findByTitle("/Users/me/app");
-    expect(
-      await within(rowFor("/Users/me/app")).findByText(/in sync/i),
-    ).toBeInTheDocument();
-    expect(
-      within(rowFor("/Users/me/app")).queryByText(/empty/i),
-    ).not.toBeInTheDocument();
+    expect(await screen.findByText(/checking/i)).toBeInTheDocument();
   });
 
-  it("does not mark a repo as needing update for a behind primitive it has not deployed", async () => {
-    // The repo deploys tdd, but the check reports a different (orphan) name
-    // behind -> nothing deployed here can be updated, so it stays in sync.
-    stubFetch(tddDeployed, {
-      behind: [{ name: "foo", current: "v1.0.0", latest: "v1.1.0" }],
+  it("shows an unknown row when tool detection fails, not an empty list", async () => {
+    // A failed global deploy-state read must be visible: a real failure looked
+    // like "no global targets" before this row existed. It reads unknown, never
+    // in sync (J04).
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        const target = String(url);
+        if (target.includes("/api/registry/repos")) {
+          return jsonResponse({ repos: [] }, 200);
+        }
+        if (target.includes("/api/deploy-state/global")) {
+          return jsonResponse({ error: "boom" }, 500);
+        }
+        if (target.includes("/api/drift/global")) {
+          return jsonResponse({ behind: [] }, 200);
+        }
+        return jsonResponse({ behind: [] }, 200);
+      }),
+    );
+    renderTargets();
+
+    expect(await screen.findByText(/unknown/i)).toBeInTheDocument();
+    expect(screen.queryByText(/in sync/i)).not.toBeInTheDocument();
+  });
+
+  it("shows ▲N on a tool that has a deployed skill behind, counting only that tool's skills", async () => {
+    // The single global drift check reports tdd behind; both tools deploy tdd, so
+    // each tool's row narrows the check to its own skills and reads ▲1.
+    stubFetch({
+      tools: [claudeWithTdd, codexWithTdd],
+      globalBehind: tddBehind,
     });
     renderTargets();
 
-    // Wait for the repo row to render (its registry query resolves first).
+    await screen.findByText("Claude Code");
+    expect(within(rowFor("Claude Code")).getByText("▲1")).toBeInTheDocument();
+    expect(within(rowFor("Codex")).getByText("▲1")).toBeInTheDocument();
+  });
+
+  it("reads a tool with nothing behind as in sync, with no ▲ badge", async () => {
+    stubFetch({ tools: [claudeWithTdd], globalBehind: { behind: [] } });
+    renderTargets();
+
+    await screen.findByText("Claude Code");
+    expect(
+      within(rowFor("Claude Code")).getByText(/in sync/i),
+    ).toBeInTheDocument();
+    expect(
+      within(rowFor("Claude Code")).queryByText(/▲/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not let an orphan-behind (not deployed on the tool) inflate its count", async () => {
+    // The check reports foo behind, but claude deploys only tdd — nothing behind
+    // here can be updated, so the row stays in sync with no ▲.
+    stubFetch({
+      tools: [claudeWithTdd],
+      globalBehind: {
+        behind: [{ name: "foo", current: "v1.0.0", latest: "v1.1.0" }],
+      },
+    });
+    renderTargets();
+
+    await screen.findByText("Claude Code");
+    expect(
+      within(rowFor("Claude Code")).getByText(/in sync/i),
+    ).toBeInTheDocument();
+    expect(
+      within(rowFor("Claude Code")).queryByText(/▲/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("reads a detected tool with nothing deployed as empty, not in sync", async () => {
+    stubFetch({
+      tools: [{ tool: "claude", primitives: [] }],
+      globalBehind: { behind: [] },
+    });
+    renderTargets();
+
+    await screen.findByText("Claude Code");
+    expect(
+      within(rowFor("Claude Code")).getByText(/empty/i),
+    ).toBeInTheDocument();
+    expect(
+      within(rowFor("Claude Code")).queryByText(/in sync/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows ▲N on a registered repo that has a deployed skill behind", async () => {
+    stubFetch({
+      tools: [],
+      globalBehind: { behind: [] },
+      repos: [{ path: "/Users/me/app" }],
+      repoDeployState: {
+        primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+        skipped: [],
+      },
+      repoDrift: tddBehind,
+    });
+    renderTargets();
+
+    await screen.findByTitle("/Users/me/app");
+    expect(
+      await within(rowFor("/Users/me/app")).findByText("▲1"),
+    ).toBeInTheDocument();
+  });
+
+  it("does not mark a repo behind for a primitive it has not deployed", async () => {
+    stubFetch({
+      tools: [],
+      globalBehind: { behind: [] },
+      repos: [{ path: "/Users/me/app" }],
+      repoDeployState: {
+        primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+        skipped: [],
+      },
+      repoDrift: {
+        behind: [{ name: "foo", current: "v1.0.0", latest: "v1.1.0" }],
+      },
+    });
+    renderTargets();
+
     await screen.findByTitle("/Users/me/app");
     expect(
       await within(rowFor("/Users/me/app")).findByText(/in sync/i),
     ).toBeInTheDocument();
     expect(
-      within(rowFor("/Users/me/app")).queryByText(/needs update/i),
+      within(rowFor("/Users/me/app")).queryByText(/▲/),
     ).not.toBeInTheDocument();
   });
 });

@@ -2,6 +2,7 @@ import type { DriftViewModel } from "../drift/drift-view-model";
 import { Card } from "../ui/card";
 import { SectionHeader } from "../ui/section-header";
 import { DeployStateList } from "./deploy-state-list";
+import { toolDeployedView } from "./deployed-view";
 import { TargetStatusChip } from "./target-status-chip";
 import { toolPresentation } from "./tool-presentation";
 import type { SkippedEntry } from "./use-deploy-state";
@@ -81,11 +82,7 @@ function ToolTargetCard({
   // The single global drift check is narrowed to this tool's skills, so a skill
   // behind on another tool never surfaces here as a spurious "also behind".
   const toolDrift = drift.forTool(names);
-  const indicator = toolDrift.targetIndicator({
-    status: "ready",
-    names,
-    skippedCount: 0,
-  });
+  const indicator = toolDrift.targetIndicator(toolDeployedView(names));
 
   return (
     <Card

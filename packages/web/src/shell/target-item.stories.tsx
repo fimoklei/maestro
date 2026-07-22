@@ -11,6 +11,7 @@ const meta = {
       control: "inline-radio",
       options: ["ok", "drift", "empty", "unknown", "unverified", "pending"],
     },
+    driftCount: { control: "number" },
   },
   // A target row is a list item; wrap it so the story renders valid markup.
   decorators: [
@@ -27,10 +28,18 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const InSync: Story = {
-  args: { label: "Global", kind: "global", indicator: "ok" },
+  args: { label: "Claude Code", kind: "global", indicator: "ok" },
 };
 
-export const NeedsUpdate: Story = { args: { indicator: "drift" } };
+// A target with two deployed skills behind the latest — the `▲N` drift badge.
+export const NeedsUpdate: Story = {
+  args: {
+    label: "Claude Code",
+    kind: "global",
+    indicator: "drift",
+    driftCount: 2,
+  },
+};
 
 // Nothing deployed here yet — the first-run reading of a freshly-registered
 // repo. Neutral, not a problem: distinct from "unknown" (a check that failed).
