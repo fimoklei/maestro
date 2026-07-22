@@ -51,23 +51,24 @@ describe("Button", () => {
       "dashed",
     ] as const;
 
-    it.each(
-      variants,
-    )("carries the shared dim treatment for the %s variant, never a signal fill", (variant) => {
-      render(
-        <Button variant={variant} disabled>
-          go
-        </Button>,
-      );
-      const button = screen.getByRole("button", { name: "go" });
-      expect(button).toHaveClass(
-        "disabled:cursor-not-allowed",
-        "disabled:border-line-chip",
-        "disabled:bg-dim-bg",
-        "disabled:text-dim",
-      );
-      expect(button).not.toHaveClass("disabled:bg-amber");
-      expect(button).not.toHaveClass("disabled:bg-green");
-    });
+    it.each(variants)(
+      "carries the shared dim treatment for the %s variant, never a signal fill",
+      (variant) => {
+        render(
+          <Button variant={variant} disabled>
+            go
+          </Button>,
+        );
+        const button = screen.getByRole("button", { name: "go" });
+        expect(button).toHaveClass(
+          "disabled:cursor-not-allowed",
+          "disabled:border-line-chip",
+          "disabled:bg-dim-bg",
+          "disabled:text-dim",
+        );
+        expect(button).not.toHaveClass("disabled:bg-amber");
+        expect(button).not.toHaveClass("disabled:bg-green");
+      },
+    );
   });
 });
