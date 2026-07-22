@@ -25,16 +25,23 @@ function renderPanel() {
   );
 }
 
-// Routes the fetch stub by URL: the panel reads both the inventory and the
-// registry (for the per-row deploy action's repo choice).
+// Routes the fetch stub by URL: the panel reads the inventory, the registry (for
+// the per-row deploy action's repo choice), and — for the deployed column's
+// roll-up — each target's deploy-state. A deploy-state response always carries a
+// `skipped` list, so the stub returns the real shape, not a primitives-only stub.
 function stubApi(primitives: unknown[], repos: unknown[]) {
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (input: RequestInfo | URL) =>
-      String(input).startsWith("/api/registry")
-        ? jsonResponse({ repos }, 200)
-        : jsonResponse({ primitives }, 200),
-    ),
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/registry")) {
+        return jsonResponse({ repos }, 200);
+      }
+      if (url.startsWith("/api/deploy-state")) {
+        return jsonResponse({ primitives: [], skipped: [] }, 200);
+      }
+      return jsonResponse({ primitives }, 200);
+    }),
   );
 }
 
@@ -123,6 +130,32 @@ describe("InventoryPanel", () => {
     expect(
       await screen.findByRole("button", { name: /loading targets/i }),
     ).toBeDisabled();
+  });
+
+  it("holds the deployed column unresolved while the registry is still loading", async () => {
+    // The repo set is unknown until the registry resolves, so a skill's repo
+    // reach is unconfirmed — the column must not read a definite "not deployed"
+    // (J04), the same honesty the deploy button keeps.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input).startsWith("/api/registry")
+          ? new Promise<Response>(() => undefined)
+          : jsonResponse(
+              {
+                primitives: [
+                  { type: "skill", name: "tdd", description: "TDD loop" },
+                ],
+              },
+              200,
+            ),
+      ),
+    );
+    renderPanel();
+
+    await screen.findByText("tdd");
+    expect(screen.queryByText("not deployed")).not.toBeInTheDocument();
+    expect(screen.getByText("…")).toBeInTheDocument();
   });
 
   it("disables the deploy action when the registry failed to load", async () => {

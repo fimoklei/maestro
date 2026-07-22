@@ -26,14 +26,20 @@ export type DriftResponse =
 
 const FIVE_MINUTES = 5 * 60 * 1000;
 
-export function useDrift(repo: string, enabled = true) {
-  return useQuery({
-    queryKey: ["drift", repo],
+// Shared so the single-repo `useDrift` and the multi-repo `useQueries` roll-up run
+// one repo's drift check identically (same key, same staleTime) — a diverging key
+// would make the inventory column and a repo card re-shell the same check.
+export function driftQueryOptions(repo: string) {
+  return {
+    queryKey: ["drift", repo] as const,
     queryFn: () =>
       requestJson<DriftResponse>(`/api/drift?repo=${encodeURIComponent(repo)}`),
     staleTime: FIVE_MINUTES,
-    enabled,
-  });
+  };
+}
+
+export function useDrift(repo: string, enabled = true) {
+  return useQuery({ ...driftQueryOptions(repo), enabled });
 }
 
 export function useGlobalDrift(enabled = true) {
