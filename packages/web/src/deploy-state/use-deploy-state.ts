@@ -18,13 +18,21 @@ type DeployStateResponse = {
   skipped: SkippedEntry[];
 };
 
-export function useDeployState(repo: string, enabled = true) {
-  return useQuery({
-    queryKey: ["deploy-state", repo],
+// The query config, shared so a single-repo `useDeployState` and the multi-repo
+// `useQueries` roll-up read one repo's deploy-state the exact same way (same key,
+// same fetch) — they must never diverge or two screens would cache-miss each
+// other. No staleTime: this is a cheap local lockfile read, kept live so an
+// external `apm` change (a lockfile edited outside Maestro) shows on open/focus.
+export function deployStateQueryOptions(repo: string) {
+  return {
+    queryKey: ["deploy-state", repo] as const,
     queryFn: () =>
       requestJson<DeployStateResponse>(
         `/api/deploy-state?repo=${encodeURIComponent(repo)}`,
       ),
-    enabled,
-  });
+  };
+}
+
+export function useDeployState(repo: string, enabled = true) {
+  return useQuery({ ...deployStateQueryOptions(repo), enabled });
 }

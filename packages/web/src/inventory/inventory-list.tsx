@@ -12,6 +12,8 @@ import {
 } from "../ui/table";
 import { TypeTag } from "../ui/type-tag";
 import { DeploySkillAction } from "./deploy-skill-action";
+import { DeployedCell } from "./deployed-cell";
+import { type DeploymentTarget, rollUpDeployment } from "./deployed-rollup";
 import {
   filterByName,
   nextSort,
@@ -39,10 +41,17 @@ export function InventoryList({
   primitives,
   repos,
   registryReady,
+  targets = [],
 }: {
   primitives: Primitive[];
   repos: RegisteredRepo[];
   registryReady: boolean;
+  // Every deploy target (each global tool + each registered repo), so each row
+  // pivots the per-target reads into its own reach + drift roll-up (#272). The
+  // container owns the query state; this list only presents it. Empty until the
+  // deploy-state reads resolve — a skill then reads `not deployed` rather than a
+  // blank, which the roll-up already treats as an unconfirmed, uncounted target.
+  targets?: DeploymentTarget[];
 }) {
   // Which type segment is selected — local UI-state, never server-state. A
   // segment only exists when its type has data, so any selection yields rows.
@@ -111,13 +120,16 @@ export function InventoryList({
             <SortableHead column="description" sort={sort} onSort={setSort}>
               Description
             </SortableHead>
+            {/* Deployed is a per-skill roll-up, not a primitive field, so it is
+                not a sort key (out of #289 scope) — a plain header. */}
+            <TableHead>Deployed</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {visible.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={4} className="text-dim text-tag">
+              <TableCell colSpan={5} className="text-dim text-tag">
                 No skills match your search.
               </TableCell>
             </TableRow>
@@ -132,6 +144,11 @@ export function InventoryList({
                 </TableCell>
                 <TableCell className="truncate text-desc text-muted">
                   {primitive.description}
+                </TableCell>
+                <TableCell>
+                  <DeployedCell
+                    rollup={rollUpDeployment(primitive.name, targets)}
+                  />
                 </TableCell>
                 <TableCell>
                   <DeploySkillAction

@@ -3,6 +3,7 @@ import { useRegistry } from "../registry/use-registry";
 import { Card } from "../ui/card";
 import { SectionHeader } from "../ui/section-header";
 import { InventoryList } from "./inventory-list";
+import { useDeploymentTargets } from "./use-deployment-targets";
 import { useInventory } from "./use-inventory";
 
 // Container: wires the inventory server-state hook to the presentational list,
@@ -13,6 +14,16 @@ import { useInventory } from "./use-inventory";
 export function InventoryPanel() {
   const inventory = useInventory();
   const registry = useRegistry();
+  const repos = registry.data?.repos ?? [];
+  // Every deploy target the deployed column pivots over, gathered once here so the
+  // list stays presentational (frontend.md: hooks hold data). Reuses the cockpit's
+  // existing deploy-state + drift queries — no new server read (#272). The
+  // registry's own state rides along so repo reach stays unconfirmed until the
+  // repo set is known.
+  const targets = useDeploymentTargets(
+    repos.map((repo) => repo.path),
+    { isLoading: registry.isLoading, isError: registry.isError },
+  );
 
   const skillCount = inventory.data?.primitives.length ?? 0;
 
@@ -39,8 +50,9 @@ export function InventoryPanel() {
         <Card>
           <InventoryList
             primitives={inventory.data?.primitives ?? []}
-            repos={registry.data?.repos ?? []}
+            repos={repos}
             registryReady={registry.isSuccess}
+            targets={targets}
           />
         </Card>
       )}

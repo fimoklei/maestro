@@ -2,6 +2,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { driftViewModel } from "../drift/drift-view-model";
+import type { DeploymentTarget } from "./deployed-rollup";
 import { InventoryList } from "./inventory-list";
 import type { Primitive } from "./use-inventory";
 
@@ -11,6 +13,18 @@ function dataRowNames(): (string | null)[] {
     (row) => within(row).getAllByRole("cell")[1]?.textContent ?? null,
   );
 }
+
+const ranDrift = (
+  behind: { name: string; current: string; latest: string }[],
+) => driftViewModel({ data: { behind }, isError: false });
+
+const deployedTo = (
+  names: string[],
+  behind: { name: string; current: string; latest: string }[] = [],
+): DeploymentTarget => ({
+  deployed: { status: "ready", names, skippedCount: 0 },
+  drift: ranDrift(behind),
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -139,6 +153,36 @@ describe("InventoryList", () => {
     expect(
       screen.queryByText(/consuming repos are registered via/i),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows a Deployed column with a per-skill target roll-up", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    // tdd is deployed to two targets (one behind); caveman reaches none.
+    const targets = [
+      deployedTo(["tdd"], []),
+      deployedTo(
+        ["tdd"],
+        [{ name: "tdd", current: "v1.0.0", latest: "v1.1.0" }],
+      ),
+    ];
+    renderList(
+      <InventoryList
+        primitives={primitives}
+        repos={[]}
+        registryReady
+        targets={targets}
+      />,
+    );
+
+    expect(
+      screen.getByRole("columnheader", { name: "Deployed" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("→ 2 targets")).toBeInTheDocument();
+    expect(screen.getByText("▲1")).toBeInTheDocument();
+    expect(screen.getByText("not deployed")).toBeInTheDocument();
   });
 
   it("hides the hint once a repo is registered", () => {
