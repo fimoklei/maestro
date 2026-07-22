@@ -61,6 +61,44 @@ describe("InventoryList", () => {
     expect(screen.getByRole("cell", { name: "caveman" })).toBeInTheDocument();
   });
 
+  it("shows a data-driven type filter of all plus the types present", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderList(
+      <InventoryList primitives={primitives} repos={[]} registryReady />,
+    );
+
+    const filter = screen.getByRole("group", { name: /filter by type/i });
+    expect(filter).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "all" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "skills" })).toBeInTheDocument();
+    // Skills-only data yields exactly all + skills, never a hardcoded five.
+    expect(
+      screen.queryByRole("button", { name: "hooks" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the skills visible and marks the segment active when selected", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderList(
+      <InventoryList primitives={primitives} repos={[]} registryReady />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "skills" }));
+
+    expect(screen.getByRole("button", { name: "skills" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("cell", { name: "tdd" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "caveman" })).toBeInTheDocument();
+  });
+
   it("shows the explicit empty state instead of a blank table", () => {
     renderList(<InventoryList primitives={[]} repos={[]} registryReady />);
 

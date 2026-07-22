@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from "react";
 import { RegisterRepoHint } from "../registry/register-repo-hint";
 import type { RegisteredRepo } from "../registry/use-registry";
+import { SegmentedControl } from "../ui/segmented-control";
 import {
   Table,
   TableBody,
@@ -18,15 +19,22 @@ import {
   type SortState,
   sortPrimitives,
 } from "./inventory-table-model";
+import {
+  deriveTypeSegments,
+  filterByType,
+  type TypeFilter,
+} from "./type-filter";
 import type { Primitive } from "./use-inventory";
 
-// Presentational table of central skills: type, name, description, and an
-// actions cell with the row's deploy control (#285). Search and sort (#287) are
-// UI-state owned here and applied through the pure model — the loaded inventory
-// is never refetched, only narrowed and reordered on screen (frontend.md). The
-// view stays type-aware (TypeTag carries the type) though only skills render
-// today. Empty state is explicit so a correctly configured but empty inventory
-// never shows a bare, ambiguous blank.
+// Deploy-aware table of central skills: type, name, description, and an actions
+// cell with the row's deploy control (#285). Three narrowing controls sit above
+// it: a data-driven type filter (#288) plus a name search box (#287), and the
+// column headers sort the rows (#287). All three are local UI-state applied
+// through pure models — the loaded inventory is never refetched, only narrowed
+// and reordered on screen (frontend.md). The view stays type-aware (TypeTag
+// carries the type) though only skills render today. Empty state is explicit so
+// a correctly configured but empty inventory never shows a bare, ambiguous
+// blank.
 export function InventoryList({
   primitives,
   repos,
@@ -36,6 +44,9 @@ export function InventoryList({
   repos: RegisteredRepo[];
   registryReady: boolean;
 }) {
+  // Which type segment is selected — local UI-state, never server-state. A
+  // segment only exists when its type has data, so any selection yields rows.
+  const [filter, setFilter] = useState<TypeFilter>("all");
   const [query, setQuery] = useState("");
   // null = loaded order; the table only reorders once the user clicks a header,
   // so it never jumps before being asked to sort.
@@ -49,8 +60,13 @@ export function InventoryList({
     );
   }
 
-  const filtered = filterByName(primitives, query);
-  const visible = sort ? sortPrimitives(filtered, sort) : filtered;
+  // Segments derive from the full inventory; the table body reads the narrowed
+  // set. Filtering never touches the segment set, so a segment never vanishes
+  // because it is the one selected. Type filter → name search → sort compose in
+  // that order; the result is the same whichever narrows first.
+  const segments = deriveTypeSegments(primitives);
+  const narrowed = filterByName(filterByType(primitives, filter), query);
+  const visible = sort ? sortPrimitives(narrowed, sort) : narrowed;
 
   return (
     <>
@@ -62,6 +78,14 @@ export function InventoryList({
       {registryReady && repos.length === 0 ? (
         <RegisterRepoHint className="block px-card-x pt-row-y" />
       ) : null}
+      <div className="px-card-x pt-row-y">
+        <SegmentedControl
+          label="Filter by type"
+          segments={segments}
+          value={filter}
+          onChange={setFilter}
+        />
+      </div>
       <div className="px-card-x py-row-y">
         <label htmlFor="inventory-search" className="sr-only">
           Search skills
