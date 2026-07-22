@@ -30,11 +30,17 @@ Handle what already exists — check first with `git -C ~/Projects/maestro workt
 **Done when:** `git -C ~/Projects/maestro worktree list` shows the path on branch `feature/issue<N>`.
 
 ### 3. Prepare it
-A fresh worktree has no `node_modules` — install (the pnpm store is shared, so this is fast):
+A fresh worktree has neither `node_modules` nor a graphify graph — supply both.
+
+Install deps (the pnpm store is shared, so this is fast):
 ```bash
 pnpm -C ~/Projects/maestro/.claude/worktrees/issue<N> install
 ```
-**Done when:** install exits 0 and `~/Projects/maestro/.claude/worktrees/issue<N>/node_modules` exists.
+Build the graph so the repo's graphify guards fire here too — `graphify-out/` is git-ignored, so a fresh worktree has none (AST-only, ~3s, no API cost):
+```bash
+(cd ~/Projects/maestro/.claude/worktrees/issue<N> && graphify update .)
+```
+**Done when:** install exits 0 with `node_modules/` present, and `graphify-out/graph.json` exists in the worktree.
 
 ### 4. Pull the issue and explain it for a product manager
 ```bash
