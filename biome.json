@@ -7,7 +7,14 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!.sc", "!**/prototype-*.html", "!docs/design"]
+    "includes": [
+      "**",
+      "!.sc",
+      "!**/prototype-*.html",
+      "!docs/design",
+      "!.agents/skills",
+      "!.claude/skills"
+    ]
   },
   "formatter": {
     "enabled": true,
