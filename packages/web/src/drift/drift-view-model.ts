@@ -56,6 +56,10 @@ export interface DriftViewModel {
   latest(name: string): string | undefined;
   // The whole target's roll-up against its deployed set.
   targetIndicator(deployed: DeployedView): TargetDriftIndicator;
+  // How many deployed-here skills are behind — the `▲N` count. Shares the exact
+  // orphan-behind join `targetIndicator` uses, so N > 0 iff the indicator reads
+  // "drift" (a target never shows `▲0`). Zero for every un-run or empty state.
+  driftCount(deployed: DeployedView): number;
   // Behind names the check reported that are not deployed here — surfaced, never
   // dropped, so the cockpit does not silently hide a behind primitive.
   orphanBehind(deployedNames: string[]): string[];
@@ -118,44 +122,58 @@ function fromDriftView(view: DriftView): DriftViewModel {
       ? view.behind.find((entry) => entry.name === name)?.latest
       : undefined;
 
-  const targetIndicator = (deployed: DeployedView): TargetDriftIndicator => {
-    // "empty" comes first: a target with nothing deployed (deployed read cleanly,
-    // zero primitives and zero skipped entries) can't drift, so a confirmed-empty
-    // deployment wins over the drift check — even a failed or still-loading one.
-    // A lockfile of only unsupported types has zero primitives but a non-empty
-    // skipped set: it does contain deployed content, so it is not empty and falls
-    // through. Emptiness only counts once deployed is confirmed (status "ready").
+  // One roll-up owns both the state and the `▲N` count so they read the same
+  // behind<->deployed join and can never disagree. "empty" comes first: a target
+  // with nothing deployed (deployed read cleanly, zero primitives and zero skipped
+  // entries) can't drift, so a confirmed-empty deployment wins over the drift
+  // check — even a failed or still-loading one. A lockfile of only unsupported
+  // types has zero primitives but a non-empty skipped set: it does contain
+  // deployed content, so it is not empty and falls through. Emptiness only counts
+  // once deployed is confirmed (status "ready").
+  const rollUp = (
+    deployed: DeployedView,
+  ): { state: TargetDriftIndicator; behindCount: number } => {
     if (
       deployed.status === "ready" &&
       deployed.names.length === 0 &&
       deployed.skippedCount === 0
     ) {
-      return "empty";
+      return { state: "empty", behindCount: 0 };
     }
     switch (view.status) {
       case "pending":
-        return "pending";
+        return { state: "pending", behindCount: 0 };
       case "unknown":
-        return "unknown";
+        return { state: "unknown", behindCount: 0 };
       case "unverified":
-        return "unverified";
+        return { state: "unverified", behindCount: 0 };
       case "ready":
         switch (deployed.status) {
           case "pending":
-            return "pending";
+            return { state: "pending", behindCount: 0 };
           case "unknown":
-            return "unknown";
+            return { state: "unknown", behindCount: 0 };
           case "ready": {
             // An orphan-behind (a behind name not deployed here) cannot be updated
-            // here, so it must not flip the target to "drift".
+            // here, so it must not flip the target to "drift" nor inflate the count.
             const names = new Set(deployed.names);
-            return view.behind.some((entry) => names.has(entry.name))
-              ? "drift"
-              : "ok";
+            const behindCount = view.behind.filter((entry) =>
+              names.has(entry.name),
+            ).length;
+            return {
+              state: behindCount > 0 ? "drift" : "ok",
+              behindCount,
+            };
           }
         }
     }
   };
+
+  const targetIndicator = (deployed: DeployedView): TargetDriftIndicator =>
+    rollUp(deployed).state;
+
+  const driftCount = (deployed: DeployedView): number =>
+    rollUp(deployed).behindCount;
 
   const orphanBehind = (deployedNames: string[]): string[] => {
     if (view.status !== "ready") {
@@ -192,6 +210,7 @@ function fromDriftView(view: DriftView): DriftViewModel {
     skillStatus,
     latest,
     targetIndicator,
+    driftCount,
     orphanBehind,
     syncedState,
     forTool,

@@ -14,21 +14,48 @@ type TargetItemProps = {
   label: string;
   kind: "global" | "local";
   indicator: TargetDriftIndicator;
+  // How many deployed-here skills are behind, for the `▲N` badge. Only read in
+  // the "drift" state, where it is always ≥ 1 (the roll-up never reports drift
+  // with a zero count), so the sidebar never renders `▲0`.
+  driftCount?: number;
   // Full, untruncated text shown on hover (native tooltip). A local target's
   // label is a shortened path, so the whole path stays reachable here (#211).
   title?: string;
 };
 
-const STATUS_TEXT: Record<TargetDriftIndicator, string> = {
-  ok: "in sync",
-  drift: "needs update",
-  empty: "empty",
-  unknown: "unknown",
-  unverified: "unverified",
-  pending: "checking…",
-};
+// The right-slot reading per state: a visible marker, plus — where that marker is
+// a glyph (`▲N`, `?`) rather than a word — the readable text a screen reader
+// announces, so the state never relies on shape or colour alone. The plain-word
+// states are already readable and carry no separate sr text. None reads as "in
+// sync" except the ok state (J04).
+function targetReading(
+  indicator: TargetDriftIndicator,
+  driftCount: number,
+): { visible: string; sr?: string } {
+  switch (indicator) {
+    case "drift":
+      return { visible: `▲${driftCount}`, sr: `${driftCount} behind` };
+    case "unknown":
+      return { visible: "?", sr: "unknown" };
+    case "ok":
+      return { visible: "in sync" };
+    case "empty":
+      return { visible: "empty" };
+    case "unverified":
+      return { visible: "unverified" };
+    case "pending":
+      return { visible: "checking…" };
+  }
+}
 
-export function TargetItem({ label, kind, indicator, title }: TargetItemProps) {
+export function TargetItem({
+  label,
+  kind,
+  indicator,
+  driftCount,
+  title,
+}: TargetItemProps) {
+  const reading = targetReading(indicator, driftCount ?? 0);
   return (
     <li className="flex items-center justify-between gap-2 px-3 py-1.5">
       <span className="flex items-center gap-2 truncate">
@@ -52,8 +79,18 @@ export function TargetItem({ label, kind, indicator, title }: TargetItemProps) {
           {label}
         </span>
       </span>
-      <span className="shrink-0 font-ui text-muted text-tag">
-        {STATUS_TEXT[indicator]}
+      <span
+        className="shrink-0 font-ui text-muted text-tag"
+        title={reading.sr ?? reading.visible}
+      >
+        {reading.sr ? (
+          <>
+            <span aria-hidden="true">{reading.visible}</span>
+            <span className="sr-only">{reading.sr}</span>
+          </>
+        ) : (
+          reading.visible
+        )}
       </span>
     </li>
   );

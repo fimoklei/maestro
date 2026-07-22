@@ -18,6 +18,30 @@ export type DeployedView =
   | { status: "unknown" }
   | { status: "ready"; names: string[]; skippedCount: number };
 
+// A detected tool's deployed set for the drift roll-up. Its primitive names are
+// known once the global deploy-state read resolves (status "ready"); its skipped
+// entries are surfaced section-wide rather than per tool, so the view carries
+// only names with skippedCount 0. One owner for that shape, shared by the
+// global-targets cards and the sidebar's per-tool rows, so they can never drift.
+//
+// The optional read-state keeps the sidebar honest: TanStack retains the
+// last-good tools after a refetch fails, so a caller that renders those stale
+// rows (the sidebar does; the cards gate on error and never do) must pass the
+// query — a failed read maps to "unknown", never a "ready" set the roll-up would
+// join into a false "in sync"/▲N (J04). Omitting it stays "ready".
+export function toolDeployedView(
+  names: string[],
+  read?: { data: unknown; isError: boolean },
+): DeployedView {
+  if (read?.isError) {
+    return { status: "unknown" };
+  }
+  if (read !== undefined && read.data === undefined) {
+    return { status: "pending" };
+  }
+  return { status: "ready", names, skippedCount: 0 };
+}
+
 export function toDeployedView(
   deployState: Pick<
     UseQueryResult<{

@@ -191,6 +191,73 @@ describe("driftViewModel — targetIndicator", () => {
   });
 });
 
+describe("driftViewModel — driftCount", () => {
+  it("counts the deployed skills that are behind", () => {
+    expect(
+      ran([pair("tdd"), pair("diagnose")]).driftCount(
+        deployedNames(["tdd", "diagnose"]),
+      ),
+    ).toBe(2);
+  });
+
+  it("excludes an orphan-behind (behind but not deployed here) from the count", () => {
+    expect(
+      ran([pair("tdd"), pair("foo")]).driftCount(deployedNames(["tdd"])),
+    ).toBe(1);
+  });
+
+  it("is zero when the check ran and nothing deployed is behind", () => {
+    expect(ran([]).driftCount(deployedNames(["tdd"]))).toBe(0);
+  });
+
+  it("is zero for a confirmed-empty target", () => {
+    expect(ran([pair("tdd")]).driftCount(deployedNames([]))).toBe(0);
+  });
+
+  it.each(["unknown", "unverified"] as const)(
+    "is zero when the drift check could not run (%s), never a misleading absent-as-synced",
+    (reason) => {
+      const vm =
+        reason === "unverified"
+          ? driftViewModel(query({ data: { ok: false, reason: "unverified" } }))
+          : driftViewModel(query({ data: { ok: false } }));
+      expect(vm.driftCount(deployedNames(["tdd"]))).toBe(0);
+    },
+  );
+
+  it("is zero while the drift check is in flight", () => {
+    expect(
+      driftViewModel(query({ data: undefined })).driftCount(
+        deployedNames(["tdd"]),
+      ),
+    ).toBe(0);
+  });
+
+  it("is zero while deploy-state is still loading", () => {
+    expect(ran([pair("tdd")]).driftCount({ status: "pending" })).toBe(0);
+  });
+
+  it("is zero when deploy-state could not be read", () => {
+    expect(ran([pair("tdd")]).driftCount({ status: "unknown" })).toBe(0);
+  });
+
+  it("is positive exactly when the target indicator reads drift", () => {
+    const drifting = ran([pair("tdd")]);
+    expect(drifting.driftCount(deployedNames(["tdd"]))).toBeGreaterThan(0);
+    expect(drifting.targetIndicator(deployedNames(["tdd"]))).toBe("drift");
+
+    const clean = ran([pair("foo")]);
+    expect(clean.driftCount(deployedNames(["tdd"]))).toBe(0);
+    expect(clean.targetIndicator(deployedNames(["tdd"]))).toBe("ok");
+  });
+
+  it("narrows the count to one tool through forTool", () => {
+    const global = ran([pair("tdd")]);
+    expect(global.forTool(["tdd"]).driftCount(deployedNames(["tdd"]))).toBe(1);
+    expect(global.forTool([]).driftCount(deployedNames([]))).toBe(0);
+  });
+});
+
 describe("driftViewModel — orphanBehind", () => {
   it("surfaces behind names that are not deployed in the repo", () => {
     expect(ran([pair("tdd"), pair("foo")]).orphanBehind(["tdd"])).toEqual([

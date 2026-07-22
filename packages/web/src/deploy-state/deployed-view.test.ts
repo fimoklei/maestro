@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toDeployedView } from "./deployed-view";
+import { toDeployedView, toolDeployedView } from "./deployed-view";
 import type { DeployedPrimitive, SkippedEntry } from "./use-deploy-state";
 
 type Response = { primitives: DeployedPrimitive[]; skipped: SkippedEntry[] };
@@ -66,6 +66,41 @@ describe("toDeployedView", () => {
     // ready+empty set that the roll-up would join into a false "in sync".
     expect(toDeployedView(query({ isError: true }))).toEqual({
       status: "unknown",
+    });
+  });
+});
+
+describe("toolDeployedView", () => {
+  it("maps a tool's names to ready when no read state is given", () => {
+    // The global-targets cards only render a tool once the read succeeded (their
+    // container gates the error state), so a bare names call is always ready.
+    expect(toolDeployedView(["tdd"])).toEqual({
+      status: "ready",
+      names: ["tdd"],
+      skippedCount: 0,
+    });
+  });
+
+  it("maps a tool's names to ready on a successful global read", () => {
+    expect(toolDeployedView(["tdd"], { data: {}, isError: false })).toEqual({
+      status: "ready",
+      names: ["tdd"],
+      skippedCount: 0,
+    });
+  });
+
+  it("maps a failed global read to unknown, ignoring stale cached names", () => {
+    // TanStack keeps the last-good tools after a refetch fails; marking those
+    // stale names "ready" would let a tool read "in sync"/▲N from data the read
+    // could no longer confirm — the J04 lie. A failed read is unknown.
+    expect(toolDeployedView(["tdd"], { data: {}, isError: true })).toEqual({
+      status: "unknown",
+    });
+  });
+
+  it("maps a not-yet-read global read to pending", () => {
+    expect(toolDeployedView([], { data: undefined, isError: false })).toEqual({
+      status: "pending",
     });
   });
 });
