@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!.sc", "!**/prototype-*.html"]
+    "includes": ["**", "!.sc", "!**/prototype-*.html", "!**/*.dc.html"]
   },
   "formatter": {
     "enabled": true,

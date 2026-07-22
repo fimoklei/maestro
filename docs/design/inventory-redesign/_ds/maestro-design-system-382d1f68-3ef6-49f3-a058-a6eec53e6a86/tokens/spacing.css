@@ -1,0 +1,26 @@
+/* Maestro — Control Room spacing, radii, structure tokens. */
+:root {
+  /* spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+
+  /* corner radii — small and tight; nothing pill-shaped */
+  --radius-tag: 3px; /* type tags, micro buttons */
+  --radius-control: 4px; /* chips, buttons, inset items */
+  --radius-item: 5px; /* nav items, large buttons, logo tile */
+  --radius-card: 6px; /* cards, panels, drop zones */
+
+  /* recurring paddings */
+  --pad-card-x: 14px; /* horizontal padding inside cards */
+  --pad-row-y: 9px; /* table row vertical padding */
+  --pad-header-y: 10px; /* card header vertical padding */
+
+  /* layout structure (1440 cockpit) */
+  --h-statusbar: 52px;
+  --w-sidebar: 208px;
+  --w-aside: 320px;
+}

@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics="">
+  <meta name="design_doc_mode" content="canvas">
+  <link rel="stylesheet" href="_ds/maestro-design-system-382d1f68-3ef6-49f3-a058-a6eec53e6a86/tokens/fonts.css">
+  <link rel="stylesheet" href="_ds/maestro-design-system-382d1f68-3ef6-49f3-a058-a6eec53e6a86/tokens/colors.css">
+  <link rel="stylesheet" href="_ds/maestro-design-system-382d1f68-3ef6-49f3-a058-a6eec53e6a86/tokens/typography.css">
+  <link rel="stylesheet" href="_ds/maestro-design-system-382d1f68-3ef6-49f3-a058-a6eec53e6a86/tokens/spacing.css">
+  <link rel="stylesheet" href="_ds/maestro-design-system-382d1f68-3ef6-49f3-a058-a6eec53e6a86/tokens/base.css">
+  <link rel="stylesheet" href="_ds/maestro-design-system-382d1f68-3ef6-49f3-a058-a6eec53e6a86/styles.css">
+  <script src="_ds/maestro-design-system-382d1f68-3ef6-49f3-a058-a6eec53e6a86/_ds_bundle.js"></script>
+  <style>
+    body{margin:0;background:#e6e8ec;font-family:var(--font-ui),system-ui,sans-serif}
+    .dv-turn{padding:44px 48px 40px}
+    .dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 8px}
+    .dv-tid{font:600 10px var(--font-mono);padding:3px 7px;background:#1a212b;color:#fff;border-radius:4px;text-decoration:none}
+    .dv-tname{font:600 13px/1.3 system-ui,sans-serif;color:#1a212b}
+    .dv-intro{margin:0 0 26px;max-width:760px;font:13px/1.6 system-ui,sans-serif;color:#48525f}
+    .dv-opts{display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start}
+    .dv-opt{flex:none;display:flex;flex-direction:column;gap:11px;scroll-margin-top:16px}
+    .dv-oid{font:600 10.5px var(--font-mono);padding:3px 7px;background:rgba(104,116,130,.09);color:#1a212b;border-radius:5px;text-decoration:none}
+    .dv-olabel{display:flex;align-items:baseline;gap:9px;font:400 12px/1.4 system-ui,sans-serif;color:#687482;max-width:var(--w)}
+    .dv-olabel b{color:#1a212b;font-weight:600}
+    .dv-opt:target .dv-oid{background:var(--amber);color:var(--on-accent)}
+    .dv-next{margin:30px 0 0;font:12.5px/1.7 system-ui,sans-serif;color:#687482}
+    .scr{background:var(--bg-0);border:1px solid var(--border-strong);border-radius:var(--radius-card);overflow:hidden;font-family:var(--font-mono)}
+    .scr *{box-sizing:border-box}
+    .fin{font-family:var(--font-mono);font-size:var(--fs-mono-sm);color:var(--text-1);background:var(--surface-inset);border:1px solid var(--border-chip);border-radius:var(--radius-control);padding:6px 10px 6px 28px;outline:none;width:100%}
+    .fin::placeholder{color:var(--text-dim)}
+    .invsel{font-family:var(--font-mono);font-size:11px;color:var(--text-2);background:var(--surface-inset);border:1px solid var(--border-chip);border-radius:var(--radius-control);padding:5px 8px;outline:none}
+    .scr *::-webkit-scrollbar{width:9px;height:9px}
+    .scr *::-webkit-scrollbar-thumb{background:var(--border-chip);border-radius:6px}
+    .scr *::-webkit-scrollbar-track{background:transparent}
+  </style>
+</helmet>
+
+<section class="dv-turn" id="t3">
+  <div class="dv-thd"><a class="dv-tid" href="#t3">3</a><span class="dv-tname">Table + expanding detail pane</span></div>
+  <p class="dv-intro">Keeps the dense table you already have (<a class="dv-oid" href="#1b">1b</a>) as the scan surface, inside the full shell of <a class="dv-oid" href="#2a">2a</a>. Selecting a row slides open a right pane with the primitive's info, deployed-to targets, drift status and the deploy control — so the table stays pure "see" and every action lives in the pane.</p>
+  <div class="dv-opts">
+    <div class="dv-opt" id="3a" style="--w:1280px">
+      <div class="dv-olabel"><a class="dv-oid" href="#3a">3a</a><span><b>Table → detail.</b> Click a row to expand the detail pane; click ✕ to collapse back to full-width table. Deploy lives only in the pane.</span></div>
+      <div class="scr" style="width:1280px;height:720px;display:flex;flex-direction:column">
+
+        <!-- STATUS BAR -->
+        <header style="display:flex;align-items:center;gap:12px;padding:0 16px;height:52px;flex:none;border-bottom:1px solid var(--border-chip);background:var(--bg-1)">
+          <div style="width:26px;height:26px;border-radius:var(--radius-item);background:var(--amber);display:grid;place-items:center;color:var(--on-accent);font-weight:700;font-size:var(--fs-title)">M</div>
+          <span style="font-family:var(--font-ui);font-weight:600;font-size:var(--fs-title);color:var(--text-1)">maestro</span>
+          <span style="font-size:11px;color:var(--text-dim)">agent-harness · main · 10 primitives</span>
+          <span style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--green-ink);background:var(--green-bg);border:1px solid var(--green-border);border-radius:var(--radius-control);padding:2px 8px"><span style="font-size:8px">●</span>connected</span>
+          <button style="width:24px;height:24px;display:grid;place-items:center;border-radius:var(--radius-control);border:1px solid var(--border-chip);background:transparent;color:var(--text-dim);cursor:pointer">⚙</button>
+        </header>
+
+        <div style="display:flex;flex:1;min-height:0">
+          <!-- SIDEBAR -->
+          <aside style="width:208px;flex:none;border-right:1px solid var(--border-strong);background:var(--bg-1);padding:10px;display:flex;flex-direction:column;gap:2px;overflow-y:auto">
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius-item);color:var(--text-muted);cursor:pointer">
+              <span style="font-size:14px;color:var(--text-dim)">⇶</span><span style="font-size:13px">Deploy-state</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius-item);background:var(--surface-active);border:1px solid var(--border-chip);color:var(--text-1)">
+              <span style="font-size:14px;color:var(--amber)">▤</span><span style="font-size:13px;font-weight:500">Inventory</span>
+            </div>
+            <div style="font-size:10px;letter-spacing:var(--ls-tag);text-transform:uppercase;color:var(--text-dim);margin:22px 0 8px;padding:0 10px">Targets</div>
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:var(--fs-body);color:var(--text-2)"><span style="color:var(--green);font-size:8px">●</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Claude Code</span></div>
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:var(--fs-body);color:var(--text-2)"><span style="color:var(--amber);font-size:9px">▲</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Codex</span><span style="font-size:10px;color:var(--amber)">1</span></div>
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:var(--fs-body);color:var(--text-2)"><span style="color:var(--amber);font-size:9px">▲</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">~/dev/acme-web</span><span style="font-size:10px;color:var(--amber)">1</span></div>
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:var(--fs-body);color:var(--text-2)"><span style="color:var(--amber);font-size:9px">▲</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">~/dev/api-gateway</span><span style="font-size:10px;color:var(--amber)">1</span></div>
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:var(--fs-body);color:var(--text-2)"><span style="color:var(--green);font-size:8px">●</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">~/dev/data-pipeline</span></div>
+            <button style="margin:10px 10px 0;font-family:var(--font-mono);font-size:11px;color:var(--text-muted);background:transparent;border:1px dashed var(--border-dashed);border-radius:var(--radius-control);padding:6px 10px;cursor:pointer;text-align:left">+ repo</button>
+          </aside>
+
+          <!-- MAIN: table -->
+          <main style="flex:1;min-width:0;display:flex;flex-direction:column;background:var(--bg-0)">
+            <div style="display:flex;align-items:center;gap:9px;padding:12px 18px;border-bottom:1px solid var(--border-row)">
+              <span style="font-family:var(--font-ui);font-weight:600;font-size:16px;color:var(--text-1)">Central inventory</span>
+              <span style="font-size:11px;color:var(--text-dim)">10 primitives · 4 types</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid var(--border-faint)">
+              <div style="position:relative;width:230px">
+                <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-dim);font-size:12px">⌕</span>
+                <input class="fin" placeholder="search…" value="{{ qT }}" onChange="{{ onQT }}">
+              </div>
+              <div style="display:flex;gap:5px;margin-left:auto">
+                <button onClick="{{ ftTall }}" style="{{ segTall }}">all</button>
+                <button onClick="{{ ftTskill }}" style="{{ segTskill }}">skill</button>
+                <button onClick="{{ ftThook }}" style="{{ segThook }}">hook</button>
+                <button onClick="{{ ftTmcp }}" style="{{ segTmcp }}">mcp</button>
+                <button onClick="{{ ftTbundle }}" style="{{ segTbundle }}">bundle</button>
+              </div>
+            </div>
+            <sc-if value="{{ bulkOn }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:10px;padding:9px 18px;border-bottom:1px solid var(--border-row);background:var(--surface-active)">
+                <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-1)">{{ bulkCount }} selected</span>
+                <button onClick="{{ clearSel }}" style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);background:transparent;border:1px solid var(--border-chip);border-radius:var(--radius-control);padding:3px 9px;cursor:pointer">clear</button>
+                <div style="flex:1"></div>
+                <select class="invsel"><option>Global · Claude Code + Codex</option><option>~/dev/acme-web</option><option>~/dev/api-gateway</option><option>~/dev/data-pipeline</option></select>
+                <button onClick="{{ bulkDeploy }}" style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--on-accent);background:var(--amber);border:1px solid var(--amber);border-radius:var(--radius-control);padding:6px 14px;cursor:pointer;white-space:nowrap">deploy {{ bulkCount }} →</button>
+              </div>
+            </sc-if>
+            <sc-if value="{{ hasMsg }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 18px;border-bottom:1px solid var(--border-row);background:var(--green-bg)">
+                <span style="font-family:var(--font-mono);font-size:11px;color:var(--green-ink)">{{ bulkMsg }}</span>
+                <button onClick="{{ dismissMsg }}" style="margin-left:auto;width:20px;height:20px;display:grid;place-items:center;border-radius:var(--radius-control);border:1px solid var(--border-chip);background:transparent;color:var(--text-dim);cursor:pointer;font-size:10px">✕</button>
+              </div>
+            </sc-if>
+            <div style="display:flex;align-items:center;gap:12px;padding:7px 18px 7px 16px;border-bottom:1px solid var(--border-row);font-size:10px;letter-spacing:var(--ls-tag);text-transform:uppercase;color:var(--text-dim)">
+              <span onClick="{{ toggleAll }}" style="width:15px;flex:none;display:flex;justify-content:center;cursor:pointer">
+                <sc-if value="{{ allChecked }}" hint-placeholder-val="{{ false }}"><span style="width:14px;height:14px;border-radius:3px;background:var(--amber);border:1px solid var(--amber);display:grid;place-items:center;color:var(--on-accent);font-size:9px">✓</span></sc-if>
+                <sc-if value="{{ allUnchecked }}" hint-placeholder-val="{{ true }}"><span style="width:14px;height:14px;border-radius:3px;border:1px solid var(--border-chip);background:transparent"></span></sc-if>
+              </span>
+              <div style="width:2px;flex:none;margin-right:-6px"></div>
+              <span onClick="{{ sortType }}" style="width:52px;cursor:pointer;color:{{ cType }}">type{{ arType }}</span>
+              <span onClick="{{ sortName }}" style="width:150px;cursor:pointer;color:{{ cName }}">name{{ arName }}</span>
+              <span onClick="{{ sortVer }}" style="width:68px;cursor:pointer;color:{{ cVer }}">version{{ arVer }}</span>
+              <span onClick="{{ sortDesc }}" style="flex:1;cursor:pointer;color:{{ cDesc }}">description{{ arDesc }}</span>
+              <span onClick="{{ sortDep }}" style="width:110px;cursor:pointer;color:{{ cDep }}">deployed{{ arDep }}</span>
+              <span style="width:16px"></span>
+            </div>
+            <div style="flex:1;overflow-y:auto;min-height:0">
+              <sc-for list="{{ rowsT }}" as="p" hint-placeholder-count="10">
+                <div onClick="{{ p.pick }}" style="display:flex;align-items:center;gap:12px;padding:9px 18px 9px 16px;border-bottom:1px solid var(--border-faint);cursor:pointer;background:{{ p.bg }}">
+                  <span onClick="{{ p.toggleSel }}" style="width:15px;flex:none;display:flex;justify-content:center;cursor:pointer">
+                    <sc-if value="{{ p.checked }}" hint-placeholder-val="{{ false }}"><span style="width:14px;height:14px;border-radius:3px;background:var(--amber);border:1px solid var(--amber);display:grid;place-items:center;color:var(--on-accent);font-size:9px">✓</span></sc-if>
+                    <sc-if value="{{ p.unchecked }}" hint-placeholder-val="{{ true }}"><span style="width:14px;height:14px;border-radius:3px;border:1px solid var(--border-chip);background:transparent"></span></sc-if>
+                  </span>
+                  <div style="width:2px;align-self:stretch;border-radius:var(--radius-tag);background:{{ p.accent }};margin-right:-6px"></div>
+                  <span style="width:52px"><x-import component-from-global-scope="MaestroDesignSystem_382d1f.TypeTag" type="{{ p.type }}" hint-size="44px,18px"></x-import></span>
+                  <span style="width:150px;font-size:12.5px;color:var(--text-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ p.name }}</span>
+                  <span style="width:68px;font-size:11px;color:var(--text-dim)">{{ p.version }}</span>
+                  <span style="flex:1;font-family:var(--font-ui);font-size:var(--fs-desc);color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ p.desc }}</span>
+                  <span style="width:110px;display:flex;align-items:center;gap:6px">
+                    <span style="width:74px;flex:none;font-size:11px;color:var(--text-dim)">{{ p.depLabel }}</span>
+                    <sc-if value="{{ p.hasDrift }}" hint-placeholder-val="{{ true }}"><span style="font-size:10px;color:var(--amber-ink);background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:var(--radius-control);padding:1px 5px">▲{{ p.drift }}</span></sc-if>
+                  </span>
+                  <span style="width:16px;text-align:right;color:{{ p.chev }};font-size:12px">›</span>
+                </div>
+              </sc-for>
+            </div>
+          </main>
+
+          <!-- DETAIL PANE (slides in on select) -->
+          <div style="flex:none;width:{{ paneW }};overflow:hidden">
+            <aside style="width:360px;height:100%;flex:none;border-left:1px solid var(--border-strong);background:var(--bg-1);display:flex;flex-direction:column;min-height:0;opacity:{{ paneO }};transform:{{ paneX }};transition:opacity 220ms ease-out, transform 220ms cubic-bezier(.22,.61,.36,1)">
+              <div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border-row)">
+                <span style="font-size:10px;letter-spacing:var(--ls-tag);text-transform:uppercase;color:var(--text-dim)">{{ detailT.kindLabel }}</span>
+                <button onClick="{{ closeT }}" style="margin-left:auto;width:22px;height:22px;display:grid;place-items:center;border-radius:var(--radius-control);border:1px solid var(--border-chip);background:transparent;color:var(--text-dim);cursor:pointer;font-size:11px">✕</button>
+              </div>
+              <div style="flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column">
+                <div style="padding:16px 18px;border-bottom:1px solid var(--border-faint)">
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <x-import component-from-global-scope="MaestroDesignSystem_382d1f.TypeTag" type="{{ detailT.type }}" hint-size="46px,18px"></x-import>
+                    <span style="font-size:16px;color:var(--text-1);font-weight:500">{{ detailT.name }}</span>
+                    <span style="font-size:var(--fs-chip);color:var(--text-dim)">{{ detailT.version }}</span>
+                  </div>
+                  <p style="margin:11px 0 0;font-family:var(--font-ui);font-size:13px;line-height:1.55;color:var(--text-muted)">{{ detailT.desc }}</p>
+                </div>
+                <sc-if value="{{ detailT.isBundle }}" hint-placeholder-val="{{ false }}">
+                  <div style="padding:14px 18px;border-bottom:1px solid var(--border-faint)">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                      <span style="font-size:10px;letter-spacing:var(--ls-tag);text-transform:uppercase;color:var(--text-dim)">contains</span>
+                      <span style="font-size:10px;color:var(--text-dim)">{{ detailT.memberCount }}</span>
+                    </div>
+                    <sc-for list="{{ detailT.members }}" as="m" hint-placeholder-count="3">
+                      <div style="display:flex;align-items:center;gap:9px;padding:6px 9px;margin-bottom:5px;border:1px solid var(--border-faint);border-radius:var(--radius-control);background:var(--surface-inset)">
+                        <x-import component-from-global-scope="MaestroDesignSystem_382d1f.TypeTag" type="{{ m.type }}" hint-size="44px,18px" style="flex:none"></x-import>
+                        <span style="font-size:var(--fs-data);color:var(--text-1);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ m.name }}</span>
+                        <span style="font-size:10.5px;color:var(--text-dim)">{{ m.version }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ detailT.notBundle }}" hint-placeholder-val="{{ true }}">
+                  <div style="padding:14px 18px;border-bottom:1px solid var(--border-faint)">
+                    <div style="font-size:10px;letter-spacing:var(--ls-tag);text-transform:uppercase;color:var(--text-dim);margin-bottom:9px">deployed to</div>
+                    <sc-if value="{{ detailT.hasTargets }}" hint-placeholder-val="{{ true }}">
+                      <sc-for list="{{ detailT.targets }}" as="t" hint-placeholder-count="2">
+                        <div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px">
+                          <span style="color:{{ t.dot }};font-size:9px">●</span>
+                          <span style="color:var(--text-2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ t.t }}</span>
+                          <span style="color:{{ t.vcolor }}">{{ t.vlabel }}</span>
+                        </div>
+                      </sc-for>
+                    </sc-if>
+                    <sc-if value="{{ detailT.empty }}" hint-placeholder-val="{{ true }}">
+                      <div style="font-size:var(--fs-desc);color:var(--text-dim)">not deployed to any target yet</div>
+                    </sc-if>
+                  </div>
+                </sc-if>
+                <div style="margin-top:auto;padding:14px 18px;border-top:1px solid var(--border-row);background:var(--bg-1)">
+                  <div style="font-size:10px;letter-spacing:var(--ls-tag);text-transform:uppercase;color:var(--text-dim);margin-bottom:9px">deploy</div>
+                  <div style="display:flex;align-items:center;gap:9px">
+                    <select class="invsel" style="flex:1"><option>Global · Claude Code + Codex</option><option>~/dev/acme-web</option><option>~/dev/api-gateway</option><option>~/dev/data-pipeline</option></select>
+                    <sc-if value="{{ detailT.done }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size:11px;color:var(--green-ink)">✓ deployed {{ detailT.version }}</span>
+                    </sc-if>
+                    <sc-if value="{{ detailT.notDone }}" hint-placeholder-val="{{ true }}">
+                      <button onClick="{{ deployT }}" style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--on-accent);background:var(--amber);border:1px solid var(--amber);border-radius:var(--radius-control);padding:6px 14px;cursor:pointer;white-space:nowrap">{{ detailT.deployLabel }}</button>
+                    </sc-if>
+                  </div>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dark&quot;,&quot;light&quot;],&quot;default&quot;:&quot;dark&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Feel&quot;},&quot;typeColor&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;coded&quot;,&quot;monochrome&quot;],&quot;default&quot;:&quot;coded&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Feel&quot;},&quot;driftEmphasis&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;calm&quot;,&quot;loud&quot;],&quot;default&quot;:&quot;calm&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Feel&quot;}}">
+class Component extends DCLogic {
+  state = { selA: "code-review", qA: "", qB: "", ftB: "all", qC: "", ftC: "all", doneA: {}, doneB: {}, doneC: {}, qT: "", ftT: "all", selT: "commit-style", paneOpen: true, doneT: {}, sortKey: null, sortDir: "asc", selBulk: {}, bulkMsg: "" };
+
+  sortRows(rows, key, dir) {
+    if (!key) return rows;
+    const m = dir === "desc" ? -1 : 1;
+    const val = p => key === "version" ? p.version.split(".").map(Number) : key === "dep" ? p.dep : String(p[key] || "").toLowerCase();
+    return [...rows].sort((a, b) => {
+      const x = val(a), y = val(b);
+      if (Array.isArray(x)) { for (let i = 0; i < 3; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d * m; } return 0; }
+      if (typeof x === "number") return (x - y) * m;
+      return (x < y ? -1 : x > y ? 1 : 0) * m;
+    });
+  }
+
+  componentDidMount() { this.applyTweaks(); }
+  componentDidUpdate() { this.applyTweaks(); }
+
+  // Three expressive tweaks, all applied by overriding design-system tokens (or
+  // the data-theme switch) on <html> — so one flag reskins every mockup at once,
+  // rather than touching individual elements.
+  applyTweaks() {
+    const el = document.documentElement, S = el.style;
+    el.setAttribute("data-theme", this.props.theme === "light" ? "light" : "dark");
+
+    // Type color: coded (blue/purple/teal/amber per type) vs monochrome (calm).
+    const types = ["skill", "hook", "mcp", "bundle"];
+    if (this.props.typeColor === "monochrome") {
+      types.forEach(t => S.setProperty("--type-" + t, "var(--text-3)"));
+    } else {
+      types.forEach(t => S.removeProperty("--type-" + t));
+    }
+
+    // Drift emphasis: calm (hairline warm outline, faint chip) vs loud (amber
+    // outline + saturated chip fills — drift shouts across every view).
+    if (this.props.driftEmphasis === "loud") {
+      S.setProperty("--border-drift", "var(--amber)");
+      S.setProperty("--amber-bg", "color-mix(in srgb, var(--amber) 24%, transparent)");
+      S.setProperty("--amber-border", "color-mix(in srgb, var(--amber) 55%, transparent)");
+    } else {
+      ["--border-drift", "--amber-bg", "--amber-border"].forEach(p => S.removeProperty(p));
+    }
+  }
+
+  prims() {
+    return [
+      { type: "skill", name: "code-review", version: "1.4.0", desc: "Structured review checklist with severity tiers", dep: 2, drift: 0, targets: [["Claude Code", "1.4.0", true], ["~/dev/acme-web", "1.4.0", true]] },
+      { type: "skill", name: "react-patterns", version: "1.2.0", desc: "Component conventions, hooks rules, file layout", dep: 1, drift: 1, targets: [["~/dev/acme-web", "1.0.0", false]] },
+      { type: "skill", name: "commit-style", version: "2.1.0", desc: "Conventional commits with scoped prefixes", dep: 3, drift: 1, targets: [["Claude Code", "2.1.0", true], ["Codex", "2.0.0", false], ["~/dev/data-pipeline", "2.1.0", true]] },
+      { type: "skill", name: "api-design", version: "0.9.1", desc: "REST resource naming and error envelope rules", dep: 1, drift: 0, targets: [["~/dev/api-gateway", "0.9.1", true]] },
+      { type: "hook", name: "pre-commit-lint", version: "1.0.2", desc: "Run linter before every commit", dep: 1, drift: 0, targets: [["~/dev/acme-web", "1.0.2", true]] },
+      { type: "hook", name: "secret-scan", version: "1.3.0", desc: "Block commits containing credentials", dep: 2, drift: 1, targets: [["Codex", "1.3.0", true], ["~/dev/api-gateway", "1.1.0", false]] },
+      { type: "mcp", name: "github-mcp", version: "3.2.0", desc: "Issues, PRs and reviews from the agent", dep: 1, drift: 0, targets: [["Claude Code", "3.2.0", true]] },
+      { type: "mcp", name: "postgres-mcp", version: "1.1.0", desc: "Read-only schema and query access", dep: 1, drift: 0, targets: [["~/dev/api-gateway", "1.1.0", true]] },
+      { type: "bundle", name: "frontend", version: "2.0.0", desc: "react-patterns + code-review + pre-commit-lint", dep: 0, drift: 0, contains: ["react-patterns", "code-review", "pre-commit-lint"] },
+      { type: "bundle", name: "backend", version: "1.1.0", desc: "api-design + postgres-mcp + secret-scan", dep: 0, drift: 0, contains: ["api-design", "postgres-mcp", "secret-scan"] },
+    ];
+  }
+
+  match(p, q) {
+    q = (q || "").trim().toLowerCase();
+    if (!q) return true;
+    return p.name.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q);
+  }
+
+  depLabel(p) { return p.dep > 0 ? `→ ${p.dep} target${p.dep === 1 ? "" : "s"}` : "not deployed"; }
+
+  seg(on) {
+    return { fontFamily: "var(--font-mono)", fontSize: 11, padding: "4px 11px", borderRadius: "var(--radius-control)",
+      border: "1px solid " + (on ? "var(--border-chip)" : "transparent"), background: on ? "var(--surface-active)" : "transparent",
+      color: on ? "var(--text-1)" : "var(--text-muted)", cursor: "pointer", textTransform: "lowercase" };
+  }
+
+  renderVals() {
+    const S = this.state, prims = this.prims();
+    const TYPES = ["skill", "hook", "mcp", "bundle"];
+    const LABEL = { skill: "skills", hook: "hooks", mcp: "mcp servers", bundle: "bundles" };
+    const byName = {}; prims.forEach(p => { byName[p.name] = p; });
+    const members = p => (p.contains || []).map(n => byName[n]).filter(Boolean).map(m => ({ type: m.type, name: m.name, version: m.version }));
+    const bundleFields = p => {
+      const n = (p.contains || []).length;
+      const b = p.type === "bundle";
+      return { isBundle: b, notBundle: !b, members: members(p),
+        memberCount: `${n} primitive${n === 1 ? "" : "s"}`,
+        kindLabel: b ? "bundle" : "primitive", deployLabel: b ? "deploy bundle →" : "deploy →" };
+    };
+
+    // 1a list
+    const listA = prims.filter(p => this.match(p, S.qA)).map(p => ({
+      ...p, hasDrift: p.drift > 0, bg: p.name === S.selA ? "var(--surface-active)" : "transparent",
+      accent: p.name === S.selA ? "var(--amber)" : "transparent", pick: () => this.setState({ selA: p.name }),
+    }));
+    const d = prims.find(p => p.name === S.selA) || prims[0];
+    const done = !!S.doneA[d.name];
+    const detail = {
+      ...d, done, notDone: !done, hasDrift: d.drift > 0,
+      hasTargets: !!(d.targets && d.targets.length),
+      targets: (d.targets || []).map(([t, v, ok]) => ({ t, dot: ok ? "var(--green)" : "var(--amber)",
+        vlabel: ok ? v : `${v} → ${d.version}`, vcolor: ok ? "var(--text-dim)" : "var(--amber-ink)" })),
+      ...bundleFields(d),
+      empty: !(d.targets && d.targets.length),
+    };
+
+    // 1b table
+    const rowsB = prims.filter(p => (S.ftB === "all" || p.type === S.ftB) && this.match(p, S.qB)).map(p => {
+      const dn = !!S.doneB[p.name];
+      return { ...p, hasDrift: p.drift > 0, depLabel: this.depLabel(p), done: dn, notDone: !dn, deploy: () => this.setState(x => ({ doneB: { ...x.doneB, [p.name]: true } })) };
+    });
+
+    // 1c grid grouped
+    const filC = prims.filter(p => (S.ftC === "all" || p.type === S.ftC) && this.match(p, S.qC));
+    const groupsC = TYPES.map(t => ({
+      type: t, label: LABEL[t], count: filC.filter(p => p.type === t).length,
+      items: filC.filter(p => p.type === t).map(p => {
+        const dn = !!S.doneC[p.name];
+        return { ...p, hasDrift: p.drift > 0, depLabel: this.depLabel(p), done: dn, notDone: !dn,
+          cardBorder: p.drift > 0 ? "var(--border-drift)" : "var(--border-strong)",
+          deploy: () => this.setState(x => ({ doneC: { ...x.doneC, [p.name]: true } })) };
+      }),
+    })).filter(g => g.count > 0);
+
+    // 3a shell + table with expanding detail pane
+    const rowsT = prims.filter(p => (S.ftT === "all" || p.type === S.ftT) && this.match(p, S.qT)).map(p => ({
+      ...p, hasDrift: p.drift > 0, depLabel: this.depLabel(p),
+      bg: S.paneOpen && p.name === S.selT ? "var(--surface-active)" : "transparent",
+      accent: S.paneOpen && p.name === S.selT ? "var(--amber)" : "transparent",
+      chev: S.paneOpen && p.name === S.selT ? "var(--amber)" : "var(--text-dim)",
+      pick: () => this.setState({ selT: p.name, paneOpen: true }),
+      checked: !!S.selBulk[p.name], unchecked: !S.selBulk[p.name],
+      toggleSel: e => { if (e && e.stopPropagation) e.stopPropagation(); this.setState(s => ({ selBulk: { ...s.selBulk, [p.name]: !s.selBulk[p.name] }, bulkMsg: "" })); },
+    }));
+    const rowsTsorted = this.sortRows(rowsT, S.sortKey, S.sortDir);
+    const visNames = rowsTsorted.map(p => p.name);
+    const bulkNames = Object.keys(S.selBulk).filter(n => S.selBulk[n]);
+    const allChecked = visNames.length > 0 && visNames.every(n => S.selBulk[n]);
+    const setSort = k => () => this.setState(s => ({ sortKey: k, sortDir: s.sortKey === k && s.sortDir === "asc" ? "desc" : "asc" }));
+    const arrow = k => S.sortKey === k ? (S.sortDir === "asc" ? " ↑" : " ↓") : "";
+    const hcol = k => S.sortKey === k ? "var(--text-2)" : "var(--text-dim)";
+    const dt = prims.find(p => p.name === S.selT);
+    const doneT = dt && !!S.doneT[dt.name];
+    const detailT = dt ? {
+      ...dt, done: doneT, notDone: !doneT, hasDrift: dt.drift > 0,
+      hasTargets: !!(dt.targets && dt.targets.length),
+      targets: (dt.targets || []).map(([t, v, ok]) => ({ t, dot: ok ? "var(--green)" : "var(--amber)",
+        vlabel: ok ? v : `${v} → ${dt.version}`, vcolor: ok ? "var(--text-dim)" : "var(--amber-ink)" })),
+      ...bundleFields(dt),
+      empty: !(dt.targets && dt.targets.length),
+    } : null;
+
+    return {
+      qT: S.qT, onQT: e => this.setState({ qT: e.target.value }), rowsT: rowsTsorted, showT: !!detailT, detailT,
+      sortType: setSort("type"), sortName: setSort("name"), sortVer: setSort("version"), sortDesc: setSort("desc"), sortDep: setSort("dep"),
+      arType: arrow("type"), arName: arrow("name"), arVer: arrow("version"), arDesc: arrow("desc"), arDep: arrow("dep"),
+      cType: hcol("type"), cName: hcol("name"), cVer: hcol("version"), cDesc: hcol("desc"), cDep: hcol("dep"),
+      allChecked, allUnchecked: !allChecked,
+      toggleAll: () => this.setState(s => { const on = !allChecked; const nx = { ...s.selBulk }; visNames.forEach(n => { nx[n] = on; }); return { selBulk: nx, bulkMsg: "" }; }),
+      bulkOn: bulkNames.length > 0, bulkCount: bulkNames.length,
+      bulkDeploy: () => this.setState(s => { const dn = { ...s.doneT }; bulkNames.forEach(n => { dn[n] = true; }); return { doneT: dn, selBulk: {}, bulkMsg: `✓ deployed ${bulkNames.length} primitive${bulkNames.length === 1 ? "" : "s"} → global` }; }),
+      clearSel: () => this.setState({ selBulk: {}, bulkMsg: "" }),
+      bulkMsg: S.bulkMsg, hasMsg: !!S.bulkMsg, dismissMsg: () => this.setState({ bulkMsg: "" }),
+      paneW: S.paneOpen ? "361px" : "0px", paneX: S.paneOpen ? "translateX(0)" : "translateX(24px)", paneO: S.paneOpen ? 1 : 0,
+      closeT: () => this.setState({ paneOpen: false }),
+      deployT: () => this.setState(x => ({ doneT: { ...x.doneT, [S.selT]: true } })),
+      segTall: this.seg(S.ftT === "all"), segTskill: this.seg(S.ftT === "skill"), segThook: this.seg(S.ftT === "hook"), segTmcp: this.seg(S.ftT === "mcp"), segTbundle: this.seg(S.ftT === "bundle"),
+      ftTall: () => this.setState({ ftT: "all" }), ftTskill: () => this.setState({ ftT: "skill" }), ftThook: () => this.setState({ ftT: "hook" }), ftTmcp: () => this.setState({ ftT: "mcp" }), ftTbundle: () => this.setState({ ftT: "bundle" }),
+      qA: S.qA, onQA: e => this.setState({ qA: e.target.value }), listA, detail,
+      deployA: () => this.setState(x => ({ doneA: { ...x.doneA, [S.selA]: true } })),
+      qB: S.qB, onQB: e => this.setState({ qB: e.target.value }), rowsB, countB: rowsB.length,
+      segBall: this.seg(S.ftB === "all"), segBskill: this.seg(S.ftB === "skill"), segBhook: this.seg(S.ftB === "hook"), segBmcp: this.seg(S.ftB === "mcp"), segBbundle: this.seg(S.ftB === "bundle"),
+      ftBall: () => this.setState({ ftB: "all" }), ftBskill: () => this.setState({ ftB: "skill" }), ftBhook: () => this.setState({ ftB: "hook" }), ftBmcp: () => this.setState({ ftB: "mcp" }), ftBbundle: () => this.setState({ ftB: "bundle" }),
+      qC: S.qC, onQC: e => this.setState({ qC: e.target.value }), groupsC,
+      segCall: this.seg(S.ftC === "all"), segCskill: this.seg(S.ftC === "skill"), segChook: this.seg(S.ftC === "hook"), segCmcp: this.seg(S.ftC === "mcp"), segCbundle: this.seg(S.ftC === "bundle"),
+      ftCall: () => this.setState({ ftC: "all" }), ftCskill: () => this.setState({ ftC: "skill" }), ftChook: () => this.setState({ ftC: "hook" }), ftCmcp: () => this.setState({ ftC: "mcp" }), ftCbundle: () => this.setState({ ftC: "bundle" }),
+    };
+  }
+}
+</script>
+</body>
+</html>
