@@ -10,6 +10,9 @@ storybook-static/
 .maestro-dev.pid
 .maestro-sandbox/
 
+# graphify generated knowledge graph (rebuildable via `graphify .`)
+graphify-out/
+
 # Personal, machine-local skill symlinks (point into the user's ~/.agents).
 # Project skills, if ever tracked, should be added explicitly.
 .claude/skills/
@@ -28,15 +31,7 @@ storybook-static/
 .codex/
 
 # Impeccable local runtime state (session journals, per-session hook cache).
-# The design sidecar and live config are tracked.
-.impeccable/live/sessions/
-.impeccable/hook.cache.json
-
-# Graphify local knowledge-graph cache (generated, not source).
-graphify-out/
-
-# Graphify local hook registration (per-machine tool state, not source).
-.claude/settings.json
-
-# Impeccable per-session hook cache in any package (generated local state).
+# The design sidecar and live config are tracked. Match at any depth so a
+# per-package .impeccable/ (e.g. packages/web/) ignores its cache too.
+**/.impeccable/live/sessions/
 **/.impeccable/hook.cache.json
