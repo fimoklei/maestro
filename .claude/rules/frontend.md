@@ -1,91 +1,50 @@
 # Frontend conventions (project-specific for Maestro)
 
-How the `web` package is built. Read before adding or changing a React component
-or any client-side data access. The layer boundary (UI only, HTTP only, never
-filesystem/`apm`) lives in `architecture.md` and is not repeated here. React 19,
-TypeScript, Vite, **Tailwind v4 + shadcn/ui** (ADR-0004).
+React 19, TypeScript, Vite, **Tailwind v4 + shadcn/ui** (ADR-0004). The layer boundary lives in `architecture.md`.
 
 ## Server-state vs UI-state — the core split
 
-Two kinds of state, two homes. Confusing them is the main failure mode.
-
-- **Server-state** — data that lives on the server and is only cached on screen:
-  the inventory, deploy-state, the registry. Owned by **TanStack Query**, never
-  by `useState`. The screen is a view of server truth, so after any mutation
-  (deploy, register) the affected query is **invalidated** and refetched — that
-  is how the deploy-state panel updates itself without a manual reload.
-- **UI-state** — data only the screen cares about: the text in the path field,
-  which skill is selected, whether a panel is open. Plain `useState`. Never put
-  this in a query; never push it to the server.
-
-Do not fetch server-state with `fetch` inside `useEffect`. That hand-rolls
-loading, error, and refetch that Query already owns, and it is where stale
-screens come from.
+- **Server-state** (inventory, deploy-state, registry) is owned by **TanStack Query**, never `useState`. After any mutation, invalidate the affected query — that is how panels update without a manual reload.
+- **UI-state** (field text, selection, panel open) is plain `useState`. Never in a query, never pushed to the server.
+- Never fetch server-state with `fetch` inside `useEffect`.
 
 ## Data-fetching
 
-- One thin HTTP module wraps `fetch`, returns typed data, and throws on non-2xx
-  so Query sees an error.
-- Each server resource gets a custom hook: `useInventory()`,
-  `useDeployState(repo)`, `useRegistry()`. Components call the hook, not `fetch`.
-- Mutations invalidate the queries they affect: deploy → invalidate that repo's
-  deploy-state; register → invalidate the registry.
-- Query keys are explicit arrays (`["deploy-state", repoPath]`), never
-  concatenated strings.
+- One thin HTTP module wraps `fetch`, returns typed data, throws on non-2xx.
+- One custom hook per server resource: `useInventory()`, `useDeployState(repo)`, `useRegistry()`. Components call the hook, not `fetch`.
+- Mutations invalidate the queries they affect.
+- Query keys are explicit arrays (`["deploy-state", repoPath]`), never concatenated strings.
 
 ## Components & hooks
 
-- Files kebab-case, components PascalCase, one component per file (see global
-  `code-standards.md`).
-- Small and focused — a list, a row, a form, not a 400-line page. Extract when a
-  component outgrows its one job.
+- Files kebab-case, components PascalCase, one component per file (global `code-standards.md`).
+- Small and focused; extract when a component outgrows its one job.
 - Custom hooks hold data and logic; components stay mostly presentational.
 - Co-locate a component's pure helpers and its sibling unit test.
 
 ## Styling & components (ADR-0004)
 
-- **Tokens are the source of truth.** The design system's tokens (colour,
-  spacing, type) live as CSS variables via Tailwind v4 `@theme`. Style from
-  tokens, never hard-coded values.
-- **shadcn/ui components are owned, not imported.** They are copied into the repo
-  and restyled to our tokens. Do not add a ready-made, externally-themed
-  component library (MUI/Mantine) — it fights our design.
-- **Catalogue.** Components are documented in a Storybook catalogue (per
-  ADR-0004, amended by ADR-0008). New components land with a story.
-- **Sequencing.** Styled UI lands in one pass *after* the drift/update capability
-  exists (ADR-0004) — do not style ahead of working behaviour.
+- **Tokens are the source of truth** (CSS variables via Tailwind v4 `@theme`). Never hard-coded values.
+- **shadcn/ui components are owned:** copied into the repo and restyled to our tokens. No externally-themed component library (MUI/Mantine).
+- New components land with a Storybook story (ADR-0004, amended by ADR-0008).
+- Styled UI lands in one pass *after* working behaviour (ADR-0004) — do not style ahead.
 
 ## Stories (Storybook)
 
-A story shows a component in a real state on the token layer; it is
-documentation, not a test (behaviour is tested in `.test.tsx` — see
-`testing.md`). The catalogue is verified by a `build-storybook` step in CI.
+A story is documentation, not a test (behaviour → `.test.tsx`, see `testing.md`). CI verifies the catalogue via `build-storybook`.
 
-- **Presentational only.** No data-fetching, no TanStack Query, no live hooks in
-  a story. A component that needs server data gets it through `args`, not a real
-  hook — a story has no `QueryClientProvider` and must not depend on one.
-- **Tokens apply in stories too.** No hard-coded colours/hex. Inline `style` is
-  for layout scaffolding only (flex, gap, width), never component appearance.
-- **Behaviour lives in `.test.tsx`, not stories.** No play/interaction tests in
-  stories for now; do not duplicate what the sibling test already covers.
-- **One story per meaningful state, not per prop permutation** — mirror the
-  "no permutation explosions" rule in `testing.md`.
-- **Format is CSF3** — `satisfies Meta<typeof X>` and `StoryObj`, as the
-  existing stories do. No legacy `storiesOf`.
-- **Title is `Group/Component`** — reuse the existing groups (Core, Shell, …);
-  do not invent new top-level groups without reason.
+- **Presentational only.** No data-fetching, no Query, no live hooks; server data comes through `args`. No `QueryClientProvider`.
+- **Tokens apply in stories too.** No hard-coded colours. Inline `style` only for layout scaffolding.
+- No play/interaction tests; don't duplicate the sibling test.
+- One story per meaningful state, not per prop permutation.
+- CSF3 (`satisfies Meta<typeof X>`, `StoryObj`); no legacy `storiesOf`.
+- Title is `Group/Component`; reuse existing groups.
 
-## Accessibility (baseline, not polish)
+## Accessibility (baseline)
 
-- Semantic HTML: real `<button>`, `<form>`, `<label htmlFor>`. Never a clickable
-  `<div>`. shadcn builds on Radix primitives — keep their accessibility, don't
-  strip it.
-- Every input has an associated label; errors are readable text tied to the
-  field.
+- Semantic HTML: real `<button>`, `<form>`, `<label htmlFor>`. Never a clickable `<div>`. Keep Radix accessibility.
+- Every input has an associated label; errors are readable text tied to the field.
 
-## What this step does NOT add
+## Not in this step
 
-- No global client-state library (Redux/Zustand): server-state is Query's,
-  UI-state is local. Revisit only if genuinely shared UI-state appears.
-- A client-side router arrives with the multi-view structure (ADR-0004); until
-  that pass lands, the app stays single-page.
+- No global client-state library (Redux/Zustand). A client-side router arrives with the multi-view structure (ADR-0004).

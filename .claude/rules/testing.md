@@ -1,53 +1,45 @@
 # Testing principles (project-specific for Maestro)
 
-Why and when to test. The runner is fixed (**Vitest**, see ADR-0002); exact paths get pinned down when the cockpit code lands. These principles stand on their own.
+Runner: **Vitest**, all lanes (ADR-0002).
 
 ## Hard rules
 
 - TDD via the `/tdd` skill. No Edit/Write to code without RED first.
-- Test behavior, not implementation. Refactors must not turn tests red as long as behavior is unchanged.
-- One concept per test. When it fails, the cause is unambiguous.
-- Tests are independent. No ordering dependencies, no shared state.
-- Deterministic. No clock, no network, no reliance on key-ordering.
+- Test behavior, not implementation. Refactors must not turn tests red while behavior is unchanged.
+- One concept per test. Tests are independent: no ordering dependencies, no shared state.
+- Deterministic: no clock, no network, no reliance on key-ordering.
 
 ## Anti-patterns
 
 - Permutation explosions (cartesian product of inputs).
-- Re-testing language/compiler guarantees (null-check on a typed param, type shape).
+- Re-testing language/compiler guarantees.
 - Implementation details (private functions, internal state, exact log strings).
 - Snapshot tests unless the output is deliberately stable and large.
-- Coverage as a target. Coverage is a report, not a threshold.
+- Coverage as a target — it is a report, not a threshold.
 
 ## The four lanes
 
-One runner for all of them: **Vitest**. One tool, one mental model.
+- **Pure (unit)** — sibling file next to source, no fs/git/network. Default in the `/tdd` loop; most tests live here.
+- **Web component** — sibling `.test.tsx` in `packages/web`, **jsdom** + Testing Library (own `packages/web/vitest.config.ts`); `fetch` stubbed. Browser end-to-end (Playwright) stays deferred.
+- **Integration** — `tests/integration/`, a journey across modules with real I/O. Anything that drives APM or reads real lockfiles is integration.
+- **Acceptance (BDD)** — Gherkin `.feature`, one per shipped job (DONE lane in `docs/jobs.md`), Given/When/Then, runs against the server API under Vitest. Existing files keep their `jNN-` prefixes; new ones are named after the job's behavior.
 
-- **Pure (unit)** = sibling file next to source. No fs/git/network. Goal: millisecond-fast, default in the `/tdd` loop. The workhorse; most tests live here.
-- **Web component** = sibling `.test.tsx` in `packages/web`, run in **jsdom** with Testing Library (its own `packages/web/vitest.config.ts` for the React plugin). Tests a component's behavior through the rendered DOM; `fetch` is stubbed, no real network. Goal: the cockpit UI behaves. Browser end-to-end (Playwright) stays deferred until the UI earns it.
-- **Integration** = a dedicated `tests/integration/` tree. Tests a journey across multiple modules with real I/O. Goal: regression safety net, runs in CI.
-- **Acceptance (BDD)** = Gherkin `.feature` files, **one per shipped job** (the DONE lane in `docs/jobs.md`), written in Given/When/Then. Goal: prove the cockpit does its jobs, readable by a non-engineer without reading code. Runs end-to-end against the server API (not the browser) under Vitest. Existing files keep their historical `jNN-` prefixes; new features are named after the job's behavior.
-
-Storybook stories are **not** a lane: they are documentation, not test coverage. A `.stories.tsx` shows a component's states; behaviour is still tested in the sibling `.test.tsx` (see `frontend.md`). Writing a story does not count as testing the component.
-
-Heuristic for "is this integration?": if it touches the real filesystem, git, or network → integration. For Maestro specifically, anything that drives APM or reads real lockfiles is integration. An acceptance scenario uses real I/O too, but is organised by job and written to read like the board.
-
-Set up each lane with one example as the first feature in it lands (the web lane arrived with the first UI slice), then fill them as features land — never a batch of tests before the first feature.
+Storybook stories are **not** a lane: documentation, not coverage. Behaviour is tested in the sibling `.test.tsx` (`frontend.md`).
 
 ## When to write which test
 
-- New pure function or module with clear input/output → pure test, sibling.
-- New multi-module behavior (a deploy flow, a deploy-state read) → integration test.
+- New pure function or module → pure test, sibling.
+- New multi-module behavior → integration test.
 - A job ships end-to-end → an acceptance `.feature` for that job.
 - Bug fix → reproduce first, in the layer where the bug lives. When in doubt: pure.
 
 ## Mocking
 
-- Preference: in-memory data structures (real arrays/objects/Maps).
-- Mocks only for external deps (fs/git/network, and APM) that would otherwise force the file into integration.
-- Mocks often just test that you wrote the mock correctly — avoid where possible.
+- Prefer in-memory data structures (real arrays/objects/Maps).
+- Mock only external deps (fs/git/network, APM) that would otherwise force the file into integration.
 
-## Test naming
+## Naming
 
-- File: `foo.test.<ext>` (pure), `tests/integration/<scenario>.test.<ext>`, or `tests/acceptance/<job-slug>.feature` (BDD; existing files keep their historical `jNN-` prefix).
-- Description: behavior statement without "should". Example: `"rejects primitive with missing description"`, not `"should return false when description is missing"`.
-- Gherkin scenario: phrase from the job's intent. Example: `Scenario: I see every primitive available centrally` for "See the central inventory".
+- Files: `foo.test.<ext>` (pure), `tests/integration/<scenario>.test.<ext>`, `tests/acceptance/<job-slug>.feature`.
+- Descriptions state behavior without "should": `"rejects primitive with missing description"`.
+- Gherkin scenarios phrase the job's intent: `Scenario: I see every primitive available centrally`.
