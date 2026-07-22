@@ -16,7 +16,7 @@
   "dependencies": {
     "@hono/node-server": "^2.0.4",
     "@maestro/core": "workspace:*",
-    "hono": "^4.12.23",
+    "hono": "^4.12.31",
     "zod": "^4.4.3"
   },
   "devDependencies": {
