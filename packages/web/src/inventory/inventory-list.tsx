@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { RegisterRepoHint } from "../registry/register-repo-hint";
 import type { RegisteredRepo } from "../registry/use-registry";
 import { SegmentedControl } from "../ui/segmented-control";
@@ -13,6 +13,13 @@ import {
 import { TypeTag } from "../ui/type-tag";
 import { DeploySkillAction } from "./deploy-skill-action";
 import {
+  filterByName,
+  nextSort,
+  type SortColumn,
+  type SortState,
+  sortPrimitives,
+} from "./inventory-table-model";
+import {
   deriveTypeSegments,
   filterByType,
   type TypeFilter,
@@ -20,12 +27,14 @@ import {
 import type { Primitive } from "./use-inventory";
 
 // Deploy-aware table of central skills: type, name, description, and an actions
-// cell with the row's deploy control (#285). A data-driven type filter sits
-// above it (#288) — `all` plus one segment per type present, so the control
-// reflects the inventory instead of a hardcoded set. The view stays type-aware
-// (TypeTag carries the type) though only skills render today. Empty state is
-// explicit so a correctly configured but empty inventory never shows a bare,
-// ambiguous blank.
+// cell with the row's deploy control (#285). Three narrowing controls sit above
+// it: a data-driven type filter (#288) plus a name search box (#287), and the
+// column headers sort the rows (#287). All three are local UI-state applied
+// through pure models — the loaded inventory is never refetched, only narrowed
+// and reordered on screen (frontend.md). The view stays type-aware (TypeTag
+// carries the type) though only skills render today. Empty state is explicit so
+// a correctly configured but empty inventory never shows a bare, ambiguous
+// blank.
 export function InventoryList({
   primitives,
   repos,
@@ -38,6 +47,10 @@ export function InventoryList({
   // Which type segment is selected — local UI-state, never server-state. A
   // segment only exists when its type has data, so any selection yields rows.
   const [filter, setFilter] = useState<TypeFilter>("all");
+  const [query, setQuery] = useState("");
+  // null = loaded order; the table only reorders once the user clicks a header,
+  // so it never jumps before being asked to sort.
+  const [sort, setSort] = useState<SortState | null>(null);
 
   if (primitives.length === 0) {
     return (
@@ -49,9 +62,11 @@ export function InventoryList({
 
   // Segments derive from the full inventory; the table body reads the narrowed
   // set. Filtering never touches the segment set, so a segment never vanishes
-  // because it is the one selected.
+  // because it is the one selected. Type filter → name search → sort compose in
+  // that order; the result is the same whichever narrows first.
   const segments = deriveTypeSegments(primitives);
-  const rows = filterByType(primitives, filter);
+  const narrowed = filterByName(filterByType(primitives, filter), query);
+  const visible = sort ? sortPrimitives(narrowed, sort) : narrowed;
 
   return (
     <>
@@ -71,38 +86,99 @@ export function InventoryList({
           onChange={setFilter}
         />
       </div>
+      <div className="px-card-x py-row-y">
+        <label htmlFor="inventory-search" className="sr-only">
+          Search skills
+        </label>
+        <input
+          id="inventory-search"
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search skills…"
+          className="w-full rounded-control border border-line bg-inset px-card-x py-row-y font-mono text-fg text-mono-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+        />
+      </div>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Type</TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead>Description</TableHead>
+            <SortableHead column="type" sort={sort} onSort={setSort}>
+              Type
+            </SortableHead>
+            <SortableHead column="name" sort={sort} onSort={setSort}>
+              Name
+            </SortableHead>
+            <SortableHead column="description" sort={sort} onSort={setSort}>
+              Description
+            </SortableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((primitive) => (
-            <TableRow key={primitive.name}>
-              <TableCell>
-                <TypeTag type={primitive.type} />
-              </TableCell>
-              <TableCell className="truncate font-mono text-data text-fg">
-                {primitive.name}
-              </TableCell>
-              <TableCell className="truncate text-desc text-muted">
-                {primitive.description}
-              </TableCell>
-              <TableCell>
-                <DeploySkillAction
-                  skillName={primitive.name}
-                  repos={repos}
-                  registryReady={registryReady}
-                />
+          {visible.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={4} className="text-dim text-tag">
+                No skills match your search.
               </TableCell>
             </TableRow>
-          ))}
+          ) : (
+            visible.map((primitive) => (
+              <TableRow key={primitive.name}>
+                <TableCell>
+                  <TypeTag type={primitive.type} />
+                </TableCell>
+                <TableCell className="truncate font-mono text-data text-fg">
+                  {primitive.name}
+                </TableCell>
+                <TableCell className="truncate text-desc text-muted">
+                  {primitive.description}
+                </TableCell>
+                <TableCell>
+                  <DeploySkillAction
+                    skillName={primitive.name}
+                    repos={repos}
+                    registryReady={registryReady}
+                  />
+                </TableCell>
+              </TableRow>
+            ))
+          )}
         </TableBody>
       </Table>
     </>
+  );
+}
+
+// A clickable column header that drives the shared sort state. The active
+// column carries aria-sort so the direction is announced to assistive tech and
+// visible via the glyph — the "active sort is visible" acceptance signal (#287).
+function SortableHead({
+  column,
+  sort,
+  onSort,
+  children,
+}: {
+  column: SortColumn;
+  sort: SortState | null;
+  onSort: (next: SortState) => void;
+  children: ReactNode;
+}) {
+  const active = sort?.column === column ? sort.direction : null;
+  const ariaSort =
+    active === "asc" ? "ascending" : active === "desc" ? "descending" : "none";
+
+  return (
+    <TableHead ariaSort={ariaSort}>
+      <button
+        type="button"
+        onClick={() => onSort(nextSort(sort, column))}
+        className="flex items-center gap-1 font-mono text-tag uppercase tracking-tag text-inherit focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+      >
+        {children}
+        <span aria-hidden="true" className="text-muted">
+          {active === "asc" ? "↑" : active === "desc" ? "↓" : ""}
+        </span>
+      </button>
+    </TableHead>
   );
 }
