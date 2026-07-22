@@ -1,8 +1,16 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { InventoryList } from "./inventory-list";
 import type { Primitive } from "./use-inventory";
+
+function dataRowNames(): (string | null)[] {
+  const [, ...bodyRows] = screen.getAllByRole("row");
+  return bodyRows.map(
+    (row) => within(row).getAllByRole("cell")[1]?.textContent ?? null,
+  );
+}
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -111,5 +119,90 @@ describe("InventoryList", () => {
     expect(
       screen.queryByText(/consuming repos are registered via/i),
     ).not.toBeInTheDocument();
+  });
+
+  it("narrows the table to skills whose name matches the search text", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderList(
+      <InventoryList primitives={primitives} repos={[]} registryReady />,
+    );
+
+    await userEvent.type(
+      screen.getByRole("searchbox", { name: /search/i }),
+      "cave",
+    );
+
+    expect(screen.getByRole("cell", { name: "caveman" })).toBeInTheDocument();
+    expect(screen.queryByRole("cell", { name: "tdd" })).not.toBeInTheDocument();
+  });
+
+  it("tells the user when the search matches no skills", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderList(
+      <InventoryList primitives={primitives} repos={[]} registryReady />,
+    );
+
+    await userEvent.type(
+      screen.getByRole("searchbox", { name: /search/i }),
+      "zzz",
+    );
+
+    expect(screen.getByText(/no skills match/i)).toBeInTheDocument();
+  });
+
+  it("sorts by name and shows the active sort when the header is clicked", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderList(
+      <InventoryList primitives={primitives} repos={[]} registryReady />,
+    );
+
+    // Loaded order until the user asks for a sort.
+    expect(dataRowNames()).toEqual(["tdd", "caveman"]);
+
+    const nameHeader = screen.getByRole("columnheader", { name: /name/i });
+    await userEvent.click(within(nameHeader).getByRole("button"));
+
+    expect(dataRowNames()).toEqual(["caveman", "tdd"]);
+    expect(nameHeader).toHaveAttribute("aria-sort", "ascending");
+
+    await userEvent.click(within(nameHeader).getByRole("button"));
+
+    expect(dataRowNames()).toEqual(["tdd", "caveman"]);
+    expect(nameHeader).toHaveAttribute("aria-sort", "descending");
+  });
+
+  it("sorts the narrowed subset, not the whole inventory", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    const many: Primitive[] = [
+      { type: "skill", name: "search-a", description: "A." },
+      { type: "skill", name: "unrelated", description: "Z." },
+      { type: "skill", name: "search-c", description: "C." },
+      { type: "skill", name: "search-b", description: "B." },
+    ];
+    renderList(<InventoryList primitives={many} repos={[]} registryReady />);
+
+    await userEvent.type(
+      screen.getByRole("searchbox", { name: /search/i }),
+      "search",
+    );
+    await userEvent.click(
+      within(screen.getByRole("columnheader", { name: /name/i })).getByRole(
+        "button",
+      ),
+    );
+
+    expect(dataRowNames()).toEqual(["search-a", "search-b", "search-c"]);
   });
 });

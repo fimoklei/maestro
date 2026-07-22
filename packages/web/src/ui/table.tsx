@@ -35,9 +35,19 @@ export function TableRow({ children, className }: TableSectionProps) {
   );
 }
 
-export function TableHead({ children, className }: TableSectionProps) {
+// aria-sort is optional so a sortable header (inventory table, #287) can
+// announce its direction to assistive tech; plain headers omit it and render
+// exactly as before.
+export function TableHead({
+  children,
+  className,
+  ariaSort,
+}: TableSectionProps & {
+  ariaSort?: "ascending" | "descending" | "none";
+}) {
   return (
     <th
+      aria-sort={ariaSort}
       className={cn(
         "px-card-x py-header-y text-left font-mono text-tag text-muted uppercase tracking-tag",
         className,
@@ -48,6 +58,14 @@ export function TableHead({ children, className }: TableSectionProps) {
   );
 }
 
-export function TableCell({ children, className }: TableSectionProps) {
-  return <td className={cn("px-card-x py-row-y", className)}>{children}</td>;
+export function TableCell({
+  children,
+  className,
+  colSpan,
+}: TableSectionProps & { colSpan?: number }) {
+  return (
+    <td colSpan={colSpan} className={cn("px-card-x py-row-y", className)}>
+      {children}
+    </td>
+  );
 }
