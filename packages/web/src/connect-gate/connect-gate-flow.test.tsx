@@ -116,54 +116,56 @@ describe("connect gate", () => {
     expect(screen.queryByText(/\d\s·\s/)).not.toBeInTheDocument();
   });
 
-  it.each([
-    "/welcome/repos",
-    "/nonsense",
-  ])("sends %s somewhere real rather than rendering nothing", async (route) => {
-    // /welcome/repos was the retired register step's URL, so a stale
-    // bookmark or a resumed session can still ask for it. With no route
-    // matching and no catch-all, the user would get a blank page.
-    stubServer();
-    renderApp(route);
+  it.each(["/welcome/repos", "/nonsense"])(
+    "sends %s somewhere real rather than rendering nothing",
+    async (route) => {
+      // /welcome/repos was the retired register step's URL, so a stale
+      // bookmark or a resumed session can still ask for it. With no route
+      // matching and no catch-all, the user would get a blank page.
+      stubServer();
+      renderApp(route);
 
-    expect(
-      await screen.findByRole("heading", {
-        level: 1,
-        name: /central inventory not connected/i,
-      }),
-    ).toBeInTheDocument();
-  });
+      expect(
+        await screen.findByRole("heading", {
+          level: 1,
+          name: /central inventory not connected/i,
+        }),
+      ).toBeInTheDocument();
+    },
+  );
 
-  it.each([
-    "/welcome",
-    "/welcome/connect",
-  ])("redirects a configured install away from %s into the cockpit", async (route) => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL) =>
-        String(input).startsWith("/api/inventory/config")
-          ? jsonResponse({ inventoryPath: "/home/me/agent-harness" }, 200)
-          : jsonResponse(
-              {
-                ok: true,
-                repos: [],
-                primitives: [],
-                skipped: [],
-                behind: [],
-              },
-              200,
-            ),
-      ),
-    );
-    renderApp(route);
+  it.each(["/welcome", "/welcome/connect"])(
+    "redirects a configured install away from %s into the cockpit",
+    async (route) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (input: RequestInfo | URL) =>
+          String(input).startsWith("/api/inventory/config")
+            ? jsonResponse({ inventoryPath: "/home/me/agent-harness" }, 200)
+            : jsonResponse(
+                {
+                  ok: true,
+                  repos: [],
+                  primitives: [],
+                  skipped: [],
+                  behind: [],
+                },
+                200,
+              ),
+        ),
+      );
+      renderApp(route);
 
-    expect(
-      await screen.findByRole("heading", { name: /deploy-state/i }),
-    ).toBeInTheDocument();
-    // No gate screen rendered on the way there: the gate's <h1> is the
-    // marker, and the cockpit's own section headings are <h2>.
-    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
-  });
+      expect(
+        await screen.findByRole("heading", { name: /deploy-state/i }),
+      ).toBeInTheDocument();
+      // No gate screen rendered on the way there: the gate's <h1> is the
+      // marker, and the cockpit's own section headings are <h2>.
+      expect(
+        screen.queryByRole("heading", { level: 1 }),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it("lands on Inventory even when the config refetch after connect is still in flight", async () => {
     // Reproduces a race (Codex review finding): invalidateQueries only marks

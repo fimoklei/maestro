@@ -283,13 +283,12 @@ describe("DeploySkillAction", () => {
     const deployCall = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
       ([url]) => url === "/api/deploy",
     );
-    expect(JSON.parse((deployCall?.[1] as RequestInit).body as string)).toEqual(
-      {
-        type: "skill",
-        name: "tdd",
-        target: { kind: "repo", repoPath: "/projects/alpha" },
-      },
-    );
+    if (!deployCall) throw new Error("expected a POST to /api/deploy");
+    expect(JSON.parse((deployCall[1] as RequestInit).body as string)).toEqual({
+      type: "skill",
+      name: "tdd",
+      target: { kind: "repo", repoPath: "/projects/alpha" },
+    });
   });
 
   it("returns to Deploy when the selected target is not synced", async () => {

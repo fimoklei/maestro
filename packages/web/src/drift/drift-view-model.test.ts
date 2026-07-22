@@ -234,18 +234,18 @@ describe("driftViewModel — syncedState", () => {
     ).toBe("not-synced");
   });
 
-  it.each([
-    "unknown",
-    "unverified",
-  ] as const)("reports not-synced until drift is proven up-to-date (%s)", (reason) => {
-    const vm =
-      reason === "unverified"
-        ? driftViewModel(query({ data: { ok: false, reason: "unverified" } }))
-        : driftViewModel(query({ data: { ok: false } }));
-    expect(vm.syncedState(deployedPrimitives(["tdd"]), "tdd")).toBe(
-      "not-synced",
-    );
-  });
+  it.each(["unknown", "unverified"] as const)(
+    "reports not-synced until drift is proven up-to-date (%s)",
+    (reason) => {
+      const vm =
+        reason === "unverified"
+          ? driftViewModel(query({ data: { ok: false, reason: "unverified" } }))
+          : driftViewModel(query({ data: { ok: false } }));
+      expect(vm.syncedState(deployedPrimitives(["tdd"]), "tdd")).toBe(
+        "not-synced",
+      );
+    },
+  );
 
   it("reports not-synced while the drift check is still pending", () => {
     expect(

@@ -136,21 +136,22 @@ function composite(fg: string, alpha: number, bg: string): string {
 describe("danger signal contrast on its tinted refusal card", () => {
   const tokens = parseShippedTokens(tokensCss);
 
-  it.each(
-    surfaceTokens,
-  )("danger-ink clears WCAG AA on the danger tint over %s", (surfaceToken) => {
-    const danger = tokens.danger;
-    const surface = tokens[surfaceToken];
-    expect(danger, "missing token --danger").toBeDefined();
-    expect(surface, `missing token --${surfaceToken}`).toBeDefined();
-    const tinted = composite(
-      danger as string,
-      DANGER_BG_ALPHA,
-      surface as string,
-    );
-    const ratio = contrastRatio(danger as string, tinted);
-    expect(ratio).toBeGreaterThanOrEqual(AA);
-  });
+  it.each(surfaceTokens)(
+    "danger-ink clears WCAG AA on the danger tint over %s",
+    (surfaceToken) => {
+      const danger = tokens.danger;
+      const surface = tokens[surfaceToken];
+      expect(danger, "missing token --danger").toBeDefined();
+      expect(surface, `missing token --${surfaceToken}`).toBeDefined();
+      const tinted = composite(
+        danger as string,
+        DANGER_BG_ALPHA,
+        surface as string,
+      );
+      const ratio = contrastRatio(danger as string, tinted);
+      expect(ratio).toBeGreaterThanOrEqual(AA);
+    },
+  );
 });
 
 // The keyboard focus ring (issue #214) is one amber outline, offset onto the
