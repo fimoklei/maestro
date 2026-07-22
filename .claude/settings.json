@@ -19,6 +19,34 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c '~/.claude/hooks/format-after-edit.sh'",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bash -c '~/.claude/hooks/typecheck-after-edit.sh'",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/hook.mjs\"",
+            "timeout": 5,
+            "statusMessage": "Checking UI changes"
+          }
+        ]
+      }
     ]
   }
 }
