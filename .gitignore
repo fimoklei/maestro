@@ -13,11 +13,6 @@ storybook-static/
 # graphify generated knowledge graph (rebuildable via `graphify .`)
 graphify-out/
 
-# Personal, machine-local skill symlinks (point into the user's ~/.agents).
-# Project skills, if ever tracked, should be added explicitly.
-.claude/skills/
-.agents/skills/
-
 # Per-branch git worktrees created by agent sessions (local checkouts, not source).
 .claude/worktrees/
 
