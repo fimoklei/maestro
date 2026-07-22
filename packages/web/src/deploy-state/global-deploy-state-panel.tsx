@@ -1,4 +1,4 @@
-import { toDriftView } from "../drift/drift-query-view";
+import { driftViewModel } from "../drift/drift-view-model";
 import { useGlobalDrift } from "../drift/use-drift";
 import { GlobalTargets } from "./global-targets";
 import { useGlobalDeployState } from "./use-global-deploy-state";
@@ -19,7 +19,7 @@ export function GlobalDeployStatePanel() {
       isError={deployState.isError}
       tools={deployState.data?.tools ?? []}
       skipped={deployState.data?.skipped ?? []}
-      drift={toDriftView(drift)}
+      drift={driftViewModel(drift)}
     />
   );
 }

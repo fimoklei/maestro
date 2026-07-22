@@ -1,8 +1,7 @@
 import { toDeployedView } from "../deploy-state/deployed-view";
 import { useDeployState } from "../deploy-state/use-deploy-state";
 import { useGlobalDeployState } from "../deploy-state/use-global-deploy-state";
-import { toDriftView } from "../drift/drift-query-view";
-import { targetDriftIndicator } from "../drift/target-drift-indicator";
+import { driftViewModel } from "../drift/drift-view-model";
 import { useDrift, useGlobalDrift } from "../drift/use-drift";
 import { useRegistry } from "../registry/use-registry";
 import { TargetItem } from "./target-item";
@@ -33,16 +32,13 @@ export function TargetsList() {
 }
 
 function GlobalTargetItem() {
-  const drift = useGlobalDrift();
+  const drift = driftViewModel(useGlobalDrift());
   const deployState = useGlobalDeployState();
   return (
     <TargetItem
       label="Global"
       kind="global"
-      indicator={targetDriftIndicator(
-        toDeployedView(deployState),
-        toDriftView(drift),
-      )}
+      indicator={drift.targetIndicator(toDeployedView(deployState))}
     />
   );
 }
@@ -54,17 +50,14 @@ function RepoTargetItem({
   repo: string;
   siblings: string[];
 }) {
-  const drift = useDrift(repo);
+  const drift = driftViewModel(useDrift(repo));
   const deployState = useDeployState(repo);
   return (
     <TargetItem
       label={targetLabel(repo, siblings)}
       title={repo}
       kind="local"
-      indicator={targetDriftIndicator(
-        toDeployedView(deployState),
-        toDriftView(drift),
-      )}
+      indicator={drift.targetIndicator(toDeployedView(deployState))}
     />
   );
 }

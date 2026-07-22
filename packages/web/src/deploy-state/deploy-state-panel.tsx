@@ -1,5 +1,4 @@
-import { toDriftView } from "../drift/drift-query-view";
-import { targetDriftIndicator } from "../drift/target-drift-indicator";
+import { driftViewModel } from "../drift/drift-view-model";
 import { useDrift } from "../drift/use-drift";
 import { targetLabel } from "../shell/target-label";
 import { Card } from "../ui/card";
@@ -23,12 +22,8 @@ export function DeployStatePanel({
   siblings?: string[];
 }) {
   const deployState = useDeployState(repo);
-  const drift = useDrift(repo);
-  const driftView = toDriftView(drift);
-  const indicator = targetDriftIndicator(
-    toDeployedView(deployState),
-    driftView,
-  );
+  const drift = driftViewModel(useDrift(repo));
+  const indicator = drift.targetIndicator(toDeployedView(deployState));
 
   return (
     <Card
@@ -47,7 +42,7 @@ export function DeployStatePanel({
         <DeployStateList
           primitives={deployState.data?.primitives ?? []}
           skipped={deployState.data?.skipped ?? []}
-          drift={driftView}
+          drift={drift}
           target={{ kind: "repo", repoPath: repo }}
         />
       )}

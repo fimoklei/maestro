@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { driftViewModel } from "../drift/drift-view-model";
 import { GlobalTargets } from "./global-targets";
 
 // The "GLOBAL TARGETS" section in its meaningful read states. Presentational and
@@ -12,7 +13,7 @@ const meta = {
     isLoading: false,
     isError: false,
     skipped: [],
-    drift: { status: "ready", behind: [] },
+    drift: driftViewModel({ data: { behind: [] }, isError: false }),
   },
 } satisfies Meta<typeof GlobalTargets>;
 

@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useDeployState } from "../deploy-state/use-deploy-state";
 import { useGlobalDeployState } from "../deploy-state/use-global-deploy-state";
-import { deriveSyncedState } from "../drift/derive-synced-state";
-import { toDriftView } from "../drift/drift-query-view";
+import { driftViewModel } from "../drift/drift-view-model";
 import { useDrift, useGlobalDrift } from "../drift/use-drift";
 import type { RegisteredRepo } from "../registry/use-registry";
 import { Button } from "../ui/button";
@@ -65,10 +64,9 @@ export function DeploySkillAction({
   );
   const globalDrift = useGlobalDrift(registryReady && isGlobal);
   const deployState = isGlobal ? globalDeployState : repoDeployState;
-  const drift = isGlobal ? globalDrift : repoDrift;
-  const syncedState = deriveSyncedState(
+  const drift = driftViewModel(isGlobal ? globalDrift : repoDrift);
+  const syncedState = drift.syncedState(
     deployState.data?.primitives,
-    toDriftView(drift),
     skillName,
   );
 

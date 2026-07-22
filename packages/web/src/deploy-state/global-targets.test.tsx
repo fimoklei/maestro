@@ -1,7 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { DriftView } from "../drift/drift-status";
+import { driftViewModel } from "../drift/drift-view-model";
+import type { VersionDrift } from "../drift/use-drift";
 import { GlobalTargets } from "./global-targets";
 
 // Presentational: fed entirely through props (no fetch), so these exercise the
@@ -11,7 +12,12 @@ import { GlobalTargets } from "./global-targets";
 // network is stubbed and nothing is clicked). Stories stay provider-free by not
 // rendering the behind state.
 
-const READY_NO_DRIFT: DriftView = { status: "ready", behind: [] };
+// The container feeds GlobalTargets a drift view-model built from the global
+// drift query; these helpers build the same model from raw behind pairs.
+const ranDrift = (behind: VersionDrift[]) =>
+  driftViewModel({ data: { behind }, isError: false });
+
+const READY_NO_DRIFT = ranDrift([]);
 
 function renderTargets(props: Partial<Parameters<typeof GlobalTargets>[0]>) {
   const queryClient = new QueryClient({
@@ -118,10 +124,7 @@ describe("GlobalTargets", () => {
           primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
         },
       ],
-      drift: {
-        status: "ready",
-        behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
-      },
+      drift: ranDrift([{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }]),
     });
 
     expect(screen.getByText(/behind/i)).toBeInTheDocument();
@@ -139,10 +142,7 @@ describe("GlobalTargets", () => {
         },
         { tool: "codex", primitives: [] },
       ],
-      drift: {
-        status: "ready",
-        behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
-      },
+      drift: ranDrift([{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }]),
     });
 
     // The codex card reads as a clean empty card, not a drift warning.
