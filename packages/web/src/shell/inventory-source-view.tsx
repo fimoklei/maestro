@@ -1,17 +1,11 @@
 import { useState } from "react";
-import {
-  connectErrorMessage,
-  isNoUsableOriginError,
-} from "../inventory/connect-error-message";
-import { useConnectInventory } from "../inventory/use-connect-inventory";
 import { useInventory, useInventoryConfig } from "../inventory/use-inventory";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { SectionHeader } from "../ui/section-header";
-import { BrowseDialog } from "./browse-dialog";
-import { ConnectInventoryForm } from "./connect-inventory-form";
+import { ConnectInventoryPanel } from "./connect-inventory-panel";
 import { primitiveCountLabel } from "./primitive-count-label";
-import { useBrowsePicker } from "./use-browse-picker";
+import { SourceLabel } from "./source-label";
 import { useRereadInventory } from "./use-reread-inventory";
 
 // The steady-state ⚙ Inventory source view for a connected user (issue #98,
@@ -23,10 +17,12 @@ import { useRereadInventory } from "./use-reread-inventory";
 // "synced 2m ago" timestamp — the count is whatever the last inventory read
 // returned, refreshed only when the user re-reads.
 //
-// "Change source" flips the same card to the shared ConnectInventoryForm (PRD
+// "Change source" flips the same card to the shared ConnectInventoryPanel (PRD
 // #93) rather than a separate route, so the ⚙ nav stays active throughout. A
-// successful re-point invalidates the inventory (in the connect hook) and drops
-// back to the connected view, now pointed at the new source.
+// successful re-point invalidates the inventory (in the connect hook) and, via
+// the panel's onSuccess, drops back to the connected view — now pointed at the
+// new source. This flow has no renderSuccess: success just closes the panel,
+// and unmounting it discards the connect mutation, so reopening starts clean.
 
 // The frame the skeleton and the settled view must render identically — share
 // them so the loading frame can't drift from the real one and bring back the
@@ -38,7 +34,6 @@ const SOURCE_CARD_WIDTH = "max-w-lg";
 export function InventorySourceView() {
   const config = useInventoryConfig();
   const inventory = useInventory();
-  const connect = useConnectInventory();
   const reread = useRereadInventory();
   const currentPath = config.data?.inventoryPath ?? null;
   // While a read is in flight the badge shows "reading…" even though Query still
@@ -52,24 +47,6 @@ export function InventorySourceView() {
     : primitiveCountLabel(inventory.data?.primitives.length);
 
   const [isChanging, setIsChanging] = useState(false);
-  // The field seeds from the current path (edit it to re-point) but a browse
-  // selection or keystroke overwrites it — same controlled-form pattern as the
-  // connect gate's connect screen (see connect-inventory-form.tsx).
-  const [editedPath, setEditedPath] = useState<string | undefined>(undefined);
-  const path = editedPath ?? currentPath ?? "";
-  // Connect mode confirms exactly one path; the list shape is the dialog's,
-  // not this form's.
-  const browse = useBrowsePicker(([selected]) => setEditedPath(selected));
-
-  function stopChanging() {
-    setIsChanging(false);
-    setEditedPath(undefined);
-    connect.reset();
-  }
-
-  function handleSubmit(submittedPath: string) {
-    connect.mutate(submittedPath, { onSuccess: stopChanging });
-  }
 
   if (config.isPending) {
     return <SourceSkeleton />;
@@ -83,21 +60,16 @@ export function InventorySourceView() {
       />
       <Card padded className={SOURCE_CARD_WIDTH}>
         {isChanging ? (
-          <ConnectInventoryForm
-            path={path}
-            onPathChange={setEditedPath}
-            onSubmit={handleSubmit}
-            error={connectErrorMessage(connect.error)}
-            noUsableOrigin={isNoUsableOriginError(connect.error)}
-            isPending={connect.isPending}
-            onBrowse={browse.openBrowse}
+          <ConnectInventoryPanel
+            initialPath={currentPath ?? ""}
+            onSuccess={() => setIsChanging(false)}
             submitLabel="Re-point source"
             secondaryAction={
               <Button
                 type="button"
                 variant="quiet"
                 size="sm"
-                onClick={stopChanging}
+                onClick={() => setIsChanging(false)}
               >
                 Cancel
               </Button>
@@ -139,15 +111,7 @@ export function InventorySourceView() {
                 ● {countLabel}
               </p>
             )}
-            <div className="flex flex-col gap-1">
-              <span className="m-label">Source · local folder</span>
-              <span
-                className="truncate font-mono text-fg text-mono-sm"
-                title={currentPath ?? undefined}
-              >
-                {currentPath}
-              </span>
-            </div>
+            <SourceLabel path={currentPath ?? ""} />
             <div className="flex gap-2">
               <Button
                 variant="primary"
@@ -168,13 +132,6 @@ export function InventorySourceView() {
           </div>
         )}
       </Card>
-      {browse.open ? (
-        <BrowseDialog
-          mode="connect"
-          onSelect={browse.selectBrowse}
-          onClose={browse.closeBrowse}
-        />
-      ) : null}
     </section>
   );
 }

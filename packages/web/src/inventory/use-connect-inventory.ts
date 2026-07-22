@@ -6,7 +6,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 import { INVENTORY_CONFIG_KEY, INVENTORY_KEY } from "./use-inventory";
 
-type ConnectResponse = { inventoryPath: string; primitiveCount: number };
+export type ConnectResponse = {
+  inventoryPath: string;
+  primitiveCount: number;
+};
 
 export function useConnectInventory() {
   const queryClient = useQueryClient();
