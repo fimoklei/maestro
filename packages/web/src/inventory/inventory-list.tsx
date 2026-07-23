@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from "react";
 import { RegisterRepoHint } from "../registry/register-repo-hint";
 import type { RegisteredRepo } from "../registry/use-registry";
+import { cn } from "../ui/cn";
 import { SegmentedControl } from "../ui/segmented-control";
 import {
   Table,
@@ -67,6 +68,8 @@ export function InventoryList({
   // (from the full inventory), so a later search narrowing the table does not close
   // an already-open pane.
   const [selected, setSelected] = useState<string | null>(null);
+  const toggleSelected = (name: string) =>
+    setSelected((current) => (current === name ? null : name));
 
   if (primitives.length === 0) {
     return (
@@ -154,24 +157,26 @@ export function InventoryList({
             visible.map((primitive) => (
               <TableRow
                 key={primitive.name}
-                className={
-                  primitive.name === selected ? "bg-dim-bg" : undefined
-                }
+                onClick={() => toggleSelected(primitive.name)}
+                className={cn(
+                  "cursor-pointer",
+                  primitive.name === selected ? "bg-dim-bg" : undefined,
+                )}
               >
                 <TableCell>
                   <TypeTag type={primitive.type} />
                 </TableCell>
                 <TableCell className="truncate font-mono text-data text-fg">
-                  {/* The name is the row's select control: it opens the detail
-                      pane, the "do" surface deploy moved into (ADR-0016). A real
-                      button keeps it keyboard-reachable and toggles the pane. */}
+                  {/* Clicking anywhere on the row opens the pane (#290); the name
+                      stays a real button so keyboard users have a focusable
+                      control. It stops propagation so a mouse click resolves to a
+                      single toggle, not the button and the row both firing. */}
                   <button
                     type="button"
-                    onClick={() =>
-                      setSelected((current) =>
-                        current === primitive.name ? null : primitive.name,
-                      )
-                    }
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleSelected(primitive.name);
+                    }}
                     aria-expanded={primitive.name === selected}
                     aria-controls={`skill-detail-${primitive.name}`}
                     className="truncate text-left text-inherit focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
@@ -209,7 +214,11 @@ export function InventoryList({
             selectedRollup?.pending || selectedRollup?.unreadable,
           )}
           deployAction={
+            // Keyed by skill so switching skills mounts a fresh action: a
+            // pending pick or a forceable-reinstall refusal from the previous
+            // skill can never carry over and overwrite the next one (#66).
             <DeploySkillAction
+              key={selectedPrimitive.name}
               skillName={selectedPrimitive.name}
               repos={repos}
               registryReady={registryReady}

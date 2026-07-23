@@ -297,6 +297,83 @@ describe("InventoryList", () => {
     expect(within(pane).getByText("v1.0.0")).toBeInTheDocument();
   });
 
+  it("opens the pane when a non-name cell of the row is clicked", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderList(
+      <InventoryList
+        primitives={primitives}
+        repos={[]}
+        registryReady
+        targets={[deployedTo(["tdd"])]}
+      />,
+    );
+
+    // Acceptance: clicking the ROW opens the pane, not only the name button.
+    await userEvent.click(
+      screen.getByRole("cell", { name: "Test-driven development." }),
+    );
+
+    expect(
+      screen.getByRole("complementary", { name: /tdd detail/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("clears a stale reinstall action when the selected skill changes", async () => {
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.startsWith("/api/deploy-state/global")) {
+          return new Response(
+            JSON.stringify({
+              tools: [{ tool: "claude-code", primitives: [] }],
+              primitives: [],
+              skipped: [],
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          );
+        }
+        if (url.startsWith("/api/drift")) {
+          return new Response(JSON.stringify({ behind: [] }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        // The deploy refuses with a forceable, not-proven-clean refusal.
+        return new Response(
+          JSON.stringify({
+            message: "deployed copy diverged from its lock",
+            error: "deployed-diverged-from-lock",
+          }),
+          { status: 409, headers: { "content-type": "application/json" } },
+        );
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderList(
+      <InventoryList primitives={primitives} repos={[]} registryReady />,
+    );
+
+    // Open tdd, deploy, and drive it into the forceable-reinstall state.
+    await userEvent.click(screen.getByRole("button", { name: "tdd" }));
+    const tddPane = screen.getByRole("complementary", { name: /tdd detail/i });
+    await userEvent.click(
+      within(tddPane).getByRole("button", { name: /deploy/i }),
+    );
+    await screen.findByRole("button", { name: /reinstall fresh/i });
+
+    // Switch to another skill: the reinstall action must not carry over, or a
+    // click would force-overwrite the new skill without its own refusal (#66).
+    await userEvent.click(screen.getByRole("button", { name: "caveman" }));
+
+    expect(
+      screen.queryByRole("button", { name: /reinstall fresh/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("removes the inline per-row deploy control, leaving deploy to the pane", () => {
     vi.stubGlobal(
       "fetch",

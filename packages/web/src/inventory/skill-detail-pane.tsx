@@ -64,11 +64,21 @@ export function SkillDetailPane({
           Deployed to
         </div>
         {deployments.length > 0 ? (
-          <ul>
-            {deployments.map((deployment) => (
-              <DeployedRow key={deployment.label} deployment={deployment} />
-            ))}
-          </ul>
+          <>
+            <ul>
+              {deployments.map((deployment) => (
+                <DeployedRow key={deployment.label} deployment={deployment} />
+              ))}
+            </ul>
+            {/* Some targets loaded, others are still pending or unreadable — the
+                listed set is partial, so never let it read as the full reach
+                (J04). */}
+            {unconfirmed ? (
+              <p className="mt-2 text-desc text-dim">
+                more targets may still be loading…
+              </p>
+            ) : null}
+          </>
         ) : unconfirmed ? (
           // The reach is not yet known — never claim a definite absence while a
           // read is still in flight or failed (J04).

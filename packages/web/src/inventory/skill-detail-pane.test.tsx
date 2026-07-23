@@ -88,6 +88,23 @@ describe("SkillDetailPane", () => {
     expect(screen.getByText(/still reading deploy state/i)).toBeInTheDocument();
   });
 
+  it("warns the reach is incomplete when a target is still unconfirmed alongside known deployments", () => {
+    // One target read succeeded while another is still pending or unreadable. The
+    // known target must show, but the pane must not pass a partial list off as
+    // the whole reach (J04) — so it still warns more targets may exist.
+    renderPane({
+      deployments: [
+        { label: "Claude Code", version: "v1.0.0", status: "up-to-date" },
+      ],
+      unconfirmed: true,
+    });
+
+    expect(screen.getByText("Claude Code")).toBeInTheDocument();
+    expect(
+      screen.getByText(/more targets may still be loading/i),
+    ).toBeInTheDocument();
+  });
+
   it("hosts the deploy action passed to it", () => {
     renderPane({
       deployAction: <button type="button">Deploy →</button>,

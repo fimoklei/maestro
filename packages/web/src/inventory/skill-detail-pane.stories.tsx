@@ -50,3 +50,14 @@ export const Deployed: Story = {};
 export const NotDeployed: Story = {
   args: { deployments: [] },
 };
+
+// One target loaded, others still pending or unreadable: the known target shows,
+// but the pane warns the reach is not yet complete (J04).
+export const PartialReach: Story = {
+  args: {
+    unconfirmed: true,
+    deployments: [
+      { label: "Claude Code", version: "v1.2.0", status: "up-to-date" },
+    ],
+  },
+};
