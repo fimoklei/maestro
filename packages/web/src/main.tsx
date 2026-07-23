@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Agentation } from "agentation";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
@@ -20,6 +21,10 @@ createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <App />
+      {/* Annotation overlay for handing UI feedback to coding agents. Dev only:
+          import.meta.env.DEV is statically false in a production build, so the
+          bundler drops the branch. */}
+      {import.meta.env.DEV && <Agentation />}
     </QueryClientProvider>
   </StrictMode>,
 );

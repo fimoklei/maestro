@@ -31,6 +31,9 @@ graphify-out/
 **/.impeccable/live/sessions/
 **/.impeccable/hook.cache.json
 
+# Per-machine MCP server registrations (local tool state, not source).
+.mcp.json
+
 # Per-machine local skill installs and symlinks (not project source). Project
 # skills in these directories are tracked explicitly; only these local copies
 # are ignored.
