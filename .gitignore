@@ -30,3 +30,11 @@ graphify-out/
 # per-package .impeccable/ (e.g. packages/web/) ignores its cache too.
 **/.impeccable/live/sessions/
 **/.impeccable/hook.cache.json
+
+# Per-machine local skill installs and symlinks (not project source). Project
+# skills in these directories are tracked explicitly; only these local copies
+# are ignored.
+.agents/skills/impeccable/
+.claude/skills/impeccable/
+.claude/skills/agent-browser
+.claude/skills/codex-review
