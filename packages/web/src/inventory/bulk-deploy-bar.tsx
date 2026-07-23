@@ -66,7 +66,14 @@ export function BulkDeployBar({
   );
   const globalDrift = useGlobalDrift(registryReady && isGlobal);
   const deployState = isGlobal ? globalDeployState : repoDeployState;
-  const drift = driftViewModel(isGlobal ? globalDrift : repoDrift);
+  const rawDrift = isGlobal ? globalDrift : repoDrift;
+  const drift = driftViewModel(rawDrift);
+  // Neither read has resolved for the chosen target yet: every skill would
+  // read as "not deployed" and get sent for a pointless reinstall, so the
+  // plan waits rather than guessing (mirrors J04's un-run-stays-honest rule).
+  const targetLoading =
+    registryReady &&
+    (deployState.data === undefined || rawDrift.data === undefined);
 
   const globalTools = globalDeployState.data?.detectedTools;
   const globalDisabled = globalTools !== undefined && globalTools.length === 0;
@@ -99,6 +106,9 @@ export function BulkDeployBar({
       : `Deploy ${stagedNames.length} →`;
 
   const onDeploy = () => {
+    if (targetLoading) {
+      return;
+    }
     bulk.reset();
     const next = planBulkDeploy(stagedNames, chosenTarget);
     setPlan(next);
@@ -172,6 +182,7 @@ export function BulkDeployBar({
             size="sm"
             disabled={
               !registryReady ||
+              targetLoading ||
               bulk.isPending ||
               globalUnavailable ||
               stagedNames.length === 0

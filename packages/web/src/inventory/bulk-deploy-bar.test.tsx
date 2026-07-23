@@ -127,4 +127,42 @@ describe("BulkDeployBar", () => {
       force: true,
     });
   });
+
+  it("keeps the deploy button disabled until the chosen target's state has loaded", async () => {
+    // The repo's deploy-state read never resolves in this test, standing in
+    // for the window right after switching targets — the registry is ready,
+    // but this specific target's clean/behind data is not in yet.
+    let resolveDeployState: (() => void) | undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/deploy-state?repo=")) {
+          await new Promise<void>((resolve) => {
+            resolveDeployState = resolve;
+          });
+          return jsonResponse({ primitives: [], skipped: [] });
+        }
+        if (url.startsWith("/api/drift?repo=")) {
+          return jsonResponse({ behind: [] });
+        }
+        throw new Error(`Unexpected request: ${url}`);
+      }),
+    );
+
+    renderBar(
+      <BulkDeployBar
+        stagedNames={["tdd"]}
+        hiddenCount={0}
+        repos={[{ path: "/repo" }]}
+        registryReady
+      />,
+    );
+
+    const button = await screen.findByRole("button", { name: /deploy 1/i });
+    expect(button).toBeDisabled();
+
+    resolveDeployState?.();
+    await vi.waitFor(() => expect(button).not.toBeDisabled());
+  });
 });
