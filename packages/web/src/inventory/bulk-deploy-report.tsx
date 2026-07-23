@@ -32,6 +32,24 @@ export function BulkDeployReport({
   isDeploying?: boolean;
   onForce?: (name: string) => void;
 }) {
+  // The request itself failed (network/HTTP) before any report came back —
+  // an honest, distinct message, never the counts summary: those counts would
+  // all read zero and look like a clean, confirmed success (#292).
+  if (view.tone === "error") {
+    return (
+      <div className="mx-card-x mb-row-y">
+        <div
+          role="status"
+          aria-live="polite"
+          aria-label="Bulk deploy result"
+          className="rounded-control border border-line bg-inset px-card-x py-row-y font-mono text-amber-ink text-mono-sm"
+        >
+          Deploy to {view.targetLabel} failed: {view.message}
+        </div>
+      </div>
+    );
+  }
+
   const { counts } = view;
   const summary = isDeploying
     ? "Deploying…"

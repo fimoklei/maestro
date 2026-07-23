@@ -4,9 +4,14 @@ import { describe, expect, it, vi } from "vitest";
 import { BulkDeployReport } from "./bulk-deploy-report";
 import type { BulkDeployReportView } from "./bulk-deploy-report-view";
 
-function view(
-  overrides: Partial<BulkDeployReportView> = {},
-): BulkDeployReportView {
+// The success/attention branch of the view union — every existing test drives
+// a real report, never the distinct "error" branch (its own test below).
+type ReportView = Extract<
+  BulkDeployReportView,
+  { tone: "success" | "attention" }
+>;
+
+function view(overrides: Partial<ReportView> = {}): ReportView {
   return {
     tone: "success",
     targetLabel: "Global",
@@ -85,5 +90,22 @@ describe("BulkDeployReport", () => {
       screen.getByRole("button", { name: /reinstall fresh tdd/i }),
     );
     expect(onForce).toHaveBeenCalledWith("tdd");
+  });
+
+  it("shows a distinct failure message when the request itself failed, never a summary of counts", () => {
+    render(
+      <BulkDeployReport
+        view={{
+          tone: "error",
+          targetLabel: "Global",
+          message: "The deploy request failed.",
+        }}
+      />,
+    );
+
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent(/failed/i);
+    expect(status).not.toHaveTextContent(/deployed/i);
+    expect(status).not.toHaveTextContent(/0 skipped/i);
   });
 });

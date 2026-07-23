@@ -222,4 +222,55 @@ describe("BulkDeployBar", () => {
       await screen.findByRole("status", { name: /bulk deploy result/i }),
     ).toHaveTextContent(/1 deployed/);
   });
+
+  it("shows a distinct failure, never a green success, when the bulk request itself fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/deploy-state/global")) {
+          return jsonResponse({
+            tools: [
+              { tool: "claude", primitives: [] },
+              { tool: "codex", primitives: [] },
+            ],
+            skipped: [],
+          });
+        }
+        if (url.startsWith("/api/drift/global")) {
+          return jsonResponse({ behind: [] });
+        }
+        if (url === "/api/deploy/bulk") {
+          return new Response(
+            JSON.stringify({
+              error: "deploy-failed",
+              message: "Server error.",
+            }),
+            { status: 500, headers: { "content-type": "application/json" } },
+          );
+        }
+        throw new Error(`Unexpected request: ${url}`);
+      }),
+    );
+
+    renderBar(
+      <BulkDeployBar
+        stagedNames={["tdd"]}
+        hiddenCount={0}
+        repos={[]}
+        registryReady
+      />,
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /deploy 1/i }),
+    );
+
+    const status = await screen.findByRole("status", {
+      name: /bulk deploy result/i,
+    });
+    expect(status).toHaveTextContent(/failed/i);
+    expect(status).not.toHaveTextContent(/deployed/i);
+    expect(status).not.toHaveTextContent(/0 skipped/i);
+  });
 });

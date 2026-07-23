@@ -145,7 +145,10 @@ export function BulkDeployBar({
   };
 
   // Until the batch resolves, the report reads from an empty server result so
-  // the skipped-clean plan still shows; bulk.data replaces it on success.
+  // the skipped-clean plan still shows; bulk.data replaces it on success. A
+  // failed request (network/HTTP) never falls back to this empty shape — that
+  // would read as a confirmed, clean "0 deployed" success (#292) — it takes
+  // the view's distinct error branch instead.
   const report = bulk.data ?? {
     target,
     deployed: [],
@@ -158,6 +161,8 @@ export function BulkDeployBar({
         skippedClean: plan.skippedClean,
         updateToLatest: plan.updateToLatest,
         targetLabel,
+        requestFailed: bulk.isError,
+        requestFailedMessage: bulk.error?.message,
       })
     : null;
 
