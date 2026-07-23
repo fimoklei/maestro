@@ -7,6 +7,7 @@
 
 import { useQueries } from "@tanstack/react-query";
 import { toDeployedView } from "../deploy-state/deployed-view";
+import { toolPresentation } from "../deploy-state/tool-presentation";
 import { deployStateQueryOptions } from "../deploy-state/use-deploy-state";
 import { useGlobalDeployState } from "../deploy-state/use-global-deploy-state";
 import { driftViewModel } from "../drift/drift-view-model";
@@ -36,10 +37,23 @@ export function useDeploymentTargets(
   // The repo set itself is unknown until the registry resolves; a placeholder
   // keeps repo reach unconfirmed while it loads (pending) or after it failed
   // (unknown), rather than collapsing to zero repos.
+  // Placeholders keep the reach honest while a set is unknown; they name no
+  // target and hold no primitives — the count reads their status, the pane skips
+  // them (only ready targets carry a version).
   if (registry.isLoading) {
-    targets.push({ deployed: { status: "pending" }, drift: unresolvedDrift });
+    targets.push({
+      label: "",
+      deployed: { status: "pending" },
+      primitives: [],
+      drift: unresolvedDrift,
+    });
   } else if (registry.isError) {
-    targets.push({ deployed: { status: "unknown" }, drift: unresolvedDrift });
+    targets.push({
+      label: "",
+      deployed: { status: "unknown" },
+      primitives: [],
+      drift: unresolvedDrift,
+    });
   }
 
   // The tool set is unknown until the global read resolves, so while it loads a
@@ -49,17 +63,29 @@ export function useDeploymentTargets(
   // to each tool's skills, so a skill behind on another tool never spills into
   // this tool's count (the same forTool slice the global targets section uses).
   if (globalDeploy.isLoading) {
-    targets.push({ deployed: { status: "pending" }, drift: globalDrift });
+    targets.push({
+      label: "",
+      deployed: { status: "pending" },
+      primitives: [],
+      drift: globalDrift,
+    });
   } else if (globalDeploy.isError) {
     // A failed global read is unknown, not empty — a globally-deployed skill must
     // not read as "deployed nowhere" because the read broke (J04). Stale cached
     // tools are dropped so the count never presents old data as current.
-    targets.push({ deployed: { status: "unknown" }, drift: globalDrift });
+    targets.push({
+      label: "",
+      deployed: { status: "unknown" },
+      primitives: [],
+      drift: globalDrift,
+    });
   } else {
     for (const tool of globalDeploy.data?.tools ?? []) {
       const names = tool.primitives.map((primitive) => primitive.name);
       targets.push({
+        label: toolPresentation(tool.tool).label,
         deployed: { status: "ready", names, skippedCount: 0 },
+        primitives: tool.primitives,
         drift: globalDrift.forTool(names),
       });
     }
@@ -72,9 +98,14 @@ export function useDeploymentTargets(
   // pending fallback only guards the impossible short-read; TS cannot see the
   // arrays share repoPaths' length.
   const pending = { data: undefined, isError: false } as const;
-  repoPaths.forEach((_, index) => {
+  repoPaths.forEach((repoPath, index) => {
+    const deploy = repoDeploy[index] ?? pending;
     targets.push({
-      deployed: toDeployedView(repoDeploy[index] ?? pending),
+      // The repo path names the target; it is unambiguous and matches the deploy
+      // picker's repo options.
+      label: repoPath,
+      deployed: toDeployedView(deploy),
+      primitives: deploy.data?.primitives ?? [],
       drift: driftViewModel(repoDrift[index] ?? pending),
     });
   });

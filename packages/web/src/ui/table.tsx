@@ -27,9 +27,19 @@ export function TableBody({ children, className }: TableSectionProps) {
   return <tbody className={className}>{children}</tbody>;
 }
 
-export function TableRow({ children, className }: TableSectionProps) {
+// onClick lets a whole row act as one select surface (inventory pane, #290). The
+// row stays a plain <tr>: keep a real focusable control inside it for the
+// keyboard path — the row click is a mouse convenience, not the only affordance.
+export function TableRow({
+  children,
+  className,
+  onClick,
+}: TableSectionProps & { onClick?: () => void }) {
   return (
-    <tr className={cn("border-b border-line-row last:border-b-0", className)}>
+    <tr
+      onClick={onClick}
+      className={cn("border-b border-line-row last:border-b-0", className)}
+    >
       {children}
     </tr>
   );

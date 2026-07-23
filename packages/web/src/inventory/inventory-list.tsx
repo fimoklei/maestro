@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from "react";
 import { RegisterRepoHint } from "../registry/register-repo-hint";
 import type { RegisteredRepo } from "../registry/use-registry";
+import { cn } from "../ui/cn";
 import { SegmentedControl } from "../ui/segmented-control";
 import {
   Table,
@@ -21,6 +22,8 @@ import {
   type SortState,
   sortPrimitives,
 } from "./inventory-table-model";
+import { skillDeployments } from "./skill-deployments";
+import { SkillDetailPane } from "./skill-detail-pane";
 import {
   deriveTypeSegments,
   filterByType,
@@ -60,6 +63,13 @@ export function InventoryList({
   // null = loaded order; the table only reorders once the user clicks a header,
   // so it never jumps before being asked to sort.
   const [sort, setSort] = useState<SortState | null>(null);
+  // The row whose detail pane is open — UI-state, never server-state. Null keeps
+  // the table a pure scan surface until a row is picked (ADR-0016). Held by name
+  // (from the full inventory), so a later search narrowing the table does not close
+  // an already-open pane.
+  const [selected, setSelected] = useState<string | null>(null);
+  const toggleSelected = (name: string) =>
+    setSelected((current) => (current === name ? null : name));
 
   if (primitives.length === 0) {
     return (
@@ -77,7 +87,18 @@ export function InventoryList({
   const narrowed = filterByName(filterByType(primitives, filter), query);
   const visible = sort ? sortPrimitives(narrowed, sort) : narrowed;
 
-  return (
+  // The open pane's skill, read from the full inventory so a narrowing search
+  // never orphans the selection. skillDeployments is the per-target version lens
+  // over the same targets the Deployed column counts (#290).
+  const selectedPrimitive =
+    selected === null
+      ? null
+      : (primitives.find((primitive) => primitive.name === selected) ?? null);
+  const selectedRollup = selectedPrimitive
+    ? rollUpDeployment(selectedPrimitive.name, targets)
+    : null;
+
+  const table = (
     <>
       {/* Every row's target picker offers Global and nothing else until a repo
           is registered, so say once — above the table, not per row — where repo
@@ -123,24 +144,45 @@ export function InventoryList({
             {/* Deployed is a per-skill roll-up, not a primitive field, so it is
                 not a sort key (out of #289 scope) — a plain header. */}
             <TableHead>Deployed</TableHead>
-            <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {visible.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="text-dim text-tag">
+              <TableCell colSpan={4} className="text-dim text-tag">
                 No skills match your search.
               </TableCell>
             </TableRow>
           ) : (
             visible.map((primitive) => (
-              <TableRow key={primitive.name}>
+              <TableRow
+                key={primitive.name}
+                onClick={() => toggleSelected(primitive.name)}
+                className={cn(
+                  "cursor-pointer",
+                  primitive.name === selected ? "bg-dim-bg" : undefined,
+                )}
+              >
                 <TableCell>
                   <TypeTag type={primitive.type} />
                 </TableCell>
                 <TableCell className="truncate font-mono text-data text-fg">
-                  {primitive.name}
+                  {/* Clicking anywhere on the row opens the pane (#290); the name
+                      stays a real button so keyboard users have a focusable
+                      control. It stops propagation so a mouse click resolves to a
+                      single toggle, not the button and the row both firing. */}
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleSelected(primitive.name);
+                    }}
+                    aria-expanded={primitive.name === selected}
+                    aria-controls={`skill-detail-${primitive.name}`}
+                    className="truncate text-left text-inherit focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+                  >
+                    {primitive.name}
+                  </button>
                 </TableCell>
                 <TableCell className="truncate text-desc text-muted">
                   {primitive.description}
@@ -150,19 +192,42 @@ export function InventoryList({
                     rollup={rollUpDeployment(primitive.name, targets)}
                   />
                 </TableCell>
-                <TableCell>
-                  <DeploySkillAction
-                    skillName={primitive.name}
-                    repos={repos}
-                    registryReady={registryReady}
-                  />
-                </TableCell>
               </TableRow>
             ))
           )}
         </TableBody>
       </Table>
     </>
+  );
+
+  return (
+    <div className="flex items-start">
+      <div className="min-w-0 flex-1">{table}</div>
+      {selectedPrimitive ? (
+        <SkillDetailPane
+          primitive={selectedPrimitive}
+          deployments={skillDeployments(selectedPrimitive.name, targets)}
+          // The reach is unconfirmed while any target's read is pending or
+          // unreadable, so an empty "deployed to" list holds off on the definite
+          // "not deployed" (J04) — the same signal the deployed cell reads.
+          unconfirmed={Boolean(
+            selectedRollup?.pending || selectedRollup?.unreadable,
+          )}
+          deployAction={
+            // Keyed by skill so switching skills mounts a fresh action: a
+            // pending pick or a forceable-reinstall refusal from the previous
+            // skill can never carry over and overwrite the next one (#66).
+            <DeploySkillAction
+              key={selectedPrimitive.name}
+              skillName={selectedPrimitive.name}
+              repos={repos}
+              registryReady={registryReady}
+            />
+          }
+          onClose={() => setSelected(null)}
+        />
+      ) : null}
+    </div>
   );
 }
 

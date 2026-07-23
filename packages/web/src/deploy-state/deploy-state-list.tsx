@@ -3,6 +3,7 @@ import {
   type DriftViewModel,
   driftViewModel,
 } from "../drift/drift-view-model";
+import { versionColor } from "../drift/version-color";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
@@ -41,16 +42,6 @@ function DriftBadge({ status }: { status: DriftStatus }) {
     </Chip>
   );
 }
-
-// The deployed version, warmed to amber when behind and shown as the
-// deployed -> latest pair, green when up-to-date (ADR-0007).
-const versionColor: Record<DriftStatus, string> = {
-  behind: "text-amber-ink",
-  "up-to-date": "text-green-ink",
-  unknown: "text-muted",
-  unverified: "text-muted",
-  pending: "text-muted",
-};
 
 // Presentational deploy-state rows for one target. A genuinely empty target
 // renders no body at all: its card header carries the "● empty" status chip,

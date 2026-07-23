@@ -17,12 +17,20 @@ const drift = (state: { data?: DriftResponse; isError?: boolean }) =>
 
 const pair = (name: string) => ({ name, current: "v1.0.0", latest: "v1.1.0" });
 
+// The count roll-up ignores the pane-only fields (label, primitives); spread this
+// so the targets here stay focused on what the count reads.
+const paneFields: { label: string; primitives: [] } = {
+  label: "",
+  primitives: [],
+};
+
 // A target that is deployed (deploy-state read cleanly) with the given names, and
 // whose drift check produced the given behind set.
 const deployedTarget = (
   names: string[],
   behind: { name: string; current: string; latest: string }[] = [],
 ): DeploymentTarget => ({
+  ...paneFields,
   deployed: { status: "ready", names, skippedCount: 0 },
   drift: ranDrift(behind),
 });
@@ -44,7 +52,7 @@ describe("rollUpDeployment — target count", () => {
 
   it("does not count a target whose deploy-state has not resolved yet", () => {
     const targets: DeploymentTarget[] = [
-      { deployed: { status: "pending" }, drift: ranDrift([]) },
+      { ...paneFields, deployed: { status: "pending" }, drift: ranDrift([]) },
       deployedTarget(["tdd"]),
     ];
     expect(rollUpDeployment("tdd", targets).targetCount).toBe(1);
@@ -52,7 +60,7 @@ describe("rollUpDeployment — target count", () => {
 
   it("does not count a target whose deploy-state could not be read", () => {
     const targets: DeploymentTarget[] = [
-      { deployed: { status: "unknown" }, drift: ranDrift([]) },
+      { ...paneFields, deployed: { status: "unknown" }, drift: ranDrift([]) },
       deployedTarget(["tdd"]),
     ];
     expect(rollUpDeployment("tdd", targets).targetCount).toBe(1);
@@ -65,7 +73,7 @@ describe("rollUpDeployment — pending keeps a zero reach honest (J04)", () => {
     // flight; a 0 count then is "unconfirmed", not a confirmed "deployed
     // nowhere".
     const targets: DeploymentTarget[] = [
-      { deployed: { status: "pending" }, drift: ranDrift([]) },
+      { ...paneFields, deployed: { status: "pending" }, drift: ranDrift([]) },
       deployedTarget(["caveman"]),
     ];
     expect(rollUpDeployment("tdd", targets).pending).toBe(true);
@@ -80,7 +88,7 @@ describe("rollUpDeployment — pending keeps a zero reach honest (J04)", () => {
     // A failed read (a malformed lockfile) leaves the reach unconfirmed just as a
     // still-loading read does — a 0 count is not a confirmed "deployed nowhere".
     const targets: DeploymentTarget[] = [
-      { deployed: { status: "unknown" }, drift: ranDrift([]) },
+      { ...paneFields, deployed: { status: "unknown" }, drift: ranDrift([]) },
       deployedTarget(["caveman"]),
     ];
     expect(rollUpDeployment("tdd", targets).unreadable).toBe(true);
@@ -114,6 +122,7 @@ describe("rollUpDeployment — unknown count (?) keeps J04 honesty", () => {
   it("counts a deployed target whose check could not run", () => {
     const targets: DeploymentTarget[] = [
       {
+        ...paneFields,
         deployed: { status: "ready", names: ["tdd"], skippedCount: 0 },
         drift: drift({ data: { ok: false } }),
       },
@@ -124,6 +133,7 @@ describe("rollUpDeployment — unknown count (?) keeps J04 honesty", () => {
   it("counts a deployed target whose source could not be reached (unverified)", () => {
     const targets: DeploymentTarget[] = [
       {
+        ...paneFields,
         deployed: { status: "ready", names: ["tdd"], skippedCount: 0 },
         drift: drift({ data: { ok: false, reason: "unverified" } }),
       },
@@ -134,6 +144,7 @@ describe("rollUpDeployment — unknown count (?) keeps J04 honesty", () => {
   it("does not count a still-loading check as unknown — pending is not 'could not run'", () => {
     const targets: DeploymentTarget[] = [
       {
+        ...paneFields,
         deployed: { status: "ready", names: ["tdd"], skippedCount: 0 },
         drift: drift({ data: undefined }),
       },
@@ -147,6 +158,7 @@ describe("rollUpDeployment — unknown count (?) keeps J04 honesty", () => {
     // flight (or stalled forever) — #272 invariant, J04.
     const targets: DeploymentTarget[] = [
       {
+        ...paneFields,
         deployed: { status: "ready", names: ["tdd"], skippedCount: 0 },
         drift: drift({ data: undefined }),
       },
