@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BulkDeploySkills } from "./bulk-deploy-skills";
+import { type BulkDeployInput, BulkDeploySkills } from "./bulk-deploy-skills";
 import type { DeploySkill, DeploySkillError } from "./deploy-skill";
 
 // A stand-in for DeploySkill.execute that answers from a scripted table keyed by
@@ -10,10 +10,12 @@ type Scripted = Awaited<ReturnType<DeploySkill["execute"]>>;
 function fakeDeploy(
   script: Record<string, Scripted>,
   calls?: string[],
+  forceSeen?: (boolean | undefined)[],
 ): Pick<DeploySkill, "execute"> {
   return {
     async execute(input) {
       calls?.push(input.name);
+      forceSeen?.push(input.force);
       const result = script[input.name];
       if (!result) {
         throw new Error(`no scripted result for ${input.name}`);
@@ -120,5 +122,30 @@ describe("BulkDeploySkills", () => {
       { error: "auth-required", names: ["tdd", "review"] },
       { error: "no-published-tag", names: ["research"] },
     ]);
+  });
+
+  it("never forwards a batch-wide force to individual deploys", async () => {
+    const forceSeen: (boolean | undefined)[] = [];
+    const bulk = new BulkDeploySkills({
+      deploy: fakeDeploy(
+        {
+          tdd: ok("tdd", "v1.2.0"),
+          review: ok("review", "v0.9.0"),
+        },
+        undefined,
+        forceSeen,
+      ),
+    });
+
+    // A caller reaching past the type (e.g. a hand-built request body) must
+    // still never smuggle a batch-wide force through to per-skill deploys —
+    // force stays a deliberate, per-item decision (#292).
+    await bulk.execute({
+      names: ["tdd", "review"],
+      target: { kind: "global" },
+      force: true,
+    } as unknown as BulkDeployInput);
+
+    expect(forceSeen).toEqual([undefined, undefined]);
   });
 });

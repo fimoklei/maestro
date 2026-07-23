@@ -11,7 +11,6 @@ import type { DeployTarget } from "./use-deploy-skill";
 export type BulkDeployRequest = {
   names: string[];
   target: DeployTarget;
-  force?: boolean;
 };
 
 export function useBulkDeploy() {

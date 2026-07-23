@@ -58,13 +58,14 @@ const deployBodySchema = z.object({
 // Bulk deploy: the staged skills to one target. Names are validated as a
 // non-empty list at the edge; the per-skill business rules (slug check,
 // membership, guards) stay in the core deploy path each name is driven through.
+// No batch-wide force: a diverged copy always comes back as an attention row,
+// overridden only per item via the existing single-deploy route (#292).
 const bulkDeployBodySchema = z.object({
   names: z.array(z.string()).min(1),
   target: z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("repo"), repoPath: z.string() }),
     z.object({ kind: z.literal("global") }),
   ]),
-  force: z.boolean().optional(),
 });
 
 // A failed drift check answers 200 with a body the web maps to a badge, not an

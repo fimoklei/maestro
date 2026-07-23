@@ -8,10 +8,12 @@ import type {
   DeployTarget,
 } from "./deploy-skill";
 
+// No batch-wide force: the spec promises a per-item force only, via the
+// existing single-deploy route (#292). A content-diverged copy always comes
+// back as an attention row here instead.
 export type BulkDeployInput = {
   names: string[];
   target: DeployTarget;
-  force?: boolean;
 };
 
 export type BulkDeployedRow = { name: string; version: string };
@@ -42,7 +44,6 @@ export class BulkDeploySkills {
         type: "skill",
         name,
         target: input.target,
-        force: input.force,
       });
       if (result.ok) {
         deployed.push({ name, version: result.deployed.version });
