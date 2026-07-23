@@ -55,7 +55,7 @@ importers:
     dependencies:
       '@hono/node-server':
         specifier: ^2.0.4
-        version: 2.0.4(hono@4.12.31)
+        version: 2.0.10(hono@4.12.31)
       '@maestro/core':
         specifier: workspace:*
         version: link:../core
@@ -487,8 +487,8 @@ packages:
   '@fontsource-variable/space-grotesk@5.2.10':
     resolution: {integrity: sha512-yJQO/o35/hAP3CFnpdFTwQku2yzJOae2HIpBmqkOVoxhhXJaQP3g+b6Jrz7u+eI7A5ZdCIf88uMWpBJdFiGr5w==}
 
-  '@hono/node-server@2.0.4':
-    resolution: {integrity: sha512-Ut3y0dMMPWy6bZ2kVfx25EOVbZlm15dhF4mOsezMlhpNHy+4MkU1qN9Y6lnruYi4wPmFzimGX2X7LF/FwHli4A==}
+  '@hono/node-server@2.0.10':
+    resolution: {integrity: sha512-ZcnNVhKTmyDJeg0UlnZjvM73JBsTAuhrH/J4fjwGOw59PwOW51r4J+p6CsKZWXdKSme4MFqU62CZMOsdDrU4CA==}
     engines: {node: '>=20'}
     peerDependencies:
       hono: ^4
@@ -2488,7 +2488,7 @@ snapshots:
 
   '@fontsource-variable/space-grotesk@5.2.10': {}
 
-  '@hono/node-server@2.0.4(hono@4.12.31)':
+  '@hono/node-server@2.0.10(hono@4.12.31)':
     dependencies:
       hono: 4.12.31
 
