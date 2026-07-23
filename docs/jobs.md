@@ -27,6 +27,7 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 | Job | Main | Job story |
 |---|---|---|
+| See a skill's deploy-state before deploying from Inventory · [#283](https://github.com/fimoklei/maestro/issues/283) | A, B | *When* I deploy a skill from the Inventory, *I want to* see at a glance whether it is already deployed and where, *so I can* avoid a blind or duplicate deploy. |
 
 ## NEXT
 
