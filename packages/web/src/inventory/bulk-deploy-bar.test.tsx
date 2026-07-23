@@ -1,0 +1,130 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { BulkDeployBar } from "./bulk-deploy-bar";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+const jsonResponse = (body: unknown) =>
+  new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
+
+function renderBar(ui: React.ReactNode) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+  );
+}
+
+// A fetch stub for the cockpit's read queries plus the bulk route. Deploy-state
+// reads empty (nothing deployed), drift is up-to-date, and the bulk route
+// returns whatever `bulkReport` the test provides.
+function stubReads(bulkReport: unknown) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = String(input);
+      if (url.startsWith("/api/deploy-state/global")) {
+        return jsonResponse({
+          tools: [
+            { tool: "claude", primitives: [] },
+            { tool: "codex", primitives: [] },
+          ],
+          skipped: [],
+        });
+      }
+      if (url.startsWith("/api/drift/global")) {
+        return jsonResponse({ behind: [] });
+      }
+      if (url === "/api/deploy/bulk") {
+        return jsonResponse(bulkReport);
+      }
+      if (url === "/api/deploy") {
+        return jsonResponse({
+          deployed: { type: "skill", name: "review", version: "v1.0.0" },
+        });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    }),
+  );
+}
+
+describe("BulkDeployBar", () => {
+  it("deploys the staged skills to the chosen target and reports the result", async () => {
+    stubReads({
+      target: { kind: "global" },
+      deployed: [
+        { name: "tdd", version: "v1.0.0" },
+        { name: "review", version: "v1.0.0" },
+      ],
+      attention: [],
+      failed: [],
+    });
+    renderBar(
+      <BulkDeployBar
+        stagedNames={["tdd", "review"]}
+        hiddenCount={0}
+        repos={[]}
+        registryReady
+      />,
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /deploy 2/i }),
+    );
+
+    expect(
+      await screen.findByRole("status", { name: /bulk deploy result/i }),
+    ).toHaveTextContent(/2 deployed/);
+    const fetchMock = fetch as ReturnType<typeof vi.fn>;
+    const [, init] = fetchMock.mock.calls.find(
+      ([url]) => url === "/api/deploy/bulk",
+    ) as unknown as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toEqual({
+      names: ["tdd", "review"],
+      target: { kind: "global" },
+    });
+  });
+
+  it("force-reinstalls a diverged attention skill on its own", async () => {
+    stubReads({
+      target: { kind: "global" },
+      deployed: [{ name: "tdd", version: "v1.0.0" }],
+      attention: [{ name: "review", error: "deployed-diverged-from-lock" }],
+      failed: [],
+    });
+    renderBar(
+      <BulkDeployBar
+        stagedNames={["tdd", "review"]}
+        hiddenCount={0}
+        repos={[]}
+        registryReady
+      />,
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /deploy 2/i }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: /reinstall fresh review/i }),
+    );
+
+    const fetchMock = fetch as ReturnType<typeof vi.fn>;
+    const forceCall = fetchMock.mock.calls.find(
+      ([url]) => url === "/api/deploy",
+    ) as unknown as [string, RequestInit];
+    expect(JSON.parse(forceCall[1].body as string)).toEqual({
+      type: "skill",
+      name: "review",
+      target: { kind: "global" },
+      force: true,
+    });
+  });
+});
