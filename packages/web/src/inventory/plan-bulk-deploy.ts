@@ -29,6 +29,20 @@ function deployedOn(deployed: DeployedView, name: string): boolean {
   return deployed.status === "ready" && deployed.names.includes(name);
 }
 
+// One target's status for one skill, folded from "is it deployed here" plus
+// drift, in a single read — so the plan below never walks `targets` twice to
+// ask two questions that share the same per-target check.
+function targetStatus(
+  target: DeploymentTarget,
+  name: string,
+): "up-to-date" | "behind" | "other" {
+  if (!deployedOn(target.deployed, name)) {
+    return "other";
+  }
+  const status = target.drift.skillStatus(name);
+  return status === "up-to-date" || status === "behind" ? status : "other";
+}
+
 export function planBulkDeploy(
   names: string[],
   targets: DeploymentTarget[],
@@ -41,26 +55,27 @@ export function planBulkDeploy(
     // A no-op only when every target confirms the copy present AND up-to-date.
     // A single un-run or missing target keeps the skill honest and attempted
     // rather than assumed clean (J04) — this is the multi-tool generalization
-    // of the single-target rule.
-    const allUpToDate =
-      targets.length > 0 &&
-      targets.every(
-        (target) =>
-          deployedOn(target.deployed, name) &&
-          target.drift.skillStatus(name) === "up-to-date",
-      );
+    // of the single-target rule. Only a confirmed-behind deployed copy is an
+    // update; an un-run check never claims one, and a skill deployed nowhere
+    // is a first install. Both facts come from the same single pass over
+    // targets.
+    let allUpToDate = targets.length > 0;
+    let confirmedBehindSomewhere = false;
+    for (const target of targets) {
+      const status = targetStatus(target, name);
+      if (status !== "up-to-date") {
+        allUpToDate = false;
+      }
+      if (status === "behind") {
+        confirmedBehindSomewhere = true;
+      }
+    }
+
     if (allUpToDate) {
       skippedClean.push(name);
       continue;
     }
     toDeploy.push(name);
-    // Only a confirmed-behind deployed copy is an update; an un-run check never
-    // claims one, and a skill deployed nowhere is a first install.
-    const confirmedBehindSomewhere = targets.some(
-      (target) =>
-        deployedOn(target.deployed, name) &&
-        target.drift.skillStatus(name) === "behind",
-    );
     if (confirmedBehindSomewhere) {
       updateToLatest.push(name);
     }

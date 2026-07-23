@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { toolPresentation } from "../deploy-state/tool-presentation";
 import { useDeployState } from "../deploy-state/use-deploy-state";
 import { useGlobalDeployState } from "../deploy-state/use-global-deploy-state";
 import { driftViewModel } from "../drift/drift-view-model";
@@ -8,7 +7,7 @@ import type { RegisteredRepo } from "../registry/use-registry";
 import { Button } from "../ui/button";
 import { BulkDeployReport } from "./bulk-deploy-report";
 import { bulkDeployReportView } from "./bulk-deploy-report-view";
-import type { DeploymentTarget } from "./deployed-rollup";
+import { chosenBulkDeployTargets } from "./bulk-deploy-targets";
 import { globalOptionLabel } from "./global-option-label";
 import { type BulkDeployPlan, planBulkDeploy } from "./plan-bulk-deploy";
 import { useBulkDeploy } from "./use-bulk-deploy";
@@ -80,48 +79,16 @@ export function BulkDeployBar({
   const globalDisabled = globalTools !== undefined && globalTools.length === 0;
   const globalUnavailable = isGlobal && globalDisabled;
 
-  // The chosen destination folded into the shape planBulkDeploy reads: a repo
-  // is always one target, but "Global" is one per detected tool — apm tracks
-  // each tool's install separately, so a skill present on Claude Code but
-  // missing on Codex must not read as fully clean (mirrors
-  // use-deployment-targets.ts, #292). A still-loading read stays "pending", so
-  // a skill is attempted rather than assumed clean.
-  const chosenTargets: DeploymentTarget[] = isGlobal
-    ? globalDeployState.data === undefined
-      ? [
-          {
-            label: targetLabel,
-            deployed: { status: "pending" },
-            primitives: [],
-            drift,
-          },
-        ]
-      : globalDeployState.data.tools.map((tool) => {
-          const names = tool.primitives.map((primitive) => primitive.name);
-          return {
-            label: toolPresentation(tool.tool).label,
-            deployed: { status: "ready", names, skippedCount: 0 },
-            primitives: tool.primitives,
-            drift: drift.forTool(names),
-          };
-        })
-    : [
-        {
-          label: targetLabel,
-          deployed:
-            deployState.data === undefined
-              ? { status: "pending" }
-              : {
-                  status: "ready",
-                  names: deployState.data.primitives.map(
-                    (primitive) => primitive.name,
-                  ),
-                  skippedCount: 0,
-                },
-          primitives: deployState.data?.primitives ?? [],
-          drift,
-        },
-      ];
+  // The chosen destination folded into the shape planBulkDeploy reads —
+  // pulled out of the component since it is pure data-shaping, not UI
+  // (frontend.md: components stay mostly presentational).
+  const chosenTargets = chosenBulkDeployTargets({
+    isGlobal,
+    targetLabel,
+    globalTools: globalDeployState.data?.tools,
+    repoPrimitives: repoDeployState.data?.primitives,
+    drift,
+  });
 
   const selectId = "bulk-deploy-target";
   const buttonLabel = !registryReady
