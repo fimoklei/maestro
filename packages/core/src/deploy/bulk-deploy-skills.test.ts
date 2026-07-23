@@ -148,4 +148,43 @@ describe("BulkDeploySkills", () => {
 
     expect(forceSeen).toEqual([undefined, undefined]);
   });
+
+  it("keeps going after an unexpected exception mid-batch", async () => {
+    const calls: string[] = [];
+    const inner = fakeDeploy(
+      {
+        tdd: ok("tdd", "v1.2.0"),
+        research: ok("research", "v0.3.0"),
+      },
+      calls,
+    );
+    const bulk = new BulkDeploySkills({
+      deploy: {
+        async execute(input) {
+          if (input.name === "review") {
+            // A real dependency (e.g. a filesystem read) can reject outside
+            // DeploySkill's own typed-error handling; the batch must still
+            // reach the rest of the names (#292).
+            calls.push(input.name);
+            throw new Error("ENOENT: filesystem read failed");
+          }
+          return inner.execute(input);
+        },
+      },
+    });
+
+    const report = await bulk.execute({
+      names: ["tdd", "review", "research"],
+      target: { kind: "global" },
+    });
+
+    expect(calls).toEqual(["tdd", "review", "research"]);
+    expect(report.deployed).toEqual([
+      { name: "tdd", version: "v1.2.0" },
+      { name: "research", version: "v0.3.0" },
+    ]);
+    expect(report.failed).toEqual([
+      { error: "deploy-failed", names: ["review"] },
+    ]);
+  });
 });

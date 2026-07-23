@@ -40,11 +40,20 @@ export class BulkDeploySkills {
     const failures = new Map<DeploySkillError, string[]>();
 
     for (const name of input.names) {
-      const result = await this.deps.deploy.execute({
-        type: "skill",
-        name,
-        target: input.target,
-      });
+      // A real dependency (filesystem, apm) can reject outside DeploySkill's
+      // own typed-error handling. Own that here too, the same way DeploySkill
+      // owns apm's failures — so one name's unexpected exception never aborts
+      // the rest of the batch (continue-and-harvest, #292).
+      let result: Awaited<ReturnType<DeploySkill["execute"]>>;
+      try {
+        result = await this.deps.deploy.execute({
+          type: "skill",
+          name,
+          target: input.target,
+        });
+      } catch {
+        result = { ok: false, error: "deploy-failed" };
+      }
       if (result.ok) {
         deployed.push({ name, version: result.deployed.version });
       } else if (ATTENTION_ERRORS.has(result.error)) {
