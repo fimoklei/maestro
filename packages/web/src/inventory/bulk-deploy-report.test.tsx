@@ -11,6 +11,7 @@ function view(
     tone: "success",
     targetLabel: "Global",
     deployed: [],
+    updated: [],
     skipped: [],
     attention: [],
     failed: [],
@@ -35,6 +36,21 @@ describe("BulkDeployReport", () => {
     expect(summary).toHaveTextContent(/Global/);
     expect(summary).toHaveTextContent(/1 deployed/);
     expect(summary).toHaveTextContent(/1 skipped/);
+  });
+
+  it("names a skill that replaced a behind copy as updated to latest", () => {
+    render(
+      <BulkDeployReport
+        view={view({
+          updated: [{ name: "tdd", version: "v1.2.0" }],
+          counts: { deployed: 1, skipped: 0, attention: 0, failed: 0 },
+        })}
+      />,
+    );
+
+    expect(
+      screen.getByRole("list", { name: /updated to latest/i }),
+    ).toHaveTextContent("tdd");
   });
 
   it("lists a merged failure line carrying every affected skill", () => {

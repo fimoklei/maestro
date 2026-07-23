@@ -51,6 +51,25 @@ describe("bulkDeployReportView", () => {
     ]);
   });
 
+  it("names a behind skill as updated to latest, not a first deploy", () => {
+    const view = bulkDeployReportView({
+      report: report({
+        deployed: [
+          { name: "tdd", version: "v1.2.0" },
+          { name: "research", version: "v0.3.0" },
+        ],
+      }),
+      skippedClean: [],
+      updateToLatest: ["tdd"],
+      targetLabel: "global",
+    });
+
+    expect(view.updated).toEqual([{ name: "tdd", version: "v1.2.0" }]);
+    expect(view.deployed).toEqual([{ name: "research", version: "v0.3.0" }]);
+    // The summary still counts every success, however it got there.
+    expect(view.counts.deployed).toBe(2);
+  });
+
   it("counts each outcome for the summary line", () => {
     const view = bulkDeployReportView({
       report: report({

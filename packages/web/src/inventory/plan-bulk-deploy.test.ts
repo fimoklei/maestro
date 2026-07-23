@@ -39,6 +39,16 @@ describe("planBulkDeploy", () => {
 
     expect(plan.toDeploy).toEqual(["tdd"]);
     expect(plan.skippedClean).toEqual([]);
+    // A behind copy is an update-to-latest, not a first deploy — named so the
+    // report can say which skills were updated rather than newly installed.
+    expect(plan.updateToLatest).toEqual(["tdd"]);
+  });
+
+  it("does not call a not-yet-deployed skill an update-to-latest", () => {
+    const plan = planBulkDeploy(["research"], target([], []));
+
+    expect(plan.toDeploy).toEqual(["research"]);
+    expect(plan.updateToLatest).toEqual([]);
   });
 
   it("keeps only a clean-and-latest skill out of the deploy list", () => {

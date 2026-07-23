@@ -78,6 +78,24 @@ export function BulkDeployReport({
             </ul>
           ) : null}
 
+          {view.updated.length > 0 ? (
+            <ul aria-label="Updated to latest" className="flex flex-col gap-1">
+              {view.updated.map((row) => (
+                <li
+                  key={row.name}
+                  className="flex items-baseline gap-2 text-tag"
+                >
+                  <span className="text-green-ink">↑</span>
+                  <span className="font-mono text-fg text-mono-sm">
+                    {row.name}
+                  </span>
+                  <span className="text-dim">{row.version}</span>
+                  <span className="text-muted">updated to latest</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
           {view.attention.length > 0 ? (
             <ul aria-label="Needs attention" className="flex flex-col gap-1">
               {view.attention.map((row) => (

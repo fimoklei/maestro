@@ -121,23 +121,29 @@ export function BulkDeployBar({
     ? bulkDeployReportView({
         report,
         skippedClean: plan.skippedClean,
+        updateToLatest: plan.updateToLatest,
         targetLabel,
       })
     : null;
 
   return (
-    <div
-      role="status"
-      aria-label="Bulk selection"
-      className="mx-card-x mb-row-y flex flex-col gap-row-y rounded-control border border-line bg-inset px-card-x py-row-y text-fg text-mono-sm"
-    >
+    // The staged count and the run's result are two separate announcements, so
+    // the count's live region wraps only the count — nesting the report's own
+    // status inside it would give assistive tech a region within a region.
+    <div className="mx-card-x mb-row-y flex flex-col gap-row-y rounded-control border border-line bg-inset px-card-x py-row-y text-fg text-mono-sm">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="font-mono">{stagedNames.length} staged for bulk</span>
-        {hiddenCount > 0 ? (
-          <span className="text-muted text-tag">
-            · {hiddenCount} hidden by the filter
-          </span>
-        ) : null}
+        <span
+          role="status"
+          aria-label="Bulk selection"
+          className="flex flex-wrap items-center gap-2 font-mono"
+        >
+          {stagedNames.length} staged for bulk
+          {hiddenCount > 0 ? (
+            <span className="text-muted text-tag">
+              · {hiddenCount} hidden by the filter
+            </span>
+          ) : null}
+        </span>
         <span className="ml-auto flex items-center gap-2">
           <label htmlFor={selectId} className="sr-only">
             Bulk-deploy target

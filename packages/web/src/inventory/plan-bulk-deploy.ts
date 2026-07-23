@@ -13,6 +13,10 @@ export type BulkDeployPlan = {
   toDeploy: string[];
   // Names left out because they are already deployed and up-to-date.
   skippedClean: string[];
+  // The subset of toDeploy already deployed here but behind the latest tag: an
+  // update, not a first install. Named so the report can say which skills were
+  // updated to latest rather than newly deployed (#292).
+  updateToLatest: string[];
 };
 
 export function planBulkDeploy(
@@ -21,6 +25,7 @@ export function planBulkDeploy(
 ): BulkDeployPlan {
   const toDeploy: string[] = [];
   const skippedClean: string[] = [];
+  const updateToLatest: string[] = [];
 
   const deployedHere =
     target.deployed.status === "ready"
@@ -28,17 +33,22 @@ export function planBulkDeploy(
       : new Set<string>();
 
   for (const name of names) {
+    const deployed = deployedHere.has(name);
+    const status = target.drift.skillStatus(name);
     // A no-op only when the copy is confirmed present here AND the check that
     // ran says it is up-to-date. Any un-run drift state stays honest and is
     // attempted rather than assumed clean (J04).
-    const cleanAndLatest =
-      deployedHere.has(name) && target.drift.skillStatus(name) === "up-to-date";
-    if (cleanAndLatest) {
+    if (deployed && status === "up-to-date") {
       skippedClean.push(name);
-    } else {
-      toDeploy.push(name);
+      continue;
+    }
+    toDeploy.push(name);
+    // Only a confirmed-behind deployed copy is an update; an un-run check never
+    // claims one, and a skill deployed nowhere is a first install.
+    if (deployed && status === "behind") {
+      updateToLatest.push(name);
     }
   }
 
-  return { toDeploy, skippedClean };
+  return { toDeploy, skippedClean, updateToLatest };
 }
