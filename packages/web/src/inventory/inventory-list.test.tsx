@@ -22,7 +22,13 @@ const deployedTo = (
   names: string[],
   behind: { name: string; current: string; latest: string }[] = [],
 ): DeploymentTarget => ({
+  label: "",
   deployed: { status: "ready", names, skippedCount: 0 },
+  primitives: names.map((name) => ({
+    type: "skill" as const,
+    name,
+    version: "v1.0.0",
+  })),
   drift: ranDrift(behind),
 });
 
@@ -260,6 +266,131 @@ describe("InventoryList", () => {
 
     expect(dataRowNames()).toEqual(["tdd", "caveman"]);
     expect(nameHeader).toHaveAttribute("aria-sort", "descending");
+  });
+
+  it("opens a detail pane naming the skill when its row is selected", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderList(
+      <InventoryList
+        primitives={primitives}
+        repos={[]}
+        registryReady
+        targets={[deployedTo(["tdd"])]}
+      />,
+    );
+
+    // No pane until a row is picked — the table is a pure scan surface (ADR-0016).
+    expect(
+      screen.queryByRole("complementary", { name: /tdd detail/i }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "tdd" }));
+
+    const pane = screen.getByRole("complementary", { name: /tdd detail/i });
+    expect(
+      within(pane).getByRole("heading", { name: /tdd/i }),
+    ).toBeInTheDocument();
+    // The per-target version lens: tdd is deployed to the one target.
+    expect(within(pane).getByText("v1.0.0")).toBeInTheDocument();
+  });
+
+  it("removes the inline per-row deploy control, leaving deploy to the pane", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderList(
+      <InventoryList
+        primitives={primitives}
+        repos={[]}
+        registryReady
+        targets={[deployedTo(["tdd"])]}
+      />,
+    );
+
+    // The Actions column and its inline deploy control are gone; nothing deploys
+    // from a row before the pane is opened.
+    expect(
+      screen.queryByRole("columnheader", { name: "Actions" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /deploy/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("closes the pane when its close control is activated", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderList(
+      <InventoryList primitives={primitives} repos={[]} registryReady />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "tdd" }));
+    expect(
+      screen.getByRole("complementary", { name: /tdd detail/i }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /close/i }));
+
+    expect(
+      screen.queryByRole("complementary", { name: /tdd detail/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("deploys the skill from the pane", async () => {
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, _init?: RequestInit) => {
+        const url = String(input);
+        if (url.startsWith("/api/deploy-state/global")) {
+          return new Response(
+            JSON.stringify({
+              tools: [{ tool: "claude-code", primitives: [] }],
+              primitives: [],
+              skipped: [],
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          );
+        }
+        if (url.startsWith("/api/drift")) {
+          return new Response(JSON.stringify({ behind: [] }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        // The deploy itself.
+        return new Response(
+          JSON.stringify({
+            deployed: { type: "skill", name: "tdd", version: "v1.0.0" },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderList(
+      <InventoryList primitives={primitives} repos={[]} registryReady />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "tdd" }));
+    const pane = screen.getByRole("complementary", { name: /tdd detail/i });
+    await userEvent.click(
+      within(pane).getByRole("button", { name: /deploy/i }),
+    );
+
+    expect(
+      fetchMock.mock.calls.some(
+        ([input, init]) =>
+          String(input) === "/api/deploy" &&
+          init?.method === "POST" &&
+          String(init.body).includes("tdd"),
+      ),
+    ).toBe(true);
   });
 
   it("sorts the narrowed subset, not the whole inventory", async () => {

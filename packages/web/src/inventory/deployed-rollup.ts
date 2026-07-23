@@ -5,13 +5,22 @@
 // re-derives it.
 
 import type { DeployedView } from "../deploy-state/deployed-view";
+import type { DeployedPrimitive } from "../deploy-state/use-deploy-state";
 import type { DriftViewModel } from "../drift/drift-view-model";
 
 // One deploy target the roll-up folds in: what is deployed there (once the read
 // resolves) and that target's drift view-model (already narrowed per tool for the
 // global scope, so a skill behind on another tool never spills in).
+//
+// `label` names the target for a human (a tool's label or a repo path); `primitives`
+// carries the versioned deployed set. The count roll-up reads only `deployed` +
+// `drift`; the skill detail pane reads `label` + `primitives` for the per-target
+// version. Both lenses fold the same fetched data, so they cannot disagree
+// (ADR-0016). `primitives` is meaningful only when `deployed.status === "ready"`.
 export type DeploymentTarget = {
+  label: string;
   deployed: DeployedView;
+  primitives: DeployedPrimitive[];
   drift: DriftViewModel;
 };
 

@@ -1,7 +1,15 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { InventoryPanel } from "./inventory-panel";
+
+// Deploy moved from the row into the detail pane (ADR-0016), so the deploy control
+// only exists once a skill's row is selected. Opening the pane is the precondition
+// for asserting anything about that control.
+async function openPane(name: string) {
+  await userEvent.click(await screen.findByRole("button", { name }));
+}
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -96,12 +104,14 @@ describe("InventoryPanel", () => {
     expect(screen.getAllByRole("row")).toHaveLength(3); // header + 2 skills
   });
 
-  it("offers a deploy action with a repo choice on every skill row", async () => {
+  it("offers a deploy action with a repo choice in the detail pane", async () => {
     stubApi(
       [{ type: "skill", name: "tdd", description: "TDD loop" }],
       [{ path: "/projects/alpha" }],
     );
     renderPanel();
+
+    await openPane("tdd");
 
     expect(await screen.findByLabelText(/deploy tdd to/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /deploy/i })).toBeEnabled();
@@ -126,6 +136,8 @@ describe("InventoryPanel", () => {
       ),
     );
     renderPanel();
+
+    await openPane("tdd");
 
     expect(
       await screen.findByRole("button", { name: /loading targets/i }),
@@ -175,6 +187,8 @@ describe("InventoryPanel", () => {
       ),
     );
     renderPanel();
+
+    await openPane("tdd");
 
     expect(
       await screen.findByRole("button", { name: /loading targets/i }),
