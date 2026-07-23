@@ -9,8 +9,9 @@ import type { Primitive } from "./use-inventory";
 
 function dataRowNames(): (string | null)[] {
   const [, ...bodyRows] = screen.getAllByRole("row");
+  // Column order: bulk checkbox, Type, Name, Description, Deployed.
   return bodyRows.map(
-    (row) => within(row).getAllByRole("cell")[1]?.textContent ?? null,
+    (row) => within(row).getAllByRole("cell")[2]?.textContent ?? null,
   );
 }
 
@@ -323,7 +324,7 @@ describe("InventoryList", () => {
 
   it("clears a stale reinstall action when the selected skill changes", async () => {
     const fetchMock = vi.fn(
-      async (input: RequestInfo | URL, init?: RequestInit) => {
+      async (input: RequestInfo | URL, _init?: RequestInit) => {
         const url = String(input);
         if (url.startsWith("/api/deploy-state/global")) {
           return new Response(
@@ -468,6 +469,119 @@ describe("InventoryList", () => {
           String(init.body).includes("tdd"),
       ),
     ).toBe(true);
+  });
+
+  it("gives each row a checkbox that stages the skill for bulk", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderList(
+      <InventoryList primitives={primitives} repos={[]} registryReady />,
+    );
+
+    const checkbox = screen.getByRole("checkbox", { name: /stage tdd/i });
+    expect(checkbox).not.toBeChecked();
+
+    await userEvent.click(checkbox);
+
+    expect(screen.getByRole("checkbox", { name: /stage tdd/i })).toBeChecked();
+  });
+
+  it("stages a skill without opening its detail pane", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderList(
+      <InventoryList
+        primitives={primitives}
+        repos={[]}
+        registryReady
+        targets={[deployedTo(["tdd"])]}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("checkbox", { name: /stage tdd/i }));
+
+    // Model A: staging never toggles the inspection surface.
+    expect(
+      screen.queryByRole("complementary", { name: /tdd detail/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("opens a detail pane without staging the skill", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderList(
+      <InventoryList
+        primitives={primitives}
+        repos={[]}
+        registryReady
+        targets={[deployedTo(["tdd"])]}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "tdd" }));
+
+    // Model A: inspecting never toggles the staged state.
+    expect(
+      screen.getByRole("complementary", { name: /tdd detail/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: /stage tdd/i }),
+    ).not.toBeChecked();
+  });
+
+  it("keeps a skill staged when the search narrows and re-widens the table", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderList(
+      <InventoryList primitives={primitives} repos={[]} registryReady />,
+    );
+
+    await userEvent.click(screen.getByRole("checkbox", { name: /stage tdd/i }));
+
+    const search = screen.getByRole("searchbox", { name: /search/i });
+    await userEvent.type(search, "cave");
+    // tdd is filtered out of view here, but its staged state must survive.
+    expect(
+      screen.queryByRole("checkbox", { name: /stage tdd/i }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.clear(search);
+
+    expect(screen.getByRole("checkbox", { name: /stage tdd/i })).toBeChecked();
+  });
+
+  it("reports how many staged skills the current filter hides", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderList(
+      <InventoryList primitives={primitives} repos={[]} registryReady />,
+    );
+
+    // No bulk bar until something is staged.
+    expect(screen.queryByText(/staged for bulk/i)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("checkbox", { name: /stage tdd/i }));
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /stage caveman/i }),
+    );
+    await userEvent.type(
+      screen.getByRole("searchbox", { name: /search/i }),
+      "cave",
+    );
+
+    const bar = screen.getByRole("status", { name: /bulk selection/i });
+    expect(bar).toHaveTextContent(/2 staged for bulk/i);
+    expect(bar).toHaveTextContent(/1 hidden by the filter/i);
   });
 
   it("sorts the narrowed subset, not the whole inventory", async () => {
