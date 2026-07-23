@@ -165,4 +165,61 @@ describe("BulkDeployBar", () => {
     resolveDeployState?.();
     await vi.waitFor(() => expect(button).not.toBeDisabled());
   });
+
+  it("still sends a skill missing from one detected tool during a global run", async () => {
+    // "tdd" is deployed and up-to-date on Claude Code but was never installed
+    // on Codex (added to the machine later). A global run must still reach
+    // Codex, not read the Claude Code copy as "clean everywhere" (#292).
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.startsWith("/api/deploy-state/global")) {
+          return jsonResponse({
+            tools: [
+              {
+                tool: "claude",
+                primitives: [{ type: "skill", name: "tdd", version: "v1.0.0" }],
+              },
+              { tool: "codex", primitives: [] },
+            ],
+            skipped: [],
+          });
+        }
+        if (url.startsWith("/api/drift/global")) {
+          return jsonResponse({ behind: [] });
+        }
+        if (url === "/api/deploy/bulk") {
+          expect(JSON.parse(init?.body as string)).toEqual({
+            names: ["tdd"],
+            target: { kind: "global" },
+          });
+          return jsonResponse({
+            target: { kind: "global" },
+            deployed: [{ name: "tdd", version: "v1.0.0" }],
+            attention: [],
+            failed: [],
+          });
+        }
+        throw new Error(`Unexpected request: ${url}`);
+      }),
+    );
+
+    renderBar(
+      <BulkDeployBar
+        stagedNames={["tdd"]}
+        hiddenCount={0}
+        repos={[]}
+        registryReady
+      />,
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /deploy 1/i }),
+    );
+
+    expect(
+      await screen.findByRole("status", { name: /bulk deploy result/i }),
+    ).toHaveTextContent(/1 deployed/);
+  });
 });
