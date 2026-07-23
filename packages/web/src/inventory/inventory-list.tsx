@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "../ui/table";
 import { TypeTag } from "../ui/type-tag";
+import { hiddenStagedCount, toggleStaged } from "./bulk-selection";
 import { DeploySkillAction } from "./deploy-skill-action";
 import { DeployedCell } from "./deployed-cell";
 import { type DeploymentTarget, rollUpDeployment } from "./deployed-rollup";
@@ -70,6 +71,13 @@ export function InventoryList({
   const [selected, setSelected] = useState<string | null>(null);
   const toggleSelected = (name: string) =>
     setSelected((current) => (current === name ? null : name));
+  // Which skills are staged for a bulk action — UI-state, held by name and kept
+  // apart from `selected` so inspecting and staging never toggle each other
+  // (Model A, #291). Independent of the narrowed view, so filtering never drops
+  // a staged skill.
+  const [staged, setStaged] = useState<ReadonlySet<string>>(new Set());
+  const toggleStagedName = (name: string) =>
+    setStaged((current) => toggleStaged(current, name));
 
   if (primitives.length === 0) {
     return (
@@ -86,6 +94,12 @@ export function InventoryList({
   const segments = deriveTypeSegments(primitives);
   const narrowed = filterByName(filterByType(primitives, filter), query);
   const visible = sort ? sortPrimitives(narrowed, sort) : narrowed;
+  // How many staged skills the current filter/search hides, so the bulk bar can
+  // warn that a bulk action reaches beyond what is on screen (#291).
+  const hiddenCount = hiddenStagedCount(
+    staged,
+    visible.map((primitive) => primitive.name),
+  );
 
   // The open pane's skill, read from the full inventory so a narrowing search
   // never orphans the selection. skillDeployments is the per-target version lens
@@ -129,9 +143,26 @@ export function InventoryList({
           className="w-full rounded-control border border-line bg-inset px-card-x py-row-y font-mono text-fg text-mono-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
         />
       </div>
+      {staged.size > 0 ? (
+        <div
+          role="status"
+          aria-label="Bulk selection"
+          className="mx-card-x mb-row-y flex items-center gap-2 rounded-control border border-line bg-inset px-card-x py-row-y text-mono-sm text-fg"
+        >
+          <span className="font-mono">{staged.size} staged for bulk</span>
+          {hiddenCount > 0 ? (
+            <span className="text-muted text-tag">
+              · {hiddenCount} hidden by the filter
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead>
+              <span className="sr-only">Stage for bulk</span>
+            </TableHead>
             <SortableHead column="type" sort={sort} onSort={setSort}>
               Type
             </SortableHead>
@@ -149,7 +180,7 @@ export function InventoryList({
         <TableBody>
           {visible.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={4} className="text-dim text-tag">
+              <TableCell colSpan={5} className="text-dim text-tag">
                 No skills match your search.
               </TableCell>
             </TableRow>
@@ -163,6 +194,19 @@ export function InventoryList({
                   primitive.name === selected ? "bg-dim-bg" : undefined,
                 )}
               >
+                <TableCell>
+                  {/* Staging is independent of opening the pane, so the checkbox
+                      stops the click from bubbling to the row's select handler
+                      (Model A, #291). */}
+                  <input
+                    type="checkbox"
+                    checked={staged.has(primitive.name)}
+                    onClick={(event) => event.stopPropagation()}
+                    onChange={() => toggleStagedName(primitive.name)}
+                    aria-label={`Stage ${primitive.name} for bulk`}
+                    className="size-4 accent-amber focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+                  />
+                </TableCell>
                 <TableCell>
                   <TypeTag type={primitive.type} />
                 </TableCell>
