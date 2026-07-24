@@ -52,6 +52,19 @@ describe("SkillDetailPane", () => {
     expect(screen.getByText("v1.1.0")).toBeInTheDocument();
   });
 
+  it("marks an in-sync target with a status word, not colour alone", () => {
+    // An up-to-date copy signalled only by green version text fails users who
+    // can't perceive colour (PRODUCT.md: colour is never the only carrier of
+    // meaning). The in-sync state must carry a readable word too.
+    renderPane({
+      deployments: [
+        { label: "Claude Code", version: "v1.0.0", status: "up-to-date" },
+      ],
+    });
+
+    expect(screen.getByText(/in sync/i)).toBeInTheDocument();
+  });
+
   it("shows the deployed -> latest pair and a behind marker for a behind target", () => {
     renderPane({
       deployments: [

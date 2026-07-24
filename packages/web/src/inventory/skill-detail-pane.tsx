@@ -111,6 +111,18 @@ function DeployedRow({ deployment }: { deployment: SkillDeployment }) {
   const chip = driftChip[status];
   return (
     <li className="flex items-center gap-2 py-1 text-tag">
+      {/* Status dot pairs colour with a glyph and text so in-sync/drift survive
+          without colour perception (PRODUCT.md). Drift states carry the word in
+          their chip; in-sync has no chip, so it holds an sr-only word here. */}
+      <span
+        aria-hidden="true"
+        className={cn("text-[9px]", versionColor[status])}
+      >
+        ●
+      </span>
+      {status === "up-to-date" ? (
+        <span className="sr-only">in sync</span>
+      ) : null}
       <span className="flex-1 truncate text-fg-2">{label}</span>
       <span className={cn("font-mono", versionColor[status])}>
         {status === "behind" && latest ? `${version} → ${latest}` : version}

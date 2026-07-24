@@ -123,25 +123,36 @@ export function InventoryList({
       {registryReady && repos.length === 0 ? (
         <RegisterRepoHint className="block px-card-x pt-row-y" />
       ) : null}
-      <div className="px-card-x pt-row-y">
+      {/* Search and type filter share one toolbar row: scan-by-name on the left,
+          scope-by-type on the right (mockup 3a). Both stay local UI-state. */}
+      <div className="flex flex-wrap items-center gap-3 px-card-x py-row-y">
+        <div className="relative w-full max-w-[240px]">
+          <label htmlFor="inventory-search" className="sr-only">
+            Search skills
+          </label>
+          {/* Leading glyph clears the input's pl-7; pointer-events-none so it
+              never steals the click focus from the field. */}
+          <span
+            aria-hidden="true"
+            className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-2.5 text-dim text-mono-sm"
+          >
+            ⌕
+          </span>
+          <input
+            id="inventory-search"
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="search…"
+            className="w-full rounded-control border border-line bg-inset py-row-y pr-card-x pl-7 font-mono text-fg text-mono-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+          />
+        </div>
         <SegmentedControl
+          className="ml-auto"
           label="Filter by type"
           segments={segments}
           value={filter}
           onChange={setFilter}
-        />
-      </div>
-      <div className="px-card-x py-row-y">
-        <label htmlFor="inventory-search" className="sr-only">
-          Search skills
-        </label>
-        <input
-          id="inventory-search"
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search skills…"
-          className="w-full rounded-control border border-line bg-inset px-card-x py-row-y font-mono text-fg text-mono-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
         />
       </div>
       {staged.size > 0 ? (
@@ -170,12 +181,16 @@ export function InventoryList({
             {/* Deployed is a per-skill roll-up, not a primitive field, so it is
                 not a sort key (out of #289 scope) — a plain header. */}
             <TableHead>Deployed</TableHead>
+            {/* Trailing chevron column: the row's expand affordance. */}
+            <TableHead>
+              <span className="sr-only">Expand</span>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {visible.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="text-dim text-tag">
+              <TableCell colSpan={6} className="text-dim text-tag">
                 No skills match your search.
               </TableCell>
             </TableRow>
@@ -186,7 +201,7 @@ export function InventoryList({
                 onClick={() => toggleSelected(primitive.name)}
                 className={cn(
                   "cursor-pointer",
-                  primitive.name === selected ? "bg-dim-bg" : undefined,
+                  primitive.name === selected ? "bg-active" : undefined,
                 )}
               >
                 <TableCell>
@@ -230,6 +245,20 @@ export function InventoryList({
                   <DeployedCell
                     rollup={rollUpDeployment(primitive.name, targets)}
                   />
+                </TableCell>
+                {/* Chevron mirrors the row's selected state — amber when its
+                    pane is open, dim otherwise. Decorative: the name button
+                    already carries aria-expanded for assistive tech. */}
+                <TableCell className="text-right">
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "text-mono-sm",
+                      primitive.name === selected ? "text-amber" : "text-dim",
+                    )}
+                  >
+                    ›
+                  </span>
                 </TableCell>
               </TableRow>
             ))
