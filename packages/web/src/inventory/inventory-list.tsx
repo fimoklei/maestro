@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "../ui/table";
 import { TypeTag } from "../ui/type-tag";
+import { BulkDeployBar } from "./bulk-deploy-bar";
 import { hiddenStagedCount, toggleStaged } from "./bulk-selection";
 import { DeploySkillAction } from "./deploy-skill-action";
 import { DeployedCell } from "./deployed-cell";
@@ -144,18 +145,12 @@ export function InventoryList({
         />
       </div>
       {staged.size > 0 ? (
-        <div
-          role="status"
-          aria-label="Bulk selection"
-          className="mx-card-x mb-row-y flex items-center gap-2 rounded-control border border-line bg-inset px-card-x py-row-y text-mono-sm text-fg"
-        >
-          <span className="font-mono">{staged.size} staged for bulk</span>
-          {hiddenCount > 0 ? (
-            <span className="text-muted text-tag">
-              · {hiddenCount} hidden by the filter
-            </span>
-          ) : null}
-        </div>
+        <BulkDeployBar
+          stagedNames={[...staged]}
+          hiddenCount={hiddenCount}
+          repos={repos}
+          registryReady={registryReady}
+        />
       ) : null}
       <Table>
         <TableHeader>

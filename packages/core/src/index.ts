@@ -5,6 +5,10 @@
 export { ApmCliDriver } from "./deploy/apm-cli-driver";
 export { resolveApmScratchCwd } from "./deploy/apm-scratch-cwd";
 export {
+  type BulkDeployReport,
+  BulkDeploySkills,
+} from "./deploy/bulk-deploy-skills";
+export {
   DeploySkill,
   type DeploySkillError,
   type DeployTarget,

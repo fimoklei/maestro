@@ -4,6 +4,7 @@ import {
   type BrowseError,
   BrowseFilesystem,
   type BrowseSuccess,
+  BulkDeploySkills,
   CheckVersionDrift,
   ConfigStore,
   ConnectInventory,
@@ -52,6 +53,19 @@ const deployBodySchema = z.object({
   // boolean; core treats it as the deliberate override of the destination guard
   // (ADR-0006, #66). Absent or false means the guard runs normally.
   force: z.boolean().optional(),
+});
+
+// Bulk deploy: the staged skills to one target. Names are validated as a
+// non-empty list at the edge; the per-skill business rules (slug check,
+// membership, guards) stay in the core deploy path each name is driven through.
+// No batch-wide force: a diverged copy always comes back as an attention row,
+// overridden only per item via the existing single-deploy route (#292).
+const bulkDeployBodySchema = z.object({
+  names: z.array(z.string()).min(1),
+  target: z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("repo"), repoPath: z.string() }),
+    z.object({ kind: z.literal("global") }),
+  ]),
 });
 
 // A failed drift check answers 200 with a body the web maps to a badge, not an
@@ -448,6 +462,32 @@ export function createApp(deps: AppDeps) {
       return c.json({ error: result.error, message }, status);
     }
     return c.json({ deployed: result.deployed });
+  });
+
+  // Bulk-deploy the staged skills to one target: plan → execute → report. The
+  // orchestrator drives the same guarded deploy path once per name, never
+  // aborting on a failure, and returns a report the cockpit reads (clean skips
+  // resolve on the web from the cached drift, so they never reach this route).
+  // Always 200 with a report — a per-skill refusal is data, not an HTTP error;
+  // only a malformed body is a 400. Composed here from the injected deploy
+  // use-case, so it shares its per-target in-flight lock (#292).
+  const bulkDeploy = new BulkDeploySkills({ deploy: deps.deploy });
+  app.post("/api/deploy/bulk", async (c) => {
+    const body = await c.req.json().catch(() => null);
+    const parsed = bulkDeployBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json(
+        {
+          error: "invalid-body",
+          message:
+            'Expected a JSON body with a non-empty names array and a target ({ kind: "repo", repoPath } or { kind: "global" }).',
+        },
+        400,
+      );
+    }
+
+    const report = await bulkDeploy.execute(parsed.data);
+    return c.json(report);
   });
 
   // Per-repo version drift, registry-gated like deploy-state. The judgment is
