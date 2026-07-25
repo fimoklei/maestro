@@ -1,4 +1,10 @@
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { RegisterRepoHint } from "../registry/register-repo-hint";
 import type { RegisteredRepo } from "../registry/use-registry";
 import { cn } from "../ui/cn";
@@ -84,8 +90,17 @@ export function InventoryList({
   // focus back to whichever row opened it (skill-detail-pane.tsx). A plain
   // ref map rather than one ref: the pane's own instance persists across a
   // row switch, so "the trigger" has to be looked up per selection, not
-  // captured once.
+  // captured once. Exposed as a stable lookup function (not a resolved
+  // element) because a row can unmount and remount — a narrowing search
+  // hides it, clearing the search brings it back as a new DOM node — while
+  // the pane, keyed only by name, stays open the whole time; the pane looks
+  // this up fresh at close time rather than holding a value that would go
+  // stale the moment the row round-trips.
   const rowButtonRefs = useRef(new Map<string, HTMLButtonElement>());
+  const getTriggerElement = useCallback(
+    (name: string) => rowButtonRefs.current.get(name) ?? null,
+    [],
+  );
   // On a narrow window the pane sits below the whole table, so opening one from
   // a row near the top would look like nothing happened. Bring it into view on
   // selection; beside the table it is already visible and this does nothing.
@@ -357,9 +372,7 @@ export function InventoryList({
             />
           }
           onClose={() => setSelected(null)}
-          triggerElement={
-            rowButtonRefs.current.get(selectedPrimitive.name) ?? null
-          }
+          getTriggerElement={getTriggerElement}
         />
       ) : null}
     </div>

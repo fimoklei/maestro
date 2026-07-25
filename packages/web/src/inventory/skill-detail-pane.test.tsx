@@ -16,7 +16,7 @@ function renderPane(overrides: {
   unconfirmed?: boolean;
   deployAction?: React.ReactNode;
   onClose?: () => void;
-  triggerElement?: HTMLElement | null;
+  getTriggerElement?: (name: string) => HTMLElement | null;
 }) {
   return render(
     <SkillDetailPane
@@ -27,7 +27,7 @@ function renderPane(overrides: {
         overrides.deployAction ?? <button type="button">Deploy</button>
       }
       onClose={overrides.onClose ?? (() => {})}
-      triggerElement={overrides.triggerElement ?? null}
+      getTriggerElement={overrides.getTriggerElement ?? (() => null)}
     />,
   );
 }
@@ -165,14 +165,17 @@ describe("SkillDetailPane", () => {
   it("returns focus to the element that opened it once it closes", () => {
     // The pane persists across a row switch (inventory-list keeps one
     // instance and only swaps `primitive`), so the return target has to be
-    // the caller-supplied trigger, not whatever `document.activeElement`
+    // the caller-supplied lookup, not whatever `document.activeElement`
     // happens to be — that would be corrupted by the pane's own mount effect
-    // moving focus to the heading.
+    // moving focus to the heading. The lookup is resolved at close time, not
+    // captured up front, so a caller can look up a row that has since
+    // remounted (skill-detail-pane's own row can unmount and remount behind
+    // a narrowing search while the pane stays open).
     const trigger = document.createElement("button");
     document.body.appendChild(trigger);
     trigger.focus();
 
-    const { unmount } = renderPane({ triggerElement: trigger });
+    const { unmount } = renderPane({ getTriggerElement: () => trigger });
     unmount();
 
     expect(document.activeElement).toBe(trigger);

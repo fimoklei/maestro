@@ -24,7 +24,7 @@ export function SkillDetailPane({
   unconfirmed,
   deployAction,
   onClose,
-  triggerElement,
+  getTriggerElement,
 }: {
   // Lets the list scroll the pane into view when it opens below the table on a
   // narrow window. Presentation only — the pane still owns no state.
@@ -37,16 +37,18 @@ export function SkillDetailPane({
   unconfirmed: boolean;
   deployAction: ReactNode;
   onClose: () => void;
-  // The row button that opened this skill's pane — where focus goes back to
-  // when it closes. A prop, not read from `document.activeElement`, because
-  // the caller is the one place that reliably knows which row is open
-  // (use-skill-detail-pane-focus.ts).
-  triggerElement: HTMLElement | null;
+  // Looks up the row button that opened a skill's pane, by name — where focus
+  // goes back to when it closes. A lookup, not a resolved element, because
+  // selection persists across a narrowing search: the row behind an open pane
+  // can unmount and remount as a new DOM node while the pane stays open, so
+  // the button has to be found fresh at close time, not captured once at open
+  // time (use-skill-detail-pane-focus.ts).
+  getTriggerElement: (name: string) => HTMLElement | null;
 }) {
   const paneId = `skill-detail-${primitive.name}`;
   const { headingRef } = useSkillDetailPaneFocus({
     activeKey: primitive.name,
-    triggerElement,
+    getTriggerElement,
     onClose,
   });
 

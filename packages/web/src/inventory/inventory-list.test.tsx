@@ -329,6 +329,54 @@ describe("InventoryList", () => {
     expect(document.activeElement).toBe(nameButton);
   });
 
+  it("returns focus to the row button even after it was filtered away and remounted", async () => {
+    // The row button is looked up fresh at close time, not captured once when
+    // the pane opens: selection persists across filtering (the pane stays
+    // open on a hidden row), so the button that exists when Escape is
+    // finally pressed can be a different DOM node than the one that was
+    // there when the pane first opened.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderList(
+      <InventoryList
+        primitives={primitives}
+        repos={[]}
+        registryReady
+        targets={[deployedTo(["tdd"])]}
+      />,
+    );
+
+    const originalButton = screen.getByRole("button", { name: "tdd" });
+    await userEvent.click(originalButton);
+    expect(
+      screen.getByRole("complementary", { name: /tdd detail/i }),
+    ).toBeInTheDocument();
+
+    const search = screen.getByLabelText(/search skills/i);
+    await userEvent.type(search, "caveman");
+    expect(
+      screen.queryByRole("button", { name: "tdd" }),
+    ).not.toBeInTheDocument();
+    // Selection persists across a narrowing search — the pane stays open on
+    // a row that is currently hidden from the table.
+    expect(
+      screen.getByRole("complementary", { name: /tdd detail/i }),
+    ).toBeInTheDocument();
+
+    await userEvent.clear(search);
+    const restoredButton = screen.getByRole("button", { name: "tdd" });
+    expect(restoredButton).not.toBe(originalButton);
+
+    await userEvent.keyboard("{Escape}");
+
+    expect(
+      screen.queryByRole("complementary", { name: /tdd detail/i }),
+    ).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(restoredButton);
+  });
+
   it("opens the pane when a non-name cell of the row is clicked", async () => {
     vi.stubGlobal(
       "fetch",

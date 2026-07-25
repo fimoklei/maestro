@@ -13,30 +13,30 @@ import { useEscapeToClose } from "../shell/use-escape-to-close";
 // selection moves to a different row, so a mount-only effect would miss that
 // switch entirely.
 //
-// The return target is a prop, not `document.activeElement` read inside this
-// hook: on a row-to-row switch this effect's own cleanup (for the row being
-// left) fires and moves focus to that row's trigger a beat before the new
-// effect would read `document.activeElement` — reading it here would just
-// observe the value this same hook wrote. The caller already knows which row
-// button opened the pane, so it hands that element in directly.
+// `getTriggerElement` is a lookup, not a resolved element: selection persists
+// across a narrowing search (the pane stays open on a row hidden by the
+// filter), so the row can unmount and remount — a new DOM node — while this
+// hook's effect never re-runs (activeKey hasn't changed). Resolving the
+// trigger once, at open time, would go stale the moment that happens; calling
+// the lookup inside the cleanup instead resolves it fresh, at the actual
+// moment of closing, against whichever row button currently exists.
 export function useSkillDetailPaneFocus({
   activeKey,
-  triggerElement,
+  getTriggerElement,
   onClose,
 }: {
   activeKey: string;
-  triggerElement: HTMLElement | null;
+  getTriggerElement: (key: string) => HTMLElement | null;
   onClose: () => void;
 }) {
   const headingRef = useRef<HTMLHeadingElement>(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: activeKey re-keys this effect per open skill; triggerElement alone would miss a caller reusing the same element across two different skills.
   useEffect(() => {
     headingRef.current?.focus();
     return () => {
-      triggerElement?.focus();
+      getTriggerElement(activeKey)?.focus();
     };
-  }, [activeKey, triggerElement]);
+  }, [activeKey, getTriggerElement]);
 
   useEscapeToClose({ onClose });
 
