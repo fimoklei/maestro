@@ -298,6 +298,37 @@ describe("InventoryList", () => {
     expect(within(pane).getByText("v1.0.0")).toBeInTheDocument();
   });
 
+  it("closes the pane on Escape and returns focus to the row that opened it", async () => {
+    // The pane persists across a row switch — inventory-list keeps one
+    // instance and only swaps its `primitive` prop — so the return target
+    // has to be wired per row, not read off whatever last held focus.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderList(
+      <InventoryList
+        primitives={primitives}
+        repos={[]}
+        registryReady
+        targets={[deployedTo(["tdd"])]}
+      />,
+    );
+
+    const nameButton = screen.getByRole("button", { name: "tdd" });
+    await userEvent.click(nameButton);
+    expect(
+      screen.getByRole("complementary", { name: /tdd detail/i }),
+    ).toBeInTheDocument();
+
+    await userEvent.keyboard("{Escape}");
+
+    expect(
+      screen.queryByRole("complementary", { name: /tdd detail/i }),
+    ).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(nameButton);
+  });
+
   it("opens the pane when a non-name cell of the row is clicked", async () => {
     vi.stubGlobal(
       "fetch",

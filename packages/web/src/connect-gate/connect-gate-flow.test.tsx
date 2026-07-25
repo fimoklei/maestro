@@ -218,6 +218,11 @@ describe("connect gate", () => {
     expect(
       await screen.findByRole("heading", { name: /^central inventory$/i }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+    // Inventory carries its own <h1> now (heading navigation needs a starting
+    // point on that route) — the invariant this guards is that it's the only
+    // one, so no stray gate heading rode along.
+    const h1s = screen.getAllByRole("heading", { level: 1 });
+    expect(h1s).toHaveLength(1);
+    expect(h1s[0]).toHaveTextContent(/^central inventory$/i);
   });
 });

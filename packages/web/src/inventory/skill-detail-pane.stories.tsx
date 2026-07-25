@@ -22,6 +22,7 @@ const meta = {
       </Button>
     ),
     onClose: () => {},
+    triggerElement: null,
     deployments: [
       { label: "Claude Code", version: "v1.2.0", status: "up-to-date" },
       {

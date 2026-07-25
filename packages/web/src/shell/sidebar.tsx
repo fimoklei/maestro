@@ -27,7 +27,10 @@ export function Sidebar() {
   const onGate = pathname === "/welcome" || pathname.startsWith("/welcome/");
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col gap-0.5 overflow-y-auto border-line border-r p-2.5">
+    <aside
+      aria-label="Sidebar"
+      className="flex w-64 shrink-0 flex-col gap-0.5 overflow-y-auto border-line border-r p-2.5"
+    >
       <nav aria-label="Views" className="flex flex-col gap-0.5">
         {NAV_ITEMS.map((item) => (
           <NavItem
