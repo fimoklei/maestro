@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { RegisterRepoHint } from "../registry/register-repo-hint";
 import type { RegisteredRepo } from "../registry/use-registry";
 import { cn } from "../ui/cn";
@@ -79,6 +79,14 @@ export function InventoryList({
   const [staged, setStaged] = useState<ReadonlySet<string>>(new Set());
   const toggleStagedName = (name: string) =>
     setStaged((current) => toggleStaged(current, name));
+  // On a narrow window the pane sits below the whole table, so opening one from
+  // a row near the top would look like nothing happened. Bring it into view on
+  // selection; beside the table it is already visible and this does nothing.
+  const paneRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (selected === null) return;
+    paneRef.current?.scrollIntoView?.({ block: "nearest" });
+  }, [selected]);
 
   if (primitives.length === 0) {
     return (
@@ -165,8 +173,15 @@ export function InventoryList({
       ) : null}
       {/* Below the table's floor the columns would be squeezed past reading, so
           the overflow becomes a real scrollbar the user can reach — never the
-          silent clip that hid Deployed and the chevron off-screen. */}
-      <div className="overflow-x-auto">
+          silent clip that hid Deployed and the chevron off-screen. A scrollable
+          region is reachable from the keyboard too, so it is named and takes
+          focus (WCAG 2.1.1). */}
+      <section
+        aria-label="Central inventory table"
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scroll container that cannot take focus is keyboard-unreachable (WCAG 2.1.1), and Safari does not focus scrollers on its own
+        tabIndex={0}
+        className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+      >
         {/* table-fixed, and the widths below are what makes it bite: under the
             browser default the cells size to their content, so one long skill
             description stretched the table thousands of pixels past the card
@@ -295,15 +310,20 @@ export function InventoryList({
             )}
           </TableBody>
         </Table>
-      </div>
+      </section>
     </>
   );
 
   return (
-    <div className="flex items-start">
+    // Side by side only while both fit: the table's 560px floor plus the 320px
+    // pane needs a ~1200px window once the sidebar and page padding are paid
+    // for. Narrower than that the pane drops below the table instead of eating
+    // its width, which is what would push Deployed back behind a scrollbar.
+    <div className="flex flex-col min-[1200px]:flex-row min-[1200px]:items-start">
       <div className="min-w-0 flex-1">{table}</div>
       {selectedPrimitive ? (
         <SkillDetailPane
+          ref={paneRef}
           primitive={selectedPrimitive}
           deployments={skillDeployments(selectedPrimitive.name, targets)}
           // The reach is unconfirmed while any target's read is pending or

@@ -90,7 +90,11 @@ export function DeploySkillAction({
       : "Deploy →";
 
   return (
-    <span className="flex items-center gap-2">
+    // Wraps, because this row lives in a 320px pane that clips its overflow: the
+    // wider states — "● already synced" beside Re-deploy, a success line, a
+    // refusal notice — would otherwise push the control the user came for out of
+    // the pane with no way to scroll to it.
+    <span className="flex flex-wrap items-center gap-2">
       <label htmlFor={selectId} className="sr-only">
         Deploy {skillName} to
       </label>

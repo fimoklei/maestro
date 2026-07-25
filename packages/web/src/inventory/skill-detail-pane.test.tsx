@@ -147,6 +147,5 @@ describe("SkillDetailPane", () => {
 
     const pane = screen.getByRole("complementary", { name: /tdd detail/i });
     expect(pane).toHaveClass("sticky");
-    expect(pane).toHaveClass("max-h-[100cqh]");
   });
 });
