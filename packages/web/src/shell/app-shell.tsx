@@ -10,7 +10,11 @@ export function AppShell() {
       <StatusBar />
       <div className="flex min-h-0 flex-1">
         <Sidebar />
-        <main className="min-w-0 flex-1 overflow-auto p-6">
+        {/* A size container, so a view can bound something to the height of the
+            scrolling region — the inventory's sticky detail pane needs it, and
+            CSS has no other name for it. The region is sized by the flex row
+            around it, never by its contents, so size containment costs nothing. */}
+        <main className="@container-[size] min-w-0 flex-1 overflow-auto p-6">
           <FirstRunGate />
         </main>
       </div>

@@ -68,13 +68,20 @@ export function TableHead({
   );
 }
 
+// title carries the full text of a cell that truncates, so the part the column
+// clips is still available on hover.
 export function TableCell({
   children,
   className,
   colSpan,
-}: TableSectionProps & { colSpan?: number }) {
+  title,
+}: TableSectionProps & { colSpan?: number; title?: string }) {
   return (
-    <td colSpan={colSpan} className={cn("px-card-x py-row-y", className)}>
+    <td
+      colSpan={colSpan}
+      title={title}
+      className={cn("px-card-x py-row-y", className)}
+    >
       {children}
     </td>
   );

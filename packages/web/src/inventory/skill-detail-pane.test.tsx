@@ -136,4 +136,17 @@ describe("SkillDetailPane", () => {
 
     expect(onClose).toHaveBeenCalledOnce();
   });
+
+  it("stays in view and scrolls on its own while the table scrolls past it", () => {
+    // A static pane scrolled away with the table: at main.scrollTop = 900 its top
+    // sat at -794px, taking the deploy control off-screen with it. Steering has to
+    // stay next to the state that demands it (PRODUCT.md principle 4), so the pane
+    // sticks to the viewport and scrolls its own overflow. jsdom cannot measure
+    // scroll geometry; the stuck pane is proven in the browser.
+    renderPane({});
+
+    const pane = screen.getByRole("complementary", { name: /tdd detail/i });
+    expect(pane).toHaveClass("sticky");
+    expect(pane).toHaveClass("max-h-[100cqh]");
+  });
 });

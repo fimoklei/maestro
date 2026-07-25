@@ -609,4 +609,22 @@ describe("InventoryList", () => {
 
     expect(dataRowNames()).toEqual(["search-a", "search-b", "search-c"]);
   });
+
+  it("sizes its columns from the container, not from the cell contents", () => {
+    // Under the browser default (table-layout: auto) the cells grow to fit their
+    // text, so one long skill description widened the table past the card that
+    // clips it — Deployed and the expand chevron sat ~5800px off-screen with no
+    // scrollbar anywhere to reach them. Fixed layout is the width strategy that
+    // keeps every column inside the card. jsdom cannot measure geometry, so this
+    // asserts the strategy; the reachable columns are proven in the browser.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderList(
+      <InventoryList primitives={primitives} repos={[]} registryReady />,
+    );
+
+    expect(screen.getByRole("table")).toHaveClass("table-fixed");
+  });
 });

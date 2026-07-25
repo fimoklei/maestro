@@ -37,9 +37,16 @@ export function SkillDetailPane({
     <aside
       id={paneId}
       aria-label={`${primitive.name} detail`}
-      className="flex w-80 flex-none flex-col border-line border-l bg-inset"
+      // Sticky, not static: the table beside it runs far past one screen, and a
+      // static pane scrolled away with it, taking the deploy control off-screen.
+      // Steering stays next to the state that demands it (PRODUCT.md principle 4).
+      // Height is bounded by the scrolling region itself: 100cqh is the content
+      // height of the shell's main container (app-shell.tsx), which is exactly
+      // the room the pane sticks in — so the whole pane, deploy control
+      // included, lands inside the screen at any window height.
+      className="sticky top-0 flex max-h-[100cqh] w-80 flex-none flex-col overflow-clip border-line border-l bg-inset"
     >
-      <div className="flex items-center border-line-faint border-b px-card-x py-row-y">
+      <div className="flex flex-none items-center border-line-faint border-b px-card-x py-row-y">
         <span className="text-dim text-tag uppercase tracking-tag">Skill</span>
         <button
           type="button"
@@ -51,44 +58,49 @@ export function SkillDetailPane({
         </button>
       </div>
 
-      <div className="border-line-faint border-b px-card-x py-row-y">
-        <div className="flex items-center gap-2">
-          <TypeTag type={primitive.type} />
-          <h2 className="font-medium text-fg text-lg">{primitive.name}</h2>
+      {/* Only the reading matter scrolls. The label row above and the deploy
+          control below stay put, so a skill with a long description can never
+          push the one action in this pane out of reach. */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="border-line-faint border-b px-card-x py-row-y">
+          <div className="flex items-center gap-2">
+            <TypeTag type={primitive.type} />
+            <h2 className="font-medium text-fg text-lg">{primitive.name}</h2>
+          </div>
+          <p className="mt-2 text-desc text-muted">{primitive.description}</p>
         </div>
-        <p className="mt-2 text-desc text-muted">{primitive.description}</p>
+
+        <div className="border-line-faint border-b px-card-x py-row-y">
+          <div className="mb-2 text-dim text-tag uppercase tracking-tag">
+            Deployed to
+          </div>
+          {deployments.length > 0 ? (
+            <>
+              <ul>
+                {deployments.map((deployment) => (
+                  <DeployedRow key={deployment.label} deployment={deployment} />
+                ))}
+              </ul>
+              {/* Some targets loaded, others are still pending or unreadable —
+                  the listed set is partial, so never let it read as the full
+                  reach (J04). */}
+              {unconfirmed ? (
+                <p className="mt-2 text-desc text-dim">
+                  more targets may still be loading…
+                </p>
+              ) : null}
+            </>
+          ) : unconfirmed ? (
+            // The reach is not yet known — never claim a definite absence while
+            // a read is still in flight or failed (J04).
+            <p className="text-desc text-dim">still reading deploy state…</p>
+          ) : (
+            <p className="text-desc text-dim">not deployed to any target yet</p>
+          )}
+        </div>
       </div>
 
-      <div className="border-line-faint border-b px-card-x py-row-y">
-        <div className="mb-2 text-dim text-tag uppercase tracking-tag">
-          Deployed to
-        </div>
-        {deployments.length > 0 ? (
-          <>
-            <ul>
-              {deployments.map((deployment) => (
-                <DeployedRow key={deployment.label} deployment={deployment} />
-              ))}
-            </ul>
-            {/* Some targets loaded, others are still pending or unreadable — the
-                listed set is partial, so never let it read as the full reach
-                (J04). */}
-            {unconfirmed ? (
-              <p className="mt-2 text-desc text-dim">
-                more targets may still be loading…
-              </p>
-            ) : null}
-          </>
-        ) : unconfirmed ? (
-          // The reach is not yet known — never claim a definite absence while a
-          // read is still in flight or failed (J04).
-          <p className="text-desc text-dim">still reading deploy state…</p>
-        ) : (
-          <p className="text-desc text-dim">not deployed to any target yet</p>
-        )}
-      </div>
-
-      <div className="mt-auto border-line-row border-t px-card-x py-row-y">
+      <div className="flex-none border-line-row border-t px-card-x py-row-y">
         <div className="mb-2 text-dim text-tag uppercase tracking-tag">
           Deploy
         </div>
