@@ -57,7 +57,7 @@ a job on the board changes it.
 
 ### Hard Rules
 
-- **Do not take shortcuts.** We want the best version possible even if it takes longer.
+- **Do not take shortcuts.** We want the best version possible.
 - **Never reimplement APM.** Drive it; read its lockfiles. Install, sync,
   pinning, lockfiles, and multi-tool targeting are APM's.
 - **Follow `docs/operating-model.md`.** It owns the board, the loop, and the

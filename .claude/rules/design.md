@@ -11,7 +11,8 @@ Never take design values (colour, size, spacing) from a flow screen; build from 
 
 Mandatory for any change that alters what `packages/web` renders:
 
-1. Run the app (`pnpm dev`, or `pnpm smoke` for a sandbox).
+1. Run `pnpm smoke` — it seeds an inventory clone, so the cockpit starts
+   populated. Plain `pnpm dev` starts empty and costs a detour.
 2. Screenshot the changed UI with `agent-browser`.
 3. Compare against the design source; on mismatch, fix before claiming done.
 4. Run the `verify-in-smoke` checks before treating the screenshot as proof.
