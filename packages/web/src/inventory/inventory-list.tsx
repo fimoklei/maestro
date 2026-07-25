@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { RegisterRepoHint } from "../registry/register-repo-hint";
 import type { RegisteredRepo } from "../registry/use-registry";
 import { cn } from "../ui/cn";
@@ -79,6 +79,14 @@ export function InventoryList({
   const [staged, setStaged] = useState<ReadonlySet<string>>(new Set());
   const toggleStagedName = (name: string) =>
     setStaged((current) => toggleStaged(current, name));
+  // On a narrow window the pane sits below the whole table, so opening one from
+  // a row near the top would look like nothing happened. Bring it into view on
+  // selection; beside the table it is already visible and this does nothing.
+  const paneRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (selected === null) return;
+    paneRef.current?.scrollIntoView?.({ block: "nearest" });
+  }, [selected]);
 
   if (primitives.length === 0) {
     return (
@@ -163,116 +171,159 @@ export function InventoryList({
           registryReady={registryReady}
         />
       ) : null}
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>
-              <span className="sr-only">Stage for bulk</span>
-            </TableHead>
-            <SortableHead column="type" sort={sort} onSort={setSort}>
-              Type
-            </SortableHead>
-            <SortableHead column="name" sort={sort} onSort={setSort}>
-              Name
-            </SortableHead>
-            <SortableHead column="description" sort={sort} onSort={setSort}>
-              Description
-            </SortableHead>
-            {/* Deployed is a per-skill roll-up, not a primitive field, so it is
-                not a sort key (out of #289 scope) — a plain header. */}
-            <TableHead>Deployed</TableHead>
-            {/* Trailing chevron column: the row's expand affordance. */}
-            <TableHead>
-              <span className="sr-only">Expand</span>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {visible.length === 0 ? (
+      {/* Below the table's floor the columns would be squeezed past reading, so
+          the overflow becomes a real scrollbar the user can reach — never the
+          silent clip that hid Deployed and the chevron off-screen. A scrollable
+          region is reachable from the keyboard too, so it is named and takes
+          focus (WCAG 2.1.1). */}
+      <section
+        aria-label="Central inventory table"
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scroll container that cannot take focus is keyboard-unreachable (WCAG 2.1.1), and Safari does not focus scrollers on its own
+        tabIndex={0}
+        className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+      >
+        {/* table-fixed, and the widths below are what makes it bite: under the
+            browser default the cells size to their content, so one long skill
+            description stretched the table thousands of pixels past the card
+            that clips it. Fixed layout hands the width back to the container and
+            lets `truncate` do its job on the description cell. */}
+        <Table className="table-fixed min-w-[560px]">
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={6} className="text-dim text-tag">
-                No skills match your search.
-              </TableCell>
-            </TableRow>
-          ) : (
-            visible.map((primitive) => (
-              <TableRow
-                key={primitive.name}
-                onClick={() => toggleSelected(primitive.name)}
-                className={cn(
-                  "cursor-pointer",
-                  primitive.name === selected ? "bg-active" : undefined,
-                )}
+              <TableHead className="w-10">
+                <span className="sr-only">Stage for bulk</span>
+              </TableHead>
+              <SortableHead
+                className="w-20"
+                column="type"
+                sort={sort}
+                onSort={setSort}
               >
-                <TableCell>
-                  {/* Staging is independent of opening the pane, so the checkbox
-                      stops the click from bubbling to the row's select handler
-                      (Model A, #291). */}
-                  <input
-                    type="checkbox"
-                    checked={staged.has(primitive.name)}
-                    onClick={(event) => event.stopPropagation()}
-                    onChange={() => toggleStagedName(primitive.name)}
-                    aria-label={`Stage ${primitive.name} for bulk`}
-                    className="size-4 accent-amber focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
-                  />
-                </TableCell>
-                <TableCell>
-                  <TypeTag type={primitive.type} />
-                </TableCell>
-                <TableCell className="truncate font-mono text-data text-fg">
-                  {/* Clicking anywhere on the row opens the pane (#290); the name
-                      stays a real button so keyboard users have a focusable
-                      control. It stops propagation so a mouse click resolves to a
-                      single toggle, not the button and the row both firing. */}
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      toggleSelected(primitive.name);
-                    }}
-                    aria-expanded={primitive.name === selected}
-                    aria-controls={`skill-detail-${primitive.name}`}
-                    className="truncate text-left text-inherit focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
-                  >
-                    {primitive.name}
-                  </button>
-                </TableCell>
-                <TableCell className="truncate text-desc text-muted">
-                  {primitive.description}
-                </TableCell>
-                <TableCell>
-                  <DeployedCell
-                    rollup={rollUpDeployment(primitive.name, targets)}
-                  />
-                </TableCell>
-                {/* Chevron mirrors the row's selected state — amber when its
-                    pane is open, dim otherwise. Decorative: the name button
-                    already carries aria-expanded for assistive tech. */}
-                <TableCell className="text-right">
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      "text-mono-sm",
-                      primitive.name === selected ? "text-amber" : "text-dim",
-                    )}
-                  >
-                    ›
-                  </span>
+                Type
+              </SortableHead>
+              <SortableHead
+                className="w-45"
+                column="name"
+                sort={sort}
+                onSort={setSort}
+              >
+                Name
+              </SortableHead>
+              {/* No width: description absorbs whatever the fixed columns leave,
+                  so it is the one that gives when the card narrows. */}
+              <SortableHead column="description" sort={sort} onSort={setSort}>
+                Description
+              </SortableHead>
+              {/* Deployed is a per-skill roll-up, not a primitive field, so it is
+                  not a sort key (out of #289 scope) — a plain header. */}
+              <TableHead className="w-40">Deployed</TableHead>
+              {/* Trailing chevron column: the row's expand affordance. */}
+              <TableHead className="w-8">
+                <span className="sr-only">Expand</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {visible.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-dim text-tag">
+                  No skills match your search.
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            ) : (
+              visible.map((primitive) => (
+                <TableRow
+                  key={primitive.name}
+                  onClick={() => toggleSelected(primitive.name)}
+                  className={cn(
+                    "cursor-pointer",
+                    primitive.name === selected ? "bg-active" : undefined,
+                  )}
+                >
+                  <TableCell>
+                    {/* Staging is independent of opening the pane, so the
+                        checkbox stops the click from bubbling to the row's
+                        select handler (Model A, #291). */}
+                    <input
+                      type="checkbox"
+                      checked={staged.has(primitive.name)}
+                      onClick={(event) => event.stopPropagation()}
+                      onChange={() => toggleStagedName(primitive.name)}
+                      aria-label={`Stage ${primitive.name} for bulk`}
+                      className="size-4 accent-amber focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <TypeTag type={primitive.type} />
+                  </TableCell>
+                  <TableCell className="font-mono text-data text-fg">
+                    {/* Clicking anywhere on the row opens the pane (#290); the
+                        name stays a real button so keyboard users have a
+                        focusable control. It stops propagation so a mouse click
+                        resolves to a single toggle, not the button and the row
+                        both firing. Block-level so a long name truncates to the
+                        column instead of spilling out of it. */}
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        toggleSelected(primitive.name);
+                      }}
+                      aria-expanded={primitive.name === selected}
+                      aria-controls={`skill-detail-${primitive.name}`}
+                      title={primitive.name}
+                      className="block w-full truncate text-left text-inherit focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+                    >
+                      {primitive.name}
+                    </button>
+                  </TableCell>
+                  {/* The full description is one click away in the detail pane,
+                      so the cell keeps to one line and the title attribute
+                      carries the rest for a hover. */}
+                  <TableCell
+                    className="truncate text-desc text-muted"
+                    title={primitive.description}
+                  >
+                    {primitive.description}
+                  </TableCell>
+                  <TableCell>
+                    <DeployedCell
+                      rollup={rollUpDeployment(primitive.name, targets)}
+                    />
+                  </TableCell>
+                  {/* Chevron mirrors the row's selected state — amber when its
+                      pane is open, dim otherwise. Decorative: the name button
+                      already carries aria-expanded for assistive tech. */}
+                  <TableCell className="text-right">
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "text-mono-sm",
+                        primitive.name === selected ? "text-amber" : "text-dim",
+                      )}
+                    >
+                      ›
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </section>
     </>
   );
 
   return (
-    <div className="flex items-start">
+    // Side by side only while both fit: the table's 560px floor plus the 320px
+    // pane needs a ~1200px window once the sidebar and page padding are paid
+    // for. Narrower than that the pane drops below the table instead of eating
+    // its width, which is what would push Deployed back behind a scrollbar.
+    <div className="flex flex-col min-[1200px]:flex-row min-[1200px]:items-start">
       <div className="min-w-0 flex-1">{table}</div>
       {selectedPrimitive ? (
         <SkillDetailPane
+          ref={paneRef}
           primitive={selectedPrimitive}
           deployments={skillDeployments(selectedPrimitive.name, targets)}
           // The reach is unconfirmed while any target's read is pending or
@@ -306,11 +357,15 @@ function SortableHead({
   column,
   sort,
   onSort,
+  className,
   children,
 }: {
   column: SortColumn;
   sort: SortState | null;
   onSort: (next: SortState) => void;
+  // Carries the column width through to the <th>, which is where fixed table
+  // layout reads it.
+  className?: string;
   children: ReactNode;
 }) {
   const active = sort?.column === column ? sort.direction : null;
@@ -318,7 +373,7 @@ function SortableHead({
     active === "asc" ? "ascending" : active === "desc" ? "descending" : "none";
 
   return (
-    <TableHead ariaSort={ariaSort}>
+    <TableHead ariaSort={ariaSort} className={className}>
       <button
         type="button"
         onClick={() => onSort(nextSort(sort, column))}

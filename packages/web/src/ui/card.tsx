@@ -32,7 +32,12 @@ export function Card({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-card border bg-card",
+        // overflow-clip, not overflow-hidden: both clip children to the rounded
+        // corner, but `hidden` also makes the card a scroll container, which
+        // silently anchors any sticky descendant to a box that never scrolls.
+        // The inventory detail pane sticks to the scrolling main region, so the
+        // card must stay out of that chain.
+        "overflow-clip rounded-card border bg-card",
         drift ? "border-line-drift" : "border-line",
         className,
       )}
