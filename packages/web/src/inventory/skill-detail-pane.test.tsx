@@ -162,6 +162,20 @@ describe("SkillDetailPane", () => {
     );
   });
 
+  it("gives the heading a visible focus ring, so a keyboard user can see where focus landed", () => {
+    // Landing focus on the heading is only useful if it's visible — the
+    // project's standard focus-visible ring (Codex review finding on this
+    // branch) is what every other focusable control in the pane already
+    // carries (the close button, the search box).
+    renderPane({});
+
+    expect(screen.getByRole("heading", { name: /tdd/i })).toHaveClass(
+      "focus-visible:outline-2",
+      "focus-visible:outline-offset-2",
+      "focus-visible:outline-amber",
+    );
+  });
+
   it("returns focus to the element that opened it once it closes", () => {
     // The pane persists across a row switch (inventory-list keeps one
     // instance and only swaps `primitive`), so the return target has to be

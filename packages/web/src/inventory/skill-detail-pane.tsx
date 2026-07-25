@@ -98,7 +98,10 @@ export function SkillDetailPane({
             <h2
               ref={headingRef}
               tabIndex={-1}
-              className="font-medium text-fg text-lg outline-none"
+              className={cn(
+                "font-medium text-fg text-lg",
+                "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber",
+              )}
             >
               {primitive.name}
             </h2>
