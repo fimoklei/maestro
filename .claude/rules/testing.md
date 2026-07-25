@@ -8,6 +8,7 @@ Runner: **Vitest**, all lanes (ADR-0002).
 - Test behavior, not implementation. Refactors must not turn tests red while behavior is unchanged.
 - One concept per test. Tests are independent: no ordering dependencies, no shared state.
 - Deterministic: no clock, no network, no reliance on key-ordering.
+- **Layout is proven in a browser, not jsdom.** jsdom measures nothing — verify a CSS/layout change with an `agent-browser` measurement.
 
 ## Anti-patterns
 
