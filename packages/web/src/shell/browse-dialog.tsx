@@ -2,6 +2,7 @@ import { useState } from "react";
 import { HttpError } from "../api/http";
 import type { RegistrationOutcome } from "../registry/use-register-repos";
 import { Button } from "../ui/button";
+import { HOVER_TRANSITION } from "../ui/hover-transition";
 import { BrowseBreadcrumbs } from "./browse-breadcrumbs";
 import { BrowseEntryRow } from "./browse-entry-row";
 import { type BrowseDialogMode, browseModes } from "./browse-modes";
@@ -204,7 +205,7 @@ export function BrowseDialog({
               type="button"
               aria-label="Close"
               onClick={onClose}
-              className="cursor-pointer font-mono text-data text-dim hover:text-fg"
+              className={`cursor-pointer font-mono text-data text-dim hover:text-fg ${HOVER_TRANSITION}`}
             >
               ✕
             </button>
@@ -227,7 +228,9 @@ export function BrowseDialog({
                   }}
                   disabled={browse.data?.parent === undefined}
                   aria-describedby={atCeiling ? "browse-up-reason" : undefined}
-                  className="shrink-0 rounded-control border px-2.5 py-[5px] font-mono text-mono-sm enabled:cursor-pointer enabled:border-line enabled:bg-inset enabled:text-fg-2 disabled:cursor-not-allowed disabled:border-line-chip disabled:text-dim"
+                  // Already sits on the inset surface, so it takes the border
+                  // half of the one-step hover rule (DESIGN.md §5).
+                  className={`shrink-0 rounded-control border px-2.5 py-[5px] font-mono text-mono-sm ${HOVER_TRANSITION} enabled:cursor-pointer enabled:border-line enabled:bg-inset enabled:text-fg-2 enabled:hover:border-line-chip enabled:hover:text-fg disabled:cursor-not-allowed disabled:border-line-chip disabled:text-dim`}
                 >
                   ↑ up
                 </button>
@@ -252,10 +255,10 @@ export function BrowseDialog({
                   type="button"
                   aria-pressed={showHidden}
                   onClick={() => setShowHidden((current) => !current)}
-                  className={`shrink-0 whitespace-nowrap rounded-control border px-2.5 py-[5px] font-mono text-mono-sm ${
+                  className={`shrink-0 cursor-pointer whitespace-nowrap rounded-control border px-2.5 py-[5px] font-mono text-mono-sm ${HOVER_TRANSITION} ${
                     showHidden
                       ? "border-amber-border bg-amber-bg text-amber-ink"
-                      : "border-line-chip text-dim"
+                      : "border-line-chip text-dim hover:bg-inset hover:text-fg-2"
                   }`}
                 >
                   {showHidden ? "◑" : "◐"} hidden
@@ -300,7 +303,7 @@ export function BrowseDialog({
                 <button
                   type="button"
                   onClick={() => setShowHidden(true)}
-                  className="flex items-center gap-2 rounded-control px-2.5 py-2 text-left"
+                  className={`flex cursor-pointer items-center gap-2 rounded-control px-2.5 py-2 text-left hover:bg-inset ${HOVER_TRANSITION}`}
                 >
                   <span className="font-mono text-dim text-tag">
                     {hiddenCount} hidden item{hiddenCount === 1 ? "" : "s"} not

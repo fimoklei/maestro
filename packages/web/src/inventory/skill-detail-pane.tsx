@@ -3,6 +3,7 @@ import type { DriftStatus } from "../drift/drift-view-model";
 import { versionColor } from "../drift/version-color";
 import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
+import { HOVER_TRANSITION } from "../ui/hover-transition";
 import { TypeTag } from "../ui/type-tag";
 import type { SkillDeployment } from "./skill-deployments";
 import type { Primitive } from "./use-inventory";
@@ -60,7 +61,14 @@ export function SkillDetailPane({
           type="button"
           aria-label="Close detail pane"
           onClick={onClose}
-          className="ml-auto grid size-6 place-items-center rounded-control border border-line-chip text-dim focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+          // The pane itself is the inset surface, so a fill step would be
+          // invisible here; this control takes DESIGN.md §5's border half of
+          // "background or border moves one step up its ramp".
+          className={cn(
+            "ml-auto grid size-6 cursor-pointer place-items-center rounded-control border border-line-chip text-dim hover:border-line-dashed hover:text-fg-2",
+            HOVER_TRANSITION,
+            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber",
+          )}
         >
           <span aria-hidden="true">✕</span>
         </button>

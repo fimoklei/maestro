@@ -449,7 +449,11 @@ line.
 
 **The One-Step Hover Rule.** Every hoverable control moves exactly one step up the
 ramp it already sits on, over 150ms ease-out, and changes nothing else. Colour is
-the only property that moves. Nothing scales, lifts, or gains a shadow.
+the only property that moves. Nothing scales, lifts, or gains a shadow. A control
+already sitting on the inset surface — the detail pane's close, the browse dialog's
+`↑ up` — has no fill step left, so it takes the border half of the rule instead:
+the outline moves from the chip step to the dashed step and the text moves one
+step up the ramp.
 
 **The Hover-Is-Not-Selection Rule.** Hover lands on the inset surface; a standing
 choice — selected row, active nav item, chosen segment — lands on the active

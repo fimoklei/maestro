@@ -1,4 +1,5 @@
 import { Chip } from "../ui/chip";
+import { HOVER_TRANSITION } from "../ui/hover-transition";
 import { type BrowseDialogMode, browseModes } from "./browse-modes";
 import type { BrowseEntry } from "./use-browse-filesystem";
 
@@ -39,10 +40,10 @@ export function BrowseEntryRow({
 
   return (
     <div
-      className={`flex items-center gap-2.5 rounded-control border px-2.5 py-[7px] ${
+      className={`flex items-center gap-2.5 rounded-control border px-2.5 py-[7px] ${HOVER_TRANSITION} ${
         checked
           ? "border-amber-border bg-amber-bg"
-          : "border-transparent hover:bg-active"
+          : "border-transparent hover:bg-inset"
       }`}
     >
       {mode === "register" ? (

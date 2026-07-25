@@ -3,6 +3,7 @@ import {
   type DeployTarget,
   useDeploySkill,
 } from "../inventory/use-deploy-skill";
+import { Button } from "../ui/button";
 
 // The Update action on a deployed skill the cockpit reports as behind. Unlike
 // the inventory's deploy action it picks no target — the target is the row it
@@ -22,15 +23,18 @@ export function UpdateSkillAction({
 
   return (
     <span>
-      <button
-        type="button"
+      {/* The row-level action variant, the same one the inventory's `deploy →`
+          uses, so hover, focus and disabled all come from one place. */}
+      <Button
+        variant="ghost"
+        size="sm"
         disabled={deploy.isPending}
         onClick={() =>
           deploy.mutate({ type: "skill", name: skillName, target })
         }
       >
         {deploy.isPending ? `Updating ${skillName}…` : `Update ${skillName}`}
-      </button>
+      </Button>
       {deploy.isError ? (
         // The server's message is actionable; a not-proven-clean deployed copy
         // additionally offers an inline confirmed reinstall (force) instead of
