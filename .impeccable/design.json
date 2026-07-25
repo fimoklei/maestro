@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-07-21T00:00:00.000Z",
+  "generatedAt": "2026-07-25T00:00:00.000Z",
   "title": "Design System: Maestro",
   "extensions": {
     "colorMeta": {
@@ -198,6 +198,36 @@
           "#f2c982",
           "#fae8c6"
         ]
+      },
+      "amber-hover": {
+        "role": "primary",
+        "displayName": "Amber Lift",
+        "canonical": "#f2c982",
+        "tonalRamp": [
+          "#2a1c05",
+          "#4a3210",
+          "#6b481a",
+          "#8c5f24",
+          "#b0700f",
+          "#e8a33d",
+          "#f2c982",
+          "#fae8c6"
+        ]
+      },
+      "green-hover": {
+        "role": "secondary",
+        "displayName": "Green Lift",
+        "canonical": "#9adcae",
+        "tonalRamp": [
+          "#07240f",
+          "#0d3d1c",
+          "#13592a",
+          "#178a4c",
+          "#3dba75",
+          "#62c47e",
+          "#9adcae",
+          "#d3f1dc"
+        ]
       }
     },
     "typographyMeta": {
@@ -230,8 +260,8 @@
     "motion": [
       {
         "name": "state-transition",
-        "value": "120ms–160ms ease-out on background-color and border-color",
-        "purpose": "The only motion in the system. Under prefers-reduced-motion the change is instant."
+        "value": "150ms ease-out on background-color, border-color and color",
+        "purpose": "The only motion in the system, declared once and reused by every hoverable control. Gated behind prefers-reduced-motion: no-preference, so the reduced alternative is an instant colour change."
       }
     ],
     "breakpoints": [
@@ -248,7 +278,7 @@
       "refersTo": "button-primary",
       "description": "The single main action in a view — amber fill, mono, bold.",
       "html": "<button class=\"ds-btn ds-btn-primary\">deploy →</button>",
-      "css": ".ds-btn { font-family: var(--font-mono, 'JetBrains Mono', monospace); font-size: 11px; border-width: 1px; border-style: solid; border-radius: 4px; padding: 6px 12px; cursor: pointer; white-space: nowrap; transition: background-color 140ms ease-out, border-color 140ms ease-out; } .ds-btn-primary { background: var(--amber, #e8a33d); border-color: var(--amber, #e8a33d); color: var(--on-accent, #0b0d10); font-weight: 700; } .ds-btn-primary:hover { background: #f0b357; } .ds-btn-primary:focus-visible { outline: 2px solid var(--amber, #e8a33d); outline-offset: 2px; }"
+      "css": ".ds-btn { font-family: var(--font-mono, 'JetBrains Mono', monospace); font-size: 11px; border-width: 1px; border-style: solid; border-radius: 4px; padding: 6px 12px; cursor: pointer; white-space: nowrap; transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out; } .ds-btn-primary { background: var(--amber, #e8a33d); border-color: var(--amber, #e8a33d); color: var(--on-accent, #0b0d10); font-weight: 700; } .ds-btn-primary:hover { background: var(--amber-hover, #f2c982); border-color: var(--amber-hover, #f2c982); } .ds-btn-primary:focus-visible { outline: 2px solid var(--amber, #e8a33d); outline-offset: 2px; } .ds-btn:disabled { cursor: not-allowed; background: var(--dim-bg, rgba(138,148,160,0.08)); border-color: var(--border-chip, #232a33); color: var(--text-dim, #7d8794); }"
     },
     {
       "name": "Success Button",
@@ -256,7 +286,7 @@
       "refersTo": "button-success",
       "description": "Final confirmation of a deploy — green fill, used sparingly.",
       "html": "<button class=\"ds-btn ds-btn-success\">confirm ✓</button>",
-      "css": ".ds-btn-success { background: var(--green, #62c47e); border-color: var(--green, #62c47e); color: var(--on-accent, #0b0d10); font-weight: 700; } .ds-btn-success:hover { background: #78d091; } .ds-btn-success:focus-visible { outline: 2px solid var(--green, #62c47e); outline-offset: 2px; }"
+      "css": ".ds-btn-success { background: var(--green, #62c47e); border-color: var(--green, #62c47e); color: var(--on-accent, #0b0d10); font-weight: 700; } .ds-btn-success:hover { background: var(--green-hover, #9adcae); border-color: var(--green-hover, #9adcae); } .ds-btn-success:focus-visible { outline: 2px solid var(--green, #62c47e); outline-offset: 2px; }"
     },
     {
       "name": "Ghost Button",
@@ -264,7 +294,7 @@
       "refersTo": "button-ghost",
       "description": "Row-level action — transparent with a dim amber outline.",
       "html": "<button class=\"ds-btn ds-btn-ghost\">deploy →</button>",
-      "css": ".ds-btn-ghost { background: transparent; border-color: var(--border-amber-dim, #3a3327); color: var(--amber-ink, #e8a33d); } .ds-btn-ghost:hover { border-color: var(--amber-border, rgba(232,163,61,0.3)); } .ds-btn-ghost:focus-visible { outline: 2px solid var(--amber, #e8a33d); outline-offset: 2px; }"
+      "css": ".ds-btn-ghost { background: transparent; border-color: var(--border-amber-dim, #3a3327); color: var(--amber-ink, #e8a33d); } .ds-btn-ghost:hover { background: var(--amber-bg, rgba(232,163,61,0.1)); border-color: var(--amber-border, rgba(232,163,61,0.3)); } .ds-btn-ghost:focus-visible { outline: 2px solid var(--amber, #e8a33d); outline-offset: 2px; }"
     },
     {
       "name": "Dashed Button",
@@ -272,7 +302,15 @@
       "refersTo": "button-dashed",
       "description": "Additive affordance — the only place a dashed border appears on a control.",
       "html": "<button class=\"ds-btn ds-btn-dashed\">+ register repo</button>",
-      "css": ".ds-btn-dashed { background: transparent; border-style: dashed; border-color: var(--border-dashed, #2a313a); color: var(--text-muted, #8a94a0); } .ds-btn-dashed:hover { border-color: var(--border-chip, #232a33); color: var(--text-3, #aeb6bf); }"
+      "css": ".ds-btn-dashed { background: transparent; border-style: dashed; border-color: var(--border-dashed, #2a313a); color: var(--text-muted, #8a94a0); } .ds-btn-dashed:hover { background: var(--surface-inset, #11161c); color: var(--text-2, #c3cad2); } .ds-btn-dashed:focus-visible { outline: 2px solid var(--amber, #e8a33d); outline-offset: 2px; }"
+    },
+    {
+      "name": "Quiet Button",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "The grey-outlined dismissal, e.g. cancel beside a primary action.",
+      "html": "<button class=\"ds-btn ds-btn-quiet\">cancel</button>",
+      "css": ".ds-btn-quiet { background: transparent; border-color: var(--border-chip, #232a33); color: var(--text-muted, #8a94a0); } .ds-btn-quiet:hover { background: var(--surface-inset, #11161c); border-color: var(--border-dashed, #2a313a); color: var(--text-2, #c3cad2); } .ds-btn-quiet:focus-visible { outline: 2px solid var(--amber, #e8a33d); outline-offset: 2px; }"
     },
     {
       "name": "Status Chip",
@@ -281,6 +319,14 @@
       "description": "Read-only state capsule. Always leads with a glyph so colour is never the only signal.",
       "html": "<span class=\"ds-chip ds-chip-ok\">● in sync</span> <span class=\"ds-chip ds-chip-drift\">▲ 2 drift</span> <span class=\"ds-chip ds-chip-dim\">1.4.0</span>",
       "css": ".ds-chip { display: inline-block; font-family: var(--font-mono, 'JetBrains Mono', monospace); font-size: 11px; border-width: 1px; border-style: solid; border-radius: 4px; padding: 2px 7px; white-space: nowrap; } .ds-chip-ok { color: var(--green-ink, #62c47e); background: var(--green-bg, rgba(98,196,126,0.1)); border-color: var(--green-border, rgba(98,196,126,0.25)); } .ds-chip-drift { color: var(--amber-ink, #e8a33d); background: var(--amber-bg, rgba(232,163,61,0.1)); border-color: var(--amber-border, rgba(232,163,61,0.3)); } .ds-chip-dim { color: var(--text-muted, #8a94a0); background: var(--dim-bg, rgba(138,148,160,0.08)); border-color: var(--border-chip, #232a33); }"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "chip",
+      "refersTo": "segment",
+      "description": "A row of real buttons holding one choice, such as the type filter above the inventory table. Hover sits one step below active so it never reads as selecting.",
+      "html": "<fieldset class=\"ds-seg\"><button class=\"ds-seg-item ds-seg-item-active\" aria-pressed=\"true\">all</button><button class=\"ds-seg-item\" aria-pressed=\"false\">skills</button><button class=\"ds-seg-item\" aria-pressed=\"false\">hooks</button></fieldset>",
+      "css": ".ds-seg { display: inline-flex; gap: 4px; padding: 2px; border: 0; margin: 0; border-radius: 4px; } .ds-seg-item { font-family: var(--font-mono, monospace); font-size: 10px; letter-spacing: 0.08em; text-transform: lowercase; padding: 4px 12px; border-radius: 4px; border: 1px solid transparent; background: transparent; color: var(--text-muted, #8a94a0); cursor: pointer; transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out; } .ds-seg-item:hover { background: var(--surface-inset, #11161c); color: var(--text-2, #c3cad2); } .ds-seg-item-active { background: var(--surface-active, #171d24); border-color: var(--border-chip, #232a33); color: var(--text-1, #e6e9ed); } .ds-seg-item-active:hover { background: var(--surface-active, #171d24); } .ds-seg-item:focus-visible { outline: 2px solid var(--amber, #e8a33d); outline-offset: 2px; }"
     },
     {
       "name": "Target Card",
@@ -299,12 +345,20 @@
       "css": ".ds-card-drift { border-color: var(--border-drift, #4a3a1c); }"
     },
     {
+      "name": "Inventory Table Row",
+      "kind": "custom",
+      "refersTo": "table-row",
+      "description": "The densest surface in the cockpit. A clickable row hovers to the inset surface; the selected row holds the active surface one step above it.",
+      "html": "<table class=\"ds-table\"><tbody><tr class=\"ds-row\"><td class=\"ds-cell\">audit-dependencies</td><td class=\"ds-cell ds-cell-dim\">not deployed</td></tr><tr class=\"ds-row ds-row-selected\"><td class=\"ds-cell\">brutal-critic</td><td class=\"ds-cell ds-cell-dim\">1.4.0</td></tr><tr class=\"ds-row\"><td class=\"ds-cell\">caveman</td><td class=\"ds-cell ds-cell-dim\">not deployed</td></tr></tbody></table>",
+      "css": ".ds-table { width: 100%; border-collapse: collapse; text-align: left; } .ds-row { border-bottom: 1px solid var(--border-row, #161b22); cursor: pointer; transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out; } .ds-row:last-child { border-bottom: 0; } .ds-row:hover { background: var(--surface-inset, #11161c); } .ds-row-selected { background: var(--surface-active, #171d24); } .ds-row-selected:hover { background: var(--surface-active, #171d24); } .ds-cell { padding: 9px 14px; font-family: var(--font-mono, monospace); font-size: 13px; color: var(--text-1, #e6e9ed); } .ds-cell-dim { color: var(--text-muted, #8a94a0); }"
+    },
+    {
       "name": "Nav Item",
       "kind": "nav",
       "refersTo": "nav-item",
       "description": "Sidebar entry. Active state raises the surface, outlines it, and turns the glyph amber.",
       "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item ds-nav-item-active\" href=\"#\"><span class=\"ds-nav-glyph\">▤</span>Central inventory</a><a class=\"ds-nav-item\" href=\"#\"><span class=\"ds-nav-glyph ds-nav-glyph-idle\">⇶</span>Deploy-state</a></nav>",
-      "css": ".ds-nav { display: flex; flex-direction: column; gap: 2px; width: 208px; } .ds-nav-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid transparent; border-radius: 5px; font-family: var(--font-ui, sans-serif); font-size: 14px; color: var(--text-muted, #8a94a0); text-decoration: none; transition: background-color 140ms ease-out, border-color 140ms ease-out; } .ds-nav-item:hover { background: var(--surface-active, #171d24); } .ds-nav-item-active { background: var(--surface-active, #171d24); border-color: var(--border-chip, #232a33); color: var(--text-1, #e6e9ed); } .ds-nav-glyph { font-family: var(--font-mono, monospace); font-size: 14px; color: var(--amber, #e8a33d); } .ds-nav-glyph-idle { color: var(--text-dim, #5a6470); }"
+      "css": ".ds-nav { display: flex; flex-direction: column; gap: 2px; width: 208px; } .ds-nav-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid transparent; border-radius: 5px; font-family: var(--font-ui, sans-serif); font-size: 14px; color: var(--text-muted, #8a94a0); text-decoration: none; cursor: pointer; transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out; } .ds-nav-item:hover { background: var(--surface-inset, #11161c); color: var(--text-2, #c3cad2); } .ds-nav-item-active { background: var(--surface-active, #171d24); border-color: var(--border-chip, #232a33); color: var(--text-1, #e6e9ed); } .ds-nav-item-active:hover { background: var(--surface-active, #171d24); } .ds-nav-glyph { font-family: var(--font-mono, monospace); font-size: 14px; color: var(--amber, #e8a33d); } .ds-nav-glyph-idle { color: var(--text-dim, #7d8794); }"
     },
     {
       "name": "Micro-label",
@@ -312,7 +366,7 @@
       "refersTo": "typography.label",
       "description": "10px uppercase mono label that opens a section. The floor of the type scale.",
       "html": "<div class=\"ds-label\">targets</div>",
-      "css": ".ds-label { font-family: var(--font-mono, monospace); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim, #5a6470); }"
+      "css": ".ds-label { font-family: var(--font-mono, monospace); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim, #7d8794); }"
     }
   ],
   "narrative": {
@@ -366,6 +420,16 @@
         "name": "The Borders-Do-The-Work Rule",
         "body": "Structure, grouping, and separation are drawn with 1px lines from the border ramp. When a boundary feels weak, move one step up the ramp.",
         "section": "elevation"
+      },
+      {
+        "name": "The One-Step Hover Rule",
+        "body": "Every hoverable control moves exactly one step up the ramp it already sits on, over 150ms ease-out, and changes nothing else. Colour is the only property that moves. Nothing scales, lifts, or gains a shadow. A control already sitting on the inset surface — the detail pane's close, the browse dialog's ↑ up — has no fill step left, so it takes the border half of the rule instead: the outline moves from the chip step to the dashed step and the text moves one step up the ramp.",
+        "section": "components"
+      },
+      {
+        "name": "The Hover-Is-Not-Selection Rule",
+        "body": "Hover lands on the inset surface; a standing choice — selected row, active nav item, chosen segment — lands on the active surface. A hover that reaches the active surface makes the two states indistinguishable and is therefore wrong.",
+        "section": "components"
       }
     ],
     "dos": [
@@ -375,7 +439,9 @@
       "Do keep to one amber-filled primary button per view.",
       "Do chain meta fragments with the middle dot: agent-harness · main · 9 primitives.",
       "Do write drift as a version pair, 1.0.0 → 1.2.0, in mono, never rounded.",
-      "Do keep transitions to 120–160ms ease-out on background and border colour, with an instant alternative under prefers-reduced-motion.",
+      "Do keep transitions to 150ms ease-out on background, border, and text colour, with an instant alternative under prefers-reduced-motion.",
+      "Do give every clickable surface a visible hover, not just a pointer cursor — one step up its own ramp, colour only.",
+      "Do declare that transition once and reuse it. Retyping the duration per component is how the window drifts out of the range this document states.",
       "Do use dashed borders for additive affordances, and only for those."
     ],
     "donts": [
@@ -385,6 +451,9 @@
       "Don't add illustrations, emoji, or reassuring marketing copy.",
       "Don't strip structure down to a bare terminal dump.",
       "Don't add entrance animations, hover scaling, or decorative motion.",
+      "Don't hover a control onto the active surface — that is the colour of a standing choice, and reusing it makes hover and selected indistinguishable.",
+      "Don't ship a cursor-pointer with no colour change behind it; the cursor moves, the screen must too.",
+      "Don't leave a transition un-gated by motion-safe:; a bare transition-colors ignores prefers-reduced-motion.",
       "Don't introduce a fourth signal colour, use danger red for anything but errors, or borrow a primitive-type hue for anything other than the type tag.",
       "Don't set any text below 10px.",
       "Don't use border-left or border-right above 1px as a coloured accent stripe.",

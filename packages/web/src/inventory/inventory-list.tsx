@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { RegisterRepoHint } from "../registry/register-repo-hint";
 import type { RegisteredRepo } from "../registry/use-registry";
 import { cn } from "../ui/cn";
+import { HOVER_TRANSITION } from "../ui/hover-transition";
 import { SegmentedControl } from "../ui/segmented-control";
 import {
   Table,
@@ -235,10 +236,12 @@ export function InventoryList({
                 <TableRow
                   key={primitive.name}
                   onClick={() => toggleSelected(primitive.name)}
-                  className={cn(
-                    "cursor-pointer",
-                    primitive.name === selected ? "bg-active" : undefined,
-                  )}
+                  // Hover and selected are one ramp apart, and the two classes
+                  // are mutually exclusive so hovering the selected row never
+                  // drags it back down the ramp.
+                  className={
+                    primitive.name === selected ? "bg-active" : "hover:bg-inset"
+                  }
                 >
                   <TableCell>
                     {/* Staging is independent of opening the pane, so the
@@ -377,7 +380,11 @@ function SortableHead({
       <button
         type="button"
         onClick={() => onSort(nextSort(sort, column))}
-        className="flex items-center gap-1 font-mono text-tag uppercase tracking-tag text-inherit focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+        className={cn(
+          "flex cursor-pointer items-center gap-1 font-mono text-tag uppercase tracking-tag text-inherit hover:text-fg-2",
+          HOVER_TRANSITION,
+          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber",
+        )}
       >
         {children}
         <span aria-hidden="true" className="text-muted">

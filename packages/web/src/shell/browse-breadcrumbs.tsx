@@ -1,3 +1,4 @@
+import { HOVER_TRANSITION } from "../ui/hover-transition";
 import type { BrowseCrumb } from "./use-browse-filesystem";
 
 // The server-derived breadcrumb trail for the browse dialog. The last segment
@@ -35,7 +36,7 @@ export function BrowseBreadcrumbs({
               <button
                 type="button"
                 onClick={() => onNavigate(crumb.path)}
-                className="cursor-pointer truncate rounded-tag border border-transparent px-1.5 py-0.5 text-amber-ink hover:border-line-chip"
+                className={`cursor-pointer truncate rounded-tag border border-transparent px-1.5 py-0.5 text-amber-ink hover:border-line-chip hover:bg-inset ${HOVER_TRANSITION}`}
               >
                 {crumb.name}
               </button>

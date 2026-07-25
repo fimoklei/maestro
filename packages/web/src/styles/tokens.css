@@ -47,6 +47,13 @@
   --green: #62c47e;
   --green-bg: rgba(98, 196, 126, 0.1);
   --green-border: rgba(98, 196, 126, 0.25);
+  /* hover fills for the filled buttons. A filled button has no surface ramp to
+     climb, so DESIGN.md §5's "one step up its ramp" means one step up the
+     signal's own tonal ramp. Values are the step above each canonical in
+     `.impeccable/design.json` → extensions.colorMeta.<name>.tonalRamp, not
+     derived here; tokens-contrast.test.ts guards them against --on-accent. */
+  --amber-hover: #f2c982;
+  --green-hover: #9adcae;
   /* danger = the error signal, kept apart from amber's "act" (issue #213). It
      renders validation-error text, so it clears WCAG 2.2 AA (≥4.5:1) on every
      surface it lands on — #ec5c6a measures ≥5.09:1. Errors only; never a fill

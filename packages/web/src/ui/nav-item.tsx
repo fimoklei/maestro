@@ -1,5 +1,6 @@
 import type { MouseEventHandler, ReactNode } from "react";
 import { cn } from "./cn";
+import { HOVER_TRANSITION } from "./hover-transition";
 
 // Sidebar navigation item with a unicode glyph icon. Ported from a clickable
 // <div> to a real <button> (keyboard + screen-reader reachable); the active view
@@ -33,10 +34,11 @@ export function NavItem({
       aria-current={active ? "page" : undefined}
       className={cn(
         "flex w-full items-center gap-2.5 rounded-item border px-3 py-2 text-left font-ui text-body",
+        HOVER_TRANSITION,
         disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
         active
           ? "border-line-chip bg-active text-fg"
-          : "border-transparent bg-transparent text-muted",
+          : "border-transparent bg-transparent text-muted enabled:hover:bg-inset enabled:hover:text-fg-2",
         className,
       )}
     >

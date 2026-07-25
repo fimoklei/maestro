@@ -1,4 +1,5 @@
 import { cn } from "./cn";
+import { HOVER_TRANSITION } from "./hover-transition";
 
 // A segmented control: a row of buttons that together hold one choice, like the
 // type filter above the inventory table (#288). Presentational — the caller owns
@@ -42,9 +43,12 @@ export function SegmentedControl<V extends string>({
             onClick={() => onChange(segment.value)}
             className={cn(
               "cursor-pointer rounded-control border px-3 py-1 font-mono text-tag lowercase tracking-tag",
+              HOVER_TRANSITION,
+              // Hover lands one step below the active surface, so hovering an
+              // inactive segment never reads as selecting it.
               active
                 ? "border-line-chip bg-active text-fg"
-                : "border-transparent bg-transparent text-muted",
+                : "border-transparent bg-transparent text-muted hover:bg-inset hover:text-fg-2",
             )}
           >
             {segment.label}

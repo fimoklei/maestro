@@ -154,6 +154,25 @@ describe("danger signal contrast on its tinted refusal card", () => {
   );
 });
 
+// The filled buttons swap their fill for a hover step up the signal's tonal ramp
+// (DESIGN.md §5). The label stays --on-accent through the swap, so both hover
+// fills hold the same 4.5:1 floor as the resting fills they replace.
+describe("filled-button hover fills keep their label readable", () => {
+  const tokens = parseShippedTokens(tokensCss);
+
+  it.each(["amber-hover", "green-hover"] as const)(
+    "on-accent clears WCAG AA on --%s",
+    (fillToken) => {
+      const fill = tokens[fillToken];
+      const label = tokens["on-accent"];
+      expect(fill, `missing token --${fillToken}`).toBeDefined();
+      expect(label, "missing token --on-accent").toBeDefined();
+      const ratio = contrastRatio(label as string, fill as string);
+      expect(ratio).toBeGreaterThanOrEqual(AA);
+    },
+  );
+});
+
 // The keyboard focus ring (issue #214) is one amber outline, offset onto the
 // surface behind every control. WCAG 2.2 asks non-text UI indicators to clear
 // 3:1 against what they sit on. This guards the amber accent against a future

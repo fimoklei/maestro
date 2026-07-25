@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes } from "react";
 import { cn } from "./cn";
+import { HOVER_TRANSITION } from "./hover-transition";
 
 // Mono-typeset action button for the cockpit. primary = amber fill (one main
 // action per view); success = green fill (confirm deploy); ghost = amber outline
@@ -11,12 +12,20 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: "sm" | "md" | "lg";
 }
 
+// Each variant's hover moves its fill or border one step up its own ramp and
+// nothing else (DESIGN.md §5: no scale, no lift, no shadow). `enabled:` keeps a
+// disabled button inert.
 const variantClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
-  primary: "font-bold text-on-accent bg-amber border-amber",
-  success: "font-bold text-on-accent bg-green border-green",
-  ghost: "text-amber-ink bg-transparent border-line-amber-dim",
-  quiet: "text-muted bg-transparent border-line-chip",
-  dashed: "text-muted bg-transparent border-dashed border-line-dashed",
+  primary:
+    "font-bold text-on-accent bg-amber border-amber enabled:hover:bg-amber-hover enabled:hover:border-amber-hover",
+  success:
+    "font-bold text-on-accent bg-green border-green enabled:hover:bg-green-hover enabled:hover:border-green-hover",
+  ghost:
+    "text-amber-ink bg-transparent border-line-amber-dim enabled:hover:bg-amber-bg enabled:hover:border-amber-border",
+  quiet:
+    "text-muted bg-transparent border-line-chip enabled:hover:bg-inset enabled:hover:border-line-dashed enabled:hover:text-fg-2",
+  dashed:
+    "text-muted bg-transparent border-dashed border-line-dashed enabled:hover:bg-inset enabled:hover:text-fg-2",
 };
 
 const sizeClasses: Record<NonNullable<ButtonProps["size"]>, string> = {
@@ -38,6 +47,7 @@ export function Button({
       type={type}
       className={cn(
         "cursor-pointer whitespace-nowrap border font-mono",
+        HOVER_TRANSITION,
         // Keyboard focus shows a tokenized amber ring on every variant, which
         // replaces the UA default outline. No transition on the ring, so
         // prefers-reduced-motion is honored by construction (WCAG 2.4.7;

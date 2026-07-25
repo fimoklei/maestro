@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router";
 import { useInventory, useInventoryConfig } from "../inventory/use-inventory";
 import { Chip, type ChipProps } from "../ui/chip";
 import { cn } from "../ui/cn";
+import { HOVER_TRANSITION } from "../ui/hover-transition";
 import { Logo } from "../ui/logo";
 import { StatusDot, type StatusDotProps } from "../ui/status-dot";
 import { useHealth } from "../use-health";
@@ -156,10 +157,11 @@ export function StatusBarView({
           title={SOURCE_ENTRY_LABEL}
           onClick={source.onOpen}
           className={cn(
-            "grid size-6 shrink-0 place-items-center rounded-control border font-mono text-tag transition-colors",
+            "grid size-6 shrink-0 place-items-center rounded-control border font-mono text-tag",
+            HOVER_TRANSITION,
             source.active
               ? "border-amber-border bg-amber-bg text-amber-ink"
-              : "border-line-chip text-dim hover:bg-active hover:text-fg",
+              : "border-line-chip text-dim hover:bg-inset hover:text-fg-2",
           )}
         >
           {/* Decorative — the accessible name comes from aria-label. */}
