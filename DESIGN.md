@@ -20,7 +20,9 @@ colors:
   text-muted: "#8a94a0"
   text-dim: "#7d8794"
   amber: "#e8a33d"
+  amber-hover: "#f2c982"
   green: "#62c47e"
+  green-hover: "#9adcae"
   danger: "#ec5c6a"
   on-accent: "#0b0d10"
   type-skill: "#7aa5d8"
@@ -77,30 +79,78 @@ components:
     typography: "{typography.chip}"
     rounded: "{rounded.control}"
     padding: "6px 12px"
+  button-primary-hover:
+    backgroundColor: "{colors.amber-hover}"
+    textColor: "{colors.on-accent}"
   button-success:
     backgroundColor: "{colors.green}"
     textColor: "{colors.on-accent}"
     typography: "{typography.chip}"
     rounded: "{rounded.control}"
     padding: "6px 12px"
+  button-success-hover:
+    backgroundColor: "{colors.green-hover}"
+    textColor: "{colors.on-accent}"
   button-ghost:
     backgroundColor: "#00000000"
     textColor: "{colors.amber}"
     typography: "{typography.chip}"
     rounded: "{rounded.control}"
     padding: "6px 12px"
+  button-ghost-hover:
+    backgroundColor: "#e8a33d1a"
+    textColor: "{colors.amber}"
   button-quiet:
     backgroundColor: "#00000000"
     textColor: "{colors.text-muted}"
     typography: "{typography.chip}"
     rounded: "{rounded.control}"
     padding: "6px 12px"
+  button-quiet-hover:
+    backgroundColor: "{colors.surface-inset}"
+    textColor: "{colors.text-2}"
   button-dashed:
     backgroundColor: "#00000000"
     textColor: "{colors.text-muted}"
     typography: "{typography.chip}"
     rounded: "{rounded.control}"
     padding: "6px 12px"
+  button-dashed-hover:
+    backgroundColor: "{colors.surface-inset}"
+    textColor: "{colors.text-2}"
+  segment:
+    backgroundColor: "#00000000"
+    textColor: "{colors.text-muted}"
+    typography: "{typography.label}"
+    rounded: "{rounded.control}"
+    padding: "4px 12px"
+  segment-hover:
+    backgroundColor: "{colors.surface-inset}"
+    textColor: "{colors.text-2}"
+  segment-active:
+    backgroundColor: "{colors.surface-active}"
+    textColor: "{colors.text-1}"
+  table-row:
+    backgroundColor: "#00000000"
+    textColor: "{colors.text-1}"
+    typography: "{typography.data}"
+    padding: "9px 14px"
+  table-row-hover:
+    backgroundColor: "{colors.surface-inset}"
+  table-row-selected:
+    backgroundColor: "{colors.surface-active}"
+  nav-item:
+    backgroundColor: "#00000000"
+    textColor: "{colors.text-muted}"
+    typography: "{typography.subtitle}"
+    rounded: "{rounded.item}"
+    padding: "8px 12px"
+  nav-item-hover:
+    backgroundColor: "{colors.surface-inset}"
+    textColor: "{colors.text-2}"
+  nav-item-active:
+    backgroundColor: "{colors.surface-active}"
+    textColor: "{colors.text-1}"
   card:
     backgroundColor: "{colors.surface-card}"
     textColor: "{colors.text-1}"
@@ -192,11 +242,16 @@ shadow.
 - **Signal Amber** (`#e8a33d`): the brand colour and the act colour. Used for
   drift, the logo tile, and the one amber-filled button per view. Its rarity is
   what makes it work.
+- **Amber Lift** (`#f2c982`): the amber fill under the pointer, and nothing else.
+  One step up amber's own tonal ramp, because a filled button has no surface ramp
+  to climb.
 
 ### Secondary
 
 - **Signal Green** (`#62c47e`): in sync, healthy, and the final confirm on a
   deploy. Never used decoratively.
+- **Green Lift** (`#9adcae`): the green fill under the pointer, and nothing else —
+  the same one-step move as Amber Lift.
 - **Signal Red** (`#ec5c6a`): the danger signal, reserved for validation errors
   and nothing else. It renders error text, so it clears WCAG 2.2 AA (≥4.5:1) on
   every surface it lands on. Never a fill for an action, never decoration — this
@@ -220,8 +275,10 @@ are deferred (see the note in §1).
 - **App Canvas** (`#0b0d10`): the page behind everything.
 - **Raised Chrome** (`#0d1014`): status bar and sidebar.
 - **Card Surface** (`#0f1318`): the standard panel fill.
-- **Inset Surface** (`#11161c`): recessed regions inside a card.
-- **Active Surface** (`#171d24`): hover and active nav.
+- **Inset Surface** (`#11161c`): recessed regions inside a card, and the surface
+  every hoverable control moves to.
+- **Active Surface** (`#171d24`): the selected row, the active nav item, the
+  chosen segment. It marks a standing choice, never a passing pointer.
 - **Text ramp** (`#e6e9ed` → `#7d8794`): five steps from primary text down to dim
   labels. Every step clears WCAG 2.2 AA (≥4.5:1) on every surface it renders on.
   Dim is for micro-labels and disabled states, never for body copy.
@@ -323,9 +380,17 @@ Mono-typeset, compact, never pill-shaped. Five variants, each with a fixed job.
   `+ register`.
 - **Sizes:** `sm` 10px / `md` 11px / `lg` 12px, with padding scaling from
   `2px 8px` to `10px 16px`.
-- **Hover / Focus:** background or border moves one step up its ramp over
-  120–160ms ease-out. No scale, no lift, no shadow.
-- **Disabled:** text drops to the dim step; the cursor becomes `not-allowed`.
+- **Hover:** one step up the ramp the variant already sits on, over 150ms
+  ease-out. No scale, no lift, no shadow. The two filled variants have no surface
+  ramp to climb, so they step up their own signal instead: primary to Amber Lift
+  (`#f2c982`), success to Green Lift (`#9adcae`). Ghost fills with the 10% amber
+  tint and warms its outline to the 30% amber border. Quiet and dashed fill to the
+  inset surface and lift their text one step to `#c3cad2`; quiet also moves its
+  outline from the chip step to the dashed step.
+- **Focus:** a 2px amber outline at 2px offset, on every variant. It is not
+  animated, so `prefers-reduced-motion` is honoured by construction.
+- **Disabled:** text drops to the dim step, the fill drops to the dim tint, and
+  the cursor becomes `not-allowed`. A disabled button has no hover at all.
 
 ### Chips
 
@@ -335,6 +400,20 @@ Mono-typeset, compact, never pill-shaped. Five variants, each with a fixed job.
   neutral meta such as versions and counts.
 - **State:** chips are read-only status, not interactive filters; a chip always
   leads with its glyph.
+
+### Segmented Control
+
+The one place a filter is a control rather than a chip: a row of real buttons that
+together hold a single choice, such as the type filter above the inventory table.
+
+- **Style:** 4px radius, 1px border, 10px mono lowercase with 0.08em tracking.
+- **Inactive:** transparent with a transparent border and muted text, so only the
+  chosen segment draws a box.
+- **Hover:** inset fill, text one step to `#c3cad2`. Deliberately one step below
+  the active surface, so hovering an inactive segment can never be mistaken for
+  selecting it.
+- **Active:** active surface with a chip-step outline and primary text; announced
+  with `aria-pressed`.
 
 ### Cards
 
@@ -348,6 +427,34 @@ Mono-typeset, compact, never pill-shaped. Five variants, each with a fixed job.
   chip, separated by a 1px row border.
 - **Internal Padding:** 14px horizontal, 10px on headers, 9px on rows. Rows manage
   their own padding; the card only pads when it holds free content.
+
+### Table Rows
+
+The densest surface in the cockpit — the inventory runs dozens of rows — so a row
+carries no fill of its own and is separated from its neighbour by a single row-step
+line.
+
+- **Style:** 9px vertical and 14px horizontal padding, 13px mono, a 1px row border
+  below every row except the last.
+- **Hover:** inset fill over 150ms ease-out, whenever the row is clickable. The
+  pointer cursor alone is not a hover state; a row that changes the cursor and
+  nothing else is unfinished.
+- **Selected:** active surface, one step above hover, so the standing choice always
+  reads louder than the passing pointer. Hover and selected are mutually exclusive:
+  hovering the selected row must never drag it back down the ramp.
+- **Truncation:** a clipped cell carries its full text in `title`, so the part the
+  column cuts is still reachable.
+
+### Named Rules
+
+**The One-Step Hover Rule.** Every hoverable control moves exactly one step up the
+ramp it already sits on, over 150ms ease-out, and changes nothing else. Colour is
+the only property that moves. Nothing scales, lifts, or gains a shadow.
+
+**The Hover-Is-Not-Selection Rule.** Hover lands on the inset surface; a standing
+choice — selected row, active nav item, chosen segment — lands on the active
+surface. A hover that reaches the active surface makes the two states
+indistinguishable and is therefore wrong.
 
 ### Inputs
 
@@ -364,8 +471,10 @@ Mono-typeset, compact, never pill-shaped. Five variants, each with a fixed job.
 - **Style:** a 208px sidebar of mono nav items at 13.5px, plus a 52px status bar
   across the top.
 - **Default:** muted text with a dim glyph.
-- **Hover:** surface moves one step to active.
-- **Active:** raised surface, chip-step outline, amber glyph.
+- **Hover:** inset fill, text one step to `#c3cad2`, over 150ms ease-out — one step
+  below the active surface, so hover never impersonates the current view.
+- **Active:** active surface, chip-step outline, primary text, amber glyph;
+  announced with `aria-current="page"`.
 
 ### Iconography
 
@@ -388,8 +497,12 @@ done. The logo is typographic — a bold mono "M" on an amber rounded tile.
 - **Do** chain meta fragments with the middle dot: `agent-harness · main · 9
   primitives`.
 - **Do** write drift as a version pair, `1.0.0 → 1.2.0`, in mono, never rounded.
-- **Do** keep transitions to 120–160ms ease-out on background and border colour,
-  with an instant alternative under `prefers-reduced-motion`.
+- **Do** keep transitions to 150ms ease-out on background, border, and text
+  colour, with an instant alternative under `prefers-reduced-motion`.
+- **Do** give every clickable surface a visible hover, not just a pointer cursor —
+  one step up its own ramp, colour only.
+- **Do** declare that transition once and reuse it. Retyping the duration per
+  component is how the window drifts out of the range this document states.
 - **Do** use dashed borders for additive affordances, and only for those.
 
 ### Don't:
@@ -403,6 +516,12 @@ done. The logo is typographic — a bold mono "M" on an amber rounded tile.
 - **Don't** strip structure down to a bare terminal dump; mono is the voice, but
   hierarchy and alignment still do the reading work.
 - **Don't** add entrance animations, hover scaling, or decorative motion.
+- **Don't** hover a control onto the active surface — that is the colour of a
+  standing choice, and reusing it makes hover and selected indistinguishable.
+- **Don't** ship a `cursor-pointer` with no colour change behind it; the cursor
+  moves, the screen must too.
+- **Don't** leave a transition un-gated by `motion-safe:`; a bare
+  `transition-colors` ignores `prefers-reduced-motion`.
 - **Don't** introduce a fourth signal colour, use danger red for anything but
   errors, or borrow a primitive-type hue for anything other than the type tag.
 - **Don't** set any text below 10px.
