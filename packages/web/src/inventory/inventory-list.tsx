@@ -235,10 +235,12 @@ export function InventoryList({
                 <TableRow
                   key={primitive.name}
                   onClick={() => toggleSelected(primitive.name)}
-                  className={cn(
-                    "cursor-pointer",
-                    primitive.name === selected ? "bg-active" : undefined,
-                  )}
+                  // Hover and selected are one ramp apart, and the two classes
+                  // are mutually exclusive so hovering the selected row never
+                  // drags it back down the ramp.
+                  className={
+                    primitive.name === selected ? "bg-active" : "hover:bg-inset"
+                  }
                 >
                   <TableCell>
                     {/* Staging is independent of opening the pane, so the

@@ -156,7 +156,7 @@ export function StatusBarView({
           title={SOURCE_ENTRY_LABEL}
           onClick={source.onOpen}
           className={cn(
-            "grid size-6 shrink-0 place-items-center rounded-control border font-mono text-tag transition-colors",
+            "grid size-6 shrink-0 place-items-center rounded-control border font-mono text-tag motion-safe:transition-colors motion-safe:duration-150 motion-safe:ease-out",
             source.active
               ? "border-amber-border bg-amber-bg text-amber-ink"
               : "border-line-chip text-dim hover:bg-active hover:text-fg",

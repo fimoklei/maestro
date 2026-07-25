@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "./cn";
+import { HOVER_TRANSITION } from "./hover-transition";
 
 // Owned table primitives (shadcn-style, restyled to tokens per ADR-0004): thin
 // wrappers over the native table elements so callers compose real <table>
@@ -30,6 +31,9 @@ export function TableBody({ children, className }: TableSectionProps) {
 // onClick lets a whole row act as one select surface (inventory pane, #290). The
 // row stays a plain <tr>: keep a real focusable control inside it for the
 // keyboard path — the row click is a mouse convenience, not the only affordance.
+// A clickable row gets the pointer and the colour transition here, but not the
+// hover fill itself: a row that is already selected sits higher up the surface
+// ramp, and the caller is the only one who knows that (inventory-list.tsx).
 export function TableRow({
   children,
   className,
@@ -38,7 +42,11 @@ export function TableRow({
   return (
     <tr
       onClick={onClick}
-      className={cn("border-b border-line-row last:border-b-0", className)}
+      className={cn(
+        "border-b border-line-row last:border-b-0",
+        onClick && cn("cursor-pointer", HOVER_TRANSITION),
+        className,
+      )}
     >
       {children}
     </tr>

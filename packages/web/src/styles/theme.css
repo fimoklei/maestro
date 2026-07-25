@@ -41,6 +41,8 @@
 
   /* signals → bg-amber / text-amber-ink / border-amber-border / … */
   --color-amber: var(--amber);
+  --color-amber-hover: var(--amber-hover);
+  --color-green-hover: var(--green-hover);
   --color-amber-ink: var(--amber-ink);
   --color-amber-bg: var(--amber-bg);
   --color-amber-border: var(--amber-border);
