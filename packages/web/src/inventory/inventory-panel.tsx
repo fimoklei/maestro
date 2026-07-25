@@ -30,6 +30,7 @@ export function InventoryPanel() {
   return (
     <section>
       <SectionHeader
+        level={1}
         title="Central inventory"
         meta={
           inventory.isSuccess

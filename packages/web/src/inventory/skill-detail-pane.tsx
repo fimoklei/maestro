@@ -7,6 +7,7 @@ import { HOVER_TRANSITION } from "../ui/hover-transition";
 import { TypeTag } from "../ui/type-tag";
 import type { SkillDeployment } from "./skill-deployments";
 import type { Primitive } from "./use-inventory";
+import { useSkillDetailPaneFocus } from "./use-skill-detail-pane-focus";
 
 // The inventory's detail pane: the "do" surface to the table's "see" (ADR-0016).
 // Selecting a row opens it; it names the skill, lists where the skill is deployed
@@ -23,6 +24,7 @@ export function SkillDetailPane({
   unconfirmed,
   deployAction,
   onClose,
+  getTriggerElement,
 }: {
   // Lets the list scroll the pane into view when it opens below the table on a
   // narrow window. Presentation only — the pane still owns no state.
@@ -35,8 +37,20 @@ export function SkillDetailPane({
   unconfirmed: boolean;
   deployAction: ReactNode;
   onClose: () => void;
+  // Looks up the row button that opened a skill's pane, by name — where focus
+  // goes back to when it closes. A lookup, not a resolved element, because
+  // selection persists across a narrowing search: the row behind an open pane
+  // can unmount and remount as a new DOM node while the pane stays open, so
+  // the button has to be found fresh at close time, not captured once at open
+  // time (use-skill-detail-pane-focus.ts).
+  getTriggerElement: (name: string) => HTMLElement | null;
 }) {
   const paneId = `skill-detail-${primitive.name}`;
+  const { headingRef } = useSkillDetailPaneFocus({
+    activeKey: primitive.name,
+    getTriggerElement,
+    onClose,
+  });
 
   return (
     <aside
@@ -81,7 +95,16 @@ export function SkillDetailPane({
         <div className="border-line-faint border-b px-card-x py-row-y">
           <div className="flex items-center gap-2">
             <TypeTag type={primitive.type} />
-            <h2 className="font-medium text-fg text-lg">{primitive.name}</h2>
+            <h2
+              ref={headingRef}
+              tabIndex={-1}
+              className={cn(
+                "font-medium text-fg text-lg",
+                "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber",
+              )}
+            >
+              {primitive.name}
+            </h2>
           </div>
           {/* Capped for reading: stacked below the table the pane runs the full
               card width, where an uncapped line gets far too long to scan. */}

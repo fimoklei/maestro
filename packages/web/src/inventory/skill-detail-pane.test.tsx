@@ -16,6 +16,7 @@ function renderPane(overrides: {
   unconfirmed?: boolean;
   deployAction?: React.ReactNode;
   onClose?: () => void;
+  getTriggerElement?: (name: string) => HTMLElement | null;
 }) {
   return render(
     <SkillDetailPane
@@ -26,6 +27,7 @@ function renderPane(overrides: {
         overrides.deployAction ?? <button type="button">Deploy</button>
       }
       onClose={overrides.onClose ?? (() => {})}
+      getTriggerElement={overrides.getTriggerElement ?? (() => null)}
     />,
   );
 }
@@ -135,6 +137,63 @@ describe("SkillDetailPane", () => {
     await userEvent.click(screen.getByRole("button", { name: /close/i }));
 
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("closes when Escape is pressed", async () => {
+    // The pane is not a modal (ADR-0016), but it still needs an escape route:
+    // without one a keyboard user who opens it has no way back except tabbing
+    // through the whole thing.
+    const onClose = vi.fn();
+    renderPane({ onClose });
+
+    await userEvent.keyboard("{Escape}");
+
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("moves focus to its heading when it opens", () => {
+    // A keyboard user who opens the pane lands somewhere predictable and a
+    // screen reader announces the skill's name, instead of focus staying on
+    // the row button behind whatever now covers it.
+    renderPane({});
+
+    expect(document.activeElement).toBe(
+      screen.getByRole("heading", { name: /tdd/i }),
+    );
+  });
+
+  it("gives the heading a visible focus ring, so a keyboard user can see where focus landed", () => {
+    // Landing focus on the heading is only useful if it's visible — the
+    // project's standard focus-visible ring (Codex review finding on this
+    // branch) is what every other focusable control in the pane already
+    // carries (the close button, the search box).
+    renderPane({});
+
+    expect(screen.getByRole("heading", { name: /tdd/i })).toHaveClass(
+      "focus-visible:outline-2",
+      "focus-visible:outline-offset-2",
+      "focus-visible:outline-amber",
+    );
+  });
+
+  it("returns focus to the element that opened it once it closes", () => {
+    // The pane persists across a row switch (inventory-list keeps one
+    // instance and only swaps `primitive`), so the return target has to be
+    // the caller-supplied lookup, not whatever `document.activeElement`
+    // happens to be — that would be corrupted by the pane's own mount effect
+    // moving focus to the heading. The lookup is resolved at close time, not
+    // captured up front, so a caller can look up a row that has since
+    // remounted (skill-detail-pane's own row can unmount and remount behind
+    // a narrowing search while the pane stays open).
+    const trigger = document.createElement("button");
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    const { unmount } = renderPane({ getTriggerElement: () => trigger });
+    unmount();
+
+    expect(document.activeElement).toBe(trigger);
+    trigger.remove();
   });
 
   it("stays in view and scrolls on its own while the table scrolls past it", () => {

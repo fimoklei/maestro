@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
+import { useEscapeToClose } from "./use-escape-to-close";
 
 // The keyboard contract of a modal, in one place (issue #214): on open, focus
 // moves into the panel; on close, it returns to the trigger that opened it;
@@ -38,12 +39,7 @@ export function useModalDialog({
   closeEnabled: boolean;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
-  // Refs, so the mount effect and key handler read the latest callback and
-  // guard without re-running (which would re-steal focus on every render).
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-  const closeEnabledRef = useRef(closeEnabled);
-  closeEnabledRef.current = closeEnabled;
+  const { requestClose } = useEscapeToClose({ onClose, closeEnabled });
 
   useEffect(() => {
     const trigger =
@@ -62,14 +58,6 @@ export function useModalDialog({
     function onKeyDown(event: KeyboardEvent) {
       const panel = panelRef.current;
       if (!panel) return;
-
-      if (event.key === "Escape") {
-        if (closeEnabledRef.current) {
-          event.preventDefault();
-          onCloseRef.current();
-        }
-        return;
-      }
       if (event.key !== "Tab") return;
 
       const focusables = focusablesWithin(panel);
@@ -101,12 +89,6 @@ export function useModalDialog({
 
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, []);
-
-  const requestClose = useCallback(() => {
-    if (closeEnabledRef.current) {
-      onCloseRef.current();
-    }
   }, []);
 
   return { panelRef, requestClose };

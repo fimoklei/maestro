@@ -45,6 +45,20 @@ function renderSidebar(path = "/welcome") {
   );
 }
 
+describe("Sidebar", () => {
+  it("names its landmark so it's distinct from the skill detail pane's aside", () => {
+    // Two <aside> elements on /inventory (this one and the skill detail
+    // pane) need distinct accessible names, or a screen reader's landmark
+    // list can't tell them apart.
+    stubServer({ notConfigured: true });
+    renderSidebar();
+
+    expect(
+      screen.getByRole("complementary", { name: /sidebar/i }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("Sidebar first-run rendering", () => {
   it("dims the nav, hides register, and shows 'none yet' when unconfigured", async () => {
     stubServer({ notConfigured: true });
