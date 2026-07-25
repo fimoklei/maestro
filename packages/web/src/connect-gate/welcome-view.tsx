@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { Button } from "../ui/button";
 
 // The connect gate's first of two screens (ADR-0015). A fresh install has no

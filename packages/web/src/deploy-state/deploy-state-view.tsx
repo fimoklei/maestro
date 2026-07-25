@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { RegisterRepoHint } from "../registry/register-repo-hint";
 import { useRegistry } from "../registry/use-registry";
 import { Button } from "../ui/button";

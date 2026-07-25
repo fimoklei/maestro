@@ -1,4 +1,4 @@
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter } from "react-router";
 import { AppRoutes } from "./shell/app-router";
 
 // The cockpit entry: the router renders the shell (status bar + sidebar) around
