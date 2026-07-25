@@ -1,4 +1,4 @@
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router";
 import { ConfigUnreachableNotice } from "../inventory/config-unreachable-notice";
 import { useInventoryConfig } from "../inventory/use-inventory";
 import { useFirstRun, useIsConfigured } from "./use-first-run";

@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router";
 import { NavItem } from "../ui/nav-item";
 import { SidebarRegister } from "./sidebar-register";
 import { TargetsList } from "./targets-list";

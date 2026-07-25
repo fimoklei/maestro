@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router";
 import { useInventory, useInventoryConfig } from "../inventory/use-inventory";
 import { Chip, type ChipProps } from "../ui/chip";
 import { cn } from "../ui/cn";

@@ -60,7 +60,7 @@
       "matchPackageNames": [
         "react",
         "react-dom",
-        "react-router-dom",
+        "react-router",
         "@tanstack/react-query",
         "vite",
         "@vitejs/plugin-react",

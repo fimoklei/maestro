@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { useInventoryConfig } from "../inventory/use-inventory";
 import { ConnectInventoryPanel } from "../shell/connect-inventory-panel";
 import { SourceLabel } from "../shell/source-label";
