@@ -2,7 +2,8 @@
 // import it under the repo's strict TypeScript settings.
 export interface PortOwner {
   port: number;
-  pid: number;
+  /** Null when the port lookup could not answer — never read as "the port is free". */
+  pid: number | null;
   /** Null when the holder's working directory cannot be read. */
   cwd: string | null;
   /** The git worktree the holder runs in; null when it is not in one — never "ours". */
@@ -20,4 +21,7 @@ export function decidePortOwnership(input: {
   owners: PortOwner[];
 }): OwnershipDecision;
 
-export function findPortOwners(ports?: number[]): PortOwner[];
+export function findPortOwners(
+  ports?: number[],
+  lsof?: (args: string[]) => string,
+): PortOwner[];

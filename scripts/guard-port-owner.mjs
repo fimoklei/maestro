@@ -32,10 +32,12 @@ function targetedPorts(command) {
     .filter((url) => url !== null && LOCAL_HOSTS.has(url.hostname));
   if (local.length === 0) return null;
 
+  // A local URL that names some other port belongs to another project, not the
+  // cockpit — leave it alone rather than blocking on a port it never reads.
   const named = local
     .map((url) => Number(url.port))
     .filter((port) => COCKPIT_PORTS.includes(port));
-  return named.length === 0 ? COCKPIT_PORTS : named;
+  return named.length === 0 ? null : named;
 }
 
 export function decidePortOwnership({ command, worktreeRoot, owners }) {
@@ -44,58 +46,66 @@ export function decidePortOwnership({ command, worktreeRoot, owners }) {
 
   // Compared by worktree root, never by path containment: worktrees nest inside
   // the main checkout, so "is under my directory" would accept a sibling
-  // whenever you work from the main checkout.
+  // whenever you work from the main checkout. A root only counts as ours when
+  // both sides are known — two unknowns are not a match.
+  const isOurs = (owner) =>
+    worktreeRoot !== null && owner.worktreeRoot === worktreeRoot;
   const foreign = owners.filter(
-    (owner) =>
-      ports.includes(owner.port) && owner.worktreeRoot !== worktreeRoot,
+    (owner) => ports.includes(owner.port) && !isOurs(owner),
   );
   if (foreign.length === 0) return { blocked: false };
 
   const held = foreign
-    .map(
-      (owner) =>
-        `  port ${owner.port} — pid ${owner.pid} in ${owner.cwd ?? "an unreadable directory"}`,
+    .map((owner) =>
+      owner.pid === null
+        ? `  port ${owner.port} — the holder could not be determined; the lookup failed`
+        : `  port ${owner.port} — pid ${owner.pid} in ${owner.cwd ?? "an unreadable directory"}`,
     )
     .join("\n");
+
+  const identified = foreign.some((owner) => owner.pid !== null);
 
   return {
     blocked: true,
     message: [
-      "Blocked: the cockpit's ports are held by a dev server outside this worktree.",
-      `This worktree: ${worktreeRoot}`,
+      identified
+        ? "Blocked: the cockpit's ports are held by a dev server outside this worktree."
+        : "Blocked: who holds the cockpit's ports could not be established.",
+      `This worktree: ${worktreeRoot ?? "could not be established either"}`,
       held,
-      "Anything you screenshot now shows that other tree, not your branch.",
+      identified
+        ? "Anything you screenshot now shows that other tree, not your branch."
+        : "Until that is answered, a screenshot proves nothing about your branch.",
       "Fix: stop that server, then run `pnpm smoke` from this worktree.",
     ].join("\n"),
   };
 }
 
-function listeningPids(port) {
+const runLsof = (args) => execFileSync("lsof", args, { encoding: "utf8" });
+
+/** The one failure that means "the port is free"; anything else is a real fault. */
+function meansNoMatch(failure) {
+  // lsof exits 1 with no output when nothing matches the query (lsof revision
+  // 4.91, measured 2026-07-26). A missing binary or a refused query surfaces as
+  // a different status, or as an ENOENT/EACCES code with no status at all.
+  return failure?.status === 1;
+}
+
+/** Listening pids on a port, or null when the lookup could not answer. */
+function listeningPids(port, lsof) {
   try {
-    return execFileSync(
-      "lsof",
-      ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-t"],
-      {
-        encoding: "utf8",
-      },
-    )
+    return lsof(["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-t"])
       .split("\n")
       .map((line) => Number(line.trim()))
       .filter((pid) => Number.isInteger(pid) && pid > 0);
-  } catch {
-    // lsof exits non-zero when nothing listens on the port (proven by the
-    // "reports no owner" case in tests/integration/guard-port-owner.test.ts).
-    return [];
+  } catch (failure) {
+    return meansNoMatch(failure) ? [] : null;
   }
 }
 
-function workingDirectoryOf(pid) {
+function workingDirectoryOf(pid, lsof) {
   try {
-    const output = execFileSync(
-      "lsof",
-      ["-a", "-p", String(pid), "-d", "cwd", "-Fn"],
-      { encoding: "utf8" },
-    );
+    const output = lsof(["-a", "-p", String(pid), "-d", "cwd", "-Fn"]);
     const line = output.split("\n").find((entry) => entry.startsWith("n/"));
     return line === undefined ? null : realpathSync(line.slice(1));
   } catch {
@@ -117,13 +127,19 @@ function worktreeRootOf(directory) {
   }
 }
 
-export function findPortOwners(ports = COCKPIT_PORTS) {
-  return ports.flatMap((port) =>
-    listeningPids(port).map((pid) => {
-      const cwd = workingDirectoryOf(pid);
+export function findPortOwners(ports = COCKPIT_PORTS, lsof = runLsof) {
+  return ports.flatMap((port) => {
+    const pids = listeningPids(port, lsof);
+    // A lookup that could not answer is reported as an owner we cannot place,
+    // so the decision blocks instead of reading silence as "the port is free".
+    if (pids === null)
+      return [{ port, pid: null, cwd: null, worktreeRoot: null }];
+
+    return pids.map((pid) => {
+      const cwd = workingDirectoryOf(pid, lsof);
       return { port, pid, cwd, worktreeRoot: worktreeRootOf(cwd) };
-    }),
-  );
+    });
+  });
 }
 
 function readStdin() {

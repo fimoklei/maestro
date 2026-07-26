@@ -19,7 +19,7 @@ const mainCheckout = "/repo";
 
 function holder(overrides: {
   port?: number;
-  pid?: number;
+  pid?: number | null;
   cwd?: string | null;
   worktreeRoot?: string | null;
 }) {
@@ -145,6 +145,51 @@ describe("decidePortOwnership", () => {
     expect(decision.blocked).toBe(true);
   });
 
+  it("allows a browser command aimed at a different local port", () => {
+    const decision = decidePortOwnership({
+      command: "agent-browser open http://localhost:8080",
+      worktreeRoot: worktree,
+      owners: [holder({})],
+    });
+
+    expect(decision.blocked).toBe(false);
+  });
+
+  it("blocks when the port lookup itself failed", () => {
+    const decision = decidePortOwnership({
+      command: "agent-browser snapshot -i",
+      worktreeRoot: worktree,
+      owners: [holder({ pid: null, cwd: null, worktreeRoot: null })],
+    });
+
+    expect(decision.blocked).toBe(true);
+    expect(decision.message).toContain("could not be determined");
+    // The refusal must not invent a dev server it never saw.
+    expect(decision.message).not.toContain("held by a dev server");
+  });
+
+  it("blocks when this worktree cannot be identified either", () => {
+    // Two unknowns are not a match: without both roots there is nothing to
+    // compare, so the guard cannot claim the holder is ours.
+    const decision = decidePortOwnership({
+      command: "agent-browser snapshot -i",
+      worktreeRoot: null,
+      owners: [holder({ pid: null, cwd: null, worktreeRoot: null })],
+    });
+
+    expect(decision.blocked).toBe(true);
+  });
+
+  it("blocks an identified holder when this worktree is unknown", () => {
+    const decision = decidePortOwnership({
+      command: "agent-browser snapshot -i",
+      worktreeRoot: null,
+      owners: [holder({})],
+    });
+
+    expect(decision.blocked).toBe(true);
+  });
+
   it("ignores a foreign holder on a port the command does not target", () => {
     const decision = decidePortOwnership({
       command: "agent-browser open http://localhost:5173",
@@ -169,6 +214,32 @@ describe("findPortOwners", () => {
     } finally {
       await new Promise((resolve) => server.close(resolve));
     }
+  });
+
+  it("reports an unknown holder when the lookup itself cannot run", () => {
+    // lsof missing or refusing to run is not the same as "the port is free";
+    // treating it as free would let a foreign server through unchallenged.
+    const owners = findPortOwners([5173], () => {
+      const failure: NodeJS.ErrnoException = new Error("spawn lsof ENOENT");
+      failure.code = "ENOENT";
+      throw failure;
+    });
+
+    expect(owners).toEqual([
+      { port: 5173, pid: null, cwd: null, worktreeRoot: null },
+    ]);
+  });
+
+  it("reports no owner when the lookup reports the port as free", () => {
+    const owners = findPortOwners([5173], () => {
+      const noMatch: NodeJS.ErrnoException & { status: number } = Object.assign(
+        new Error("no match"),
+        { status: 1 },
+      );
+      throw noMatch;
+    });
+
+    expect(owners).toEqual([]);
   });
 
   it("reports no owner for a port nothing listens on", async () => {
