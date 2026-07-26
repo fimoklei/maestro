@@ -10,9 +10,6 @@ storybook-static/
 .maestro-dev.pid
 .maestro-sandbox/
 
-# graphify generated knowledge graph (rebuildable via `graphify .`)
-graphify-out/
-
 # Per-branch git worktrees created by agent sessions (local checkouts, not source).
 .claude/worktrees/
 
