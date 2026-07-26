@@ -45,7 +45,7 @@ export function NavItem({
       <span
         aria-hidden="true"
         className={cn(
-          "w-3.5 text-[12px]",
+          "w-3.5 text-desc",
           active ? "text-amber-ink" : "text-dim",
         )}
       >
