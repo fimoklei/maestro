@@ -28,8 +28,11 @@ const variantClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
     "text-muted bg-transparent border-dashed border-line-dashed enabled:hover:bg-inset enabled:hover:text-fg-2",
 };
 
+// sm's 10px type on 3px padding renders 23px tall — a pixel under WCAG 2.2 AA
+// 2.5.8's click-target floor. min-h-6 buys that pixel without moving the type
+// ramp or the padding rhythm; md and lg clear 24px on their own.
 const sizeClasses: Record<NonNullable<ButtonProps["size"]>, string> = {
-  sm: "text-tag px-2 py-[3px]",
+  sm: "min-h-6 text-tag px-2 py-[3px]",
   md: "text-chip px-3 py-1.5",
   lg: "text-desc px-4 py-2.5",
 };

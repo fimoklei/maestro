@@ -42,6 +42,16 @@ describe("Button", () => {
     expect(button).not.toHaveClass("outline-none");
   });
 
+  it("keeps the smallest size at the 24px click-target floor", () => {
+    // sm sets 10px type with 3px padding, which measured 23px tall on the real
+    // page — one pixel under WCAG 2.2 AA 2.5.8. A minimum height buys the pixel
+    // back without touching the type ramp or the padding rhythm.
+    render(<Button size="sm">+ repo</Button>);
+    expect(screen.getByRole("button", { name: "+ repo" })).toHaveClass(
+      "min-h-6",
+    );
+  });
+
   describe("disabled state", () => {
     const variants = [
       "primary",

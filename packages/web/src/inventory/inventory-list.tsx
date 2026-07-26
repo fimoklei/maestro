@@ -273,17 +273,26 @@ export function InventoryList({
                   }
                 >
                   <TableCell>
-                    {/* Staging is independent of opening the pane, so the
-                        checkbox stops the click from bubbling to the row's
-                        select handler (Model A, #291). */}
-                    <input
-                      type="checkbox"
-                      checked={staged.has(primitive.name)}
+                    {/* The box stays 16px — density is the point — but a 16px
+                        target in a 36-row table is awkward to hit, so the label
+                        pads it out past the 24px floor (WCAG 2.2 AA 2.5.8).
+                        Staging is independent of opening the pane, so the label
+                        stops the click from bubbling to the row's select
+                        handler; it sits on the label, not the box, because the
+                        padding's own click bubbles too (Model A, #291). */}
+                    {/* biome-ignore lint/a11y/useKeyWithClickEvents: the label triggers no action of its own — it only stops a bubble, and the keyboard reaches the checkbox directly */}
+                    <label
+                      className="-m-1.5 inline-flex p-1.5"
                       onClick={(event) => event.stopPropagation()}
-                      onChange={() => toggleStagedName(primitive.name)}
-                      aria-label={`Stage ${primitive.name} for bulk`}
-                      className="size-4 accent-amber focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
-                    />
+                    >
+                      <input
+                        type="checkbox"
+                        checked={staged.has(primitive.name)}
+                        onChange={() => toggleStagedName(primitive.name)}
+                        aria-label={`Stage ${primitive.name} for bulk`}
+                        className="size-4 accent-amber focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+                      />
+                    </label>
                   </TableCell>
                   <TableCell>
                     <TypeTag type={primitive.type} />
@@ -308,7 +317,10 @@ export function InventoryList({
                       aria-expanded={primitive.name === selected}
                       aria-controls={`skill-detail-${primitive.name}`}
                       title={primitive.name}
-                      className="block w-full truncate text-left text-inherit focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+                      // Padding pulled back by an equal negative margin: the
+                      // hit area reaches the 24px floor (WCAG 2.2 AA 2.5.8)
+                      // while the row keeps its measured height.
+                      className="-my-0.5 block w-full truncate py-0.5 text-left text-inherit focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
                     >
                       {primitive.name}
                     </button>
@@ -419,7 +431,9 @@ function SortableHead({
         type="button"
         onClick={() => onSort(nextSort(sort, column))}
         className={cn(
-          "flex cursor-pointer items-center gap-1 font-mono text-tag uppercase tracking-tag text-inherit hover:text-fg-2",
+          // Same padded-target trick as the row's name button: the negative
+          // margin keeps the header row's height while the button clears 24px.
+          "-my-1.5 flex cursor-pointer items-center gap-1 py-1.5 font-mono text-tag uppercase tracking-tag text-inherit hover:text-fg-2",
           HOVER_TRANSITION,
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber",
         )}
