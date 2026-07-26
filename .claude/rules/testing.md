@@ -9,6 +9,7 @@ Runner: **Vitest**, all lanes (ADR-0002).
 - One concept per test. Tests are independent: no ordering dependencies, no shared state.
 - Deterministic: no clock, no network, no reliance on key-ordering.
 - **Layout is proven in a browser, not jsdom.** jsdom measures nothing — verify a CSS/layout change with an `agent-browser` measurement.
+- Never chain `lint && typecheck && test` — run `pnpm verify`. The full output of the last run is on disk in `.logs/`; read it instead of re-running with a different filter.
 
 ## Anti-patterns
 
@@ -20,10 +21,10 @@ Runner: **Vitest**, all lanes (ADR-0002).
 
 ## The four lanes
 
-- **Pure (unit)** — sibling file next to source, no fs/git/network. Default in the `/tdd` loop; most tests live here.
-- **Web component** — sibling `.test.tsx` in `packages/web`, **jsdom** + Testing Library (own `packages/web/vitest.config.ts`); `fetch` stubbed. Browser end-to-end (Playwright) stays deferred.
-- **Integration** — `tests/integration/`, a journey across modules with real I/O. Anything that drives APM or reads real lockfiles is integration.
-- **Acceptance (BDD)** — Gherkin `.feature`, one per shipped job (DONE lane in `docs/jobs.md`), Given/When/Then, runs against the server API under Vitest. Existing files keep their `jNN-` prefixes; new ones are named after the job's behavior.
+- **Pure (unit)** (`pnpm test:core`) — sibling file next to source, no fs/git/network. Default in the `/tdd` loop; most tests live here.
+- **Web component** (`pnpm test:web`) — sibling `.test.tsx` in `packages/web`, **jsdom** + Testing Library (own `packages/web/vitest.config.ts`); `fetch` stubbed. Browser end-to-end (Playwright) stays deferred.
+- **Integration** (`pnpm test:integration`) — `tests/integration/`, a journey across modules with real I/O. Anything that drives APM or reads real lockfiles is integration.
+- **Acceptance (BDD)** (`pnpm test:acceptance`) — Gherkin `.feature`, one per shipped job (DONE lane in `docs/jobs.md`), Given/When/Then, runs against the server API under Vitest. Existing files keep their `jNN-` prefixes; new ones are named after the job's behavior.
 
 Storybook stories are **not** a lane: documentation, not coverage. Behaviour is tested in the sibling `.test.tsx` (`frontend.md`).
 
