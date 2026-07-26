@@ -83,7 +83,9 @@ Run from the repo root.
   and frees ports 3000/5173 first).
 - `pnpm smoke` — same as `dev` but against an isolated sandbox config
   (`MAESTRO_HOME=.maestro-sandbox`), so it never touches the real `~/.maestro`.
-- `pnpm test` — run tests.
+- `pnpm test` — whole suite. `test:core` / `test:web` / `test:integration` / `test:acceptance` — one lane.
+- `pnpm verify` — lint, typecheck and test as three processes, one summary.
+- Full output of the last run is in `.logs/`. Read it; never re-run with a narrower filter.
 - `pnpm typecheck` — typecheck all packages.
 - `pnpm build` — build all packages.
 - `pnpm lint` — run Biome checks.

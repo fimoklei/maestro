@@ -11,11 +11,16 @@
     "dev": "node scripts/dev.mjs",
     "smoke": "node scripts/dev.mjs --smoke",
     "build": "pnpm -r build",
-    "test": "vitest run",
+    "test": "node scripts/run-tests.mjs",
+    "test:core": "node scripts/run-tests.mjs --project core",
+    "test:web": "node scripts/run-tests.mjs --project web",
+    "test:integration": "node scripts/run-tests.mjs --project integration",
+    "test:acceptance": "node scripts/run-tests.mjs --project acceptance",
     "test:watch": "vitest",
     "typecheck": "pnpm -r typecheck && tsc -p tsconfig.json --noEmit",
     "lint": "biome check .",
-    "format": "biome check --write ."
+    "format": "biome check --write .",
+    "verify": "node scripts/verify.mjs"
   },
   "devDependencies": {
     "@amiceli/vitest-cucumber": "^6.5.0",
