@@ -207,6 +207,17 @@ function readStdin() {
   }
 }
 
+/**
+ * The directory this guard treats as "ours" — every ownership comparison hangs
+ * off it. The payload's cwd wins because it follows EnterWorktree;
+ * CLAUDE_PROJECT_DIR stays pinned to the directory the session launched from,
+ * so reading it first made the guard compare a worktree's own dev server
+ * against the launch directory and refuse every screenshot from a worktree.
+ */
+export function resolveProjectDir({ payload, env }) {
+  return payload?.cwd ?? env?.CLAUDE_PROJECT_DIR;
+}
+
 function main() {
   let payload;
   try {
@@ -216,7 +227,7 @@ function main() {
   }
 
   const command = payload?.tool_input?.command;
-  const projectDir = process.env.CLAUDE_PROJECT_DIR ?? payload?.cwd;
+  const projectDir = resolveProjectDir({ payload, env: process.env });
   if (typeof command !== "string" || typeof projectDir !== "string") return;
 
   // Nothing is looked up until the command is one that could read the cockpit:

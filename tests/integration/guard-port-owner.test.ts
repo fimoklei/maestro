@@ -5,6 +5,7 @@ import {
   decidePortOwnership,
   findPortOwners,
   readSandboxState,
+  resolveProjectDir,
 } from "../../scripts/guard-port-owner.mjs";
 
 // Every worktree serves the cockpit on the same localhost:5173, so a dev server
@@ -367,5 +368,34 @@ describe("readSandboxState", () => {
       inventoryPath: null,
       repos: [],
     });
+  });
+});
+
+// Which directory the guard calls "ours" decides every comparison above it.
+// CLAUDE_PROJECT_DIR is pinned to the directory the session launched from and
+// does not follow EnterWorktree; the hook payload's cwd does. Preferring the
+// env var made the guard compare a worktree's own dev server against the launch
+// directory, so every screenshot from a worktree was refused.
+describe("resolveProjectDir", () => {
+  it("prefers the session cwd over the launch directory", () => {
+    expect(
+      resolveProjectDir({
+        payload: { cwd: worktree },
+        env: { CLAUDE_PROJECT_DIR: mainCheckout },
+      }),
+    ).toBe(worktree);
+  });
+
+  it("falls back to the launch directory when the payload carries no cwd", () => {
+    expect(
+      resolveProjectDir({
+        payload: {},
+        env: { CLAUDE_PROJECT_DIR: mainCheckout },
+      }),
+    ).toBe(mainCheckout);
+  });
+
+  it("resolves to nothing when neither source names a directory", () => {
+    expect(resolveProjectDir({ payload: {}, env: {} })).toBeUndefined();
   });
 });

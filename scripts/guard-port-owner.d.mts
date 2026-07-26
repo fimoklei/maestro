@@ -39,3 +39,8 @@ export function decideCockpitReadiness(input: {
   command: string;
   sandbox: SandboxState;
 }): OwnershipDecision;
+
+export function resolveProjectDir(input: {
+  payload: { cwd?: string } | null | undefined;
+  env: { CLAUDE_PROJECT_DIR?: string };
+}): string | undefined;
