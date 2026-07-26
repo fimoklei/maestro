@@ -36,8 +36,9 @@ graphify-out/
 
 # Per-machine local skill installs and symlinks (not project source). Project
 # skills in these directories are tracked explicitly; only these local copies
-# are ignored.
+# are ignored. A symlink pointing outside the repo is per-machine; a relative
+# one into .agents/skills/ is tracked, because Claude Code discovers skills
+# under .claude/skills/ and a fresh worktree gets none otherwise.
 .agents/skills/impeccable/
 .claude/skills/impeccable/
-.claude/skills/agent-browser
 .claude/skills/codex-review

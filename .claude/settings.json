@@ -22,21 +22,6 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -c '~/.claude/hooks/format-after-edit.sh'",
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "bash -c '~/.claude/hooks/typecheck-after-edit.sh'",
-            "timeout": 30
-          }
-        ]
-      },
-      {
         "matcher": "Edit|Write|MultiEdit",
         "hooks": [
           {
