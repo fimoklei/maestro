@@ -16,6 +16,12 @@ export interface CardProps {
   drift?: boolean;
   /** Add inner padding around children (rows manage their own padding). */
   padded?: boolean;
+  /**
+   * Take the height its parent gives it instead of growing with its contents,
+   * so a child can own the scrolling. The card and its inner wrapper become a
+   * bounded flex column; the caller marks which child scrolls.
+   */
+  fill?: boolean;
   children?: ReactNode;
   className?: string;
 }
@@ -26,6 +32,7 @@ export function Card({
   status,
   drift = false,
   padded = false,
+  fill = false,
   children,
   className,
 }: CardProps) {
@@ -33,11 +40,12 @@ export function Card({
     <div
       className={cn(
         // overflow-clip, not overflow-hidden: both clip children to the rounded
-        // corner, but `hidden` also makes the card a scroll container, which
-        // silently anchors any sticky descendant to a box that never scrolls.
-        // The inventory detail pane sticks to the scrolling main region, so the
-        // card must stay out of that chain.
+        // corner, but `hidden` also makes the card a scroll container, and a
+        // scroll container that never scrolls silently strands any sticky
+        // descendant — the inventory's column headers stick to the scrolling
+        // region inside the card, so the card must stay out of that chain.
         "overflow-clip rounded-card border bg-card",
+        fill && "flex min-h-0 flex-1 flex-col",
         drift ? "border-line-drift" : "border-line",
         className,
       )}
@@ -60,7 +68,14 @@ export function Card({
           {status}
         </div>
       ) : null}
-      <div className={padded ? "p-card-x" : undefined}>{children}</div>
+      <div
+        className={cn(
+          padded && "p-card-x",
+          fill && "flex min-h-0 flex-1 flex-col",
+        )}
+      >
+        {children}
+      </div>
     </div>
   );
 }

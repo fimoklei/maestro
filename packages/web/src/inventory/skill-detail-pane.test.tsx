@@ -196,15 +196,18 @@ describe("SkillDetailPane", () => {
     trigger.remove();
   });
 
-  it("stays in view and scrolls on its own while the table scrolls past it", () => {
-    // A static pane scrolled away with the table: at main.scrollTop = 900 its top
-    // sat at -794px, taking the deploy control off-screen with it. Steering has to
-    // stay next to the state that demands it (PRODUCT.md principle 4), so the pane
-    // sticks to the viewport and scrolls its own overflow. jsdom cannot measure
-    // scroll geometry; the stuck pane is proven in the browser.
-    renderPane({});
+  it("keeps the deploy action out of the scrolling reading matter", () => {
+    // A long description must never push the one action in this pane out of
+    // reach: the description scrolls in its own region, the deploy control sits
+    // outside it. That the pane as a whole stays beside the scrolling table is
+    // layout, measured in the browser, not here (testing.md).
+    renderPane({ deployAction: <button type="button">Deploy</button> });
 
+    const action = screen.getByRole("button", { name: "Deploy" });
     const pane = screen.getByRole("complementary", { name: /tdd detail/i });
-    expect(pane).toHaveClass("sticky");
+    const scroller = pane.querySelector(".overflow-y-auto");
+
+    expect(scroller).not.toBeNull();
+    expect(scroller?.contains(action)).toBe(false);
   });
 });

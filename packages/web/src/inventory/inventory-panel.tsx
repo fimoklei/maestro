@@ -28,7 +28,12 @@ export function InventoryPanel() {
   const skillCount = inventory.data?.primitives.length ?? 0;
 
   return (
-    <section>
+    // Beside the detail pane the card takes the height of the scrolling region
+    // (100cqh, the content height of the shell's main container) and the table
+    // scrolls inside it, so the column headers and the pane stay put while the
+    // list moves. Below that width the pane stacks under the table and the page
+    // scrolls as one, which needs no height bound.
+    <section className="flex flex-col min-[1200px]:h-[100cqh]">
       <SectionHeader
         level={1}
         title="Central inventory"
@@ -48,7 +53,7 @@ export function InventoryPanel() {
             : "Could not load the inventory."}
         </p>
       ) : (
-        <Card>
+        <Card fill>
           <InventoryList
             primitives={inventory.data?.primitives ?? []}
             repos={repos}
