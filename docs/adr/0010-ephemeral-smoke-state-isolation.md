@@ -98,6 +98,32 @@ register, and the states those produce. What it seeds:
 `CONTEXT.md` stays untouched for the same reason as the original decision:
 sandbox seeding is dev tooling, not domain vocabulary.
 
+## Amendment — rehearsing the flows vs. verifying a change
+
+"None pre-registered" was written for one job: rehearsing connect and
+registration. A second job uses the same sandbox — proving that a UI change
+renders correctly — and for that job the unconnected start is pure cost. It
+took a median 6 tool calls and 59 seconds of clicking to reach the screen under
+test, and the mandatory browser check was skipped in 42% of the sessions that
+edited rendering code (`reflection-notes.md`, finding 4).
+
+The two jobs are split across two commands rather than resolved in one default:
+
+- **`pnpm smoke` is unchanged.** Bare, unconnected, nothing pre-registered. The
+  rehearsal decision above stands in full.
+- **`pnpm smoke:ready` (`scripts/smoke-ready.mjs`) is a separate step**, run
+  against an already-started smoke. It polls until server and web answer, then
+  connects the seeded inventory and registers the first seeded repo **through
+  the API** — the same routes the UI calls, so no second write path exists.
+  Measured cold on 2026-07-26: 4.3 s from launch to a seeded cockpit.
+- **Failing closed.** No answer within 60 s exits non-zero naming `pnpm smoke`;
+  a refused connect stops before registering. A half-seeded cockpit would look
+  ready and lie.
+- **The rule is enforced, not written down.** `scripts/guard-port-owner.mjs`
+  already gates every `agent-browser` command on port ownership; it now also
+  refuses when a smoke sandbox exists but holds no inventory and no repo. An
+  absent sandbox is not blocked — "not rehearsing" is not "rehearsing badly".
+
 ## Rejected alternatives
 
 - **Keep smoke persistent, add a second `smoke:fresh`.** Two commands for one

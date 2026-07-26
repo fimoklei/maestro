@@ -1,8 +1,10 @@
 import { createServer, type Server } from "node:net";
 import { describe, expect, it } from "vitest";
 import {
+  decideCockpitReadiness,
   decidePortOwnership,
   findPortOwners,
+  readSandboxState,
 } from "../../scripts/guard-port-owner.mjs";
 
 // Every worktree serves the cockpit on the same localhost:5173, so a dev server
@@ -247,5 +249,123 @@ describe("findPortOwners", () => {
     await new Promise((resolve) => server.close(resolve));
 
     expect(findPortOwners([port])).toEqual([]);
+  });
+});
+
+// A running cockpit is not the same as a usable one: under `pnpm smoke` it
+// starts unconnected, so a screenshot taken before seeding shows the connect
+// gate instead of the screen that was changed. The guard answers that too,
+// because a rule the agent has to remember is a rule that gets skipped
+// (reflection-notes.md, "the finding underneath every other finding").
+describe("decideCockpitReadiness", () => {
+  const seeded = {
+    exists: true,
+    inventoryPath: "/sandbox/home/Projects/agent-harness",
+    repos: [{ path: "/sandbox/home/Projects/checkout-service" }],
+  };
+
+  it("allows a command that never drives the browser", () => {
+    const decision = decideCockpitReadiness({
+      command: "pnpm test",
+      sandbox: { exists: true, inventoryPath: null, repos: [] },
+    });
+
+    expect(decision.blocked).toBe(false);
+  });
+
+  it("allows a browser command when the sandbox is fully seeded", () => {
+    const decision = decideCockpitReadiness({
+      command: "agent-browser snapshot -i",
+      sandbox: seeded,
+    });
+
+    expect(decision.blocked).toBe(false);
+  });
+
+  it("allows a browser command when no smoke sandbox exists at all", () => {
+    // Nothing to be ready: the cockpit is not in rehearsal mode, so this guard
+    // has no claim to make. Blocking here would be a false positive.
+    const decision = decideCockpitReadiness({
+      command: "agent-browser snapshot -i",
+      sandbox: { exists: false, inventoryPath: null, repos: [] },
+    });
+
+    expect(decision.blocked).toBe(false);
+  });
+
+  it("blocks when the smoke cockpit has no inventory connected", () => {
+    const decision = decideCockpitReadiness({
+      command: "agent-browser snapshot -i",
+      sandbox: { ...seeded, inventoryPath: null },
+    });
+
+    expect(decision.blocked).toBe(true);
+    expect(decision.message).toContain("pnpm smoke:ready");
+  });
+
+  it("blocks when the smoke cockpit has no repo registered", () => {
+    const decision = decideCockpitReadiness({
+      command: "agent-browser open http://localhost:5173",
+      sandbox: { ...seeded, repos: [] },
+    });
+
+    expect(decision.blocked).toBe(true);
+    expect(decision.message).toContain("pnpm smoke:ready");
+  });
+
+  it("ignores a browser command aimed away from the cockpit", () => {
+    const decision = decideCockpitReadiness({
+      command: "agent-browser open https://example.com",
+      sandbox: { ...seeded, inventoryPath: null },
+    });
+
+    expect(decision.blocked).toBe(false);
+  });
+});
+
+// The guard reads whole Bash commands, so a mention of the tool is not a use of
+// it: naming it inside a commit message once blocked the commit itself. Only a
+// command position counts — start of line, or after a shell operator.
+describe("what counts as a browser command", () => {
+  const foreign = { port: 5173, pid: 42, cwd: sibling, worktreeRoot: sibling };
+
+  it("allows a command that only mentions the tool in text", () => {
+    const decision = decidePortOwnership({
+      command: "git commit -m 'the agent-browser guard now checks seeding'",
+      worktreeRoot: worktree,
+      owners: [foreign],
+    });
+
+    expect(decision.blocked).toBe(false);
+  });
+
+  it("still blocks the tool run after a shell operator", () => {
+    const decision = decidePortOwnership({
+      command: "pnpm smoke:ready && agent-browser snapshot -i",
+      worktreeRoot: worktree,
+      owners: [foreign],
+    });
+
+    expect(decision.blocked).toBe(true);
+  });
+
+  it("still blocks the tool run with a leading environment variable", () => {
+    const decision = decidePortOwnership({
+      command: "DEBUG=1 agent-browser snapshot -i",
+      worktreeRoot: worktree,
+      owners: [foreign],
+    });
+
+    expect(decision.blocked).toBe(true);
+  });
+});
+
+describe("readSandboxState", () => {
+  it("reports an absent sandbox rather than an empty one", () => {
+    expect(readSandboxState("/nowhere/.maestro-sandbox")).toEqual({
+      exists: false,
+      inventoryPath: null,
+      repos: [],
+    });
   });
 });

@@ -29,6 +29,31 @@ function seedToolPresence(home) {
   writeFileSync(join(home, ".codex", "config.toml"), "");
 }
 
+// The launcher's record of the run that owns this sandbox. Named here because
+// the sandbox layout is this file's job; `smoke-ready.mjs` reads it back.
+export const MARKER_FILE = "smoke.json";
+
+/** Records which launcher owns this sandbox, so a later step can verify it. */
+export function writeSmokeMarker(sandboxDir, { launcherPid }) {
+  writeFileSync(
+    join(sandboxDir, MARKER_FILE),
+    `${JSON.stringify({ launcherPid })}\n`,
+  );
+}
+
+/**
+ * Where seeding puts the two things the readiness step needs. Exported so
+ * `smoke-ready.mjs` asks instead of restating the directory names — a rename
+ * here then cannot leave the two halves pointing at different places.
+ */
+export function seededPaths(home) {
+  const projects = join(home, PROJECTS_DIR);
+  return {
+    inventory: join(projects, INVENTORY_DIR),
+    firstRepo: join(projects, CANDIDATES[0].name),
+  };
+}
+
 export function seedSandbox({ home, inventorySource }) {
   const projects = join(home, PROJECTS_DIR);
   mkdirSync(projects, { recursive: true });

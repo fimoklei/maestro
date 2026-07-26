@@ -11,7 +11,7 @@ import {
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { seedSandbox } from "./seed-sandbox.mjs";
+import { seedSandbox, writeSmokeMarker } from "./seed-sandbox.mjs";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const pidFile = join(repoRoot, ".maestro-dev.pid");
@@ -159,6 +159,11 @@ const child = spawn(
 );
 
 writeFileSync(pidFile, String(child.pid));
+
+// Detached, so this pid leads the process group every server below it belongs
+// to. `pnpm smoke:ready` compares against it before writing anything, because
+// answering on the cockpit's ports is not proof of being this run.
+if (smoke) writeSmokeMarker(sandbox, { launcherPid: child.pid });
 
 function teardownSandbox() {
   if (!smoke) return;

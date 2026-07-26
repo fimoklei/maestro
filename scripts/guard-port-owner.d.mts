@@ -25,3 +25,17 @@ export function findPortOwners(
   ports?: number[],
   lsof?: (args: string[]) => string,
 ): PortOwner[];
+
+export interface SandboxState {
+  /** False when no smoke sandbox exists — the cockpit is not in rehearsal mode. */
+  exists: boolean;
+  inventoryPath: string | null;
+  repos: { path: string }[];
+}
+
+export function readSandboxState(sandboxDir: string): SandboxState;
+
+export function decideCockpitReadiness(input: {
+  command: string;
+  sandbox: SandboxState;
+}): OwnershipDecision;

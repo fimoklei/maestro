@@ -13,3 +13,17 @@ export interface SeededSandbox {
 }
 
 export function seedSandbox(options: SeedSandboxOptions): SeededSandbox;
+
+export interface SeededPaths {
+  inventory: string;
+  firstRepo: string;
+}
+
+export function seededPaths(home: string): SeededPaths;
+
+export const MARKER_FILE: string;
+
+export function writeSmokeMarker(
+  sandboxDir: string,
+  marker: { launcherPid: number },
+): void;
