@@ -706,4 +706,35 @@ describe("InventoryList", () => {
 
     expect(screen.getByRole("table")).toHaveClass("table-fixed");
   });
+
+  it("stages a skill from the padding around its checkbox", async () => {
+    // The 16px checkbox is well under the 24px click-target floor, and in a
+    // 36-row table that is awkward to hit. A padded label grows the hit area
+    // while the box keeps its size — so the padding has to both toggle staging
+    // and stop the row's own select handler, exactly as the box does.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderList(
+      <InventoryList
+        primitives={primitives}
+        repos={[]}
+        registryReady
+        targets={[deployedTo(["tdd"])]}
+      />,
+    );
+
+    const hitArea = screen
+      .getByRole("checkbox", { name: /stage tdd/i })
+      .closest("label");
+    if (hitArea === null) throw new Error("checkbox has no label hit area");
+
+    await userEvent.click(hitArea);
+
+    expect(screen.getByRole("checkbox", { name: /stage tdd/i })).toBeChecked();
+    expect(
+      screen.queryByRole("complementary", { name: /tdd detail/i }),
+    ).not.toBeInTheDocument();
+  });
 });
