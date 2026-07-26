@@ -4,7 +4,8 @@
 // (.claude/skills/verify-in-smoke/SKILL.md, "wrong worktree"). Runs as a
 // PreToolUse hook on Bash so nobody has to remember the check.
 import { execFileSync } from "node:child_process";
-import { readFileSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const COCKPIT_PORTS = [5173, 3000];
@@ -15,8 +16,14 @@ const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "0.0.0.0"]);
  * A browser command with no URL acts on the tab already open — that tab is the
  * cockpit as far as we can tell, so every port counts.
  */
+// The tool in command position: at the start, or after a shell operator, with
+// any leading environment assignments skipped. Matching the bare name anywhere
+// would read a mention as a use — naming it in a commit message blocked the
+// commit itself (observed 2026-07-26).
+const BROWSER_COMMAND = /(^|[\n;|&(])\s*(\w+=\S*\s+)*agent-browser\b/;
+
 function targetedPorts(command) {
-  if (!/\bagent-browser\b/.test(command)) return null;
+  if (!BROWSER_COMMAND.test(command)) return null;
 
   const urls = command.match(/https?:\/\/[^\s"'`]+/g) ?? [];
   if (urls.length === 0) return COCKPIT_PORTS;
@@ -77,6 +84,56 @@ export function decidePortOwnership({ command, worktreeRoot, owners }) {
         ? "Anything you screenshot now shows that other tree, not your branch."
         : "Until that is answered, a screenshot proves nothing about your branch.",
       "Fix: stop that server, then run `pnpm smoke` from this worktree.",
+    ].join("\n"),
+  };
+}
+
+/**
+ * What the smoke sandbox holds right now. An absent sandbox is reported as
+ * such, never as an empty one: "not rehearsing" and "rehearsing badly" are
+ * different answers, and only the second is worth blocking.
+ */
+export function readSandboxState(sandboxDir) {
+  if (!existsSync(sandboxDir))
+    return { exists: false, inventoryPath: null, repos: [] };
+
+  let config = {};
+  try {
+    config = JSON.parse(readFileSync(join(sandboxDir, "config.json"), "utf8"));
+  } catch {
+    // Absent or unreadable config = a cockpit started but never seeded, which
+    // is exactly the state this guard exists to catch.
+  }
+
+  return {
+    exists: true,
+    inventoryPath:
+      typeof config?.inventoryPath === "string" ? config.inventoryPath : null,
+    repos: Array.isArray(config?.repos) ? config.repos : [],
+  };
+}
+
+/**
+ * A running cockpit is not a usable one. Under `pnpm smoke` it starts with no
+ * inventory and no registered repo (ADR-0010), so a screenshot taken before
+ * seeding shows the connect gate rather than the screen that changed.
+ */
+export function decideCockpitReadiness({ command, sandbox }) {
+  if (targetedPorts(command) === null) return { blocked: false };
+  if (!sandbox.exists) return { blocked: false };
+
+  const missing = [
+    sandbox.inventoryPath === null ? "no inventory is connected" : null,
+    sandbox.repos.length === 0 ? "no consuming repo is registered" : null,
+  ].filter((entry) => entry !== null);
+  if (missing.length === 0) return { blocked: false };
+
+  return {
+    blocked: true,
+    message: [
+      "Blocked: the smoke cockpit is running but not seeded.",
+      `In this sandbox ${missing.join(" and ")}, so the screen shows the connect gate, not your change.`,
+      "Fix: run `pnpm smoke:ready` — it waits for the cockpit, connects the inventory and registers a repo.",
     ].join("\n"),
   };
 }
@@ -166,14 +223,21 @@ function main() {
   // this hook runs on every Bash call and lsof is not free.
   if (targetedPorts(command) === null) return;
 
-  const decision = decidePortOwnership({
-    command,
-    worktreeRoot: worktreeRootOf(realpathSync(projectDir)),
-    owners: findPortOwners(),
-  });
+  const decisions = [
+    decidePortOwnership({
+      command,
+      worktreeRoot: worktreeRootOf(realpathSync(projectDir)),
+      owners: findPortOwners(),
+    }),
+    decideCockpitReadiness({
+      command,
+      sandbox: readSandboxState(join(projectDir, ".maestro-sandbox")),
+    }),
+  ];
 
-  if (decision.blocked) {
-    process.stderr.write(`${decision.message}\n`);
+  const blocked = decisions.find((decision) => decision.blocked);
+  if (blocked !== undefined) {
+    process.stderr.write(`${blocked.message}\n`);
     // Exit 2 on PreToolUse denies the call and shows stderr to the agent
     // (Claude Code hooks reference, observed on 2.1.220).
     process.exit(2);

@@ -5,7 +5,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { seedSandbox } from "../../scripts/seed-sandbox.mjs";
+import { seededPaths, seedSandbox } from "../../scripts/seed-sandbox.mjs";
 
 // The smoke rehearsal browses from the sandbox HOME down (ADR-0009's ceiling is
 // os.homedir()). Anything seeded beside HOME is unreachable through the picker,
@@ -81,5 +81,17 @@ describe("smoke sandbox seeding", () => {
     expect(gitRepos.length).toBeGreaterThanOrEqual(2);
     expect(candidates.length).toBeGreaterThan(gitRepos.length);
     expect(candidates.some((path) => path.includes(" "))).toBe(true);
+  });
+
+  // The readiness step (scripts/smoke-ready.mjs) needs the paths this seeding
+  // creates. It asks for them here rather than restating the directory names,
+  // so a rename cannot leave the two halves pointing at different places.
+  it("names the seeded paths the readiness step needs", () => {
+    const seeded = seedSandbox({ home, inventorySource });
+    const paths = seededPaths(home);
+
+    expect(paths.inventory).toBe(seeded.inventory);
+    expect(seeded.candidates).toContain(paths.firstRepo);
+    expect(existsSync(paths.firstRepo)).toBe(true);
   });
 });

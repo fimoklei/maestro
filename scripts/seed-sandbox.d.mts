@@ -13,3 +13,10 @@ export interface SeededSandbox {
 }
 
 export function seedSandbox(options: SeedSandboxOptions): SeededSandbox;
+
+export interface SeededPaths {
+  inventory: string;
+  firstRepo: string;
+}
+
+export function seededPaths(home: string): SeededPaths;
