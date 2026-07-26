@@ -168,11 +168,10 @@ function DeployedRow({ deployment }: { deployment: SkillDeployment }) {
     <li className="flex items-center gap-2 py-1 text-tag">
       {/* Status dot pairs colour with a glyph and text so in-sync/drift survive
           without colour perception (PRODUCT.md). Drift states carry the word in
-          their chip; in-sync has no chip, so it holds an sr-only word here. */}
-      <span
-        aria-hidden="true"
-        className={cn("text-[9px]", versionColor[status])}
-      >
+          their chip; in-sync has no chip, so it holds an sr-only word here.
+          Size is inherited from the row: DESIGN.md §3's 10px Floor Rule leaves
+          no ramp step below text-tag for the dot to take. */}
+      <span aria-hidden="true" className={versionColor[status]}>
         ●
       </span>
       {status === "up-to-date" ? (

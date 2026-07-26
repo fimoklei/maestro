@@ -31,7 +31,7 @@ const variantClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
 const sizeClasses: Record<NonNullable<ButtonProps["size"]>, string> = {
   sm: "text-tag px-2 py-[3px]",
   md: "text-chip px-3 py-1.5",
-  lg: "text-[12px] px-4 py-2.5",
+  lg: "text-desc px-4 py-2.5",
 };
 
 export function Button({

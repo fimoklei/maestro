@@ -174,7 +174,7 @@ export function InventoryList({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="search…"
-            className="w-full rounded-control border border-line bg-inset py-row-y pr-card-x pl-7 font-mono text-fg text-mono-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+            className="w-full rounded-control border border-line bg-inset py-row-y pr-card-x pl-7 font-mono text-fg text-mono-sm placeholder:text-dim focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
           />
         </div>
         <SegmentedControl
