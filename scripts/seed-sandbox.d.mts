@@ -20,3 +20,10 @@ export interface SeededPaths {
 }
 
 export function seededPaths(home: string): SeededPaths;
+
+export const MARKER_FILE: string;
+
+export function writeSmokeMarker(
+  sandboxDir: string,
+  marker: { launcherPid: number },
+): void;

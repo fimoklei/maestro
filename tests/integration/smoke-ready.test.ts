@@ -1,5 +1,14 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { seedCockpit, waitForCockpit } from "../../scripts/smoke-ready.mjs";
+import { writeSmokeMarker } from "../../scripts/seed-sandbox.mjs";
+import {
+  identifySmokeInstance,
+  readSmokeMarker,
+  seedCockpit,
+  waitForCockpit,
+} from "../../scripts/smoke-ready.mjs";
 
 // `pnpm smoke` never exits, so nothing tells the agent when the cockpit is up.
 // Blind `sleep` calls filled that gap. This step waits for a real answer and
@@ -195,5 +204,91 @@ describe("seedCockpit", () => {
         repoPath: "/home/Projects/checkout-service",
       }),
     ).rejects.toThrow(/Not a directory/);
+  });
+});
+
+// Answering on the cockpit's ports does not make a server the smoke instance.
+// A sandbox left behind by a killed run, plus a plain `pnpm dev` on the same
+// ports, would otherwise write the rehearsal's paths into the real ~/.maestro.
+// So the launcher leaves its process id in the sandbox, and this step refuses
+// unless the process holding the server port belongs to that same run.
+describe("identifySmokeInstance", () => {
+  const marker = { launcherPid: 500 };
+
+  it("accepts a server whose process group is the launcher's", () => {
+    const decision = identifySmokeInstance({
+      marker,
+      serverPid: 501,
+      processGroupOf: () => 500,
+    });
+
+    expect(decision.ok).toBe(true);
+  });
+
+  it("refuses when the sandbox holds no marker", () => {
+    // A sandbox left behind by a killed run: the files exist, the run does not.
+    const decision = identifySmokeInstance({
+      marker: null,
+      serverPid: 501,
+      processGroupOf: () => 500,
+    });
+
+    expect(decision.ok).toBe(false);
+    expect(decision.reason).toMatch(/pnpm smoke/);
+  });
+
+  it("refuses a server belonging to another run", () => {
+    // A plain `pnpm dev`, or a sibling worktree, answering on the same port.
+    const decision = identifySmokeInstance({
+      marker,
+      serverPid: 900,
+      processGroupOf: () => 899,
+    });
+
+    expect(decision.ok).toBe(false);
+    expect(decision.reason).toMatch(/not this smoke run/i);
+  });
+
+  it("refuses when nothing holds the server port", () => {
+    const decision = identifySmokeInstance({
+      marker,
+      serverPid: null,
+      processGroupOf: () => 500,
+    });
+
+    expect(decision.ok).toBe(false);
+  });
+
+  it("refuses when the process group cannot be read", () => {
+    // Unknown ownership is not ownership: fail closed, as the port guard does.
+    const decision = identifySmokeInstance({
+      marker,
+      serverPid: 501,
+      processGroupOf: () => null,
+    });
+
+    expect(decision.ok).toBe(false);
+  });
+});
+
+describe("the smoke marker on disk", () => {
+  it("reads back what the launcher wrote", async () => {
+    const sandbox = await mkdtemp(join(tmpdir(), "maestro-marker-"));
+    try {
+      writeSmokeMarker(sandbox, { launcherPid: 4321 });
+
+      expect(readSmokeMarker(sandbox)).toEqual({ launcherPid: 4321 });
+    } finally {
+      await rm(sandbox, { recursive: true, force: true });
+    }
+  });
+
+  it("reports no marker for a sandbox left behind without one", async () => {
+    const sandbox = await mkdtemp(join(tmpdir(), "maestro-marker-"));
+    try {
+      expect(readSmokeMarker(sandbox)).toBeNull();
+    } finally {
+      await rm(sandbox, { recursive: true, force: true });
+    }
   });
 });

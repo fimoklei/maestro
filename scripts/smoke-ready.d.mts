@@ -13,6 +13,24 @@ export function waitForCockpit(input: {
   sleep?: (ms: number) => Promise<void>;
 }): Promise<WaitResult>;
 
+export interface SmokeMarker {
+  launcherPid: number;
+}
+
+/** Null when the sandbox holds no marker worth trusting. */
+export function readSmokeMarker(sandboxDir: string): SmokeMarker | null;
+
+export interface IdentityDecision {
+  ok: boolean;
+  reason?: string;
+}
+
+export function identifySmokeInstance(input: {
+  marker: SmokeMarker | null;
+  serverPid: number | null;
+  processGroupOf: (pid: number) => number | null;
+}): IdentityDecision;
+
 export interface SeedReport {
   primitiveCount: number;
   repoCount: number;
