@@ -57,17 +57,13 @@ export function SkillDetailPane({
       ref={ref}
       id={paneId}
       aria-label={`${primitive.name} detail`}
-      // Sticky, not static: the table beside it runs far past one screen, and a
-      // static pane scrolled away with it, taking the deploy control off-screen.
+      // The pane does not scroll with the table: beside it (wide windows) the
+      // list scrolls inside its own region and the pane stands still next to it,
+      // stretched to the same height, so the deploy control is always on screen.
       // Steering stays next to the state that demands it (PRODUCT.md principle 4).
-      // Beside the table (wide windows) the pane sticks and is bounded by the
-      // scrolling region itself: 100cqh is the content height of the shell's
-      // main container (app-shell.tsx), which is exactly the room it sticks in,
-      // so the whole pane — deploy control included — lands inside the screen at
-      // any window height. Stacked below the table (narrow windows) it is the
-      // last thing on the page, so it takes the full width and no height bound;
-      // sticky then has nothing left to stick to and quietly does nothing.
-      className="sticky top-0 flex w-full flex-none flex-col overflow-clip border-line border-t bg-inset min-[1200px]:max-h-[100cqh] min-[1200px]:w-80 min-[1200px]:border-t-0 min-[1200px]:border-l"
+      // Stacked below the table (narrow windows) it is the last thing on the
+      // page, so it takes the full width and no height bound.
+      className="flex w-full flex-none flex-col overflow-clip border-line border-t bg-inset min-[1200px]:w-80 min-[1200px]:border-t-0 min-[1200px]:border-l"
     >
       <div className="flex flex-none items-center border-line-faint border-b px-card-x py-row-y">
         <span className="text-dim text-tag uppercase tracking-tag">Skill</span>

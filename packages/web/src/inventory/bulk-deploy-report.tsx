@@ -78,7 +78,21 @@ export function BulkDeployReport({
           {summary}
         </summary>
 
-        <div className="mt-row-y flex flex-col gap-row-y">
+        {/* One row per skill: a bulk run over a large selection makes this list
+            taller than the card that holds it, and the card clips what it cannot
+            fit. Bounded with its own scrollbar, so the failures at the bottom —
+            and their recovery controls — stay reachable. Named and focusable
+            because a scroll region that cannot take focus is unreachable from
+            the keyboard (WCAG 2.1.1). The cap is a share of the scrolling
+            region's own height (cqh, app-shell.tsx), so it leaves room for the
+            table at any window height; below 1200px the card is not bounded and
+            the page scrolls, so nothing needs capping. */}
+        <section
+          aria-label="Bulk deploy result detail"
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: see above — a scroll container has to be focusable to be keyboard-reachable
+          tabIndex={0}
+          className="mt-row-y flex flex-col gap-row-y overflow-y-auto min-[1200px]:max-h-[30cqh] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+        >
           {view.deployed.length > 0 ? (
             <ul aria-label="Deployed" className="flex flex-col gap-1">
               {view.deployed.map((row) => (
@@ -179,7 +193,7 @@ export function BulkDeployReport({
               ))}
             </ul>
           ) : null}
-        </div>
+        </section>
       </details>
     </div>
   );

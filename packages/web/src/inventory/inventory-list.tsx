@@ -202,7 +202,12 @@ export function InventoryList({
         aria-label="Central inventory table"
         // biome-ignore lint/a11y/noNoninteractiveTabindex: a scroll container that cannot take focus is keyboard-unreachable (WCAG 2.1.1), and Safari does not focus scrollers on its own
         tabIndex={0}
-        className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+        // The rows scroll here, not on the page: this is the box the sticky
+        // column headers below anchor to, and it is what leaves the detail pane
+        // beside it standing still. Bounded only where the card is bounded
+        // (inventory-panel.tsx); stacked below the table it grows and the page
+        // scrolls instead.
+        className="min-h-0 flex-1 overflow-x-auto overflow-y-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
       >
         {/* table-fixed, and the widths below are what makes it bite: under the
             browser default the cells size to their content, so one long skill
@@ -210,7 +215,10 @@ export function InventoryList({
             that clips it. Fixed layout hands the width back to the container and
             lets `truncate` do its job on the description cell. */}
         <Table className="table-fixed min-w-[560px]">
-          <TableHeader>
+          {/* Sticky against the scrolling section above, so the columns keep
+              naming themselves however far down the list you are. Opaque, or
+              the rows would read straight through it. */}
+          <TableHeader className="sticky top-0 z-10 bg-card">
             <TableRow>
               <TableHead className="w-10">
                 <span className="sr-only">Stage for bulk</span>
@@ -347,8 +355,12 @@ export function InventoryList({
     // pane needs a ~1200px window once the sidebar and page padding are paid
     // for. Narrower than that the pane drops below the table instead of eating
     // its width, which is what would push Deployed back behind a scrollbar.
-    <div className="flex flex-col min-[1200px]:flex-row min-[1200px]:items-start">
-      <div className="min-w-0 flex-1">{table}</div>
+    // Side by side the two columns stretch to the same height, so the pane
+    // reaches the bottom of the frame the list scrolls in.
+    <div className="flex min-h-0 flex-1 flex-col min-[1200px]:flex-row min-[1200px]:items-stretch">
+      {/* A bounded column, so the table's own scrolling region can take the
+          height the toolbar above it leaves. */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">{table}</div>
       {selectedPrimitive ? (
         <SkillDetailPane
           ref={paneRef}
