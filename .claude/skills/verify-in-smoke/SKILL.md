@@ -13,7 +13,7 @@ Five things make a `pnpm smoke` run, screenshot, or test result lie to you. Chec
 
 ## Wrong worktree: a sibling is squatting the port
 
-Every worktree defaults to the same ports (3000/5173). A dev server left running in a sibling worktree can keep holding the port, so your screenshot shows the wrong branch. → Before trusting `localhost:5173`/`:3000`, run `lsof -i :5173 -i :3000` and check the owning PID's cwd (`lsof -p <pid>`) matches this worktree.
+Every worktree defaults to the same ports (3000/5173). A dev server left running in a sibling worktree can keep holding the port, so your screenshot shows the wrong branch. → Guarded automatically: `scripts/guard-port-owner.mjs` runs before every `agent-browser` command and denies it when the port's owner sits outside this worktree. Nothing to check by hand — act on the block message when it appears.
 
 ## Wrong path: the browse ceiling is HOME
 
