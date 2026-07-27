@@ -18,7 +18,8 @@ targets = detected tools), 0013 (narrowed-install reconciliation), 0014
 ## Invocation
 
 - `execFile` + args array, never a shell string (`security.md`).
-- Always pass `-t`, as one comma list of tools.
+- Always pass `-t` on install and update, as one comma list of tools.
+  `uninstall` has no `-t` — see Remove.
 - Deploy refs are tag-pinned
   `github.com/<owner>/<repo>/skills/<name>#vX.Y.Z` only (ADR-0003,
   ADR-0014).

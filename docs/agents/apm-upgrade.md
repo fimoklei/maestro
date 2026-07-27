@@ -11,8 +11,9 @@ treat them as hypotheses, not facts.
   (`LEARNINGS.md` · spike-isolation). Auth survives the redirect via
   `GITHUB_TOKEN=$(gh auth token)`; set `GITHUB_APM_PAT` too — apm resolves
   it first.
-- Never run `apm uninstall -g` in any scenario (ADR-0013's context records
-  why).
+- Never run a bare `apm uninstall -g` (ADR-0013's context records why). The
+  one permitted form is a *named* package under a sandbox `HOME`, solely to
+  re-capture `apm-uninstall-global-ok.txt` in step 2.
 
 ## Steps
 
