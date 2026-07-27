@@ -36,17 +36,25 @@ pnpm -C ~/Projects/maestro/.claude/worktrees/issue<N> install
 ```
 **Done when:** install exits 0 with `node_modules/` present.
 
-### 4. Pull the issue and explain it for a product manager
+### 4. Pull the issue, check its blockers, and explain it for a product manager
 ```bash
 gh issue view <N> --repo fimoklei/maestro
 ```
+Look for a `## Blocked by` section in the body (the `to-tickets` convention — a list of blocking issues, or "None — can start immediately"). The body's own annotation can be stale, so check each referenced issue's live state instead of trusting it:
+```bash
+gh issue view <blocker-N> --repo fimoklei/maestro --json state,stateReason,title
+```
+Any blocker still `OPEN` means starting `<N>` now risks a conflict with work still in flight — this is exactly the parallel-start collision the check exists to catch. No `## Blocked by` section means treat the issue as unblocked; don't invent a dependency that isn't written down.
+
 Explain the issue in two or three sentences a product manager can read aloud: what will change for the user, and how we will know it's done (the acceptance signal). Use plain words — spell out any technical term. If the issue names a spec, board job, or linked doc, note it.
-**Done when:** you have a plain-language, PM-readable explanation of what the issue will do, covering the user-facing change and the acceptance signal.
+**Done when:** you've stated the blocker status (none / all closed / open — name them) AND you have a plain-language, PM-readable explanation covering the user-facing change and the acceptance signal.
 
 ### 5. Enter the worktree and implement
+If step 4 found an open blocker, stop here and ask Michiel whether to proceed anyway or wait — do not enter the worktree or hand off to implement on an unconfirmed conflict risk.
+
 Switch this session into the worktree — no manual `cd`, no new session:
 - Call **EnterWorktree** with `path: ~/Projects/maestro/.claude/worktrees/issue<N>`. This session now runs there. (It only enters — it never removes your worktree, since you created it with `git worktree add`.)
-- Confirm in Dutch: worktree path, branch, that deps are installed, and the one-line task summary from step 4.
+- Confirm in Dutch: worktree path, branch, that deps are installed, the blocker status, and the one-line task summary from step 4.
 
 Then hand off to the `implement` skill to build the issue — it runs the work through TDD at the agreed seams and keeps the repo's rules. Do not start `/tdd` directly from here.
 **Done when:** the session's working directory is the worktree and the `implement` skill has taken over the issue.
