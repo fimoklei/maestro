@@ -18,6 +18,7 @@ import { initGitClone } from "../helpers/git-fixture";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
+import { stubRemove } from "../helpers/stub-remove";
 
 const feature = await loadFeature(
   "tests/acceptance/j11-connect-inventory.feature",
@@ -43,6 +44,7 @@ function buildApp(configPath: string) {
     connect: new ConnectInventory({ fs, store, originUrl: readGitOriginUrl }),
     deployState,
     deploy: stubDeploy({ inventory, registry }),
+    remove: stubRemove({ registry }),
     drift: stubDrift({ registry }),
     resolveGlobalRoot: () => "/nonexistent-apm-root",
     // Rooted at the OS temp dir (not the real home) so the browsed-path

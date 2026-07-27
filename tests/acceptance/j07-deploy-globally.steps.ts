@@ -17,6 +17,7 @@ import { expect } from "vitest";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDrift } from "../helpers/stub-drift";
+import { stubRemove } from "../helpers/stub-remove";
 
 const feature = await loadFeature(
   "tests/acceptance/j07-deploy-globally.feature",
@@ -129,6 +130,7 @@ describeFeature(
         inventory,
         deployState,
         deploy,
+        remove: stubRemove({ registry }),
         drift: stubDrift({ registry }),
         resolveGlobalRoot: () => apmRoot,
         connect: stubConnect(),

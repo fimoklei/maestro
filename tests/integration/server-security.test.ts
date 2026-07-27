@@ -14,6 +14,7 @@ import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
+import { stubRemove } from "../helpers/stub-remove";
 
 // Integration lane with the Origin/Host guard ENABLED (production posture).
 // Blocks DNS-rebinding / CSRF: a malicious site POSTing to localhost to make
@@ -45,6 +46,7 @@ describe("write-route Origin/Host guard", () => {
       inventory,
       deployState,
       deploy: stubDeploy({ inventory, registry }),
+      remove: stubRemove({ registry }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
       connect: stubConnect(),

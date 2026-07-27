@@ -9,11 +9,8 @@ import type { InventoryResult } from "../inventory/inventory-reader";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import { reclaimableUntargetedTools, type SupportedTool } from "./deploy-tools";
 import { parseGitOrigin } from "./git-origin";
+import { GLOBAL_LOCK_KEY, InFlightLocks } from "./in-flight-locks";
 import { buildSkillPackageRef, isValidSkillSlug } from "./package-ref";
-
-// The in-flight lock key for the single user (global) scope. A canonical repo
-// path is always absolute, so it can never collide with this literal.
-const GLOBAL_LOCK_KEY = "global";
 
 // Where a skill is deployed to. A repo carries a client-supplied path (gated by
 // the registry); global carries none — the user-scope location is apm's own,
@@ -42,6 +39,12 @@ export type DeploySkillDriverResult =
   | { ok: true }
   | { ok: false; reason: "destination-symlinked" | "failed" };
 
+// Outcome of an `apm uninstall`. Undiscriminated on the failure side: apm
+// classifies nothing here — every uninstall outcome exits 0 and the only signal
+// is whether its positive marker was printed (apm-behavior.md § Remove), so
+// there is no second reason to carry.
+export type RemoveSkillDriverResult = { ok: true } | { ok: false };
+
 // The port the real apm CLI adapter implements. resolveLatestTag wraps
 // `apm view <owner>/<repo> versions`; deploySkill wraps `apm install <ref>`
 // (a repo install runs in that repo; a global install runs `-g`).
@@ -55,6 +58,15 @@ export type ApmDriverPort = {
     ref: string;
     tools?: readonly SupportedTool[];
   }): Promise<DeploySkillDriverResult>;
+  // Wraps `apm uninstall <ref>` for a target. Takes a ref and a scope and never
+  // a tools list: uninstall has no -t, so removal spans every tool in the
+  // consumer's apm.yml targets (apm-behavior.md § Remove). The ref must be the
+  // tag-pinned one the install used — a bare skill name is rejected and still
+  // exits 0.
+  removeSkill(input: {
+    target: DeployTarget;
+    ref: string;
+  }): Promise<RemoveSkillDriverResult>;
   // Wraps `apm outdated` for a target and returns the skills behind the latest
   // central tag, each as a deployed -> latest version pair (ADR-0007). A run apm
   // could not complete against the remote (no auth/network) is
@@ -208,15 +220,18 @@ export class DeploySkill {
     // Resolves a path to its canonical form (realpath), so the in-flight
     // lock cannot be sidestepped by a symlinked spelling of the same repo.
     canonicalPath: (path: string) => Promise<string>;
+    // The per-target apm write lock, shared with the remove use-case so a deploy
+    // and a remove cannot rewrite the same apm.lock.yaml at once. Omitted, this
+    // use-case guards only against itself — enough for a test, never for the
+    // composed server.
+    locks?: InFlightLocks;
   };
 
-  // In-process deploy lock: lock keys with a deploy in flight — a canonical
-  // repo path, or the literal "global" for the user scope. Per-instance is
-  // enough — the server composes one DeploySkill.
-  private readonly inFlight = new Set<string>();
+  private readonly locks: InFlightLocks;
 
   constructor(deps: DeploySkill["deps"]) {
     this.deps = deps;
+    this.locks = deps.locks ?? new InFlightLocks();
   }
 
   async execute(input: DeploySkillInput): Promise<DeploySkillResult> {
@@ -250,15 +265,8 @@ export class DeploySkill {
       lockKey = GLOBAL_LOCK_KEY;
     }
 
-    if (this.inFlight.has(lockKey)) {
-      return { ok: false, error: "deploy-in-progress" };
-    }
-    this.inFlight.add(lockKey);
-    try {
-      return await this.deploy(input);
-    } finally {
-      this.inFlight.delete(lockKey);
-    }
+    const run = await this.locks.run(lockKey, () => this.deploy(input));
+    return run.ok ? run.value : { ok: false, error: "deploy-in-progress" };
   }
 
   private async deploy(input: DeploySkillInput): Promise<DeploySkillResult> {

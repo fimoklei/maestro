@@ -15,6 +15,7 @@ import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
+import { stubRemove } from "../helpers/stub-remove";
 
 // Integration lane: the bulk-deploy route over the real Hono app, driving the
 // real DeploySkill (its guards intact) once per staged skill. Only the ApmDriver
@@ -97,6 +98,7 @@ describe("bulk deploy HTTP route", () => {
       inventory,
       deployState: stubDeployState({ fs }),
       deploy,
+      remove: stubRemove({ registry }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => globalRoot,
       connect: stubConnect(),

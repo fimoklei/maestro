@@ -15,6 +15,7 @@ import { expect } from "vitest";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeployState } from "../helpers/stub-deploy-state";
+import { stubRemove } from "../helpers/stub-remove";
 
 const feature = await loadFeature("tests/acceptance/j08-update.feature");
 
@@ -113,6 +114,7 @@ describeFeature(
         inventory,
         deployState: stubDeployState({ fs }),
         deploy,
+        remove: stubRemove({ registry }),
         drift,
         resolveGlobalRoot: () => "/nonexistent-apm-root",
         connect: stubConnect(),
