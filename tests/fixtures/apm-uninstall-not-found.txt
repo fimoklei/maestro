@@ -1,0 +1,3 @@
+[>] Uninstalling 1 package(s)...
+[!] github.com/fimoklei/agent-harness/skills/tdd#v0.5.1 - not found in apm.yml
+[!] No packages found in apm.yml to remove

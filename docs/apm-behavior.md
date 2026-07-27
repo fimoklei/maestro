@@ -232,6 +232,71 @@ tag (`apm view`) + install at that tag; no other apm command is involved.
   resets the subtree to the tag, dropping them, while still printing
   `(files unchanged)`.
 
+## Remove — `apm uninstall`
+
+`apm uninstall <PACKAGES>… [--dry-run] [-v] [-g]`. Per-dependency removal is
+scoped: it deletes the named package's deployed files, its `apm.yml` entry,
+its `apm_modules/` subtree, and its lockfile entry — and nothing else. Other
+dependencies and hand-placed skill dirs beside them survive, per-repo and
+global alike. No network and no credentials: every capture below ran with no
+token in the environment.
+
+There is **no `-t` flag** (`--dry-run`, `-v`, `-g` are the whole surface).
+Removal spans every tool the package was deployed to.
+
+### Argument grammar
+
+`PACKAGES` is the same ref grammar as install, tag optional — the tag is
+ignored for matching. `github.com/<owner>/<repo>/skills/<name>#vX.Y.Z`,
+the host-less `<owner>/<repo>/skills/<name>`, and the ref without its tag all
+match the same `apm.yml` entry. A bare skill name does not: `apm uninstall
+tdd` prints `[x] Invalid package format: tdd` and removes nothing, exit 0.
+
+### Uninstall signals
+
+Never trust the exit code — **every** outcome above exits 0, including a
+package that was never installed. The argument parser is the sole exception
+(missing `PACKAGES` → exit 2, nothing touched).
+
+1. **Success = `Uninstall complete: Removed \d+ package(s) from apm.yml`.**
+   Absent marker is failure, fail-closed. Fixtures: `apm-uninstall-ok.txt`,
+   `apm-uninstall-global-ok.txt`.
+2. **Nothing removed** prints `[!] <ref> - not found in apm.yml` and `[!] No
+   packages found in apm.yml to remove`, with no success marker, exit 0.
+   Fixture: `apm-uninstall-not-found.txt`.
+3. **Partial success** (several packages, some absent) prints the success
+   marker *and* `[!] Note: \d+ package(s) were not found in apm.yml`. Present
+   markers must be read together, not first-match.
+4. **The `Cleaned up \d+ integrated skills` count is not a contract.** Two
+   runs of the same command over the same package reported 7 and 11; it
+   matches neither the skill count nor the file count. Never parse it.
+5. Match every phrase whitespace-normalized and lowercased — the output is
+   Rich-rendered like install's (`LEARNINGS.md` ·
+   rich-wraps-phrases-mid-sentence).
+
+### What it does not tell you
+
+- **`--dry-run` understates the blast radius.** It previews only the
+  `apm.yml` and `apm_modules/` removals — never the deployed files it is
+  about to delete, even with `-v`. Fixture: `apm-uninstall-dry-run.txt`.
+- **Local edits die silently.** A deployed file with uncommitted changes is
+  deleted with no warning and no distinct output — the same trap as a
+  same-ref re-install over a dirty subtree.
+- **The lockfile is deleted, not emptied, when the last dependency goes.**
+  `apm.lock.yaml` disappears rather than being rewritten with `dependencies:
+  []`. A reader must treat an absent lockfile as nothing deployed, never as
+  an error.
+
+### Narrowed `targets:` orphans the other tools
+
+Removal scope comes from the consumer's `apm.yml` `targets:`, not from the
+lockfile's `deployed_files`. Editing `targets:` down to `claude` before
+uninstalling a `-t claude,codex` package deletes `.claude/skills/<name>`,
+leaves `.agents/skills/<name>` on disk, and still drops the whole lockfile
+entry — so the orphan becomes invisible to deploy-state. This is the install
+ghost-entry problem (ADR-0013) in reverse and rules out `targets:` editing as
+a per-tool remove lever; per-tool cleanup stays the scoped `rm`.
+
 ## Content drift — apm detects nothing
 
 `apm outdated` reports version drift only. Edits to deployed files are
@@ -292,12 +357,18 @@ neutral cwd.
   known-but-undeclared target — never on `-t`. Maestro's reconciliation is
   ADR-0013, and since #202 it reclaims only a single-reader directory: the
   `.agents` ghost files above are left on disk deliberately.
-- **Danger:** `apm uninstall -g` deletes beyond its lockfile — it wiped 19
-  pre-existing skill dirs from a real `~/.claude/skills/` while the global
-  lockfile read `dependencies: []`. Never run it; never point a spike `-g`
-  command at the real home (`LEARNINGS.md` · spike-isolation). Test lane:
-  sandbox `HOME`, auth via `GITHUB_TOKEN`/`GITHUB_APM_PAT` from
-  `gh auth token`.
+- **The 2026-07-17 mass-deletion cannot recur on 0.26.0.** A bare `apm
+  uninstall -g` — the command that wiped 19 pre-existing skill dirs from a
+  real `~/.claude/skills/` while the global lockfile read `dependencies:
+  []` — is now rejected by the argument parser (`Error: Missing argument
+  'PACKAGES...'`, exit 2, nothing touched). Re-measured against that exact
+  shape in a sandbox home holding three unrelated skill dirs: all three
+  survived, and a *named* `-g` uninstall beside them removed only its own
+  package (§ Remove). The apm version behind the incident was not recorded,
+  so this is a 0.26.0 fact, not a retraction of the incident. The rule
+  stands regardless: never point a spike `-g` command at the real home
+  (`LEARNINGS.md` · spike-isolation). Test lane: sandbox `HOME`, auth via
+  `GITHUB_TOKEN`/`GITHUB_APM_PAT` from `gh auth token`.
 
 ## Unobserved — spike before relying
 
@@ -305,5 +376,3 @@ neutral cwd.
   `package_type: claude_skill` has ever been observed.
 - Custom ports in git refs after apm PRs #2210/#2211 (see Reference
   grammar).
-- A per-tool `apm uninstall` (e.g. `-t codex`) as a cleanup mechanism —
-  unspiked; ADR-0013 uses a scoped `rm` instead.
