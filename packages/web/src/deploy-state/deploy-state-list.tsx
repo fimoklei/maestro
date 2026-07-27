@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { HttpError } from "../api/http";
 import {
   type DriftStatus,
   type DriftViewModel,
@@ -8,8 +10,10 @@ import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { ActionsMenu } from "../ui/actions-menu";
 import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
+import { RemoveSkillDialog } from "./remove-skill-dialog";
 import { UpdateSkillAction } from "./update-skill-action";
 import type { DeployedPrimitive, SkippedEntry } from "./use-deploy-state";
+import { useRemoveDeployedSkill } from "./use-remove-deployed-skill";
 
 // Per-skill drift badge as a Control Room Chip. The state is carried in text
 // (not colour alone) so it stays accessible and honest: "unknown" reads as
@@ -59,12 +63,34 @@ export function DeployStateList({
   skipped,
   drift = PENDING_DRIFT,
   target,
+  onRemoved,
 }: {
   primitives: DeployedPrimitive[];
   skipped: SkippedEntry[];
   drift?: DriftViewModel;
   target: DeployTarget;
+  // Called once a removal has landed, after the dialog is gone. The modal's own
+  // focus restore aims at the trigger that opened it, and a successful removal
+  // destroys that trigger along with its row — so the host moves focus to the
+  // card header instead.
+  onRemoved?: () => void;
 }) {
+  // Which skill's removal is being confirmed, if any. UI state: one dialog at a
+  // time, named by the row that opened it.
+  const [removing, setRemoving] = useState<string | null>(null);
+  const [justRemoved, setJustRemoved] = useState(false);
+  const remove = useRemoveDeployedSkill();
+
+  // Handing focus on in an effect, not in the success handler: the modal's
+  // focus-restore runs during its unmount, so anything moving focus earlier
+  // would be overwritten by it.
+  useEffect(() => {
+    if (justRemoved) {
+      setJustRemoved(false);
+      onRemoved?.();
+    }
+  }, [justRemoved, onRemoved]);
+
   // Genuinely nothing — not entries that exist but were skipped as unsupported.
   // Treating a skipped-only target as empty would be the cockpit lying about it,
   // so that case falls through and still renders its warning below.
@@ -104,12 +130,62 @@ export function DeployStateList({
               <UpdateSkillAction skillName={primitive.name} target={target} />
             ) : null}
             {/* The row's named actions, last in the row and always visible so
-                they exist for touch and keyboard, not only for a mouse. Empty
-                until Remove lands (#158) — the trigger stays inert until then. */}
-            <ActionsMenu label={`Actions for ${primitive.name}`} items={[]} />
+                they exist for touch and keyboard, not only for a mouse. Removal
+                is offered per repo only — the global scope is not part of this
+                slice, so its trigger stays inert rather than opening onto an
+                action the server would refuse. */}
+            <ActionsMenu
+              label={`Actions for ${primitive.name}`}
+              items={
+                target.kind === "repo"
+                  ? [
+                      {
+                        label: "remove…",
+                        onSelect: () => {
+                          remove.reset();
+                          setRemoving(primitive.name);
+                        },
+                      },
+                    ]
+                  : []
+              }
+            />
           </div>
         );
       })}
+      {removing !== null && target.kind === "repo" ? (
+        <RemoveSkillDialog
+          skillName={removing}
+          repoPath={target.repoPath}
+          isRemoving={remove.isPending}
+          error={
+            remove.error instanceof HttpError
+              ? remove.error.message
+              : remove.error
+                ? "The removal could not be completed."
+                : null
+          }
+          onCancel={() => setRemoving(null)}
+          onConfirm={() =>
+            remove.mutate(
+              {
+                type: "skill",
+                name: removing,
+                target: { kind: "repo", repoPath: target.repoPath },
+              },
+              {
+                // Only a proven removal closes the dialog. A failure keeps it
+                // open with apm's reason, so it never reads as if nothing
+                // happened.
+                onSuccess: () => {
+                  setRemoving(null);
+                  setJustRemoved(true);
+                },
+              },
+            )
+          }
+        />
+      ) : null}
       {orphans.length > 0 && (
         <p className="px-card-x py-row-y text-amber-ink text-tag">
           Also behind (not deployed here): {orphans.join(", ")}

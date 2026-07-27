@@ -24,6 +24,7 @@ import { stubBrowse } from "../helpers/stub-browse";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
+import { stubRemove } from "../helpers/stub-remove";
 
 // Integration lane: drives the real Hono connect endpoint via app.request,
 // backed by a real ConfigStore on a temp dir. The Origin/Host guard is disabled
@@ -66,6 +67,7 @@ describe("inventory connect HTTP route", () => {
       connect: new ConnectInventory({ fs, store, originUrl: readGitOriginUrl }),
       deployState,
       deploy: stubDeploy({ inventory, registry }),
+      remove: stubRemove({ registry }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
       browse: stubBrowse(),

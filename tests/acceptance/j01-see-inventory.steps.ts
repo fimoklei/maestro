@@ -15,6 +15,7 @@ import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
+import { stubRemove } from "../helpers/stub-remove";
 
 const feature = await loadFeature("tests/acceptance/j01-see-inventory.feature");
 
@@ -37,6 +38,7 @@ function buildApp(configPath: string, inventoryPath: string | undefined) {
     inventory,
     deployState,
     deploy: stubDeploy({ inventory, registry }),
+    remove: stubRemove({ registry }),
     drift: stubDrift({ registry }),
     resolveGlobalRoot: () => "/nonexistent-apm-root",
     connect: stubConnect(),

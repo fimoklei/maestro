@@ -20,6 +20,7 @@ import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
+import { stubRemove } from "../helpers/stub-remove";
 
 // Integration lane: drives the real Hono app via app.request, backed by a real
 // Registry on a temp config dir. The Origin/Host guard is constructed disabled
@@ -48,6 +49,7 @@ describe("registry HTTP routes", () => {
       inventory,
       deployState,
       deploy: stubDeploy({ inventory, registry }),
+      remove: stubRemove({ registry }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
       connect: stubConnect(),

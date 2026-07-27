@@ -119,6 +119,34 @@ const installRefusedWithoutMarkerOutput = [
   "were committed.",
 ].join("\n");
 
+// The closing summary line of a successful uninstall. Named so the wrapping test
+// cannot silently no-op if the capture is refreshed.
+const UNINSTALL_OK_SUMMARY =
+  "[*] Uninstall complete: Removed 1 package(s) from apm.yml, Removed 1 package(s) from apm_modules/";
+
+// Captured `apm uninstall -v <ref>` on apm 0.26.0 (2026-07-27, issue #334; full
+// capture in tests/fixtures/apm-uninstall-ok.txt, whose sandbox-absolute
+// `Updated .../apm.yml` line is dropped here). The `Cleaned up N integrated
+// skills` count is deliberately kept in shape but nothing keys on it — the same
+// command reported 7 and 11 for the same package.
+const uninstallOkOutput = [
+  "[>] Uninstalling 1 package(s)...",
+  "[+] github.com/fimoklei/agent-harness/skills/tdd#v0.5.1 - found in apm.yml",
+  "[i] Removed fimoklei/agent-harness/skills/tdd#v0.5.1 from dependencies.apm in apm.yml",
+  "[i] Removed fimoklei/agent-harness/skills/tdd#v0.5.1 from apm_modules/",
+  "[+] Cleaned up 8 integrated skills",
+  UNINSTALL_OK_SUMMARY,
+].join("\n");
+
+// Captured `apm uninstall <ref>` against a repo the package is not in (apm
+// 0.26.0, 2026-07-27; full capture in tests/fixtures/apm-uninstall-not-found.txt).
+// Exit 0, no success marker — the shape that must never read as a removal.
+const uninstallNotFoundOutput = [
+  "[>] Uninstalling 1 package(s)...",
+  "[!] github.com/fimoklei/agent-harness/skills/tdd#v0.5.1 - not found in apm.yml",
+  "[!] No packages found in apm.yml to remove",
+].join("\n");
+
 // Rows from a captured `apm view ... versions` table with a deployable tag (apm
 // 0.26.0, 2026-07-20; full capture in tests/fixtures/apm-view-versions.txt).
 const versionsTableOutput = [
@@ -383,6 +411,121 @@ describe("ApmCliDriver.deploySkill", () => {
     const driver = new ApmCliDriver({ run });
 
     const result = await driver.deploySkill({
+      target: { kind: "repo", repoPath: "/repo" },
+      ref,
+    });
+
+    expect(JSON.stringify(result)).not.toContain("ghp_secret");
+  });
+});
+
+describe("ApmCliDriver.removeSkill", () => {
+  const ref = "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1";
+
+  it("uninstalls the ref in the repo, with no -t flag", async () => {
+    // `apm uninstall` has no -t: removal spans every tool in the consumer's
+    // apm.yml targets (apm-behavior.md § Remove). Passing one would be an error,
+    // and narrowing targets: to scope a removal orphans the other tools
+    // (ADR-0013), so the command surface is deliberately this small.
+    const { run, calls } = fakeRun(uninstallOkOutput);
+    const driver = new ApmCliDriver({ run });
+
+    await driver.removeSkill({
+      target: { kind: "repo", repoPath: "/repo" },
+      ref,
+    });
+
+    expect(calls).toEqual([
+      { file: "apm", args: ["uninstall", ref], cwd: "/repo" },
+    ]);
+  });
+
+  it("uninstalls globally with -g from the prepared scratch cwd", async () => {
+    const { run, calls } = fakeRun(uninstallOkOutput);
+    const driver = new ApmCliDriver({
+      run,
+      prepareGlobalCwd: async () => "/scratch/.apm-scratch",
+    });
+
+    await driver.removeSkill({ target: { kind: "global" }, ref });
+
+    expect(calls).toEqual([
+      {
+        file: "apm",
+        args: ["uninstall", ref, "-g"],
+        cwd: "/scratch/.apm-scratch",
+      },
+    ]);
+  });
+
+  it("reports success only on apm's positive uninstall marker", async () => {
+    const { run } = fakeRun(uninstallOkOutput);
+    const driver = new ApmCliDriver({ run });
+
+    await expect(
+      driver.removeSkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
+    ).resolves.toEqual({ ok: true });
+  });
+
+  it("fails closed when nothing was removed, though apm exits 0", async () => {
+    // Every uninstall outcome exits 0, including a package that was never
+    // installed. Without the marker this is a failure, never a clean removal
+    // (apm-behavior.md § Remove).
+    const { run } = fakeRun(uninstallNotFoundOutput);
+    const driver = new ApmCliDriver({ run });
+
+    await expect(
+      driver.removeSkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
+    ).resolves.toEqual({ ok: false });
+  });
+
+  it("fails closed when the marker rides along with a not-found note", async () => {
+    // Partial success prints the success marker AND a trailing not-found note.
+    // Both markers must be read, not just the first — otherwise a package that
+    // was never there reads as removed.
+    const partial = [
+      uninstallOkOutput,
+      "[!] Note: 1 package(s) were not found in apm.yml",
+    ].join("\n");
+    const { run } = fakeRun(partial);
+    const driver = new ApmCliDriver({ run });
+
+    await expect(
+      driver.removeSkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
+    ).resolves.toEqual({ ok: false });
+  });
+
+  it("reads the marker even when Rich wraps it across a line break", async () => {
+    const wrapped = uninstallOkOutput.replace(
+      UNINSTALL_OK_SUMMARY,
+      "[*] Uninstall complete: Removed 1\npackage(s) from apm.yml, Removed 1 package(s) from apm_modules/",
+    );
+    const { run } = fakeRun(wrapped);
+    const driver = new ApmCliDriver({ run });
+
+    await expect(
+      driver.removeSkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
+    ).resolves.toEqual({ ok: true });
+  });
+
+  it("fails closed when apm exits non-zero", async () => {
+    // Only the argument parser exits non-zero (missing PACKAGES, exit 2), and it
+    // touches nothing. A rejected run is classified from its own output, so it
+    // can never read as a removal.
+    const { run } = rejectingRun({ stderr: "Missing argument 'PACKAGES...'." });
+    const driver = new ApmCliDriver({ run });
+
+    await expect(
+      driver.removeSkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
+    ).resolves.toEqual({ ok: false });
+  });
+
+  it("does not leak raw apm output in the failure it reports", async () => {
+    const tokenBearing = `${uninstallNotFoundOutput}\nhttps://x-access-token:ghp_secret@github.com`;
+    const { run } = fakeRun(tokenBearing);
+    const driver = new ApmCliDriver({ run });
+
+    const result = await driver.removeSkill({
       target: { kind: "repo", repoPath: "/repo" },
       ref,
     });

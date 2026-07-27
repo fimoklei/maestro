@@ -13,13 +13,17 @@ import {
   DeployedCleanupAdapter,
   DeployedContentAdapter,
   DeployedLocation,
+  DeployedRefAdapter,
   DeploySkill,
   type DeploySkillError,
   GlobalDeployStateReader,
+  InFlightLocks,
   InventoryGitAdapter,
   InventoryReader,
   NodeFileSystem,
   Registry,
+  RemoveDeployedSkill,
+  type RemoveDeployedSkillError,
   type RepoPathError,
   readGitOriginUrl,
   resolveApmGlobalRoot,
@@ -65,6 +69,18 @@ const bulkDeployBodySchema = z.object({
   target: z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("repo"), repoPath: z.string() }),
     z.object({ kind: z.literal("global") }),
+  ]),
+});
+
+// Remove a deployed skill from one registered repo. The target is a
+// discriminated union like deploy's, but carries only the repo kind: global
+// removal is not part of this slice, so the edge refuses it rather than letting
+// it reach a use-case that has no repo path to work with.
+const removeBodySchema = z.object({
+  type: z.string(),
+  name: z.string(),
+  target: z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("repo"), repoPath: z.string() }),
   ]),
 });
 
@@ -173,6 +189,54 @@ const deployErrorResponses: Record<
   },
 };
 
+// Transport-layer mapping from the remove use-case's typed errors to HTTP. Like
+// the deploy table, this only chooses status codes and readable messages — no
+// message echoes a path or raw apm output.
+const removeErrorResponses: Record<
+  RemoveDeployedSkillError,
+  { status: 400 | 403 | 404 | 409 | 422 | 502; message: string }
+> = {
+  "unsupported-primitive-type": {
+    status: 422,
+    message: "Only skills can be removed yet.",
+  },
+  "invalid-name": {
+    status: 400,
+    message: "Skill name must be a lowercase slug.",
+  },
+  "repo-not-registered": {
+    status: 403,
+    message: "That repo is not registered with Maestro.",
+  },
+  "not-deployed": {
+    status: 404,
+    message:
+      "That skill is not deployed in this repo, so there is nothing to remove.",
+  },
+  "lockfile-malformed": {
+    status: 409,
+    message:
+      "The repo's lockfile (apm.lock.yaml) is present but could not be parsed, so Maestro cannot tell apm what to remove. Fix or remove it, then try again.",
+  },
+  "ref-unresolvable": {
+    status: 409,
+    message:
+      "The lockfile entry for this skill names no source repository, so the package reference apm needs cannot be rebuilt. Remove it with apm directly.",
+  },
+  "remove-in-progress": {
+    status: 409,
+    message:
+      "Another change to this repo is already running. Wait for it to finish.",
+  },
+  "remove-failed": {
+    // 502: apm ran and did not prove the removal. The cockpit adds the
+    // mixed-state warning — a half-finished uninstall leaves the repo between
+    // two states, and saying nothing would read as "nothing happened".
+    status: 502,
+    message: "apm did not confirm the removal. Check apm and try again.",
+  },
+};
+
 // Transport-layer mapping from the domain's typed validation errors to readable
 // text the cockpit shows next to the path field.
 const repoPathErrorMessages: Record<
@@ -254,6 +318,7 @@ export type AppDeps = {
   // a compile error here, not a 500 discovered days later (#187).
   deployState: GlobalDeployStateReader;
   deploy: DeploySkill;
+  remove: RemoveDeployedSkill;
   drift: CheckVersionDrift;
   // Resolves apm's user-scope (global) root server-side. No client-supplied path
   // reaches the global read; tests inject a sandbox so the real ~/.apm is never
@@ -464,6 +529,35 @@ export function createApp(deps: AppDeps) {
     return c.json({ deployed: result.deployed });
   });
 
+  // Take a deployed skill off a registered repo. The registry gate, the ref
+  // lookup and the fail-closed success detection all live in the core use-case;
+  // this route validates the body shape and maps typed errors.
+  app.post("/api/deploy/remove", async (c) => {
+    const body = await c.req.json().catch(() => null);
+    const parsed = removeBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json(
+        {
+          error: "invalid-body",
+          message:
+            'Expected a JSON body with type, name, and target ({ kind: "repo", repoPath }).',
+        },
+        400,
+      );
+    }
+
+    const result = await deps.remove.execute({
+      type: parsed.data.type,
+      name: parsed.data.name,
+      repoPath: parsed.data.target.repoPath,
+    });
+    if (!result.ok) {
+      const { status, message } = removeErrorResponses[result.error];
+      return c.json({ error: result.error, message }, status);
+    }
+    return c.json({ removed: result.removed });
+  });
+
   // Bulk-deploy the staged skills to one target: plan → execute → report. The
   // orchestrator drives the same guarded deploy path once per name, never
   // aborting on a failure, and returns a report the cockpit reads (clean skips
@@ -621,6 +715,10 @@ function realDeps(): AppDeps {
   // cleanup take the same instance, so their agreement on the tree is one object,
   // not a comment to keep in sync.
   const deployedLocation = new DeployedLocation(process.env);
+  // One lock for every apm write, shared by deploy and remove: both rewrite the
+  // same apm.lock.yaml, so a deploy racing a remove on one repo would corrupt
+  // it. Composed here because only the server has both use-cases.
+  const apmWriteLocks = new InFlightLocks();
   const deploy = new DeploySkill({
     inventory,
     registry,
@@ -647,6 +745,17 @@ function realDeps(): AppDeps {
       return root === undefined ? null : readGitOriginUrl(root);
     },
     canonicalPath: (path) => fs.realpath(path),
+    locks: apmWriteLocks,
+  });
+  // Remove reads the ref to uninstall from the target's own lockfile, through
+  // the same DeployedLocation the deploy guards use, so both agree on which
+  // lockfile a target means.
+  const remove = new RemoveDeployedSkill({
+    registry,
+    deployedRef: new DeployedRefAdapter({ fs, location: deployedLocation }),
+    apm,
+    canonicalPath: (path) => fs.realpath(path),
+    locks: apmWriteLocks,
   });
   return {
     registry,
@@ -660,6 +769,7 @@ function realDeps(): AppDeps {
     browse: new BrowseFilesystem({ fs, homeRoot: () => homedir() }),
     deployState,
     deploy,
+    remove,
     drift,
     resolveGlobalRoot: () => resolveApmGlobalRoot(process.env),
     enforceOriginHost: true,

@@ -13,12 +13,18 @@ import { z } from "zod";
 // copy materialized to (the `.claude`/`.agents` prefix is how the global read
 // groups a skill per tool); deployed_file_hashes is apm 0.20.0's per-file sha256
 // map the destination guard verifies against. Both file fields are optional
-// because a pre-0.20.0 entry omits them. Unknown keys (content_hash) are ignored
-// by Zod, as the layers already relied on.
+// because a pre-0.20.0 entry omits them. host and repo_url name where the entry
+// was installed from, which is what rebuilds the ref a remove must hand back to
+// apm; optional because no reader before the remove path needed them, so an
+// entry lacking either stays parseable and is refused further along instead of
+// failing the whole file. Unknown keys (content_hash) are ignored by Zod, as the
+// layers already relied on.
 const lockfileEntrySchema = z.object({
   resolved_ref: z.string(),
   virtual_path: z.string(),
   package_type: z.string(),
+  host: z.string().optional(),
+  repo_url: z.string().optional(),
   deployed_files: z.array(z.string()).optional(),
   deployed_file_hashes: z.record(z.string(), z.string()).optional(),
 });
