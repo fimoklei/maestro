@@ -1,0 +1,10 @@
+[i] Uninstalling from user scope (~/.apm/)
+[>] Uninstalling 1 package(s)...
+[+] github.com/fimoklei/agent-harness/skills/tdd#v0.5.1 - found in apm.yml
+[i] Removed fimoklei/agent-harness/skills/tdd#v0.5.1 from dependencies.apm in apm.yml
+[*] Updated /private/tmp/claude-501/-Users-michielmerks-Projects-maestro/ad80cc5d-616c-4865-8a45-8dce7e89d5b8/scratchpad/apm-uninstall-spike/home/.apm/apm.yml (removed 1 package(s))
+[i] Removed fimoklei/agent-harness/skills/tdd#v0.5.1 from apm_modules/
+    Path: fimoklei/agent-harness/skills/tdd
+[+] Cleaned up 11 integrated skills
+    Removed 11 deployed skills file(s)
+[*] Uninstall complete: Removed 1 package(s) from apm.yml, Removed 1 package(s) from apm_modules/

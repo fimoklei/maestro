@@ -18,7 +18,8 @@ targets = detected tools), 0013 (narrowed-install reconciliation), 0014
 ## Invocation
 
 - `execFile` + args array, never a shell string (`security.md`).
-- Always pass `-t`, as one comma list of tools.
+- Always pass `-t` on install and update, as one comma list of tools.
+  `uninstall` has no `-t` — see Remove.
 - Deploy refs are tag-pinned
   `github.com/<owner>/<repo>/skills/<name>#vX.Y.Z` only (ADR-0003,
   ADR-0014).
@@ -55,10 +56,31 @@ targets = detected tools), 0013 (narrowed-install reconciliation), 0014
 - Never same-ref install over a dirty subtree — apm silently resets local
   edits. The deploy use-case's guards stay in front of every install.
 
+## Remove
+
+- Success = the `Uninstall complete: Removed \d+ package(s) from apm.yml`
+  marker, never the exit code — every outcome exits 0, including a package
+  that was never installed. Absent marker = failure, fail-closed.
+- Read every marker, not the first: the success marker can be followed by
+  `Note: \d+ package(s) were not found in apm.yml`.
+- Never parse the `Cleaned up \d+ integrated skills` count — it is unstable.
+- Name the package with the same tag-pinned ref the install used; a bare
+  skill name is rejected and still exits 0.
+- Never treat `--dry-run` as a blast-radius preview — it omits the deployed
+  files it is about to delete.
+- Never uninstall over a dirty deployed subtree — local edits are deleted
+  with no warning. The deploy use-case's guards run in front of it too.
+- Never narrow `targets:` in `apm.yml` to scope a removal — it orphans the
+  other tools' files while dropping the lockfile entry. Per-tool cleanup is
+  the scoped `rm` behind `DeployedCleanupPort` (ADR-0013).
+- Expect the lockfile to be deleted, not emptied, when the last dependency
+  goes; an absent lockfile means nothing deployed, never an error.
+
 ## Danger
 
-- Never run `apm uninstall -g` — it deletes beyond its lockfile. Cleanup is
-  the scoped `rm` behind `DeployedCleanupPort` (ADR-0013).
+- Never run a bare `apm uninstall -g`. On 0.26.0 the parser rejects it, but
+  it is the command that wiped 19 dirs beyond its lockfile on the version
+  behind the 2026-07-17 incident. Always name the package.
 - Never point a spike `-g` command at the real home; sandbox `HOME` always
   (`LEARNINGS.md` · spike-isolation).
 

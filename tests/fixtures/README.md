@@ -1,8 +1,10 @@
 # apm fixture provenance
 
 What produced each captured file, so a future reader can re-run it instead of
-trusting it. Every fixture below reflects `apm` **0.26.0** as of **2026-07-20**
-(issues #183 / #184), but in one of two ways — the difference matters when you
+trusting it. Every fixture below reflects `apm` **0.26.0** — the install, view,
+outdated, update and targets captures as of **2026-07-20** (issues #183 / #184),
+the four `apm-uninstall-*` ones as of **2026-07-27** (issue #334). The older
+group was taken in one of two ways — the difference matters when you
 audit one:
 
 - **Re-captured** — the command was re-run on 0.26.0 and its output overwrote
@@ -33,7 +35,8 @@ it. Any fixture that gains a reader loses that licence.
 
 Phrases a fixture comment must never contain: `is a symlink`,
 `installation failed`, `with <n> error(s)`, `installed <n> apm dependenc`,
-`authentication failed`, `no token available`.
+`authentication failed`, `no token available`, `uninstall complete`,
+`not found in apm.yml`.
 
 ## Capture conditions common to all
 
@@ -62,6 +65,18 @@ Phrases a fixture comment must never contain: `is a symlink`,
 | `apm-outdated-global-uptodate.txt` ✓= | `apm outdated -g` | `COLUMNS=200`, global install at the latest tag, authed | 0 | out |
 | `apm-update-noop.txt` | `apm update -y -t claude,codex` | `COLUMNS=120`, repo pinned at v0.5.0 while v0.5.1 exists | 0 | out+err |
 | `apm-targets-claude.json` ✓= | `apm targets --json` | repo containing `.claude/` only | 0 | out |
+| `apm-uninstall-dry-run.txt` | `apm uninstall --dry-run -v <ref>#v0.5.1` | repo holding two deps at `-t claude,codex` | 0 | out+err |
+| `apm-uninstall-ok.txt` | `apm uninstall -v <ref>#v0.5.1` | same repo, removes one of the two deps | 0 | out+err |
+| `apm-uninstall-not-found.txt` | `apm uninstall <ref>#v0.5.1` | same repo, package already gone | 0 | out+err |
+| `apm-uninstall-global-ok.txt` | `apm uninstall -g -v <ref>#v0.5.1` | neutral cwd, global install at `-t claude,codex` | 0 | out+err |
+
+The four uninstall fixtures (#334) came from one scripted run against a
+throwaway sandbox, `COLUMNS=200`, no token in the environment — uninstall needs
+neither network nor credentials. Two lines in them are **not** stable across a
+re-capture and nothing may key on them: `[*] Updated <path>/apm.yml` carries the
+capture sandbox's absolute path, and `Cleaned up <n> integrated skills` reported
+a different `<n>` for the same package on two runs (`docs/apm-behavior.md`
+§ Remove).
 
 ✓= marks a **verified unchanged** fixture (see the top of this file): re-run on
 0.26.0, output identical, file untouched since its 2026-06-11 / 2026-07-13
