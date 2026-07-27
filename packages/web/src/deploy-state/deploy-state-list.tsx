@@ -165,6 +165,14 @@ export function DeployStateList({
                 ? "The removal could not be completed."
                 : null
           }
+          // Only `remove-failed` means apm actually ran and left the outcome
+          // unproven; every other refusal happened before it, so the repo is
+          // untouched. A network error is unknowable either way — assume the
+          // request landed.
+          attempted={
+            !(remove.error instanceof HttpError) ||
+            remove.error.code === "remove-failed"
+          }
           onCancel={() => setRemoving(null)}
           onConfirm={() =>
             remove.mutate(

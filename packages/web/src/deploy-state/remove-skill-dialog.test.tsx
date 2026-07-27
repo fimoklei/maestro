@@ -6,6 +6,7 @@ import { RemoveSkillDialog } from "./remove-skill-dialog";
 function renderDialog({
   isRemoving = false,
   error = null as string | null,
+  attempted = true,
   onCancel = vi.fn(),
   onConfirm = vi.fn(),
 } = {}) {
@@ -15,6 +16,7 @@ function renderDialog({
       repoPath="/Users/me/project"
       isRemoving={isRemoving}
       error={error}
+      attempted={attempted}
       onCancel={onCancel}
       onConfirm={onConfirm}
     />,
@@ -73,6 +75,21 @@ describe("RemoveSkillDialog", () => {
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent("apm did not confirm the removal.");
     expect(alert).toHaveTextContent(/mixed state/i);
+  });
+
+  it("does not claim a mixed state when nothing was attempted", () => {
+    // A refusal happens before apm runs — the repo is exactly as it was. Saying
+    // it might be half-changed would send the user hunting for damage that is
+    // not there.
+    renderDialog({
+      error:
+        "The deployed copy has local changes that never went through central.",
+      attempted: false,
+    });
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("local changes");
+    expect(alert).not.toHaveTextContent(/mixed state/i);
   });
 
   it("takes focus into the panel when it opens", () => {

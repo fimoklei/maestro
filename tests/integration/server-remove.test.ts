@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   ConfigStore,
+  type DeployedContentState,
   DeployedLocation,
   DeployedRefAdapter,
   type DeployTarget,
@@ -51,7 +52,12 @@ describe("remove HTTP route", () => {
       "  package_type: claude_skill",
     ].join("\n");
 
-  function makeApp(options?: { removed?: boolean }) {
+  function makeApp(options?: {
+    removed?: boolean;
+    // What the destination guard finds on disk. "clean" by default — the guard
+    // itself is covered in the core lane; here it only has to reach the wire.
+    deployedState?: DeployedContentState;
+  }) {
     const fs = new NodeFileSystem();
     const registry = new Registry({
       fs,
@@ -65,6 +71,9 @@ describe("remove HTTP route", () => {
         fs,
         location: new DeployedLocation({}),
       }),
+      deployedContent: {
+        classify: async () => options?.deployedState ?? "clean",
+      },
       apm: {
         removeSkill: async (input) => {
           removeCalls.push(input);
@@ -216,6 +225,27 @@ describe("remove HTTP route", () => {
     await registry.register(repo);
 
     expect((await removeTdd(app, repo)).status).toBe(409);
+    expect(removeCalls).toEqual([]);
+  });
+
+  it("refuses a copy with local edits, and never reaches apm", async () => {
+    // apm deletes an edited deployed file with no warning, so the refusal has
+    // to happen here, not be discovered afterwards.
+    const { app, registry, removeCalls } = makeApp({
+      deployedState: "diverged",
+    });
+    await writeFile(
+      join(repo, "apm.lock.yaml"),
+      lockfileWith([skillEntry("tdd")]),
+      "utf8",
+    );
+    await registry.register(repo);
+
+    const response = await removeTdd(app, repo);
+
+    expect(response.status).toBe(409);
+    const body = (await response.json()) as { message: string };
+    expect(body.message).toMatch(/local changes/i);
     expect(removeCalls).toEqual([]);
   });
 

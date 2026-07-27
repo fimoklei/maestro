@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { DeployedContentState } from "./deploy-skill";
 import type { DeployedRefLookup } from "./deployed-ref";
 import { InFlightLocks } from "./in-flight-locks";
 import { RemoveDeployedSkill } from "./remove-deployed-skill";
@@ -14,6 +15,7 @@ type Overrides = {
   removed?: boolean;
   locks?: InFlightLocks;
   canonicalPath?: (path: string) => Promise<string>;
+  deployedState?: DeployedContentState;
 };
 
 // The calls that reached the outside world, so a test can prove a refusal
@@ -30,6 +32,9 @@ function buildUseCase(overrides: Overrides = {}) {
         calls.lookups.push(name);
         return overrides.lookup ?? { ok: true, ref: REF };
       },
+    },
+    deployedContent: {
+      classify: async () => overrides.deployedState ?? "clean",
     },
     apm: {
       removeSkill: async ({ ref }) => {
@@ -119,6 +124,66 @@ describe("RemoveDeployedSkill", () => {
     expect(calls.removes).toEqual([]);
   });
 
+  // apm deletes a deployed file with local edits silently and reports nothing
+  // (apm-behavior.md § Remove). The destination guard the deploy path runs is
+  // therefore the only thing between a remove and lost work, so it runs here
+  // too (.claude/rules/apm-driver.md § Remove).
+
+  it("refuses a deployed copy with local edits, before apm runs", async () => {
+    const { useCase, calls } = buildUseCase({ deployedState: "diverged" });
+
+    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+      ok: false,
+      error: "deployed-diverged-from-lock",
+    });
+    expect(calls.removes).toEqual([]);
+  });
+
+  it("refuses a deployed copy whose edits cannot be checked", async () => {
+    const { useCase, calls } = buildUseCase({ deployedState: "unverifiable" });
+
+    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+      ok: false,
+      error: "deployed-unverifiable",
+    });
+    expect(calls.removes).toEqual([]);
+  });
+
+  it("refuses a deployed copy it cannot read", async () => {
+    const { useCase, calls } = buildUseCase({ deployedState: "unreadable" });
+
+    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+      ok: false,
+      error: "deployed-unreadable",
+    });
+    expect(calls.removes).toEqual([]);
+  });
+
+  it("refuses when the lockfile the guard reads does not parse", async () => {
+    const { useCase, calls } = buildUseCase({
+      deployedState: "lockfile-malformed",
+    });
+
+    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+      ok: false,
+      error: "lockfile-malformed",
+    });
+    expect(calls.removes).toEqual([]);
+  });
+
+  it("removes a copy the guard found untouched on disk", async () => {
+    const { useCase, calls } = buildUseCase({ deployedState: "not-deployed" });
+
+    // Nothing on disk to protect: the lockfile entry exists (the ref resolved),
+    // but no deployed copy does. Removing it is exactly the tidy-up the user
+    // asked for.
+    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+      ok: true,
+      removed: { type: "skill", name: "tdd" },
+    });
+    expect(calls.removes).toEqual([{ ref: REF }]);
+  });
+
   it("fails closed when apm did not prove the removal", async () => {
     const { useCase } = buildUseCase({ removed: false });
 
@@ -132,6 +197,7 @@ describe("RemoveDeployedSkill", () => {
     const useCase = new RemoveDeployedSkill({
       registry: { isRegistered: async () => true },
       deployedRef: { resolve: async () => ({ ok: true, ref: REF }) },
+      deployedContent: { classify: async () => "clean" },
       apm: {
         removeSkill: async () => {
           throw new Error("apm exploded");

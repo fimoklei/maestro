@@ -10,6 +10,7 @@ export const stubRemove = (deps: { registry: Registry }) =>
     deployedRef: {
       resolve: async () => ({ ok: false as const, reason: "not-deployed" }),
     },
+    deployedContent: { classify: async () => "clean" },
     apm: { removeSkill: async () => ({ ok: true as const }) },
     canonicalPath: async (path) => path,
   });

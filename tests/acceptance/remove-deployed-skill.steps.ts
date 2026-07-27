@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describeFeature, loadFeature } from "@amiceli/vitest-cucumber";
 import {
   ConfigStore,
+  type DeployedContentState,
   DeployedLocation,
   DeployedRefAdapter,
   InventoryReader,
@@ -56,6 +57,10 @@ describeFeature(
     let response: Response;
     let removeCalls: string[];
     let apmConfirms: boolean;
+    // What the destination guard finds on the deployed copy. apm deletes an
+    // edited file with no warning, so this is what stands between the removal
+    // and lost work.
+    let deployedState: DeployedContentState;
 
     // The skills apm believes are installed in the repo. Kept beside the
     // lockfile the fake rewrites, so a removal shows up in the deploy-state read.
@@ -77,6 +82,7 @@ describeFeature(
           fs,
           location: new DeployedLocation({}),
         }),
+        deployedContent: { classify: async () => deployedState },
         apm: {
           removeSkill: async ({ ref }) => {
             removeCalls.push(ref);
@@ -123,6 +129,7 @@ describeFeature(
       repo = await mkdtemp(join(tmpdir(), "maestro-remove-repo-"));
       removeCalls = [];
       apmConfirms = true;
+      deployedState = "clean";
       deployed = [];
       app = buildApp(join(workspace, "config.json"));
     });
@@ -240,6 +247,32 @@ describeFeature(
           const body = (await response.json()) as { message: string };
           expect(body.message).toMatch(/\S/);
         });
+        And('that repo\'s deploy-state still lists "tdd"', async () => {
+          expect((await readDeployState()).map((p) => p.name)).toEqual(["tdd"]);
+        });
+      },
+    );
+
+    Scenario(
+      "A skill I edited in place is not silently deleted",
+      ({ Given, But, When, Then, And }) => {
+        Given('a registered repo with only "tdd" deployed', async () => {
+          await deploySkills(["tdd"]);
+          await register();
+        });
+        But('my deployed copy of "tdd" has local edits', () => {
+          deployedState = "diverged";
+        });
+        When('I remove "tdd" from that repo', () => removeSkill("tdd"));
+        Then(
+          "I am warned those edits would be lost, and nothing is removed",
+          async () => {
+            expect(response.status).toBe(409);
+            const body = (await response.json()) as { message: string };
+            expect(body.message).toMatch(/local changes/i);
+            expect(removeCalls).toEqual([]);
+          },
+        );
         And('that repo\'s deploy-state still lists "tdd"', async () => {
           expect((await readDeployState()).map((p) => p.name)).toEqual(["tdd"]);
         });

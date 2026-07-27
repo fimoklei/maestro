@@ -15,15 +15,21 @@ export function RemoveSkillDialog({
   repoPath,
   isRemoving,
   error,
+  attempted,
   onCancel,
   onConfirm,
 }: {
   skillName: string;
   repoPath: string;
   isRemoving: boolean;
-  // The server's own reason for a failed removal, or null while nothing has
-  // failed. Present means the removal was attempted and did not prove itself.
+  // The server's own reason for a refused or failed removal, or null while
+  // nothing has gone wrong.
   error: string | null;
+  // Whether apm actually ran. A guard refusal happens before it does, so the
+  // repo is untouched; only an apm run that did not prove itself can have left
+  // the repo half-changed. Saying otherwise would send the user hunting for
+  // damage that is not there.
+  attempted: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -80,10 +86,12 @@ export function RemoveSkillDialog({
               className="flex flex-col gap-1 rounded-control border border-amber-border bg-amber-bg px-2.5 py-2.5"
             >
               <span className="font-mono text-fg-2 text-mono-sm">{error}</span>
-              <span className="font-mono text-amber-ink text-tag">
-                The repo may be in a mixed state — some of this skill's files
-                may already be gone. Check it before trying again.
-              </span>
+              {attempted ? (
+                <span className="font-mono text-amber-ink text-tag">
+                  The repo may be in a mixed state — some of this skill's files
+                  may already be gone. Check it before trying again.
+                </span>
+              ) : null}
             </div>
           ) : null}
         </div>

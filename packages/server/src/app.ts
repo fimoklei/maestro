@@ -221,7 +221,22 @@ const removeErrorResponses: Record<
   "ref-unresolvable": {
     status: 409,
     message:
-      "The lockfile entry for this skill names no source repository, so the package reference apm needs cannot be rebuilt. Remove it with apm directly.",
+      "The lockfile entry for this skill does not name it the way a Maestro deploy would, so the package reference apm needs cannot be trusted to point at it. Remove it with apm directly.",
+  },
+  "deployed-diverged-from-lock": {
+    status: 409,
+    message:
+      "The deployed copy has local changes that never went through central. Removing it deletes them for good, so reconcile or copy them out first.",
+  },
+  "deployed-unverifiable": {
+    status: 409,
+    message:
+      "This copy predates content tracking, so local changes can't be checked and removing it could delete work. Reconcile it (for example redeploy it fresh) before removing.",
+  },
+  "deployed-unreadable": {
+    status: 409,
+    message:
+      "The deployed copy exists but could not be read, so Maestro cannot tell whether removing it would delete local changes. Check its permissions and that it is a directory, then try again.",
   },
   "remove-in-progress": {
     status: 409,
@@ -753,6 +768,10 @@ function realDeps(): AppDeps {
   const remove = new RemoveDeployedSkill({
     registry,
     deployedRef: new DeployedRefAdapter({ fs, location: deployedLocation }),
+    // The same destination guard the deploy takes, on the same DeployedLocation:
+    // apm deletes an edited deployed file silently, so a removal must prove
+    // there is nothing to lose first (.claude/rules/apm-driver.md § Remove).
+    deployedContent: new DeployedContentAdapter({ location: deployedLocation }),
     apm,
     canonicalPath: (path) => fs.realpath(path),
     locks: apmWriteLocks,

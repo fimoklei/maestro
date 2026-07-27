@@ -9,6 +9,7 @@ const meta = {
     repoPath: "/Users/me/acme-web",
     isRemoving: false,
     error: null,
+    attempted: true,
     onCancel: () => undefined,
     onConfirm: () => undefined,
   },
@@ -30,4 +31,14 @@ export const Removing: Story = { args: { isRemoving: true } };
 // and warns that the repo may be half-changed.
 export const Failed: Story = {
   args: { error: "apm did not confirm the removal. Check apm and try again." },
+};
+
+// Refused before apm ran: the deployed copy carries local edits apm would
+// delete without a word. Nothing was touched, so there is no mixed-state note.
+export const Refused: Story = {
+  args: {
+    attempted: false,
+    error:
+      "The deployed copy has local changes that never went through central. Removing it deletes them for good, so reconcile or copy them out first.",
+  },
 };

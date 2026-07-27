@@ -7,7 +7,12 @@
 //
 // Removing a deploy never touches the central inventory: the inventory is what a
 // repo could have, and this only changes what one repo does have.
-import type { ApmDriverPort, DeployTarget } from "./deploy-skill";
+import type {
+  ApmDriverPort,
+  DeployedContentPort,
+  DeployedContentState,
+  DeployTarget,
+} from "./deploy-skill";
 import type { DeployedRefLookup } from "./deployed-ref";
 import { InFlightLocks } from "./in-flight-locks";
 import { isValidSkillSlug } from "./package-ref";
@@ -41,10 +46,22 @@ export type RemoveDeployedSkillError =
   // The target's apm.lock.yaml is present but does not parse, so nothing about
   // what is deployed can be trusted. Refuse rather than guess a ref (#58).
   | "lockfile-malformed"
-  // The entry exists but names no origin repo or host, so the ref the install
-  // used cannot be rebuilt. A guessed ref would match nothing and still exit 0,
-  // which is the one outcome that must never read as a removal.
+  // The entry exists but does not name the skill the row named, in the shape a
+  // deploy of ours writes — so the ref cannot be trusted to aim at this skill.
+  // A guessed ref would match nothing and still exit 0, or worse, match another
+  // installed package.
   | "ref-unresolvable"
+  // The deployed copy has local edits vs the lockfile. apm deletes an edited
+  // file with no warning and no distinct output, so refuse and let the user
+  // reconcile first — the same refuse-only stance the deploy path takes (#56).
+  | "deployed-diverged-from-lock"
+  // The deployed copy carries no recorded hashes (a pre-0.20.0 lockfile), so
+  // local edits cannot be checked. Refuse rather than risk deleting work we
+  // cannot see.
+  | "deployed-unverifiable"
+  // The deployed copy exists but cannot be read (permission denied, I/O error).
+  // We cannot prove there is nothing to lose, so refuse.
+  | "deployed-unreadable"
   // Another apm write to this repo is already running (a deploy, or a
   // double-clicked remove). Racing it would corrupt the same apm.lock.yaml.
   | "remove-in-progress"
@@ -52,6 +69,19 @@ export type RemoveDeployedSkillError =
   // unproven. The target may be partly changed — the cockpit says so rather
   // than claiming a clean state.
   | "remove-failed";
+
+// What each destination-guard state means for a removal. The two states absent
+// here are the ones a removal may proceed over: "clean" (nothing to lose) and
+// "not-deployed" (no copy on disk, so the lockfile entry is the stale
+// bookkeeping this removal exists to clear).
+const GUARD_REFUSALS: Partial<
+  Record<DeployedContentState, RemoveDeployedSkillError>
+> = {
+  diverged: "deployed-diverged-from-lock",
+  unverifiable: "deployed-unverifiable",
+  unreadable: "deployed-unreadable",
+  "lockfile-malformed": "lockfile-malformed",
+};
 
 type RemoveDeployedSkillResult =
   | { ok: true; removed: { type: "skill"; name: string } }
@@ -61,6 +91,10 @@ export class RemoveDeployedSkill {
   private readonly deps: {
     registry: { isRegistered(path: string): Promise<boolean> };
     deployedRef: DeployedRefPort;
+    // The destination guard, the same one the deploy path runs. A removal
+    // deletes files, and apm deletes an edited one silently, so this is what
+    // stands between a tidy-up and lost work (.claude/rules/apm-driver.md).
+    deployedContent: DeployedContentPort;
     // Depends only on the port method it uses, so growing ApmDriverPort never
     // breaks this use-case or its fakes.
     apm: Pick<ApmDriverPort, "removeSkill">;
@@ -124,6 +158,20 @@ export class RemoveDeployedSkill {
       });
       if (!lookup.ok) {
         return { ok: false, error: lookup.reason };
+      }
+
+      // Destination guard: an edited deployed copy is work apm would delete
+      // without a word. "not-deployed" — a lockfile entry with no copy on disk —
+      // is exactly the stale bookkeeping the user asked us to clear, so it
+      // proceeds; every not-proven-clean state refuses. No force override: this
+      // slice has no confirmed-anyway path (#336).
+      const deployedState = await this.deps.deployedContent.classify({
+        target,
+        name: input.name,
+      });
+      const refusal = GUARD_REFUSALS[deployedState];
+      if (refusal !== undefined) {
+        return { ok: false, error: refusal };
       }
 
       const removed = await this.deps.apm.removeSkill({

@@ -9,6 +9,7 @@ export {
   BulkDeploySkills,
 } from "./deploy/bulk-deploy-skills";
 export {
+  type DeployedContentState,
   DeploySkill,
   type DeploySkillError,
   type DeployTarget,
