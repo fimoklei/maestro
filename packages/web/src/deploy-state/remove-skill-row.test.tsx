@@ -18,6 +18,28 @@ function jsonResponse(body: unknown, status: number) {
   });
 }
 
+// Opening the confirmation asks the server one read-only question — what would
+// this removal destroy — so a test that cares about the removal itself has to
+// tell the two calls apart.
+const removeCalls = (fetchMock: { mock: { calls: unknown[][] } }) =>
+  fetchMock.mock.calls.filter(([path]) => path === "/api/deploy/remove");
+
+// A fetch stub that answers the pre-confirmation check and leaves everything
+// else to the caller.
+function stubFetch(
+  warning: string | null,
+  onRemove: () => Response = () =>
+    jsonResponse({ removed: { type: "skill", name: "tdd" } }, 200),
+) {
+  const fetchMock = vi.fn(async (path: string) =>
+    path === "/api/deploy/remove/preflight"
+      ? jsonResponse({ warning }, 200)
+      : onRemove(),
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
 function renderRow({
   target = { kind: "repo" as const, repoPath: REPO },
   onRemoved = vi.fn(),
@@ -69,9 +91,8 @@ describe("removing a deployed skill from a row", () => {
     expect(dialog).toHaveTextContent(REPO);
   });
 
-  it("sends no request when the confirmation is cancelled", async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
+  it("removes nothing when the confirmation is cancelled", async () => {
+    const fetchMock = stubFetch(null);
     renderRow();
 
     await openRemoveDialog();
@@ -80,26 +101,20 @@ describe("removing a deployed skill from a row", () => {
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(removeCalls(fetchMock)).toEqual([]);
   });
 
   it("asks the server to remove the skill from this repo", async () => {
-    const fetchMock = vi.fn(async () =>
-      jsonResponse({ removed: { type: "skill", name: "tdd" } }, 200),
-    );
-    vi.stubGlobal("fetch", fetchMock);
+    const fetchMock = stubFetch(null);
     renderRow();
 
     await openRemoveDialog();
     await userEvent.click(screen.getByRole("button", { name: /^remove tdd/ }));
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(removeCalls(fetchMock)).toHaveLength(1);
     });
-    const [path, init] = fetchMock.mock.calls[0] as unknown as [
-      string,
-      RequestInit,
-    ];
+    const [path, init] = removeCalls(fetchMock)[0] as [string, RequestInit];
     expect(path).toBe("/api/deploy/remove");
     expect(init.method).toBe("POST");
     expect(JSON.parse(String(init.body))).toEqual({
@@ -107,6 +122,34 @@ describe("removing a deployed skill from a row", () => {
       name: "tdd",
       target: { kind: "repo", repoPath: REPO },
     });
+  });
+
+  it("warns about local edits before the user confirms, and still lets them", async () => {
+    const fetchMock = stubFetch("local-edits-will-be-lost");
+    renderRow();
+
+    await openRemoveDialog();
+
+    expect(await screen.findByRole("status")).toHaveTextContent(/local edits/i);
+    const confirm = screen.getByRole("button", { name: /^remove tdd/ });
+    expect(confirm).toBeEnabled();
+
+    await userEvent.click(confirm);
+
+    await waitFor(() => {
+      expect(removeCalls(fetchMock)).toHaveLength(1);
+    });
+  });
+
+  it("says so when the copy cannot be checked at all", async () => {
+    stubFetch("cannot-verify-local-edits");
+    renderRow();
+
+    await openRemoveDialog();
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      /can't be checked/i,
+    );
   });
 
   it("closes and hands focus back to the card once the removal lands", async () => {

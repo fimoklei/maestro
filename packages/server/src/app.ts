@@ -24,6 +24,7 @@ import {
   Registry,
   RemoveDeployedSkill,
   type RemoveDeployedSkillError,
+  type RemovePreflightError,
   type RepoPathError,
   readGitOriginUrl,
   resolveApmGlobalRoot,
@@ -223,16 +224,6 @@ const removeErrorResponses: Record<
     message:
       "The lockfile entry for this skill does not name it the way a Maestro deploy would, so the package reference apm needs cannot be trusted to point at it. Remove it with apm directly.",
   },
-  "deployed-diverged-from-lock": {
-    status: 409,
-    message:
-      "The deployed copy has local changes that never went through central. Removing it deletes them for good, so reconcile or copy them out first.",
-  },
-  "deployed-unverifiable": {
-    status: 409,
-    message:
-      "This copy predates content tracking, so local changes can't be checked and removing it could delete work. Reconcile it (for example redeploy it fresh) before removing.",
-  },
   "deployed-unreadable": {
     status: 409,
     message:
@@ -249,6 +240,26 @@ const removeErrorResponses: Record<
     // two states, and saying nothing would read as "nothing happened".
     status: 502,
     message: "apm did not confirm the removal. Check apm and try again.",
+  },
+};
+
+// Transport-layer mapping for the pre-confirmation check. A failed check is an
+// error, never an empty warning: the cockpit must be able to tell "nothing to
+// lose" from "we could not look".
+const removePreflightErrorResponses: Record<
+  RemovePreflightError,
+  { status: 400 | 403 | 404 | 409 | 422 | 502; message: string }
+> = {
+  // The request-shape refusals are the removal's own — one wording, whichever
+  // route the user hit.
+  "unsupported-primitive-type":
+    removeErrorResponses["unsupported-primitive-type"],
+  "invalid-name": removeErrorResponses["invalid-name"],
+  "repo-not-registered": removeErrorResponses["repo-not-registered"],
+  "preflight-failed": {
+    status: 502,
+    message:
+      "Maestro could not check the deployed copy for local changes. Check the repo's permissions and try again.",
   },
 };
 
@@ -571,6 +582,37 @@ export function createApp(deps: AppDeps) {
       return c.json({ error: result.error, message }, status);
     }
     return c.json({ removed: result.removed });
+  });
+
+  // What that removal would destroy, asked before the user commits to it. Same
+  // body shape as the removal itself, so the confirmation checks exactly the
+  // request it is about to send. Never a removal — and never a silent "clean"
+  // on a failed check: a check that could not run answers with its own error
+  // (#337).
+  app.post("/api/deploy/remove/preflight", async (c) => {
+    const body = await c.req.json().catch(() => null);
+    const parsed = removeBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json(
+        {
+          error: "invalid-body",
+          message:
+            'Expected a JSON body with type, name, and target ({ kind: "repo", repoPath }).',
+        },
+        400,
+      );
+    }
+
+    const result = await deps.remove.preflight({
+      type: parsed.data.type,
+      name: parsed.data.name,
+      repoPath: parsed.data.target.repoPath,
+    });
+    if (!result.ok) {
+      const { status, message } = removePreflightErrorResponses[result.error];
+      return c.json({ error: result.error, message }, status);
+    }
+    return c.json({ warning: result.warning });
   });
 
   // Bulk-deploy the staged skills to one target: plan → execute → report. The

@@ -11,9 +11,11 @@ import { ActionsMenu } from "../ui/actions-menu";
 import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
 import { RemoveSkillDialog } from "./remove-skill-dialog";
+import { removeWarningView } from "./remove-warning-view";
 import { UpdateSkillAction } from "./update-skill-action";
 import type { DeployedPrimitive, SkippedEntry } from "./use-deploy-state";
 import { useRemoveDeployedSkill } from "./use-remove-deployed-skill";
+import { useRemovePreflight } from "./use-remove-preflight";
 
 // Per-skill drift badge as a Control Room Chip. The state is carried in text
 // (not colour alone) so it stays accessible and honest: "unknown" reads as
@@ -80,6 +82,13 @@ export function DeployStateList({
   const [removing, setRemoving] = useState<string | null>(null);
   const [justRemoved, setJustRemoved] = useState(false);
   const remove = useRemoveDeployedSkill();
+  // What that removal would destroy, asked as soon as the confirmation opens so
+  // the answer is on screen before the user commits. Removal is offered per
+  // repo only, so a global target never names a skill and never asks.
+  const preflight = useRemovePreflight(
+    removing,
+    target.kind === "repo" ? target.repoPath : null,
+  );
 
   // Handing focus on in an effect, not in the success handler: the modal's
   // focus-restore runs during its unmount, so anything moving focus earlier
@@ -158,6 +167,7 @@ export function DeployStateList({
           skillName={removing}
           repoPath={target.repoPath}
           isRemoving={remove.isPending}
+          warning={removeWarningView(preflight)}
           error={
             remove.error instanceof HttpError
               ? remove.error.message

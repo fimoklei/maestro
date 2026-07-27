@@ -8,6 +8,7 @@ const meta = {
     skillName: "tdd",
     repoPath: "/Users/me/acme-web",
     isRemoving: false,
+    warning: "none",
     error: null,
     attempted: true,
     onCancel: () => undefined,
@@ -33,12 +34,25 @@ export const Failed: Story = {
   args: { error: "apm did not confirm the removal. Check apm and try again." },
 };
 
-// Refused before apm ran: the deployed copy carries local edits apm would
-// delete without a word. Nothing was touched, so there is no mixed-state note.
+// Refused before apm ran: the deployed copy could not be read at all, so
+// nothing was touched and there is no mixed-state note.
 export const Refused: Story = {
   args: {
     attempted: false,
     error:
-      "The deployed copy has local changes that never went through central. Removing it deletes them for good, so reconcile or copy them out first.",
+      "The deployed copy exists but could not be read, so Maestro cannot tell whether removing it would delete local changes.",
   },
 };
+
+// The deployed copy carries edits apm would delete without a word. Amber, not
+// danger red — and the confirm control stays usable, because destroying the
+// copy is what the user came here to do.
+export const WithLocalEdits: Story = { args: { warning: "local-edits" } };
+
+// No baseline to check against. A distinct wording: calling this copy "edited"
+// would claim something we never saw.
+export const Unverifiable: Story = { args: { warning: "cannot-verify" } };
+
+// The check itself never ran. Its own wording: borrowing the one above would
+// blame a missing baseline nothing ever looked for.
+export const CheckFailed: Story = { args: { warning: "check-failed" } };
