@@ -5,6 +5,7 @@ import {
 } from "../drift/drift-view-model";
 import { versionColor } from "../drift/version-color";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
+import { ActionsMenu } from "../ui/actions-menu";
 import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
 import { UpdateSkillAction } from "./update-skill-action";
@@ -102,6 +103,10 @@ export function DeployStateList({
             {status === "behind" ? (
               <UpdateSkillAction skillName={primitive.name} target={target} />
             ) : null}
+            {/* The row's named actions, last in the row and always visible so
+                they exist for touch and keyboard, not only for a mouse. Empty
+                until Remove lands (#158) — the trigger stays inert until then. */}
+            <ActionsMenu label={`Actions for ${primitive.name}`} items={[]} />
           </div>
         );
       })}
