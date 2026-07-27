@@ -7,6 +7,11 @@
 //
 // Removing a deploy never touches the central inventory: the inventory is what a
 // repo could have, and this only changes what one repo does have.
+//
+// Two entry points, one guard: `preflight` says what the removal would destroy
+// so the confirmation can state it, and `execute` carries it out. Divergence
+// warns rather than refusing — destruction is this use-case's intent, not a side
+// effect, so informed consent is enough (#337).
 import type {
   ApmDriverPort,
   DeployedContentPort,
@@ -51,14 +56,6 @@ export type RemoveDeployedSkillError =
   // A guessed ref would match nothing and still exit 0, or worse, match another
   // installed package.
   | "ref-unresolvable"
-  // The deployed copy has local edits vs the lockfile. apm deletes an edited
-  // file with no warning and no distinct output, so refuse and let the user
-  // reconcile first — the same refuse-only stance the deploy path takes (#56).
-  | "deployed-diverged-from-lock"
-  // The deployed copy carries no recorded hashes (a pre-0.20.0 lockfile), so
-  // local edits cannot be checked. Refuse rather than risk deleting work we
-  // cannot see.
-  | "deployed-unverifiable"
   // The deployed copy exists but cannot be read (permission denied, I/O error).
   // We cannot prove there is nothing to lose, so refuse.
   | "deployed-unreadable"
@@ -70,22 +67,62 @@ export type RemoveDeployedSkillError =
   // than claiming a clean state.
   | "remove-failed";
 
-// What each destination-guard state means for a removal. The two states absent
-// here are the ones a removal may proceed over: "clean" (nothing to lose) and
-// "not-deployed" (no copy on disk, so the lockfile entry is the stale
-// bookkeeping this removal exists to clear).
+// What the confirmation must tell the user before they destroy the deployed
+// copy. Named for the consequence, not the classifier state, because that is
+// what the user is consenting to.
+export type RemoveWarning =
+  // The copy differs from the per-file hashes the lockfile recorded, so the
+  // removal takes real local work with it.
+  | "local-edits-will-be-lost"
+  // The check ran and found nothing recorded to verify the copy against, so
+  // whether there is work to lose is unknown. Unknown is never quietly reported
+  // as safe (J04).
+  | "cannot-verify-local-edits"
+  // The check could not run at all — the copy would not read, or the lockfile
+  // it reads does not parse. Kept apart from the case above so the wording
+  // never claims a cause nothing observed.
+  | "check-did-not-run";
+
+// What each destination-guard state means for a removal. Only a state that
+// makes the removal itself unsafe to run refuses; a copy that carries local
+// edits, verified or unverifiable, is warned about and then removed on the
+// user's word — destruction is this use-case's intent, not a side effect
+// (#337).
 const GUARD_REFUSALS: Partial<
   Record<DeployedContentState, RemoveDeployedSkillError>
 > = {
-  diverged: "deployed-diverged-from-lock",
-  unverifiable: "deployed-unverifiable",
   unreadable: "deployed-unreadable",
   "lockfile-malformed": "lockfile-malformed",
 };
 
+// The states the user is told about before confirming. The two absent here —
+// "clean" and "not-deployed" — are the only ones with nothing to lose; every
+// other state says something, because silence in a confirmation reads as
+// nothing-to-lose (J04). A state the removal itself refuses still warns: "we
+// could not check this copy" is true either way.
+const GUARD_WARNINGS: Partial<Record<DeployedContentState, RemoveWarning>> = {
+  diverged: "local-edits-will-be-lost",
+  unverifiable: "cannot-verify-local-edits",
+  unreadable: "check-did-not-run",
+  "lockfile-malformed": "check-did-not-run",
+};
+
+// Why the pre-confirmation check could not answer. It never falls back to "no
+// warning": a check that failed proves nothing about what the removal would
+// destroy.
+export type RemovePreflightError =
+  | "unsupported-primitive-type"
+  | "invalid-name"
+  | "repo-not-registered"
+  | "preflight-failed";
+
 type RemoveDeployedSkillResult =
   | { ok: true; removed: { type: "skill"; name: string } }
   | { ok: false; error: RemoveDeployedSkillError };
+
+type RemovePreflightResult =
+  | { ok: true; warning: RemoveWarning | null }
+  | { ok: false; error: RemovePreflightError };
 
 export class RemoveDeployedSkill {
   private readonly deps: {
@@ -114,20 +151,36 @@ export class RemoveDeployedSkill {
     this.locks = deps.locks ?? new InFlightLocks();
   }
 
+  // What the confirmation must say before this removal runs: the deployed copy
+  // classified through the same seam the removal itself uses, translated into
+  // the consequence the user is about to accept. A read — it never removes
+  // anything, and it never takes the apm write lock, so asking cannot block a
+  // deploy already in flight.
+  async preflight(
+    input: RemoveDeployedSkillInput,
+  ): Promise<RemovePreflightResult> {
+    const rejection = await this.rejectBadRequest(input);
+    if (rejection !== undefined) {
+      return { ok: false, error: rejection };
+    }
+
+    try {
+      const state = await this.deps.deployedContent.classify({
+        target: { kind: "repo", repoPath: input.repoPath },
+        name: input.name,
+      });
+      return { ok: true, warning: GUARD_WARNINGS[state] ?? null };
+    } catch {
+      return { ok: false, error: "preflight-failed" };
+    }
+  }
+
   async execute(
     input: RemoveDeployedSkillInput,
   ): Promise<RemoveDeployedSkillResult> {
-    if (input.type !== "skill") {
-      return { ok: false, error: "unsupported-primitive-type" };
-    }
-    if (!isValidSkillSlug(input.name)) {
-      return { ok: false, error: "invalid-name" };
-    }
-    // Registry gate first: a path-taking endpoint must reject an unregistered
-    // repo before any filesystem or apm access, so an unregistered path can
-    // neither probe a lockfile nor reach apm (security.md).
-    if (!(await this.deps.registry.isRegistered(input.repoPath))) {
-      return { ok: false, error: "repo-not-registered" };
+    const rejection = await this.rejectBadRequest(input);
+    if (rejection !== undefined) {
+      return { ok: false, error: rejection };
     }
 
     let lockKey: string;
@@ -141,6 +194,30 @@ export class RemoveDeployedSkill {
 
     const run = await this.locks.run(lockKey, () => this.remove(input));
     return run.ok ? run.value : { ok: false, error: "remove-in-progress" };
+  }
+
+  // The request-shape rules both entry points share, in the order that keeps
+  // them safe: the registry gate is last but still before any filesystem or apm
+  // access, so an unregistered path can neither probe a lockfile nor reach apm
+  // (security.md). Returns the refusal, or undefined when the request is sound.
+  private async rejectBadRequest(
+    input: RemoveDeployedSkillInput,
+  ): Promise<
+    | "unsupported-primitive-type"
+    | "invalid-name"
+    | "repo-not-registered"
+    | undefined
+  > {
+    if (input.type !== "skill") {
+      return "unsupported-primitive-type";
+    }
+    if (!isValidSkillSlug(input.name)) {
+      return "invalid-name";
+    }
+    if (!(await this.deps.registry.isRegistered(input.repoPath))) {
+      return "repo-not-registered";
+    }
+    return undefined;
   }
 
   private async remove(
@@ -160,11 +237,11 @@ export class RemoveDeployedSkill {
         return { ok: false, error: lookup.reason };
       }
 
-      // Destination guard: an edited deployed copy is work apm would delete
-      // without a word. "not-deployed" — a lockfile entry with no copy on disk —
-      // is exactly the stale bookkeeping the user asked us to clear, so it
-      // proceeds; every not-proven-clean state refuses. No force override: this
-      // slice has no confirmed-anyway path (#336).
+      // Destination guard: what it finds decides between refusing and
+      // proceeding. Reaching this point means the user already confirmed a
+      // removal whose consequence `preflight` stated, so an edited or
+      // unverifiable copy goes; only a copy we cannot read, or a lockfile we
+      // cannot parse, still refuses (#337).
       const deployedState = await this.deps.deployedContent.classify({
         target,
         name: input.name,

@@ -228,9 +228,10 @@ describe("remove HTTP route", () => {
     expect(removeCalls).toEqual([]);
   });
 
-  it("refuses a copy with local edits, and never reaches apm", async () => {
-    // apm deletes an edited deployed file with no warning, so the refusal has
-    // to happen here, not be discovered afterwards.
+  it("removes a copy with local edits the user already confirmed", async () => {
+    // The confirmation stated the consequence through the preflight route
+    // below, so this request is the user's informed word — it is carried out
+    // rather than refused a second time (#337).
     const { app, registry, removeCalls } = makeApp({
       deployedState: "diverged",
     });
@@ -243,9 +244,24 @@ describe("remove HTTP route", () => {
 
     const response = await removeTdd(app, repo);
 
-    expect(response.status).toBe(409);
-    const body = (await response.json()) as { message: string };
-    expect(body.message).toMatch(/local changes/i);
+    expect(response.status).toBe(200);
+    expect(removeCalls).toHaveLength(1);
+  });
+
+  it("still refuses a copy it cannot read, confirmed or not", async () => {
+    // Not a divergence the user can consent to: we cannot tell what is there,
+    // and apm would delete it anyway.
+    const { app, registry, removeCalls } = makeApp({
+      deployedState: "unreadable",
+    });
+    await writeFile(
+      join(repo, "apm.lock.yaml"),
+      lockfileWith([skillEntry("tdd")]),
+      "utf8",
+    );
+    await registry.register(repo);
+
+    expect((await removeTdd(app, repo)).status).toBe(409);
     expect(removeCalls).toEqual([]);
   });
 
@@ -309,5 +325,74 @@ describe("remove HTTP route", () => {
     });
 
     expect(response.status).toBe(400);
+  });
+
+  // The check the confirmation runs before the user commits. It answers what
+  // the removal would destroy; it never removes anything itself.
+  describe("preflight", () => {
+    const preflightTdd = (
+      app: ReturnType<typeof makeApp>["app"],
+      repoPath: string,
+    ) =>
+      app.request("/api/deploy/remove/preflight", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          type: "skill",
+          name: "tdd",
+          target: { kind: "repo", repoPath },
+        }),
+      });
+
+    it("names local edits as the thing a removal would destroy", async () => {
+      const { app, registry, removeCalls } = makeApp({
+        deployedState: "diverged",
+      });
+      await registry.register(repo);
+
+      const response = await preflightTdd(app, repo);
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        warning: "local-edits-will-be-lost",
+      });
+      expect(removeCalls).toEqual([]);
+    });
+
+    it("keeps an unverifiable copy apart from a diverged one", async () => {
+      const { app, registry } = makeApp({ deployedState: "unverifiable" });
+      await registry.register(repo);
+
+      expect(await (await preflightTdd(app, repo)).json()).toEqual({
+        warning: "cannot-verify-local-edits",
+      });
+    });
+
+    it("warns about nothing when the copy still matches its lockfile", async () => {
+      const { app, registry } = makeApp({ deployedState: "clean" });
+      await registry.register(repo);
+
+      expect(await (await preflightTdd(app, repo)).json()).toEqual({
+        warning: null,
+      });
+    });
+
+    it("refuses an unregistered repo, so it cannot probe a lockfile", async () => {
+      const { app } = makeApp({ deployedState: "diverged" });
+
+      expect((await preflightTdd(app, repo)).status).toBe(403);
+    });
+
+    it("rejects a body that is not the expected shape", async () => {
+      const { app } = makeApp();
+
+      const response = await app.request("/api/deploy/remove/preflight", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: "tdd" }),
+      });
+
+      expect(response.status).toBe(400);
+    });
   });
 });

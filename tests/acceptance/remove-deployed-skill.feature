@@ -28,12 +28,25 @@ Feature: Remove a deployed skill from a consuming repo
     Then the removal is reported as failed
     And that repo's deploy-state still lists "tdd"
 
-  Scenario: A skill I edited in place is not silently deleted
+  Scenario: A skill I edited in place tells me what I am about to lose
+    Given a registered repo with only "tdd" deployed
+    But my deployed copy of "tdd" has local edits
+    When I ask what removing "tdd" would cost
+    Then I am told those local edits would be lost
+    And nothing has been removed yet
+
+  Scenario: Having been warned, I remove the edited skill anyway
     Given a registered repo with only "tdd" deployed
     But my deployed copy of "tdd" has local edits
     When I remove "tdd" from that repo
-    Then I am warned those edits would be lost, and nothing is removed
-    And that repo's deploy-state still lists "tdd"
+    Then the removal is confirmed
+    And that repo's deploy-state is empty, not an error
+
+  Scenario: A copy with nothing to check it against says so in its own words
+    Given a registered repo with only "tdd" deployed
+    But my deployed copy of "tdd" has no baseline to check against
+    When I ask what removing "tdd" would cost
+    Then I am told the copy cannot be checked
 
   Scenario: A skill that is not there is not reported as removed
     Given a registered repo with only "jobs" deployed

@@ -2,11 +2,13 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { RemoveSkillDialog } from "./remove-skill-dialog";
+import type { RemoveWarningState } from "./remove-warning-view";
 
 function renderDialog({
   isRemoving = false,
   error = null as string | null,
   attempted = true,
+  warning = "none" as RemoveWarningState,
   onCancel = vi.fn(),
   onConfirm = vi.fn(),
 } = {}) {
@@ -17,6 +19,7 @@ function renderDialog({
       isRemoving={isRemoving}
       error={error}
       attempted={attempted}
+      warning={warning}
       onCancel={onCancel}
       onConfirm={onConfirm}
     />,
@@ -90,6 +93,71 @@ describe("RemoveSkillDialog", () => {
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent("local changes");
     expect(alert).not.toHaveTextContent(/mixed state/i);
+  });
+
+  // The confirmation is the last moment the user can keep work apm would
+  // delete without a word. Both cases warn; neither stands in the way (#337).
+
+  it("states that local edits will be lost when the copy diverged", () => {
+    renderDialog({ warning: "local-edits" });
+
+    expect(screen.getByRole("status")).toHaveTextContent(/local edits/i);
+  });
+
+  it("says the copy cannot be checked, rather than calling it edited", () => {
+    renderDialog({ warning: "cannot-verify" });
+
+    const note = screen.getByRole("status");
+    expect(note).toHaveTextContent(/can't be checked/i);
+    // Claiming edits we never saw would be a fact we cannot state.
+    expect(note).not.toHaveTextContent(/local edits will be lost/i);
+  });
+
+  it("wears amber with a glyph, never danger red", () => {
+    // Red is reserved for validation errors; lost work is a consequence, not an
+    // error (DESIGN.md). The glyph keeps colour from being the only signal.
+    renderDialog({ warning: "local-edits" });
+
+    const note = screen.getByRole("status");
+    expect(note.className).toContain("amber");
+    expect(note.className).not.toContain("danger");
+    expect(note).toHaveTextContent("▲");
+  });
+
+  it("leaves the confirm control usable under either warning", () => {
+    for (const warning of ["local-edits", "cannot-verify"] as const) {
+      const { onConfirm } = renderDialog({ warning });
+
+      const confirm = screen
+        .getAllByRole("button", { name: /^remove/i })
+        .at(-1);
+      expect(confirm).toBeEnabled();
+      confirm?.click();
+      expect(onConfirm).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it("says a failed check failed, rather than blaming a missing baseline", () => {
+    renderDialog({ warning: "check-failed" });
+
+    const note = screen.getByRole("status");
+    expect(note).toHaveTextContent(/couldn't check this copy/i);
+    // "Nothing was recorded" names a cause nothing observed.
+    expect(note).not.toHaveTextContent(/nothing was recorded/i);
+  });
+
+  it("says the check is still running instead of staying silent", () => {
+    // Silence reads as "nothing to lose", which is the one thing an unfinished
+    // check cannot promise (J04).
+    renderDialog({ warning: "checking" });
+
+    expect(screen.getByRole("status")).toHaveTextContent(/checking/i);
+  });
+
+  it("shows no warning at all once the copy came back clean", () => {
+    renderDialog({ warning: "none" });
+
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
   it("takes focus into the panel when it opens", () => {

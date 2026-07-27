@@ -125,28 +125,29 @@ describe("RemoveDeployedSkill", () => {
   });
 
   // apm deletes a deployed file with local edits silently and reports nothing
-  // (apm-behavior.md § Remove). The destination guard the deploy path runs is
-  // therefore the only thing between a remove and lost work, so it runs here
-  // too (.claude/rules/apm-driver.md § Remove).
+  // (apm-behavior.md § Remove). Destruction is this use-case's intent, not a
+  // side effect, so the guard states the consequence up front through
+  // `preflight` and then lets a confirmed removal through — the asymmetry with
+  // deploy and update, which refuse (#337).
 
-  it("refuses a deployed copy with local edits, before apm runs", async () => {
+  it("removes a copy with local edits once the user has confirmed", async () => {
     const { useCase, calls } = buildUseCase({ deployedState: "diverged" });
 
     await expect(useCase.execute(removeTdd)).resolves.toEqual({
-      ok: false,
-      error: "deployed-diverged-from-lock",
+      ok: true,
+      removed: { type: "skill", name: "tdd" },
     });
-    expect(calls.removes).toEqual([]);
+    expect(calls.removes).toEqual([{ ref: REF }]);
   });
 
-  it("refuses a deployed copy whose edits cannot be checked", async () => {
+  it("removes a copy whose edits cannot be checked once the user has confirmed", async () => {
     const { useCase, calls } = buildUseCase({ deployedState: "unverifiable" });
 
     await expect(useCase.execute(removeTdd)).resolves.toEqual({
-      ok: false,
-      error: "deployed-unverifiable",
+      ok: true,
+      removed: { type: "skill", name: "tdd" },
     });
-    expect(calls.removes).toEqual([]);
+    expect(calls.removes).toEqual([{ ref: REF }]);
   });
 
   it("refuses a deployed copy it cannot read", async () => {
@@ -239,5 +240,127 @@ describe("RemoveDeployedSkill", () => {
     await expect(
       useCase.execute({ ...removeTdd, repoPath: "/link/to/repo" }),
     ).resolves.toEqual({ ok: false, error: "remove-in-progress" });
+  });
+});
+
+// What the confirmation must say before the user destroys a deployed copy. The
+// two cases stay apart on purpose: an unverifiable copy is not a diverged one,
+// and calling it "edited" would be a claim we cannot make (#337).
+describe("RemoveDeployedSkill.preflight", () => {
+  it("warns that local edits will be lost when the copy diverged", async () => {
+    const { useCase, calls } = buildUseCase({ deployedState: "diverged" });
+
+    await expect(useCase.preflight(removeTdd)).resolves.toEqual({
+      ok: true,
+      warning: "local-edits-will-be-lost",
+    });
+    // A check, not the action: nothing is removed by asking.
+    expect(calls.removes).toEqual([]);
+  });
+
+  it("warns separately when there is no baseline to verify against", async () => {
+    const { useCase } = buildUseCase({ deployedState: "unverifiable" });
+
+    await expect(useCase.preflight(removeTdd)).resolves.toEqual({
+      ok: true,
+      warning: "cannot-verify-local-edits",
+    });
+  });
+
+  it("says the copy could not be checked when it cannot be read", async () => {
+    // Distinct from "no baseline recorded": there, the check ran and found
+    // nothing to compare against. Here it never ran at all.
+    const { useCase } = buildUseCase({ deployedState: "unreadable" });
+
+    await expect(useCase.preflight(removeTdd)).resolves.toEqual({
+      ok: true,
+      warning: "check-did-not-run",
+    });
+  });
+
+  it("says the same when the lockfile the check reads does not parse", async () => {
+    const { useCase } = buildUseCase({ deployedState: "lockfile-malformed" });
+
+    await expect(useCase.preflight(removeTdd)).resolves.toEqual({
+      ok: true,
+      warning: "check-did-not-run",
+    });
+  });
+
+  it("warns about nothing when the copy still matches the lockfile", async () => {
+    const { useCase } = buildUseCase({ deployedState: "clean" });
+
+    await expect(useCase.preflight(removeTdd)).resolves.toEqual({
+      ok: true,
+      warning: null,
+    });
+  });
+
+  it("warns about nothing when there is no copy on disk to lose", async () => {
+    const { useCase } = buildUseCase({ deployedState: "not-deployed" });
+
+    await expect(useCase.preflight(removeTdd)).resolves.toEqual({
+      ok: true,
+      warning: null,
+    });
+  });
+
+  it("refuses an unregistered repo before reading anything", async () => {
+    // A path-taking read is still a path-taking endpoint: an unregistered path
+    // may not probe a lockfile through the back door (security.md).
+    const classified: string[] = [];
+    const useCase = new RemoveDeployedSkill({
+      registry: { isRegistered: async () => false },
+      deployedRef: { resolve: async () => ({ ok: true, ref: REF }) },
+      deployedContent: {
+        classify: async ({ name }) => {
+          classified.push(name);
+          return "clean";
+        },
+      },
+      apm: { removeSkill: async () => ({ ok: true }) },
+      canonicalPath: async (path) => path,
+    });
+
+    await expect(useCase.preflight(removeTdd)).resolves.toEqual({
+      ok: false,
+      error: "repo-not-registered",
+    });
+    expect(classified).toEqual([]);
+  });
+
+  it("refuses a name that is not a lowercase slug", async () => {
+    const { useCase } = buildUseCase();
+
+    await expect(
+      useCase.preflight({ ...removeTdd, name: "../../etc" }),
+    ).resolves.toEqual({ ok: false, error: "invalid-name" });
+  });
+
+  it("refuses a primitive type other than a skill", async () => {
+    const { useCase } = buildUseCase();
+
+    await expect(
+      useCase.preflight({ ...removeTdd, type: "hook" }),
+    ).resolves.toEqual({ ok: false, error: "unsupported-primitive-type" });
+  });
+
+  it("reports a classification that threw, never guessing it clean", async () => {
+    const useCase = new RemoveDeployedSkill({
+      registry: { isRegistered: async () => true },
+      deployedRef: { resolve: async () => ({ ok: true, ref: REF }) },
+      deployedContent: {
+        classify: async () => {
+          throw new Error("disk exploded");
+        },
+      },
+      apm: { removeSkill: async () => ({ ok: true }) },
+      canonicalPath: async (path) => path,
+    });
+
+    await expect(useCase.preflight(removeTdd)).resolves.toEqual({
+      ok: false,
+      error: "preflight-failed",
+    });
   });
 });

@@ -25,6 +25,8 @@ export { InventoryGitAdapter } from "./deploy/inventory-git";
 export {
   RemoveDeployedSkill,
   type RemoveDeployedSkillError,
+  type RemovePreflightError,
+  type RemoveWarning,
 } from "./deploy/remove-deployed-skill";
 export {
   DeployStateReader,

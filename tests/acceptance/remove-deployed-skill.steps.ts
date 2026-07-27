@@ -164,6 +164,20 @@ describeFeature(
       });
     }
 
+    // The question the confirmation asks before the user commits: what would
+    // this removal destroy?
+    async function preflightSkill(name: string) {
+      response = await app.request("/api/deploy/remove/preflight", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          type: "skill",
+          name,
+          target: { kind: "repo", repoPath: repo },
+        }),
+      });
+    }
+
     async function readDeployState(): Promise<DeployedPrimitive[]> {
       const state = await app.request(
         `/api/deploy-state?repo=${encodeURIComponent(repo)}`,
@@ -254,7 +268,33 @@ describeFeature(
     );
 
     Scenario(
-      "A skill I edited in place is not silently deleted",
+      "A skill I edited in place tells me what I am about to lose",
+      ({ Given, But, When, Then, And }) => {
+        Given('a registered repo with only "tdd" deployed', async () => {
+          await deploySkills(["tdd"]);
+          await register();
+        });
+        But('my deployed copy of "tdd" has local edits', () => {
+          deployedState = "diverged";
+        });
+        When('I ask what removing "tdd" would cost', () =>
+          preflightSkill("tdd"),
+        );
+        Then("I am told those local edits would be lost", async () => {
+          expect(response.status).toBe(200);
+          expect(await response.json()).toEqual({
+            warning: "local-edits-will-be-lost",
+          });
+        });
+        And("nothing has been removed yet", async () => {
+          expect(removeCalls).toEqual([]);
+          expect((await readDeployState()).map((p) => p.name)).toEqual(["tdd"]);
+        });
+      },
+    );
+
+    Scenario(
+      "Having been warned, I remove the edited skill anyway",
       ({ Given, But, When, Then, And }) => {
         Given('a registered repo with only "tdd" deployed', async () => {
           await deploySkills(["tdd"]);
@@ -264,17 +304,37 @@ describeFeature(
           deployedState = "diverged";
         });
         When('I remove "tdd" from that repo', () => removeSkill("tdd"));
-        Then(
-          "I am warned those edits would be lost, and nothing is removed",
-          async () => {
-            expect(response.status).toBe(409);
-            const body = (await response.json()) as { message: string };
-            expect(body.message).toMatch(/local changes/i);
-            expect(removeCalls).toEqual([]);
+        Then("the removal is confirmed", () => {
+          expect(response.status).toBe(200);
+        });
+        And("that repo's deploy-state is empty, not an error", async () => {
+          expect(await readDeployState()).toEqual([]);
+        });
+      },
+    );
+
+    Scenario(
+      "A copy with nothing to check it against says so in its own words",
+      ({ Given, But, When, Then }) => {
+        Given('a registered repo with only "tdd" deployed', async () => {
+          await deploySkills(["tdd"]);
+          await register();
+        });
+        But(
+          'my deployed copy of "tdd" has no baseline to check against',
+          () => {
+            deployedState = "unverifiable";
           },
         );
-        And('that repo\'s deploy-state still lists "tdd"', async () => {
-          expect((await readDeployState()).map((p) => p.name)).toEqual(["tdd"]);
+        When('I ask what removing "tdd" would cost', () =>
+          preflightSkill("tdd"),
+        );
+        Then("I am told the copy cannot be checked", async () => {
+          // Its own wording: calling an unverifiable copy "edited" would claim
+          // something no check ever saw.
+          expect(await response.json()).toEqual({
+            warning: "cannot-verify-local-edits",
+          });
         });
       },
     );
