@@ -21,13 +21,16 @@
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type {
   ApmDriverPort,
+  DeployedCleanupPort,
   DeployedContentPort,
   DeployedContentState,
   DeployTarget,
 } from "./deploy-skill";
+import type { SupportedTool } from "./deploy-tools";
 import type { DeployedRefLookup } from "./deployed-ref";
 import { GLOBAL_LOCK_KEY, InFlightLocks } from "./in-flight-locks";
 import { isValidSkillSlug } from "./package-ref";
+import { reclaimUntargetedCopies } from "./reclaim-untargeted-copies";
 
 // Which package reference names the deployed skill, read from the target's own
 // lockfile. Implemented by DeployedRefAdapter.
@@ -129,10 +132,19 @@ export type RemovePreflightError =
   | "no-supported-tool"
   | "preflight-failed";
 
-// Whether this removal has a scope to run in at all. It carries no tool list:
-// the guard reads every supported tool's copy either way, because apm deletes
-// by its own recorded targets rather than by what this machine detects today.
-type ResolvedScope = { ok: true } | { ok: false; error: "no-supported-tool" };
+// Whether this removal has a scope to run in at all, and — on the global path —
+// which tools the machine has. The guard still reads every supported tool's copy
+// either way, because apm deletes by its own recorded targets rather than by what
+// this machine detects today; the list is here for the cleanup that follows a
+// successful removal, which needs to know what apm could not have reached (#339).
+// A repo carries no list: its targets are its own apm.yml, not this machine.
+// Global carries its tool list as a required field, so a resolved global scope
+// with no list cannot be written — the reclaim can only be skipped by naming
+// the repo path, never by leaving a property out.
+type ResolvedScope =
+  | { ok: true; scope: "repo" }
+  | { ok: true; scope: "global"; detected: readonly SupportedTool[] }
+  | { ok: false; error: "no-supported-tool" };
 
 type RemoveDeployedSkillResult =
   | { ok: true; removed: { type: "skill"; name: string } }
@@ -153,6 +165,12 @@ export class RemoveDeployedSkill {
     // Depends only on the port method it uses, so growing ApmDriverPort never
     // breaks this use-case or its fakes.
     apm: Pick<ApmDriverPort, "removeSkill">;
+    // The subtree-scoped reclaim, shared with the deploy path. It is the only
+    // mechanism allowed to clear a copy apm left behind: `apm uninstall -g`
+    // deletes beyond its own lockfile (apm-driver.md § Danger), and the tools
+    // this reclaims for are exactly the ones apm no longer knows about, so
+    // there is no package to name it with anyway (#339).
+    deployedCleanup: DeployedCleanupPort;
     // Which tools this machine actually has, probed live per request (ADR-0011).
     // The global path alone needs it, and only to answer whether there is a
     // scope at all: an empty probe is what turns a global removal into an honest
@@ -239,7 +257,10 @@ export class RemoveDeployedSkill {
       return { ok: false, error: scope.error };
     }
 
-    const run = await this.locks.run(lockKey, () => this.remove(input));
+    const detected = scope.scope === "global" ? scope.detected : undefined;
+    const run = await this.locks.run(lockKey, () =>
+      this.remove(input, detected),
+    );
     return run.ok ? run.value : { ok: false, error: "remove-in-progress" };
   }
 
@@ -252,12 +273,12 @@ export class RemoveDeployedSkill {
   // both callers own that as their catch-all.
   private async resolveScope(target: DeployTarget): Promise<ResolvedScope> {
     if (target.kind === "repo") {
-      return { ok: true };
+      return { ok: true, scope: "repo" };
     }
     const detected = await this.deps.toolPresence.detectGlobalTools();
     return detected.length === 0
       ? { ok: false, error: "no-supported-tool" }
-      : { ok: true };
+      : { ok: true, scope: "global", detected };
   }
 
   // The request-shape rules both entry points share, in the order that keeps
@@ -291,6 +312,7 @@ export class RemoveDeployedSkill {
 
   private async remove(
     input: RemoveDeployedSkillInput,
+    detected: readonly SupportedTool[] | undefined,
   ): Promise<RemoveDeployedSkillResult> {
     const target = input.target;
     // From here on we touch the filesystem and drive apm, both of which can
@@ -327,6 +349,17 @@ export class RemoveDeployedSkill {
       if (!removed.ok) {
         return { ok: false, error: "remove-failed" };
       }
+
+      // Placed after apm's positive marker, never before: a removal that never
+      // happened leaves a copy nothing replaced, and deleting it then destroys
+      // work no uninstall accounted for. Why anything is left to reclaim at
+      // all is the helper's own header.
+      await reclaimUntargetedCopies({
+        cleanup: this.deps.deployedCleanup,
+        target: input.target,
+        name: input.name,
+        detected,
+      });
       return { ok: true, removed: { type: "skill", name: input.name } };
     } catch {
       return { ok: false, error: "remove-failed" };

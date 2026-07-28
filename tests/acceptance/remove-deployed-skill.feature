@@ -60,6 +60,14 @@ Feature: Remove a deployed skill from a target
     And no tool's global deploy-state lists "tdd" any more
     And every tool still lists "jobs"
 
+  Scenario: The copy left by a tool I no longer have goes too
+    Given "tdd" and "jobs" deployed globally on Claude Code and Codex
+    But Claude Code is no longer on this machine
+    When I remove "tdd" globally
+    Then the removal is confirmed
+    And no copy of "tdd" is left behind for Claude Code
+    And the copy of "jobs" is untouched
+
   Scenario: A machine with no supported tool has no global scope to remove from
     Given "tdd" and "jobs" deployed globally on Claude Code and Codex
     But this machine has no supported tool

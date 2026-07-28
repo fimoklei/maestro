@@ -36,6 +36,7 @@ type Overrides = {
   ) => DeployedContentState;
   detectedTools?: SupportedTool[];
   detectTools?: () => Promise<SupportedTool[]>;
+  cleanupFails?: boolean;
 };
 
 // The calls that reached the outside world, so a test can prove a refusal
@@ -45,7 +46,12 @@ function buildUseCase(overrides: Overrides = {}) {
     lookups: string[];
     removes: { target: DeployTarget; ref: string }[];
     classifies: { target: DeployTarget; tools?: readonly SupportedTool[] }[];
-  } = { lookups: [], removes: [], classifies: [] };
+    cleanups: {
+      target: DeployTarget;
+      name: string;
+      tools: readonly SupportedTool[];
+    }[];
+  } = { lookups: [], removes: [], classifies: [], cleanups: [] };
   const useCase = new RemoveDeployedSkill({
     registry: { isRegistered: async () => overrides.registered ?? true },
     deployedRef: {
@@ -68,6 +74,14 @@ function buildUseCase(overrides: Overrides = {}) {
       removeSkill: async ({ target, ref }) => {
         calls.removes.push({ target, ref });
         return (overrides.removed ?? true) ? { ok: true } : { ok: false };
+      },
+    },
+    deployedCleanup: {
+      removeSkillTargets: async (input) => {
+        calls.cleanups.push(input);
+        if (overrides.cleanupFails) {
+          throw new Error("permission denied");
+        }
       },
     },
     toolPresence: {
@@ -237,6 +251,7 @@ describe("RemoveDeployedSkill", () => {
           throw new Error("apm exploded");
         },
       },
+      deployedCleanup: { removeSkillTargets: async () => undefined },
       toolPresence: { detectGlobalTools: async () => ["claude"] },
       canonicalPath: async (path) => path,
     });
@@ -419,6 +434,83 @@ describe("RemoveDeployedSkill on the global target", () => {
   });
 });
 
+// apm's uninstall deletes the copies for the tools its own apm.yml still lists,
+// so a skill installed back when the machine had more tools leaves a tree behind
+// for every tool that has since dropped off. Reclaiming those is what makes a
+// global removal complete rather than complete-for-today's-tools (#339).
+describe("RemoveDeployedSkill cleaning up after a global remove", () => {
+  it("reclaims the leftover copy of a tool this machine no longer detects", async () => {
+    const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
+
+    await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
+      ok: true,
+      removed: { type: "skill", name: "tdd" },
+    });
+    expect(calls.cleanups).toEqual([
+      { target: { kind: "global" }, name: "tdd", tools: ["claude"] },
+    ]);
+  });
+
+  it("leaves a detected tool's tree to the removal itself", async () => {
+    const { useCase, calls } = buildUseCase({
+      detectedTools: ["claude", "codex"],
+    });
+
+    await useCase.execute(removeTddGlobally);
+
+    expect(calls.cleanups).toEqual([]);
+  });
+
+  it("keeps a skills directory several tools read, even when its tool is gone", async () => {
+    // Codex is undetected, but nine other apm targets deploy under .agents. An
+    // absent Codex proves nothing about them, so the copy stays (#202).
+    const { useCase, calls } = buildUseCase({ detectedTools: ["claude"] });
+
+    await useCase.execute(removeTddGlobally);
+
+    expect(calls.cleanups).toEqual([]);
+  });
+
+  it("reclaims nothing when the removal itself failed", async () => {
+    // apm never printed its uninstall marker, so the skill may still be there.
+    // Deleting a subtree now would destroy a copy no removal replaced.
+    const { useCase, calls } = buildUseCase({
+      detectedTools: ["codex"],
+      removed: false,
+    });
+
+    await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
+      ok: false,
+      error: "remove-failed",
+    });
+    expect(calls.cleanups).toEqual([]);
+  });
+
+  it("still reports the removal successful when the leftover will not go", async () => {
+    // The skill is gone; a leftover that could not be reclaimed is no worse than
+    // before the removal, and is not a failed removal.
+    const { useCase, calls } = buildUseCase({
+      detectedTools: ["codex"],
+      cleanupFails: true,
+    });
+
+    await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
+      ok: true,
+      removed: { type: "skill", name: "tdd" },
+    });
+    expect(calls.cleanups).toHaveLength(1);
+  });
+
+  it("reclaims nothing on the per-repo path", async () => {
+    // A repo's targets are its own apm.yml, not this machine's tool detection.
+    const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
+
+    await useCase.execute(removeTdd);
+
+    expect(calls.cleanups).toEqual([]);
+  });
+});
+
 // What the confirmation must say before the user destroys a deployed copy. The
 // two cases stay apart on purpose: an unverifiable copy is not a diverged one,
 // and calling it "edited" would be a claim we cannot make (#337).
@@ -495,6 +587,7 @@ describe("RemoveDeployedSkill.preflight", () => {
         },
       },
       apm: { removeSkill: async () => ({ ok: true }) },
+      deployedCleanup: { removeSkillTargets: async () => undefined },
       toolPresence: { detectGlobalTools: async () => ["claude"] },
       canonicalPath: async (path) => path,
     });
@@ -532,6 +625,7 @@ describe("RemoveDeployedSkill.preflight", () => {
         },
       },
       apm: { removeSkill: async () => ({ ok: true }) },
+      deployedCleanup: { removeSkillTargets: async () => undefined },
       toolPresence: { detectGlobalTools: async () => ["claude"] },
       canonicalPath: async (path) => path,
     });

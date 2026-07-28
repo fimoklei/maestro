@@ -12,6 +12,9 @@ export const stubRemove = (deps: { registry: Registry }) =>
     },
     deployedContent: { classify: async () => "clean" },
     apm: { removeSkill: async () => ({ ok: true as const }) },
+    // Never reached: the ref lookup above refuses first, so nothing gets far
+    // enough to reclaim a leftover.
+    deployedCleanup: { removeSkillTargets: async () => undefined },
     // No tool detected: a stray global call refuses rather than claiming a scope
     // this stub never had.
     toolPresence: { detectGlobalTools: async () => [] },
