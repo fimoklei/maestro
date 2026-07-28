@@ -1,12 +1,9 @@
-// The path-safety predicate for the browse capability (ADR-0009). Both inputs
-// must be already-resolved absolute paths (realpath output): with `..` and
-// symlinks already collapsed, "is the candidate inside the root ceiling?"
-// reduces to a prefix question that path.relative answers without string games.
+// Both inputs must already be realpath output — this only answers the prefix
+// question, it does not collapse `..` or symlinks (ADR-0009).
 import { isAbsolute, relative } from "node:path";
 
-// True when `candidate` is the root itself or nested beneath it. Uses
-// path.relative so a sibling like /home/user-evil is not mistaken for a child of
-// /home/user (a naive startsWith would accept it).
+// path.relative, not startsWith: the latter accepts /home/user-evil as a child
+// of /home/user.
 export function isWithinRoot(candidate: string, root: string): boolean {
   if (candidate === root) {
     return true;

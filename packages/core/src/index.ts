@@ -1,7 +1,5 @@
-// The package barrel carries only what crosses the package boundary — what
-// `server`, `web` or the test suites actually import. Anything used solely
-// inside `core` stays exported from its own module and off this list, so the
-// public surface reads as a contract rather than an index of the package.
+// Only what crosses the package boundary. Anything used solely inside `core`
+// stays off this list, so the surface reads as a contract, not an index.
 export { ApmCliDriver } from "./deploy/apm-cli-driver";
 export { resolveApmScratchCwd } from "./deploy/apm-scratch-cwd";
 export {

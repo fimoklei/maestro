@@ -1,11 +1,5 @@
-// Adapter: reconcile away an obsolete deployed copy on the global path. When a
-// global deploy narrows the target set (a machine that once ran `-t claude,codex`
-// but now has only Claude), apm leaves the untargeted tool's files under its
-// deployed root — the dead .agents/skills/<name> tree ADR-0011 exists to
-// eliminate. This removes exactly those subtrees with a direct, subtree-scoped
-// `rm`, never `apm uninstall -g`, which deletes beyond its lockfile (a spike
-// wiped 19 real skill dirs — apm-driver.md). Like the other core filesystem
-// adapters it touches node:fs directly rather than through a port.
+// A subtree-scoped `rm`, never `apm uninstall -g` — that wiped 19 real skill
+// dirs beyond its lockfile (apm-driver.md § Danger). See ADR-0011, ADR-0013.
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { DeployedCleanupPort, DeployTarget } from "./deploy-skill";
@@ -14,9 +8,8 @@ import type { DeployedLocation } from "./deployed-location";
 
 export class DeployedCleanupAdapter implements DeployedCleanupPort {
   private readonly deps: {
-    // The root the deployed subtrees sit under (Per-repo: the repo; Global: HOME).
-    // Shared with DeployedContentAdapter — the same DeployedLocation instance — so
-    // cleanup and the guard that feeds it always agree on which tree they mean.
+    // The same instance DeployedContentAdapter holds, so cleanup and the guard
+    // that feeds it always agree on which tree they mean.
     location: Pick<DeployedLocation, "treeRoot">;
   };
 
@@ -30,10 +23,8 @@ export class DeployedCleanupAdapter implements DeployedCleanupPort {
     tools: readonly SupportedTool[];
   }): Promise<void> {
     const root = this.deps.location.treeRoot(input.target);
-    // One subtree per obsolete tool — the exact <prefix>/skills/<name> dir, never
-    // a wider path. `force` makes an already-gone copy a no-op rather than an
-    // error (a narrowed redeploy runs this every time); `recursive` clears the
-    // skill's file tree.
+    // The exact <prefix>/skills/<name> dir, never a wider path. `force` keeps an
+    // already-gone copy a no-op — a narrowed redeploy runs this every time.
     for (const subtree of deployTargetSubtrees(input.name, input.tools)) {
       await rm(join(root, subtree), { recursive: true, force: true });
     }

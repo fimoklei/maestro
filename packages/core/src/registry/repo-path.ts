@@ -1,6 +1,4 @@
-// Validates a pasted repo path before it enters the registry. Split in two:
-// normalizeRepoPathInput is pure (trim + shape checks); validateRepoPath adds
-// the filesystem checks (exists, is-a-directory) behind the FileSystemPort.
+// Split so the shape checks stay pure and testable without a filesystem.
 import { isAbsolute } from "node:path";
 import type { FileSystemPort } from "./file-system";
 

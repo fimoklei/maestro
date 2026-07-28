@@ -297,6 +297,11 @@ entry — so the orphan becomes invisible to deploy-state. This is the install
 ghost-entry problem (ADR-0013) in reverse and rules out `targets:` editing as
 a per-tool remove lever; per-tool cleanup stays the scoped `rm`.
 
+Measured on the per-repo path only. The global (`-g`) path runs the same scope
+resolution, so the same orphaning is inferred, not observed (#339). The reclaim
+that acts on the inference is a force-`rm` of an exact subtree, so it costs a
+no-op if the inference is wrong.
+
 ## Skill body budget — stated in the docs, checked nowhere
 
 apm's producer guide ("Author a skill", read 2026-07-28) says *"Keep

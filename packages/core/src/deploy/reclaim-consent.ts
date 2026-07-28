@@ -1,17 +1,6 @@
-// The consent a global removal needs before it force-deletes a copy apm's own
-// uninstall cannot reach.
-//
-// apm scopes its deletion by the targets it recorded, so a skill installed back
-// when the machine had more tools leaves a whole tree behind for every tool that
-// has since dropped off. Reclaiming those is what makes a global removal
-// complete rather than complete-for-today's-tools (#339) — but it destroys more
-// than the row the user clicked, so the confirmation has to name it first.
-//
-// Two things travel together here, and deliberately cannot be separated: the
-// exact paths the confirmation must state, and a token proving those paths came
-// from this server's own preflight. A caller that sends back a path list it
-// merely guessed has proved nothing; a caller that sends back this token has
-// proved a preflight ran against this same skill, target and machine state.
+// The consent a global removal needs before force-deleting a copy apm's own
+// uninstall cannot reach: the paths the confirmation states, plus a token
+// proving they came from this server's own preflight. See #339, #390.
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { join } from "node:path";
 import type { DeployTarget } from "./deploy-skill";
@@ -21,25 +10,20 @@ import {
   type SupportedTool,
 } from "./deploy-tools";
 
-// One leftover copy a global removal would reclaim. Named by tool so the dialog
-// can say which tool it is, and by absolute path so it can say exactly what
-// goes.
 export type ReclaimPreview = {
   tool: SupportedTool;
   path: string;
 };
 
-// What the confirmation shows and what `execute` must see back. One type, so a
-// named path can never reach the screen without the token that authorizes
-// deleting it, and a token can never authorize paths nobody was shown.
+// One type, so a named path can never reach the screen without the token that
+// authorizes deleting it, nor a token authorize paths nobody was shown.
 export type ReclaimConsent = {
   previews: readonly ReclaimPreview[];
   token: string;
 };
 
-// Which removal this consent is about. `detected` is the live tool probe;
-// undefined on the per-repo path, whose targets are the repo's own apm.yml
-// rather than this machine, so nothing there is ever reclaimed.
+// `detected` is the live tool probe; undefined on the per-repo path, where
+// nothing is ever reclaimed.
 export type ReclaimScope = {
   target: DeployTarget;
   name: string;
@@ -47,8 +31,8 @@ export type ReclaimScope = {
 };
 
 export class ReclaimConsentIssuer {
-  // Generated once per instance and never exposed over the wire, so a valid
-  // token can only exist because this instance's own `offer` produced it.
+  // Never exposed over the wire, so a valid token can only exist because this
+  // instance's own `offer` produced it.
   private readonly secret = randomBytes(32);
   private readonly treeRoot: (target: DeployTarget) => string;
 
@@ -56,9 +40,8 @@ export class ReclaimConsentIssuer {
     this.treeRoot = deps.treeRoot;
   }
 
-  // The leftovers this removal would reclaim, with the token that authorizes
-  // deleting exactly them. Null when there is nothing to reclaim — there is no
-  // such thing as a consent for an empty set, so no token exists to replay.
+  // Null when there is nothing to reclaim: no consent exists for an empty set,
+  // so no token exists to replay.
   offer(scope: ReclaimScope): ReclaimConsent | null {
     const previews = this.previews(scope);
     return previews.length === 0
@@ -66,14 +49,9 @@ export class ReclaimConsentIssuer {
       : { previews, token: this.token(scope, previews) };
   }
 
-  // What this request's token authorizes deleting, or null when it authorizes
-  // nothing. Returns the paths themselves rather than a yes/no, so the caller
-  // deletes exactly the set the confirmation named instead of deriving its own
-  // — two derivations of "which copies are reclaimable" is how a removal ends
-  // up deleting more than the dialog stated, which is the defect #390 fixes.
-  // The preview is rebuilt here rather than trusted from the request, so a
-  // token minted for a different skill, target or machine state cannot carry
-  // over.
+  // Returns the paths, not a yes/no, so the caller deletes the set the
+  // confirmation named rather than deriving its own (#390). The preview is
+  // rebuilt here, so a token minted for a different scope cannot carry over.
   grants(
     scope: ReclaimScope,
     token: string | undefined,
@@ -99,8 +77,8 @@ export class ReclaimConsentIssuer {
     try {
       root = this.treeRoot(scope.target);
     } catch {
-      // Unnameable, so unreclaimable: without a root there is no path to state
-      // in the confirmation, and this is the only builder `grants` consults.
+      // Unnameable, so unreclaimable — this is the only builder `grants`
+      // consults.
       return [];
     }
     const previews: ReclaimPreview[] = [];
@@ -130,9 +108,7 @@ export class ReclaimConsentIssuer {
     return createHmac("sha256", this.secret).update(canonical).digest("hex");
   }
 
-  // Constant-time, so a guessed token cannot be narrowed down by measuring how
-  // long the answer took. Anything malformed (wrong length, non-hex) simply
-  // fails the match rather than throwing.
+  // Constant-time; anything malformed fails the match rather than throwing.
   private matches(expected: string, actual: string): boolean {
     try {
       const a = Buffer.from(expected, "hex");

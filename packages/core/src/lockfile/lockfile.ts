@@ -1,24 +1,13 @@
-// The single source of truth for apm.lock.yaml: its schema, a safe parse, and
-// the deployed-claude-skill identity rule. Both DeployStateReader (the cockpit's
-// deploy-state view) and the destination guard (DeployedContentAdapter) read the
-// file through here, so the two layers can never disagree on whether a given
-// lockfile is valid. A malformed lockfile is a parse failure surfaced to the
-// caller — never an empty stand-in for "I couldn't read this" (#58).
+// The single source of truth for apm.lock.yaml, so no two readers can disagree
+// on whether one is valid. A malformed lockfile is a parse failure, never an
+// empty stand-in for "I could not read this" (#58).
 import { basename } from "node:path";
 import { parse } from "yaml";
 import { z } from "zod";
 
-// The fields the readers need across every entry. resolved_ref is the human tag
-// (apm-driver.md) the deploy-state view shows; deployed_files lists every path a
-// copy materialized to (the `.claude`/`.agents` prefix is how the global read
-// groups a skill per tool); deployed_file_hashes is apm 0.20.0's per-file sha256
-// map the destination guard verifies against. Both file fields are optional
-// because a pre-0.20.0 entry omits them. host and repo_url name where the entry
-// was installed from, which is what rebuilds the ref a remove must hand back to
-// apm; optional because no reader before the remove path needed them, so an
-// entry lacking either stays parseable and is refused further along instead of
-// failing the whole file. Unknown keys (content_hash) are ignored by Zod, as the
-// layers already relied on.
+// Every optional field is one a pre-0.20.0 entry omits, or one only the remove
+// path reads: an entry lacking it stays parseable and is refused further along
+// rather than failing the whole file. Unknown keys (content_hash) are ignored.
 const lockfileEntrySchema = z.object({
   resolved_ref: z.string(),
   virtual_path: z.string(),
@@ -39,9 +28,7 @@ type LockfileParseResult =
   | { ok: true; entries: LockfileEntry[] }
   | { ok: false };
 
-// Parse raw apm.lock.yaml text. A YAML syntax error or a schema mismatch yields
-// { ok: false } — never a silently-empty list. Whether the file is present on
-// disk is the caller's I/O concern; this only judges the text it is handed.
+// Judges the text only — whether the file exists is the caller's I/O concern.
 export function parseLockfile(raw: string): LockfileParseResult {
   let data: unknown;
   try {
@@ -57,10 +44,7 @@ export function parseLockfile(raw: string): LockfileParseResult {
   return { ok: true, entries: parsed.data.dependencies };
 }
 
-// The deployed-skill identity rule: an entry is a deployed claude skill when its
-// package_type is claude_skill, and its name is the basename of virtual_path.
-// Returns null for any other package_type, so both layers filter and name
-// identically instead of re-implementing the rule.
+// The identity rule, written once so no layer re-implements it.
 export function claudeSkillName(entry: LockfileEntry): string | null {
   if (entry.package_type !== "claude_skill") {
     return null;

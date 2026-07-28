@@ -1,11 +1,5 @@
-// Connects the central inventory offline: validates a user-pasted absolute path
-// to an existing local agent-harness clone and persists it as inventoryPath via
-// the ConfigStore. Mirrors the consuming-repo registry's path model (realpath +
-// exists + is-a-directory, see .claude/rules/security.md) and adds two checks —
-// a skills/ subdirectory so the path is plausibly an inventory, and a parseable
-// git origin remote so deploys can resolve versions later. Offline only: the
-// origin check reads local git config, never the network (no clone, no fetch).
-// Errors are typed and path-free.
+// Connects the central inventory offline — the origin check reads local git
+// config, never the network. Errors are typed and path-free (security.md).
 import { join } from "node:path";
 import { parseGitOrigin } from "../deploy/git-origin";
 import type { ConfigStore } from "../registry/config-store";

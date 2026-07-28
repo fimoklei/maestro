@@ -1,16 +1,12 @@
-// Bulk-deploy the staged skills to one target. This adds no deploy semantics: it
-// drives the existing per-skill DeploySkill (with its guards) once per name and
-// folds the results into a plan/report. Continue-and-harvest — a single failure
-// never aborts the batch — and identical failures collapse into one line.
+// Adds no deploy semantics: drives DeploySkill once per name and harvests the
+// results, so one failure never aborts the batch (#292).
 import type {
   DeploySkill,
   DeploySkillError,
   DeployTarget,
 } from "./deploy-skill";
 
-// No batch-wide force: the spec promises a per-item force only, via the
-// existing single-deploy route (#292). A content-diverged copy always comes
-// back as an attention row here instead.
+// No batch-wide force: force stays per-item, on the single-deploy route (#292).
 export type BulkDeployInput = {
   names: string[];
   target: DeployTarget;
@@ -35,15 +31,13 @@ export class BulkDeploySkills {
   async execute(input: BulkDeployInput): Promise<BulkDeployReport> {
     const deployed: BulkDeployedRow[] = [];
     const attention: BulkAttentionRow[] = [];
-    // Preserve first-seen order of failure codes, each holding the names it hit,
-    // so identical failures collapse to one line without losing which skills.
+    // Keyed by error so identical failures collapse to one line, in first-seen
+    // order, without losing which skills hit them.
     const failures = new Map<DeploySkillError, string[]>();
 
     for (const name of input.names) {
-      // A real dependency (filesystem, apm) can reject outside DeploySkill's
-      // own typed-error handling. Own that here too, the same way DeploySkill
-      // owns apm's failures — so one name's unexpected exception never aborts
-      // the rest of the batch (continue-and-harvest, #292).
+      // Caught here too, so one name's unexpected exception never aborts the
+      // rest of the batch (#292).
       let result: Awaited<ReturnType<DeploySkill["execute"]>>;
       try {
         result = await this.deps.deploy.execute({
@@ -74,11 +68,8 @@ export class BulkDeploySkills {
   }
 }
 
-// The refusals a per-item force can override: the deployed copy diverged from
-// its lockfile, or it exists but carries no recorded hashes to verify against.
-// DeploySkill re-runs both when force is set, so a bulk run surfaces them as
-// "attention" (a force stays available) rather than a hard failure — matching
-// its force semantics exactly. Every other error is a genuine failure.
+// Exactly the refusals a per-item force can override, so "attention" means a
+// force is still available. Every other error is a genuine failure.
 const ATTENTION_ERRORS: ReadonlySet<DeploySkillError> = new Set([
   "deployed-diverged-from-lock",
   "deployed-unverifiable",

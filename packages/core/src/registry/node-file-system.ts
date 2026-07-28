@@ -1,6 +1,5 @@
-// The real-disk FileSystemPort adapter. The single place in the registry domain
-// that touches node:fs. Writes atomically (temp file + rename) so a crash mid-
-// write never leaves a half-written config behind.
+// The real-disk FileSystemPort adapter — the one place in the registry domain
+// that touches node:fs.
 import {
   lstat,
   mkdir,
@@ -26,9 +25,8 @@ function isNotFound(error: unknown): boolean {
   );
 }
 
-// A missing directory reads as "nothing there" (empty), never an error — a
-// missing skills/ folder is "no skills", not a failure to browse it. Shared
-// by every readdir-shaped listing method below.
+// A missing directory reads as empty: a missing skills/ folder is "no skills",
+// not a failure to browse it.
 async function readdirOrEmpty<T>(op: () => Promise<T[]>): Promise<T[]> {
   try {
     return await op();
@@ -61,11 +59,8 @@ export class NodeFileSystem implements FileSystemPort {
     }
   }
 
-  // lstat, not stat: a caller asking "is there an entry here" must not follow
-  // a symlink to find out — that would resolve (and so disclose whether it
-  // exists) a target the caller never validated against any root ceiling
-  // (e.g. the browse facts probe, ADR-0009). The entry itself existing is
-  // reported regardless of where it points.
+  // lstat, not stat: following the symlink would disclose whether a target the
+  // caller never ceiling-checked exists (ADR-0009).
   async exists(path: string): Promise<boolean> {
     try {
       await lstat(path);

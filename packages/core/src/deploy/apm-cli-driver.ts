@@ -1,8 +1,6 @@
-// Adapter: drive the real apm CLI. Implements ApmDriverPort with execFile and
-// an args array — refs and paths are data, never command text (security.md).
-// Raw apm stdout/stderr is never logged (it may contain tokens); only
-// sanitized structured metadata leaves this module. Covered by the env-gated
-// real-apm canary integration test, not the fast loop (apm needs network).
+// Drives the real apm CLI. Raw stdout/stderr never leaves this module — it may
+// carry tokens (security.md). Covered by the env-gated canary integration test,
+// not the fast loop.
 import { execFile } from "node:child_process";
 import { basename } from "node:path";
 import { promisify } from "node:util";
@@ -23,62 +21,35 @@ import { resolveLatestTagFromVersionsTable } from "./latest-tag";
 
 const defaultRun = promisify(execFile);
 
-// Rich truncates the Package column to terminal width; a narrow run drops the
-// skill name. Pin a wide non-TTY width so the full owner/repo/skills/<name>
-// survives for the parser (apm-driver.md).
+// Rich truncates the Package column to terminal width, dropping the skill name
+// on a narrow run (apm-behavior.md § Drift).
 const WIDE_COLUMNS = "200";
 
-// apm's own fixed phrases when GitHub auth is missing or expired, matched
-// case-insensitively; either one classifies auth-required. We match only these
-// two — never the git passthrough line or the env hints — and never echo the
-// matched text (security.md, #119). Auth-only scope: a network/host error stays
-// the generic failure (apm-driver.md).
+// apm-behavior.md § Install signals (1) — these two phrases only, never the git
+// passthrough line, and never echoed (#119).
 const APM_AUTH_PHRASES = ["authentication failed", "no token available"];
 
-// Every install signal below is matched against whitespace-normalized,
-// lowercased output (see `normalize`): apm's output is Rich-rendered and wraps
-// mid-sentence at the ambient terminal width, so a phrase can straddle a line
-// break. That is observed for the symlink refusal and applies equally to the
-// summary lines — hence the shared normalization, not a per-phrase choice.
+// Every phrase below is matched against `normalize`d output: Rich wraps
+// mid-sentence, so a phrase can straddle a line break (apm-driver.md).
 
-// The positive marker apm prints on a successful install (`Installed N APM
-// dependency`). Its presence — not the exit code — is what proves the install
-// happened, so the driver stays fail-closed against any future exit-code
-// dialect (#119, apm-driver.md).
 const INSTALL_SUCCESS_MARKER = /installed \d+ apm dependenc/;
 
-// apm's fixed failure signals on an install, both only reachable while the
-// success marker is present. On 0.26.0 neither can change an outcome: a failed
-// install prints no marker at all and exits 1 (measured 2026-07-20, #183;
-// captures in tests/fixtures/apm-install-probes-failed.txt and
-// apm-install-symlink-refused.txt), so the missing marker already fails the
-// install. They stay as free insurance against a regression to the 0.20.0
-// dialect, where a refusal printed `Installed 1 APM dependency ... with 1
-// error(s)` and the marker alone read it as a success (#180). `[1-9]\d*`, not
-// `\d+`: a `with 0 error(s)` summary must not turn a genuine success into a
-// failure.
+// Dead on 0.26.0 — a failed install prints no marker at all (#183). Kept as
+// insurance against the 0.20.0 dialect, where a refusal printed the marker and
+// `with 1 error(s)` (#180). `[1-9]\d*` so `with 0 error(s)` stays a success.
 const INSTALL_FAILURE_SIGNALS = [
   /with [1-9]\d* error\(s\)/,
   /installation failed/,
 ];
 
-// apm's fixed refusal phrase when the skill destination is a symlink. apm
-// refuses only a symlink at the leaf skill directory; a directory-level symlink
-// one level up installs fine, which is the fix the cockpit points the user at
-// (#180).
+// Only a symlink at the leaf skill dir refuses; one level up installs fine,
+// which is the fix the cockpit names (apm-behavior.md § Install signals (3)).
 const INSTALL_SYMLINK_PHRASE = "is a symlink";
 
-// The positive marker apm prints on a successful uninstall. Its presence is the
-// whole verdict: every uninstall outcome exits 0, including a package that was
-// never installed, so the exit code says nothing (apm-behavior.md § Remove).
 const UNINSTALL_SUCCESS_MARKER = /uninstall complete: removed \d+ package\(s\)/;
 
-// apm's fixed phrase for a package it could not find, in both the per-package
-// line (`<ref> - not found in apm.yml`) and the trailing partial-run note
-// (`Note: N package(s) were not found in apm.yml`). Read alongside the success
-// marker, never instead of it: a run that prints both removed something and
-// missed something, which for our single-package command means we cannot claim a
-// clean removal.
+// Read alongside the success marker, never instead of it: a run printing both
+// removed something and missed something (apm-behavior.md § Uninstall signals).
 const UNINSTALL_NOT_FOUND_SIGNALS = [
   /- not found in apm\.yml/,
   /were not found in apm\.yml/,
@@ -95,8 +66,7 @@ type SanitizedLogEntry = {
   durationMs: number;
 };
 
-// The process runner, injectable so command construction can be unit-tested
-// without spawning apm. Production uses promisify(execFile).
+// Injectable so command construction can be unit-tested without spawning apm.
 type RunFn = (
   file: string,
   args: string[],
@@ -106,9 +76,8 @@ type RunFn = (
 export class ApmCliDriver implements ApmDriverPort {
   private readonly log: (entry: SanitizedLogEntry) => void;
   private readonly run: RunFn;
-  // Resolves (creating if needed) the neutral cwd for a global install. apm
-  // appends apm_modules/ to the cwd's .gitignore even for -g, so this must be
-  // a scratch dir, never a real repo (apm-driver.md, J07).
+  // apm edits the cwd's .gitignore even for -g, so this must resolve a scratch
+  // dir, never a real repo (apm-driver.md § Invocation).
   private readonly prepareGlobalCwd: () => Promise<string>;
 
   constructor(deps?: {
@@ -131,9 +100,7 @@ export class ApmCliDriver implements ApmDriverPort {
     try {
       ({ stdout } = await this.run("apm", ["view", ownerRepo, "versions"]));
     } catch (error) {
-      // apm exits non-zero here. Classify auth on the fixed phrases; anything
-      // else is the generic failure. The raw error (which may carry a token in a
-      // git URL) is never logged or returned — only the sanitized reason.
+      // The raw error may carry a token in a git URL — only the reason leaves.
       return {
         ok: false,
         reason: hasAuthPhrase(error) ? "auth-required" : "failed",
@@ -155,10 +122,6 @@ export class ApmCliDriver implements ApmDriverPort {
     tools?: readonly SupportedTool[];
   }): Promise<DeploySkillDriverResult> {
     const started = Date.now();
-    // A repo install targets every tool (-t claude,codex) and writes a single
-    // lockfile entry with two deployed_files (apm-driver.md, 01.2 spike). A
-    // global install adds -g, runs from a neutral scratch cwd, and scopes -t to
-    // the tools the caller detected on the machine (ADR-0011, #131).
     const { cwd, args, logTarget } = await this.commandFor(
       input.target,
       input.ref,
@@ -169,20 +132,16 @@ export class ApmCliDriver implements ApmDriverPort {
       const { stdout, stderr } = await this.run("apm", args, { cwd });
       output = `${stdout}\n${stderr}`;
     } catch (error) {
-      // apm 0.26.0 exits 1 on every observed install failure. Classify from the
-      // rejected run's own output (apm-driver.md, #183).
+      // Classify from the rejected run's own output, not the exit code (#183).
       return { ok: false, reason: classifyInstallFailure(outputOf(error)) };
     }
-    // Fail-closed: an exit-0 run still has to prove itself with the positive
-    // marker, and only when no failure signal rides along with it (#119, #180,
-    // apm-driver.md). The raw output, which may carry a token, never leaves this
-    // scope.
+    // Fail-closed: an exit-0 run still has to prove itself with the marker.
     if (!installSucceeded(output)) {
       return { ok: false, reason: classifyInstallFailure(output) };
     }
     this.log({
       operation: "deploy-skill",
-      // Repo basename or "global" — never the full path or raw apm output.
+      // Basename or "global" — never the full path (security.md).
       target: logTarget,
       exitCode: 0,
       durationMs: Date.now() - started,
@@ -195,9 +154,8 @@ export class ApmCliDriver implements ApmDriverPort {
     ref: string;
   }): Promise<RemoveSkillDriverResult> {
     const started = Date.now();
-    // No -t on either branch: uninstall has no such flag, and narrowing the
-    // consumer's `targets:` to scope a removal orphans the other tools' files
-    // (ADR-0013, apm-behavior.md § Remove).
+    // No -t on either branch: uninstall has no such flag, and narrowing
+    // `targets:` to fake one orphans the other tools' files (ADR-0013).
     const target = input.target;
     const cwd =
       target.kind === "repo" ? target.repoPath : await this.prepareGlobalCwd();
@@ -212,9 +170,8 @@ export class ApmCliDriver implements ApmDriverPort {
       const { stdout, stderr } = await this.run("apm", args, { cwd });
       output = `${stdout}\n${stderr}`;
     } catch (error) {
-      // Only the argument parser exits non-zero, and it touches nothing. Classify
-      // from the rejected run's own output anyway, so one rule decides every
-      // outcome.
+      // Only the argument parser exits non-zero, and it touches nothing. Read
+      // its output anyway, so one rule decides every outcome.
       output = outputOf(error);
     }
     if (!removeSucceeded(output)) {
@@ -222,7 +179,7 @@ export class ApmCliDriver implements ApmDriverPort {
     }
     this.log({
       operation: "remove-skill",
-      // Repo basename or "global" — never the full path or raw apm output.
+      // Basename or "global" — never the full path (security.md).
       target: logTarget,
       exitCode: 0,
       durationMs: Date.now() - started,
@@ -246,13 +203,10 @@ export class ApmCliDriver implements ApmDriverPort {
         exitCode: 0,
         durationMs: Date.now() - started,
       });
-      // The run succeeded; the parser still owns whether the output is a
-      // recognised shape — an unrecognised table reads as { ok: false }, never
-      // a false empty behind set.
+      // An unrecognised table reads as { ok: false }, never a false empty set.
       return parseOutdated(stdout);
     } catch {
-      // CLI missing, no auth/network, or a non-zero exit — a flat failure. The
-      // raw apm error (which may carry a token) is deliberately not logged.
+      // The raw apm error may carry a token, so it is deliberately not logged.
       return { ok: false };
     }
   }
@@ -263,19 +217,16 @@ export class ApmCliDriver implements ApmDriverPort {
     tools?: readonly SupportedTool[],
   ): Promise<{ cwd: string; args: string[]; logTarget: string }> {
     if (target.kind === "repo") {
-      // The repo path is unaffected by presence scoping: it always targets every
-      // DEPLOY_TOOLS tool, so a stray `tools` value here is deliberately ignored.
+      // A stray `tools` here is deliberately ignored: the repo path always
+      // targets every DEPLOY_TOOLS tool (#131).
       return {
         cwd: target.repoPath,
         args: ["install", ref, "-t", APM_DEPLOY_TARGET_FLAG],
         logTarget: basename(target.repoPath),
       };
     }
-    // Global: scope -t to exactly the detected tools. Fail closed on an
-    // empty/absent set rather than defaulting to every tool — targeting a tool
-    // the machine lacks writes the dead .agents/ tree ADR-0011 exists to prevent
-    // (#131). DeploySkill already refuses a tool-less machine upstream, so this
-    // only bites a driver misuse, and it bites loudly instead of silently.
+    // Throws rather than defaulting to every tool: DeploySkill already refuses a
+    // tool-less machine, so reaching here is driver misuse (ADR-0011).
     if (!tools || tools.length === 0) {
       throw new Error("global install requires at least one detected tool");
     }
@@ -287,9 +238,6 @@ export class ApmCliDriver implements ApmDriverPort {
   }
 }
 
-// An install succeeded only when apm printed its positive marker AND no failure
-// signal. The marker carries the verdict on 0.26.0; the failure signals guard
-// the 0.20.0 shape, where a refusal printed the marker anyway (#180).
 function installSucceeded(output: string): boolean {
   const haystack = normalize(output);
   return (
@@ -298,9 +246,6 @@ function installSucceeded(output: string): boolean {
   );
 }
 
-// A removal succeeded only when apm printed its positive marker AND named
-// nothing as missing. Fail-closed: an absent marker is a failure, whatever the
-// exit code said.
 function removeSucceeded(output: string): boolean {
   const haystack = normalize(output);
   return (
@@ -309,10 +254,8 @@ function removeSucceeded(output: string): boolean {
   );
 }
 
-// Classify a failed install on apm's fixed phrases. Only the symlink refusal is
-// classified; every other failure stays generic, so an unrecognised message can
-// never masquerade as a diagnosed one (fail-closed). The inspected text never
-// leaves this scope (security.md).
+// Only the symlink refusal is classified, so an unrecognised message can never
+// masquerade as a diagnosed one (#180).
 function classifyInstallFailure(
   output: string,
 ): "destination-symlinked" | "failed" {
@@ -321,22 +264,18 @@ function classifyInstallFailure(
     : "failed";
 }
 
-// Lowercase and collapse every whitespace run to a single space, so a phrase
-// Rich wrapped across a line break still matches.
+// Collapses whitespace so a phrase Rich wrapped across a line break matches.
 function normalize(text: string): string {
   return text.toLowerCase().replace(/\s+/g, " ");
 }
 
-// stdout + stderr of a rejected run. promisify(execFile) rejects with an error
-// carrying both.
+// promisify(execFile) rejects with an error carrying both streams.
 function outputOf(error: unknown): string {
   const { stdout, stderr } = error as { stdout?: unknown; stderr?: unknown };
   return `${String(stdout ?? "")}\n${String(stderr ?? "")}`;
 }
 
-// True when a rejected apm run carries one of apm's fixed auth phrases on its
-// stdout or stderr. promisify(execFile) rejects with an error carrying both.
-// Case-insensitive; the raw text is inspected here and never leaves this scope.
+// The raw text is inspected here and never leaves this scope (security.md).
 function hasAuthPhrase(error: unknown): boolean {
   const haystack = normalize(outputOf(error));
   return APM_AUTH_PHRASES.some((phrase) => haystack.includes(phrase));

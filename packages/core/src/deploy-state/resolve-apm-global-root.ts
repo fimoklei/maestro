@@ -1,10 +1,8 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-// Resolves apm's user-scope (global) metadata root, where its global
-// apm.lock.yaml lives. apm derives this from the user's home (Path.home()), so
-// it is HOME-redirectable: a test or smoke run points HOME at a sandbox and
-// never reads or writes the real ~/.apm (see .claude/rules/apm-driver.md).
+// apm derives this from the user's home, so it is HOME-redirectable: a test or
+// smoke run never touches the real ~/.apm (apm-behavior.md § Global scope).
 export function resolveApmGlobalRoot(
   env: NodeJS.ProcessEnv = process.env,
 ): string {
