@@ -319,6 +319,55 @@ describe("removing a deployed skill from a row", () => {
       expect(live).not.toHaveTextContent(`removed tdd v0.5.0 from ${REPO}`);
     });
 
+    // The detected tool set is probed server-side when the removal runs, so a
+    // tool appearing while the confirmation is open changes the real scope. The
+    // trace names the set apm actually reached, not the one the card knew.
+    it("names the tools the server reached, not the ones the card knew", async () => {
+      stubFetch(null, () =>
+        jsonResponse(
+          {
+            removed: {
+              type: "skill",
+              name: "tdd",
+              version: "v0.5.0",
+              scope: { kind: "global", tools: ["claude", "codex"] },
+            },
+          },
+          200,
+        ),
+      );
+      renderRow({ target: { kind: "global", tools: ["claude"] } });
+
+      await openRemoveDialog();
+      await userEvent.click(
+        screen.getByRole("button", { name: /^remove tdd/ }),
+      );
+
+      expect(
+        await screen.findByText(
+          "removed tdd v0.5.0 from Claude Code and Codex",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    // An older server answers 200 with no version. Saying so beats printing the
+    // word "undefined" over a removal that already happened.
+    it("says the version is unknown when the server reported none", async () => {
+      stubFetch(null, () =>
+        jsonResponse({ removed: { type: "skill", name: "tdd" } }, 200),
+      );
+      renderRow();
+
+      await openRemoveDialog();
+      await userEvent.click(
+        screen.getByRole("button", { name: /^remove tdd/ }),
+      );
+
+      expect(
+        await screen.findByText(`removed tdd (version unknown) from ${REPO}`),
+      ).toBeInTheDocument();
+    });
+
     it("says nothing when the removal failed", async () => {
       vi.stubGlobal("fetch", async () =>
         jsonResponse(

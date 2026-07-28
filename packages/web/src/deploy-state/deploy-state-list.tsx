@@ -211,9 +211,11 @@ export function DeployStateList({
                 // open with apm's reason, so it never reads as if nothing
                 // happened.
                 // The server's own answer, never the row: it names the version
-                // its lockfile pinned when it resolved the ref, and the row can
-                // have gone stale while the confirmation was open (#383).
+                // its lockfile pinned and the tools its live probe found, both
+                // of which the screen can have wrong by the time the user
+                // confirms (#383).
                 onSuccess: (data) => {
+                  const scope = data.removed.scope;
                   setRemoved((seen) => [
                     ...seen,
                     {
@@ -222,7 +224,13 @@ export function DeployStateList({
                       id: seen.length,
                       name: data.removed.name,
                       version: data.removed.version,
-                      target,
+                      // A response that carried no scope leaves the screen's own
+                      // target, which is what the user consented to — the best
+                      // available answer, never a guess at a different one.
+                      target:
+                        scope?.kind === "global"
+                          ? { kind: "global", tools: scope.tools }
+                          : target,
                     },
                   ]);
                   setRemoving(null);

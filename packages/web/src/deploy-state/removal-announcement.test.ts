@@ -22,6 +22,19 @@ describe("announcing a removal that landed", () => {
     ).toBe("removed tdd v0.5.0 from Claude Code and Codex");
   });
 
+  // The server owns both the version and the scope. A response without a
+  // version is a server the cockpit does not match — saying so beats printing
+  // the word "undefined" over an irreversible action.
+  it("says the version is unknown rather than inventing one", () => {
+    expect(
+      removalAnnouncement({
+        name: "tdd",
+        version: undefined,
+        target: { kind: "repo", repoPath: "/Users/me/project" },
+      }),
+    ).toBe("removed tdd (version unknown) from /Users/me/project");
+  });
+
   // The tool set is read server-side and can be empty by the time the removal
   // lands. An unnamed scope still beats a sentence that trails off.
   it("falls back to the scope the confirmation named when no tool is known", () => {

@@ -11,6 +11,12 @@ import {
 const VERSION = "v0.5.1";
 const REF = `github.com/fimoklei/agent-harness/skills/tdd#${VERSION}`;
 
+// The scope a successful removal reports: the tools it actually ran against,
+// never the set the caller had in view.
+const REPO_SCOPE = { kind: "repo" } as const;
+const GLOBAL_SCOPE = { kind: "global", tools: ["claude", "codex"] } as const;
+const CODEX_SCOPE = { kind: "global", tools: ["codex"] } as const;
+
 // The removal request the cockpit sends for the row's own skill and repo.
 const removeTdd = {
   type: "skill",
@@ -119,7 +125,12 @@ describe("RemoveDeployedSkill", () => {
 
     await expect(useCase.execute(removeTdd)).resolves.toEqual({
       ok: true,
-      removed: { type: "skill", name: "tdd", version: VERSION },
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: REPO_SCOPE,
+      },
     });
     expect(calls.removes).toEqual([{ target: removeTdd.target, ref: REF }]);
   });
@@ -138,7 +149,29 @@ describe("RemoveDeployedSkill", () => {
 
     await expect(useCase.execute(removeTdd)).resolves.toEqual({
       ok: true,
-      removed: { type: "skill", name: "tdd", version: "v0.9.0" },
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: "v0.9.0",
+        scope: { kind: "repo" },
+      },
+    });
+  });
+
+  // The screen names a tool set when it asks for consent, but the set is probed
+  // live at execution time. What the removal reports as its scope is the set it
+  // actually ran against, so nothing can certify tools apm never saw (#383).
+  it("reports the detected tools a global removal ran against", async () => {
+    const { useCase } = buildUseCase({ detectedTools: ["claude"] });
+
+    await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
+      ok: true,
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: { kind: "global", tools: ["claude"] },
+      },
     });
   });
 
@@ -218,7 +251,12 @@ describe("RemoveDeployedSkill", () => {
 
     await expect(useCase.execute(removeTdd)).resolves.toEqual({
       ok: true,
-      removed: { type: "skill", name: "tdd", version: VERSION },
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: REPO_SCOPE,
+      },
     });
     expect(calls.removes).toEqual([{ target: removeTdd.target, ref: REF }]);
   });
@@ -228,7 +266,12 @@ describe("RemoveDeployedSkill", () => {
 
     await expect(useCase.execute(removeTdd)).resolves.toEqual({
       ok: true,
-      removed: { type: "skill", name: "tdd", version: VERSION },
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: REPO_SCOPE,
+      },
     });
     expect(calls.removes).toEqual([{ target: removeTdd.target, ref: REF }]);
   });
@@ -263,7 +306,12 @@ describe("RemoveDeployedSkill", () => {
     // asked for.
     await expect(useCase.execute(removeTdd)).resolves.toEqual({
       ok: true,
-      removed: { type: "skill", name: "tdd", version: VERSION },
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: REPO_SCOPE,
+      },
     });
     expect(calls.removes).toEqual([{ target: removeTdd.target, ref: REF }]);
   });
@@ -343,7 +391,12 @@ describe("RemoveDeployedSkill on the global target", () => {
 
     await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
       ok: true,
-      removed: { type: "skill", name: "tdd", version: VERSION },
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: GLOBAL_SCOPE,
+      },
     });
     expect(calls.removes).toEqual([{ target: { kind: "global" }, ref: REF }]);
   });
@@ -355,7 +408,12 @@ describe("RemoveDeployedSkill on the global target", () => {
 
     await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
       ok: true,
-      removed: { type: "skill", name: "tdd", version: VERSION },
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: GLOBAL_SCOPE,
+      },
     });
     expect(calls.removes).toHaveLength(1);
   });
@@ -498,7 +556,12 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
       useCase.execute({ ...removeTddGlobally, confirmedReclaimToken }),
     ).resolves.toEqual({
       ok: true,
-      removed: { type: "skill", name: "tdd", version: VERSION },
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: CODEX_SCOPE,
+      },
     });
     expect(calls.cleanups).toEqual([
       { target: { kind: "global" }, name: "tdd", tools: ["claude"] },
@@ -512,7 +575,12 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
 
     await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
       ok: true,
-      removed: { type: "skill", name: "tdd", version: VERSION },
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: CODEX_SCOPE,
+      },
     });
     expect(calls.cleanups).toEqual([]);
   });
@@ -529,7 +597,12 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
       }),
     ).resolves.toEqual({
       ok: true,
-      removed: { type: "skill", name: "tdd", version: VERSION },
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: CODEX_SCOPE,
+      },
     });
     expect(calls.cleanups).toEqual([]);
   });
@@ -604,7 +677,12 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
       useCase.execute({ ...removeTddGlobally, confirmedReclaimToken }),
     ).resolves.toEqual({
       ok: true,
-      removed: { type: "skill", name: "tdd", version: VERSION },
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: CODEX_SCOPE,
+      },
     });
     expect(calls.cleanups).toHaveLength(1);
   });

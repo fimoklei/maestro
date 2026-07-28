@@ -9,9 +9,14 @@ import { toolNameList } from "./tool-labels";
 
 export type RemovedSkill = {
   name: string;
-  // The version as the row carried it, captured before the removal ran — after
-  // it lands there is nothing left to read it from.
-  version: string;
+  // The version the server reported removing, read from the target's lockfile
+  // as it resolved the ref. Undefined only when the response carried none — a
+  // server the cockpit does not match — and the sentence says so rather than
+  // printing a placeholder over an irreversible action.
+  version: string | undefined;
+  // The scope as the server resolved it, not as the screen had it: the detected
+  // tool set is probed at execution time and can differ from the one the
+  // confirmation named.
   target: RemoveDialogTarget;
 };
 
@@ -27,5 +32,5 @@ export function removalAnnouncement({
         // An empty set falls back to the confirmation's own phrase rather than
         // trailing off (ADR-0011: the set is detected, so it can be empty).
         toolNameList(target.tools) || "every detected tool";
-  return `removed ${name} ${version} from ${scope}`;
+  return `removed ${name} ${version ?? "(version unknown)"} from ${scope}`;
 }
