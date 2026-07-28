@@ -64,6 +64,9 @@ function FailureNote({
   message,
   children,
 }: {
+  // Set when the panel points its own description here, which a refusal does:
+  // the note is then the only thing on screen, so it is what the dialog is
+  // about rather than an aside inside it.
   id?: string;
   label: string;
   message: string;
@@ -156,10 +159,10 @@ export function RemoveSkillDialog({
   // of #337's decision.
   const awaitingCheck =
     preflight.kind === "warning" && preflight.warning === "checking";
-  // A removal the server has already refused. The ledger still states what the
-  // removal was aimed at — that is the question the panel asked, and a refusal
-  // answers it rather than unasks it — but the confirm goes, because there is
-  // nothing left to consent to.
+  // A removal the server has already refused. Nothing will be removed, so the
+  // panel drops both halves of the consent it was asking for: the confirm, and
+  // the ledger naming what confirming would cost. What is left is the question
+  // and the server's reason it cannot be answered (#412).
   const refused = preflight.kind === "refused";
   // Only ever the leftovers the check in hand named. A refusal carries none, so
   // an earlier answer's paths cannot outlive the answer that named them.
@@ -191,18 +194,24 @@ export function RemoveSkillDialog({
   // space by definition, where the text inside a single element is at the mercy
   // of how each reader flattens it — and two tool names running together is the
   // one reading this description cannot afford.
+  //
+  // A refusal points it at the refusal instead. The lead-in and the rows are
+  // gone, so the alternative is describing the dialog with nothing — and then
+  // the panel's whole content rests on the live region firing, which is exactly
+  // what a region inserted in the same frame as the focus move cannot promise.
   const dialogId = useId();
   const leadInId = `${dialogId}-lead-in`;
+  const refusalId = `${dialogId}-refusal`;
   const rowId = (index: number) => `${dialogId}-target-${index}`;
-  const describedBy = [
-    leadInId,
-    ...targets.map((_, index) => rowId(index)),
-  ].join(" ");
+  const describedBy = refused
+    ? refusalId
+    : [leadInId, ...targets.map((_, index) => rowId(index))].join(" ");
   // Why the confirm control is unavailable, tied to the control itself: a
   // disabled button with the reason elsewhere on screen states it to sighted
-  // users alone. Same wiring as the browse dialog's `↑ up` at its ceiling.
-  const blockedId =
-    refused || awaitingCheck ? `${dialogId}-blocked` : undefined;
+  // users alone. Same wiring as the browse dialog's `↑ up` at its ceiling. Only
+  // the running check needs it — a refusal takes the control away rather than
+  // disabling it, so there is nothing left to describe.
+  const blockedId = awaitingCheck ? `${dialogId}-blocked` : undefined;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 p-6">
@@ -223,7 +232,13 @@ export function RemoveSkillDialog({
         aria-label={heading}
         aria-describedby={describedBy}
         tabIndex={-1}
-        className="relative flex w-full max-w-[480px] flex-col overflow-hidden rounded-card border border-line bg-chrome outline-none"
+        // A refused panel is a refusal end to end, so the outline carries it
+        // too. Left neutral, the screen reads as an ordinary confirmation with
+        // one red box inside it — and the box is now the only thing on it.
+        className={cn(
+          "relative flex w-full max-w-[480px] flex-col overflow-hidden rounded-card border bg-chrome outline-none",
+          refused ? "border-danger-border" : "border-line",
+        )}
       >
         <div className="flex items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
           {/* "Remove" and "?" are chrome; the name and version are data, so
@@ -242,36 +257,39 @@ export function RemoveSkillDialog({
             it costs. They used to sit at one uniform gap, which left the panel
             a column of unrelated lines with no way in. Space does the grouping
             — a rule between them would put four hairlines across a panel this
-            short. */}
+            short. A refusal renders only the second group, because the first
+            one answers a question the server has already closed. */}
         <div className="flex flex-col gap-3 px-3.5 py-3">
-          <div className="flex flex-col gap-2">
-            {/* One lead-in, then the answer. The panel used to spend three
-                prose lines on the scope — a micro-label, a summary value, and a
-                sentence naming the set — where a reader only ever needed the
-                list itself. */}
-            <span id={leadInId} className="font-ui text-desc text-muted">
-              Primitive will be removed from:
-            </span>
-            {/* The ledger. Rows are static text: there is no per-tool remove to
-                offer — apm's uninstall has no -t, and faking one orphans the
-                other tools' files (apm-behavior.md § Remove, ADR-0013) — so
-                nothing on a row may carry a control or a glyph that reads as
-                one. The sentence that used to say so is gone; a row with
-                nothing to press says it without spending a line. */}
-            <ul className="flex flex-col overflow-hidden rounded-item border border-line-row">
-              {targets.map((name, index) => (
-                <li
-                  key={name}
-                  id={rowId(index)}
-                  // A path has no spaces to break at, so without break-all it
-                  // sets the panel's width instead of fitting inside it.
-                  className="break-all border-line-faint border-b bg-inset px-3 py-2.5 font-mono text-data text-fg last:border-b-0"
-                >
-                  {name}
-                </li>
-              ))}
-            </ul>
-          </div>
+          {refused ? null : (
+            <div className="flex flex-col gap-2">
+              {/* One lead-in, then the answer. The panel used to spend three
+                  prose lines on the scope — a micro-label, a summary value, and
+                  a sentence naming the set — where a reader only ever needed
+                  the list itself. */}
+              <span id={leadInId} className="font-ui text-desc text-muted">
+                Primitive will be removed from:
+              </span>
+              {/* The ledger. Rows are static text: there is no per-tool remove
+                  to offer — apm's uninstall has no -t, and faking one orphans
+                  the other tools' files (apm-behavior.md § Remove, ADR-0013) —
+                  so nothing on a row may carry a control or a glyph that reads
+                  as one. The sentence that used to say so is gone; a row with
+                  nothing to press says it without spending a line. */}
+              <ul className="flex flex-col overflow-hidden rounded-item border border-line-row">
+                {targets.map((name, index) => (
+                  <li
+                    key={name}
+                    id={rowId(index)}
+                    // A path has no spaces to break at, so without break-all it
+                    // sets the panel's width instead of fitting inside it.
+                    className="break-all border-line-faint border-b bg-inset px-3 py-2.5 font-mono text-data text-fg last:border-b-0"
+                  >
+                    {name}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="flex flex-col gap-2">
             {/* A global removal also force-deletes the whole copy of any tool
@@ -352,11 +370,13 @@ export function RemoveSkillDialog({
                 <span>{WARNING_TEXT[costWarning]}</span>
               </p>
             ) : null}
-            {/* The server's own refusal, in its own words. */}
+            {/* The server's own refusal, in its own words. Under a refusal
+                this block is the panel's whole body — the label names the
+                thing that cannot happen, so it is read first and read alone. */}
             {preflight.kind === "refused" ? (
               <FailureNote
-                id={blockedId}
-                label="this can't be removed"
+                id={refusalId}
+                label="can't be removed"
                 message={preflight.message}
               />
             ) : null}
@@ -397,7 +417,9 @@ export function RemoveSkillDialog({
           ) : null}
           <span className="flex-1" />
           {/* The way out never shrinks: it is fixed-length text, and squeezing
-              it to make room for a long name is the wrong thing to give up. */}
+              it to make room for a long name is the wrong thing to give up. It
+              says `close` under a refusal, because there is no pending action
+              left to cancel — only a panel to leave. */}
           <Button
             type="button"
             className="shrink-0"
@@ -406,23 +428,28 @@ export function RemoveSkillDialog({
             disabled={isRemoving}
             onClick={onCancel}
           >
-            cancel
+            {refused ? "close" : "cancel"}
           </Button>
-          {/* Fixed-length, like the way out beside it. The label used to carry
-              the skill name inside a fixed-width panel, so it had to shrink and
-              ellipsise to fit (#388); the title states the name and version, so
-              repeating it here bought nothing and cost the footer its shape. */}
-          <Button
-            type="button"
-            className="shrink-0"
-            variant="primary"
-            size="sm"
-            disabled={isRemoving || awaitingCheck || refused}
-            aria-describedby={blockedId}
-            onClick={onConfirm}
-          >
-            {isRemoving ? "removing…" : "remove →"}
-          </Button>
+          {/* Absent rather than disabled once the server has refused: a
+              disabled control reads as a way through that is shut for now,
+              where this one is shut for good. Fixed-length otherwise — the
+              label used to carry the skill name inside a fixed-width panel, so
+              it had to shrink and ellipsise to fit (#388); the title states the
+              name and version, so repeating it here bought nothing and cost the
+              footer its shape. */}
+          {refused ? null : (
+            <Button
+              type="button"
+              className="shrink-0"
+              variant="primary"
+              size="sm"
+              disabled={isRemoving || awaitingCheck}
+              aria-describedby={blockedId}
+              onClick={onConfirm}
+            >
+              {isRemoving ? "removing…" : "remove →"}
+            </Button>
+          )}
         </div>
       </div>
     </div>

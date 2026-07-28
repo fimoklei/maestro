@@ -120,9 +120,10 @@ export const CheckFailed: Story = {
 };
 
 // The check came back with the server refusing the request itself. Not a failed
-// check: the removal is already known to be impossible, so the dialog states the
-// server's reason in danger red and takes the confirm away — offering it would
-// cost the user a round-trip to read the same sentence (#385).
+// check: the removal is already known to be impossible, so the panel keeps only
+// the question and the server's reason. No ledger — nothing is going — and no
+// confirm at all, not even a disabled one, because offering it would cost the
+// user a round-trip to read the same sentence (#385, #412).
 export const CheckRefused: Story = {
   args: {
     preflight: {
