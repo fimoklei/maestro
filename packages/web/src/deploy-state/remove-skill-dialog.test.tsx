@@ -13,6 +13,22 @@ const REPO_TARGET = {
   repoPath: "/Users/me/project",
 };
 
+// The cockpit's type scale, largest first (styles/theme.css @theme). Assertions
+// name a step's position rather than the token it lands on: what the tests are
+// protecting is the ordering, not the sizes it currently resolves to.
+const SCALE = [
+  "text-title",
+  "text-subtitle",
+  "text-body",
+  "text-data",
+  "text-desc",
+  "text-mono-sm",
+  "text-chip",
+  "text-tag",
+];
+const stepOf = (element: HTMLElement) =>
+  SCALE.findIndex((size) => element.className.includes(size));
+
 // The check answered (or is still answering): the removal is still on offer,
 // and any leftover copies it named travel with that answer.
 const warns = (
@@ -232,6 +248,32 @@ describe("RemoveSkillDialog", () => {
     expect(screen.getByRole("status")).toHaveTextContent(/checking/i);
   });
 
+  // Amber and ▲ mean "this removal will cost something" (DESIGN.md § The Two
+  // Signals Rule). A check that has not answered has claimed nothing, and
+  // dressing it as a warning put the loudest block in the panel on screen and
+  // then took it away again on every removal of a clean copy.
+  it("wears no warning surface while the check is still running", () => {
+    renderDialog({ preflight: warns("checking") });
+
+    const note = screen.getByRole("status");
+    expect(note.className).not.toContain("amber");
+    expect(note).not.toHaveTextContent("▲");
+  });
+
+  // "checking" almost always resolves into the clean panel, so the running
+  // check speaks from beside the control it is holding. In the body it would
+  // move the confirm button when the answer landed — under the pointer of
+  // someone waiting to press it.
+  it("states beside the confirm control why it is unavailable", () => {
+    renderDialog({ preflight: warns("checking") });
+
+    const confirm = screen.getByRole("button", { name: /^remove/i });
+    expect(confirm).toBeDisabled();
+    expect(confirm.getAttribute("aria-describedby")).toBe(
+      screen.getByRole("status").id,
+    );
+  });
+
   it("shows no warning at all once the copy came back clean", () => {
     renderDialog({ preflight: warns("none") });
 
@@ -338,19 +380,6 @@ describe("RemoveSkillDialog", () => {
     // which of the two mattered. Asserted as a step on the scale rather than
     // two literal tokens: the rule is the ordering, not the sizes it lands on.
     it("steps the consequence line above the boilerplate beneath it", () => {
-      // The cockpit's type scale, largest first (styles/theme.css @theme).
-      const scale = [
-        "text-title",
-        "text-subtitle",
-        "text-body",
-        "text-data",
-        "text-desc",
-        "text-mono-sm",
-        "text-chip",
-        "text-tag",
-      ];
-      const stepOf = (element: HTMLElement) =>
-        scale.findIndex((size) => element.className.includes(size));
       renderDialog({ target: { kind: "global", tools: ["claude", "codex"] } });
 
       const consequence = screen.getByText(/no per-tool remove/i);
@@ -362,12 +391,62 @@ describe("RemoveSkillDialog", () => {
       expect(boilerplate.className).toContain("text-dim");
       expect(consequence.className).not.toContain("text-dim");
     });
+
+    // The failure block used to name its problem in the panel's smallest text
+    // and then explain it in the panel's largest, so the box shouted the detail
+    // and whispered the headline.
+    it("never names a failure more quietly than it explains it", () => {
+      renderDialog({ error: "apm did not confirm the removal." });
+
+      const label = screen.getByText("the removal failed");
+      const message = screen.getByText("apm did not confirm the removal.");
+      expect(stepOf(label)).toBeGreaterThanOrEqual(0);
+      expect(stepOf(label)).toBeLessThanOrEqual(stepOf(message));
+      // Weight carries the label instead, so the two lines can share a size.
+      expect(label.className).toContain("font-semibold");
+    });
   });
 
   it("takes focus into the panel when it opens", () => {
     renderDialog();
 
     expect(screen.getByRole("dialog")).toHaveFocus();
+  });
+
+  // The label carries the question alone, so without a description a screen
+  // reader hears "Remove tdd v0.5.0?, dialog" and has to go looking for the
+  // facts the confirmation exists to state. The warning and failure blocks
+  // announce themselves and stay out of it.
+  describe("what it announces with the question", () => {
+    const describedBy = () =>
+      (screen.getByRole("dialog").getAttribute("aria-describedby") ?? "")
+        .split(" ")
+        .map((id) => document.getElementById(id)?.textContent ?? "")
+        .join(" ");
+
+    it("names the target it would remove from, and the cost", () => {
+      renderDialog();
+
+      expect(describedBy()).toContain(REPO_TARGET.repoPath);
+      expect(describedBy()).toMatch(/lockfile entry/i);
+    });
+
+    it("carries the whole tool set on the global path", () => {
+      // The one fact #338 exists for. Left out of the description, it is the
+      // one thing a reader has to go hunting for.
+      renderDialog({ target: { kind: "global", tools: ["claude", "codex"] } });
+
+      expect(describedBy()).toMatch(/no per-tool remove/i);
+    });
+
+    it("drops the cost when the removal was already refused", () => {
+      // Nothing will happen, so naming what it would cost describes nothing.
+      renderDialog({
+        preflight: { kind: "refused", message: "That repo is not registered." },
+      });
+
+      expect(describedBy()).not.toMatch(/lockfile entry/i);
+    });
   });
 
   // The check can also come back with the server refusing the request outright.
@@ -404,6 +483,18 @@ describe("RemoveSkillDialog", () => {
       expect(confirm).toBeDisabled();
       await userEvent.click(confirm);
       expect(onConfirm).not.toHaveBeenCalled();
+    });
+
+    it("ties the reason to the control it took away", () => {
+      // A disabled button with its reason loose on the page states that reason
+      // to sighted readers alone.
+      renderDialog({ preflight: refused });
+
+      expect(
+        screen
+          .getByRole("button", { name: /^remove/i })
+          .getAttribute("aria-describedby"),
+      ).toBe(screen.getByRole("alert").id);
     });
 
     it("leaves cancel as the way out", () => {
