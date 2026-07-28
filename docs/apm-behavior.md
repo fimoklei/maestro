@@ -297,6 +297,17 @@ entry — so the orphan becomes invisible to deploy-state. This is the install
 ghost-entry problem (ADR-0013) in reverse and rules out `targets:` editing as
 a per-tool remove lever; per-tool cleanup stays the scoped `rm`.
 
+## Skill body budget — stated in the docs, checked nowhere
+
+apm's producer guide ("Author a skill", read 2026-07-28) says *"Keep
+`SKILL.md` under **500 lines and 5000 tokens**"* and disclaims it in the next
+sentence: *"This is the agent-skills convention, not an APM check."* Matching
+the code on 0.26.0: `grep -rn "5000"` and
+`grep -rniE "max_lines|token_budget|max_tokens|line_limit"` over `apm_cli`
+each exit 1 (control `grep -rln "SKILL.md"` exits 0, 16 files). No source
+names a tokenizer, so the token half is uncheckable offline — measurements
+and the reasoning are in `docs/research/356-skill-md-token-budget.md`.
+
 ## Content drift — apm detects nothing
 
 `apm outdated` reports version drift only. Edits to deployed files are
