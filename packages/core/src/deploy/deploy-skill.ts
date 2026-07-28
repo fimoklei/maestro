@@ -7,10 +7,11 @@
 import type { OutdatedResult } from "../drift/parse-outdated";
 import type { InventoryResult } from "../inventory/inventory-reader";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
-import { reclaimableUntargetedTools, type SupportedTool } from "./deploy-tools";
+import type { SupportedTool } from "./deploy-tools";
 import { parseGitOrigin } from "./git-origin";
 import { GLOBAL_LOCK_KEY, InFlightLocks } from "./in-flight-locks";
 import { buildSkillPackageRef, isValidSkillSlug } from "./package-ref";
+import { reclaimUntargetedCopies } from "./reclaim-untargeted-copies";
 
 // Where a skill is deployed to. A repo carries a client-supplied path (gated by
 // the registry); global carries none — the user-scope location is apm's own,
@@ -381,32 +382,15 @@ export class DeploySkill {
       // Reconcile away any obsolete copy left by a prior wider global install:
       // apm preserves the untargeted tool's files and lockfile hashes, so a
       // Codex-only redeploy would otherwise leave the dead .claude tree ADR-0011
-      // exists to eliminate. Only a tool that owns its skills directory outright
-      // qualifies — a shared directory keeps its copy, because an absent tool
-      // proves nothing about the others reading it (#202). Global path only,
-      // after a proven-successful install (the driver verifies apm's positive
-      // marker), so a failed install never reconciles. A missing copy is a
-      // no-op (#136).
-      if (globalTools !== undefined) {
-        const obsolete = reclaimableUntargetedTools(globalTools);
-        if (obsolete.length > 0) {
-          // Best-effort: the install already succeeded, so a cleanup failure must
-          // not invert the result to deploy-failed. It leaves the pre-existing
-          // dead tree — no worse than before this deploy — which the next deploy
-          // retries idempotently (force-rm). Swallowed here rather than surfaced
-          // because DeploySkill has no logging channel; the guard scoping keeps
-          // the leftover inert for the reader meanwhile (#136).
-          try {
-            await this.deps.deployedCleanup.removeSkillTargets({
-              target: input.target,
-              name: input.name,
-              tools: obsolete,
-            });
-          } catch {
-            // Intentionally ignored — see above.
-          }
-        }
-      }
+      // exists to eliminate. Placed after a proven-successful install (the
+      // driver verifies apm's positive marker), so a failed install never
+      // reconciles.
+      await reclaimUntargetedCopies({
+        cleanup: this.deps.deployedCleanup,
+        target: input.target,
+        name: input.name,
+        detected: globalTools,
+      });
 
       return {
         ok: true,

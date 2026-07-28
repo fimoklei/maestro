@@ -1,8 +1,9 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import {
   ConfigStore,
+  DeployedCleanupAdapter,
   DeployedContentAdapter,
   type DeployedContentState,
   DeployedLocation,
@@ -106,6 +107,12 @@ describe("remove HTTP route", () => {
           return (options?.removed ?? true) ? { ok: true } : { ok: false };
         },
       },
+      // The real reclaim on the real tree, pointed at the sandbox home: what a
+      // global removal leaves behind is a fact about directories, so faking it
+      // would prove nothing (#339).
+      deployedCleanup: new DeployedCleanupAdapter({
+        location: new DeployedLocation({ HOME: home }),
+      }),
       toolPresence: {
         detectGlobalTools: async () => options?.detectedTools ?? ["claude"],
       },
@@ -478,6 +485,55 @@ describe("remove HTTP route", () => {
       const response = await preflightGlobally(app);
 
       expect(await response.json()).toEqual({ warning: null });
+    });
+
+    // Whether a path still exists under the sandbox home, so a test can state
+    // what the removal reclaimed and what it left alone.
+    const existsUnderHome = async (relativePath: string) => {
+      try {
+        await access(join(home, relativePath));
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    it("reclaims the copy left for a tool this machine no longer detects", async () => {
+      // apm's uninstall deletes by the targets its own apm.yml lists, so the
+      // copy for a tool that has since dropped off survives it. Removing that
+      // tree is what makes the removal complete (#339).
+      const { app } = makeApp({ detectedTools: ["codex"] });
+      await writeGlobalLockfile([skillEntry("tdd")]);
+      await writeSkillFile(".claude/skills/tdd/SKILL.md");
+      await writeSkillFile(".claude/skills/jobs/SKILL.md");
+
+      expect((await removeGlobally(app)).status).toBe(200);
+
+      expect(await existsUnderHome(".claude/skills/tdd")).toBe(false);
+      // Another skill under the same directory is nobody's leftover.
+      expect(await existsUnderHome(".claude/skills/jobs/SKILL.md")).toBe(true);
+    });
+
+    it("keeps a skills directory several tools read", async () => {
+      // Codex is undetected, but nine other apm targets deploy under .agents.
+      // An absent Codex proves nothing about them, so its copy stays (#202).
+      const { app } = makeApp({ detectedTools: ["claude"] });
+      await writeGlobalLockfile([skillEntry("tdd")]);
+      await writeSkillFile(".agents/skills/tdd/SKILL.md");
+
+      expect((await removeGlobally(app)).status).toBe(200);
+
+      expect(await existsUnderHome(".agents/skills/tdd/SKILL.md")).toBe(true);
+    });
+
+    it("reclaims nothing when apm never confirmed the removal", async () => {
+      const { app } = makeApp({ detectedTools: ["codex"], removed: false });
+      await writeGlobalLockfile([skillEntry("tdd")]);
+      await writeSkillFile(".claude/skills/tdd/SKILL.md");
+
+      expect((await removeGlobally(app)).status).toBe(502);
+
+      expect(await existsUnderHome(".claude/skills/tdd/SKILL.md")).toBe(true);
     });
 
     it("refuses when the machine has no supported tool", async () => {

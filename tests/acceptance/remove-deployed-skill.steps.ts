@@ -1,9 +1,17 @@
-import { mkdir, mkdtemp, rm, unlink, writeFile } from "node:fs/promises";
+import {
+  access,
+  mkdir,
+  mkdtemp,
+  rm,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { describeFeature, loadFeature } from "@amiceli/vitest-cucumber";
 import {
   ConfigStore,
+  DeployedCleanupAdapter,
   type DeployedContentState,
   DeployedLocation,
   DeployedRefAdapter,
@@ -133,6 +141,12 @@ describeFeature(
             return { ok: true };
           },
         },
+        // The real reclaim, pointed at the sandbox home: a global removal also
+        // clears the copies apm could not reach, and it must do that on a real
+        // tree rather than a fake (#339).
+        deployedCleanup: new DeployedCleanupAdapter({
+          location: new DeployedLocation({ HOME: home }),
+        }),
         toolPresence: { detectGlobalTools: async () => detectedTools },
         canonicalPath: (path) => fs.realpath(path),
       });
@@ -446,6 +460,27 @@ describeFeature(
     // other tools' files (apm-behavior.md § Remove, ADR-0013).
     const givenDeployedGlobally = () => deploySkillsGlobally(["tdd", "jobs"]);
 
+    // The copies themselves, on disk under the sandbox home, for the scenarios
+    // that are about what survives a removal rather than what a lockfile says.
+    async function writeGlobalCopies(names: string[]) {
+      for (const name of names) {
+        for (const file of globalDeployedFiles(name, ["claude", "codex"])) {
+          const absolute = join(home, file);
+          await mkdir(dirname(absolute), { recursive: true });
+          await writeFile(absolute, `# ${name}\n`, "utf8");
+        }
+      }
+    }
+
+    const existsUnderHome = async (relativePath: string) => {
+      try {
+        await access(join(home, relativePath));
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
     Scenario(
       "I take a globally deployed skill off every tool in one action",
       ({ Given, When, Then, And }) => {
@@ -473,6 +508,36 @@ describeFeature(
           for (const group of await readGlobalDeployState()) {
             expect(group.primitives.map((p) => p.name)).toEqual(["jobs"]);
           }
+        });
+      },
+    );
+
+    Scenario(
+      "The copy left by a tool I no longer have goes too",
+      ({ Given, But, When, Then, And }) => {
+        Given(
+          '"tdd" and "jobs" deployed globally on Claude Code and Codex',
+          async () => {
+            await givenDeployedGlobally();
+            await writeGlobalCopies(["tdd", "jobs"]);
+          },
+        );
+        But("Claude Code is no longer on this machine", () => {
+          detectedTools = ["codex"];
+        });
+        When('I remove "tdd" globally', () =>
+          removeSkill("tdd", globalTarget()),
+        );
+        Then("the removal is confirmed", () => {
+          expect(response.status).toBe(200);
+        });
+        And('no copy of "tdd" is left behind for Claude Code', async () => {
+          expect(await existsUnderHome(".claude/skills/tdd")).toBe(false);
+        });
+        And('the copy of "jobs" is untouched', async () => {
+          expect(await existsUnderHome(".claude/skills/jobs/SKILL.md")).toBe(
+            true,
+          );
         });
       },
     );

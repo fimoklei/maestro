@@ -815,6 +815,10 @@ function realDeps(): AppDeps {
     // there is nothing to lose first (.claude/rules/apm-driver.md § Remove).
     deployedContent: new DeployedContentAdapter({ location: deployedLocation }),
     apm,
+    // The same subtree-scoped reclaim the deploy path uses, for the copies apm's
+    // uninstall cannot reach: those of a tool this machine no longer detects
+    // (#339).
+    deployedCleanup: new DeployedCleanupAdapter({ location: deployedLocation }),
     // The same live HOME probe the deploy takes: a global removal covers exactly
     // the tools the machine has, and the confirmation names them (ADR-0011).
     toolPresence: new ToolPresenceAdapter(),
