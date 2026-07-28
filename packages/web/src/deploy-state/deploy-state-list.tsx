@@ -176,6 +176,13 @@ export function DeployStateList({
       {removing !== null ? (
         <RemoveSkillDialog
           skillName={removing}
+          // The version the row is showing. Null rather than a guess when the
+          // list no longer carries that skill — the confirmation names what
+          // this screen knows, never a build it inferred.
+          version={
+            primitives.find((primitive) => primitive.name === removing)
+              ?.version ?? null
+          }
           target={target}
           isRemoving={remove.isPending}
           preflight={removePreflightView(preflight)}

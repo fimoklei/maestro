@@ -25,6 +25,7 @@ function renderDialog({
   isRemoving = false,
   error = null as string | null,
   attempted = true,
+  version = "v0.5.0" as string | null,
   preflight = warns("none") as RemovePreflightView,
   onCancel = vi.fn(),
   onConfirm = vi.fn(),
@@ -32,6 +33,7 @@ function renderDialog({
   render(
     <RemoveSkillDialog
       skillName="tdd"
+      version={version}
       target={target}
       isRemoving={isRemoving}
       error={error}
@@ -51,6 +53,26 @@ describe("RemoveSkillDialog", () => {
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent("tdd");
     expect(dialog).toHaveTextContent("/Users/me/project");
+  });
+
+  // The row states `tdd v0.5.0`; the confirmation used to drop the version, so
+  // the user had to carry it across a menu and a modal to know which build was
+  // about to go.
+  it("names the version being removed in the question it asks", () => {
+    renderDialog({ version: "v0.5.0" });
+
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
+      "Remove tdd v0.5.0?",
+    );
+  });
+
+  it("asks without a version when the row has none to name", () => {
+    // A version the screen never had is not one to invent.
+    renderDialog({ version: null });
+
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
+      "Remove tdd?",
+    );
   });
 
   it("makes the confirm control the amber primary", () => {
@@ -95,6 +117,26 @@ describe("RemoveSkillDialog", () => {
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent("apm did not confirm the removal.");
     expect(alert).toHaveTextContent(/mixed state/i);
+  });
+
+  // A warning and a failure used to render as the same object: same fill, same
+  // border, same padding, told apart only by a glyph one of them lacked. "This
+  // may cost work" and "the removal failed" mean opposite things.
+  it("wears danger with a glyph when the removal failed, not the amber of a warning", () => {
+    renderDialog({ error: "apm did not confirm the removal." });
+
+    const alert = screen.getByRole("alert");
+    expect(alert.className).toContain("danger");
+    expect(alert.className).not.toContain("amber");
+    expect(alert).toHaveTextContent("✕");
+  });
+
+  it("says in words that the removal failed, so the colour is not the signal", () => {
+    // The Never-Colour-Alone rule: every colour signal carries a glyph and a
+    // word, so it survives without colour perception.
+    renderDialog({ error: "apm did not confirm the removal." });
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/removal failed/i);
   });
 
   it("does not claim a mixed state when nothing was attempted", () => {
@@ -258,6 +300,67 @@ describe("RemoveSkillDialog", () => {
       expect(screen.getByRole("dialog")).not.toHaveTextContent(
         /deploy it again/i,
       );
+    });
+  });
+
+  // The Mono-Is-Data Rule: a name, a version, a path or an action is mono;
+  // everything the user reads as a sentence is the sans body face. The dialog
+  // is the most prose-heavy screen in the cockpit, so it is where the rule
+  // slips first — it used to set every line, prose included, in mono.
+  describe("its typography", () => {
+    it("sets the path it would delete from in mono", () => {
+      renderDialog();
+
+      expect(screen.getByText(REPO_TARGET.repoPath).className).toContain(
+        "font-mono",
+      );
+    });
+
+    it("sets the consequence line as prose, with the tool names in mono", () => {
+      renderDialog({ target: { kind: "global", tools: ["claude", "codex"] } });
+
+      const consequence = screen.getByText(/no per-tool remove/i);
+      expect(consequence.className).toContain("font-ui");
+      expect(consequence.className).not.toContain("font-mono");
+      expect(screen.getByText("Claude Code and Codex").className).toContain(
+        "font-mono",
+      );
+    });
+
+    it("sets the warning as prose rather than data", () => {
+      renderDialog({ preflight: warns("local-edits") });
+
+      expect(screen.getByRole("status").className).toContain("font-ui");
+    });
+
+    // The line that carries the real consequence used to sit at the same size
+    // and colour as the boilerplate underneath it, so nothing told the reader
+    // which of the two mattered. Asserted as a step on the scale rather than
+    // two literal tokens: the rule is the ordering, not the sizes it lands on.
+    it("steps the consequence line above the boilerplate beneath it", () => {
+      // The cockpit's type scale, largest first (styles/theme.css @theme).
+      const scale = [
+        "text-title",
+        "text-subtitle",
+        "text-body",
+        "text-data",
+        "text-desc",
+        "text-mono-sm",
+        "text-chip",
+        "text-tag",
+      ];
+      const stepOf = (element: HTMLElement) =>
+        scale.findIndex((size) => element.className.includes(size));
+      renderDialog({ target: { kind: "global", tools: ["claude", "codex"] } });
+
+      const consequence = screen.getByText(/no per-tool remove/i);
+      const boilerplate = screen.getByText(/lockfile entry/i);
+      expect(stepOf(consequence)).toBeGreaterThanOrEqual(0);
+      expect(stepOf(consequence)).toBeLessThan(stepOf(boilerplate));
+      // The second half of the step: the quieter line also drops down the text
+      // ramp, so size is not carrying the difference alone.
+      expect(boilerplate.className).toContain("text-dim");
+      expect(consequence.className).not.toContain("text-dim");
     });
   });
 

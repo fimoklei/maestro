@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
 import { useModalDialog } from "../shell/use-modal-dialog";
 import { Button } from "../ui/button";
+import { cn } from "../ui/cn";
 import type {
   RemovePreflightView,
   RemoveWarningState,
@@ -30,6 +32,47 @@ const WARNING_TEXT: Record<Exclude<RemoveWarningState, "none">, string> = {
   checking: "Checking this copy for local edits…",
 };
 
+// The one amber container in this panel. Both blocks that wear it say the same
+// kind of thing — this removal will cost something — so they are meant to look
+// identical, and one owner is what keeps them that way.
+const WARNING_SURFACE =
+  "rounded-control border border-amber-border bg-amber-bg px-2.5 py-2.5";
+
+// A removal that either cannot happen or did not happen. Danger red rather than
+// the amber above: amber names a cost the removal will pay, this names a
+// removal that went wrong — the error signal red exists for (issue #213). The
+// leading ✕ and the label carry the meaning where colour cannot
+// (Never-Colour-Alone). Announced assertively: it arrives on its own and takes
+// the confirm control with it.
+//
+// One component for both failures, because they render one object: rendering
+// them separately is how the panel ended up with a glyphed refusal and a
+// glyph-less error that looked like an ordinary warning (#387).
+function FailureNote({
+  label,
+  message,
+  children,
+}: {
+  label: string;
+  message: string;
+  // Anything the failure adds beyond the server's own sentence.
+  children?: ReactNode;
+}) {
+  return (
+    <div
+      role="alert"
+      className="flex flex-col gap-1 rounded-control border border-danger-border bg-danger-bg px-2.5 py-2.5"
+    >
+      <span className="font-semibold font-ui text-danger-ink text-tag">
+        <span aria-hidden="true">✕ </span>
+        {label}
+      </span>
+      <span className="font-ui text-body text-fg-2">{message}</span>
+      {children}
+    </div>
+  );
+}
+
 // The confirmation in front of taking a deployed skill off a target. A real modal,
 // not an inline in-row confirm: removal deletes files, so it deserves the
 // interruption — and the modal contract (focus into the panel, Escape, focus
@@ -41,6 +84,7 @@ const WARNING_TEXT: Record<Exclude<RemoveWarningState, "none">, string> = {
 // tells it. The host owns the request, the in-flight flag and the error text.
 export function RemoveSkillDialog({
   skillName,
+  version,
   target,
   isRemoving,
   error,
@@ -50,6 +94,11 @@ export function RemoveSkillDialog({
   onConfirm,
 }: {
   skillName: string;
+  // The build about to be destroyed, as the row states it, or null when the
+  // screen never had one. Required rather than optional: a caller that cannot
+  // name the version says so, instead of dropping it by omission and leaving
+  // the user to carry it across a menu and a modal.
+  version: string | null;
   target: RemoveDialogTarget;
   isRemoving: boolean;
   // What the host's check came back with. A warning informs and never blocks —
@@ -76,7 +125,8 @@ export function RemoveSkillDialog({
     onClose: onCancel,
     closeEnabled: !isRemoving,
   });
-  const heading = `Remove ${skillName}?`;
+  const named = version === null ? skillName : `${skillName} ${version}`;
+  const heading = `Remove ${named}?`;
   // An answered warning never blocks — but an unfinished one has not warned yet,
   // and apm deletes an edited copy without a word. Holding the confirm until the
   // check answers is the J04 rule applied to consent, not a second guard on top
@@ -111,29 +161,34 @@ export function RemoveSkillDialog({
         className="relative flex w-full max-w-[480px] flex-col overflow-hidden rounded-card border border-line bg-chrome outline-none"
       >
         <div className="border-line-row border-b px-3.5 py-3">
+          {/* "Remove" and "?" are chrome; the name and version are data, so
+              they take the mono face inside the sans question (Mono-Is-Data). */}
           <h2 className="font-semibold font-ui text-fg text-subtitle">
-            {heading}
+            Remove <span className="font-mono">{named}</span>?
           </h2>
         </div>
 
         <div className="flex flex-col gap-2 px-3.5 py-3">
-          {/* Both names in full, so two similar rows can be told apart before
-              confirming. */}
-          <p className="font-mono text-fg-2 text-mono-sm">
-            Remove <span className="text-fg">{skillName}</span> from
-          </p>
-          <p className="break-all font-mono text-dim text-mono-sm">
-            {target.kind === "repo" ? target.repoPath : "every detected tool"}
-          </p>
+          {/* The heading names the skill and its version, so this states the
+              other half — where it goes from — as the system's own micro-label
+              over its value, rather than a second sentence repeating the
+              question above it. */}
+          <div className="flex flex-col gap-1">
+            <span className="m-label">Remove from</span>
+            <span className="break-all font-mono text-fg-2 text-mono-sm">
+              {target.kind === "repo" ? target.repoPath : "every detected tool"}
+            </span>
+          </div>
           {/* Mandatory on the global path: the trigger sits inside one tool's
               card, so the modal names the whole set before the user agrees to
               it. There is no per-tool remove to offer — apm's uninstall has no
               -t, and narrowing targets: to fake one orphans the other tools'
               files (apm-behavior.md § Remove, ADR-0013). */}
           {target.kind === "global" ? (
-            <p className="font-mono text-fg-2 text-tag">
-              This takes it off {toolNameList(target.tools)} in one go. There is
-              no per-tool remove.
+            <p className="font-ui text-body text-fg-2">
+              This takes it off{" "}
+              <span className="font-mono">{toolNameList(target.tools)}</span> in
+              one go. There is no per-tool remove.
             </p>
           ) : null}
           {/* A global removal also force-deletes the whole copy of any tool
@@ -141,18 +196,17 @@ export function RemoveSkillDialog({
               reach it (#339). Named by tool and exact path so the confirmation
               states it before the user agrees; a path the preflight could not
               build is simply absent, never guessed. It goes beyond the row the
-              user clicked, so it
-              gets the same weight as the local-edits warning rather than a
-              line of dim prose: amber, glyphed, and its own announced region,
-              because a directory nobody targeted is the one thing here that
-              must not be skimmed past. */}
+              user clicked, so it gets the same weight as the local-edits
+              warning rather than a line of dim prose: amber, glyphed, and its
+              own announced region, because a directory nobody targeted is the
+              one thing here that must not be skimmed past. */}
           {reclaim.length > 0 ? (
             <div
               role="status"
               aria-label="Also deleted"
-              className="flex flex-col gap-1 rounded-control border border-amber-border bg-amber-bg px-2.5 py-2.5"
+              className={cn("flex flex-col gap-1", WARNING_SURFACE)}
             >
-              <p className="flex items-start gap-1.5 font-mono text-amber-ink text-tag">
+              <p className="flex items-start gap-1.5 font-ui text-amber-ink text-desc">
                 <span aria-hidden="true">▲</span>
                 <span>
                   This also deletes {reclaim.length === 1 ? "a copy" : "copies"}{" "}
@@ -160,20 +214,30 @@ export function RemoveSkillDialog({
                 </span>
               </p>
               <ul className="flex flex-col gap-1">
-                {reclaim.map((entry) => (
-                  <li key={entry.path} className="pl-4 font-mono text-mono-sm">
-                    {/* Only the path breaks mid-token: a long path has to fit,
-                        but breaking the sentence around it mid-word makes the
-                        loudest block on screen the hardest one to read. */}
-                    <span className="break-all text-fg">{entry.path}</span>
-                    <span className="text-amber-ink">
-                      {" "}
-                      — the leftover {toolDisplayName(entry.tool)} copy,{" "}
-                      {toolDisplayName(entry.tool)} is not installed on this
-                      machine.
+                {reclaim.map((entry) => {
+                  // A tool is a target name, so it keeps the mono face inside
+                  // the sans sentence around it (Mono-Is-Data).
+                  const tool = (
+                    <span className="font-mono">
+                      {toolDisplayName(entry.tool)}
                     </span>
-                  </li>
-                ))}
+                  );
+                  return (
+                    <li key={entry.path} className="pl-4 font-ui text-desc">
+                      {/* Only the path breaks mid-token: a long path has to fit,
+                          but breaking the sentence around it mid-word makes the
+                          loudest block on screen the hardest one to read. */}
+                      <span className="break-all font-mono text-fg text-mono-sm">
+                        {entry.path}
+                      </span>
+                      <span className="text-amber-ink">
+                        {" "}
+                        — the leftover {tool} copy, {tool} is not installed on
+                        this machine.
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ) : null}
@@ -184,29 +248,21 @@ export function RemoveSkillDialog({
             <p
               role="status"
               aria-label="Local edits"
-              className="flex items-start gap-1.5 rounded-control border border-amber-border bg-amber-bg px-2.5 py-2.5 font-mono text-amber-ink text-tag"
+              className={cn(
+                "flex items-start gap-1.5 font-ui text-amber-ink text-desc",
+                WARNING_SURFACE,
+              )}
             >
               <span aria-hidden="true">▲</span>
               <span>{WARNING_TEXT[preflight.warning]}</span>
             </p>
           ) : null}
-          {/* The server's own refusal, in its own words. Danger red rather than
-              the amber above: amber says this will cost you something, and this
-              says it cannot happen at all — which is the error signal red exists
-              for (issue #213). It is announced assertively because it arrives on
-              its own and takes the confirm control with it. */}
+          {/* The server's own refusal, in its own words. */}
           {preflight.kind === "refused" ? (
-            <div
-              role="alert"
-              className="flex flex-col gap-1 rounded-control border border-danger-border bg-danger-bg px-2.5 py-2.5"
-            >
-              <span className="font-semibold text-danger-ink text-tag">
-                <span aria-hidden="true">✕ </span>this can't be removed
-              </span>
-              <span className="font-mono text-fg-2 text-mono-sm">
-                {preflight.message}
-              </span>
-            </div>
+            <FailureNote
+              label="this can't be removed"
+              message={preflight.message}
+            />
           ) : null}
           {/* Last of the prose, so the two loud blocks sit together. It states
               the cost and stops there: a redeploy re-pins to the latest
@@ -215,23 +271,22 @@ export function RemoveSkillDialog({
               describes a removal that is about to happen, so a refusal drops it
               rather than name a cost nothing will pay. */}
           {refused ? null : (
-            <p className="font-mono text-dim text-tag">
+            <p className="font-ui text-desc text-dim">
               Its deployed files and its lockfile entry go.
             </p>
           )}
+          {/* A removal the user confirmed and apm did not land. */}
           {error ? (
-            <div
-              role="alert"
-              className="flex flex-col gap-1 rounded-control border border-amber-border bg-amber-bg px-2.5 py-2.5"
-            >
-              <span className="font-mono text-fg-2 text-mono-sm">{error}</span>
+            <FailureNote label="the removal failed" message={error}>
+              {/* Neutral rather than amber: a second signal colour inside a
+                  danger block would read as a second, milder problem. */}
               {attempted ? (
-                <span className="font-mono text-amber-ink text-tag">
+                <span className="font-ui text-desc text-fg-2">
                   The repo may be in a mixed state — some of this skill's files
                   may already be gone. Check it before trying again.
                 </span>
               ) : null}
-            </div>
+            </FailureNote>
           ) : null}
         </div>
 

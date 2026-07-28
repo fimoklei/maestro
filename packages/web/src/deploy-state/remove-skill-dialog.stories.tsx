@@ -21,6 +21,7 @@ const meta = {
   component: RemoveSkillDialog,
   args: {
     skillName: "tdd",
+    version: "v0.5.0",
     target: { kind: "repo", repoPath: "/Users/me/acme-web" },
     isRemoving: false,
     preflight: warns("none"),
@@ -35,16 +36,20 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-// The question as it is asked: both names in full, so two similar rows can be
-// told apart before confirming.
+// The question as it is asked: the skill, the exact build going, and the target
+// in full, so two similar rows can be told apart before confirming.
 export const Confirming: Story = {};
+
+// A row that carries no version. The question drops it rather than invent one.
+export const WithoutVersion: Story = { args: { version: null } };
 
 // Mid-removal: both controls are inert and the dialog cannot be dismissed, so
 // the outcome cannot be missed.
 export const Removing: Story = { args: { isRemoving: true } };
 
 // A removal apm did not confirm. The dialog stays put, carries apm's own reason
-// and warns that the repo may be half-changed.
+// and warns that the repo may be half-changed. Danger red with its own ✕, so a
+// failure never reads as one more amber warning.
 export const Failed: Story = {
   args: { error: "apm did not confirm the removal. Check apm and try again." },
 };
@@ -56,6 +61,17 @@ export const RemovalRefused: Story = {
     attempted: false,
     error:
       "The deployed copy exists but could not be read, so Maestro cannot tell whether removing it would delete local changes.",
+  },
+};
+
+// The loudest panel this dialog can render: a leftover copy, a local-edits
+// warning and a failed removal at once — the state that proves the amber
+// warnings and the red failure still read as different objects when stacked.
+export const FailedWithWarnings: Story = {
+  args: {
+    target: { kind: "global", tools: ["codex"] },
+    preflight: warns("local-edits", LEFTOVER),
+    error: "apm did not confirm the removal. Check apm and try again.",
   },
 };
 
