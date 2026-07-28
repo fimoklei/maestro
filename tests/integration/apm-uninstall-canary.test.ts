@@ -14,7 +14,7 @@
 // always names its package — a bare `apm uninstall -g` is never run
 // (.claude/rules/apm-driver.md § Danger).
 import { execFile } from "node:child_process";
-import { access, mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -117,6 +117,86 @@ describe.runIf(enabled)("real apm uninstall canary", () => {
     });
 
     expect(removed).toEqual({ ok: false });
+  });
+});
+
+// The global half of the same canary (issue #338). apm's user-scope install and
+// uninstall both operate on Path.home(), so HOME is redirected at a throwaway
+// sandbox for every subprocess and the removal always names its package — a bare
+// `apm uninstall -g` is never run (.claude/rules/apm-driver.md § Danger). What
+// only real apm can prove: the removed skill's copies are gone from every tool
+// directory it wrote and from ~/.apm's lockfile, while the unrelated skill
+// survives in both.
+describe.runIf(enabled)("real apm global uninstall canary", () => {
+  let home: string;
+
+  beforeEach(async () => {
+    home = await mkdtemp(join(tmpdir(), "maestro-uninstall-global-home-"));
+  });
+
+  afterEach(async () => {
+    await rm(home, { recursive: true, force: true });
+  });
+
+  it("removes one skill from every tool and from the global lockfile", {
+    timeout: 180_000,
+  }, async () => {
+    const { stdout: tokenOut } = await run("gh", ["auth", "token"]);
+    const token = tokenOut.trim();
+
+    // The scratch cwd lives under the sandbox too: apm appends apm_modules/ to
+    // the cwd's .gitignore even for -g, so it must never be a real repo
+    // (apm-driver.md).
+    const scratchCwd = join(home, ".apm-scratch");
+    const driver = new ApmCliDriver({
+      run: (file, args, options) =>
+        run(file, args, {
+          ...options,
+          env: { ...process.env, HOME: home, GITHUB_TOKEN: token },
+        }),
+      prepareGlobalCwd: async () => {
+        await mkdir(scratchCwd, { recursive: true });
+        return scratchCwd;
+      },
+    });
+
+    const resolved = await driver.resolveLatestTag(HARNESS);
+    if (!resolved.ok) {
+      throw new Error(`expected a resolved tag, got ${resolved.reason}`);
+    }
+    const refFor = (skill: string) =>
+      `github.com/${HARNESS}/skills/${skill}#${resolved.tag}`;
+
+    for (const skill of [REMOVED, KEPT]) {
+      const installed = await driver.deploySkill({
+        target: { kind: "global" },
+        ref: refFor(skill),
+        // Both tools, so the removal has more than one copy to account for.
+        tools: ["claude", "codex"],
+      });
+      expect(installed).toEqual({ ok: true });
+    }
+
+    const removed = await driver.removeSkill({
+      target: { kind: "global" },
+      ref: refFor(REMOVED),
+    });
+    expect(removed).toEqual({ ok: true });
+
+    // One action, every tool: the copy is gone under both directories apm
+    // deployed to, and the unrelated skill is untouched in both.
+    for (const toolDir of [".claude", ".agents"]) {
+      await expect(
+        access(join(home, toolDir, "skills", REMOVED)),
+      ).rejects.toThrow();
+      await expect(
+        access(join(home, toolDir, "skills", KEPT)),
+      ).resolves.toBeUndefined();
+    }
+
+    const lock = await readFile(join(home, ".apm", "apm.lock.yaml"), "utf8");
+    expect(lock).not.toContain(`virtual_path: skills/${REMOVED}`);
+    expect(lock).toContain(`virtual_path: skills/${KEPT}`);
   });
 });
 

@@ -10,7 +10,10 @@ import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { ActionsMenu } from "../ui/actions-menu";
 import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
-import { RemoveSkillDialog } from "./remove-skill-dialog";
+import {
+  type RemoveDialogTarget,
+  RemoveSkillDialog,
+} from "./remove-skill-dialog";
 import { removeWarningView } from "./remove-warning-view";
 import { UpdateSkillAction } from "./update-skill-action";
 import type { DeployedPrimitive, SkippedEntry } from "./use-deploy-state";
@@ -70,7 +73,11 @@ export function DeployStateList({
   primitives: DeployedPrimitive[];
   skipped: SkippedEntry[];
   drift?: DriftViewModel;
-  target: DeployTarget;
+  // The scope these rows belong to. A global target carries the tools it
+  // covers, so the confirmation cannot be rendered without them — the scope
+  // line is what keeps a set-based action honest, and an optional prop would
+  // let a host drop it silently (#338).
+  target: RemoveDialogTarget;
   // Called once a removal has landed, after the dialog is gone. The modal's own
   // focus restore aims at the trigger that opened it, and a successful removal
   // destroys that trigger along with its row — so the host moves focus to the
@@ -82,13 +89,14 @@ export function DeployStateList({
   const [removing, setRemoving] = useState<string | null>(null);
   const [justRemoved, setJustRemoved] = useState(false);
   const remove = useRemoveDeployedSkill();
+  // The same target as the server names it: the detected tools are the screen's
+  // business, never part of the request — the global scope's location and its
+  // reach are apm's own, resolved server-side (J07).
+  const wireTarget: DeployTarget =
+    target.kind === "repo" ? target : { kind: "global" };
   // What that removal would destroy, asked as soon as the confirmation opens so
-  // the answer is on screen before the user commits. Removal is offered per
-  // repo only, so a global target never names a skill and never asks.
-  const preflight = useRemovePreflight(
-    removing,
-    target.kind === "repo" ? target.repoPath : null,
-  );
+  // the answer is on screen before the user commits.
+  const preflight = useRemovePreflight(removing, wireTarget);
 
   // Handing focus on in an effect, not in the success handler: the modal's
   // focus-restore runs during its unmount, so anything moving focus earlier
@@ -136,36 +144,32 @@ export function DeployStateList({
             {/* Update is offered only when behind — never for up-to-date,
                 pending, or unknown (the J04 rule: unknown is not actionable). */}
             {status === "behind" ? (
-              <UpdateSkillAction skillName={primitive.name} target={target} />
+              <UpdateSkillAction
+                skillName={primitive.name}
+                target={wireTarget}
+              />
             ) : null}
             {/* The row's named actions, last in the row and always visible so
-                they exist for touch and keyboard, not only for a mouse. Removal
-                is offered per repo only — the global scope is not part of this
-                slice, so its trigger stays inert rather than opening onto an
-                action the server would refuse. */}
+                they exist for touch and keyboard, not only for a mouse. */}
             <ActionsMenu
               label={`Actions for ${primitive.name}`}
-              items={
-                target.kind === "repo"
-                  ? [
-                      {
-                        label: "remove…",
-                        onSelect: () => {
-                          remove.reset();
-                          setRemoving(primitive.name);
-                        },
-                      },
-                    ]
-                  : []
-              }
+              items={[
+                {
+                  label: "remove…",
+                  onSelect: () => {
+                    remove.reset();
+                    setRemoving(primitive.name);
+                  },
+                },
+              ]}
             />
           </div>
         );
       })}
-      {removing !== null && target.kind === "repo" ? (
+      {removing !== null ? (
         <RemoveSkillDialog
           skillName={removing}
-          repoPath={target.repoPath}
+          target={target}
           isRemoving={remove.isPending}
           warning={removeWarningView(preflight)}
           error={
@@ -186,11 +190,7 @@ export function DeployStateList({
           onCancel={() => setRemoving(null)}
           onConfirm={() =>
             remove.mutate(
-              {
-                type: "skill",
-                name: removing,
-                target: { kind: "repo", repoPath: target.repoPath },
-              },
+              { type: "skill", name: removing, target: wireTarget },
               {
                 // Only a proven removal closes the dialog. A failure keeps it
                 // open with apm's reason, so it never reads as if nothing

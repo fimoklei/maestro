@@ -1,8 +1,9 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import {
   ConfigStore,
+  DeployedContentAdapter,
   type DeployedContentState,
   DeployedLocation,
   DeployedRefAdapter,
@@ -11,6 +12,7 @@ import {
   NodeFileSystem,
   Registry,
   RemoveDeployedSkill,
+  type SupportedTool,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -25,6 +27,13 @@ import { stubDrift } from "../helpers/stub-drift";
 // the assertion, since the ref is what decides whether apm removes the right
 // package or silently nothing. Origin/Host guard enforcement lives in
 // server-security.test.ts.
+// A deployed file and the sha256 apm would have recorded for it, so a lockfile
+// fixture can claim a clean copy without the test recomputing the hash the way
+// the guard does.
+const SKILL_FILE_CONTENT = "# tdd\n";
+const TDD_SKILL_SHA256 =
+  "5c35b2b6a904c72893741b59eaf0a591f5b13810d0286949128c2e1888acfba2";
+
 describe("remove HTTP route", () => {
   let home: string;
   let repo: string;
@@ -57,6 +66,13 @@ describe("remove HTTP route", () => {
     // What the destination guard finds on disk. "clean" by default — the guard
     // itself is covered in the core lane; here it only has to reach the wire.
     deployedState?: DeployedContentState;
+    // The tools the machine is pretending to have. Only the global route reads
+    // it; an empty list is the no-supported-tool refusal.
+    detectedTools?: SupportedTool[];
+    // Swap the stubbed guard for the real one, so a test can prove what an
+    // actual tree on disk classifies as. Off by default: most tests here are
+    // about the route, not the walk.
+    realDeployedContent?: boolean;
   }) {
     const fs = new NodeFileSystem();
     const registry = new Registry({
@@ -65,20 +81,33 @@ describe("remove HTTP route", () => {
     });
     const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
     const removeCalls: Array<{ target: DeployTarget; ref: string }> = [];
+    const classifyCalls: Array<{ tools?: readonly SupportedTool[] }> = [];
     const remove = new RemoveDeployedSkill({
       registry,
       deployedRef: new DeployedRefAdapter({
         fs,
-        location: new DeployedLocation({}),
+        // HOME redirected at the sandbox, so the global lockfile this resolves
+        // is the test's own — never the real ~/.apm (apm-driver.md § Danger).
+        location: new DeployedLocation({ HOME: home }),
       }),
-      deployedContent: {
-        classify: async () => options?.deployedState ?? "clean",
-      },
+      deployedContent: options?.realDeployedContent
+        ? new DeployedContentAdapter({
+            location: new DeployedLocation({ HOME: home }),
+          })
+        : {
+            classify: async ({ tools }) => {
+              classifyCalls.push({ tools });
+              return options?.deployedState ?? "clean";
+            },
+          },
       apm: {
         removeSkill: async (input) => {
           removeCalls.push(input);
           return (options?.removed ?? true) ? { ok: true } : { ok: false };
         },
+      },
+      toolPresence: {
+        detectGlobalTools: async () => options?.detectedTools ?? ["claude"],
       },
       canonicalPath: (path) => fs.realpath(path),
     });
@@ -94,7 +123,7 @@ describe("remove HTTP route", () => {
       browse: stubBrowse(),
       enforceOriginHost: false,
     });
-    return { app, registry, removeCalls };
+    return { app, registry, removeCalls, classifyCalls };
   }
 
   const removeRequest = (
@@ -313,18 +342,183 @@ describe("remove HTTP route", () => {
     expect((await removeRequest(app, { name: "tdd" })).status).toBe(400);
   });
 
-  it("rejects a target kind this slice does not remove from", async () => {
-    // Global removal is not part of this slice; the edge refuses it rather than
-    // letting it fall through to a repo path that is not there.
-    const { app } = makeApp();
+  // The user scope. Its lockfile location is apm's own, resolved server-side, so
+  // the request carries no path at all (J07, #338).
+  describe("the global target", () => {
+    // Resolved per call, not at collection time: `home` is a fresh sandbox per
+    // test.
+    async function writeGlobalLockfile(entries: string[]) {
+      const apmRoot = join(home, ".apm");
+      await mkdir(apmRoot, { recursive: true });
+      await writeFile(
+        join(apmRoot, "apm.lock.yaml"),
+        lockfileWith(entries),
+        "utf8",
+      );
+    }
 
-    const response = await removeRequest(app, {
-      type: "skill",
-      name: "tdd",
-      target: { kind: "global" },
+    // One deployed file, written wherever a test needs a copy to exist. Its
+    // content is fixed so the recorded hash can be a literal.
+    async function writeSkillFile(relativePath: string) {
+      const absolute = join(home, relativePath);
+      await mkdir(dirname(absolute), { recursive: true });
+      await writeFile(absolute, SKILL_FILE_CONTENT, "utf8");
+    }
+
+    const preflightGlobally = (app: ReturnType<typeof makeApp>["app"]) =>
+      app.request("/api/deploy/remove/preflight", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          type: "skill",
+          name: "tdd",
+          target: { kind: "global" },
+        }),
+      });
+
+    const removeGlobally = (app: ReturnType<typeof makeApp>["app"]) =>
+      removeRequest(app, {
+        type: "skill",
+        name: "tdd",
+        target: { kind: "global" },
+      });
+
+    it("removes the skill with the ref the global lockfile records", async () => {
+      const { app, removeCalls } = makeApp();
+      await writeGlobalLockfile([skillEntry("tdd")]);
+
+      const response = await removeGlobally(app);
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        removed: { type: "skill", name: "tdd" },
+      });
+      expect(removeCalls).toEqual([
+        {
+          target: { kind: "global" },
+          ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+        },
+      ]);
     });
 
-    expect(response.status).toBe(400);
+    it("takes no path from the client, even one that is offered", async () => {
+      // A repoPath alongside a global kind must not widen what the route reads:
+      // the discriminated union drops it, and the location stays apm's own.
+      const { app, removeCalls } = makeApp();
+      await writeGlobalLockfile([skillEntry("tdd")]);
+
+      const response = await removeRequest(app, {
+        type: "skill",
+        name: "tdd",
+        target: { kind: "global", repoPath: "/etc" },
+      });
+
+      expect(response.status).toBe(200);
+      expect(removeCalls).toEqual([
+        {
+          target: { kind: "global" },
+          ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+        },
+      ]);
+    });
+
+    it("checks every supported tool's copy, not only the detected ones", async () => {
+      const { app, classifyCalls } = makeApp({ detectedTools: ["codex"] });
+      await writeGlobalLockfile([skillEntry("tdd")]);
+
+      await removeGlobally(app);
+
+      expect(classifyCalls).toEqual([{ tools: undefined }]);
+    });
+
+    it("names a copy left behind by a tool this machine no longer has", async () => {
+      // The real guard against a real tree: Claude's copy matches the lockfile
+      // exactly, and a copy for Codex — a tool that has since dropped off this
+      // machine — sits alongside it. apm deletes both. A check scoped to
+      // today's tools would report this removal as costing nothing.
+      const { app } = makeApp({
+        realDeployedContent: true,
+        detectedTools: ["claude"],
+      });
+      await writeGlobalLockfile([
+        [
+          skillEntry("tdd"),
+          "  deployed_file_hashes:",
+          `    .claude/skills/tdd/SKILL.md: sha256:${TDD_SKILL_SHA256}`,
+        ].join("\n"),
+      ]);
+      await writeSkillFile(".claude/skills/tdd/SKILL.md");
+      await writeSkillFile(".agents/skills/tdd/SKILL.md");
+
+      const response = await preflightGlobally(app);
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        warning: "local-edits-will-be-lost",
+      });
+    });
+
+    it("leaves an unrelated skill's copy out of the answer", async () => {
+      // The scan widened to every tool, never to every skill: another skill's
+      // tree under the same directories says nothing about this removal.
+      const { app } = makeApp({
+        realDeployedContent: true,
+        detectedTools: ["claude"],
+      });
+      await writeGlobalLockfile([
+        [
+          skillEntry("tdd"),
+          "  deployed_file_hashes:",
+          `    .claude/skills/tdd/SKILL.md: sha256:${TDD_SKILL_SHA256}`,
+        ].join("\n"),
+      ]);
+      await writeSkillFile(".claude/skills/tdd/SKILL.md");
+      await writeSkillFile(".agents/skills/jobs/SKILL.md");
+
+      const response = await preflightGlobally(app);
+
+      expect(await response.json()).toEqual({ warning: null });
+    });
+
+    it("refuses when the machine has no supported tool", async () => {
+      const { app, removeCalls } = makeApp({ detectedTools: [] });
+      await writeGlobalLockfile([skillEntry("tdd")]);
+
+      const response = await removeGlobally(app);
+
+      expect(response.status).toBe(409);
+      expect(removeCalls).toEqual([]);
+      const body = (await response.json()) as { message: string };
+      expect(body.message).toMatch(/\S/);
+    });
+
+    it("reports a skill the global scope does not carry as not found", async () => {
+      const { app, removeCalls } = makeApp();
+      await writeGlobalLockfile([skillEntry("jobs")]);
+
+      expect((await removeGlobally(app)).status).toBe(404);
+      expect(removeCalls).toEqual([]);
+    });
+
+    it("names what the removal would destroy before it runs", async () => {
+      const { app, removeCalls } = makeApp({ deployedState: "diverged" });
+
+      const response = await app.request("/api/deploy/remove/preflight", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          type: "skill",
+          name: "tdd",
+          target: { kind: "global" },
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        warning: "local-edits-will-be-lost",
+      });
+      expect(removeCalls).toEqual([]);
+    });
   });
 
   // The check the confirmation runs before the user commits. It answers what

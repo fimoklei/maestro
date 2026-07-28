@@ -10,3 +10,14 @@ const TOOL_DISPLAY_NAME: Record<string, string> = {
 export function toolDisplayName(tool: string): string {
   return TOOL_DISPLAY_NAME[tool] ?? tool;
 }
+
+// The same names as one readable list, for a sentence that has to state a whole
+// scope ("Claude Code and Codex"). An empty set yields an empty string; the
+// caller decides whether that sentence is worth showing.
+export function toolNameList(tools: readonly string[]): string {
+  const names = tools.map(toolDisplayName);
+  if (names.length < 2) {
+    return names[0] ?? "";
+  }
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}

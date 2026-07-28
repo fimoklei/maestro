@@ -6,7 +6,7 @@ const meta = {
   component: RemoveSkillDialog,
   args: {
     skillName: "tdd",
-    repoPath: "/Users/me/acme-web",
+    target: { kind: "repo", repoPath: "/Users/me/acme-web" },
     isRemoving: false,
     warning: "none",
     error: null,
@@ -44,6 +44,11 @@ export const Refused: Story = {
   },
 };
 
+// The check has not answered yet, so the confirm control waits with it: an
+// unfinished check has not warned about anything, and apm deletes an edited copy
+// without a word. Cancel stays open, so waiting is never a trap.
+export const Checking: Story = { args: { warning: "checking" } };
+
 // The deployed copy carries edits apm would delete without a word. Amber, not
 // danger red — and the confirm control stays usable, because destroying the
 // copy is what the user came here to do.
@@ -56,3 +61,10 @@ export const Unverifiable: Story = { args: { warning: "cannot-verify" } };
 // The check itself never ran. Its own wording: borrowing the one above would
 // blame a missing baseline nothing ever looked for.
 export const CheckFailed: Story = { args: { warning: "check-failed" } };
+
+// The global scope. The trigger sits inside one tool's card, so the modal names
+// every detected tool it will remove from — and says there is no per-tool
+// remove to reach for instead.
+export const GlobalScope: Story = {
+  args: { target: { kind: "global", tools: ["claude", "codex"] } },
+};

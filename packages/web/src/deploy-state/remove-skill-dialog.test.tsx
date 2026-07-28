@@ -4,7 +4,13 @@ import { describe, expect, it, vi } from "vitest";
 import { RemoveSkillDialog } from "./remove-skill-dialog";
 import type { RemoveWarningState } from "./remove-warning-view";
 
+const REPO_TARGET = {
+  kind: "repo" as const,
+  repoPath: "/Users/me/project",
+};
+
 function renderDialog({
+  target = REPO_TARGET as Parameters<typeof RemoveSkillDialog>[0]["target"],
   isRemoving = false,
   error = null as string | null,
   attempted = true,
@@ -15,7 +21,7 @@ function renderDialog({
   render(
     <RemoveSkillDialog
       skillName="tdd"
-      repoPath="/Users/me/project"
+      target={target}
       isRemoving={isRemoving}
       error={error}
       attempted={attempted}
@@ -137,6 +143,25 @@ describe("RemoveSkillDialog", () => {
     }
   });
 
+  it("holds the confirm control until the check has answered", async () => {
+    // An answered warning never blocks (#337) — but an unfinished check has not
+    // warned about anything yet. Confirming through it destroys the copy before
+    // the one screen that could have named the cost got to say it.
+    const { onConfirm } = renderDialog({ warning: "checking" });
+
+    const confirm = screen.getByRole("button", { name: /^remove/i });
+    expect(confirm).toBeDisabled();
+    await userEvent.click(confirm);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it("leaves cancel usable while the check is still running", () => {
+    // Waiting on the check must never trap the user in the dialog.
+    renderDialog({ warning: "checking" });
+
+    expect(screen.getByRole("button", { name: "cancel" })).toBeEnabled();
+  });
+
   it("says a failed check failed, rather than blaming a missing baseline", () => {
     renderDialog({ warning: "check-failed" });
 
@@ -164,5 +189,53 @@ describe("RemoveSkillDialog", () => {
     renderDialog();
 
     expect(screen.getByRole("dialog")).toHaveFocus();
+  });
+
+  // The global scope. The user clicked inside one tool's card, so the modal has
+  // to say out loud that the other detected tools go too — that line is what
+  // keeps the screen honest about a set-based action (#338).
+  describe("on the global target", () => {
+    const globalTarget = {
+      kind: "global" as const,
+      tools: ["claude", "codex"],
+    };
+
+    it("names every detected tool the removal will touch", () => {
+      renderDialog({ target: globalTarget });
+
+      const dialog = screen.getByRole("dialog");
+      expect(dialog).toHaveTextContent("Claude Code");
+      expect(dialog).toHaveTextContent("Codex");
+    });
+
+    it("names the scope as the whole tool set, not a path", () => {
+      renderDialog({ target: globalTarget });
+
+      const dialog = screen.getByRole("dialog");
+      expect(dialog).toHaveTextContent(/every detected tool/i);
+      expect(dialog).not.toHaveTextContent("/Users/me/project");
+    });
+
+    it("says there is no per-tool removal", () => {
+      // apm's uninstall has no -t, and the lever that looks like one orphans
+      // the other tools' files — so the promise the modal makes is set-based.
+      renderDialog({ target: globalTarget });
+
+      expect(screen.getByRole("dialog")).toHaveTextContent(/no per-tool/i);
+    });
+
+    it("names the single detected tool when the machine has only one", () => {
+      renderDialog({ target: { kind: "global", tools: ["claude"] } });
+
+      const dialog = screen.getByRole("dialog");
+      expect(dialog).toHaveTextContent("Claude Code");
+      expect(dialog).not.toHaveTextContent("Codex");
+    });
+
+    it("still carries the divergence warning", () => {
+      renderDialog({ target: globalTarget, warning: "local-edits" });
+
+      expect(screen.getByRole("status")).toHaveTextContent(/local edits/i);
+    });
   });
 });

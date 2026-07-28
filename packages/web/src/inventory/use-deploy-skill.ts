@@ -10,6 +10,14 @@ export type DeployTarget =
   | { kind: "repo"; repoPath: string }
   | { kind: "global" };
 
+// The target half of every per-target query key: a repo's path, or the fixed
+// "global" literal. One owner, because deploy-state and drift are keyed by it on
+// both the deploy and the remove path — a second spelling would leave one panel
+// stale after the other refetched.
+export function targetQueryKey(target: DeployTarget): string {
+  return target.kind === "repo" ? target.repoPath : "global";
+}
+
 export type DeployRequest = {
   type: "skill";
   name: string;
@@ -33,12 +41,10 @@ export function useDeploySkill() {
         body: JSON.stringify(request),
       }),
     onSuccess: (_data, request) => {
-      // The target half of both query keys: a repo's path, or the fixed
-      // "global" key. deploy-state shows the skill at its tag; drift is a
-      // separate query that must refetch too, or the new skill keeps its stale
-      // "unknown" badge (#48).
-      const target =
-        request.target.kind === "repo" ? request.target.repoPath : "global";
+      // deploy-state shows the skill at its tag; drift is a separate query that
+      // must refetch too, or the new skill keeps its stale "unknown" badge
+      // (#48).
+      const target = targetQueryKey(request.target);
       queryClient.invalidateQueries({ queryKey: ["deploy-state", target] });
       queryClient.invalidateQueries({ queryKey: ["drift", target] });
     },
