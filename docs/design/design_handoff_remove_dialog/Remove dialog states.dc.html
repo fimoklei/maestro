@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/maestro-design-system-382d1f68-3ef6-49f3-a058-a6eec53e6a86/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/maestro-design-system-382d1f68-3ef6-49f3-a058-a6eec53e6a86/tokens/colors.css">
+<link rel="stylesheet" href="_ds/maestro-design-system-382d1f68-3ef6-49f3-a058-a6eec53e6a86/tokens/typography.css">
+<link rel="stylesheet" href="_ds/maestro-design-system-382d1f68-3ef6-49f3-a058-a6eec53e6a86/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/maestro-design-system-382d1f68-3ef6-49f3-a058-a6eec53e6a86/tokens/base.css">
+<link rel="stylesheet" href="_ds/maestro-design-system-382d1f68-3ef6-49f3-a058-a6eec53e6a86/styles.css">
+<script src="_ds/maestro-design-system-382d1f68-3ef6-49f3-a058-a6eec53e6a86/_ds_bundle.js"></script>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg-0)}
+  a{color:var(--amber-ink);text-decoration:none;border-bottom:1px solid var(--amber-border)}
+  a:hover{color:var(--amber);border-bottom-color:var(--amber)}
+</style>
+</helmet>
+
+<section data-theme="dark" style="min-height:100vh;background:var(--bg-0);color:var(--text-1);font-family:var(--font-ui);padding:40px 36px 60px">
+  <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:6px">
+    <span style="font-size:18px;font-weight:600">Remove-primitive confirmation — all states</span>
+  </div>
+  <div style="font-family:var(--font-mono);font-size:11.5px;color:var(--text-dim);margin-bottom:28px">// target spec for remove-skill-dialog.tsx · 380px panel · question, targets, outcome</div>
+
+  <div style="display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;margin-bottom:14px">
+
+    <!-- 3a -->
+    <div id="3a" data-screen-label="3a global" style="display:flex;flex-direction:column;gap:12px;width:400px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--text-dim);border:1px solid var(--border-chip);border-radius:3px;padding:2px 7px">3a</span>
+        <span style="font-size:14px;font-weight:600">default — global scope</span>
+      </div>
+      <div style="width:380px;background:var(--bg-1);border:1px solid var(--border-strong);border-radius:var(--radius-card,6px);overflow:hidden">
+        <div style="display:flex;flex-direction:column;gap:11px;padding:15px 15px 14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><div style="font-size:15px;font-weight:600;line-height:1.45;color:var(--text-1)">Remove <span style="font-family:var(--font-mono)">secret-scan 1.2.0</span>?</div><span style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.08em;color:var(--type-skill);border:1px solid var(--border-chip);border-radius:3px;padding:2px 6px;white-space:nowrap">skill</span></div>
+          <span style="font-size:12.5px;color:var(--text-muted);margin-top:-3px">Primitive will be removed from:</span>
+          <div style="display:flex;flex-direction:column;font-family:var(--font-mono);font-size:13px;border:1px solid var(--border-row);border-radius:var(--radius-item,5px);overflow:hidden">
+            <div style="display:flex;align-items:center;gap:9px;padding:9px 11px;background:var(--surface-inset);border-bottom:1px solid var(--border-faint)"><span style="color:var(--text-1)">Claude Code</span></div>
+            <div style="display:flex;align-items:center;gap:9px;padding:9px 11px;background:var(--surface-inset)"><span style="color:var(--text-1)">Codex</span></div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 15px;border-top:1px solid var(--border-row)">
+          <x-import component-from-global-scope="MaestroDesignSystem_382d1f.Button" variant="quiet" size="sm" hint-size="70px,28px">cancel</x-import>
+          <x-import component-from-global-scope="MaestroDesignSystem_382d1f.Button" variant="primary" size="sm" hint-size="110px,28px">remove →</x-import>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3b -->
+    <div id="3b" data-screen-label="3b repo" style="display:flex;flex-direction:column;gap:12px;width:400px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--text-dim);border:1px solid var(--border-chip);border-radius:3px;padding:2px 7px">3b</span>
+        <span style="font-size:14px;font-weight:600">repo scope</span>
+      </div>
+      <div style="width:380px;background:var(--bg-1);border:1px solid var(--border-strong);border-radius:var(--radius-card,6px);overflow:hidden">
+        <div style="display:flex;flex-direction:column;gap:11px;padding:15px 15px 14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><div style="font-size:15px;font-weight:600;line-height:1.45;color:var(--text-1)">Remove <span style="font-family:var(--font-mono)">secret-scan 1.2.0</span>?</div><span style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.08em;color:var(--type-skill);border:1px solid var(--border-chip);border-radius:3px;padding:2px 6px;white-space:nowrap">skill</span></div>
+          <span style="font-size:12.5px;color:var(--text-muted);margin-top:-3px">Primitive will be removed from:</span>
+          <div style="display:flex;flex-direction:column;font-family:var(--font-mono);font-size:13px;border:1px solid var(--border-row);border-radius:var(--radius-item,5px);overflow:hidden">
+            <div style="display:flex;align-items:center;gap:9px;padding:9px 11px;background:var(--surface-inset)"><span style="color:var(--text-1);overflow-wrap:anywhere">~/dev/acme-web</span></div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 15px;border-top:1px solid var(--border-row)">
+          <x-import component-from-global-scope="MaestroDesignSystem_382d1f.Button" variant="quiet" size="sm" hint-size="70px,28px">cancel</x-import>
+          <x-import component-from-global-scope="MaestroDesignSystem_382d1f.Button" variant="primary" size="sm" hint-size="110px,28px">remove →</x-import>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3c -->
+    <div id="3c" data-screen-label="3c local edits" style="display:flex;flex-direction:column;gap:12px;width:400px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--text-dim);border:1px solid var(--border-chip);border-radius:3px;padding:2px 7px">3c</span>
+        <span style="font-size:14px;font-weight:600">local edits found</span>
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim)">// the only real consequence</span>
+      </div>
+      <div style="width:380px;background:var(--bg-1);border:1px solid var(--border-drift);border-radius:var(--radius-card,6px);overflow:hidden">
+        <div style="display:flex;flex-direction:column;gap:11px;padding:15px 15px 14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><div style="font-size:15px;font-weight:600;line-height:1.45;color:var(--text-1)">Remove <span style="font-family:var(--font-mono)">secret-scan 1.2.0</span>?</div><span style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.08em;color:var(--type-skill);border:1px solid var(--border-chip);border-radius:3px;padding:2px 6px;white-space:nowrap">skill</span></div>
+          <span style="font-size:12.5px;color:var(--text-muted);margin-top:-3px">Primitive will be removed from:</span>
+          <div style="display:flex;flex-direction:column;font-family:var(--font-mono);font-size:13px;border:1px solid var(--border-row);border-radius:var(--radius-item,5px);overflow:hidden">
+            <div style="display:flex;align-items:center;gap:9px;padding:9px 11px;background:var(--surface-inset);border-bottom:1px solid var(--border-faint)"><span style="color:var(--text-1)">Claude Code</span></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:9px;padding:9px 11px;background:var(--amber-bg)">
+              <span style="display:flex;align-items:center;gap:9px"><span style="color:var(--amber-ink);font-size:11px">▲</span><span style="color:var(--text-1)">Codex</span></span>
+              <span style="font-size:11.5px;color:var(--amber-ink);white-space:nowrap">local edits — deleted too</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 15px;border-top:1px solid var(--border-row)">
+          <x-import component-from-global-scope="MaestroDesignSystem_382d1f.Button" variant="quiet" size="sm" hint-size="70px,28px">cancel</x-import>
+          <x-import component-from-global-scope="MaestroDesignSystem_382d1f.Button" variant="primary" size="sm" hint-size="110px,28px">remove →</x-import>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3d -->
+    <div id="3d" data-screen-label="3d refused" style="display:flex;flex-direction:column;gap:12px;width:400px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--text-dim);border:1px solid var(--border-chip);border-radius:3px;padding:2px 7px">3d</span>
+        <span style="font-size:14px;font-weight:600">refused before confirm</span>
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim)">// no confirm control</span>
+      </div>
+      <div style="width:380px;background:var(--bg-1);border:1px solid rgba(224,112,95,0.30);border-radius:var(--radius-card,6px);overflow:hidden">
+        <div style="display:flex;flex-direction:column;gap:11px;padding:15px 15px 14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><div style="font-size:15px;font-weight:600;line-height:1.45;color:var(--text-1)">Remove <span style="font-family:var(--font-mono)">secret-scan 1.2.0</span>?</div><span style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.08em;color:var(--type-skill);border:1px solid var(--border-chip);border-radius:3px;padding:2px 6px;white-space:nowrap">skill</span></div>
+          <div style="display:flex;gap:9px;padding:10px 11px;background:rgba(224,112,95,0.10);border:1px solid rgba(224,112,95,0.30);border-radius:var(--radius-control,4px)">
+            <span style="font-family:var(--font-mono);font-size:12px;color:#e0705f;line-height:1.45">✕</span>
+            <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+              <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.06em;color:#e0705f">can’t be removed</span>
+              <span style="font-size:12.5px;line-height:1.5;color:var(--text-2)">The lockfile entry doesn’t name this skill the way a Maestro deploy would, so apm can’t be pointed at it. Remove it with apm directly.</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 15px;border-top:1px solid var(--border-row)">
+          <x-import component-from-global-scope="MaestroDesignSystem_382d1f.Button" variant="quiet" size="sm" hint-size="70px,28px">close</x-import>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3e -->
+    <div id="3e" data-screen-label="3e failed" style="display:flex;flex-direction:column;gap:12px;width:400px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--text-dim);border:1px solid var(--border-chip);border-radius:3px;padding:2px 7px">3e</span>
+        <span style="font-size:14px;font-weight:600">failed after confirm</span>
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim)">// per-target outcome</span>
+      </div>
+      <div style="width:380px;background:var(--bg-1);border:1px solid rgba(224,112,95,0.30);border-radius:var(--radius-card,6px);overflow:hidden">
+        <div style="display:flex;flex-direction:column;gap:11px;padding:15px 15px 14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><div style="font-size:15px;font-weight:600;line-height:1.45;color:var(--text-1)">Remove <span style="font-family:var(--font-mono)">secret-scan 1.2.0</span>?</div><span style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.08em;color:var(--type-skill);border:1px solid var(--border-chip);border-radius:3px;padding:2px 6px;white-space:nowrap">skill</span></div>
+          <span style="font-size:12.5px;color:var(--text-muted);margin-top:-3px">Removed from 1 of 2 targets:</span>
+          <div style="display:flex;flex-direction:column;font-family:var(--font-mono);font-size:13px;border:1px solid var(--border-row);border-radius:var(--radius-item,5px);overflow:hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:9px;padding:9px 11px;background:var(--surface-inset);border-bottom:1px solid var(--border-faint)"><span style="color:var(--text-muted)">Claude Code</span><span style="font-size:11.5px;color:var(--green-ink)">✓ removed</span></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:9px;padding:9px 11px;background:rgba(224,112,95,0.10)"><span style="color:var(--text-1)">Codex</span><span style="font-size:11.5px;color:#e0705f">✕ not removed</span></div>
+          </div>
+          <div style="display:flex;gap:9px;padding:10px 11px;background:rgba(224,112,95,0.10);border:1px solid rgba(224,112,95,0.30);border-radius:var(--radius-control,4px)">
+            <span style="font-family:var(--font-mono);font-size:12px;color:#e0705f;line-height:1.45">✕</span>
+            <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+              <span style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.06em;color:#e0705f">apm exited 1</span>
+              <span style="font-size:12.5px;line-height:1.5;color:var(--text-2)">permission denied: ~/.codex/skills/secret-scan/</span><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim)">retry removes only what is left</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 15px;border-top:1px solid var(--border-row)">
+          <x-import component-from-global-scope="MaestroDesignSystem_382d1f.Button" variant="quiet" size="sm" hint-size="70px,28px">close</x-import>
+          <x-import component-from-global-scope="MaestroDesignSystem_382d1f.Button" variant="primary" size="sm" hint-size="110px,28px">retry →</x-import>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,21 @@
+/* Maestro — Control Room typography tokens.
+   Space Grotesk for UI chrome and prose; JetBrains Mono for everything that is data:
+   names, versions, paths, labels, buttons, timestamps. Mono is the dominant voice. */
+:root {
+  --font-ui: "Space Grotesk", "Helvetica Neue", Helvetica, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Menlo, monospace;
+
+  /* type scale (dense cockpit — small but never below 10px) */
+  --fs-title: 16px;     /* section titles, weight 600, --font-ui */
+  --fs-subtitle: 14px;  /* panel titles, weight 600, --font-ui */
+  --fs-body: 13.5px;    /* nav items, UI copy, --font-ui */
+  --fs-data: 13px;      /* primary data: primitive names, --font-mono */
+  --fs-desc: 12.5px;    /* descriptions, secondary prose, --font-ui */
+  --fs-mono-sm: 11.5px; /* repo paths, list data, --font-mono */
+  --fs-chip: 11px;      /* chips, buttons, meta, --font-mono */
+  --fs-tag: 10px;       /* type tags, micro-labels, --font-mono uppercase */
+
+  /* letter-spacing */
+  --ls-label: 0.12em;   /* uppercase micro-labels */
+  --ls-tag: 0.08em;     /* uppercase type tags */
+}
