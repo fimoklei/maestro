@@ -58,10 +58,10 @@ export function RemoveSkillDialog({
   // The server's own reason for a refused or failed removal, or null while
   // nothing has gone wrong.
   error: string | null;
-  // Whether apm actually ran. A guard refusal happens before it does, so the
-  // repo is untouched; only an apm run that did not prove itself can have left
-  // the repo half-changed. Saying otherwise would send the user hunting for
-  // damage that is not there.
+  // Whether apm can have run. Only a failure that provably refused before it
+  // did leaves the repo untouched; anything else may have left it half-changed,
+  // and the mixed-state note follows this flag. `removal-attempt.ts` owns the
+  // classification — the dialog only renders it.
   attempted: boolean;
   // A global removal's own reclaim: the whole copy of a tool this machine no
   // longer detects, force-deleted beyond what apm's scoped uninstall touches

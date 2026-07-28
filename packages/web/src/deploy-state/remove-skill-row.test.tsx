@@ -228,6 +228,48 @@ describe("removing a deployed skill from a row", () => {
     expect(onRemoved).not.toHaveBeenCalled();
   });
 
+  // The mixed-state warning follows the timing of the failure, not the presence
+  // of a code. A response with no code at all — a proxy page, a server that died
+  // mid-uninstall — is the case where apm most likely did run (#384).
+  it("warns about a mixed state when the failure carries no error code", async () => {
+    stubFetch(
+      null,
+      () =>
+        new Response("<html>502 Bad Gateway</html>", {
+          status: 502,
+          headers: { "content-type": "text/html" },
+        }),
+    );
+    renderRow();
+
+    await openRemoveDialog();
+    await userEvent.click(screen.getByRole("button", { name: /^remove tdd/ }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /may be in a mixed state/,
+    );
+  });
+
+  it("stays silent about a mixed state when the removal was refused before apm ran", async () => {
+    stubFetch(null, () =>
+      jsonResponse(
+        {
+          error: "remove-in-progress",
+          message: "Another change to this repo is already running.",
+        },
+        409,
+      ),
+    );
+    renderRow();
+
+    await openRemoveDialog();
+    await userEvent.click(screen.getByRole("button", { name: /^remove tdd/ }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Another change to this repo is already");
+    expect(alert).not.toHaveTextContent(/mixed state/);
+  });
+
   // A removal takes its own row off the screen, so absence is the only evidence
   // left behind. The card says what went instead (#383).
   describe("announcing the outcome", () => {
