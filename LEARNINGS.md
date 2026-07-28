@@ -12,7 +12,7 @@ decisions go to `AGENTS.md` or `docs/adr/`.
 - **YYYY-MM-DD · <area>** — <observation>. → <action>.
 ```
 
-Retired entries live in `LEARNINGS-archive.md`.
+Retired entries are deleted, not archived.
 
 ## Active
 
