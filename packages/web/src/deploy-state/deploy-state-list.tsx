@@ -12,11 +12,11 @@ import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
 import { removalWasAttempted } from "./removal-attempt";
 import { RemovalTrace, type TracedRemoval } from "./removal-trace";
+import { removePreflightView } from "./remove-preflight-view";
 import {
   type RemoveDialogTarget,
   RemoveSkillDialog,
 } from "./remove-skill-dialog";
-import { removeWarningView } from "./remove-warning-view";
 import { UpdateSkillAction } from "./update-skill-action";
 import type { DeployedPrimitive, SkippedEntry } from "./use-deploy-state";
 import { useRemoveDeployedSkill } from "./use-remove-deployed-skill";
@@ -178,8 +178,7 @@ export function DeployStateList({
           skillName={removing}
           target={target}
           isRemoving={remove.isPending}
-          warning={removeWarningView(preflight)}
-          reclaim={preflight.data?.reclaim?.previews ?? []}
+          preflight={removePreflightView(preflight)}
           error={
             remove.error instanceof HttpError
               ? remove.error.message
