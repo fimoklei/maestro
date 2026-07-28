@@ -20,7 +20,7 @@ export type RemoveDialogTarget =
 // an unfinished check cannot promise (J04).
 const WARNING_TEXT: Record<Exclude<RemoveWarningState, "none">, string> = {
   "local-edits":
-    "This copy has local edits that exist nowhere else. Copy them out first — removing it loses them for good.",
+    "This copy has local edits. Copy them out first — removing it deletes them with the copy.",
   "cannot-verify":
     "Nothing was recorded to check this copy against, so local edits can't be checked. Removing it may lose work.",
   "check-failed":

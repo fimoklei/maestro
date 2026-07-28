@@ -220,6 +220,17 @@ describe("RemoveSkillDialog", () => {
       expect(note).toHaveTextContent(/copy them out/i);
     });
 
+    it("claims no more about the edits than the check can prove", () => {
+      // The check compares the deployed files against the recorded hashes. It
+      // never looks anywhere else, so whether these edits survive elsewhere is
+      // outside what it saw — and a consent surface states only what it knows.
+      renderDialog({ warning: "local-edits" });
+
+      expect(screen.getByRole("status")).not.toHaveTextContent(
+        /nowhere else|for good|only copy/i,
+      );
+    });
+
     it("promises no redeploy, because a redeploy pins to the latest tag", () => {
       // The removed version is not what comes back, so the dialog offers no
       // comfort it cannot keep (#386).
