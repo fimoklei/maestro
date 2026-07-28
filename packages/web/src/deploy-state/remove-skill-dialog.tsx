@@ -2,11 +2,12 @@ import { type ReactNode, useId } from "react";
 import { useModalDialog } from "../shell/use-modal-dialog";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
+import { TypeTag } from "../ui/type-tag";
 import type {
   RemovePreflightView,
   RemoveWarningState,
 } from "./remove-preflight-view";
-import { toolDisplayName, toolNameList } from "./tool-labels";
+import { toolDisplayName } from "./tool-labels";
 
 // Which target the removal aims at, in the terms the confirmation must state.
 // The global kind carries its detected tools because the scope line is
@@ -155,8 +156,10 @@ export function RemoveSkillDialog({
   // of #337's decision.
   const awaitingCheck =
     preflight.kind === "warning" && preflight.warning === "checking";
-  // A removal the server has already refused. Every line below that describes
-  // what the removal would do is silenced with it: none of it will happen.
+  // A removal the server has already refused. The ledger still states what the
+  // removal was aimed at — that is the question the panel asked, and a refusal
+  // answers it rather than unasks it — but the confirm goes, because there is
+  // nothing left to consent to.
   const refused = preflight.kind === "refused";
   // Only ever the leftovers the check in hand named. A refusal carries none, so
   // an earlier answer's paths cannot outlive the answer that named them.
@@ -172,26 +175,29 @@ export function RemoveSkillDialog({
       ? preflight.warning
       : null;
 
-  // The question, its scope and its cost are announced as one statement, so the
-  // confirmation is heard rather than arrowed through. The warning and failure
-  // blocks announce themselves and stay out of it. One id per line rather than
-  // one wrapping the group: a list of references is joined with a space by
-  // definition, where the text inside a single element is at the mercy of how
-  // each reader flattens it — and "Remove from" running into a path is the one
-  // reading this description cannot afford.
+  // What the removal is aimed at, one entry per thing that disappears. The
+  // global scope keeps the order it was handed: the panel states the set the
+  // host detected, and re-sorting it here would make the confirmation disagree
+  // with the cards the user just came from.
+  const targets =
+    target.kind === "repo"
+      ? [target.repoPath]
+      : target.tools.map((tool) => toolDisplayName(tool));
+
+  // The question and the targets it would take are announced as one statement,
+  // so the confirmation is heard rather than arrowed through. The warning and
+  // failure blocks announce themselves and stay out of it. One id per row
+  // rather than one wrapping the ledger: a list of references is joined with a
+  // space by definition, where the text inside a single element is at the mercy
+  // of how each reader flattens it — and two tool names running together is the
+  // one reading this description cannot afford.
   const dialogId = useId();
-  const scopeLabelId = `${dialogId}-scope-label`;
-  const scopeValueId = `${dialogId}-scope-value`;
-  const scopeNoteId = `${dialogId}-scope-note`;
-  const costId = `${dialogId}-cost`;
+  const leadInId = `${dialogId}-lead-in`;
+  const rowId = (index: number) => `${dialogId}-target-${index}`;
   const describedBy = [
-    scopeLabelId,
-    scopeValueId,
-    target.kind === "global" ? scopeNoteId : null,
-    refused ? null : costId,
-  ]
-    .filter((id) => id !== null)
-    .join(" ");
+    leadInId,
+    ...targets.map((_, index) => rowId(index)),
+  ].join(" ");
   // Why the confirm control is unavailable, tied to the control itself: a
   // disabled button with the reason elsewhere on screen states it to sighted
   // users alone. Same wiring as the browse dialog's `↑ up` at its ceiling.
@@ -219,12 +225,17 @@ export function RemoveSkillDialog({
         tabIndex={-1}
         className="relative flex w-full max-w-[480px] flex-col overflow-hidden rounded-card border border-line bg-chrome outline-none"
       >
-        <div className="border-line-row border-b px-3.5 py-3">
+        <div className="flex items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
           {/* "Remove" and "?" are chrome; the name and version are data, so
               they take the mono face inside the sans question (Mono-Is-Data). */}
           <h2 className="font-semibold font-ui text-fg text-subtitle">
             Remove <span className="font-mono">{named}</span>?
           </h2>
+          {/* What kind of thing is going, in the chip the inventory and the
+              detail pane already use. Only skills reach this dialog today —
+              `DeployedPrimitive.type` is the literal "skill" — so the type is
+              stated, not guessed. */}
+          <TypeTag type="skill" className="shrink-0" />
         </div>
 
         {/* Two groups, not one stack: what the removal is aimed at, then what
@@ -234,37 +245,32 @@ export function RemoveSkillDialog({
             short. */}
         <div className="flex flex-col gap-3 px-3.5 py-3">
           <div className="flex flex-col gap-2">
-            {/* The heading names the skill and its version, so this states the
-                other half — where it goes from — as the system's own micro-label
-                over its value, rather than a second sentence repeating the
-                question above it. A target name, at the size the cockpit sets
-                every other target name: this is the panel's answer, and it was
-                the smallest line in it. */}
-            <div className="flex flex-col gap-1">
-              <span id={scopeLabelId} className="m-label">
-                Remove from
-              </span>
-              <span
-                id={scopeValueId}
-                className="break-all font-mono text-data text-fg"
-              >
-                {target.kind === "repo"
-                  ? target.repoPath
-                  : "every detected tool"}
-              </span>
-            </div>
-            {/* Mandatory on the global path: the trigger sits inside one tool's
-                card, so the modal names the whole set before the user agrees to
-                it. There is no per-tool remove to offer — apm's uninstall has no
-                -t, and narrowing targets: to fake one orphans the other tools'
-                files (apm-behavior.md § Remove, ADR-0013). */}
-            {target.kind === "global" ? (
-              <p id={scopeNoteId} className="font-ui text-body text-fg-2">
-                This takes it off{" "}
-                <span className="font-mono">{toolNameList(target.tools)}</span>{" "}
-                in one go. There is no per-tool remove.
-              </p>
-            ) : null}
+            {/* One lead-in, then the answer. The panel used to spend three
+                prose lines on the scope — a micro-label, a summary value, and a
+                sentence naming the set — where a reader only ever needed the
+                list itself. */}
+            <span id={leadInId} className="font-ui text-desc text-muted">
+              Primitive will be removed from:
+            </span>
+            {/* The ledger. Rows are static text: there is no per-tool remove to
+                offer — apm's uninstall has no -t, and faking one orphans the
+                other tools' files (apm-behavior.md § Remove, ADR-0013) — so
+                nothing on a row may carry a control or a glyph that reads as
+                one. The sentence that used to say so is gone; a row with
+                nothing to press says it without spending a line. */}
+            <ul className="flex flex-col overflow-hidden rounded-item border border-line-row">
+              {targets.map((name, index) => (
+                <li
+                  key={name}
+                  id={rowId(index)}
+                  // A path has no spaces to break at, so without break-all it
+                  // sets the panel's width instead of fitting inside it.
+                  className="break-all border-line-faint border-b bg-inset px-3 py-2.5 font-mono text-data text-fg last:border-b-0"
+                >
+                  {name}
+                </li>
+              ))}
+            </ul>
           </div>
 
           <div className="flex flex-col gap-2">
@@ -354,17 +360,6 @@ export function RemoveSkillDialog({
                 message={preflight.message}
               />
             ) : null}
-            {/* Last of the prose, so the loud blocks sit together above it. It
-                states the cost and stops there: a redeploy re-pins to the latest
-                published tag, so the removed version is not what would come
-                back, and this dialog offers no comfort it cannot keep (#386). It
-                describes a removal that is about to happen, so a refusal drops
-                it rather than name a cost nothing will pay. */}
-            {refused ? null : (
-              <p id={costId} className="font-ui text-desc text-dim">
-                Its deployed files and its lockfile entry go.
-              </p>
-            )}
             {/* A removal the user confirmed and apm did not land. */}
             {error ? (
               <FailureNote label="the removal failed" message={error}>
@@ -413,21 +408,20 @@ export function RemoveSkillDialog({
           >
             cancel
           </Button>
-          {/* This label grows with the skill name inside a fixed-width panel, so
-              it is the one control here allowed to give ground: it shrinks and
-              ellipsises rather than push the footer out of shape (#388). The DOM
-              text stays whole, so the accessible name is unaffected, and the
-              heading above carries the full name and version either way. */}
+          {/* Fixed-length, like the way out beside it. The label used to carry
+              the skill name inside a fixed-width panel, so it had to shrink and
+              ellipsise to fit (#388); the title states the name and version, so
+              repeating it here bought nothing and cost the footer its shape. */}
           <Button
             type="button"
-            className="min-w-0 truncate"
+            className="shrink-0"
             variant="primary"
             size="sm"
             disabled={isRemoving || awaitingCheck || refused}
             aria-describedby={blockedId}
             onClick={onConfirm}
           >
-            {isRemoving ? `removing ${skillName}…` : `remove ${skillName}`}
+            {isRemoving ? "removing…" : "remove →"}
           </Button>
         </div>
       </div>
