@@ -44,6 +44,11 @@ export const Refused: Story = {
   },
 };
 
+// The check has not answered yet, so the confirm control waits with it: an
+// unfinished check has not warned about anything, and apm deletes an edited copy
+// without a word. Cancel stays open, so waiting is never a trap.
+export const Checking: Story = { args: { warning: "checking" } };
+
 // The deployed copy carries edits apm would delete without a word. Amber, not
 // danger red — and the confirm control stays usable, because destroying the
 // copy is what the user came here to do.

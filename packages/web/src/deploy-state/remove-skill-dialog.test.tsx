@@ -143,6 +143,25 @@ describe("RemoveSkillDialog", () => {
     }
   });
 
+  it("holds the confirm control until the check has answered", async () => {
+    // An answered warning never blocks (#337) — but an unfinished check has not
+    // warned about anything yet. Confirming through it destroys the copy before
+    // the one screen that could have named the cost got to say it.
+    const { onConfirm } = renderDialog({ warning: "checking" });
+
+    const confirm = screen.getByRole("button", { name: /^remove/i });
+    expect(confirm).toBeDisabled();
+    await userEvent.click(confirm);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it("leaves cancel usable while the check is still running", () => {
+    // Waiting on the check must never trap the user in the dialog.
+    renderDialog({ warning: "checking" });
+
+    expect(screen.getByRole("button", { name: "cancel" })).toBeEnabled();
+  });
+
   it("says a failed check failed, rather than blaming a missing baseline", () => {
     renderDialog({ warning: "check-failed" });
 

@@ -71,6 +71,11 @@ export function RemoveSkillDialog({
     closeEnabled: !isRemoving,
   });
   const heading = `Remove ${skillName}?`;
+  // An answered warning never blocks — but an unfinished one has not warned yet,
+  // and apm deletes an edited copy without a word. Holding the confirm until the
+  // check answers is the J04 rule applied to consent, not a second guard on top
+  // of #337's decision.
+  const awaitingCheck = warning === "checking";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 p-6">
@@ -161,7 +166,7 @@ export function RemoveSkillDialog({
             type="button"
             variant="primary"
             size="sm"
-            disabled={isRemoving}
+            disabled={isRemoving || awaitingCheck}
             onClick={onConfirm}
           >
             {isRemoving ? `removing ${skillName}…` : `remove ${skillName}`}
