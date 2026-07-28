@@ -236,6 +236,8 @@ describe("removing a deployed skill from a row", () => {
     });
 
     it("offers no confirm for a removal that cannot succeed", async () => {
+      // Not a disabled one either: the server has settled it, so a control that
+      // can never fire would state a way through that does not exist (#412).
       const fetchMock = refuseWith(
         "no-supported-tool",
         "No supported tool is installed, so there is no global deployment to remove.",
@@ -246,9 +248,7 @@ describe("removing a deployed skill from a row", () => {
       const dialog = await openRemoveDialog();
       await within(dialog).findByRole("alert");
 
-      const confirm = screen.getByRole("button", { name: CONFIRM });
-      expect(confirm).toBeDisabled();
-      await userEvent.click(confirm);
+      expect(screen.queryByRole("button", { name: CONFIRM })).toBeNull();
       expect(removeCalls(fetchMock)).toEqual([]);
     });
 

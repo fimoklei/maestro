@@ -1,5 +1,5 @@
 import type { ReclaimPreview } from "@maestro/core";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type {
@@ -580,19 +580,27 @@ describe("RemoveSkillDialog", () => {
 
   // The check can also come back with the server refusing the request outright.
   // That is not a failed check — it is the removal already known to be
-  // impossible, so the dialog says why and stops offering it (#385).
+  // impossible, so the dialog says why and stops offering it (#385). Nothing
+  // will be removed, so the panel also stops listing what would have gone: the
+  // title and one error block are the whole screen (#412).
   describe("when the check came back refused", () => {
     const refused = {
       kind: "refused" as const,
       message: "That repo is not registered with Maestro.",
     };
 
-    it("states the server's own reason", () => {
+    it("states the server's own reason, word for word", () => {
       renderDialog({ preflight: refused });
 
-      expect(screen.getByRole("alert")).toHaveTextContent(
-        "That repo is not registered with Maestro.",
-      );
+      expect(
+        screen.getByText("That repo is not registered with Maestro."),
+      ).toBeInTheDocument();
+    });
+
+    it("labels the block as the thing that cannot happen", () => {
+      renderDialog({ preflight: refused });
+
+      expect(screen.getByText("can't be removed")).toBeInTheDocument();
     });
 
     it("never says work may be lost", () => {
@@ -605,31 +613,48 @@ describe("RemoveSkillDialog", () => {
       expect(dialog).not.toHaveTextContent(/couldn't check this copy/i);
     });
 
-    it("takes the confirm control away", async () => {
-      const { onConfirm } = renderDialog({ preflight: refused });
+    // A ledger answers "what disappears, and where". Under a refusal nothing
+    // disappears, so the question and its answer are both moot — listing
+    // targets would state a consequence the server has already ruled out.
+    it("lists no targets, because none of them lose anything", () => {
+      renderDialog({
+        target: { kind: "global", tools: ["claude", "codex"] },
+        preflight: refused,
+      });
 
-      const confirm = screen.getByRole("button", { name: /^remove/i });
-      expect(confirm).toBeDisabled();
-      await userEvent.click(confirm);
-      expect(onConfirm).not.toHaveBeenCalled();
+      expect(screen.queryAllByRole("listitem")).toEqual([]);
     });
 
-    it("ties the reason to the control it took away", () => {
-      // A disabled button with its reason loose on the page states that reason
-      // to sighted readers alone.
+    it("drops the lead-in that introduced the ledger", () => {
       renderDialog({ preflight: refused });
 
-      expect(
-        screen
-          .getByRole("button", { name: /^remove/i })
-          .getAttribute("aria-describedby"),
-      ).toBe(screen.getByRole("alert").id);
+      expect(screen.queryByText("Primitive will be removed from:")).toBeNull();
     });
 
-    it("leaves cancel as the way out", () => {
+    // A disabled confirm still reads as a way through that is temporarily shut.
+    // This one is shut for good, and a control nobody can ever press is a
+    // promise the panel has no way to keep.
+    it("offers no confirm control at all, not even a disabled one", () => {
       renderDialog({ preflight: refused });
 
-      expect(screen.getByRole("button", { name: "cancel" })).toBeEnabled();
+      expect(screen.queryByRole("button", { name: /remove/i })).toBeNull();
+    });
+
+    it("leaves exactly one control in the footer, labelled close", () => {
+      renderDialog({ preflight: refused });
+
+      // The backdrop's dismiss button is hidden from the a11y tree, so this is
+      // every control the panel offers.
+      const controls = screen.getAllByRole("button");
+      expect(controls.map((control) => control.textContent)).toEqual(["close"]);
+    });
+
+    it("closes through the one control it leaves", async () => {
+      const { onCancel } = renderDialog({ preflight: refused });
+
+      await userEvent.click(screen.getByRole("button", { name: "close" }));
+
+      expect(onCancel).toHaveBeenCalledTimes(1);
     });
 
     it("wears danger red with a glyph, not the amber of lost work", () => {
@@ -643,6 +668,42 @@ describe("RemoveSkillDialog", () => {
       expect(alert).toHaveTextContent("✕");
     });
 
+    // The word that carries the meaning for a reader who never sees the ✕ or
+    // the red: the glyph is decorative and hidden from the a11y tree on
+    // purpose, so the label is the whole signal there (Never-Colour-Alone).
+    it("names the refusal in words a screen reader reaches", () => {
+      renderDialog({ preflight: refused });
+
+      const alert = screen.getByRole("alert");
+      expect(alert.querySelector("[aria-hidden='true']")).toHaveTextContent(
+        "✕",
+      );
+      expect(within(alert).getByText("can't be removed")).not.toHaveAttribute(
+        "aria-hidden",
+      );
+    });
+
+    it("carries the refusal in the panel's own outline", () => {
+      // The block alone is a red box on a neutral panel; the whole screen is
+      // the refusal, so the whole screen wears it.
+      renderDialog({ preflight: refused });
+
+      expect(screen.getByRole("dialog").className).toContain(
+        "border-danger-border",
+      );
+    });
+
+    it("describes itself with the refusal, now that it is the whole panel", () => {
+      // The description pointed at the lead-in and the ledger rows, and both
+      // are gone. Left empty it would leave the panel's only content resting on
+      // the live region firing — so the description follows the content.
+      renderDialog({ preflight: refused });
+
+      expect(screen.getByRole("dialog").getAttribute("aria-describedby")).toBe(
+        screen.getByRole("alert").id,
+      );
+    });
+
     it("drops the promise that the skill can be redeployed", () => {
       // That line describes a removal about to happen. Under a refusal it
       // describes nothing.
@@ -652,6 +713,14 @@ describe("RemoveSkillDialog", () => {
         /deploy it again/i,
       );
     });
+  });
+
+  it("keeps the neutral panel outline while the removal is still on offer", () => {
+    // The danger outline is the refusal's, so a panel that still has a question
+    // to ask must not borrow it.
+    renderDialog();
+
+    expect(screen.getByRole("dialog").className).not.toContain("danger");
   });
 
   // The global scope. The user clicked inside one tool's card, so the modal has
