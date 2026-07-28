@@ -19,4 +19,6 @@ export const stubRemove = (deps: { registry: Registry }) =>
     // this stub never had.
     toolPresence: { detectGlobalTools: async () => [] },
     canonicalPath: async (path) => path,
+    // Never reached either, for the same reason as deployedCleanup above.
+    location: { treeRoot: () => "/home" },
   });

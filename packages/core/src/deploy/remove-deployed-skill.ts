@@ -27,10 +27,12 @@ import type {
   DeployTarget,
 } from "./deploy-skill";
 import type { SupportedTool } from "./deploy-tools";
+import type { DeployedLocation } from "./deployed-location";
 import type { DeployedRefLookup } from "./deployed-ref";
 import { GLOBAL_LOCK_KEY, InFlightLocks } from "./in-flight-locks";
 import { isValidSkillSlug } from "./package-ref";
-import { reclaimUntargetedCopies } from "./reclaim-untargeted-copies";
+import { type ReclaimConsent, ReclaimConsentIssuer } from "./reclaim-consent";
+import { reclaimTools } from "./reclaim-untargeted-copies";
 
 // Which package reference names the deployed skill, read from the target's own
 // lockfile. Implemented by DeployedRefAdapter.
@@ -47,6 +49,12 @@ type RemoveDeployedSkillInput = {
   type: string;
   name: string;
   target: DeployTarget;
+  // Read only by `execute`. The token this same request's own `preflight` call
+  // returned with the leftover paths it named. Never a client-supplied path
+  // list: a caller could echo back a path it merely guessed without ever
+  // having called preflight, and the reclaim would run all the same. A
+  // missing, stale, or guessed token reclaims nothing.
+  confirmedReclaimToken?: string;
 };
 
 export type RemoveDeployedSkillError =
@@ -155,7 +163,15 @@ type RemoveDeployedSkillResult =
   | { ok: false; error: RemoveDeployedSkillError };
 
 type RemovePreflightResult =
-  | { ok: true; warning: RemoveWarning | null }
+  | {
+      ok: true;
+      warning: RemoveWarning | null;
+      // The leftover copies this removal would also delete, with the token
+      // that authorizes deleting exactly them — or null when there are none.
+      // One field, so a path can never reach the confirmation without the
+      // token, nor a token without the paths it covers.
+      reclaim: ReclaimConsent | null;
+    }
   | { ok: false; error: RemovePreflightError };
 
 export class RemoveDeployedSkill {
@@ -187,13 +203,23 @@ export class RemoveDeployedSkill {
     // this use-case guards only against itself — enough for a test, never for
     // the composed server.
     locks?: InFlightLocks;
+    // Where the reclaimable subtree sits, so the preflight preview and the
+    // confirmed reclaim can both name the same absolute path (shared with
+    // deployedCleanup's own root).
+    location: Pick<DeployedLocation, "treeRoot">;
   };
 
   private readonly locks: InFlightLocks;
+  // Names the leftovers a global removal would force-delete, and holds the key
+  // that binds those names to the token `execute` demands back.
+  private readonly consent: ReclaimConsentIssuer;
 
   constructor(deps: RemoveDeployedSkill["deps"]) {
     this.deps = deps;
     this.locks = deps.locks ?? new InFlightLocks();
+    this.consent = new ReclaimConsentIssuer({
+      treeRoot: (target) => deps.location.treeRoot(target),
+    });
   }
 
   // What the confirmation must say before this removal runs: the deployed copy
@@ -227,7 +253,15 @@ export class RemoveDeployedSkill {
         target: input.target,
         name: input.name,
       });
-      return { ok: true, warning: GUARD_WARNINGS[state] ?? null };
+      return {
+        ok: true,
+        warning: GUARD_WARNINGS[state] ?? null,
+        reclaim: this.consent.offer({
+          target: input.target,
+          name: input.name,
+          detected: scope.scope === "global" ? scope.detected : undefined,
+        }),
+      };
     } catch {
       return { ok: false, error: "preflight-failed" };
     }
@@ -356,14 +390,13 @@ export class RemoveDeployedSkill {
 
       // Placed after apm's positive marker, never before: a removal that never
       // happened leaves a copy nothing replaced, and deleting it then destroys
-      // work no uninstall accounted for. Why anything is left to reclaim at
-      // all is the helper's own header.
-      await reclaimUntargetedCopies({
-        cleanup: this.deps.deployedCleanup,
-        target: input.target,
-        name: input.name,
+      // work no uninstall accounted for.
+      await this.reclaimConfirmed(
+        input.target,
+        input.name,
         detected,
-      });
+        input.confirmedReclaimToken,
+      );
       return {
         ok: true,
         removed: {
@@ -375,5 +408,36 @@ export class RemoveDeployedSkill {
     } catch {
       return { ok: false, error: "remove-failed" };
     }
+  }
+
+  // Runs the reclaim only when the request's token proves the confirmation came
+  // from this same instance's own `preflight`, over the paths it named. The
+  // issuer rebuilds that answer here rather than trusting anything the client
+  // sent, so a request that never called preflight — or one replaying a token
+  // for a different skill, target, or machine state — reclaims nothing. What
+  // gets deleted is the granted set itself, never a set derived a second time:
+  // the whole point of #390 is that the removal cannot exceed what the
+  // confirmation named.
+  private async reclaimConfirmed(
+    target: DeployTarget,
+    name: string,
+    detected: readonly SupportedTool[] | undefined,
+    confirmedToken: string | undefined,
+  ): Promise<void> {
+    const granted = this.consent.grants(
+      { target, name, detected },
+      confirmedToken,
+    );
+    if (granted === null) {
+      return;
+    }
+    // Best-effort deletion, and the fact that failing is never an error, is the
+    // shared helper's rule — the deploy path relies on the same one.
+    await reclaimTools({
+      cleanup: this.deps.deployedCleanup,
+      target,
+      name,
+      tools: granted.map((entry) => entry.tool),
+    });
   }
 }

@@ -16,6 +16,11 @@ export type RemoveRequest = {
   // The same union the deploy path sends: a repo carries its path, global
   // carries none — its location is the server's to resolve (J07).
   target: DeployTarget;
+  // The token this same target's preflight returned alongside its reclaim
+  // preview. Proves to the server that the confirmation the user saw came
+  // from an actual preflight call, rather than a path a direct request could
+  // guess on its own.
+  confirmedReclaimToken?: string;
 };
 
 // The server names the version it actually removed, read from the target's

@@ -3,7 +3,7 @@
 // in the body rather than a query string, like the filesystem browse route.
 // Kept out of the mutation so the answer is on screen before the user commits,
 // not after (#337).
-import type { RemoveWarning } from "@maestro/core";
+import type { ReclaimConsent, RemoveWarning } from "@maestro/core";
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 import {
@@ -14,7 +14,16 @@ import {
 // The wire shape, named by core's own vocabulary rather than a copy of it: the
 // warnings must mean the same thing on both sides of the wire, so they get one
 // owner (architecture.md — web imports types from core, never values).
-export type RemovePreflight = { warning: RemoveWarning | null };
+export type RemovePreflight = {
+  warning: RemoveWarning | null;
+  // What a global removal's own reclaim would also delete, named by tool and
+  // exact path, together with the server-issued token that authorizes deleting
+  // exactly those paths. Null when there is nothing to reclaim, which is always
+  // the case on a repo target. One field rather than two, so the screen can
+  // never show a path it has no token for, and the confirm mutation can never
+  // send a token for paths nobody was shown.
+  reclaim: ReclaimConsent | null;
+};
 
 // The skill name is null unless a confirmation is open, so there is no "which
 // skill?" question to answer while the query is off. The target is the row's

@@ -38,10 +38,22 @@ function stubFetch(
       { removed: { type: "skill", name: "tdd", version: "v0.5.0" } },
       200,
     ),
+  reclaim: { tool: string; path: string }[] = [],
 ) {
   const fetchMock = vi.fn(async (path: string) =>
     path === "/api/deploy/remove/preflight"
-      ? jsonResponse({ warning }, 200)
+      ? jsonResponse(
+          {
+            warning,
+            // Paths and token travel as one, exactly as the server sends them:
+            // there is no consent for an empty set, so no token either.
+            reclaim:
+              reclaim.length > 0
+                ? { previews: reclaim, token: "a".repeat(64) }
+                : null,
+          },
+          200,
+        )
       : onRemove(),
   );
   vi.stubGlobal("fetch", fetchMock);
@@ -401,6 +413,37 @@ describe("removing a deployed skill from a row", () => {
         type: "skill",
         name: "tdd",
         target: { kind: "global" },
+      });
+    });
+
+    // A global removal can also force-delete the whole copy of a
+    // tool this machine no longer detects. The dialog must name that path
+    // before the user confirms, and the confirm request must echo back
+    // exactly the token this same preflight issued — never a client-rebuilt
+    // path list, which a direct request could guess without ever calling
+    // preflight.
+    it("names the leftover copy and confirms with preflight's own token", async () => {
+      const fetchMock = stubFetch(null, undefined, [
+        { tool: "claude", path: "/Users/me/.claude/skills/tdd" },
+      ]);
+      renderGlobalRow();
+
+      const dialog = await openRemoveDialog();
+      expect(dialog).toHaveTextContent("/Users/me/.claude/skills/tdd");
+
+      await userEvent.click(
+        screen.getByRole("button", { name: /^remove tdd/ }),
+      );
+
+      await waitFor(() => {
+        expect(removeCalls(fetchMock)).toHaveLength(1);
+      });
+      const [, init] = removeCalls(fetchMock)[0] as [string, RequestInit];
+      expect(JSON.parse(String(init.body))).toEqual({
+        type: "skill",
+        name: "tdd",
+        target: { kind: "global" },
+        confirmedReclaimToken: "a".repeat(64),
       });
     });
   });
