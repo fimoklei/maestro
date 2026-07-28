@@ -124,6 +124,18 @@ describe("removing a deployed skill from a row", () => {
     expect(dialog).toHaveTextContent(REPO);
   });
 
+  // The row states the deployed version; the confirmation asks about the same
+  // build, so the user never has to hold it across a menu and a modal.
+  it("carries the row's version into the question the confirmation asks", async () => {
+    renderRow();
+
+    await openRemoveDialog();
+
+    expect(
+      within(screen.getByRole("dialog")).getByRole("heading", { level: 2 }),
+    ).toHaveTextContent("Remove tdd v0.5.0?");
+  });
+
   it("removes nothing when the confirmation is cancelled", async () => {
     const fetchMock = stubFetch(null);
     renderRow();
