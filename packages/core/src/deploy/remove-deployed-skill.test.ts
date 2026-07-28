@@ -29,6 +29,11 @@ type Overrides = {
   locks?: InFlightLocks;
   canonicalPath?: (path: string) => Promise<string>;
   deployedState?: DeployedContentState;
+  // The guard's answer as a function of the scope it was given, for a test that
+  // cares about which copies were looked at rather than a fixed verdict.
+  deployedStateForScope?: (
+    tools: readonly SupportedTool[] | undefined,
+  ) => DeployedContentState;
   detectedTools?: SupportedTool[];
   detectTools?: () => Promise<SupportedTool[]>;
 };
@@ -52,7 +57,11 @@ function buildUseCase(overrides: Overrides = {}) {
     deployedContent: {
       classify: async ({ target, tools }) => {
         calls.classifies.push({ target, tools });
-        return overrides.deployedState ?? "clean";
+        return (
+          overrides.deployedStateForScope?.(tools) ??
+          overrides.deployedState ??
+          "clean"
+        );
       },
     },
     apm: {
@@ -297,16 +306,18 @@ describe("RemoveDeployedSkill on the global target", () => {
     expect(calls.removes).toHaveLength(1);
   });
 
-  it("scopes the destination guard to the tools it detected", async () => {
-    // A prior two-tool install leaves an untargeted tool's hashes in the
-    // lockfile; scanning for a copy that tool never got would read as drift and
-    // warn about edits nobody made (ADR-0011, #136).
+  it("scans every supported tool's copy, not only the detected ones", async () => {
+    // Detection answers "what does this machine have today"; apm's uninstall
+    // deletes by its own recorded targets, which still name a tool that has
+    // since dropped out. Scanning only the detected set would let apm delete an
+    // edited copy the confirmation never mentioned. The scan therefore covers
+    // every supported tool — the guard's own default (undefined).
     const { useCase, calls } = buildUseCase({ detectedTools: ["claude"] });
 
     await useCase.execute(removeTddGlobally);
 
     expect(calls.classifies).toEqual([
-      { target: { kind: "global" }, tools: ["claude"] },
+      { target: { kind: "global" }, tools: undefined },
     ]);
   });
 
@@ -359,14 +370,29 @@ describe("RemoveDeployedSkill on the global target", () => {
     });
   });
 
-  it("checks the global copy against the detected tools only", async () => {
+  it("checks every supported tool's copy before confirming", async () => {
     const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
 
     await useCase.preflight(removeTddGlobally);
 
     expect(calls.classifies).toEqual([
-      { target: { kind: "global" }, tools: ["codex"] },
+      { target: { kind: "global" }, tools: undefined },
     ]);
+  });
+
+  it("warns about a copy left behind by a tool that is no longer detected", async () => {
+    // The tool went away; its deployed copy did not, and apm still deletes it.
+    // A check scoped to today's tools would call this removal costless.
+    const { useCase } = buildUseCase({
+      detectedTools: ["claude"],
+      deployedStateForScope: (tools) =>
+        tools === undefined ? "diverged" : "clean",
+    });
+
+    await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
+      ok: true,
+      warning: "local-edits-will-be-lost",
+    });
   });
 
   it("refuses the check too when no tool is detected", async () => {

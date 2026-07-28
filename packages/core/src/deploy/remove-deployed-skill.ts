@@ -25,7 +25,6 @@ import type {
   DeployedContentState,
   DeployTarget,
 } from "./deploy-skill";
-import type { SupportedTool } from "./deploy-tools";
 import type { DeployedRefLookup } from "./deployed-ref";
 import { GLOBAL_LOCK_KEY, InFlightLocks } from "./in-flight-locks";
 import { isValidSkillSlug } from "./package-ref";
@@ -130,12 +129,10 @@ export type RemovePreflightError =
   | "no-supported-tool"
   | "preflight-failed";
 
-// The tool scope a removal covers, resolved once and shared by the guard call
-// and the refusal. `tools: undefined` means "the guard's own default set" — the
-// repo path, which has no per-tool narrowing to reconcile.
-type ResolvedScope =
-  | { ok: true; tools: readonly SupportedTool[] | undefined }
-  | { ok: false; error: "no-supported-tool" };
+// Whether this removal has a scope to run in at all. It carries no tool list:
+// the guard reads every supported tool's copy either way, because apm deletes
+// by its own recorded targets rather than by what this machine detects today.
+type ResolvedScope = { ok: true } | { ok: false; error: "no-supported-tool" };
 
 type RemoveDeployedSkillResult =
   | { ok: true; removed: { type: "skill"; name: string } }
@@ -157,9 +154,9 @@ export class RemoveDeployedSkill {
     // breaks this use-case or its fakes.
     apm: Pick<ApmDriverPort, "removeSkill">;
     // Which tools this machine actually has, probed live per request (ADR-0011).
-    // The global path alone needs it: it scopes the destination guard to the
-    // copies a deploy would have written, and an empty probe is what turns a
-    // global removal into an honest refusal instead of a no-op.
+    // The global path alone needs it, and only to answer whether there is a
+    // scope at all: an empty probe is what turns a global removal into an honest
+    // refusal instead of a no-op.
     toolPresence: ToolPresencePort;
     // Resolves a path to its canonical form (realpath), so the in-flight lock
     // cannot be sidestepped by a symlinked spelling of the same repo.
@@ -207,7 +204,6 @@ export class RemoveDeployedSkill {
       const state = await this.deps.deployedContent.classify({
         target: input.target,
         name: input.name,
-        tools: scope.tools,
       });
       return { ok: true, warning: GUARD_WARNINGS[state] ?? null };
     } catch {
@@ -243,25 +239,25 @@ export class RemoveDeployedSkill {
       return { ok: false, error: scope.error };
     }
 
-    const run = await this.locks.run(lockKey, () =>
-      this.remove(input, scope.tools),
-    );
+    const run = await this.locks.run(lockKey, () => this.remove(input));
     return run.ok ? run.value : { ok: false, error: "remove-in-progress" };
   }
 
-  // Which tools the removal covers, and whether there is any scope at all. A
-  // repo's answer is "every DEPLOY_TOOLS copy" (undefined — the guard's own
-  // default); the global answer is the live probe, refused when it comes back
-  // empty. Throws only when the probe itself failed; both callers own that as
-  // their catch-all.
+  // Whether this removal has anything to run against. A repo always does. The
+  // global scope asks the live probe and refuses an empty answer — a machine
+  // with no supported tool has nothing to remove from. Detection decides that
+  // and nothing else: which copies the guard reads is not its business, because
+  // apm deletes by its own recorded targets, which still name a tool that has
+  // since dropped off this machine. Throws only when the probe itself failed;
+  // both callers own that as their catch-all.
   private async resolveScope(target: DeployTarget): Promise<ResolvedScope> {
     if (target.kind === "repo") {
-      return { ok: true, tools: undefined };
+      return { ok: true };
     }
     const detected = await this.deps.toolPresence.detectGlobalTools();
     return detected.length === 0
       ? { ok: false, error: "no-supported-tool" }
-      : { ok: true, tools: detected };
+      : { ok: true };
   }
 
   // The request-shape rules both entry points share, in the order that keeps
@@ -295,7 +291,6 @@ export class RemoveDeployedSkill {
 
   private async remove(
     input: RemoveDeployedSkillInput,
-    tools: readonly SupportedTool[] | undefined,
   ): Promise<RemoveDeployedSkillResult> {
     const target = input.target;
     // From here on we touch the filesystem and drive apm, both of which can
@@ -319,7 +314,6 @@ export class RemoveDeployedSkill {
       const deployedState = await this.deps.deployedContent.classify({
         target,
         name: input.name,
-        tools,
       });
       const refusal = GUARD_REFUSALS[deployedState];
       if (refusal !== undefined) {
