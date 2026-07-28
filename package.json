@@ -19,6 +19,7 @@
     "test:acceptance": "node scripts/run-tests.mjs --project acceptance",
     "test:watch": "vitest",
     "typecheck": "pnpm -r typecheck && tsc -p tsconfig.json --noEmit",
+    "knip": "knip",
     "lint": "biome check .",
     "format": "biome check --write .",
     "verify": "node scripts/verify.mjs"
@@ -30,6 +31,7 @@
     "@maestro/server": "workspace:*",
     "@types/node": "^24.9.1",
     "concurrently": "^10.0.0",
+    "knip": "^6.29.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.7"
   }
