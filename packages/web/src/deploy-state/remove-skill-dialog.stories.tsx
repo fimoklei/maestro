@@ -43,12 +43,24 @@ export const Confirming: Story = {};
 // A row that carries no version. The question drops it rather than invent one.
 export const WithoutVersion: Story = { args: { version: null } };
 
-// The longest name the footer can be asked to carry. The confirm label grows
-// with the skill name inside a fixed-width panel, so this is the state that
-// proves the footer holds its shape: the confirm ellipsises, cancel keeps its
-// full width, and the heading still shows the name whole (#388).
+// The longest name the panel can be asked to carry. It used to be the footer's
+// problem — the confirm label grew with the name and had to ellipsise to fit
+// (#388) — and is now the title's alone, so this is the state that proves the
+// heading and the type tag share the header without either giving way (#411).
 export const LongSkillName: Story = {
   args: { skillName: "some-very-long-skill-name-that-keeps-going" },
+};
+
+// A path with no spaces to break at. The ledger row wraps it mid-token rather
+// than letting it set the panel's width.
+export const LongRepoPath: Story = {
+  args: {
+    target: {
+      kind: "repo",
+      repoPath:
+        "/Users/me/dev/clients/acme/platform/services/acme-web-frontend",
+    },
+  },
 };
 
 // Mid-removal: both controls are inert and the dialog cannot be dismissed, so
@@ -120,9 +132,10 @@ export const CheckRefused: Story = {
   },
 };
 
-// The global scope. The trigger sits inside one tool's card, so the modal names
-// every detected tool it will remove from — and says there is no per-tool
-// remove to reach for instead.
+// The global scope. The trigger sits inside one tool's card, so the ledger
+// lists every detected tool the removal will reach. No row carries a control:
+// there is no per-tool remove to offer, and the panel says so by giving the
+// user nothing to press rather than by spending a sentence on it.
 export const GlobalScope: Story = {
   args: { target: { kind: "global", tools: ["claude", "codex"] } },
 };

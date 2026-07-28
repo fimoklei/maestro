@@ -91,6 +91,119 @@ describe("RemoveSkillDialog", () => {
     );
   });
 
+  it("tags the primitive's type beside the question", () => {
+    // The title says which build goes; the tag says what kind of thing it is,
+    // in the same chip the inventory and the detail pane use.
+    renderDialog();
+
+    expect(screen.getByText("skill").className).toContain("text-type-skill");
+  });
+
+  // The panel asks one question and then answers only "what disappears, and
+  // where". The answer is a ledger of targets, not a paragraph about them
+  // (#411).
+  describe("its ledger of targets", () => {
+    it("holds the repo path in a single row on the repo scope", () => {
+      renderDialog();
+
+      expect(screen.getAllByRole("listitem").map((r) => r.textContent)).toEqual(
+        [REPO_TARGET.repoPath],
+      );
+    });
+
+    it("wraps a long path mid-token rather than pushing the panel wider", () => {
+      // A repo path has no spaces to break at, so without this it sets the
+      // panel's width instead of fitting inside it.
+      renderDialog();
+
+      expect(screen.getByText(REPO_TARGET.repoPath).className).toContain(
+        "break-all",
+      );
+    });
+
+    it("introduces the ledger with one lead-in line", () => {
+      renderDialog();
+
+      expect(
+        screen.getByText("Primitive will be removed from:"),
+      ).toBeInTheDocument();
+    });
+
+    // There is no per-tool remove — apm's uninstall has no -t, and faking one
+    // orphans the other tools' files (ADR-0013). The old panel said so in a
+    // sentence. The ledger says it by giving a row nothing to press: a row that
+    // looks actionable makes a promise the system cannot keep.
+    it("gives no row anything to press, focus, or read as a control", () => {
+      renderDialog({ target: { kind: "global", tools: ["claude", "codex"] } });
+
+      for (const row of screen.getAllByRole("listitem")) {
+        expect(
+          row.querySelector("button, a, input, [role='button']"),
+        ).toBeNull();
+        expect(row.querySelector("[tabindex]")).toBeNull();
+        expect(row).not.toHaveAttribute("tabindex");
+        expect(row).not.toHaveAttribute("onclick");
+      }
+    });
+
+    it("puts no glyph on a row, because no row has a state to signal yet", () => {
+      renderDialog({ target: { kind: "global", tools: ["claude", "codex"] } });
+
+      for (const row of screen.getAllByRole("listitem")) {
+        expect(row.textContent).not.toMatch(/[▲✕✓·•→]/);
+      }
+    });
+  });
+
+  // Three lines left the panel with the ledger: the note that there is no
+  // per-tool remove, the deployed-files-and-lockfile line, and the skill name
+  // on the confirm control.
+  describe("what it no longer says", () => {
+    it("drops the deployed-files-and-lockfile line", () => {
+      renderDialog();
+
+      expect(screen.getByRole("dialog")).not.toHaveTextContent(
+        /lockfile entry/i,
+      );
+    });
+
+    it("drops the note that there is no per-tool remove", () => {
+      renderDialog({ target: { kind: "global", tools: ["claude", "codex"] } });
+
+      expect(screen.getByRole("dialog")).not.toHaveTextContent(/per-tool/i);
+    });
+  });
+
+  // The confirm label used to grow with the skill name inside a fixed-width
+  // panel, so it had to shrink and ellipsise to fit (#388). The title already
+  // carries the name, so the label can stop repeating it — and then it cannot
+  // overflow at all.
+  describe("its footer controls", () => {
+    it("confirms with a fixed label that carries no name", () => {
+      renderDialog();
+
+      const confirm = screen.getByRole("button", { name: /^remove/i });
+      expect(confirm).toHaveTextContent("remove →");
+      expect(confirm).not.toHaveTextContent("tdd");
+    });
+
+    it("carries no name while the removal is in flight either", () => {
+      renderDialog({ isRemoving: true });
+
+      expect(
+        screen.getByRole("button", { name: /removing/i }),
+      ).not.toHaveTextContent("tdd");
+    });
+
+    it("cancels with the same fixed label", () => {
+      renderDialog();
+
+      expect(screen.getByRole("button", { name: "cancel" })).toHaveTextContent(
+        "cancel",
+      );
+    });
+  });
+
   it("makes the confirm control the amber primary", () => {
     // Green reads as rest/deploy-confirmed and would misread on a destructive
     // action; red may never be a fill (DESIGN.md). Within this modal the amber
@@ -358,15 +471,20 @@ describe("RemoveSkillDialog", () => {
       );
     });
 
-    it("sets the consequence line as prose, with the tool names in mono", () => {
+    it("sets every ledger row in mono, because a target is data", () => {
       renderDialog({ target: { kind: "global", tools: ["claude", "codex"] } });
 
-      const consequence = screen.getByText(/no per-tool remove/i);
-      expect(consequence.className).toContain("font-ui");
-      expect(consequence.className).not.toContain("font-mono");
-      expect(screen.getByText("Claude Code and Codex").className).toContain(
-        "font-mono",
-      );
+      for (const row of screen.getAllByRole("listitem")) {
+        expect(row.className).toContain("font-mono");
+      }
+    });
+
+    it("sets the lead-in as prose, because it is the sentence over the data", () => {
+      renderDialog();
+
+      expect(
+        screen.getByText("Primitive will be removed from:").className,
+      ).toContain("font-ui");
     });
 
     it("sets the warning as prose rather than data", () => {
@@ -375,21 +493,24 @@ describe("RemoveSkillDialog", () => {
       expect(screen.getByRole("status").className).toContain("font-ui");
     });
 
-    // The line that carries the real consequence used to sit at the same size
-    // and colour as the boilerplate underneath it, so nothing told the reader
-    // which of the two mattered. Asserted as a step on the scale rather than
-    // two literal tokens: the rule is the ordering, not the sizes it lands on.
-    it("steps the consequence line above the boilerplate beneath it", () => {
-      renderDialog({ target: { kind: "global", tools: ["claude", "codex"] } });
+    // The panel's answer is the ledger, and the lead-in only introduces it. The
+    // answer therefore sits above its own label on the scale — the same
+    // ordering the old panel got wrong when its consequence line matched the
+    // boilerplate beneath it. Asserted as a step rather than two literal
+    // tokens: the rule is the ordering, not the sizes it lands on.
+    it("steps the ledger above the lead-in that introduces it", () => {
+      renderDialog();
 
-      const consequence = screen.getByText(/no per-tool remove/i);
-      const boilerplate = screen.getByText(/lockfile entry/i);
-      expect(stepOf(consequence)).toBeGreaterThanOrEqual(0);
-      expect(stepOf(consequence)).toBeLessThan(stepOf(boilerplate));
-      // The second half of the step: the quieter line also drops down the text
-      // ramp, so size is not carrying the difference alone.
-      expect(boilerplate.className).toContain("text-dim");
-      expect(consequence.className).not.toContain("text-dim");
+      const leadIn = screen.getByText("Primitive will be removed from:");
+      // The repo scope has exactly one row, so the singular query also asserts
+      // the ledger is not quietly listing something else.
+      const row = screen.getByRole("listitem");
+      expect(stepOf(row)).toBeGreaterThanOrEqual(0);
+      expect(stepOf(row)).toBeLessThan(stepOf(leadIn));
+      // The second half of the step: the introducing line also drops down the
+      // text ramp, so size is not carrying the difference alone.
+      expect(leadIn.className).toContain("text-muted");
+      expect(row.className).not.toContain("text-muted");
     });
 
     // The failure block used to name its problem in the panel's smallest text
@@ -424,28 +545,36 @@ describe("RemoveSkillDialog", () => {
         .map((id) => document.getElementById(id)?.textContent ?? "")
         .join(" ");
 
-    it("names the target it would remove from, and the cost", () => {
+    it("reads the lead-in and then every target it would remove from", () => {
       renderDialog();
 
+      expect(describedBy()).toContain("Primitive will be removed from:");
       expect(describedBy()).toContain(REPO_TARGET.repoPath);
-      expect(describedBy()).toMatch(/lockfile entry/i);
     });
 
     it("carries the whole tool set on the global path", () => {
       // The one fact #338 exists for. Left out of the description, it is the
-      // one thing a reader has to go hunting for.
+      // one thing a reader has to go hunting for. The ledger carries it now
+      // that the sentence naming the set is gone.
       renderDialog({ target: { kind: "global", tools: ["claude", "codex"] } });
 
-      expect(describedBy()).toMatch(/no per-tool remove/i);
+      expect(describedBy()).toContain("Claude Code");
+      expect(describedBy()).toContain("Codex");
     });
 
-    it("drops the cost when the removal was already refused", () => {
-      // Nothing will happen, so naming what it would cost describes nothing.
-      renderDialog({
-        preflight: { kind: "refused", message: "That repo is not registered." },
-      });
+    // The description used to point at three prose lines. Two of them are gone,
+    // and pointing at an id nothing renders leaves a reader hearing the label
+    // and nothing else.
+    it("points at nothing that is not on screen", () => {
+      renderDialog();
 
-      expect(describedBy()).not.toMatch(/lockfile entry/i);
+      const ids = (
+        screen.getByRole("dialog").getAttribute("aria-describedby") ?? ""
+      ).split(" ");
+      expect(ids.length).toBeGreaterThan(0);
+      for (const id of ids) {
+        expect(document.getElementById(id)).not.toBeNull();
+      }
     });
   });
 
@@ -542,20 +671,22 @@ describe("RemoveSkillDialog", () => {
       expect(dialog).toHaveTextContent("Codex");
     });
 
-    it("names the scope as the whole tool set, not a path", () => {
+    it("names the tools themselves rather than a summary of them", () => {
+      // "every detected tool" made the reader trust a count they could not
+      // see. The ledger spends the same space naming them.
       renderDialog({ target: globalTarget });
 
       const dialog = screen.getByRole("dialog");
-      expect(dialog).toHaveTextContent(/every detected tool/i);
+      expect(dialog).not.toHaveTextContent(/every detected tool/i);
       expect(dialog).not.toHaveTextContent("/Users/me/project");
     });
 
-    it("says there is no per-tool removal", () => {
-      // apm's uninstall has no -t, and the lever that looks like one orphans
-      // the other tools' files — so the promise the modal makes is set-based.
-      renderDialog({ target: globalTarget });
+    it("lists one row per detected tool, in the order it was handed them", () => {
+      renderDialog({ target: { kind: "global", tools: ["codex", "claude"] } });
 
-      expect(screen.getByRole("dialog")).toHaveTextContent(/no per-tool/i);
+      expect(
+        screen.getAllByRole("listitem").map((row) => row.textContent),
+      ).toEqual(["Codex", "Claude Code"]);
     });
 
     it("names the single detected tool when the machine has only one", () => {

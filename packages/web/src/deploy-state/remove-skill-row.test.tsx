@@ -18,6 +18,11 @@ function jsonResponse(body: unknown, status: number) {
   });
 }
 
+// The confirmation's own control. Fixed text: the skill name left the label
+// with #411, because the dialog's title already carries it. Only one dialog is
+// ever open, so the label alone identifies the control.
+const CONFIRM = "remove →";
+
 // Opening the confirmation asks the server one read-only question — what would
 // this removal destroy — so a test that cares about the removal itself has to
 // tell the two calls apart.
@@ -154,7 +159,7 @@ describe("removing a deployed skill from a row", () => {
     renderRow();
 
     await openRemoveDialog();
-    await userEvent.click(screen.getByRole("button", { name: /^remove tdd/ }));
+    await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
     await waitFor(() => {
       expect(removeCalls(fetchMock)).toHaveLength(1);
@@ -178,7 +183,7 @@ describe("removing a deployed skill from a row", () => {
     expect(await within(dialog).findByRole("status")).toHaveTextContent(
       /local edits/i,
     );
-    const confirm = screen.getByRole("button", { name: /^remove tdd/ });
+    const confirm = screen.getByRole("button", { name: CONFIRM });
     expect(confirm).toBeEnabled();
 
     await userEvent.click(confirm);
@@ -241,7 +246,7 @@ describe("removing a deployed skill from a row", () => {
       const dialog = await openRemoveDialog();
       await within(dialog).findByRole("alert");
 
-      const confirm = screen.getByRole("button", { name: /^remove tdd/ });
+      const confirm = screen.getByRole("button", { name: CONFIRM });
       expect(confirm).toBeDisabled();
       await userEvent.click(confirm);
       expect(removeCalls(fetchMock)).toEqual([]);
@@ -262,7 +267,7 @@ describe("removing a deployed skill from a row", () => {
       expect(await within(dialog).findByRole("status")).toHaveTextContent(
         /couldn't check this copy/i,
       );
-      expect(screen.getByRole("button", { name: /^remove tdd/ })).toBeEnabled();
+      expect(screen.getByRole("button", { name: CONFIRM })).toBeEnabled();
     });
   });
 
@@ -273,7 +278,7 @@ describe("removing a deployed skill from a row", () => {
     const { onRemoved } = renderRow();
 
     await openRemoveDialog();
-    await userEvent.click(screen.getByRole("button", { name: /^remove tdd/ }));
+    await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -298,7 +303,7 @@ describe("removing a deployed skill from a row", () => {
     const { onRemoved } = renderRow();
 
     await openRemoveDialog();
-    await userEvent.click(screen.getByRole("button", { name: /^remove tdd/ }));
+    await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "apm did not confirm the removal.",
@@ -322,7 +327,7 @@ describe("removing a deployed skill from a row", () => {
     renderRow();
 
     await openRemoveDialog();
-    await userEvent.click(screen.getByRole("button", { name: /^remove tdd/ }));
+    await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       /may be in a mixed state/,
@@ -342,7 +347,7 @@ describe("removing a deployed skill from a row", () => {
     renderRow();
 
     await openRemoveDialog();
-    await userEvent.click(screen.getByRole("button", { name: /^remove tdd/ }));
+    await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Another change to this repo is already");
@@ -357,9 +362,7 @@ describe("removing a deployed skill from a row", () => {
       renderRow();
 
       await openRemoveDialog();
-      await userEvent.click(
-        screen.getByRole("button", { name: /^remove tdd/ }),
-      );
+      await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       expect(
         await screen.findByText(`removed tdd v0.5.0 from ${REPO}`),
@@ -371,9 +374,7 @@ describe("removing a deployed skill from a row", () => {
       renderRow();
 
       await openRemoveDialog();
-      await userEvent.click(
-        screen.getByRole("button", { name: /^remove tdd/ }),
-      );
+      await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       const announcement = await screen.findByText(
         `removed tdd v0.5.0 from ${REPO}`,
@@ -394,9 +395,7 @@ describe("removing a deployed skill from a row", () => {
       renderRow();
 
       await openRemoveDialog();
-      await userEvent.click(
-        screen.getByRole("button", { name: /^remove tdd/ }),
-      );
+      await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       expect(
         await screen.findByText(`removed tdd v0.9.0 from ${REPO}`),
@@ -424,15 +423,11 @@ describe("removing a deployed skill from a row", () => {
       renderRow({ primitives: [tdd, jobs] });
 
       await openRemoveDialog();
-      await userEvent.click(
-        screen.getByRole("button", { name: /^remove tdd/ }),
-      );
+      await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
       await screen.findByText(`removed tdd v0.5.0 from ${REPO}`);
 
       await openRemoveDialog("jobs");
-      await userEvent.click(
-        screen.getByRole("button", { name: /^remove jobs/ }),
-      );
+      await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
       await screen.findByText(`removed jobs v1.2.0 from ${REPO}`);
 
       const live = screen.getByRole("status");
@@ -460,9 +455,7 @@ describe("removing a deployed skill from a row", () => {
       renderRow({ target: { kind: "global", tools: ["claude"] } });
 
       await openRemoveDialog();
-      await userEvent.click(
-        screen.getByRole("button", { name: /^remove tdd/ }),
-      );
+      await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       expect(
         await screen.findByText(
@@ -480,9 +473,7 @@ describe("removing a deployed skill from a row", () => {
       renderRow();
 
       await openRemoveDialog();
-      await userEvent.click(
-        screen.getByRole("button", { name: /^remove tdd/ }),
-      );
+      await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       expect(
         await screen.findByText(`removed tdd (version unknown) from ${REPO}`),
@@ -499,9 +490,7 @@ describe("removing a deployed skill from a row", () => {
       renderRow();
 
       await openRemoveDialog();
-      await userEvent.click(
-        screen.getByRole("button", { name: /^remove tdd/ }),
-      );
+      await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       await screen.findByRole("alert");
       expect(screen.queryByText(/^removed tdd/)).not.toBeInTheDocument();
@@ -512,9 +501,7 @@ describe("removing a deployed skill from a row", () => {
       const { withoutTdd } = renderRow();
 
       await openRemoveDialog();
-      await userEvent.click(
-        screen.getByRole("button", { name: /^remove tdd/ }),
-      );
+      await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
       await screen.findByText(`removed tdd v0.5.0 from ${REPO}`);
       withoutTdd();
 
@@ -554,9 +541,7 @@ describe("removing a deployed skill from a row", () => {
       renderGlobalRow();
 
       await openRemoveDialog();
-      await userEvent.click(
-        screen.getByRole("button", { name: /^remove tdd/ }),
-      );
+      await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       await waitFor(() => {
         expect(removeCalls(fetchMock)).toHaveLength(1);
@@ -601,9 +586,7 @@ describe("removing a deployed skill from a row", () => {
       const dialog = await openRemoveDialog();
       expect(dialog).toHaveTextContent("/Users/me/.claude/skills/tdd");
 
-      await userEvent.click(
-        screen.getByRole("button", { name: /^remove tdd/ }),
-      );
+      await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       await waitFor(() => {
         expect(removeCalls(fetchMock)).toHaveLength(1);

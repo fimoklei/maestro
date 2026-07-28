@@ -124,7 +124,9 @@ describe("DeployStatePanel", () => {
     await userEvent.click(
       await screen.findByRole("menuitem", { name: "remove…" }),
     );
-    await userEvent.click(screen.getByRole("button", { name: /^remove tdd/ }));
+    // Fixed label: the skill name left the confirm with #411, because the
+    // dialog's title already carries it.
+    await userEvent.click(screen.getByRole("button", { name: "remove →" }));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
