@@ -389,6 +389,7 @@ describe("RemoveDeployedSkill on the global target", () => {
       ok: true,
       warning: "local-edits-will-be-lost",
       reclaim: [],
+      reclaimToken: undefined,
     });
   });
 
@@ -415,6 +416,7 @@ describe("RemoveDeployedSkill on the global target", () => {
       ok: true,
       warning: "local-edits-will-be-lost",
       reclaim: [],
+      reclaimToken: undefined,
     });
   });
 
@@ -446,20 +448,27 @@ describe("RemoveDeployedSkill on the global target", () => {
 // so a skill installed back when the machine had more tools leaves a tree behind
 // for every tool that has since dropped off. Reclaiming those is what makes a
 // global removal complete rather than complete-for-today's-tools (#339) — but
-// only for the exact paths the confirmation named and the user agreed to
-// (P0): a path preflight could not name, or one the request never echoed
-// back, is never reclaimed inside a confirmed action.
+// only when the request's token proves it came from this same instance's own
+// `preflight` (#P0, codex adversarial review): a client-supplied path or a
+// guessed/stale token can never authorize a reclaim.
 describe("RemoveDeployedSkill cleaning up after a global remove", () => {
-  const CLAUDE_TDD_PATH = "/home/.claude/skills/tdd";
+  // The token a real preflight against this same request would return —
+  // never hand-built, so a test cannot accidentally exercise a token the
+  // implementation would never actually issue.
+  async function confirmedTokenFor(
+    useCase: RemoveDeployedSkill,
+    target: DeployTarget = removeTddGlobally.target,
+  ) {
+    const preflight = await useCase.preflight({ ...removeTddGlobally, target });
+    return preflight.ok ? preflight.reclaimToken : undefined;
+  }
 
-  it("reclaims the leftover copy the user confirmed by path", async () => {
+  it("reclaims the leftover copy once the request echoes back preflight's own token", async () => {
     const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
+    const confirmedReclaimToken = await confirmedTokenFor(useCase);
 
     await expect(
-      useCase.execute({
-        ...removeTddGlobally,
-        confirmedReclaimPaths: [CLAUDE_TDD_PATH],
-      }),
+      useCase.execute({ ...removeTddGlobally, confirmedReclaimToken }),
     ).resolves.toEqual({
       ok: true,
       removed: { type: "skill", name: "tdd" },
@@ -469,7 +478,7 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
     ]);
   });
 
-  it("reclaims nothing when the confirmation never named the leftover path", async () => {
+  it("reclaims nothing when no token was ever confirmed", async () => {
     // The P0 case: a leftover exists, but nothing confirmed it — so the
     // removal must not delete more than the user agreed to.
     const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
@@ -481,15 +490,15 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
     expect(calls.cleanups).toEqual([]);
   });
 
-  it("reclaims nothing when the confirmed path no longer matches what would be reclaimed", async () => {
-    // A stale or mismatched confirmation names a path that isn't the one
-    // about to be deleted — treated the same as never having been confirmed.
+  it("reclaims nothing for a token a caller merely guessed, without ever calling preflight", async () => {
+    // The exact bypass the review flagged: a direct request that echoes back
+    // a plausible-looking token it never actually received from preflight.
     const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
 
     await expect(
       useCase.execute({
         ...removeTddGlobally,
-        confirmedReclaimPaths: ["/home/.agents/skills/tdd"],
+        confirmedReclaimToken: "a".repeat(64),
       }),
     ).resolves.toEqual({
       ok: true,
@@ -498,15 +507,31 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
     expect(calls.cleanups).toEqual([]);
   });
 
+  it("reclaims nothing for a token from a different machine state", async () => {
+    // A stale confirmation: the token was valid for a prior detection state
+    // (both tools present, nothing to reclaim), replayed against a request
+    // where Claude has since dropped off. Treated as never confirmed.
+    const { useCase: preflightUseCase } = buildUseCase({
+      detectedTools: ["claude", "codex"],
+    });
+    const staleToken = await confirmedTokenFor(preflightUseCase);
+    const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
+
+    await useCase.execute({
+      ...removeTddGlobally,
+      confirmedReclaimToken: staleToken,
+    });
+
+    expect(calls.cleanups).toEqual([]);
+  });
+
   it("leaves a detected tool's tree to the removal itself", async () => {
     const { useCase, calls } = buildUseCase({
       detectedTools: ["claude", "codex"],
     });
+    const confirmedReclaimToken = await confirmedTokenFor(useCase);
 
-    await useCase.execute({
-      ...removeTddGlobally,
-      confirmedReclaimPaths: [CLAUDE_TDD_PATH],
-    });
+    await useCase.execute({ ...removeTddGlobally, confirmedReclaimToken });
 
     expect(calls.cleanups).toEqual([]);
   });
@@ -528,12 +553,10 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
       detectedTools: ["codex"],
       removed: false,
     });
+    const confirmedReclaimToken = await confirmedTokenFor(useCase);
 
     await expect(
-      useCase.execute({
-        ...removeTddGlobally,
-        confirmedReclaimPaths: [CLAUDE_TDD_PATH],
-      }),
+      useCase.execute({ ...removeTddGlobally, confirmedReclaimToken }),
     ).resolves.toEqual({
       ok: false,
       error: "remove-failed",
@@ -548,12 +571,10 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
       detectedTools: ["codex"],
       cleanupFails: true,
     });
+    const confirmedReclaimToken = await confirmedTokenFor(useCase);
 
     await expect(
-      useCase.execute({
-        ...removeTddGlobally,
-        confirmedReclaimPaths: [CLAUDE_TDD_PATH],
-      }),
+      useCase.execute({ ...removeTddGlobally, confirmedReclaimToken }),
     ).resolves.toEqual({
       ok: true,
       removed: { type: "skill", name: "tdd" },
@@ -564,11 +585,9 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
   it("reclaims nothing on the per-repo path", async () => {
     // A repo's targets are its own apm.yml, not this machine's tool detection.
     const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
+    const confirmedReclaimToken = await confirmedTokenFor(useCase);
 
-    await useCase.execute({
-      ...removeTdd,
-      confirmedReclaimPaths: [CLAUDE_TDD_PATH],
-    });
+    await useCase.execute({ ...removeTdd, confirmedReclaimToken });
 
     expect(calls.cleanups).toEqual([]);
   });
@@ -579,14 +598,19 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
 // must name that path by tool so the dialog can state it, and a path
 // preflight could not build is dropped rather than guessed (#P0).
 describe("RemoveDeployedSkill.preflight naming the reclaim", () => {
-  it("names the leftover copy's tool and absolute path", async () => {
+  it("names the leftover copy's tool and absolute path, and issues a token for it", async () => {
     const { useCase } = buildUseCase({ detectedTools: ["codex"] });
 
-    await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
+    const result = await useCase.preflight(removeTddGlobally);
+
+    expect(result).toMatchObject({
       ok: true,
       warning: null,
       reclaim: [{ tool: "claude", path: "/home/.claude/skills/tdd" }],
     });
+    // A server-issued token, never a client-guessable one, is what lets
+    // `execute` prove this exact preview came from this exact preflight.
+    expect(result.ok && result.reclaimToken).toEqual(expect.any(String));
   });
 
   it("names nothing when every exclusive tool is still detected", async () => {
@@ -598,6 +622,7 @@ describe("RemoveDeployedSkill.preflight naming the reclaim", () => {
       ok: true,
       warning: null,
       reclaim: [],
+      reclaimToken: undefined,
     });
   });
 
@@ -610,6 +635,7 @@ describe("RemoveDeployedSkill.preflight naming the reclaim", () => {
       ok: true,
       warning: null,
       reclaim: [],
+      reclaimToken: undefined,
     });
   });
 
@@ -625,6 +651,7 @@ describe("RemoveDeployedSkill.preflight naming the reclaim", () => {
       ok: true,
       warning: null,
       reclaim: [],
+      reclaimToken: undefined,
     });
   });
 });
@@ -640,6 +667,7 @@ describe("RemoveDeployedSkill.preflight", () => {
       ok: true,
       warning: "local-edits-will-be-lost",
       reclaim: [],
+      reclaimToken: undefined,
     });
     // A check, not the action: nothing is removed by asking.
     expect(calls.removes).toEqual([]);
@@ -652,6 +680,7 @@ describe("RemoveDeployedSkill.preflight", () => {
       ok: true,
       warning: "cannot-verify-local-edits",
       reclaim: [],
+      reclaimToken: undefined,
     });
   });
 
@@ -664,6 +693,7 @@ describe("RemoveDeployedSkill.preflight", () => {
       ok: true,
       warning: "check-did-not-run",
       reclaim: [],
+      reclaimToken: undefined,
     });
   });
 
@@ -674,6 +704,7 @@ describe("RemoveDeployedSkill.preflight", () => {
       ok: true,
       warning: "check-did-not-run",
       reclaim: [],
+      reclaimToken: undefined,
     });
   });
 
@@ -684,6 +715,7 @@ describe("RemoveDeployedSkill.preflight", () => {
       ok: true,
       warning: null,
       reclaim: [],
+      reclaimToken: undefined,
     });
   });
 
@@ -694,6 +726,7 @@ describe("RemoveDeployedSkill.preflight", () => {
       ok: true,
       warning: null,
       reclaim: [],
+      reclaimToken: undefined,
     });
   });
 

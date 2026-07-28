@@ -5,7 +5,11 @@ describe("removeWarningView", () => {
   it("says local edits will be lost when the copy diverged", () => {
     expect(
       removeWarningView({
-        data: { warning: "local-edits-will-be-lost", reclaim: [] },
+        data: {
+          warning: "local-edits-will-be-lost",
+          reclaim: [],
+          reclaimToken: undefined,
+        },
         isPending: false,
         isError: false,
       }),
@@ -15,7 +19,11 @@ describe("removeWarningView", () => {
   it("keeps an unverifiable copy in its own state", () => {
     expect(
       removeWarningView({
-        data: { warning: "cannot-verify-local-edits", reclaim: [] },
+        data: {
+          warning: "cannot-verify-local-edits",
+          reclaim: [],
+          reclaimToken: undefined,
+        },
         isPending: false,
         isError: false,
       }),
@@ -25,7 +33,7 @@ describe("removeWarningView", () => {
   it("warns about nothing once the check came back clean", () => {
     expect(
       removeWarningView({
-        data: { warning: null, reclaim: [] },
+        data: { warning: null, reclaim: [], reclaimToken: undefined },
         isPending: false,
         isError: false,
       }),
@@ -50,7 +58,11 @@ describe("removeWarningView", () => {
   it("passes a check the server could not run through as its own state", () => {
     expect(
       removeWarningView({
-        data: { warning: "check-did-not-run", reclaim: [] },
+        data: {
+          warning: "check-did-not-run",
+          reclaim: [],
+          reclaimToken: undefined,
+        },
         isPending: false,
         isError: false,
       }),

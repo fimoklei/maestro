@@ -388,14 +388,27 @@ describe("remove HTTP route", () => {
 
     const removeGlobally = (
       app: ReturnType<typeof makeApp>["app"],
-      confirmedReclaimPaths?: string[],
+      confirmedReclaimToken?: string,
     ) =>
       removeRequest(app, {
         type: "skill",
         name: "tdd",
         target: { kind: "global" },
-        ...(confirmedReclaimPaths ? { confirmedReclaimPaths } : {}),
+        ...(confirmedReclaimToken ? { confirmedReclaimToken } : {}),
       });
+
+    // The token a real preflight against this app would return — never
+    // hand-built, so a test proves the actual execute→preflight contract
+    // rather than a path the implementation would never issue.
+    async function reclaimTokenFromPreflight(
+      app: ReturnType<typeof makeApp>["app"],
+    ): Promise<string | undefined> {
+      const response = await preflightGlobally(app);
+      const { reclaimToken } = (await response.json()) as {
+        reclaimToken?: string;
+      };
+      return reclaimToken;
+    }
 
     it("removes the skill with the ref the global lockfile records", async () => {
       const { app, removeCalls } = makeApp();
@@ -472,14 +485,16 @@ describe("remove HTTP route", () => {
         // Codex is not exclusive to its skills dir (ten apm targets share
         // .agents), so an undetected Codex is never a nameable reclaim.
         reclaim: [],
+        reclaimToken: undefined,
       });
     });
 
-    it("names the leftover Claude Code copy the confirmation must state (P0)", async () => {
+    it("names the leftover Claude Code copy and issues a token for it (P0)", async () => {
       // A machine where Claude Code has dropped off still carries a global
       // deploy's .claude copy. Naming it here is what lets the dialog state
       // it before the user confirms, rather than deleting a larger set than
-      // the dialog ever promised (#P0).
+      // the dialog ever promised (#P0). The token is what the execute route
+      // requires back before it will actually reclaim that path.
       const { app } = makeApp({ detectedTools: ["codex"] });
       await writeGlobalLockfile([skillEntry("tdd")]);
 
@@ -489,6 +504,7 @@ describe("remove HTTP route", () => {
       expect(await response.json()).toEqual({
         warning: null,
         reclaim: [{ tool: "claude", path: join(home, ".claude/skills/tdd") }],
+        reclaimToken: expect.any(String),
       });
     });
 
@@ -511,7 +527,11 @@ describe("remove HTTP route", () => {
 
       const response = await preflightGlobally(app);
 
-      expect(await response.json()).toEqual({ warning: null, reclaim: [] });
+      expect(await response.json()).toEqual({
+        warning: null,
+        reclaim: [],
+        reclaimToken: undefined,
+      });
     });
 
     // Whether a path still exists under the sandbox home, so a test can state
@@ -529,16 +549,17 @@ describe("remove HTTP route", () => {
       // apm's uninstall deletes by the targets its own apm.yml lists, so the
       // copy for a tool that has since dropped off survives it. Removing that
       // tree is what makes the removal complete (#339) — but only once the
-      // confirmation has named the exact path and the request echoes it back
-      // (#P0), the same path this same scope's preflight would have named.
+      // request echoes back the token this same scope's preflight issued
+      // (#P0), never a client-guessed path.
       const { app } = makeApp({ detectedTools: ["codex"] });
       await writeGlobalLockfile([skillEntry("tdd")]);
       await writeSkillFile(".claude/skills/tdd/SKILL.md");
       await writeSkillFile(".claude/skills/jobs/SKILL.md");
+      const confirmedReclaimToken = await reclaimTokenFromPreflight(app);
 
-      expect(
-        (await removeGlobally(app, [join(home, ".claude/skills/tdd")])).status,
-      ).toBe(200);
+      expect((await removeGlobally(app, confirmedReclaimToken)).status).toBe(
+        200,
+      );
 
       expect(await existsUnderHome(".claude/skills/tdd")).toBe(false);
       // Another skill under the same directory is nobody's leftover.
@@ -546,13 +567,25 @@ describe("remove HTTP route", () => {
     });
 
     it("leaves the leftover copy alone when nothing confirmed it", async () => {
-      // The P0 case: without a confirmed path, a global removal must not
+      // The P0 case: without a confirmed token, a global removal must not
       // delete more than the dialog named.
       const { app } = makeApp({ detectedTools: ["codex"] });
       await writeGlobalLockfile([skillEntry("tdd")]);
       await writeSkillFile(".claude/skills/tdd/SKILL.md");
 
       expect((await removeGlobally(app)).status).toBe(200);
+
+      expect(await existsUnderHome(".claude/skills/tdd/SKILL.md")).toBe(true);
+    });
+
+    it("leaves the leftover copy alone for a token the caller merely guessed", async () => {
+      // The bypass the review flagged: a direct request that never called
+      // preflight but echoes back a plausible-looking token.
+      const { app } = makeApp({ detectedTools: ["codex"] });
+      await writeGlobalLockfile([skillEntry("tdd")]);
+      await writeSkillFile(".claude/skills/tdd/SKILL.md");
+
+      expect((await removeGlobally(app, "a".repeat(64))).status).toBe(200);
 
       expect(await existsUnderHome(".claude/skills/tdd/SKILL.md")).toBe(true);
     });
@@ -616,6 +649,7 @@ describe("remove HTTP route", () => {
       expect(await response.json()).toEqual({
         warning: "local-edits-will-be-lost",
         reclaim: [],
+        reclaimToken: undefined,
       });
       expect(removeCalls).toEqual([]);
     });
@@ -650,6 +684,7 @@ describe("remove HTTP route", () => {
       expect(await response.json()).toEqual({
         warning: "local-edits-will-be-lost",
         reclaim: [],
+        reclaimToken: undefined,
       });
       expect(removeCalls).toEqual([]);
     });
@@ -661,6 +696,7 @@ describe("remove HTTP route", () => {
       expect(await (await preflightTdd(app, repo)).json()).toEqual({
         warning: "cannot-verify-local-edits",
         reclaim: [],
+        reclaimToken: undefined,
       });
     });
 
@@ -671,6 +707,7 @@ describe("remove HTTP route", () => {
       expect(await (await preflightTdd(app, repo)).json()).toEqual({
         warning: null,
         reclaim: [],
+        reclaimToken: undefined,
       });
     });
 

@@ -36,10 +36,13 @@ function stubFetch(
   onRemove: () => Response = () =>
     jsonResponse({ removed: { type: "skill", name: "tdd" } }, 200),
   reclaim: { tool: string; path: string }[] = [],
+  reclaimToken: string | undefined = reclaim.length > 0
+    ? "test-reclaim-token"
+    : undefined,
 ) {
   const fetchMock = vi.fn(async (path: string) =>
     path === "/api/deploy/remove/preflight"
-      ? jsonResponse({ warning, reclaim }, 200)
+      ? jsonResponse({ warning, reclaim, reclaimToken }, 200)
       : onRemove(),
   );
   vi.stubGlobal("fetch", fetchMock);
@@ -129,7 +132,6 @@ describe("removing a deployed skill from a row", () => {
       type: "skill",
       name: "tdd",
       target: { kind: "repo", repoPath: REPO },
-      confirmedReclaimPaths: [],
     });
   });
 
@@ -244,7 +246,6 @@ describe("removing a deployed skill from a row", () => {
         type: "skill",
         name: "tdd",
         target: { kind: "global" },
-        confirmedReclaimPaths: [],
       });
     });
 
@@ -268,8 +269,10 @@ describe("removing a deployed skill from a row", () => {
     // The P0 fix: a global removal can also force-delete the whole copy of a
     // tool this machine no longer detects. The dialog must name that path
     // before the user confirms, and the confirm request must echo back
-    // exactly that path — never a client-rebuilt list.
-    it("names the leftover copy and confirms exactly that path", async () => {
+    // exactly the token this same preflight issued — never a client-rebuilt
+    // path list, which a direct request could guess without ever calling
+    // preflight (#P0, codex adversarial review).
+    it("names the leftover copy and confirms with preflight's own token", async () => {
       const fetchMock = stubFetch(null, undefined, [
         { tool: "claude", path: "/Users/me/.claude/skills/tdd" },
       ]);
@@ -290,7 +293,7 @@ describe("removing a deployed skill from a row", () => {
         type: "skill",
         name: "tdd",
         target: { kind: "global" },
-        confirmedReclaimPaths: ["/Users/me/.claude/skills/tdd"],
+        confirmedReclaimToken: "test-reclaim-token",
       });
     });
   });

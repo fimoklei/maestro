@@ -76,6 +76,14 @@ Feature: Remove a deployed skill from a target
     And the leftover copy for Claude Code is still there
     And the copy of "jobs" is untouched
 
+  Scenario: A guessed confirmation for the leftover copy is never honored
+    Given "tdd" and "jobs" deployed globally on Claude Code and Codex
+    But Claude Code is no longer on this machine
+    When I remove "tdd" globally with a made-up confirmation
+    Then the removal is confirmed
+    And the leftover copy for Claude Code is still there
+    And the copy of "jobs" is untouched
+
   Scenario: A machine with no supported tool has no global scope to remove from
     Given "tdd" and "jobs" deployed globally on Claude Code and Codex
     But this machine has no supported tool

@@ -20,6 +20,12 @@ export type RemovePreflight = {
   // exact path so the confirmation can state it before the user agrees
   // (#P0). Always empty on a repo target.
   reclaim: readonly ReclaimPreview[];
+  // The server-issued token proving this exact preview came from this exact
+  // preflight call. Present whenever `reclaim` is non-empty; the confirm
+  // mutation echoes it back unchanged — never a client-built path list,
+  // which a direct request could guess without ever calling preflight
+  // (#P0, codex adversarial review).
+  reclaimToken: string | undefined;
 };
 
 // The skill name is null unless a confirmation is open, so there is no "which

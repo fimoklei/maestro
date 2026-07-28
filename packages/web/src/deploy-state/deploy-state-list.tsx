@@ -195,11 +195,10 @@ export function DeployStateList({
                 type: "skill",
                 name: removing,
                 target: wireTarget,
-                // Exactly what this same preflight named and the dialog
-                // showed — never a client-rebuilt list (#P0).
-                confirmedReclaimPaths: (preflight.data?.reclaim ?? []).map(
-                  (entry) => entry.path,
-                ),
+                // The token this same preflight issued — never a
+                // client-rebuilt path list, which a direct request could
+                // guess without ever having asked preflight anything (#P0).
+                confirmedReclaimToken: preflight.data?.reclaimToken,
               },
               {
                 // Only a proven removal closes the dialog. A failure keeps it

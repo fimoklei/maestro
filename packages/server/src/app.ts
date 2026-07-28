@@ -85,12 +85,12 @@ const removeBodySchema = z.object({
     z.object({ kind: z.literal("repo"), repoPath: z.string() }),
     z.object({ kind: z.literal("global") }),
   ]),
-  // Read only by the execute route. The exact reclaim paths the cockpit's
-  // confirmation dialog named (echoed back from this same request's own
-  // preflight response) and the user agreed to — never a client-built list,
-  // since core recomputes the preview and only reclaims a path this one
-  // named (#P0).
-  confirmedReclaimPaths: z.array(z.string()).optional(),
+  // Read only by the execute route. The opaque token this same request's own
+  // preflight response carried alongside its reclaim preview. Proves the
+  // confirmation the user saw came from this server's own preflight, rather
+  // than a client-built path list a caller could construct without ever
+  // asking preflight anything (#P0, codex adversarial review).
+  confirmedReclaimToken: z.string().optional(),
 });
 
 // One wording for both remove routes: they take the same body, so a malformed
@@ -618,7 +618,11 @@ export function createApp(deps: AppDeps) {
       const { status, message } = removePreflightErrorResponses[result.error];
       return c.json({ error: result.error, message }, status);
     }
-    return c.json({ warning: result.warning, reclaim: result.reclaim });
+    return c.json({
+      warning: result.warning,
+      reclaim: result.reclaim,
+      reclaimToken: result.reclaimToken,
+    });
   });
 
   // Bulk-deploy the staged skills to one target: plan → execute → report. The

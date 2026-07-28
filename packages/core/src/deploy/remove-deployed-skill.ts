@@ -18,6 +18,7 @@
 // so the confirmation can state it, and `execute` carries it out. Divergence
 // warns rather than refusing — destruction is this use-case's intent, not a side
 // effect, so informed consent is enough (#337).
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { join } from "node:path";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type {
@@ -52,12 +53,15 @@ type RemoveDeployedSkillInput = {
   type: string;
   name: string;
   target: DeployTarget;
-  // Read only by `execute`. The exact reclaim paths the confirmation named
-  // (from this same request's own `preflight`) and the user agreed to.
-  // Anything preflight could not name is never in this list, and anything
-  // not in this list is never reclaimed — a stale or absent confirmation
-  // reclaims nothing rather than guessing consent (#P0).
-  confirmedReclaimPaths?: readonly string[];
+  // Read only by `execute`. The opaque token this same request's own
+  // `preflight` call returned alongside its reclaim preview. Never a
+  // client-supplied path list: a caller could echo back a path it merely
+  // guessed without ever having called preflight, which would reclaim it
+  // all the same. The token is a server-issued HMAC over the exact preview
+  // preflight built, so `execute` can prove the confirmation actually
+  // originated from a preflight call against the current state — a missing,
+  // stale, or guessed token reclaims nothing (#P0, codex adversarial review).
+  confirmedReclaimToken?: string;
 };
 
 // What the confirmation must be able to name before a global removal runs:
@@ -176,6 +180,9 @@ type RemovePreflightResult =
       ok: true;
       warning: RemoveWarning | null;
       reclaim: readonly ReclaimPreview[];
+      // Present whenever `reclaim` is non-empty — the token `execute` must
+      // see back, unchanged, to reclaim exactly this preview.
+      reclaimToken: string | undefined;
     }
   | { ok: false; error: RemovePreflightError };
 
@@ -212,13 +219,21 @@ export class RemoveDeployedSkill {
     // confirmed reclaim can both name the same absolute path (shared with
     // deployedCleanup's own root).
     location: Pick<DeployedLocation, "treeRoot">;
+    // The HMAC key binding a preflight's reclaim preview to the token
+    // `execute` must see back. Generated once per process by default — never
+    // exposed over the wire — so a token can only exist because this
+    // instance's own `preflight` issued it. Overridable for a test that needs
+    // a fixed key.
+    reclaimSecret?: Buffer;
   };
 
   private readonly locks: InFlightLocks;
+  private readonly reclaimSecret: Buffer;
 
   constructor(deps: RemoveDeployedSkill["deps"]) {
     this.deps = deps;
     this.locks = deps.locks ?? new InFlightLocks();
+    this.reclaimSecret = deps.reclaimSecret ?? randomBytes(32);
   }
 
   // What the confirmation must say before this removal runs: the deployed copy
@@ -256,7 +271,15 @@ export class RemoveDeployedSkill {
         scope.scope === "global"
           ? this.buildReclaimPreview(input.target, input.name, scope.detected)
           : [];
-      return { ok: true, warning: GUARD_WARNINGS[state] ?? null, reclaim };
+      return {
+        ok: true,
+        warning: GUARD_WARNINGS[state] ?? null,
+        reclaim,
+        reclaimToken:
+          reclaim.length === 0
+            ? undefined
+            : this.reclaimToken(input.target, input.name, reclaim),
+      };
     } catch {
       return { ok: false, error: "preflight-failed" };
     }
@@ -266,7 +289,7 @@ export class RemoveDeployedSkill {
   // the exact absolute path so the confirmation can state it (#P0). A tool
   // whose path cannot be built (the location port throws) is dropped rather
   // than guessed — it can then never be reclaimed either, since `remove` only
-  // ever reclaims a path this same preview named (see `execute`).
+  // ever reclaims a preview this same builder produces at execute time too.
   private buildReclaimPreview(
     target: DeployTarget,
     name: string,
@@ -286,6 +309,29 @@ export class RemoveDeployedSkill {
       }
     }
     return previews;
+  }
+
+  // Server-issued proof that a reclaim preview came from this instance's own
+  // `preflight`, over exactly the preview it built — never a client-supplied
+  // path list, which a caller could construct without ever having asked
+  // preflight anything (codex adversarial review, #P0). Order-independent so
+  // the same preview always yields the same token.
+  private reclaimToken(
+    target: DeployTarget,
+    name: string,
+    reclaim: readonly ReclaimPreview[],
+  ): string {
+    const canonical = JSON.stringify({
+      target:
+        target.kind === "repo"
+          ? { kind: "repo", repoPath: target.repoPath }
+          : { kind: "global" },
+      name,
+      paths: reclaim.map((entry) => `${entry.tool}:${entry.path}`).sort(),
+    });
+    return createHmac("sha256", this.reclaimSecret)
+      .update(canonical)
+      .digest("hex");
   }
 
   async execute(
@@ -416,7 +462,7 @@ export class RemoveDeployedSkill {
         input.target,
         input.name,
         detected,
-        input.confirmedReclaimPaths ?? [],
+        input.confirmedReclaimToken,
       );
       return { ok: true, removed: { type: "skill", name: input.name } };
     } catch {
@@ -424,25 +470,27 @@ export class RemoveDeployedSkill {
     }
   }
 
-  // Reclaims only the leftover tools whose path the confirmation named and
-  // the request echoed back — never the full leftover set the machine's own
-  // detection would produce (#P0). Recomputes the preview at execute time
-  // (rather than trusting the client's tool list) so an unnamed or
-  // mismatched confirmation can never expand what gets deleted.
+  // Reclaims the current reclaim preview only when the request's token proves
+  // it came from this same instance's own `preflight` (#P0). Recomputed at
+  // execute time rather than trusting anything the client sent about paths or
+  // tools — a request that never called preflight, or one replaying a token
+  // for a different skill, target, or machine state, cannot produce a
+  // matching token and reclaims nothing.
   private async reclaimConfirmed(
     target: DeployTarget,
     name: string,
     detected: readonly SupportedTool[] | undefined,
-    confirmedPaths: readonly string[],
+    confirmedToken: string | undefined,
   ): Promise<void> {
-    if (detected === undefined) {
+    if (detected === undefined || confirmedToken === undefined) {
       return;
     }
-    const confirmed = new Set(confirmedPaths);
-    const tools = this.buildReclaimPreview(target, name, detected)
-      .filter((preview) => confirmed.has(preview.path))
-      .map((preview) => preview.tool);
-    if (tools.length === 0) {
+    const preview = this.buildReclaimPreview(target, name, detected);
+    if (preview.length === 0) {
+      return;
+    }
+    const expected = this.reclaimToken(target, name, preview);
+    if (!this.tokensMatch(expected, confirmedToken)) {
       return;
     }
     // Best-effort by design. The removal itself already succeeded, so a
@@ -452,10 +500,23 @@ export class RemoveDeployedSkill {
       await this.deps.deployedCleanup.removeSkillTargets({
         target,
         name,
-        tools,
+        tools: preview.map((entry) => entry.tool),
       });
     } catch {
       // Intentionally ignored — see above.
+    }
+  }
+
+  // Constant-time comparison so a guessed token cannot be narrowed down by
+  // measuring response time. Any malformed input (wrong length, non-hex)
+  // simply fails the match rather than throwing.
+  private tokensMatch(expected: string, actual: string): boolean {
+    try {
+      const a = Buffer.from(expected, "hex");
+      const b = Buffer.from(actual, "hex");
+      return a.length === b.length && timingSafeEqual(a, b);
+    } catch {
+      return false;
     }
   }
 }
