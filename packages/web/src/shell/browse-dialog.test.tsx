@@ -684,6 +684,76 @@ describe("BrowseDialog", () => {
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
+    it("falls back to home when the remembered folder sits outside the browse ceiling", async () => {
+      // HOME differs between sessions on the same origin (worktree to
+      // worktree, dev to smoke), so a remembered path can end up beyond the
+      // ceiling. Same silent fallback as a folder that no longer exists —
+      // both are "cannot be reached from here", not a problem to report.
+      writeLastFolder("connect", "/elsewhere/repos");
+      const fetchMock = vi.fn(
+        async (_input: RequestInfo | URL, init?: RequestInit) => {
+          const body = JSON.parse(String(init?.body ?? "{}")) as {
+            path: string;
+          };
+          if (body.path === "/elsewhere/repos") {
+            return jsonResponse(
+              {
+                error: "outside-root",
+                message: "That path is outside the area Maestro can browse.",
+              },
+              403,
+            );
+          }
+          return jsonResponse(homeResponse, 200);
+        },
+      );
+      vi.stubGlobal("fetch", fetchMock);
+      renderDialog({ mode: "connect" });
+
+      expect(await screen.findByText("already at home")).toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    it("shows the error banner when a folder reached by navigating sits outside the browse ceiling", async () => {
+      // The fallback is scoped to the initial remembered request. A folder the
+      // user clicked into still reports the refusal (story 22 of #145).
+      const fetchMock = vi.fn(
+        async (_input: RequestInfo | URL, init?: RequestInit) => {
+          const body = JSON.parse(String(init?.body ?? "{}")) as {
+            path: string;
+          };
+          if (body.path === "/home/me/linked") {
+            return jsonResponse(
+              {
+                error: "outside-root",
+                message: "That path is outside the area Maestro can browse.",
+              },
+              403,
+            );
+          }
+          return jsonResponse(
+            {
+              ...homeResponse,
+              entries: [
+                { name: "linked", path: "/home/me/linked", facts: noFacts },
+              ],
+            },
+            200,
+          );
+        },
+      );
+      vi.stubGlobal("fetch", fetchMock);
+      renderDialog({ mode: "connect" });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "linked" }),
+      );
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        /outside the area/i,
+      );
+    });
+
     it("shows the error banner, not a silent fallback, when the remembered folder fails for a reason other than not-found", async () => {
       // "no longer exists" (story 4/5's fallback) is narrower than "any
       // error" — an unreadable folder is a real problem the user should see

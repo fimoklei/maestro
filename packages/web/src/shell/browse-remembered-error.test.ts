@@ -1,27 +1,38 @@
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
-import { isFolderMissing } from "./browse-remembered-error";
+import { isRememberedFolderUnreachable } from "./browse-remembered-error";
 
-describe("isFolderMissing", () => {
+describe("isRememberedFolderUnreachable", () => {
   it("is true for a not-found HttpError", () => {
-    expect(isFolderMissing(new HttpError(404, "gone", "not-found"))).toBe(true);
+    expect(
+      isRememberedFolderUnreachable(new HttpError(404, "gone", "not-found")),
+    ).toBe(true);
   });
 
-  it("is false for other typed browse errors", () => {
-    expect(isFolderMissing(new HttpError(403, "denied", "unreadable"))).toBe(
-      false,
-    );
-    expect(isFolderMissing(new HttpError(403, "denied", "outside-root"))).toBe(
-      false,
-    );
+  it("is true for an outside-root HttpError", () => {
+    expect(
+      isRememberedFolderUnreachable(
+        new HttpError(403, "denied", "outside-root"),
+      ),
+    ).toBe(true);
+  });
+
+  it("is false for a folder that exists but could not be read", () => {
+    expect(
+      isRememberedFolderUnreachable(new HttpError(403, "denied", "unreadable")),
+    ).toBe(false);
   });
 
   it("is false for an HttpError without a code", () => {
-    expect(isFolderMissing(new HttpError(500, "broke"))).toBe(false);
+    expect(isRememberedFolderUnreachable(new HttpError(500, "broke"))).toBe(
+      false,
+    );
   });
 
   it("is false for a non-HttpError value", () => {
-    expect(isFolderMissing(new Error("network down"))).toBe(false);
-    expect(isFolderMissing(undefined)).toBe(false);
+    expect(isRememberedFolderUnreachable(new Error("network down"))).toBe(
+      false,
+    );
+    expect(isRememberedFolderUnreachable(undefined)).toBe(false);
   });
 });
