@@ -684,6 +684,46 @@ describe("BrowseDialog", () => {
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
+    it("reaches home on the first refusal under production query defaults", async () => {
+      // Every other test here disables retries. Production does not, and
+      // TanStack Query's default is three retries with backoff — which would
+      // stall the fallback behind seven seconds of loading state and re-send
+      // a refusal that can never change. Rendered with a bare QueryClient so
+      // that default is what is under test.
+      writeLastFolder("connect", "/elsewhere/repos");
+      const fetchMock = vi.fn(
+        async (_input: RequestInfo | URL, init?: RequestInit) => {
+          const body = JSON.parse(String(init?.body ?? "{}")) as {
+            path: string;
+          };
+          if (body.path === "/elsewhere/repos") {
+            return jsonResponse(
+              {
+                error: "outside-root",
+                message: "That path is outside the area Maestro can browse.",
+              },
+              403,
+            );
+          }
+          return jsonResponse(homeResponse, 200);
+        },
+      );
+      vi.stubGlobal("fetch", fetchMock);
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <BrowseDialog mode="connect" onSelect={vi.fn()} onClose={vi.fn()} />
+        </QueryClientProvider>,
+      );
+
+      expect(await screen.findByText("already at home")).toBeInTheDocument();
+      expect(
+        fetchMock.mock.calls.filter(
+          ([, init]) =>
+            JSON.parse(String(init?.body ?? "{}")).path === "/elsewhere/repos",
+        ),
+      ).toHaveLength(1);
+    });
+
     it("falls back to home when the remembered folder sits outside the browse ceiling", async () => {
       // HOME differs between sessions on the same origin (worktree to
       // worktree, dev to smoke), so a remembered path can end up beyond the
