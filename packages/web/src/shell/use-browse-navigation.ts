@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { readLastFolder, writeLastFolder } from "./browse-last-folder";
 import type { BrowseDialogMode } from "./browse-modes";
-import { isFolderMissing } from "./browse-remembered-error";
+import { isRememberedFolderUnreachable } from "./browse-remembered-error";
 import { useBrowseFilesystem } from "./use-browse-filesystem";
 
 // The folder currently being browsed, plus the memory that lets a dialog
@@ -9,7 +9,7 @@ import { useBrowseFilesystem } from "./use-browse-filesystem";
 // register remember independently. One hook so BrowseDialog stays
 // presentational: this owns the requested path, the query for it, and the
 // two last-used-folder side effects (fall back once, silently, when the
-// remembered folder no longer exists; remember wherever browsing resolves
+// remembered folder cannot be reached; remember wherever browsing resolves
 // to) rather than the component spreading that logic across inline effects.
 export function useBrowseNavigation(mode: BrowseDialogMode) {
   // Captured once at mount so the fallback below doesn't re-read a
@@ -26,7 +26,7 @@ export function useBrowseNavigation(mode: BrowseDialogMode) {
     if (
       rememberedRequest !== "" &&
       currentRequest === rememberedRequest &&
-      isFolderMissing(browse.error)
+      isRememberedFolderUnreachable(browse.error)
     ) {
       setCurrentRequest("");
     }

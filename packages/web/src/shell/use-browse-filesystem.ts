@@ -34,5 +34,11 @@ export function useBrowseFilesystem(path: string) {
         method: "POST",
         body: JSON.stringify({ path }),
       }),
+    // Every failure this endpoint returns is a verdict on the path itself —
+    // gone, out of bounds, not a directory, unreadable. Re-asking cannot
+    // change the answer, and Query's default three retries with backoff would
+    // hold the dialog in a loading state for seconds before the last-used
+    // folder can fall back to home (issue #406).
+    retry: false,
   });
 }
