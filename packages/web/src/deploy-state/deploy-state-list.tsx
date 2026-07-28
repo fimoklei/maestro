@@ -10,6 +10,7 @@ import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { ActionsMenu } from "../ui/actions-menu";
 import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
+import { RemovalTrace, type TracedRemoval } from "./removal-trace";
 import {
   type RemoveDialogTarget,
   RemoveSkillDialog,
@@ -85,9 +86,14 @@ export function DeployStateList({
   onRemoved?: () => void;
 }) {
   // Which skill's removal is being confirmed, if any. UI state: one dialog at a
-  // time, named by the row that opened it.
-  const [removing, setRemoving] = useState<string | null>(null);
+  // time, named by the row that opened it. The whole row is held, not just its
+  // name, because the version is unreadable once the removal lands — and the
+  // confirmation of what went has to name it.
+  const [removing, setRemoving] = useState<DeployedPrimitive | null>(null);
   const [justRemoved, setJustRemoved] = useState(false);
+  // Every removal this card has seen, kept for the session: the row is gone, so
+  // this is the only trace left of what happened here.
+  const [removed, setRemoved] = useState<TracedRemoval[]>([]);
   const remove = useRemoveDeployedSkill();
   // The same target as the server names it: the detected tools are the screen's
   // business, never part of the request — the global scope's location and its
@@ -96,7 +102,7 @@ export function DeployStateList({
     target.kind === "repo" ? target : { kind: "global" };
   // What that removal would destroy, asked as soon as the confirmation opens so
   // the answer is on screen before the user commits.
-  const preflight = useRemovePreflight(removing, wireTarget);
+  const preflight = useRemovePreflight(removing?.name ?? null, wireTarget);
 
   // Handing focus on in an effect, not in the success handler: the modal's
   // focus-restore runs during its unmount, so anything moving focus earlier
@@ -110,8 +116,10 @@ export function DeployStateList({
 
   // Genuinely nothing — not entries that exist but were skipped as unsupported.
   // Treating a skipped-only target as empty would be the cockpit lying about it,
-  // so that case falls through and still renders its warning below.
-  if (primitives.length === 0 && skipped.length === 0) {
+  // so that case falls through and still renders its warning below. A card
+  // emptied by its own last removal is not silent either: the trace of that
+  // removal is exactly what the user is looking for there.
+  if (primitives.length === 0 && skipped.length === 0 && removed.length === 0) {
     return null;
   }
 
@@ -158,7 +166,7 @@ export function DeployStateList({
                   label: "remove…",
                   onSelect: () => {
                     remove.reset();
-                    setRemoving(primitive.name);
+                    setRemoving(primitive);
                   },
                 },
               ]}
@@ -168,7 +176,7 @@ export function DeployStateList({
       })}
       {removing !== null ? (
         <RemoveSkillDialog
-          skillName={removing}
+          skillName={removing.name}
           target={target}
           isRemoving={remove.isPending}
           warning={removeWarningView(preflight)}
@@ -190,12 +198,23 @@ export function DeployStateList({
           onCancel={() => setRemoving(null)}
           onConfirm={() =>
             remove.mutate(
-              { type: "skill", name: removing, target: wireTarget },
+              { type: "skill", name: removing.name, target: wireTarget },
               {
                 // Only a proven removal closes the dialog. A failure keeps it
                 // open with apm's reason, so it never reads as if nothing
                 // happened.
                 onSuccess: () => {
+                  setRemoved((seen) => [
+                    ...seen,
+                    {
+                      // Append-only, so the count so far names this event and
+                      // never collides with an earlier one.
+                      id: seen.length,
+                      name: removing.name,
+                      version: removing.version,
+                      target,
+                    },
+                  ]);
                   setRemoving(null);
                   setJustRemoved(true);
                 },
@@ -204,6 +223,7 @@ export function DeployStateList({
           }
         />
       ) : null}
+      <RemovalTrace removed={removed} />
       {orphans.length > 0 && (
         <p className="px-card-x py-row-y text-amber-ink text-tag">
           Also behind (not deployed here): {orphans.join(", ")}

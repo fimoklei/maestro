@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DeployStateList } from "./deploy-state-list";
@@ -54,17 +54,21 @@ function renderRow({
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  render(
+  const list = (primitives: (typeof tdd)[]) => (
     <QueryClientProvider client={queryClient}>
       <DeployStateList
-        primitives={[tdd]}
+        primitives={primitives}
         skipped={[]}
         target={target}
         onRemoved={onRemoved}
       />
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
-  return { onRemoved };
+  const { rerender } = render(list([tdd]));
+  // The refetch that follows a landed removal, as the card sees it: the row is
+  // gone from the server's answer and the list re-renders without it.
+  const withoutTdd = () => rerender(list([]));
+  return { onRemoved, withoutTdd };
 }
 
 async function openRemoveDialog() {
@@ -135,9 +139,11 @@ describe("removing a deployed skill from a row", () => {
     const fetchMock = stubFetch("local-edits-will-be-lost");
     renderRow();
 
-    await openRemoveDialog();
+    const dialog = await openRemoveDialog();
 
-    expect(await screen.findByRole("status")).toHaveTextContent(/local edits/i);
+    expect(await within(dialog).findByRole("status")).toHaveTextContent(
+      /local edits/i,
+    );
     const confirm = screen.getByRole("button", { name: /^remove tdd/ });
     expect(confirm).toBeEnabled();
 
@@ -152,9 +158,9 @@ describe("removing a deployed skill from a row", () => {
     stubFetch("cannot-verify-local-edits");
     renderRow();
 
-    await openRemoveDialog();
+    const dialog = await openRemoveDialog();
 
-    expect(await screen.findByRole("status")).toHaveTextContent(
+    expect(await within(dialog).findByRole("status")).toHaveTextContent(
       /can't be checked/i,
     );
   });
@@ -198,6 +204,73 @@ describe("removing a deployed skill from a row", () => {
     );
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(onRemoved).not.toHaveBeenCalled();
+  });
+
+  // A removal takes its own row off the screen, so absence is the only evidence
+  // left behind. The card says what went instead (#383).
+  describe("announcing the outcome", () => {
+    it("names the skill, its version and the target once the removal lands", async () => {
+      stubFetch(null);
+      renderRow();
+
+      await openRemoveDialog();
+      await userEvent.click(
+        screen.getByRole("button", { name: /^remove tdd/ }),
+      );
+
+      expect(
+        await screen.findByText(`removed tdd v0.5.0 from ${REPO}`),
+      ).toBeInTheDocument();
+    });
+
+    it("announces it without stealing focus", async () => {
+      stubFetch(null);
+      renderRow();
+
+      await openRemoveDialog();
+      await userEvent.click(
+        screen.getByRole("button", { name: /^remove tdd/ }),
+      );
+
+      const announcement = await screen.findByText(
+        `removed tdd v0.5.0 from ${REPO}`,
+      );
+      expect(announcement.closest("[role='status']")).not.toBeNull();
+    });
+
+    it("says nothing when the removal failed", async () => {
+      vi.stubGlobal("fetch", async () =>
+        jsonResponse(
+          { error: "remove-failed", message: "apm did not confirm it." },
+          502,
+        ),
+      );
+      renderRow();
+
+      await openRemoveDialog();
+      await userEvent.click(
+        screen.getByRole("button", { name: /^remove tdd/ }),
+      );
+
+      await screen.findByRole("alert");
+      expect(screen.queryByText(/^removed tdd/)).not.toBeInTheDocument();
+    });
+
+    it("stays on the card after the last skill on it is gone", async () => {
+      stubFetch(null);
+      const { withoutTdd } = renderRow();
+
+      await openRemoveDialog();
+      await userEvent.click(
+        screen.getByRole("button", { name: /^remove tdd/ }),
+      );
+      await screen.findByText(`removed tdd v0.5.0 from ${REPO}`);
+      withoutTdd();
+
+      expect(
+        screen.getByText(`removed tdd v0.5.0 from ${REPO}`),
+      ).toBeInTheDocument();
+    });
   });
 
   // The global row. One action covers every detected tool, and the confirmation
@@ -249,9 +322,9 @@ describe("removing a deployed skill from a row", () => {
       const fetchMock = stubFetch("local-edits-will-be-lost");
       renderGlobalRow();
 
-      await openRemoveDialog();
+      const dialog = await openRemoveDialog();
 
-      expect(await screen.findByRole("status")).toHaveTextContent(
+      expect(await within(dialog).findByRole("status")).toHaveTextContent(
         /local edits/i,
       );
       const [, init] = preflightCalls(fetchMock)[0] as [string, RequestInit];
