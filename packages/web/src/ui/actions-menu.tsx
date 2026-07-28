@@ -44,9 +44,12 @@ export function ActionsMenu({ label, items }: ActionsMenuProps) {
         <DropdownMenu.Content
           align="end"
           sideOffset={4}
-          // One step up the surface ramp from the card it floats over, so the
-          // panel separates without the shadow DESIGN.md §5 rules out.
-          className="min-w-32 rounded-item border border-line-chip bg-inset py-1"
+          // The panel sits on the card surface and separates through its 1px
+          // chip border, which is how DESIGN.md §5 draws structure — no shadow,
+          // and no fill step either. Sitting a step lower than the item hover
+          // below is what leaves the inset surface free to read as hover; a
+          // panel already on inset would swallow it (#388).
+          className="min-w-32 rounded-item border border-line-chip bg-card py-1"
         >
           {items.map((item) => (
             <DropdownMenu.Item
@@ -55,7 +58,12 @@ export function ActionsMenu({ label, items }: ActionsMenuProps) {
               onSelect={item.onSelect}
               className={cn(
                 "cursor-pointer px-card-x py-1 font-mono text-desc text-fg-2 outline-none",
-                "data-[highlighted]:bg-active data-[highlighted]:text-fg",
+                HOVER_TRANSITION,
+                // Radix sets data-[highlighted] on pointer hover as well as
+                // keyboard roving focus, so this is the hover state and takes
+                // the inset surface. The active surface stays reserved for a
+                // standing choice, which a menu item never is (#388).
+                "data-[highlighted]:bg-inset data-[highlighted]:text-fg",
                 "data-[disabled]:cursor-not-allowed data-[disabled]:text-dim",
               )}
             >
