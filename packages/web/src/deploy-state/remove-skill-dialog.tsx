@@ -1,7 +1,9 @@
-import type { ReclaimPreview } from "@maestro/core";
 import { useModalDialog } from "../shell/use-modal-dialog";
 import { Button } from "../ui/button";
-import type { RemoveWarningState } from "./remove-warning-view";
+import type {
+  RemovePreflightView,
+  RemoveWarningState,
+} from "./remove-preflight-view";
 import { toolDisplayName, toolNameList } from "./tool-labels";
 
 // Which target the removal aims at, in the terms the confirmation must state.
@@ -43,32 +45,28 @@ export function RemoveSkillDialog({
   isRemoving,
   error,
   attempted,
-  warning,
-  reclaim,
+  preflight,
   onCancel,
   onConfirm,
 }: {
   skillName: string;
   target: RemoveDialogTarget;
   isRemoving: boolean;
-  // What this removal would destroy, as the host's check found it. It informs;
-  // it never blocks — destruction is the point of this dialog, so consent is
-  // enough (#337).
-  warning: RemoveWarningState;
-  // The server's own reason for a refused or failed removal, or null while
-  // nothing has gone wrong.
+  // What the host's check came back with. A warning informs and never blocks —
+  // destruction is the point of this dialog, so consent is enough (#337). A
+  // refusal is the opposite: the server already said the removal cannot
+  // succeed, so there is nothing to consent to (#385). One prop rather than
+  // two, so the screen can never state a cost and a refusal at the same time.
+  preflight: RemovePreflightView;
+  // The server's own reason for a removal that was refused or failed after the
+  // user confirmed it, or null while nothing has gone wrong. Not the same thing
+  // as a refused `preflight`, which happens before there is anything to confirm.
   error: string | null;
   // Whether apm can have run. Only a failure that provably refused before it
   // did leaves the repo untouched; anything else may have left it half-changed,
   // and the mixed-state note follows this flag. `removal-attempt.ts` owns the
   // classification — the dialog only renders it.
   attempted: boolean;
-  // A global removal's own reclaim: the whole copy of a tool this machine no
-  // longer detects, force-deleted beyond what apm's scoped uninstall touches
-  // (#339). Named here by tool and exact path so the confirmation states it
-  // before the user agrees — a path the preflight could not build is simply
-  // absent, never guessed.
-  reclaim: readonly ReclaimPreview[];
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -83,7 +81,14 @@ export function RemoveSkillDialog({
   // and apm deletes an edited copy without a word. Holding the confirm until the
   // check answers is the J04 rule applied to consent, not a second guard on top
   // of #337's decision.
-  const awaitingCheck = warning === "checking";
+  const awaitingCheck =
+    preflight.kind === "warning" && preflight.warning === "checking";
+  // A removal the server has already refused. Every line below that describes
+  // what the removal would do is silenced with it: none of it will happen.
+  const refused = preflight.kind === "refused";
+  // Only ever the leftovers the check in hand named. A refusal carries none, so
+  // an earlier answer's paths cannot outlive the answer that named them.
+  const reclaim = preflight.kind === "warning" ? preflight.reclaim : [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 p-6">
@@ -133,7 +138,10 @@ export function RemoveSkillDialog({
           ) : null}
           {/* A global removal also force-deletes the whole copy of any tool
               this machine no longer detects — apm's own uninstall cannot
-              reach it (#339). It goes beyond the row the user clicked, so it
+              reach it (#339). Named by tool and exact path so the confirmation
+              states it before the user agrees; a path the preflight could not
+              build is simply absent, never guessed. It goes beyond the row the
+              user clicked, so it
               gets the same weight as the local-edits warning rather than a
               line of dim prose: amber, glyphed, and its own announced region,
               because a directory nobody targeted is the one thing here that
@@ -172,22 +180,44 @@ export function RemoveSkillDialog({
           {/* Named, because the leftover block above is a status region too and
               the two say different things: one is what else goes, the other is
               what is inside it. Unnamed, a reader hears two identical regions. */}
-          {warning === "none" ? null : (
+          {preflight.kind === "warning" && preflight.warning !== "none" ? (
             <p
               role="status"
               aria-label="Local edits"
               className="flex items-start gap-1.5 rounded-control border border-amber-border bg-amber-bg px-2.5 py-2.5 font-mono text-amber-ink text-tag"
             >
               <span aria-hidden="true">▲</span>
-              <span>{WARNING_TEXT[warning]}</span>
+              <span>{WARNING_TEXT[preflight.warning]}</span>
+            </p>
+          ) : null}
+          {/* The server's own refusal, in its own words. Danger red rather than
+              the amber above: amber says this will cost you something, and this
+              says it cannot happen at all — which is the error signal red exists
+              for (issue #213). It is announced assertively because it arrives on
+              its own and takes the confirm control with it. */}
+          {preflight.kind === "refused" ? (
+            <div
+              role="alert"
+              className="flex flex-col gap-1 rounded-control border border-danger-border bg-danger-bg px-2.5 py-2.5"
+            >
+              <span className="font-semibold text-danger-ink text-tag">
+                <span aria-hidden="true">✕ </span>this can't be removed
+              </span>
+              <span className="font-mono text-fg-2 text-mono-sm">
+                {preflight.message}
+              </span>
+            </div>
+          ) : null}
+          {/* Last of the prose, so the two loud blocks sit together and the
+              reassurance does not come between them. It describes a removal
+              that is about to happen, so a refusal drops it rather than promise
+              a round trip nobody can make. */}
+          {refused ? null : (
+            <p className="font-mono text-dim text-tag">
+              Its deployed files and its lockfile entry go. Deploy it again from
+              the inventory whenever you want it back.
             </p>
           )}
-          {/* Last of the prose, so the two loud blocks sit together and the
-              reassurance does not come between them. */}
-          <p className="font-mono text-dim text-tag">
-            Its deployed files and its lockfile entry go. Deploy it again from
-            the inventory whenever you want it back.
-          </p>
           {error ? (
             <div
               role="alert"
@@ -218,7 +248,7 @@ export function RemoveSkillDialog({
             type="button"
             variant="primary"
             size="sm"
-            disabled={isRemoving || awaitingCheck}
+            disabled={isRemoving || awaitingCheck || refused}
             onClick={onConfirm}
           >
             {isRemoving ? `removing ${skillName}…` : `remove ${skillName}`}
