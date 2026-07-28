@@ -15,6 +15,7 @@ function renderDialog({
   error = null as string | null,
   attempted = true,
   warning = "none" as RemoveWarningState,
+  reclaim = [] as Parameters<typeof RemoveSkillDialog>[0]["reclaim"],
   onCancel = vi.fn(),
   onConfirm = vi.fn(),
 } = {}) {
@@ -26,6 +27,7 @@ function renderDialog({
       error={error}
       attempted={attempted}
       warning={warning}
+      reclaim={reclaim}
       onCancel={onCancel}
       onConfirm={onConfirm}
     />,
@@ -236,6 +238,44 @@ describe("RemoveSkillDialog", () => {
       renderDialog({ target: globalTarget, warning: "local-edits" });
 
       expect(screen.getByRole("status")).toHaveTextContent(/local edits/i);
+    });
+
+    // The P0 fix: a global removal force-deletes the whole copy of any
+    // exclusive tool this machine no longer detects, beyond what apm's own
+    // scoped uninstall touches. The confirmation must name it before the user
+    // agrees to it, never leave it implicit in "its deployed files go".
+    describe("naming what an untargeted tool's copy reclaim would also delete", () => {
+      it("names the leftover tool and the exact path it would delete", () => {
+        renderDialog({
+          target: globalTarget,
+          reclaim: [{ tool: "claude", path: "/Users/me/.claude/skills/tdd" }],
+        });
+
+        const dialog = screen.getByRole("dialog");
+        expect(dialog).toHaveTextContent("Claude Code");
+        expect(dialog).toHaveTextContent("/Users/me/.claude/skills/tdd");
+        expect(dialog).toHaveTextContent(/not installed on this machine/i);
+      });
+
+      it("names each leftover tool when there is more than one", () => {
+        renderDialog({
+          target: globalTarget,
+          reclaim: [
+            { tool: "claude", path: "/Users/me/.claude/skills/tdd" },
+            { tool: "codex", path: "/Users/me/.agents/skills/tdd" },
+          ],
+        });
+
+        const dialog = screen.getByRole("dialog");
+        expect(dialog).toHaveTextContent("/Users/me/.claude/skills/tdd");
+        expect(dialog).toHaveTextContent("/Users/me/.agents/skills/tdd");
+      });
+
+      it("says nothing extra when there is no leftover to reclaim", () => {
+        renderDialog({ target: globalTarget, reclaim: [] });
+
+        expect(screen.queryByText(/not installed on this machine/i)).toBeNull();
+      });
     });
   });
 });

@@ -18,6 +18,7 @@
 // so the confirmation can state it, and `execute` carries it out. Divergence
 // warns rather than refusing — destruction is this use-case's intent, not a side
 // effect, so informed consent is enough (#337).
+import { join } from "node:path";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type {
   ApmDriverPort,
@@ -26,11 +27,15 @@ import type {
   DeployedContentState,
   DeployTarget,
 } from "./deploy-skill";
-import type { SupportedTool } from "./deploy-tools";
+import {
+  deployTargetSubtrees,
+  reclaimableUntargetedTools,
+  type SupportedTool,
+} from "./deploy-tools";
+import type { DeployedLocation } from "./deployed-location";
 import type { DeployedRefLookup } from "./deployed-ref";
 import { GLOBAL_LOCK_KEY, InFlightLocks } from "./in-flight-locks";
 import { isValidSkillSlug } from "./package-ref";
-import { reclaimUntargetedCopies } from "./reclaim-untargeted-copies";
 
 // Which package reference names the deployed skill, read from the target's own
 // lockfile. Implemented by DeployedRefAdapter.
@@ -47,6 +52,22 @@ type RemoveDeployedSkillInput = {
   type: string;
   name: string;
   target: DeployTarget;
+  // Read only by `execute`. The exact reclaim paths the confirmation named
+  // (from this same request's own `preflight`) and the user agreed to.
+  // Anything preflight could not name is never in this list, and anything
+  // not in this list is never reclaimed — a stale or absent confirmation
+  // reclaims nothing rather than guessing consent (#P0).
+  confirmedReclaimPaths?: readonly string[];
+};
+
+// What the confirmation must be able to name before a global removal runs:
+// the leftover copy of a tool this machine no longer detects, and the exact
+// subtree apm's own scoped uninstall cannot reach (#339). Named by tool so
+// the dialog can say which tool it is, and by absolute path so it can say
+// exactly what goes.
+export type ReclaimPreview = {
+  tool: SupportedTool;
+  path: string;
 };
 
 export type RemoveDeployedSkillError =
@@ -151,7 +172,11 @@ type RemoveDeployedSkillResult =
   | { ok: false; error: RemoveDeployedSkillError };
 
 type RemovePreflightResult =
-  | { ok: true; warning: RemoveWarning | null }
+  | {
+      ok: true;
+      warning: RemoveWarning | null;
+      reclaim: readonly ReclaimPreview[];
+    }
   | { ok: false; error: RemovePreflightError };
 
 export class RemoveDeployedSkill {
@@ -183,6 +208,10 @@ export class RemoveDeployedSkill {
     // this use-case guards only against itself — enough for a test, never for
     // the composed server.
     locks?: InFlightLocks;
+    // Where the reclaimable subtree sits, so the preflight preview and the
+    // confirmed reclaim can both name the same absolute path (shared with
+    // deployedCleanup's own root).
+    location: Pick<DeployedLocation, "treeRoot">;
   };
 
   private readonly locks: InFlightLocks;
@@ -223,10 +252,40 @@ export class RemoveDeployedSkill {
         target: input.target,
         name: input.name,
       });
-      return { ok: true, warning: GUARD_WARNINGS[state] ?? null };
+      const reclaim =
+        scope.scope === "global"
+          ? this.buildReclaimPreview(input.target, input.name, scope.detected)
+          : [];
+      return { ok: true, warning: GUARD_WARNINGS[state] ?? null, reclaim };
     } catch {
       return { ok: false, error: "preflight-failed" };
     }
+  }
+
+  // The leftover a global removal would force-delete, named by tool and by
+  // the exact absolute path so the confirmation can state it (#P0). A tool
+  // whose path cannot be built (the location port throws) is dropped rather
+  // than guessed — it can then never be reclaimed either, since `remove` only
+  // ever reclaims a path this same preview named (see `execute`).
+  private buildReclaimPreview(
+    target: DeployTarget,
+    name: string,
+    detected: readonly SupportedTool[],
+  ): ReclaimPreview[] {
+    const previews: ReclaimPreview[] = [];
+    for (const tool of reclaimableUntargetedTools(detected)) {
+      try {
+        const root = this.deps.location.treeRoot(target);
+        const [subtree] = deployTargetSubtrees(name, [tool]);
+        if (subtree === undefined) {
+          continue;
+        }
+        previews.push({ tool, path: join(root, subtree) });
+      } catch {
+        // Unnameable — dropped, never guessed.
+      }
+    }
+    return previews;
   }
 
   async execute(
@@ -352,17 +411,51 @@ export class RemoveDeployedSkill {
 
       // Placed after apm's positive marker, never before: a removal that never
       // happened leaves a copy nothing replaced, and deleting it then destroys
-      // work no uninstall accounted for. Why anything is left to reclaim at
-      // all is the helper's own header.
-      await reclaimUntargetedCopies({
-        cleanup: this.deps.deployedCleanup,
-        target: input.target,
-        name: input.name,
+      // work no uninstall accounted for.
+      await this.reclaimConfirmed(
+        input.target,
+        input.name,
         detected,
-      });
+        input.confirmedReclaimPaths ?? [],
+      );
       return { ok: true, removed: { type: "skill", name: input.name } };
     } catch {
       return { ok: false, error: "remove-failed" };
+    }
+  }
+
+  // Reclaims only the leftover tools whose path the confirmation named and
+  // the request echoed back — never the full leftover set the machine's own
+  // detection would produce (#P0). Recomputes the preview at execute time
+  // (rather than trusting the client's tool list) so an unnamed or
+  // mismatched confirmation can never expand what gets deleted.
+  private async reclaimConfirmed(
+    target: DeployTarget,
+    name: string,
+    detected: readonly SupportedTool[] | undefined,
+    confirmedPaths: readonly string[],
+  ): Promise<void> {
+    if (detected === undefined) {
+      return;
+    }
+    const confirmed = new Set(confirmedPaths);
+    const tools = this.buildReclaimPreview(target, name, detected)
+      .filter((preview) => confirmed.has(preview.path))
+      .map((preview) => preview.tool);
+    if (tools.length === 0) {
+      return;
+    }
+    // Best-effort by design. The removal itself already succeeded, so a
+    // reclaim that fails must not invert it: what stays behind is a tree no
+    // worse than before, which the next global write retries idempotently.
+    try {
+      await this.deps.deployedCleanup.removeSkillTargets({
+        target,
+        name,
+        tools,
+      });
+    } catch {
+      // Intentionally ignored — see above.
     }
   }
 }

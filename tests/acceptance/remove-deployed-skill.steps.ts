@@ -149,6 +149,9 @@ describeFeature(
         }),
         toolPresence: { detectGlobalTools: async () => detectedTools },
         canonicalPath: (path) => fs.realpath(path),
+        // Same sandbox HOME the cleanup resolves against, so a reclaim
+        // preview names exactly the path the cleanup would delete.
+        location: new DeployedLocation({ HOME: home }),
       });
       return createApp({
         registry,
@@ -247,12 +250,42 @@ describeFeature(
     const repoTarget = (): RemoveTarget => ({ kind: "repo", repoPath: repo });
     const globalTarget = (): RemoveTarget => ({ kind: "global" });
 
-    async function removeSkill(name: string, target = repoTarget()) {
+    async function removeSkill(
+      name: string,
+      target = repoTarget(),
+      confirmedReclaimPaths?: string[],
+    ) {
       response = await app.request("/api/deploy/remove", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ type: "skill", name, target }),
+        body: JSON.stringify({
+          type: "skill",
+          name,
+          target,
+          ...(confirmedReclaimPaths ? { confirmedReclaimPaths } : {}),
+        }),
       });
+    }
+
+    // What the confirmation is shown before it commits — the paths a global
+    // removal would otherwise reclaim silently (#P0). A scenario that means to
+    // exercise the reclaim confirms exactly these paths back.
+    async function reclaimPathsFor(
+      name: string,
+      target: RemoveTarget,
+    ): Promise<string[]> {
+      const preflightResponse = await app.request(
+        "/api/deploy/remove/preflight",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ type: "skill", name, target }),
+        },
+      );
+      const { reclaim } = (await preflightResponse.json()) as {
+        reclaim: { tool: string; path: string }[];
+      };
+      return reclaim.map((entry) => entry.path);
     }
 
     // The question the confirmation asks before the user commits: what would
@@ -385,6 +418,7 @@ describeFeature(
           expect(response.status).toBe(200);
           expect(await response.json()).toEqual({
             warning: "local-edits-will-be-lost",
+            reclaim: [],
           });
         });
         And("nothing has been removed yet", async () => {
@@ -435,6 +469,7 @@ describeFeature(
           // something no check ever saw.
           expect(await response.json()).toEqual({
             warning: "cannot-verify-local-edits",
+            reclaim: [],
           });
         });
       },
@@ -525,14 +560,54 @@ describeFeature(
         But("Claude Code is no longer on this machine", () => {
           detectedTools = ["codex"];
         });
-        When('I remove "tdd" globally', () =>
-          removeSkill("tdd", globalTarget()),
-        );
+        When('I remove "tdd" globally', async () => {
+          // The cockpit's confirmation names the leftover before the user
+          // agrees to it (#P0) — this scenario is the user having seen and
+          // confirmed exactly that path.
+          const confirmedReclaimPaths = await reclaimPathsFor(
+            "tdd",
+            globalTarget(),
+          );
+          await removeSkill("tdd", globalTarget(), confirmedReclaimPaths);
+        });
         Then("the removal is confirmed", () => {
           expect(response.status).toBe(200);
         });
         And('no copy of "tdd" is left behind for Claude Code', async () => {
           expect(await existsUnderHome(".claude/skills/tdd")).toBe(false);
+        });
+        And('the copy of "jobs" is untouched', async () => {
+          expect(await existsUnderHome(".claude/skills/jobs/SKILL.md")).toBe(
+            true,
+          );
+        });
+      },
+    );
+
+    Scenario(
+      "A leftover copy I never confirmed is left alone",
+      ({ Given, But, When, Then, And }) => {
+        Given(
+          '"tdd" and "jobs" deployed globally on Claude Code and Codex',
+          async () => {
+            await givenDeployedGlobally();
+            await writeGlobalCopies(["tdd", "jobs"]);
+          },
+        );
+        But("Claude Code is no longer on this machine", () => {
+          detectedTools = ["codex"];
+        });
+        When(
+          'I remove "tdd" globally without confirming the leftover copy',
+          () => removeSkill("tdd", globalTarget()),
+        );
+        Then("the removal is confirmed", () => {
+          expect(response.status).toBe(200);
+        });
+        And("the leftover copy for Claude Code is still there", async () => {
+          expect(await existsUnderHome(".claude/skills/tdd/SKILL.md")).toBe(
+            true,
+          );
         });
         And('the copy of "jobs" is untouched', async () => {
           expect(await existsUnderHome(".claude/skills/jobs/SKILL.md")).toBe(
@@ -579,6 +654,7 @@ describeFeature(
           expect(response.status).toBe(200);
           expect(await response.json()).toEqual({
             warning: "local-edits-will-be-lost",
+            reclaim: [],
           });
         });
         And("nothing has been removed yet", async () => {

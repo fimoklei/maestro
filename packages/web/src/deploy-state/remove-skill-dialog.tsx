@@ -1,7 +1,8 @@
+import type { ReclaimPreview } from "@maestro/core";
 import { useModalDialog } from "../shell/use-modal-dialog";
 import { Button } from "../ui/button";
 import type { RemoveWarningState } from "./remove-warning-view";
-import { toolNameList } from "./tool-labels";
+import { toolDisplayName, toolNameList } from "./tool-labels";
 
 // Which target the removal aims at, in the terms the confirmation must state.
 // The global kind carries its detected tools because the scope line is
@@ -43,6 +44,7 @@ export function RemoveSkillDialog({
   error,
   attempted,
   warning,
+  reclaim,
   onCancel,
   onConfirm,
 }: {
@@ -61,6 +63,12 @@ export function RemoveSkillDialog({
   // the repo half-changed. Saying otherwise would send the user hunting for
   // damage that is not there.
   attempted: boolean;
+  // A global removal's own reclaim: the whole copy of a tool this machine no
+  // longer detects, force-deleted beyond what apm's scoped uninstall touches
+  // (#339). Named here by tool and exact path so the confirmation states it
+  // before the user agrees — a path the preflight could not build is simply
+  // absent, never guessed (#P0).
+  reclaim: readonly ReclaimPreview[];
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -123,6 +131,20 @@ export function RemoveSkillDialog({
               no per-tool remove.
             </p>
           ) : null}
+          {/* A global removal also force-deletes the whole copy of any tool
+              this machine no longer detects — apm's own uninstall cannot
+              reach it (#339). Named by path so the user consents to exactly
+              what goes, never a larger set than this dialog stated (#P0). */}
+          {reclaim.map((entry) => (
+            <p
+              key={entry.path}
+              className="break-all font-mono text-dim text-tag"
+            >
+              Also clears the leftover {toolDisplayName(entry.tool)} copy at{" "}
+              {entry.path} ({toolDisplayName(entry.tool)} is not installed on
+              this machine).
+            </p>
+          ))}
           <p className="font-mono text-dim text-tag">
             Its deployed files and its lockfile entry go. Deploy it again from
             the inventory whenever you want it back.

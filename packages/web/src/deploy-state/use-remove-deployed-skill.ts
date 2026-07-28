@@ -16,6 +16,11 @@ export type RemoveRequest = {
   // The same union the deploy path sends: a repo carries its path, global
   // carries none — its location is the server's to resolve (J07).
   target: DeployTarget;
+  // The exact reclaim paths this same target's preflight named and the
+  // dialog showed the user before they confirmed. Echoed back rather than
+  // rebuilt, so the server only ever reclaims a path this request actually
+  // named (#P0).
+  confirmedReclaimPaths?: readonly string[];
 };
 
 type RemoveResponse = { removed: { type: "skill"; name: string } };

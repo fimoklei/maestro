@@ -37,6 +37,10 @@ type Overrides = {
   detectedTools?: SupportedTool[];
   detectTools?: () => Promise<SupportedTool[]>;
   cleanupFails?: boolean;
+  // Where the deployed tree sits, for the reclaim preview's paths. A fixed
+  // fake root by default so a test that does not care about paths still gets
+  // deterministic ones.
+  treeRoot?: (target: DeployTarget) => string;
 };
 
 // The calls that reached the outside world, so a test can prove a refusal
@@ -91,6 +95,7 @@ function buildUseCase(overrides: Overrides = {}) {
     },
     canonicalPath: overrides.canonicalPath ?? (async (path) => path),
     locks: overrides.locks,
+    location: { treeRoot: overrides.treeRoot ?? (() => "/home") },
   });
   return { useCase, calls };
 }
@@ -254,6 +259,7 @@ describe("RemoveDeployedSkill", () => {
       deployedCleanup: { removeSkillTargets: async () => undefined },
       toolPresence: { detectGlobalTools: async () => ["claude"] },
       canonicalPath: async (path) => path,
+      location: { treeRoot: () => "/home" },
     });
 
     await expect(useCase.execute(removeTdd)).resolves.toEqual({
@@ -382,6 +388,7 @@ describe("RemoveDeployedSkill on the global target", () => {
     await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
       ok: true,
       warning: "local-edits-will-be-lost",
+      reclaim: [],
     });
   });
 
@@ -407,6 +414,7 @@ describe("RemoveDeployedSkill on the global target", () => {
     await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
       ok: true,
       warning: "local-edits-will-be-lost",
+      reclaim: [],
     });
   });
 
@@ -437,12 +445,22 @@ describe("RemoveDeployedSkill on the global target", () => {
 // apm's uninstall deletes the copies for the tools its own apm.yml still lists,
 // so a skill installed back when the machine had more tools leaves a tree behind
 // for every tool that has since dropped off. Reclaiming those is what makes a
-// global removal complete rather than complete-for-today's-tools (#339).
+// global removal complete rather than complete-for-today's-tools (#339) — but
+// only for the exact paths the confirmation named and the user agreed to
+// (P0): a path preflight could not name, or one the request never echoed
+// back, is never reclaimed inside a confirmed action.
 describe("RemoveDeployedSkill cleaning up after a global remove", () => {
-  it("reclaims the leftover copy of a tool this machine no longer detects", async () => {
+  const CLAUDE_TDD_PATH = "/home/.claude/skills/tdd";
+
+  it("reclaims the leftover copy the user confirmed by path", async () => {
     const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
 
-    await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
+    await expect(
+      useCase.execute({
+        ...removeTddGlobally,
+        confirmedReclaimPaths: [CLAUDE_TDD_PATH],
+      }),
+    ).resolves.toEqual({
       ok: true,
       removed: { type: "skill", name: "tdd" },
     });
@@ -451,12 +469,44 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
     ]);
   });
 
+  it("reclaims nothing when the confirmation never named the leftover path", async () => {
+    // The P0 case: a leftover exists, but nothing confirmed it — so the
+    // removal must not delete more than the user agreed to.
+    const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
+
+    await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
+      ok: true,
+      removed: { type: "skill", name: "tdd" },
+    });
+    expect(calls.cleanups).toEqual([]);
+  });
+
+  it("reclaims nothing when the confirmed path no longer matches what would be reclaimed", async () => {
+    // A stale or mismatched confirmation names a path that isn't the one
+    // about to be deleted — treated the same as never having been confirmed.
+    const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
+
+    await expect(
+      useCase.execute({
+        ...removeTddGlobally,
+        confirmedReclaimPaths: ["/home/.agents/skills/tdd"],
+      }),
+    ).resolves.toEqual({
+      ok: true,
+      removed: { type: "skill", name: "tdd" },
+    });
+    expect(calls.cleanups).toEqual([]);
+  });
+
   it("leaves a detected tool's tree to the removal itself", async () => {
     const { useCase, calls } = buildUseCase({
       detectedTools: ["claude", "codex"],
     });
 
-    await useCase.execute(removeTddGlobally);
+    await useCase.execute({
+      ...removeTddGlobally,
+      confirmedReclaimPaths: [CLAUDE_TDD_PATH],
+    });
 
     expect(calls.cleanups).toEqual([]);
   });
@@ -479,7 +529,12 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
       removed: false,
     });
 
-    await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
+    await expect(
+      useCase.execute({
+        ...removeTddGlobally,
+        confirmedReclaimPaths: [CLAUDE_TDD_PATH],
+      }),
+    ).resolves.toEqual({
       ok: false,
       error: "remove-failed",
     });
@@ -494,7 +549,12 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
       cleanupFails: true,
     });
 
-    await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
+    await expect(
+      useCase.execute({
+        ...removeTddGlobally,
+        confirmedReclaimPaths: [CLAUDE_TDD_PATH],
+      }),
+    ).resolves.toEqual({
       ok: true,
       removed: { type: "skill", name: "tdd" },
     });
@@ -505,9 +565,67 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
     // A repo's targets are its own apm.yml, not this machine's tool detection.
     const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
 
-    await useCase.execute(removeTdd);
+    await useCase.execute({
+      ...removeTdd,
+      confirmedReclaimPaths: [CLAUDE_TDD_PATH],
+    });
 
     expect(calls.cleanups).toEqual([]);
+  });
+});
+
+// What the preflight names before the user confirms — the P0 fix. A global
+// removal may force-delete a leftover tool's whole copy; the confirmation
+// must name that path by tool so the dialog can state it, and a path
+// preflight could not build is dropped rather than guessed (#P0).
+describe("RemoveDeployedSkill.preflight naming the reclaim", () => {
+  it("names the leftover copy's tool and absolute path", async () => {
+    const { useCase } = buildUseCase({ detectedTools: ["codex"] });
+
+    await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
+      ok: true,
+      warning: null,
+      reclaim: [{ tool: "claude", path: "/home/.claude/skills/tdd" }],
+    });
+  });
+
+  it("names nothing when every exclusive tool is still detected", async () => {
+    const { useCase } = buildUseCase({
+      detectedTools: ["claude", "codex"],
+    });
+
+    await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
+      ok: true,
+      warning: null,
+      reclaim: [],
+    });
+  });
+
+  it("never previews a reclaim on the per-repo path", async () => {
+    // A repo's targets are its own apm.yml, not this machine's detection —
+    // there is nothing here for the machine's tool presence to reclaim.
+    const { useCase } = buildUseCase({ detectedTools: ["codex"] });
+
+    await expect(useCase.preflight(removeTdd)).resolves.toEqual({
+      ok: true,
+      warning: null,
+      reclaim: [],
+    });
+  });
+
+  it("drops a leftover it cannot build a path for, rather than guessing one", async () => {
+    const { useCase } = buildUseCase({
+      detectedTools: ["codex"],
+      treeRoot: () => {
+        throw new Error("HOME unreadable");
+      },
+    });
+
+    await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
+      ok: true,
+      warning: null,
+      reclaim: [],
+    });
   });
 });
 
@@ -521,6 +639,7 @@ describe("RemoveDeployedSkill.preflight", () => {
     await expect(useCase.preflight(removeTdd)).resolves.toEqual({
       ok: true,
       warning: "local-edits-will-be-lost",
+      reclaim: [],
     });
     // A check, not the action: nothing is removed by asking.
     expect(calls.removes).toEqual([]);
@@ -532,6 +651,7 @@ describe("RemoveDeployedSkill.preflight", () => {
     await expect(useCase.preflight(removeTdd)).resolves.toEqual({
       ok: true,
       warning: "cannot-verify-local-edits",
+      reclaim: [],
     });
   });
 
@@ -543,6 +663,7 @@ describe("RemoveDeployedSkill.preflight", () => {
     await expect(useCase.preflight(removeTdd)).resolves.toEqual({
       ok: true,
       warning: "check-did-not-run",
+      reclaim: [],
     });
   });
 
@@ -552,6 +673,7 @@ describe("RemoveDeployedSkill.preflight", () => {
     await expect(useCase.preflight(removeTdd)).resolves.toEqual({
       ok: true,
       warning: "check-did-not-run",
+      reclaim: [],
     });
   });
 
@@ -561,6 +683,7 @@ describe("RemoveDeployedSkill.preflight", () => {
     await expect(useCase.preflight(removeTdd)).resolves.toEqual({
       ok: true,
       warning: null,
+      reclaim: [],
     });
   });
 
@@ -570,6 +693,7 @@ describe("RemoveDeployedSkill.preflight", () => {
     await expect(useCase.preflight(removeTdd)).resolves.toEqual({
       ok: true,
       warning: null,
+      reclaim: [],
     });
   });
 
@@ -590,6 +714,7 @@ describe("RemoveDeployedSkill.preflight", () => {
       deployedCleanup: { removeSkillTargets: async () => undefined },
       toolPresence: { detectGlobalTools: async () => ["claude"] },
       canonicalPath: async (path) => path,
+      location: { treeRoot: () => "/home" },
     });
 
     await expect(useCase.preflight(removeTdd)).resolves.toEqual({
@@ -628,6 +753,7 @@ describe("RemoveDeployedSkill.preflight", () => {
       deployedCleanup: { removeSkillTargets: async () => undefined },
       toolPresence: { detectGlobalTools: async () => ["claude"] },
       canonicalPath: async (path) => path,
+      location: { treeRoot: () => "/home" },
     });
 
     await expect(useCase.preflight(removeTdd)).resolves.toEqual({

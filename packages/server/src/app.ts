@@ -85,6 +85,12 @@ const removeBodySchema = z.object({
     z.object({ kind: z.literal("repo"), repoPath: z.string() }),
     z.object({ kind: z.literal("global") }),
   ]),
+  // Read only by the execute route. The exact reclaim paths the cockpit's
+  // confirmation dialog named (echoed back from this same request's own
+  // preflight response) and the user agreed to — never a client-built list,
+  // since core recomputes the preview and only reclaims a path this one
+  // named (#P0).
+  confirmedReclaimPaths: z.array(z.string()).optional(),
 });
 
 // One wording for both remove routes: they take the same body, so a malformed
@@ -612,7 +618,7 @@ export function createApp(deps: AppDeps) {
       const { status, message } = removePreflightErrorResponses[result.error];
       return c.json({ error: result.error, message }, status);
     }
-    return c.json({ warning: result.warning });
+    return c.json({ warning: result.warning, reclaim: result.reclaim });
   });
 
   // Bulk-deploy the staged skills to one target: plan → execute → report. The
@@ -824,6 +830,9 @@ function realDeps(): AppDeps {
     toolPresence: new ToolPresenceAdapter(),
     canonicalPath: (path) => fs.realpath(path),
     locks: apmWriteLocks,
+    // Same instance as the guard and the cleanup, so the reclaim preview
+    // preflight names and the path execute actually deletes always agree.
+    location: deployedLocation,
   });
   return {
     registry,

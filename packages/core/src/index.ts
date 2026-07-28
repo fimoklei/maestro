@@ -23,6 +23,7 @@ export { readGitOriginUrl } from "./deploy/git-origin-url";
 export { InFlightLocks } from "./deploy/in-flight-locks";
 export { InventoryGitAdapter } from "./deploy/inventory-git";
 export {
+  type ReclaimPreview,
   RemoveDeployedSkill,
   type RemoveDeployedSkillError,
   type RemovePreflightError,
