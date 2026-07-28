@@ -85,6 +85,17 @@ const removeBodySchema = z.object({
     z.object({ kind: z.literal("repo"), repoPath: z.string() }),
     z.object({ kind: z.literal("global") }),
   ]),
+  // Read only by the execute route. The token this same request's own preflight
+  // response carried with the leftover paths it named. Proves the confirmation
+  // the user saw came from this server's own preflight, rather than a
+  // client-built path list a caller could construct without ever asking
+  // preflight anything. Shaped as core mints it — a SHA-256 digest in lowercase
+  // hex — so anything else is refused at the edge rather than absorbed by the
+  // comparison behind it (security.md: allowlists over blocklists).
+  confirmedReclaimToken: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/)
+    .optional(),
 });
 
 // One wording for both remove routes: they take the same body, so a malformed
@@ -612,7 +623,7 @@ export function createApp(deps: AppDeps) {
       const { status, message } = removePreflightErrorResponses[result.error];
       return c.json({ error: result.error, message }, status);
     }
-    return c.json({ warning: result.warning });
+    return c.json({ warning: result.warning, reclaim: result.reclaim });
   });
 
   // Bulk-deploy the staged skills to one target: plan → execute → report. The
@@ -824,6 +835,9 @@ function realDeps(): AppDeps {
     toolPresence: new ToolPresenceAdapter(),
     canonicalPath: (path) => fs.realpath(path),
     locks: apmWriteLocks,
+    // Same instance as the guard and the cleanup, so the reclaim preview
+    // preflight names and the path execute actually deletes always agree.
+    location: deployedLocation,
   });
   return {
     registry,

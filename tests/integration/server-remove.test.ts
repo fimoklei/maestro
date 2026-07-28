@@ -117,6 +117,9 @@ describe("remove HTTP route", () => {
         detectGlobalTools: async () => options?.detectedTools ?? ["claude"],
       },
       canonicalPath: (path) => fs.realpath(path),
+      // The same sandbox HOME the cleanup and the real guard resolve against,
+      // so a reclaim preview names exactly the path the cleanup would delete.
+      location: new DeployedLocation({ HOME: home }),
     });
     const app = createApp({
       registry,
@@ -383,12 +386,29 @@ describe("remove HTTP route", () => {
         }),
       });
 
-    const removeGlobally = (app: ReturnType<typeof makeApp>["app"]) =>
+    const removeGlobally = (
+      app: ReturnType<typeof makeApp>["app"],
+      confirmedReclaimToken?: string,
+    ) =>
       removeRequest(app, {
         type: "skill",
         name: "tdd",
         target: { kind: "global" },
+        ...(confirmedReclaimToken ? { confirmedReclaimToken } : {}),
       });
+
+    // The token a real preflight against this app would return — never
+    // hand-built, so a test proves the actual execute→preflight contract
+    // rather than a path the implementation would never issue.
+    async function reclaimTokenFromPreflight(
+      app: ReturnType<typeof makeApp>["app"],
+    ): Promise<string | undefined> {
+      const response = await preflightGlobally(app);
+      const { reclaim } = (await response.json()) as {
+        reclaim: { token: string } | null;
+      };
+      return reclaim?.token;
+    }
 
     it("removes the skill with the ref the global lockfile records", async () => {
       const { app, removeCalls } = makeApp();
@@ -462,6 +482,65 @@ describe("remove HTTP route", () => {
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({
         warning: "local-edits-will-be-lost",
+        // Codex is not exclusive to its skills dir (ten apm targets share
+        // .agents), so an undetected Codex is never a nameable reclaim.
+        reclaim: null,
+      });
+    });
+
+    it("names the leftover Claude Code copy and issues a token for it", async () => {
+      // A machine where Claude Code has dropped off still carries a global
+      // deploy's .claude copy. Naming it here is what lets the dialog state
+      // it before the user confirms, rather than deleting a larger set than
+      // the dialog ever promised. The token is what the execute route
+      // requires back before it will actually reclaim that path.
+      const { app } = makeApp({ detectedTools: ["codex"] });
+      await writeGlobalLockfile([skillEntry("tdd")]);
+
+      const response = await preflightGlobally(app);
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        warning: null,
+        reclaim: {
+          previews: [
+            { tool: "claude", path: join(home, ".claude/skills/tdd") },
+          ],
+          token: expect.stringMatching(/^[0-9a-f]{64}$/),
+        },
+      });
+    });
+
+    it("warns about local edits inside the leftover copy it is about to name", async () => {
+      // #390's own criterion: the local-edits check has to cover the copies the
+      // reclaim would delete. Claude Code has dropped off this machine, so its
+      // .claude tree is the reclaim — and it carries edits the lockfile never
+      // recorded. Naming the path while calling the removal costless would be
+      // consent for a deletion whose cost was never stated.
+      const { app } = makeApp({
+        realDeployedContent: true,
+        detectedTools: ["codex"],
+      });
+      await writeGlobalLockfile([
+        [
+          skillEntry("tdd"),
+          "  deployed_file_hashes:",
+          `    .claude/skills/tdd/SKILL.md: sha256:${"0".repeat(64)}`,
+        ].join("\n"),
+      ]);
+      await writeSkillFile(".claude/skills/tdd/SKILL.md");
+
+      const response = await preflightGlobally(app);
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        warning: "local-edits-will-be-lost",
+        reclaim: {
+          previews: [
+            { tool: "claude", path: join(home, ".claude/skills/tdd") },
+          ],
+          token: expect.stringMatching(/^[0-9a-f]{64}$/),
+        },
       });
     });
 
@@ -484,7 +563,10 @@ describe("remove HTTP route", () => {
 
       const response = await preflightGlobally(app);
 
-      expect(await response.json()).toEqual({ warning: null });
+      expect(await response.json()).toEqual({
+        warning: null,
+        reclaim: null,
+      });
     });
 
     // Whether a path still exists under the sandbox home, so a test can state
@@ -498,20 +580,49 @@ describe("remove HTTP route", () => {
       }
     };
 
-    it("reclaims the copy left for a tool this machine no longer detects", async () => {
+    it("reclaims the copy left for a tool this machine no longer detects, once confirmed", async () => {
       // apm's uninstall deletes by the targets its own apm.yml lists, so the
       // copy for a tool that has since dropped off survives it. Removing that
-      // tree is what makes the removal complete (#339).
+      // tree is what makes the removal complete (#339) — but only once the
+      // request echoes back the token this same scope's preflight issued,
+      // never a client-guessed path (#390).
       const { app } = makeApp({ detectedTools: ["codex"] });
       await writeGlobalLockfile([skillEntry("tdd")]);
       await writeSkillFile(".claude/skills/tdd/SKILL.md");
       await writeSkillFile(".claude/skills/jobs/SKILL.md");
+      const confirmedReclaimToken = await reclaimTokenFromPreflight(app);
 
-      expect((await removeGlobally(app)).status).toBe(200);
+      expect((await removeGlobally(app, confirmedReclaimToken)).status).toBe(
+        200,
+      );
 
       expect(await existsUnderHome(".claude/skills/tdd")).toBe(false);
       // Another skill under the same directory is nobody's leftover.
       expect(await existsUnderHome(".claude/skills/jobs/SKILL.md")).toBe(true);
+    });
+
+    it("leaves the leftover copy alone when nothing confirmed it", async () => {
+      // Without a confirmed token, a global removal must not
+      // delete more than the dialog named.
+      const { app } = makeApp({ detectedTools: ["codex"] });
+      await writeGlobalLockfile([skillEntry("tdd")]);
+      await writeSkillFile(".claude/skills/tdd/SKILL.md");
+
+      expect((await removeGlobally(app)).status).toBe(200);
+
+      expect(await existsUnderHome(".claude/skills/tdd/SKILL.md")).toBe(true);
+    });
+
+    it("leaves the leftover copy alone for a token the caller merely guessed", async () => {
+      // The bypass the review flagged: a direct request that never called
+      // preflight but echoes back a plausible-looking token.
+      const { app } = makeApp({ detectedTools: ["codex"] });
+      await writeGlobalLockfile([skillEntry("tdd")]);
+      await writeSkillFile(".claude/skills/tdd/SKILL.md");
+
+      expect((await removeGlobally(app, "a".repeat(64))).status).toBe(200);
+
+      expect(await existsUnderHome(".claude/skills/tdd/SKILL.md")).toBe(true);
     });
 
     it("keeps a skills directory several tools read", async () => {
@@ -572,6 +683,7 @@ describe("remove HTTP route", () => {
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({
         warning: "local-edits-will-be-lost",
+        reclaim: null,
       });
       expect(removeCalls).toEqual([]);
     });
@@ -605,6 +717,7 @@ describe("remove HTTP route", () => {
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({
         warning: "local-edits-will-be-lost",
+        reclaim: null,
       });
       expect(removeCalls).toEqual([]);
     });
@@ -615,6 +728,7 @@ describe("remove HTTP route", () => {
 
       expect(await (await preflightTdd(app, repo)).json()).toEqual({
         warning: "cannot-verify-local-edits",
+        reclaim: null,
       });
     });
 
@@ -624,6 +738,7 @@ describe("remove HTTP route", () => {
 
       expect(await (await preflightTdd(app, repo)).json()).toEqual({
         warning: null,
+        reclaim: null,
       });
     });
 
