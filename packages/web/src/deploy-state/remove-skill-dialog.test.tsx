@@ -474,8 +474,8 @@ describe("RemoveSkillDialog", () => {
     it("sets every ledger row in mono, because a target is data", () => {
       renderDialog({ target: { kind: "global", tools: ["claude", "codex"] } });
 
-      for (const row of screen.getAllByRole("listitem")) {
-        expect(row.className).toContain("font-mono");
+      for (const name of ["Claude Code", "Codex"]) {
+        expect(screen.getByText(name).className).toContain("font-mono");
       }
     });
 
@@ -502,15 +502,16 @@ describe("RemoveSkillDialog", () => {
       renderDialog();
 
       const leadIn = screen.getByText("Primitive will be removed from:");
-      // The repo scope has exactly one row, so the singular query also asserts
-      // the ledger is not quietly listing something else.
-      const row = screen.getByRole("listitem");
-      expect(stepOf(row)).toBeGreaterThanOrEqual(0);
-      expect(stepOf(row)).toBeLessThan(stepOf(leadIn));
+      // The repo scope has exactly one row, so the count also asserts the
+      // ledger is not quietly listing something else.
+      expect(screen.getAllByRole("listitem")).toHaveLength(1);
+      const name = screen.getByText("/Users/me/project");
+      expect(stepOf(name)).toBeGreaterThanOrEqual(0);
+      expect(stepOf(name)).toBeLessThan(stepOf(leadIn));
       // The second half of the step: the introducing line also drops down the
       // text ramp, so size is not carrying the difference alone.
       expect(leadIn.className).toContain("text-muted");
-      expect(row.className).not.toContain("text-muted");
+      expect(name.className).not.toContain("text-muted");
     });
 
     // The failure block used to name its problem in the panel's smallest text
@@ -769,65 +770,151 @@ describe("RemoveSkillDialog", () => {
     it("still carries the divergence warning", () => {
       renderDialog({ target: globalTarget, preflight: warns("local-edits") });
 
-      expect(screen.getByRole("status")).toHaveTextContent(/local edits/i);
+      expect(
+        screen.getByRole("status", { name: /local-edits check/i }),
+      ).toHaveTextContent(/local edits/i);
     });
 
     // A global removal force-deletes the whole copy of any exclusive tool this
     // machine no longer detects, beyond what apm's own scoped uninstall
-    // touches (#390). The confirmation must name it before the user
-    // agrees to it, never leave it implicit in "its deployed files go".
+    // touches (#390). The confirmation must name it before the user agrees to
+    // it — on the ledger, as one more thing that disappears, rather than in a
+    // block underneath saying what else goes (#413).
     describe("naming what an untargeted tool's copy reclaim would also delete", () => {
       const leftover = [
-        { tool: "claude" as const, path: "/Users/me/.claude/skills/tdd" },
+        { tool: "codex" as const, path: "/Users/me/.agents/skills/tdd" },
       ];
+      const oneToolTarget = { kind: "global" as const, tools: ["claude"] };
 
-      it("names the leftover tool and the exact path it would delete", () => {
+      const renderWithLeftover = () =>
         renderDialog({
-          target: globalTarget,
+          target: oneToolTarget,
           preflight: warns("none", leftover),
         });
 
-        const dialog = screen.getByRole("dialog");
-        expect(dialog).toHaveTextContent("Claude Code");
-        expect(dialog).toHaveTextContent("/Users/me/.claude/skills/tdd");
-        expect(dialog).toHaveTextContent(/not installed on this machine/i);
+      it("puts the leftover copy on its own row, after the detected tools", () => {
+        renderWithLeftover();
+
+        const rows = screen.getAllByRole("listitem");
+        expect(rows[0]).toHaveTextContent("Claude Code");
+        expect(rows[1]).toHaveTextContent("Codex");
+        expect(rows).toHaveLength(2);
+      });
+
+      it("states the tool, the exact path and what happens to it on that row", () => {
+        renderWithLeftover();
+
+        const row = screen.getAllByRole("listitem")[1] as HTMLElement;
+        expect(row).toHaveTextContent("Codex");
+        expect(row).toHaveTextContent("/Users/me/.agents/skills/tdd");
+        expect(row).toHaveTextContent("not installed — copy deleted in full");
+        // The glyph pairs the amber with a shape, so the row still reads as a
+        // cost without colour.
+        expect(row).toHaveTextContent("▲");
+      });
+
+      it("drops the separate block that used to say what else goes", () => {
+        renderWithLeftover();
+
+        expect(screen.getByRole("dialog")).not.toHaveTextContent(
+          /this also deletes/i,
+        );
+      });
+
+      it("warms the panel outline while a leftover row is on the ledger", () => {
+        renderWithLeftover();
+
+        expect(screen.getByRole("dialog").className).toContain(
+          "border-line-drift",
+        );
+      });
+
+      it("keeps the neutral outline when nothing is left over", () => {
+        renderDialog({ target: oneToolTarget, preflight: warns("none") });
+
+        expect(screen.getByRole("dialog").className).not.toContain("drift");
       });
 
       it("names each leftover tool when there is more than one", () => {
         renderDialog({
-          target: globalTarget,
+          target: oneToolTarget,
           preflight: warns("none", [
             ...leftover,
-            { tool: "codex", path: "/Users/me/.agents/skills/tdd" },
+            { tool: "claude", path: "/Users/me/.claude/skills/tdd" },
           ]),
         });
 
         const dialog = screen.getByRole("dialog");
-        expect(dialog).toHaveTextContent("/Users/me/.claude/skills/tdd");
         expect(dialog).toHaveTextContent("/Users/me/.agents/skills/tdd");
+        expect(dialog).toHaveTextContent("/Users/me/.claude/skills/tdd");
       });
 
       it("says nothing extra when there is no leftover to reclaim", () => {
         renderDialog({ target: globalTarget, preflight: warns("none") });
 
-        expect(screen.queryByText(/not installed on this machine/i)).toBeNull();
-        expect(screen.queryByRole("status", { name: /also deleted/i })).toBe(
-          null,
-        );
+        expect(
+          screen.queryByText(/copy deleted in full/i, { exact: false }),
+        ).toBeNull();
+        expect(screen.queryAllByRole("listitem")).toHaveLength(2);
       });
 
-      // What #390 asks for: make the destructive path as
-      // inspectable and as loud as the deploy path. A force-deleted directory
-      // the user never targeted gets its own announced region, not a line of
-      // dim text below the consequence line.
-      it("announces the leftover as its own region rather than quiet prose", () => {
-        renderDialog({
-          target: globalTarget,
-          preflight: warns("none", leftover),
-        });
+      // A live region created together with its first message announces
+      // unreliably, and the check answers after the dialog is already open —
+      // so the region waits, empty, from the first render (removal-trace.tsx).
+      it("keeps the region mounted while the check is still running", () => {
+        renderDialog({ target: oneToolTarget, preflight: warns("checking") });
+
+        expect(
+          screen.getByRole("status", { name: /also deleted/i }),
+        ).toBeEmptyDOMElement();
+      });
+
+      // What #390 asks for: make the destructive path as inspectable and as
+      // loud as the deploy path. A force-deleted directory the user never
+      // targeted stays its own announced region — and a distinct one from the
+      // local-edits check, or a reader hears two identical regions.
+      it("announces the leftover rows as their own named region", () => {
+        renderWithLeftover();
 
         const region = screen.getByRole("status", { name: /also deleted/i });
-        expect(region).toHaveTextContent("/Users/me/.claude/skills/tdd");
+        expect(region).toHaveTextContent("/Users/me/.agents/skills/tdd");
+        expect(region).not.toHaveTextContent("Claude Code");
+      });
+
+      it("keeps the local-edits check in a region of its own", () => {
+        renderDialog({
+          target: oneToolTarget,
+          preflight: warns("local-edits", leftover),
+        });
+
+        expect(
+          screen.getByRole("status", { name: /local-edits check/i }),
+        ).toHaveTextContent(/local edits/i);
+        expect(
+          screen.getByRole("status", { name: /also deleted/i }),
+        ).not.toHaveTextContent(/local edits/i);
+      });
+
+      it("leaves the row static: the status slot adds no control", () => {
+        renderWithLeftover();
+
+        const row = screen.getAllByRole("listitem")[1] as HTMLElement;
+        expect(within(row).queryByRole("button")).toBeNull();
+        expect(row.querySelector("[tabindex]")).toBeNull();
+      });
+
+      // The leftover rows announce themselves, so they stay out of the dialog's
+      // description — the rule the warning and failure blocks already follow.
+      // In both channels a reader hears the same path twice.
+      it("leaves the announced rows out of the dialog's description", () => {
+        renderWithLeftover();
+
+        const describedBy = screen
+          .getByRole("dialog")
+          .getAttribute("aria-describedby");
+        const [detected, leftover] = screen.getAllByRole("listitem");
+        expect(describedBy?.split(" ")).toContain(detected?.id);
+        expect(describedBy?.split(" ")).not.toContain(leftover?.id);
       });
     });
   });

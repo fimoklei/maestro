@@ -560,9 +560,11 @@ describe("removing a deployed skill from a row", () => {
 
       const dialog = await openRemoveDialog();
 
-      expect(await within(dialog).findByRole("status")).toHaveTextContent(
-        /local edits/i,
-      );
+      expect(
+        await within(dialog).findByRole("status", {
+          name: /local-edits check/i,
+        }),
+      ).toHaveTextContent(/local edits/i);
       const [, init] = preflightCalls(fetchMock)[0] as [string, RequestInit];
       expect(JSON.parse(String(init.body))).toEqual({
         type: "skill",

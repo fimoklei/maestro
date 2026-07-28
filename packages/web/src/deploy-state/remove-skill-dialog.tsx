@@ -3,19 +3,15 @@ import { useModalDialog } from "../shell/use-modal-dialog";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { TypeTag } from "../ui/type-tag";
+import {
+  type RemoveDialogTarget,
+  type RemoveLedgerRow,
+  removeLedgerRows,
+} from "./remove-ledger-rows";
 import type {
   RemovePreflightView,
   RemoveWarningState,
 } from "./remove-preflight-view";
-import { toolDisplayName } from "./tool-labels";
-
-// Which target the removal aims at, in the terms the confirmation must state.
-// The global kind carries its detected tools because the scope line is
-// mandatory there: the user clicked inside one tool's card, and this modal is
-// where the other tools stop being a surprise (#338).
-export type RemoveDialogTarget =
-  | { kind: "repo"; repoPath: string }
-  | { kind: "global"; tools: string[] };
 
 // What the user is told before destroying the deployed copy. Amber, never
 // danger red: red is reserved for validation errors, and lost work is a
@@ -34,18 +30,8 @@ const WARNING_TEXT: Record<Exclude<RemoveWarningState, "none">, string> = {
   checking: "Checking this copy for local edits…",
 };
 
-// The one amber container in this panel. Both blocks that wear it say the same
-// kind of thing — this removal will cost something — so they are meant to look
-// identical, and one owner is what keeps them that way. A check that has not
-// answered yet wears none of it: the surface is the claim, and an unfinished
-// check has made no claim.
-const WARNING_SURFACE =
-  "rounded-control border border-amber-border bg-amber-bg px-2.5 py-2.5";
-
-// Every block in this panel that leads with a glyph hangs it in the margin and
-// aligns its lines against each other, so a wrapped sentence and a second line
-// start where the first one did. Indenting by a guessed padding instead put the
-// amber block's list 2px off its own intro.
+// A block that leads with a glyph hangs it in the margin and aligns its lines
+// against each other, so a wrapped sentence starts where the first line did.
 const GLYPH_BLOCK = "flex gap-1.5";
 
 // A removal that either cannot happen or did not happen. Danger red rather than
@@ -96,6 +82,66 @@ function FailureNote({
         {children}
       </div>
     </div>
+  );
+}
+
+// Where a row sits in the ledger, settled once over the whole list so the two
+// lists it is rendered in cannot disagree about where it ends.
+type LedgerRowPlacement = { id: string; last: boolean };
+
+// The outline states the panel's worst news: a refusal outranks a cost, and a
+// cost outranks an ordinary confirmation.
+function panelBorderFor({
+  refused,
+  cost,
+}: {
+  refused: boolean;
+  cost: boolean;
+}): string {
+  if (refused) {
+    return "border-danger-border";
+  }
+  return cost ? "border-line-drift" : "border-line";
+}
+
+// One line of the ledger: what disappears, and what is true of it beyond its
+// name. Static text end to end — apm's uninstall has no -t and faking one
+// orphans the other tools' files (apm-behavior.md § Remove, ADR-0013).
+function LedgerRow({ row }: { row: RemoveLedgerRow & LedgerRowPlacement }) {
+  return (
+    <li
+      id={row.id}
+      className={cn(
+        "flex items-baseline gap-1.5 px-3 py-2.5",
+        row.last ? null : "border-line-faint border-b",
+        row.drift ? "bg-amber-bg" : "bg-inset",
+      )}
+    >
+      {/* The glyph pairs the amber with a shape, so the cost survives without
+          colour (Never-Colour-Alone). */}
+      {row.drift ? (
+        <span aria-hidden="true" className="font-mono text-amber-ink text-desc">
+          ▲
+        </span>
+      ) : null}
+      {/* A path has no spaces to break at, so without break-all it sets the
+          panel's width instead of fitting inside it. */}
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="break-all font-mono text-data text-fg">
+          {row.name}
+        </span>
+        {row.path === null ? null : (
+          <span className="break-all font-mono text-fg-2 text-mono-sm">
+            {row.path}
+          </span>
+        )}
+      </div>
+      {row.status === null ? null : (
+        <span className="shrink-0 font-ui text-amber-ink text-mono-sm">
+          {row.status}
+        </span>
+      )}
+    </li>
   );
 }
 
@@ -178,14 +224,10 @@ export function RemoveSkillDialog({
       ? preflight.warning
       : null;
 
-  // What the removal is aimed at, one entry per thing that disappears. The
-  // global scope keeps the order it was handed: the panel states the set the
-  // host detected, and re-sorting it here would make the confirmation disagree
-  // with the cards the user just came from.
-  const targets =
-    target.kind === "repo"
-      ? [target.repoPath]
-      : target.tools.map((tool) => toolDisplayName(tool));
+  const panelBorder = panelBorderFor({
+    refused,
+    cost: reclaim.length > 0,
+  });
 
   // The question and the targets it would take are announced as one statement,
   // so the confirmation is heard rather than arrowed through. The warning and
@@ -202,10 +244,18 @@ export function RemoveSkillDialog({
   const dialogId = useId();
   const leadInId = `${dialogId}-lead-in`;
   const refusalId = `${dialogId}-refusal`;
-  const rowId = (index: number) => `${dialogId}-target-${index}`;
+  const rows = removeLedgerRows(target, reclaim).map((row, index, all) => ({
+    ...row,
+    id: `${dialogId}-target-${index}`,
+    last: index === all.length - 1,
+  }));
+  const detectedRows = rows.filter((row) => !row.drift);
+  const leftoverRows = rows.filter((row) => row.drift);
+  // The leftover rows are an announced region, so they stay out of the
+  // description with the other regions.
   const describedBy = refused
     ? refusalId
-    : [leadInId, ...targets.map((_, index) => rowId(index))].join(" ");
+    : [leadInId, ...detectedRows.map((row) => row.id)].join(" ");
   // Why the confirm control is unavailable, tied to the control itself: a
   // disabled button with the reason elsewhere on screen states it to sighted
   // users alone. Same wiring as the browse dialog's `↑ up` at its ceiling. Only
@@ -233,11 +283,11 @@ export function RemoveSkillDialog({
         aria-describedby={describedBy}
         tabIndex={-1}
         // A refused panel is a refusal end to end, so the outline carries it
-        // too. Left neutral, the screen reads as an ordinary confirmation with
-        // one red box inside it — and the box is now the only thing on it.
+        // too. Drift warms it one step short of that: the removal is still on
+        // offer, but it costs more than the row the user clicked.
         className={cn(
           "relative flex w-full max-w-[480px] flex-col overflow-hidden rounded-card border bg-chrome outline-none",
-          refused ? "border-danger-border" : "border-line",
+          panelBorder,
         )}
       >
         <div className="flex items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
@@ -269,99 +319,46 @@ export function RemoveSkillDialog({
               <span id={leadInId} className="font-ui text-desc text-muted">
                 Primitive will be removed from:
               </span>
-              {/* The ledger. Rows are static text: there is no per-tool remove
-                  to offer — apm's uninstall has no -t, and faking one orphans
-                  the other tools' files (apm-behavior.md § Remove, ADR-0013) —
-                  so nothing on a row may carry a control or a glyph that reads
-                  as one. The sentence that used to say so is gone; a row with
-                  nothing to press says it without spending a line. */}
-              <ul className="flex flex-col overflow-hidden rounded-item border border-line-row">
-                {targets.map((name, index) => (
-                  <li
-                    key={name}
-                    id={rowId(index)}
-                    // A path has no spaces to break at, so without break-all it
-                    // sets the panel's width instead of fitting inside it.
-                    className="break-all border-line-faint border-b bg-inset px-3 py-2.5 font-mono text-data text-fg last:border-b-0"
-                  >
-                    {name}
-                  </li>
-                ))}
-              </ul>
+              {/* The ledger. Two lists inside one box: the leftovers are their
+                  own announced region, and a reader who hears "also deleted"
+                  before them knows the box changed subject. */}
+              <div className="flex flex-col overflow-hidden rounded-item border border-line-row">
+                <ul className="flex flex-col">
+                  {detectedRows.map((row) => (
+                    <LedgerRow key={row.key} row={row} />
+                  ))}
+                </ul>
+                {/* Mounted from the first render, empty until the check
+                    answers: a live region created together with its first
+                    message announces unreliably (removal-trace.tsx). Only on
+                    the global scope — a repo's targets come from its own
+                    apm.yml rather than this machine, so it reclaims nothing. */}
+                {target.kind === "global" ? (
+                  <div role="status" aria-label="Also deleted">
+                    {leftoverRows.length > 0 ? (
+                      <ul className="flex flex-col">
+                        {leftoverRows.map((row) => (
+                          <LedgerRow key={row.key} row={row} />
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
             </div>
           )}
 
           <div className="flex flex-col gap-2">
-            {/* A global removal also force-deletes the whole copy of any tool
-                this machine no longer detects — apm's own uninstall cannot
-                reach it (#339). Named by tool and exact path so the confirmation
-                states it before the user agrees; a path the preflight could not
-                build is simply absent, never guessed. It goes beyond the row the
-                user clicked, so it gets the same weight as the local-edits
-                warning rather than a line of dim prose: amber, glyphed, and its
-                own announced region, because a directory nobody targeted is the
-                one thing here that must not be skimmed past. */}
-            {reclaim.length > 0 ? (
-              <div
-                role="status"
-                aria-label="Also deleted"
-                className={cn(GLYPH_BLOCK, WARNING_SURFACE)}
-              >
-                <span
-                  aria-hidden="true"
-                  className="font-mono text-amber-ink text-desc"
-                >
-                  ▲
-                </span>
-                <div className="flex min-w-0 flex-col gap-1">
-                  <p className="font-ui text-amber-ink text-desc">
-                    This also deletes{" "}
-                    {reclaim.length === 1 ? "a copy" : "copies"} apm itself
-                    cannot reach, in full:
-                  </p>
-                  <ul className="flex flex-col gap-1">
-                    {reclaim.map((entry) => (
-                      <li key={entry.path} className="font-ui text-desc">
-                        {/* Only the path breaks mid-token: a long path has to
-                            fit, but breaking the sentence around it mid-word
-                            makes the loudest block on screen the hardest one to
-                            read. It is set at the size of the sentence it sits
-                            in, so mono and sans share a baseline instead of
-                            stepping over each other. */}
-                        <span className="break-all font-mono text-fg">
-                          {entry.path}
-                        </span>
-                        {/* A tool is a target name, so it keeps the mono face
-                            inside the sans sentence around it (Mono-Is-Data).
-                            Named once: the sentence used to say it twice in
-                            nine words, across a comma splice. */}
-                        <span className="text-amber-ink">
-                          {" "}
-                          — the leftover copy for{" "}
-                          <span className="font-mono">
-                            {toolDisplayName(entry.tool)}
-                          </span>
-                          , which is not installed on this machine.
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            ) : null}
-            {/* Named, because the leftover block above is a status region too
-                and the two say different things: one is what else goes, the
-                other is what is inside it. Unnamed, a reader hears two identical
-                regions. One name across every answer the check can give, since
-                they are all the same region reporting the same check. */}
+            {/* Named, because the leftover rows are a status region too and the
+                two say different things: what else goes, versus what is inside
+                it. Unnamed, a reader hears two identical regions. */}
             {costWarning !== null ? (
               <p
                 role="status"
                 aria-label="Local-edits check"
                 className={cn(
                   GLYPH_BLOCK,
-                  "font-ui text-amber-ink text-desc",
-                  WARNING_SURFACE,
+                  "rounded-control border border-amber-border bg-amber-bg px-2.5 py-2.5 font-ui text-amber-ink text-desc",
                 )}
               >
                 <span aria-hidden="true" className="font-mono">
