@@ -770,7 +770,9 @@ describe("RemoveSkillDialog", () => {
     it("still carries the divergence warning", () => {
       renderDialog({ target: globalTarget, preflight: warns("local-edits") });
 
-      expect(screen.getByRole("status")).toHaveTextContent(/local edits/i);
+      expect(
+        screen.getByRole("status", { name: /local-edits check/i }),
+      ).toHaveTextContent(/local edits/i);
     });
 
     // A global removal force-deletes the whole copy of any exclusive tool this
@@ -853,9 +855,18 @@ describe("RemoveSkillDialog", () => {
         expect(
           screen.queryByText(/copy deleted in full/i, { exact: false }),
         ).toBeNull();
-        expect(screen.queryByRole("status", { name: /also deleted/i })).toBe(
-          null,
-        );
+        expect(screen.queryAllByRole("listitem")).toHaveLength(2);
+      });
+
+      // A live region created together with its first message announces
+      // unreliably, and the check answers after the dialog is already open —
+      // so the region waits, empty, from the first render (removal-trace.tsx).
+      it("keeps the region mounted while the check is still running", () => {
+        renderDialog({ target: oneToolTarget, preflight: warns("checking") });
+
+        expect(
+          screen.getByRole("status", { name: /also deleted/i }),
+        ).toBeEmptyDOMElement();
       });
 
       // What #390 asks for: make the destructive path as inspectable and as

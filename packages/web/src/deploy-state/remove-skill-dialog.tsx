@@ -328,13 +328,20 @@ export function RemoveSkillDialog({
                     <LedgerRow key={row.key} row={row} />
                   ))}
                 </ul>
-                {leftoverRows.length > 0 ? (
+                {/* Mounted from the first render, empty until the check
+                    answers: a live region created together with its first
+                    message announces unreliably (removal-trace.tsx). Only on
+                    the global scope — a repo's targets come from its own
+                    apm.yml rather than this machine, so it reclaims nothing. */}
+                {target.kind === "global" ? (
                   <div role="status" aria-label="Also deleted">
-                    <ul className="flex flex-col">
-                      {leftoverRows.map((row) => (
-                        <LedgerRow key={row.key} row={row} />
-                      ))}
-                    </ul>
+                    {leftoverRows.length > 0 ? (
+                      <ul className="flex flex-col">
+                        {leftoverRows.map((row) => (
+                          <LedgerRow key={row.key} row={row} />
+                        ))}
+                      </ul>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
