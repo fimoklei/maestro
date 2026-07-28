@@ -9,18 +9,13 @@ type FakeSeed = {
   files?: Record<string, string>;
   // Maps a directory path to the entry names directly inside it.
   listings?: Record<string, string[]>;
-  // Directories that exist but reject when listed (e.g. permission denied),
-  // so callers can exercise the unreadable-directory path.
+  // Directories that exist but reject when listed (permission denied).
   unreadable?: string[];
-  // Paths that were a genuine directory when first listed but no longer
-  // report as one on a later isDirectoryEntry recheck — models a TOCTOU
-  // race where a concurrent process swaps the directory for a symlink
-  // between listing and probing it (browse-filesystem.ts, ADR-0009).
+  // Models the TOCTOU race: a genuine directory when listed, no longer one on
+  // the later isDirectoryEntry recheck (ADR-0009).
   racedAwayAsDirectory?: string[];
-  // Full entry paths (parent + name) that report `isSymlink: true` from
-  // listRawEntries but are not registered in `directories`/`files` at all —
-  // models a broken/dangling symlink: real, a Dirent still reports its type,
-  // but realpath() on it throws (browse-filesystem.ts, issue #148).
+  // Full entry paths registered nowhere else: a Dirent reports the type, but
+  // realpath() throws (#148).
   danglingSymlinks?: string[];
 };
 
@@ -52,13 +47,8 @@ export class InMemoryFileSystem implements FileSystemPort {
     throw new Error(`ENOENT: no such file or directory, realpath '${path}'`);
   }
 
-  // A path is a known directory when it resolves to itself — the seeding
-  // convention every test follows for a genuine directory (e.g.
-  // `"/home/user/dev": "/home/user/dev"`). This is deliberately narrower than
-  // "appears anywhere in directories.values()": a symlink alias's resolution
-  // target (e.g. a symlink pointing at a *file*) also shows up as a value,
-  // but is never itself self-mapped, so it correctly reads as "not a
-  // directory" here.
+  // Self-mapping is the seeding convention for a genuine directory. Narrower
+  // than "appears in directories.values()", which a symlink target also does.
   private isKnownDirectory(path: string): boolean {
     return this.directories.get(path) === path;
   }
@@ -67,9 +57,8 @@ export class InMemoryFileSystem implements FileSystemPort {
     return this.isKnownDirectory(path);
   }
 
-  // Matches isDirectory unless the path was seeded as raced away — the fake
-  // has no real symlink concept, so that seed is the only way to model a
-  // directory no longer being one by the time of a second check.
+  // The fake has no symlink concept, so the seed is the only way to model a
+  // directory that stops being one between two checks.
   async isDirectoryEntry(path: string): Promise<boolean> {
     if (this.racedAwayAsDirectory.has(path)) {
       return false;
@@ -92,13 +81,8 @@ export class InMemoryFileSystem implements FileSystemPort {
     return this.listings.get(path) ?? [];
   }
 
-  // Derives each name's type facts from the same seed data realpath/isDirectory
-  // already read — a genuine directory is self-mapped, a symlink is a
-  // `directories` key whose value differs, and `danglingSymlinks` covers the
-  // one shape neither of those can express (a symlink registered nowhere,
-  // whose realpath throws). Anything else (a plain file, or a name with no
-  // registration at all) reports as neither, matching how a real Dirent
-  // never marks a regular file as a symlink or a directory.
+  // Type facts come from the same seed realpath reads: self-mapped is a
+  // directory, a differing value is a symlink, anything else is neither.
   async listRawEntries(path: string): Promise<RawDirEntry[]> {
     if (this.unreadable.has(path)) {
       throw new Error(`EACCES: permission denied, scandir '${path}'`);
@@ -125,7 +109,6 @@ export class InMemoryFileSystem implements FileSystemPort {
     this.files.set(path, contents);
   }
 
-  // Records the directory as existing so a later isDirectory() sees it.
   async ensureDir(path: string): Promise<void> {
     this.directories.set(path, path);
   }

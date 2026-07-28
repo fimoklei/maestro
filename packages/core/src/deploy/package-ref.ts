@@ -1,7 +1,5 @@
-// Builds the tag-pinned package reference apm installs from
-// (host/owner/repo/skills/<name>#<tag> — ADR-0003) and validates the skill
-// name as a strict slug first. The slug check is the security gate that keeps
-// a hostile name from becoming command text or a path escape (security.md).
+// Builds the tag-pinned ref apm installs from (ADR-0003). The slug check is the
+// gate that keeps a hostile name out of command text or a path (security.md).
 
 const skillSlugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 

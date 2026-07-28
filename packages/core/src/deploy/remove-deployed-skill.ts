@@ -1,23 +1,6 @@
-// The remove use-case: take "take skill X off target Y" from the screen and
-// orchestrate it — validate the request, refuse an unregistered repo before
-// anything is read, rebuild the tag-pinned reference the install used from the
-// target's own lockfile, and hand it to the ApmDriver under the same per-target
-// lock the deploy takes. Business rules live here; the server route only carries
-// it over HTTP.
-//
-// Two target kinds, one path. A repo carries a client-supplied path the registry
-// gates; the global scope carries none — its location is apm's own, resolved
-// server-side (J07) — and is removed from every detected tool at once, because
-// apm's uninstall has no -t and narrowing `targets:` to fake one orphans the
-// other tools' files (ADR-0013, apm-behavior.md § Remove).
-//
-// Removing a deploy never touches the central inventory: the inventory is what a
-// target could have, and this only changes what one target does have.
-//
-// Two entry points, one guard: `preflight` says what the removal would destroy
-// so the confirmation can state it, and `execute` carries it out. Divergence
-// warns rather than refusing — destruction is this use-case's intent, not a side
-// effect, so informed consent is enough (#337).
+// The remove use-case. `preflight` states what the removal would destroy;
+// `execute` carries it out under the same per-target lock the deploy takes.
+// See ADR-0011, ADR-0013, #337, apm-behavior.md § Remove.
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type {
   ApmDriverPort,
@@ -34,8 +17,7 @@ import { isValidSkillSlug } from "./package-ref";
 import { type ReclaimConsent, ReclaimConsentIssuer } from "./reclaim-consent";
 import { reclaimTools } from "./reclaim-untargeted-copies";
 
-// Which package reference names the deployed skill, read from the target's own
-// lockfile. Implemented by DeployedRefAdapter.
+// Reads the ref from the target's own lockfile, never from the caller.
 export type DeployedRefPort = {
   resolve(input: {
     target: DeployTarget;
@@ -44,73 +26,40 @@ export type DeployedRefPort = {
 };
 
 type RemoveDeployedSkillInput = {
-  // Accepted as a plain string at the edge; the skill-only rule is a business
-  // rule here, not a schema shape, so the user gets an honest message.
+  // Plain string, not a literal union: the skill-only rule is enforced here so
+  // the user gets a business-rule message rather than a schema rejection.
   type: string;
   name: string;
   target: DeployTarget;
-  // Read only by `execute`. The token this same request's own `preflight` call
-  // returned with the leftover paths it named. Never a client-supplied path
-  // list: a caller could echo back a path it merely guessed without ever
-  // having called preflight, and the reclaim would run all the same. A
-  // missing, stale, or guessed token reclaims nothing.
+  // Token from this request's own `preflight`, never a client-supplied path
+  // list. Missing, stale, or guessed reclaims nothing (#390).
   confirmedReclaimToken?: string;
 };
 
+// Each member's meaning for the user is the server's `removeErrorResponses`
+// table; no member is ever swallowed as a success.
 export type RemoveDeployedSkillError =
   | "unsupported-primitive-type"
   | "invalid-name"
   | "repo-not-registered"
-  // Global only: the machine has no supported tool, so there is no scope to
-  // remove from. Refused rather than run for nothing — with no tool detected the
-  // destination guard scans nothing, and reporting that as "nothing to lose"
-  // would be a promise no check ever made (ADR-0011, J04).
   | "no-supported-tool"
-  // No lockfile entry for this skill, so there is nothing for apm to remove —
-  // the row the user clicked is stale. Reported rather than swallowed as a
-  // success: a silent no-op would read as "removed" for something we never
-  // touched.
   | "not-deployed"
-  // The target's apm.lock.yaml is present but does not parse, so nothing about
-  // what is deployed can be trusted. Refuse rather than guess a ref (#58).
   | "lockfile-malformed"
-  // The entry exists but does not name the skill the row named, in the shape a
-  // deploy of ours writes — so the ref cannot be trusted to aim at this skill.
-  // A guessed ref would match nothing and still exit 0, or worse, match another
-  // installed package.
   | "ref-unresolvable"
-  // The deployed copy exists but cannot be read (permission denied, I/O error).
-  // We cannot prove there is nothing to lose, so refuse.
   | "deployed-unreadable"
-  // Another apm write to this repo is already running (a deploy, or a
-  // double-clicked remove). Racing it would corrupt the same apm.lock.yaml.
   | "remove-in-progress"
-  // apm did not print its positive uninstall marker, so the removal is
-  // unproven. The target may be partly changed — the cockpit says so rather
-  // than claiming a clean state.
   | "remove-failed";
 
-// What the confirmation must tell the user before they destroy the deployed
-// copy. Named for the consequence, not the classifier state, because that is
-// what the user is consenting to.
+// Named for the consequence the user consents to, not the classifier state.
+// The last two stay apart: "checked, nothing to compare against" and "could not
+// check" must not share a wording (J04).
 export type RemoveWarning =
-  // The copy differs from the per-file hashes the lockfile recorded, so the
-  // removal takes real local work with it.
   | "local-edits-will-be-lost"
-  // The check ran and found nothing recorded to verify the copy against, so
-  // whether there is work to lose is unknown. Unknown is never quietly reported
-  // as safe (J04).
   | "cannot-verify-local-edits"
-  // The check could not run at all — the copy would not read, or the lockfile
-  // it reads does not parse. Kept apart from the case above so the wording
-  // never claims a cause nothing observed.
   | "check-did-not-run";
 
-// What each destination-guard state means for a removal. Only a state that
-// makes the removal itself unsafe to run refuses; a copy that carries local
-// edits, verified or unverifiable, is warned about and then removed on the
-// user's word — destruction is this use-case's intent, not a side effect
-// (#337).
+// Only a state that makes the removal unsafe to run refuses; local edits are
+// warned about and then removed on the user's word (#337).
 const GUARD_REFUSALS: Partial<
   Record<DeployedContentState, RemoveDeployedSkillError>
 > = {
@@ -118,11 +67,9 @@ const GUARD_REFUSALS: Partial<
   "lockfile-malformed": "lockfile-malformed",
 };
 
-// The states the user is told about before confirming. The two absent here —
-// "clean" and "not-deployed" — are the only ones with nothing to lose; every
-// other state says something, because silence in a confirmation reads as
-// nothing-to-lose (J04). A state the removal itself refuses still warns: "we
-// could not check this copy" is true either way.
+// Absent means nothing to lose ("clean", "not-deployed") — silence in a
+// confirmation reads that way, so every other state must appear here (J04).
+// A state the removal refuses still warns.
 const GUARD_WARNINGS: Partial<Record<DeployedContentState, RemoveWarning>> = {
   diverged: "local-edits-will-be-lost",
   unverifiable: "cannot-verify-local-edits",
@@ -130,9 +77,7 @@ const GUARD_WARNINGS: Partial<Record<DeployedContentState, RemoveWarning>> = {
   "lockfile-malformed": "check-did-not-run",
 };
 
-// Why the pre-confirmation check could not answer. It never falls back to "no
-// warning": a check that failed proves nothing about what the removal would
-// destroy.
+// A failed check never falls back to "no warning" — it proves nothing.
 export type RemovePreflightError =
   | "unsupported-primitive-type"
   | "invalid-name"
@@ -140,33 +85,23 @@ export type RemovePreflightError =
   | "no-supported-tool"
   | "preflight-failed";
 
-// Whether this removal has a scope to run in at all, and — on the global path —
-// which tools the machine has. The guard still reads every supported tool's copy
-// either way, because apm deletes by its own recorded targets rather than by what
-// this machine detects today; the list is here for the cleanup that follows a
-// successful removal, which needs to know what apm could not have reached (#339).
-// A repo carries no list: its targets are its own apm.yml, not this machine.
-// Global carries its tool list as a required field, so a resolved global scope
-// with no list cannot be written — the reclaim can only be skipped by naming
-// the repo path, never by leaving a property out.
+// `detected` is not what the guard reads — apm deletes by its own recorded
+// targets. It feeds the cleanup after a successful removal (#339); required on
+// the global arm so the reclaim cannot be skipped by omitting a property.
 type ResolvedScope =
   | { ok: true; scope: "repo" }
   | { ok: true; scope: "global"; detected: readonly SupportedTool[] }
   | { ok: false; error: "no-supported-tool" };
 
-// Which scope a landed removal ran in. A repo needs no detail — the caller sent
-// the path and the removal used exactly that one. Global carries the tools the
-// live probe found at execution time, which is the only set apm can have
-// reached (ADR-0011).
+// Global carries the tools the live probe found at execution time — the only
+// set apm can have reached (ADR-0011).
 export type RemovedScope =
   | { kind: "repo" }
   | { kind: "global"; tools: readonly SupportedTool[] };
 
+// `version` and `scope` are what the removal ran against, never what the caller
+// had in view — either can be stale by the time the user confirms (#383).
 type RemoveDeployedSkillResult =
-  // Both the version and the scope are what this removal actually ran against,
-  // never what the caller had in view: the row's version and the screen's tool
-  // set can both be stale by the time the user confirms, and a trace naming
-  // either wrongly is false evidence about an irreversible action (#383).
   | {
       ok: true;
       removed: {
@@ -182,10 +117,8 @@ type RemovePreflightResult =
   | {
       ok: true;
       warning: RemoveWarning | null;
-      // The leftover copies this removal would also delete, with the token
-      // that authorizes deleting exactly them — or null when there are none.
-      // One field, so a path can never reach the confirmation without the
-      // token, nor a token without the paths it covers.
+      // Paths and token in one field, so neither can reach the confirmation
+      // without the other.
       reclaim: ReclaimConsent | null;
     }
   | { ok: false; error: RemovePreflightError };
@@ -194,40 +127,26 @@ export class RemoveDeployedSkill {
   private readonly deps: {
     registry: { isRegistered(path: string): Promise<boolean> };
     deployedRef: DeployedRefPort;
-    // The destination guard, the same one the deploy path runs. A removal
-    // deletes files, and apm deletes an edited one silently, so this is what
-    // stands between a tidy-up and lost work (.claude/rules/apm-driver.md).
+    // apm deletes an edited copy silently, so this guard is what stands between
+    // a tidy-up and lost work (.claude/rules/apm-driver.md).
     deployedContent: DeployedContentPort;
-    // Depends only on the port method it uses, so growing ApmDriverPort never
-    // breaks this use-case or its fakes.
     apm: Pick<ApmDriverPort, "removeSkill">;
-    // The subtree-scoped reclaim, shared with the deploy path. It is the only
-    // mechanism allowed to clear a copy apm left behind: `apm uninstall -g`
-    // deletes beyond its own lockfile (apm-driver.md § Danger), and the tools
-    // this reclaims for are exactly the ones apm no longer knows about, so
-    // there is no package to name it with anyway (#339).
+    // The only mechanism allowed to clear a copy apm left behind: a bare
+    // `apm uninstall -g` deletes beyond its own lockfile (apm-driver.md
+    // § Danger), and apm no longer knows these tools to name them (#339).
     deployedCleanup: DeployedCleanupPort;
-    // Which tools this machine actually has, probed live per request (ADR-0011).
-    // The global path alone needs it, and only to answer whether there is a
-    // scope at all: an empty probe is what turns a global removal into an honest
-    // refusal instead of a no-op.
+    // Probed live per request (ADR-0011); an empty probe is what turns a global
+    // removal into a refusal instead of a no-op.
     toolPresence: ToolPresencePort;
-    // Resolves a path to its canonical form (realpath), so the in-flight lock
-    // cannot be sidestepped by a symlinked spelling of the same repo.
+    // realpath, so the lock cannot be sidestepped by a symlinked spelling.
     canonicalPath: (path: string) => Promise<string>;
-    // The per-target apm write lock, shared with the deploy use-case. Omitted,
-    // this use-case guards only against itself — enough for a test, never for
-    // the composed server.
+    // Omitted, this use-case guards only against itself — enough for a test,
+    // never for the composed server.
     locks?: InFlightLocks;
-    // Where the reclaimable subtree sits, so the preflight preview and the
-    // confirmed reclaim can both name the same absolute path (shared with
-    // deployedCleanup's own root).
     location: Pick<DeployedLocation, "treeRoot">;
   };
 
   private readonly locks: InFlightLocks;
-  // Names the leftovers a global removal would force-delete, and holds the key
-  // that binds those names to the token `execute` demands back.
   private readonly consent: ReclaimConsentIssuer;
 
   constructor(deps: RemoveDeployedSkill["deps"]) {
@@ -238,11 +157,8 @@ export class RemoveDeployedSkill {
     });
   }
 
-  // What the confirmation must say before this removal runs: the deployed copy
-  // classified through the same seam the removal itself uses, translated into
-  // the consequence the user is about to accept. A read — it never removes
-  // anything, and it never takes the apm write lock, so asking cannot block a
-  // deploy already in flight.
+  // A read: it never takes the apm write lock, so asking cannot block a deploy
+  // already in flight.
   async preflight(
     input: RemoveDeployedSkillInput,
   ): Promise<RemovePreflightResult> {
@@ -255,9 +171,7 @@ export class RemoveDeployedSkill {
     try {
       scope = await this.resolveScope(input.target);
     } catch {
-      // The probe itself failed, so which copies exist is unknown. Never
-      // answered as a clean copy: that is the one thing a check that did not
-      // run cannot promise (J04).
+      // A probe that did not run is never answered as a clean copy (J04).
       return { ok: false, error: "preflight-failed" };
     }
     if (!scope.ok) {
@@ -295,16 +209,15 @@ export class RemoveDeployedSkill {
     let lockKey: string;
     try {
       scope = await this.resolveScope(input.target);
-      // The user scope has no path to canonicalize; it queues on the literal
-      // key the global deploy already takes, so the two cannot rewrite one
-      // apm.lock.yaml at once.
+      // The global scope has no path to canonicalize; it queues on the literal
+      // key the global deploy already takes.
       lockKey =
         input.target.kind === "repo"
           ? await this.deps.canonicalPath(input.target.repoPath)
           : GLOBAL_LOCK_KEY;
     } catch {
-      // Registration guarantees the path exists, so this only fires on a
-      // genuinely broken environment — owned as the catch-all error.
+      // Registration guarantees the path exists, so this is the catch-all for a
+      // broken environment.
       return { ok: false, error: "remove-failed" };
     }
     if (!scope.ok) {
@@ -318,12 +231,8 @@ export class RemoveDeployedSkill {
     return run.ok ? run.value : { ok: false, error: "remove-in-progress" };
   }
 
-  // Whether this removal has anything to run against. A repo always does. The
-  // global scope asks the live probe and refuses an empty answer — a machine
-  // with no supported tool has nothing to remove from. Detection decides that
-  // and nothing else: which copies the guard reads is not its business, because
-  // apm deletes by its own recorded targets, which still name a tool that has
-  // since dropped off this machine. Throws only when the probe itself failed;
+  // Detection decides whether there is a scope, and nothing else — which copies
+  // the guard reads is not its business. Throws only when the probe failed;
   // both callers own that as their catch-all.
   private async resolveScope(target: DeployTarget): Promise<ResolvedScope> {
     if (target.kind === "repo") {
@@ -335,10 +244,9 @@ export class RemoveDeployedSkill {
       : { ok: true, scope: "global", detected };
   }
 
-  // The request-shape rules both entry points share, in the order that keeps
-  // them safe: the registry gate is last but still before any filesystem or apm
-  // access, so an unregistered path can neither probe a lockfile nor reach apm
-  // (security.md). Returns the refusal, or undefined when the request is sound.
+  // The registry gate is last, but still before any filesystem or apm access:
+  // an unregistered path must reach neither (security.md). Returns undefined
+  // when the request is sound.
   private async rejectBadRequest(
     input: RemoveDeployedSkillInput,
   ): Promise<
@@ -353,8 +261,8 @@ export class RemoveDeployedSkill {
     if (!isValidSkillSlug(input.name)) {
       return "invalid-name";
     }
-    // Only a repo carries a client-supplied path, so only a repo has a registry
-    // gate to pass. The global scope's location never left the server.
+    // Only a repo carries a client-supplied path; the global scope's location
+    // never left the server.
     if (
       input.target.kind === "repo" &&
       !(await this.deps.registry.isRegistered(input.target.repoPath))
@@ -369,10 +277,8 @@ export class RemoveDeployedSkill {
     detected: readonly SupportedTool[] | undefined,
   ): Promise<RemoveDeployedSkillResult> {
     const target = input.target;
-    // From here on we touch the filesystem and drive apm, both of which can
-    // throw. Own that as a typed error so it never escapes as an unhandled
-    // rejection (and the raw apm message, which may carry a token, never
-    // reaches the transport layer).
+    // Swallow rather than rethrow: a raw apm message may carry a token and must
+    // never reach the transport layer (security.md).
     try {
       const lookup = await this.deps.deployedRef.resolve({
         target,
@@ -382,11 +288,8 @@ export class RemoveDeployedSkill {
         return { ok: false, error: lookup.reason };
       }
 
-      // Destination guard: what it finds decides between refusing and
-      // proceeding. Reaching this point means the user already confirmed a
-      // removal whose consequence `preflight` stated, so an edited or
-      // unverifiable copy goes; only a copy we cannot read, or a lockfile we
-      // cannot parse, still refuses (#337).
+      // The user already confirmed the consequence `preflight` stated, so an
+      // edited copy goes; only an unreadable one still refuses (#337).
       const deployedState = await this.deps.deployedContent.classify({
         target,
         name: input.name,
@@ -404,9 +307,8 @@ export class RemoveDeployedSkill {
         return { ok: false, error: "remove-failed" };
       }
 
-      // Placed after apm's positive marker, never before: a removal that never
-      // happened leaves a copy nothing replaced, and deleting it then destroys
-      // work no uninstall accounted for.
+      // After apm's positive marker, never before: a removal that never
+      // happened leaves a copy nothing replaced.
       await this.reclaimConfirmed(
         input.target,
         input.name,
@@ -430,14 +332,8 @@ export class RemoveDeployedSkill {
     }
   }
 
-  // Runs the reclaim only when the request's token proves the confirmation came
-  // from this same instance's own `preflight`, over the paths it named. The
-  // issuer rebuilds that answer here rather than trusting anything the client
-  // sent, so a request that never called preflight — or one replaying a token
-  // for a different skill, target, or machine state — reclaims nothing. What
-  // gets deleted is the granted set itself, never a set derived a second time:
-  // the whole point of #390 is that the removal cannot exceed what the
-  // confirmation named.
+  // Deletes the granted set itself, never a set derived a second time — the
+  // removal must not exceed what the confirmation named (#390).
   private async reclaimConfirmed(
     target: DeployTarget,
     name: string,
@@ -451,8 +347,6 @@ export class RemoveDeployedSkill {
     if (granted === null) {
       return;
     }
-    // Best-effort deletion, and the fact that failing is never an error, is the
-    // shared helper's rule — the deploy path relies on the same one.
     await reclaimTools({
       cleanup: this.deps.deployedCleanup,
       target,

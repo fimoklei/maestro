@@ -3,19 +3,9 @@ import { join } from "node:path";
 import { resolveApmGlobalRoot } from "../deploy-state/resolve-apm-global-root";
 import type { DeployTarget } from "./deploy-skill";
 
-// Where a deployed copy physically lands, per target. A repo keeps its lockfile
-// and its deployed tree together in the repo; a global install splits them — apm
-// writes the lockfile under ~/.apm but materializes the skill under HOME
-// (~/.claude/skills, ~/.agents/skills) and keys deployed_file_hashes
-// HOME-relative (verified against apm 0.20.0, apm-driver.md #61). Resolving the
-// tree root to HOME is what lets those keys match a live sha256, so a clean
-// global skill classifies clean rather than being falsely refused.
-//
-// One instance is shared by the destination guard (which needs both the tree and
-// the lockfile) and the reconciling cleanup (which needs only the tree), so their
-// agreement on the tree is a shared object, not a comment. env is captured at
-// construction so a test or smoke run can redirect HOME at a sandbox and never
-// touch the real home.
+// A global install splits lockfile from tree: apm writes the lockfile under
+// ~/.apm but keys deployed_file_hashes HOME-relative (apm-behavior.md § Global
+// scope). One shared instance, so guard and cleanup agree on the tree.
 export class DeployedLocation {
   private readonly env: NodeJS.ProcessEnv;
 
@@ -23,16 +13,14 @@ export class DeployedLocation {
     this.env = env;
   }
 
-  // The root the deployed_file_hashes keys are relative to, and the tree the
-  // cleanup rm's under. Per-repo: the repo. Global: HOME.
+  // What deployed_file_hashes keys are relative to. Per-repo: the repo. Global:
+  // HOME, read from `env` so a sandbox can redirect it.
   treeRoot(target: DeployTarget): string {
     return target.kind === "repo"
       ? target.repoPath
       : (this.env.HOME ?? homedir());
   }
 
-  // Where the target's apm.lock.yaml lives. Per-repo: <repoPath>/apm.lock.yaml.
-  // Global: <apmGlobalRoot>/apm.lock.yaml (~/.apm).
   lockfilePath(target: DeployTarget): string {
     return target.kind === "repo"
       ? join(target.repoPath, "apm.lock.yaml")

@@ -1,10 +1,6 @@
-// Resolves the latest deployable tag from the human Rich table that
-// `apm view <owner>/<repo> versions` prints (it has no --json). Only rows of
-// type "tag" with a strict vX.Y.Z name count; branches and loose tags are
-// ignored. We semver-sort ourselves because apm's row order is not contractual
-// (v0.10.0 must beat v0.9.0, which a lexicographic sort gets wrong). The
-// observed shape of that table, with its apm version, lives in
-// .claude/rules/apm-driver.md — re-verify there on an apm upgrade.
+// Parses the Rich table `apm view <owner>/<repo> versions` prints — it has no
+// --json (apm-behavior.md § Latest tag). Semver-sorted here because apm's row
+// order is not contractual, and v0.10.0 must beat v0.9.0.
 
 const tagRowPattern = /│\s*(v\d+\.\d+\.\d+)\s*│\s*tag\s*│/;
 

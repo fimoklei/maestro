@@ -1,15 +1,7 @@
-// The version-drift use-case: take "is anything behind in repo Y" from the
-// screen and answer it — gate the repo against the registry and canonicalize it
-// before any apm access (a path-taking operation must reject an unregistered
-// repo first, per security.md), then delegate the judgment to `apm outdated`
-// via the driver port (ADR-0001; we never compute a version diff ourselves).
-// The result is { ok: true; behind } when the check ran, else { ok: false } —
-// bare for a genuine failure (web maps it to "unknown"), or carrying
-// reason: "unverified" when apm reached the tool but could not resolve against
-// the remote (web maps it to its own state). Neither ever reads as up-to-date.
+// The version-drift use-case. The judgment is `apm outdated`'s — Maestro never
+// computes a version diff itself (ADR-0001).
 import type { ApmDriverPort, DeployTarget } from "../deploy/deploy-skill";
-// The drift-check outcome has one owner: the driver's OutdatedResult, which
-// this use-case forwards unchanged (its meaning is spelled out in the header).
+// Forwarded unchanged, so the outcome has one owner.
 import type { OutdatedResult } from "./parse-outdated";
 
 type CheckVersionDriftInput = {
@@ -20,8 +12,7 @@ export class CheckVersionDrift {
   private readonly deps: {
     registry: { isRegistered(path: string): Promise<boolean> };
     apm: Pick<ApmDriverPort, "checkOutdated">;
-    // Resolves a path to its canonical form (realpath), so apm runs against the
-    // real repo and not a symlinked spelling of it.
+    // realpath, so apm runs against the real repo, not a symlinked spelling.
     canonicalPath: (path: string) => Promise<string>;
   };
 
@@ -32,12 +23,12 @@ export class CheckVersionDrift {
   async execute(input: CheckVersionDriftInput): Promise<OutdatedResult> {
     let target = input.target;
     if (target.kind === "repo") {
-      // Registry gate first: refuse an unregistered repo before any apm access.
+      // Before any apm access (security.md).
       if (!(await this.deps.registry.isRegistered(target.repoPath))) {
         return { ok: false };
       }
-      // Registration guarantees the path exists, so canonicalizing only fails
-      // on a genuinely broken environment — treated as a failed check.
+      // Registration guarantees the path exists, so this is the catch-all for a
+      // broken environment.
       try {
         target = {
           kind: "repo",

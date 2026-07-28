@@ -1,7 +1,5 @@
-// Reads the central inventory: every skill in the local agent-harness clone,
-// surfaced as { type, name, description }. Offline by design — it reads the
-// clone through the FileSystemPort, never the network. A malformed or missing
-// SKILL.md is skipped, never fatal, so one bad skill cannot hide the rest.
+// Reads the central inventory from the local clone, never the network. A
+// malformed SKILL.md is skipped, so one bad skill cannot hide the rest.
 import { join } from "node:path";
 import { parse } from "yaml";
 import { z } from "zod";
@@ -9,8 +7,7 @@ import type { FileSystemPort } from "../registry/file-system";
 
 export type Primitive = { type: "skill"; name: string; description: string };
 
-// "not-configured" is the single failure the cockpit shows: inventoryPath is
-// unset, missing, or not a directory. Everything else is a successful list.
+// One failure only: inventoryPath unset, missing, or not a directory.
 export type InventoryResult =
   | { ok: true; primitives: Primitive[] }
   | { ok: false; error: "not-configured" };
@@ -20,9 +17,7 @@ const frontmatterSchema = z.object({
   description: z.string(),
 });
 
-// Extracts and validates the name/description from a SKILL.md's YAML
-// frontmatter. Returns null on anything malformed — no frontmatter, invalid
-// YAML, or missing fields — so the caller can skip the skill.
+// Null on anything malformed, so the caller can skip the skill.
 function parseSkillFrontmatter(
   raw: string,
 ): { name: string; description: string } | null {
@@ -43,9 +38,7 @@ function parseSkillFrontmatter(
 
 export class InventoryReader {
   private readonly fs: FileSystemPort;
-  // A thunk so the inventory path is resolved per read (config-or-env), never
-  // frozen at construction — mirrors ConfigStore's lazy configPath. Async
-  // because resolving it reads config.json from disk.
+  // A thunk, so the path is resolved per read and never frozen at construction.
   private readonly resolvePath: () =>
     | Promise<string | undefined>
     | (string | undefined);
@@ -58,10 +51,8 @@ export class InventoryReader {
     this.resolvePath = deps.resolvePath;
   }
 
-  // The currently configured inventory path (config-or-env), or null when none
-  // is set. The cockpit's Settings screen reads this to show what is connected
-  // and to pre-fill the re-point field. Canonicalising it when possible keeps
-  // the browser's path comparisons aligned with server-side registration.
+  // Canonicalised where possible, so the browser's path comparisons line up
+  // with server-side registration.
   async configuredPath(): Promise<string | null> {
     const path = await this.resolvePath();
     if (path === undefined) {

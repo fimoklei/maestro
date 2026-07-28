@@ -1,23 +1,17 @@
-// Reads and writes ~/.maestro/config.json — the single persisted home of the
-// consuming-repo registry. The path is injected so tests use a temp dir and
-// production points at the real home. External data is untrusted: parse →
-// Zod-validate → use; a corrupt config is a blocking error, never silently
-// treated as empty (see .claude/rules/security.md).
+// Reads and writes ~/.maestro/config.json. A corrupt config is a blocking
+// error, never silently treated as empty (security.md).
 import { z } from "zod";
 import type { FileSystemPort } from "./file-system";
 
 const configSchema = z.object({
   repos: z.array(z.object({ path: z.string() })),
-  // Optional: the local agent-harness clone the central inventory reads from.
   // Absent on a fresh config; the inventory then falls back to the env var.
   inventoryPath: z.string().optional(),
 });
 
 export type MaestroConfig = z.infer<typeof configSchema>;
 
-// Raised when ~/.maestro/config.json exists but cannot be trusted (unparseable
-// or wrong shape). Surfaced as a blocking, recoverable error so the cockpit
-// never silently discards a user's registry.
+// Blocking and recoverable, so the cockpit never silently discards a registry.
 export class ConfigError extends Error {
   constructor(message: string, options?: { cause?: unknown }) {
     super(message, options);
@@ -27,8 +21,8 @@ export class ConfigError extends Error {
 
 export class ConfigStore {
   private readonly fs: FileSystemPort;
-  // A thunk so the path is resolved per access, never frozen at construction:
-  // the default app can defer reading MAESTRO_HOME until a request arrives.
+  // A thunk, so MAESTRO_HOME is read per access and never frozen at
+  // construction.
   private readonly resolvePath: () => string;
 
   constructor(deps: {

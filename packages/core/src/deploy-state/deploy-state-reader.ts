@@ -1,11 +1,6 @@
-// Reads a consuming repo's deploy-state: the primitives apm has installed into
-// it, surfaced as { type, name, version }. It reads the repo's apm.lock.yaml
-// through the FileSystemPort and never the network. The version shown is the
-// human tag (resolved_ref), never a commit hash. Three honest outcomes the
-// cockpit must never blur: a missing lockfile is "nothing deployed" (empty), an
-// entry of an unsupported package_type is skipped (and surfaced), and a
-// malformed lockfile is a visible error — an empty list must never stand in for
-// "I couldn't read this".
+// Reads a target's apm.lock.yaml, never the network. Three outcomes the cockpit
+// must never blur: missing is "nothing deployed", an unsupported package_type is
+// skipped and surfaced, and malformed is a visible error (#58).
 import { join } from "node:path";
 import { claudeSkillName, parseLockfile } from "../lockfile/lockfile";
 import type { FileSystemPort } from "../registry/file-system";
@@ -22,10 +17,7 @@ type DeployStateResult =
   | { ok: true; primitives: DeployedPrimitive[]; skipped: SkippedEntry[] }
   | { ok: false; error: "malformed" };
 
-// The global (user-scope) read: state grouped per detected tool, plus the
-// detected-tool set (implicit in `tools`). Same three honest outcomes as the
-// per-repo read — a missing lockfile is each detected tool an empty group (not
-// an error), a malformed one is a visible error (ADR-0011, J03).
+// Grouped per detected tool, which also carries the detected set (ADR-0011).
 type GlobalDeployStateResult =
   | { ok: true; tools: ToolDeployState[]; skipped: SkippedEntry[] }
   | { ok: false; error: "malformed" };
@@ -69,11 +61,8 @@ export class DeployStateReader {
   }
 }
 
-// The global read on its own type, so the tool-presence dependency it cannot
-// work without is required by the constructor. A caller that omits it fails to
-// compile instead of answering 500 under a lane nobody runs (#187). The
-// per-repo read stays on the base class, so a caller that never reads global
-// state still constructs with just { fs }.
+// A separate type so the tool-presence dependency is required by the
+// constructor: omitting it fails to compile rather than 500 at runtime (#187).
 export class GlobalDeployStateReader extends DeployStateReader {
   private readonly toolPresence: ToolPresencePort;
 
@@ -82,16 +71,14 @@ export class GlobalDeployStateReader extends DeployStateReader {
     this.toolPresence = deps.toolPresence;
   }
 
-  // Reads the user-scope lockfile at `rootPath` and groups its entries per
-  // detected tool (ADR-0011). The server resolves rootPath itself; no client
-  // path reaches here. Detection is live per read (the presence port), so a tool
-  // installed since startup shows up without a restart.
+  // `rootPath` is server-resolved; no client path reaches here. Detection is
+  // live per read, so a tool installed since startup needs no restart.
   async readGlobal(rootPath: string): Promise<GlobalDeployStateResult> {
     const detected = await this.toolPresence.detectGlobalTools();
     const raw = await this.fs.readFile(join(rootPath, "apm.lock.yaml"));
     if (raw === null) {
-      // Nothing deployed yet: each detected tool is an honest empty group, never
-      // an error and never a tool the machine does not have.
+      // Nothing deployed yet: an empty group per detected tool, never an error
+      // and never a tool the machine does not have.
       return {
         ok: true,
         tools: detected.map((tool) => ({ tool, primitives: [] })),
