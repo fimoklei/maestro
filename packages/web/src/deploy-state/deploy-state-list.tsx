@@ -12,11 +12,9 @@ import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
 import { removalWasAttempted } from "./removal-attempt";
 import { RemovalTrace, type TracedRemoval } from "./removal-trace";
+import type { RemoveDialogTarget } from "./remove-ledger-rows";
 import { removePreflightView } from "./remove-preflight-view";
-import {
-  type RemoveDialogTarget,
-  RemoveSkillDialog,
-} from "./remove-skill-dialog";
+import { RemoveSkillDialog } from "./remove-skill-dialog";
 import { UpdateSkillAction } from "./update-skill-action";
 import type { DeployedPrimitive, SkippedEntry } from "./use-deploy-state";
 import { useRemoveDeployedSkill } from "./use-remove-deployed-skill";

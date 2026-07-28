@@ -141,10 +141,10 @@ export const GlobalScope: Story = {
   args: { target: { kind: "global", tools: ["claude", "codex"] } },
 };
 
-// A machine where Codex is detected but Claude Code has dropped off — its
-// whole copy is a leftover a global removal would force-delete beyond apm's
-// own scoped uninstall (#339). Named by path so the user consents to exactly
-// what goes, never a larger set than this dialog states.
+// A machine where Codex is detected but Claude Code has dropped off — its whole
+// copy is a leftover a global removal force-deletes beyond apm's own scoped
+// uninstall (#339). Its own ledger row, named by path, so the user consents to
+// exactly what goes.
 export const GlobalScopeWithReclaim: Story = {
   args: {
     target: { kind: "global", tools: ["codex"] },

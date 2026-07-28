@@ -4,7 +4,7 @@
 // same shape the deploy path already confirms itself.
 // Pure and framework-free: the wording is unit-tested here, the live region is
 // the host's job.
-import type { RemoveDialogTarget } from "./remove-skill-dialog";
+import type { RemoveDialogTarget } from "./remove-ledger-rows";
 import { toolNameList } from "./tool-labels";
 
 export type RemovedSkill = {
