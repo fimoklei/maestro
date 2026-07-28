@@ -147,7 +147,11 @@ type ResolvedScope =
   | { ok: false; error: "no-supported-tool" };
 
 type RemoveDeployedSkillResult =
-  | { ok: true; removed: { type: "skill"; name: string } }
+  // The version is the one the lockfile pinned when the removal resolved its
+  // ref, never one the caller had in view: a row can be stale by the time the
+  // user confirms, and a trace naming the wrong tag is false evidence about an
+  // irreversible action (#383).
+  | { ok: true; removed: { type: "skill"; name: string; version: string } }
   | { ok: false; error: RemoveDeployedSkillError };
 
 type RemovePreflightResult =
@@ -360,7 +364,14 @@ export class RemoveDeployedSkill {
         name: input.name,
         detected,
       });
-      return { ok: true, removed: { type: "skill", name: input.name } };
+      return {
+        ok: true,
+        removed: {
+          type: "skill",
+          name: input.name,
+          version: lookup.version,
+        },
+      };
     } catch {
       return { ok: false, error: "remove-failed" };
     }

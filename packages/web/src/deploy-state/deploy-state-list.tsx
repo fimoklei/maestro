@@ -86,10 +86,8 @@ export function DeployStateList({
   onRemoved?: () => void;
 }) {
   // Which skill's removal is being confirmed, if any. UI state: one dialog at a
-  // time, named by the row that opened it. The whole row is held, not just its
-  // name, because the version is unreadable once the removal lands — and the
-  // confirmation of what went has to name it.
-  const [removing, setRemoving] = useState<DeployedPrimitive | null>(null);
+  // time, named by the row that opened it.
+  const [removing, setRemoving] = useState<string | null>(null);
   const [justRemoved, setJustRemoved] = useState(false);
   // Every removal this card has seen, kept for the session: the row is gone, so
   // this is the only trace left of what happened here.
@@ -102,7 +100,7 @@ export function DeployStateList({
     target.kind === "repo" ? target : { kind: "global" };
   // What that removal would destroy, asked as soon as the confirmation opens so
   // the answer is on screen before the user commits.
-  const preflight = useRemovePreflight(removing?.name ?? null, wireTarget);
+  const preflight = useRemovePreflight(removing, wireTarget);
 
   // Handing focus on in an effect, not in the success handler: the modal's
   // focus-restore runs during its unmount, so anything moving focus earlier
@@ -166,7 +164,7 @@ export function DeployStateList({
                   label: "remove…",
                   onSelect: () => {
                     remove.reset();
-                    setRemoving(primitive);
+                    setRemoving(primitive.name);
                   },
                 },
               ]}
@@ -176,7 +174,7 @@ export function DeployStateList({
       })}
       {removing !== null ? (
         <RemoveSkillDialog
-          skillName={removing.name}
+          skillName={removing}
           target={target}
           isRemoving={remove.isPending}
           warning={removeWarningView(preflight)}
@@ -198,20 +196,23 @@ export function DeployStateList({
           onCancel={() => setRemoving(null)}
           onConfirm={() =>
             remove.mutate(
-              { type: "skill", name: removing.name, target: wireTarget },
+              { type: "skill", name: removing, target: wireTarget },
               {
                 // Only a proven removal closes the dialog. A failure keeps it
                 // open with apm's reason, so it never reads as if nothing
                 // happened.
-                onSuccess: () => {
+                // The server's own answer, never the row: it names the version
+                // its lockfile pinned when it resolved the ref, and the row can
+                // have gone stale while the confirmation was open (#383).
+                onSuccess: (data) => {
                   setRemoved((seen) => [
                     ...seen,
                     {
                       // Append-only, so the count so far names this event and
                       // never collides with an earlier one.
                       id: seen.length,
-                      name: removing.name,
-                      version: removing.version,
+                      name: data.removed.name,
+                      version: data.removed.version,
                       target,
                     },
                   ]);

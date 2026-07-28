@@ -166,7 +166,7 @@ describe("remove HTTP route", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
-      removed: { type: "skill", name: "tdd" },
+      removed: { type: "skill", name: "tdd", version: "v0.5.1" },
     });
     expect(removeCalls).toEqual([
       {
@@ -398,7 +398,7 @@ describe("remove HTTP route", () => {
 
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({
-        removed: { type: "skill", name: "tdd" },
+        removed: { type: "skill", name: "tdd", version: "v0.5.1" },
       });
       expect(removeCalls).toEqual([
         {

@@ -18,7 +18,13 @@ export type RemoveRequest = {
   target: DeployTarget;
 };
 
-type RemoveResponse = { removed: { type: "skill"; name: string } };
+// The server names the version it actually removed, read from the target's
+// lockfile when it resolved the ref. The row's own version can be stale by the
+// time the user confirms, so the outcome is reported from this, never from the
+// screen (#383).
+type RemoveResponse = {
+  removed: { type: "skill"; name: string; version: string };
+};
 
 export function useRemoveDeployedSkill() {
   const queryClient = useQueryClient();
