@@ -12,5 +12,8 @@ export const stubRemove = (deps: { registry: Registry }) =>
     },
     deployedContent: { classify: async () => "clean" },
     apm: { removeSkill: async () => ({ ok: true as const }) },
+    // No tool detected: a stray global call refuses rather than claiming a scope
+    // this stub never had.
+    toolPresence: { detectGlobalTools: async () => [] },
     canonicalPath: async (path) => path,
   });

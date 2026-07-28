@@ -1,4 +1,4 @@
-import { mkdtemp, rm, unlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describeFeature, loadFeature } from "@amiceli/vitest-cucumber";
@@ -7,34 +7,48 @@ import {
   type DeployedContentState,
   DeployedLocation,
   DeployedRefAdapter,
+  GlobalDeployStateReader,
   InventoryReader,
   NodeFileSystem,
   Registry,
   RemoveDeployedSkill,
+  type SupportedTool,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { expect } from "vitest";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
-import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
 
 const feature = await loadFeature(
   "tests/acceptance/remove-deployed-skill.feature",
 );
 
-// Acceptance lane: drives the real server API against a temp repo, with the
-// Origin/Host guard disabled. Only apm is faked — and it is faked faithfully:
-// a confirmed removal rewrites the repo's lockfile exactly as apm does,
-// including deleting the file rather than emptying it when the last dependency
-// goes (docs/apm-behavior.md § Remove). Deploy-state is then read back through
-// the same route a user's screen reads, so "the row disappears" is asserted end
-// to end rather than assumed.
+// Acceptance lane: drives the real server API against a temp repo and a sandbox
+// apm user-scope root (never the real ~/.apm), with the Origin/Host guard
+// disabled. Only apm is faked — and it is faked faithfully: a confirmed removal
+// rewrites the target's lockfile exactly as apm does, including deleting the
+// file rather than emptying it when the last dependency goes
+// (docs/apm-behavior.md § Remove). Deploy-state is then read back through the
+// same route a user's screen reads, so "the row disappears" is asserted end to
+// end rather than assumed.
 
 type DeployedPrimitive = { type: string; name: string; version: string };
 
-const lockfileFor = (names: string[]) =>
+// The tool copies a global entry carries. The global deploy-state read groups
+// per tool from these, so a skill only appears on a card whose tool has a file.
+const globalDeployedFiles = (name: string, tools: SupportedTool[]) =>
+  tools.map((tool) =>
+    tool === "claude"
+      ? `.claude/skills/${name}/SKILL.md`
+      : `.agents/skills/${name}/SKILL.md`,
+  );
+
+const lockfileFor = (
+  names: string[],
+  deployedFiles?: (name: string) => string[],
+) =>
   [
     "lockfile_version: '1'",
     "dependencies:",
@@ -44,6 +58,12 @@ const lockfileFor = (names: string[]) =>
       "  resolved_ref: v0.5.1",
       `  virtual_path: skills/${name}`,
       "  package_type: claude_skill",
+      ...(deployedFiles
+        ? [
+            "  deployed_files:",
+            ...deployedFiles(name).map((file) => `  - ${file}`),
+          ]
+        : []),
     ]),
     "",
   ].join("\n");
@@ -53,10 +73,20 @@ describeFeature(
   ({ Scenario, BeforeEachScenario, AfterEachScenario }) => {
     let workspace: string;
     let repo: string;
+    // The sandbox that stands in for the user's home: apm's user-scope lockfile
+    // lives under it, so no scenario can read or write the real ~/.apm
+    // (.claude/rules/apm-driver.md § Danger).
+    let home: string;
     let app: ReturnType<typeof buildApp>;
     let response: Response;
     let removeCalls: string[];
     let apmConfirms: boolean;
+    // Which tools this machine has. A global removal covers exactly these, and
+    // an empty set leaves no scope to remove from (ADR-0011).
+    let detectedTools: SupportedTool[];
+    // What apm believes is installed in the user scope, kept beside the global
+    // lockfile the fake rewrites.
+    let globalDeployed: string[];
     // What the destination guard finds on the deployed copy. apm deletes an
     // edited file with no warning, so this is what stands between the removal
     // and lost work.
@@ -80,32 +110,46 @@ describeFeature(
         registry,
         deployedRef: new DeployedRefAdapter({
           fs,
-          location: new DeployedLocation({}),
+          // HOME redirected at the sandbox, so the global lockfile this resolves
+          // is the scenario's own.
+          location: new DeployedLocation({ HOME: home }),
         }),
         deployedContent: { classify: async () => deployedState },
         apm: {
-          removeSkill: async ({ ref }) => {
+          removeSkill: async ({ target, ref }) => {
             removeCalls.push(ref);
             if (!apmConfirms) {
               return { ok: false };
             }
-            deployed = deployed.filter(
-              (name) => !ref.includes(`/skills/${name}#`),
-            );
-            await writeLockfile();
+            const drop = (names: string[]) =>
+              names.filter((name) => !ref.includes(`/skills/${name}#`));
+            if (target.kind === "repo") {
+              deployed = drop(deployed);
+              await writeLockfile();
+            } else {
+              globalDeployed = drop(globalDeployed);
+              await writeGlobalLockfile();
+            }
             return { ok: true };
           },
         },
+        toolPresence: { detectGlobalTools: async () => detectedTools },
         canonicalPath: (path) => fs.realpath(path),
       });
       return createApp({
         registry,
         inventory,
-        deployState: stubDeployState({ fs }),
+        // The real reader on both routes: the global scenarios read their own
+        // sandbox lockfile back, so a removal is proven against what a user's
+        // screen would show.
+        deployState: new GlobalDeployStateReader({
+          fs,
+          toolPresence: { detectGlobalTools: async () => detectedTools },
+        }),
         deploy: stubDeploy({ inventory, registry }),
         remove,
         drift: stubDrift({ registry }),
-        resolveGlobalRoot: () => "/nonexistent-apm-root",
+        resolveGlobalRoot: () => join(home, ".apm"),
         connect: stubConnect(),
         browse: stubBrowse(),
         enforceOriginHost: false,
@@ -124,19 +168,43 @@ describeFeature(
       await writeFile(path, lockfileFor(deployed), "utf8");
     }
 
+    // The same rule in the user scope, one directory deeper: apm keeps its
+    // global bookkeeping under ~/.apm while the copies themselves land under
+    // HOME (apm-driver.md).
+    async function writeGlobalLockfile() {
+      const apmRoot = join(home, ".apm");
+      const path = join(apmRoot, "apm.lock.yaml");
+      if (globalDeployed.length === 0) {
+        await unlink(path).catch(() => undefined);
+        return;
+      }
+      await mkdir(apmRoot, { recursive: true });
+      await writeFile(
+        path,
+        lockfileFor(globalDeployed, (name) =>
+          globalDeployedFiles(name, detectedTools),
+        ),
+        "utf8",
+      );
+    }
+
     BeforeEachScenario(async () => {
       workspace = await mkdtemp(join(tmpdir(), "maestro-remove-"));
       repo = await mkdtemp(join(tmpdir(), "maestro-remove-repo-"));
+      home = await mkdtemp(join(tmpdir(), "maestro-remove-home-"));
       removeCalls = [];
       apmConfirms = true;
       deployedState = "clean";
       deployed = [];
+      globalDeployed = [];
+      detectedTools = ["claude", "codex"];
       app = buildApp(join(workspace, "config.json"));
     });
 
     AfterEachScenario(async () => {
-      await rm(workspace, { recursive: true, force: true });
-      await rm(repo, { recursive: true, force: true });
+      for (const dir of [workspace, repo, home]) {
+        await rm(dir, { recursive: true, force: true });
+      }
     });
 
     async function register() {
@@ -152,30 +220,49 @@ describeFeature(
       await writeLockfile();
     }
 
-    async function removeSkill(name: string) {
+    async function deploySkillsGlobally(names: string[]) {
+      globalDeployed = names;
+      await writeGlobalLockfile();
+    }
+
+    // The wire shape of a remove target, as the cockpit sends it. The global
+    // kind carries no path at all: that location is apm's own, resolved
+    // server-side (J07).
+    type RemoveTarget = { kind: "repo"; repoPath: string } | { kind: "global" };
+
+    const repoTarget = (): RemoveTarget => ({ kind: "repo", repoPath: repo });
+    const globalTarget = (): RemoveTarget => ({ kind: "global" });
+
+    async function removeSkill(name: string, target = repoTarget()) {
       response = await app.request("/api/deploy/remove", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          type: "skill",
-          name,
-          target: { kind: "repo", repoPath: repo },
-        }),
+        body: JSON.stringify({ type: "skill", name, target }),
       });
     }
 
     // The question the confirmation asks before the user commits: what would
     // this removal destroy?
-    async function preflightSkill(name: string) {
+    async function preflightSkill(name: string, target = repoTarget()) {
       response = await app.request("/api/deploy/remove/preflight", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          type: "skill",
-          name,
-          target: { kind: "repo", repoPath: repo },
-        }),
+        body: JSON.stringify({ type: "skill", name, target }),
       });
+    }
+
+    // The global deploy-state as a user's screen reads it: one group per
+    // detected tool, so a removal can be proven per tool rather than in
+    // aggregate.
+    async function readGlobalDeployState(): Promise<
+      { tool: string; primitives: DeployedPrimitive[] }[]
+    > {
+      const state = await app.request("/api/deploy-state/global");
+      expect(state.status).toBe(200);
+      const { tools } = (await state.json()) as {
+        tools: { tool: string; primitives: DeployedPrimitive[] }[];
+      };
+      return tools;
     }
 
     async function readDeployState(): Promise<DeployedPrimitive[]> {
@@ -350,6 +437,90 @@ describeFeature(
         Then("I am told there was nothing to remove", async () => {
           expect(response.status).toBe(404);
           expect(removeCalls).toEqual([]);
+        });
+      },
+    );
+
+    // The user scope. One action covers every detected tool: apm's uninstall has
+    // no -t, and the one lever that looks like per-tool scoping orphans the
+    // other tools' files (apm-behavior.md § Remove, ADR-0013).
+    const givenDeployedGlobally = () => deploySkillsGlobally(["tdd", "jobs"]);
+
+    Scenario(
+      "I take a globally deployed skill off every tool in one action",
+      ({ Given, When, Then, And }) => {
+        Given(
+          '"tdd" and "jobs" deployed globally on Claude Code and Codex',
+          givenDeployedGlobally,
+        );
+        When('I remove "tdd" globally', () =>
+          removeSkill("tdd", globalTarget()),
+        );
+        Then("the removal is confirmed", async () => {
+          expect(response.status).toBe(200);
+          expect(await response.json()).toEqual({
+            removed: { type: "skill", name: "tdd" },
+          });
+        });
+        And('no tool\'s global deploy-state lists "tdd" any more', async () => {
+          const tools = await readGlobalDeployState();
+          expect(tools.map((group) => group.tool)).toEqual(["claude", "codex"]);
+          for (const group of tools) {
+            expect(group.primitives.map((p) => p.name)).not.toContain("tdd");
+          }
+        });
+        And('every tool still lists "jobs"', async () => {
+          for (const group of await readGlobalDeployState()) {
+            expect(group.primitives.map((p) => p.name)).toEqual(["jobs"]);
+          }
+        });
+      },
+    );
+
+    Scenario(
+      "A machine with no supported tool has no global scope to remove from",
+      ({ Given, But, When, Then }) => {
+        Given(
+          '"tdd" and "jobs" deployed globally on Claude Code and Codex',
+          givenDeployedGlobally,
+        );
+        But("this machine has no supported tool", () => {
+          detectedTools = [];
+        });
+        When('I remove "tdd" globally', () =>
+          removeSkill("tdd", globalTarget()),
+        );
+        Then("I am refused and apm is never asked to remove anything", () => {
+          expect(response.status).toBe(409);
+          expect(removeCalls).toEqual([]);
+        });
+      },
+    );
+
+    Scenario(
+      "The global confirmation says what a removal would cost",
+      ({ Given, But, When, Then, And }) => {
+        Given(
+          '"tdd" and "jobs" deployed globally on Claude Code and Codex',
+          givenDeployedGlobally,
+        );
+        But('my deployed copy of "tdd" has local edits', () => {
+          deployedState = "diverged";
+        });
+        When('I ask what removing "tdd" globally would cost', () =>
+          preflightSkill("tdd", globalTarget()),
+        );
+        Then("I am told those local edits would be lost", async () => {
+          expect(response.status).toBe(200);
+          expect(await response.json()).toEqual({
+            warning: "local-edits-will-be-lost",
+          });
+        });
+        And("nothing has been removed yet", async () => {
+          expect(removeCalls).toEqual([]);
+          for (const group of await readGlobalDeployState()) {
+            expect(group.primitives.map((p) => p.name)).toContain("tdd");
+          }
         });
       },
     );

@@ -24,6 +24,11 @@ function jsonResponse(body: unknown, status: number) {
 const removeCalls = (fetchMock: { mock: { calls: unknown[][] } }) =>
   fetchMock.mock.calls.filter(([path]) => path === "/api/deploy/remove");
 
+const preflightCalls = (fetchMock: { mock: { calls: unknown[][] } }) =>
+  fetchMock.mock.calls.filter(
+    ([path]) => path === "/api/deploy/remove/preflight",
+  );
+
 // A fetch stub that answers the pre-confirmation check and leaves everything
 // else to the caller.
 function stubFetch(
@@ -41,7 +46,10 @@ function stubFetch(
 }
 
 function renderRow({
-  target = { kind: "repo" as const, repoPath: REPO },
+  target = { kind: "repo", repoPath: REPO } as
+    | { kind: "repo"; repoPath: string }
+    | { kind: "global" },
+  detectedTools = undefined as string[] | undefined,
   onRemoved = vi.fn(),
 } = {}) {
   const queryClient = new QueryClient({
@@ -53,6 +61,7 @@ function renderRow({
         primitives={[tdd]}
         skipped={[]}
         target={target}
+        detectedTools={detectedTools}
         onRemoved={onRemoved}
       />
     </QueryClientProvider>,
@@ -193,11 +202,69 @@ describe("removing a deployed skill from a row", () => {
     expect(onRemoved).not.toHaveBeenCalled();
   });
 
-  it("offers no removal on a global row, which this slice does not remove from", async () => {
-    renderRow({ target: { kind: "global" } as never });
+  // The global row. One action covers every detected tool, and the confirmation
+  // has to name them — the user clicked inside one tool's card (#338).
+  describe("on a global row", () => {
+    const renderGlobalRow = () =>
+      renderRow({
+        target: { kind: "global" },
+        detectedTools: ["claude", "codex"],
+      });
 
-    expect(
-      screen.getByRole("button", { name: "Actions for tdd" }),
-    ).toBeDisabled();
+    it("offers remove… just as a repo row does", async () => {
+      stubFetch(null);
+      renderGlobalRow();
+
+      await openRemoveDialog();
+
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    it("names every detected tool in the confirmation", async () => {
+      stubFetch(null);
+      renderGlobalRow();
+
+      const dialog = await openRemoveDialog();
+
+      expect(dialog).toHaveTextContent("Claude Code");
+      expect(dialog).toHaveTextContent("Codex");
+    });
+
+    it("asks the server for a global removal, carrying no path", async () => {
+      const fetchMock = stubFetch(null);
+      renderGlobalRow();
+
+      await openRemoveDialog();
+      await userEvent.click(
+        screen.getByRole("button", { name: /^remove tdd/ }),
+      );
+
+      await waitFor(() => {
+        expect(removeCalls(fetchMock)).toHaveLength(1);
+      });
+      const [, init] = removeCalls(fetchMock)[0] as [string, RequestInit];
+      expect(JSON.parse(String(init.body))).toEqual({
+        type: "skill",
+        name: "tdd",
+        target: { kind: "global" },
+      });
+    });
+
+    it("checks what the global removal would cost before it runs", async () => {
+      const fetchMock = stubFetch("local-edits-will-be-lost");
+      renderGlobalRow();
+
+      await openRemoveDialog();
+
+      expect(await screen.findByRole("status")).toHaveTextContent(
+        /local edits/i,
+      );
+      const [, init] = preflightCalls(fetchMock)[0] as [string, RequestInit];
+      expect(JSON.parse(String(init.body))).toEqual({
+        type: "skill",
+        name: "tdd",
+        target: { kind: "global" },
+      });
+    });
   });
 });

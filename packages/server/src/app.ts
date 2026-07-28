@@ -73,17 +73,24 @@ const bulkDeployBodySchema = z.object({
   ]),
 });
 
-// Remove a deployed skill from one registered repo. The target is a
-// discriminated union like deploy's, but carries only the repo kind: global
-// removal is not part of this slice, so the edge refuses it rather than letting
-// it reach a use-case that has no repo path to work with.
+// Remove a deployed skill from one target. The same discriminated union deploy
+// takes: a repo carries a path the registry gate validates in core; global
+// carries none, so no untrusted path crosses the boundary on that route (J07).
+// A repoPath sent alongside a global kind is dropped by the union rather than
+// widening what the route reads.
 const removeBodySchema = z.object({
   type: z.string(),
   name: z.string(),
   target: z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("repo"), repoPath: z.string() }),
+    z.object({ kind: z.literal("global") }),
   ]),
 });
+
+// One wording for both remove routes: they take the same body, so a malformed
+// one is refused in the same words whichever the caller hit.
+const REMOVE_BODY_MESSAGE =
+  'Expected a JSON body with type, name, and target ({ kind: "repo", repoPath } or { kind: "global" }).';
 
 // A failed drift check answers 200 with a body the web maps to a badge, not an
 // HTTP error (a screen reading "up-to-date" when the check failed would falsely
@@ -209,10 +216,18 @@ const removeErrorResponses: Record<
     status: 403,
     message: "That repo is not registered with Maestro.",
   },
+  "no-supported-tool": {
+    // 409, mirroring the deploy table: the machine simply has no Claude Code or
+    // Codex, so there is no global scope to remove from — a precondition the
+    // user resolves, not an apm failure (ADR-0011).
+    status: 409,
+    message:
+      "No supported tool (Claude Code or Codex) was found on this machine, so there is no global deployment to remove.",
+  },
   "not-deployed": {
     status: 404,
     message:
-      "That skill is not deployed in this repo, so there is nothing to remove.",
+      "That skill is not deployed on this target, so there is nothing to remove.",
   },
   "lockfile-malformed": {
     status: 409,
@@ -256,6 +271,7 @@ const removePreflightErrorResponses: Record<
     removeErrorResponses["unsupported-primitive-type"],
   "invalid-name": removeErrorResponses["invalid-name"],
   "repo-not-registered": removeErrorResponses["repo-not-registered"],
+  "no-supported-tool": removeErrorResponses["no-supported-tool"],
   "preflight-failed": {
     status: 502,
     message:
@@ -563,20 +579,12 @@ export function createApp(deps: AppDeps) {
     const parsed = removeBodySchema.safeParse(body);
     if (!parsed.success) {
       return c.json(
-        {
-          error: "invalid-body",
-          message:
-            'Expected a JSON body with type, name, and target ({ kind: "repo", repoPath }).',
-        },
+        { error: "invalid-body", message: REMOVE_BODY_MESSAGE },
         400,
       );
     }
 
-    const result = await deps.remove.execute({
-      type: parsed.data.type,
-      name: parsed.data.name,
-      repoPath: parsed.data.target.repoPath,
-    });
+    const result = await deps.remove.execute(parsed.data);
     if (!result.ok) {
       const { status, message } = removeErrorResponses[result.error];
       return c.json({ error: result.error, message }, status);
@@ -594,20 +602,12 @@ export function createApp(deps: AppDeps) {
     const parsed = removeBodySchema.safeParse(body);
     if (!parsed.success) {
       return c.json(
-        {
-          error: "invalid-body",
-          message:
-            'Expected a JSON body with type, name, and target ({ kind: "repo", repoPath }).',
-        },
+        { error: "invalid-body", message: REMOVE_BODY_MESSAGE },
         400,
       );
     }
 
-    const result = await deps.remove.preflight({
-      type: parsed.data.type,
-      name: parsed.data.name,
-      repoPath: parsed.data.target.repoPath,
-    });
+    const result = await deps.remove.preflight(parsed.data);
     if (!result.ok) {
       const { status, message } = removePreflightErrorResponses[result.error];
       return c.json({ error: result.error, message }, status);
@@ -815,6 +815,9 @@ function realDeps(): AppDeps {
     // there is nothing to lose first (.claude/rules/apm-driver.md § Remove).
     deployedContent: new DeployedContentAdapter({ location: deployedLocation }),
     apm,
+    // The same live HOME probe the deploy takes: a global removal covers exactly
+    // the tools the machine has, and the confirmation names them (ADR-0011).
+    toolPresence: new ToolPresenceAdapter(),
     canonicalPath: (path) => fs.realpath(path),
     locks: apmWriteLocks,
   });

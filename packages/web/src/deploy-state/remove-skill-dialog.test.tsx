@@ -4,7 +4,13 @@ import { describe, expect, it, vi } from "vitest";
 import { RemoveSkillDialog } from "./remove-skill-dialog";
 import type { RemoveWarningState } from "./remove-warning-view";
 
+const REPO_TARGET = {
+  kind: "repo" as const,
+  repoPath: "/Users/me/project",
+};
+
 function renderDialog({
+  target = REPO_TARGET as Parameters<typeof RemoveSkillDialog>[0]["target"],
   isRemoving = false,
   error = null as string | null,
   attempted = true,
@@ -15,7 +21,7 @@ function renderDialog({
   render(
     <RemoveSkillDialog
       skillName="tdd"
-      repoPath="/Users/me/project"
+      target={target}
       isRemoving={isRemoving}
       error={error}
       attempted={attempted}
@@ -164,5 +170,63 @@ describe("RemoveSkillDialog", () => {
     renderDialog();
 
     expect(screen.getByRole("dialog")).toHaveFocus();
+  });
+
+  // The global scope. The user clicked inside one tool's card, so the modal has
+  // to say out loud that the other detected tools go too — that line is what
+  // keeps the screen honest about a set-based action (#338).
+  describe("on the global target", () => {
+    const globalTarget = {
+      kind: "global" as const,
+      tools: ["claude", "codex"],
+    };
+
+    it("names every detected tool the removal will touch", () => {
+      renderDialog({ target: globalTarget });
+
+      const dialog = screen.getByRole("dialog");
+      expect(dialog).toHaveTextContent("Claude Code");
+      expect(dialog).toHaveTextContent("Codex");
+    });
+
+    it("names the scope as the whole tool set, not a path", () => {
+      renderDialog({ target: globalTarget });
+
+      const dialog = screen.getByRole("dialog");
+      expect(dialog).toHaveTextContent(/every detected tool/i);
+      expect(dialog).not.toHaveTextContent("/Users/me/project");
+    });
+
+    it("says there is no per-tool removal", () => {
+      // apm's uninstall has no -t, and the lever that looks like one orphans
+      // the other tools' files — so the promise the modal makes is set-based.
+      renderDialog({ target: globalTarget });
+
+      expect(screen.getByRole("dialog")).toHaveTextContent(/no per-tool/i);
+    });
+
+    it("names the single detected tool when the machine has only one", () => {
+      renderDialog({ target: { kind: "global", tools: ["claude"] } });
+
+      const dialog = screen.getByRole("dialog");
+      expect(dialog).toHaveTextContent("Claude Code");
+      expect(dialog).not.toHaveTextContent("Codex");
+    });
+
+    it("still states the scope when it has no tool names to give", () => {
+      // A sentence that trails off after "takes it off" would read as broken,
+      // not as honest; the scope is the whole machine either way.
+      renderDialog({ target: { kind: "global", tools: [] } });
+
+      expect(screen.getByRole("dialog")).toHaveTextContent(
+        /every tool on this machine/i,
+      );
+    });
+
+    it("still carries the divergence warning", () => {
+      renderDialog({ target: globalTarget, warning: "local-edits" });
+
+      expect(screen.getByRole("status")).toHaveTextContent(/local edits/i);
+    });
   });
 });

@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -11,6 +11,7 @@ import {
   NodeFileSystem,
   Registry,
   RemoveDeployedSkill,
+  type SupportedTool,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -57,6 +58,9 @@ describe("remove HTTP route", () => {
     // What the destination guard finds on disk. "clean" by default — the guard
     // itself is covered in the core lane; here it only has to reach the wire.
     deployedState?: DeployedContentState;
+    // The tools the machine is pretending to have. Only the global route reads
+    // it; an empty list is the no-supported-tool refusal.
+    detectedTools?: SupportedTool[];
   }) {
     const fs = new NodeFileSystem();
     const registry = new Registry({
@@ -65,20 +69,29 @@ describe("remove HTTP route", () => {
     });
     const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
     const removeCalls: Array<{ target: DeployTarget; ref: string }> = [];
+    const classifyCalls: Array<{ tools?: readonly SupportedTool[] }> = [];
     const remove = new RemoveDeployedSkill({
       registry,
       deployedRef: new DeployedRefAdapter({
         fs,
-        location: new DeployedLocation({}),
+        // HOME redirected at the sandbox, so the global lockfile this resolves
+        // is the test's own — never the real ~/.apm (apm-driver.md § Danger).
+        location: new DeployedLocation({ HOME: home }),
       }),
       deployedContent: {
-        classify: async () => options?.deployedState ?? "clean",
+        classify: async ({ tools }) => {
+          classifyCalls.push({ tools });
+          return options?.deployedState ?? "clean";
+        },
       },
       apm: {
         removeSkill: async (input) => {
           removeCalls.push(input);
           return (options?.removed ?? true) ? { ok: true } : { ok: false };
         },
+      },
+      toolPresence: {
+        detectGlobalTools: async () => options?.detectedTools ?? ["claude"],
       },
       canonicalPath: (path) => fs.realpath(path),
     });
@@ -94,7 +107,7 @@ describe("remove HTTP route", () => {
       browse: stubBrowse(),
       enforceOriginHost: false,
     });
-    return { app, registry, removeCalls };
+    return { app, registry, removeCalls, classifyCalls };
   }
 
   const removeRequest = (
@@ -313,18 +326,115 @@ describe("remove HTTP route", () => {
     expect((await removeRequest(app, { name: "tdd" })).status).toBe(400);
   });
 
-  it("rejects a target kind this slice does not remove from", async () => {
-    // Global removal is not part of this slice; the edge refuses it rather than
-    // letting it fall through to a repo path that is not there.
-    const { app } = makeApp();
+  // The user scope. Its lockfile location is apm's own, resolved server-side, so
+  // the request carries no path at all (J07, #338).
+  describe("the global target", () => {
+    // Resolved per call, not at collection time: `home` is a fresh sandbox per
+    // test.
+    async function writeGlobalLockfile(entries: string[]) {
+      const apmRoot = join(home, ".apm");
+      await mkdir(apmRoot, { recursive: true });
+      await writeFile(
+        join(apmRoot, "apm.lock.yaml"),
+        lockfileWith(entries),
+        "utf8",
+      );
+    }
 
-    const response = await removeRequest(app, {
-      type: "skill",
-      name: "tdd",
-      target: { kind: "global" },
+    const removeGlobally = (app: ReturnType<typeof makeApp>["app"]) =>
+      removeRequest(app, {
+        type: "skill",
+        name: "tdd",
+        target: { kind: "global" },
+      });
+
+    it("removes the skill with the ref the global lockfile records", async () => {
+      const { app, removeCalls } = makeApp();
+      await writeGlobalLockfile([skillEntry("tdd")]);
+
+      const response = await removeGlobally(app);
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        removed: { type: "skill", name: "tdd" },
+      });
+      expect(removeCalls).toEqual([
+        {
+          target: { kind: "global" },
+          ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+        },
+      ]);
     });
 
-    expect(response.status).toBe(400);
+    it("takes no path from the client, even one that is offered", async () => {
+      // A repoPath alongside a global kind must not widen what the route reads:
+      // the discriminated union drops it, and the location stays apm's own.
+      const { app, removeCalls } = makeApp();
+      await writeGlobalLockfile([skillEntry("tdd")]);
+
+      const response = await removeRequest(app, {
+        type: "skill",
+        name: "tdd",
+        target: { kind: "global", repoPath: "/etc" },
+      });
+
+      expect(response.status).toBe(200);
+      expect(removeCalls).toEqual([
+        {
+          target: { kind: "global" },
+          ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+        },
+      ]);
+    });
+
+    it("checks only the copies the detected tools would have", async () => {
+      const { app, classifyCalls } = makeApp({ detectedTools: ["codex"] });
+      await writeGlobalLockfile([skillEntry("tdd")]);
+
+      await removeGlobally(app);
+
+      expect(classifyCalls).toEqual([{ tools: ["codex"] }]);
+    });
+
+    it("refuses when the machine has no supported tool", async () => {
+      const { app, removeCalls } = makeApp({ detectedTools: [] });
+      await writeGlobalLockfile([skillEntry("tdd")]);
+
+      const response = await removeGlobally(app);
+
+      expect(response.status).toBe(409);
+      expect(removeCalls).toEqual([]);
+      const body = (await response.json()) as { message: string };
+      expect(body.message).toMatch(/\S/);
+    });
+
+    it("reports a skill the global scope does not carry as not found", async () => {
+      const { app, removeCalls } = makeApp();
+      await writeGlobalLockfile([skillEntry("jobs")]);
+
+      expect((await removeGlobally(app)).status).toBe(404);
+      expect(removeCalls).toEqual([]);
+    });
+
+    it("names what the removal would destroy before it runs", async () => {
+      const { app, removeCalls } = makeApp({ deployedState: "diverged" });
+
+      const response = await app.request("/api/deploy/remove/preflight", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          type: "skill",
+          name: "tdd",
+          target: { kind: "global" },
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        warning: "local-edits-will-be-lost",
+      });
+      expect(removeCalls).toEqual([]);
+    });
   });
 
   // The check the confirmation runs before the user commits. It answers what

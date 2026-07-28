@@ -1,8 +1,8 @@
-Feature: Remove a deployed skill from a consuming repo
+Feature: Remove a deployed skill from a target
 
-  As someone tidying up a repo, I want to take a deployed skill off it from the
-  cockpit, so that the repo stops carrying a skill I no longer want — without
-  hand-editing manifests or running apm myself.
+  As someone tidying up, I want to take a deployed skill off a repo or off my
+  whole machine from the cockpit, so that it stops carrying a skill I no longer
+  want — without hand-editing manifests or running apm myself.
 
   Scenario: I remove a skill and the repo stops listing it
     Given a registered repo with "tdd" and "jobs" deployed
@@ -52,3 +52,23 @@ Feature: Remove a deployed skill from a consuming repo
     Given a registered repo with only "jobs" deployed
     When I remove "tdd" from that repo
     Then I am told there was nothing to remove
+
+  Scenario: I take a globally deployed skill off every tool in one action
+    Given "tdd" and "jobs" deployed globally on Claude Code and Codex
+    When I remove "tdd" globally
+    Then the removal is confirmed
+    And no tool's global deploy-state lists "tdd" any more
+    And every tool still lists "jobs"
+
+  Scenario: A machine with no supported tool has no global scope to remove from
+    Given "tdd" and "jobs" deployed globally on Claude Code and Codex
+    But this machine has no supported tool
+    When I remove "tdd" globally
+    Then I am refused and apm is never asked to remove anything
+
+  Scenario: The global confirmation says what a removal would cost
+    Given "tdd" and "jobs" deployed globally on Claude Code and Codex
+    But my deployed copy of "tdd" has local edits
+    When I ask what removing "tdd" globally would cost
+    Then I am told those local edits would be lost
+    And nothing has been removed yet

@@ -1,6 +1,15 @@
 import { useModalDialog } from "../shell/use-modal-dialog";
 import { Button } from "../ui/button";
 import type { RemoveWarningState } from "./remove-warning-view";
+import { toolNameList } from "./tool-labels";
+
+// Which target the removal aims at, in the terms the confirmation must state.
+// The global kind carries its detected tools because the scope line is
+// mandatory there: the user clicked inside one tool's card, and this modal is
+// where the other tools stop being a surprise (#338).
+export type RemoveDialogTarget =
+  | { kind: "repo"; repoPath: string }
+  | { kind: "global"; tools: string[] };
 
 // What the user is told before destroying the deployed copy. Amber, never
 // danger red: red is reserved for validation errors, and lost work is a
@@ -18,7 +27,7 @@ const WARNING_TEXT: Record<Exclude<RemoveWarningState, "none">, string> = {
   checking: "Checking this copy for local edits…",
 };
 
-// The confirmation in front of taking a deployed skill off a repo. A real modal,
+// The confirmation in front of taking a deployed skill off a target. A real modal,
 // not an inline in-row confirm: removal deletes files, so it deserves the
 // interruption — and the modal contract (focus into the panel, Escape, focus
 // restore, trapped Tab) comes from the same hook the browse dialog uses. No
@@ -29,7 +38,7 @@ const WARNING_TEXT: Record<Exclude<RemoveWarningState, "none">, string> = {
 // tells it. The host owns the request, the in-flight flag and the error text.
 export function RemoveSkillDialog({
   skillName,
-  repoPath,
+  target,
   isRemoving,
   error,
   attempted,
@@ -38,7 +47,7 @@ export function RemoveSkillDialog({
   onConfirm,
 }: {
   skillName: string;
-  repoPath: string;
+  target: RemoveDialogTarget;
   isRemoving: boolean;
   // What this removal would destroy, as the host's check found it. It informs;
   // it never blocks — destruction is the point of this dialog, so consent is
@@ -96,8 +105,24 @@ export function RemoveSkillDialog({
             Remove <span className="text-fg">{skillName}</span> from
           </p>
           <p className="break-all font-mono text-dim text-mono-sm">
-            {repoPath}
+            {target.kind === "repo" ? target.repoPath : "every detected tool"}
           </p>
+          {/* Mandatory on the global path: the trigger sits inside one tool's
+              card, so the modal names the whole set before the user agrees to
+              it. There is no per-tool remove to offer — apm's uninstall has no
+              -t, and narrowing targets: to fake one orphans the other tools'
+              files (apm-behavior.md § Remove, ADR-0013). */}
+          {target.kind === "global" ? (
+            <p className="font-mono text-fg-2 text-tag">
+              {/* Named tools whenever the host knows them. With none to name,
+                  the sentence says what it can rather than trailing off — the
+                  scope is still the whole machine either way. */}
+              {target.tools.length > 0
+                ? `This takes it off ${toolNameList(target.tools)} in one go.`
+                : "This takes it off every tool on this machine in one go."}{" "}
+              There is no per-tool remove.
+            </p>
+          ) : null}
           <p className="font-mono text-dim text-tag">
             Its deployed files and its lockfile entry go. Deploy it again from
             the inventory whenever you want it back.

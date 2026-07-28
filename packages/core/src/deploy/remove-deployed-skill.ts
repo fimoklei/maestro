@@ -1,25 +1,33 @@
-// The remove use-case: take "take skill X off repo Y" from the screen and
+// The remove use-case: take "take skill X off target Y" from the screen and
 // orchestrate it — validate the request, refuse an unregistered repo before
 // anything is read, rebuild the tag-pinned reference the install used from the
 // target's own lockfile, and hand it to the ApmDriver under the same per-target
 // lock the deploy takes. Business rules live here; the server route only carries
 // it over HTTP.
 //
+// Two target kinds, one path. A repo carries a client-supplied path the registry
+// gates; the global scope carries none — its location is apm's own, resolved
+// server-side (J07) — and is removed from every detected tool at once, because
+// apm's uninstall has no -t and narrowing `targets:` to fake one orphans the
+// other tools' files (ADR-0013, apm-behavior.md § Remove).
+//
 // Removing a deploy never touches the central inventory: the inventory is what a
-// repo could have, and this only changes what one repo does have.
+// target could have, and this only changes what one target does have.
 //
 // Two entry points, one guard: `preflight` says what the removal would destroy
 // so the confirmation can state it, and `execute` carries it out. Divergence
 // warns rather than refusing — destruction is this use-case's intent, not a side
 // effect, so informed consent is enough (#337).
+import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type {
   ApmDriverPort,
   DeployedContentPort,
   DeployedContentState,
   DeployTarget,
 } from "./deploy-skill";
+import type { SupportedTool } from "./deploy-tools";
 import type { DeployedRefLookup } from "./deployed-ref";
-import { InFlightLocks } from "./in-flight-locks";
+import { GLOBAL_LOCK_KEY, InFlightLocks } from "./in-flight-locks";
 import { isValidSkillSlug } from "./package-ref";
 
 // Which package reference names the deployed skill, read from the target's own
@@ -36,13 +44,18 @@ type RemoveDeployedSkillInput = {
   // rule here, not a schema shape, so the user gets an honest message.
   type: string;
   name: string;
-  repoPath: string;
+  target: DeployTarget;
 };
 
 export type RemoveDeployedSkillError =
   | "unsupported-primitive-type"
   | "invalid-name"
   | "repo-not-registered"
+  // Global only: the machine has no supported tool, so there is no scope to
+  // remove from. Refused rather than run for nothing — with no tool detected the
+  // destination guard scans nothing, and reporting that as "nothing to lose"
+  // would be a promise no check ever made (ADR-0011, J04).
+  | "no-supported-tool"
   // No lockfile entry for this skill, so there is nothing for apm to remove —
   // the row the user clicked is stale. Reported rather than swallowed as a
   // success: a silent no-op would read as "removed" for something we never
@@ -114,7 +127,15 @@ export type RemovePreflightError =
   | "unsupported-primitive-type"
   | "invalid-name"
   | "repo-not-registered"
+  | "no-supported-tool"
   | "preflight-failed";
+
+// The tool scope a removal covers, resolved once and shared by the guard call
+// and the refusal. `tools: undefined` means "the guard's own default set" — the
+// repo path, which has no per-tool narrowing to reconcile.
+type ResolvedScope =
+  | { ok: true; tools: readonly SupportedTool[] | undefined }
+  | { ok: false; error: "no-supported-tool" };
 
 type RemoveDeployedSkillResult =
   | { ok: true; removed: { type: "skill"; name: string } }
@@ -135,6 +156,11 @@ export class RemoveDeployedSkill {
     // Depends only on the port method it uses, so growing ApmDriverPort never
     // breaks this use-case or its fakes.
     apm: Pick<ApmDriverPort, "removeSkill">;
+    // Which tools this machine actually has, probed live per request (ADR-0011).
+    // The global path alone needs it: it scopes the destination guard to the
+    // copies a deploy would have written, and an empty probe is what turns a
+    // global removal into an honest refusal instead of a no-op.
+    toolPresence: ToolPresencePort;
     // Resolves a path to its canonical form (realpath), so the in-flight lock
     // cannot be sidestepped by a symlinked spelling of the same repo.
     canonicalPath: (path: string) => Promise<string>;
@@ -164,10 +190,24 @@ export class RemoveDeployedSkill {
       return { ok: false, error: rejection };
     }
 
+    let scope: ResolvedScope;
+    try {
+      scope = await this.resolveScope(input.target);
+    } catch {
+      // The probe itself failed, so which copies exist is unknown. Never
+      // answered as a clean copy: that is the one thing a check that did not
+      // run cannot promise (J04).
+      return { ok: false, error: "preflight-failed" };
+    }
+    if (!scope.ok) {
+      return { ok: false, error: scope.error };
+    }
+
     try {
       const state = await this.deps.deployedContent.classify({
-        target: { kind: "repo", repoPath: input.repoPath },
+        target: input.target,
         name: input.name,
+        tools: scope.tools,
       });
       return { ok: true, warning: GUARD_WARNINGS[state] ?? null };
     } catch {
@@ -183,17 +223,45 @@ export class RemoveDeployedSkill {
       return { ok: false, error: rejection };
     }
 
+    let scope: ResolvedScope;
     let lockKey: string;
     try {
-      lockKey = await this.deps.canonicalPath(input.repoPath);
+      scope = await this.resolveScope(input.target);
+      // The user scope has no path to canonicalize; it queues on the literal
+      // key the global deploy already takes, so the two cannot rewrite one
+      // apm.lock.yaml at once.
+      lockKey =
+        input.target.kind === "repo"
+          ? await this.deps.canonicalPath(input.target.repoPath)
+          : GLOBAL_LOCK_KEY;
     } catch {
       // Registration guarantees the path exists, so this only fires on a
       // genuinely broken environment — owned as the catch-all error.
       return { ok: false, error: "remove-failed" };
     }
+    if (!scope.ok) {
+      return { ok: false, error: scope.error };
+    }
 
-    const run = await this.locks.run(lockKey, () => this.remove(input));
+    const run = await this.locks.run(lockKey, () =>
+      this.remove(input, scope.tools),
+    );
     return run.ok ? run.value : { ok: false, error: "remove-in-progress" };
+  }
+
+  // Which tools the removal covers, and whether there is any scope at all. A
+  // repo's answer is "every DEPLOY_TOOLS copy" (undefined — the guard's own
+  // default); the global answer is the live probe, refused when it comes back
+  // empty. Throws only when the probe itself failed; both callers own that as
+  // their catch-all.
+  private async resolveScope(target: DeployTarget): Promise<ResolvedScope> {
+    if (target.kind === "repo") {
+      return { ok: true, tools: undefined };
+    }
+    const detected = await this.deps.toolPresence.detectGlobalTools();
+    return detected.length === 0
+      ? { ok: false, error: "no-supported-tool" }
+      : { ok: true, tools: detected };
   }
 
   // The request-shape rules both entry points share, in the order that keeps
@@ -214,7 +282,12 @@ export class RemoveDeployedSkill {
     if (!isValidSkillSlug(input.name)) {
       return "invalid-name";
     }
-    if (!(await this.deps.registry.isRegistered(input.repoPath))) {
+    // Only a repo carries a client-supplied path, so only a repo has a registry
+    // gate to pass. The global scope's location never left the server.
+    if (
+      input.target.kind === "repo" &&
+      !(await this.deps.registry.isRegistered(input.target.repoPath))
+    ) {
       return "repo-not-registered";
     }
     return undefined;
@@ -222,8 +295,9 @@ export class RemoveDeployedSkill {
 
   private async remove(
     input: RemoveDeployedSkillInput,
+    tools: readonly SupportedTool[] | undefined,
   ): Promise<RemoveDeployedSkillResult> {
-    const target: DeployTarget = { kind: "repo", repoPath: input.repoPath };
+    const target = input.target;
     // From here on we touch the filesystem and drive apm, both of which can
     // throw. Own that as a typed error so it never escapes as an unhandled
     // rejection (and the raw apm message, which may carry a token, never
@@ -245,6 +319,7 @@ export class RemoveDeployedSkill {
       const deployedState = await this.deps.deployedContent.classify({
         target,
         name: input.name,
+        tools,
       });
       const refusal = GUARD_REFUSALS[deployedState];
       if (refusal !== undefined) {
