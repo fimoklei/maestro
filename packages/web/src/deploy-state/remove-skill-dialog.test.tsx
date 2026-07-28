@@ -196,6 +196,71 @@ describe("RemoveSkillDialog", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
+  // The cockpit's voice: terse, technical, second person nowhere (DESIGN.md
+  // § Fixed Vocabulary, PRODUCT.md § Voice). This dialog is prose-heavy, so it
+  // is where the rule slips first.
+  describe("its voice", () => {
+    it("addresses nobody as 'you' or 'we', in any state", () => {
+      const states: RemovePreflightView[] = [
+        ...(
+          [
+            "none",
+            "checking",
+            "local-edits",
+            "cannot-verify",
+            "check-failed",
+          ] as const
+        ).map((warning) =>
+          warns(warning, [
+            { tool: "claude", path: "/Users/me/.claude/skills/tdd" },
+          ]),
+        ),
+        { kind: "refused", message: "no global deployment to remove." },
+      ];
+
+      for (const preflight of states) {
+        renderDialog({
+          target: { kind: "global", tools: ["claude", "codex"] },
+          preflight,
+        });
+
+        const dialog = screen.getAllByRole("dialog").at(-1);
+        expect(dialog?.textContent).not.toMatch(/\b(you|your|we|our)\b/i);
+      }
+    });
+
+    it("says what to do about local edits instead of naming an internal route", () => {
+      // "never went through central" describes a pipeline, not a step the
+      // reader can take before agreeing to lose the edits.
+      renderDialog({ preflight: warns("local-edits") });
+
+      const note = screen.getByRole("status");
+      expect(note).not.toHaveTextContent(/central/i);
+      expect(note).toHaveTextContent(/copy them out/i);
+    });
+
+    it("claims no more about the edits than the check can prove", () => {
+      // The check compares the deployed files against the recorded hashes. It
+      // never looks anywhere else, so whether these edits survive elsewhere is
+      // outside what it saw — and a consent surface states only what it knows.
+      renderDialog({ preflight: warns("local-edits") });
+
+      expect(screen.getByRole("status")).not.toHaveTextContent(
+        /nowhere else|for good|only copy/i,
+      );
+    });
+
+    it("promises no redeploy, because a redeploy pins to the latest tag", () => {
+      // The removed version is not what comes back, so the dialog offers no
+      // comfort it cannot keep (#386).
+      renderDialog();
+
+      expect(screen.getByRole("dialog")).not.toHaveTextContent(
+        /deploy it again/i,
+      );
+    });
+  });
+
   it("takes focus into the panel when it opens", () => {
     renderDialog();
 
@@ -360,7 +425,7 @@ describe("RemoveSkillDialog", () => {
       // What #390 asks for: make the destructive path as
       // inspectable and as loud as the deploy path. A force-deleted directory
       // the user never targeted gets its own announced region, not a line of
-      // dim text below the reassurance.
+      // dim text below the consequence line.
       it("announces the leftover as its own region rather than quiet prose", () => {
         renderDialog({
           target: globalTarget,

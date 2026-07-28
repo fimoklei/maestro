@@ -22,7 +22,7 @@ export type RemoveDialogTarget =
 // an unfinished check cannot promise (J04).
 const WARNING_TEXT: Record<Exclude<RemoveWarningState, "none">, string> = {
   "local-edits":
-    "This copy has local edits that never went through central. Removing it loses them for good.",
+    "This copy has local edits. Copy them out first — removing it deletes them with the copy.",
   "cannot-verify":
     "Nothing was recorded to check this copy against, so local edits can't be checked. Removing it may lose work.",
   "check-failed":
@@ -208,14 +208,15 @@ export function RemoveSkillDialog({
               </span>
             </div>
           ) : null}
-          {/* Last of the prose, so the two loud blocks sit together and the
-              reassurance does not come between them. It describes a removal
-              that is about to happen, so a refusal drops it rather than promise
-              a round trip nobody can make. */}
+          {/* Last of the prose, so the two loud blocks sit together. It states
+              the cost and stops there: a redeploy re-pins to the latest
+              published tag, so the removed version is not what would come back,
+              and this dialog offers no comfort it cannot keep (#386). It
+              describes a removal that is about to happen, so a refusal drops it
+              rather than name a cost nothing will pay. */}
           {refused ? null : (
             <p className="font-mono text-dim text-tag">
-              Its deployed files and its lockfile entry go. Deploy it again from
-              the inventory whenever you want it back.
+              Its deployed files and its lockfile entry go.
             </p>
           )}
           {error ? (
