@@ -82,9 +82,9 @@ Valid jobs, deliberately not being done.
 | Job | Reason |
 |---|---|
 | Reimplement install / sync / pinning / lockfile | APM owns the engine. See ADR-0001. |
-| Governance lifecycle (review/approve/required) | Solo has no curation-by-others need yet; future main job C. |
+| Governance lifecycle (review/approve/required) | Maestro drives git to the push and gates nothing ([#365](https://github.com/fimoklei/maestro/issues/365)); review and approval happen on GitHub. Roles, approval rules and required-vs-optional are future main job C. |
 | Compounding loop (corrections → primitives) | Needs adoption and a working manual loop first; future main job D. |
-| Adoption dashboards across teams | Needs a team before adoption means anything. |
+| Adoption dashboards across teams | Measuring use means gathering from other people's machines; Maestro is local-only and collects nothing. |
 | Support every AI coding tool | Two tools (Claude Code, Codex) first; breadth later. |
 | Auto-generate primitives from PR comments | Needs data integration and a working manual loop first. |
 | SaaS backend / RBAC / audit / compliance | Too heavy before solo daily value is proven. |

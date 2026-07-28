@@ -11,6 +11,7 @@ import type {
   ApmDriverPort,
   DeploySkillDriverResult,
   DeployTarget,
+  RemoveSkillDriverResult,
   ResolveLatestTagResult,
 } from "./deploy-skill";
 import {
@@ -67,8 +68,28 @@ const INSTALL_FAILURE_SIGNALS = [
 // (#180).
 const INSTALL_SYMLINK_PHRASE = "is a symlink";
 
+// The positive marker apm prints on a successful uninstall. Its presence is the
+// whole verdict: every uninstall outcome exits 0, including a package that was
+// never installed, so the exit code says nothing (apm-behavior.md § Remove).
+const UNINSTALL_SUCCESS_MARKER = /uninstall complete: removed \d+ package\(s\)/;
+
+// apm's fixed phrase for a package it could not find, in both the per-package
+// line (`<ref> - not found in apm.yml`) and the trailing partial-run note
+// (`Note: N package(s) were not found in apm.yml`). Read alongside the success
+// marker, never instead of it: a run that prints both removed something and
+// missed something, which for our single-package command means we cannot claim a
+// clean removal.
+const UNINSTALL_NOT_FOUND_SIGNALS = [
+  /- not found in apm\.yml/,
+  /were not found in apm\.yml/,
+];
+
 type SanitizedLogEntry = {
-  operation: "resolve-latest-tag" | "deploy-skill" | "check-outdated";
+  operation:
+    | "resolve-latest-tag"
+    | "deploy-skill"
+    | "remove-skill"
+    | "check-outdated";
   target: string;
   exitCode: number;
   durationMs: number;
@@ -169,6 +190,46 @@ export class ApmCliDriver implements ApmDriverPort {
     return { ok: true };
   }
 
+  async removeSkill(input: {
+    target: DeployTarget;
+    ref: string;
+  }): Promise<RemoveSkillDriverResult> {
+    const started = Date.now();
+    // No -t on either branch: uninstall has no such flag, and narrowing the
+    // consumer's `targets:` to scope a removal orphans the other tools' files
+    // (ADR-0013, apm-behavior.md § Remove).
+    const target = input.target;
+    const cwd =
+      target.kind === "repo" ? target.repoPath : await this.prepareGlobalCwd();
+    const args =
+      target.kind === "repo"
+        ? ["uninstall", input.ref]
+        : ["uninstall", input.ref, "-g"];
+    const logTarget =
+      target.kind === "repo" ? basename(target.repoPath) : "global";
+    let output: string;
+    try {
+      const { stdout, stderr } = await this.run("apm", args, { cwd });
+      output = `${stdout}\n${stderr}`;
+    } catch (error) {
+      // Only the argument parser exits non-zero, and it touches nothing. Classify
+      // from the rejected run's own output anyway, so one rule decides every
+      // outcome.
+      output = outputOf(error);
+    }
+    if (!removeSucceeded(output)) {
+      return { ok: false };
+    }
+    this.log({
+      operation: "remove-skill",
+      // Repo basename or "global" — never the full path or raw apm output.
+      target: logTarget,
+      exitCode: 0,
+      durationMs: Date.now() - started,
+    });
+    return { ok: true };
+  }
+
   async checkOutdated(target: DeployTarget): Promise<OutdatedResult> {
     const started = Date.now();
     const cwd =
@@ -234,6 +295,17 @@ function installSucceeded(output: string): boolean {
   return (
     INSTALL_SUCCESS_MARKER.test(haystack) &&
     !INSTALL_FAILURE_SIGNALS.some((signal) => signal.test(haystack))
+  );
+}
+
+// A removal succeeded only when apm printed its positive marker AND named
+// nothing as missing. Fail-closed: an absent marker is a failure, whatever the
+// exit code said.
+function removeSucceeded(output: string): boolean {
+  const haystack = normalize(output);
+  return (
+    UNINSTALL_SUCCESS_MARKER.test(haystack) &&
+    !UNINSTALL_NOT_FOUND_SIGNALS.some((signal) => signal.test(haystack))
   );
 }
 

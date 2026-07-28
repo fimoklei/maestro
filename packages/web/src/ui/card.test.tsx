@@ -22,6 +22,17 @@ describe("Card", () => {
     expect(screen.queryByText("● in sync")).not.toBeInTheDocument();
   });
 
+  it("gives the title a heading role, so a card can be found and focused", () => {
+    // The header is where focus lands when an action inside the card destroys
+    // the control that triggered it (removing a deployed skill, #336).
+    render(<Card title="Claude Code">rows</Card>);
+    const heading = screen.getByRole("heading", { name: "Claude Code" });
+
+    heading.focus();
+
+    expect(heading).toHaveFocus();
+  });
+
   it("shows the kind label alongside the title", () => {
     render(
       <Card title="~/dev/acme-web" kind="local">

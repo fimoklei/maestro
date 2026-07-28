@@ -14,6 +14,7 @@ import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
+import { stubRemove } from "../helpers/stub-remove";
 
 // Integration lane: drives the real Hono app via app.request against real temp
 // dirs. The deploy-state route is registry-gated — membership is checked before
@@ -43,6 +44,7 @@ describe("deploy-state HTTP route", () => {
       inventory,
       deployState,
       deploy: stubDeploy({ inventory, registry }),
+      remove: stubRemove({ registry }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
       connect: stubConnect(),

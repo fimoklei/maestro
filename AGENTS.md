@@ -57,7 +57,9 @@ a job on the board changes it.
 
 ### Hard Rules
 
-- **Do not take shortcuts.** We want the best version possible.
+- **Do the job properly, at the scope asked.** No stubs, no placeholders, no
+  half-finished paths. "The best version" means the best version of *this*
+  job — not a bigger one.
 - **Never reimplement APM.** Drive it; read its lockfiles. Install, sync,
   pinning, lockfiles, and multi-tool targeting are APM's.
 - **Follow `docs/operating-model.md`.** It owns the board, the loop, and the

@@ -15,6 +15,7 @@ import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
+import { stubRemove } from "../helpers/stub-remove";
 
 const feature = await loadFeature(
   "tests/acceptance/j10-j01-j06-j02-tracer.feature",
@@ -74,6 +75,7 @@ function buildApp(configPath: string, inventoryPath: string) {
     inventory,
     deployState,
     deploy,
+    remove: stubRemove({ registry }),
     drift: stubDrift({ registry }),
     resolveGlobalRoot: () => "/nonexistent-apm-root",
     connect: stubConnect(),

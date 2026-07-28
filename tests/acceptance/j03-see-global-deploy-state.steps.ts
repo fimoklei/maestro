@@ -17,6 +17,7 @@ import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
+import { stubRemove } from "../helpers/stub-remove";
 
 const feature = await loadFeature(
   "tests/acceptance/j03-see-global-deploy-state.feature",
@@ -47,6 +48,7 @@ function buildApp(
     inventory,
     deployState,
     deploy: stubDeploy({ inventory, registry }),
+    remove: stubRemove({ registry }),
     drift: stubDrift({ registry }),
     resolveGlobalRoot: () => apmRoot,
     connect: stubConnect(),

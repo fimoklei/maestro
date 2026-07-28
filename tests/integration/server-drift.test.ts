@@ -14,6 +14,7 @@ import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
+import { stubRemove } from "../helpers/stub-remove";
 
 // Integration lane: drives the real Hono app via app.request. The drift route
 // is registry-gated like deploy-state. A check that could not run is a 200 with
@@ -64,6 +65,7 @@ describe("drift HTTP route", () => {
       inventory,
       deployState: stubDeployState({ fs }),
       deploy: stubDeploy({ inventory, registry }),
+      remove: stubRemove({ registry }),
       drift,
       resolveGlobalRoot: () => "/nonexistent-apm-root",
       connect: stubConnect(),

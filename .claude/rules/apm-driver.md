@@ -68,8 +68,9 @@ targets = detected tools), 0013 (narrowed-install reconciliation), 0014
   skill name is rejected and still exits 0.
 - Never treat `--dry-run` as a blast-radius preview — it omits the deployed
   files it is about to delete.
-- Never uninstall over a dirty deployed subtree — local edits are deleted
-  with no warning. The deploy use-case's guards run in front of it too.
+- A dirty deployed subtree warns, never blocks: apm deletes local edits with
+  no warning, so classify the copy and state the consequence in the
+  confirmation before the uninstall call. Install and update still refuse.
 - Never narrow `targets:` in `apm.yml` to scope a removal — it orphans the
   other tools' files while dropping the lockfile entry. Per-tool cleanup is
   the scoped `rm` behind `DeployedCleanupPort` (ADR-0013).

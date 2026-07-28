@@ -16,6 +16,7 @@ import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
+import { stubRemove } from "../helpers/stub-remove";
 
 // Integration lane for global (user-scope) deploy-state, now grouped per detected
 // tool (ADR-0011, J03). The server resolves the user-scope location itself — no
@@ -78,6 +79,7 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
       inventory,
       deployState,
       deploy: stubDeploy({ inventory, registry }),
+      remove: stubRemove({ registry }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => apmRoot,
       connect: stubConnect(),

@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { driftViewModel } from "../drift/drift-view-model";
 import { useDrift } from "../drift/use-drift";
 import { targetLabel } from "../shell/target-label";
@@ -24,10 +25,13 @@ export function DeployStatePanel({
   const deployState = useDeployState(repo);
   const drift = driftViewModel(useDrift(repo));
   const indicator = drift.targetIndicator(toDeployedView(deployState));
+  // Where focus goes when a removal destroys the row it was triggered from.
+  const headerRef = useRef<HTMLHeadingElement>(null);
 
   return (
     <Card
       title={<span title={repo}>{targetLabel(repo, siblings)}</span>}
+      titleRef={headerRef}
       kind="local"
       drift={indicator === "drift"}
       status={<TargetStatusChip indicator={indicator} />}
@@ -44,6 +48,7 @@ export function DeployStatePanel({
           skipped={deployState.data?.skipped ?? []}
           drift={drift}
           target={{ kind: "repo", repoPath: repo }}
+          onRemoved={() => headerRef.current?.focus()}
         />
       )}
     </Card>

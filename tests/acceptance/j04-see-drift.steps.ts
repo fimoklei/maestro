@@ -15,6 +15,7 @@ import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
+import { stubRemove } from "../helpers/stub-remove";
 
 const feature = await loadFeature("tests/acceptance/j04-see-drift.feature");
 
@@ -51,6 +52,7 @@ function buildApp(configPath: string, getOutcome: () => OutdatedOutcome) {
     inventory,
     deployState: stubDeployState({ fs }),
     deploy: stubDeploy({ inventory, registry }),
+    remove: stubRemove({ registry }),
     drift,
     resolveGlobalRoot: () => "/nonexistent-apm-root",
     connect: stubConnect(),

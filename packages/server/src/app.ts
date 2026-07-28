@@ -13,13 +13,18 @@ import {
   DeployedCleanupAdapter,
   DeployedContentAdapter,
   DeployedLocation,
+  DeployedRefAdapter,
   DeploySkill,
   type DeploySkillError,
   GlobalDeployStateReader,
+  InFlightLocks,
   InventoryGitAdapter,
   InventoryReader,
   NodeFileSystem,
   Registry,
+  RemoveDeployedSkill,
+  type RemoveDeployedSkillError,
+  type RemovePreflightError,
   type RepoPathError,
   readGitOriginUrl,
   resolveApmGlobalRoot,
@@ -67,6 +72,36 @@ const bulkDeployBodySchema = z.object({
     z.object({ kind: z.literal("global") }),
   ]),
 });
+
+// Remove a deployed skill from one target. The same discriminated union deploy
+// takes: a repo carries a path the registry gate validates in core; global
+// carries none, so no untrusted path crosses the boundary on that route (J07).
+// A repoPath sent alongside a global kind is dropped by the union rather than
+// widening what the route reads.
+const removeBodySchema = z.object({
+  type: z.string(),
+  name: z.string(),
+  target: z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("repo"), repoPath: z.string() }),
+    z.object({ kind: z.literal("global") }),
+  ]),
+  // Read only by the execute route. The token this same request's own preflight
+  // response carried with the leftover paths it named. Proves the confirmation
+  // the user saw came from this server's own preflight, rather than a
+  // client-built path list a caller could construct without ever asking
+  // preflight anything. Shaped as core mints it — a SHA-256 digest in lowercase
+  // hex — so anything else is refused at the edge rather than absorbed by the
+  // comparison behind it (security.md: allowlists over blocklists).
+  confirmedReclaimToken: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/)
+    .optional(),
+});
+
+// One wording for both remove routes: they take the same body, so a malformed
+// one is refused in the same words whichever the caller hit.
+const REMOVE_BODY_MESSAGE =
+  'Expected a JSON body with type, name, and target ({ kind: "repo", repoPath } or { kind: "global" }).';
 
 // A failed drift check answers 200 with a body the web maps to a badge, not an
 // HTTP error (a screen reading "up-to-date" when the check failed would falsely
@@ -173,6 +208,88 @@ const deployErrorResponses: Record<
   },
 };
 
+// Transport-layer mapping from the remove use-case's typed errors to HTTP. Like
+// the deploy table, this only chooses status codes and readable messages — no
+// message echoes a path or raw apm output.
+const removeErrorResponses: Record<
+  RemoveDeployedSkillError,
+  { status: 400 | 403 | 404 | 409 | 422 | 502; message: string }
+> = {
+  "unsupported-primitive-type": {
+    status: 422,
+    message: "Only skills can be removed yet.",
+  },
+  "invalid-name": {
+    status: 400,
+    message: "Skill name must be a lowercase slug.",
+  },
+  "repo-not-registered": {
+    status: 403,
+    message: "That repo is not registered with Maestro.",
+  },
+  "no-supported-tool": {
+    // 409, mirroring the deploy table: the machine simply has no Claude Code or
+    // Codex, so there is no global scope to remove from — a precondition the
+    // user resolves, not an apm failure (ADR-0011).
+    status: 409,
+    message:
+      "No supported tool (Claude Code or Codex) was found on this machine, so there is no global deployment to remove.",
+  },
+  "not-deployed": {
+    status: 404,
+    message:
+      "That skill is not deployed on this target, so there is nothing to remove.",
+  },
+  "lockfile-malformed": {
+    status: 409,
+    message:
+      "The repo's lockfile (apm.lock.yaml) is present but could not be parsed, so Maestro cannot tell apm what to remove. Fix or remove it, then try again.",
+  },
+  "ref-unresolvable": {
+    status: 409,
+    message:
+      "The lockfile entry for this skill does not name it the way a Maestro deploy would, so the package reference apm needs cannot be trusted to point at it. Remove it with apm directly.",
+  },
+  "deployed-unreadable": {
+    status: 409,
+    message:
+      "The deployed copy exists but could not be read, so Maestro cannot tell whether removing it would delete local changes. Check its permissions and that it is a directory, then try again.",
+  },
+  "remove-in-progress": {
+    status: 409,
+    message:
+      "Another change to this repo is already running. Wait for it to finish.",
+  },
+  "remove-failed": {
+    // 502: apm ran and did not prove the removal. The cockpit adds the
+    // mixed-state warning — a half-finished uninstall leaves the repo between
+    // two states, and saying nothing would read as "nothing happened".
+    status: 502,
+    message: "apm did not confirm the removal. Check apm and try again.",
+  },
+};
+
+// Transport-layer mapping for the pre-confirmation check. A failed check is an
+// error, never an empty warning: the cockpit must be able to tell "nothing to
+// lose" from "we could not look".
+const removePreflightErrorResponses: Record<
+  RemovePreflightError,
+  { status: 400 | 403 | 404 | 409 | 422 | 502; message: string }
+> = {
+  // The request-shape refusals are the removal's own — one wording, whichever
+  // route the user hit.
+  "unsupported-primitive-type":
+    removeErrorResponses["unsupported-primitive-type"],
+  "invalid-name": removeErrorResponses["invalid-name"],
+  "repo-not-registered": removeErrorResponses["repo-not-registered"],
+  "no-supported-tool": removeErrorResponses["no-supported-tool"],
+  "preflight-failed": {
+    status: 502,
+    message:
+      "Maestro could not check the deployed copy for local changes. Check the repo's permissions and try again.",
+  },
+};
+
 // Transport-layer mapping from the domain's typed validation errors to readable
 // text the cockpit shows next to the path field.
 const repoPathErrorMessages: Record<
@@ -254,6 +371,7 @@ export type AppDeps = {
   // a compile error here, not a 500 discovered days later (#187).
   deployState: GlobalDeployStateReader;
   deploy: DeploySkill;
+  remove: RemoveDeployedSkill;
   drift: CheckVersionDrift;
   // Resolves apm's user-scope (global) root server-side. No client-supplied path
   // reaches the global read; tests inject a sandbox so the real ~/.apm is never
@@ -464,6 +582,50 @@ export function createApp(deps: AppDeps) {
     return c.json({ deployed: result.deployed });
   });
 
+  // Take a deployed skill off a registered repo. The registry gate, the ref
+  // lookup and the fail-closed success detection all live in the core use-case;
+  // this route validates the body shape and maps typed errors.
+  app.post("/api/deploy/remove", async (c) => {
+    const body = await c.req.json().catch(() => null);
+    const parsed = removeBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json(
+        { error: "invalid-body", message: REMOVE_BODY_MESSAGE },
+        400,
+      );
+    }
+
+    const result = await deps.remove.execute(parsed.data);
+    if (!result.ok) {
+      const { status, message } = removeErrorResponses[result.error];
+      return c.json({ error: result.error, message }, status);
+    }
+    return c.json({ removed: result.removed });
+  });
+
+  // What that removal would destroy, asked before the user commits to it. Same
+  // body shape as the removal itself, so the confirmation checks exactly the
+  // request it is about to send. Never a removal — and never a silent "clean"
+  // on a failed check: a check that could not run answers with its own error
+  // (#337).
+  app.post("/api/deploy/remove/preflight", async (c) => {
+    const body = await c.req.json().catch(() => null);
+    const parsed = removeBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json(
+        { error: "invalid-body", message: REMOVE_BODY_MESSAGE },
+        400,
+      );
+    }
+
+    const result = await deps.remove.preflight(parsed.data);
+    if (!result.ok) {
+      const { status, message } = removePreflightErrorResponses[result.error];
+      return c.json({ error: result.error, message }, status);
+    }
+    return c.json({ warning: result.warning, reclaim: result.reclaim });
+  });
+
   // Bulk-deploy the staged skills to one target: plan → execute → report. The
   // orchestrator drives the same guarded deploy path once per name, never
   // aborting on a failure, and returns a report the cockpit reads (clean skips
@@ -621,6 +783,10 @@ function realDeps(): AppDeps {
   // cleanup take the same instance, so their agreement on the tree is one object,
   // not a comment to keep in sync.
   const deployedLocation = new DeployedLocation(process.env);
+  // One lock for every apm write, shared by deploy and remove: both rewrite the
+  // same apm.lock.yaml, so a deploy racing a remove on one repo would corrupt
+  // it. Composed here because only the server has both use-cases.
+  const apmWriteLocks = new InFlightLocks();
   const deploy = new DeploySkill({
     inventory,
     registry,
@@ -647,6 +813,31 @@ function realDeps(): AppDeps {
       return root === undefined ? null : readGitOriginUrl(root);
     },
     canonicalPath: (path) => fs.realpath(path),
+    locks: apmWriteLocks,
+  });
+  // Remove reads the ref to uninstall from the target's own lockfile, through
+  // the same DeployedLocation the deploy guards use, so both agree on which
+  // lockfile a target means.
+  const remove = new RemoveDeployedSkill({
+    registry,
+    deployedRef: new DeployedRefAdapter({ fs, location: deployedLocation }),
+    // The same destination guard the deploy takes, on the same DeployedLocation:
+    // apm deletes an edited deployed file silently, so a removal must prove
+    // there is nothing to lose first (.claude/rules/apm-driver.md § Remove).
+    deployedContent: new DeployedContentAdapter({ location: deployedLocation }),
+    apm,
+    // The same subtree-scoped reclaim the deploy path uses, for the copies apm's
+    // uninstall cannot reach: those of a tool this machine no longer detects
+    // (#339).
+    deployedCleanup: new DeployedCleanupAdapter({ location: deployedLocation }),
+    // The same live HOME probe the deploy takes: a global removal covers exactly
+    // the tools the machine has, and the confirmation names them (ADR-0011).
+    toolPresence: new ToolPresenceAdapter(),
+    canonicalPath: (path) => fs.realpath(path),
+    locks: apmWriteLocks,
+    // Same instance as the guard and the cleanup, so the reclaim preview
+    // preflight names and the path execute actually deletes always agree.
+    location: deployedLocation,
   });
   return {
     registry,
@@ -660,6 +851,7 @@ function realDeps(): AppDeps {
     browse: new BrowseFilesystem({ fs, homeRoot: () => homedir() }),
     deployState,
     deploy,
+    remove,
     drift,
     resolveGlobalRoot: () => resolveApmGlobalRoot(process.env),
     enforceOriginHost: true,

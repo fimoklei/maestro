@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import type { DriftViewModel } from "../drift/drift-view-model";
 import { Card } from "../ui/card";
 import { SectionHeader } from "../ui/section-header";
@@ -50,7 +51,14 @@ export function GlobalTargets({
       ) : (
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {tools.map((group) => (
-            <ToolTargetCard key={group.tool} group={group} drift={drift} />
+            <ToolTargetCard
+              key={group.tool}
+              group={group}
+              drift={drift}
+              // Every card knows the whole detected set: a removal triggered in
+              // one card covers all of them (#338).
+              detectedTools={tools.map((detected) => detected.tool)}
+            />
           ))}
         </div>
       )}
@@ -73,11 +81,17 @@ export function GlobalTargets({
 function ToolTargetCard({
   group,
   drift,
+  detectedTools,
 }: {
   group: ToolDeployState;
   drift: DriftViewModel;
+  // The whole detected set, not just this card's tool: a global removal
+  // triggered here covers every one of them, and the confirmation says so.
+  detectedTools: string[];
 }) {
   const { label, destination } = toolPresentation(group.tool);
+  // Where focus goes when a removal destroys the row it was triggered from.
+  const headerRef = useRef<HTMLHeadingElement>(null);
   const names = group.primitives.map((primitive) => primitive.name);
   // The single global drift check is narrowed to this tool's skills, so a skill
   // behind on another tool never surfaces here as a spurious "also behind".
@@ -96,6 +110,7 @@ function ToolTargetCard({
           ) : null}
         </span>
       }
+      titleRef={headerRef}
       kind="global"
       drift={indicator === "drift"}
       status={<TargetStatusChip indicator={indicator} />}
@@ -104,7 +119,8 @@ function ToolTargetCard({
         primitives={group.primitives}
         skipped={[]}
         drift={toolDrift}
-        target={{ kind: "global" }}
+        target={{ kind: "global", tools: detectedTools }}
+        onRemoved={() => headerRef.current?.focus()}
       />
     </Card>
   );

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { cn } from "./cn";
 
 // Outlined panel — the basic container of the cockpit. Optional mono header with
@@ -8,6 +8,8 @@ import { cn } from "./cn";
 export interface CardProps {
   /** Header title (mono) — a target name. Omit for a plain container. */
   title?: ReactNode;
+  /** Handle on the title heading, for a host that needs to move focus to it. */
+  titleRef?: Ref<HTMLHeadingElement>;
   /** Target kind shown before the title: "global" (blue) or "local" (grey). */
   kind?: "global" | "local";
   /** Right-aligned header slot — usually a Chip ("● in sync" / "▲ 2 drift"). */
@@ -28,6 +30,7 @@ export interface CardProps {
 
 export function Card({
   title,
+  titleRef,
   kind,
   status,
   drift = false,
@@ -62,9 +65,17 @@ export function Card({
               {kind}
             </span>
           ) : null}
-          <span className="flex-1 truncate font-mono text-data text-fg">
+          {/* A real heading, and focusable by script (tabIndex -1, so it stays
+              out of the tab order): when an action inside the card destroys the
+              control that triggered it, focus lands here rather than on the
+              page body. */}
+          <h2
+            ref={titleRef}
+            tabIndex={-1}
+            className="flex-1 truncate font-mono text-data text-fg outline-none"
+          >
             {title}
-          </span>
+          </h2>
           {status}
         </div>
       ) : null}

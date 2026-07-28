@@ -9,6 +9,7 @@ export {
   BulkDeploySkills,
 } from "./deploy/bulk-deploy-skills";
 export {
+  type DeployedContentState,
   DeploySkill,
   type DeploySkillError,
   type DeployTarget,
@@ -17,8 +18,20 @@ export { DEPLOY_TOOLS, type SupportedTool } from "./deploy/deploy-tools";
 export { DeployedCleanupAdapter } from "./deploy/deployed-cleanup";
 export { DeployedContentAdapter } from "./deploy/deployed-content";
 export { DeployedLocation } from "./deploy/deployed-location";
+export { DeployedRefAdapter } from "./deploy/deployed-ref";
 export { readGitOriginUrl } from "./deploy/git-origin-url";
+export { InFlightLocks } from "./deploy/in-flight-locks";
 export { InventoryGitAdapter } from "./deploy/inventory-git";
+export type {
+  ReclaimConsent,
+  ReclaimPreview,
+} from "./deploy/reclaim-consent";
+export {
+  RemoveDeployedSkill,
+  type RemoveDeployedSkillError,
+  type RemovePreflightError,
+  type RemoveWarning,
+} from "./deploy/remove-deployed-skill";
 export {
   DeployStateReader,
   GlobalDeployStateReader,

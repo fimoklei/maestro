@@ -72,12 +72,13 @@ export function apmTargetFlagForTools(tools: readonly SupportedTool[]): string {
 
 // The deployed subtrees a skill of <name> occupies, keyed relative to the
 // deployed root and matching the lockfile's deployed_file_hashes. With `tools`,
-// the set is scoped to exactly those tools' copies — the GLOBAL destination
-// guard must scan only the tools a deploy targets, so an absent untargeted copy
-// (a Claude-only redeploy over a prior two-tool lockfile) is never read as drift
-// (ADR-0011, #136). Without `tools` (the repo path) it stays every DEPLOY_TOOLS
-// tool — the pre-#136 behaviour. Filters and orders against
-// DEPLOY_TOOLS so this file still owns the set and its order; unknown tokens drop.
+// the set is scoped to exactly those tools' copies — a GLOBAL deploy writes only
+// the tools it targets, so an absent untargeted copy (a Claude-only redeploy
+// over a prior two-tool lockfile) is never read as drift (ADR-0011, #136).
+// Without `tools` it stays every DEPLOY_TOOLS tool: the repo path, and the
+// removal guard, which must see a copy apm will delete even for a tool this
+// machine no longer detects. Filters and orders against DEPLOY_TOOLS so this
+// file still owns the set and its order; unknown tokens drop.
 export function deployTargetSubtrees(
   name: string,
   tools?: readonly SupportedTool[],
