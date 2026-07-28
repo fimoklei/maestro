@@ -240,9 +240,9 @@ describe("RemoveSkillDialog", () => {
       expect(screen.getByRole("status")).toHaveTextContent(/local edits/i);
     });
 
-    // The P0 fix: a global removal force-deletes the whole copy of any
-    // exclusive tool this machine no longer detects, beyond what apm's own
-    // scoped uninstall touches. The confirmation must name it before the user
+    // A global removal force-deletes the whole copy of any exclusive tool this
+    // machine no longer detects, beyond what apm's own scoped uninstall
+    // touches (#390). The confirmation must name it before the user
     // agrees to it, never leave it implicit in "its deployed files go".
     describe("naming what an untargeted tool's copy reclaim would also delete", () => {
       it("names the leftover tool and the exact path it would delete", () => {
@@ -275,6 +275,23 @@ describe("RemoveSkillDialog", () => {
         renderDialog({ target: globalTarget, reclaim: [] });
 
         expect(screen.queryByText(/not installed on this machine/i)).toBeNull();
+        expect(screen.queryByRole("status", { name: /also deleted/i })).toBe(
+          null,
+        );
+      });
+
+      // What #390 asks for: make the destructive path as
+      // inspectable and as loud as the deploy path. A force-deleted directory
+      // the user never targeted gets its own announced region, not a line of
+      // dim text below the reassurance.
+      it("announces the leftover as its own region rather than quiet prose", () => {
+        renderDialog({
+          target: globalTarget,
+          reclaim: [{ tool: "claude", path: "/Users/me/.claude/skills/tdd" }],
+        });
+
+        const region = screen.getByRole("status", { name: /also deleted/i });
+        expect(region).toHaveTextContent("/Users/me/.claude/skills/tdd");
       });
     });
   });

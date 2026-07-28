@@ -7,8 +7,7 @@ describe("removeWarningView", () => {
       removeWarningView({
         data: {
           warning: "local-edits-will-be-lost",
-          reclaim: [],
-          reclaimToken: undefined,
+          reclaim: null,
         },
         isPending: false,
         isError: false,
@@ -21,8 +20,7 @@ describe("removeWarningView", () => {
       removeWarningView({
         data: {
           warning: "cannot-verify-local-edits",
-          reclaim: [],
-          reclaimToken: undefined,
+          reclaim: null,
         },
         isPending: false,
         isError: false,
@@ -33,7 +31,7 @@ describe("removeWarningView", () => {
   it("warns about nothing once the check came back clean", () => {
     expect(
       removeWarningView({
-        data: { warning: null, reclaim: [], reclaimToken: undefined },
+        data: { warning: null, reclaim: null },
         isPending: false,
         isError: false,
       }),
@@ -60,8 +58,7 @@ describe("removeWarningView", () => {
       removeWarningView({
         data: {
           warning: "check-did-not-run",
-          reclaim: [],
-          reclaimToken: undefined,
+          reclaim: null,
         },
         isPending: false,
         isError: false,

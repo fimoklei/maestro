@@ -404,10 +404,10 @@ describe("remove HTTP route", () => {
       app: ReturnType<typeof makeApp>["app"],
     ): Promise<string | undefined> {
       const response = await preflightGlobally(app);
-      const { reclaimToken } = (await response.json()) as {
-        reclaimToken?: string;
+      const { reclaim } = (await response.json()) as {
+        reclaim: { token: string } | null;
       };
-      return reclaimToken;
+      return reclaim?.token;
     }
 
     it("removes the skill with the ref the global lockfile records", async () => {
@@ -484,16 +484,15 @@ describe("remove HTTP route", () => {
         warning: "local-edits-will-be-lost",
         // Codex is not exclusive to its skills dir (ten apm targets share
         // .agents), so an undetected Codex is never a nameable reclaim.
-        reclaim: [],
-        reclaimToken: undefined,
+        reclaim: null,
       });
     });
 
-    it("names the leftover Claude Code copy and issues a token for it (P0)", async () => {
+    it("names the leftover Claude Code copy and issues a token for it", async () => {
       // A machine where Claude Code has dropped off still carries a global
       // deploy's .claude copy. Naming it here is what lets the dialog state
       // it before the user confirms, rather than deleting a larger set than
-      // the dialog ever promised (#P0). The token is what the execute route
+      // the dialog ever promised. The token is what the execute route
       // requires back before it will actually reclaim that path.
       const { app } = makeApp({ detectedTools: ["codex"] });
       await writeGlobalLockfile([skillEntry("tdd")]);
@@ -503,8 +502,45 @@ describe("remove HTTP route", () => {
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({
         warning: null,
-        reclaim: [{ tool: "claude", path: join(home, ".claude/skills/tdd") }],
-        reclaimToken: expect.any(String),
+        reclaim: {
+          previews: [
+            { tool: "claude", path: join(home, ".claude/skills/tdd") },
+          ],
+          token: expect.stringMatching(/^[0-9a-f]{64}$/),
+        },
+      });
+    });
+
+    it("warns about local edits inside the leftover copy it is about to name", async () => {
+      // #390's own criterion: the local-edits check has to cover the copies the
+      // reclaim would delete. Claude Code has dropped off this machine, so its
+      // .claude tree is the reclaim — and it carries edits the lockfile never
+      // recorded. Naming the path while calling the removal costless would be
+      // consent for a deletion whose cost was never stated.
+      const { app } = makeApp({
+        realDeployedContent: true,
+        detectedTools: ["codex"],
+      });
+      await writeGlobalLockfile([
+        [
+          skillEntry("tdd"),
+          "  deployed_file_hashes:",
+          `    .claude/skills/tdd/SKILL.md: sha256:${"0".repeat(64)}`,
+        ].join("\n"),
+      ]);
+      await writeSkillFile(".claude/skills/tdd/SKILL.md");
+
+      const response = await preflightGlobally(app);
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        warning: "local-edits-will-be-lost",
+        reclaim: {
+          previews: [
+            { tool: "claude", path: join(home, ".claude/skills/tdd") },
+          ],
+          token: expect.stringMatching(/^[0-9a-f]{64}$/),
+        },
       });
     });
 
@@ -529,8 +565,7 @@ describe("remove HTTP route", () => {
 
       expect(await response.json()).toEqual({
         warning: null,
-        reclaim: [],
-        reclaimToken: undefined,
+        reclaim: null,
       });
     });
 
@@ -549,8 +584,8 @@ describe("remove HTTP route", () => {
       // apm's uninstall deletes by the targets its own apm.yml lists, so the
       // copy for a tool that has since dropped off survives it. Removing that
       // tree is what makes the removal complete (#339) — but only once the
-      // request echoes back the token this same scope's preflight issued
-      // (#P0), never a client-guessed path.
+      // request echoes back the token this same scope's preflight issued,
+      // never a client-guessed path (#390).
       const { app } = makeApp({ detectedTools: ["codex"] });
       await writeGlobalLockfile([skillEntry("tdd")]);
       await writeSkillFile(".claude/skills/tdd/SKILL.md");
@@ -567,7 +602,7 @@ describe("remove HTTP route", () => {
     });
 
     it("leaves the leftover copy alone when nothing confirmed it", async () => {
-      // The P0 case: without a confirmed token, a global removal must not
+      // Without a confirmed token, a global removal must not
       // delete more than the dialog named.
       const { app } = makeApp({ detectedTools: ["codex"] });
       await writeGlobalLockfile([skillEntry("tdd")]);
@@ -648,8 +683,7 @@ describe("remove HTTP route", () => {
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({
         warning: "local-edits-will-be-lost",
-        reclaim: [],
-        reclaimToken: undefined,
+        reclaim: null,
       });
       expect(removeCalls).toEqual([]);
     });
@@ -683,8 +717,7 @@ describe("remove HTTP route", () => {
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({
         warning: "local-edits-will-be-lost",
-        reclaim: [],
-        reclaimToken: undefined,
+        reclaim: null,
       });
       expect(removeCalls).toEqual([]);
     });
@@ -695,8 +728,7 @@ describe("remove HTTP route", () => {
 
       expect(await (await preflightTdd(app, repo)).json()).toEqual({
         warning: "cannot-verify-local-edits",
-        reclaim: [],
-        reclaimToken: undefined,
+        reclaim: null,
       });
     });
 
@@ -706,8 +738,7 @@ describe("remove HTTP route", () => {
 
       expect(await (await preflightTdd(app, repo)).json()).toEqual({
         warning: null,
-        reclaim: [],
-        reclaimToken: undefined,
+        reclaim: null,
       });
     });
 

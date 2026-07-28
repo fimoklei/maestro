@@ -17,6 +17,8 @@
 import type { DeployedCleanupPort, DeployTarget } from "./deploy-skill";
 import { reclaimableUntargetedTools, type SupportedTool } from "./deploy-tools";
 
+// The deploy path's entry: it knows only which tools the machine has, so the
+// rule picks the leftovers for it.
 export async function reclaimUntargetedCopies(input: {
   cleanup: DeployedCleanupPort;
   target: DeployTarget;
@@ -29,8 +31,23 @@ export async function reclaimUntargetedCopies(input: {
   if (input.detected === undefined) {
     return;
   }
-  const leftovers = reclaimableUntargetedTools(input.detected);
-  if (leftovers.length === 0) {
+  await reclaimTools({
+    ...input,
+    tools: reclaimableUntargetedTools(input.detected),
+  });
+}
+
+// The remove path's entry: its tools come from the consent the user actually
+// gave, so it names them rather than re-deriving them. Re-deriving is the bug
+// #390 exists to prevent — the set deleted has to be the set the confirmation
+// named, and two functions computing it separately can drift apart.
+export async function reclaimTools(input: {
+  cleanup: DeployedCleanupPort;
+  target: DeployTarget;
+  name: string;
+  tools: readonly SupportedTool[];
+}): Promise<void> {
+  if (input.tools.length === 0) {
     return;
   }
   // Best-effort by design. The caller's own action already succeeded, so a
@@ -42,7 +59,7 @@ export async function reclaimUntargetedCopies(input: {
     await input.cleanup.removeSkillTargets({
       target: input.target,
       name: input.name,
-      tools: leftovers,
+      tools: input.tools,
     });
   } catch {
     // Intentionally ignored — see above.

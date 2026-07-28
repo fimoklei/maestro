@@ -3,7 +3,10 @@ import type { DeployedContentState, DeployTarget } from "./deploy-skill";
 import type { SupportedTool } from "./deploy-tools";
 import type { DeployedRefLookup } from "./deployed-ref";
 import { InFlightLocks } from "./in-flight-locks";
-import { RemoveDeployedSkill } from "./remove-deployed-skill";
+import {
+  RemoveDeployedSkill,
+  type RemoveWarning,
+} from "./remove-deployed-skill";
 
 const REF = "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1";
 
@@ -21,6 +24,15 @@ const removeTddGlobally = {
   name: "tdd",
   target: { kind: "global" } as DeployTarget,
 };
+
+// The answer a preflight gives when there is nothing to reclaim, which is every
+// case except the leftover-copy ones. Built in one place so widening the result
+// does not mean re-editing a dozen assertions.
+const preflightOk = (warning: RemoveWarning | null) => ({
+  ok: true,
+  warning,
+  reclaim: null,
+});
 
 type Overrides = {
   registered?: boolean;
@@ -385,12 +397,9 @@ describe("RemoveDeployedSkill on the global target", () => {
   it("warns about local edits on the global copy just as it does per repo", async () => {
     const { useCase } = buildUseCase({ deployedState: "diverged" });
 
-    await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
-      ok: true,
-      warning: "local-edits-will-be-lost",
-      reclaim: [],
-      reclaimToken: undefined,
-    });
+    await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual(
+      preflightOk("local-edits-will-be-lost"),
+    );
   });
 
   it("checks every supported tool's copy before confirming", async () => {
@@ -412,12 +421,9 @@ describe("RemoveDeployedSkill on the global target", () => {
         tools === undefined ? "diverged" : "clean",
     });
 
-    await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
-      ok: true,
-      warning: "local-edits-will-be-lost",
-      reclaim: [],
-      reclaimToken: undefined,
-    });
+    await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual(
+      preflightOk("local-edits-will-be-lost"),
+    );
   });
 
   it("refuses the check too when no tool is detected", async () => {
@@ -449,8 +455,8 @@ describe("RemoveDeployedSkill on the global target", () => {
 // for every tool that has since dropped off. Reclaiming those is what makes a
 // global removal complete rather than complete-for-today's-tools (#339) — but
 // only when the request's token proves it came from this same instance's own
-// `preflight` (#P0, codex adversarial review): a client-supplied path or a
-// guessed/stale token can never authorize a reclaim.
+// `preflight` (#390): a client-supplied path, or a guessed or stale token, can
+// never authorize a reclaim.
 describe("RemoveDeployedSkill cleaning up after a global remove", () => {
   // The token a real preflight against this same request would return —
   // never hand-built, so a test cannot accidentally exercise a token the
@@ -460,7 +466,7 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
     target: DeployTarget = removeTddGlobally.target,
   ) {
     const preflight = await useCase.preflight({ ...removeTddGlobally, target });
-    return preflight.ok ? preflight.reclaimToken : undefined;
+    return preflight.ok ? preflight.reclaim?.token : undefined;
   }
 
   it("reclaims the leftover copy once the request echoes back preflight's own token", async () => {
@@ -479,7 +485,7 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
   });
 
   it("reclaims nothing when no token was ever confirmed", async () => {
-    // The P0 case: a leftover exists, but nothing confirmed it — so the
+    // The defect #390 fixes: a leftover exists, but nothing confirmed it — so the
     // removal must not delete more than the user agreed to.
     const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
 
@@ -593,66 +599,48 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
   });
 });
 
-// What the preflight names before the user confirms — the P0 fix. A global
+// What the preflight names before the user confirms. A global
 // removal may force-delete a leftover tool's whole copy; the confirmation
 // must name that path by tool so the dialog can state it, and a path
-// preflight could not build is dropped rather than guessed (#P0).
+// preflight could not build is dropped rather than guessed.
 describe("RemoveDeployedSkill.preflight naming the reclaim", () => {
-  it("names the leftover copy's tool and absolute path, and issues a token for it", async () => {
+  // Which leftovers qualify, and where they sit, is ReclaimConsentIssuer's own
+  // rule and is tested there. What matters here is that preflight hands the
+  // confirmation the whole consent — paths and token together.
+  it("hands the confirmation the leftover paths together with their token", async () => {
     const { useCase } = buildUseCase({ detectedTools: ["codex"] });
-
-    const result = await useCase.preflight(removeTddGlobally);
-
-    expect(result).toMatchObject({
-      ok: true,
-      warning: null,
-      reclaim: [{ tool: "claude", path: "/home/.claude/skills/tdd" }],
-    });
-    // A server-issued token, never a client-guessable one, is what lets
-    // `execute` prove this exact preview came from this exact preflight.
-    expect(result.ok && result.reclaimToken).toEqual(expect.any(String));
-  });
-
-  it("names nothing when every exclusive tool is still detected", async () => {
-    const { useCase } = buildUseCase({
-      detectedTools: ["claude", "codex"],
-    });
 
     await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
       ok: true,
       warning: null,
-      reclaim: [],
-      reclaimToken: undefined,
-    });
-  });
-
-  it("never previews a reclaim on the per-repo path", async () => {
-    // A repo's targets are its own apm.yml, not this machine's detection —
-    // there is nothing here for the machine's tool presence to reclaim.
-    const { useCase } = buildUseCase({ detectedTools: ["codex"] });
-
-    await expect(useCase.preflight(removeTdd)).resolves.toEqual({
-      ok: true,
-      warning: null,
-      reclaim: [],
-      reclaimToken: undefined,
-    });
-  });
-
-  it("drops a leftover it cannot build a path for, rather than guessing one", async () => {
-    const { useCase } = buildUseCase({
-      detectedTools: ["codex"],
-      treeRoot: () => {
-        throw new Error("HOME unreadable");
+      reclaim: {
+        previews: [{ tool: "claude", path: "/home/.claude/skills/tdd" }],
+        token: expect.any(String),
       },
     });
+  });
 
-    await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
-      ok: true,
-      warning: null,
-      reclaim: [],
-      reclaimToken: undefined,
-    });
+  it("names nothing to reclaim when every exclusive tool is still detected", async () => {
+    const { useCase } = buildUseCase({ detectedTools: ["claude", "codex"] });
+
+    await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual(
+      preflightOk(null),
+    );
+  });
+
+  it("asks the guard about every tool's copy, not only the detected ones", async () => {
+    // The copy being reclaimed is a copy too. Scoping the scan to today's
+    // tools would skip exactly the leftover the reclaim deletes, so the guard
+    // is asked for the whole set — which is what lets a warning and a named
+    // path arrive together (#390). What that scan finds on a real tree is
+    // proven in tests/integration/server-remove.test.ts.
+    const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
+
+    await useCase.preflight(removeTddGlobally);
+
+    expect(calls.classifies).toEqual([
+      { target: { kind: "global" }, tools: undefined },
+    ]);
   });
 });
 
@@ -663,12 +651,9 @@ describe("RemoveDeployedSkill.preflight", () => {
   it("warns that local edits will be lost when the copy diverged", async () => {
     const { useCase, calls } = buildUseCase({ deployedState: "diverged" });
 
-    await expect(useCase.preflight(removeTdd)).resolves.toEqual({
-      ok: true,
-      warning: "local-edits-will-be-lost",
-      reclaim: [],
-      reclaimToken: undefined,
-    });
+    await expect(useCase.preflight(removeTdd)).resolves.toEqual(
+      preflightOk("local-edits-will-be-lost"),
+    );
     // A check, not the action: nothing is removed by asking.
     expect(calls.removes).toEqual([]);
   });
@@ -676,12 +661,9 @@ describe("RemoveDeployedSkill.preflight", () => {
   it("warns separately when there is no baseline to verify against", async () => {
     const { useCase } = buildUseCase({ deployedState: "unverifiable" });
 
-    await expect(useCase.preflight(removeTdd)).resolves.toEqual({
-      ok: true,
-      warning: "cannot-verify-local-edits",
-      reclaim: [],
-      reclaimToken: undefined,
-    });
+    await expect(useCase.preflight(removeTdd)).resolves.toEqual(
+      preflightOk("cannot-verify-local-edits"),
+    );
   });
 
   it("says the copy could not be checked when it cannot be read", async () => {
@@ -689,45 +671,33 @@ describe("RemoveDeployedSkill.preflight", () => {
     // nothing to compare against. Here it never ran at all.
     const { useCase } = buildUseCase({ deployedState: "unreadable" });
 
-    await expect(useCase.preflight(removeTdd)).resolves.toEqual({
-      ok: true,
-      warning: "check-did-not-run",
-      reclaim: [],
-      reclaimToken: undefined,
-    });
+    await expect(useCase.preflight(removeTdd)).resolves.toEqual(
+      preflightOk("check-did-not-run"),
+    );
   });
 
   it("says the same when the lockfile the check reads does not parse", async () => {
     const { useCase } = buildUseCase({ deployedState: "lockfile-malformed" });
 
-    await expect(useCase.preflight(removeTdd)).resolves.toEqual({
-      ok: true,
-      warning: "check-did-not-run",
-      reclaim: [],
-      reclaimToken: undefined,
-    });
+    await expect(useCase.preflight(removeTdd)).resolves.toEqual(
+      preflightOk("check-did-not-run"),
+    );
   });
 
   it("warns about nothing when the copy still matches the lockfile", async () => {
     const { useCase } = buildUseCase({ deployedState: "clean" });
 
-    await expect(useCase.preflight(removeTdd)).resolves.toEqual({
-      ok: true,
-      warning: null,
-      reclaim: [],
-      reclaimToken: undefined,
-    });
+    await expect(useCase.preflight(removeTdd)).resolves.toEqual(
+      preflightOk(null),
+    );
   });
 
   it("warns about nothing when there is no copy on disk to lose", async () => {
     const { useCase } = buildUseCase({ deployedState: "not-deployed" });
 
-    await expect(useCase.preflight(removeTdd)).resolves.toEqual({
-      ok: true,
-      warning: null,
-      reclaim: [],
-      reclaimToken: undefined,
-    });
+    await expect(useCase.preflight(removeTdd)).resolves.toEqual(
+      preflightOk(null),
+    );
   });
 
   it("refuses an unregistered repo before reading anything", async () => {

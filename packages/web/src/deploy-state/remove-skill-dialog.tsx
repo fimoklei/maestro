@@ -67,7 +67,7 @@ export function RemoveSkillDialog({
   // longer detects, force-deleted beyond what apm's scoped uninstall touches
   // (#339). Named here by tool and exact path so the confirmation states it
   // before the user agrees — a path the preflight could not build is simply
-  // absent, never guessed (#P0).
+  // absent, never guessed.
   reclaim: readonly ReclaimPreview[];
   onCancel: () => void;
   onConfirm: () => void;
@@ -133,31 +133,61 @@ export function RemoveSkillDialog({
           ) : null}
           {/* A global removal also force-deletes the whole copy of any tool
               this machine no longer detects — apm's own uninstall cannot
-              reach it (#339). Named by path so the user consents to exactly
-              what goes, never a larger set than this dialog stated (#P0). */}
-          {reclaim.map((entry) => (
-            <p
-              key={entry.path}
-              className="break-all font-mono text-dim text-tag"
+              reach it (#339). It goes beyond the row the user clicked, so it
+              gets the same weight as the local-edits warning rather than a
+              line of dim prose: amber, glyphed, and its own announced region,
+              because a directory nobody targeted is the one thing here that
+              must not be skimmed past. */}
+          {reclaim.length > 0 ? (
+            <div
+              role="status"
+              aria-label="Also deleted"
+              className="flex flex-col gap-1 rounded-control border border-amber-border bg-amber-bg px-2.5 py-2.5"
             >
-              Also clears the leftover {toolDisplayName(entry.tool)} copy at{" "}
-              {entry.path} ({toolDisplayName(entry.tool)} is not installed on
-              this machine).
-            </p>
-          ))}
-          <p className="font-mono text-dim text-tag">
-            Its deployed files and its lockfile entry go. Deploy it again from
-            the inventory whenever you want it back.
-          </p>
+              <p className="flex items-start gap-1.5 font-mono text-amber-ink text-tag">
+                <span aria-hidden="true">▲</span>
+                <span>
+                  This also deletes {reclaim.length === 1 ? "a copy" : "copies"}{" "}
+                  apm itself cannot reach, in full:
+                </span>
+              </p>
+              <ul className="flex flex-col gap-1">
+                {reclaim.map((entry) => (
+                  <li key={entry.path} className="pl-4 font-mono text-mono-sm">
+                    {/* Only the path breaks mid-token: a long path has to fit,
+                        but breaking the sentence around it mid-word makes the
+                        loudest block on screen the hardest one to read. */}
+                    <span className="break-all text-fg">{entry.path}</span>
+                    <span className="text-amber-ink">
+                      {" "}
+                      — the leftover {toolDisplayName(entry.tool)} copy,{" "}
+                      {toolDisplayName(entry.tool)} is not installed on this
+                      machine.
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {/* Named, because the leftover block above is a status region too and
+              the two say different things: one is what else goes, the other is
+              what is inside it. Unnamed, a reader hears two identical regions. */}
           {warning === "none" ? null : (
             <p
               role="status"
+              aria-label="Local edits"
               className="flex items-start gap-1.5 rounded-control border border-amber-border bg-amber-bg px-2.5 py-2.5 font-mono text-amber-ink text-tag"
             >
               <span aria-hidden="true">▲</span>
               <span>{WARNING_TEXT[warning]}</span>
             </p>
           )}
+          {/* Last of the prose, so the two loud blocks sit together and the
+              reassurance does not come between them. */}
+          <p className="font-mono text-dim text-tag">
+            Its deployed files and its lockfile entry go. Deploy it again from
+            the inventory whenever you want it back.
+          </p>
           {error ? (
             <div
               role="alert"

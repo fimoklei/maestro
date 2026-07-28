@@ -269,7 +269,7 @@ describeFeature(
 
     // What the confirmation is shown before it commits, and the token that
     // proves it: a global removal would otherwise reclaim a leftover copy
-    // silently (#P0). A scenario that means to exercise the reclaim echoes
+    // silently. A scenario that means to exercise the reclaim echoes
     // back exactly the token this same preflight call issued — never a
     // hand-built path, which the server no longer accepts as consent.
     async function reclaimTokenFor(
@@ -284,10 +284,10 @@ describeFeature(
           body: JSON.stringify({ type: "skill", name, target }),
         },
       );
-      const { reclaimToken } = (await preflightResponse.json()) as {
-        reclaimToken?: string;
+      const { reclaim } = (await preflightResponse.json()) as {
+        reclaim: { token: string } | null;
       };
-      return reclaimToken;
+      return reclaim?.token;
     }
 
     // The question the confirmation asks before the user commits: what would
@@ -420,8 +420,7 @@ describeFeature(
           expect(response.status).toBe(200);
           expect(await response.json()).toEqual({
             warning: "local-edits-will-be-lost",
-            reclaim: [],
-            reclaimToken: undefined,
+            reclaim: null,
           });
         });
         And("nothing has been removed yet", async () => {
@@ -472,8 +471,7 @@ describeFeature(
           // something no check ever saw.
           expect(await response.json()).toEqual({
             warning: "cannot-verify-local-edits",
-            reclaim: [],
-            reclaimToken: undefined,
+            reclaim: null,
           });
         });
       },
@@ -566,7 +564,7 @@ describeFeature(
         });
         When('I remove "tdd" globally', async () => {
           // The cockpit's confirmation names the leftover before the user
-          // agrees to it (#P0) — this scenario is the user having seen and
+          // agrees to it — this scenario is the user having seen and
           // confirmed it, echoing back the token that preflight issued.
           const confirmedReclaimToken = await reclaimTokenFor(
             "tdd",
@@ -637,8 +635,8 @@ describeFeature(
         When(
           'I remove "tdd" globally with a made-up confirmation',
           // A direct request that never called preflight, echoing back a
-          // plausible-looking but unissued token — the exact bypass an
-          // adversarial review flagged (#P0).
+          // plausible-looking but unissued token — the bypass a client-supplied
+          // path list would have left open (#390).
           () => removeSkill("tdd", globalTarget(), "a".repeat(64)),
         );
         Then("the removal is confirmed", () => {
@@ -694,8 +692,7 @@ describeFeature(
           expect(response.status).toBe(200);
           expect(await response.json()).toEqual({
             warning: "local-edits-will-be-lost",
-            reclaim: [],
-            reclaimToken: undefined,
+            reclaim: null,
           });
         });
         And("nothing has been removed yet", async () => {

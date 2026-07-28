@@ -22,8 +22,11 @@ export { DeployedRefAdapter } from "./deploy/deployed-ref";
 export { readGitOriginUrl } from "./deploy/git-origin-url";
 export { InFlightLocks } from "./deploy/in-flight-locks";
 export { InventoryGitAdapter } from "./deploy/inventory-git";
+export type {
+  ReclaimConsent,
+  ReclaimPreview,
+} from "./deploy/reclaim-consent";
 export {
-  type ReclaimPreview,
   RemoveDeployedSkill,
   type RemoveDeployedSkillError,
   type RemovePreflightError,

@@ -19,7 +19,7 @@ export type RemoveRequest = {
   // The token this same target's preflight returned alongside its reclaim
   // preview. Proves to the server that the confirmation the user saw came
   // from an actual preflight call, rather than a path a direct request could
-  // guess on its own (#P0, codex adversarial review).
+  // guess on its own.
   confirmedReclaimToken?: string;
 };
 

@@ -172,7 +172,7 @@ export function DeployStateList({
           target={target}
           isRemoving={remove.isPending}
           warning={removeWarningView(preflight)}
-          reclaim={preflight.data?.reclaim ?? []}
+          reclaim={preflight.data?.reclaim?.previews ?? []}
           error={
             remove.error instanceof HttpError
               ? remove.error.message
@@ -195,10 +195,10 @@ export function DeployStateList({
                 type: "skill",
                 name: removing,
                 target: wireTarget,
-                // The token this same preflight issued — never a
-                // client-rebuilt path list, which a direct request could
-                // guess without ever having asked preflight anything (#P0).
-                confirmedReclaimToken: preflight.data?.reclaimToken,
+                // The token that came with the paths the dialog just named —
+                // never a client-rebuilt path list, which a direct request
+                // could guess without ever having asked preflight anything.
+                confirmedReclaimToken: preflight.data?.reclaim?.token,
               },
               {
                 // Only a proven removal closes the dialog. A failure keeps it

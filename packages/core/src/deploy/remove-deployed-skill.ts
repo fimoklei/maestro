@@ -18,8 +18,6 @@
 // so the confirmation can state it, and `execute` carries it out. Divergence
 // warns rather than refusing — destruction is this use-case's intent, not a side
 // effect, so informed consent is enough (#337).
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { join } from "node:path";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type {
   ApmDriverPort,
@@ -28,15 +26,13 @@ import type {
   DeployedContentState,
   DeployTarget,
 } from "./deploy-skill";
-import {
-  deployTargetSubtrees,
-  reclaimableUntargetedTools,
-  type SupportedTool,
-} from "./deploy-tools";
+import type { SupportedTool } from "./deploy-tools";
 import type { DeployedLocation } from "./deployed-location";
 import type { DeployedRefLookup } from "./deployed-ref";
 import { GLOBAL_LOCK_KEY, InFlightLocks } from "./in-flight-locks";
 import { isValidSkillSlug } from "./package-ref";
+import { type ReclaimConsent, ReclaimConsentIssuer } from "./reclaim-consent";
+import { reclaimTools } from "./reclaim-untargeted-copies";
 
 // Which package reference names the deployed skill, read from the target's own
 // lockfile. Implemented by DeployedRefAdapter.
@@ -53,25 +49,12 @@ type RemoveDeployedSkillInput = {
   type: string;
   name: string;
   target: DeployTarget;
-  // Read only by `execute`. The opaque token this same request's own
-  // `preflight` call returned alongside its reclaim preview. Never a
-  // client-supplied path list: a caller could echo back a path it merely
-  // guessed without ever having called preflight, which would reclaim it
-  // all the same. The token is a server-issued HMAC over the exact preview
-  // preflight built, so `execute` can prove the confirmation actually
-  // originated from a preflight call against the current state — a missing,
-  // stale, or guessed token reclaims nothing (#P0, codex adversarial review).
+  // Read only by `execute`. The token this same request's own `preflight` call
+  // returned with the leftover paths it named. Never a client-supplied path
+  // list: a caller could echo back a path it merely guessed without ever
+  // having called preflight, and the reclaim would run all the same. A
+  // missing, stale, or guessed token reclaims nothing.
   confirmedReclaimToken?: string;
-};
-
-// What the confirmation must be able to name before a global removal runs:
-// the leftover copy of a tool this machine no longer detects, and the exact
-// subtree apm's own scoped uninstall cannot reach (#339). Named by tool so
-// the dialog can say which tool it is, and by absolute path so it can say
-// exactly what goes.
-export type ReclaimPreview = {
-  tool: SupportedTool;
-  path: string;
 };
 
 export type RemoveDeployedSkillError =
@@ -179,10 +162,11 @@ type RemovePreflightResult =
   | {
       ok: true;
       warning: RemoveWarning | null;
-      reclaim: readonly ReclaimPreview[];
-      // Present whenever `reclaim` is non-empty — the token `execute` must
-      // see back, unchanged, to reclaim exactly this preview.
-      reclaimToken: string | undefined;
+      // The leftover copies this removal would also delete, with the token
+      // that authorizes deleting exactly them — or null when there are none.
+      // One field, so a path can never reach the confirmation without the
+      // token, nor a token without the paths it covers.
+      reclaim: ReclaimConsent | null;
     }
   | { ok: false; error: RemovePreflightError };
 
@@ -219,21 +203,19 @@ export class RemoveDeployedSkill {
     // confirmed reclaim can both name the same absolute path (shared with
     // deployedCleanup's own root).
     location: Pick<DeployedLocation, "treeRoot">;
-    // The HMAC key binding a preflight's reclaim preview to the token
-    // `execute` must see back. Generated once per process by default — never
-    // exposed over the wire — so a token can only exist because this
-    // instance's own `preflight` issued it. Overridable for a test that needs
-    // a fixed key.
-    reclaimSecret?: Buffer;
   };
 
   private readonly locks: InFlightLocks;
-  private readonly reclaimSecret: Buffer;
+  // Names the leftovers a global removal would force-delete, and holds the key
+  // that binds those names to the token `execute` demands back.
+  private readonly consent: ReclaimConsentIssuer;
 
   constructor(deps: RemoveDeployedSkill["deps"]) {
     this.deps = deps;
     this.locks = deps.locks ?? new InFlightLocks();
-    this.reclaimSecret = deps.reclaimSecret ?? randomBytes(32);
+    this.consent = new ReclaimConsentIssuer({
+      treeRoot: (target) => deps.location.treeRoot(target),
+    });
   }
 
   // What the confirmation must say before this removal runs: the deployed copy
@@ -267,71 +249,18 @@ export class RemoveDeployedSkill {
         target: input.target,
         name: input.name,
       });
-      const reclaim =
-        scope.scope === "global"
-          ? this.buildReclaimPreview(input.target, input.name, scope.detected)
-          : [];
       return {
         ok: true,
         warning: GUARD_WARNINGS[state] ?? null,
-        reclaim,
-        reclaimToken:
-          reclaim.length === 0
-            ? undefined
-            : this.reclaimToken(input.target, input.name, reclaim),
+        reclaim: this.consent.offer({
+          target: input.target,
+          name: input.name,
+          detected: scope.scope === "global" ? scope.detected : undefined,
+        }),
       };
     } catch {
       return { ok: false, error: "preflight-failed" };
     }
-  }
-
-  // The leftover a global removal would force-delete, named by tool and by
-  // the exact absolute path so the confirmation can state it (#P0). A tool
-  // whose path cannot be built (the location port throws) is dropped rather
-  // than guessed — it can then never be reclaimed either, since `remove` only
-  // ever reclaims a preview this same builder produces at execute time too.
-  private buildReclaimPreview(
-    target: DeployTarget,
-    name: string,
-    detected: readonly SupportedTool[],
-  ): ReclaimPreview[] {
-    const previews: ReclaimPreview[] = [];
-    for (const tool of reclaimableUntargetedTools(detected)) {
-      try {
-        const root = this.deps.location.treeRoot(target);
-        const [subtree] = deployTargetSubtrees(name, [tool]);
-        if (subtree === undefined) {
-          continue;
-        }
-        previews.push({ tool, path: join(root, subtree) });
-      } catch {
-        // Unnameable — dropped, never guessed.
-      }
-    }
-    return previews;
-  }
-
-  // Server-issued proof that a reclaim preview came from this instance's own
-  // `preflight`, over exactly the preview it built — never a client-supplied
-  // path list, which a caller could construct without ever having asked
-  // preflight anything (codex adversarial review, #P0). Order-independent so
-  // the same preview always yields the same token.
-  private reclaimToken(
-    target: DeployTarget,
-    name: string,
-    reclaim: readonly ReclaimPreview[],
-  ): string {
-    const canonical = JSON.stringify({
-      target:
-        target.kind === "repo"
-          ? { kind: "repo", repoPath: target.repoPath }
-          : { kind: "global" },
-      name,
-      paths: reclaim.map((entry) => `${entry.tool}:${entry.path}`).sort(),
-    });
-    return createHmac("sha256", this.reclaimSecret)
-      .update(canonical)
-      .digest("hex");
   }
 
   async execute(
@@ -470,53 +399,34 @@ export class RemoveDeployedSkill {
     }
   }
 
-  // Reclaims the current reclaim preview only when the request's token proves
-  // it came from this same instance's own `preflight` (#P0). Recomputed at
-  // execute time rather than trusting anything the client sent about paths or
-  // tools — a request that never called preflight, or one replaying a token
-  // for a different skill, target, or machine state, cannot produce a
-  // matching token and reclaims nothing.
+  // Runs the reclaim only when the request's token proves the confirmation came
+  // from this same instance's own `preflight`, over the paths it named. The
+  // issuer rebuilds that answer here rather than trusting anything the client
+  // sent, so a request that never called preflight — or one replaying a token
+  // for a different skill, target, or machine state — reclaims nothing. What
+  // gets deleted is the granted set itself, never a set derived a second time:
+  // the whole point of #390 is that the removal cannot exceed what the
+  // confirmation named.
   private async reclaimConfirmed(
     target: DeployTarget,
     name: string,
     detected: readonly SupportedTool[] | undefined,
     confirmedToken: string | undefined,
   ): Promise<void> {
-    if (detected === undefined || confirmedToken === undefined) {
+    const granted = this.consent.grants(
+      { target, name, detected },
+      confirmedToken,
+    );
+    if (granted === null) {
       return;
     }
-    const preview = this.buildReclaimPreview(target, name, detected);
-    if (preview.length === 0) {
-      return;
-    }
-    const expected = this.reclaimToken(target, name, preview);
-    if (!this.tokensMatch(expected, confirmedToken)) {
-      return;
-    }
-    // Best-effort by design. The removal itself already succeeded, so a
-    // reclaim that fails must not invert it: what stays behind is a tree no
-    // worse than before, which the next global write retries idempotently.
-    try {
-      await this.deps.deployedCleanup.removeSkillTargets({
-        target,
-        name,
-        tools: preview.map((entry) => entry.tool),
-      });
-    } catch {
-      // Intentionally ignored — see above.
-    }
-  }
-
-  // Constant-time comparison so a guessed token cannot be narrowed down by
-  // measuring response time. Any malformed input (wrong length, non-hex)
-  // simply fails the match rather than throwing.
-  private tokensMatch(expected: string, actual: string): boolean {
-    try {
-      const a = Buffer.from(expected, "hex");
-      const b = Buffer.from(actual, "hex");
-      return a.length === b.length && timingSafeEqual(a, b);
-    } catch {
-      return false;
-    }
+    // Best-effort deletion, and the fact that failing is never an error, is the
+    // shared helper's rule — the deploy path relies on the same one.
+    await reclaimTools({
+      cleanup: this.deps.deployedCleanup,
+      target,
+      name,
+      tools: granted.map((entry) => entry.tool),
+    });
   }
 }
