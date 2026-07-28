@@ -15,7 +15,16 @@ describe("refForDeployedSkill", () => {
     expect(refForDeployedSkill([tddEntry], "tdd")).toEqual({
       ok: true,
       ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+      version: "v0.5.1",
     });
+  });
+
+  // The version is read here, not by the caller taking the ref apart: what the
+  // removal reports as gone has to be the same tag the removal aimed at.
+  it("names the pinned version alongside the ref", () => {
+    const lookup = refForDeployedSkill([tddEntry], "tdd");
+
+    expect(lookup.ok && lookup.version).toBe("v0.5.1");
   });
 
   it("picks the entry whose name matches, not the first one", () => {
@@ -27,6 +36,7 @@ describe("refForDeployedSkill", () => {
     expect(refForDeployedSkill([jobsEntry, tddEntry], "tdd")).toEqual({
       ok: true,
       ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+      version: "v0.5.1",
     });
   });
 

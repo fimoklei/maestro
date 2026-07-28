@@ -154,8 +154,28 @@ type ResolvedScope =
   | { ok: true; scope: "global"; detected: readonly SupportedTool[] }
   | { ok: false; error: "no-supported-tool" };
 
+// Which scope a landed removal ran in. A repo needs no detail — the caller sent
+// the path and the removal used exactly that one. Global carries the tools the
+// live probe found at execution time, which is the only set apm can have
+// reached (ADR-0011).
+export type RemovedScope =
+  | { kind: "repo" }
+  | { kind: "global"; tools: readonly SupportedTool[] };
+
 type RemoveDeployedSkillResult =
-  | { ok: true; removed: { type: "skill"; name: string } }
+  // Both the version and the scope are what this removal actually ran against,
+  // never what the caller had in view: the row's version and the screen's tool
+  // set can both be stale by the time the user confirms, and a trace naming
+  // either wrongly is false evidence about an irreversible action (#383).
+  | {
+      ok: true;
+      removed: {
+        type: "skill";
+        name: string;
+        version: string;
+        scope: RemovedScope;
+      };
+    }
   | { ok: false; error: RemoveDeployedSkillError };
 
 type RemovePreflightResult =
@@ -393,7 +413,18 @@ export class RemoveDeployedSkill {
         detected,
         input.confirmedReclaimToken,
       );
-      return { ok: true, removed: { type: "skill", name: input.name } };
+      return {
+        ok: true,
+        removed: {
+          type: "skill",
+          name: input.name,
+          version: lookup.version,
+          scope:
+            detected === undefined
+              ? { kind: "repo" }
+              : { kind: "global", tools: detected },
+        },
+      };
     } catch {
       return { ok: false, error: "remove-failed" };
     }

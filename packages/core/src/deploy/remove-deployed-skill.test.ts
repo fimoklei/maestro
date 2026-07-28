@@ -8,7 +8,14 @@ import {
   type RemoveWarning,
 } from "./remove-deployed-skill";
 
-const REF = "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1";
+const VERSION = "v0.5.1";
+const REF = `github.com/fimoklei/agent-harness/skills/tdd#${VERSION}`;
+
+// The scope a successful removal reports: the tools it actually ran against,
+// never the set the caller had in view.
+const REPO_SCOPE = { kind: "repo" } as const;
+const GLOBAL_SCOPE = { kind: "global", tools: ["claude", "codex"] } as const;
+const CODEX_SCOPE = { kind: "global", tools: ["codex"] } as const;
 
 // The removal request the cockpit sends for the row's own skill and repo.
 const removeTdd = {
@@ -73,7 +80,7 @@ function buildUseCase(overrides: Overrides = {}) {
     deployedRef: {
       resolve: async ({ name }) => {
         calls.lookups.push(name);
-        return overrides.lookup ?? { ok: true, ref: REF };
+        return overrides.lookup ?? { ok: true, ref: REF, version: VERSION };
       },
     },
     deployedContent: {
@@ -118,9 +125,54 @@ describe("RemoveDeployedSkill", () => {
 
     await expect(useCase.execute(removeTdd)).resolves.toEqual({
       ok: true,
-      removed: { type: "skill", name: "tdd" },
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: REPO_SCOPE,
+      },
     });
     expect(calls.removes).toEqual([{ target: removeTdd.target, ref: REF }]);
+  });
+
+  // The version the cockpit shows on the row can be stale by the time the user
+  // confirms. What the removal reports as gone is the version it actually aimed
+  // apm at, read from the lockfile in the same breath as the ref (#383).
+  it("reports the version it removed, not the one the caller had in view", async () => {
+    const { useCase } = buildUseCase({
+      lookup: {
+        ok: true,
+        ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.9.0",
+        version: "v0.9.0",
+      },
+    });
+
+    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+      ok: true,
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: "v0.9.0",
+        scope: { kind: "repo" },
+      },
+    });
+  });
+
+  // The screen names a tool set when it asks for consent, but the set is probed
+  // live at execution time. What the removal reports as its scope is the set it
+  // actually ran against, so nothing can certify tools apm never saw (#383).
+  it("reports the detected tools a global removal ran against", async () => {
+    const { useCase } = buildUseCase({ detectedTools: ["claude"] });
+
+    await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
+      ok: true,
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: { kind: "global", tools: ["claude"] },
+      },
+    });
   });
 
   it("refuses a primitive type other than a skill", async () => {
@@ -199,7 +251,12 @@ describe("RemoveDeployedSkill", () => {
 
     await expect(useCase.execute(removeTdd)).resolves.toEqual({
       ok: true,
-      removed: { type: "skill", name: "tdd" },
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: REPO_SCOPE,
+      },
     });
     expect(calls.removes).toEqual([{ target: removeTdd.target, ref: REF }]);
   });
@@ -209,7 +266,12 @@ describe("RemoveDeployedSkill", () => {
 
     await expect(useCase.execute(removeTdd)).resolves.toEqual({
       ok: true,
-      removed: { type: "skill", name: "tdd" },
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: REPO_SCOPE,
+      },
     });
     expect(calls.removes).toEqual([{ target: removeTdd.target, ref: REF }]);
   });
@@ -244,7 +306,12 @@ describe("RemoveDeployedSkill", () => {
     // asked for.
     await expect(useCase.execute(removeTdd)).resolves.toEqual({
       ok: true,
-      removed: { type: "skill", name: "tdd" },
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: REPO_SCOPE,
+      },
     });
     expect(calls.removes).toEqual([{ target: removeTdd.target, ref: REF }]);
   });
@@ -261,7 +328,9 @@ describe("RemoveDeployedSkill", () => {
   it("owns an apm driver that throws, never leaking it as a rejection", async () => {
     const useCase = new RemoveDeployedSkill({
       registry: { isRegistered: async () => true },
-      deployedRef: { resolve: async () => ({ ok: true, ref: REF }) },
+      deployedRef: {
+        resolve: async () => ({ ok: true, ref: REF, version: VERSION }),
+      },
       deployedContent: { classify: async () => "clean" },
       apm: {
         removeSkill: async () => {
@@ -322,7 +391,12 @@ describe("RemoveDeployedSkill on the global target", () => {
 
     await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
       ok: true,
-      removed: { type: "skill", name: "tdd" },
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: GLOBAL_SCOPE,
+      },
     });
     expect(calls.removes).toEqual([{ target: { kind: "global" }, ref: REF }]);
   });
@@ -334,7 +408,12 @@ describe("RemoveDeployedSkill on the global target", () => {
 
     await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
       ok: true,
-      removed: { type: "skill", name: "tdd" },
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: GLOBAL_SCOPE,
+      },
     });
     expect(calls.removes).toHaveLength(1);
   });
@@ -477,7 +556,12 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
       useCase.execute({ ...removeTddGlobally, confirmedReclaimToken }),
     ).resolves.toEqual({
       ok: true,
-      removed: { type: "skill", name: "tdd" },
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: CODEX_SCOPE,
+      },
     });
     expect(calls.cleanups).toEqual([
       { target: { kind: "global" }, name: "tdd", tools: ["claude"] },
@@ -491,7 +575,12 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
 
     await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
       ok: true,
-      removed: { type: "skill", name: "tdd" },
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: CODEX_SCOPE,
+      },
     });
     expect(calls.cleanups).toEqual([]);
   });
@@ -508,7 +597,12 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
       }),
     ).resolves.toEqual({
       ok: true,
-      removed: { type: "skill", name: "tdd" },
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: CODEX_SCOPE,
+      },
     });
     expect(calls.cleanups).toEqual([]);
   });
@@ -583,7 +677,12 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
       useCase.execute({ ...removeTddGlobally, confirmedReclaimToken }),
     ).resolves.toEqual({
       ok: true,
-      removed: { type: "skill", name: "tdd" },
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: CODEX_SCOPE,
+      },
     });
     expect(calls.cleanups).toHaveLength(1);
   });
@@ -706,7 +805,9 @@ describe("RemoveDeployedSkill.preflight", () => {
     const classified: string[] = [];
     const useCase = new RemoveDeployedSkill({
       registry: { isRegistered: async () => false },
-      deployedRef: { resolve: async () => ({ ok: true, ref: REF }) },
+      deployedRef: {
+        resolve: async () => ({ ok: true, ref: REF, version: VERSION }),
+      },
       deployedContent: {
         classify: async ({ name }) => {
           classified.push(name);
@@ -746,7 +847,9 @@ describe("RemoveDeployedSkill.preflight", () => {
   it("reports a classification that threw, never guessing it clean", async () => {
     const useCase = new RemoveDeployedSkill({
       registry: { isRegistered: async () => true },
-      deployedRef: { resolve: async () => ({ ok: true, ref: REF }) },
+      deployedRef: {
+        resolve: async () => ({ ok: true, ref: REF, version: VERSION }),
+      },
       deployedContent: {
         classify: async () => {
           throw new Error("disk exploded");

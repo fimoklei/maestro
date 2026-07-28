@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DeployStateList } from "./deploy-state-list";
@@ -34,7 +34,10 @@ const preflightCalls = (fetchMock: { mock: { calls: unknown[][] } }) =>
 function stubFetch(
   warning: string | null,
   onRemove: () => Response = () =>
-    jsonResponse({ removed: { type: "skill", name: "tdd" } }, 200),
+    jsonResponse(
+      { removed: { type: "skill", name: "tdd", version: "v0.5.0" } },
+      200,
+    ),
   reclaim: { tool: string; path: string }[] = [],
 ) {
   const fetchMock = vi.fn(async (path: string) =>
@@ -62,26 +65,37 @@ function renderRow({
     | { kind: "repo"; repoPath: string }
     | { kind: "global"; tools: string[] },
   onRemoved = vi.fn(),
+  primitives = [tdd],
+}: {
+  target?:
+    | { kind: "repo"; repoPath: string }
+    | { kind: "global"; tools: string[] };
+  onRemoved?: () => void;
+  primitives?: (typeof tdd)[];
 } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  render(
+  const list = (primitives: (typeof tdd)[]) => (
     <QueryClientProvider client={queryClient}>
       <DeployStateList
-        primitives={[tdd]}
+        primitives={primitives}
         skipped={[]}
         target={target}
         onRemoved={onRemoved}
       />
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
-  return { onRemoved };
+  const { rerender } = render(list(primitives));
+  // The refetch that follows a landed removal, as the card sees it: the row is
+  // gone from the server's answer and the list re-renders without it.
+  const withoutTdd = () => rerender(list([]));
+  return { onRemoved, withoutTdd };
 }
 
-async function openRemoveDialog() {
+async function openRemoveDialog(skill = "tdd") {
   await userEvent.click(
-    screen.getByRole("button", { name: "Actions for tdd" }),
+    screen.getByRole("button", { name: `Actions for ${skill}` }),
   );
   await userEvent.click(
     await screen.findByRole("menuitem", { name: "remove…" }),
@@ -147,9 +161,11 @@ describe("removing a deployed skill from a row", () => {
     const fetchMock = stubFetch("local-edits-will-be-lost");
     renderRow();
 
-    await openRemoveDialog();
+    const dialog = await openRemoveDialog();
 
-    expect(await screen.findByRole("status")).toHaveTextContent(/local edits/i);
+    expect(await within(dialog).findByRole("status")).toHaveTextContent(
+      /local edits/i,
+    );
     const confirm = screen.getByRole("button", { name: /^remove tdd/ });
     expect(confirm).toBeEnabled();
 
@@ -164,9 +180,9 @@ describe("removing a deployed skill from a row", () => {
     stubFetch("cannot-verify-local-edits");
     renderRow();
 
-    await openRemoveDialog();
+    const dialog = await openRemoveDialog();
 
-    expect(await screen.findByRole("status")).toHaveTextContent(
+    expect(await within(dialog).findByRole("status")).toHaveTextContent(
       /can't be checked/i,
     );
   });
@@ -210,6 +226,181 @@ describe("removing a deployed skill from a row", () => {
     );
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(onRemoved).not.toHaveBeenCalled();
+  });
+
+  // A removal takes its own row off the screen, so absence is the only evidence
+  // left behind. The card says what went instead (#383).
+  describe("announcing the outcome", () => {
+    it("names the skill, its version and the target once the removal lands", async () => {
+      stubFetch(null);
+      renderRow();
+
+      await openRemoveDialog();
+      await userEvent.click(
+        screen.getByRole("button", { name: /^remove tdd/ }),
+      );
+
+      expect(
+        await screen.findByText(`removed tdd v0.5.0 from ${REPO}`),
+      ).toBeInTheDocument();
+    });
+
+    it("announces it without stealing focus", async () => {
+      stubFetch(null);
+      renderRow();
+
+      await openRemoveDialog();
+      await userEvent.click(
+        screen.getByRole("button", { name: /^remove tdd/ }),
+      );
+
+      const announcement = await screen.findByText(
+        `removed tdd v0.5.0 from ${REPO}`,
+      );
+      expect(announcement.closest("[role='status']")).not.toBeNull();
+    });
+
+    // The row's version can be stale by the time the user confirms — another
+    // deploy may have moved it while the confirmation was open. The trace states
+    // what the server actually removed, never what the screen happened to show.
+    it("names the version the server removed, not the one the row showed", async () => {
+      stubFetch(null, () =>
+        jsonResponse(
+          { removed: { type: "skill", name: "tdd", version: "v0.9.0" } },
+          200,
+        ),
+      );
+      renderRow();
+
+      await openRemoveDialog();
+      await userEvent.click(
+        screen.getByRole("button", { name: /^remove tdd/ }),
+      );
+
+      expect(
+        await screen.findByText(`removed tdd v0.9.0 from ${REPO}`),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(`removed tdd v0.5.0 from ${REPO}`),
+      ).not.toBeInTheDocument();
+    });
+
+    // role="status" is atomic: a region holding the whole history re-reads every
+    // earlier line on each new removal. The history stays visible; only the
+    // latest outcome is announced.
+    it("announces only the latest removal, with the earlier ones still on screen", async () => {
+      const jobs = { type: "skill" as const, name: "jobs", version: "v1.2.0" };
+      // Each removal is answered for the skill it named, so the two traces
+      // cannot be told apart by accident.
+      vi.stubGlobal("fetch", async (path: string, init: RequestInit) => {
+        if (path === "/api/deploy/remove/preflight") {
+          return jsonResponse({ warning: null }, 200);
+        }
+        const { name } = JSON.parse(String(init.body));
+        const version = name === "tdd" ? "v0.5.0" : "v1.2.0";
+        return jsonResponse({ removed: { type: "skill", name, version } }, 200);
+      });
+      renderRow({ primitives: [tdd, jobs] });
+
+      await openRemoveDialog();
+      await userEvent.click(
+        screen.getByRole("button", { name: /^remove tdd/ }),
+      );
+      await screen.findByText(`removed tdd v0.5.0 from ${REPO}`);
+
+      await openRemoveDialog("jobs");
+      await userEvent.click(
+        screen.getByRole("button", { name: /^remove jobs/ }),
+      );
+      await screen.findByText(`removed jobs v1.2.0 from ${REPO}`);
+
+      const live = screen.getByRole("status");
+      expect(live).toHaveTextContent(`removed jobs v1.2.0 from ${REPO}`);
+      expect(live).not.toHaveTextContent(`removed tdd v0.5.0 from ${REPO}`);
+    });
+
+    // The detected tool set is probed server-side when the removal runs, so a
+    // tool appearing while the confirmation is open changes the real scope. The
+    // trace names the set apm actually reached, not the one the card knew.
+    it("names the tools the server reached, not the ones the card knew", async () => {
+      stubFetch(null, () =>
+        jsonResponse(
+          {
+            removed: {
+              type: "skill",
+              name: "tdd",
+              version: "v0.5.0",
+              scope: { kind: "global", tools: ["claude", "codex"] },
+            },
+          },
+          200,
+        ),
+      );
+      renderRow({ target: { kind: "global", tools: ["claude"] } });
+
+      await openRemoveDialog();
+      await userEvent.click(
+        screen.getByRole("button", { name: /^remove tdd/ }),
+      );
+
+      expect(
+        await screen.findByText(
+          "removed tdd v0.5.0 from Claude Code and Codex",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    // An older server answers 200 with no version. Saying so beats printing the
+    // word "undefined" over a removal that already happened.
+    it("says the version is unknown when the server reported none", async () => {
+      stubFetch(null, () =>
+        jsonResponse({ removed: { type: "skill", name: "tdd" } }, 200),
+      );
+      renderRow();
+
+      await openRemoveDialog();
+      await userEvent.click(
+        screen.getByRole("button", { name: /^remove tdd/ }),
+      );
+
+      expect(
+        await screen.findByText(`removed tdd (version unknown) from ${REPO}`),
+      ).toBeInTheDocument();
+    });
+
+    it("says nothing when the removal failed", async () => {
+      vi.stubGlobal("fetch", async () =>
+        jsonResponse(
+          { error: "remove-failed", message: "apm did not confirm it." },
+          502,
+        ),
+      );
+      renderRow();
+
+      await openRemoveDialog();
+      await userEvent.click(
+        screen.getByRole("button", { name: /^remove tdd/ }),
+      );
+
+      await screen.findByRole("alert");
+      expect(screen.queryByText(/^removed tdd/)).not.toBeInTheDocument();
+    });
+
+    it("stays on the card after the last skill on it is gone", async () => {
+      stubFetch(null);
+      const { withoutTdd } = renderRow();
+
+      await openRemoveDialog();
+      await userEvent.click(
+        screen.getByRole("button", { name: /^remove tdd/ }),
+      );
+      await screen.findByText(`removed tdd v0.5.0 from ${REPO}`);
+      withoutTdd();
+
+      expect(
+        screen.getByText(`removed tdd v0.5.0 from ${REPO}`),
+      ).toBeInTheDocument();
+    });
   });
 
   // The global row. One action covers every detected tool, and the confirmation
@@ -261,9 +452,9 @@ describe("removing a deployed skill from a row", () => {
       const fetchMock = stubFetch("local-edits-will-be-lost");
       renderGlobalRow();
 
-      await openRemoveDialog();
+      const dialog = await openRemoveDialog();
 
-      expect(await screen.findByRole("status")).toHaveTextContent(
+      expect(await within(dialog).findByRole("status")).toHaveTextContent(
         /local edits/i,
       );
       const [, init] = preflightCalls(fetchMock)[0] as [string, RequestInit];

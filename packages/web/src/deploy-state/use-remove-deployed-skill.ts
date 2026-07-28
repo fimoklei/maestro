@@ -23,7 +23,23 @@ export type RemoveRequest = {
   confirmedReclaimToken?: string;
 };
 
-type RemoveResponse = { removed: { type: "skill"; name: string } };
+// The server names the version it actually removed, read from the target's
+// lockfile when it resolved the ref. The row's own version can be stale by the
+// time the user confirms, so the outcome is reported from this, never from the
+// screen (#383).
+// Both fields describe what the removal actually did, not what the screen had
+// in view when the user confirmed. They are typed optional because only the
+// server guarantees them: an older or partly-deployed server answers 200 with
+// the old shape, and the cockpit states that honestly instead of printing a
+// placeholder over an irreversible action.
+type RemoveResponse = {
+  removed: {
+    type: "skill";
+    name: string;
+    version?: string;
+    scope?: { kind: "repo" } | { kind: "global"; tools: string[] };
+  };
+};
 
 export function useRemoveDeployedSkill() {
   const queryClient = useQueryClient();

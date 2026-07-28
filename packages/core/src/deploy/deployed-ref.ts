@@ -19,7 +19,9 @@ import type { DeployedLocation } from "./deployed-location";
 // that would silently match nothing. "lockfile-malformed": the file is present
 // but does not parse, so nothing about it can be trusted (#58).
 export type DeployedRefLookup =
-  | { ok: true; ref: string }
+  // The version travels with the ref it was taken from, so whatever reports the
+  // removal can never name a tag the removal did not aim at (#383).
+  | { ok: true; ref: string; version: string }
   | {
       ok: false;
       reason: "not-deployed" | "ref-unresolvable" | "lockfile-malformed";
@@ -80,6 +82,7 @@ export function refForDeployedSkill(
   return {
     ok: true,
     ref: `${entry.host}/${entry.repo_url}/${entry.virtual_path}#${entry.resolved_ref}`,
+    version: entry.resolved_ref,
   };
 }
 

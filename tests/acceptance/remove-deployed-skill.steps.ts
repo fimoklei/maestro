@@ -336,7 +336,12 @@ describeFeature(
         Then("the removal is confirmed", async () => {
           expect(response.status).toBe(200);
           expect(await response.json()).toEqual({
-            removed: { type: "skill", name: "tdd" },
+            removed: {
+              type: "skill",
+              name: "tdd",
+              version: "v0.5.1",
+              scope: { kind: "repo" },
+            },
           });
         });
         And('that repo\'s deploy-state lists only "jobs"', async () => {
@@ -531,7 +536,12 @@ describeFeature(
         Then("the removal is confirmed", async () => {
           expect(response.status).toBe(200);
           expect(await response.json()).toEqual({
-            removed: { type: "skill", name: "tdd" },
+            removed: {
+              type: "skill",
+              name: "tdd",
+              version: "v0.5.1",
+              scope: { kind: "global", tools: ["claude", "codex"] },
+            },
           });
         });
         And('no tool\'s global deploy-state lists "tdd" any more', async () => {
