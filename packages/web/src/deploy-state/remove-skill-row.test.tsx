@@ -187,6 +187,73 @@ describe("removing a deployed skill from a row", () => {
     );
   });
 
+  // The check does not only answer or fail — the server can refuse the request
+  // outright, and it says why. Folding that into "couldn't check" costs the user
+  // a round-trip to read the reason they could have had before confirming, under
+  // a warning about work that was never at risk (#385).
+  describe("when the check comes back refused", () => {
+    const refuseWith = (code: string, message: string, status: number) => {
+      const fetchMock = vi.fn(async (path: string) =>
+        path === "/api/deploy/remove/preflight"
+          ? jsonResponse({ error: code, message }, status)
+          : jsonResponse({ removed: { type: "skill", name: "tdd" } }, 200),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+      return fetchMock;
+    };
+
+    it("states the server's own reason instead of a failed check", async () => {
+      refuseWith(
+        "repo-not-registered",
+        "That repo is not registered with Maestro.",
+        403,
+      );
+      renderRow();
+
+      const dialog = await openRemoveDialog();
+
+      expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+        "That repo is not registered with Maestro.",
+      );
+      expect(dialog).not.toHaveTextContent(/may lose work/i);
+    });
+
+    it("offers no confirm for a removal that cannot succeed", async () => {
+      const fetchMock = refuseWith(
+        "no-supported-tool",
+        "No supported tool is installed, so there is no global deployment to remove.",
+        409,
+      );
+      renderRow({ target: { kind: "global", tools: ["claude"] } });
+
+      const dialog = await openRemoveDialog();
+      await within(dialog).findByRole("alert");
+
+      const confirm = screen.getByRole("button", { name: /^remove tdd/ });
+      expect(confirm).toBeDisabled();
+      await userEvent.click(confirm);
+      expect(removeCalls(fetchMock)).toEqual([]);
+    });
+
+    it("still lets the user through when the check merely could not run", async () => {
+      // The server was reachable and tried; it just has no answer. That settles
+      // nothing about the removal, so the confirm stays where it was.
+      refuseWith(
+        "preflight-failed",
+        "Maestro could not check the deployed copy for local changes.",
+        502,
+      );
+      renderRow();
+
+      const dialog = await openRemoveDialog();
+
+      expect(await within(dialog).findByRole("status")).toHaveTextContent(
+        /couldn't check this copy/i,
+      );
+      expect(screen.getByRole("button", { name: /^remove tdd/ })).toBeEnabled();
+    });
+  });
+
   it("closes and hands focus back to the card once the removal lands", async () => {
     vi.stubGlobal("fetch", async () =>
       jsonResponse({ removed: { type: "skill", name: "tdd" } }, 200),

@@ -1,21 +1,31 @@
+import type { ReclaimPreview } from "@maestro/core";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import type {
+  RemovePreflightView,
+  RemoveWarningState,
+} from "./remove-preflight-view";
 import { RemoveSkillDialog } from "./remove-skill-dialog";
-import type { RemoveWarningState } from "./remove-warning-view";
 
 const REPO_TARGET = {
   kind: "repo" as const,
   repoPath: "/Users/me/project",
 };
 
+// The check answered (or is still answering): the removal is still on offer,
+// and any leftover copies it named travel with that answer.
+const warns = (
+  warning: RemoveWarningState,
+  reclaim: readonly ReclaimPreview[] = [],
+): RemovePreflightView => ({ kind: "warning", warning, reclaim });
+
 function renderDialog({
   target = REPO_TARGET as Parameters<typeof RemoveSkillDialog>[0]["target"],
   isRemoving = false,
   error = null as string | null,
   attempted = true,
-  warning = "none" as RemoveWarningState,
-  reclaim = [] as Parameters<typeof RemoveSkillDialog>[0]["reclaim"],
+  preflight = warns("none") as RemovePreflightView,
   onCancel = vi.fn(),
   onConfirm = vi.fn(),
 } = {}) {
@@ -26,8 +36,7 @@ function renderDialog({
       isRemoving={isRemoving}
       error={error}
       attempted={attempted}
-      warning={warning}
-      reclaim={reclaim}
+      preflight={preflight}
       onCancel={onCancel}
       onConfirm={onConfirm}
     />,
@@ -107,13 +116,13 @@ describe("RemoveSkillDialog", () => {
   // delete without a word. Both cases warn; neither stands in the way (#337).
 
   it("states that local edits will be lost when the copy diverged", () => {
-    renderDialog({ warning: "local-edits" });
+    renderDialog({ preflight: warns("local-edits") });
 
     expect(screen.getByRole("status")).toHaveTextContent(/local edits/i);
   });
 
   it("says the copy cannot be checked, rather than calling it edited", () => {
-    renderDialog({ warning: "cannot-verify" });
+    renderDialog({ preflight: warns("cannot-verify") });
 
     const note = screen.getByRole("status");
     expect(note).toHaveTextContent(/can't be checked/i);
@@ -124,7 +133,7 @@ describe("RemoveSkillDialog", () => {
   it("wears amber with a glyph, never danger red", () => {
     // Red is reserved for validation errors; lost work is a consequence, not an
     // error (DESIGN.md). The glyph keeps colour from being the only signal.
-    renderDialog({ warning: "local-edits" });
+    renderDialog({ preflight: warns("local-edits") });
 
     const note = screen.getByRole("status");
     expect(note.className).toContain("amber");
@@ -134,7 +143,7 @@ describe("RemoveSkillDialog", () => {
 
   it("leaves the confirm control usable under either warning", () => {
     for (const warning of ["local-edits", "cannot-verify"] as const) {
-      const { onConfirm } = renderDialog({ warning });
+      const { onConfirm } = renderDialog({ preflight: warns(warning) });
 
       const confirm = screen
         .getAllByRole("button", { name: /^remove/i })
@@ -149,7 +158,7 @@ describe("RemoveSkillDialog", () => {
     // An answered warning never blocks (#337) — but an unfinished check has not
     // warned about anything yet. Confirming through it destroys the copy before
     // the one screen that could have named the cost got to say it.
-    const { onConfirm } = renderDialog({ warning: "checking" });
+    const { onConfirm } = renderDialog({ preflight: warns("checking") });
 
     const confirm = screen.getByRole("button", { name: /^remove/i });
     expect(confirm).toBeDisabled();
@@ -159,13 +168,13 @@ describe("RemoveSkillDialog", () => {
 
   it("leaves cancel usable while the check is still running", () => {
     // Waiting on the check must never trap the user in the dialog.
-    renderDialog({ warning: "checking" });
+    renderDialog({ preflight: warns("checking") });
 
     expect(screen.getByRole("button", { name: "cancel" })).toBeEnabled();
   });
 
   it("says a failed check failed, rather than blaming a missing baseline", () => {
-    renderDialog({ warning: "check-failed" });
+    renderDialog({ preflight: warns("check-failed") });
 
     const note = screen.getByRole("status");
     expect(note).toHaveTextContent(/couldn't check this copy/i);
@@ -176,13 +185,13 @@ describe("RemoveSkillDialog", () => {
   it("says the check is still running instead of staying silent", () => {
     // Silence reads as "nothing to lose", which is the one thing an unfinished
     // check cannot promise (J04).
-    renderDialog({ warning: "checking" });
+    renderDialog({ preflight: warns("checking") });
 
     expect(screen.getByRole("status")).toHaveTextContent(/checking/i);
   });
 
   it("shows no warning at all once the copy came back clean", () => {
-    renderDialog({ warning: "none" });
+    renderDialog({ preflight: warns("none") });
 
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
@@ -191,6 +200,70 @@ describe("RemoveSkillDialog", () => {
     renderDialog();
 
     expect(screen.getByRole("dialog")).toHaveFocus();
+  });
+
+  // The check can also come back with the server refusing the request outright.
+  // That is not a failed check — it is the removal already known to be
+  // impossible, so the dialog says why and stops offering it (#385).
+  describe("when the check came back refused", () => {
+    const refused = {
+      kind: "refused" as const,
+      message: "That repo is not registered with Maestro.",
+    };
+
+    it("states the server's own reason", () => {
+      renderDialog({ preflight: refused });
+
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "That repo is not registered with Maestro.",
+      );
+    });
+
+    it("never says work may be lost", () => {
+      // There is nothing to lose: no removal will run. Borrowing the
+      // failed-check wording would warn about a cost that cannot be paid.
+      renderDialog({ preflight: refused });
+
+      const dialog = screen.getByRole("dialog");
+      expect(dialog).not.toHaveTextContent(/may lose work/i);
+      expect(dialog).not.toHaveTextContent(/couldn't check this copy/i);
+    });
+
+    it("takes the confirm control away", async () => {
+      const { onConfirm } = renderDialog({ preflight: refused });
+
+      const confirm = screen.getByRole("button", { name: /^remove/i });
+      expect(confirm).toBeDisabled();
+      await userEvent.click(confirm);
+      expect(onConfirm).not.toHaveBeenCalled();
+    });
+
+    it("leaves cancel as the way out", () => {
+      renderDialog({ preflight: refused });
+
+      expect(screen.getByRole("button", { name: "cancel" })).toBeEnabled();
+    });
+
+    it("wears danger red with a glyph, not the amber of lost work", () => {
+      // Amber says "this will cost you something"; this says "this cannot
+      // happen". Red is the error signal (issue #213), and the glyph keeps
+      // colour from being the only one.
+      renderDialog({ preflight: refused });
+
+      const alert = screen.getByRole("alert");
+      expect(alert.className).toContain("danger");
+      expect(alert).toHaveTextContent("✕");
+    });
+
+    it("drops the promise that the skill can be redeployed", () => {
+      // That line describes a removal about to happen. Under a refusal it
+      // describes nothing.
+      renderDialog({ preflight: refused });
+
+      expect(screen.getByRole("dialog")).not.toHaveTextContent(
+        /deploy it again/i,
+      );
+    });
   });
 
   // The global scope. The user clicked inside one tool's card, so the modal has
@@ -235,7 +308,7 @@ describe("RemoveSkillDialog", () => {
     });
 
     it("still carries the divergence warning", () => {
-      renderDialog({ target: globalTarget, warning: "local-edits" });
+      renderDialog({ target: globalTarget, preflight: warns("local-edits") });
 
       expect(screen.getByRole("status")).toHaveTextContent(/local edits/i);
     });
@@ -245,10 +318,14 @@ describe("RemoveSkillDialog", () => {
     // touches (#390). The confirmation must name it before the user
     // agrees to it, never leave it implicit in "its deployed files go".
     describe("naming what an untargeted tool's copy reclaim would also delete", () => {
+      const leftover = [
+        { tool: "claude" as const, path: "/Users/me/.claude/skills/tdd" },
+      ];
+
       it("names the leftover tool and the exact path it would delete", () => {
         renderDialog({
           target: globalTarget,
-          reclaim: [{ tool: "claude", path: "/Users/me/.claude/skills/tdd" }],
+          preflight: warns("none", leftover),
         });
 
         const dialog = screen.getByRole("dialog");
@@ -260,10 +337,10 @@ describe("RemoveSkillDialog", () => {
       it("names each leftover tool when there is more than one", () => {
         renderDialog({
           target: globalTarget,
-          reclaim: [
-            { tool: "claude", path: "/Users/me/.claude/skills/tdd" },
+          preflight: warns("none", [
+            ...leftover,
             { tool: "codex", path: "/Users/me/.agents/skills/tdd" },
-          ],
+          ]),
         });
 
         const dialog = screen.getByRole("dialog");
@@ -272,7 +349,7 @@ describe("RemoveSkillDialog", () => {
       });
 
       it("says nothing extra when there is no leftover to reclaim", () => {
-        renderDialog({ target: globalTarget, reclaim: [] });
+        renderDialog({ target: globalTarget, preflight: warns("none") });
 
         expect(screen.queryByText(/not installed on this machine/i)).toBeNull();
         expect(screen.queryByRole("status", { name: /also deleted/i })).toBe(
@@ -287,7 +364,7 @@ describe("RemoveSkillDialog", () => {
       it("announces the leftover as its own region rather than quiet prose", () => {
         renderDialog({
           target: globalTarget,
-          reclaim: [{ tool: "claude", path: "/Users/me/.claude/skills/tdd" }],
+          preflight: warns("none", leftover),
         });
 
         const region = screen.getByRole("status", { name: /also deleted/i });
