@@ -43,6 +43,14 @@ export const Confirming: Story = {};
 // A row that carries no version. The question drops it rather than invent one.
 export const WithoutVersion: Story = { args: { version: null } };
 
+// The longest name the footer can be asked to carry. The confirm label grows
+// with the skill name inside a fixed-width panel, so this is the state that
+// proves the footer holds its shape: the confirm ellipsises, cancel keeps its
+// full width, and the heading still shows the name whole (#388).
+export const LongSkillName: Story = {
+  args: { skillName: "some-very-long-skill-name-that-keeps-going" },
+};
+
 // Mid-removal: both controls are inert and the dialog cannot be dismissed, so
 // the outcome cannot be missed.
 export const Removing: Story = { args: { isRemoving: true } };

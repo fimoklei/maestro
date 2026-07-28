@@ -291,8 +291,11 @@ export function RemoveSkillDialog({
         </div>
 
         <div className="flex items-center justify-end gap-2.5 border-line-row border-t px-3.5 py-3">
+          {/* The way out never shrinks: it is fixed-length text, and squeezing
+              it to make room for a long name is the wrong thing to give up. */}
           <Button
             type="button"
+            className="shrink-0"
             variant="quiet"
             size="sm"
             disabled={isRemoving}
@@ -300,8 +303,14 @@ export function RemoveSkillDialog({
           >
             cancel
           </Button>
+          {/* This label grows with the skill name inside a fixed-width panel, so
+              it is the one control here allowed to give ground: it shrinks and
+              ellipsises rather than push the footer out of shape (#388). The DOM
+              text stays whole, so the accessible name is unaffected, and the
+              heading above carries the full name and version either way. */}
           <Button
             type="button"
+            className="min-w-0 truncate"
             variant="primary"
             size="sm"
             disabled={isRemoving || awaitingCheck || refused}
