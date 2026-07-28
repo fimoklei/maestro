@@ -114,13 +114,8 @@ export function RemoveSkillDialog({
               files (apm-behavior.md § Remove, ADR-0013). */}
           {target.kind === "global" ? (
             <p className="font-mono text-fg-2 text-tag">
-              {/* Named tools whenever the host knows them. With none to name,
-                  the sentence says what it can rather than trailing off — the
-                  scope is still the whole machine either way. */}
-              {target.tools.length > 0
-                ? `This takes it off ${toolNameList(target.tools)} in one go.`
-                : "This takes it off every tool on this machine in one go."}{" "}
-              There is no per-tool remove.
+              This takes it off {toolNameList(target.tools)} in one go. There is
+              no per-tool remove.
             </p>
           ) : null}
           <p className="font-mono text-dim text-tag">

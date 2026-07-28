@@ -119,8 +119,7 @@ function ToolTargetCard({
         primitives={group.primitives}
         skipped={[]}
         drift={toolDrift}
-        target={{ kind: "global" }}
-        detectedTools={detectedTools}
+        target={{ kind: "global", tools: detectedTools }}
         onRemoved={() => headerRef.current?.focus()}
       />
     </Card>

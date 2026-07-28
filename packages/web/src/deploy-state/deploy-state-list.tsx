@@ -68,17 +68,16 @@ export function DeployStateList({
   skipped,
   drift = PENDING_DRIFT,
   target,
-  detectedTools = [],
   onRemoved,
 }: {
   primitives: DeployedPrimitive[];
   skipped: SkippedEntry[];
   drift?: DriftViewModel;
-  target: DeployTarget;
-  // Every tool detected on this machine, so a global confirmation can name the
-  // whole set it is about to remove from. Ignored on a repo target, which has
-  // no per-tool scope to state (#338).
-  detectedTools?: string[];
+  // The scope these rows belong to. A global target carries the tools it
+  // covers, so the confirmation cannot be rendered without them — the scope
+  // line is what keeps a set-based action honest, and an optional prop would
+  // let a host drop it silently (#338).
+  target: RemoveDialogTarget;
   // Called once a removal has landed, after the dialog is gone. The modal's own
   // focus restore aims at the trigger that opened it, and a successful removal
   // destroys that trigger along with its row — so the host moves focus to the
@@ -90,13 +89,14 @@ export function DeployStateList({
   const [removing, setRemoving] = useState<string | null>(null);
   const [justRemoved, setJustRemoved] = useState(false);
   const remove = useRemoveDeployedSkill();
+  // The same target as the server names it: the detected tools are the screen's
+  // business, never part of the request — the global scope's location and its
+  // reach are apm's own, resolved server-side (J07).
+  const wireTarget: DeployTarget =
+    target.kind === "repo" ? target : { kind: "global" };
   // What that removal would destroy, asked as soon as the confirmation opens so
   // the answer is on screen before the user commits.
-  const preflight = useRemovePreflight(removing, target);
-  // The scope the confirmation states. A repo names itself; the global scope
-  // names every detected tool, because one action covers them all.
-  const dialogTarget: RemoveDialogTarget =
-    target.kind === "repo" ? target : { kind: "global", tools: detectedTools };
+  const preflight = useRemovePreflight(removing, wireTarget);
 
   // Handing focus on in an effect, not in the success handler: the modal's
   // focus-restore runs during its unmount, so anything moving focus earlier
@@ -144,7 +144,10 @@ export function DeployStateList({
             {/* Update is offered only when behind — never for up-to-date,
                 pending, or unknown (the J04 rule: unknown is not actionable). */}
             {status === "behind" ? (
-              <UpdateSkillAction skillName={primitive.name} target={target} />
+              <UpdateSkillAction
+                skillName={primitive.name}
+                target={wireTarget}
+              />
             ) : null}
             {/* The row's named actions, last in the row and always visible so
                 they exist for touch and keyboard, not only for a mouse. */}
@@ -166,7 +169,7 @@ export function DeployStateList({
       {removing !== null ? (
         <RemoveSkillDialog
           skillName={removing}
-          target={dialogTarget}
+          target={target}
           isRemoving={remove.isPending}
           warning={removeWarningView(preflight)}
           error={
@@ -187,7 +190,7 @@ export function DeployStateList({
           onCancel={() => setRemoving(null)}
           onConfirm={() =>
             remove.mutate(
-              { type: "skill", name: removing, target },
+              { type: "skill", name: removing, target: wireTarget },
               {
                 // Only a proven removal closes the dialog. A failure keeps it
                 // open with apm's reason, so it never reads as if nothing

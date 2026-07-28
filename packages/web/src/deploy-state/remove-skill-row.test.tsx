@@ -48,8 +48,7 @@ function stubFetch(
 function renderRow({
   target = { kind: "repo", repoPath: REPO } as
     | { kind: "repo"; repoPath: string }
-    | { kind: "global" },
-  detectedTools = undefined as string[] | undefined,
+    | { kind: "global"; tools: string[] },
   onRemoved = vi.fn(),
 } = {}) {
   const queryClient = new QueryClient({
@@ -61,7 +60,6 @@ function renderRow({
         primitives={[tdd]}
         skipped={[]}
         target={target}
-        detectedTools={detectedTools}
         onRemoved={onRemoved}
       />
     </QueryClientProvider>,
@@ -206,10 +204,7 @@ describe("removing a deployed skill from a row", () => {
   // has to name them — the user clicked inside one tool's card (#338).
   describe("on a global row", () => {
     const renderGlobalRow = () =>
-      renderRow({
-        target: { kind: "global" },
-        detectedTools: ["claude", "codex"],
-      });
+      renderRow({ target: { kind: "global", tools: ["claude", "codex"] } });
 
     it("offers remove… just as a repo row does", async () => {
       stubFetch(null);

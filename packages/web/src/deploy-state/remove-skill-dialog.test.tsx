@@ -213,16 +213,6 @@ describe("RemoveSkillDialog", () => {
       expect(dialog).not.toHaveTextContent("Codex");
     });
 
-    it("still states the scope when it has no tool names to give", () => {
-      // A sentence that trails off after "takes it off" would read as broken,
-      // not as honest; the scope is the whole machine either way.
-      renderDialog({ target: { kind: "global", tools: [] } });
-
-      expect(screen.getByRole("dialog")).toHaveTextContent(
-        /every tool on this machine/i,
-      );
-    });
-
     it("still carries the divergence warning", () => {
       renderDialog({ target: globalTarget, warning: "local-edits" });
 
