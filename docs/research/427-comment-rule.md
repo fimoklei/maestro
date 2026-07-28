@@ -1,7 +1,8 @@
 # 427 — Proposed rewrite of the comment rule
 
-Status: **awaiting Michiel's decision.** Nothing in `~/.claude/rules/code-standards.md`,
-`AGENTS.md` or `.claude/rules/` is edited by this ticket.
+Status: **accepted.** Michiel approved the wording; `~/.claude/rules/code-standards.md`
+§ Comments now carries it. `AGENTS.md` and `.claude/rules/` are unchanged — they
+say nothing about comments.
 
 ## The problem in one line
 
