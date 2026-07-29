@@ -81,10 +81,8 @@ describe("removePreflightView", () => {
     });
   });
 
-  // A query keeps the previous answer's data when a later refetch fails. Carrying
-  // it through would name paths the dialog is about to delete under a message
-  // saying the removal cannot run — the loudest contradiction this screen can
-  // make, about an irreversible action.
+  // A failed refetch keeps the previous data; carrying it through would name
+  // paths for deletion under a "removal cannot run" message.
   describe("when an earlier answer is still in hand", () => {
     const stale = { warning: null, reclaim: RECLAIMED } as const;
 

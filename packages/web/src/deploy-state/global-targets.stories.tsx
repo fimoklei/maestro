@@ -2,10 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { driftViewModel } from "../drift/drift-view-model";
 import { GlobalTargets } from "./global-targets";
 
-// The "GLOBAL TARGETS" section in its meaningful read states. Presentational and
-// provider-free: every story keeps drift at "ready" with nothing behind, so no
-// row renders the Update mutation button (which would need a QueryClient) — the
-// behind state is covered in the sibling component test, not here (frontend.md).
+// Provider-free: drift stays "ready" so no row needs the Update mutation
+// button. "behind" state is covered by the sibling test (frontend.md).
 const meta = {
   title: "Shell/GlobalTargets",
   component: GlobalTargets,

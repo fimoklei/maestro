@@ -1,11 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-// WCAG 2.2 AA floor for the shipped text ramp. PRODUCT.md commits to 4.5:1 for
-// meaning-carrying text; issue #209 measured --text-dim below it on nine
-// enabled controls. This guards the whole ramp against silent regression: every
-// text step must clear 4.5:1 on every surface it can render on, in the theme
-// that actually ships (the first token block — :root / [data-theme="dark"]).
+// WCAG 2.2 AA floor (PRODUCT.md: 4.5:1) — #209 measured --text-dim below it
+// on nine controls. Guards every text step against every surface, shipped theme only.
 
 const AA = 4.5;
 
@@ -93,10 +90,8 @@ describe("shipped text ramp contrast", () => {
   });
 });
 
-// The danger signal (issue #213) renders validation-error text on the same
-// surfaces the text ramp uses. It carries meaning, so it holds to the same
-// 4.5:1 floor — guarded here so a future tweak to the red cannot drop it below
-// AA on any surface it can land on.
+// The danger signal (#213) renders validation-error text on the same
+// surfaces the text ramp uses, so it holds to the same 4.5:1 floor.
 describe("danger signal contrast", () => {
   const tokens = parseShippedTokens(tokensCss);
 
@@ -110,11 +105,9 @@ describe("danger signal contrast", () => {
   });
 });
 
-// The no-usable-origin refusal card sets danger-ink text on --danger-bg, a 10%
-// danger tint (tokens.css: rgba(236,92,106,0.1)) composited over the surface
-// behind it. That tint lifts the background's luminance and lowers contrast, so
-// the opaque-surface check above does not cover it — this guards the surface the
-// card actually renders on. Alpha is fixed by the system's chip-tint convention.
+// --danger-bg is a 10% danger tint (tokens.css: rgba(236,92,106,0.1))
+// composited over the surface, which the opaque check above misses.
+// Alpha is fixed by the chip-tint convention.
 const DANGER_BG_ALPHA = 0.1;
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -173,10 +166,8 @@ describe("filled-button hover fills keep their label readable", () => {
   );
 });
 
-// The keyboard focus ring (issue #214) is one amber outline, offset onto the
-// surface behind every control. WCAG 2.2 asks non-text UI indicators to clear
-// 3:1 against what they sit on. This guards the amber accent against a future
-// darkening that would sink the ring below that floor.
+// The focus ring (#214) is amber, offset onto the surface behind every
+// control. WCAG 2.2 asks non-text indicators to clear 3:1 against it.
 describe("focus ring contrast", () => {
   const NON_TEXT_AA = 3;
   const tokens = parseShippedTokens(tokensCss);

@@ -10,10 +10,8 @@ export function AppShell() {
       <StatusBar />
       <div className="flex min-h-0 flex-1">
         <Sidebar />
-        {/* A size container, so a view can bound something to the height of the
-            scrolling region — the inventory's table frame needs it, and CSS has
-            no other name for it. The region is sized by the flex row around it,
-            never by its contents, so size containment costs nothing. */}
+        {/* Size container: the inventory's table frame bounds itself to this
+            region's height, sized by the flex row, never its contents. */}
         <main className="@container-[size] min-w-0 flex-1 overflow-auto p-6">
           <FirstRunGate />
         </main>

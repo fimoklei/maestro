@@ -3,13 +3,10 @@ import { Button } from "../ui/button";
 import { Chip } from "../ui/chip";
 import type { BulkDeployReportView } from "./bulk-deploy-report-view";
 
-// The bulk-deploy report: one summary line naming the target and the outcome
-// counts, with per-skill detail on expand (#292). Presentational — the colour,
-// counts, and rows are already folded by bulkDeployReportView. A diverged
-// "attention" row offers a force reinstall, wired to the caller's onForce.
+// One summary line + per-skill detail on expand (#292). Presentational —
+// colour, counts, rows already folded by bulkDeployReportView.
 
-// A terse, human label per refusal code for a report row. The server owns the
-// full actionable sentence; here a compact phrase keeps the row scannable.
+// Terse label per code — the server owns the full sentence.
 const errorLabels: Partial<Record<DeploySkillError, string>> = {
   "deployed-diverged-from-lock": "deployed copy has local changes",
   "deployed-unverifiable": "deployed copy predates content tracking",
@@ -32,9 +29,8 @@ export function BulkDeployReport({
   isDeploying?: boolean;
   onForce?: (name: string) => void;
 }) {
-  // The request itself failed (network/HTTP) before any report came back —
-  // an honest, distinct message, never the counts summary: those counts would
-  // all read zero and look like a clean, confirmed success (#292).
+  // Distinct message, never the counts summary — zeroed counts would look
+  // like a clean success (#292).
   if (view.tone === "error") {
     return (
       <div className="mx-card-x mb-row-y">
@@ -57,8 +53,7 @@ export function BulkDeployReport({
 
   return (
     <div className="mx-card-x mb-row-y">
-      {/* An off-screen live region announces the one-shot result without moving
-          focus; the visible summary carries the same line and toggles detail. */}
+      {/* Off-screen live region announces the result without moving focus. */}
       <span
         role="status"
         aria-live="polite"
@@ -78,15 +73,9 @@ export function BulkDeployReport({
           {summary}
         </summary>
 
-        {/* One row per skill: a bulk run over a large selection makes this list
-            taller than the card that holds it, and the card clips what it cannot
-            fit. Bounded with its own scrollbar, so the failures at the bottom —
-            and their recovery controls — stay reachable. Named and focusable
-            because a scroll region that cannot take focus is unreachable from
-            the keyboard (WCAG 2.1.1). The cap is a share of the scrolling
-            region's own height (cqh, app-shell.tsx), so it leaves room for the
-            table at any window height; below 1200px the card is not bounded and
-            the page scrolls, so nothing needs capping. */}
+        {/* Bounded with its own scrollbar so bottom failures stay reachable.
+            Focusable: an unfocusable scroll region is keyboard-unreachable
+            (WCAG 2.1.1). Below 1200px uncapped — the page scrolls instead. */}
         <section
           aria-label="Bulk deploy result detail"
           // biome-ignore lint/a11y/noNoninteractiveTabindex: see above — a scroll container has to be focusable to be keyboard-reachable

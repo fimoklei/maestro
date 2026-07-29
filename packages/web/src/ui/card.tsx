@@ -1,9 +1,7 @@
 import type { ReactNode, Ref } from "react";
 import { cn } from "./cn";
 
-// Outlined panel — the basic container of the cockpit. Optional mono header with
-// a kind label and a status slot. When its contents drift, the outline warms to
-// amber-brown. Borders do all the structural work; there are no shadows.
+// Outlined panel, the cockpit's basic container. No shadows — see DESIGN.md §5.
 
 export interface CardProps {
   /** Header title (mono) — a target name. Omit for a plain container. */
@@ -18,11 +16,7 @@ export interface CardProps {
   drift?: boolean;
   /** Add inner padding around children (rows manage their own padding). */
   padded?: boolean;
-  /**
-   * Take the height its parent gives it instead of growing with its contents,
-   * so a child can own the scrolling. The card and its inner wrapper become a
-   * bounded flex column; the caller marks which child scrolls.
-   */
+  /** Bounds to the parent's height instead of growing, so a child can scroll. */
   fill?: boolean;
   children?: ReactNode;
   className?: string;
@@ -42,11 +36,8 @@ export function Card({
   return (
     <div
       className={cn(
-        // overflow-clip, not overflow-hidden: both clip children to the rounded
-        // corner, but `hidden` also makes the card a scroll container, and a
-        // scroll container that never scrolls silently strands any sticky
-        // descendant — the inventory's column headers stick to the scrolling
-        // region inside the card, so the card must stay out of that chain.
+        // clip, not hidden: hidden makes this a scroll container, which strands
+        // sticky descendants (inventory's column headers) in the wrong chain.
         "overflow-clip rounded-card border bg-card",
         fill && "flex min-h-0 flex-1 flex-col",
         drift ? "border-line-drift" : "border-line",
@@ -65,10 +56,8 @@ export function Card({
               {kind}
             </span>
           ) : null}
-          {/* A real heading, and focusable by script (tabIndex -1, so it stays
-              out of the tab order): when an action inside the card destroys the
-              control that triggered it, focus lands here rather than on the
-              page body. */}
+          {/* tabIndex -1: out of tab order, but a script can still land focus
+              here when an action destroys the control that triggered it. */}
           <h2
             ref={titleRef}
             tabIndex={-1}

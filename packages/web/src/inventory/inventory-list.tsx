@@ -40,15 +40,9 @@ import {
 } from "./type-filter";
 import type { Primitive } from "./use-inventory";
 
-// Deploy-aware table of central skills: type, name, description, and an actions
-// cell with the row's deploy control (#285). Three narrowing controls sit above
-// it: a data-driven type filter (#288) plus a name search box (#287), and the
-// column headers sort the rows (#287). All three are local UI-state applied
-// through pure models — the loaded inventory is never refetched, only narrowed
-// and reordered on screen (frontend.md). The view stays type-aware (TypeTag
-// carries the type) though only skills render today. Empty state is explicit so
-// a correctly configured but empty inventory never shows a bare, ambiguous
-// blank.
+// Deploy-aware table of central skills, with type filter (#288), name search
+// (#287), and sortable headers (#287) — all local UI-state over pure models,
+// the loaded inventory is never refetched (frontend.md).
 export function InventoryList({
   primitives,
   repos,
@@ -58,52 +52,32 @@ export function InventoryList({
   primitives: Primitive[];
   repos: RegisteredRepo[];
   registryReady: boolean;
-  // Every deploy target (each global tool + each registered repo), so each row
-  // pivots the per-target reads into its own reach + drift roll-up (#272). The
-  // container owns the query state; this list only presents it. Empty until the
-  // deploy-state reads resolve — a skill then reads `not deployed` rather than a
-  // blank, which the roll-up already treats as an unconfirmed, uncounted target.
+  // Every deploy target, for the per-row reach + drift roll-up (#272). Empty
+  // until reads resolve — the roll-up treats that as unconfirmed, not "not deployed".
   targets?: DeploymentTarget[];
 }) {
-  // Which type segment is selected — local UI-state, never server-state. A
-  // segment only exists when its type has data, so any selection yields rows.
   const [filter, setFilter] = useState<TypeFilter>("all");
   const [query, setQuery] = useState("");
-  // null = loaded order; the table only reorders once the user clicks a header,
-  // so it never jumps before being asked to sort.
+  // null = loaded order; only reorders once a header is clicked.
   const [sort, setSort] = useState<SortState | null>(null);
-  // The row whose detail pane is open — UI-state, never server-state. Null keeps
-  // the table a pure scan surface until a row is picked (ADR-0016). Held by name
-  // (from the full inventory), so a later search narrowing the table does not close
-  // an already-open pane.
+  // Held by name (from the full inventory), so a search narrowing the table
+  // never closes an already-open pane (ADR-0016).
   const [selected, setSelected] = useState<string | null>(null);
   const toggleSelected = (name: string) =>
     setSelected((current) => (current === name ? null : name));
-  // Which skills are staged for a bulk action — UI-state, held by name and kept
-  // apart from `selected` so inspecting and staging never toggle each other
-  // (Model A, #291). Independent of the narrowed view, so filtering never drops
-  // a staged skill.
+  // Kept apart from `selected` so inspecting and staging never toggle each
+  // other (Model A, #291).
   const [staged, setStaged] = useState<ReadonlySet<string>>(new Set());
   const toggleStagedName = (name: string) =>
     setStaged((current) => toggleStaged(current, name));
-  // Each row's name button, keyed by skill name, so the detail pane can hand
-  // focus back to whichever row opened it (skill-detail-pane.tsx). A plain
-  // ref map rather than one ref: the pane's own instance persists across a
-  // row switch, so "the trigger" has to be looked up per selection, not
-  // captured once. Exposed as a stable lookup function (not a resolved
-  // element) because a row can unmount and remount — a narrowing search
-  // hides it, clearing the search brings it back as a new DOM node — while
-  // the pane, keyed only by name, stays open the whole time; the pane looks
-  // this up fresh at close time rather than holding a value that would go
-  // stale the moment the row round-trips.
+  // A ref map, not one ref: the pane instance persists across a row switch,
+  // so the trigger is looked up fresh per selection (skill-detail-pane.tsx).
   const rowButtonRefs = useRef(new Map<string, HTMLButtonElement>());
   const getTriggerElement = useCallback(
     (name: string) => rowButtonRefs.current.get(name) ?? null,
     [],
   );
-  // On a narrow window the pane sits below the whole table, so opening one from
-  // a row near the top would look like nothing happened. Bring it into view on
-  // selection; beside the table it is already visible and this does nothing.
+  // On a narrow window the pane sits below the table — bring it into view.
   const paneRef = useRef<HTMLElement>(null);
   useEffect(() => {
     if (selected === null) return;
@@ -118,23 +92,17 @@ export function InventoryList({
     );
   }
 
-  // Segments derive from the full inventory; the table body reads the narrowed
-  // set. Filtering never touches the segment set, so a segment never vanishes
-  // because it is the one selected. Type filter → name search → sort compose in
-  // that order; the result is the same whichever narrows first.
+  // Segments derive from the full inventory, so a segment never vanishes
+  // because it's the one selected.
   const segments = deriveTypeSegments(primitives);
   const narrowed = filterByName(filterByType(primitives, filter), query);
   const visible = sort ? sortPrimitives(narrowed, sort) : narrowed;
-  // How many staged skills the current filter/search hides, so the bulk bar can
-  // warn that a bulk action reaches beyond what is on screen (#291).
   const hiddenCount = hiddenStagedCount(
     staged,
     visible.map((primitive) => primitive.name),
   );
 
-  // The open pane's skill, read from the full inventory so a narrowing search
-  // never orphans the selection. skillDeployments is the per-target version lens
-  // over the same targets the Deployed column counts (#290).
+  // Read from the full inventory so a narrowing search never orphans the selection.
   const selectedPrimitive =
     selected === null
       ? null
@@ -145,23 +113,16 @@ export function InventoryList({
 
   const table = (
     <>
-      {/* Every row's target picker offers Global and nothing else until a repo
-          is registered, so say once — above the table, not per row — where repo
-          targets come from. Gated on registryReady: an unread registry looks
-          identical to an empty one (#37), and claiming "none registered"
-          before it resolves would be a guess. */}
+      {/* Gated on registryReady: an unread registry looks identical to an
+          empty one (#37). */}
       {registryReady && repos.length === 0 ? (
         <RegisterRepoHint className="block px-card-x pt-row-y" />
       ) : null}
-      {/* Search and type filter share one toolbar row: scan-by-name on the left,
-          scope-by-type on the right (mockup 3a). Both stay local UI-state. */}
       <div className="flex flex-wrap items-center gap-3 px-card-x py-row-y">
         <div className="relative w-full max-w-[240px]">
           <label htmlFor="inventory-search" className="sr-only">
             Search skills
           </label>
-          {/* Leading glyph clears the input's pl-7; pointer-events-none so it
-              never steals the click focus from the field. */}
           <span
             aria-hidden="true"
             className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-2.5 text-dim text-mono-sm"
@@ -193,31 +154,20 @@ export function InventoryList({
           registryReady={registryReady}
         />
       ) : null}
-      {/* Below the table's floor the columns would be squeezed past reading, so
-          the overflow becomes a real scrollbar the user can reach — never the
-          silent clip that hid Deployed and the chevron off-screen. A scrollable
-          region is reachable from the keyboard too, so it is named and takes
-          focus (WCAG 2.1.1). */}
+      {/* Real scrollbar below the table's floor, never a silent clip. Named
+          and focusable (WCAG 2.1.1). */}
       <section
         aria-label="Central inventory table"
         // biome-ignore lint/a11y/noNoninteractiveTabindex: a scroll container that cannot take focus is keyboard-unreachable (WCAG 2.1.1), and Safari does not focus scrollers on its own
         tabIndex={0}
-        // The rows scroll here, not on the page: this is the box the sticky
-        // column headers below anchor to, and it is what leaves the detail pane
-        // beside it standing still. Bounded only where the card is bounded
-        // (inventory-panel.tsx); stacked below the table it grows and the page
-        // scrolls instead.
+        // Rows scroll here, not the page — this is what the sticky headers
+        // anchor to and what leaves the detail pane standing still.
         className="min-h-0 flex-1 overflow-x-auto overflow-y-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
       >
-        {/* table-fixed, and the widths below are what makes it bite: under the
-            browser default the cells size to their content, so one long skill
-            description stretched the table thousands of pixels past the card
-            that clips it. Fixed layout hands the width back to the container and
-            lets `truncate` do its job on the description cell. */}
+        {/* table-fixed + explicit widths: without it, one long description
+            stretches the table past the card that clips it. */}
         <Table className="table-fixed min-w-[560px]">
-          {/* Sticky against the scrolling section above, so the columns keep
-              naming themselves however far down the list you are. Opaque, or
-              the rows would read straight through it. */}
+          {/* Opaque, or the rows would read straight through the sticky header. */}
           <TableHeader className="sticky top-0 z-10 bg-card">
             <TableRow>
               <TableHead className="w-10">
@@ -239,15 +189,12 @@ export function InventoryList({
               >
                 Name
               </SortableHead>
-              {/* No width: description absorbs whatever the fixed columns leave,
-                  so it is the one that gives when the card narrows. */}
+              {/* No width: absorbs whatever the fixed columns leave. */}
               <SortableHead column="description" sort={sort} onSort={setSort}>
                 Description
               </SortableHead>
-              {/* Deployed is a per-skill roll-up, not a primitive field, so it is
-                  not a sort key (out of #289 scope) — a plain header. */}
+              {/* Not a primitive field, so not a sort key (out of #289 scope). */}
               <TableHead className="w-40">Deployed</TableHead>
-              {/* Trailing chevron column: the row's expand affordance. */}
               <TableHead className="w-8">
                 <span className="sr-only">Expand</span>
               </TableHead>
@@ -265,21 +212,13 @@ export function InventoryList({
                 <TableRow
                   key={primitive.name}
                   onClick={() => toggleSelected(primitive.name)}
-                  // Hover and selected are one ramp apart, and the two classes
-                  // are mutually exclusive so hovering the selected row never
-                  // drags it back down the ramp.
                   className={
                     primitive.name === selected ? "bg-active" : "hover:bg-inset"
                   }
                 >
                   <TableCell>
-                    {/* The box stays 16px — density is the point — but a 16px
-                        target in a 36-row table is awkward to hit, so the label
-                        pads it out past the 24px floor (WCAG 2.2 AA 2.5.8).
-                        Staging is independent of opening the pane, so the label
-                        stops the click from bubbling to the row's select
-                        handler; it sits on the label, not the box, because the
-                        padding's own click bubbles too (Model A, #291). */}
+                    {/* Label pads the 16px box past the 24px floor (WCAG 2.2 AA
+                        2.5.8) and stops the click from bubbling to the row select. */}
                     {/* biome-ignore lint/a11y/useKeyWithClickEvents: the label triggers no action of its own — it only stops a bubble, and the keyboard reaches the checkbox directly */}
                     <label
                       className="-m-1.5 inline-flex p-1.5"
@@ -298,12 +237,8 @@ export function InventoryList({
                     <TypeTag type={primitive.type} />
                   </TableCell>
                   <TableCell className="font-mono text-data text-fg">
-                    {/* Clicking anywhere on the row opens the pane (#290); the
-                        name stays a real button so keyboard users have a
-                        focusable control. It stops propagation so a mouse click
-                        resolves to a single toggle, not the button and the row
-                        both firing. Block-level so a long name truncates to the
-                        column instead of spilling out of it. */}
+                    {/* A real button for keyboard focus (#290); stops
+                        propagation so a click resolves to one toggle, not two. */}
                     <button
                       ref={(el) => {
                         if (el) rowButtonRefs.current.set(primitive.name, el);
@@ -317,17 +252,13 @@ export function InventoryList({
                       aria-expanded={primitive.name === selected}
                       aria-controls={`skill-detail-${primitive.name}`}
                       title={primitive.name}
-                      // Padding pulled back by an equal negative margin: the
-                      // hit area reaches the 24px floor (WCAG 2.2 AA 2.5.8)
-                      // while the row keeps its measured height.
+                      // Negative margin offsets the padding: hit area reaches
+                      // the 24px floor (WCAG 2.2 AA 2.5.8) without growing the row.
                       className="-my-0.5 block w-full truncate py-0.5 text-left text-inherit focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
                     >
                       {primitive.name}
                     </button>
                   </TableCell>
-                  {/* The full description is one click away in the detail pane,
-                      so the cell keeps to one line and the title attribute
-                      carries the rest for a hover. */}
                   <TableCell
                     className="truncate text-desc text-muted"
                     title={primitive.description}
@@ -339,9 +270,7 @@ export function InventoryList({
                       rollup={rollUpDeployment(primitive.name, targets)}
                     />
                   </TableCell>
-                  {/* Chevron mirrors the row's selected state — amber when its
-                      pane is open, dim otherwise. Decorative: the name button
-                      already carries aria-expanded for assistive tech. */}
+                  {/* Decorative — the name button already carries aria-expanded. */}
                   <TableCell className="text-right">
                     <span
                       aria-hidden="true"
@@ -363,30 +292,20 @@ export function InventoryList({
   );
 
   return (
-    // Side by side only while both fit: the table's 560px floor plus the 320px
-    // pane needs a ~1200px window once the sidebar and page padding are paid
-    // for. Narrower than that the pane drops below the table instead of eating
-    // its width, which is what would push Deployed back behind a scrollbar.
-    // Side by side the two columns stretch to the same height, so the pane
-    // reaches the bottom of the frame the list scrolls in.
+    // Side by side only ~1200px+: table's 560px floor + 320px pane, plus
+    // sidebar and padding. Narrower, the pane drops below the table instead.
     <div className="flex min-h-0 flex-1 flex-col min-[1200px]:flex-row min-[1200px]:items-stretch">
-      {/* A bounded column, so the table's own scrolling region can take the
-          height the toolbar above it leaves. */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">{table}</div>
       {selectedPrimitive ? (
         <SkillDetailPane
           ref={paneRef}
           primitive={selectedPrimitive}
           deployments={skillDeployments(selectedPrimitive.name, targets)}
-          // The reach is unconfirmed while any target's read is pending or
-          // unreadable, so an empty "deployed to" list holds off on the definite
-          // "not deployed" (J04) — the same signal the deployed cell reads.
           unconfirmed={Boolean(
             selectedRollup?.pending || selectedRollup?.unreadable,
           )}
           deployAction={
-            // Keyed by skill so switching skills mounts a fresh action: a
-            // pending pick or a forceable-reinstall refusal from the previous
+            // Keyed by skill: a pending pick or refusal from the previous
             // skill can never carry over and overwrite the next one (#66).
             <DeploySkillAction
               key={selectedPrimitive.name}
@@ -403,9 +322,7 @@ export function InventoryList({
   );
 }
 
-// A clickable column header that drives the shared sort state. The active
-// column carries aria-sort so the direction is announced to assistive tech and
-// visible via the glyph — the "active sort is visible" acceptance signal (#287).
+// The active column carries aria-sort and a visible glyph (#287).
 function SortableHead({
   column,
   sort,
@@ -416,8 +333,6 @@ function SortableHead({
   column: SortColumn;
   sort: SortState | null;
   onSort: (next: SortState) => void;
-  // Carries the column width through to the <th>, which is where fixed table
-  // layout reads it.
   className?: string;
   children: ReactNode;
 }) {
@@ -431,8 +346,6 @@ function SortableHead({
         type="button"
         onClick={() => onSort(nextSort(sort, column))}
         className={cn(
-          // Same padded-target trick as the row's name button: the negative
-          // margin keeps the header row's height while the button clears 24px.
           "-my-1.5 flex cursor-pointer items-center gap-1 py-1.5 font-mono text-tag uppercase tracking-tag text-inherit hover:text-fg-2",
           HOVER_TRANSITION,
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber",

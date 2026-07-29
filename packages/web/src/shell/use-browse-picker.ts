@@ -1,17 +1,8 @@
 import { useState } from "react";
 
-// The open/select/close state for a BrowseDialog, shared by every container
-// that mounts one (the ⚙ Inventory source view's change-source form, the
-// connect gate's connect screen, and the sidebar's `+ repo`) instead of each
-// re-declaring the same open flag and handler trio. Consuming
-// components still mount <BrowseDialog /> themselves — this only owns the
-// state, keeping the JSX (which differs slightly per container's layout) local.
-// The dialog confirms a list in both modes (issue #151) — one path in connect,
-// every checked repo in register — so the callback takes the list and each
-// container decides what to do with it.
-// Confirming closes the dialog by default, which is right wherever the
-// selection is the whole answer. A host that reports back into the dialog
-// (register, issue #175) opts out, and owns dismissing it itself.
+// Open/select/close state for a BrowseDialog, shared by every container that
+// mounts one. Callback takes a list — one path in connect, every checked repo
+// in register (#151). closeOnSelect: false lets register report back in-dialog (#175).
 export function useBrowsePicker(
   onSelect: (paths: string[]) => void,
   { closeOnSelect = true }: { closeOnSelect?: boolean } = {},

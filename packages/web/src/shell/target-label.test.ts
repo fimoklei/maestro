@@ -36,10 +36,9 @@ describe("targetLabel", () => {
   });
 
   it("grows the tail until it is unique among sibling paths", () => {
-    // The two clones share their last two segments (repos/agent-harness); a
-    // fixed two-segment tail would render both identically — the very failure
-    // #211 reports, just relocated. The label must extend to the first segment
-    // that tells them apart.
+    // Both clones share their last two segments; a fixed-length tail would
+    // render them identically (#211, relocated) — must extend to the first
+    // segment that tells them apart.
     const a = "/Users/me/clientA/repos/agent-harness";
     const b = "/Users/me/clientB/repos/agent-harness";
     const siblings = [a, b];

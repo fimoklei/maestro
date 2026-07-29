@@ -2,19 +2,15 @@ import type { ButtonHTMLAttributes } from "react";
 import { cn } from "./cn";
 import { HOVER_TRANSITION } from "./hover-transition";
 
-// Mono-typeset action button for the cockpit. primary = amber fill (one main
-// action per view); success = green fill (confirm deploy); ghost = amber outline
-// (row-level "deploy →"); quiet = grey outline; dashed = additive ("+ register").
-// Extends the native button so onClick/disabled/type pass straight through.
+// Mono-typeset action button. primary/success/ghost/quiet/dashed variants —
+// see variantClasses below for what each means.
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "success" | "ghost" | "quiet" | "dashed";
   size?: "sm" | "md" | "lg";
 }
 
-// Each variant's hover moves its fill or border one step up its own ramp and
-// nothing else (DESIGN.md §5: no scale, no lift, no shadow). `enabled:` keeps a
-// disabled button inert.
+// enabled: keeps a disabled button inert. No scale/lift/shadow (DESIGN.md §5).
 const variantClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
   primary:
     "font-bold text-on-accent bg-amber border-amber enabled:hover:bg-amber-hover enabled:hover:border-amber-hover",
@@ -51,11 +47,8 @@ export function Button({
       className={cn(
         "cursor-pointer whitespace-nowrap border font-mono",
         HOVER_TRANSITION,
-        // Keyboard focus shows a tokenized amber ring on every variant, which
-        // replaces the UA default outline. No transition on the ring, so
-        // prefers-reduced-motion is honored by construction (WCAG 2.4.7;
-        // issue #227). Do not add outline-none here: it sets --tw-outline-style
-        // to none, which focus-visible:outline-2 reads, silently hiding the ring.
+        // Never add outline-none: it sets --tw-outline-style to none, which
+        // focus-visible:outline-2 reads, silently hiding the ring (#227).
         "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber",
         "disabled:cursor-not-allowed disabled:border-line-chip disabled:bg-dim-bg disabled:text-dim",
         size === "lg" ? "rounded-item" : "rounded-control",

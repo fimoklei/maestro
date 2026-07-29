@@ -20,10 +20,8 @@ import type { DeployedPrimitive, SkippedEntry } from "./use-deploy-state";
 import { useRemoveDeployedSkill } from "./use-remove-deployed-skill";
 import { useRemovePreflight } from "./use-remove-preflight";
 
-// Per-skill drift badge as a Control Room Chip. The state is carried in text
-// (not colour alone) so it stays accessible and honest: "unknown" reads as
-// unknown, never as up-to-date (J04). Nothing renders while the check is still
-// pending — the badge fills in when drift resolves.
+// Per-skill drift badge. State is carried in text, never colour alone, so
+// "unknown" never reads as up-to-date (J04). Renders nothing while pending.
 const driftBadge: Record<
   Exclude<DriftStatus, "pending">,
   { tone: "ok" | "drift" | "dim"; label: string; hint?: string }
@@ -31,9 +29,8 @@ const driftBadge: Record<
   behind: { tone: "drift", label: "behind" },
   "up-to-date": { tone: "ok", label: "up-to-date" },
   unknown: { tone: "dim", label: "unknown" },
-  // Same neutral tone as unknown (state is carried in text, not colour), but a
-  // distinct label + hint so a reachability failure reads as auth/network, not a
-  // generic unknown — and never as up-to-date (J04).
+  // Distinct label + hint so a reachability failure reads as auth/network, not
+  // a generic unknown.
   unverified: {
     tone: "dim",
     label: "unverified",
@@ -53,14 +50,9 @@ function DriftBadge({ status }: { status: DriftStatus }) {
   );
 }
 
-// Presentational deploy-state rows for one target. A genuinely empty target
-// renders no body at all: its card header carries the "● empty" status chip,
-// which states the same fact without a sentence per card. Skipped entries are
-// shown as a warning, never dropped silently. The optional `drift` adds the
-// per-skill badge and the deployed -> latest pair; the `target` names the scope,
-// so a behind row can offer a one-click Update against it.
-// A pending model is the default so a list rendered before its drift query
-// resolves shows no badge, rather than a spurious one.
+// Presentational rows for one target. A genuinely empty target renders no
+// body — the card header's "● empty" chip already states it. Pending default
+// avoids a spurious badge before the drift query resolves.
 const PENDING_DRIFT = driftViewModel({ data: undefined, isError: false });
 
 export function DeployStateList({
@@ -73,37 +65,24 @@ export function DeployStateList({
   primitives: DeployedPrimitive[];
   skipped: SkippedEntry[];
   drift?: DriftViewModel;
-  // The scope these rows belong to. A global target carries the tools it
-  // covers, so the confirmation cannot be rendered without them — the scope
-  // line is what keeps a set-based action honest, and an optional prop would
-  // let a host drop it silently (#338).
+  // Required, not optional: a global target's tools must be present or the
+  // confirmation can't render, and an optional prop could drop them (#338).
   target: RemoveDialogTarget;
-  // Called once a removal has landed, after the dialog is gone. The modal's own
-  // focus restore aims at the trigger that opened it, and a successful removal
-  // destroys that trigger along with its row — so the host moves focus to the
-  // card header instead.
+  // Called after the dialog is gone — a successful removal destroys the
+  // trigger the modal's own focus-restore would otherwise aim at.
   onRemoved?: () => void;
 }) {
-  // Which skill's removal is being confirmed, if any. UI state: one dialog at a
-  // time, named by the row that opened it.
   const [removing, setRemoving] = useState<string | null>(null);
   const [justRemoved, setJustRemoved] = useState(false);
-  // Every removal this card has seen, kept for the session: the row is gone, so
-  // this is the only trace left of what happened here.
   const [removed, setRemoved] = useState<TracedRemoval[]>([]);
   const remove = useRemoveDeployedSkill();
-  // The same target as the server names it: the detected tools are the screen's
-  // business, never part of the request — the global scope's location and its
-  // reach are apm's own, resolved server-side (J07).
+  // Global's location is apm's own, resolved server-side (J07).
   const wireTarget: DeployTarget =
     target.kind === "repo" ? target : { kind: "global" };
-  // What that removal would destroy, asked as soon as the confirmation opens so
-  // the answer is on screen before the user commits.
   const preflight = useRemovePreflight(removing, wireTarget);
 
-  // Handing focus on in an effect, not in the success handler: the modal's
-  // focus-restore runs during its unmount, so anything moving focus earlier
-  // would be overwritten by it.
+  // In an effect, not the success handler: the modal's focus-restore runs
+  // during its unmount and would overwrite an earlier move.
   useEffect(() => {
     if (justRemoved) {
       setJustRemoved(false);
@@ -111,11 +90,8 @@ export function DeployStateList({
     }
   }, [justRemoved, onRemoved]);
 
-  // Genuinely nothing — not entries that exist but were skipped as unsupported.
-  // Treating a skipped-only target as empty would be the cockpit lying about it,
-  // so that case falls through and still renders its warning below. A card
-  // emptied by its own last removal is not silent either: the trace of that
-  // removal is exactly what the user is looking for there.
+  // Genuinely nothing — a skipped-only target still falls through to its
+  // warning below, and a card just emptied by its own removal shows the trace.
   if (primitives.length === 0 && skipped.length === 0 && removed.length === 0) {
     return null;
   }
@@ -129,8 +105,6 @@ export function DeployStateList({
     <div className="py-1.5">
       {primitives.map((primitive) => {
         const status = drift.skillStatus(primitive.name);
-        // The latest tag lets a behind row show the deployed -> latest pair
-        // without a second apm call.
         const latest = drift.latest(primitive.name);
         return (
           <div
@@ -146,16 +120,12 @@ export function DeployStateList({
                 : primitive.version}
             </span>
             <DriftBadge status={status} />
-            {/* Update is offered only when behind — never for up-to-date,
-                pending, or unknown (the J04 rule: unknown is not actionable). */}
             {status === "behind" ? (
               <UpdateSkillAction
                 skillName={primitive.name}
                 target={wireTarget}
               />
             ) : null}
-            {/* The row's named actions, last in the row and always visible so
-                they exist for touch and keyboard, not only for a mouse. */}
             <ActionsMenu
               label={`Actions for ${primitive.name}`}
               items={[
@@ -174,9 +144,7 @@ export function DeployStateList({
       {removing !== null ? (
         <RemoveSkillDialog
           skillName={removing}
-          // The version the row is showing. Null rather than a guess when the
-          // list no longer carries that skill — the confirmation names what
-          // this screen knows, never a build it inferred.
+          // Null rather than a guess if the list no longer carries this skill.
           version={
             primitives.find((primitive) => primitive.name === removing)
               ?.version ?? null
@@ -199,32 +167,23 @@ export function DeployStateList({
                 type: "skill",
                 name: removing,
                 target: wireTarget,
-                // The token that came with the paths the dialog just named —
-                // never a client-rebuilt path list, which a direct request
-                // could guess without ever having asked preflight anything.
+                // The token that came with the paths the dialog just named, not
+                // a client-rebuilt list a direct request could guess.
                 confirmedReclaimToken: preflight.data?.reclaim?.token,
               },
               {
-                // Only a proven removal closes the dialog. A failure keeps it
-                // open with apm's reason, so it never reads as if nothing
-                // happened.
-                // The server's own answer, never the row: it names the version
-                // its lockfile pinned and the tools its live probe found, both
-                // of which the screen can have wrong by the time the user
-                // confirms (#383).
+                // Only a proven removal closes the dialog — a failure keeps it
+                // open with apm's reason.
                 onSuccess: (data) => {
                   const scope = data.removed.scope;
                   setRemoved((seen) => [
                     ...seen,
                     {
-                      // Append-only, so the count so far names this event and
-                      // never collides with an earlier one.
                       id: seen.length,
                       name: data.removed.name,
                       version: data.removed.version,
-                      // A response that carried no scope leaves the screen's own
-                      // target, which is what the user consented to — the best
-                      // available answer, never a guess at a different one.
+                      // No scope in the response falls back to what the user
+                      // consented to, never a guess at a different target.
                       target:
                         scope?.kind === "global"
                           ? { kind: "global", tools: scope.tools }

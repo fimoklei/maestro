@@ -1,11 +1,6 @@
-// The one owner of "what does the removal confirmation say about the check that
-// ran in front of it". It folds the check's outcomes into the single value the
-// dialog renders, and applies the J04 rule to consent: a check that could not
-// run is never reported as nothing-to-lose. A refusal is kept apart from a
-// failure, because they mean opposite things — one says the removal cannot
-// happen, the other says nobody knows yet what it would cost (#385).
-// Pure and framework-free, so both the dialog and its host read one rule
-// instead of each re-deriving it.
+// Applies J04 to consent (deployed-view.ts): a check that could not run is
+// never reported as nothing-to-lose. A refusal (removal cannot happen) is kept
+// apart from a failure (nobody knows the cost yet) — they mean opposites (#385).
 import type { ReclaimPreview, RemovePreflightError } from "@maestro/core";
 import { HttpError } from "../api/http";
 import type { RemovePreflight } from "./use-remove-preflight";
@@ -25,29 +20,21 @@ export type RemoveWarningState =
   | "check-failed";
 
 export type RemovePreflightView =
-  // The removal is still on the table: the check answered, is still running, or
-  // could not run. Any of those leaves the user free to go ahead. The leftover
-  // copies ride along rather than being read off the query a second time — a
-  // query holds the previous answer's data through a failing refetch, so a
-  // second reader would name paths the removal is about to delete underneath a
-  // message saying it cannot run.
+  // Still on the table: answered, running, or could not run — all leave the
+  // user free to go ahead. Reclaim rides along rather than a second query read,
+  // which could name paths under a message saying the check can't run.
   | {
       kind: "warning";
       warning: RemoveWarningState;
       reclaim: readonly ReclaimPreview[];
     }
-  // The server refused the request itself, in its own words. The removal cannot
-  // succeed, so the dialog states the reason and offers no confirm — offering
-  // one would be a lie the user pays a round-trip to find out.
+  // The server refused outright — no confirm offered, since offering one would
+  // be a lie the user pays a round-trip to find out.
   | { kind: "refused"; message: string };
 
-// Which preflight errors mean the removal itself cannot succeed. Keyed by
-// core's own error union, so a refusal added there cannot ship without a
-// decision here. `invalid-body` is the route's own body-shape refusal and sits
-// outside that union, but means the same thing to the user.
-// An allowlist, never a blocklist (code-standards.md): a code this build has
-// never heard of says nothing about whether the removal can succeed, so it
-// falls through to the failure state that still lets the user through.
+// Keyed by core's own error union, so a new refusal there is a type error here.
+// Allowlist, not blocklist (code-standards.md): an unrecognised code falls
+// through to the failure state that still lets the user through.
 const REFUSES_THE_REMOVAL: Record<
   RemovePreflightError | "invalid-body",
   boolean
@@ -57,8 +44,6 @@ const REFUSES_THE_REMOVAL: Record<
   "invalid-name": true,
   "repo-not-registered": true,
   "no-supported-tool": true,
-  // The server tried and could not answer. That settles nothing about the
-  // removal, so it stays offered.
   "preflight-failed": false,
 };
 
@@ -68,8 +53,6 @@ function refusalMessage(error: unknown): string | null {
   if (!(error instanceof HttpError) || error.code === undefined) {
     return null;
   }
-  // The lookup takes an arbitrary string, so an unrecognised code reads as
-  // undefined rather than matching.
   const refuses =
     REFUSES_THE_REMOVAL[error.code as keyof typeof REFUSES_THE_REMOVAL];
   return refuses === true ? error.message : null;
@@ -81,8 +64,7 @@ export function removePreflightView(query: {
   isPending: boolean;
   isError: boolean;
 }): RemovePreflightView {
-  // Read the error before the data: a failed refetch leaves the previous
-  // answer in hand, and that answer describes a check this one just disproved.
+  // Error before data: a failed refetch leaves a now-disproved answer in hand.
   if (query.isError) {
     const refusal = refusalMessage(query.error);
     return refusal === null

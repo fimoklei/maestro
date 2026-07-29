@@ -685,11 +685,9 @@ describe("BrowseDialog", () => {
     });
 
     it("reaches home on the first refusal under production query defaults", async () => {
-      // Every other test here disables retries. Production does not, and
-      // TanStack Query's default is three retries with backoff — which would
-      // stall the fallback behind seven seconds of loading state and re-send
-      // a refusal that can never change. Rendered with a bare QueryClient so
-      // that default is what is under test.
+      // Other tests here disable retries; production's default of three with
+      // backoff would stall the fallback and re-send an unchanging refusal.
+      // Rendered with a bare QueryClient so that default is under test.
       writeLastFolder("connect", "/elsewhere/repos");
       const fetchMock = vi.fn(
         async (_input: RequestInfo | URL, init?: RequestInit) => {
@@ -725,10 +723,9 @@ describe("BrowseDialog", () => {
     });
 
     it("falls back to home when the remembered folder sits outside the browse ceiling", async () => {
-      // HOME differs between sessions on the same origin (worktree to
-      // worktree, dev to smoke), so a remembered path can end up beyond the
-      // ceiling. Same silent fallback as a folder that no longer exists —
-      // both are "cannot be reached from here", not a problem to report.
+      // HOME differs between sessions (worktree to worktree, dev to smoke),
+      // so a remembered path can end up beyond the ceiling — same silent
+      // fallback as a folder that no longer exists.
       writeLastFolder("connect", "/elsewhere/repos");
       const fetchMock = vi.fn(
         async (_input: RequestInfo | URL, init?: RequestInit) => {

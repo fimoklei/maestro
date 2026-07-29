@@ -133,10 +133,8 @@ describe("first-run gate", () => {
     stubServer({ notConfigured: false });
     renderAt("/welcome");
 
-    // Checked synchronously, before the config fetch resolves: the gate must
-    // not render Welcome for even the brief pending window (Codex review
-    // finding — mirrors the same fix already applied to /welcome/connect in
-    // connect-view.tsx).
+    // Checked before the config fetch resolves — must not render Welcome
+    // even during the pending window (Codex review finding, mirrors connect-view.tsx).
     expect(
       screen.queryByRole("heading", {
         name: /central inventory not connected/i,

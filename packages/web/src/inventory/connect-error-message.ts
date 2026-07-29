@@ -1,10 +1,7 @@
 import { HttpError } from "../api/http";
 
-// Shared mapping from a connect mutation's error to the readable text shown
-// next to the path field. Both the Settings re-point screen and the connect gate's
-// connect step need this, and it must stay identical between them — a server
-// validation message should read the same regardless of which screen it
-// surfaced on.
+// Shared so a server validation message reads the same regardless of which
+// screen (Settings re-point, connect gate) it surfaced on.
 export function connectErrorMessage(error: unknown): string | null {
   if (error instanceof HttpError) {
     return error.message;
@@ -12,9 +9,7 @@ export function connectErrorMessage(error: unknown): string | null {
   return error ? "Could not connect the inventory." : null;
 }
 
-// The connect-time origin refusal (#147) gets its own affordance — an amber
-// card with a "browse again…" call to action — so both connect surfaces need
-// to recognise it by typed code, never by string-matching the message.
+// Both surfaces recognise this by typed code, never by string-matching (#147).
 export function isNoUsableOriginError(error: unknown): boolean {
   return error instanceof HttpError && error.code === "no-usable-origin";
 }

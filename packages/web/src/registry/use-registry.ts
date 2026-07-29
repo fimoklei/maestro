@@ -1,6 +1,4 @@
-// Server-state hooks for the consuming-repo registry. The registry lives on the
-// server; the screen only caches it (TanStack Query), so registering invalidates
-// the query and the list refetches itself (see .claude/rules/frontend.md).
+// Registering invalidates the query so the list refetches (frontend.md).
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 

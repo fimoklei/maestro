@@ -1,7 +1,5 @@
-// Server-state hook for the read-only filesystem browser (ADR-0009). The
-// endpoint is a POST (the Origin/Host guard only covers state-changing
-// methods), so this models it as a useQuery keyed by the requested path rather
-// than a useMutation — it is a read, just shaped as a POST on the wire.
+// Read-only filesystem browser (ADR-0009). A useQuery, not useMutation, even
+// though the endpoint is a POST — it's a read, just shaped as POST on the wire.
 import type {
   BrowseCrumb,
   BrowseEntry,
@@ -11,19 +9,12 @@ import type {
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 
-// The wire shape is owned by core, which produces it — re-exported here so the
-// dialog's components keep importing it from their own package (issue #156).
-// Type-only: `verbatimModuleSyntax` erases these, so no core runtime code
-// reaches the browser bundle. Values from core stay off-limits to web
-// (`.claude/rules/architecture.md`).
+// Type-only re-export so components keep importing from their own package
+// (#156); architecture.md forbids importing core values into web.
 export type { BrowseCrumb, BrowseEntry, BrowseEntryFacts };
 
-// The same type the route binds its response to (issue #156), so the client
-// cannot read a field the server never agreed to send.
-//
-// `parent` is absent at the home ceiling; that absence is the "up is disabled"
-// signal. Breadcrumbs arrive server-derived, so the client never splits a path
-// itself (issue #146).
+// `parent` absent = the "up is disabled" signal (home ceiling). Breadcrumbs
+// arrive server-derived — the client never splits a path itself (#146).
 type BrowseResponse = BrowseSuccess;
 
 export function useBrowseFilesystem(path: string) {
@@ -34,11 +25,8 @@ export function useBrowseFilesystem(path: string) {
         method: "POST",
         body: JSON.stringify({ path }),
       }),
-    // Every failure this endpoint returns is a verdict on the path itself —
-    // gone, out of bounds, not a directory, unreadable. Re-asking cannot
-    // change the answer, and Query's default three retries with backoff would
-    // hold the dialog in a loading state for seconds before the last-used
-    // folder can fall back to home (issue #406).
+    // Every failure here is a verdict on the path itself; re-asking can't
+    // change it, and default retries would stall the dialog for seconds (#406).
     retry: false,
   });
 }

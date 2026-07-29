@@ -129,10 +129,8 @@ describe("RemoveSkillDialog", () => {
       ).toBeInTheDocument();
     });
 
-    // There is no per-tool remove — apm's uninstall has no -t, and faking one
-    // orphans the other tools' files (ADR-0013). The old panel said so in a
-    // sentence. The ledger says it by giving a row nothing to press: a row that
-    // looks actionable makes a promise the system cannot keep.
+    // No per-tool remove — apm's uninstall has no -t, faking one orphans the
+    // other tools' files (ADR-0013). Rows have nothing to press instead.
     it("gives no row anything to press, focus, or read as a control", () => {
       renderDialog({ target: { kind: "global", tools: ["claude", "codex"] } });
 
@@ -174,10 +172,8 @@ describe("RemoveSkillDialog", () => {
     });
   });
 
-  // The confirm label used to grow with the skill name inside a fixed-width
-  // panel, so it had to shrink and ellipsise to fit (#388). The title already
-  // carries the name, so the label can stop repeating it — and then it cannot
-  // overflow at all.
+  // Confirm label used to grow with the skill name and ellipsise (#388);
+  // the title now carries the name, so the label stops repeating it.
   describe("its footer controls", () => {
     it("confirms with a fixed label that carries no name", () => {
       renderDialog();
@@ -362,9 +358,7 @@ describe("RemoveSkillDialog", () => {
   });
 
   // Amber and ▲ mean "this removal will cost something" (DESIGN.md § The Two
-  // Signals Rule). A check that has not answered has claimed nothing, and
-  // dressing it as a warning put the loudest block in the panel on screen and
-  // then took it away again on every removal of a clean copy.
+  // Signals Rule) — an unanswered check has claimed nothing yet.
   it("wears no warning surface while the check is still running", () => {
     renderDialog({ preflight: warns("checking") });
 
@@ -373,10 +367,8 @@ describe("RemoveSkillDialog", () => {
     expect(note).not.toHaveTextContent("▲");
   });
 
-  // "checking" almost always resolves into the clean panel, so the running
-  // check speaks from beside the control it is holding. In the body it would
-  // move the confirm button when the answer landed — under the pointer of
-  // someone waiting to press it.
+  // Speaks beside the control it's holding, not in the body — the body
+  // version moves the confirm button under the pointer when the answer lands.
   it("states beside the confirm control why it is unavailable", () => {
     renderDialog({ preflight: warns("checking") });
 
@@ -458,10 +450,8 @@ describe("RemoveSkillDialog", () => {
     });
   });
 
-  // The Mono-Is-Data Rule: a name, a version, a path or an action is mono;
-  // everything the user reads as a sentence is the sans body face. The dialog
-  // is the most prose-heavy screen in the cockpit, so it is where the rule
-  // slips first — it used to set every line, prose included, in mono.
+  // Mono-Is-Data Rule: name/version/path/action is mono, sentences are sans.
+  // This dialog used to set every line, prose included, in mono.
   describe("its typography", () => {
     it("sets the path it would delete from in mono", () => {
       renderDialog();
@@ -493,11 +483,8 @@ describe("RemoveSkillDialog", () => {
       expect(screen.getByRole("status").className).toContain("font-ui");
     });
 
-    // The panel's answer is the ledger, and the lead-in only introduces it. The
-    // answer therefore sits above its own label on the scale — the same
-    // ordering the old panel got wrong when its consequence line matched the
-    // boilerplate beneath it. Asserted as a step rather than two literal
-    // tokens: the rule is the ordering, not the sizes it lands on.
+    // The ledger is the answer, the lead-in only introduces it, so the ledger
+    // sits above its label on the scale. Asserted as a step, not literal sizes.
     it("steps the ledger above the lead-in that introduces it", () => {
       renderDialog();
 
@@ -535,10 +522,8 @@ describe("RemoveSkillDialog", () => {
     expect(screen.getByRole("dialog")).toHaveFocus();
   });
 
-  // The label carries the question alone, so without a description a screen
-  // reader hears "Remove tdd v0.5.0?, dialog" and has to go looking for the
-  // facts the confirmation exists to state. The warning and failure blocks
-  // announce themselves and stay out of it.
+  // Without a description a screen reader hears "Remove tdd v0.5.0?, dialog"
+  // and has to go hunting for the facts. Warning/failure blocks self-announce.
   describe("what it announces with the question", () => {
     const describedBy = () =>
       (screen.getByRole("dialog").getAttribute("aria-describedby") ?? "")
@@ -579,11 +564,8 @@ describe("RemoveSkillDialog", () => {
     });
   });
 
-  // The check can also come back with the server refusing the request outright.
-  // That is not a failed check — it is the removal already known to be
-  // impossible, so the dialog says why and stops offering it (#385). Nothing
-  // will be removed, so the panel also stops listing what would have gone: the
-  // title and one error block are the whole screen (#412).
+  // Server refusal isn't a failed check — removal is already known
+  // impossible, so the dialog says why and offers nothing (#385, #412).
   describe("when the check came back refused", () => {
     const refused = {
       kind: "refused" as const,
@@ -775,11 +757,8 @@ describe("RemoveSkillDialog", () => {
       ).toHaveTextContent(/local edits/i);
     });
 
-    // A global removal force-deletes the whole copy of any exclusive tool this
-    // machine no longer detects, beyond what apm's own scoped uninstall
-    // touches (#390). The confirmation must name it before the user agrees to
-    // it — on the ledger, as one more thing that disappears, rather than in a
-    // block underneath saying what else goes (#413).
+    // A global removal force-deletes an undetected exclusive tool's whole
+    // copy beyond apm's scoped uninstall (#390) — named on the ledger (#413).
     describe("naming what an untargeted tool's copy reclaim would also delete", () => {
       const leftover = [
         { tool: "codex" as const, path: "/Users/me/.agents/skills/tdd" },
@@ -869,10 +848,8 @@ describe("RemoveSkillDialog", () => {
         ).toBeEmptyDOMElement();
       });
 
-      // What #390 asks for: make the destructive path as inspectable and as
-      // loud as the deploy path. A force-deleted directory the user never
-      // targeted stays its own announced region — and a distinct one from the
-      // local-edits check, or a reader hears two identical regions.
+      // #390: a force-deleted untargeted directory gets its own announced
+      // region, distinct from the local-edits check.
       it("announces the leftover rows as their own named region", () => {
         renderWithLeftover();
 

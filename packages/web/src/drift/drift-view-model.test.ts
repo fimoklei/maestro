@@ -3,12 +3,8 @@ import type { DeployedPrimitive } from "../deploy-state/use-deploy-state";
 import { driftViewModel } from "./drift-view-model";
 import type { DriftResponse } from "./use-drift";
 
-// The single drift view-model is the one owner every screen reads: it absorbs the
-// query->view mapping, the per-skill and per-target joins, the J04 rule, the
-// empty-target rule, orphan-behind, the latest-version lookup, and synced state.
-// These behaviours were previously spread across toDriftView, deriveSyncedState,
-// skillDriftStatus, orphanBehind, and targetDriftIndicator; they are exercised
-// here through the one interface.
+// driftViewModel absorbs what was previously spread across toDriftView,
+// deriveSyncedState, skillDriftStatus, orphanBehind, and targetDriftIndicator.
 
 const query = (state: {
   data?: DriftResponse;

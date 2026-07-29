@@ -3,10 +3,8 @@ import { driftViewModel } from "../drift/drift-view-model";
 import type { DriftResponse } from "../drift/use-drift";
 import { type DeploymentTarget, rollUpDeployment } from "./deployed-rollup";
 
-// The deployed column is a client-side pivot: the per-target deploy-state + drift
-// reads folded onto one row per skill (#272). A target is each global tool-install
-// and each registered repo, counted individually. These behaviours are exercised
-// here through the one pure function the rendered cell reads.
+// The deployed column is a client-side pivot: per-target deploy-state + drift
+// folded onto one row per skill (#272), one target per tool-install/repo.
 
 const ranDrift = (
   behind: { name: string; current: string; latest: string }[],

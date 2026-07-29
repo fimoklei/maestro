@@ -1,34 +1,25 @@
-// Server-state hook for one repo's version drift. Drift lives on the server (it
-// runs `apm outdated`); the screen only caches it via TanStack Query, keyed by
-// repo path. It is a separate query from deploy-state by design: the skill list
-// renders immediately and the per-skill badge fills in when this resolves
-// (frontend.md). A long staleTime keeps it from re-running on every focus — a
-// drift check shells out and is not free.
+// Server-state hook for one repo's version drift (server runs `apm outdated`).
+// Separate query from deploy-state: the skill list renders immediately, the
+// badge fills in later (frontend.md). Long staleTime — a drift check isn't free.
 
 import type { VersionDrift } from "@maestro/core";
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 
-// The version-pair shape (name / current / latest) is owned by core, which parses
-// it from `apm outdated` (ADR-0007). Re-exported here — type-only, so
-// `verbatimModuleSyntax` erases it and no core runtime reaches the bundle — so
-// web components keep importing it from their own package (issue #248, ADR-0012).
+// Type-only re-export: verbatimModuleSyntax erases it, so no core runtime
+// reaches the bundle (#248, ADR-0012).
 export type { VersionDrift };
 
-// The honest server outcomes: the check ran (a behind set, possibly empty), or
-// it could not — either apm reached the tool but could not resolve against the
-// remote (`reason: "unverified"`, shown as its own auth/network state) or a bare
-// failure (shown as "unknown"). Never up-to-date. Mirrors core's OutdatedResult
-// at the HTTP boundary (web never imports core types).
+// Mirrors core's OutdatedResult at the HTTP boundary (web never imports core
+// values, ADR-0012). Never up-to-date.
 export type DriftResponse =
   | { behind: VersionDrift[] }
   | { ok: false; reason?: "unverified" };
 
 const FIVE_MINUTES = 5 * 60 * 1000;
 
-// Shared so the single-repo `useDrift` and the multi-repo `useQueries` roll-up run
-// one repo's drift check identically (same key, same staleTime) — a diverging key
-// would make the inventory column and a repo card re-shell the same check.
+// Shared so single-repo and multi-repo readers run identically — a diverging
+// key would re-shell the same check.
 export function driftQueryOptions(repo: string) {
   return {
     queryKey: ["drift", repo] as const,

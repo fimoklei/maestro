@@ -163,10 +163,8 @@ describe("SkillDetailPane", () => {
   });
 
   it("gives the heading a visible focus ring, so a keyboard user can see where focus landed", () => {
-    // Landing focus on the heading is only useful if it's visible — the
-    // project's standard focus-visible ring (Codex review finding on this
-    // branch) is what every other focusable control in the pane already
-    // carries (the close button, the search box).
+    // Focus must be visible: the standard focus-visible ring, same as
+    // every other focusable control here (Codex review finding).
     renderPane({});
 
     expect(screen.getByRole("heading", { name: /tdd/i })).toHaveClass(
@@ -177,14 +175,9 @@ describe("SkillDetailPane", () => {
   });
 
   it("returns focus to the element that opened it once it closes", () => {
-    // The pane persists across a row switch (inventory-list keeps one
-    // instance and only swaps `primitive`), so the return target has to be
-    // the caller-supplied lookup, not whatever `document.activeElement`
-    // happens to be — that would be corrupted by the pane's own mount effect
-    // moving focus to the heading. The lookup is resolved at close time, not
-    // captured up front, so a caller can look up a row that has since
-    // remounted (skill-detail-pane's own row can unmount and remount behind
-    // a narrowing search while the pane stays open).
+    // Return target is the caller-supplied lookup, not `document.activeElement`
+    // (corrupted by the pane's own mount effect) — resolved fresh at close
+    // time since the row can remount behind a narrowing search.
     const trigger = document.createElement("button");
     document.body.appendChild(trigger);
     trigger.focus();
@@ -197,10 +190,8 @@ describe("SkillDetailPane", () => {
   });
 
   it("keeps the deploy action out of the scrolling reading matter", () => {
-    // A long description must never push the one action in this pane out of
-    // reach: the description scrolls in its own region, the deploy control sits
-    // outside it. That the pane as a whole stays beside the scrolling table is
-    // layout, measured in the browser, not here (testing.md).
+    // Description scrolls in its own region so it never pushes the deploy
+    // control out of reach. Pane-beside-table layout is browser-measured (testing.md).
     renderPane({ deployAction: <button type="button">Deploy</button> });
 
     const action = screen.getByRole("button", { name: "Deploy" });

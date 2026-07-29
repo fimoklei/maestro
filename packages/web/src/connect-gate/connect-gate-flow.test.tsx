@@ -16,10 +16,8 @@ function jsonResponse(body: unknown, status: number) {
   });
 }
 
-// A stateful server: the inventory config starts unconfigured and "connects"
-// once /api/inventory/connect is POSTed, so the cockpit's own queries observe
-// the same state transition a real server would cause (see frontend.md: this
-// is server-state, not a hand-rolled fixture).
+// Stateful: config starts unconfigured, "connects" once POSTed — mirrors
+// server-state (frontend.md), not a static fixture.
 function stubServer() {
   let inventoryPath: string | null = null;
   vi.stubGlobal(
@@ -168,14 +166,9 @@ describe("connect gate", () => {
   );
 
   it("lands on Inventory even when the config refetch after connect is still in flight", async () => {
-    // Reproduces a race (Codex review finding): invalidateQueries only marks
-    // the config query stale and schedules a refetch — it does not update the
-    // cache synchronously. If the user continues before that refetch resolves,
-    // the gate's useFirstRun would still read the pre-connect cached
-    // "unconfigured" answer and bounce back to /welcome. The connect
-    // mutation's own response already carries the new inventoryPath, so the
-    // fix is to seed the cache from it directly — this test holds the config
-    // refetch open indefinitely to prove landing does not depend on it.
+    // Race (Codex review finding): invalidateQueries schedules a refetch but
+    // doesn't update the cache synchronously, so useFirstRun could still
+    // bounce to /welcome. Holds the refetch open to prove landing doesn't need it.
     let inventoryPath: string | null = null;
     let configRequests = 0;
     vi.stubGlobal(

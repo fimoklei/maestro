@@ -1,16 +1,8 @@
 import { Chip } from "../ui/chip";
 import type { DeployedRollup } from "./deployed-rollup";
 
-// The deployed column's cell: one glance at a skill's reach and health. It reads a
-// DeployedRollup (the pivot lives in deployed-rollup.ts) and renders three honest
-// signals — the target count, a ▲N drift chip, and a separate ? marker. It only
-// presents; it never re-derives the counts.
-//
-//   - `→ N targets` counts each tool and each repo the skill is deployed to; a
-//     zero reach reads `not deployed`, never a blank (#272, AC #9).
-//   - `▲N` counts the targets confirmed behind latest (AC #10).
-//   - `?` marks targets whose drift check could not run — kept apart from ▲N and
-//     from silence so "we don't know" never reads as "up to date" (J04, AC #11).
+// From a DeployedRollup (deployed-rollup.ts), presents only. `?` is kept
+// apart from ▲N and silence, so "we don't know" never reads up-to-date (J04).
 export function DeployedCell({ rollup }: { rollup: DeployedRollup }) {
   const {
     targetCount,
@@ -21,10 +13,7 @@ export function DeployedCell({ rollup }: { rollup: DeployedRollup }) {
     checking,
   } = rollup;
 
-  // The reach is unconfirmed while any target's read is still loading or has
-  // failed. Then a zero count must not read as a definite "deployed nowhere",
-  // and a positive count is only a lower bound — a trailing … says more may be
-  // unread (J04: unknown never reads as a fact).
+  // A trailing … says more may be unread while loading/failed (J04).
   const unconfirmed = Boolean(pending || unreadable);
   const reach =
     targetCount > 0
@@ -34,9 +23,6 @@ export function DeployedCell({ rollup }: { rollup: DeployedRollup }) {
       : unconfirmed
         ? "…"
         : "not deployed";
-  // The screen-reader label mirrors what a sighted user sees: the confirmed
-  // count (when any) followed by why the reach is not yet final, so an
-  // assistive-tech user never loses the count the glyph shows.
   const reachReason = unreadable
     ? "deploy state could not be read on every target"
     : "still reading deploy state";
@@ -47,10 +33,8 @@ export function DeployedCell({ rollup }: { rollup: DeployedRollup }) {
         }; ${reachReason}`
       : reachReason;
 
-  // Each marker carries its meaning as readable text, not a hover-only title:
-  // the glyph is aria-hidden and a visually-hidden label states the fact, so
-  // keyboard, touch, and screen-reader users get the same information a hover
-  // tooltip gives a mouse (frontend.md a11y baseline).
+  // Glyph is aria-hidden, sr-only label states the fact — same info a hover
+  // tooltip gives a mouse (frontend.md).
   const behindLabel = `${behindCount} ${
     behindCount === 1 ? "target is" : "targets are"
   } behind the latest version`;

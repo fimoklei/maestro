@@ -25,11 +25,9 @@ describe("useEscapeToClose", () => {
   });
 
   it("gives Escape to only the most recently opened panel when two are stacked", async () => {
-    // On /inventory the skill detail pane and a modal (the browse dialog
-    // behind "+ repo") can be open at once — each mounts its own
-    // useEscapeToClose. Both used to register an independent document
-    // listener, so one Escape press closed both; only the topmost panel
-    // should react.
+    // Two panels can be open at once, each mounting its own useEscapeToClose.
+    // Both used to register an independent document listener, so one Escape
+    // closed both; only the topmost should react.
     const bottomClose = vi.fn();
     const topClose = vi.fn();
     render(

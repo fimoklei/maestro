@@ -4,17 +4,9 @@ import { SidebarRegister } from "./sidebar-register";
 import { TargetsList } from "./targets-list";
 import { useFirstRun } from "./use-first-run";
 
-// Sidebar view navigation. NavItem stays presentational (a button); routing is
-// wired here via the router's navigate/location so the active view is driven by
-// the URL, not local state. On a first run (design f1-empty) the sidebar goes
-// inert: nav is dimmed and unclickable (there is nothing behind it yet but the
-// connect gate, which the gate route already enforces), Targets reads "none
-// yet" instead of the real list, and the register affordance disappears —
-// registering a repo before an inventory exists has nothing to deploy. The
-// register affordance also stays hidden on the gate routes themselves: connect
-// success flips firstRun to false while the user is still reading the gate's
-// confirmation, and `+ repo` appearing mid-beat competes with the one action
-// that screen offers.
+// On a first run the sidebar goes inert: nav dimmed, Targets reads "none yet",
+// register affordance hidden — nothing to deploy yet. Also hidden on the gate
+// routes themselves: `+ repo` appearing mid-confirmation would compete with it.
 const NAV_ITEMS = [
   { to: "/", label: "Deploy-state", icon: "⇶" },
   { to: "/inventory", label: "Inventory", icon: "▤" },

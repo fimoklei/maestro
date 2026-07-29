@@ -33,10 +33,8 @@ function renderPanel() {
   );
 }
 
-// Routes the fetch stub by URL: the panel reads the inventory, the registry (for
-// the per-row deploy action's repo choice), and — for the deployed column's
-// roll-up — each target's deploy-state. A deploy-state response always carries a
-// `skipped` list, so the stub returns the real shape, not a primitives-only stub.
+// Routes by URL: inventory, registry (deploy repo choice), and each target's
+// deploy-state (deployed-column roll-up). Returns the real shape with `skipped`.
 function stubApi(primitives: unknown[], repos: unknown[]) {
   vi.stubGlobal(
     "fetch",

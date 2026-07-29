@@ -44,27 +44,20 @@ const connectBodySchema = z.object({ path: z.string() });
 const browseBodySchema = z.object({ path: z.string() });
 
 const deployBodySchema = z.object({
-  // Any string passes the edge; "skills only" is a business rule in core, so
-  // a non-skill type gets an honest 422 instead of a shape-level 400.
+  // "skills only" is a core business rule, so a non-skill type is a 422, not a 400.
   type: z.string(),
   name: z.string(),
-  // Discriminated target: a repo carries a path the registry gate validates in
-  // core; global carries none, so no untrusted path crosses the boundary (J07).
+  // Global carries no path — no untrusted path crosses the boundary (J07).
   target: z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("repo"), repoPath: z.string() }),
     z.object({ kind: z.literal("global") }),
   ]),
-  // The cockpit-confirmed reinstall. Validated at the edge as an optional
-  // boolean; core treats it as the deliberate override of the destination guard
-  // (ADR-0006, #66). Absent or false means the guard runs normally.
+  // Deliberate override of the destination guard (ADR-0006, #66).
   force: z.boolean().optional(),
 });
 
-// Bulk deploy: the staged skills to one target. Names are validated as a
-// non-empty list at the edge; the per-skill business rules (slug check,
-// membership, guards) stay in the core deploy path each name is driven through.
 // No batch-wide force: a diverged copy always comes back as an attention row,
-// overridden only per item via the existing single-deploy route (#292).
+// overridden only per item via the single-deploy route (#292).
 const bulkDeployBodySchema = z.object({
   names: z.array(z.string()).min(1),
   target: z.discriminatedUnion("kind", [
@@ -73,11 +66,6 @@ const bulkDeployBodySchema = z.object({
   ]),
 });
 
-// Remove a deployed skill from one target. The same discriminated union deploy
-// takes: a repo carries a path the registry gate validates in core; global
-// carries none, so no untrusted path crosses the boundary on that route (J07).
-// A repoPath sent alongside a global kind is dropped by the union rather than
-// widening what the route reads.
 const removeBodySchema = z.object({
   type: z.string(),
   name: z.string(),
@@ -85,37 +73,26 @@ const removeBodySchema = z.object({
     z.object({ kind: z.literal("repo"), repoPath: z.string() }),
     z.object({ kind: z.literal("global") }),
   ]),
-  // Read only by the execute route. The token this same request's own preflight
-  // response carried with the leftover paths it named. Proves the confirmation
-  // the user saw came from this server's own preflight, rather than a
-  // client-built path list a caller could construct without ever asking
-  // preflight anything. Shaped as core mints it — a SHA-256 digest in lowercase
-  // hex — so anything else is refused at the edge rather than absorbed by the
-  // comparison behind it (security.md: allowlists over blocklists).
+  // Proves the confirmation came from this server's own preflight, not a
+  // client-built path list. Shaped as core mints it (allowlist, security.md).
   confirmedReclaimToken: z
     .string()
     .regex(/^[0-9a-f]{64}$/)
     .optional(),
 });
 
-// One wording for both remove routes: they take the same body, so a malformed
-// one is refused in the same words whichever the caller hit.
 const REMOVE_BODY_MESSAGE =
   'Expected a JSON body with type, name, and target ({ kind: "repo", repoPath } or { kind: "global" }).';
 
-// A failed drift check answers 200 with a body the web maps to a badge, not an
-// HTTP error (a screen reading "up-to-date" when the check failed would falsely
-// reassure). `reason: "unverified"` — apm reached the tool but could not resolve
-// against the remote — is forwarded so the cockpit shows "unverified" (an
-// auth/network hint) rather than a bare "unknown"; a genuine failure omits it.
+// A failed check is a 200 the web maps to a badge, never an HTTP error — a
+// screen reading "up-to-date" when the check failed would falsely reassure.
 const driftFailureBody = (result: { reason?: "unverified" }) =>
   result.reason
     ? { ok: false as const, reason: result.reason }
     : { ok: false as const };
 
-// Transport-layer mapping from the deploy use-case's typed errors to HTTP.
 // Business rules live in core; this table only chooses status codes and
-// readable messages (none of which echo paths or raw apm output).
+// readable messages (none echo paths or raw apm output).
 const deployErrorResponses: Record<
   DeploySkillError,
   { status: 400 | 403 | 404 | 409 | 422 | 502; message: string }
@@ -180,24 +157,20 @@ const deployErrorResponses: Record<
     message: "A deploy to this repo is already running. Wait for it to finish.",
   },
   "no-supported-tool": {
-    // 409, not 502: the machine simply has no Claude Code or Codex to deploy to,
-    // so there is nothing to install — a precondition the user resolves by
-    // installing a tool, not an apm failure (ADR-0011, #131).
+    // 409, not 502: nothing to install is a precondition the user resolves,
+    // not an apm failure (ADR-0011, #131).
     status: 409,
     message:
       "No supported tool (Claude Code or Codex) was found on this machine, so there is nothing to deploy to globally.",
   },
   "auth-required": {
-    // 502, not 401: the failure is between apm and GitHub, not an unauthorized
-    // request to Maestro (#119).
+    // 502, not 401: the failure is between apm and GitHub, not Maestro auth (#119).
     status: 502,
     message:
       "GitHub authentication is missing or expired. Run 'gh auth login' (or set GITHUB_TOKEN) and try again.",
   },
   "destination-symlinked": {
-    // 409, not 502: apm ran fine and refused on purpose. The destination is in a
-    // state the user fixes on their own machine — a conflict with the current
-    // state, not a failure between apm and GitHub (#180).
+    // 409, not 502: apm refused on purpose — a conflict, not a failure (#180).
     status: 409,
     message:
       "The skill's destination directory is a symlink, and apm refuses to deploy into one. Replace that per-skill link with a real directory, or move the link one level up so the whole skills directory is the symlink (for example .claude/skills -> .agents/skills), then try again.",
@@ -208,9 +181,6 @@ const deployErrorResponses: Record<
   },
 };
 
-// Transport-layer mapping from the remove use-case's typed errors to HTTP. Like
-// the deploy table, this only chooses status codes and readable messages — no
-// message echoes a path or raw apm output.
 const removeErrorResponses: Record<
   RemoveDeployedSkillError,
   { status: 400 | 403 | 404 | 409 | 422 | 502; message: string }
@@ -228,9 +198,7 @@ const removeErrorResponses: Record<
     message: "That repo is not registered with Maestro.",
   },
   "no-supported-tool": {
-    // 409, mirroring the deploy table: the machine simply has no Claude Code or
-    // Codex, so there is no global scope to remove from — a precondition the
-    // user resolves, not an apm failure (ADR-0011).
+    // 409, mirroring the deploy table (ADR-0011).
     status: 409,
     message:
       "No supported tool (Claude Code or Codex) was found on this machine, so there is no global deployment to remove.",
@@ -261,23 +229,18 @@ const removeErrorResponses: Record<
       "Another change to this repo is already running. Wait for it to finish.",
   },
   "remove-failed": {
-    // 502: apm ran and did not prove the removal. The cockpit adds the
-    // mixed-state warning — a half-finished uninstall leaves the repo between
-    // two states, and saying nothing would read as "nothing happened".
+    // 502: apm ran and didn't prove removal; the cockpit adds a mixed-state warning.
     status: 502,
     message: "apm did not confirm the removal. Check apm and try again.",
   },
 };
 
-// Transport-layer mapping for the pre-confirmation check. A failed check is an
-// error, never an empty warning: the cockpit must be able to tell "nothing to
-// lose" from "we could not look".
+// A failed check is an error, never an empty warning — the cockpit must tell
+// "nothing to lose" apart from "we could not look".
 const removePreflightErrorResponses: Record<
   RemovePreflightError,
   { status: 400 | 403 | 404 | 409 | 422 | 502; message: string }
 > = {
-  // The request-shape refusals are the removal's own — one wording, whichever
-  // route the user hit.
   "unsupported-primitive-type":
     removeErrorResponses["unsupported-primitive-type"],
   "invalid-name": removeErrorResponses["invalid-name"],
@@ -290,8 +253,6 @@ const removePreflightErrorResponses: Record<
   },
 };
 
-// Transport-layer mapping from the domain's typed validation errors to readable
-// text the cockpit shows next to the path field.
 const repoPathErrorMessages: Record<
   RepoPathError | "central-inventory",
   string
@@ -304,10 +265,8 @@ const repoPathErrorMessages: Record<
     "The central inventory cannot be registered as a consuming repo.",
 };
 
-// Transport-layer mapping for the connect use-case. Path-shape failures are
-// 400 (client sent a bad path); a real directory that simply is not an
-// inventory is 422 (the request was well-formed but unprocessable). No message
-// echoes the path — it may be a misconfigured secret.
+// Path-shape failures are 400; a real directory that isn't an inventory is
+// 422. No message echoes the path — it may be a misconfigured secret.
 const connectErrorResponses: Record<
   ConnectInventoryError,
   { status: 400 | 422; message: string }
@@ -330,10 +289,8 @@ const connectErrorResponses: Record<
   },
 };
 
-// Transport-layer mapping for the browse use-case. outside-root is a 403 (the
-// home-root ceiling refused it — the info-disclosure boundary), a missing path
-// is 404, and a non-directory path is a 400 bad path. No message echoes the path
-// — it may be a misconfigured secret (security.md).
+// outside-root is 403 (the info-disclosure boundary); no message echoes the
+// path (security.md).
 const browseErrorResponses: Record<
   BrowseError,
   { status: 400 | 403 | 404 | 422; message: string }
@@ -347,38 +304,30 @@ const browseErrorResponses: Record<
     status: 400,
     message: "That path is not a directory.",
   },
-  // Exists and is a directory, but its contents could not be read (e.g.
-  // permission denied). 422: the request was well-formed but unprocessable.
+  // In bounds and a directory, but unreadable — 422, not 403/404.
   unreadable: {
     status: 422,
     message: "That directory could not be read.",
   },
 };
 
-// Builds the Hono app from injected dependencies so routes are testable in
-// isolation (see tests/integration). The dependencies that reach the outside
-// world — the registry and the Origin/Host enforcement — are passed in; tests
-// construct them against temp dirs and with the guard disabled, production uses
-// realDeps() below. server.ts attaches listening to the default `app`.
-
+// Built from injected dependencies so routes are testable in isolation
+// (tests/integration). Production uses realDeps() below.
 export type AppDeps = {
   registry: Registry;
   inventory: InventoryReader;
   connect: ConnectInventory;
   browse: BrowseFilesystem;
-  // The app serves both the per-repo and the global deploy-state route, so its
-  // reader is the one that requires tool presence. Omitting that dependency is
-  // a compile error here, not a 500 discovered days later (#187).
+  // Serves both per-repo and global routes, so tool presence is required —
+  // omitting it is a compile error here, not a 500 discovered later (#187).
   deployState: GlobalDeployStateReader;
   deploy: DeploySkill;
   remove: RemoveDeployedSkill;
   drift: CheckVersionDrift;
-  // Resolves apm's user-scope (global) root server-side. No client-supplied path
-  // reaches the global read; tests inject a sandbox so the real ~/.apm is never
-  // touched (see .claude/rules/apm-driver.md).
+  // Tests inject a sandbox so the real ~/.apm is never touched (apm-driver.md).
   resolveGlobalRoot: () => string;
-  // Production always enables the Origin/Host guard on write routes; tests
-  // construct it disabled. There is no static bypass header.
+  // Production always enables the guard; tests construct it disabled. No
+  // static bypass header.
   enforceOriginHost: boolean;
 };
 
@@ -387,9 +336,7 @@ export function createApp(deps: AppDeps) {
 
   app.get("/api/health", (c) => c.json(coreHealth()));
 
-  // Guard every state-changing method app-wide, so a new write route is
-  // protected by default instead of safe-only-if-the-author-remembers. Safe
-  // methods (GET/HEAD) are never state-changing and pass straight through.
+  // App-wide, so a new write route is protected by default.
   if (deps.enforceOriginHost) {
     const safeMethods = new Set(["GET", "HEAD"]);
     app.use("*", async (c, next) => {
@@ -403,8 +350,7 @@ export function createApp(deps: AppDeps) {
   app.get("/api/inventory/primitives", async (c) => {
     const result = await deps.inventory.read();
     if (!result.ok) {
-      // 409: the inventory path is unset / missing / not a directory. The
-      // message never echoes the path — it may be a misconfigured secret.
+      // 409: unset/missing/not-a-directory. Never echoes the path.
       return c.json(
         {
           error: result.error,
@@ -417,19 +363,14 @@ export function createApp(deps: AppDeps) {
     return c.json({ primitives: result.primitives });
   });
 
-  // The currently configured inventory path (or null), for the Settings screen
-  // to show what is connected and pre-fill the re-point field. A GET, so it
-  // bypasses the Origin/Host guard. Unlike connect's error responses, returning
-  // the user's own configured path to the local cockpit is intentional — it is
-  // the same path the inventory read already uses, not an attacker probe.
+  // A GET, so it bypasses the Origin/Host guard — returning the user's own
+  // configured path is intentional, not an attacker probe.
   app.get("/api/inventory/config", async (c) => {
     return c.json({ inventoryPath: await deps.inventory.configuredPath() });
   });
 
-  // Offline connect: persist a user-pasted path to an existing local
-  // agent-harness clone as the inventory. A state-changing route, so the
-  // app-wide Origin/Host guard above already covers it. No git clone (J11,
-  // deferred per the job map).
+  // Offline connect: persist a user-pasted path as the inventory. No git
+  // clone (J11, deferred).
   app.post("/api/inventory/connect", async (c) => {
     const body = await c.req.json().catch(() => null);
     const parsed = connectBodySchema.safeParse(body);
@@ -446,14 +387,9 @@ export function createApp(deps: AppDeps) {
       return c.json({ error: result.error, message }, status);
     }
 
-    // The primitive count is the connect confirmation's single source of
-    // truth: re-read through the same InventoryReader the primitives route
-    // uses, rather than counting independently (no second counting path to
-    // drift out of sync). The connect above already persisted the new path —
-    // that state change is done and real — so a failure in this *follow-up*
-    // read (e.g. skills/ passed connect's is-a-directory check but turns out
-    // unreadable, EACCES) must not turn an already-successful connect into a
-    // 500. It degrades to a 0 count instead of failing the whole response.
+    // Re-read through the same InventoryReader the primitives route uses, so
+    // the two can't drift. A failure here must not turn an already-successful
+    // connect into a 500 — degrades to 0 instead.
     let primitiveCount = 0;
     try {
       const read = await deps.inventory.read();
@@ -465,11 +401,8 @@ export function createApp(deps: AppDeps) {
     return c.json({ inventoryPath: result.inventoryPath, primitiveCount });
   });
 
-  // Read-only directory browser for the first-run path pickers (ADR-0009).
-  // A POST, deliberately, so the app-wide Origin/Host guard above covers it:
-  // this is MVP1's widest read surface and a GET would bypass that guard. The
-  // home-root ceiling and all path safety live in core; this route only maps the
-  // shape and the typed errors. An empty path lists the home root.
+  // Read-only directory browser (ADR-0009). POST deliberately, so the guard
+  // above covers this widest read surface — a GET would bypass it.
   app.post("/api/filesystem/children", async (c) => {
     const body = await c.req.json().catch(() => null);
     const parsed = browseBodySchema.safeParse(body);
@@ -486,12 +419,9 @@ export function createApp(deps: AppDeps) {
       return c.json({ error: result.error, message }, status);
     }
 
-    // `parent` is undefined at the home ceiling; JSON.stringify drops the key,
-    // which is the contract — the client reads its absence as "up is disabled".
-    //
-    // `satisfies BrowseSuccess` binds this route to the shape core owns and the
-    // client reads, so a field added to one side and not sent here fails to
-    // compile rather than arriving undefined (issue #156).
+    // `parent` undefined at the home ceiling → JSON.stringify drops the key,
+    // which is the "up is disabled" contract. `satisfies` binds this to core's
+    // shape so a field added there fails to compile here, not arrives undefined (#156).
     return c.json({
       path: result.path,
       parent: result.parent,
@@ -500,10 +430,8 @@ export function createApp(deps: AppDeps) {
     } satisfies BrowseSuccess);
   });
 
-  // Per-repo deploy-state, registry-gated: a repo not in the registry is
-  // refused before any filesystem access, so a local request can never read an
-  // arbitrary <path>/apm.lock.yaml. The version returned is the human tag, never
-  // a commit hash (DeployStateReader owns that).
+  // Registry-gated: an unregistered repo is refused before any filesystem
+  // access, so a request can never read an arbitrary <path>/apm.lock.yaml.
   app.get("/api/deploy-state", async (c) => {
     const repo = c.req.query("repo");
     if (repo === undefined || repo.trim() === "") {
@@ -523,8 +451,7 @@ export function createApp(deps: AppDeps) {
     }
     const result = await deps.deployState.read(repo);
     if (!result.ok) {
-      // 422: the lockfile exists but could not be read. An empty list must
-      // never stand in for "I couldn't read this".
+      // 422: lockfile exists but couldn't be read — never a silent empty list.
       return c.json(
         {
           error: result.error,
@@ -536,13 +463,8 @@ export function createApp(deps: AppDeps) {
     return c.json({ primitives: result.primitives, skipped: result.skipped });
   });
 
-  // Global (user-scope) deploy-state, grouped per detected tool (ADR-0011). The
-  // server resolves apm's user-scope root itself, so no client path crosses the
-  // boundary — any ?repo is ignored. The response carries the per-tool structure
-  // plus the detected-tool set (implicit in `tools`), the single source the
-  // cockpit reads. A missing global lockfile is an honest empty state (each
-  // detected tool an empty group), never an error; a malformed one is a visible
-  // 422, the same contract as the per-repo read.
+  // Grouped per detected tool (ADR-0011). Server resolves the root itself —
+  // any ?repo is ignored. Missing lockfile is an honest empty state; malformed is 422.
   app.get("/api/deploy-state/global", async (c) => {
     const result = await deps.deployState.readGlobal(deps.resolveGlobalRoot());
     if (!result.ok) {
@@ -557,9 +479,7 @@ export function createApp(deps: AppDeps) {
     return c.json({ tools: result.tools, skipped: result.skipped });
   });
 
-  // Deploy a skill into a registered repo. All business rules (slug check,
-  // inventory membership, registry gate, tag resolution) live in the core
-  // use-case; this route validates the body shape and maps typed errors.
+  // Business rules live in core; this route validates shape and maps errors.
   app.post("/api/deploy", async (c) => {
     const body = await c.req.json().catch(() => null);
     const parsed = deployBodySchema.safeParse(body);
@@ -582,9 +502,6 @@ export function createApp(deps: AppDeps) {
     return c.json({ deployed: result.deployed });
   });
 
-  // Take a deployed skill off a registered repo. The registry gate, the ref
-  // lookup and the fail-closed success detection all live in the core use-case;
-  // this route validates the body shape and maps typed errors.
   app.post("/api/deploy/remove", async (c) => {
     const body = await c.req.json().catch(() => null);
     const parsed = removeBodySchema.safeParse(body);
@@ -603,11 +520,7 @@ export function createApp(deps: AppDeps) {
     return c.json({ removed: result.removed });
   });
 
-  // What that removal would destroy, asked before the user commits to it. Same
-  // body shape as the removal itself, so the confirmation checks exactly the
-  // request it is about to send. Never a removal — and never a silent "clean"
-  // on a failed check: a check that could not run answers with its own error
-  // (#337).
+  // Never a silent "clean" on a failed check — it answers with its own error (#337).
   app.post("/api/deploy/remove/preflight", async (c) => {
     const body = await c.req.json().catch(() => null);
     const parsed = removeBodySchema.safeParse(body);
@@ -626,13 +539,8 @@ export function createApp(deps: AppDeps) {
     return c.json({ warning: result.warning, reclaim: result.reclaim });
   });
 
-  // Bulk-deploy the staged skills to one target: plan → execute → report. The
-  // orchestrator drives the same guarded deploy path once per name, never
-  // aborting on a failure, and returns a report the cockpit reads (clean skips
-  // resolve on the web from the cached drift, so they never reach this route).
-  // Always 200 with a report — a per-skill refusal is data, not an HTTP error;
-  // only a malformed body is a 400. Composed here from the injected deploy
-  // use-case, so it shares its per-target in-flight lock (#292).
+  // Always 200 with a report — a per-skill refusal is data, not an HTTP error.
+  // Shares the deploy use-case's per-target in-flight lock (#292).
   const bulkDeploy = new BulkDeploySkills({ deploy: deps.deploy });
   app.post("/api/deploy/bulk", async (c) => {
     const body = await c.req.json().catch(() => null);
@@ -652,14 +560,7 @@ export function createApp(deps: AppDeps) {
     return c.json(report);
   });
 
-  // Per-repo version drift, registry-gated like deploy-state. The judgment is
-  // delegated to `apm outdated` (ADR-0001); each behind skill carries its
-  // deployed -> latest version pair (ADR-0007), with the binary behind/up-to-date
-  // judgment still derivable (latest !== current). A check that could not run is
-  // a 200 with { ok: false } — a legitimate "unknown" the web maps to a badge,
-  // not an HTTP error: a screen showing "up-to-date" when the check actually
-  // failed would falsely reassure. Up-to-date is derived (check ran + skill not
-  // behind), never read positively here.
+  // Registry-gated like deploy-state. Delegated to `apm outdated` (ADR-0001).
   app.get("/api/drift", async (c) => {
     const repo = c.req.query("repo");
     if (repo === undefined || repo.trim() === "") {
@@ -686,8 +587,7 @@ export function createApp(deps: AppDeps) {
     return c.json({ behind: result.behind });
   });
 
-  // Global version drift. The server sends no path to core — user-scope is
-  // APM's global target, so any ?repo in the URL is ignored rather than trusted.
+  // No path sent to core — user-scope is apm's global target; any ?repo is ignored.
   app.get("/api/drift/global", async (c) => {
     const result = await deps.drift.execute({
       target: { kind: "global" },
@@ -731,8 +631,8 @@ export function createApp(deps: AppDeps) {
 
 function realDeps(): AppDeps {
   const fs = new NodeFileSystem();
-  // Resolve MAESTRO_HOME per access, not at import: importing { app } must not
-  // freeze the config path to whatever env happened to be set at load time.
+  // Resolved per access, not at import: importing { app } must not freeze
+  // the config path to load-time env.
   const store = new ConfigStore({
     fs,
     configPath: () => resolveMaestroConfigPath(process.env),
@@ -743,24 +643,18 @@ function realDeps(): AppDeps {
     resolveCentralInventoryPath: (config) =>
       resolveInventoryPath(config, process.env),
   });
-  // Resolve the inventory path per read (config wins, else MAESTRO_INVENTORY_PATH)
-  // so a path saved after startup is picked up without a restart.
+  // Resolved per read, so a path saved after startup is picked up without a restart.
   const inventory = new InventoryReader({
     fs,
     resolvePath: async () =>
       resolveInventoryPath(await store.read(), process.env),
   });
-  // The reader that serves both routes: the global read groups per detected
-  // tool, so it gets a live tool-presence probe against HOME (ADR-0011). The
-  // adapter's default home resolution matches the deploy's, so `pnpm smoke`
-  // stays honest.
   const deployState = new GlobalDeployStateReader({
     fs,
     toolPresence: new ToolPresenceAdapter(),
   });
-  // One apm driver, shared by deploy and drift. A global install/check runs
-  // from a scratch dir under MAESTRO_HOME, created on demand so apm's .gitignore
-  // side-effect never lands in a real repo (apm-driver.md, J07).
+  // Runs from a scratch dir under MAESTRO_HOME, created on demand, so apm's
+  // .gitignore side-effect never lands in a real repo (apm-driver.md, J07).
   const apm = new ApmCliDriver({
     prepareGlobalCwd: async () => {
       const cwd = resolveApmScratchCwd(process.env);
@@ -773,19 +667,11 @@ function realDeps(): AppDeps {
     apm,
     canonicalPath: (path) => fs.realpath(path),
   });
-  // Owner/repo for package references come from the inventory clone's origin
-  // remote, resolved per deploy so a path saved after startup is picked up.
-  //
-  // Where a deployed copy lands, resolved once and shared: a repo's lockfile and
-  // tree both sit in the repo; a global deploy reads ~/.apm/apm.lock.yaml but
-  // deploys under HOME (~/.claude/skills, ~/.agents/skills) where apm keys the
-  // hashes, so its two roots differ (apm-driver.md, #56/#61). The guard and the
-  // cleanup take the same instance, so their agreement on the tree is one object,
-  // not a comment to keep in sync.
+  // Shared instance: a global deploy's lockfile root and deploy tree differ
+  // (~/.apm vs ~/.claude/skills, apm-driver.md #56/#61) — guard and cleanup agree by construction.
   const deployedLocation = new DeployedLocation(process.env);
-  // One lock for every apm write, shared by deploy and remove: both rewrite the
-  // same apm.lock.yaml, so a deploy racing a remove on one repo would corrupt
-  // it. Composed here because only the server has both use-cases.
+  // Shared by deploy and remove: both rewrite the same apm.lock.yaml, and a
+  // deploy racing a remove would corrupt it.
   const apmWriteLocks = new InFlightLocks();
   const deploy = new DeploySkill({
     inventory,
@@ -795,18 +681,12 @@ function realDeps(): AppDeps {
       resolveRoot: async () =>
         resolveInventoryPath(await store.read(), process.env),
     }),
-    // Destination guard: reads both the lockfile (the recorded hashes) and the
-    // tree those hashes key against.
     deployedContent: new DeployedContentAdapter({ location: deployedLocation }),
-    // Reconciles away an untargeted tool's leftover copy after a narrowed global
-    // deploy (ADR-0011, #136). Shares the same DeployedLocation as the guard, so
-    // both agree on which tree they mean; a direct subtree rm, never
-    // `apm uninstall -g` (apm-driver.md).
+    // Reconciles an untargeted tool's leftover copy after a narrowed global
+    // deploy (ADR-0011, #136) — a direct subtree rm, never `apm uninstall -g`.
     deployedCleanup: new DeployedCleanupAdapter({ location: deployedLocation }),
-    // Global tool presence: probe HOME live per deploy so a global install
-    // targets only the tools the machine actually has (ADR-0011). The adapter's
-    // default home resolution (process.env.HOME ?? homedir) already matches the
-    // deploy's, so a sandbox HOME under `pnpm smoke` stays honest (ADR-0010).
+    // Live HOME probe per deploy, so a global install targets only tools the
+    // machine actually has (ADR-0011).
     toolPresence: new ToolPresenceAdapter(),
     inventoryOriginUrl: async () => {
       const root = resolveInventoryPath(await store.read(), process.env);
@@ -815,39 +695,28 @@ function realDeps(): AppDeps {
     canonicalPath: (path) => fs.realpath(path),
     locks: apmWriteLocks,
   });
-  // Remove reads the ref to uninstall from the target's own lockfile, through
-  // the same DeployedLocation the deploy guards use, so both agree on which
-  // lockfile a target means.
+  // Same DeployedLocation as deploy, so guard/cleanup/reclaim always agree on
+  // which lockfile and tree a target means.
   const remove = new RemoveDeployedSkill({
     registry,
     deployedRef: new DeployedRefAdapter({ fs, location: deployedLocation }),
-    // The same destination guard the deploy takes, on the same DeployedLocation:
-    // apm deletes an edited deployed file silently, so a removal must prove
-    // there is nothing to lose first (.claude/rules/apm-driver.md § Remove).
+    // apm deletes an edited file silently — a removal must prove nothing to
+    // lose first (apm-driver.md § Remove).
     deployedContent: new DeployedContentAdapter({ location: deployedLocation }),
     apm,
-    // The same subtree-scoped reclaim the deploy path uses, for the copies apm's
-    // uninstall cannot reach: those of a tool this machine no longer detects
-    // (#339).
+    // For copies apm's uninstall can't reach: a tool this machine no longer detects (#339).
     deployedCleanup: new DeployedCleanupAdapter({ location: deployedLocation }),
-    // The same live HOME probe the deploy takes: a global removal covers exactly
-    // the tools the machine has, and the confirmation names them (ADR-0011).
     toolPresence: new ToolPresenceAdapter(),
     canonicalPath: (path) => fs.realpath(path),
     locks: apmWriteLocks,
-    // Same instance as the guard and the cleanup, so the reclaim preview
-    // preflight names and the path execute actually deletes always agree.
     location: deployedLocation,
   });
   return {
     registry,
     inventory,
-    // Connect reuses the deploy side's origin reader: one truth for "usable
-    // origin", checked offline against local git config at connect time so the
-    // error lands before the first deploy (#147).
+    // Checked offline against local git config, so the error lands before
+    // the first deploy (#147).
     connect: new ConnectInventory({ fs, store, originUrl: readGitOriginUrl }),
-    // The browse ceiling is the user's home directory (ADR-0009), resolved per
-    // access so it is never frozen at import time.
     browse: new BrowseFilesystem({ fs, homeRoot: () => homedir() }),
     deployState,
     deploy,
@@ -858,5 +727,4 @@ function realDeps(): AppDeps {
   };
 }
 
-// Default composition root: existing health/wiring-smoke tests import { app }.
 export const app = createApp(realDeps());

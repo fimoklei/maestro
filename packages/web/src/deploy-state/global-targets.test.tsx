@@ -5,12 +5,8 @@ import { driftViewModel } from "../drift/drift-view-model";
 import type { VersionDrift } from "../drift/use-drift";
 import { GlobalTargets } from "./global-targets";
 
-// Presentational: fed entirely through props (no fetch), so these exercise the
-// per-tool rendering directly — the same states the container wires from
-// TanStack Query. A behind row renders the Update mutation button, whose hook
-// needs a QueryClient in scope; the provider here only satisfies that (no
-// network is stubbed and nothing is clicked). Stories stay provider-free by not
-// rendering the behind state.
+// Presentational, fed via props. QueryClientProvider only satisfies the
+// Update mutation hook a behind row renders — nothing is stubbed or clicked.
 
 // The container feeds GlobalTargets a drift view-model built from the global
 // drift query; these helpers build the same model from raw behind pairs.

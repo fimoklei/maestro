@@ -11,61 +11,20 @@ import { useBrowseNavigation } from "./use-browse-navigation";
 import { useFolderFilter } from "./use-folder-filter";
 import { useModalDialog } from "./use-modal-dialog";
 
-// A read-only directory picker (ADR-0009): lists the current directory's
-// children and lets the user step in, up, or jump via breadcrumbs, then
-// confirm the directory they are standing in. "Up" follows the parent the
-// server reports (absent at the home ceiling) and breadcrumbs come from the
-// server too — the client never derives a path from a string, so there is no
-// separator math to get wrong (issue #146). The anatomy — header, toolbar,
-// listing, footer separated by row dividers — mirrors the Control Room design
-// (First run story flow, screens 02b/02c/03b).
-//
-// The dialog is mode-aware (issue #150): the server only reports per-entry
-// facts (is a git repo, has a skills/ subdir) — never a badge decision; the
-// client decides. Everything that differs per mode — the title, the confirm
-// label, the row badges — lives in one config in `browse-modes.tsx`, so a
-// third mode is one entry there rather than a hunt through this file
-// (issue #156).
-//
-// Hidden entries (dot-prefixed) are filtered out by default; the toolbar's
-// show-hidden toggle and the "N hidden items not shown · show" hint both flip
-// the same local `showHidden` flag — one response shape from the server
-// serves both toggle states, filtering happens entirely client-side. A
-// symlinked entry the server resolved inside the home ceiling renders a
-// "↳ symlink" tag; the server already dropped anything escaping the ceiling,
-// so the client never resolves or judges a symlink itself (issue #148).
-//
-// Register mode is multi-select (issue #151): every folder row makes its
-// registration state visible, with a disabled checkbox and reason where it
-// cannot be registered. The selection is one set per dialog session that
-// survives navigating between folders, and confirm hands the host every
-// checked path at once. The dialog stays presentational — it returns paths and
-// never registers anything itself; the host owns the registration loop and its
-// per-repo outcomes.
-//
-// Confirming does not close it (issue #175). Once the host hands back a run,
-// the dialog switches from browsing to reporting: the toolbar and listing give
-// way to one line per repo, and the footer's confirm becomes "close". The host
-// decides whether there is a run at all, so connect — which never registers
-// anything — keeps closing on confirm without a mode entry of its own.
+// A read-only directory picker (ADR-0009), server-derived breadcrumbs (#146).
+// Mode-aware (#150, browse-modes.tsx): register is multi-select and
+// presentational; confirming switches to reporting instead of closing (#175).
 
 type BrowseDialogProps = {
   mode: BrowseDialogMode;
-  // Always a list, in both modes: connect confirms exactly one path, register
-  // confirms every checked one. One shape keeps the host wiring uniform.
+  // Always a list: connect confirms one path, register confirms every checked one.
   onSelect: (paths: string[]) => void;
   onClose: () => void;
-  // Register mode only: entry paths already in the registry, for the
-  // client-side "● registered" join (issue #150) — the server stays
-  // registry-agnostic.
+  // Register mode only: client-side "● registered" join (#150).
   registeredPaths?: ReadonlySet<string>;
-  // Register mode only: the connected central inventory is not a consuming
-  // repo, so its row is visibly unavailable before the server enforces the
-  // same rule for pasted paths.
+  // Register mode only: central inventory's row is visibly unavailable
+  // before the server enforces the same rule for pasted paths.
   inventoryPath?: string;
-  // The host's registration run: what it has finished so far, and whether it
-  // is still going. Either one being live flips the dialog into reporting, so
-  // the report is on screen before the first repo lands.
   outcomes?: readonly RegistrationOutcome[];
   isRegistering?: boolean;
 };
@@ -80,20 +39,13 @@ export function BrowseDialog({
   isRegistering = false,
 }: BrowseDialogProps) {
   const { title, confirmLabel, writePromise } = browseModes[mode];
-  // Owns the requested path, its query, and the last-used-folder memory
-  // (issue #149) — connect and register never share a memory.
   const { currentRequest, setCurrentRequest, browse } =
     useBrowseNavigation(mode);
-  // The footer's paste-a-path field: confirming it hands the typed path to the
-  // host form as-is, bypassing the listing (the host validates on submit).
   const [pastedPath, setPastedPath] = useState("");
-  // Hidden entries are filtered client-side by default; the server sends one
-  // response shape (every entry, each carrying isHidden) and this toggle
-  // decides what the listing shows — no second request (issue #148).
+  // Filtered client-side — one server response shape serves both toggle
+  // states (#148).
   const [showHidden, setShowHidden] = useState(false);
-  // Register mode's selection: paths checked anywhere in this dialog session,
-  // in the order they were ticked. An array (not a Set) because confirm hands
-  // the host a list and the order it reads in is the order the user built.
+  // Array, not a Set: confirm hands the host the order the user ticked in.
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const atCeiling =
     browse.data !== undefined && browse.data.parent === undefined;
@@ -102,9 +54,6 @@ export function BrowseDialog({
   const hiddenFilteredEntries = showHidden
     ? allEntries
     : allEntries.filter((entry) => !entry.isHidden);
-  // Narrows the listing client-side as the user types (issue #149), on top
-  // of the hidden-entry filter above — typing still searches only what the
-  // hidden toggle currently allows through.
   const { filter, setFilter, visibleEntries } = useFolderFilter(
     currentRequest,
     hiddenFilteredEntries,
@@ -118,15 +67,11 @@ export function BrowseDialog({
         : null;
 
   const typedPath = pastedPath.trim();
-  // What confirm would hand the host right now. Connect confirms one path: a
-  // non-empty paste field wins over the listing folder — the escape hatch
-  // bypasses the listing, so the visible confirm and the field's Enter must
-  // agree on it. Register confirms every checked repo, plus a pasted path as
-  // one more selection, so pasting keeps working where checkboxes can't reach.
+  // Connect: a non-empty paste wins over the listing folder. Register: every
+  // checked repo plus a pasted path as one more selection.
   const confirmedPaths =
     mode === "register"
-      ? // Deduplicated: pasting a path that is already ticked must not
-        // register it twice, nor inflate the count.
+      ? // Deduplicated: an already-ticked paste must not double-count.
         [
           ...new Set([
             ...selectedPaths,
@@ -145,18 +90,12 @@ export function BrowseDialog({
     }
   };
 
-  // A run claims the dialog the moment the host starts one and keeps it until
-  // the user closes the report.
   const reporting = isRegistering || outcomes.length > 0;
-  // Once the listing is gone, "Select repos to register" describes nothing on
-  // screen — and it is the dialog's accessible name, so it is what a screen
-  // reader announces for a surface that has become a report.
+  // The dialog's accessible name — "Select repos to register" describes
+  // nothing once the listing is gone.
   const heading = reporting ? "Registration result" : title;
 
-  // Registering is the moment Maestro is handed a write target, so the mode's
-  // promise about what it writes sits on that action itself (ADR-0015, issue
-  // #218) — wired as the confirm button's accessible description, not
-  // free-floating text. A run already under way has no such action left.
+  // Wired as the confirm button's accessible description (ADR-0015, #218).
   const writePromiseId = "browse-write-promise";
   const shownWritePromise = reporting ? null : writePromise;
 
@@ -167,9 +106,8 @@ export function BrowseDialog({
         : [...current, path],
     );
 
-  // Closing is blocked while a registration is in flight — the run's failures
-  // are readable nowhere else (issue #175) — so Escape and the backdrop honour
-  // the same guard as the disabled ✕.
+  // Blocked while a registration is in flight — the run's failures are
+  // readable nowhere else (#175).
   const { panelRef, requestClose } = useModalDialog({
     onClose,
     closeEnabled: !isRegistering,
@@ -177,9 +115,8 @@ export function BrowseDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 p-6">
-      {/* A real button, hidden from the a11y tree and the tab order, carries the
-          backdrop dismiss: clicking outside the panel closes it, mirroring
-          Escape, without making a static div interactive. */}
+      {/* Real button, hidden from a11y tree and tab order: backdrop dismiss
+          without making a static div interactive. */}
       <button
         type="button"
         aria-hidden="true"
@@ -228,8 +165,6 @@ export function BrowseDialog({
                   }}
                   disabled={browse.data?.parent === undefined}
                   aria-describedby={atCeiling ? "browse-up-reason" : undefined}
-                  // Already sits on the inset surface, so it takes the border
-                  // half of the one-step hover rule (DESIGN.md §5).
                   className={`shrink-0 rounded-control border px-2.5 py-[5px] font-mono text-mono-sm ${HOVER_TRANSITION} enabled:cursor-pointer enabled:border-line enabled:bg-inset enabled:text-fg-2 enabled:hover:border-line-chip enabled:hover:text-fg disabled:cursor-not-allowed disabled:border-line-chip disabled:text-dim`}
                 >
                   ↑ up
@@ -316,7 +251,7 @@ export function BrowseDialog({
               ) : null}
             </div>
 
-            {/* in-dialog error banner — never an empty listing (story 22) */}
+            {/* In-dialog error banner, never an empty listing (#145). */}
             {error ? (
               <div
                 role="alert"
@@ -339,7 +274,6 @@ export function BrowseDialog({
           ) : null}
           <div className="flex items-center gap-2.5">
             {reporting ? (
-              // Nothing left to paste into: confirm now only dismisses the run.
               <span className="flex-1" />
             ) : (
               <form

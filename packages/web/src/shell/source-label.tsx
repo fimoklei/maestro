@@ -1,11 +1,7 @@
 import { targetLabel } from "./target-label";
 
-// The connected source block — "Source · local folder" over the identifying tail
-// of the local clone's path. Shared by the connect gate's success confirmation
-// and the ⚙ Inventory source steady state so a single rendering exists: the two
-// used to split, one via targetLabel and one on the raw path, which is exactly
-// the drift #211's shortening was meant to end. The full path stays reachable on
-// hover via a native title tooltip.
+// Shared by the connect gate confirmation and the ⚙ steady state, so the two
+// can't drift apart on rendering again (#211).
 export function SourceLabel({ path }: { path: string }) {
   return (
     <div className="flex flex-col gap-1">

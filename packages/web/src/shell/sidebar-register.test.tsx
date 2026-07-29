@@ -19,10 +19,8 @@ function jsonResponse(body: unknown, status: number) {
 
 const repoFacts = { isGitRepo: true, hasSkillsSubdir: false };
 
-// One home folder holding two git repos and one plain directory, plus a
-// stateful registry: empty until a POST registers a repo, after which the list
-// (and so the Targets list) refetches it. A path the server refuses answers
-// 400, so a run can be made to fail one repo and keep the rest.
+// Stateful registry: empty until a POST registers a repo, after which the
+// Targets list refetches. A refused path answers 400.
 function stubServer({
   rejecting = [] as string[],
   alreadyRegistered = [] as string[],

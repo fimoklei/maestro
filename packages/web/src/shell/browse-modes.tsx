@@ -1,12 +1,6 @@
-// Everything the browse picker does differently per mode, in one place: a
-// mode is one entry in this record, so the compiler names every field a new
-// mode still owes (issue #156).
-//
-// The server reports per-entry facts only — is a git repo, has a skills/
-// subdir — never a badge decision; the client decides (issue #150). Register
-// mode badges `git` repos and already-registered ones; connect mode badges
-// folders that look like an inventory. The inventory badge is a hint, not a
-// guarantee — connect validation remains the authority.
+// One entry per mode, so the compiler names every field a new mode owes
+// (#156). Server reports facts only, never a badge decision — client decides
+// (#150). Inventory badge is a hint; connect validation is the authority.
 import type { ReactNode } from "react";
 import { Chip } from "../ui/chip";
 import type { BrowseEntry } from "./use-browse-filesystem";
@@ -14,16 +8,12 @@ import type { BrowseEntry } from "./use-browse-filesystem";
 export type BrowseDialogMode = "register" | "connect";
 
 type BrowseModeConfig = {
-  // Both the dialog heading and its accessible name.
   title: string;
-  // What the confirm button reads with `count` paths currently selected.
   confirmLabel: (count: number) => string;
-  // The row's badges. `isRegistered` is resolved by the caller so a mode that
-  // ignores the registry never has to know it exists.
+  // isRegistered resolved by the caller, so a mode ignoring the registry
+  // never has to know it exists.
   badges: (context: { entry: BrowseEntry; isRegistered: boolean }) => ReactNode;
-  // What this mode promises about writing, shown on its confirm action
-  // (ADR-0015, issue #218). `null` for a mode that grants no write target, so
-  // a new mode has to state its answer rather than inherit silence.
+  // null for a mode with no write target — states its answer, never inherits silence.
   writePromise: string | null;
 };
 
@@ -47,8 +37,7 @@ export const browseModes: Record<BrowseDialogMode, BrowseModeConfig> = {
       entry.facts.hasSkillsSubdir ? (
         <Chip tone="drift">◆ inventory</Chip>
       ) : null,
-    // Connecting an inventory grants a read target, never a write one; that
-    // promise is made on the connect gate itself (ADR-0015).
+    // Read-only promise is made on the connect gate itself (ADR-0015).
     writePromise: null,
   },
 };

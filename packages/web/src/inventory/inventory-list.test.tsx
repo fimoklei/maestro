@@ -330,11 +330,8 @@ describe("InventoryList", () => {
   });
 
   it("returns focus to the row button even after it was filtered away and remounted", async () => {
-    // The row button is looked up fresh at close time, not captured once when
-    // the pane opens: selection persists across filtering (the pane stays
-    // open on a hidden row), so the button that exists when Escape is
-    // finally pressed can be a different DOM node than the one that was
-    // there when the pane first opened.
+    // The row button is looked up fresh at close time, not captured once at
+    // open — filtering can remount it as a different DOM node by then.
     vi.stubGlobal(
       "fetch",
       vi.fn(() => new Promise<Response>(() => {})),
@@ -690,12 +687,9 @@ describe("InventoryList", () => {
   });
 
   it("sizes its columns from the container, not from the cell contents", () => {
-    // Under the browser default (table-layout: auto) the cells grow to fit their
-    // text, so one long skill description widened the table past the card that
-    // clips it — Deployed and the expand chevron sat ~5800px off-screen with no
-    // scrollbar anywhere to reach them. Fixed layout is the width strategy that
-    // keeps every column inside the card. jsdom cannot measure geometry, so this
-    // asserts the strategy; the reachable columns are proven in the browser.
+    // table-layout: auto let a long description push Deployed ~5800px
+    // off-screen. jsdom can't measure geometry, so this asserts table-fixed;
+    // reachable columns are proven in the browser.
     vi.stubGlobal(
       "fetch",
       vi.fn(() => new Promise<Response>(() => {})),
@@ -708,10 +702,9 @@ describe("InventoryList", () => {
   });
 
   it("stages a skill from the padding around its checkbox", async () => {
-    // The 16px checkbox is well under the 24px click-target floor, and in a
-    // 36-row table that is awkward to hit. A padded label grows the hit area
-    // while the box keeps its size — so the padding has to both toggle staging
-    // and stop the row's own select handler, exactly as the box does.
+    // The 16px checkbox is under the 24px click-target floor; the padded
+    // label grows the hit area but must toggle staging and stop the row's
+    // own select handler, same as the box.
     vi.stubGlobal(
       "fetch",
       vi.fn(() => new Promise<Response>(() => {})),

@@ -1,11 +1,8 @@
 import { cn } from "./cn";
 import { HOVER_TRANSITION } from "./hover-transition";
 
-// A segmented control: a row of buttons that together hold one choice, like the
-// type filter above the inventory table (#288). Presentational — the caller owns
-// the selected value and reacts to onChange. A <fieldset> groups the buttons and
-// a visually-hidden <legend> names the group for assistive tech; real <button>s
-// carry aria-pressed so the active segment is announced.
+// A row of buttons holding one choice (e.g. #288's type filter). Presentational
+// — caller owns the value. <fieldset>/<legend> name the group for assistive tech.
 
 export interface Segment<V extends string> {
   value: V;
@@ -44,8 +41,7 @@ export function SegmentedControl<V extends string>({
             className={cn(
               "cursor-pointer rounded-control border px-3 py-1 font-mono text-tag lowercase tracking-tag",
               HOVER_TRANSITION,
-              // Hover lands one step below the active surface, so hovering an
-              // inactive segment never reads as selecting it.
+              // Hover stays a step below the active surface (DESIGN.md §5).
               active
                 ? "border-line-chip bg-active text-fg"
                 : "border-transparent bg-transparent text-muted hover:bg-inset hover:text-fg-2",

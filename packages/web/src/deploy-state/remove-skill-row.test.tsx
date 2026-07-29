@@ -204,10 +204,8 @@ describe("removing a deployed skill from a row", () => {
     );
   });
 
-  // The check does not only answer or fail — the server can refuse the request
-  // outright, and it says why. Folding that into "couldn't check" costs the user
-  // a round-trip to read the reason they could have had before confirming, under
-  // a warning about work that was never at risk (#385).
+  // The server can also refuse the check outright and say why — folding that
+  // into "couldn't check" would hide the reason (#385).
   describe("when the check comes back refused", () => {
     const refuseWith = (code: string, message: string, status: number) => {
       const fetchMock = vi.fn(async (path: string) =>
@@ -573,12 +571,8 @@ describe("removing a deployed skill from a row", () => {
       });
     });
 
-    // A global removal can also force-delete the whole copy of a
-    // tool this machine no longer detects. The dialog must name that path
-    // before the user confirms, and the confirm request must echo back
-    // exactly the token this same preflight issued — never a client-rebuilt
-    // path list, which a direct request could guess without ever calling
-    // preflight.
+    // A global removal can force-delete an undetected tool's copy — confirm
+    // must echo preflight's own token, never a client-rebuilt path list.
     it("names the leftover copy and confirms with preflight's own token", async () => {
       const fetchMock = stubFetch(null, undefined, [
         { tool: "claude", path: "/Users/me/.claude/skills/tdd" },

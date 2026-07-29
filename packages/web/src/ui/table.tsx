@@ -2,10 +2,8 @@ import type { ReactNode } from "react";
 import { cn } from "./cn";
 import { HOVER_TRANSITION } from "./hover-transition";
 
-// Owned table primitives (shadcn-style, restyled to tokens per ADR-0004): thin
-// wrappers over the native table elements so callers compose real <table>
-// markup — accessibility (row/columnheader/cell roles) comes from the browser,
-// not from us reimplementing it.
+// Owned table primitives (ADR-0004): thin wrappers over native <table>
+// elements — accessibility roles come from the browser, not reimplemented.
 
 interface TableSectionProps {
   children: ReactNode;
@@ -28,12 +26,9 @@ export function TableBody({ children, className }: TableSectionProps) {
   return <tbody className={className}>{children}</tbody>;
 }
 
-// onClick lets a whole row act as one select surface (inventory pane, #290). The
-// row stays a plain <tr>: keep a real focusable control inside it for the
-// keyboard path — the row click is a mouse convenience, not the only affordance.
-// A clickable row gets the pointer and the colour transition here, but not the
-// hover fill itself: a row that is already selected sits higher up the surface
-// ramp, and the caller is the only one who knows that (inventory-list.tsx).
+// onClick is a mouse convenience (#290) — keep a real focusable control inside
+// for the keyboard path. No hover fill here: the caller (inventory-list.tsx)
+// knows if the row is already selected and sits higher on the surface ramp.
 export function TableRow({
   children,
   className,
@@ -53,9 +48,8 @@ export function TableRow({
   );
 }
 
-// aria-sort is optional so a sortable header (inventory table, #287) can
-// announce its direction to assistive tech; plain headers omit it and render
-// exactly as before.
+// aria-sort is optional: a sortable header (#287) announces direction; plain
+// headers omit it.
 export function TableHead({
   children,
   className,

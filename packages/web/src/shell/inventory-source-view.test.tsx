@@ -16,10 +16,9 @@ function jsonResponse(body: unknown, status: number) {
   });
 }
 
-// Routes the fetch stub by URL. The source view reads the current config (the
-// connected path), the inventory primitives (the live N shown as "N
-// primitives"), and posts to connect when the user re-points via "change
-// source". primitives can be a factory so a re-read observes a changed count.
+// Routes by URL: current config path, inventory primitives (live "N
+// primitives"), and connect on re-point. primitives is a factory so a re-read
+// observes a changed count.
 function stubApi({
   configPath = "/home/me/agent-harness",
   primitives = () => [] as unknown[],
@@ -80,10 +79,8 @@ function skill(name: string) {
 
 describe("InventorySourceView", () => {
   it("holds the card frame with a skeleton while the source config loads", async () => {
-    // Config never resolves this render, so the view stays in its loading
-    // state. The frame — the heading and the card — must already be on screen
-    // so nothing jumps when the data lands, and the skeleton must announce
-    // itself to assistive tech rather than showing a bare "Loading…" (#231).
+    // The frame must already be on screen so nothing jumps when data lands,
+    // and the skeleton must announce itself to assistive tech (#231).
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
@@ -150,10 +147,8 @@ describe("InventorySourceView", () => {
   });
 
   it("labels the Re-read button 'reading…' while fetching, then 'Re-read' when idle", async () => {
-    // A controllable primitives read: it stays pending until we resolve it, so
-    // we can observe the button mid-fetch (label "reading…", disabled) and after
-    // it settles (label back to "Re-read"). This is the most-repeated action's
-    // in-progress feedback (issue #230).
+    // Held pending to observe mid-fetch ("reading…", disabled) then settled
+    // ("Re-read") — the most-repeated action's in-progress feedback (#230).
     let resolvePrimitives: (r: Response) => void = () => {};
     vi.stubGlobal(
       "fetch",
@@ -189,11 +184,9 @@ describe("InventorySourceView", () => {
   });
 
   it("announces a re-read even when the count is unchanged", async () => {
-    // A live region only announces when its text mutates, and TanStack Query
-    // keeps the previous count during a refetch. So a re-read returning the same
-    // N — the common case — must still confirm to a screen reader: the status
-    // passes through "reading…", making the settle back to the count a genuine
-    // mutation the reader hears (issue #230).
+    // A live region only announces on mutation, and Query keeps the previous
+    // count during refetch — passing through "reading…" makes the settle a
+    // genuine mutation a screen reader hears, even at the same N (#230).
     let resolveSecond: (r: Response) => void = () => {};
     let reads = 0;
     vi.stubGlobal(
@@ -418,11 +411,9 @@ describe("InventorySourceView", () => {
   });
 
   it("announces a successful retry after a failed read", async () => {
-    // The failure→success path: TanStack Query holds isError true while the
-    // retry runs, so the live status must stay mounted through the retry (not
-    // cede to the error alert) and pass "reading…" → "● N primitives". A status
-    // region freshly mounted with the count already in it announces nothing;
-    // the mutation is what a screen reader hears (issue #230).
+    // Status must stay mounted through the retry, not cede to the error
+    // alert — a freshly mounted region with the count already in it
+    // announces nothing to a screen reader (#230).
     let resolveRetry: (r: Response) => void = () => {};
     let reads = 0;
     vi.stubGlobal(
@@ -469,12 +460,9 @@ describe("InventorySourceView", () => {
   });
 
   it("announces the recovery when a retry succeeds after a failed re-read of an already-shown count", async () => {
-    // Has-data variant: once a count is on screen, TanStack Query keeps isError
-    // true *during* the retry because it still holds the last good count. The
-    // live status must not cede to the error alert while that retry runs, or the
-    // recovered count mounts fresh and goes unannounced to screen readers
-    // (issue #230). Distinct from the no-data path, where Query resets to
-    // pending during the retry.
+    // Has-data variant: Query keeps isError true during the retry since it
+    // holds the last good count, so status must not cede to the error alert
+    // (#230) — distinct from the no-data path, where Query resets to pending.
     let resolveRetry: (r: Response) => void = () => {};
     let reads = 0;
     vi.stubGlobal(

@@ -10,21 +10,15 @@ import { DeployRefusalNotice } from "./deploy-refusal-notice";
 import { globalOptionLabel } from "./global-option-label";
 import { type DeployTarget, useDeploySkill } from "./use-deploy-skill";
 
-// The deploy action on a skill row: pick a target — "Global" or a registered
-// repo — and deploy with one click. The chosen target is UI-state (useState);
-// the deploy itself is a server-state mutation that refreshes the matching
-// deploy-state panel.
 type DeploySkillActionProps = {
   skillName: string;
   repos: RegisteredRepo[];
-  // False while the registry query is pending or failed. An unloaded registry
-  // yields the same empty repos list as a genuinely empty one, and the empty
-  // fallback selects Global — so deploying must wait until this is true.
+  // False while the registry query is pending or failed — an unloaded
+  // registry looks like an empty one and would default-select Global.
   registryReady: boolean;
 };
 
-// The select value for the global target. A repo's value is its path, which is
-// always absolute, so it can never collide with this literal.
+// A repo's value is its absolute path, so it can never collide with this literal.
 const GLOBAL_VALUE = "global";
 
 export function DeploySkillAction({
@@ -32,9 +26,6 @@ export function DeploySkillAction({
   repos,
   registryReady,
 }: DeploySkillActionProps) {
-  // The user's explicit pick, or null until they choose. The effective
-  // selection is derived below: an unknown pick falls back to the first repo,
-  // or to Global when the loaded registry has no repos (Global needs no repo).
   const [chosen, setChosen] = useState<string | null>(null);
   const deploy = useDeploySkill();
 
@@ -53,10 +44,8 @@ export function DeploySkillAction({
     isGlobal ? "" : target.repoPath,
     registryReady && !isGlobal,
   );
-  // Fetched as soon as the registry is ready — not only when Global is the
-  // current pick — because the Global OPTION must name and gate itself before
-  // the user selects it (#134). One query key, so every skill row's picker
-  // shares a single request.
+  // Fetched as soon as the registry is ready, not only when Global is picked —
+  // the option must name and gate itself before selection (#134).
   const globalDeployState = useGlobalDeployState(registryReady);
   const repoDrift = useDrift(
     isGlobal ? "" : target.repoPath,
@@ -70,15 +59,11 @@ export function DeploySkillAction({
     skillName,
   );
 
-  // The detected-tool set drives the Global option's label and disabled state.
-  // Undefined while the global deploy-state is loading or unreadable — the label
-  // then stays plain "Global" and the option enabled (never gate on a tool set
-  // we cannot prove).
+  // Undefined while loading/unreadable — never gate on a tool set we can't prove.
   const globalTools = globalDeployState.data?.detectedTools;
   const globalDisabled = globalTools !== undefined && globalTools.length === 0;
-  // Deploying globally with zero detected tools would write files for a tool
-  // that is not there, so block it at the effective-target level too — not just
-  // the option — for the empty-registry case where Global is the default pick.
+  // Blocked at the effective-target level too, for the empty-registry case
+  // where Global is the default pick.
   const globalUnavailable = isGlobal && globalDisabled;
 
   const selectId = `deploy-${skillName}-target`;
@@ -90,10 +75,8 @@ export function DeploySkillAction({
       : "Deploy →";
 
   return (
-    // Wraps, because this row lives in a 320px pane that clips its overflow: the
-    // wider states — "● already synced" beside Re-deploy, a success line, a
-    // refusal notice — would otherwise push the control the user came for out of
-    // the pane with no way to scroll to it.
+    // Wraps: the 320px pane clips overflow, and wider states would otherwise
+    // push the control out of reach.
     <span className="flex flex-wrap items-center gap-2">
       <label htmlFor={selectId} className="sr-only">
         Deploy {skillName} to
@@ -102,9 +85,8 @@ export function DeploySkillAction({
         id={selectId}
         value={selected}
         onChange={(event) => {
-          // Picking a different target discards the previous deploy outcome, so
-          // a forced reinstall can never carry over to a target whose own
-          // not-proven-clean refusal was never shown (#66).
+          // Discards the previous outcome, so a forced reinstall can't carry
+          // over to a target whose refusal was never shown (#66).
           deploy.reset();
           setChosen(event.target.value);
         }}
@@ -151,9 +133,7 @@ export function DeploySkillAction({
         </span>
       ) : null}
       {deploy.isError ? (
-        // The server's message is actionable; a not-proven-clean deployed copy
-        // additionally offers an inline confirmed reinstall (force) instead of
-        // dead-ending the user (ADR-0006, #66).
+        // Offers an inline confirmed reinstall instead of dead-ending (ADR-0006, #66).
         <DeployRefusalNotice
           error={deploy.error}
           reinstalling={deploy.isPending}
