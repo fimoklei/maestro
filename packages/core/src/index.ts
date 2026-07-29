@@ -25,9 +25,11 @@ export type {
   ReclaimPreview,
 } from "./deploy/reclaim-consent";
 export {
+  type RemoveCheck,
   RemoveDeployedSkill,
   type RemoveDeployedSkillError,
   type RemovePreflightError,
+  type RemoveToolCheck,
   type RemoveWarning,
 } from "./deploy/remove-deployed-skill";
 export {

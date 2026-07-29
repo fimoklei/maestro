@@ -5,6 +5,7 @@ import type { DeployedRefLookup } from "./deployed-ref";
 import { InFlightLocks } from "./in-flight-locks";
 import {
   RemoveDeployedSkill,
+  type RemoveToolCheck,
   type RemoveWarning,
 } from "./remove-deployed-skill";
 
@@ -32,12 +33,20 @@ const removeTddGlobally = {
   target: { kind: "global" } as DeployTarget,
 };
 
-// The answer a preflight gives when there is nothing to reclaim, which is every
-// case except the leftover-copy ones. Built in one place so widening the result
-// does not mean re-editing a dozen assertions.
+// The answer a repo preflight gives when there is nothing to reclaim, which is
+// every case except the leftover-copy ones. Built in one place so widening the
+// result does not mean re-editing a dozen assertions.
 const preflightOk = (warning: RemoveWarning | null) => ({
   ok: true,
-  warning,
+  check: { scope: "repo", warning },
+  reclaim: null,
+});
+
+// The same, on the scope that answers per detected tool rather than once for
+// the set.
+const globalPreflightOk = (tools: RemoveToolCheck[]) => ({
+  ok: true,
+  check: { scope: "global", tools },
   reclaim: null,
 });
 
@@ -477,31 +486,61 @@ describe("RemoveDeployedSkill on the global target", () => {
     const { useCase } = buildUseCase({ deployedState: "diverged" });
 
     await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual(
-      preflightOk("local-edits-will-be-lost"),
+      globalPreflightOk([
+        { tool: "claude", warning: "local-edits-will-be-lost" },
+        { tool: "codex", warning: "local-edits-will-be-lost" },
+      ]),
     );
   });
 
-  it("checks every supported tool's copy before confirming", async () => {
-    const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
+  it("asks the check once per detected tool, scoped to that tool's copy", async () => {
+    const { useCase, calls } = buildUseCase({
+      detectedTools: ["claude", "codex"],
+    });
 
     await useCase.preflight(removeTddGlobally);
 
     expect(calls.classifies).toEqual([
-      { target: { kind: "global" }, tools: undefined },
+      { target: { kind: "global" }, tools: ["claude"] },
+      { target: { kind: "global" }, tools: ["codex"] },
     ]);
   });
 
-  it("warns about a copy left behind by a tool that is no longer detected", async () => {
-    // The tool went away; its deployed copy did not, and apm still deletes it.
-    // A check scoped to today's tools would call this removal costless.
+  // The confirmation states a cost on the row that carries it, so one tool's
+  // edited copy may never make another tool's clean copy look edited (#414).
+  it("names the cost against the tool whose copy carries it, and no other", async () => {
     const { useCase } = buildUseCase({
-      detectedTools: ["claude"],
+      detectedTools: ["claude", "codex"],
       deployedStateForScope: (tools) =>
-        tools === undefined ? "diverged" : "clean",
+        tools?.[0] === "codex" ? "diverged" : "clean",
     });
 
     await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual(
-      preflightOk("local-edits-will-be-lost"),
+      globalPreflightOk([
+        { tool: "claude", warning: null },
+        { tool: "codex", warning: "local-edits-will-be-lost" },
+      ]),
+    );
+  });
+
+  it("reports a tool whose check threw as unchecked, and still answers for the rest", async () => {
+    // A check that could not run is never answered as a clean copy (J04), and
+    // one unreadable copy must not take the other tools' answers with it.
+    const { useCase } = buildUseCase({
+      detectedTools: ["claude", "codex"],
+      deployedStateForScope: (tools) => {
+        if (tools?.[0] === "claude") {
+          throw new Error("disk exploded");
+        }
+        return "clean";
+      },
+    });
+
+    await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual(
+      globalPreflightOk([
+        { tool: "claude", warning: "check-did-not-run" },
+        { tool: "codex", warning: null },
+      ]),
     );
   });
 
@@ -711,7 +750,13 @@ describe("RemoveDeployedSkill.preflight naming the reclaim", () => {
 
     await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
       ok: true,
-      warning: null,
+      check: {
+        scope: "global",
+        tools: [
+          { tool: "codex", warning: null },
+          { tool: "claude", warning: null },
+        ],
+      },
       reclaim: {
         previews: [{ tool: "claude", path: "/home/.claude/skills/tdd" }],
         token: expect.any(String),
@@ -723,23 +768,48 @@ describe("RemoveDeployedSkill.preflight naming the reclaim", () => {
     const { useCase } = buildUseCase({ detectedTools: ["claude", "codex"] });
 
     await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual(
-      preflightOk(null),
+      globalPreflightOk([
+        { tool: "claude", warning: null },
+        { tool: "codex", warning: null },
+      ]),
     );
   });
 
-  it("asks the guard about every tool's copy, not only the detected ones", async () => {
-    // The copy being reclaimed is a copy too. Scoping the scan to today's
-    // tools would skip exactly the leftover the reclaim deletes, so the guard
-    // is asked for the whole set — which is what lets a warning and a named
-    // path arrive together (#390). What that scan finds on a real tree is
-    // proven in tests/integration/server-remove.test.ts.
+  it("asks the guard about the leftover copy too, after the detected tools", async () => {
+    // The reclaim deletes that copy whole, so its own row is where its cost is
+    // stated — and "the whole copy goes" does not say whether what goes was
+    // work nothing else holds (#414).
     const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
 
     await useCase.preflight(removeTddGlobally);
 
     expect(calls.classifies).toEqual([
-      { target: { kind: "global" }, tools: undefined },
+      { target: { kind: "global" }, tools: ["codex"] },
+      { target: { kind: "global" }, tools: ["claude"] },
     ]);
+  });
+
+  it("names the edits inside a leftover copy the reclaim would delete", async () => {
+    const { useCase } = buildUseCase({
+      detectedTools: ["codex"],
+      deployedStateForScope: (tools) =>
+        tools?.[0] === "claude" ? "diverged" : "clean",
+    });
+
+    await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
+      ok: true,
+      check: {
+        scope: "global",
+        tools: [
+          { tool: "codex", warning: null },
+          { tool: "claude", warning: "local-edits-will-be-lost" },
+        ],
+      },
+      reclaim: {
+        previews: [{ tool: "claude", path: "/home/.claude/skills/tdd" }],
+        token: expect.any(String),
+      },
+    });
   });
 });
 

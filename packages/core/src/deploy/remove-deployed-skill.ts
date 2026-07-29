@@ -77,6 +77,22 @@ const GUARD_WARNINGS: Partial<Record<DeployedContentState, RemoveWarning>> = {
   "lockfile-malformed": "check-did-not-run",
 };
 
+// One detected tool's answer, so a global confirmation can state a cost on the
+// row that carries it instead of over the whole set (#414).
+export type RemoveToolCheck = {
+  tool: SupportedTool;
+  warning: RemoveWarning | null;
+};
+
+// What the check found, shaped by the scope it ran against. A repo has one row
+// and its deployed copy spans several tool subtrees, so one aggregate answer is
+// the honest thing to state; the global scope has a row per tool, so it answers
+// per tool. One field rather than an aggregate beside a breakdown, because two
+// would eventually disagree.
+export type RemoveCheck =
+  | { scope: "repo"; warning: RemoveWarning | null }
+  | { scope: "global"; tools: readonly RemoveToolCheck[] };
+
 // A failed check never falls back to "no warning" — it proves nothing.
 export type RemovePreflightError =
   | "unsupported-primitive-type"
@@ -116,7 +132,7 @@ type RemoveDeployedSkillResult =
 type RemovePreflightResult =
   | {
       ok: true;
-      warning: RemoveWarning | null;
+      check: RemoveCheck;
       // Paths and token in one field, so neither can reach the confirmation
       // without the other.
       reclaim: ReclaimConsent | null;
@@ -179,21 +195,68 @@ export class RemoveDeployedSkill {
     }
 
     try {
+      // The reclaim comes first because the check follows it: a copy the
+      // removal would delete is a copy the confirmation has to price, whether
+      // or not this machine still has the tool that reads it.
+      const reclaim = this.consent.offer({
+        target: input.target,
+        name: input.name,
+        detected: scope.scope === "global" ? scope.detected : undefined,
+      });
+      return {
+        ok: true,
+        check: await this.runCheck(input, scope, reclaim),
+        reclaim,
+      };
+    } catch {
+      return { ok: false, error: "preflight-failed" };
+    }
+  }
+
+  // The global scope asks per tool, because that is the grain the confirmation
+  // states costs at: one entry per detected tool, then one per leftover copy
+  // the reclaim would delete. Deleting a copy in full and deleting work
+  // nothing else holds are different prices, and only the check tells them
+  // apart (#414).
+  private async runCheck(
+    input: RemoveDeployedSkillInput,
+    scope: ResolvedScope & { ok: true },
+    reclaim: ReclaimConsent | null,
+  ): Promise<RemoveCheck> {
+    if (scope.scope === "repo") {
       const state = await this.deps.deployedContent.classify({
         target: input.target,
         name: input.name,
       });
-      return {
-        ok: true,
-        warning: GUARD_WARNINGS[state] ?? null,
-        reclaim: this.consent.offer({
-          target: input.target,
-          name: input.name,
-          detected: scope.scope === "global" ? scope.detected : undefined,
-        }),
-      };
+      return { scope: "repo", warning: GUARD_WARNINGS[state] ?? null };
+    }
+    const priced = [
+      ...scope.detected,
+      ...(reclaim?.previews ?? []).map((preview) => preview.tool),
+    ];
+    const tools: RemoveToolCheck[] = [];
+    for (const tool of priced) {
+      tools.push({ tool, warning: await this.checkTool(input, tool) });
+    }
+    return { scope: "global", tools };
+  }
+
+  // Caught per tool: one unreadable copy answers for itself and takes no other
+  // tool's answer with it. A check that could not run is never reported as a
+  // clean copy (J04).
+  private async checkTool(
+    input: RemoveDeployedSkillInput,
+    tool: SupportedTool,
+  ): Promise<RemoveWarning | null> {
+    try {
+      const state = await this.deps.deployedContent.classify({
+        target: input.target,
+        name: input.name,
+        tools: [tool],
+      });
+      return GUARD_WARNINGS[state] ?? null;
     } catch {
-      return { ok: false, error: "preflight-failed" };
+      return "check-did-not-run";
     }
   }
 
