@@ -1,6 +1,8 @@
+import type { RemoveToolCheck, RemoveWarning } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
 import { removePreflightView } from "./remove-preflight-view";
+import type { RemovePreflight } from "./use-remove-preflight";
 
 // The shape every case starts from: a settled, successful query. Each test
 // changes only the field it is about, so the reason it passes is visible.
@@ -22,52 +24,96 @@ const RECLAIMED = {
 };
 
 describe("removePreflightView", () => {
-  describe("when the check answered", () => {
+  describe("when the repo scope answered", () => {
+    const repoAnswer = (warning: RemoveWarning | null) =>
+      removePreflightView({
+        ...answered,
+        data: { check: { scope: "repo", warning }, reclaim: null },
+      });
+
     it("says local edits will be lost when the copy diverged", () => {
-      expect(
-        removePreflightView({
-          ...answered,
-          data: { warning: "local-edits-will-be-lost", reclaim: null },
-        }),
-      ).toEqual({ kind: "warning", warning: "local-edits", reclaim: [] });
+      expect(repoAnswer("local-edits-will-be-lost")).toEqual({
+        kind: "offered",
+        check: { kind: "repo", warning: "local-edits" },
+        reclaim: [],
+      });
     });
 
     it("keeps an unverifiable copy in its own state", () => {
-      expect(
-        removePreflightView({
-          ...answered,
-          data: { warning: "cannot-verify-local-edits", reclaim: null },
-        }),
-      ).toEqual({ kind: "warning", warning: "cannot-verify", reclaim: [] });
+      expect(repoAnswer("cannot-verify-local-edits")).toEqual({
+        kind: "offered",
+        check: { kind: "repo", warning: "cannot-verify" },
+        reclaim: [],
+      });
     });
 
     it("warns about nothing once the check came back clean", () => {
-      expect(
-        removePreflightView({
-          ...answered,
-          data: { warning: null, reclaim: null },
-        }),
-      ).toEqual({ kind: "warning", warning: "none", reclaim: [] });
+      expect(repoAnswer(null)).toEqual({
+        kind: "offered",
+        check: { kind: "repo", warning: "none" },
+        reclaim: [],
+      });
     });
 
     it("passes a check the server could not run through as its own state", () => {
+      expect(repoAnswer("check-did-not-run")).toEqual({
+        kind: "offered",
+        check: { kind: "repo", warning: "check-failed" },
+        reclaim: [],
+      });
+    });
+  });
+
+  // The global scope answers per detected tool, so the dialog can state a cost
+  // on the row that carries it rather than over the whole set (#414).
+  describe("when the global scope answered", () => {
+    const globalAnswer = (
+      tools: RemoveToolCheck[],
+      reclaim: RemovePreflight["reclaim"] = null,
+    ) =>
+      removePreflightView({
+        ...answered,
+        data: { check: { scope: "global", tools }, reclaim },
+      });
+
+    it("keeps each tool's answer against that tool's own name", () => {
       expect(
-        removePreflightView({
-          ...answered,
-          data: { warning: "check-did-not-run", reclaim: null },
-        }),
-      ).toEqual({ kind: "warning", warning: "check-failed", reclaim: [] });
+        globalAnswer([
+          { tool: "claude", warning: null },
+          { tool: "codex", warning: "local-edits-will-be-lost" },
+        ]),
+      ).toEqual({
+        kind: "offered",
+        check: {
+          kind: "per-tool",
+          warnings: { claude: "none", codex: "local-edits" },
+        },
+        reclaim: [],
+      });
+    });
+
+    it("keeps a tool that could not be checked apart from a clean one", () => {
+      expect(
+        globalAnswer([
+          { tool: "claude", warning: "check-did-not-run" },
+          { tool: "codex", warning: "cannot-verify-local-edits" },
+        ]),
+      ).toEqual({
+        kind: "offered",
+        check: {
+          kind: "per-tool",
+          warnings: { claude: "check-failed", codex: "cannot-verify" },
+        },
+        reclaim: [],
+      });
     });
 
     it("carries the leftover copies that answer names", () => {
       expect(
-        removePreflightView({
-          ...answered,
-          data: { warning: null, reclaim: RECLAIMED },
-        }),
+        globalAnswer([{ tool: "codex", warning: null }], RECLAIMED),
       ).toEqual({
-        kind: "warning",
-        warning: "none",
+        kind: "offered",
+        check: { kind: "per-tool", warnings: { codex: "none" } },
         reclaim: RECLAIMED.previews,
       });
     });
@@ -75,8 +121,8 @@ describe("removePreflightView", () => {
 
   it("reports a check still in flight as checking, never as clean", () => {
     expect(removePreflightView({ ...answered, isPending: true })).toEqual({
-      kind: "warning",
-      warning: "checking",
+      kind: "offered",
+      check: { kind: "unanswered", warning: "checking" },
       reclaim: [],
     });
   });
@@ -86,7 +132,10 @@ describe("removePreflightView", () => {
   // saying the removal cannot run — the loudest contradiction this screen can
   // make, about an irreversible action.
   describe("when an earlier answer is still in hand", () => {
-    const stale = { warning: null, reclaim: RECLAIMED } as const;
+    const stale: RemovePreflight = {
+      check: { scope: "repo", warning: null },
+      reclaim: RECLAIMED,
+    };
 
     it("drops it when the next check was refused", () => {
       expect(
@@ -114,20 +163,28 @@ describe("removePreflightView", () => {
           error: new Error("network down"),
           isError: true,
         }),
-      ).toEqual({ kind: "warning", warning: "check-failed", reclaim: [] });
+      ).toEqual({
+        kind: "offered",
+        check: { kind: "unanswered", warning: "check-failed" },
+        reclaim: [],
+      });
     });
   });
 
   describe("when the check itself failed", () => {
+    // A failed request carries no per-tool answers, so the one state it reports
+    // is true of every row at once — and it is never a clean one (J04).
+    const failedCheck = {
+      kind: "offered",
+      check: { kind: "unanswered", warning: "check-failed" },
+      reclaim: [],
+    };
+
     it("says it did not run, never that it found nothing", () => {
       // J04, applied to consent: a check that could not run proves nothing about
       // what the removal would destroy. It gets its own state, because borrowing
       // the no-baseline wording would claim a cause nothing observed.
-      expect(failedView(new Error("network down"))).toEqual({
-        kind: "warning",
-        warning: "check-failed",
-        reclaim: [],
-      });
+      expect(failedView(new Error("network down"))).toEqual(failedCheck);
     });
 
     it("keeps the removal on offer when the server tried and could not answer", () => {
@@ -141,7 +198,7 @@ describe("removePreflightView", () => {
             "preflight-failed",
           ),
         ),
-      ).toEqual({ kind: "warning", warning: "check-failed", reclaim: [] });
+      ).toEqual(failedCheck);
     });
 
     it("treats an unrecognised server code as a check that could not run", () => {
@@ -149,17 +206,15 @@ describe("removePreflightView", () => {
       // says nothing about whether the removal can succeed.
       expect(
         failedView(new HttpError(500, "Something went wrong.", "who-knows")),
-      ).toEqual({ kind: "warning", warning: "check-failed", reclaim: [] });
+      ).toEqual(failedCheck);
     });
 
     it("treats an error the server sent no code with the same way", () => {
       // A proxy page or a crash mid-request arrives as an HttpError with no
       // code at all.
-      expect(failedView(new HttpError(502, "Bad gateway"))).toEqual({
-        kind: "warning",
-        warning: "check-failed",
-        reclaim: [],
-      });
+      expect(failedView(new HttpError(502, "Bad gateway"))).toEqual(
+        failedCheck,
+      );
     });
   });
 

@@ -3,7 +3,7 @@
 // in the body rather than a query string, like the filesystem browse route.
 // Kept out of the mutation so the answer is on screen before the user commits,
 // not after (#337).
-import type { ReclaimConsent, RemoveWarning } from "@maestro/core";
+import type { ReclaimConsent, RemoveCheck } from "@maestro/core";
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 import {
@@ -15,7 +15,9 @@ import {
 // warnings must mean the same thing on both sides of the wire, so they get one
 // owner (architecture.md — web imports types from core, never values).
 export type RemovePreflight = {
-  warning: RemoveWarning | null;
+  // Shaped by the scope it ran against: one aggregate answer for a repo, one
+  // per detected tool on the global scope (#414).
+  check: RemoveCheck;
   // What a global removal's own reclaim would also delete, named by tool and
   // exact path, together with the server-issued token that authorizes deleting
   // exactly those paths. Null when there is nothing to reclaim, which is always

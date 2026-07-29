@@ -623,7 +623,7 @@ export function createApp(deps: AppDeps) {
       const { status, message } = removePreflightErrorResponses[result.error];
       return c.json({ error: result.error, message }, status);
     }
-    return c.json({ warning: result.warning, reclaim: result.reclaim });
+    return c.json({ check: result.check, reclaim: result.reclaim });
   });
 
   // Bulk-deploy the staged skills to one target: plan → execute → report. The

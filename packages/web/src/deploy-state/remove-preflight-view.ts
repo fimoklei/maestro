@@ -1,28 +1,44 @@
 // The one owner of "what does the removal confirmation say about the check that
-// ran in front of it". It folds the check's outcomes into the single value the
-// dialog renders, and applies the J04 rule to consent: a check that could not
-// run is never reported as nothing-to-lose. A refusal is kept apart from a
-// failure, because they mean opposite things — one says the removal cannot
-// happen, the other says nobody knows yet what it would cost (#385).
+// ran in front of it". It folds the check's outcomes into the values the dialog
+// renders, and applies the J04 rule to consent: a check that could not run is
+// never reported as nothing-to-lose. A refusal is kept apart from a failure,
+// because they mean opposite things — one says the removal cannot happen, the
+// other says nobody knows yet what it would cost (#385).
 // Pure and framework-free, so both the dialog and its host read one rule
 // instead of each re-deriving it.
-import type { ReclaimPreview, RemovePreflightError } from "@maestro/core";
+import type {
+  ReclaimPreview,
+  RemovePreflightError,
+  RemoveWarning,
+} from "@maestro/core";
 import { HttpError } from "../api/http";
 import type { RemovePreflight } from "./use-remove-preflight";
 
-export type RemoveWarningState =
+// What the check says about one row's copy. "checking" is not among them: an
+// unfinished check has made no claim about any row (#414).
+export type RemoveRowWarning =
   // The check ran and found the copy still matching its lockfile.
   | "none"
-  // The check has not answered yet.
-  | "checking"
   // The copy carries edits the removal would destroy.
   | "local-edits"
   // The check ran and found nothing recorded to verify the copy against.
   | "cannot-verify"
-  // The check never ran — the server could not read the copy, or the request
-  // itself failed. Apart from the state above on purpose: borrowing its wording
-  // would state a cause nothing observed.
+  // The check never ran for this copy. Apart from the state above on purpose:
+  // borrowing its wording would state a cause nothing observed.
   | "check-failed";
+
+export type RemoveCheckState =
+  // No per-row answer exists yet: the check is still running, or the request
+  // that would have carried the answers failed. Either is true of every row at
+  // once, so it is stated once.
+  | { kind: "unanswered"; warning: "checking" | "check-failed" }
+  // The repo scope's one answer for its one row. A repo's deployed copy spans
+  // several tool subtrees, so the aggregate is the honest thing to state.
+  | { kind: "repo"; warning: RemoveRowWarning }
+  // The global scope's answer per detected tool, keyed by apm's own tool token.
+  // A tool missing from the map was never reported on, which is not the same as
+  // a clean copy.
+  | { kind: "per-tool"; warnings: Readonly<Record<string, RemoveRowWarning>> };
 
 export type RemovePreflightView =
   // The removal is still on the table: the check answered, is still running, or
@@ -32,8 +48,8 @@ export type RemovePreflightView =
   // second reader would name paths the removal is about to delete underneath a
   // message saying it cannot run.
   | {
-      kind: "warning";
-      warning: RemoveWarningState;
+      kind: "offered";
+      check: RemoveCheckState;
       reclaim: readonly ReclaimPreview[];
     }
   // The server refused the request itself, in its own words. The removal cannot
@@ -75,6 +91,14 @@ function refusalMessage(error: unknown): string | null {
   return refuses === true ? error.message : null;
 }
 
+const unanswered = (
+  warning: "checking" | "check-failed",
+): RemovePreflightView => ({
+  kind: "offered",
+  check: { kind: "unanswered", warning },
+  reclaim: [],
+});
+
 export function removePreflightView(query: {
   data: RemovePreflight | undefined;
   error: unknown;
@@ -86,24 +110,43 @@ export function removePreflightView(query: {
   if (query.isError) {
     const refusal = refusalMessage(query.error);
     return refusal === null
-      ? { kind: "warning", warning: "check-failed", reclaim: [] }
-      : { kind: "refused", message: refusal };
+      ? unanswered("check-failed")
+      : {
+          kind: "refused",
+          message: refusal,
+        };
   }
+  // Also covers the query being switched off, which happens only with no
+  // dialog on screen to read the answer.
   if (query.data === undefined) {
-    return {
-      kind: "warning",
-      warning: query.isPending ? "checking" : "none",
-      reclaim: [],
-    };
+    return unanswered("checking");
+  }
+  const check = query.data.check;
+  // Nothing validates this body, so a server speaking a shape this build does
+  // not know reaches here as an answer with no check in it. Fail closed: an
+  // answer nobody can read is not a clean copy (J04).
+  if (check === undefined) {
+    return unanswered("check-failed");
   }
   return {
-    kind: "warning",
-    warning: warningFor(query.data.warning),
+    kind: "offered",
+    check:
+      check.scope === "repo"
+        ? { kind: "repo", warning: rowWarningFor(check.warning) }
+        : {
+            kind: "per-tool",
+            warnings: Object.fromEntries(
+              check.tools.map((entry) => [
+                entry.tool,
+                rowWarningFor(entry.warning),
+              ]),
+            ),
+          },
     reclaim: query.data.reclaim?.previews ?? [],
   };
 }
 
-function warningFor(warning: RemovePreflight["warning"]): RemoveWarningState {
+function rowWarningFor(warning: RemoveWarning | null): RemoveRowWarning {
   switch (warning) {
     case "local-edits-will-be-lost":
       return "local-edits";

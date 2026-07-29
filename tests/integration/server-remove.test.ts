@@ -468,14 +468,14 @@ describe("remove HTTP route", () => {
       expect(classifyCalls).toEqual([{ tools: undefined }]);
     });
 
-    it("names a copy left behind by a tool this machine no longer has", async () => {
-      // The real guard against a real tree: Claude's copy matches the lockfile
-      // exactly, and a copy for Codex — a tool that has since dropped off this
-      // machine — sits alongside it. apm deletes both. A check scoped to
-      // today's tools would report this removal as costing nothing.
+    it("answers per detected tool against a real tree", async () => {
+      // The real guard, on a tree where the two tools disagree: Claude's copy
+      // matches the lockfile exactly, and the Codex copy beside it was never
+      // recorded there at all. One aggregate answer would have to pick one of
+      // those and state it about both rows (#414).
       const { app } = makeApp({
         realDeployedContent: true,
-        detectedTools: ["claude"],
+        detectedTools: ["claude", "codex"],
       });
       await writeGlobalLockfile([
         [
@@ -491,9 +491,15 @@ describe("remove HTTP route", () => {
 
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({
-        warning: "local-edits-will-be-lost",
+        check: {
+          scope: "global",
+          tools: [
+            { tool: "claude", warning: null },
+            { tool: "codex", warning: "cannot-verify-local-edits" },
+          ],
+        },
         // Codex is not exclusive to its skills dir (ten apm targets share
-        // .agents), so an undetected Codex is never a nameable reclaim.
+        // .agents), so a detected Codex is never a nameable reclaim either.
         reclaim: null,
       });
     });
@@ -511,7 +517,7 @@ describe("remove HTTP route", () => {
 
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({
-        warning: null,
+        check: { scope: "global", tools: [{ tool: "codex", warning: null }] },
         reclaim: {
           previews: [
             { tool: "claude", path: join(home, ".claude/skills/tdd") },
@@ -521,12 +527,12 @@ describe("remove HTTP route", () => {
       });
     });
 
-    it("warns about local edits inside the leftover copy it is about to name", async () => {
-      // #390's own criterion: the local-edits check has to cover the copies the
-      // reclaim would delete. Claude Code has dropped off this machine, so its
-      // .claude tree is the reclaim — and it carries edits the lockfile never
-      // recorded. Naming the path while calling the removal costless would be
-      // consent for a deletion whose cost was never stated.
+    it("keeps a leftover copy's edits off the detected tool's answer", async () => {
+      // Claude Code has dropped off this machine, so its .claude tree is the
+      // reclaim — and it carries edits the lockfile never recorded. The
+      // confirmation states that whole copy goes on the leftover's own row,
+      // which is a larger claim than "it carries edits", so the detected tool's
+      // answer stays about the detected tool (#414).
       const { app } = makeApp({
         realDeployedContent: true,
         detectedTools: ["codex"],
@@ -544,7 +550,7 @@ describe("remove HTTP route", () => {
 
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({
-        warning: "local-edits-will-be-lost",
+        check: { scope: "global", tools: [{ tool: "codex", warning: null }] },
         reclaim: {
           previews: [
             { tool: "claude", path: join(home, ".claude/skills/tdd") },
@@ -574,7 +580,7 @@ describe("remove HTTP route", () => {
       const response = await preflightGlobally(app);
 
       expect(await response.json()).toEqual({
-        warning: null,
+        check: { scope: "global", tools: [{ tool: "claude", warning: null }] },
         reclaim: null,
       });
     });
@@ -692,7 +698,10 @@ describe("remove HTTP route", () => {
 
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({
-        warning: "local-edits-will-be-lost",
+        check: {
+          scope: "global",
+          tools: [{ tool: "claude", warning: "local-edits-will-be-lost" }],
+        },
         reclaim: null,
       });
       expect(removeCalls).toEqual([]);
@@ -726,7 +735,9 @@ describe("remove HTTP route", () => {
 
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({
-        warning: "local-edits-will-be-lost",
+        // A repo has one row, and its deployed copy spans several tool
+        // subtrees, so one aggregate answer is the honest thing to state.
+        check: { scope: "repo", warning: "local-edits-will-be-lost" },
         reclaim: null,
       });
       expect(removeCalls).toEqual([]);
@@ -737,7 +748,7 @@ describe("remove HTTP route", () => {
       await registry.register(repo);
 
       expect(await (await preflightTdd(app, repo)).json()).toEqual({
-        warning: "cannot-verify-local-edits",
+        check: { scope: "repo", warning: "cannot-verify-local-edits" },
         reclaim: null,
       });
     });
@@ -747,7 +758,7 @@ describe("remove HTTP route", () => {
       await registry.register(repo);
 
       expect(await (await preflightTdd(app, repo)).json()).toEqual({
-        warning: null,
+        check: { scope: "repo", warning: null },
         reclaim: null,
       });
     });

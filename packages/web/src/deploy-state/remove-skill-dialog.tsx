@@ -8,34 +8,20 @@ import {
   type RemoveLedgerRow,
   removeLedgerRows,
 } from "./remove-ledger-rows";
-import type {
-  RemovePreflightView,
-  RemoveWarningState,
-} from "./remove-preflight-view";
+import type { RemovePreflightView } from "./remove-preflight-view";
 
-// What the user is told before destroying the deployed copy. Amber, never
-// danger red: red is reserved for validation errors, and lost work is a
-// consequence of a deliberate action, not a mistake (DESIGN.md). The ▲ pairs
-// the colour with a glyph, so the signal survives without colour. "checking"
-// speaks up too — silence would read as nothing-to-lose, which is the one thing
-// an unfinished check cannot promise (J04) — but it is the one line here that
-// names no cost, so it is the one line that wears neither the amber nor the ▲.
-const WARNING_TEXT: Record<Exclude<RemoveWarningState, "none">, string> = {
-  "local-edits":
-    "This copy has local edits. Copy them out first — removing it deletes them with the copy.",
-  "cannot-verify":
-    "Nothing was recorded to check this copy against, so local edits can't be checked. Removing it may lose work.",
-  "check-failed":
-    "Maestro couldn't check this copy for local edits. Removing it may lose work.",
-  checking: "Checking this copy for local edits…",
-};
+// The one line the check speaks before it has an answer. Silence would read as
+// nothing-to-lose, which is the one thing an unfinished check cannot promise
+// (J04) — and it names no cost, so it wears neither the amber nor the ▲ the
+// answered states put on their rows.
+const CHECKING_TEXT = "Checking this copy for local edits…";
 
 // A block that leads with a glyph hangs it in the margin and aligns its lines
 // against each other, so a wrapped sentence starts where the first line did.
 const GLYPH_BLOCK = "flex gap-1.5";
 
 // A removal that either cannot happen or did not happen. Danger red rather than
-// the amber above: amber names a cost the removal will pay, this names a
+// the amber a row wears: amber names a cost the removal will pay, this names a
 // removal that went wrong — the error signal red exists for (issue #213). The
 // leading ✕ and the label carry the meaning where colour cannot
 // (Never-Colour-Alone). Announced assertively: it arrives on its own and takes
@@ -204,30 +190,14 @@ export function RemoveSkillDialog({
   // check answers is the J04 rule applied to consent, not a second guard on top
   // of #337's decision.
   const awaitingCheck =
-    preflight.kind === "warning" && preflight.warning === "checking";
+    preflight.kind === "offered" &&
+    preflight.check.kind === "unanswered" &&
+    preflight.check.warning === "checking";
   // A removal the server has already refused. Nothing will be removed, so the
   // panel drops both halves of the consent it was asking for: the confirm, and
   // the ledger naming what confirming would cost. What is left is the question
   // and the server's reason it cannot be answered (#412).
   const refused = preflight.kind === "refused";
-  // Only ever the leftovers the check in hand named. A refusal carries none, so
-  // an earlier answer's paths cannot outlive the answer that named them.
-  const reclaim = preflight.kind === "warning" ? preflight.reclaim : [];
-  // The three answers that name a cost, which are the only ones that earn the
-  // amber surface. `checking` is deliberately not among them: it used to wear
-  // the same alarm as "this copy has local edits", so the loudest block in the
-  // panel appeared and then vanished again on every removal of a clean copy.
-  const costWarning =
-    preflight.kind === "warning" &&
-    preflight.warning !== "none" &&
-    preflight.warning !== "checking"
-      ? preflight.warning
-      : null;
-
-  const panelBorder = panelBorderFor({
-    refused,
-    cost: reclaim.length > 0,
-  });
 
   // The question and the targets it would take are announced as one statement,
   // so the confirmation is heard rather than arrowed through. The warning and
@@ -244,15 +214,27 @@ export function RemoveSkillDialog({
   const dialogId = useId();
   const leadInId = `${dialogId}-lead-in`;
   const refusalId = `${dialogId}-refusal`;
-  const rows = removeLedgerRows(target, reclaim).map((row, index, all) => ({
-    ...row,
-    id: `${dialogId}-target-${index}`,
-    last: index === all.length - 1,
-  }));
-  const detectedRows = rows.filter((row) => !row.drift);
-  const leftoverRows = rows.filter((row) => row.drift);
-  // The leftover rows are an announced region, so they stay out of the
-  // description with the other regions.
+  // A refusal has no ledger: nothing is going, so there is nothing to list —
+  // and the leftovers an earlier answer named cannot outlive the answer that
+  // named them.
+  const rows =
+    preflight.kind === "refused"
+      ? []
+      : removeLedgerRows(target, preflight.reclaim, preflight.check).map(
+          (row, index, all) => ({
+            ...row,
+            id: `${dialogId}-target-${index}`,
+            last: index === all.length - 1,
+          }),
+        );
+  const detectedRows = rows.filter((row) => !row.leftover);
+  const leftoverRows = rows.filter((row) => row.leftover);
+  // The leftover rows arrive with the answer, so the description — read once,
+  // at open — would miss them; their region is their only channel, and naming
+  // them in both would read the same path twice. The detected rows are the
+  // opposite: they are on screen before any answer, which is exactly what a
+  // live region does not reliably announce, so the description carries them and
+  // their region carries only the status that lands on them later.
   const describedBy = refused
     ? refusalId
     : [leadInId, ...detectedRows.map((row) => row.id)].join(" ");
@@ -262,6 +244,12 @@ export function RemoveSkillDialog({
   // the running check needs it — a refusal takes the control away rather than
   // disabling it, so there is nothing left to describe.
   const blockedId = awaitingCheck ? `${dialogId}-blocked` : undefined;
+  // The outline states the panel's worst news, and a cost is now a property of
+  // the rows rather than of a block beside them.
+  const panelBorder = panelBorderFor({
+    refused,
+    cost: rows.some((row) => row.drift),
+  });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 p-6">
@@ -323,11 +311,18 @@ export function RemoveSkillDialog({
                   own announced region, and a reader who hears "also deleted"
                   before them knows the box changed subject. */}
               <div className="flex flex-col overflow-hidden rounded-item border border-line-row">
-                <ul className="flex flex-col">
-                  {detectedRows.map((row) => (
-                    <LedgerRow key={row.key} row={row} />
-                  ))}
-                </ul>
+                {/* Announced, because a row gains its cost after the dialog is
+                    already open: the check answers late, and a status nobody
+                    hears is a cost seen only by those who can see it. Named
+                    apart from the two regions below, or a reader hears three
+                    regions that could be the same one. */}
+                <div role="status" aria-label="Removed from">
+                  <ul className="flex flex-col">
+                    {detectedRows.map((row) => (
+                      <LedgerRow key={row.key} row={row} />
+                    ))}
+                  </ul>
+                </div>
                 {/* Mounted from the first render, empty until the check
                     answers: a live region created together with its first
                     message announces unreliably (removal-trace.tsx). Only on
@@ -349,24 +344,6 @@ export function RemoveSkillDialog({
           )}
 
           <div className="flex flex-col gap-2">
-            {/* Named, because the leftover rows are a status region too and the
-                two say different things: what else goes, versus what is inside
-                it. Unnamed, a reader hears two identical regions. */}
-            {costWarning !== null ? (
-              <p
-                role="status"
-                aria-label="Local-edits check"
-                className={cn(
-                  GLYPH_BLOCK,
-                  "rounded-control border border-amber-border bg-amber-bg px-2.5 py-2.5 font-ui text-amber-ink text-desc",
-                )}
-              >
-                <span aria-hidden="true" className="font-mono">
-                  ▲
-                </span>
-                <span>{WARNING_TEXT[costWarning]}</span>
-              </p>
-            ) : null}
             {/* The server's own refusal, in its own words. Under a refusal
                 this block is the panel's whole body — the label names the
                 thing that cannot happen, so it is read first and read alone. */}
@@ -409,7 +386,7 @@ export function RemoveSkillDialog({
               aria-label="Local-edits check"
               className="min-w-0 truncate font-ui text-desc text-dim"
             >
-              {WARNING_TEXT.checking}
+              {CHECKING_TEXT}
             </p>
           ) : null}
           <span className="flex-1" />
