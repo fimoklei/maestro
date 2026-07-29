@@ -23,6 +23,10 @@ function jsonResponse(body: unknown, status: number) {
 // ever open, so the label alone identifies the control.
 const CONFIRM = "remove →";
 
+// The same control after a failure: the removal was already confirmed once, so
+// it offers the attempt again rather than a first one (#415).
+const RETRY = "retry →";
+
 // Opening the confirmation asks the server one read-only question — what would
 // this removal destroy — so a test that cares about the removal itself has to
 // tell the two calls apart.
@@ -56,7 +60,7 @@ function checkFor(warning: string | null, init: RequestInit) {
 // else to the caller.
 function stubFetch(
   warning: string | null,
-  onRemove: () => Response = () =>
+  onRemove: () => Response | Promise<Response> = () =>
     jsonResponse(
       { removed: { type: "skill", name: "tdd", version: "v0.5.0" } },
       200,
@@ -331,46 +335,80 @@ describe("removing a deployed skill from a row", () => {
     expect(onRemoved).not.toHaveBeenCalled();
   });
 
-  // The mixed-state warning follows the timing of the failure, not the presence
-  // of a code. A response with no code at all — a proxy page, a server that died
-  // mid-uninstall — is the case where apm most likely did run (#384).
-  it("warns about a mixed state when the failure carries no error code", async () => {
-    stubFetch(
-      null,
-      () =>
-        new Response("<html>502 Bad Gateway</html>", {
-          status: 502,
-          headers: { "content-type": "text/html" },
-        }),
-    );
-    renderRow();
+  // The retry is the same removal, not a fresh one the user has to describe
+  // again: same skill, same target, straight from the panel that reported the
+  // failure (#415).
+  it("re-fires the same removal against the same target when retried", async () => {
+    let attempts = 0;
+    const fetchMock = stubFetch(null, () => {
+      attempts += 1;
+      return attempts === 1
+        ? jsonResponse(
+            {
+              error: "remove-failed",
+              message: "apm did not confirm the removal.",
+            },
+            502,
+          )
+        : jsonResponse(
+            { removed: { type: "skill", name: "tdd", version: "v0.5.0" } },
+            200,
+          );
+    });
+    const { onRemoved } = renderRow();
 
     await openRemoveDialog();
     await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
+    await userEvent.click(await screen.findByRole("button", { name: RETRY }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      /may be in a mixed state/,
-    );
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    // Both requests, asserted as one list: what makes this a retry rather than
+    // a second removal is that the two are the same request.
+    const sameRemoval = expect.objectContaining({
+      name: "tdd",
+      target: { kind: "repo", repoPath: REPO },
+    });
+    expect(
+      removeCalls(fetchMock).map(([, init]) =>
+        JSON.parse(String((init as RequestInit).body)),
+      ),
+    ).toEqual([sameRemoval, sameRemoval]);
+    expect(onRemoved).toHaveBeenCalledTimes(1);
   });
 
-  it("stays silent about a mixed state when the removal was refused before apm ran", async () => {
-    stubFetch(null, () =>
-      jsonResponse(
-        {
-          error: "remove-in-progress",
-          message: "Another change to this repo is already running.",
-        },
-        409,
-      ),
-    );
+  // The mutation drops its error the moment the retry starts, which would take
+  // the failure block, the red outline and `close` with it — the panel would
+  // leave its failed state during the very attempt that state offered (#415).
+  it("keeps stating the failure while the retry is in flight", async () => {
+    let attempts = 0;
+    stubFetch(null, () => {
+      attempts += 1;
+      return attempts === 1
+        ? jsonResponse(
+            {
+              error: "remove-failed",
+              message: "apm did not confirm the removal.",
+            },
+            502,
+          )
+        : // A retry that never answers, so the in-flight panel can be read.
+          new Promise<Response>(() => undefined);
+    });
     renderRow();
 
     await openRemoveDialog();
     await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
+    await userEvent.click(await screen.findByRole("button", { name: RETRY }));
 
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("Another change to this repo is already");
-    expect(alert).not.toHaveTextContent(/mixed state/);
+    expect(
+      await screen.findByRole("button", { name: /removing/i }),
+    ).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "apm did not confirm the removal.",
+    );
+    expect(screen.getByRole("button", { name: "close" })).toBeDisabled();
   });
 
   // A removal takes its own row off the screen, so absence is the only evidence

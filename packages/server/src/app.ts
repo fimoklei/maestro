@@ -229,7 +229,7 @@ const removeErrorResponses: Record<
       "Another change to this repo is already running. Wait for it to finish.",
   },
   "remove-failed": {
-    // 502: apm ran and didn't prove removal; the cockpit adds a mixed-state warning.
+    // 502: apm ran and didn't prove removal, so the outcome is unknown.
     status: 502,
     message: "apm did not confirm the removal. Check apm and try again.",
   },

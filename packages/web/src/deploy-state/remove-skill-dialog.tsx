@@ -54,16 +54,16 @@ function FailureNote({
 
 type LedgerRowPlacement = { id: string; last: boolean };
 
-// The outline states the panel's worst news: refusal outranks cost outranks
-// an ordinary confirmation.
+// The outline states the panel's worst news: a failure — refused before apm ran
+// or unproven after it — outranks cost outranks an ordinary confirmation.
 function panelBorderFor({
-  refused,
+  failure,
   cost,
 }: {
-  refused: boolean;
+  failure: boolean;
   cost: boolean;
 }): string {
-  if (refused) {
+  if (failure) {
     return "border-danger-border";
   }
   return cost ? "border-line-drift" : "border-line";
@@ -114,7 +114,6 @@ export function RemoveSkillDialog({
   target,
   isRemoving,
   error,
-  attempted,
   preflight,
   onCancel,
   onConfirm,
@@ -131,8 +130,6 @@ export function RemoveSkillDialog({
   // The server's reason for a refused/failed removal, not the same as a
   // refused `preflight` (which happens before there's anything to confirm).
   error: string | null;
-  // Classification owned by removal-attempt.ts — the dialog only renders it.
-  attempted: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -153,6 +150,12 @@ export function RemoveSkillDialog({
   // A refusal drops both halves of the consent it was asking for: confirm and
   // ledger. What's left is the question and the server's reason (#412).
   const refused = preflight.kind === "refused";
+  // A removal already confirmed once that apm did not land. The footer then
+  // offers the same attempt again: a `remove →` beside a failure describes a
+  // dialog where nothing has happened yet (#415).
+  const failed = error !== null;
+  // Everything the panel states differently once its news is bad.
+  const failure = refused || failed;
 
   // One id per row, not one wrapping the ledger: a list of references joins
   // with a space by definition; text inside one element doesn't reliably.
@@ -184,7 +187,7 @@ export function RemoveSkillDialog({
   // The outline states the panel's worst news, and a cost is now a property of
   // the rows rather than of a block beside them.
   const panelBorder = panelBorderFor({
-    refused,
+    failure,
     cost: rows.some((row) => row.drift),
   });
 
@@ -270,14 +273,12 @@ export function RemoveSkillDialog({
             ) : null}
             {error ? (
               <FailureNote label="the removal failed" message={error}>
-                {/* Neutral, not amber — a second colour here would read as a
-                    second, milder problem. */}
-                {attempted ? (
-                  <span className="font-ui text-desc text-fg-2">
-                    The repo may be in a mixed state — some of this skill's
-                    files may already be gone. Check it before trying again.
-                  </span>
-                ) : null}
+                {/* What the retry beside it will do, replacing a paragraph that
+                    sent the user to check the repo by hand (#415). Dim: a
+                    property of the control, not a second problem. */}
+                <span className="font-ui text-desc text-dim">
+                  retry removes only what is left
+                </span>
               </FailureNote>
             ) : null}
           </div>
@@ -297,7 +298,8 @@ export function RemoveSkillDialog({
             </p>
           ) : null}
           <span className="flex-1" />
-          {/* "close" under a refusal — no pending action left to cancel. */}
+          {/* "close" once refused or failed — no pending action left to
+              cancel, only a panel to leave. */}
           <Button
             type="button"
             className="shrink-0"
@@ -306,7 +308,7 @@ export function RemoveSkillDialog({
             disabled={isRemoving}
             onClick={onCancel}
           >
-            {refused ? "close" : "cancel"}
+            {failure ? "close" : "cancel"}
           </Button>
           {/* Absent, not disabled, once refused: disabled reads as shut for
               now; this is shut for good. */}
@@ -320,7 +322,7 @@ export function RemoveSkillDialog({
               aria-describedby={blockedId}
               onClick={onConfirm}
             >
-              {isRemoving ? "removing…" : "remove →"}
+              {isRemoving ? "removing…" : failed ? "retry →" : "remove →"}
             </Button>
           )}
         </div>

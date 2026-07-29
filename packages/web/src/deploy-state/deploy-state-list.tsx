@@ -10,7 +10,6 @@ import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { ActionsMenu } from "../ui/actions-menu";
 import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
-import { removalWasAttempted } from "./removal-attempt";
 import { RemovalTrace, type TracedRemoval } from "./removal-trace";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
 import { removePreflightView } from "./remove-preflight-view";
@@ -37,6 +36,12 @@ const driftBadge: Record<
     hint: "Couldn't reach the source to check for updates — verify apm auth/network.",
   },
 };
+
+// apm's own words when the server sent them, a plain sentence otherwise.
+const removalFailureMessage = (error: unknown) =>
+  error instanceof HttpError
+    ? error.message
+    : "The removal could not be completed.";
 
 function DriftBadge({ status }: { status: DriftStatus }) {
   if (status === "pending") {
@@ -73,6 +78,10 @@ export function DeployStateList({
   onRemoved?: () => void;
 }) {
   const [removing, setRemoving] = useState<string | null>(null);
+  // Held here rather than read off the mutation: starting the retry clears the
+  // mutation's error, and the panel would leave its failed state during the
+  // attempt that state offered (#415).
+  const [failure, setFailure] = useState<string | null>(null);
   const [justRemoved, setJustRemoved] = useState(false);
   const [removed, setRemoved] = useState<TracedRemoval[]>([]);
   const remove = useRemoveDeployedSkill();
@@ -133,6 +142,7 @@ export function DeployStateList({
                   label: "remove…",
                   onSelect: () => {
                     remove.reset();
+                    setFailure(null);
                     setRemoving(primitive.name);
                   },
                 },
@@ -152,14 +162,7 @@ export function DeployStateList({
           target={target}
           isRemoving={remove.isPending}
           preflight={removePreflightView(preflight)}
-          error={
-            remove.error instanceof HttpError
-              ? remove.error.message
-              : remove.error
-                ? "The removal could not be completed."
-                : null
-          }
-          attempted={removalWasAttempted(remove.error)}
+          error={failure}
           onCancel={() => setRemoving(null)}
           onConfirm={() =>
             remove.mutate(
@@ -172,6 +175,7 @@ export function DeployStateList({
                 confirmedReclaimToken: preflight.data?.reclaim?.token,
               },
               {
+                onError: (error) => setFailure(removalFailureMessage(error)),
                 // Only a proven removal closes the dialog — a failure keeps it
                 // open with apm's reason.
                 onSuccess: (data) => {

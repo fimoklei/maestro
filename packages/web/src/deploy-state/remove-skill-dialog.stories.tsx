@@ -44,7 +44,6 @@ const meta = {
     isRemoving: false,
     preflight: repoCheck("none"),
     error: null,
-    attempted: true,
     onCancel: () => undefined,
     onConfirm: () => undefined,
   },
@@ -83,18 +82,28 @@ export const LongRepoPath: Story = {
 // the outcome cannot be missed.
 export const Removing: Story = { args: { isRemoving: true } };
 
-// A removal apm did not confirm. The dialog stays put, carries apm's own reason
-// and warns that the repo may be half-changed. Danger red with its own ✕, so a
+// A removal apm did not confirm. The dialog stays put with apm's own reason,
+// and the footer offers the attempt again — `close` and `retry →`, because the
+// removal has already been confirmed once. Danger red with its own ✕, so a
 // failure never reads as one more amber warning.
 export const Failed: Story = {
   args: { error: "apm did not confirm the removal. Check apm and try again." },
 };
 
+// A retry the user has already pressed. Same footer, both controls inert: the
+// second attempt is as uninterruptible as the first.
+export const Retrying: Story = {
+  args: {
+    isRemoving: true,
+    error: "apm did not confirm the removal. Check apm and try again.",
+  },
+};
+
 // A confirmed removal refused before apm ran: the deployed copy could not be
-// read at all, so nothing was touched and there is no mixed-state note.
+// read at all. The same footer — retrying a refusal costs a round-trip and
+// nothing else.
 export const RemovalRefused: Story = {
   args: {
-    attempted: false,
     error:
       "The deployed copy exists but could not be read, so Maestro cannot tell whether removing it would delete local changes.",
   },
