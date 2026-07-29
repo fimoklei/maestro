@@ -92,6 +92,58 @@ describe("registry HTTP routes", () => {
     });
   }
 
+  const listedPaths = async (app: ReturnType<typeof makeApp>) => {
+    const res = await app.request("/api/registry/repos");
+    const { repos } = (await res.json()) as { repos: { path: string }[] };
+    return repos.map((repo) => repo.path);
+  };
+
+  it("registers a picker selection one path at a time, never stopping at a refusal", async () => {
+    // What the browse-picker does with a folder of repos: one POST per path, in
+    // order. A bad path is skipped, the rest still land.
+    const app = makeApp();
+    const second = await mkdtemp(join(tmpdir(), "maestro-server-second-"));
+
+    const outcomes = [];
+    for (const path of [dir, "./not-absolute", second]) {
+      outcomes.push((await postPath(app, path)).status);
+    }
+
+    expect(outcomes).toEqual([201, 400, 201]);
+    expect(await listedPaths(app)).toEqual([
+      await nodeRealpath(dir),
+      await nodeRealpath(second),
+    ]);
+    await rm(second, { recursive: true, force: true });
+  });
+
+  it("does not duplicate a repo the registry already holds", async () => {
+    // The picker greys out what is registered, but that badge is a client-side
+    // hint: a symlinked or hand-pasted path can still arrive twice, so the
+    // server is what has to hold the line (#163).
+    const app = makeApp();
+    const second = await mkdtemp(join(tmpdir(), "maestro-server-second-"));
+    expect((await postPath(app, dir)).status).toBe(201);
+
+    for (const path of [second, dir]) {
+      expect((await postPath(app, path)).status).toBe(201);
+    }
+
+    expect(await listedPaths(app)).toEqual([
+      await nodeRealpath(dir),
+      await nodeRealpath(second),
+    ]);
+    await rm(second, { recursive: true, force: true });
+  });
+
+  it("still lists a registered repo through a freshly built app (a restart)", async () => {
+    // registry-config-store.test.ts proves the store round-trips; this proves
+    // the route reads the persisted config rather than in-process state.
+    expect((await postPath(makeApp(), dir)).status).toBe(201);
+
+    expect(await listedPaths(makeApp())).toEqual([await nodeRealpath(dir)]);
+  });
+
   it("rejects a relative path with a readable 400", async () => {
     const res = await postPath(makeApp(), "./relative");
 

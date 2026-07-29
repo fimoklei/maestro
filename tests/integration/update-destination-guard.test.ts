@@ -11,8 +11,10 @@ import { join } from "node:path";
 import {
   DeployedContentAdapter,
   DeploySkill,
+  DeployStateReader,
   type DeployTarget,
   type InventoryResult,
+  NodeFileSystem,
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -43,6 +45,7 @@ describe("update journey against the real destination guard", () => {
   const writeLockfile = async (
     name: string,
     hashes: Record<string, string>,
+    tag = LATEST_TAG,
   ) => {
     const lines = Object.entries(hashes).map(
       ([path, hash]) => `      ${path}: ${hash}`,
@@ -51,7 +54,7 @@ describe("update journey against the real destination guard", () => {
       "dependencies:",
       `  - virtual_path: skills/${name}`,
       "    package_type: claude_skill",
-      `    resolved_ref: ${LATEST_TAG}`,
+      `    resolved_ref: ${tag}`,
       "    deployed_file_hashes:",
       ...lines,
       "",
@@ -154,6 +157,31 @@ describe("update journey against the real destination guard", () => {
     expect(await update(deploy)).toEqual({
       ok: true,
       deployed: { type: "skill", name: "tdd", version: LATEST_TAG },
+    });
+  });
+
+  it("leaves the deploy-state reading the new tag, not the one it was behind", async () => {
+    // The J08 journey's tail: an update is a re-deploy at the latest tag, and
+    // the state a user reads afterwards has to be the tag apm actually wrote.
+    const body = "---\nname: tdd\n---\nbody\n";
+    await writeDeployed(".claude/skills/tdd/SKILL.md", body);
+    await writeLockfile(
+      "tdd",
+      { ".claude/skills/tdd/SKILL.md": sha(body) },
+      "v0.5.0",
+    );
+    const reader = new DeployStateReader({ fs: new NodeFileSystem() });
+
+    expect(await reader.read(root)).toMatchObject({
+      primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+    });
+
+    expect(await update(makeDeploy(reinstallAtTag))).toMatchObject({
+      ok: true,
+    });
+
+    expect(await reader.read(root)).toMatchObject({
+      primitives: [{ type: "skill", name: "tdd", version: LATEST_TAG }],
     });
   });
 

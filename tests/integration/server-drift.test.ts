@@ -89,6 +89,22 @@ describe("drift HTTP route", () => {
     await rm(repo, { recursive: true, force: true });
   });
 
+  it("reports an empty behind list when nothing is behind the latest tag", async () => {
+    // The up-to-date answer is a successful check with nothing in it — never
+    // the { ok: false } a check that could not run returns.
+    const repo = await mkdtemp(join(tmpdir(), "maestro-repo-"));
+    const { app, registry } = makeApp({ ok: true, behind: [] });
+    await registry.register(repo);
+
+    const res = await app.request(
+      `/api/drift?repo=${encodeURIComponent(repo)}`,
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ behind: [] });
+    await rm(repo, { recursive: true, force: true });
+  });
+
   it("returns 200 with ok:false when the check could not run", async () => {
     const repo = await mkdtemp(join(tmpdir(), "maestro-repo-"));
     const { app, registry } = makeApp({ ok: false });
