@@ -37,6 +37,12 @@ const driftBadge: Record<
   },
 };
 
+// The target is provably clean. Read after an attempt that already failed, it
+// says that attempt landed: apm can remove a skill and still fail to prove it,
+// which takes the lockfile entry with it (apm-driver.md § Remove).
+const alreadyGone = (error: unknown) =>
+  error instanceof HttpError && error.code === "not-deployed";
+
 // apm's own words when the server sent them, a plain sentence otherwise.
 const removalFailureMessage = (error: unknown) =>
   error instanceof HttpError
@@ -175,7 +181,15 @@ export function DeployStateList({
                 confirmedReclaimToken: preflight.data?.reclaim?.token,
               },
               {
-                onError: (error) => setFailure(removalFailureMessage(error)),
+                onError: (error) => {
+                  if (failure !== null && alreadyGone(error)) {
+                    setFailure(null);
+                    setRemoving(null);
+                    setJustRemoved(true);
+                    return;
+                  }
+                  setFailure(removalFailureMessage(error));
+                },
                 // Only a proven removal closes the dialog — a failure keeps it
                 // open with apm's reason.
                 onSuccess: (data) => {

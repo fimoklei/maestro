@@ -411,6 +411,72 @@ describe("removing a deployed skill from a row", () => {
     expect(screen.getByRole("button", { name: "close" })).toBeDisabled();
   });
 
+  // apm can remove a skill and still fail to prove it, which leaves the entry
+  // gone from the lockfile. The retry then finds nothing to remove — the first
+  // attempt did land, so reporting a second failure would be the cockpit
+  // calling a finished removal broken (#415).
+  it("settles the removal when the retry finds nothing left", async () => {
+    let attempts = 0;
+    stubFetch(null, () => {
+      attempts += 1;
+      return attempts === 1
+        ? jsonResponse(
+            {
+              error: "remove-failed",
+              message: "apm did not confirm the removal.",
+            },
+            502,
+          )
+        : jsonResponse(
+            {
+              error: "not-deployed",
+              message:
+                "That skill is not deployed on this target, so there is nothing to remove.",
+            },
+            404,
+          );
+    });
+    const { onRemoved } = renderRow();
+
+    await openRemoveDialog();
+    await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
+    await userEvent.click(await screen.findByRole("button", { name: RETRY }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    expect(onRemoved).toHaveBeenCalledTimes(1);
+    // No trace line: the server never named the version this removal ran
+    // against, and the screen's own guess is not its answer (#383). The row
+    // leaving the refetched card is the evidence.
+    expect(screen.queryByText(/removed tdd/)).toBeNull();
+  });
+
+  // The same answer on a first attempt means the skill was never deployed here.
+  // Nothing landed, so there is nothing to settle.
+  it("keeps a first attempt open when the skill is not deployed", async () => {
+    stubFetch(null, () =>
+      jsonResponse(
+        {
+          error: "not-deployed",
+          message:
+            "That skill is not deployed on this target, so there is nothing to remove.",
+        },
+        404,
+      ),
+    );
+    const { onRemoved } = renderRow();
+
+    await openRemoveDialog();
+    await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "there is nothing to remove",
+    );
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(onRemoved).not.toHaveBeenCalled();
+  });
+
   // A removal takes its own row off the screen, so absence is the only evidence
   // left behind. The card says what went instead (#383).
   describe("announcing the outcome", () => {
