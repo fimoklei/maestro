@@ -65,7 +65,6 @@ function renderDialog({
   target = REPO_TARGET as Parameters<typeof RemoveSkillDialog>[0]["target"],
   isRemoving = false,
   error = null as string | null,
-  attempted = true,
   version = "v0.5.0" as string | null,
   preflight = repoCheck("none") as RemovePreflightView,
   onCancel = vi.fn(),
@@ -78,7 +77,6 @@ function renderDialog({
       target={target}
       isRemoving={isRemoving}
       error={error}
-      attempted={attempted}
       preflight={preflight}
       onCancel={onCancel}
       onConfirm={onConfirm}
@@ -269,13 +267,55 @@ describe("RemoveSkillDialog", () => {
     expect(onCancel).not.toHaveBeenCalled();
   });
 
-  it("stays open on failure, stating apm's reason and the mixed-state risk", () => {
+  it("stays open on failure, stating apm's reason", () => {
     renderDialog({ error: "apm did not confirm the removal." });
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "apm did not confirm the removal.",
+    );
+  });
+
+  // What the user needs before pressing retry, in the block that just told them
+  // the removal failed. It used to be a paragraph sending them to check the repo
+  // by hand (#415).
+  it("says a retry picks up only what the failure left behind", () => {
+    renderDialog({ error: "apm did not confirm the removal." });
+
     const alert = screen.getByRole("alert");
-    expect(alert).toHaveTextContent("apm did not confirm the removal.");
-    expect(alert).toHaveTextContent(/mixed state/i);
+    expect(alert).toHaveTextContent("retry removes only what is left");
+    expect(alert).not.toHaveTextContent(/mixed state/i);
+  });
+
+  // The removal has already been confirmed once, so a footer offering "cancel"
+  // and a confirm would be describing a dialog where nothing has happened yet.
+  it("offers close and retry once a removal has failed", () => {
+    renderDialog({ error: "apm did not confirm the removal." });
+
+    expect(screen.getByRole("button", { name: "close" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "retry →" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "cancel" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "remove →" })).toBeNull();
+  });
+
+  it("re-fires the same removal from retry", async () => {
+    const { onConfirm } = renderDialog({
+      error: "apm did not confirm the removal.",
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "retry →" }));
+
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it("states the retry is in flight and blocks closing while it runs", () => {
+    renderDialog({
+      error: "apm did not confirm the removal.",
+      isRemoving: true,
+    });
+
+    expect(screen.getByRole("button", { name: /removing/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "close" })).toBeDisabled();
   });
 
   // A warning and a failure used to render as the same object: same fill, same
@@ -296,21 +336,6 @@ describe("RemoveSkillDialog", () => {
     renderDialog({ error: "apm did not confirm the removal." });
 
     expect(screen.getByRole("alert")).toHaveTextContent(/removal failed/i);
-  });
-
-  it("does not claim a mixed state when nothing was attempted", () => {
-    // A refusal happens before apm runs — the repo is exactly as it was. Saying
-    // it might be half-changed would send the user hunting for damage that is
-    // not there.
-    renderDialog({
-      error:
-        "The deployed copy has local changes that never went through central.",
-      attempted: false,
-    });
-
-    const alert = screen.getByRole("alert");
-    expect(alert).toHaveTextContent("local changes");
-    expect(alert).not.toHaveTextContent(/mixed state/i);
   });
 
   // The confirmation is the last moment the user can keep work apm would
@@ -841,11 +866,21 @@ describe("RemoveSkillDialog", () => {
   });
 
   it("keeps the neutral panel outline while the removal is still on offer", () => {
-    // The danger outline is the refusal's, so a panel that still has a question
-    // to ask must not borrow it.
+    // The danger outline belongs to a panel whose news is bad, so a panel that
+    // still has a question to ask must not borrow it.
     renderDialog();
 
     expect(screen.getByRole("dialog").className).not.toContain("danger");
+  });
+
+  it("carries a failed removal in the panel's own outline", () => {
+    // The same rule the refusal follows: a red block on a neutral panel states
+    // the failure more quietly than the panel states its question.
+    renderDialog({ error: "apm did not confirm the removal." });
+
+    expect(screen.getByRole("dialog").className).toContain(
+      "border-danger-border",
+    );
   });
 
   // The global scope. The user clicked inside one tool's card, so the modal has
