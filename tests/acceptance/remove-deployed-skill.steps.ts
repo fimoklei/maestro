@@ -424,7 +424,7 @@ describeFeature(
         Then("I am told those local edits would be lost", async () => {
           expect(response.status).toBe(200);
           expect(await response.json()).toEqual({
-            warning: "local-edits-will-be-lost",
+            check: { scope: "repo", warning: "local-edits-will-be-lost" },
             reclaim: null,
           });
         });
@@ -475,7 +475,7 @@ describeFeature(
           // Its own wording: calling an unverifiable copy "edited" would claim
           // something no check ever saw.
           expect(await response.json()).toEqual({
-            warning: "cannot-verify-local-edits",
+            check: { scope: "repo", warning: "cannot-verify-local-edits" },
             reclaim: null,
           });
         });
@@ -701,7 +701,15 @@ describeFeature(
         Then("I am told those local edits would be lost", async () => {
           expect(response.status).toBe(200);
           expect(await response.json()).toEqual({
-            warning: "local-edits-will-be-lost",
+            // One answer per detected tool: the confirmation states the cost on
+            // the row that carries it (#414).
+            check: {
+              scope: "global",
+              tools: [
+                { tool: "claude", warning: "local-edits-will-be-lost" },
+                { tool: "codex", warning: "local-edits-will-be-lost" },
+              ],
+            },
             reclaim: null,
           });
         });

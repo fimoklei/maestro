@@ -536,7 +536,7 @@ export function createApp(deps: AppDeps) {
       const { status, message } = removePreflightErrorResponses[result.error];
       return c.json({ error: result.error, message }, status);
     }
-    return c.json({ warning: result.warning, reclaim: result.reclaim });
+    return c.json({ check: result.check, reclaim: result.reclaim });
   });
 
   // Always 200 with a report — a per-skill refusal is data, not an HTTP error.

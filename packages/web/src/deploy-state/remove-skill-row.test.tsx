@@ -34,6 +34,24 @@ const preflightCalls = (fetchMock: { mock: { calls: unknown[][] } }) =>
     ([path]) => path === "/api/deploy/remove/preflight",
   );
 
+// The answer the server would send for the scope this request named. The
+// global arm reports the same verdict for both detected tools; which tool a
+// verdict lands on is remove-skill-dialog's own test.
+function checkFor(warning: string | null, init: RequestInit) {
+  const { target } = JSON.parse(String(init.body)) as {
+    target: { kind: string };
+  };
+  return target.kind === "repo"
+    ? { scope: "repo", warning }
+    : {
+        scope: "global",
+        tools: [
+          { tool: "claude", warning },
+          { tool: "codex", warning },
+        ],
+      };
+}
+
 // A fetch stub that answers the pre-confirmation check and leaves everything
 // else to the caller.
 function stubFetch(
@@ -45,11 +63,14 @@ function stubFetch(
     ),
   reclaim: { tool: string; path: string }[] = [],
 ) {
-  const fetchMock = vi.fn(async (path: string) =>
+  const fetchMock = vi.fn(async (path: string, init: RequestInit) =>
     path === "/api/deploy/remove/preflight"
       ? jsonResponse(
           {
-            warning,
+            // Shaped by the scope the request named, the way the server shapes
+            // it: one aggregate answer per repo, one answer per detected tool
+            // on the global scope.
+            check: checkFor(warning, init),
             // Paths and token travel as one, exactly as the server sends them:
             // there is no consent for an empty set, so no token either.
             reclaim:
@@ -199,9 +220,9 @@ describe("removing a deployed skill from a row", () => {
 
     const dialog = await openRemoveDialog();
 
-    expect(await within(dialog).findByRole("status")).toHaveTextContent(
-      /can't be checked/i,
-    );
+    expect(
+      await within(dialog).findByText("nothing recorded — may lose work"),
+    ).toBeInTheDocument();
   });
 
   // The server can also refuse the check outright and say why — folding that
@@ -262,9 +283,9 @@ describe("removing a deployed skill from a row", () => {
 
       const dialog = await openRemoveDialog();
 
-      expect(await within(dialog).findByRole("status")).toHaveTextContent(
-        /couldn't check this copy/i,
-      );
+      expect(
+        await within(dialog).findByText("check didn't run — may lose work"),
+      ).toBeInTheDocument();
       expect(screen.getByRole("button", { name: CONFIRM })).toBeEnabled();
     });
   });
@@ -412,7 +433,10 @@ describe("removing a deployed skill from a row", () => {
       // cannot be told apart by accident.
       vi.stubGlobal("fetch", async (path: string, init: RequestInit) => {
         if (path === "/api/deploy/remove/preflight") {
-          return jsonResponse({ warning: null }, 200);
+          return jsonResponse(
+            { check: { scope: "repo", warning: null }, reclaim: null },
+            200,
+          );
         }
         const { name } = JSON.parse(String(init.body));
         const version = name === "tdd" ? "v0.5.0" : "v1.2.0";
@@ -558,11 +582,12 @@ describe("removing a deployed skill from a row", () => {
 
       const dialog = await openRemoveDialog();
 
+      const region = await within(dialog).findByRole("status", {
+        name: /removed from/i,
+      });
       expect(
-        await within(dialog).findByRole("status", {
-          name: /local-edits check/i,
-        }),
-      ).toHaveTextContent(/local edits/i);
+        within(region).getAllByText("local edits — deleted too"),
+      ).toHaveLength(2);
       const [, init] = preflightCalls(fetchMock)[0] as [string, RequestInit];
       expect(JSON.parse(String(init.body))).toEqual({
         type: "skill",

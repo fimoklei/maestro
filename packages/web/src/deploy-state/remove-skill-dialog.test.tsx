@@ -3,8 +3,9 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type {
+  RemoveCheckState,
   RemovePreflightView,
-  RemoveWarningState,
+  RemoveRowWarning,
 } from "./remove-preflight-view";
 import { RemoveSkillDialog } from "./remove-skill-dialog";
 
@@ -31,10 +32,34 @@ const stepOf = (element: HTMLElement) =>
 
 // The check answered (or is still answering): the removal is still on offer,
 // and any leftover copies it named travel with that answer.
-const warns = (
-  warning: RemoveWarningState,
+const offers = (
+  check: RemoveCheckState,
   reclaim: readonly ReclaimPreview[] = [],
-): RemovePreflightView => ({ kind: "warning", warning, reclaim });
+): RemovePreflightView => ({ kind: "offered", check, reclaim });
+
+// The repo scope's one answer, for its one row.
+const repoCheck = (
+  warning: RemoveRowWarning,
+  reclaim: readonly ReclaimPreview[] = [],
+) => offers({ kind: "repo", warning }, reclaim);
+
+// The global scope's answer, one entry per detected tool.
+const toolChecks = (
+  warnings: Record<string, RemoveRowWarning>,
+  reclaim: readonly ReclaimPreview[] = [],
+) => offers({ kind: "per-tool", warnings }, reclaim);
+
+// Every detected tool came back clean, for a test about something other than
+// the check.
+const cleanTools = (...tools: string[]) =>
+  toolChecks(Object.fromEntries(tools.map((tool) => [tool, "none"] as const)));
+
+// The check is still running: it has claimed nothing about any row yet.
+const CHECKING = offers({ kind: "unanswered", warning: "checking" });
+
+// The request that would have carried the per-row answers failed, so the same
+// thing is true of every row.
+const CHECK_FAILED = offers({ kind: "unanswered", warning: "check-failed" });
 
 function renderDialog({
   target = REPO_TARGET as Parameters<typeof RemoveSkillDialog>[0]["target"],
@@ -42,7 +67,7 @@ function renderDialog({
   error = null as string | null,
   attempted = true,
   version = "v0.5.0" as string | null,
-  preflight = warns("none") as RemovePreflightView,
+  preflight = repoCheck("none") as RemovePreflightView,
   onCancel = vi.fn(),
   onConfirm = vi.fn(),
 } = {}) {
@@ -132,7 +157,10 @@ describe("RemoveSkillDialog", () => {
     // No per-tool remove — apm's uninstall has no -t, faking one orphans the
     // other tools' files (ADR-0013). Rows have nothing to press instead.
     it("gives no row anything to press, focus, or read as a control", () => {
-      renderDialog({ target: { kind: "global", tools: ["claude", "codex"] } });
+      renderDialog({
+        target: { kind: "global", tools: ["claude", "codex"] },
+        preflight: cleanTools("claude", "codex"),
+      });
 
       for (const row of screen.getAllByRole("listitem")) {
         expect(
@@ -145,7 +173,10 @@ describe("RemoveSkillDialog", () => {
     });
 
     it("puts no glyph on a row, because no row has a state to signal yet", () => {
-      renderDialog({ target: { kind: "global", tools: ["claude", "codex"] } });
+      renderDialog({
+        target: { kind: "global", tools: ["claude", "codex"] },
+        preflight: cleanTools("claude", "codex"),
+      });
 
       for (const row of screen.getAllByRole("listitem")) {
         expect(row.textContent).not.toMatch(/[▲✕✓·•→]/);
@@ -166,7 +197,10 @@ describe("RemoveSkillDialog", () => {
     });
 
     it("drops the note that there is no per-tool remove", () => {
-      renderDialog({ target: { kind: "global", tools: ["claude", "codex"] } });
+      renderDialog({
+        target: { kind: "global", tools: ["claude", "codex"] },
+        preflight: cleanTools("claude", "codex"),
+      });
 
       expect(screen.getByRole("dialog")).not.toHaveTextContent(/per-tool/i);
     });
@@ -280,109 +314,214 @@ describe("RemoveSkillDialog", () => {
   });
 
   // The confirmation is the last moment the user can keep work apm would
-  // delete without a word. Both cases warn; neither stands in the way (#337).
+  // delete without a word. Every case warns; none stands in the way (#337). The
+  // warning lands on the row that carries it, so the panel never states a cost
+  // in a paragraph the reader has to match back to a target (#414).
+  describe("what the check says, on the row it is about", () => {
+    // One row per detected tool, so a cost has somewhere to land that is not
+    // the whole set.
+    const globalTarget = {
+      kind: "global" as const,
+      tools: ["claude", "codex"],
+    };
 
-  it("states that local edits will be lost when the copy diverged", () => {
-    renderDialog({ preflight: warns("local-edits") });
+    const rowFor = (name: string) =>
+      screen
+        .getAllByRole("listitem")
+        .find((row) => row.textContent?.includes(name)) as HTMLElement;
 
-    expect(screen.getByRole("status")).toHaveTextContent(/local edits/i);
-  });
+    it("marks only the tool whose copy carries edits", () => {
+      renderDialog({
+        target: globalTarget,
+        preflight: toolChecks({ claude: "none", codex: "local-edits" }),
+      });
 
-  it("says the copy cannot be checked, rather than calling it edited", () => {
-    renderDialog({ preflight: warns("cannot-verify") });
+      expect(rowFor("Codex")).toHaveTextContent("local edits — deleted too");
+      expect(rowFor("Claude Code")).not.toHaveTextContent(/local edits/i);
+    });
 
-    const note = screen.getByRole("status");
-    expect(note).toHaveTextContent(/can't be checked/i);
-    // Claiming edits we never saw would be a fact we cannot state.
-    expect(note).not.toHaveTextContent(/local edits will be lost/i);
-  });
+    it("fills only that row with amber, and pairs it with the glyph", () => {
+      // Red is reserved for validation errors; lost work is a consequence, not
+      // an error (DESIGN.md). The glyph keeps colour from being the only signal
+      // (Never-Colour-Alone).
+      renderDialog({
+        target: globalTarget,
+        preflight: toolChecks({ claude: "none", codex: "local-edits" }),
+      });
 
-  it("wears amber with a glyph, never danger red", () => {
-    // Red is reserved for validation errors; lost work is a consequence, not an
-    // error (DESIGN.md). The glyph keeps colour from being the only signal.
-    renderDialog({ preflight: warns("local-edits") });
+      expect(rowFor("Codex").className).toContain("amber");
+      expect(rowFor("Codex")).toHaveTextContent("▲");
+      expect(rowFor("Claude Code").className).not.toContain("amber");
+      expect(rowFor("Claude Code")).not.toHaveTextContent("▲");
+    });
 
-    const note = screen.getByRole("status");
-    expect(note.className).toContain("amber");
-    expect(note.className).not.toContain("danger");
-    expect(note).toHaveTextContent("▲");
-  });
+    it("says the copy cannot be checked, rather than calling it edited", () => {
+      renderDialog({
+        target: globalTarget,
+        preflight: toolChecks({ claude: "cannot-verify", codex: "none" }),
+      });
 
-  it("leaves the confirm control usable under either warning", () => {
-    for (const warning of ["local-edits", "cannot-verify"] as const) {
-      const { onConfirm } = renderDialog({ preflight: warns(warning) });
+      const row = rowFor("Claude Code");
+      expect(row).toHaveTextContent("nothing recorded — may lose work");
+      // Claiming edits nothing saw would be a fact the check cannot state.
+      expect(row).not.toHaveTextContent(/local edits/i);
+    });
 
-      const confirm = screen
-        .getAllByRole("button", { name: /^remove/i })
-        .at(-1);
-      expect(confirm).toBeEnabled();
-      confirm?.click();
-      expect(onConfirm).toHaveBeenCalledTimes(1);
-    }
-  });
+    it("keeps a check that never ran apart from a missing baseline", () => {
+      renderDialog({
+        target: globalTarget,
+        preflight: toolChecks({ claude: "check-failed", codex: "none" }),
+      });
 
-  it("holds the confirm control until the check has answered", async () => {
-    // An answered warning never blocks (#337) — but an unfinished check has not
-    // warned about anything yet. Confirming through it destroys the copy before
-    // the one screen that could have named the cost got to say it.
-    const { onConfirm } = renderDialog({ preflight: warns("checking") });
+      const row = rowFor("Claude Code");
+      expect(row).toHaveTextContent("check didn't run — may lose work");
+      expect(row).not.toHaveTextContent(/nothing recorded/i);
+    });
 
-    const confirm = screen.getByRole("button", { name: /^remove/i });
-    expect(confirm).toBeDisabled();
-    await userEvent.click(confirm);
-    expect(onConfirm).not.toHaveBeenCalled();
-  });
+    it("reads a tool the answer left out as unchecked, never as clean", () => {
+      // The card detected two tools and the check reported on one. Silence on a
+      // row would read as nothing-to-lose, which is what J04 forbids.
+      renderDialog({
+        target: globalTarget,
+        preflight: toolChecks({ claude: "none" }),
+      });
 
-  it("leaves cancel usable while the check is still running", () => {
-    // Waiting on the check must never trap the user in the dialog.
-    renderDialog({ preflight: warns("checking") });
+      expect(rowFor("Codex")).toHaveTextContent("check didn't run");
+      expect(rowFor("Claude Code")).not.toHaveTextContent("check didn't run");
+    });
 
-    expect(screen.getByRole("button", { name: "cancel" })).toBeEnabled();
-  });
+    it("states a failed request on every row, because it answered for none", () => {
+      renderDialog({ target: globalTarget, preflight: CHECK_FAILED });
 
-  it("says a failed check failed, rather than blaming a missing baseline", () => {
-    renderDialog({ preflight: warns("check-failed") });
+      for (const row of screen.getAllByRole("listitem")) {
+        expect(row).toHaveTextContent("check didn't run — may lose work");
+      }
+    });
 
-    const note = screen.getByRole("status");
-    expect(note).toHaveTextContent(/couldn't check this copy/i);
-    // "Nothing was recorded" names a cause nothing observed.
-    expect(note).not.toHaveTextContent(/nothing was recorded/i);
-  });
+    // A repo's deployed copy spans several tool subtrees and the panel gives it
+    // one row, so one aggregate answer is the honest thing to state there.
+    it("puts the repo scope's aggregate answer on its single row", () => {
+      renderDialog({ preflight: repoCheck("local-edits") });
 
-  it("says the check is still running instead of staying silent", () => {
-    // Silence reads as "nothing to lose", which is the one thing an unfinished
-    // check cannot promise (J04).
-    renderDialog({ preflight: warns("checking") });
+      const rows = screen.getAllByRole("listitem");
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toHaveTextContent("local edits — deleted too");
+    });
 
-    expect(screen.getByRole("status")).toHaveTextContent(/checking/i);
+    it("leaves no separate block saying which copy was edited", () => {
+      renderDialog({ preflight: repoCheck("local-edits") });
+
+      // The sentence the ledger replaced. Its absence is the point of #414.
+      expect(screen.getByRole("dialog")).not.toHaveTextContent(
+        /removing it deletes them|copy them out/i,
+      );
+    });
+
+    it("warms the panel outline while a row states a cost", () => {
+      renderDialog({ preflight: repoCheck("local-edits") });
+
+      expect(screen.getByRole("dialog").className).toContain(
+        "border-line-drift",
+      );
+    });
+
+    it("keeps the neutral outline once every row came back clean", () => {
+      renderDialog({ preflight: repoCheck("none") });
+
+      expect(screen.getByRole("dialog").className).not.toContain("drift");
+    });
+
+    it("leaves the confirm control usable under any answered warning", () => {
+      for (const warning of [
+        "local-edits",
+        "cannot-verify",
+        "check-failed",
+      ] as const) {
+        const { onConfirm } = renderDialog({ preflight: repoCheck(warning) });
+
+        const confirm = screen
+          .getAllByRole("button", { name: /^remove/i })
+          .at(-1);
+        expect(confirm).toBeEnabled();
+        confirm?.click();
+        expect(onConfirm).toHaveBeenCalledTimes(1);
+      }
+    });
   });
 
   // Amber and ▲ mean "this removal will cost something" (DESIGN.md § The Two
   // Signals Rule) — an unanswered check has claimed nothing yet.
-  it("wears no warning surface while the check is still running", () => {
-    renderDialog({ preflight: warns("checking") });
+  describe("while the check is still running", () => {
+    it("leaves every row plain, with no fill and no glyph", () => {
+      renderDialog({
+        target: { kind: "global", tools: ["claude", "codex"] },
+        preflight: CHECKING,
+      });
 
-    const note = screen.getByRole("status");
-    expect(note.className).not.toContain("amber");
-    expect(note).not.toHaveTextContent("▲");
+      for (const row of screen.getAllByRole("listitem")) {
+        expect(row.className).not.toContain("amber");
+        expect(row).not.toHaveTextContent("▲");
+        expect(row).not.toHaveTextContent(/may lose work|deleted too/i);
+      }
+      expect(screen.getByRole("dialog").className).not.toContain("drift");
+    });
+
+    it("holds the confirm control until the check has answered", async () => {
+      // An answered warning never blocks (#337) — but an unfinished check has
+      // not warned about anything yet. Confirming through it destroys the copy
+      // before the one screen that could have named the cost got to say it.
+      const { onConfirm } = renderDialog({ preflight: CHECKING });
+
+      const confirm = screen.getByRole("button", { name: /^remove/i });
+      expect(confirm).toBeDisabled();
+      await userEvent.click(confirm);
+      expect(onConfirm).not.toHaveBeenCalled();
+    });
+
+    it("leaves cancel usable, so waiting never traps the user", () => {
+      renderDialog({ preflight: CHECKING });
+
+      expect(screen.getByRole("button", { name: "cancel" })).toBeEnabled();
+    });
+
+    it("says it is still running instead of staying silent", () => {
+      // Silence reads as "nothing to lose", which is the one thing an
+      // unfinished check cannot promise (J04).
+      renderDialog({ preflight: CHECKING });
+
+      expect(
+        screen.getByRole("status", { name: /local-edits check/i }),
+      ).toHaveTextContent(/checking/i);
+    });
+
+    // The running check speaks from beside the control it is holding. In the
+    // body it would move the confirm button when the answer landed — under the
+    // pointer of someone waiting to press it.
+    it("states beside the confirm control why it is unavailable", () => {
+      renderDialog({ preflight: CHECKING });
+
+      const confirm = screen.getByRole("button", { name: /^remove/i });
+      expect(confirm).toBeDisabled();
+      expect(confirm.getAttribute("aria-describedby")).toBe(
+        screen.getByRole("status", { name: /local-edits check/i }).id,
+      );
+    });
+
+    it("says nothing about the check once it has answered", () => {
+      renderDialog({ preflight: repoCheck("none") });
+
+      expect(
+        screen.queryByRole("status", { name: /local-edits check/i }),
+      ).toBeNull();
+    });
   });
 
-  // Speaks beside the control it's holding, not in the body — the body
-  // version moves the confirm button under the pointer when the answer lands.
-  it("states beside the confirm control why it is unavailable", () => {
-    renderDialog({ preflight: warns("checking") });
+  it("shows no cost at all once the copy came back clean", () => {
+    renderDialog({ preflight: repoCheck("none") });
 
-    const confirm = screen.getByRole("button", { name: /^remove/i });
-    expect(confirm).toBeDisabled();
-    expect(confirm.getAttribute("aria-describedby")).toBe(
-      screen.getByRole("status").id,
+    expect(screen.getByRole("dialog")).not.toHaveTextContent(
+      /may lose work|deleted too|deleted in full/i,
     );
-  });
-
-  it("shows no warning at all once the copy came back clean", () => {
-    renderDialog({ preflight: warns("none") });
-
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
   // The cockpit's voice: terse, technical, second person nowhere (DESIGN.md
@@ -390,19 +529,16 @@ describe("RemoveSkillDialog", () => {
   // is where the rule slips first.
   describe("its voice", () => {
     it("addresses nobody as 'you' or 'we', in any state", () => {
+      const leftover = [
+        { tool: "claude" as const, path: "/Users/me/.claude/skills/tdd" },
+      ];
       const states: RemovePreflightView[] = [
+        CHECKING,
+        CHECK_FAILED,
         ...(
-          [
-            "none",
-            "checking",
-            "local-edits",
-            "cannot-verify",
-            "check-failed",
-          ] as const
+          ["none", "local-edits", "cannot-verify", "check-failed"] as const
         ).map((warning) =>
-          warns(warning, [
-            { tool: "claude", path: "/Users/me/.claude/skills/tdd" },
-          ]),
+          toolChecks({ claude: warning, codex: warning }, leftover),
         ),
         { kind: "refused", message: "no global deployment to remove." },
       ];
@@ -418,23 +554,21 @@ describe("RemoveSkillDialog", () => {
       }
     });
 
-    it("says what to do about local edits instead of naming an internal route", () => {
-      // "never went through central" describes a pipeline, not a step the
-      // reader can take before agreeing to lose the edits.
-      renderDialog({ preflight: warns("local-edits") });
+    it("names the state of the copy, never an internal route", () => {
+      // "never went through central" describes a pipeline, not something the
+      // reader can act on before agreeing to lose the edits.
+      renderDialog({ preflight: repoCheck("local-edits") });
 
-      const note = screen.getByRole("status");
-      expect(note).not.toHaveTextContent(/central/i);
-      expect(note).toHaveTextContent(/copy them out/i);
+      expect(screen.getByRole("dialog")).not.toHaveTextContent(/central/i);
     });
 
     it("claims no more about the edits than the check can prove", () => {
       // The check compares the deployed files against the recorded hashes. It
       // never looks anywhere else, so whether these edits survive elsewhere is
       // outside what it saw — and a consent surface states only what it knows.
-      renderDialog({ preflight: warns("local-edits") });
+      renderDialog({ preflight: repoCheck("local-edits") });
 
-      expect(screen.getByRole("status")).not.toHaveTextContent(
+      expect(screen.getByRole("dialog")).not.toHaveTextContent(
         /nowhere else|for good|only copy/i,
       );
     });
@@ -462,7 +596,10 @@ describe("RemoveSkillDialog", () => {
     });
 
     it("sets every ledger row in mono, because a target is data", () => {
-      renderDialog({ target: { kind: "global", tools: ["claude", "codex"] } });
+      renderDialog({
+        target: { kind: "global", tools: ["claude", "codex"] },
+        preflight: cleanTools("claude", "codex"),
+      });
 
       for (const name of ["Claude Code", "Codex"]) {
         expect(screen.getByText(name).className).toContain("font-mono");
@@ -477,10 +614,12 @@ describe("RemoveSkillDialog", () => {
       ).toContain("font-ui");
     });
 
-    it("sets the warning as prose rather than data", () => {
-      renderDialog({ preflight: warns("local-edits") });
+    it("sets a row's status as prose, because it is a sentence about the data", () => {
+      renderDialog({ preflight: repoCheck("local-edits") });
 
-      expect(screen.getByRole("status").className).toContain("font-ui");
+      expect(screen.getByText("local edits — deleted too").className).toContain(
+        "font-ui",
+      );
     });
 
     // The ledger is the answer, the lead-in only introduces it, so the ledger
@@ -542,7 +681,10 @@ describe("RemoveSkillDialog", () => {
       // The one fact #338 exists for. Left out of the description, it is the
       // one thing a reader has to go hunting for. The ledger carries it now
       // that the sentence naming the set is gone.
-      renderDialog({ target: { kind: "global", tools: ["claude", "codex"] } });
+      renderDialog({
+        target: { kind: "global", tools: ["claude", "codex"] },
+        preflight: cleanTools("claude", "codex"),
+      });
 
       expect(describedBy()).toContain("Claude Code");
       expect(describedBy()).toContain("Codex");
@@ -734,7 +876,10 @@ describe("RemoveSkillDialog", () => {
     });
 
     it("lists one row per detected tool, in the order it was handed them", () => {
-      renderDialog({ target: { kind: "global", tools: ["codex", "claude"] } });
+      renderDialog({
+        target: { kind: "global", tools: ["codex", "claude"] },
+        preflight: cleanTools("codex", "claude"),
+      });
 
       expect(
         screen.getAllByRole("listitem").map((row) => row.textContent),
@@ -742,19 +887,25 @@ describe("RemoveSkillDialog", () => {
     });
 
     it("names the single detected tool when the machine has only one", () => {
-      renderDialog({ target: { kind: "global", tools: ["claude"] } });
+      renderDialog({
+        target: { kind: "global", tools: ["claude"] },
+        preflight: cleanTools("claude"),
+      });
 
       const dialog = screen.getByRole("dialog");
       expect(dialog).toHaveTextContent("Claude Code");
       expect(dialog).not.toHaveTextContent("Codex");
     });
 
-    it("still carries the divergence warning", () => {
-      renderDialog({ target: globalTarget, preflight: warns("local-edits") });
+    it("still carries the divergence warning, now on each affected row", () => {
+      renderDialog({
+        target: globalTarget,
+        preflight: toolChecks({ claude: "local-edits", codex: "local-edits" }),
+      });
 
-      expect(
-        screen.getByRole("status", { name: /local-edits check/i }),
-      ).toHaveTextContent(/local edits/i);
+      for (const row of screen.getAllByRole("listitem")) {
+        expect(row).toHaveTextContent("local edits — deleted too");
+      }
     });
 
     // A global removal force-deletes an undetected exclusive tool's whole
@@ -768,7 +919,7 @@ describe("RemoveSkillDialog", () => {
       const renderWithLeftover = () =>
         renderDialog({
           target: oneToolTarget,
-          preflight: warns("none", leftover),
+          preflight: toolChecks({ claude: "none", codex: "none" }, leftover),
         });
 
       it("puts the leftover copy on its own row, after the detected tools", () => {
@@ -809,7 +960,10 @@ describe("RemoveSkillDialog", () => {
       });
 
       it("keeps the neutral outline when nothing is left over", () => {
-        renderDialog({ target: oneToolTarget, preflight: warns("none") });
+        renderDialog({
+          target: oneToolTarget,
+          preflight: cleanTools("claude"),
+        });
 
         expect(screen.getByRole("dialog").className).not.toContain("drift");
       });
@@ -817,7 +971,7 @@ describe("RemoveSkillDialog", () => {
       it("names each leftover tool when there is more than one", () => {
         renderDialog({
           target: oneToolTarget,
-          preflight: warns("none", [
+          preflight: toolChecks({ claude: "none", codex: "none" }, [
             ...leftover,
             { tool: "claude", path: "/Users/me/.claude/skills/tdd" },
           ]),
@@ -829,7 +983,10 @@ describe("RemoveSkillDialog", () => {
       });
 
       it("says nothing extra when there is no leftover to reclaim", () => {
-        renderDialog({ target: globalTarget, preflight: warns("none") });
+        renderDialog({
+          target: globalTarget,
+          preflight: cleanTools("claude", "codex"),
+        });
 
         expect(
           screen.queryByText(/copy deleted in full/i, { exact: false }),
@@ -841,7 +998,7 @@ describe("RemoveSkillDialog", () => {
       // unreliably, and the check answers after the dialog is already open —
       // so the region waits, empty, from the first render (removal-trace.tsx).
       it("keeps the region mounted while the check is still running", () => {
-        renderDialog({ target: oneToolTarget, preflight: warns("checking") });
+        renderDialog({ target: oneToolTarget, preflight: CHECKING });
 
         expect(
           screen.getByRole("status", { name: /also deleted/i }),
@@ -858,15 +1015,21 @@ describe("RemoveSkillDialog", () => {
         expect(region).not.toHaveTextContent("Claude Code");
       });
 
-      it("keeps the local-edits check in a region of its own", () => {
+      it("keeps the targeted rows in a region of their own", () => {
+        // Two regions, two subjects: what the removal was aimed at, and what
+        // else goes with it. Sharing one, a reader could not tell the copy they
+        // asked to remove from the copy they never targeted.
         renderDialog({
           target: oneToolTarget,
-          preflight: warns("local-edits", leftover),
+          preflight: toolChecks(
+            { claude: "local-edits", codex: "none" },
+            leftover,
+          ),
         });
 
-        expect(
-          screen.getByRole("status", { name: /local-edits check/i }),
-        ).toHaveTextContent(/local edits/i);
+        const targeted = screen.getByRole("status", { name: /removed from/i });
+        expect(targeted).toHaveTextContent("local edits — deleted too");
+        expect(targeted).not.toHaveTextContent(/deleted in full/i);
         expect(
           screen.getByRole("status", { name: /also deleted/i }),
         ).not.toHaveTextContent(/local edits/i);

@@ -1,7 +1,7 @@
 // What would this removal destroy? Read-only despite the POST — path goes in
 // the body, like the filesystem browse route. Kept out of the mutation so the
 // answer is on screen before the user commits (#337).
-import type { ReclaimConsent, RemoveWarning } from "@maestro/core";
+import type { ReclaimConsent, RemoveCheck } from "@maestro/core";
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 import {
@@ -11,7 +11,8 @@ import {
 
 // Named by core's own vocabulary, not a copy (architecture.md — types only).
 export type RemovePreflight = {
-  warning: RemoveWarning | null;
+  // One aggregate answer for a repo, one per detected tool on global (#414).
+  check: RemoveCheck;
   // Null when there's nothing to reclaim (always true on a repo target). One
   // field, not two, so the screen can never show a path it has no token for.
   reclaim: ReclaimConsent | null;

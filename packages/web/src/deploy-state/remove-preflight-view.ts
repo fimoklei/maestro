@@ -1,31 +1,48 @@
 // Applies J04 to consent (deployed-view.ts): a check that could not run is
 // never reported as nothing-to-lose. A refusal (removal cannot happen) is kept
 // apart from a failure (nobody knows the cost yet) — they mean opposites (#385).
-import type { ReclaimPreview, RemovePreflightError } from "@maestro/core";
+import type {
+  ReclaimPreview,
+  RemoveCheck,
+  RemovePreflightError,
+  RemoveWarning,
+} from "@maestro/core";
 import { HttpError } from "../api/http";
 import type { RemovePreflight } from "./use-remove-preflight";
 
-export type RemoveWarningState =
+// What the check says about one row's copy. "checking" is not among them: an
+// unfinished check has made no claim about any row (#414).
+export type RemoveRowWarning =
   // The check ran and found the copy still matching its lockfile.
   | "none"
-  // The check has not answered yet.
-  | "checking"
   // The copy carries edits the removal would destroy.
   | "local-edits"
   // The check ran and found nothing recorded to verify the copy against.
   | "cannot-verify"
-  // The check never ran — the server could not read the copy, or the request
-  // itself failed. Apart from the state above on purpose: borrowing its wording
-  // would state a cause nothing observed.
+  // The check never ran for this copy. Apart from the state above on purpose:
+  // borrowing its wording would state a cause nothing observed.
   | "check-failed";
+
+export type RemoveCheckState =
+  // No per-row answer exists yet: the check is still running, or the request
+  // that would have carried the answers failed. Either is true of every row at
+  // once, so it is stated once.
+  | { kind: "unanswered"; warning: "checking" | "check-failed" }
+  // The repo scope's one answer for its one row. A repo's deployed copy spans
+  // several tool subtrees, so the aggregate is the honest thing to state.
+  | { kind: "repo"; warning: RemoveRowWarning }
+  // The global scope's answer per detected tool, keyed by apm's own tool token.
+  // A tool missing from the map was never reported on, which is not the same as
+  // a clean copy.
+  | { kind: "per-tool"; warnings: Readonly<Record<string, RemoveRowWarning>> };
 
 export type RemovePreflightView =
   // Still on the table: answered, running, or could not run — all leave the
   // user free to go ahead. Reclaim rides along rather than a second query read,
   // which could name paths under a message saying the check can't run.
   | {
-      kind: "warning";
-      warning: RemoveWarningState;
+      kind: "offered";
+      check: RemoveCheckState;
       reclaim: readonly ReclaimPreview[];
     }
   // The server refused outright — no confirm offered, since offering one would
@@ -58,6 +75,14 @@ function refusalMessage(error: unknown): string | null {
   return refuses === true ? error.message : null;
 }
 
+const unanswered = (
+  warning: "checking" | "check-failed",
+): RemovePreflightView => ({
+  kind: "offered",
+  check: { kind: "unanswered", warning },
+  reclaim: [],
+});
+
 export function removePreflightView(query: {
   data: RemovePreflight | undefined;
   error: unknown;
@@ -68,24 +93,52 @@ export function removePreflightView(query: {
   if (query.isError) {
     const refusal = refusalMessage(query.error);
     return refusal === null
-      ? { kind: "warning", warning: "check-failed", reclaim: [] }
-      : { kind: "refused", message: refusal };
+      ? unanswered("check-failed")
+      : {
+          kind: "refused",
+          message: refusal,
+        };
   }
+  // Also covers the query being switched off, which happens only with no
+  // dialog on screen to read the answer.
   if (query.data === undefined) {
-    return {
-      kind: "warning",
-      warning: query.isPending ? "checking" : "none",
-      reclaim: [],
-    };
+    return unanswered("checking");
+  }
+  const check = readCheck(query.data);
+  if (check === null) {
+    return unanswered("check-failed");
   }
   return {
-    kind: "warning",
-    warning: warningFor(query.data.warning),
+    kind: "offered",
+    check,
     reclaim: query.data.reclaim?.previews ?? [],
   };
 }
 
-function warningFor(warning: RemovePreflight["warning"]): RemoveWarningState {
+// Nothing validates this body, so an unreadable 200 falls back to null,
+// never a clean copy (J04) — reading past it throws in front of an irreversible action.
+function readCheck(data: RemovePreflight | undefined): RemoveCheckState | null {
+  const check = (data as { check?: unknown } | undefined)?.check as
+    | Partial<RemoveCheck>
+    | undefined;
+  if (check?.scope === "repo") {
+    return { kind: "repo", warning: rowWarningFor(check.warning ?? null) };
+  }
+  if (check?.scope === "global" && Array.isArray(check.tools)) {
+    return {
+      kind: "per-tool",
+      warnings: Object.fromEntries(
+        check.tools.map((entry) => [
+          entry?.tool,
+          rowWarningFor(entry?.warning ?? null),
+        ]),
+      ),
+    };
+  }
+  return null;
+}
+
+function rowWarningFor(warning: RemoveWarning | null): RemoveRowWarning {
   switch (warning) {
     case "local-edits-will-be-lost":
       return "local-edits";
