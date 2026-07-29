@@ -8,6 +8,7 @@
 // instead of each re-deriving it.
 import type {
   ReclaimPreview,
+  RemoveCheck,
   RemovePreflightError,
   RemoveWarning,
 } from "@maestro/core";
@@ -121,29 +122,40 @@ export function removePreflightView(query: {
   if (query.data === undefined) {
     return unanswered("checking");
   }
-  const check = query.data.check;
-  // Nothing validates this body, so a server speaking a shape this build does
-  // not know reaches here as an answer with no check in it. Fail closed: an
-  // answer nobody can read is not a clean copy (J04).
-  if (check === undefined) {
+  const check = readCheck(query.data);
+  if (check === null) {
     return unanswered("check-failed");
   }
   return {
     kind: "offered",
-    check:
-      check.scope === "repo"
-        ? { kind: "repo", warning: rowWarningFor(check.warning) }
-        : {
-            kind: "per-tool",
-            warnings: Object.fromEntries(
-              check.tools.map((entry) => [
-                entry.tool,
-                rowWarningFor(entry.warning),
-              ]),
-            ),
-          },
+    check,
     reclaim: query.data.reclaim?.previews ?? [],
   };
+}
+
+// Nothing validates this body, so a server one version away answers 200 with a
+// shape this build cannot read. Null for every one of them: an answer nobody
+// can read is not a clean copy (J04), and reading past it throws in the middle
+// of the one screen standing in front of an irreversible action.
+function readCheck(data: RemovePreflight | undefined): RemoveCheckState | null {
+  const check = (data as { check?: unknown } | undefined)?.check as
+    | Partial<RemoveCheck>
+    | undefined;
+  if (check?.scope === "repo") {
+    return { kind: "repo", warning: rowWarningFor(check.warning ?? null) };
+  }
+  if (check?.scope === "global" && Array.isArray(check.tools)) {
+    return {
+      kind: "per-tool",
+      warnings: Object.fromEntries(
+        check.tools.map((entry) => [
+          entry?.tool,
+          rowWarningFor(entry?.warning ?? null),
+        ]),
+      ),
+    };
+  }
+  return null;
 }
 
 function rowWarningFor(warning: RemoveWarning | null): RemoveRowWarning {

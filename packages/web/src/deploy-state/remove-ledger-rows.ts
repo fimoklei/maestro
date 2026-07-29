@@ -31,8 +31,16 @@ export type RemoveLedgerRow = {
 };
 
 // A global removal force-deletes the whole copy of any tool this machine no
-// longer detects — apm's own uninstall cannot reach it (#339).
-const LEFTOVER_STATUS = "not installed — copy deleted in full";
+// longer detects — apm's own uninstall cannot reach it (#339). The copy goes
+// either way, so the row always leads with "not installed"; what the check
+// found completes the sentence, because deleting a reproducible copy and
+// deleting work nothing else holds are different prices (#414).
+const LEFTOVER_STATUS: Record<RemoveRowWarning, string> = {
+  none: "not installed — copy deleted in full",
+  "local-edits": "not installed — local edits deleted too",
+  "cannot-verify": "not installed — nothing recorded to check",
+  "check-failed": "not installed — check didn't run",
+};
 
 // Each cost the check can name, stated as cause — consequence in the width a
 // right-aligned slot allows. The last two share their consequence and differ in
@@ -100,7 +108,8 @@ export function removeLedgerRows(
       key: `leftover:${entry.tool}`,
       name: toolDisplayName(entry.tool),
       path: entry.path,
-      status: LEFTOVER_STATUS,
+      status: LEFTOVER_STATUS[warningForTool(check, entry.tool) ?? "none"],
+      // A cost whatever the check found: the copy goes in full regardless.
       drift: true,
       leftover: true,
     })),

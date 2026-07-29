@@ -195,27 +195,33 @@ export class RemoveDeployedSkill {
     }
 
     try {
+      // The reclaim comes first because the check follows it: a copy the
+      // removal would delete is a copy the confirmation has to price, whether
+      // or not this machine still has the tool that reads it.
+      const reclaim = this.consent.offer({
+        target: input.target,
+        name: input.name,
+        detected: scope.scope === "global" ? scope.detected : undefined,
+      });
       return {
         ok: true,
-        check: await this.runCheck(input, scope),
-        reclaim: this.consent.offer({
-          target: input.target,
-          name: input.name,
-          detected: scope.scope === "global" ? scope.detected : undefined,
-        }),
+        check: await this.runCheck(input, scope, reclaim),
+        reclaim,
       };
     } catch {
       return { ok: false, error: "preflight-failed" };
     }
   }
 
-  // The global scope asks per detected tool, because that is the grain the
-  // confirmation states costs at. The leftover copies an untargeted tool left
-  // behind are not asked about: the reclaim deletes those whole, and saying so
-  // is a larger claim than "they carry edits" (#414).
+  // The global scope asks per tool, because that is the grain the confirmation
+  // states costs at: one entry per detected tool, then one per leftover copy
+  // the reclaim would delete. Deleting a copy in full and deleting work
+  // nothing else holds are different prices, and only the check tells them
+  // apart (#414).
   private async runCheck(
     input: RemoveDeployedSkillInput,
     scope: ResolvedScope & { ok: true },
+    reclaim: ReclaimConsent | null,
   ): Promise<RemoveCheck> {
     if (scope.scope === "repo") {
       const state = await this.deps.deployedContent.classify({
@@ -224,8 +230,12 @@ export class RemoveDeployedSkill {
       });
       return { scope: "repo", warning: GUARD_WARNINGS[state] ?? null };
     }
+    const priced = [
+      ...scope.detected,
+      ...(reclaim?.previews ?? []).map((preview) => preview.tool),
+    ];
     const tools: RemoveToolCheck[] = [];
-    for (const tool of scope.detected) {
+    for (const tool of priced) {
       tools.push({ tool, warning: await this.checkTool(input, tool) });
     }
     return { scope: "global", tools };

@@ -119,6 +119,44 @@ describe("removePreflightView", () => {
     });
   });
 
+  // Nothing validates the response body, so a server one version away sends a
+  // 200 this build cannot read. Every one of those has to land on the state
+  // that says so — a render that throws takes the whole confirmation down in
+  // front of an irreversible action, and reading it as clean is worse (J04).
+  describe("when a 200 carries a body this build cannot read", () => {
+    const unreadable = (data: unknown) =>
+      removePreflightView({
+        ...answered,
+        data: data as RemovePreflight,
+      });
+    const failedCheck = {
+      kind: "offered",
+      check: { kind: "unanswered", warning: "check-failed" },
+      reclaim: [],
+    };
+
+    it("fails closed on an answer with no check in it", () => {
+      expect(unreadable({ reclaim: null })).toEqual(failedCheck);
+    });
+
+    it("fails closed on a scope this build has never heard of", () => {
+      expect(
+        unreadable({ check: { scope: "per-machine" }, reclaim: null }),
+      ).toEqual(failedCheck);
+    });
+
+    it("fails closed on a global answer carrying no tool list", () => {
+      expect(
+        unreadable({ check: { scope: "global", tools: null }, reclaim: null }),
+      ).toEqual(failedCheck);
+    });
+
+    it("fails closed on a body that is not an object at all", () => {
+      expect(unreadable(null)).toEqual(failedCheck);
+      expect(unreadable("nope")).toEqual(failedCheck);
+    });
+  });
+
   it("reports a check still in flight as checking, never as clean", () => {
     expect(removePreflightView({ ...answered, isPending: true })).toEqual({
       kind: "offered",

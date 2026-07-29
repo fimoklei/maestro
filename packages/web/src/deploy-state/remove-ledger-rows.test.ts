@@ -135,6 +135,49 @@ describe("removeLedgerRows", () => {
     });
   });
 
+  // The reclaim deletes a leftover copy whole either way, but "the copy goes"
+  // and "work nothing else holds goes" are different prices, and the row is
+  // where the difference is stated (#414).
+  describe("what the check says about a leftover copy", () => {
+    const leftoverRow = (check: RemoveCheckState) =>
+      removeLedgerRows(
+        { kind: "global", tools: ["claude"] },
+        [{ tool: "codex" as const, path: "/Users/me/.agents/skills/tdd" }],
+        check,
+      )[1];
+
+    it("names the edits it would delete with the copy", () => {
+      expect(
+        leftoverRow(perTool({ claude: "none", codex: "local-edits" }))?.status,
+      ).toBe("not installed — local edits deleted too");
+    });
+
+    it("keeps a copy with no baseline apart from a checked one", () => {
+      expect(
+        leftoverRow(perTool({ claude: "none", codex: "cannot-verify" }))
+          ?.status,
+      ).toBe("not installed — nothing recorded to check");
+    });
+
+    it("never reads a leftover the answer left out as a checked copy", () => {
+      expect(leftoverRow(perTool({ claude: "none" }))?.status).toBe(
+        "not installed — check didn't run",
+      );
+    });
+
+    it("states the plain reclaim when the copy came back clean", () => {
+      expect(
+        leftoverRow(perTool({ claude: "none", codex: "none" }))?.status,
+      ).toBe("not installed — copy deleted in full");
+    });
+
+    it("stays a cost whatever the check found", () => {
+      for (const warning of ["none", "local-edits", "cannot-verify"] as const) {
+        expect(leftoverRow(perTool({ codex: warning }))?.drift).toBe(true);
+      }
+    });
+  });
+
   // A repo has one row, and its deployed copy spans several tool subtrees, so
   // the aggregate answer is the honest thing to state — on that one row.
   it("puts the repo scope's aggregate answer on its single row", () => {

@@ -750,7 +750,13 @@ describe("RemoveDeployedSkill.preflight naming the reclaim", () => {
 
     await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
       ok: true,
-      check: { scope: "global", tools: [{ tool: "codex", warning: null }] },
+      check: {
+        scope: "global",
+        tools: [
+          { tool: "codex", warning: null },
+          { tool: "claude", warning: null },
+        ],
+      },
       reclaim: {
         previews: [{ tool: "claude", path: "/home/.claude/skills/tdd" }],
         token: expect.any(String),
@@ -769,17 +775,41 @@ describe("RemoveDeployedSkill.preflight naming the reclaim", () => {
     );
   });
 
-  it("asks the guard about the detected tools alone, never the leftover copy", async () => {
-    // The leftover copy is deleted whole, and the confirmation says so on its
-    // own row. Asking the guard whether that copy also carries edits would
-    // answer a smaller question than the row already asks (#414).
+  it("asks the guard about the leftover copy too, after the detected tools", async () => {
+    // The reclaim deletes that copy whole, so its own row is where its cost is
+    // stated — and "the whole copy goes" does not say whether what goes was
+    // work nothing else holds (#414).
     const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
 
     await useCase.preflight(removeTddGlobally);
 
     expect(calls.classifies).toEqual([
       { target: { kind: "global" }, tools: ["codex"] },
+      { target: { kind: "global" }, tools: ["claude"] },
     ]);
+  });
+
+  it("names the edits inside a leftover copy the reclaim would delete", async () => {
+    const { useCase } = buildUseCase({
+      detectedTools: ["codex"],
+      deployedStateForScope: (tools) =>
+        tools?.[0] === "claude" ? "diverged" : "clean",
+    });
+
+    await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
+      ok: true,
+      check: {
+        scope: "global",
+        tools: [
+          { tool: "codex", warning: null },
+          { tool: "claude", warning: "local-edits-will-be-lost" },
+        ],
+      },
+      reclaim: {
+        previews: [{ tool: "claude", path: "/home/.claude/skills/tdd" }],
+        token: expect.any(String),
+      },
+    });
   });
 });
 

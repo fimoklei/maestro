@@ -517,7 +517,13 @@ describe("remove HTTP route", () => {
 
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({
-        check: { scope: "global", tools: [{ tool: "codex", warning: null }] },
+        check: {
+          scope: "global",
+          tools: [
+            { tool: "codex", warning: null },
+            { tool: "claude", warning: null },
+          ],
+        },
         reclaim: {
           previews: [
             { tool: "claude", path: join(home, ".claude/skills/tdd") },
@@ -527,12 +533,11 @@ describe("remove HTTP route", () => {
       });
     });
 
-    it("keeps a leftover copy's edits off the detected tool's answer", async () => {
+    it("names the edits inside the leftover copy it is about to reclaim", async () => {
       // Claude Code has dropped off this machine, so its .claude tree is the
-      // reclaim — and it carries edits the lockfile never recorded. The
-      // confirmation states that whole copy goes on the leftover's own row,
-      // which is a larger claim than "it carries edits", so the detected tool's
-      // answer stays about the detected tool (#414).
+      // reclaim — and it carries edits the lockfile never recorded. Naming the
+      // path while calling that copy an ordinary one would be consent for a
+      // deletion whose real cost was never stated (#390, #414).
       const { app } = makeApp({
         realDeployedContent: true,
         detectedTools: ["codex"],
@@ -550,7 +555,13 @@ describe("remove HTTP route", () => {
 
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({
-        check: { scope: "global", tools: [{ tool: "codex", warning: null }] },
+        check: {
+          scope: "global",
+          tools: [
+            { tool: "codex", warning: null },
+            { tool: "claude", warning: "local-edits-will-be-lost" },
+          ],
+        },
         reclaim: {
           previews: [
             { tool: "claude", path: join(home, ".claude/skills/tdd") },

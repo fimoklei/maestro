@@ -937,7 +937,7 @@ describe("RemoveSkillDialog", () => {
       const renderWithLeftover = () =>
         renderDialog({
           target: oneToolTarget,
-          preflight: toolChecks({ claude: "none" }, leftover),
+          preflight: toolChecks({ claude: "none", codex: "none" }, leftover),
         });
 
       it("puts the leftover copy on its own row, after the detected tools", () => {
@@ -989,7 +989,7 @@ describe("RemoveSkillDialog", () => {
       it("names each leftover tool when there is more than one", () => {
         renderDialog({
           target: oneToolTarget,
-          preflight: toolChecks({ claude: "none" }, [
+          preflight: toolChecks({ claude: "none", codex: "none" }, [
             ...leftover,
             { tool: "claude", path: "/Users/me/.claude/skills/tdd" },
           ]),
@@ -1041,7 +1041,10 @@ describe("RemoveSkillDialog", () => {
         // asked to remove from the copy they never targeted.
         renderDialog({
           target: oneToolTarget,
-          preflight: toolChecks({ claude: "local-edits" }, leftover),
+          preflight: toolChecks(
+            { claude: "local-edits", codex: "none" },
+            leftover,
+          ),
         });
 
         const targeted = screen.getByRole("status", { name: /removed from/i });
