@@ -13,13 +13,19 @@ migrated.
 
 Rows marked **migrated (#431)** name the test added by this ticket.
 
+**Chained journeys.** Where a feature's value is that its steps share state —
+the tracer, and the J08 update — the counterpart has to be one test carrying
+the whole chain. Per-step tests in separate files prove each step and nothing
+about the seams, so they do not count as covering a journey.
+
 **Scope note.** The #431 table lists eleven features. There are twelve
 `.feature` files: `j10-j01-j06-j02-tracer.feature` is the bootstrap tracer
 journey and was missing from that table. It is mapped here.
 
-57 scenarios. 44 were already covered; 13 were gaps and all 13 are migrated
-here, as 13 new integration tests. Nothing was deleted — the acceptance lane
-still runs and still passes. Deletion is #432.
+57 scenarios. 40 were already covered; 17 were gaps and all 17 are migrated
+here, as 14 new integration tests (the four tracer scenarios share one journey
+test). Nothing was deleted — the acceptance lane still runs and still passes.
+Deletion is #432.
 
 ## bulk-deploy-to-target → server-bulk-deploy.test.ts
 
@@ -88,21 +94,25 @@ scenario describes. The real gap here is the neighbouring up-to-date case.
 
 | Scenario | Integration counterpart | State |
 |---|---|---|
-| I update a behind skill and it is no longer behind | `updates a clean deployed copy, the guard letting it proceed` + `leaves the deploy-state reading the new tag, not the one it was behind` | migrated (#431) |
+| I update a behind skill and it is no longer behind | `updates a clean deployed copy, the guard letting it proceed` + `leaves the deploy-state reading the new tag, and drift reporting nothing behind` | migrated (#431) |
 
-The scenario's third assertion — drift then reports nothing behind — is not
-migrated as a journey step. Drift comes from apm, which both lanes fake, so
-asserting it after an update only asserts the fake. The route's up-to-date
-answer is covered on its own in `server-drift.test.ts`.
+All three of the scenario's assertions are in one journey. The drift half fakes
+apm's comparison but not its input: the fake reads the lockfile the update
+wrote, so a regression that leaves the pin behind still shows up as behind.
 
-## j10-j01-j06-j02-tracer → server-registry, server-inventory, server-deploy
+## j10-j01-j06-j02-tracer → tracer-journey.test.ts
+
+All four scenarios are one chained journey — the value is that they share
+state, so isolated per-route tests would not replace them. One test carries the
+whole chain through a single app: the deploy targets the path the registry's own
+answer returned, and the read-back finds the lockfile that deploy wrote.
 
 | Scenario | Integration counterpart | State |
 |---|---|---|
-| I register a repo I work in (J10) | `POST registers a valid directory and GET then lists it` | covered |
-| I see every primitive available centrally (J01) | `GET /api/inventory/primitives lists the central skills` | covered |
-| I deploy a skill to a registered repo with one action (J06) | `deploys a skill into a registered repo at the latest tag` | covered |
-| I see the deployed skill back at its version (J02) | `deploys a skill into a registered repo at the latest tag` (lockfile read-back), `lists deployed skills with their human tag version` | covered |
+| I register a repo I work in (J10) | `registers a repo, lists the inventory, deploys into it, and reads it back` | migrated (#431) |
+| I see every primitive available centrally (J01) | same journey, step 2 | migrated (#431) |
+| I deploy a skill to a registered repo with one action (J06) | same journey, step 3 | migrated (#431) |
+| I see the deployed skill back at its version (J02) | same journey, step 4 | migrated (#431) |
 
 ## j10-register-repo → server-registry.test.ts
 
