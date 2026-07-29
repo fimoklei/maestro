@@ -3,15 +3,8 @@ import { HOVER_TRANSITION } from "../ui/hover-transition";
 import { type BrowseDialogMode, browseModes } from "./browse-modes";
 import type { BrowseEntry } from "./use-browse-filesystem";
 
-// One row of the browse listing: a selection checkbox where registration is
-// possible, the folder name, its symlink tag, its mode-aware badges, and the
-// step-in affordance.
 // Selecting and stepping in are deliberately two separate controls — ticking a
-// repo to register it must never navigate away from the folder you are
-// reading (issue #151). The badges come from the mode's own config
-// (issue #156), so this row renders them without knowing either mode's rules.
-// Tested through browse-dialog.test.tsx, the same pattern as the sibling
-// BrowseBreadcrumbs component.
+// repo to register it must never navigate away from the folder (#151).
 export function BrowseEntryRow({
   mode,
   entry,

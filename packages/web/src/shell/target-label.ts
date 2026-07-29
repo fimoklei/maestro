@@ -1,12 +1,6 @@
-// A compact display label for a local target path. Deep repo paths share a long
-// common prefix ("/Users/<me>/Projects/…"), so left-anchored truncation drops
-// the tail — the only part that tells two clones apart (issue #211). Keep the
-// tail instead: the shortest suffix that is still unique among the sibling
-// targets, never fewer than two segments (parent + basename), prefixed with an
-// ellipsis when anything was dropped. Passing no siblings yields the plain
-// two-segment tail — right for the single-source header and connect screen,
-// where there is nothing to disambiguate against. The full path always stays
-// available on hover via a native title tooltip at each call site.
+// Shortest unique suffix among sibling targets, min 2 segments, prefixed with
+// an ellipsis when dropped — deep repo paths share a long prefix, so
+// left-anchored truncation would drop the part that tells clones apart (#211).
 const MIN_SEGMENTS = 2;
 
 export function targetLabel(
@@ -20,9 +14,7 @@ export function targetLabel(
     .filter((sibling) => sibling !== path)
     .map((sibling) => sibling.split("/").filter(Boolean));
 
-  // Grow the tail one segment at a time until no sibling ends with the same
-  // suffix. The first unique suffix is the shortest label that still tells this
-  // target apart from the others.
+  // Grow the tail until no sibling ends with the same suffix.
   for (let take = MIN_SEGMENTS; take < segments.length; take++) {
     const suffix = segments.slice(-take);
     if (!others.some((other) => endsWith(other, suffix))) {
@@ -30,9 +22,8 @@ export function targetLabel(
     }
   }
 
-  // A sibling shares this path's whole tail (a shorter clone nested inside a
-  // deeper one). No proper suffix is unique, so the full path — always unique
-  // among distinct registered targets — stands.
+  // No proper suffix is unique (a shorter clone nested inside a deeper one) —
+  // the full path stands.
   return path;
 }
 

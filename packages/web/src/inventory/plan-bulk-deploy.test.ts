@@ -4,12 +4,9 @@ import type { VersionDrift } from "../drift/use-drift";
 import type { DeploymentTarget } from "./deployed-rollup";
 import { planBulkDeploy } from "./plan-bulk-deploy";
 
-// One target the plan reduces against: a confirmed-ready deployed set and a
-// drift check that ran, listing the behind skills. Mirrors how the cockpit
-// already folds the fast local deploy-state read plus the cached drift check.
-// A repo target is always alone; a global run is one of these per detected
-// tool (mirrors use-deployment-targets.ts), since apm tracks each tool's
-// install separately (#292).
+// One target: confirmed-ready deployed set + drift check listing behind
+// skills. A repo target is always alone; global is one per detected tool
+// (mirrors use-deployment-targets.ts), since apm tracks installs separately (#292).
 function target(
   label: string,
   names: string[],

@@ -21,12 +21,9 @@ createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <App />
-      {/* Annotation overlay for handing UI feedback to coding agents. Dev only:
-          import.meta.env.DEV is statically false in a production build, so the
-          bundler drops the branch.
-          endpoint points at the local agentation-mcp server (its default port);
-          without it the toolbar keeps annotations in localStorage and no agent
-          ever sees them (agentation@3.0.2 dist/index.d.ts, `endpoint` prop). */}
+      {/* Dev only (bundler drops this branch in prod). Omitting `endpoint`
+          silently degrades to localStorage-only, no agent ever sees it
+          (agentation@3.0.2, `endpoint` prop). */}
       {import.meta.env.DEV && <Agentation endpoint="http://localhost:4747" />}
     </QueryClientProvider>
   </StrictMode>,

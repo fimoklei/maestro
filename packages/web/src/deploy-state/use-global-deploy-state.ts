@@ -1,10 +1,6 @@
-// Server-state hook for the global (user-scope) deploy-state. The server reads
-// apm's user-scope apm.lock.yaml and resolves that location itself, so this hook
-// sends no path. As of #132 the API groups state per detected tool; this hook
-// exposes that `tools` grouping AND a flattened `primitives` list so the
-// current panel and drift roll-up keep working unchanged. Its own query key
-// sits alongside the
-// per-repo ones (see .claude/rules/frontend.md).
+// Server-state hook for the global deploy-state (no path — server resolves its
+// own location). Exposes both the per-tool `tools` grouping (#132) and a
+// flattened `primitives` list for callers that predate it.
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 import type { DeployedPrimitive, SkippedEntry } from "./use-deploy-state";
@@ -14,10 +10,9 @@ export type ToolDeployState = {
   primitives: DeployedPrimitive[];
 };
 
-// This hook does not Zod-validate the wire shape (that boundary is the server —
-// see .claude/rules/architecture.md), so `tools` is treated as possibly absent
-// and defaulted once in `select`. A present-but-empty array is the meaningful
-// "detected zero tools" signal; a fully absent array is "not read yet".
+// Not Zod-validated here (architecture.md — that's the server's job): `tools`
+// is defaulted once in `select`. Present-but-empty means "detected zero
+// tools"; absent means "not read yet".
 type GlobalDeployStateResponse = {
   tools?: ToolDeployState[];
   skipped: SkippedEntry[];
@@ -25,10 +20,8 @@ type GlobalDeployStateResponse = {
 
 export type GlobalDeployStateView = {
   tools: ToolDeployState[];
-  // The detected-tool set for the deploy picker's Global option (#134).
-  // Undefined until the read resolves; an empty array once it does means the
-  // machine has no supported tool. Derived here so the picker stays
-  // presentational (frontend.md: hooks hold logic).
+  // For the deploy picker's Global option (#134): undefined until resolved,
+  // empty once resolved means no supported tool.
   detectedTools: string[] | undefined;
   primitives: DeployedPrimitive[];
   skipped: SkippedEntry[];
@@ -52,8 +45,7 @@ export function useGlobalDeployState(enabled = true) {
   });
 }
 
-// A skill deployed for two tools appears in each tool's group; the flat legacy
-// view shows it once. Dedupe by name+version, preserving first-seen order.
+// Dedupe by name+version, preserving first-seen order.
 function flattenPrimitives(tools: ToolDeployState[]): DeployedPrimitive[] {
   const seen = new Set<string>();
   const flat: DeployedPrimitive[] = [];

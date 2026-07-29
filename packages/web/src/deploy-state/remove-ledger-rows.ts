@@ -6,23 +6,19 @@ import type {
 } from "./remove-preflight-view";
 import { toolDisplayName } from "./tool-labels";
 
-// Which target the removal aims at. The global kind carries its detected tools:
-// the user clicked inside one tool's card, and the confirmation is where the
-// other tools stop being a surprise (#338).
+// Global carries its detected tools: the confirmation is where the other
+// tools stop being a surprise (#338).
 export type RemoveDialogTarget =
   | { kind: "repo"; repoPath: string }
   | { kind: "global"; tools: string[] };
 
 export type RemoveLedgerRow = {
   key: string;
-  // The target itself: a repo path, or a tool's product name.
   name: string;
-  // The directory about to be deleted in full, which the tool name alone would
-  // hide. Null on a target the removal merely scopes itself to.
+  // Directory about to be deleted in full. Null on a target the removal
+  // merely scopes itself to.
   path: string | null;
-  // The row's right-hand slot: what is true of this target beyond its name.
   status: string | null;
-  // Whether this row costs something the plain removal does not.
   drift: boolean;
   // A copy nobody targeted, which the reclaim deletes whole. Kept apart from
   // `drift` because a targeted row can carry a cost too, and the two lists are
@@ -30,11 +26,9 @@ export type RemoveLedgerRow = {
   leftover: boolean;
 };
 
-// A global removal force-deletes the whole copy of any tool this machine no
-// longer detects — apm's own uninstall cannot reach it (#339). The copy goes
-// either way, so the row always leads with "not installed"; what the check
-// found completes the sentence, because deleting a reproducible copy and
-// deleting work nothing else holds are different prices (#414).
+// apm's own uninstall can't reach an undetected tool's leftover copy (#339).
+// What the check found completes the "not installed" sentence — deleting a
+// reproducible copy vs. deleting work nothing else holds are different prices (#414).
 const LEFTOVER_STATUS: Record<RemoveRowWarning, string> = {
   none: "not installed — copy deleted in full",
   "local-edits": "not installed — local edits deleted too",
@@ -42,20 +36,16 @@ const LEFTOVER_STATUS: Record<RemoveRowWarning, string> = {
   "check-failed": "not installed — check didn't run",
 };
 
-// Each cost the check can name, stated as cause — consequence in the width a
-// right-aligned slot allows. The last two share their consequence and differ in
-// their cause, which is the distinction J04 exists to keep: one check ran and
-// found no baseline, the other never ran at all.
+// Cause — consequence, sized for a right-aligned slot. The last two share
+// their consequence but differ in cause: ran-and-found-nothing vs. never-ran (J04).
 const WARNING_STATUS: Record<Exclude<RemoveRowWarning, "none">, string> = {
   "local-edits": "local edits — deleted too",
   "cannot-verify": "nothing recorded — may lose work",
   "check-failed": "check didn't run — may lose work",
 };
 
-// What the check said about one row, given the answer in hand. A tool the
-// answer never mentioned is unchecked, never clean (J04) — the card's detection
-// and the check's own can disagree, and a row nobody answered for must not
-// borrow the silence of a clean one.
+// A tool the answer never mentioned is unchecked, never clean (J04) — a row
+// nobody answered for must not borrow the silence of a clean one.
 function warningForTool(
   check: RemoveCheckState,
   tool: string,
@@ -85,10 +75,8 @@ export function removeLedgerRows(
   reclaim: readonly ReclaimPreview[],
   check: RemoveCheckState,
 ): RemoveLedgerRow[] {
-  // The global scope keeps the order it was handed: the panel states the set the
-  // host detected, and re-sorting it here would make the confirmation disagree
-  // with the cards the user just came from. A repo has one row, so the check's
-  // aggregate answer lands there.
+  // Keeps the order it was handed, or the confirmation would disagree with
+  // the cards the user just came from.
   const targets =
     target.kind === "repo"
       ? [{ tool: target.repoPath, name: target.repoPath }]
@@ -102,8 +90,7 @@ export function removeLedgerRows(
       leftover: false,
       ...statusFor(warningForTool(check, tool)),
     })),
-    // After the detected tools, never among them: these are copies nobody
-    // targeted, and the order says so.
+    // After the detected tools, never among them: nobody targeted these.
     ...reclaim.map((entry) => ({
       key: `leftover:${entry.tool}`,
       name: toolDisplayName(entry.tool),

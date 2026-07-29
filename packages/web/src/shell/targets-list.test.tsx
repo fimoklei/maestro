@@ -38,10 +38,8 @@ function rowFor(label: string) {
   return node;
 }
 
-// Routes the list's queries by URL. The sidebar now reads one row per detected
-// tool (from the global deploy-state grouping) plus one per registered repo,
-// each joining its drift check against its own deployed set — so a tool or repo
-// only shows `▲N` when a behind name is actually deployed there.
+// Routes by URL: one row per detected tool plus one per registered repo, each
+// joining drift against its own deployed set — `▲N` only when deployed there.
 function stubFetch(options: {
   tools: unknown;
   globalBehind: unknown;

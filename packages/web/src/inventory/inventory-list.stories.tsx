@@ -3,10 +3,8 @@ import { Card } from "../ui/card";
 import { InventoryList } from "./inventory-list";
 import type { Primitive } from "./use-inventory";
 
-// The inventory scan surface: the dense, sortable table with its single-row
-// search + type-filter toolbar and the trailing expand chevron (mockup 3a). The
-// deploy control and pane are injected/opened only in the app (they carry Query
-// hooks), so these stories show the pure "see" state: no selection, no staging.
+// Dense sortable table with search + type-filter toolbar (mockup 3a).
+// Deploy control/pane are app-only (Query hooks) — these show the pure "see" state.
 const primitives: Primitive[] = [
   {
     type: "skill",

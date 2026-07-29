@@ -61,10 +61,8 @@ export const Confirming: Story = {};
 // A row that carries no version. The question drops it rather than invent one.
 export const WithoutVersion: Story = { args: { version: null } };
 
-// The longest name the panel can be asked to carry. It used to be the footer's
-// problem — the confirm label grew with the name and had to ellipsise to fit
-// (#388) — and is now the title's alone, so this is the state that proves the
-// heading and the type tag share the header without either giving way (#411).
+// Longest name the panel carries — moved from footer (ellipsis, #388) to
+// title; proves heading and type tag share the header (#411).
 export const LongSkillName: Story = {
   args: { skillName: "some-very-long-skill-name-that-keeps-going" },
 };
@@ -137,11 +135,8 @@ export const CheckFailed: Story = {
   args: { preflight: repoCheck("check-failed") },
 };
 
-// The check came back with the server refusing the request itself. Not a failed
-// check: the removal is already known to be impossible, so the panel keeps only
-// the question and the server's reason. No ledger — nothing is going — and no
-// confirm at all, not even a disabled one, because offering it would cost the
-// user a round-trip to read the same sentence (#385, #412).
+// Server refused the request itself, not a failed check: removal is already
+// known impossible, so no ledger and no confirm control at all (#385, #412).
 export const CheckRefused: Story = {
   args: {
     preflight: {
@@ -151,10 +146,8 @@ export const CheckRefused: Story = {
   },
 };
 
-// The global scope. The trigger sits inside one tool's card, so the ledger
-// lists every detected tool the removal will reach. No row carries a control:
-// there is no per-tool remove to offer, and the panel says so by giving the
-// user nothing to press rather than by spending a sentence on it.
+// Global scope: ledger lists every detected tool the removal reaches.
+// No row carries a control — there is no per-tool remove to offer.
 export const GlobalScope: Story = {
   args: {
     target: { kind: "global", tools: ["claude", "codex"] },
@@ -162,10 +155,8 @@ export const GlobalScope: Story = {
   },
 };
 
-// A machine where Codex is detected but Claude Code has dropped off — its whole
-// copy is a leftover a global removal force-deletes beyond apm's own scoped
-// uninstall (#339). Its own ledger row, named by path, so the user consents to
-// exactly what goes.
+// A leftover copy a global removal force-deletes beyond apm's own scoped
+// uninstall (#339) — its own ledger row, named by path.
 export const GlobalScopeWithReclaim: Story = {
   args: {
     target: { kind: "global", tools: ["codex"] },

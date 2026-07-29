@@ -1,22 +1,15 @@
-// The one owner of what a landed removal says. A removal deletes files and then
-// takes its own row off the screen, so absence is the only evidence left — this
-// turns it into a sentence that names what went and where it went from, in the
-// same shape the deploy path already confirms itself.
-// Pure and framework-free: the wording is unit-tested here, the live region is
-// the host's job.
+// What a landed removal says, since the row itself is gone by then. Pure and
+// framework-free: wording is unit-tested here, the live region is the host's job.
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
 import { toolNameList } from "./tool-labels";
 
 export type RemovedSkill = {
   name: string;
-  // The version the server reported removing, read from the target's lockfile
-  // as it resolved the ref. Undefined only when the response carried none — a
-  // server the cockpit does not match — and the sentence says so rather than
-  // printing a placeholder over an irreversible action.
+  // Undefined only when the response carried none (server the cockpit doesn't
+  // match) — the sentence says so rather than printing a placeholder (#383).
   version: string | undefined;
-  // The scope as the server resolved it, not as the screen had it: the detected
-  // tool set is probed at execution time and can differ from the one the
-  // confirmation named.
+  // As the server resolved it, not as the screen had it — the detected tool
+  // set is probed at execution time and can differ from what was confirmed.
   target: RemoveDialogTarget;
 };
 
@@ -28,9 +21,8 @@ export function removalAnnouncement({
   const scope =
     target.kind === "repo"
       ? target.repoPath
-      : // Naming the tools keeps the trace as inspectable as the consent was.
-        // An empty set falls back to the confirmation's own phrase rather than
-        // trailing off (ADR-0011: the set is detected, so it can be empty).
+      : // The set is detected, so it can be empty (ADR-0011) — fall back rather
+        // than trail off.
         toolNameList(target.tools) || "every detected tool";
   return `removed ${name} ${version ?? "(version unknown)"} from ${scope}`;
 }

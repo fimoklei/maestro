@@ -8,18 +8,16 @@ import { toDeployedView } from "./deployed-view";
 import { TargetStatusChip } from "./target-status-chip";
 import { useDeployState } from "./use-deploy-state";
 
-// One repo's target card. Deploy-state and drift are two separate queries — the
-// skill list renders as soon as deploy-state arrives, and each skill's drift
-// badge fills in when the drift check resolves. A failed deploy-state read (e.g.
-// a malformed lockfile) gets a visible error — an empty list must never stand in
-// for "I couldn't read this".
+// One repo's target card. Deploy-state and drift are separate queries: the
+// skill list renders first, each drift badge fills in later. A failed read
+// gets a visible error — never an empty list standing in for it.
 export function DeployStatePanel({
   repo,
   siblings = [],
 }: {
   repo: string;
-  // Every registered repo path, so this card's label grows only far enough to
-  // stay distinct from the others (#211). Empty when rendered in isolation.
+  // Every registered repo path, so the label grows only far enough to stay
+  // distinct from the others (#211). Empty when rendered in isolation.
   siblings?: string[];
 }) {
   const deployState = useDeployState(repo);

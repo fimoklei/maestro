@@ -92,10 +92,8 @@ describe("bulkDeployReportView", () => {
   });
 
   it("reads as a distinct error, never a clean success, when the request itself failed", () => {
-    // The bulk request failed before any report came back (network/HTTP
-    // failure). It must never fall back to an empty, green "0 deployed"
-    // report — that reads as success when nothing was actually confirmed
-    // (#292).
+    // A request failure must never fall back to a green "0 deployed" report
+    // — that reads as success when nothing was confirmed (#292).
     const view = bulkDeployReportView({
       report: report({}),
       skippedClean: ["tdd"],

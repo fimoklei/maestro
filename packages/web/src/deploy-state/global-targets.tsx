@@ -9,13 +9,9 @@ import { toolPresentation } from "./tool-presentation";
 import type { SkippedEntry } from "./use-deploy-state";
 import type { ToolDeployState } from "./use-global-deploy-state";
 
-// Presentational "GLOBAL TARGETS" section: one Card per detected tool (ADR-0011).
-// Fed entirely through props so it carries no hooks — the container owns the
-// TanStack Query state and passes it here (frontend.md), which also keeps this
-// storyable. The section label always renders (it is the baseline); only the
-// body switches on the read state. An empty tools list is the honest
-// zero-tools-detected state (an install hint, never a blank), a read failure is
-// a visible error, and an empty list must never stand in for either (J03).
+// Presentational "GLOBAL TARGETS" section: one Card per detected tool
+// (ADR-0011). An empty tools list is the honest zero-detected state (an
+// install hint), never conflated with a read failure (J03).
 export function GlobalTargets({
   isLoading,
   isError,
@@ -43,8 +39,6 @@ export function GlobalTargets({
           Could not read the global deploy-state.
         </p>
       ) : tools.length === 0 ? (
-        // No supported tool on this machine: nudge an install rather than show
-        // empty cards for tools that are not there (ADR-0011).
         <p role="status" className="text-dim text-tag">
           Install Claude Code or Codex to deploy skills globally.
         </p>
@@ -55,17 +49,13 @@ export function GlobalTargets({
               key={group.tool}
               group={group}
               drift={drift}
-              // Every card knows the whole detected set: a removal triggered in
-              // one card covers all of them (#338).
+              // A removal triggered from one card covers every detected tool (#338).
               detectedTools={tools.map((detected) => detected.tool)}
             />
           ))}
         </div>
       )}
-      {/* Skipped entries are section-wide (not attributed to any tool), so they
-          surface once below the body in every read state that has them — never
-          dropped, even when no tool is detected (J03). Loading/error carry no
-          skipped set, so this stays quiet there. */}
+      {/* Section-wide, not per-tool: never dropped even with no tool detected (J03). */}
       {!isLoading && !isError && skipped.length > 0 ? (
         <SkippedNotice skipped={skipped} />
       ) : null}
@@ -73,11 +63,6 @@ export function GlobalTargets({
   );
 }
 
-// One detected tool's card: the tool name as headline, its destination path as a
-// secondary detail, and its own deployed primitives with per-skill drift. The
-// single global drift check is filtered to this tool's skills, so a skill behind
-// on another tool never surfaces here as a spurious "also behind" (the drift
-// mechanism itself is unchanged — ADR-0005/0007).
 function ToolTargetCard({
   group,
   drift,
@@ -85,16 +70,13 @@ function ToolTargetCard({
 }: {
   group: ToolDeployState;
   drift: DriftViewModel;
-  // The whole detected set, not just this card's tool: a global removal
-  // triggered here covers every one of them, and the confirmation says so.
   detectedTools: string[];
 }) {
   const { label, destination } = toolPresentation(group.tool);
   // Where focus goes when a removal destroys the row it was triggered from.
   const headerRef = useRef<HTMLHeadingElement>(null);
   const names = group.primitives.map((primitive) => primitive.name);
-  // The single global drift check is narrowed to this tool's skills, so a skill
-  // behind on another tool never surfaces here as a spurious "also behind".
+  // Narrowed to this tool's skills, so a skill behind elsewhere doesn't leak in.
   const toolDrift = drift.forTool(names);
   const indicator = toolDrift.targetIndicator(toolDeployedView(names));
 
@@ -126,9 +108,8 @@ function ToolTargetCard({
   );
 }
 
-// Lockfile entries of an unsupported package_type are not attributed to any tool
-// (they carry no known deployed subtree), so they are surfaced once for the whole
-// section rather than duplicated on every card — never silently dropped.
+// Unsupported package_type entries carry no known deployed subtree, so they
+// surface once per section rather than duplicated on every card.
 function SkippedNotice({ skipped }: { skipped: SkippedEntry[] }) {
   return (
     <ul className="mt-3 text-dim text-tag">

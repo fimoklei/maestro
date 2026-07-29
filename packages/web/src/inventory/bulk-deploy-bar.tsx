@@ -13,16 +13,9 @@ import { type BulkDeployPlan, planBulkDeploy } from "./plan-bulk-deploy";
 import { useBulkDeploy } from "./use-bulk-deploy";
 import { type DeployTarget, useDeploySkill } from "./use-deploy-skill";
 
-// The bulk-deploy control: it sits above the table once skills are staged (#291)
-// and pushes them all to one chosen target in a single action (#292). It mirrors
-// DeploySkillAction's target picker, but plans → executes → reports over the
-// staged set. The plan skips a skill already deployed and up-to-date (read from
-// the cached deploy-state + drift); the rest go to the server, which never
-// aborts on a failure. A diverged copy comes back as an attention row with an
-// inline force reinstall.
-
-// The select value for the global target; a repo's value is its absolute path,
-// which can never collide with this literal (mirrors DeploySkillAction).
+// Bulk-deploy control (#291, #292): plans → executes → reports over the
+// staged set. Skips already-deployed-and-up-to-date skills; a diverged copy
+// comes back as an attention row with an inline force reinstall.
 const GLOBAL_VALUE = "global";
 
 export function BulkDeployBar({
@@ -39,9 +32,8 @@ export function BulkDeployBar({
   const [chosen, setChosen] = useState<string | null>(null);
   const [plan, setPlan] = useState<BulkDeployPlan | null>(null);
   const bulk = useBulkDeploy();
-  // Per-item force reuses the single-deploy path with force: true — one deploy
-  // behaviour, both entry points (ADR-0006, #66), and it refreshes the same
-  // deploy-state/drift queries.
+  // Reuses the single-deploy path with force: true — one behaviour, both
+  // entry points (ADR-0006, #66).
   const forceDeploy = useDeploySkill();
 
   const isKnown =
@@ -68,9 +60,8 @@ export function BulkDeployBar({
   const deployState = isGlobal ? globalDeployState : repoDeployState;
   const rawDrift = isGlobal ? globalDrift : repoDrift;
   const drift = driftViewModel(rawDrift);
-  // Neither read has resolved for the chosen target yet: every skill would
-  // read as "not deployed" and get sent for a pointless reinstall, so the
-  // plan waits rather than guessing (mirrors J04's un-run-stays-honest rule).
+  // The plan waits rather than guessing, or every skill reads "not deployed"
+  // and gets sent for a pointless reinstall (J04).
   const targetLoading =
     registryReady &&
     (deployState.data === undefined || rawDrift.data === undefined);
@@ -79,9 +70,6 @@ export function BulkDeployBar({
   const globalDisabled = globalTools !== undefined && globalTools.length === 0;
   const globalUnavailable = isGlobal && globalDisabled;
 
-  // The chosen destination folded into the shape planBulkDeploy reads —
-  // pulled out of the component since it is pure data-shaping, not UI
-  // (frontend.md: components stay mostly presentational).
   const chosenTargets = chosenBulkDeployTargets({
     isGlobal,
     targetLabel,
@@ -104,18 +92,15 @@ export function BulkDeployBar({
     bulk.reset();
     const next = planBulkDeploy(stagedNames, chosenTargets);
     setPlan(next);
-    // A clean-and-latest-only plan is a no-op: show the skipped report without
-    // troubling the server.
+    // A clean-and-latest-only plan is a no-op.
     if (next.toDeploy.length > 0) {
       bulk.mutate({ names: next.toDeploy, target });
     }
   };
 
-  // Until the batch resolves, the report reads from an empty server result so
-  // the skipped-clean plan still shows; bulk.data replaces it on success. A
-  // failed request (network/HTTP) never falls back to this empty shape — that
-  // would read as a confirmed, clean "0 deployed" success (#292) — it takes
-  // the view's distinct error branch instead.
+  // Empty until bulk.data lands, so the skipped-clean plan still shows. A
+  // failed request never falls back to this shape — it would read as a
+  // confirmed "0 deployed" success (#292) — it takes the error branch instead.
   const report = bulk.data ?? {
     target,
     deployed: [],
@@ -134,9 +119,8 @@ export function BulkDeployBar({
     : null;
 
   return (
-    // The staged count and the run's result are two separate announcements, so
-    // the count's live region wraps only the count — nesting the report's own
-    // status inside it would give assistive tech a region within a region.
+    // Two separate announcements: nesting the report's status inside the
+    // count's live region would give assistive tech a region within a region.
     <div className="mx-card-x mb-row-y flex flex-col gap-row-y rounded-control border border-line bg-inset px-card-x py-row-y text-fg text-mono-sm">
       <div className="flex flex-wrap items-center gap-2">
         <span

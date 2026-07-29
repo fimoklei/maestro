@@ -10,39 +10,23 @@ import {
 } from "./remove-ledger-rows";
 import type { RemovePreflightView } from "./remove-preflight-view";
 
-// The one line the check speaks before it has an answer. Silence would read as
-// nothing-to-lose, which is the one thing an unfinished check cannot promise
-// (J04) — and it names no cost, so it wears neither the amber nor the ▲ the
-// answered states put on their rows.
+// Silence would read as nothing-to-lose, the one thing an unfinished check
+// cannot promise (J04) — it names no cost, so no amber and no ▲ (deployed-view.ts).
 const CHECKING_TEXT = "Checking this copy for local edits…";
 
-// A block that leads with a glyph hangs it in the margin and aligns its lines
-// against each other, so a wrapped sentence starts where the first line did.
 const GLYPH_BLOCK = "flex gap-1.5";
 
-// A removal that either cannot happen or did not happen. Danger red rather than
-// the amber a row wears: amber names a cost the removal will pay, this names a
-// removal that went wrong — the error signal red exists for (issue #213). The
-// leading ✕ and the label carry the meaning where colour cannot
-// (Never-Colour-Alone). Announced assertively: it arrives on its own and takes
-// the confirm control with it.
-//
-// One component for both failures, because they render one object: rendering
-// them separately is how the panel ended up with a glyphed refusal and a
-// glyph-less error that looked like an ordinary warning (#387).
+// One component for both failures — rendered separately, they once diverged
+// into a glyphed refusal and a glyph-less error (#387). Danger red, not amber (#213).
 function FailureNote({
   id,
   label,
   message,
   children,
 }: {
-  // Set when the panel points its own description here, which a refusal does:
-  // the note is then the only thing on screen, so it is what the dialog is
-  // about rather than an aside inside it.
   id?: string;
   label: string;
   message: string;
-  // Anything the failure adds beyond the server's own sentence.
   children?: ReactNode;
 }) {
   return (
@@ -57,9 +41,6 @@ function FailureNote({
       <span aria-hidden="true" className="font-mono text-danger-ink text-desc">
         ✕
       </span>
-      {/* Label and message share one size and differ by weight and ink. The
-          label used to be the smallest text in the panel under the largest, so
-          the box named its problem more quietly than it explained it. */}
       <div className="flex min-w-0 flex-col gap-1">
         <span className="font-semibold font-ui text-danger-ink text-desc">
           {label}
@@ -71,12 +52,10 @@ function FailureNote({
   );
 }
 
-// Where a row sits in the ledger, settled once over the whole list so the two
-// lists it is rendered in cannot disagree about where it ends.
 type LedgerRowPlacement = { id: string; last: boolean };
 
-// The outline states the panel's worst news: a refusal outranks a cost, and a
-// cost outranks an ordinary confirmation.
+// The outline states the panel's worst news: refusal outranks cost outranks
+// an ordinary confirmation.
 function panelBorderFor({
   refused,
   cost,
@@ -90,9 +69,8 @@ function panelBorderFor({
   return cost ? "border-line-drift" : "border-line";
 }
 
-// One line of the ledger: what disappears, and what is true of it beyond its
-// name. Static text end to end — apm's uninstall has no -t and faking one
-// orphans the other tools' files (apm-behavior.md § Remove, ADR-0013).
+// apm's uninstall has no -t; faking one orphans the other tools' files
+// (apm-behavior.md § Remove, ADR-0013).
 function LedgerRow({ row }: { row: RemoveLedgerRow & LedgerRowPlacement }) {
   return (
     <li
@@ -103,15 +81,11 @@ function LedgerRow({ row }: { row: RemoveLedgerRow & LedgerRowPlacement }) {
         row.drift ? "bg-amber-bg" : "bg-inset",
       )}
     >
-      {/* The glyph pairs the amber with a shape, so the cost survives without
-          colour (Never-Colour-Alone). */}
       {row.drift ? (
         <span aria-hidden="true" className="font-mono text-amber-ink text-desc">
           ▲
         </span>
       ) : null}
-      {/* A path has no spaces to break at, so without break-all it sets the
-          panel's width instead of fitting inside it. */}
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="break-all font-mono text-data text-fg">
           {row.name}
@@ -131,15 +105,9 @@ function LedgerRow({ row }: { row: RemoveLedgerRow & LedgerRowPlacement }) {
   );
 }
 
-// The confirmation in front of taking a deployed skill off a target. A real modal,
-// not an inline in-row confirm: removal deletes files, so it deserves the
-// interruption — and the modal contract (focus into the panel, Escape, focus
-// restore, trapped Tab) comes from the same hook the browse dialog uses. No
-// type-to-confirm: this is local and re-doable in one click, so extra ceremony
-// would be theatre.
-//
-// Presentational: it names the action and its target, and reports what the host
-// tells it. The host owns the request, the in-flight flag and the error text.
+// A real modal, not an inline confirm — removal deletes files. Modal contract
+// (focus, Escape, trapped Tab) comes from useModalDialog. Presentational: the
+// host owns the request, the in-flight flag and the error text.
 export function RemoveSkillDialog({
   skillName,
   version,
@@ -152,71 +120,47 @@ export function RemoveSkillDialog({
   onConfirm,
 }: {
   skillName: string;
-  // The build about to be destroyed, as the row states it, or null when the
-  // screen never had one. Required rather than optional: a caller that cannot
-  // name the version says so, instead of dropping it by omission and leaving
-  // the user to carry it across a menu and a modal.
+  // Required, not optional: a caller that cannot name the version says so,
+  // rather than dropping it by omission.
   version: string | null;
   target: RemoveDialogTarget;
   isRemoving: boolean;
-  // What the host's check came back with. A warning informs and never blocks —
-  // destruction is the point of this dialog, so consent is enough (#337). A
-  // refusal is the opposite: the server already said the removal cannot
-  // succeed, so there is nothing to consent to (#385). One prop rather than
-  // two, so the screen can never state a cost and a refusal at the same time.
+  // A warning informs and never blocks (#337); a refusal means there's nothing
+  // to consent to (#385). One prop, so the screen can't state both at once.
   preflight: RemovePreflightView;
-  // The server's own reason for a removal that was refused or failed after the
-  // user confirmed it, or null while nothing has gone wrong. Not the same thing
-  // as a refused `preflight`, which happens before there is anything to confirm.
+  // The server's reason for a refused/failed removal, not the same as a
+  // refused `preflight` (which happens before there's anything to confirm).
   error: string | null;
-  // Whether apm can have run. Only a failure that provably refused before it
-  // did leaves the repo untouched; anything else may have left it half-changed,
-  // and the mixed-state note follows this flag. `removal-attempt.ts` owns the
-  // classification — the dialog only renders it.
+  // Classification owned by removal-attempt.ts — the dialog only renders it.
   attempted: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  // Closing is blocked while the removal is in flight, the same rule the browse
-  // dialog applies during registration: the outcome is readable nowhere else.
+  // Closing is blocked while the removal is in flight — the outcome is
+  // readable nowhere else.
   const { panelRef, requestClose } = useModalDialog({
     onClose: onCancel,
     closeEnabled: !isRemoving,
   });
   const named = version === null ? skillName : `${skillName} ${version}`;
   const heading = `Remove ${named}?`;
-  // An answered warning never blocks — but an unfinished one has not warned yet,
-  // and apm deletes an edited copy without a word. Holding the confirm until the
-  // check answers is the J04 rule applied to consent, not a second guard on top
-  // of #337's decision.
+  // Holds the confirm until the check answers — J04 applied to consent, not a
+  // second guard on top of #337's decision.
   const awaitingCheck =
     preflight.kind === "offered" &&
     preflight.check.kind === "unanswered" &&
     preflight.check.warning === "checking";
-  // A removal the server has already refused. Nothing will be removed, so the
-  // panel drops both halves of the consent it was asking for: the confirm, and
-  // the ledger naming what confirming would cost. What is left is the question
-  // and the server's reason it cannot be answered (#412).
+  // A refusal drops both halves of the consent it was asking for: confirm and
+  // ledger. What's left is the question and the server's reason (#412).
   const refused = preflight.kind === "refused";
 
-  // The question and the targets it would take are announced as one statement,
-  // so the confirmation is heard rather than arrowed through. The warning and
-  // failure blocks announce themselves and stay out of it. One id per row
-  // rather than one wrapping the ledger: a list of references is joined with a
-  // space by definition, where the text inside a single element is at the mercy
-  // of how each reader flattens it — and two tool names running together is the
-  // one reading this description cannot afford.
-  //
-  // A refusal points it at the refusal instead. The lead-in and the rows are
-  // gone, so the alternative is describing the dialog with nothing — and then
-  // the panel's whole content rests on the live region firing, which is exactly
-  // what a region inserted in the same frame as the focus move cannot promise.
+  // One id per row, not one wrapping the ledger: a list of references joins
+  // with a space by definition; text inside one element doesn't reliably.
   const dialogId = useId();
   const leadInId = `${dialogId}-lead-in`;
   const refusalId = `${dialogId}-refusal`;
-  // A refusal has no ledger: nothing is going, so there is nothing to list —
-  // and the leftovers an earlier answer named cannot outlive the answer that
-  // named them.
+  // A refusal has no ledger: nothing is going, and leftovers an earlier
+  // answer named cannot outlive the answer that named them.
   const rows =
     preflight.kind === "refused"
       ? []
@@ -229,20 +173,13 @@ export function RemoveSkillDialog({
         );
   const detectedRows = rows.filter((row) => !row.leftover);
   const leftoverRows = rows.filter((row) => row.leftover);
-  // The leftover rows arrive with the answer, so the description — read once,
-  // at open — would miss them; their region is their only channel, and naming
-  // them in both would read the same path twice. The detected rows are the
-  // opposite: they are on screen before any answer, which is exactly what a
-  // live region does not reliably announce, so the description carries them and
-  // their region carries only the status that lands on them later.
+  // Leftover rows arrive with the answer, so the description (read once, at
+  // open) would miss them — their region is their only channel.
   const describedBy = refused
     ? refusalId
     : [leadInId, ...detectedRows.map((row) => row.id)].join(" ");
-  // Why the confirm control is unavailable, tied to the control itself: a
-  // disabled button with the reason elsewhere on screen states it to sighted
-  // users alone. Same wiring as the browse dialog's `↑ up` at its ceiling. Only
-  // the running check needs it — a refusal takes the control away rather than
-  // disabling it, so there is nothing left to describe.
+  // Ties the disabled reason to the control (same wiring as browse dialog's
+  // `↑ up`). Only for the running check — a refusal removes the control instead.
   const blockedId = awaitingCheck ? `${dialogId}-blocked` : undefined;
   // The outline states the panel's worst news, and a cost is now a property of
   // the rows rather than of a block beside them.
@@ -253,9 +190,8 @@ export function RemoveSkillDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 p-6">
-      {/* A real button, hidden from the a11y tree and the tab order, carries the
-          backdrop dismiss: clicking outside the panel closes it, mirroring
-          Escape, without making a static div interactive. */}
+      {/* Real button, hidden from a11y tree and tab order: backdrop dismiss
+          without making a static div interactive. */}
       <button
         type="button"
         aria-hidden="true"
@@ -270,52 +206,33 @@ export function RemoveSkillDialog({
         aria-label={heading}
         aria-describedby={describedBy}
         tabIndex={-1}
-        // A refused panel is a refusal end to end, so the outline carries it
-        // too. Drift warms it one step short of that: the removal is still on
-        // offer, but it costs more than the row the user clicked.
         className={cn(
           "relative flex w-full max-w-[480px] flex-col overflow-hidden rounded-card border bg-chrome outline-none",
           panelBorder,
         )}
       >
         <div className="flex items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
-          {/* "Remove" and "?" are chrome; the name and version are data, so
-              they take the mono face inside the sans question (Mono-Is-Data). */}
           <h2 className="font-semibold font-ui text-fg text-subtitle">
             Remove <span className="font-mono">{named}</span>?
           </h2>
-          {/* What kind of thing is going, in the chip the inventory and the
-              detail pane already use. Only skills reach this dialog today —
-              `DeployedPrimitive.type` is the literal "skill" — so the type is
-              stated, not guessed. */}
+          {/* Only skills reach this dialog today — DeployedPrimitive.type is
+              the literal "skill" — so the type is stated, not guessed. */}
           <TypeTag type="skill" className="shrink-0" />
         </div>
 
-        {/* Two groups, not one stack: what the removal is aimed at, then what
-            it costs. They used to sit at one uniform gap, which left the panel
-            a column of unrelated lines with no way in. Space does the grouping
-            — a rule between them would put four hairlines across a panel this
-            short. A refusal renders only the second group, because the first
-            one answers a question the server has already closed. */}
+        {/* Two groups: what the removal targets, then what it costs. A
+            refusal renders only the second — the first answers a question
+            the server already closed. */}
         <div className="flex flex-col gap-3 px-3.5 py-3">
           {refused ? null : (
             <div className="flex flex-col gap-2">
-              {/* One lead-in, then the answer. The panel used to spend three
-                  prose lines on the scope — a micro-label, a summary value, and
-                  a sentence naming the set — where a reader only ever needed
-                  the list itself. */}
               <span id={leadInId} className="font-ui text-desc text-muted">
                 Primitive will be removed from:
               </span>
-              {/* The ledger. Two lists inside one box: the leftovers are their
-                  own announced region, and a reader who hears "also deleted"
-                  before them knows the box changed subject. */}
               <div className="flex flex-col overflow-hidden rounded-item border border-line-row">
-                {/* Announced, because a row gains its cost after the dialog is
-                    already open: the check answers late, and a status nobody
-                    hears is a cost seen only by those who can see it. Named
-                    apart from the two regions below, or a reader hears three
-                    regions that could be the same one. */}
+                {/* Announced: a row's cost can answer late, and a status
+                    nobody hears is seen only by those who can see it. Named
+                    apart, or a reader hears three identical regions. */}
                 <div role="status" aria-label="Removed from">
                   <ul className="flex flex-col">
                     {detectedRows.map((row) => (
@@ -323,11 +240,9 @@ export function RemoveSkillDialog({
                     ))}
                   </ul>
                 </div>
-                {/* Mounted from the first render, empty until the check
-                    answers: a live region created together with its first
-                    message announces unreliably (removal-trace.tsx). Only on
-                    the global scope — a repo's targets come from its own
-                    apm.yml rather than this machine, so it reclaims nothing. */}
+                {/* Mounted empty from first render — a live region created
+                    with its first message announces unreliably
+                    (removal-trace.tsx). Global only, repo reclaims nothing. */}
                 {target.kind === "global" ? (
                   <div role="status" aria-label="Also deleted">
                     {leftoverRows.length > 0 ? (
@@ -344,9 +259,8 @@ export function RemoveSkillDialog({
           )}
 
           <div className="flex flex-col gap-2">
-            {/* The server's own refusal, in its own words. Under a refusal
-                this block is the panel's whole body — the label names the
-                thing that cannot happen, so it is read first and read alone. */}
+            {/* The server's own refusal, in its own words — under a refusal
+                this is the panel's whole body, read first and read alone. */}
             {preflight.kind === "refused" ? (
               <FailureNote
                 id={refusalId}
@@ -354,11 +268,10 @@ export function RemoveSkillDialog({
                 message={preflight.message}
               />
             ) : null}
-            {/* A removal the user confirmed and apm did not land. */}
             {error ? (
               <FailureNote label="the removal failed" message={error}>
-                {/* Neutral rather than amber: a second signal colour inside a
-                    danger block would read as a second, milder problem. */}
+                {/* Neutral, not amber — a second colour here would read as a
+                    second, milder problem. */}
                 {attempted ? (
                   <span className="font-ui text-desc text-fg-2">
                     The repo may be in a mixed state — some of this skill's
@@ -371,14 +284,8 @@ export function RemoveSkillDialog({
         </div>
 
         <div className="flex items-center gap-2.5 border-line-row border-t px-3.5 py-3">
-          {/* The check speaks while it runs, because silence would read as
-              nothing-to-lose (J04) — but here, beside the control it is holding,
-              rather than in the body wearing the amber of an answered warning.
-              It is a statement about the confirm button, the same place and the
-              same shape as the browse dialog's reason for a disabled `↑ up`.
-              Keeping it out of the body also keeps the panel's height steady
-              between "checking" and the clean answer that usually follows, so
-              the confirm control does not jump under the pointer. */}
+          {/* Beside the control it holds, not in the body: keeps panel height
+              steady between "checking" and the answer, so confirm doesn't jump. */}
           {awaitingCheck ? (
             <p
               id={blockedId}
@@ -390,10 +297,7 @@ export function RemoveSkillDialog({
             </p>
           ) : null}
           <span className="flex-1" />
-          {/* The way out never shrinks: it is fixed-length text, and squeezing
-              it to make room for a long name is the wrong thing to give up. It
-              says `close` under a refusal, because there is no pending action
-              left to cancel — only a panel to leave. */}
+          {/* "close" under a refusal — no pending action left to cancel. */}
           <Button
             type="button"
             className="shrink-0"
@@ -404,13 +308,8 @@ export function RemoveSkillDialog({
           >
             {refused ? "close" : "cancel"}
           </Button>
-          {/* Absent rather than disabled once the server has refused: a
-              disabled control reads as a way through that is shut for now,
-              where this one is shut for good. Fixed-length otherwise — the
-              label used to carry the skill name inside a fixed-width panel, so
-              it had to shrink and ellipsise to fit (#388); the title states the
-              name and version, so repeating it here bought nothing and cost the
-              footer its shape. */}
+          {/* Absent, not disabled, once refused: disabled reads as shut for
+              now; this is shut for good. */}
           {refused ? null : (
             <Button
               type="button"

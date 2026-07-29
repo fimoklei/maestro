@@ -6,20 +6,9 @@ import { InventoryView } from "../inventory/inventory-view";
 import { AppShell } from "./app-shell";
 import { InventorySourceView } from "./inventory-source-view";
 
-// The cockpit's route table. Deploy-state is the landing route (the signal you
-// want first); Inventory and the ⚙ Inventory source view fill in over later
-// slices. /welcome and /welcome/connect are the connect gate's two screens
-// (ADR-0015) — the gate routes an unconfigured user here instead of a bare
-// connect form, and bounces a configured one back out. /source is the
-// connected-user Inventory source view (issue #98): connection status +
-// re-read + change-source re-point. All views nest under AppShell so they
-// share the sidebar + status bar chrome.
-//
-// The catch-all sends every unmatched URL to the landing route, where the
-// first-run gate then decides cockpit vs connect gate. Without it an unknown
-// path matches no route and React Router renders nothing — a blank page. It
-// arrived with ADR-0015, which retired /welcome/repos: a stale bookmark to a
-// URL that worked yesterday is the likeliest way to hit this.
+// Deploy-state is the landing route. /welcome + /welcome/connect are the
+// connect gate's two screens (ADR-0015). Catch-all sends unmatched URLs to
+// the landing route, where the first-run gate decides cockpit vs connect gate.
 export function AppRoutes() {
   return (
     <Routes>

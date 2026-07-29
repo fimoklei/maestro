@@ -2,10 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Button } from "../ui/button";
 import { SkillDetailPane } from "./skill-detail-pane";
 
-// The inventory detail pane's meaningful states: deployed across targets (some
-// behind), and the not-deployed-anywhere empty state. The deploy control is a
-// static stand-in here — the live one is injected in the app (frontend.md: stories
-// carry no hooks).
+// Deployed-across-targets (some behind) and not-deployed-anywhere states.
+// Deploy control is a static stand-in — stories carry no hooks (frontend.md).
 const meta = {
   title: "Inventory/SkillDetailPane",
   component: SkillDetailPane,

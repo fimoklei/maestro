@@ -1,13 +1,5 @@
-// Folds a bulk-deploy result into what the report panel renders: the target's
-// name, the per-outcome rows, the summary counts, and the overall colour. Pure
-// and framework-free, sibling-tested. Colour rule (#292): green when nothing
-// went wrong — a clean skip counts as success — and amber on any failure or a
-// diverged "attention" skip.
-//
-// A distinct "error" tone covers the bulk request itself failing (network or
-// HTTP failure, before any report came back) — a discriminated union so a
-// consumer can never accidentally read its zeroed-out counts as a real,
-// confirmed-clean success.
+// Colour (#292): green unless any failure/attention skip. "error" is
+// distinct — the bulk request itself failing, zeroed counts never confirmed-clean.
 
 import type { BulkDeployReport, DeploySkillError } from "@maestro/core";
 
@@ -24,8 +16,7 @@ export type BulkDeployReportView =
       targetLabel: string;
       // Successes that were a first install here.
       deployed: { name: string; version: string }[];
-      // Successes that replaced a behind copy — the plan's update-to-latest
-      // (#292).
+      // Successes that replaced a behind copy (#292).
       updated: { name: string; version: string }[];
       skipped: string[];
       attention: { name: string; error: DeploySkillError }[];
@@ -35,20 +26,16 @@ export type BulkDeployReportView =
   | {
       tone: "error";
       targetLabel: string;
-      // The request's own failure message, for an honest "why" (network
-      // outage, server error) rather than a bare "something went wrong".
       message: string;
     };
 
 export function bulkDeployReportView(input: {
   report: BulkDeployReport;
   skippedClean: string[];
-  // Names the plan marked as behind before the run. Absent means the caller has
-  // no plan to distinguish by, and every success reads as a first deploy.
+  // Absent means every success reads as a first deploy.
   updateToLatest?: string[];
   targetLabel: string;
-  // The bulk request itself failed (network/HTTP) — `report` carries no real
-  // data in this case, so it must never be read.
+  // `report` carries no real data when true — must never be read.
   requestFailed?: boolean;
   requestFailedMessage?: string;
 }): BulkDeployReportView {
@@ -66,8 +53,7 @@ export function bulkDeployReportView(input: {
   const updated = report.deployed.filter((row) => wasBehind.has(row.name));
   const deployed = report.deployed.filter((row) => !wasBehind.has(row.name));
 
-  // A merged failure line carries every affected skill, so the failed count is
-  // the sum of those names, not the number of lines.
+  // A merged failure line carries every affected skill — sum names, not lines.
   const failedCount = report.failed.reduce(
     (total, line) => total + line.names.length,
     0,
@@ -87,7 +73,6 @@ export function bulkDeployReportView(input: {
     attention: report.attention,
     failed: report.failed,
     counts: {
-      // Every success, however it got there — a first install or an update.
       deployed: report.deployed.length,
       skipped: skippedClean.length,
       attention: report.attention.length,

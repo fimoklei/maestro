@@ -1,13 +1,6 @@
-// The pre-flight plan for a bulk deploy to one destination. Pure and
-// framework-free, sibling-tested; the bulk bar reads it to name what will be
-// sent and what is skipped as already-done. A destination is one or more
-// targets: a repo is always one, but "Global" is one per detected tool (apm
-// tracks each tool's install separately) — a skill only skips as a no-op once
-// it is confirmed present AND up-to-date on every one of them, so a skill
-// missing from a newly-added tool is never mistaken for fully clean (#292).
-// Everything else (not deployed everywhere, behind anywhere, or a check that
-// could not run) is attempted; the deploy path itself refuses a
-// content-diverged copy, which the report then surfaces as attention.
+// The pre-flight plan for a bulk deploy. A skill skips as a no-op only once
+// confirmed present AND up-to-date on every target — a skill missing from a
+// newly-added tool is never mistaken for fully clean (#292).
 
 import type { DeployedView } from "../deploy-state/deployed-view";
 import type { DeploymentTarget } from "./deployed-rollup";
@@ -15,13 +8,8 @@ import type { DeploymentTarget } from "./deployed-rollup";
 export type BulkDeployPlan = {
   // Names to send to the target, in the caller's order.
   toDeploy: string[];
-  // Names left out because they are already deployed and up-to-date
-  // everywhere the destination reaches.
   skippedClean: string[];
-  // The subset of toDeploy already deployed somewhere but confirmed behind on
-  // at least one target: an update, not a first install. Named so the report
-  // can say which skills were updated to latest rather than newly deployed
-  // (#292).
+  // Confirmed behind on at least one target: an update, not a first install (#292).
   updateToLatest: string[];
 };
 
@@ -29,9 +17,8 @@ function deployedOn(deployed: DeployedView, name: string): boolean {
   return deployed.status === "ready" && deployed.names.includes(name);
 }
 
-// One target's status for one skill, folded from "is it deployed here" plus
-// drift, in a single read — so the plan below never walks `targets` twice to
-// ask two questions that share the same per-target check.
+// Folds "deployed here" + drift in one pass, so the plan never walks
+// `targets` twice for the same check.
 function targetStatus(
   target: DeploymentTarget,
   name: string,
@@ -52,13 +39,8 @@ export function planBulkDeploy(
   const updateToLatest: string[] = [];
 
   for (const name of names) {
-    // A no-op only when every target confirms the copy present AND up-to-date.
-    // A single un-run or missing target keeps the skill honest and attempted
-    // rather than assumed clean (J04) — this is the multi-tool generalization
-    // of the single-target rule. Only a confirmed-behind deployed copy is an
-    // update; an un-run check never claims one, and a skill deployed nowhere
-    // is a first install. Both facts come from the same single pass over
-    // targets.
+    // A single un-run or missing target keeps the skill attempted, not
+    // assumed clean (J04).
     let allUpToDate = targets.length > 0;
     let confirmedBehindSomewhere = false;
     for (const target of targets) {

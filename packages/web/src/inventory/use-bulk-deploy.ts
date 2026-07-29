@@ -1,8 +1,5 @@
-// Mutation hook for bulk-deploying the staged skills to one target. On success
-// it invalidates that target's deploy-state and drift queries, so the deployed
-// column and drift chips refresh without a manual reload (frontend.md). The
-// per-skill plan (which names to send) is decided by the caller; this hook only
-// carries the execution and refreshes the affected panels.
+// On success, invalidates the target's deploy-state and drift queries
+// (frontend.md). Plan (which names to send) is the caller's; this only executes.
 import type { BulkDeployReport } from "@maestro/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";

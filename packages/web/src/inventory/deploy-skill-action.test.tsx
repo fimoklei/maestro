@@ -411,10 +411,8 @@ describe("DeploySkillAction", () => {
   });
 
   it("clears the Reinstall affordance when the target changes after a refusal", async () => {
-    // The forced reinstall must apply to the target the user just confirmed, not
-    // a different one. Switching the dropdown after a not-proven-clean refusal
-    // clears the affordance, so a force can never reach a target whose own
-    // refusal was never shown (#66, Codex P2).
+    // A force must apply to the target just confirmed. Switching the dropdown
+    // after a not-proven-clean refusal clears it (#66, Codex P2).
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.startsWith("/api/deploy") && !url.includes("deploy-state")) {
@@ -512,10 +510,8 @@ describe("DeploySkillAction", () => {
   });
 
   it("refreshes the repo drift badge after a successful deploy", async () => {
-    // Drift is a separate query from deploy-state; a deploy must invalidate it
-    // too, or a freshly deployed skill keeps its stale "unknown" badge (#48).
-    // The skill is already deployed at a tag so a badge renders before and
-    // after; drift goes unknown → behind once the refetch lands.
+    // Drift is a separate query from deploy-state; a deploy must invalidate
+    // it too, or a freshly deployed skill keeps its stale badge (#48).
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes("/api/drift")) {

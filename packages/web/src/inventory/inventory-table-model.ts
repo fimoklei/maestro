@@ -1,16 +1,12 @@
-// Pure search-and-sort model for the inventory table (#287). Kept out of the
-// component so the narrowing and ordering are testable predicates, not inline
-// JSX logic (see the issue's acceptance criteria and frontend.md).
+// Pure search-and-sort model for the inventory table (#287).
 import type { Primitive } from "./use-inventory";
 
 export type SortColumn = "type" | "name" | "description";
 
 export type SortState = { column: SortColumn; direction: "asc" | "desc" };
 
-// Narrows to primitives whose name contains the query, case-insensitively. An
-// empty (or whitespace-only) query is "no filter" and returns every primitive.
-// Name only: the search box sits over the name column, so matching descriptions
-// would surprise the user with rows whose visible name looks unrelated.
+// Name only, case-insensitive — matching descriptions would surprise the
+// user with rows whose visible name looks unrelated.
 export function filterByName(
   primitives: Primitive[],
   query: string,
@@ -22,8 +18,7 @@ export function filterByName(
   return primitives.filter((p) => p.name.toLowerCase().includes(needle));
 }
 
-// Returns a new array ordered by the sort column; never mutates the input, so
-// the loaded inventory stays in its original order for an unsorted view.
+// Never mutates the input, so the loaded inventory keeps its original order.
 export function sortPrimitives(
   primitives: Primitive[],
   sort: SortState,
@@ -34,8 +29,7 @@ export function sortPrimitives(
   );
 }
 
-// The sort state after a header click. A fresh column starts ascending; the
-// active column toggles ascending ↔ descending, so a second click reverses it.
+// A fresh column starts ascending; the active column toggles on a second click.
 export function nextSort(
   current: SortState | null,
   column: SortColumn,

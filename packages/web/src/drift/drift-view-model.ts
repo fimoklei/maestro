@@ -1,17 +1,6 @@
-// The one owner of drift status in `web`. Every screen — the repo card, the
-// sidebar Targets list, the global targets section (and its per-tool slice of the
-// single global drift check), the deploy action — reads drift through this view-
-// model instead of hand-piping the query mapping and the joins. It hides:
-//   - the query -> view mapping (the old toDriftView relabeler),
-//   - the per-skill join (skillStatus, latest, syncedState — the old
-//     deriveSyncedState relabeler folded in),
-//   - the per-target join (targetIndicator),
-//   - the J04 rule (a check that could not run is never up-to-date),
-//   - the empty-target "empty wins" rule,
-//   - orphan-behind,
-//   - the deployed -> latest version-pair lookup.
-// Pure and framework-free, sibling-tested. The screens build one from their drift
-// query; the global section narrows it per tool with forTool.
+// The one owner of drift status in `web`: query->view mapping, per-skill and
+// per-target joins, the J04 rule, empty-wins, orphan-behind. Pure and
+// framework-free. Screens build one from their query; forTool narrows per tool.
 
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { DeployedView } from "../deploy-state/deployed-view";
@@ -49,27 +38,17 @@ type DriftView =
   | { status: "ready"; behind: VersionDrift[] };
 
 export interface DriftViewModel {
-  // Per-skill badge for a deployed skill name.
   skillStatus(name: string): DriftStatus;
-  // The latest tag for a behind skill, for the deployed -> latest pair; undefined
-  // unless the check ran and this name is behind.
   latest(name: string): string | undefined;
-  // The whole target's roll-up against its deployed set.
   targetIndicator(deployed: DeployedView): TargetDriftIndicator;
-  // How many deployed-here skills are behind — the `▲N` count. Shares the exact
-  // orphan-behind join `targetIndicator` uses, so N > 0 iff the indicator reads
-  // "drift" (a target never shows `▲0`). Zero for every un-run or empty state.
+  // Shares targetIndicator's join, so N > 0 iff the indicator reads "drift".
   driftCount(deployed: DeployedView): number;
-  // Behind names the check reported that are not deployed here — surfaced, never
-  // dropped, so the cockpit does not silently hide a behind primitive.
+  // Behind names not deployed here — surfaced, never dropped.
   orphanBehind(deployedNames: string[]): string[];
-  // "already synced": the skill is deployed AND its exact version is up-to-date.
   syncedState(
     deployed: DeployedPrimitive[] | undefined,
     skillName: string,
   ): SyncedState;
-  // Narrow the single global drift check to one tool's skills, so a skill behind
-  // on another tool never surfaces here.
   forTool(names: string[]): DriftViewModel;
 }
 
@@ -88,13 +67,10 @@ function mapDriftQuery(
   if (query.data === undefined) {
     return { status: "pending" };
   }
-  // The check ran iff the body carries a behind set; { ok: false } means it could
-  // not run — shown as unknown, never up-to-date (J04).
+  // { ok: false } means the check could not run — unknown, never up-to-date (J04).
   if ("behind" in query.data) {
     return { status: "ready", behind: query.data.behind };
   }
-  // apm reached the tool but could not resolve against the remote: its own state,
-  // so the badge points at auth/network rather than a bare "unknown".
   if (query.data.reason === "unverified") {
     return { status: "unverified" };
   }
@@ -122,14 +98,9 @@ function fromDriftView(view: DriftView): DriftViewModel {
       ? view.behind.find((entry) => entry.name === name)?.latest
       : undefined;
 
-  // One roll-up owns both the state and the `▲N` count so they read the same
-  // behind<->deployed join and can never disagree. "empty" comes first: a target
-  // with nothing deployed (deployed read cleanly, zero primitives and zero skipped
-  // entries) can't drift, so a confirmed-empty deployment wins over the drift
-  // check — even a failed or still-loading one. A lockfile of only unsupported
-  // types has zero primitives but a non-empty skipped set: it does contain
-  // deployed content, so it is not empty and falls through. Emptiness only counts
-  // once deployed is confirmed (status "ready").
+  // "empty" comes first: a confirmed-empty deployment wins over the drift
+  // check, even a failed or loading one. Only counts once deployed is
+  // confirmed ("ready") — skipped-only entries aren't empty.
   const rollUp = (
     deployed: DeployedView,
   ): { state: TargetDriftIndicator; behindCount: number } => {
@@ -154,8 +125,7 @@ function fromDriftView(view: DriftView): DriftViewModel {
           case "unknown":
             return { state: "unknown", behindCount: 0 };
           case "ready": {
-            // An orphan-behind (a behind name not deployed here) cannot be updated
-            // here, so it must not flip the target to "drift" nor inflate the count.
+            // Orphan-behind can't be updated here, so it must not flip "drift".
             const names = new Set(deployed.names);
             const behindCount = view.behind.filter((entry) =>
               names.has(entry.name),

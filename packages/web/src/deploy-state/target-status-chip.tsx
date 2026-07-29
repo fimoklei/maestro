@@ -1,14 +1,9 @@
 import type { TargetDriftIndicator } from "../drift/drift-view-model";
 import { Chip } from "../ui/chip";
 
-// The status Chip in a target Card's header: a one-glance roll-up of the whole
-// target's drift. The caller computes the indicator (joining drift against the
-// target's deployed primitives), so the header and the sidebar never disagree
-// and an orphan-behind never flips the header to "drift". It shows only the
-// definite states — "in sync", "drift", or a confirmed-empty target. Unknown and
-// pending render nothing here (the per-skill rows carry "unknown"), so the
-// header never falsely reads as in sync (J04) and never double-states "unknown"
-// against the rows.
+// One-glance drift roll-up in a target Card's header. Only the definite states
+// render here — unknown/pending render nothing, so the header never falsely
+// reads as in sync (J04, see deployed-view.ts).
 export function TargetStatusChip({
   indicator,
 }: {
@@ -20,10 +15,8 @@ export function TargetStatusChip({
   if (indicator === "drift") {
     return <Chip tone="drift">▲ drift</Chip>;
   }
-  // A confirmed-empty target states itself here rather than in a body sentence,
-  // so a card with nothing in it collapses to its header. Neutral tone: empty is
-  // a fact about the target, not a signal to act on. The word is the sidebar's
-  // ("empty", never a synonym) so the two readings of the same target agree.
+  // Neutral tone: empty is a fact, not a signal to act on. Word matches the
+  // sidebar's ("empty", never a synonym) so both readings agree.
   if (indicator === "empty") {
     return <Chip tone="dim">● empty</Chip>;
   }

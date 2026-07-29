@@ -1,16 +1,11 @@
-// Guards state-changing routes against DNS-rebinding / CSRF: a malicious site
-// open in the browser POSTing to localhost to drive the machine. Requires a
-// JSON body, an allowlisted Host header, and a present, allowlisted Origin.
-// Enabled via a createApp dep — production always on, tests construct it off;
-// there is no static bypass header (see .claude/rules/security.md).
+// Guards against DNS-rebinding / CSRF (security.md): JSON body, allowlisted
+// Host, present and allowlisted Origin. No static bypass header.
 import type { MiddlewareHandler } from "hono";
 
 const ALLOWED_HOSTNAMES = new Set(["127.0.0.1", "localhost"]);
 
-// Extracts the hostname from a header value, or null when absent/unparseable.
-// A Host header carries no scheme ("127.0.0.1:3000"), so it is parsed with one
-// assumed; an Origin already includes its scheme. One parser keeps the Host and
-// Origin checks from drifting apart.
+// Host carries no scheme ("127.0.0.1:3000"), so one is assumed; Origin
+// already has its own.
 function headerHostname(
   value: string | undefined,
   { assumeScheme }: { assumeScheme: boolean },

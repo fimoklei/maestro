@@ -7,32 +7,15 @@ import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { SectionHeader } from "../ui/section-header";
 
-// The connect gate's second and final screen (ADR-0015): the shared
-// ConnectInventoryPanel the Settings re-point screen uses (PRD #93), but landing
-// differently — a visible confirmation with the primitive count and the
-// read-only promise, then an explicit continue onto Inventory, rather than
-// Settings' silent navigate. That confirmation is this screen's renderSuccess
-// slot; the shared plumbing (form, browse, connect mutation) lives in the panel.
-// The explicit "Continue" (rather than auto-navigating the instant the mutation
-// resolves) is deliberate: the confirmation is where the read-only promise
-// lives, so it must stay on screen long enough to read. Landing on Inventory
-// rather than Deploy-state is also deliberate — the connected primitives carry
-// their own `deploy →` actions, and a deploy is possible immediately because
-// global targets exist without any registration (ADR-0011).
+// The connect gate's second screen (ADR-0015): shares ConnectInventoryPanel
+// with Settings' re-point (PRD #93), but lands on an explicit "Continue" so
+// the read-only promise stays on screen long enough to read.
 export function ConnectView() {
   const config = useInventoryConfig();
   const navigate = useNavigate();
   const [hasConnected, setHasConnected] = useState(false);
-  // Blocks a deep link/bookmark into this screen by an already-configured user
-  // (the gate only guards /welcome itself, not this nested route — see
-  // first-run-gate.tsx). Keyed off *this session's own* connect, not just
-  // "configured", so a connect that succeeds mid-flow (unconfigured ->
-  // configured, right here, via the panel's cache seed) still shows its
-  // confirmation instead of being yanked to "/" the instant the config re-fetch
-  // catches up. While config is still pending we don't yet know which case this
-  // is, so this also stays true — the panel must not flash into view before the
-  // answer arrives. This guard decides whether the panel mounts at all, so it
-  // stays here rather than inside the shared panel.
+  // Keyed off this session's own connect, so a mid-flow success still shows
+  // its confirmation rather than being yanked to "/" (first-run-gate.tsx).
   const blocked =
     !hasConnected && (config.isPending || config.data?.inventoryPath);
 
@@ -62,10 +45,7 @@ export function ConnectView() {
                 ✓ {result.primitiveCount} primitives found · read-only, never
                 writes back
               </p>
-              {/* Name the connected source here, on the surface that confirms
-                  it, so it is identifiable beyond its basename without opening
-                  the source view (#211). Shared with the Settings steady state
-                  so the two can't drift apart again. */}
+              {/* Shared with the Settings steady state so the two can't drift apart (#211). */}
               <SourceLabel path={result.inventoryPath} />
               <div>
                 <Button

@@ -1,15 +1,10 @@
 import { cn } from "./cn";
 
-// 6px sync-state dot shown next to targets in lists and sidebars. Green = in
-// sync, amber = drift, grey = neutral/waiting (setup pending, in-flight).
-// Decorative: it always sits beside the same state in text, so it is aria-hidden
-// to avoid a redundant screen-reader announcement.
+// Decorative sync-state dot: aria-hidden, since it always sits beside the same
+// state in text.
 
 export interface StatusDotProps {
-  /**
-   * "ok" = green (in sync), "drift" = amber (has drift), "muted" = grey
-   * (neutral/waiting — nothing wrong, nothing to sync yet).
-   */
+  /** ok = green (in sync), drift = amber, muted = grey (neutral/waiting). */
   status?: "ok" | "drift" | "muted";
   /** Diameter in px. */
   size?: number;

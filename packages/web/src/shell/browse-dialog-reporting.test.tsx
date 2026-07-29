@@ -5,10 +5,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { RegistrationOutcome } from "../registry/use-register-repos";
 import { BrowseDialog } from "./browse-dialog";
 
-// Confirming a register-mode selection turns the picker into a report of what
-// happened to each repo (issue #175). Kept apart from browse-dialog.test.tsx,
-// which owns navigating and selecting, so neither file outgrows being read in
-// one sitting.
+// Confirming a register-mode selection turns the picker into a per-repo
+// report (#175). Kept apart from browse-dialog.test.tsx (navigating/selecting).
 
 afterEach(() => {
   vi.unstubAllGlobals();

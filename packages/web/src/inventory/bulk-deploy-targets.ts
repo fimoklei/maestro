@@ -1,11 +1,6 @@
-// Folds the chosen bulk-deploy destination into the DeploymentTarget[] shape
-// planBulkDeploy reads: a repo is always one target, but "Global" is one per
-// detected tool — apm tracks each tool's install separately, so a skill
-// present on Claude Code but missing on Codex must not read as fully clean
-// (mirrors use-deployment-targets.ts, #292). A still-loading read stays
-// "pending", so a skill is attempted rather than assumed clean. Pure and
-// framework-free, sibling-tested; the bulk bar reads already-fetched data
-// through it instead of folding tool/primitive shapes inline.
+// Global is one target per detected tool — apm tracks each tool's install
+// separately, so present-on-Claude-missing-on-Codex must not read as clean
+// (#292). Still-loading stays "pending", so a skill is attempted, not assumed clean.
 
 import { toolPresentation } from "../deploy-state/tool-presentation";
 import type { DeployedPrimitive } from "../deploy-state/use-deploy-state";
@@ -16,10 +11,8 @@ import type { DeploymentTarget } from "./deployed-rollup";
 export function chosenBulkDeployTargets(params: {
   isGlobal: boolean;
   targetLabel: string;
-  // The global per-tool read; undefined while it is still loading.
   globalTools: ToolDeployState[] | undefined;
-  // The single repo's deployed primitives; undefined while its read is still
-  // loading. Ignored when isGlobal is true.
+  // Ignored when isGlobal is true.
   repoPrimitives: DeployedPrimitive[] | undefined;
   drift: DriftViewModel;
 }): DeploymentTarget[] {

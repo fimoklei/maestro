@@ -15,10 +15,8 @@ function jsonResponse(body: unknown, status: number) {
   });
 }
 
-// The header now reads two signals — /api/health and /api/inventory/config — so
-// the stub routes by URL. `health: "down"` fails the health probe; `config` is
-// either a body (inventoryPath null = not connected, set = connected) or "error"
-// to fail the config read.
+// Routes by URL: /api/health and /api/inventory/config. `health: "down"`
+// fails the probe; `config` is a body or "error" to fail the config read.
 function stubServer(opts: {
   health?: "ok" | "down";
   config?: { inventoryPath: string | null } | "error";
@@ -89,11 +87,8 @@ describe("StatusBar", () => {
   });
 
   it("reads as Setup required when the server is healthy but no inventory is configured", async () => {
-    // The core fix: a healthy server with inventoryPath null is first-run, not
-    // "Connected" — this is where the old conflation showed as a live bug. The
-    // first-run header spells this out with an empty-context wordmark and a
-    // "setup required" chip; the redundant "not configured" note is dropped so
-    // onboarding reads cleanly.
+    // A healthy server with inventoryPath null is first-run, not "Connected"
+    // — the old conflation was a live bug. Shows a "setup required" chip.
     stubServer({ health: "ok", config: { inventoryPath: null } });
     renderStatusBar();
 
@@ -181,10 +176,8 @@ describe("StatusBar", () => {
   });
 
   it("labels the source by its path tail and keeps the full path in the title", async () => {
-    // The header shows a shortened path (parent + basename), not a bare
-    // basename, so two similarly-named clones stay distinguishable (#211). The
-    // whole path is preserved on hover via title; it also lives on the source
-    // view.
+    // Shortened path (parent + basename), not bare basename, so similarly
+    // named clones stay distinguishable (#211); full path on hover via title.
     const fullPath = "/Users/me/Projects/agent-harness";
     stubServer({
       health: "ok",

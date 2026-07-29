@@ -1,11 +1,7 @@
 import type { RegistrationOutcome } from "../registry/use-register-repos";
 
-// What happened to each repo of a registration run, one line apiece (issue
-// #175). It replaces the picker's listing rather than sitting beside it: the
-// dialog is the only window in which the user can read a failure, so the run
-// gets the whole surface. Rows arrive in the order the user built the
-// selection and never re-sort, so a line the user already read stays where it
-// was while the ones below it land.
+// What happened to each repo of a registration run (#175). Rows arrive in
+// selection order and never re-sort, so an already-read line stays put.
 export function BrowseRunReport({
   outcomes,
   isRegistering,
@@ -26,9 +22,8 @@ export function BrowseRunReport({
       <ul aria-label="Registration results" className="flex flex-col gap-1">
         {outcomes.map((outcome) => (
           <li
-            // Keyed on what was asked for, not on what the registry stored:
-            // a symlink and its target resolve to one stored path, so keying
-            // on `path` would collide when both are selected.
+            // Keyed on the request, not the stored path — a symlink and its
+            // target resolve to one stored path and would collide on `path`.
             key={outcome.requestedPath}
             className="flex items-baseline justify-between gap-2"
           >

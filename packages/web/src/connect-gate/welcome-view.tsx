@@ -1,15 +1,9 @@
 import { useNavigate } from "react-router";
 import { Button } from "../ui/button";
 
-// The connect gate's first of two screens (ADR-0015). A fresh install has no
-// inventory source, so the cockpit has nothing to show; this screen states that
-// and offers the single action that resolves it. The sidebar's own inert
-// rendering (dimmed nav, "none yet" targets) lives in shell/sidebar.tsx, driven
-// by the same useFirstRun signal, so this view only owns the main-region copy.
-// The <h1> is hand-rolled rather than reusing SectionHeader (as the gate's
-// connect screen does) because this screen is a centred hero: SectionHeader
-// lays its title out as a left-aligned row with a meta slot and a spacer,
-// which fights the centring. Only the title's type classes are shared.
+// The connect gate's first screen (ADR-0015). <h1> is hand-rolled rather than
+// SectionHeader: SectionHeader's left-aligned row + meta slot fights this
+// screen's centred-hero layout. Only the title's type classes are shared.
 export function WelcomeView() {
   const navigate = useNavigate();
 

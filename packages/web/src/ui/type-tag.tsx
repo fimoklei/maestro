@@ -1,9 +1,6 @@
 import { cn } from "./cn";
 
-// Uppercase mono tag identifying a primitive's type. One fixed colour per type,
-// shown at low opacity for the border/fill — the cockpit's only use of the four
-// reserved type colours. Type-aware across skill/hook/mcp/bundle even though
-// MVP1 renders skills only, so future primitive types slot in additively.
+// Uppercase mono tag for a primitive's type, one fixed colour each.
 
 export type PrimitiveType = "skill" | "hook" | "mcp" | "bundle";
 
@@ -14,8 +11,7 @@ export interface TypeTagProps {
 }
 
 // Static per-type classes (Tailwind cannot scan interpolated class names).
-// /27 border and /8 fill mirror the color-mix alphas in the live design system
-// (read it as .claude/rules/design.md describes; the live source wins).
+// /27, /8 alphas mirror design.json — see .claude/rules/design.md.
 const typeClasses: Record<PrimitiveType, string> = {
   skill: "text-type-skill border-type-skill/27 bg-type-skill/8",
   hook: "text-type-hook border-type-hook/27 bg-type-hook/8",

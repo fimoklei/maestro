@@ -345,10 +345,8 @@ describe("Update action on a behind skill", () => {
   });
 
   it("flips the row from behind to up-to-date after a successful update", async () => {
-    // The whole point of the update: drift is not constant. The first drift read
-    // reports behind, the update succeeds, the mutation invalidates the drift
-    // query, and the refetch now reports nothing behind — so the row flips to
-    // up-to-date and stops offering an Update, with no manual reload.
+    // The update invalidates the drift query; the refetch reports nothing
+    // behind, so the row flips to up-to-date with no manual reload.
     let updated = false;
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
