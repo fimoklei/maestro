@@ -246,6 +246,34 @@ describe("removeLedgerRows", () => {
       ).toEqual(["Claude Code", "Codex"]);
     });
 
+    // The server detects its tools again at execution time, so the report can
+    // name a tool the card never showed — or leave one out. Rows and lead-in
+    // read the same report, or the count would disagree with what is drawn.
+    it("draws a row for a target only the report names", () => {
+      expect(
+        removeLedgerRows(
+          { kind: "global", tools: ["claude"] },
+          [],
+          perTool({}),
+          globalOutcome,
+        ).map((row) => [row.name, row.outcome]),
+      ).toEqual([
+        ["Claude Code", "removed"],
+        ["Codex", "not-removed"],
+      ]);
+    });
+
+    it("drops a target the report left out, rather than drawing it blank", () => {
+      expect(
+        removeLedgerRows(
+          { kind: "global", tools: ["claude", "codex", "cursor"] },
+          [],
+          perTool({}),
+          globalOutcome,
+        ).map((row) => row.name),
+      ).toEqual(["Claude Code", "Codex"]);
+    });
+
     it("puts the repo scope's one answer on its one row", () => {
       const [repo] = removeLedgerRows(
         { kind: "repo", repoPath: "/Users/me/project" },

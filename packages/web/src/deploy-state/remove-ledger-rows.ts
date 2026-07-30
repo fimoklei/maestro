@@ -78,20 +78,6 @@ function statusFor(warning: RemoveRowWarning | null): {
     : { status: WARNING_STATUS[warning], drift: true };
 }
 
-// The removal's own answer for one row, or null where it proved nothing. A
-// target the report never named is never read as one it came off (J04).
-function outcomeForTool(
-  outcome: RemoveOutcome | null,
-  tool: string,
-): RemoveTargetState | null {
-  if (outcome === null) {
-    return null;
-  }
-  return outcome.scope === "repo"
-    ? outcome.state
-    : (outcome.tools.find((entry) => entry.tool === tool)?.state ?? null);
-}
-
 // Counted from the server's report, never from the rows on screen: the ledger
 // can carry rows apm never reached, and only the report knows which it did.
 export function removeLedgerLeadIn(outcome: RemoveOutcome | null): string {
@@ -106,6 +92,39 @@ export function removeLedgerLeadIn(outcome: RemoveOutcome | null): string {
   const noun = states.length === 1 ? "target" : "targets";
   return `Removed from ${removed} of ${states.length} ${noun}:`;
 }
+
+// One row per target the report answered for — the same set the lead-in counts,
+// or the two would disagree. The server detects its tools again at execution
+// time, so the card's list is a preference for order, never the set itself.
+function outcomeRows(
+  outcome: RemoveOutcome,
+  targets: readonly { tool: string; name: string }[],
+): RemoveLedgerRow[] {
+  const reported =
+    outcome.scope === "repo"
+      ? [{ tool: targets[0]?.tool ?? "", state: outcome.state }]
+      : outcome.tools;
+  const onScreen = targets.map((entry) => entry.tool);
+  return [...reported]
+    .sort((a, b) => rank(onScreen, a.tool) - rank(onScreen, b.tool))
+    .map((entry) => ({
+      key: `target:${entry.tool}`,
+      name:
+        targets.find((target) => target.tool === entry.tool)?.name ??
+        toolDisplayName(entry.tool),
+      path: null,
+      status: null,
+      drift: false,
+      leftover: false,
+      outcome: entry.state,
+    }));
+}
+
+// A tool the card never showed sorts after every one it did, in report order.
+const rank = (onScreen: readonly string[], tool: string) => {
+  const index = onScreen.indexOf(tool);
+  return index === -1 ? onScreen.length : index;
+};
 
 export function removeLedgerRows(
   target: RemoveDialogTarget,
@@ -122,19 +141,8 @@ export function removeLedgerRows(
       ? [{ tool: target.repoPath, name: target.repoPath }]
       : target.tools.map((tool) => ({ tool, name: toolDisplayName(tool) }));
 
-  // A cost is a claim about what the removal will do. Once it has run and
-  // failed, the outcome the server proved replaces it on every row — and the
-  // reclaim, which runs only after apm confirms, never happened at all.
   if (outcome !== null) {
-    return targets.map(({ tool, name }) => ({
-      key: `target:${name}`,
-      name,
-      path: null,
-      status: null,
-      drift: false,
-      leftover: false,
-      outcome: outcomeForTool(outcome, tool),
-    }));
+    return outcomeRows(outcome, targets);
   }
 
   return [
