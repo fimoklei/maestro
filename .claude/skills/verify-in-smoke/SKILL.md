@@ -13,7 +13,7 @@ Five things make a `pnpm smoke` run, screenshot, or test result lie to you. Chec
 
 ## Wrong worktree: a sibling is squatting the port
 
-Every worktree defaults to the same ports (3000/5173). A dev server left running in a sibling worktree can keep holding the port, so your screenshot shows the wrong branch. → Guarded automatically: `scripts/guard-port-owner.mjs` runs before every `agent-browser` command and denies it when the port's owner sits outside this worktree. Nothing to check by hand — act on the block message when it appears.
+Every worktree defaults to the same ports (3000/5173). A dev server left running in a sibling worktree can keep holding the port, so your screenshot shows the wrong branch. → Start the cockpit from *this* worktree: `pnpm smoke` kills whatever holds those ports first, and refuses to start (naming the process and its directory) when a holder survives. Screenshot only against a cockpit you started here.
 
 ## Wrong path: the browse ceiling is HOME
 

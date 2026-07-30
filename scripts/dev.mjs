@@ -11,12 +11,16 @@ import {
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  describeHeldPorts,
+  findPortHolders,
+  pidsOnPort,
+} from "./port-holders.mjs";
 import { seedSandbox, writeSmokeMarker } from "./seed-sandbox.mjs";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const pidFile = join(repoRoot, ".maestro-dev.pid");
-const serverPort = process.env.PORT ?? "3000";
-const webPort = "5173";
+const cockpitPorts = [Number(process.env.PORT ?? 3000), 5173];
 const smoke = process.argv.includes("--smoke");
 
 function isAlive(pid) {
@@ -36,18 +40,6 @@ function killGroup(pid, signal) {
   }
 }
 
-function pidsOnPort(port) {
-  try {
-    return execFileSync("lsof", ["-ti", `tcp:${port}`], { encoding: "utf8" })
-      .split("\n")
-      .map((line) => Number(line.trim()))
-      .filter((pid) => Number.isInteger(pid) && pid > 0);
-  } catch {
-    // lsof exits non-zero when nothing listens on the port — nothing to free.
-    return [];
-  }
-}
-
 function sleep(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
@@ -64,8 +56,9 @@ if (existsSync(pidFile)) {
 
 // 2. Fallback: free the ports in case something unrelated still holds them.
 let freedSomething = false;
-for (const port of [serverPort, webPort]) {
-  for (const pid of pidsOnPort(port)) {
+for (const port of cockpitPorts) {
+  // A lookup that could not answer frees nothing here; step 3 refuses on it.
+  for (const pid of pidsOnPort(port) ?? []) {
     try {
       process.kill(pid, "SIGKILL");
       console.log(`[dev] freeing port ${port} (pid ${pid})`);
@@ -79,7 +72,16 @@ if (freedSomething) {
   sleep(300); // let the OS release the sockets before we rebind
 }
 
-// 3. Start server + web as one detached group so we can kill the whole tree.
+// 3. Refuse when a holder survived the kill above — another user's process, or
+// one that restarted itself. Starting anyway hands the cockpit's URL to it, so
+// every later screenshot would prove that process rather than this worktree.
+const stillHeld = describeHeldPorts(findPortHolders(cockpitPorts));
+if (stillHeld !== null) {
+  console.error(stillHeld);
+  process.exit(1);
+}
+
+// 4. Start server + web as one detached group so we can kill the whole tree.
 const env = { ...process.env };
 const sandbox = join(repoRoot, ".maestro-sandbox");
 

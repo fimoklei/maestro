@@ -119,10 +119,12 @@ The two jobs are split across two commands rather than resolved in one default:
 - **Failing closed.** No answer within 60 s exits non-zero naming `pnpm smoke`;
   a refused connect stops before registering. A half-seeded cockpit would look
   ready and lie.
-- **The rule is enforced, not written down.** `scripts/guard-port-owner.mjs`
-  already gates every `agent-browser` command on port ownership; it now also
-  refuses when a smoke sandbox exists but holds no inventory and no repo. An
-  absent sandbox is not blocked — "not rehearsing" is not "rehearsing badly".
+- **The port rule is enforced at launch, not per command.** `pnpm smoke` refuses
+  to start when a cockpit port survives its own cleanup, naming the process and
+  directory that hold it (`scripts/port-holders.mjs`). The seeded-sandbox check the
+  earlier per-command guard also performed is dropped (#433): under this ADR a
+  bare smoke is always unseeded at start, so there is no launch moment at which
+  the check could be true. `pnpm smoke:ready` remains the step that seeds it.
 
 ## Rejected alternatives
 
