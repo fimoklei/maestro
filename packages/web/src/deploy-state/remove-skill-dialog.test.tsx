@@ -340,6 +340,22 @@ describe("RemoveSkillDialog", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(/removal failed/i);
   });
 
+  // The design handoff labels this block in apm's terms (`apm exited 1`, state
+  // 3e). ADR-0018 refused that: apm's output never leaves the server, so the
+  // label is Maestro's own and cannot move with whatever the server sent.
+  it("keeps its own label whatever the server's sentence says", () => {
+    renderDialog({
+      error: "apm exited 1: permission denied: /Users/someone/.codex/skills/",
+    });
+
+    const alert = screen.getByRole("alert");
+    expect(within(alert).getByText("the removal failed")).toBeInTheDocument();
+    // The label is the panel's, not a mono echo of the reason beside it.
+    expect(
+      within(alert).getByText("the removal failed").className,
+    ).not.toContain("font-mono");
+  });
+
   // apm's uninstall reports one outcome for every tool at once, so after a
   // failure the server probes each target itself. The panel reports what it
   // proved, target by target, instead of warning about a mixed state (#416).
