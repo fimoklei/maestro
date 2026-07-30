@@ -7,7 +7,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { findPortOwners } from "./guard-port-owner.mjs";
+import { pidsOnPort } from "./port-holders.mjs";
 import { MARKER_FILE, seededPaths } from "./seed-sandbox.mjs";
 
 const SERVER_ORIGIN = "http://127.0.0.1:3000";
@@ -94,7 +94,7 @@ export async function seedCockpit({ request, inventoryPath, repoPath }) {
  * plain `pnpm dev` on the same ports, would otherwise take the rehearsal's
  * paths into the real ~/.maestro. `dev.mjs --smoke` spawns its children as one
  * detached group led by the launcher, so the holder's process group is the
- * proof. Every unknown refuses, as the port guard does.
+ * proof. Every unknown refuses.
  */
 export function identifySmokeInstance({ marker, serverPid, processGroupOf }) {
   if (marker === null)
@@ -134,8 +134,8 @@ export function readSmokeMarker(sandboxDir) {
 }
 
 function serverPortHolder() {
-  const [owner] = findPortOwners([3000]);
-  return owner?.pid ?? null;
+  const [pid] = pidsOnPort(3000);
+  return pid ?? null;
 }
 
 function processGroupOf(pid) {
@@ -186,7 +186,7 @@ async function main() {
 
   if (!ready) {
     // Fail closed: an unanswered cockpit is not a slow one we may assume into
-    // existence (same posture as scripts/guard-port-owner.mjs).
+    // existence.
     console.error(
       "[smoke:ready] nothing answered on 127.0.0.1:3000 and :5173 within 60s.\n" +
         "Start the cockpit first: `pnpm smoke` (in the background), then re-run this.",
