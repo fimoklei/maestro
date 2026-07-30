@@ -1,3 +1,4 @@
+import type { RemoveOutcome, RemoveTargetState } from "@maestro/core";
 import { type ReactNode, useId } from "react";
 import { useModalDialog } from "../shell/use-modal-dialog";
 import { Button } from "../ui/button";
@@ -6,6 +7,7 @@ import { TypeTag } from "../ui/type-tag";
 import {
   type RemoveDialogTarget,
   type RemoveLedgerRow,
+  removeLedgerLeadIn,
   removeLedgerRows,
 } from "./remove-ledger-rows";
 import type { RemovePreflightView } from "./remove-preflight-view";
@@ -54,6 +56,35 @@ function FailureNote({
 
 type LedgerRowPlacement = { id: string; last: boolean };
 
+// What the server proved about one target, in a word and a glyph — the outcome
+// must survive without colour perception (Never-Colour-Alone). "unknown" says
+// the probe could not answer, which is not the same as still being there.
+const OUTCOME_TEXT: Record<RemoveTargetState, string> = {
+  removed: "removed",
+  "not-removed": "not removed",
+  unknown: "outcome unknown",
+};
+
+const OUTCOME_GLYPH: Record<RemoveTargetState, string> = {
+  removed: "✓",
+  "not-removed": "✕",
+  unknown: "?",
+};
+
+const OUTCOME_INK: Record<RemoveTargetState, string> = {
+  removed: "text-green-ink",
+  "not-removed": "text-danger-ink",
+  unknown: "text-dim",
+};
+
+// A target the removal came off has nothing left to act on, so it recedes; one
+// it did not keeps its weight and takes the danger fill.
+const OUTCOME_ROW: Record<RemoveTargetState, string> = {
+  removed: "bg-inset",
+  "not-removed": "bg-danger-bg",
+  unknown: "bg-inset",
+};
+
 // The outline states the panel's worst news: a failure — refused before apm ran
 // or unproven after it — outranks cost outranks an ordinary confirmation.
 function panelBorderFor({
@@ -69,16 +100,51 @@ function panelBorderFor({
   return cost ? "border-line-drift" : "border-line";
 }
 
+// One fill per row, never two — `cn` concatenates, so a second bg- utility
+// would leave the winner to stylesheet order.
+function rowFill(row: RemoveLedgerRow): string {
+  if (row.outcome !== null) {
+    return OUTCOME_ROW[row.outcome];
+  }
+  return row.drift ? "bg-amber-bg" : "bg-inset";
+}
+
+// The right-hand slot: a cost the removal has yet to charge, or the outcome it
+// already had. Never both — a row with an outcome carries no cost (#416).
+function RowStatus({ row }: { row: RemoveLedgerRow }) {
+  if (row.outcome !== null) {
+    return (
+      <span
+        className={cn(
+          "shrink-0 font-ui text-mono-sm",
+          OUTCOME_INK[row.outcome],
+        )}
+      >
+        <span aria-hidden="true" className="font-mono">
+          {OUTCOME_GLYPH[row.outcome]}
+        </span>{" "}
+        {OUTCOME_TEXT[row.outcome]}
+      </span>
+    );
+  }
+  return row.status === null ? null : (
+    <span className="shrink-0 font-ui text-amber-ink text-mono-sm">
+      {row.status}
+    </span>
+  );
+}
+
 // apm's uninstall has no -t; faking one orphans the other tools' files
 // (apm-behavior.md § Remove, ADR-0013).
 function LedgerRow({ row }: { row: RemoveLedgerRow & LedgerRowPlacement }) {
+  const outcome = row.outcome;
   return (
     <li
       id={row.id}
       className={cn(
         "flex items-baseline gap-1.5 px-3 py-2.5",
         row.last ? null : "border-line-faint border-b",
-        row.drift ? "bg-amber-bg" : "bg-inset",
+        rowFill(row),
       )}
     >
       {row.drift ? (
@@ -87,7 +153,14 @@ function LedgerRow({ row }: { row: RemoveLedgerRow & LedgerRowPlacement }) {
         </span>
       ) : null}
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="break-all font-mono text-data text-fg">
+        {/* A target the removal came off has nothing left to act on, so it
+            recedes; every other row keeps its weight. */}
+        <span
+          className={cn(
+            "break-all font-mono text-data",
+            outcome === "removed" ? "text-muted" : "text-fg",
+          )}
+        >
           {row.name}
         </span>
         {row.path === null ? null : (
@@ -96,11 +169,7 @@ function LedgerRow({ row }: { row: RemoveLedgerRow & LedgerRowPlacement }) {
           </span>
         )}
       </div>
-      {row.status === null ? null : (
-        <span className="shrink-0 font-ui text-amber-ink text-mono-sm">
-          {row.status}
-        </span>
-      )}
+      <RowStatus row={row} />
     </li>
   );
 }
@@ -114,6 +183,7 @@ export function RemoveSkillDialog({
   target,
   isRemoving,
   error,
+  outcome,
   preflight,
   onCancel,
   onConfirm,
@@ -130,6 +200,9 @@ export function RemoveSkillDialog({
   // The server's reason for a refused/failed removal, not the same as a
   // refused `preflight` (which happens before there's anything to confirm).
   error: string | null;
+  // What the server's own probe proved about each target after that failure.
+  // Null where it proved nothing: an outcome nobody observed is never drawn.
+  outcome: RemoveOutcome | null;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -162,25 +235,28 @@ export function RemoveSkillDialog({
   const dialogId = useId();
   const leadInId = `${dialogId}-lead-in`;
   const refusalId = `${dialogId}-refusal`;
-  // A refusal has no ledger: nothing is going, and leftovers an earlier
-  // answer named cannot outlive the answer that named them.
-  const rows =
-    preflight.kind === "refused"
-      ? []
-      : removeLedgerRows(target, preflight.reclaim, preflight.check).map(
-          (row, index, all) => ({
-            ...row,
-            id: `${dialogId}-target-${index}`,
-            last: index === all.length - 1,
-          }),
-        );
+  // Neither failure leaves a ledger to draw. A refusal: nothing is going, and
+  // leftovers an earlier answer named cannot outlive it. A failure the server
+  // proved nothing about: the rows would price a removal that already ran (#416).
+  const unledgered = refused || (failed && outcome === null);
+  const rows = unledgered
+    ? []
+    : removeLedgerRows(target, preflight.reclaim, preflight.check, outcome).map(
+        (row, index, all) => ({
+          ...row,
+          id: `${dialogId}-target-${index}`,
+          last: index === all.length - 1,
+        }),
+      );
   const detectedRows = rows.filter((row) => !row.leftover);
   const leftoverRows = rows.filter((row) => row.leftover);
   // Leftover rows arrive with the answer, so the description (read once, at
   // open) would miss them — their region is their only channel.
   const describedBy = refused
     ? refusalId
-    : [leadInId, ...detectedRows.map((row) => row.id)].join(" ");
+    : unledgered
+      ? undefined
+      : [leadInId, ...detectedRows.map((row) => row.id)].join(" ");
   // Ties the disabled reason to the control (same wiring as browse dialog's
   // `↑ up`). Only for the running check — a refusal removes the control instead.
   const blockedId = awaitingCheck ? `${dialogId}-blocked` : undefined;
@@ -227,10 +303,13 @@ export function RemoveSkillDialog({
             refusal renders only the second — the first answers a question
             the server already closed. */}
         <div className="flex flex-col gap-3 px-3.5 py-3">
-          {refused ? null : (
+          {unledgered ? null : (
             <div className="flex flex-col gap-2">
+              {/* Not a second live region: the rows below already announce the
+                  outcome this line only counts, and two would talk over each
+                  other. */}
               <span id={leadInId} className="font-ui text-desc text-muted">
-                Primitive will be removed from:
+                {removeLedgerLeadIn(outcome)}
               </span>
               <div className="flex flex-col overflow-hidden rounded-item border border-line-row">
                 {/* Announced: a row's cost can answer late, and a status

@@ -408,6 +408,59 @@ describeFeature(
       },
     );
 
+    // apm reports one outcome for every tool at once, so a per-tool answer is
+    // the server's own probe of the disk, never apm's word (ADR-0013, #416).
+    Scenario(
+      "A failed removal says which targets it came off",
+      ({ Given, But, When, Then, And }) => {
+        Given(
+          '"tdd" and "jobs" deployed globally on Claude Code and Codex',
+          () => deploySkillsGlobally(["tdd", "jobs"]),
+        );
+        But("apm will not confirm the removal", () => {
+          apmConfirms = false;
+        });
+        When('I remove "tdd" globally', () =>
+          removeSkill("tdd", globalTarget()),
+        );
+        Then("the removal is reported as failed", () => {
+          expect(response.status).toBe(502);
+        });
+        And(
+          "I am told, for each tool, whether its copy is still there",
+          async () => {
+            expect(await response.json()).toMatchObject({
+              outcome: {
+                scope: "global",
+                tools: [
+                  { tool: "claude", state: "not-removed" },
+                  { tool: "codex", state: "not-removed" },
+                ],
+              },
+            });
+          },
+        );
+      },
+    );
+
+    Scenario(
+      "A failure that never reached apm reports no outcome at all",
+      ({ Given, When, Then, And }) => {
+        Given('a registered repo with only "jobs" deployed', async () => {
+          await deploySkills(["jobs"]);
+          await register();
+        });
+        When('I remove "tdd" from that repo', () => removeSkill("tdd"));
+        Then("I am told there was nothing to remove", () => {
+          expect(response.status).toBe(404);
+          expect(removeCalls).toEqual([]);
+        });
+        And("no per-target outcome is reported", async () => {
+          expect(await response.json()).not.toHaveProperty("outcome");
+        });
+      },
+    );
+
     Scenario(
       "A skill I edited in place tells me what I am about to lose",
       ({ Given, But, When, Then, And }) => {

@@ -1,4 +1,4 @@
-import type { ReclaimPreview } from "@maestro/core";
+import type { ReclaimPreview, RemoveOutcome } from "@maestro/core";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -65,6 +65,7 @@ function renderDialog({
   target = REPO_TARGET as Parameters<typeof RemoveSkillDialog>[0]["target"],
   isRemoving = false,
   error = null as string | null,
+  outcome = null as RemoveOutcome | null,
   version = "v0.5.0" as string | null,
   preflight = repoCheck("none") as RemovePreflightView,
   onCancel = vi.fn(),
@@ -77,6 +78,7 @@ function renderDialog({
       target={target}
       isRemoving={isRemoving}
       error={error}
+      outcome={outcome}
       preflight={preflight}
       onCancel={onCancel}
       onConfirm={onConfirm}
@@ -336,6 +338,142 @@ describe("RemoveSkillDialog", () => {
     renderDialog({ error: "apm did not confirm the removal." });
 
     expect(screen.getByRole("alert")).toHaveTextContent(/removal failed/i);
+  });
+
+  // apm's uninstall reports one outcome for every tool at once, so after a
+  // failure the server probes each target itself. The panel reports what it
+  // proved, target by target, instead of warning about a mixed state (#416).
+  describe("what the failed removal came off, target by target", () => {
+    const FAILED = "apm did not confirm the removal.";
+    const globalTarget = {
+      kind: "global" as const,
+      tools: ["claude", "codex"],
+    };
+    const partial: RemoveOutcome = {
+      scope: "global",
+      tools: [
+        { tool: "claude", state: "removed" },
+        { tool: "codex", state: "not-removed" },
+      ],
+    };
+    const rowFor = (name: string) =>
+      screen
+        .getAllByRole("listitem")
+        .find((row) => row.textContent?.includes(name)) as HTMLElement;
+
+    const renderPartialFailure = () =>
+      renderDialog({
+        target: globalTarget,
+        preflight: cleanTools("claude", "codex"),
+        error: FAILED,
+        outcome: partial,
+      });
+
+    it("counts the targets the removal came off in the lead-in", () => {
+      renderPartialFailure();
+
+      expect(
+        screen.getByText("Removed from 1 of 2 targets:"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Primitive will be removed from:")).toBeNull();
+    });
+
+    it("dims a target the removal came off and says so in words", () => {
+      renderPartialFailure();
+
+      const claude = rowFor("Claude Code");
+      expect(claude).toHaveTextContent("removed");
+      expect(claude.className).not.toContain("bg-danger-bg");
+    });
+
+    it("fills a target it did not come off with danger, keeping its weight", () => {
+      renderPartialFailure();
+
+      const codex = rowFor("Codex");
+      expect(codex).toHaveTextContent("not removed");
+      expect(codex.className).toContain("bg-danger-bg");
+    });
+
+    it("carries each outcome in a glyph too, so colour is never the signal", () => {
+      renderPartialFailure();
+
+      expect(rowFor("Claude Code").textContent).toContain("✓");
+      expect(rowFor("Codex").textContent).toContain("✕");
+    });
+
+    it("keeps the row order the ledger showed before the user confirmed", () => {
+      renderDialog({
+        target: { kind: "global", tools: ["codex", "claude"] },
+        preflight: cleanTools("claude", "codex"),
+        error: FAILED,
+        outcome: partial,
+      });
+
+      expect(
+        screen.getAllByRole("listitem").map((row) => row.textContent),
+      ).toEqual(["Codex✕ not removed", "Claude Code✓ removed"]);
+    });
+
+    it("never reads a target the probe could not answer for as removed", () => {
+      renderDialog({
+        error: FAILED,
+        outcome: { scope: "repo", state: "unknown" },
+      });
+
+      const row = rowFor(REPO_TARGET.repoPath);
+      expect(row).not.toHaveTextContent(/✓/);
+      expect(row).toHaveTextContent("outcome unknown");
+    });
+
+    // A ledger under a failure that proved nothing would name targets nobody
+    // checked, under a lead-in still promising a removal that already ran.
+    it("renders the error block alone when the failure proved nothing", () => {
+      renderDialog({ error: FAILED, outcome: null });
+
+      expect(screen.getByRole("alert")).toHaveTextContent(FAILED);
+      expect(screen.queryAllByRole("listitem")).toEqual([]);
+      expect(screen.queryByText(/removed from/i)).toBeNull();
+    });
+
+    // The reclaim runs only after apm confirms, so a failure never reached
+    // these copies and the report never names them.
+    it("drops a leftover row the report could not answer for", () => {
+      renderDialog({
+        target: globalTarget,
+        preflight: toolChecks({ claude: "none", codex: "none" }, [
+          { tool: "claude", path: "/Users/me/.claude/skills/tdd" },
+        ]),
+        error: FAILED,
+        outcome: partial,
+      });
+
+      expect(
+        screen.getAllByRole("listitem").map((row) => row.textContent),
+      ).toEqual(["Claude Code✓ removed", "Codex✕ not removed"]);
+    });
+
+    // The pre-confirm status priced a removal that then did not happen; leaving
+    // it beside the outcome would state a cost nobody paid.
+    it("drops the cost it named before the attempt", () => {
+      renderDialog({
+        target: globalTarget,
+        preflight: toolChecks({ claude: "none", codex: "local-edits" }),
+        error: FAILED,
+        outcome: partial,
+      });
+
+      expect(screen.getByRole("dialog")).not.toHaveTextContent(/local edits/i);
+    });
+
+    it("announces the outcome, so it is not seen only by those who can see it", () => {
+      renderPartialFailure();
+
+      expect(
+        within(screen.getByRole("status", { name: "Removed from" })).getByText(
+          /not removed/,
+        ),
+      ).toBeInTheDocument();
+    });
   });
 
   // The confirmation is the last moment the user can keep work apm would

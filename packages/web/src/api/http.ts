@@ -8,12 +8,17 @@ export class HttpError extends Error {
   // sends one. Lets a component branch on the *kind* of refusal — to offer a
   // confirmed-reinstall affordance, say — without string-matching the message.
   readonly code?: string;
+  // The error response's whole parsed body, for a failure that carries more
+  // than a code and a sentence. Unvalidated — reading past `message` and `code`
+  // is the caller's job.
+  readonly body?: unknown;
 
-  constructor(status: number, message: string, code?: string) {
+  constructor(status: number, message: string, code?: string, body?: unknown) {
     super(message);
     this.name = "HttpError";
     this.status = status;
     this.code = code;
+    this.body = body;
   }
 }
 
@@ -35,6 +40,7 @@ export async function requestJson<T>(
       res.status,
       body?.message ?? `Request failed with status ${res.status}.`,
       body?.error,
+      body,
     );
   }
 

@@ -28,8 +28,11 @@ export {
   type RemoveCheck,
   RemoveDeployedSkill,
   type RemoveDeployedSkillError,
+  type RemoveOutcome,
   type RemovePreflightError,
+  type RemoveTargetState,
   type RemoveToolCheck,
+  type RemoveToolOutcome,
   type RemoveWarning,
 } from "./deploy/remove-deployed-skill";
 export {

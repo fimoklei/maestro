@@ -515,7 +515,16 @@ export function createApp(deps: AppDeps) {
     const result = await deps.remove.execute(parsed.data);
     if (!result.ok) {
       const { status, message } = removeErrorResponses[result.error];
-      return c.json({ error: result.error, message }, status);
+      // Omitted, never null: a failure that never reached apm has no outcome,
+      // and an absent key cannot be mistaken for one the server proved (#416).
+      return c.json(
+        {
+          error: result.error,
+          message,
+          ...(result.outcome ? { outcome: result.outcome } : {}),
+        },
+        status,
+      );
     }
     return c.json({ removed: result.removed });
   });
