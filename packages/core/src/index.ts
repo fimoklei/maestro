@@ -7,6 +7,11 @@ export {
   BulkDeploySkills,
 } from "./deploy/bulk-deploy-skills";
 export {
+  BulkRemoveDeployedSkill,
+  type BulkRemoveReport,
+  type BulkRemoveTarget,
+} from "./deploy/bulk-remove-deployed-skill";
+export {
   type DeployedContentState,
   DeploySkill,
   type DeploySkillError,
