@@ -25,7 +25,7 @@ The candidate forms each carried a real trade-off: a native desktop app (Tauri/E
 **Implementation chosen for this shape** (recorded for traceability; lighter-weight than the shape decision, and individually reversible):
 
 - Node LTS + pnpm monorepo: `packages/core`, `packages/server`, `packages/web`.
-- Vitest as the single test runner across all three lanes — pure/unit, integration, and BDD acceptance (Gherkin `.feature` files, one per MVP1 subjob). See `.claude/rules/testing.md`.
+- Vitest as the single test runner across all three lanes — pure/unit, web component, and integration. A job whose value is the chain gets one integration test carrying that chain. See `.claude/rules/testing.md`. *Amended [#432](https://github.com/fimoklei/maestro/issues/432): the original fourth lane was BDD acceptance, one Gherkin `.feature` per MVP1 subjob. It is gone — every scenario it held is covered in `tests/integration/`. Vitest as the single runner stands.*
 - Biome for lint + format.
 - GitHub Actions CI, gated by branch protection. CD is deferred.
 

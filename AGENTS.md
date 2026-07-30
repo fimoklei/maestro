@@ -36,7 +36,7 @@ Maestro is the cockpit above it and never reimplements it (ADR-0001).
 │   ├── server/            # local Hono service
 │   └── web/               # React/Vite cockpit UI
 ├── scripts/               # dev launcher (single-instance; frees ports)
-└── tests/                 # acceptance and integration tests
+└── tests/                 # integration tests, fixtures and helpers
 ```
 
 Do not add product behavior outside this shape unless a later accepted ADR or
@@ -85,7 +85,7 @@ Run from the repo root.
   and frees ports 3000/5173 first).
 - `pnpm smoke` — same as `dev` but against an isolated sandbox config
   (`MAESTRO_HOME=.maestro-sandbox`), so it never touches the real `~/.maestro`.
-- `pnpm test` — whole suite. `test:core` / `test:web` / `test:integration` / `test:acceptance` — one lane.
+- `pnpm test` — whole suite. `test:core` / `test:web` / `test:integration` — one lane.
 - `pnpm verify` — lint, typecheck and test as three processes, one summary.
 - Full output of the last run is in `.logs/`. Read it; never re-run with a narrower filter.
 - `pnpm typecheck` — typecheck all packages.

@@ -69,7 +69,8 @@ obsolete copy with a direct, subtree-scoped filesystem removal — never
 - Cleanup runs only on the global path, only after a verified successful
   install — never on repo deploys, never on failure (unit-tested in
   `deploy-skill.test.ts`; the real `rm` under a sandbox HOME in
-  `deployed-cleanup.test.ts`; the narrowing scenario in acceptance J07).
+  `deployed-cleanup.test.ts`; the narrowing scenario in
+  `narrowed-global-deploy.test.ts`).
 - If a future spike proves a per-tool `apm uninstall` safe, it can replace
   the `rm` behind the same `DeployedCleanupPort` without touching callers.
 

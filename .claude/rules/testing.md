@@ -19,12 +19,11 @@ Runner: **Vitest**, all lanes (ADR-0002).
 - Snapshot tests unless the output is deliberately stable and large.
 - Coverage as a target — it is a report, not a threshold.
 
-## The four lanes
+## The three lanes
 
 - **Pure (unit)** (`pnpm test:core`) — sibling file next to source, no fs/git/network. Default in the `/tdd` loop; most tests live here.
 - **Web component** (`pnpm test:web`) — sibling `.test.tsx` in `packages/web`, **jsdom** + Testing Library (own `packages/web/vitest.config.ts`); `fetch` stubbed. Browser end-to-end (Playwright) stays deferred.
 - **Integration** (`pnpm test:integration`) — `tests/integration/`, a journey across modules with real I/O. Anything that drives APM or reads real lockfiles is integration.
-- **Acceptance (BDD)** (`pnpm test:acceptance`) — Gherkin `.feature`, one per shipped job (DONE lane in `docs/jobs.md`), Given/When/Then, runs against the server API under Vitest. Existing files keep their `jNN-` prefixes; new ones are named after the job's behavior.
 
 Storybook stories are **not** a lane: documentation, not coverage. Behaviour is tested in the sibling `.test.tsx` (`frontend.md`).
 
@@ -32,7 +31,9 @@ Storybook stories are **not** a lane: documentation, not coverage. Behaviour is 
 
 - New pure function or module → pure test, sibling.
 - New multi-module behavior → integration test.
-- A job ships end-to-end → an acceptance `.feature` for that job.
+- A job whose value is the chain (register then read it back, update then read
+  the pin) → one integration test carrying the whole chain. Tests per step prove
+  each step and nothing about the seams between them.
 - Bug fix → reproduce first, in the layer where the bug lives. When in doubt: pure.
 
 ## Mocking
@@ -42,6 +43,5 @@ Storybook stories are **not** a lane: documentation, not coverage. Behaviour is 
 
 ## Naming
 
-- Files: `foo.test.<ext>` (pure), `tests/integration/<scenario>.test.<ext>`, `tests/acceptance/<job-slug>.feature`.
+- Files: `foo.test.<ext>` (pure), `tests/integration/<scenario>.test.<ext>`.
 - Descriptions state behavior without "should": `"rejects primitive with missing description"`.
-- Gherkin scenarios phrase the job's intent: `Scenario: I see every primitive available centrally`.

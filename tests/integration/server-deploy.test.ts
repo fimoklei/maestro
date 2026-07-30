@@ -22,7 +22,7 @@ import { stubRemove } from "../helpers/stub-remove";
 // Integration lane: the deploy route over the real Hono app, real temp dirs,
 // real inventory files. Only the ApmDriver is faked — its deploySkill writes
 // the captured real lockfile into the target (repo or global root), the same
-// contract the acceptance journey relies on. Origin/Host guard enforcement
+// contract the tracer journey relies on. Origin/Host guard enforcement
 // lives in server-security.test.ts.
 describe("deploy HTTP route", () => {
   let home: string;

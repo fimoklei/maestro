@@ -10,7 +10,7 @@ import { ConfigStore, NodeFileSystem } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 // Integration lane: drives the real node:fs adapter against a throwaway temp
-// dir, never the real ~/.maestro (J10 acceptance criterion). Proves persistence
+// dir, never the real ~/.maestro (a J10 requirement). Proves persistence
 // and the realpath/isDirectory checks against an actual filesystem.
 describe("registry persistence on a real filesystem", () => {
   let dir: string;
