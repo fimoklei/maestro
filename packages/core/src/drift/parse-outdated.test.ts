@@ -128,4 +128,62 @@ describe("parseOutdated", () => {
     ].join("\n");
     expect(parseOutdated(mixed)).toEqual({ ok: false, reason: "unverified" });
   });
+
+  // These three fields are the only apm-derived data the cockpit sends to the
+  // browser, so this parse is where their shape is checked (ADR-0018). A cell
+  // that does not match is never forwarded and never dropped to a silent
+  // up-to-date: the whole read fails, the way an unrecognised table already does.
+  describe("shape of the fields it forwards", () => {
+    const row = (name: string, current: string, latest: string) =>
+      `│ ${name} │ ${current} │ ${latest} │ outdated │ git tags │`;
+
+    it("refuses a package cell whose last segment is not a skill slug", () => {
+      expect(
+        parseOutdated(row("owner/repo/skills/Not A Slug", "v0.5.0", "v0.5.1")),
+      ).toEqual({ ok: false });
+    });
+
+    it("refuses a version cell carrying a path", () => {
+      expect(
+        parseOutdated(
+          row(
+            "owner/repo/skills/tdd",
+            "v0.5.0",
+            "/Users/someone/.codex/skills/secret-scan",
+          ),
+        ),
+      ).toEqual({ ok: false });
+    });
+
+    it("refuses a version cell carrying a credential-bearing URL", () => {
+      expect(
+        parseOutdated(
+          row(
+            "owner/repo/skills/tdd",
+            "https://x-access-token:ghp_secret@github.com/o/r.git",
+            "v0.5.1",
+          ),
+        ),
+      ).toEqual({ ok: false });
+    });
+
+    it("refuses a version cell carrying a bare token", () => {
+      expect(
+        parseOutdated(
+          row("owner/repo/skills/tdd", "v0.5.0", "ghp_secret_0123456789"),
+        ),
+      ).toEqual({ ok: false });
+    });
+
+    it("accepts the prerelease tags a real harness publishes", () => {
+      // Generous on purpose: too strict a version shape would turn a genuine
+      // behind row into a failed read, which reads as "we could not check".
+      expect(
+        parseOutdated(row("owner/repo/skills/tdd", "v1.2.3-rc.1", "v1.2.4")),
+      ).toEqual({
+        ok: true,
+        behind: [{ name: "tdd", current: "v1.2.3-rc.1", latest: "v1.2.4" }],
+      });
+    });
+  });
 });

@@ -38,6 +38,7 @@ The important change: report the outcome **per target** instead of "the repo may
 - Lead-in becomes `Removed from 1 of 2 targets:`.
 - Ledger rows keep their order; a succeeded target dims to `--text-muted` with `✓ removed` in `--green-ink`; a failed target keeps `--text-1`, gets a red row fill and `✕ not removed`.
 - Below it, the error block: mono label = the failure in apm's terms (`apm exited 1`), body = the raw reason (`permission denied: ~/.codex/skills/secret-scan/`), plus one dim mono line `retry removes only what is left`.
+  - **Not built, and not to be built: ADR-0018 refuses apm's terms here.** apm's output can carry a token and a path outside the target, and the remove path has no non-zero exit code to state. Shipped as a fixed label plus the server's curated sentence (#417).
 - Footer: `close` + `retry →`.
 
 ### Error block (shared by 3d and 3e)
