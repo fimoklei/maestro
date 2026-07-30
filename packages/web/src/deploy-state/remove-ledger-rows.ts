@@ -1,5 +1,9 @@
 // What the remove confirmation's ledger states, one row per thing that goes.
-import type { ReclaimPreview } from "@maestro/core";
+import type {
+  ReclaimPreview,
+  RemoveOutcome,
+  RemoveTargetState,
+} from "@maestro/core";
 import type {
   RemoveCheckState,
   RemoveRowWarning,
@@ -24,6 +28,10 @@ export type RemoveLedgerRow = {
   // `drift` because a targeted row can carry a cost too, and the two lists are
   // announced as separate regions.
   leftover: boolean;
+  // What the server's own probe proved about this target after a failed
+  // removal. Null on a row nobody proved anything about — including every row
+  // before the user confirms.
+  outcome: RemoveTargetState | null;
 };
 
 // apm's own uninstall can't reach an undetected tool's leftover copy (#339).
@@ -70,10 +78,42 @@ function statusFor(warning: RemoveRowWarning | null): {
     : { status: WARNING_STATUS[warning], drift: true };
 }
 
+// The removal's own answer for one row, or null where it proved nothing. A
+// target the report never named is never read as one it came off (J04).
+function outcomeForTool(
+  outcome: RemoveOutcome | null,
+  tool: string,
+): RemoveTargetState | null {
+  if (outcome === null) {
+    return null;
+  }
+  return outcome.scope === "repo"
+    ? outcome.state
+    : (outcome.tools.find((entry) => entry.tool === tool)?.state ?? null);
+}
+
+// Counted from the server's report, never from the rows on screen: the ledger
+// can carry rows apm never reached, and only the report knows which it did.
+export function removeLedgerLeadIn(outcome: RemoveOutcome | null): string {
+  if (outcome === null) {
+    return "Primitive will be removed from:";
+  }
+  const states =
+    outcome.scope === "repo"
+      ? [outcome.state]
+      : outcome.tools.map((entry) => entry.state);
+  const removed = states.filter((state) => state === "removed").length;
+  const noun = states.length === 1 ? "target" : "targets";
+  return `Removed from ${removed} of ${states.length} ${noun}:`;
+}
+
 export function removeLedgerRows(
   target: RemoveDialogTarget,
   reclaim: readonly ReclaimPreview[],
   check: RemoveCheckState,
+  // Present only after a removal apm did not confirm. It replaces the costs the
+  // rows named, which priced a removal that did not happen.
+  outcome: RemoveOutcome | null = null,
 ): RemoveLedgerRow[] {
   // Keeps the order it was handed, or the confirmation would disagree with
   // the cards the user just came from.
@@ -82,12 +122,28 @@ export function removeLedgerRows(
       ? [{ tool: target.repoPath, name: target.repoPath }]
       : target.tools.map((tool) => ({ tool, name: toolDisplayName(tool) }));
 
+  // A cost is a claim about what the removal will do. Once it has run and
+  // failed, the outcome the server proved replaces it on every row — and the
+  // reclaim, which runs only after apm confirms, never happened at all.
+  if (outcome !== null) {
+    return targets.map(({ tool, name }) => ({
+      key: `target:${name}`,
+      name,
+      path: null,
+      status: null,
+      drift: false,
+      leftover: false,
+      outcome: outcomeForTool(outcome, tool),
+    }));
+  }
+
   return [
     ...targets.map(({ tool, name }) => ({
       key: `target:${name}`,
       name,
       path: null,
       leftover: false,
+      outcome: null,
       ...statusFor(warningForTool(check, tool)),
     })),
     // After the detected tools, never among them: nobody targeted these.
@@ -99,6 +155,7 @@ export function removeLedgerRows(
       // A cost whatever the check found: the copy goes in full regardless.
       drift: true,
       leftover: true,
+      outcome: null,
     })),
   ];
 }

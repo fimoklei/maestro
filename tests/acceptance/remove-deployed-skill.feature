@@ -28,6 +28,19 @@ Feature: Remove a deployed skill from a target
     Then the removal is reported as failed
     And that repo's deploy-state still lists "tdd"
 
+  Scenario: A failed removal says which targets it came off
+    Given "tdd" and "jobs" deployed globally on Claude Code and Codex
+    But apm will not confirm the removal
+    When I remove "tdd" globally
+    Then the removal is reported as failed
+    And I am told, for each tool, whether its copy is still there
+
+  Scenario: A failure that never reached apm reports no outcome at all
+    Given a registered repo with only "jobs" deployed
+    When I remove "tdd" from that repo
+    Then I am told there was nothing to remove
+    And no per-target outcome is reported
+
   Scenario: A skill I edited in place tells me what I am about to lose
     Given a registered repo with only "tdd" deployed
     But my deployed copy of "tdd" has local edits

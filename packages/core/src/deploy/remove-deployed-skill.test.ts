@@ -65,6 +65,11 @@ type Overrides = {
   detectedTools?: SupportedTool[];
   detectTools?: () => Promise<SupportedTool[]>;
   cleanupFails?: boolean;
+  // The guard's answer once apm has already run, so a test can hand the probe a
+  // different disk from the one the pre-apm guard read.
+  probe?: (
+    tools: readonly SupportedTool[] | undefined,
+  ) => Promise<DeployedContentState>;
   // Where the deployed tree sits, for the reclaim preview's paths. A fixed
   // fake root by default so a test that does not care about paths still gets
   // deterministic ones.
@@ -95,6 +100,9 @@ function buildUseCase(overrides: Overrides = {}) {
     deployedContent: {
       classify: async ({ target, tools }) => {
         calls.classifies.push({ target, tools });
+        if (calls.removes.length > 0 && overrides.probe !== undefined) {
+          return overrides.probe(tools);
+        }
         return (
           overrides.deployedStateForScope?.(tools) ??
           overrides.deployedState ??
@@ -328,7 +336,7 @@ describe("RemoveDeployedSkill", () => {
   it("fails closed when apm did not prove the removal", async () => {
     const { useCase } = buildUseCase({ removed: false });
 
-    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+    await expect(useCase.execute(removeTdd)).resolves.toMatchObject({
       ok: false,
       error: "remove-failed",
     });
@@ -696,7 +704,7 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
 
     await expect(
       useCase.execute({ ...removeTddGlobally, confirmedReclaimToken }),
-    ).resolves.toEqual({
+    ).resolves.toMatchObject({
       ok: false,
       error: "remove-failed",
     });
@@ -936,5 +944,127 @@ describe("RemoveDeployedSkill.preflight", () => {
       ok: false,
       error: "preflight-failed",
     });
+  });
+});
+
+// apm's uninstall takes every tool in one call and reports one outcome for all
+// of them, and narrowing its targets to fake a per-tool answer orphans the
+// other tools' files (ADR-0013). So after a failure the server probes the disk
+// itself and reports, per target, whether the deployed copy is still there.
+describe("RemoveDeployedSkill reporting a failed removal per target", () => {
+  it("reports the repo's own copy as gone when the probe finds nothing left", async () => {
+    const { useCase } = buildUseCase({
+      removed: false,
+      probe: async () => "not-deployed",
+    });
+
+    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+      ok: false,
+      error: "remove-failed",
+      outcome: { scope: "repo", state: "removed" },
+    });
+  });
+
+  it("reports a copy still on disk as not removed", async () => {
+    const { useCase } = buildUseCase({
+      removed: false,
+      probe: async () => "clean",
+    });
+
+    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+      ok: false,
+      error: "remove-failed",
+      outcome: { scope: "repo", state: "not-removed" },
+    });
+  });
+
+  it("answers per detected tool, so one tool's copy speaks only for itself", async () => {
+    const { useCase } = buildUseCase({
+      removed: false,
+      detectedTools: ["claude", "codex"],
+      probe: async (tools) =>
+        tools?.[0] === "claude" ? "not-deployed" : "diverged",
+    });
+
+    await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
+      ok: false,
+      error: "remove-failed",
+      outcome: {
+        scope: "global",
+        tools: [
+          { tool: "claude", state: "removed" },
+          { tool: "codex", state: "not-removed" },
+        ],
+      },
+    });
+  });
+
+  it("keeps the detected tools in the order the confirmation showed them", async () => {
+    const { useCase } = buildUseCase({
+      removed: false,
+      detectedTools: ["codex", "claude"],
+      probe: async () => "clean",
+    });
+    const result = await useCase.execute(removeTddGlobally);
+
+    expect(
+      result.ok === false && result.outcome?.scope === "global"
+        ? result.outcome.tools.map((entry) => entry.tool)
+        : null,
+    ).toEqual(["codex", "claude"]);
+  });
+
+  it("calls a probe that threw unknown, never removed", async () => {
+    const { useCase } = buildUseCase({
+      removed: false,
+      probe: async () => {
+        throw new Error("disk exploded");
+      },
+    });
+
+    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+      ok: false,
+      error: "remove-failed",
+      outcome: { scope: "repo", state: "unknown" },
+    });
+  });
+
+  it("calls a copy it could not read unknown, never removed", async () => {
+    for (const state of ["unreadable", "lockfile-malformed"] as const) {
+      const { useCase } = buildUseCase({
+        removed: false,
+        probe: async () => state,
+      });
+
+      await expect(useCase.execute(removeTdd)).resolves.toEqual({
+        ok: false,
+        error: "remove-failed",
+        outcome: { scope: "repo", state: "unknown" },
+      });
+    }
+  });
+
+  it("reports nothing for a failure that never reached apm", async () => {
+    // Nothing was removed, so there is no outcome to report — and a ledger here
+    // would state one the server never observed.
+    const { useCase, calls } = buildUseCase({
+      lookup: { ok: false, reason: "not-deployed" },
+    });
+
+    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+      ok: false,
+      error: "not-deployed",
+    });
+    expect(calls.removes).toEqual([]);
+  });
+
+  it("reports nothing when the guard refused before apm ran", async () => {
+    const { useCase, calls } = buildUseCase({ deployedState: "unreadable" });
+
+    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+      ok: false,
+      error: "deployed-unreadable",
+    });
+    expect(calls.removes).toEqual([]);
   });
 });

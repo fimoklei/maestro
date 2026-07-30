@@ -44,6 +44,7 @@ const meta = {
     isRemoving: false,
     preflight: repoCheck("none"),
     error: null,
+    outcome: null,
     onCancel: () => undefined,
     onConfirm: () => undefined,
   },
@@ -88,6 +89,33 @@ export const Removing: Story = { args: { isRemoving: true } };
 // failure never reads as one more amber warning.
 export const Failed: Story = {
   args: { error: "apm did not confirm the removal. Check apm and try again." },
+};
+
+// A removal that came off one tool and not the other. apm reports one outcome
+// for every tool at once, so this ledger is the server's own probe of the disk
+// (ADR-0013) — the lead-in counts from it, never from the rows on screen.
+export const FailedPerTarget: Story = {
+  args: {
+    target: { kind: "global", tools: ["claude", "codex"] },
+    preflight: toolChecks({ claude: "none", codex: "none" }),
+    error: "apm exited 1: permission denied: ~/.codex/skills/tdd/",
+    outcome: {
+      scope: "global",
+      tools: [
+        { tool: "claude", state: "removed" },
+        { tool: "codex", state: "not-removed" },
+      ],
+    },
+  },
+};
+
+// The probe itself could not answer. Reported as unknown, never as removed: a
+// check that did not run proves nothing (J04).
+export const FailedOutcomeUnknown: Story = {
+  args: {
+    error: "apm did not confirm the removal. Check apm and try again.",
+    outcome: { scope: "repo", state: "unknown" },
+  },
 };
 
 // A retry the user has already pressed. Same footer, both controls inert: the

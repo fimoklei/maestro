@@ -325,6 +325,51 @@ describe("remove HTTP route", () => {
     expect(body.message).toMatch(/\S/);
   });
 
+  // apm reports one outcome for every tool at once, so a failed removal's
+  // per-target answer is read off the disk (ADR-0013, #416).
+  it("reports the repo's copy as still there when a failed removal left it", async () => {
+    const { app, registry } = makeApp({
+      removed: false,
+      realDeployedContent: true,
+    });
+    await writeFile(
+      join(repo, "apm.lock.yaml"),
+      lockfileWith([skillEntry("tdd")]),
+      "utf8",
+    );
+    await mkdir(join(repo, ".claude", "skills", "tdd"), { recursive: true });
+    await writeFile(
+      join(repo, ".claude", "skills", "tdd", "SKILL.md"),
+      SKILL_FILE_CONTENT,
+      "utf8",
+    );
+    await registry.register(repo);
+
+    const response = await removeTdd(app, repo);
+
+    expect(response.status).toBe(502);
+    expect((await response.json()) as unknown).toMatchObject({
+      error: "remove-failed",
+      outcome: { scope: "repo", state: "not-removed" },
+    });
+  });
+
+  it("sends no outcome for a failure that never reached apm", async () => {
+    const { app, registry, removeCalls } = makeApp();
+    await writeFile(
+      join(repo, "apm.lock.yaml"),
+      lockfileWith([skillEntry("jobs")]),
+      "utf8",
+    );
+    await registry.register(repo);
+
+    const response = await removeTdd(app, repo);
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).not.toHaveProperty("outcome");
+    expect(removeCalls).toEqual([]);
+  });
+
   it("refuses a primitive type other than a skill", async () => {
     const { app, registry } = makeApp();
     await registry.register(repo);
@@ -672,6 +717,30 @@ describe("remove HTTP route", () => {
       expect((await removeGlobally(app)).status).toBe(502);
 
       expect(await existsUnderHome(".claude/skills/tdd/SKILL.md")).toBe(true);
+    });
+
+    it("answers per detected tool after a failed global removal", async () => {
+      const { app } = makeApp({
+        detectedTools: ["claude", "codex"],
+        removed: false,
+        realDeployedContent: true,
+      });
+      await writeGlobalLockfile([skillEntry("tdd")]);
+      // Only Codex still has a copy: apm came off Claude Code and could not say so.
+      await writeSkillFile(".agents/skills/tdd/SKILL.md");
+
+      const response = await removeGlobally(app);
+
+      expect(response.status).toBe(502);
+      expect((await response.json()) as unknown).toMatchObject({
+        outcome: {
+          scope: "global",
+          tools: [
+            { tool: "claude", state: "removed" },
+            { tool: "codex", state: "not-removed" },
+          ],
+        },
+      });
     });
 
     it("refuses when the machine has no supported tool", async () => {

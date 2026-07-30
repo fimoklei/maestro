@@ -29,4 +29,33 @@ describe("requestJson", () => {
     expect(caught?.status).toBe(400);
     expect(caught?.message).toBe("Path must be an absolute path.");
   });
+
+  // Some failures carry a payload beyond a code and a sentence — a removal's
+  // per-target outcome, say. It rides along raw; reading it is the caller's.
+  it("keeps the whole error body, not just its message and code", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              error: "remove-failed",
+              message: "apm did not confirm the removal.",
+              outcome: { scope: "repo", state: "not-removed" },
+            }),
+            { status: 502, headers: { "content-type": "application/json" } },
+          ),
+      ),
+    );
+
+    const caught = (await requestJson("/api/deploy/remove", {
+      method: "POST",
+    }).catch((error: unknown) => error)) as HttpError;
+
+    expect(caught.body).toEqual({
+      error: "remove-failed",
+      message: "apm did not confirm the removal.",
+      outcome: { scope: "repo", state: "not-removed" },
+    });
+  });
 });

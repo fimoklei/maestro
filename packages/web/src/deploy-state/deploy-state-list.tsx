@@ -1,3 +1,4 @@
+import type { RemoveOutcome } from "@maestro/core";
 import { useEffect, useState } from "react";
 import { HttpError } from "../api/http";
 import {
@@ -10,6 +11,7 @@ import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { ActionsMenu } from "../ui/actions-menu";
 import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
+import { removalOutcome } from "./removal-outcome";
 import { RemovalTrace, type TracedRemoval } from "./removal-trace";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
 import { removePreflightView } from "./remove-preflight-view";
@@ -43,11 +45,21 @@ const driftBadge: Record<
 const alreadyGone = (error: unknown) =>
   error instanceof HttpError && error.code === "not-deployed";
 
+// What the panel needs to report a failure: apm's own words, and what the
+// server proved about each target afterwards.
+type RemovalFailure = {
+  message: string;
+  outcome: RemoveOutcome | null;
+};
+
 // apm's own words when the server sent them, a plain sentence otherwise.
-const removalFailureMessage = (error: unknown) =>
-  error instanceof HttpError
-    ? error.message
-    : "The removal could not be completed.";
+const removalFailure = (error: unknown): RemovalFailure => ({
+  message:
+    error instanceof HttpError
+      ? error.message
+      : "The removal could not be completed.",
+  outcome: removalOutcome(error),
+});
 
 function DriftBadge({ status }: { status: DriftStatus }) {
   if (status === "pending") {
@@ -86,8 +98,9 @@ export function DeployStateList({
   const [removing, setRemoving] = useState<string | null>(null);
   // Held here rather than read off the mutation: starting the retry clears the
   // mutation's error, and the panel would leave its failed state during the
-  // attempt that state offered (#415).
-  const [failure, setFailure] = useState<string | null>(null);
+  // attempt that state offered (#415). Message and outcome travel together, so
+  // a ledger can never outlive the failure it reports on (#416).
+  const [failure, setFailure] = useState<RemovalFailure | null>(null);
   const [justRemoved, setJustRemoved] = useState(false);
   const [removed, setRemoved] = useState<TracedRemoval[]>([]);
   const remove = useRemoveDeployedSkill();
@@ -168,7 +181,8 @@ export function DeployStateList({
           target={target}
           isRemoving={remove.isPending}
           preflight={removePreflightView(preflight)}
-          error={failure}
+          error={failure?.message ?? null}
+          outcome={failure?.outcome ?? null}
           onCancel={() => setRemoving(null)}
           onConfirm={() =>
             remove.mutate(
@@ -188,7 +202,7 @@ export function DeployStateList({
                     setJustRemoved(true);
                     return;
                   }
-                  setFailure(removalFailureMessage(error));
+                  setFailure(removalFailure(error));
                 },
                 // Only a proven removal closes the dialog — a failure keeps it
                 // open with apm's reason.

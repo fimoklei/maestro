@@ -1,5 +1,6 @@
+import type { RemoveOutcome } from "@maestro/core";
 import { describe, expect, it } from "vitest";
-import { removeLedgerRows } from "./remove-ledger-rows";
+import { removeLedgerLeadIn, removeLedgerRows } from "./remove-ledger-rows";
 import type { RemoveCheckState } from "./remove-preflight-view";
 
 const leftoverCodex = [
@@ -29,6 +30,7 @@ describe("removeLedgerRows", () => {
         status: null,
         drift: false,
         leftover: false,
+        outcome: null,
       },
     ]);
   });
@@ -67,6 +69,7 @@ describe("removeLedgerRows", () => {
       status: "not installed — copy deleted in full",
       drift: true,
       leftover: true,
+      outcome: null,
     });
   });
 
@@ -175,6 +178,121 @@ describe("removeLedgerRows", () => {
       for (const warning of ["none", "local-edits", "cannot-verify"] as const) {
         expect(leftoverRow(perTool({ codex: warning }))?.drift).toBe(true);
       }
+    });
+  });
+
+  // After a failed removal the server probes the disk itself and says, per
+  // target, whether the copy is still there. What the rows carried before the
+  // user confirmed was a price for something that did not happen (#416).
+  describe("what the server proved after a failed removal", () => {
+    const globalOutcome: RemoveOutcome = {
+      scope: "global",
+      tools: [
+        { tool: "claude", state: "removed" },
+        { tool: "codex", state: "not-removed" },
+      ],
+    };
+
+    it("puts each detected tool's proven outcome on its own row", () => {
+      const [claude, codex] = removeLedgerRows(
+        { kind: "global", tools: ["claude", "codex"] },
+        [],
+        perTool({ claude: "none", codex: "none" }),
+        globalOutcome,
+      );
+
+      expect(claude?.outcome).toBe("removed");
+      expect(codex?.outcome).toBe("not-removed");
+    });
+
+    it("keeps the order the ledger showed before the user confirmed", () => {
+      // The screen listed Codex first; the report answers Claude Code first.
+      // The rows are the user's, so they do not reshuffle under the answer.
+      expect(
+        removeLedgerRows(
+          { kind: "global", tools: ["codex", "claude"] },
+          [],
+          perTool({}),
+          globalOutcome,
+        ).map((row) => [row.name, row.outcome]),
+      ).toEqual([
+        ["Codex", "not-removed"],
+        ["Claude Code", "removed"],
+      ]);
+    });
+
+    it("drops the price it named for a removal that did not happen", () => {
+      const [claude] = removeLedgerRows(
+        { kind: "global", tools: ["claude", "codex"] },
+        [],
+        perTool({ claude: "local-edits", codex: "local-edits" }),
+        globalOutcome,
+      );
+
+      expect(claude?.status).toBeNull();
+      expect(claude?.drift).toBe(false);
+    });
+
+    it("drops a leftover copy the failure never reached", () => {
+      // The reclaim runs only after apm confirms, so nothing touched this copy
+      // and the report has nothing to say about it.
+      expect(
+        removeLedgerRows(
+          { kind: "global", tools: ["claude", "codex"] },
+          leftoverCodex,
+          perTool({}),
+          globalOutcome,
+        ).map((row) => row.name),
+      ).toEqual(["Claude Code", "Codex"]);
+    });
+
+    it("puts the repo scope's one answer on its one row", () => {
+      const [repo] = removeLedgerRows(
+        { kind: "repo", repoPath: "/Users/me/project" },
+        [],
+        { kind: "repo", warning: "local-edits" },
+        { scope: "repo", state: "unknown" },
+      );
+
+      expect(repo?.outcome).toBe("unknown");
+    });
+  });
+
+  // Counted from what the server proved, never from what is on screen — the
+  // screen's own rows can outnumber the targets apm ever reached.
+  describe("removeLedgerLeadIn", () => {
+    it("asks the question while nothing has been attempted", () => {
+      expect(removeLedgerLeadIn(null)).toBe("Primitive will be removed from:");
+    });
+
+    it("counts the targets the removal came off", () => {
+      expect(
+        removeLedgerLeadIn({
+          scope: "global",
+          tools: [
+            { tool: "claude", state: "removed" },
+            { tool: "codex", state: "not-removed" },
+          ],
+        }),
+      ).toBe("Removed from 1 of 2 targets:");
+    });
+
+    it("counts an unproven target as one the removal did not come off", () => {
+      expect(
+        removeLedgerLeadIn({
+          scope: "global",
+          tools: [
+            { tool: "claude", state: "unknown" },
+            { tool: "codex", state: "unknown" },
+          ],
+        }),
+      ).toBe("Removed from 0 of 2 targets:");
+    });
+
+    it("speaks of one target in the singular", () => {
+      expect(removeLedgerLeadIn({ scope: "repo", state: "removed" })).toBe(
+        "Removed from 1 of 1 target:",
+      );
     });
   });
 

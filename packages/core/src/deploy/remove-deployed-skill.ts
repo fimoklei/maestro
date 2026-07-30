@@ -93,6 +93,32 @@ export type RemoveCheck =
   | { scope: "repo"; warning: RemoveWarning | null }
   | { scope: "global"; tools: readonly RemoveToolCheck[] };
 
+// What a probe of one target's disk found once apm failed to confirm. A probe
+// that could not answer is "unknown", never "removed" (J04).
+export type RemoveTargetState = "removed" | "not-removed" | "unknown";
+
+export type RemoveToolOutcome = {
+  tool: SupportedTool;
+  state: RemoveTargetState;
+};
+
+// Shaped by the scope it ran against, like `RemoveCheck`: a repo has one row,
+// the global scope one per detected tool.
+export type RemoveOutcome =
+  | { scope: "repo"; state: RemoveTargetState }
+  | { scope: "global"; tools: readonly RemoveToolOutcome[] };
+
+// apm's uninstall reports one outcome for every tool at once, so the per-target
+// answer is read off the disk instead (ADR-0013, apm-behavior.md § Remove).
+const PROBE_STATES: Record<DeployedContentState, RemoveTargetState> = {
+  "not-deployed": "removed",
+  clean: "not-removed",
+  diverged: "not-removed",
+  unverifiable: "not-removed",
+  unreadable: "unknown",
+  "lockfile-malformed": "unknown",
+};
+
 // A failed check never falls back to "no warning" — it proves nothing.
 export type RemovePreflightError =
   | "unsupported-primitive-type"
@@ -127,7 +153,13 @@ type RemoveDeployedSkillResult =
         scope: RemovedScope;
       };
     }
-  | { ok: false; error: RemoveDeployedSkillError };
+  // `outcome` is present only where apm ran and left something to probe; a
+  // failure that never reached it has no outcome to report.
+  | {
+      ok: false;
+      error: RemoveDeployedSkillError;
+      outcome?: RemoveOutcome;
+    };
 
 type RemovePreflightResult =
   | {
@@ -367,7 +399,11 @@ export class RemoveDeployedSkill {
         ref: lookup.ref,
       });
       if (!removed.ok) {
-        return { ok: false, error: "remove-failed" };
+        return {
+          ok: false,
+          error: "remove-failed",
+          outcome: await this.probeOutcome(target, input.name, detected),
+        };
       }
 
       // After apm's positive marker, never before: a removal that never
@@ -392,6 +428,40 @@ export class RemoveDeployedSkill {
       };
     } catch {
       return { ok: false, error: "remove-failed" };
+    }
+  }
+
+  // apm can remove a copy and still fail to say so, and the disk is the only
+  // thing that knows which targets it came off. Detected order is kept, so the
+  // confirmation's rows do not reshuffle under the answer.
+  private async probeOutcome(
+    target: DeployTarget,
+    name: string,
+    detected: readonly SupportedTool[] | undefined,
+  ): Promise<RemoveOutcome> {
+    if (detected === undefined) {
+      return { scope: "repo", state: await this.probeTarget(target, name) };
+    }
+    const tools: RemoveToolOutcome[] = [];
+    for (const tool of detected) {
+      tools.push({ tool, state: await this.probeTarget(target, name, [tool]) });
+    }
+    return { scope: "global", tools };
+  }
+
+  // Caught per target: one unreadable copy answers for itself, and a probe that
+  // threw is unknown rather than a target the removal came off.
+  private async probeTarget(
+    target: DeployTarget,
+    name: string,
+    tools?: readonly SupportedTool[],
+  ): Promise<RemoveTargetState> {
+    try {
+      return PROBE_STATES[
+        await this.deps.deployedContent.classify({ target, name, tools })
+      ];
+    } catch {
+      return "unknown";
     }
   }
 
