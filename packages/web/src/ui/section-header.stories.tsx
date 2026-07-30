@@ -5,7 +5,7 @@ import { SectionHeader } from "./section-header";
 const meta = {
   title: "Shell/SectionHeader",
   component: SectionHeader,
-  args: { title: "Deploy-state", meta: "read from lockfiles · 3 targets" },
+  args: { title: "Deploy-state", meta: "3 targets" },
 } satisfies Meta<typeof SectionHeader>;
 
 export default meta;
@@ -32,7 +32,7 @@ export const InsideAView: Story = {
   args: {
     level: 3,
     title: "Global targets",
-    meta: "the tools on this machine",
+    meta: "supported coding assistants",
   },
 };
 

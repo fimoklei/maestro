@@ -30,7 +30,7 @@ export function GlobalTargets({
       <SectionHeader
         level={3}
         title="Global targets"
-        meta="the tools on this machine"
+        meta="supported coding assistants"
       />
       {isLoading ? (
         <p className="text-dim text-tag">Loading…</p>

@@ -290,37 +290,49 @@ describe("removeLedgerRows", () => {
   // screen's own rows can outnumber the targets apm ever reached.
   describe("removeLedgerLeadIn", () => {
     it("asks the question while nothing has been attempted", () => {
-      expect(removeLedgerLeadIn(null)).toBe("Primitive will be removed from:");
+      expect(removeLedgerLeadIn(null, "skill")).toBe(
+        "Skill will be removed from:",
+      );
+    });
+
+    it("names the type being removed, not the category it belongs to", () => {
+      expect(removeLedgerLeadIn(null, "mcp")).toBe("MCP will be removed from:");
     });
 
     it("counts the targets the removal came off", () => {
       expect(
-        removeLedgerLeadIn({
-          scope: "global",
-          tools: [
-            { tool: "claude", state: "removed" },
-            { tool: "codex", state: "not-removed" },
-          ],
-        }),
+        removeLedgerLeadIn(
+          {
+            scope: "global",
+            tools: [
+              { tool: "claude", state: "removed" },
+              { tool: "codex", state: "not-removed" },
+            ],
+          },
+          "skill",
+        ),
       ).toBe("Removed from 1 of 2 targets:");
     });
 
     it("counts an unproven target as one the removal did not come off", () => {
       expect(
-        removeLedgerLeadIn({
-          scope: "global",
-          tools: [
-            { tool: "claude", state: "unknown" },
-            { tool: "codex", state: "unknown" },
-          ],
-        }),
+        removeLedgerLeadIn(
+          {
+            scope: "global",
+            tools: [
+              { tool: "claude", state: "unknown" },
+              { tool: "codex", state: "unknown" },
+            ],
+          },
+          "skill",
+        ),
       ).toBe("Removed from 0 of 2 targets:");
     });
 
     it("speaks of one target in the singular", () => {
-      expect(removeLedgerLeadIn({ scope: "repo", state: "removed" })).toBe(
-        "Removed from 1 of 1 target:",
-      );
+      expect(
+        removeLedgerLeadIn({ scope: "repo", state: "removed" }, "skill"),
+      ).toBe("Removed from 1 of 1 target:");
     });
   });
 
