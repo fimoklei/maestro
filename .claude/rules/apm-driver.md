@@ -5,7 +5,7 @@ The observed behavior behind every rule lives in `docs/apm-behavior.md`
 (describes one apm version; check its header). The decisions live in ADRs:
 0001 (never reimplement apm), 0003 (tag-pinned git refs), 0011 (global
 targets = detected tools), 0013 (narrowed-install reconciliation), 0014
-(GitHub-only origins).
+(GitHub-only origins), 0019 (departures from APM's model).
 
 ## Grounding
 
@@ -14,6 +14,8 @@ targets = detected tools), 0013 (narrowed-install reconciliation), 0014
   header, run `docs/agents/apm-upgrade.md` before relying on either.
 - Build fixtures from real captures, never retyped; every capture command is
   recorded in `tests/fixtures/README.md`.
+- Before departing from APM's model, read ADR-0019 — the accepted departures.
+  A new departure is amended into it, never given its own ADR.
 
 ## Invocation
 
