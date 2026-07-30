@@ -5,6 +5,7 @@ import {
   BrowseFilesystem,
   type BrowseSuccess,
   BulkDeploySkills,
+  BulkRemoveDeployedSkill,
   CheckVersionDrift,
   ConfigStore,
   ConnectInventory,
@@ -43,15 +44,25 @@ const connectBodySchema = z.object({ path: z.string() });
 
 const browseBodySchema = z.object({ path: z.string() });
 
+// One spelling for every route that names a target: global carries no path, so
+// no untrusted path crosses the boundary on it (J07).
+const targetSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("repo"), repoPath: z.string() }),
+  z.object({ kind: z.literal("global") }),
+]);
+
+// Proves the confirmation came from this server's own preflight, not a
+// client-built path list. Shaped as core mints it (allowlist, security.md).
+const reclaimTokenSchema = z
+  .string()
+  .regex(/^[0-9a-f]{64}$/)
+  .optional();
+
 const deployBodySchema = z.object({
   // "skills only" is a core business rule, so a non-skill type is a 422, not a 400.
   type: z.string(),
   name: z.string(),
-  // Global carries no path — no untrusted path crosses the boundary (J07).
-  target: z.discriminatedUnion("kind", [
-    z.object({ kind: z.literal("repo"), repoPath: z.string() }),
-    z.object({ kind: z.literal("global") }),
-  ]),
+  target: targetSchema,
   // Deliberate override of the destination guard (ADR-0006, #66).
   force: z.boolean().optional(),
 });
@@ -60,25 +71,14 @@ const deployBodySchema = z.object({
 // overridden only per item via the single-deploy route (#292).
 const bulkDeployBodySchema = z.object({
   names: z.array(z.string()).min(1),
-  target: z.discriminatedUnion("kind", [
-    z.object({ kind: z.literal("repo"), repoPath: z.string() }),
-    z.object({ kind: z.literal("global") }),
-  ]),
+  target: targetSchema,
 });
 
 const removeBodySchema = z.object({
   type: z.string(),
   name: z.string(),
-  target: z.discriminatedUnion("kind", [
-    z.object({ kind: z.literal("repo"), repoPath: z.string() }),
-    z.object({ kind: z.literal("global") }),
-  ]),
-  // Proves the confirmation came from this server's own preflight, not a
-  // client-built path list. Shaped as core mints it (allowlist, security.md).
-  confirmedReclaimToken: z
-    .string()
-    .regex(/^[0-9a-f]{64}$/)
-    .optional(),
+  target: targetSchema,
+  confirmedReclaimToken: reclaimTokenSchema,
 });
 
 const REMOVE_BODY_MESSAGE =
@@ -252,6 +252,29 @@ const removePreflightErrorResponses: Record<
       "Maestro could not check the deployed copy for local changes. Check the repo's permissions and try again.",
   },
 };
+
+// Exhaustive by construction: the table above is keyed by the error union
+// itself, so a new refusal cannot be missing from the allowlist.
+const refusalCodes = Object.keys(removePreflightErrorResponses) as [
+  RemovePreflightError,
+  ...RemovePreflightError[],
+];
+
+// One skill, many targets — the mirror image of the bulk-deploy body. Each
+// target carries its own preflight answer: the token that authorises its
+// reclaim, or the allowlisted code that takes it out of the run.
+const bulkRemoveBodySchema = z.object({
+  name: z.string(),
+  targets: z
+    .array(
+      z.object({
+        target: targetSchema,
+        confirmedReclaimToken: reclaimTokenSchema,
+        refused: z.enum(refusalCodes).optional(),
+      }),
+    )
+    .min(1),
+});
 
 const repoPathErrorMessages: Record<
   RepoPathError | "central-inventory",
@@ -566,6 +589,28 @@ export function createApp(deps: AppDeps) {
     }
 
     const report = await bulkDeploy.execute(parsed.data);
+    return c.json(report);
+  });
+
+  // Always 200 with a report — one target's refusal is data, not an HTTP error.
+  // The walk delegates to the same remove use-case the single route drives, so
+  // every guard, the per-target lock and the reclaim contract stay there (#421).
+  const bulkRemove = new BulkRemoveDeployedSkill({ remove: deps.remove });
+  app.post("/api/deploy/remove/bulk", async (c) => {
+    const body = await c.req.json().catch(() => null);
+    const parsed = bulkRemoveBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json(
+        {
+          error: "invalid-body",
+          message:
+            'Expected a JSON body with a name and a non-empty targets array, each entry carrying a target ({ kind: "repo", repoPath } or { kind: "global" }).',
+        },
+        400,
+      );
+    }
+
+    const report = await bulkRemove.execute(parsed.data);
     return c.json(report);
   });
 
