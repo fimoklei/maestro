@@ -16,7 +16,6 @@
     "test:core": "node scripts/run-tests.mjs --project core",
     "test:web": "node scripts/run-tests.mjs --project web",
     "test:integration": "node scripts/run-tests.mjs --project integration",
-    "test:acceptance": "node scripts/run-tests.mjs --project acceptance",
     "test:watch": "vitest",
     "typecheck": "pnpm -r typecheck && tsc -p tsconfig.json --noEmit",
     "knip": "knip",
@@ -25,7 +24,6 @@
     "verify": "node scripts/verify.mjs"
   },
   "devDependencies": {
-    "@amiceli/vitest-cucumber": "^6.5.0",
     "@biomejs/biome": "^2.4.16",
     "@maestro/core": "workspace:*",
     "@maestro/server": "workspace:*",

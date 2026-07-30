@@ -74,6 +74,15 @@ All shipped **skills-only**, solo, local-first.
 | Adopt apm 0.26 · [#171](https://github.com/fimoklei/maestro/issues/171) → [#182](https://github.com/fimoklei/maestro/issues/182)–[#185](https://github.com/fimoklei/maestro/issues/185), [#191](https://github.com/fimoklei/maestro/issues/191) | B | *When* the engine moves ahead of Maestro's observed knowledge, *I want to* have the driver re-verified against the installed apm, *so I can* trust that cockpit behavior matches what the engine really does. |
 | Reach an actionable cockpit on first open · [#208](https://github.com/fimoklei/maestro/issues/208) → [#216](https://github.com/fimoklei/maestro/issues/216)–[#218](https://github.com/fimoklei/maestro/issues/218), [#221](https://github.com/fimoklei/maestro/pull/221) | A, B | *When* I open Maestro before it knows my inventory or my targets, *I want to* reach a state I can act on, *so I can* get on with my errand instead of completing a setup flow first. |
 | See a skill's deploy-state before deploying from Inventory · [#283](https://github.com/fimoklei/maestro/issues/283) → [#285](https://github.com/fimoklei/maestro/issues/285)–[#292](https://github.com/fimoklei/maestro/issues/292) | A, B | *When* I deploy a skill from the Inventory, *I want to* see at a glance whether it is already deployed and where, *so I can* avoid a blind or duplicate deploy. |
+| Bulk-deploy staged skills to one target · [#292](https://github.com/fimoklei/maestro/issues/292) | B | *When* several skills belong on the same target, *I want to* stage them and push them in one action, reading one report, *so I can* provision that target without going skill by skill. |
+
+Three of these jobs carry intent the job story above does not:
+
+- **J03** groups by the tools this machine actually has, so one tool's skills
+  never show up under another.
+- **J07** needs no repo registered first — global deploy stands on its own.
+- **J08** is mechanically a re-deploy at the latest published tag, not a
+  separate operation.
 
 ## Out of scope
 

@@ -47,12 +47,12 @@ layer, and realize the owner's custom design system on top of it.**
   theming — accepted despite the solo / one-screen scale. Internally framed as
   *"learning a 2026 component stack"*, not *"MVP1 requires this"*.
 - **Sequencing (binding):** the drift + update capability (roadmap 01.3 + 01.4)
-  is built at the **core/server/acceptance level first**; then **one UI pass**
+  is built at the **core/server/integration level first**; then **one UI pass**
   (roadmap `01.5`, the closing design pass) realizes the new structure and
   surfaces the complete, working product —
   registry, deploy-state, inventory, drift badges, update actions — at once.
   Rationale: a demo or dogfood of a styled shell with a dead update button is
-  worse than the raw version that works; the acceptance lane runs against the
+  worse than the raw version that works; the integration lane runs against the
   server API (not the browser, per `testing.md`), so MVP1's capability completes
   without any styled UI, and no throwaway UI is built into a layout about to be
   replaced.

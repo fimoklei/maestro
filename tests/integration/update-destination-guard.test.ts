@@ -1,5 +1,5 @@
 // The update journey driving the REAL destination guard against a real deployed
-// subtree on disk — not the "clean" stub the J08 acceptance journey and the
+// subtree on disk — not the "clean" stub the J08 update journey and the
 // server-deploy route both use. This wires DeployedContentAdapter into a real
 // DeploySkill and runs execute() for every cell of the confirm-and-proceed
 // matrix (ADR-0006, #66): a not-proven-clean copy refuses without force and
