@@ -6,9 +6,10 @@ import { execFileSync } from "node:child_process";
 const runLsof = (args) => execFileSync("lsof", args, { encoding: "utf8" });
 
 /**
- * Listening pids on a port; empty when nothing holds it. Listeners only: a
- * plain `tcp:<port>` query also matches every socket *connected* to it, so an
- * open browser tab would read as a holder (lsof 4.91, measured 2026-07-30).
+ * Listening pids on a port; empty when it is free, null when the lookup could
+ * not answer. Listeners only: a plain `tcp:<port>` query also matches every
+ * socket *connected* to it, so an open browser tab would read as a holder
+ * (lsof 4.91, measured 2026-07-30).
  */
 export function pidsOnPort(port, lsof = runLsof) {
   try {
@@ -16,9 +17,11 @@ export function pidsOnPort(port, lsof = runLsof) {
       .split("\n")
       .map((line) => Number(line.trim()))
       .filter((pid) => Number.isInteger(pid) && pid > 0);
-  } catch {
-    // lsof exits non-zero when nothing matches the query — the port is free.
-    return [];
+  } catch (failure) {
+    // Exit 1 with no output is the one failure that means "nothing matched"
+    // (lsof 4.91). A missing binary or a refused query lands elsewhere, and
+    // must never be read as a free port.
+    return failure?.status === 1 ? [] : null;
   }
 }
 
@@ -41,13 +44,14 @@ function describeProcess(pid, lsof) {
 
 /** Who holds each port, named well enough to go and stop it. */
 export function findPortHolders(ports, lsof = runLsof) {
-  return ports.flatMap((port) =>
-    pidsOnPort(port, lsof).map((pid) => ({
-      port,
-      pid,
-      ...describeProcess(pid, lsof),
-    })),
-  );
+  return ports.flatMap((port) => {
+    const pids = pidsOnPort(port, lsof);
+    // A port we could not inspect counts as held, so the caller refuses rather
+    // than reading silence as "free".
+    if (pids === null) return [{ port, pid: null, command: null, cwd: null }];
+
+    return pids.map((pid) => ({ port, pid, ...describeProcess(pid, lsof) }));
+  });
 }
 
 /** The launcher's refusal to start, or null when every port is free. */
@@ -55,9 +59,10 @@ export function describeHeldPorts(holders) {
   if (holders.length === 0) return null;
 
   const held = holders
-    .map(
-      ({ port, pid, command, cwd }) =>
-        `  port ${port} — ${command ?? "an unidentified process"} (pid ${pid}) in ${cwd ?? "an unreadable directory"}`,
+    .map(({ port, pid, command, cwd }) =>
+      pid === null
+        ? `  port ${port} — the holder could not be determined; the lookup failed`
+        : `  port ${port} — ${command ?? "an unidentified process"} (pid ${pid}) in ${cwd ?? "an unreadable directory"}`,
     )
     .join("\n");
 

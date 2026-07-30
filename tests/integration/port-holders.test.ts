@@ -50,6 +50,13 @@ function stubLsof(processes: FakeProcess[]) {
   };
 }
 
+/** An `lsof` that cannot answer at all — not installed, or refused. */
+function brokenLsof(code: string) {
+  return () => {
+    throw Object.assign(new Error(code), { code });
+  };
+}
+
 const viteServer: FakeProcess = {
   pid: 4821,
   command: "node",
@@ -82,6 +89,13 @@ describe("pidsOnPort", () => {
   it("reports a free port as unheld rather than failing", () => {
     expect(pidsOnPort(5173, stubLsof([]))).toEqual([]);
   });
+
+  it("answers null when the lookup itself failed", () => {
+    // Only lsof's exit 1 means "nothing matched". A missing binary or a refused
+    // query must never read as a free port.
+    expect(pidsOnPort(5173, brokenLsof("ENOENT"))).toBeNull();
+    expect(pidsOnPort(5173, brokenLsof("EACCES"))).toBeNull();
+  });
 });
 
 describe("findPortHolders", () => {
@@ -106,6 +120,12 @@ describe("findPortHolders", () => {
 
   it("returns nothing when every port is free", () => {
     expect(findPortHolders([3000, 5173], stubLsof([]))).toEqual([]);
+  });
+
+  it("reports a port it could not inspect as held by an unknown", () => {
+    expect(findPortHolders([3000], brokenLsof("ENOENT"))).toEqual([
+      { port: 3000, pid: null, command: null, cwd: null },
+    ]);
   });
 });
 
@@ -132,6 +152,15 @@ describe("describeHeldPorts", () => {
 
     expect(message).toContain("3000");
     expect(message).toContain("4821");
+    expect(message).not.toContain("null");
+  });
+
+  it("refuses over a port whose lookup failed", () => {
+    const message = describeHeldPorts(
+      findPortHolders([3000], brokenLsof("ENOENT")),
+    );
+
+    expect(message).toContain("3000");
     expect(message).not.toContain("null");
   });
 });

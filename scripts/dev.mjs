@@ -57,7 +57,8 @@ if (existsSync(pidFile)) {
 // 2. Fallback: free the ports in case something unrelated still holds them.
 let freedSomething = false;
 for (const port of cockpitPorts) {
-  for (const pid of pidsOnPort(port)) {
+  // A lookup that could not answer frees nothing here; step 3 refuses on it.
+  for (const pid of pidsOnPort(port) ?? []) {
     try {
       process.kill(pid, "SIGKILL");
       console.log(`[dev] freeing port ${port} (pid ${pid})`);

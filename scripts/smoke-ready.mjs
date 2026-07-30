@@ -134,7 +134,7 @@ export function readSmokeMarker(sandboxDir) {
 }
 
 function serverPortHolder() {
-  const [pid] = pidsOnPort(3000);
+  const [pid] = pidsOnPort(3000) ?? [];
   return pid ?? null;
 }
 
