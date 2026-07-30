@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 
 const run = promisify(execFile);
 
-export const FIXTURE_ORIGIN_URL = "git@github.com:fimoklei/agent-harness.git";
+const FIXTURE_ORIGIN_URL = "git@github.com:fimoklei/agent-harness.git";
 
 export async function initGitClone(
   root: string,
