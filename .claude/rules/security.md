@@ -15,4 +15,5 @@ Treat every input as hostile. Read before writing code that starts a process, to
   - **Known residual — port not checked.** The allowlist matches hostname only (deliberate: the Vite port is not fixed). Residual gap: a compromised same-host origin — revisit if a fixed web origin ever exists.
 - Config path via `MAESTRO_HOME` (default `~/.maestro`), resolved by `resolveMaestroConfigPath`; tests and `pnpm smoke` point it at a sandbox.
 - Don't log raw `apm` output (may contain tokens); don't persist credentials. APM owns credentials, not Maestro.
+- Never put `apm` output — or anything derived from it — in an HTTP response. The failure is stated from the server's own message table (ADR-0018).
 - `ApmCliDriver` passes only ambient env to apm — never inject `GITHUB_TOKEN` or any credential. Sole exception: the dev smoke harness (sandbox only, ADR-0010). Do not add token-bridging to the product.
