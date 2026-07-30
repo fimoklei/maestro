@@ -386,6 +386,35 @@ neutral cwd.
   (`LEARNINGS.md` · spike-isolation). Test lane: sandbox `HOME`, auth via
   `GITHUB_TOKEN`/`GITHUB_APM_PAT` from `gh auth token`.
 
+## Producer — authoring, tagging, and `compile`
+
+Facts the authoring-side wayfinder map (issue #343) rests on. Captured
+against apm 0.26.0, the version this document describes.
+
+- **apm never creates a git tag.** Tagging is the human's act; the release
+  gates apm offers are `apm pack --check-versions` and `--check-clean`, both
+  reading local `apm.yml`/artifact state, never git. →
+  `docs/research/354-marketplace-as-release-gate.md`
+- **`apm compile --validate` cannot fail on a skill content defect.**
+  `validate_primitives` routes every primitive and link error into a
+  warnings list that `_run_validation_mode` never prints; the
+  `All primitives validated successfully!` marker fires over a file that
+  failed to parse. Exit 1 only for a missing `apm.yml`, no APM content, or a
+  discovery exception (source). → `docs/research/346-apm-proof-owner.md`
+- **Plain `apm compile` overwrites a hand-authored root context file.**
+  `--target codex` rewrites `AGENTS.md`; `--target claude` rewrites
+  `CLAUDE.md`; both replace existing content with a generated build. Only
+  `--validate` and `--dry-run` are safe in a repo whose `AGENTS.md`/`CLAUDE.md`
+  are owned (source). → `docs/research/346-apm-proof-owner.md`
+- **A ref's subpath is literal, with no discovery fallback**, and is baked
+  into an immutable tag — a renamed or moved skill breaks every pin to its
+  old subpath. → `docs/research/344-repo-shape.md`
+- **The 500-line / 5000-token `SKILL.md` rule is agentskills.io's convention,
+  not apm's.** apm 0.26.0 has no such constant in code; `core` enforces the
+  500-line proxy only, the token half is uncheckable offline. →
+  `docs/research/356-skill-md-token-budget.md` (full detail already at
+  "Skill body budget" above)
+
 ## Unobserved — spike before relying
 
 - Hook and MCP deploys (`apm mcp` is a separate command surface). Only
