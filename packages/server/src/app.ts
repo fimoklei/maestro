@@ -33,7 +33,7 @@ import {
   resolveMaestroConfigPath,
   ToolPresenceAdapter,
 } from "@maestro/core";
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
 import { z } from "zod";
 import { originHostGuard } from "./origin-host-guard";
 
@@ -81,8 +81,31 @@ const removeBodySchema = z.object({
     .optional(),
 });
 
-const REMOVE_BODY_MESSAGE =
+const PATH_BODY_MESSAGE = "Expected a JSON body with a path.";
+
+const TARGET_BODY_MESSAGE =
   'Expected a JSON body with type, name, and target ({ kind: "repo", repoPath } or { kind: "global" }).';
+
+const BULK_BODY_MESSAGE =
+  'Expected a JSON body with a non-empty names array and a target ({ kind: "repo", repoPath } or { kind: "global" }).';
+
+// Every POST route's front door: unparsable JSON and a wrong shape are the
+// same 400, so a route only supplies its schema and its own wording.
+async function parseBody<T>(
+  c: Context,
+  schema: z.ZodType<T>,
+  message: string,
+): Promise<{ ok: true; data: T } | { ok: false; response: Response }> {
+  const body = await c.req.json().catch(() => null);
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      response: c.json({ error: "invalid-body", message }, 400),
+    };
+  }
+  return { ok: true, data: parsed.data };
+}
 
 // A failed check is a 200 the web maps to a badge, never an HTTP error — a
 // screen reading "up-to-date" when the check failed would falsely reassure.
@@ -372,16 +395,12 @@ export function createApp(deps: AppDeps) {
   // Offline connect: persist a user-pasted path as the inventory. No git
   // clone (J11, deferred).
   app.post("/api/inventory/connect", async (c) => {
-    const body = await c.req.json().catch(() => null);
-    const parsed = connectBodySchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json(
-        { error: "invalid-body", message: "Expected a JSON body with a path." },
-        400,
-      );
+    const body = await parseBody(c, connectBodySchema, PATH_BODY_MESSAGE);
+    if (!body.ok) {
+      return body.response;
     }
 
-    const result = await deps.connect.connect(parsed.data.path);
+    const result = await deps.connect.connect(body.data.path);
     if (!result.ok) {
       const { status, message } = connectErrorResponses[result.error];
       return c.json({ error: result.error, message }, status);
@@ -404,16 +423,12 @@ export function createApp(deps: AppDeps) {
   // Read-only directory browser (ADR-0009). POST deliberately, so the guard
   // above covers this widest read surface — a GET would bypass it.
   app.post("/api/filesystem/children", async (c) => {
-    const body = await c.req.json().catch(() => null);
-    const parsed = browseBodySchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json(
-        { error: "invalid-body", message: "Expected a JSON body with a path." },
-        400,
-      );
+    const body = await parseBody(c, browseBodySchema, PATH_BODY_MESSAGE);
+    if (!body.ok) {
+      return body.response;
     }
 
-    const result = await deps.browse.browse(parsed.data.path);
+    const result = await deps.browse.browse(body.data.path);
     if (!result.ok) {
       const { status, message } = browseErrorResponses[result.error];
       return c.json({ error: result.error, message }, status);
@@ -481,20 +496,12 @@ export function createApp(deps: AppDeps) {
 
   // Business rules live in core; this route validates shape and maps errors.
   app.post("/api/deploy", async (c) => {
-    const body = await c.req.json().catch(() => null);
-    const parsed = deployBodySchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json(
-        {
-          error: "invalid-body",
-          message:
-            'Expected a JSON body with type, name, and target ({ kind: "repo", repoPath } or { kind: "global" }).',
-        },
-        400,
-      );
+    const body = await parseBody(c, deployBodySchema, TARGET_BODY_MESSAGE);
+    if (!body.ok) {
+      return body.response;
     }
 
-    const result = await deps.deploy.execute(parsed.data);
+    const result = await deps.deploy.execute(body.data);
     if (!result.ok) {
       const { status, message } = deployErrorResponses[result.error];
       return c.json({ error: result.error, message }, status);
@@ -503,16 +510,12 @@ export function createApp(deps: AppDeps) {
   });
 
   app.post("/api/deploy/remove", async (c) => {
-    const body = await c.req.json().catch(() => null);
-    const parsed = removeBodySchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json(
-        { error: "invalid-body", message: REMOVE_BODY_MESSAGE },
-        400,
-      );
+    const body = await parseBody(c, removeBodySchema, TARGET_BODY_MESSAGE);
+    if (!body.ok) {
+      return body.response;
     }
 
-    const result = await deps.remove.execute(parsed.data);
+    const result = await deps.remove.execute(body.data);
     if (!result.ok) {
       const { status, message } = removeErrorResponses[result.error];
       // Omitted, never null: a failure that never reached apm has no outcome,
@@ -531,16 +534,12 @@ export function createApp(deps: AppDeps) {
 
   // Never a silent "clean" on a failed check — it answers with its own error (#337).
   app.post("/api/deploy/remove/preflight", async (c) => {
-    const body = await c.req.json().catch(() => null);
-    const parsed = removeBodySchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json(
-        { error: "invalid-body", message: REMOVE_BODY_MESSAGE },
-        400,
-      );
+    const body = await parseBody(c, removeBodySchema, TARGET_BODY_MESSAGE);
+    if (!body.ok) {
+      return body.response;
     }
 
-    const result = await deps.remove.preflight(parsed.data);
+    const result = await deps.remove.preflight(body.data);
     if (!result.ok) {
       const { status, message } = removePreflightErrorResponses[result.error];
       return c.json({ error: result.error, message }, status);
@@ -552,20 +551,12 @@ export function createApp(deps: AppDeps) {
   // Shares the deploy use-case's per-target in-flight lock (#292).
   const bulkDeploy = new BulkDeploySkills({ deploy: deps.deploy });
   app.post("/api/deploy/bulk", async (c) => {
-    const body = await c.req.json().catch(() => null);
-    const parsed = bulkDeployBodySchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json(
-        {
-          error: "invalid-body",
-          message:
-            'Expected a JSON body with a non-empty names array and a target ({ kind: "repo", repoPath } or { kind: "global" }).',
-        },
-        400,
-      );
+    const body = await parseBody(c, bulkDeployBodySchema, BULK_BODY_MESSAGE);
+    if (!body.ok) {
+      return body.response;
     }
 
-    const report = await bulkDeploy.execute(parsed.data);
+    const report = await bulkDeploy.execute(body.data);
     return c.json(report);
   });
 
@@ -612,19 +603,12 @@ export function createApp(deps: AppDeps) {
   );
 
   app.post("/api/registry/repos", async (c) => {
-    const body = await c.req.json().catch(() => null);
-    const parsed = registerBodySchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json(
-        {
-          error: "invalid-body",
-          message: "Expected a JSON body with a path.",
-        },
-        400,
-      );
+    const body = await parseBody(c, registerBodySchema, PATH_BODY_MESSAGE);
+    if (!body.ok) {
+      return body.response;
     }
 
-    const result = await deps.registry.register(parsed.data.path);
+    const result = await deps.registry.register(body.data.path);
     if (!result.ok) {
       return c.json(
         { error: result.error, message: repoPathErrorMessages[result.error] },
