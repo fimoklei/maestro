@@ -9,10 +9,13 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  CheckVersionDrift,
   DeployedContentAdapter,
   DeploySkill,
+  DeployStateReader,
   type DeployTarget,
   type InventoryResult,
+  NodeFileSystem,
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -43,6 +46,7 @@ describe("update journey against the real destination guard", () => {
   const writeLockfile = async (
     name: string,
     hashes: Record<string, string>,
+    tag = LATEST_TAG,
   ) => {
     const lines = Object.entries(hashes).map(
       ([path, hash]) => `      ${path}: ${hash}`,
@@ -51,7 +55,7 @@ describe("update journey against the real destination guard", () => {
       "dependencies:",
       `  - virtual_path: skills/${name}`,
       "    package_type: claude_skill",
-      `    resolved_ref: ${LATEST_TAG}`,
+      `    resolved_ref: ${tag}`,
       "    deployed_file_hashes:",
       ...lines,
       "",
@@ -154,6 +158,74 @@ describe("update journey against the real destination guard", () => {
     expect(await update(deploy)).toEqual({
       ok: true,
       deployed: { type: "skill", name: "tdd", version: LATEST_TAG },
+    });
+  });
+
+  // apm's own comparison, standing on the lockfile the update wrote: anything
+  // still pinned below the latest tag is behind. Faking the comparison but not
+  // its input is what makes the post-update drift read prove something.
+  const driftFromLockfile = () =>
+    new CheckVersionDrift({
+      registry: { isRegistered: async () => true },
+      apm: {
+        checkOutdated: async () => {
+          const state = await new DeployStateReader({
+            fs: new NodeFileSystem(),
+          }).read(root);
+          if (!state.ok) {
+            return { ok: false as const };
+          }
+          return {
+            ok: true as const,
+            behind: state.primitives
+              .filter((primitive) => primitive.version !== LATEST_TAG)
+              .map((primitive) => ({
+                name: primitive.name,
+                current: primitive.version,
+                latest: LATEST_TAG,
+              })),
+          };
+        },
+      },
+      canonicalPath: async (path) => path,
+    });
+
+  it("leaves the deploy-state reading the new tag, and drift reporting nothing behind", async () => {
+    // The J08 journey's tail: an update is a re-deploy at the latest tag, so
+    // both the state a user reads and the drift check derived from it have to
+    // move with the tag apm actually wrote.
+    const body = "---\nname: tdd\n---\nbody\n";
+    await writeDeployed(".claude/skills/tdd/SKILL.md", body);
+    await writeLockfile(
+      "tdd",
+      { ".claude/skills/tdd/SKILL.md": sha(body) },
+      "v0.5.0",
+    );
+    const reader = new DeployStateReader({ fs: new NodeFileSystem() });
+    const drift = driftFromLockfile();
+
+    expect(await reader.read(root)).toMatchObject({
+      primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+    });
+    expect(
+      await drift.execute({ target: { kind: "repo", repoPath: root } }),
+    ).toEqual({
+      ok: true,
+      behind: [{ name: "tdd", current: "v0.5.0", latest: LATEST_TAG }],
+    });
+
+    expect(await update(makeDeploy(reinstallAtTag))).toMatchObject({
+      ok: true,
+    });
+
+    expect(await reader.read(root)).toMatchObject({
+      primitives: [{ type: "skill", name: "tdd", version: LATEST_TAG }],
+    });
+    expect(
+      await drift.execute({ target: { kind: "repo", repoPath: root } }),
+    ).toEqual({
+      ok: true,
+      behind: [],
     });
   });
 

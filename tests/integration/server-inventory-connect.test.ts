@@ -9,6 +9,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  BrowseFilesystem,
   ConfigStore,
   ConnectInventory,
   InventoryReader,
@@ -20,7 +21,6 @@ import {
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { initGitClone } from "../helpers/git-fixture";
-import { stubBrowse } from "../helpers/stub-browse";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
@@ -70,7 +70,9 @@ describe("inventory connect HTTP route", () => {
       remove: stubRemove({ registry }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
-      browse: stubBrowse(),
+      // The real browser, ceilinged at this test's temp dir rather than the
+      // user's home, so a picked path can be handed straight to connect.
+      browse: new BrowseFilesystem({ fs, homeRoot: () => dir }),
       enforceOriginHost: false,
     });
   }
@@ -105,6 +107,40 @@ describe("inventory connect HTTP route", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
+      primitives: [
+        {
+          type: "skill",
+          name: "tdd",
+          description: "Test-driven development loop",
+        },
+      ],
+    });
+  });
+
+  it("connects a clone picked out of a browse listing", async () => {
+    // The picker journey: browse the parent, take the path the listing hands
+    // back, connect with exactly that. The two routes are covered apart
+    // (server-filesystem.test.ts); this is the seam between them.
+    const clone = await makeClone();
+    const app = makeApp();
+
+    const browse = await app.request("/api/filesystem/children", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: dir }),
+    });
+    expect(browse.status).toBe(200);
+    const { entries } = (await browse.json()) as {
+      entries: { name: string; path: string }[];
+    };
+    const picked = entries.find((entry) => entry.name === "agent-harness");
+    expect(picked?.path).toBe(await nodeRealpath(clone));
+
+    const res = await postConnect(app, { path: picked?.path });
+
+    expect(res.status).toBe(200);
+    const primitives = await app.request("/api/inventory/primitives");
+    expect(await primitives.json()).toEqual({
       primitives: [
         {
           type: "skill",

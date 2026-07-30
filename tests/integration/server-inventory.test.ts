@@ -89,6 +89,32 @@ describe("inventory HTTP route", () => {
     });
   });
 
+  it("skips a skill with no frontmatter without hiding the valid ones", async () => {
+    // A SKILL.md the parser cannot read is dropped from the listing, never
+    // turned into an error that blanks the whole inventory.
+    await mkdir(join(dir, "skills", "broken"), { recursive: true });
+    await writeFile(
+      join(dir, "skills", "broken", "SKILL.md"),
+      "# broken\nno frontmatter\n",
+      "utf8",
+    );
+    await writeSkill("tdd", "Test-driven development loop");
+    const app = makeApp(dir);
+
+    const res = await app.request("/api/inventory/primitives");
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      primitives: [
+        {
+          type: "skill",
+          name: "tdd",
+          description: "Test-driven development loop",
+        },
+      ],
+    });
+  });
+
   it("returns 409 with a readable error when no inventory is configured", async () => {
     const app = makeApp(undefined);
 

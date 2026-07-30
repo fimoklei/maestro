@@ -5,6 +5,7 @@ import {
   type BulkDeployReport,
   ConfigStore,
   DeploySkill,
+  GlobalDeployStateReader,
   InventoryReader,
   NodeFileSystem,
   Registry,
@@ -13,7 +14,6 @@ import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
-import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubRemove } from "../helpers/stub-remove";
 
@@ -21,6 +21,26 @@ import { stubRemove } from "../helpers/stub-remove";
 // real DeploySkill (its guards intact) once per staged skill. Only the ApmDriver
 // and the destination classifier are faked, per skill, so continue-and-harvest,
 // attention-marking, and failure-merging are exercised end to end.
+// A user-scope lockfile carrying one claude_skill dependency per name, the
+// shape apm accumulates across successive global installs.
+const globalLockfile = (names: string[]) =>
+  [
+    "lockfile_version: '1'",
+    "dependencies:",
+    ...names.flatMap((name) => [
+      "- repo_url: fimoklei/agent-harness",
+      "  host: github.com",
+      "  resolved_ref: v0.5.1",
+      `  virtual_path: skills/${name}`,
+      "  package_type: claude_skill",
+      // The per-tool attribution the global read groups by (#187).
+      "  deployed_files:",
+      `  - .claude/skills/${name}`,
+      `  - .agents/skills/${name}`,
+    ]),
+    "",
+  ].join("\n");
+
 describe("bulk deploy HTTP route", () => {
   let home: string;
   let harness: string;
@@ -61,6 +81,9 @@ describe("bulk deploy HTTP route", () => {
     const inventory = new InventoryReader({ fs, resolvePath: () => harness });
     const diverged = new Set(options?.divergedNames ?? []);
     const fails = new Set(options?.failNames ?? []);
+    // What apm leaves behind: the user-scope lockfile grows one entry per
+    // successful install, exactly where the global deploy-state read looks.
+    const installed: string[] = [];
     const deploy = new DeploySkill({
       inventory,
       registry,
@@ -76,6 +99,18 @@ describe("bulk deploy HTTP route", () => {
           if (failing) {
             throw new Error("apm install failed: token in stderr");
           }
+          const name = input.ref.match(/\/skills\/([^#]+)#/)?.[1];
+          if (name === undefined) {
+            // A fake that silently records an unnamed entry would let the
+            // read-back assert against a lockfile no install could produce.
+            throw new Error(`unexpected deploy ref shape: ${input.ref}`);
+          }
+          installed.push(name);
+          await writeFile(
+            join(globalRoot, "apm.lock.yaml"),
+            globalLockfile(installed),
+            "utf8",
+          );
           return { ok: true };
         },
       },
@@ -96,7 +131,10 @@ describe("bulk deploy HTTP route", () => {
     const app = createApp({
       registry,
       inventory,
-      deployState: stubDeployState({ fs }),
+      deployState: new GlobalDeployStateReader({
+        fs,
+        toolPresence: { detectGlobalTools: async () => ["claude", "codex"] },
+      }),
       deploy,
       remove: stubRemove({ registry }),
       drift: stubDrift({ registry }),
@@ -168,6 +206,38 @@ describe("bulk deploy HTTP route", () => {
       { error: "auth-required", names: ["tdd", "review"] },
     ]);
     expect(body.deployed).toEqual([]);
+  });
+
+  // The deployed names the global deploy-state route reads back, deduped
+  // across tool groups — a two-tool skill lands in both.
+  const globalNames = async (app: ReturnType<typeof makeApp>["app"]) => {
+    const res = await app.request("/api/deploy-state/global");
+    const { tools } = (await res.json()) as {
+      tools: { primitives: { name: string; version: string }[] }[];
+    };
+    return [
+      ...new Set(
+        tools.flatMap((group) =>
+          group.primitives.map((p) => `${p.name}@${p.version}`),
+        ),
+      ),
+    ];
+  };
+
+  it("puts every deployed skill into the global deploy-state read", async () => {
+    const { app } = makeApp();
+
+    await post(app, { names: ["tdd", "review"], target: { kind: "global" } });
+
+    expect(await globalNames(app)).toEqual(["tdd@v0.5.1", "review@v0.5.1"]);
+  });
+
+  it("leaves the failed skill out of the baseline while the rest lands", async () => {
+    const { app } = makeApp({ failNames: ["review"] });
+
+    await post(app, { names: ["tdd", "review"], target: { kind: "global" } });
+
+    expect(await globalNames(app)).toEqual(["tdd@v0.5.1"]);
   });
 
   it("returns 400 for a body without a names array", async () => {
