@@ -4,11 +4,21 @@ import type {
   RemoveOutcome,
   RemoveTargetState,
 } from "@maestro/core";
+import type { PrimitiveType } from "../ui/type-tag";
 import type {
   RemoveCheckState,
   RemoveRowWarning,
 } from "./remove-preflight-view";
 import { toolDisplayName } from "./tool-labels";
+
+// Sentence case, not the tag's uppercase — the lead-in is prose. "MCP" keeps
+// its capitals because that is the name, not a style.
+const TYPE_LABEL: Record<PrimitiveType, string> = {
+  skill: "Skill",
+  hook: "Hook",
+  mcp: "MCP",
+  bundle: "Bundle",
+};
 
 // Global carries its detected tools: the confirmation is where the other
 // tools stop being a surprise (#338).
@@ -80,9 +90,12 @@ function statusFor(warning: RemoveRowWarning | null): {
 
 // Counted from the server's report, never from the rows on screen: the ledger
 // can carry rows apm never reached, and only the report knows which it did.
-export function removeLedgerLeadIn(outcome: RemoveOutcome | null): string {
+export function removeLedgerLeadIn(
+  outcome: RemoveOutcome | null,
+  type: PrimitiveType,
+): string {
   if (outcome === null) {
-    return "Primitive will be removed from:";
+    return `${TYPE_LABEL[type]} will be removed from:`;
   }
   const states =
     outcome.scope === "repo"

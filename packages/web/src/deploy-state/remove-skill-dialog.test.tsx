@@ -150,7 +150,7 @@ describe("RemoveSkillDialog", () => {
       renderDialog();
 
       expect(
-        screen.getByText("Primitive will be removed from:"),
+        screen.getByText("Skill will be removed from:"),
       ).toBeInTheDocument();
     });
 
@@ -391,7 +391,7 @@ describe("RemoveSkillDialog", () => {
       expect(
         screen.getByText("Removed from 1 of 2 targets:"),
       ).toBeInTheDocument();
-      expect(screen.queryByText("Primitive will be removed from:")).toBeNull();
+      expect(screen.queryByText("Skill will be removed from:")).toBeNull();
     });
 
     it("dims a target the removal came off and says so in words", () => {
@@ -789,7 +789,7 @@ describe("RemoveSkillDialog", () => {
       renderDialog();
 
       expect(
-        screen.getByText("Primitive will be removed from:").className,
+        screen.getByText("Skill will be removed from:").className,
       ).toContain("font-ui");
     });
 
@@ -806,7 +806,7 @@ describe("RemoveSkillDialog", () => {
     it("steps the ledger above the lead-in that introduces it", () => {
       renderDialog();
 
-      const leadIn = screen.getByText("Primitive will be removed from:");
+      const leadIn = screen.getByText("Skill will be removed from:");
       // The repo scope has exactly one row, so the count also asserts the
       // ledger is not quietly listing something else.
       expect(screen.getAllByRole("listitem")).toHaveLength(1);
@@ -852,7 +852,7 @@ describe("RemoveSkillDialog", () => {
     it("reads the lead-in and then every target it would remove from", () => {
       renderDialog();
 
-      expect(describedBy()).toContain("Primitive will be removed from:");
+      expect(describedBy()).toContain("Skill will be removed from:");
       expect(describedBy()).toContain(REPO_TARGET.repoPath);
     });
 
@@ -932,7 +932,7 @@ describe("RemoveSkillDialog", () => {
     it("drops the lead-in that introduced the ledger", () => {
       renderDialog({ preflight: refused });
 
-      expect(screen.queryByText("Primitive will be removed from:")).toBeNull();
+      expect(screen.queryByText("Skill will be removed from:")).toBeNull();
     });
 
     // A disabled confirm still reads as a way through that is temporarily shut.

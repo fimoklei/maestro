@@ -75,9 +75,7 @@ describe("DeployStateView cold start", () => {
     stubColdStart();
     renderView();
 
-    expect(
-      await screen.findByText("read from lockfiles · nothing deployed"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("nothing deployed")).toBeInTheDocument();
   });
 
   it("drops the first-deploy action once a skill is deployed globally", async () => {
@@ -143,7 +141,7 @@ describe("DeployStateView sections", () => {
     renderView();
 
     // An unread target set is not a target set of zero.
-    expect(screen.getByText("read from lockfiles")).toBeInTheDocument();
+    expect(screen.queryByText(/\d+ targets?/)).toBeNull();
   });
 
   it("shows a loading state, not a register hint, while the registry loads", () => {
@@ -221,9 +219,7 @@ describe("DeployStateView sections", () => {
     );
     renderView();
 
-    expect(
-      await screen.findByText("read from lockfiles · 4 targets"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("4 targets")).toBeInTheDocument();
   });
 
   it("gives registered repos their own section, naming where they come from when there are none", async () => {

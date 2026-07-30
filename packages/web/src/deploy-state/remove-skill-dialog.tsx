@@ -214,6 +214,9 @@ export function RemoveSkillDialog({
   });
   const named = version === null ? skillName : `${skillName} ${version}`;
   const heading = `Remove ${named}?`;
+  // Only skills reach this dialog today — DeployedPrimitive.type is the literal
+  // "skill" — so the type is stated once here, never guessed twice below.
+  const type = "skill" as const;
   // Holds the confirm until the check answers — J04 applied to consent, not a
   // second guard on top of #337's decision.
   const awaitingCheck =
@@ -294,9 +297,7 @@ export function RemoveSkillDialog({
           <h2 className="font-semibold font-ui text-fg text-subtitle">
             Remove <span className="font-mono">{named}</span>?
           </h2>
-          {/* Only skills reach this dialog today — DeployedPrimitive.type is
-              the literal "skill" — so the type is stated, not guessed. */}
-          <TypeTag type="skill" className="shrink-0" />
+          <TypeTag type={type} className="shrink-0" />
         </div>
 
         {/* Two groups: what the removal targets, then what it costs. A
@@ -309,7 +310,7 @@ export function RemoveSkillDialog({
                   outcome this line only counts, and two would talk over each
                   other. */}
               <span id={leadInId} className="font-ui text-desc text-muted">
-                {removeLedgerLeadIn(outcome)}
+                {removeLedgerLeadIn(outcome, type)}
               </span>
               <div className="flex flex-col overflow-hidden rounded-item border border-line-row">
                 {/* Announced: a row's cost can answer late, and a status

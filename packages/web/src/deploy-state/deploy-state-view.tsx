@@ -31,13 +31,13 @@ export function DeployStateView() {
     <section>
       <SectionHeader
         title="Deploy-state"
-        meta={`read from lockfiles${
+        meta={
           isColdStart
-            ? " · nothing deployed"
+            ? "nothing deployed"
             : isRead
-              ? ` · ${targetCount} ${targetCount === 1 ? "target" : "targets"}`
+              ? `${targetCount} ${targetCount === 1 ? "target" : "targets"}`
               : ""
-        }`}
+        }
       >
         {isColdStart ? (
           <Button
