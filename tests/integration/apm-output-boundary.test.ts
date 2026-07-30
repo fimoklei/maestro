@@ -9,6 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   ApmCliDriver,
+  CheckVersionDrift,
   ConfigStore,
   DeployedCleanupAdapter,
   DeployedContentAdapter,
@@ -26,6 +27,7 @@ import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
+import { stubRemove } from "../helpers/stub-remove";
 
 // The curated sentence the failure is allowed to say, from the server's
 // `removeErrorResponses` table. Spelled out here so a change to the wording has
@@ -57,6 +59,26 @@ const poisonedApmOutput = {
     "\n",
   ),
   stderr: Object.values(LEAK_SHAPES).join("\n"),
+};
+
+// An `apm outdated` row carrying a leak shape in one cell. Drift is the one place
+// apm-derived data is allowed through, so the fence has to run against the shape
+// of a real table, not against prose. Column order and the light bar are the
+// parser's contract (apm-behavior.md § Drift).
+const poisonedDriftTable = (cell: "package" | "current" | "latest") => {
+  const cells = {
+    package: "owner/repo/skills/tdd",
+    current: "v0.5.0",
+    latest: "v0.5.1",
+  };
+  cells[cell] = LEAK_SHAPES["a credential embedded in a fetch URL"];
+  return {
+    stdout: [
+      `│ ${cells.package} │ ${cells.current} │ ${cells.latest} │ outdated │ git tags │`,
+      "[!] 1 outdated dependency found",
+    ].join("\n"),
+    stderr: "",
+  };
 };
 
 describe("apm output never reaches the client", () => {
@@ -177,5 +199,81 @@ describe("apm output never reaches the client", () => {
     const { body } = await removeFailingWith("rejects");
 
     expect(body).not.toMatch(/exit/i);
+  });
+
+  // Drift is the one channel apm-derived data is allowed through: `apm outdated`
+  // has no --json, so the version pair can only come off its table (ADR-0007).
+  // That makes these two routes the boundary's real test — the shape check in
+  // `parseOutdated` is what keeps them honest, not the absence of a channel.
+  describe("the drift routes, where apm-derived fields are allowed through", () => {
+    async function driftWith(poisoned: { stdout: string; stderr: string }) {
+      const fs = new NodeFileSystem();
+      const registry = new Registry({
+        fs,
+        store: new ConfigStore({ fs, configPath: join(home, "config.json") }),
+      });
+      const inventory = new InventoryReader({
+        fs,
+        resolvePath: () => undefined,
+      });
+      const app = createApp({
+        registry,
+        inventory,
+        deployState: stubDeployState({ fs }),
+        deploy: stubDeploy({ inventory, registry }),
+        remove: stubRemove({ registry }),
+        drift: new CheckVersionDrift({
+          registry,
+          apm: new ApmCliDriver({
+            run: async () => poisoned,
+            prepareGlobalCwd: async () => home,
+          }),
+          canonicalPath: (path) => fs.realpath(path),
+        }),
+        resolveGlobalRoot: () => join(home, "apm"),
+        connect: stubConnect(),
+        browse: stubBrowse(),
+        enforceOriginHost: false,
+      });
+      await registry.register(repo);
+
+      const perRepo = await app.request(
+        `/api/drift?repo=${encodeURIComponent(repo)}`,
+      );
+      const global = await app.request("/api/drift/global");
+      return {
+        perRepo: await perRepo.text(),
+        global: await global.text(),
+      };
+    }
+
+    for (const cell of ["package", "current", "latest"] as const) {
+      it(`refuses the whole read when the ${cell} cell carries a credential`, async () => {
+        const { perRepo, global } = await driftWith(poisonedDriftTable(cell));
+
+        const fragment = LEAK_SHAPES["a credential embedded in a fetch URL"];
+        expect(perRepo).not.toContain(fragment);
+        expect(global).not.toContain(fragment);
+        // Refused, not silently emptied: an empty behind set renders as
+        // up-to-date, which would hide both the leak and the drift (J04).
+        expect(JSON.parse(perRepo)).toEqual({ ok: false });
+        expect(JSON.parse(global)).toEqual({ ok: false });
+      });
+    }
+
+    it("still forwards a row whose three fields hold their shape", async () => {
+      // The fence must not be a blanket refusal — drift is a shipped feature.
+      const { perRepo } = await driftWith({
+        stdout: [
+          "│ owner/repo/skills/tdd │ v0.5.0 │ v0.5.1 │ outdated │ git tags │",
+          "[!] 1 outdated dependency found",
+        ].join("\n"),
+        stderr: "",
+      });
+
+      expect(JSON.parse(perRepo)).toEqual({
+        behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+      });
+    });
   });
 });
