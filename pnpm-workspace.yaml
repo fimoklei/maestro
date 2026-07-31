@@ -2,6 +2,10 @@ packages:
   - "packages/*"
 allowBuilds:
   esbuild: true
+# A failed optional-dependency download leaves install green and the missing
+# binary to crash a later step, so ride out a slow registry instead.
+fetchRetries: 5
+fetchRetryMaxtimeout: 120000
 # Force patched versions of transitively-pulled deps with high-severity advisories.
 # Each key targets only the vulnerable range, so an already-safe major is untouched.
 overrides:
