@@ -140,18 +140,23 @@ export function BulkRemoveDialog({
             disabled={isRemoving}
             onClick={onCancel}
           >
-            cancel
+            {error === null ? "cancel" : "close"}
           </Button>
-          <Button
-            type="button"
-            className="shrink-0"
-            variant="primary"
-            size="sm"
-            disabled={isRemoving || checking}
-            onClick={onConfirm}
-          >
-            {isRemoving ? "removing…" : `remove from ${targetCount} →`}
-          </Button>
+          {/* Absent, not disabled, once the outcome is unknown: the body says
+              to go and look, and a confirm beside it would repeat a run
+              nobody has seen the result of. Reopening re-checks. */}
+          {error === null ? (
+            <Button
+              type="button"
+              className="shrink-0"
+              variant="primary"
+              size="sm"
+              disabled={isRemoving || checking}
+              onClick={onConfirm}
+            >
+              {isRemoving ? "removing…" : `remove from ${targetCount} →`}
+            </Button>
+          ) : null}
         </div>
       </div>
     </div>

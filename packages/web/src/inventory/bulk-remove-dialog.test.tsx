@@ -89,4 +89,21 @@ describe("BulkRemoveDialog — during the run", () => {
 
     expect(onCancel).not.toHaveBeenCalled();
   });
+
+  it("offers no confirm once the outcome is unknown — looking comes before another run", async () => {
+    // The body tells the user to close and check. A live confirm beside it
+    // would repeat a destructive run whose result nobody has seen.
+    const { onCancel, onConfirm } = renderDialog({
+      error:
+        "Maestro lost its server's answer and cannot say what was removed.",
+    });
+
+    expect(screen.queryByRole("button", { name: /^remove from/i })).toBeNull();
+    const controls = screen.getAllByRole("button");
+    expect(controls.map((control) => control.textContent)).toEqual(["close"]);
+
+    await userEvent.click(screen.getByRole("button", { name: "close" }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
 });
