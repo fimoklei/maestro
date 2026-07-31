@@ -24,6 +24,7 @@ const deployedTo = (
   behind: { name: string; current: string; latest: string }[] = [],
 ): DeploymentTarget => ({
   label: "",
+  target: { kind: "global" },
   deployed: { status: "ready", names, skippedCount: 0 },
   primitives: names.map((name) => ({
     type: "skill" as const,
@@ -729,5 +730,87 @@ describe("InventoryList", () => {
     expect(
       screen.queryByRole("complementary", { name: /tdd detail/i }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("InventoryList — bulk remove entry point (#422)", () => {
+  const onTarget = (
+    target: DeploymentTarget["target"],
+    names: string[],
+  ): DeploymentTarget => ({ ...deployedTo(names), target });
+
+  const openTdd = async () => {
+    await userEvent.click(screen.getByRole("button", { name: "tdd" }));
+  };
+
+  const listWith = (targets: DeploymentTarget[]) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderList(
+      <InventoryList
+        primitives={primitives}
+        repos={[]}
+        registryReady
+        targets={targets}
+      />,
+    );
+  };
+
+  it("offers a bulk remove once the skill is on two or more targets", async () => {
+    listWith([
+      onTarget({ kind: "global" }, ["tdd"]),
+      onTarget({ kind: "repo", repoPath: "/dev/acme-web" }, ["tdd"]),
+    ]);
+
+    await openTdd();
+
+    expect(
+      screen.getByRole("button", { name: "remove from all 2 \u2192" }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers none on a single target, where the target's own remove already is", async () => {
+    listWith([onTarget({ kind: "global" }, ["tdd"])]);
+
+    await openTdd();
+
+    expect(
+      screen.queryByRole("button", { name: /remove from all/i }),
+    ).toBeNull();
+  });
+
+  it("keeps today's line, and no section, when the skill is deployed nowhere", async () => {
+    listWith([onTarget({ kind: "global" }, ["caveman"])]);
+
+    await openTdd();
+
+    expect(
+      screen.getByText(/not deployed to any target yet/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /remove from all/i }),
+    ).toBeNull();
+  });
+
+  it("leaves a target whose deploy-state has not loaded out of the count (J04)", async () => {
+    listWith([
+      onTarget({ kind: "global" }, ["tdd"]),
+      onTarget({ kind: "repo", repoPath: "/dev/acme-web" }, ["tdd"]),
+      {
+        label: "",
+        target: { kind: "repo", repoPath: "/dev/unread" },
+        deployed: { status: "pending" },
+        primitives: [],
+        drift: ranDrift([]),
+      },
+    ]);
+
+    await openTdd();
+
+    expect(
+      screen.getByRole("button", { name: "remove from all 2 \u2192" }),
+    ).toBeInTheDocument();
   });
 });

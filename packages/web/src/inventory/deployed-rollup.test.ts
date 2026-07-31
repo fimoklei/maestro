@@ -17,8 +17,11 @@ const pair = (name: string) => ({ name, current: "v1.0.0", latest: "v1.1.0" });
 
 // The count roll-up ignores the pane-only fields (label, primitives); spread this
 // so the targets here stay focused on what the count reads.
-const paneFields: { label: string; primitives: [] } = {
+const paneFields: Pick<DeploymentTarget, "label" | "target"> & {
+  primitives: [];
+} = {
   label: "",
+  target: { kind: "global" },
   primitives: [],
 };
 

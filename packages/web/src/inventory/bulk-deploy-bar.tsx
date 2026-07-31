@@ -73,6 +73,7 @@ export function BulkDeployBar({
   const chosenTargets = chosenBulkDeployTargets({
     isGlobal,
     targetLabel,
+    target,
     globalTools: globalDeployState.data?.tools,
     repoPrimitives: repoDeployState.data?.primitives,
     drift,

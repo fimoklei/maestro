@@ -20,6 +20,8 @@ import {
 } from "../ui/table";
 import { TypeTag } from "../ui/type-tag";
 import { BulkDeployBar } from "./bulk-deploy-bar";
+import { BulkRemoveSkillAction } from "./bulk-remove-skill-action";
+import { bulkRemoveTargets } from "./bulk-remove-targets";
 import { hiddenStagedCount, toggleStaged } from "./bulk-selection";
 import { DeploySkillAction } from "./deploy-skill-action";
 import { DeployedCell } from "./deployed-cell";
@@ -110,6 +112,11 @@ export function InventoryList({
   const selectedRollup = selectedPrimitive
     ? rollUpDeployment(selectedPrimitive.name, targets)
     : null;
+  // Two or more, or the bulk would duplicate a remove that already exists on
+  // the one target (#422).
+  const removable = selectedPrimitive
+    ? bulkRemoveTargets(selectedPrimitive.name, targets)
+    : [];
 
   const table = (
     <>
@@ -313,6 +320,17 @@ export function InventoryList({
               repos={repos}
               registryReady={registryReady}
             />
+          }
+          removeAction={
+            removable.length >= 2 ? (
+              // Keyed by skill, like the deploy action: an open dialog or a
+              // failed run can never carry over to the next skill.
+              <BulkRemoveSkillAction
+                key={selectedPrimitive.name}
+                skillName={selectedPrimitive.name}
+                targets={removable}
+              />
+            ) : null
           }
           onClose={() => setSelected(null)}
           getTriggerElement={getTriggerElement}

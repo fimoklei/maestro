@@ -75,6 +75,22 @@ function refusalMessage(error: unknown): string | null {
   return refuses === true ? error.message : null;
 }
 
+// The same table read for the bulk run (#422): which refusal code, if any,
+// this target's own check returned. "invalid-body" never travels — it says the
+// request was malformed, not that the target refused.
+export function refusedPreflightCode(
+  error: unknown,
+): RemovePreflightError | null {
+  if (!(error instanceof HttpError) || error.code === undefined) {
+    return null;
+  }
+  const code = error.code as keyof typeof REFUSES_THE_REMOVAL;
+  if (code === "invalid-body" || REFUSES_THE_REMOVAL[code] !== true) {
+    return null;
+  }
+  return code;
+}
+
 const unanswered = (
   warning: "checking" | "check-failed",
 ): RemovePreflightView => ({

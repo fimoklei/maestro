@@ -5,12 +5,16 @@
 import type { DeployedView } from "../deploy-state/deployed-view";
 import type { DeployedPrimitive } from "../deploy-state/use-deploy-state";
 import type { DriftViewModel } from "../drift/drift-view-model";
+import type { DeployTarget } from "./use-deploy-skill";
 
 // Count roll-up reads `deployed` + `drift`; the skill detail pane reads
 // `label` + `primitives`. Both fold the same fetched data, so they can't
 // disagree (ADR-0016). `primitives` meaningful only when status is "ready".
 export type DeploymentTarget = {
   label: string;
+  // Which target a write would name. Global's per-tool rows all carry
+  // `{ kind: "global" }` — one apm removal covers every tool (ADR-0013).
+  target: DeployTarget;
   deployed: DeployedView;
   primitives: DeployedPrimitive[];
   drift: DriftViewModel;

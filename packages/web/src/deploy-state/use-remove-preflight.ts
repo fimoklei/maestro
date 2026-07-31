@@ -18,11 +18,13 @@ export type RemovePreflight = {
   reclaim: ReclaimConsent | null;
 };
 
-export function useRemovePreflight(
+// Shared with the bulk path, which runs one of these per target through
+// useQueries — one owner for the key and for the never-cached contract (#422).
+export function removePreflightQueryOptions(
   skillName: string | null,
   target: DeployTarget,
 ) {
-  return useQuery({
+  return {
     queryKey: ["remove-preflight", targetQueryKey(target), skillName] as const,
     queryFn: () =>
       requestJson<RemovePreflight>("/api/deploy/remove/preflight", {
@@ -35,5 +37,12 @@ export function useRemovePreflight(
     gcTime: 0,
     staleTime: 0,
     retry: false,
-  });
+  };
+}
+
+export function useRemovePreflight(
+  skillName: string | null,
+  target: DeployTarget,
+) {
+  return useQuery(removePreflightQueryOptions(skillName, target));
 }
