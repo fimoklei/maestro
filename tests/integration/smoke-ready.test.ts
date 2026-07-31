@@ -1,6 +1,8 @@
+import { spawnSync } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { writeSmokeMarker } from "../../scripts/seed-sandbox.mjs";
 import {
@@ -211,14 +213,19 @@ describe("seedCockpit", () => {
 // A sandbox left behind by a killed run, plus a plain `pnpm dev` on the same
 // ports, would otherwise write the rehearsal's paths into the real ~/.maestro.
 // So the launcher leaves its process id in the sandbox, and this step refuses
-// unless the process holding the server port belongs to that same run.
+// unless every cockpit listener belongs to that same run.
 describe("identifySmokeInstance", () => {
   const marker = { launcherPid: 500 };
+  const holders = (api: number[], web: number[]) => [
+    { port: 3000, pids: api },
+    { port: 5173, pids: web },
+  ];
+  const ours = holders([501], [502]);
 
-  it("accepts a server whose process group is the launcher's", () => {
+  it("accepts a cockpit whose listeners are all the launcher's", () => {
     const decision = identifySmokeInstance({
       marker,
-      serverPid: 501,
+      holders: ours,
       processGroupOf: () => 500,
     });
 
@@ -229,7 +236,7 @@ describe("identifySmokeInstance", () => {
     // A sandbox left behind by a killed run: the files exist, the run does not.
     const decision = identifySmokeInstance({
       marker: null,
-      serverPid: 501,
+      holders: ours,
       processGroupOf: () => 500,
     });
 
@@ -237,11 +244,24 @@ describe("identifySmokeInstance", () => {
     expect(decision.reason).toMatch(/pnpm smoke/);
   });
 
+  it("names the takeover when something else holds a port", () => {
+    // The hijack this check exists for reads as "you forgot to start it"
+    // otherwise, which sends the reader the wrong way (issue #453).
+    const decision = identifySmokeInstance({
+      marker: null,
+      holders: ours,
+      processGroupOf: () => 500,
+    });
+
+    expect(decision.reason).toMatch(/pid 501/);
+    expect(decision.reason).toMatch(/took the port|another worktree/i);
+  });
+
   it("refuses a server belonging to another run", () => {
     // A plain `pnpm dev`, or a sibling worktree, answering on the same port.
     const decision = identifySmokeInstance({
       marker,
-      serverPid: 900,
+      holders: holders([900], [901]),
       processGroupOf: () => 899,
     });
 
@@ -249,26 +269,98 @@ describe("identifySmokeInstance", () => {
     expect(decision.reason).toMatch(/not this smoke run/i);
   });
 
-  it("refuses when nothing holds the server port", () => {
+  // The screenshot comes from the web app on 5173, so owning the API port
+  // alone proves nothing about what the browser renders (issue #453 review).
+  it("refuses a foreign web listener even when the API port is ours", () => {
     const decision = identifySmokeInstance({
       marker,
-      serverPid: null,
+      holders: holders([501], [900]),
+      processGroupOf: (pid) => (pid === 501 ? 500 : 899),
+    });
+
+    expect(decision.ok).toBe(false);
+    expect(decision.reason).toMatch(/5173/);
+  });
+
+  it("refuses when nothing holds the web port", () => {
+    const decision = identifySmokeInstance({
+      marker,
+      holders: holders([501], []),
       processGroupOf: () => 500,
     });
 
     expect(decision.ok).toBe(false);
+    expect(decision.reason).toMatch(/5173/);
+  });
+
+  it("refuses when nothing holds the server port", () => {
+    const decision = identifySmokeInstance({
+      marker,
+      holders: holders([], [502]),
+      processGroupOf: () => 500,
+    });
+
+    expect(decision.ok).toBe(false);
+    expect(decision.reason).toMatch(/3000/);
+  });
+
+  it("refuses a second, foreign listener sharing a port", () => {
+    // lsof can name more than one holder; owning the first proves nothing
+    // about the rest.
+    const decision = identifySmokeInstance({
+      marker,
+      holders: holders([501, 900], [502]),
+      processGroupOf: (pid) => (pid === 900 ? 899 : 500),
+    });
+
+    expect(decision.ok).toBe(false);
+    expect(decision.reason).toMatch(/pid 900/);
   });
 
   it("refuses when the process group cannot be read", () => {
     // Unknown ownership is not ownership: fail closed, as the port guard does.
     const decision = identifySmokeInstance({
       marker,
-      serverPid: 501,
+      holders: ours,
       processGroupOf: () => null,
     });
 
     expect(decision.ok).toBe(false);
   });
+});
+
+// `--check` re-asks who owns the port before each screenshot (issue #453), so
+// it must answer without the wait `smoke:ready` pays. That it seeds nothing is
+// structural: `check()` never reaches `seedCockpit`.
+describe("smoke-ready --check", () => {
+  const script = join(
+    dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "..",
+    "scripts",
+    "smoke-ready.mjs",
+  );
+
+  // Comfortably under the 60s wait, comfortably over an honest check.
+  const budgetMs = 10_000;
+
+  const runCheck = () =>
+    spawnSync(process.execPath, [script, "--check"], {
+      encoding: "utf8",
+      timeout: budgetMs,
+    });
+
+  it(
+    "answers without waiting out the cockpit deadline",
+    () => {
+      const result = runCheck();
+
+      // Killed by the timeout means it fell into the wait-for-cockpit loop.
+      expect(result.signal).toBeNull();
+      expect(typeof result.status).toBe("number");
+    },
+    budgetMs * 2,
+  );
 });
 
 describe("the smoke marker on disk", () => {

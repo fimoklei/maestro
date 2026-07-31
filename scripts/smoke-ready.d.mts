@@ -25,9 +25,14 @@ export interface IdentityDecision {
   reason?: string;
 }
 
+export interface PortHolders {
+  port: number;
+  pids: number[];
+}
+
 export function identifySmokeInstance(input: {
   marker: SmokeMarker | null;
-  serverPid: number | null;
+  holders: PortHolders[];
   processGroupOf: (pid: number) => number | null;
 }): IdentityDecision;
 

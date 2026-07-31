@@ -18,6 +18,9 @@ const WEB_ORIGIN = "http://localhost:5173";
 // The cockpit's own origin: the server refuses a state-changing request without
 // an allowlisted Origin header (packages/server/src/origin-host-guard.ts).
 const BROWSER_ORIGIN = "http://localhost:5173";
+// Both ports `dev.mjs` binds as one group, so ownership covers what the browser
+// renders and not only what the API answers.
+const COCKPIT_PORTS = [3000, 5173];
 
 const wallClock = () => Date.now();
 const realSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -89,34 +92,43 @@ export async function seedCockpit({ request, inventoryPath, repoPath }) {
 }
 
 /**
- * Whether the server answering on port 3000 is this sandbox's own smoke run.
- * Answering is not identity: a sandbox left behind by a killed run, plus a
- * plain `pnpm dev` on the same ports, would otherwise take the rehearsal's
- * paths into the real ~/.maestro. `dev.mjs --smoke` spawns its children as one
- * detached group led by the launcher, so the holder's process group is the
- * proof. Every unknown refuses.
+ * Whether every cockpit listener is this sandbox's own smoke run. Answering is
+ * not identity: a sandbox left behind by a killed run, plus a plain `pnpm dev`
+ * on the same ports, would otherwise take the rehearsal's paths into the real
+ * ~/.maestro. `dev.mjs --smoke` spawns its children as one detached group led
+ * by the launcher, so each holder's process group is the proof. Both ports are
+ * weighed because the screenshot comes from the web app, not the API (#453).
+ * Every unknown refuses.
  */
-export function identifySmokeInstance({ marker, serverPid, processGroupOf }) {
-  if (marker === null)
+export function identifySmokeInstance({ marker, holders, processGroupOf }) {
+  if (marker === null) {
+    const occupied = holders.find(({ pids }) => pids.length > 0);
     return {
       ok: false,
-      reason:
-        "the sandbox holds no smoke marker — this cockpit was not started by `pnpm smoke`",
+      reason: occupied
+        ? `pid ${occupied.pids[0]} holds port ${occupied.port} and this checkout has no smoke marker — either no \`pnpm smoke\` ran here, or another worktree took the port`
+        : "the sandbox holds no smoke marker — this cockpit was not started by `pnpm smoke`",
     };
-  if (serverPid === null)
-    return { ok: false, reason: "nothing identifiable holds port 3000" };
+  }
 
-  const group = processGroupOf(serverPid);
-  if (group === null)
-    return {
-      ok: false,
-      reason: `the process holding port 3000 (pid ${serverPid}) could not be placed`,
-    };
-  if (group !== marker.launcherPid)
-    return {
-      ok: false,
-      reason: `port 3000 is held by pid ${serverPid}, which is not this smoke run (launcher ${marker.launcherPid})`,
-    };
+  for (const { port, pids } of holders) {
+    if (pids.length === 0)
+      return { ok: false, reason: `nothing identifiable holds port ${port}` };
+
+    for (const pid of pids) {
+      const group = processGroupOf(pid);
+      if (group === null)
+        return {
+          ok: false,
+          reason: `the process holding port ${port} (pid ${pid}) could not be placed`,
+        };
+      if (group !== marker.launcherPid)
+        return {
+          ok: false,
+          reason: `port ${port} is held by pid ${pid}, which is not this smoke run (launcher ${marker.launcherPid})`,
+        };
+    }
+  }
 
   return { ok: true };
 }
@@ -133,9 +145,9 @@ export function readSmokeMarker(sandboxDir) {
   }
 }
 
-function serverPortHolder() {
-  const [pid] = pidsOnPort(3000) ?? [];
-  return pid ?? null;
+// A lookup that could not answer yields no holders, so the check fails closed.
+function cockpitHolders() {
+  return COCKPIT_PORTS.map((port) => ({ port, pids: pidsOnPort(port) ?? [] }));
 }
 
 function processGroupOf(pid) {
@@ -171,8 +183,37 @@ async function requestJson(path, body) {
   };
 }
 
+/** Exits the process unless the cockpit belongs to this checkout's smoke run. */
+function requireOwnership(repoRoot, label, refusal) {
+  const identity = identifySmokeInstance({
+    marker: readSmokeMarker(join(repoRoot, ".maestro-sandbox")),
+    holders: cockpitHolders(),
+    processGroupOf,
+  });
+  if (identity.ok) return;
+
+  console.error(
+    `[${label}] ${refusal}: ${identity.reason}.\n` +
+      "Only a cockpit started by `pnpm smoke` from this checkout counts.",
+  );
+  process.exit(1);
+}
+
+/**
+ * Asks the ownership question alone, so it can be re-asked before every
+ * screenshot. Seeds nothing, so repeating it cannot register the repo twice.
+ */
+function check(repoRoot) {
+  requireOwnership(repoRoot, "smoke:check", "the cockpit is not yours");
+  console.log(
+    `[smoke:check] ports ${COCKPIT_PORTS.join(" and ")} still belong to this checkout's \`pnpm smoke\` run.`,
+  );
+}
+
 async function main() {
   const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+  if (process.argv.includes("--check")) return check(repoRoot);
+
   const sandboxHome = join(repoRoot, ".maestro-sandbox", "home");
   const { inventory: inventoryPath, firstRepo: repoPath } =
     seededPaths(sandboxHome);
@@ -194,20 +235,9 @@ async function main() {
     process.exit(1);
   }
 
-  const identity = identifySmokeInstance({
-    marker: readSmokeMarker(join(repoRoot, ".maestro-sandbox")),
-    serverPid: serverPortHolder(),
-    processGroupOf,
-  });
-  if (!identity.ok) {
-    // Refusing here is the whole point: seeding the wrong instance writes the
-    // rehearsal's temporary paths into the real ~/.maestro.
-    console.error(
-      `[smoke:ready] refusing to seed — ${identity.reason}.\n` +
-        "Only a cockpit started by `pnpm smoke` from this checkout is seeded.",
-    );
-    process.exit(1);
-  }
+  // Refusing here is the whole point: seeding the wrong instance writes the
+  // rehearsal's temporary paths into the real ~/.maestro.
+  requireOwnership(repoRoot, "smoke:ready", "refusing to seed");
 
   if (!existsSync(inventoryPath)) {
     console.error(
