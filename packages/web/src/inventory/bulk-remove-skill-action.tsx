@@ -8,11 +8,12 @@ import { BulkRemoveDialog } from "./bulk-remove-dialog";
 import { useBulkRemove } from "./use-bulk-remove";
 import type { DeployTarget } from "./use-deploy-skill";
 
-// The pane's REMOVE section (#422). The caller decides whether there is a bulk
-// to offer at all; this owns the checks, the one request and the dialog.
 const RUN_NEVER_STARTED =
   "Maestro could not reach its server, so nothing was removed anywhere. Try again.";
 
+// The pane's REMOVE section (#422). The caller decides whether there is a bulk
+// to offer at all; this owns the button, and the run below owns everything the
+// dialog needs.
 export function BulkRemoveSkillAction({
   skillName,
   targets,
@@ -21,26 +22,55 @@ export function BulkRemoveSkillAction({
   targets: DeployTarget[];
 }) {
   const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <Button
+        variant="quiet"
+        size="sm"
+        className="w-full"
+        onClick={() => setOpen(true)}
+      >
+        remove from all {targets.length} →
+      </Button>
+      {open ? (
+        <BulkRemoveRun
+          skillName={skillName}
+          targets={targets}
+          onClose={() => setOpen(false)}
+        />
+      ) : null}
+    </>
+  );
+}
+
+// Mounted only while the dialog is open, and that is the point: the checks
+// unmount with it, so a reopen measures the copies again instead of handing
+// out a confirm against the last open's answer. A disabled query keeps its
+// observer, and an observed query keeps its data whatever gcTime says.
+function BulkRemoveRun({
+  skillName,
+  targets,
+  onClose,
+}: {
+  skillName: string;
+  targets: DeployTarget[];
+  onClose: () => void;
+}) {
   const run = useBulkRemove();
 
-  // Every target's own check, in parallel and never cached, from the moment
-  // the dialog opens (#337 applied to a whole list).
+  // Every target's own check, in parallel and never cached (#337 applied to a
+  // whole list).
   const preflights = useQueries({
-    queries: targets.map((target) => ({
-      ...removePreflightQueryOptions(skillName, target),
-      enabled: open,
-    })),
+    queries: targets.map((target) =>
+      removePreflightQueryOptions(skillName, target),
+    ),
   });
   // An error answers too: a refusal takes its target out of the run, and a
   // failed check is the same "nobody knows" the single dialog lets through.
   const answeredCount = preflights.filter(
     (preflight) => preflight.isSuccess || preflight.isError,
   ).length;
-
-  const close = () => {
-    setOpen(false);
-    run.reset();
-  };
 
   const confirm = () => {
     const entries: BulkRemoveTarget[] = targets.map((target, index) => {
@@ -55,30 +85,18 @@ export function BulkRemoveSkillAction({
         ...(refused === null ? {} : { refused }),
       };
     });
-    run.mutate({ name: skillName, targets: entries }, { onSuccess: close });
+    run.mutate({ name: skillName, targets: entries }, { onSuccess: onClose });
   };
 
   return (
-    <>
-      <Button
-        variant="quiet"
-        size="sm"
-        className="w-full"
-        onClick={() => setOpen(true)}
-      >
-        remove from all {targets.length} →
-      </Button>
-      {open ? (
-        <BulkRemoveDialog
-          skillName={skillName}
-          targetCount={targets.length}
-          answeredCount={answeredCount}
-          isRemoving={run.isPending}
-          error={run.isError ? RUN_NEVER_STARTED : null}
-          onCancel={close}
-          onConfirm={confirm}
-        />
-      ) : null}
-    </>
+    <BulkRemoveDialog
+      skillName={skillName}
+      targetCount={targets.length}
+      answeredCount={answeredCount}
+      isRemoving={run.isPending}
+      error={run.isError ? RUN_NEVER_STARTED : null}
+      onCancel={onClose}
+      onConfirm={confirm}
+    />
   );
 }

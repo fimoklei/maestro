@@ -180,4 +180,45 @@ describe("BulkRemoveSkillAction", () => {
 
     expect(await screen.findByText(/empty/i)).toBeInTheDocument();
   });
+
+  it("re-checks from scratch on reopen, never confirming against the last open's answer", async () => {
+    // A copy can pick up local edits between two opens; an answer kept from
+    // the first would hand out a confirm against a cost nobody has measured
+    // (#337). The second check here never answers, so a live confirm can only
+    // mean the first answer was reused.
+    let preflights = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (!String(input).endsWith("/remove/preflight")) {
+          return jsonResponse(emptyReport);
+        }
+        preflights += 1;
+        return preflights === 1
+          ? jsonResponse(preflightAnswer)
+          : new Promise<Response>(() => {});
+      }),
+    );
+    renderAction([{ kind: "repo", repoPath: "/dev/acme-web" }]);
+    const openIt = async () =>
+      userEvent.click(
+        screen.getByRole("button", { name: "remove from all 1 →" }),
+      );
+
+    await openIt();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "remove from 1 →" }),
+      ).toBeEnabled(),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "cancel" }));
+    await openIt();
+
+    expect(
+      screen.getByRole("button", { name: "remove from 1 →" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      "checking 1 targets — 0 answered",
+    );
+  });
 });
