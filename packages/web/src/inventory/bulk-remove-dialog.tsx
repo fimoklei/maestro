@@ -8,8 +8,8 @@ import { TypeTag } from "../ui/type-tag";
 // checks, the request and the in-flight flag. Wider than the single dialog so
 // a target name and its reason fit on one line. The body is one plain line per
 // state — the grouped body (#423) and the report (#424) land on top of this.
-// One line, one state, in the order the states outrank each other: a run that
-// never started, then the run itself, then the checks in front of it.
+// One line, one state, in the order the states outrank each other: a run whose
+// answer was lost, then the run itself, then the checks in front of it.
 function bodyLine({
   skillName,
   targetCount,
@@ -52,8 +52,8 @@ export function BulkRemoveDialog({
   // confirm is held: confirming against an unknown is the thing this prevents.
   answeredCount: number;
   isRemoving: boolean;
-  // The run never started, so nothing was removed anywhere. Stated in one
-  // line here; the per-target report is its own ticket (#424).
+  // The answer was lost, so what the run did is unknown. Stated in one line
+  // here; the per-target report is its own ticket (#424).
   error: string | null;
   onCancel: () => void;
   onConfirm: () => void;

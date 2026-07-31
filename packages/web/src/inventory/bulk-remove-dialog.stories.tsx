@@ -34,10 +34,10 @@ export const Running: Story = {
   args: { isRemoving: true },
 };
 
-// The request never reached the server, so nothing was removed anywhere.
-export const RequestFailed: Story = {
+// The answer was lost. What the run did is unknown, so the panel says so.
+export const OutcomeUnknown: Story = {
   args: {
     error:
-      "Maestro could not reach its server, so nothing was removed anywhere. Try again.",
+      "Maestro lost its server's answer and cannot say what was removed. Close this and check the targets before trying again.",
   },
 };

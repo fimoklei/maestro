@@ -8,8 +8,11 @@ import { BulkRemoveDialog } from "./bulk-remove-dialog";
 import { useBulkRemove } from "./use-bulk-remove";
 import type { DeployTarget } from "./use-deploy-skill";
 
-const RUN_NEVER_STARTED =
-  "Maestro could not reach its server, so nothing was removed anywhere. Try again.";
+// Never "nothing was removed": a lost answer does not prove the walk never
+// ran, and the server removes one target at a time. The pane behind this is
+// re-read either way, so the honest instruction is to go and look.
+const OUTCOME_UNKNOWN =
+  "Maestro lost its server's answer and cannot say what was removed. Close this and check the targets before trying again.";
 
 // The pane's REMOVE section (#422). The caller decides whether there is a bulk
 // to offer at all; this owns the button, and the run below owns everything the
@@ -94,7 +97,7 @@ function BulkRemoveRun({
       targetCount={targets.length}
       answeredCount={answeredCount}
       isRemoving={run.isPending}
-      error={run.isError ? RUN_NEVER_STARTED : null}
+      error={run.isError ? OUTCOME_UNKNOWN : null}
       onCancel={onClose}
       onConfirm={confirm}
     />

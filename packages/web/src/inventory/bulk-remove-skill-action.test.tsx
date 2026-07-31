@@ -221,4 +221,62 @@ describe("BulkRemoveSkillAction", () => {
       "checking 1 targets — 0 answered",
     );
   });
+
+  it("says the outcome is unknown when the run's answer is lost, and re-reads the targets", async () => {
+    // A lost response does not prove the server never ran: the walk may have
+    // finished. Claiming nothing was removed would send the user into a retry
+    // instead of a look.
+    let ran = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/deploy-state")) {
+          return jsonResponse({
+            primitives: ran
+              ? []
+              : [{ type: "skill", name: "tdd", version: "v1.0.0" }],
+            skipped: [],
+          });
+        }
+        if (url.endsWith("/remove/preflight")) {
+          return jsonResponse(preflightAnswer);
+        }
+        ran = true;
+        throw new TypeError("Failed to fetch");
+      }),
+    );
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BulkRemoveSkillAction
+          skillName="tdd"
+          targets={[{ kind: "repo", repoPath: "/dev/acme-web" }]}
+        />
+        <DeployStatePanel repo="/dev/acme-web" />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("v1.0.0")).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "remove from all 1 →" }),
+    );
+    const confirm = await screen.findByRole("button", {
+      name: "remove from 1 →",
+    });
+    await waitFor(() => expect(confirm).toBeEnabled());
+    await userEvent.click(confirm);
+
+    // Never "nothing was removed": the panel behind it already says otherwise.
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /cannot say what was removed/i,
+    );
+    expect(await screen.findByText(/empty/i)).toBeInTheDocument();
+  });
 });
