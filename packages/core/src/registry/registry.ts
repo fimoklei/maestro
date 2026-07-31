@@ -25,14 +25,13 @@ export class Registry {
   constructor(deps: {
     fs: FileSystemPort;
     store: ConfigStore;
-    resolveCentralInventoryPath?: (
+    resolveCentralInventoryPath: (
       config: MaestroConfig,
     ) => Promise<string | undefined> | string | undefined;
   }) {
     this.fs = deps.fs;
     this.store = deps.store;
-    this.resolveCentralInventoryPath =
-      deps.resolveCentralInventoryPath ?? ((config) => config.inventoryPath);
+    this.resolveCentralInventoryPath = deps.resolveCentralInventoryPath;
   }
 
   async list(): Promise<RegisteredRepo[]> {

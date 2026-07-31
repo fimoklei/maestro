@@ -2,19 +2,19 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  ConfigStore,
   DeployedCleanupAdapter,
   DeployedLocation,
   DeployedRefAdapter,
   GlobalDeployStateReader,
+  InFlightLocks,
   InventoryReader,
   NodeFileSystem,
-  Registry,
   RemoveDeployedSkill,
   type SupportedTool,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { realRegistry } from "../helpers/real-registry";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
@@ -76,10 +76,7 @@ describe("the deploy-state read after a removal", () => {
     const fs = new NodeFileSystem();
     const tools = options?.detectedTools ?? ["claude", "codex"];
     const confirms = options?.confirms ?? true;
-    const registry = new Registry({
-      fs,
-      store: new ConfigStore({ fs, configPath: join(home, "config.json") }),
-    });
+    const registry = realRegistry(fs, join(home, "config.json"));
     // What apm believes is installed in each scope, kept beside the lockfiles
     // the fake rewrites.
     const state = { repo: [] as string[], global: [] as string[] };
@@ -111,8 +108,10 @@ describe("the deploy-state read after a removal", () => {
       );
     };
 
+    const locks = new InFlightLocks();
     const remove = new RemoveDeployedSkill({
       registry,
+      locks,
       deployedRef: new DeployedRefAdapter({ fs, location }),
       deployedContent: { classify: async () => "clean" as const },
       apm: {
@@ -146,7 +145,7 @@ describe("the deploy-state read after a removal", () => {
         fs,
         toolPresence: { detectGlobalTools: async () => tools },
       }),
-      deploy: stubDeploy({ inventory, registry }),
+      deploy: stubDeploy({ inventory, registry, locks }),
       remove,
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => apmRoot,

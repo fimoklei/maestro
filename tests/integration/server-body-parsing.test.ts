@@ -1,11 +1,7 @@
-import {
-  ConfigStore,
-  InventoryReader,
-  NodeFileSystem,
-  Registry,
-} from "@maestro/core";
+import { InFlightLocks, InventoryReader, NodeFileSystem } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { describe, expect, it } from "vitest";
+import { realRegistry } from "../helpers/real-registry";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
@@ -36,23 +32,20 @@ describe("POST body parsing", () => {
 
   function makeApp() {
     const fs = new NodeFileSystem();
-    const store = new ConfigStore({
-      fs,
-      configPath: "/nonexistent-maestro/config.json",
-    });
-    const registry = new Registry({ fs, store });
+    const registry = realRegistry(fs, "/nonexistent-maestro/config.json");
     const inventory = new InventoryReader({
       fs,
       resolvePath: async () => undefined,
     });
+    const locks = new InFlightLocks();
     return createApp({
       registry,
       inventory,
       connect: stubConnect(),
       browse: stubBrowse(),
       deployState: stubDeployState({ fs }),
-      deploy: stubDeploy({ inventory, registry }),
-      remove: stubRemove({ registry }),
+      deploy: stubDeploy({ inventory, registry, locks }),
+      remove: stubRemove({ registry, locks }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
       enforceOriginHost: false,

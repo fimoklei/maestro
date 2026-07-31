@@ -12,7 +12,7 @@ import type {
 import type { SupportedTool } from "./deploy-tools";
 import type { DeployedLocation } from "./deployed-location";
 import type { DeployedRefLookup } from "./deployed-ref";
-import { GLOBAL_LOCK_KEY, InFlightLocks } from "./in-flight-locks";
+import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import { isValidSkillSlug } from "./package-ref";
 import { type ReclaimConsent, ReclaimConsentIssuer } from "./reclaim-consent";
 import { reclaimTools } from "./reclaim-untargeted-copies";
@@ -188,18 +188,15 @@ export class RemoveDeployedSkill {
     toolPresence: ToolPresencePort;
     // realpath, so the lock cannot be sidestepped by a symlinked spelling.
     canonicalPath: (path: string) => Promise<string>;
-    // Omitted, this use-case guards only against itself — enough for a test,
-    // never for the composed server.
-    locks?: InFlightLocks;
+    // Shared with the deploy use-case: both rewrite the same apm.lock.yaml.
+    locks: InFlightLocks;
     location: Pick<DeployedLocation, "treeRoot">;
   };
 
-  private readonly locks: InFlightLocks;
   private readonly consent: ReclaimConsentIssuer;
 
   constructor(deps: RemoveDeployedSkill["deps"]) {
     this.deps = deps;
-    this.locks = deps.locks ?? new InFlightLocks();
     this.consent = new ReclaimConsentIssuer({
       treeRoot: (target) => deps.location.treeRoot(target),
     });
@@ -320,7 +317,7 @@ export class RemoveDeployedSkill {
     }
 
     const detected = scope.scope === "global" ? scope.detected : undefined;
-    const run = await this.locks.run(lockKey, () =>
+    const run = await this.deps.locks.run(lockKey, () =>
       this.remove(input, detected),
     );
     return run.ok ? run.value : { ok: false, error: "remove-in-progress" };

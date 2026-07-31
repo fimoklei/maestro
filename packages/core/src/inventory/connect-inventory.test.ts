@@ -12,7 +12,7 @@ function makeConnect(
 ): ConnectInventory {
   return new ConnectInventory({
     fs,
-    store: new ConfigStore({ fs, configPath: CONFIG_PATH }),
+    store: new ConfigStore({ fs, configPath: () => CONFIG_PATH }),
     originUrl: async () => originUrl,
   });
 }
@@ -35,7 +35,7 @@ describe("ConnectInventory", () => {
     });
     const stored = await new ConfigStore({
       fs,
-      configPath: CONFIG_PATH,
+      configPath: () => CONFIG_PATH,
     }).read();
     expect(stored.inventoryPath).toBe("/Users/me/agent-harness");
   });
@@ -51,7 +51,7 @@ describe("ConnectInventory", () => {
     expect(result).toEqual({ ok: false, error: "not-an-inventory" });
     const stored = await new ConfigStore({
       fs,
-      configPath: CONFIG_PATH,
+      configPath: () => CONFIG_PATH,
     }).read();
     expect(stored.inventoryPath).toBeUndefined();
   });
@@ -70,7 +70,7 @@ describe("ConnectInventory", () => {
     expect(result).toEqual({ ok: false, error: "no-usable-origin" });
     const stored = await new ConfigStore({
       fs,
-      configPath: CONFIG_PATH,
+      configPath: () => CONFIG_PATH,
     }).read();
     expect(stored.inventoryPath).toBeUndefined();
   });

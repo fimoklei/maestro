@@ -10,18 +10,18 @@ import { join } from "node:path";
 import {
   ApmCliDriver,
   CheckVersionDrift,
-  ConfigStore,
   DeployedCleanupAdapter,
   DeployedContentAdapter,
   DeployedLocation,
   DeployedRefAdapter,
+  InFlightLocks,
   InventoryReader,
   NodeFileSystem,
-  Registry,
   RemoveDeployedSkill,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { realRegistry } from "../helpers/real-registry";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
@@ -101,10 +101,7 @@ describe("apm output never reaches the client", () => {
   async function removeFailingWith(mode: "resolves" | "rejects") {
     const fs = new NodeFileSystem();
     const location = new DeployedLocation({ HOME: home });
-    const registry = new Registry({
-      fs,
-      store: new ConfigStore({ fs, configPath: join(home, "config.json") }),
-    });
+    const registry = realRegistry(fs, join(home, "config.json"));
     const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
     const apm = new ApmCliDriver({
       run: async () => {
@@ -117,11 +114,12 @@ describe("apm output never reaches the client", () => {
         return poisonedApmOutput;
       },
     });
+    const locks = new InFlightLocks();
     const app = createApp({
       registry,
       inventory,
       deployState: stubDeployState({ fs }),
-      deploy: stubDeploy({ inventory, registry }),
+      deploy: stubDeploy({ inventory, registry, locks }),
       remove: new RemoveDeployedSkill({
         registry,
         deployedRef: new DeployedRefAdapter({ fs, location }),
@@ -130,6 +128,7 @@ describe("apm output never reaches the client", () => {
         deployedCleanup: new DeployedCleanupAdapter({ location }),
         toolPresence: { detectGlobalTools: async () => ["claude"] },
         canonicalPath: (path) => fs.realpath(path),
+        locks,
         location,
       }),
       drift: stubDrift({ registry }),
@@ -208,20 +207,18 @@ describe("apm output never reaches the client", () => {
   describe("the drift routes, where apm-derived fields are allowed through", () => {
     async function driftWith(poisoned: { stdout: string; stderr: string }) {
       const fs = new NodeFileSystem();
-      const registry = new Registry({
-        fs,
-        store: new ConfigStore({ fs, configPath: join(home, "config.json") }),
-      });
+      const registry = realRegistry(fs, join(home, "config.json"));
       const inventory = new InventoryReader({
         fs,
         resolvePath: () => undefined,
       });
+      const locks = new InFlightLocks();
       const app = createApp({
         registry,
         inventory,
         deployState: stubDeployState({ fs }),
-        deploy: stubDeploy({ inventory, registry }),
-        remove: stubRemove({ registry }),
+        deploy: stubDeploy({ inventory, registry, locks }),
+        remove: stubRemove({ registry, locks }),
         drift: new CheckVersionDrift({
           registry,
           apm: new ApmCliDriver({

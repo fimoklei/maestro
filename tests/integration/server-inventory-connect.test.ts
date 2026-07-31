@@ -12,6 +12,7 @@ import {
   BrowseFilesystem,
   ConfigStore,
   ConnectInventory,
+  InFlightLocks,
   InventoryReader,
   NodeFileSystem,
   Registry,
@@ -21,6 +22,7 @@ import {
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { initGitClone } from "../helpers/git-fixture";
+import { centralInventoryPath } from "../helpers/real-registry";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
@@ -54,20 +56,30 @@ describe("inventory connect HTTP route", () => {
 
   function makeApp() {
     const fs = new NodeFileSystem();
-    const store = new ConfigStore({ fs, configPath: join(dir, "config.json") });
-    const registry = new Registry({ fs, store });
+    // Wired inline rather than through realRegistry: connect and the inventory
+    // reader share this store, so the test needs the instance itself.
+    const store = new ConfigStore({
+      fs,
+      configPath: () => join(dir, "config.json"),
+    });
+    const registry = new Registry({
+      fs,
+      store,
+      resolveCentralInventoryPath: centralInventoryPath,
+    });
     const inventory = new InventoryReader({
       fs,
       resolvePath: async () => resolveInventoryPath(await store.read(), {}),
     });
     const deployState = stubDeployState({ fs });
+    const locks = new InFlightLocks();
     return createApp({
       registry,
       inventory,
       connect: new ConnectInventory({ fs, store, originUrl: readGitOriginUrl }),
       deployState,
-      deploy: stubDeploy({ inventory, registry }),
-      remove: stubRemove({ registry }),
+      deploy: stubDeploy({ inventory, registry, locks }),
+      remove: stubRemove({ registry, locks }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
       // The real browser, ceilinged at this test's temp dir rather than the

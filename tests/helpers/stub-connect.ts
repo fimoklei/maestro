@@ -11,7 +11,7 @@ export function stubConnect(): ConnectInventory {
     fs,
     store: new ConfigStore({
       fs,
-      configPath: "/nonexistent-maestro/config.json",
+      configPath: () => "/nonexistent-maestro/config.json",
     }),
     originUrl: async () => null,
   });

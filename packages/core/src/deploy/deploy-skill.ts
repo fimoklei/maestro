@@ -6,7 +6,7 @@ import type { InventoryResult } from "../inventory/inventory-reader";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type { SupportedTool } from "./deploy-tools";
 import { parseGitOrigin } from "./git-origin";
-import { GLOBAL_LOCK_KEY, InFlightLocks } from "./in-flight-locks";
+import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import { buildSkillPackageRef, isValidSkillSlug } from "./package-ref";
 import { reclaimUntargetedCopies } from "./reclaim-untargeted-copies";
 
@@ -144,16 +144,12 @@ export class DeploySkill {
     inventoryOriginUrl: () => Promise<string | null>;
     // realpath, so the lock cannot be sidestepped by a symlinked spelling.
     canonicalPath: (path: string) => Promise<string>;
-    // Shared with the remove use-case. Omitted, this use-case guards only
-    // against itself — enough for a test, never for the composed server.
-    locks?: InFlightLocks;
+    // Shared with the remove use-case: both rewrite the same apm.lock.yaml.
+    locks: InFlightLocks;
   };
-
-  private readonly locks: InFlightLocks;
 
   constructor(deps: DeploySkill["deps"]) {
     this.deps = deps;
-    this.locks = deps.locks ?? new InFlightLocks();
   }
 
   async execute(input: DeploySkillInput): Promise<DeploySkillResult> {
@@ -184,7 +180,7 @@ export class DeploySkill {
       lockKey = GLOBAL_LOCK_KEY;
     }
 
-    const run = await this.locks.run(lockKey, () => this.deploy(input));
+    const run = await this.deps.locks.run(lockKey, () => this.deploy(input));
     return run.ok ? run.value : { ok: false, error: "deploy-in-progress" };
   }
 

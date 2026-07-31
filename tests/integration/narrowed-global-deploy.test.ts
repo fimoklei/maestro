@@ -12,6 +12,7 @@ import {
   DeployedCleanupAdapter,
   DeployedLocation,
   DeploySkill,
+  InFlightLocks,
   type SupportedTool,
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -65,6 +66,7 @@ describe("narrowed global deploy — which copies survive on disk", () => {
       }),
       toolPresence: { detectGlobalTools: async () => present },
       canonicalPath: async (path: string) => path,
+      locks: new InFlightLocks(),
     });
     return deploy.execute({
       type: "skill",

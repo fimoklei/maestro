@@ -1,14 +1,22 @@
 import { describe, expect, it } from "vitest";
+import { resolveInventoryPath } from "../inventory/resolve-inventory-path";
 import { ConfigStore } from "./config-store";
 import { InMemoryFileSystem } from "./file-system.fake";
 import { Registry } from "./registry";
 
 const CONFIG_PATH = "/home/me/.maestro/config.json";
 
+// What the server injects, with an empty env so the ambient
+// MAESTRO_INVENTORY_PATH cannot reach these tests.
+const resolveCentralInventoryPath = (
+  config: Parameters<typeof resolveInventoryPath>[0],
+) => resolveInventoryPath(config, {});
+
 function makeRegistry(fs: InMemoryFileSystem): Registry {
   return new Registry({
     fs,
-    store: new ConfigStore({ fs, configPath: CONFIG_PATH }),
+    store: new ConfigStore({ fs, configPath: () => CONFIG_PATH }),
+    resolveCentralInventoryPath,
   });
 }
 
@@ -70,8 +78,8 @@ describe("Registry", () => {
         [configPath]: JSON.stringify({ repos: [], inventoryPath: "/inv" }),
       },
     });
-    const store = new ConfigStore({ fs, configPath });
-    const registry = new Registry({ fs, store });
+    const store = new ConfigStore({ fs, configPath: () => configPath });
+    const registry = new Registry({ fs, store, resolveCentralInventoryPath });
 
     await registry.register("/Users/me/project");
 

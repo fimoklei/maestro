@@ -130,7 +130,7 @@ function buildUseCase(overrides: Overrides = {}) {
         (async () => overrides.detectedTools ?? ["claude", "codex"]),
     },
     canonicalPath: overrides.canonicalPath ?? (async (path) => path),
-    locks: overrides.locks,
+    locks: overrides.locks ?? new InFlightLocks(),
     location: { treeRoot: overrides.treeRoot ?? (() => "/home") },
   });
   return { useCase, calls };
@@ -357,6 +357,7 @@ describe("RemoveDeployedSkill", () => {
       deployedCleanup: { removeSkillTargets: async () => undefined },
       toolPresence: { detectGlobalTools: async () => ["claude"] },
       canonicalPath: async (path) => path,
+      locks: new InFlightLocks(),
       location: { treeRoot: () => "/home" },
     });
 
@@ -896,6 +897,7 @@ describe("RemoveDeployedSkill.preflight", () => {
       deployedCleanup: { removeSkillTargets: async () => undefined },
       toolPresence: { detectGlobalTools: async () => ["claude"] },
       canonicalPath: async (path) => path,
+      locks: new InFlightLocks(),
       location: { treeRoot: () => "/home" },
     });
 
@@ -937,6 +939,7 @@ describe("RemoveDeployedSkill.preflight", () => {
       deployedCleanup: { removeSkillTargets: async () => undefined },
       toolPresence: { detectGlobalTools: async () => ["claude"] },
       canonicalPath: async (path) => path,
+      locks: new InFlightLocks(),
       location: { treeRoot: () => "/home" },
     });
 

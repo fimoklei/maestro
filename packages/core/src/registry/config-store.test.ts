@@ -10,14 +10,14 @@ const CONFIG_PATH = "/home/me/.maestro/config.json";
 describe("ConfigStore", () => {
   it("reads a missing config as an empty registry", async () => {
     const fs = new InMemoryFileSystem();
-    const store = new ConfigStore({ fs, configPath: CONFIG_PATH });
+    const store = new ConfigStore({ fs, configPath: () => CONFIG_PATH });
 
     await expect(store.read()).resolves.toEqual({ repos: [] });
   });
 
   it("round-trips a written registry through read", async () => {
     const fs = new InMemoryFileSystem();
-    const store = new ConfigStore({ fs, configPath: CONFIG_PATH });
+    const store = new ConfigStore({ fs, configPath: () => CONFIG_PATH });
 
     await store.write({ repos: [{ path: "/Users/me/project" }] });
 
@@ -43,7 +43,7 @@ describe("ConfigStore", () => {
     const fs = new InMemoryFileSystem({
       files: { [CONFIG_PATH]: "{ not json" },
     });
-    const store = new ConfigStore({ fs, configPath: CONFIG_PATH });
+    const store = new ConfigStore({ fs, configPath: () => CONFIG_PATH });
 
     await expect(store.read()).rejects.toThrow(ConfigError);
   });
@@ -52,7 +52,7 @@ describe("ConfigStore", () => {
     const fs = new InMemoryFileSystem({
       files: { [CONFIG_PATH]: JSON.stringify({ repos: "not-an-array" }) },
     });
-    const store = new ConfigStore({ fs, configPath: CONFIG_PATH });
+    const store = new ConfigStore({ fs, configPath: () => CONFIG_PATH });
 
     await expect(store.read()).rejects.toThrow(ConfigError);
   });

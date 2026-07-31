@@ -25,14 +25,9 @@ export class ConfigStore {
   // construction.
   private readonly resolvePath: () => string;
 
-  constructor(deps: {
-    fs: FileSystemPort;
-    configPath: string | (() => string);
-  }) {
+  constructor(deps: { fs: FileSystemPort; configPath: () => string }) {
     this.fs = deps.fs;
-    const { configPath } = deps;
-    this.resolvePath =
-      typeof configPath === "function" ? configPath : () => configPath;
+    this.resolvePath = deps.configPath;
   }
 
   async read(): Promise<MaestroConfig> {

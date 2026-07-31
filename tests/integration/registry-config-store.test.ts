@@ -27,10 +27,10 @@ describe("registry persistence on a real filesystem", () => {
     const fs = new NodeFileSystem();
     const configPath = join(dir, ".maestro", "config.json");
 
-    const writer = new ConfigStore({ fs, configPath });
+    const writer = new ConfigStore({ fs, configPath: () => configPath });
     await writer.write({ repos: [{ path: dir }] });
 
-    const reader = new ConfigStore({ fs, configPath });
+    const reader = new ConfigStore({ fs, configPath: () => configPath });
     await expect(reader.read()).resolves.toEqual({ repos: [{ path: dir }] });
   });
 
