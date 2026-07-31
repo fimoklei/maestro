@@ -4,18 +4,6 @@
 
 const tagRowPattern = /│\s*(v\d+\.\d+\.\d+)\s*│\s*tag\s*│/;
 
-type SemverParts = [major: number, minor: number, patch: number];
-
-const toParts = (tag: string): SemverParts => {
-  // The pattern guarantees three numeric parts; the defaults only satisfy
-  // noUncheckedIndexedAccess.
-  const [major = 0, minor = 0, patch = 0] = tag.slice(1).split(".").map(Number);
-  return [major, minor, patch];
-};
-
-const compareParts = (a: SemverParts, b: SemverParts): number =>
-  a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
-
 export const resolveLatestTagFromVersionsTable = (
   output: string,
 ): string | null => {
@@ -27,7 +15,9 @@ export const resolveLatestTagFromVersionsTable = (
   if (tags.length === 0) {
     return null;
   }
+  // Numeric collation reads each digit run as a number, so v0.10.0 beats
+  // v0.9.0 where a plain string compare would not.
   return tags.reduce((latest, tag) =>
-    compareParts(toParts(tag), toParts(latest)) > 0 ? tag : latest,
+    tag.localeCompare(latest, "en", { numeric: true }) > 0 ? tag : latest,
   );
 };
