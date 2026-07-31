@@ -97,8 +97,8 @@ export class BrowseFilesystem {
       return { ok: false, error: "not-a-directory" };
     }
 
-    // Unfiltered, unlike listDirectoryNames — that is what lets a symlinked
-    // directory reach the listing at all (#148).
+    // Unfiltered — that is what lets a symlinked directory reach the listing
+    // at all (#148).
     let rawEntries: RawDirEntry[];
     try {
       rawEntries = await this.fs.listRawEntries(real);
@@ -151,12 +151,17 @@ export class BrowseFilesystem {
         }
         const [isGitRepo, children] = await Promise.all([
           this.fs.exists(join(entry.path, ".git")),
-          this.fs.listDirectoryNames(entry.path).catch(() => [] as string[]),
+          this.fs.listRawEntries(entry.path).catch(() => [] as RawDirEntry[]),
         ]);
         return {
           ...entry,
           isHidden,
-          facts: { isGitRepo, hasSkillsSubdir: children.includes("skills") },
+          facts: {
+            isGitRepo,
+            hasSkillsSubdir: children.some(
+              (child) => child.isDirectory && child.name === "skills",
+            ),
+          },
         };
       }),
     );

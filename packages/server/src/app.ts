@@ -10,7 +10,6 @@ import {
   ConfigStore,
   ConnectInventory,
   type ConnectInventoryError,
-  coreHealth,
   DeployedCleanupAdapter,
   DeployedContentAdapter,
   DeployedLocation,
@@ -380,7 +379,8 @@ export type AppDeps = {
 export function createApp(deps: AppDeps) {
   const app = new Hono();
 
-  app.get("/api/health", (c) => c.json(coreHealth()));
+  // Reachability only: that the route answers at all is the signal.
+  app.get("/api/health", (c) => c.json({ ok: true, component: "server" }));
 
   // App-wide, so a new write route is protected by default.
   if (deps.enforceOriginHost) {

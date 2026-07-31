@@ -5,7 +5,7 @@ import { parse } from "yaml";
 import { z } from "zod";
 import type { FileSystemPort } from "../registry/file-system";
 
-export type Primitive = { type: "skill"; name: string; description: string };
+type Primitive = { type: "skill"; name: string; description: string };
 
 // One failure only: inventoryPath unset, missing, or not a directory.
 export type InventoryResult =
@@ -68,9 +68,9 @@ export class InventoryReader {
     }
 
     const skillsDir = join(root, "skills");
-    const names = await this.fs.listDirectoryNames(skillsDir);
+    const entries = await this.fs.listRawEntries(skillsDir);
     const primitives: Primitive[] = [];
-    for (const name of names) {
+    for (const { name } of entries.filter((entry) => entry.isDirectory)) {
       const raw = await this.fs.readFile(join(skillsDir, name, "SKILL.md"));
       if (raw === null) {
         continue;

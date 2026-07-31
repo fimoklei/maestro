@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 import {
   type DeployTarget,
-  targetQueryKey,
+  invalidateTarget,
 } from "../inventory/use-deploy-skill";
 
 export type RemoveRequest = {
@@ -37,10 +37,7 @@ export function useRemoveDeployedSkill() {
         method: "POST",
         body: JSON.stringify(request),
       }),
-    onSuccess: (_data, request) => {
-      const target = targetQueryKey(request.target);
-      queryClient.invalidateQueries({ queryKey: ["deploy-state", target] });
-      queryClient.invalidateQueries({ queryKey: ["drift", target] });
-    },
+    onSuccess: (_data, request) =>
+      invalidateTarget(queryClient, request.target),
   });
 }

@@ -55,7 +55,6 @@ export {
   BrowseFilesystem,
   type BrowseSuccess,
 } from "./filesystem/browse-filesystem";
-export { coreHealth } from "./health";
 export {
   ConnectInventory,
   type ConnectInventoryError,

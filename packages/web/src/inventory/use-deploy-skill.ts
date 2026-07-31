@@ -1,6 +1,10 @@
 // On success, invalidates the target's deploy-state query so the panel
 // refetches without a manual reload (frontend.md).
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  type QueryClient,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 
 // Mirrors core's DeployTarget: a repo carries a path; global carries none.
@@ -12,6 +16,17 @@ export type DeployTarget =
 // spelling would leave one panel stale after the other refetched.
 export function targetQueryKey(target: DeployTarget): string {
   return target.kind === "repo" ? target.repoPath : "global";
+}
+
+// Every write to a target refetches both: drift is a separate query, or a badge
+// outlives the change that made it wrong (#48).
+export function invalidateTarget(
+  queryClient: QueryClient,
+  target: DeployTarget,
+): void {
+  const key = targetQueryKey(target);
+  queryClient.invalidateQueries({ queryKey: ["deploy-state", key] });
+  queryClient.invalidateQueries({ queryKey: ["drift", key] });
 }
 
 export type DeployRequest = {
@@ -34,11 +49,7 @@ export function useDeploySkill() {
         method: "POST",
         body: JSON.stringify(request),
       }),
-    onSuccess: (_data, request) => {
-      // drift is separate, or the new skill keeps its stale "unknown" badge (#48).
-      const target = targetQueryKey(request.target);
-      queryClient.invalidateQueries({ queryKey: ["deploy-state", target] });
-      queryClient.invalidateQueries({ queryKey: ["drift", target] });
-    },
+    onSuccess: (_data, request) =>
+      invalidateTarget(queryClient, request.target),
   });
 }

@@ -11,8 +11,6 @@ import {
   type ToolDeployState,
 } from "./group-primitives-by-tool";
 
-export type { DeployedPrimitive, SkippedEntry } from "./deploy-state-types";
-
 type DeployStateResult =
   | { ok: true; primitives: DeployedPrimitive[]; skipped: SkippedEntry[] }
   | { ok: false; error: "malformed" };

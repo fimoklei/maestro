@@ -10,10 +10,21 @@ function skillFile(name: string, description: string): string {
   return `---\nname: ${name}\ndescription: ${description}\n---\n\n# ${name}\n`;
 }
 
+// The reader takes only directory entries, so each skill folder is seeded as a
+// genuine directory (the fake's self-mapping convention).
+function skillDirs(...names: string[]): Record<string, string> {
+  return Object.fromEntries(
+    names.map((name) => {
+      const path = `${INVENTORY}/skills/${name}`;
+      return [path, path];
+    }),
+  );
+}
+
 describe("InventoryReader", () => {
   it("lists a skill with its name and one-line description", async () => {
     const fs = new InMemoryFileSystem({
-      directories: { [INVENTORY]: INVENTORY },
+      directories: { [INVENTORY]: INVENTORY, ...skillDirs("tdd") },
       listings: { [`${INVENTORY}/skills`]: ["tdd"] },
       files: {
         [`${INVENTORY}/skills/tdd/SKILL.md`]: skillFile(
@@ -38,7 +49,10 @@ describe("InventoryReader", () => {
 
   it("lists every skill in the inventory", async () => {
     const fs = new InMemoryFileSystem({
-      directories: { [INVENTORY]: INVENTORY },
+      directories: {
+        [INVENTORY]: INVENTORY,
+        ...skillDirs("tdd", "diagnose"),
+      },
       listings: { [`${INVENTORY}/skills`]: ["tdd", "diagnose"] },
       files: {
         [`${INVENTORY}/skills/tdd/SKILL.md`]: skillFile("tdd", "TDD loop"),
@@ -67,7 +81,7 @@ describe("InventoryReader", () => {
 
   it("skips a skill whose SKILL.md is missing and lists the rest", async () => {
     const fs = new InMemoryFileSystem({
-      directories: { [INVENTORY]: INVENTORY },
+      directories: { [INVENTORY]: INVENTORY, ...skillDirs("broken", "tdd") },
       listings: { [`${INVENTORY}/skills`]: ["broken", "tdd"] },
       files: {
         // "broken" has a directory entry but no SKILL.md on disk.
@@ -86,7 +100,7 @@ describe("InventoryReader", () => {
 
   it("skips a skill with malformed frontmatter and lists the rest", async () => {
     const fs = new InMemoryFileSystem({
-      directories: { [INVENTORY]: INVENTORY },
+      directories: { [INVENTORY]: INVENTORY, ...skillDirs("bad", "tdd") },
       listings: { [`${INVENTORY}/skills`]: ["bad", "tdd"] },
       files: {
         // "bad" has a SKILL.md but its frontmatter lacks a description.

@@ -81,11 +81,6 @@ export class NodeFileSystem implements FileSystemPort {
     }
   }
 
-  async listDirectoryNames(path: string): Promise<string[]> {
-    const entries = await this.listRawEntries(path);
-    return entries.filter((e) => e.isDirectory).map((e) => e.name);
-  }
-
   async listRawEntries(path: string): Promise<RawDirEntry[]> {
     const entries = await readdirOrEmpty(() =>
       readdir(path, { withFileTypes: true }),

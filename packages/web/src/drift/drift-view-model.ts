@@ -26,7 +26,7 @@ export type TargetDriftIndicator =
   | "unverified"
   | "pending";
 
-export type SyncedState = "synced" | "not-synced";
+type SyncedState = "synced" | "not-synced";
 
 // The drift query reduced to a view-state, internal to this module. A request
 // failure (or a { ok: false } body) becomes "unknown", never up-to-date — the
