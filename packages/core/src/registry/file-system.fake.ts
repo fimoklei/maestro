@@ -74,13 +74,6 @@ export class InMemoryFileSystem implements FileSystemPort {
     return this.files.get(path) ?? null;
   }
 
-  async listDirectoryNames(path: string): Promise<string[]> {
-    if (this.unreadable.has(path)) {
-      throw new Error(`EACCES: permission denied, scandir '${path}'`);
-    }
-    return this.listings.get(path) ?? [];
-  }
-
   // Type facts come from the same seed realpath reads: self-mapped is a
   // directory, a differing value is a symlink, anything else is neither.
   async listRawEntries(path: string): Promise<RawDirEntry[]> {

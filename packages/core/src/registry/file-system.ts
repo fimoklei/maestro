@@ -25,13 +25,9 @@ export interface FileSystemPort {
   // Null when the file does not exist; other read failures reject.
   readFile(path: string): Promise<string | null>;
 
-  // Child directories only — files and unresolved symlinks excluded. Empty when
-  // the directory does not exist: a missing skills/ is "no skills", not an error.
-  listDirectoryNames(path: string): Promise<string[]>;
-
-  // Unfiltered, so browse can find the symlinked directories listDirectoryNames
-  // hides and validate each one itself (#148). Empty when the directory does
-  // not exist.
+  // Unfiltered — callers decide which entry types they want, so browse can find
+  // symlinked directories and validate each one itself (#148). Empty when the
+  // directory does not exist: a missing skills/ is "no skills", not an error.
   listRawEntries(path: string): Promise<RawDirEntry[]>;
 
   // Atomic (temp file + rename), creating parent directories as needed.

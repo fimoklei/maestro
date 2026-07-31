@@ -329,6 +329,7 @@ describe("BrowseFilesystem", () => {
         "/home/user": "/home/user",
         "/home/user/dev": "/home/user/dev",
         "/home/user/dev/inventory": "/home/user/dev/inventory",
+        "/home/user/dev/inventory/skills": "/home/user/dev/inventory/skills",
       },
       listings: {
         "/home/user/dev": ["inventory"],
