@@ -408,7 +408,12 @@ against apm 0.26.0, the version this document describes.
   are owned (source). → `docs/research/346-apm-proof-owner.md`
 - **A ref's subpath is literal, with no discovery fallback**, and is baked
   into an immutable tag — a renamed or moved skill breaks every pin to its
-  old subpath. → `docs/research/344-repo-shape.md`
+  old subpath. The break is **loud**: `Failed to download dependency
+  <owner>/<repo>: Subdirectory '<path>' not found in repository`, then
+  `Installation failed with 1 error(s)`, exit 1, and `Removed apm.yml created
+  by the failed install` — a clean rollback, no partial state. Distinct from
+  the silent `package_type: invalid` case, which needs the directory to exist
+  without a `SKILL.md`. → `docs/research/344-repo-shape.md`
 - **The 500-line / 5000-token `SKILL.md` rule is agentskills.io's convention,
   not apm's.** apm 0.26.0 has no such constant in code; `core` enforces the
   500-line proxy only, the token half is uncheckable offline. →
