@@ -1,12 +1,9 @@
+import { toolPresentation } from "./tool-presentation";
+
 // Human names for apm's tool tokens. An unknown token renders verbatim, so a
 // newly-supported tool degrades to its token rather than vanishing.
-const TOOL_DISPLAY_NAME: Record<string, string> = {
-  claude: "Claude Code",
-  codex: "Codex",
-};
-
 export function toolDisplayName(tool: string): string {
-  return TOOL_DISPLAY_NAME[tool] ?? tool;
+  return toolPresentation(tool).label;
 }
 
 // One readable list ("Claude Code and Codex"). Empty set yields "".
