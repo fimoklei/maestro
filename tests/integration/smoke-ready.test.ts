@@ -1,6 +1,8 @@
+import { spawnSync } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { writeSmokeMarker } from "../../scripts/seed-sandbox.mjs";
 import {
@@ -237,6 +239,19 @@ describe("identifySmokeInstance", () => {
     expect(decision.reason).toMatch(/pnpm smoke/);
   });
 
+  it("names the takeover when something else holds the port", () => {
+    // The hijack this check exists for reads as "you forgot to start it"
+    // otherwise, which sends the reader the wrong way (issue #453).
+    const decision = identifySmokeInstance({
+      marker: null,
+      serverPid: 501,
+      processGroupOf: () => 500,
+    });
+
+    expect(decision.reason).toMatch(/pid 501/);
+    expect(decision.reason).toMatch(/took the port|another worktree/i);
+  });
+
   it("refuses a server belonging to another run", () => {
     // A plain `pnpm dev`, or a sibling worktree, answering on the same port.
     const decision = identifySmokeInstance({
@@ -269,6 +284,40 @@ describe("identifySmokeInstance", () => {
 
     expect(decision.ok).toBe(false);
   });
+});
+
+// `--check` re-asks who owns the port before each screenshot (issue #453), so
+// it must answer without the wait `smoke:ready` pays. That it seeds nothing is
+// structural: `check()` never reaches `seedCockpit`.
+describe("smoke-ready --check", () => {
+  const script = join(
+    dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "..",
+    "scripts",
+    "smoke-ready.mjs",
+  );
+
+  // Comfortably under the 60s wait, comfortably over an honest check.
+  const budgetMs = 10_000;
+
+  const runCheck = () =>
+    spawnSync(process.execPath, [script, "--check"], {
+      encoding: "utf8",
+      timeout: budgetMs,
+    });
+
+  it(
+    "answers without waiting out the cockpit deadline",
+    () => {
+      const result = runCheck();
+
+      // Killed by the timeout means it fell into the wait-for-cockpit loop.
+      expect(result.signal).toBeNull();
+      expect(typeof result.status).toBe("number");
+    },
+    budgetMs * 2,
+  );
 });
 
 describe("the smoke marker on disk", () => {

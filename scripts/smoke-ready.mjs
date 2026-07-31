@@ -101,7 +101,9 @@ export function identifySmokeInstance({ marker, serverPid, processGroupOf }) {
     return {
       ok: false,
       reason:
-        "the sandbox holds no smoke marker — this cockpit was not started by `pnpm smoke`",
+        serverPid === null
+          ? "the sandbox holds no smoke marker — this cockpit was not started by `pnpm smoke`"
+          : `pid ${serverPid} holds port 3000 and this checkout has no smoke marker — either no \`pnpm smoke\` ran here, or another worktree took the port`,
     };
   if (serverPid === null)
     return { ok: false, reason: "nothing identifiable holds port 3000" };
@@ -171,8 +173,37 @@ async function requestJson(path, body) {
   };
 }
 
+/** Exits the process unless port 3000 belongs to this checkout's smoke run. */
+function requireOwnership(repoRoot, label, refusal) {
+  const identity = identifySmokeInstance({
+    marker: readSmokeMarker(join(repoRoot, ".maestro-sandbox")),
+    serverPid: serverPortHolder(),
+    processGroupOf,
+  });
+  if (identity.ok) return;
+
+  console.error(
+    `[${label}] ${refusal}: ${identity.reason}.\n` +
+      "Only a cockpit started by `pnpm smoke` from this checkout counts.",
+  );
+  process.exit(1);
+}
+
+/**
+ * Asks the ownership question alone, so it can be re-asked before every
+ * screenshot. Seeds nothing, so repeating it cannot register the repo twice.
+ */
+function check(repoRoot) {
+  requireOwnership(repoRoot, "smoke:check", "port 3000 is not yours");
+  console.log(
+    "[smoke:check] port 3000 still belongs to this checkout's `pnpm smoke` run.",
+  );
+}
+
 async function main() {
   const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+  if (process.argv.includes("--check")) return check(repoRoot);
+
   const sandboxHome = join(repoRoot, ".maestro-sandbox", "home");
   const { inventory: inventoryPath, firstRepo: repoPath } =
     seededPaths(sandboxHome);
@@ -194,20 +225,9 @@ async function main() {
     process.exit(1);
   }
 
-  const identity = identifySmokeInstance({
-    marker: readSmokeMarker(join(repoRoot, ".maestro-sandbox")),
-    serverPid: serverPortHolder(),
-    processGroupOf,
-  });
-  if (!identity.ok) {
-    // Refusing here is the whole point: seeding the wrong instance writes the
-    // rehearsal's temporary paths into the real ~/.maestro.
-    console.error(
-      `[smoke:ready] refusing to seed — ${identity.reason}.\n` +
-        "Only a cockpit started by `pnpm smoke` from this checkout is seeded.",
-    );
-    process.exit(1);
-  }
+  // Refusing here is the whole point: seeding the wrong instance writes the
+  // rehearsal's temporary paths into the real ~/.maestro.
+  requireOwnership(repoRoot, "smoke:ready", "refusing to seed");
 
   if (!existsSync(inventoryPath)) {
     console.error(
