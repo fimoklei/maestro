@@ -5,7 +5,7 @@ import { HOVER_TRANSITION } from "./hover-transition";
 // Per-row actions menu on Radix Dropdown Menu (ADR-0004), restyled to tokens.
 // Presentational — the caller owns what each item does.
 
-export interface ActionsMenuItem {
+interface ActionsMenuItem {
   label: string;
   onSelect: () => void;
   disabled?: boolean;
