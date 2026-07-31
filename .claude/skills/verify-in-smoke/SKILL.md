@@ -15,7 +15,7 @@ Five things make a `pnpm smoke` run, screenshot, or test result lie to you. Chec
 
 Every worktree defaults to the same ports (3000/5173). A dev server left running in a sibling worktree can keep holding the port, so your screenshot shows the wrong branch. → Start the cockpit from *this* worktree: `pnpm smoke` kills whatever holds those ports first, and refuses to start (naming the process and its directory) when a holder survives. Screenshot only against a cockpit you started here.
 
-Starting it here only settles the moment you started. A sibling worktree's `pnpm smoke`, run later, kills your listener and rebinds the same ports — your open tab keeps pointing there and says nothing. → Run `pnpm smoke:check` before each screenshot; it re-asks who owns port 3000 and seeds nothing, so it is safe to repeat.
+Starting it here only settles the moment you started. A sibling worktree's `pnpm smoke`, run later, kills your listener and rebinds the same ports — your open tab keeps pointing there and says nothing. → Run `pnpm smoke:check` before each screenshot; it re-asks who owns 3000 *and* 5173 — the port the browser renders from — and seeds nothing, so it is safe to repeat.
 
 ## Wrong path: the browse ceiling is HOME
 
