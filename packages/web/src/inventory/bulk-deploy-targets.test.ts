@@ -13,6 +13,7 @@ describe("chosenBulkDeployTargets", () => {
 
     const targets = chosenBulkDeployTargets({
       isGlobal: true,
+      target: { kind: "global" },
       targetLabel: "Global",
       globalTools: undefined,
       repoPrimitives: undefined,
@@ -22,6 +23,7 @@ describe("chosenBulkDeployTargets", () => {
     expect(targets).toEqual([
       {
         label: "Global",
+        target: { kind: "global" },
         deployed: { status: "pending" },
         primitives: [],
         drift: d,
@@ -32,6 +34,7 @@ describe("chosenBulkDeployTargets", () => {
   it("builds one target per detected tool for a Global run", () => {
     const targets = chosenBulkDeployTargets({
       isGlobal: true,
+      target: { kind: "global" },
       targetLabel: "Global",
       globalTools: [
         {
@@ -56,6 +59,7 @@ describe("chosenBulkDeployTargets", () => {
   it("narrows drift to each tool's own skills for a Global run", () => {
     const targets = chosenBulkDeployTargets({
       isGlobal: true,
+      target: { kind: "global" },
       targetLabel: "Global",
       globalTools: [
         {
@@ -76,6 +80,7 @@ describe("chosenBulkDeployTargets", () => {
 
     const targets = chosenBulkDeployTargets({
       isGlobal: false,
+      target: { kind: "repo", repoPath: "/dev/acme-web" },
       targetLabel: "/repo",
       globalTools: undefined,
       repoPrimitives: undefined,
@@ -85,6 +90,7 @@ describe("chosenBulkDeployTargets", () => {
     expect(targets).toEqual([
       {
         label: "/repo",
+        target: { kind: "repo", repoPath: "/dev/acme-web" },
         deployed: { status: "pending" },
         primitives: [],
         drift: d,
@@ -97,6 +103,7 @@ describe("chosenBulkDeployTargets", () => {
 
     const targets = chosenBulkDeployTargets({
       isGlobal: false,
+      target: { kind: "repo", repoPath: "/dev/acme-web" },
       targetLabel: "/repo",
       globalTools: undefined,
       repoPrimitives: [{ type: "skill", name: "tdd", version: "v1.0.0" }],
@@ -106,6 +113,7 @@ describe("chosenBulkDeployTargets", () => {
     expect(targets).toEqual([
       {
         label: "/repo",
+        target: { kind: "repo", repoPath: "/dev/acme-web" },
         deployed: { status: "ready", names: ["tdd"], skippedCount: 0 },
         primitives: [{ type: "skill", name: "tdd", version: "v1.0.0" }],
         drift: d,

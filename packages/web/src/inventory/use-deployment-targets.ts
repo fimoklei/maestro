@@ -10,6 +10,7 @@ import { useGlobalDeployState } from "../deploy-state/use-global-deploy-state";
 import { driftViewModel } from "../drift/drift-view-model";
 import { driftQueryOptions, useGlobalDrift } from "../drift/use-drift";
 import type { DeploymentTarget } from "./deployed-rollup";
+import type { DeployTarget } from "./use-deploy-skill";
 
 export function useDeploymentTargets(
   repoPaths: string[],
@@ -26,14 +27,17 @@ export function useDeploymentTargets(
 
   const targets: DeploymentTarget[] = [];
 
-  // Drift on a non-ready target is never read, so a placeholder can carry any model.
+  // Drift and target on a non-ready target are never read, so a placeholder
+  // can carry any model and any target.
   const unresolvedDrift = globalDrift;
+  const unresolvedTarget: DeployTarget = { kind: "global" };
 
   // Placeholders keep the reach honest while the set is unknown — no target,
   // no primitives; the count reads their status, the pane skips them.
   if (registry.isLoading) {
     targets.push({
       label: "",
+      target: unresolvedTarget,
       deployed: { status: "pending" },
       primitives: [],
       drift: unresolvedDrift,
@@ -41,6 +45,7 @@ export function useDeploymentTargets(
   } else if (registry.isError) {
     targets.push({
       label: "",
+      target: unresolvedTarget,
       deployed: { status: "unknown" },
       primitives: [],
       drift: unresolvedDrift,
@@ -52,6 +57,7 @@ export function useDeploymentTargets(
   if (globalDeploy.isLoading) {
     targets.push({
       label: "",
+      target: { kind: "global" },
       deployed: { status: "pending" },
       primitives: [],
       drift: globalDrift,
@@ -60,6 +66,7 @@ export function useDeploymentTargets(
     // Unknown, not empty (J04). Stale cached tools dropped, never presented as current.
     targets.push({
       label: "",
+      target: { kind: "global" },
       deployed: { status: "unknown" },
       primitives: [],
       drift: globalDrift,
@@ -69,6 +76,9 @@ export function useDeploymentTargets(
       const names = tool.primitives.map((primitive) => primitive.name);
       targets.push({
         label: toolPresentation(tool.tool).label,
+        // One removal covers every tool, so each tool row names the same
+        // global target (ADR-0013).
+        target: { kind: "global" },
         deployed: { status: "ready", names, skippedCount: 0 },
         primitives: tool.primitives,
         drift: globalDrift.forTool(names),
@@ -83,6 +93,7 @@ export function useDeploymentTargets(
     const deploy = repoDeploy[index] ?? pending;
     targets.push({
       label: repoPath,
+      target: { kind: "repo", repoPath },
       deployed: toDeployedView(deploy),
       primitives: deploy.data?.primitives ?? [],
       drift: driftViewModel(repoDrift[index] ?? pending),

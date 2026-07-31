@@ -15,6 +15,7 @@ function renderPane(overrides: {
   deployments?: SkillDeployment[];
   unconfirmed?: boolean;
   deployAction?: React.ReactNode;
+  removeAction?: React.ReactNode;
   onClose?: () => void;
   getTriggerElement?: (name: string) => HTMLElement | null;
 }) {
@@ -26,6 +27,7 @@ function renderPane(overrides: {
       deployAction={
         overrides.deployAction ?? <button type="button">Deploy</button>
       }
+      removeAction={overrides.removeAction ?? null}
       onClose={overrides.onClose ?? (() => {})}
       getTriggerElement={overrides.getTriggerElement ?? (() => null)}
     />,
@@ -200,5 +202,35 @@ describe("SkillDetailPane", () => {
 
     expect(scroller).not.toBeNull();
     expect(scroller?.contains(action)).toBe(false);
+  });
+
+  it("hosts the remove action under the deploy one, in its own labelled section", () => {
+    renderPane({ removeAction: <button type="button">remove all →</button> });
+
+    // Same micro-label shape as Deploy, so the two directions read as a pair.
+    expect(screen.getByText("Remove")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "remove all →" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows no remove section when the caller offers no remove action", () => {
+    // The bulk affordance is absent below two targets — the single remove
+    // already covers one, and nothing covers zero (#422).
+    renderPane({ removeAction: null });
+
+    expect(screen.queryByText("Remove")).toBeNull();
+  });
+
+  it("keeps the remove action out of the scrolling reading matter too", () => {
+    // A long deployed-to list must never hide the action that clears it.
+    renderPane({ removeAction: <button type="button">remove all →</button> });
+
+    const action = screen.getByRole("button", { name: "remove all →" });
+    const pane = screen.getByRole("complementary", { name: /tdd detail/i });
+
+    expect(pane.querySelector(".overflow-y-auto")?.contains(action)).toBe(
+      false,
+    );
   });
 });

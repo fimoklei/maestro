@@ -14,6 +14,9 @@ const target = (
   behind: { name: string; current: string; latest: string }[] = [],
 ): DeploymentTarget => ({
   label,
+  target: label.startsWith("/")
+    ? { kind: "repo", repoPath: label }
+    : { kind: "global" },
   deployed: {
     status: "ready",
     names: primitives.map((primitive) => primitive.name),
@@ -73,12 +76,14 @@ describe("skillDeployments", () => {
     const targets: DeploymentTarget[] = [
       {
         label: "",
+        target: { kind: "global" },
         deployed: { status: "pending" },
         primitives: [],
         drift: ranDrift(),
       },
       {
         label: "",
+        target: { kind: "global" },
         deployed: { status: "unknown" },
         primitives: [],
         drift: ranDrift(),

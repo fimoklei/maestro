@@ -18,6 +18,7 @@ export function SkillDetailPane({
   deployments,
   unconfirmed,
   deployAction,
+  removeAction,
   onClose,
   getTriggerElement,
 }: {
@@ -29,6 +30,9 @@ export function SkillDetailPane({
   // "not known yet", not a confirmed absence (J04).
   unconfirmed: boolean;
   deployAction: ReactNode;
+  // Null below two deployed targets: one target's own remove already exists,
+  // and zero has nothing to remove (#422).
+  removeAction: ReactNode;
   onClose: () => void;
   // A lookup, not a resolved element: the row behind an open pane can unmount
   // and remount as a new DOM node, so it must be found fresh at close time
@@ -71,8 +75,8 @@ export function SkillDetailPane({
       </div>
 
       {/* Only the reading matter scrolls. The label row above and the deploy
-          control below stay put, so a skill with a long description can never
-          push the one action in this pane out of reach. */}
+          and remove controls below stay put, so a skill with a long
+          description can never push this pane's actions out of reach. */}
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="border-line-faint border-b px-card-x py-row-y">
           <div className="flex items-center gap-2">
@@ -119,12 +123,23 @@ export function SkillDetailPane({
         </div>
       </div>
 
+      {/* Both directions sit below the scroller, so a long deployed-to list
+          can never hide either one. */}
       <div className="flex-none border-line-row border-t px-card-x py-row-y">
         <div className="mb-2 text-dim text-tag uppercase tracking-tag">
           Deploy
         </div>
         {deployAction}
       </div>
+
+      {removeAction === null ? null : (
+        <div className="flex-none border-line-row border-t px-card-x py-row-y">
+          <div className="mb-2 text-dim text-tag uppercase tracking-tag">
+            Remove
+          </div>
+          {removeAction}
+        </div>
+      )}
     </aside>
   );
 }
