@@ -145,17 +145,19 @@ if (smoke) {
   );
 }
 
+// append-only, or pnpm's dynamic reporter collapses two never-ending dev
+// servers into a redrawn summary instead of streaming their prefixed lines.
 const child = spawn(
   "pnpm",
   [
-    "exec",
-    "concurrently",
-    "-n",
-    "server,web",
-    "-c",
-    "blue,green",
-    "pnpm --filter @maestro/server dev",
-    "pnpm --filter @maestro/web dev",
+    "--parallel",
+    "--reporter=append-only",
+    "--filter",
+    "@maestro/server",
+    "--filter",
+    "@maestro/web",
+    "run",
+    "dev",
   ],
   { cwd: repoRoot, stdio: "inherit", detached: true, env },
 );

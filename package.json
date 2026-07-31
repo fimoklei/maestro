@@ -28,7 +28,6 @@
     "@maestro/core": "workspace:*",
     "@maestro/server": "workspace:*",
     "@types/node": "^24.9.1",
-    "concurrently": "^10.0.0",
     "knip": "^6.29.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.7"
