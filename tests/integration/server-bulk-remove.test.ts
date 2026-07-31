@@ -3,18 +3,18 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import {
   type BulkRemoveReport,
-  ConfigStore,
   DeployedCleanupAdapter,
   DeployedLocation,
   DeployedRefAdapter,
   type DeployTarget,
+  InFlightLocks,
   InventoryReader,
   NodeFileSystem,
-  Registry,
   RemoveDeployedSkill,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { realRegistry } from "../helpers/real-registry";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
@@ -65,17 +65,16 @@ describe("bulk remove HTTP route", () => {
     unprovenRepos?: string[];
   }) {
     const fs = new NodeFileSystem();
-    const registry = new Registry({
-      fs,
-      store: new ConfigStore({ fs, configPath: join(home, "config.json") }),
-    });
+    const registry = realRegistry(fs, join(home, "config.json"));
     const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
     const removeCalls: Array<{ target: DeployTarget; ref: string }> = [];
     const fails = new Set(options?.failRepos ?? []);
     const unproven = new Set(options?.unprovenRepos ?? []);
     const location = new DeployedLocation({ HOME: home });
+    const locks = new InFlightLocks();
     const remove = new RemoveDeployedSkill({
       registry,
+      locks,
       deployedRef: new DeployedRefAdapter({ fs, location }),
       deployedContent: { classify: async () => "clean" },
       apm: {
@@ -99,7 +98,7 @@ describe("bulk remove HTTP route", () => {
       registry,
       inventory,
       deployState: stubDeployState({ fs }),
-      deploy: stubDeploy({ inventory, registry }),
+      deploy: stubDeploy({ inventory, registry, locks }),
       remove,
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => join(home, ".apm"),

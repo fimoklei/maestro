@@ -2,15 +2,15 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  ConfigStore,
   DeploySkill,
   GlobalDeployStateReader,
+  InFlightLocks,
   InventoryReader,
   NodeFileSystem,
-  Registry,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { realRegistry } from "../helpers/real-registry";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDrift } from "../helpers/stub-drift";
@@ -65,14 +65,13 @@ describe("the tracer journey through one cockpit", () => {
   // carry state from one step to the next, which is the point of the tracer.
   function makeApp() {
     const fs = new NodeFileSystem();
-    const registry = new Registry({
-      fs,
-      store: new ConfigStore({ fs, configPath: join(home, "config.json") }),
-    });
+    const registry = realRegistry(fs, join(home, "config.json"));
     const inventory = new InventoryReader({ fs, resolvePath: () => harness });
+    const locks = new InFlightLocks();
     const deploy = new DeploySkill({
       inventory,
       registry,
+      locks,
       apm: {
         resolveLatestTag: async () => ({ ok: true, tag: LATEST_TAG }),
         deploySkill: async (input) => {
@@ -106,7 +105,7 @@ describe("the tracer journey through one cockpit", () => {
         toolPresence: { detectGlobalTools: async () => ["claude"] },
       }),
       deploy,
-      remove: stubRemove({ registry }),
+      remove: stubRemove({ registry, locks }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => join(home, ".apm"),
       connect: stubConnect(),

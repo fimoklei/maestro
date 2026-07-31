@@ -11,13 +11,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   BrowseFilesystem,
-  ConfigStore,
+  InFlightLocks,
   InventoryReader,
   NodeFileSystem,
-  Registry,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { realRegistry } from "../helpers/real-registry";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
@@ -47,19 +47,17 @@ describe("filesystem browse HTTP route", () => {
 
   function makeApp() {
     const fs = new NodeFileSystem();
-    const registry = new Registry({
-      fs,
-      store: new ConfigStore({ fs, configPath: join(home, "config.json") }),
-    });
+    const registry = realRegistry(fs, join(home, "config.json"));
     const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
     const deployState = stubDeployState({ fs });
+    const locks = new InFlightLocks();
     return createApp({
       registry,
       inventory,
       connect: stubConnect(),
       deployState,
-      deploy: stubDeploy({ inventory, registry }),
-      remove: stubRemove({ registry }),
+      deploy: stubDeploy({ inventory, registry, locks }),
+      remove: stubRemove({ registry, locks }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
       browse: new BrowseFilesystem({ fs, homeRoot: () => home }),

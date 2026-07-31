@@ -2,11 +2,20 @@
 // tests that exercise other routes but must satisfy createApp's remove
 // dependency. Its ref lookup finds nothing, so a stray call refuses instead of
 // pretending to have removed something.
-import { type Registry, RemoveDeployedSkill } from "@maestro/core";
+import {
+  type InFlightLocks,
+  type Registry,
+  RemoveDeployedSkill,
+} from "@maestro/core";
 
-export const stubRemove = (deps: { registry: Registry }) =>
+export const stubRemove = (deps: {
+  registry: Registry;
+  // The same instance stubDeploy gets, as in realDeps.
+  locks: InFlightLocks;
+}) =>
   new RemoveDeployedSkill({
     registry: deps.registry,
+    locks: deps.locks,
     deployedRef: {
       resolve: async () => ({ ok: false as const, reason: "not-deployed" }),
     },

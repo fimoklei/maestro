@@ -2,21 +2,21 @@ import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import {
-  ConfigStore,
   DeployedCleanupAdapter,
   DeployedContentAdapter,
   type DeployedContentState,
   DeployedLocation,
   DeployedRefAdapter,
   type DeployTarget,
+  InFlightLocks,
   InventoryReader,
   NodeFileSystem,
-  Registry,
   RemoveDeployedSkill,
   type SupportedTool,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { realRegistry } from "../helpers/real-registry";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
@@ -76,15 +76,14 @@ describe("remove HTTP route", () => {
     realDeployedContent?: boolean;
   }) {
     const fs = new NodeFileSystem();
-    const registry = new Registry({
-      fs,
-      store: new ConfigStore({ fs, configPath: join(home, "config.json") }),
-    });
+    const registry = realRegistry(fs, join(home, "config.json"));
     const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
     const removeCalls: Array<{ target: DeployTarget; ref: string }> = [];
     const classifyCalls: Array<{ tools?: readonly SupportedTool[] }> = [];
+    const locks = new InFlightLocks();
     const remove = new RemoveDeployedSkill({
       registry,
+      locks,
       deployedRef: new DeployedRefAdapter({
         fs,
         // HOME redirected at the sandbox, so the global lockfile this resolves
@@ -125,7 +124,7 @@ describe("remove HTTP route", () => {
       registry,
       inventory,
       deployState: stubDeployState({ fs }),
-      deploy: stubDeploy({ inventory, registry }),
+      deploy: stubDeploy({ inventory, registry, locks }),
       remove,
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => join(home, "apm"),

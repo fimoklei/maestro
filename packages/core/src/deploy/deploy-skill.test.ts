@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DeploySkill, type DeployTarget } from "./deploy-skill";
 import type { SupportedTool } from "./deploy-tools";
+import { InFlightLocks } from "./in-flight-locks";
 
 const repo = (repoPath: string): DeployTarget => ({ kind: "repo", repoPath });
 const globalTarget: DeployTarget = { kind: "global" };
@@ -87,6 +88,7 @@ const buildDeps = (
       ],
     },
     canonicalPath: async (path: string) => path,
+    locks: new InFlightLocks(),
     ...overrides,
   };
   return { deps, deployed, classified, cleaned };

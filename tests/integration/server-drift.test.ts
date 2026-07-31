@@ -3,13 +3,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   CheckVersionDrift,
-  ConfigStore,
+  InFlightLocks,
   InventoryReader,
   NodeFileSystem,
-  Registry,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { realRegistry } from "../helpers/real-registry";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
@@ -45,10 +45,7 @@ describe("drift HTTP route", () => {
     const calls: Array<
       { kind: "repo"; repoPath: string } | { kind: "global" }
     > = [];
-    const registry = new Registry({
-      fs,
-      store: new ConfigStore({ fs, configPath: join(home, "config.json") }),
-    });
+    const registry = realRegistry(fs, join(home, "config.json"));
     const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
     const drift = new CheckVersionDrift({
       registry,
@@ -60,12 +57,13 @@ describe("drift HTTP route", () => {
       },
       canonicalPath: (path) => fs.realpath(path),
     });
+    const locks = new InFlightLocks();
     const app = createApp({
       registry,
       inventory,
       deployState: stubDeployState({ fs }),
-      deploy: stubDeploy({ inventory, registry }),
-      remove: stubRemove({ registry }),
+      deploy: stubDeploy({ inventory, registry, locks }),
+      remove: stubRemove({ registry, locks }),
       drift,
       resolveGlobalRoot: () => "/nonexistent-apm-root",
       connect: stubConnect(),

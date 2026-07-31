@@ -3,15 +3,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   type BulkDeployReport,
-  ConfigStore,
   DeploySkill,
   GlobalDeployStateReader,
+  InFlightLocks,
   InventoryReader,
   NodeFileSystem,
-  Registry,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { realRegistry } from "../helpers/real-registry";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDrift } from "../helpers/stub-drift";
@@ -74,19 +74,18 @@ describe("bulk deploy HTTP route", () => {
     failNames?: string[];
   }) {
     const fs = new NodeFileSystem();
-    const registry = new Registry({
-      fs,
-      store: new ConfigStore({ fs, configPath: join(home, "config.json") }),
-    });
+    const registry = realRegistry(fs, join(home, "config.json"));
     const inventory = new InventoryReader({ fs, resolvePath: () => harness });
     const diverged = new Set(options?.divergedNames ?? []);
     const fails = new Set(options?.failNames ?? []);
     // What apm leaves behind: the user-scope lockfile grows one entry per
     // successful install, exactly where the global deploy-state read looks.
     const installed: string[] = [];
+    const locks = new InFlightLocks();
     const deploy = new DeploySkill({
       inventory,
       registry,
+      locks,
       apm: {
         resolveLatestTag: async () =>
           options?.authRequired
@@ -136,7 +135,7 @@ describe("bulk deploy HTTP route", () => {
         toolPresence: { detectGlobalTools: async () => ["claude", "codex"] },
       }),
       deploy,
-      remove: stubRemove({ registry }),
+      remove: stubRemove({ registry, locks }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => globalRoot,
       connect: stubConnect(),

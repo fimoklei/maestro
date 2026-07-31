@@ -3,16 +3,16 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   ApmCliDriver,
-  ConfigStore,
   DeploySkill,
   type DeployTarget,
+  InFlightLocks,
   InventoryReader,
   NodeFileSystem,
-  Registry,
   type SupportedTool,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { realRegistry } from "../helpers/real-registry";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeployState } from "../helpers/stub-deploy-state";
@@ -91,10 +91,7 @@ describe("deploy HTTP route", () => {
     globalTools?: SupportedTool[];
   }) {
     const fs = new NodeFileSystem();
-    const registry = new Registry({
-      fs,
-      store: new ConfigStore({ fs, configPath: join(home, "config.json") }),
-    });
+    const registry = realRegistry(fs, join(home, "config.json"));
     const inventory = new InventoryReader({ fs, resolvePath: () => harness });
     const deployState = stubDeployState({ fs });
     const deployCalls: Array<{
@@ -107,9 +104,11 @@ describe("deploy HTTP route", () => {
       name: string;
       tools: readonly SupportedTool[];
     }> = [];
+    const locks = new InFlightLocks();
     const deploy = new DeploySkill({
       inventory,
       registry,
+      locks,
       apm: {
         resolveLatestTag: async () =>
           options?.authRequired
@@ -182,7 +181,7 @@ describe("deploy HTTP route", () => {
       inventory,
       deployState,
       deploy,
-      remove: stubRemove({ registry }),
+      remove: stubRemove({ registry, locks }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => globalRoot,
       connect: stubConnect(),

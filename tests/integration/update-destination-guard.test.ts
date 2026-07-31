@@ -14,6 +14,7 @@ import {
   DeploySkill,
   DeployStateReader,
   type DeployTarget,
+  InFlightLocks,
   type InventoryResult,
   NodeFileSystem,
 } from "@maestro/core";
@@ -123,6 +124,7 @@ describe("update journey against the real destination guard", () => {
       inventoryOriginUrl: async () =>
         "git@github.com:fimoklei/agent-harness.git",
       canonicalPath: async (path) => path,
+      locks: new InFlightLocks(),
     });
   };
 
