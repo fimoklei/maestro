@@ -137,7 +137,7 @@ type ResolvedScope =
 
 // Global carries the tools the live probe found at execution time — the only
 // set apm can have reached (ADR-0011).
-export type RemovedScope =
+type RemovedScope =
   | { kind: "repo" }
   | { kind: "global"; tools: readonly SupportedTool[] };
 

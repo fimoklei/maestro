@@ -3,7 +3,7 @@
 
 import type { BulkDeployReport, DeploySkillError } from "@maestro/core";
 
-export type BulkReportCounts = {
+type BulkReportCounts = {
   deployed: number;
   skipped: number;
   attention: number;

@@ -5,7 +5,7 @@ import { parse } from "yaml";
 import { z } from "zod";
 import type { FileSystemPort } from "../registry/file-system";
 
-export type Primitive = { type: "skill"; name: string; description: string };
+type Primitive = { type: "skill"; name: string; description: string };
 
 // One failure only: inventoryPath unset, missing, or not a directory.
 export type InventoryResult =

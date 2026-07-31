@@ -12,9 +12,9 @@ export type BulkDeployInput = {
   target: DeployTarget;
 };
 
-export type BulkDeployedRow = { name: string; version: string };
-export type BulkAttentionRow = { name: string; error: DeploySkillError };
-export type BulkFailure = { error: DeploySkillError; names: string[] };
+type BulkDeployedRow = { name: string; version: string };
+type BulkAttentionRow = { name: string; error: DeploySkillError };
+type BulkFailure = { error: DeploySkillError; names: string[] };
 
 export type BulkDeployReport = {
   target: DeployTarget;

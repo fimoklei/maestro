@@ -24,14 +24,14 @@ export type BulkRemoveInput = {
   targets: readonly BulkRemoveTarget[];
 };
 
-export type BulkRemovedRow = { target: DeployTarget; version: string };
-export type BulkRemoveRefusedRow = {
+type BulkRemovedRow = { target: DeployTarget; version: string };
+type BulkRemoveRefusedRow = {
   target: DeployTarget;
   reason: RemovePreflightError;
 };
 // `outcome` is present only where apm ran and left something to probe, exactly
 // as on a single removal: an absent key is never a state the server proved.
-export type BulkRemoveFailedRow = {
+type BulkRemoveFailedRow = {
   target: DeployTarget;
   reason: RemoveDeployedSkillError;
   outcome?: RemoveOutcome;
