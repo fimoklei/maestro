@@ -209,14 +209,17 @@ export function BulkRemoveDialog({
         aria-describedby={described === "" ? undefined : described}
         tabIndex={-1}
         className={cn(
-          "relative flex w-full max-w-[460px] flex-col overflow-hidden rounded-card border bg-chrome outline-none",
+          // Capped at the viewport, with only the body scrolling: a bulk can
+          // carry a row per target, and a panel that grew past the screen
+          // would push its own cancel out of reach.
+          "relative flex max-h-[calc(100vh-3rem)] w-full max-w-[460px] flex-col overflow-hidden rounded-card border bg-chrome outline-none",
           panelBorderFor({
             failure: error !== null,
             cost: !isRemoving && (grouped?.cost.length ?? 0) > 0,
           }),
         )}
       >
-        <div className="flex items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
+        <div className="flex shrink-0 items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
           <h2 className="font-semibold font-ui text-fg text-subtitle">
             {title.before}
             <span className="font-mono">{skillName}</span>
@@ -225,7 +228,7 @@ export function BulkRemoveDialog({
           <TypeTag type={type} className="shrink-0" />
         </div>
 
-        <div className="flex flex-col gap-3 px-3.5 py-3">
+        <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-3.5 py-3">
           {error !== null ? (
             <p
               id={bodyId}
@@ -276,7 +279,7 @@ export function BulkRemoveDialog({
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2.5 border-line-row border-t px-3.5 py-3">
+        <div className="flex shrink-0 items-center justify-end gap-2.5 border-line-row border-t px-3.5 py-3">
           <Button
             type="button"
             className="shrink-0"
