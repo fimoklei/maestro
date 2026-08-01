@@ -46,16 +46,17 @@ export type RemovePreflightView =
       reclaim: readonly ReclaimPreview[];
     }
   // The server refused outright — no confirm offered, since offering one would
-  // be a lie the user pays a round-trip to find out.
-  | { kind: "refused"; message: string };
+  // be a lie the user pays a round-trip to find out. The code rides along: a
+  // bulk names the refusal in a slot the message does not fit, and its run is
+  // told which refusal took the target out (#423).
+  | { kind: "refused"; code: RefusalCode; message: string };
+
+export type RefusalCode = RemovePreflightError | "invalid-body";
 
 // Keyed by core's own error union, so a new refusal there is a type error here.
 // Allowlist, not blocklist (code-standards.md): an unrecognised code falls
 // through to the failure state that still lets the user through.
-const REFUSES_THE_REMOVAL: Record<
-  RemovePreflightError | "invalid-body",
-  boolean
-> = {
+const REFUSES_THE_REMOVAL: Record<RefusalCode, boolean> = {
   "invalid-body": true,
   "unsupported-primitive-type": true,
   "invalid-name": true,
@@ -64,31 +65,30 @@ const REFUSES_THE_REMOVAL: Record<
   "preflight-failed": false,
 };
 
-// The server's wording when it refused, or null for anything else — a network
-// failure, a code-less response, or a code this build does not recognise.
-function refusalMessage(error: unknown): string | null {
+// The server's refusal, or null for anything else — a network failure, a
+// code-less response, or a code this build does not recognise.
+function refusal(
+  error: unknown,
+): { code: RefusalCode; message: string } | null {
   if (!(error instanceof HttpError) || error.code === undefined) {
     return null;
   }
-  const refuses =
-    REFUSES_THE_REMOVAL[error.code as keyof typeof REFUSES_THE_REMOVAL];
-  return refuses === true ? error.message : null;
+  const code = error.code as RefusalCode;
+  return REFUSES_THE_REMOVAL[code] === true
+    ? { code, message: error.message }
+    : null;
 }
 
-// The same table read for the bulk run (#422): which refusal code, if any,
-// this target's own check returned. "invalid-body" never travels — it says the
-// request was malformed, not that the target refused.
+// Which refusal the bulk run is told about (#422), read off the same view the
+// screen reads. "invalid-body" never travels — it says the request was
+// malformed, not that the target refused.
 export function refusedPreflightCode(
-  error: unknown,
+  view: RemovePreflightView,
 ): RemovePreflightError | null {
-  if (!(error instanceof HttpError) || error.code === undefined) {
+  if (view.kind !== "refused" || view.code === "invalid-body") {
     return null;
   }
-  const code = error.code as keyof typeof REFUSES_THE_REMOVAL;
-  if (code === "invalid-body" || REFUSES_THE_REMOVAL[code] !== true) {
-    return null;
-  }
-  return code;
+  return view.code;
 }
 
 const unanswered = (
@@ -107,13 +107,10 @@ export function removePreflightView(query: {
 }): RemovePreflightView {
   // Error before data: a failed refetch leaves a now-disproved answer in hand.
   if (query.isError) {
-    const refusal = refusalMessage(query.error);
-    return refusal === null
+    const refused = refusal(query.error);
+    return refused === null
       ? unanswered("check-failed")
-      : {
-          kind: "refused",
-          message: refusal,
-        };
+      : { kind: "refused", ...refused };
   }
   // Also covers the query being switched off, which happens only with no
   // dialog on screen to read the answer.
