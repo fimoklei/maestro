@@ -3,6 +3,7 @@ import { type ReactNode, useId } from "react";
 import { useModalDialog } from "../shell/use-modal-dialog";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
+import { panelBorderFor } from "../ui/panel-border";
 import { TypeTag } from "../ui/type-tag";
 import {
   type RemoveDialogTarget,
@@ -84,21 +85,6 @@ const OUTCOME_ROW: Record<RemoveTargetState, string> = {
   "not-removed": "bg-danger-bg",
   unknown: "bg-inset",
 };
-
-// The outline states the panel's worst news: a failure — refused before apm ran
-// or unproven after it — outranks cost outranks an ordinary confirmation.
-function panelBorderFor({
-  failure,
-  cost,
-}: {
-  failure: boolean;
-  cost: boolean;
-}): string {
-  if (failure) {
-    return "border-danger-border";
-  }
-  return cost ? "border-line-drift" : "border-line";
-}
 
 // One fill per row, never two — `cn` concatenates, so a second bg- utility
 // would leave the winner to stylesheet order.

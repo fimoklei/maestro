@@ -4,16 +4,22 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DeployStatePanel } from "../deploy-state/deploy-state-panel";
 import { BulkRemoveSkillAction } from "./bulk-remove-skill-action";
-import type { DeployTarget } from "./use-deploy-skill";
+import type { BulkRemoveCandidate } from "./bulk-remove-targets";
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const TARGETS: DeployTarget[] = [
-  { kind: "global" },
-  { kind: "repo", repoPath: "/dev/acme-web" },
+const TARGETS: BulkRemoveCandidate[] = [
+  { target: { kind: "global" }, label: "global", version: "v1.0.0" },
+  {
+    target: { kind: "repo", repoPath: "/dev/acme-web" },
+    label: "/dev/acme-web",
+    version: "v1.0.0",
+  },
 ];
+
+const ACME_WEB = TARGETS[1] as BulkRemoveCandidate;
 
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -29,7 +35,9 @@ const preflightAnswer = {
 const emptyReport = { name: "tdd", removed: [], refused: [], failed: [] };
 
 // One mock for both routes: the preflight answers, the bulk run reports.
-function stubServer(overrides: { preflight?: () => Response } = {}) {
+function stubServer(
+  overrides: { preflight?: (body: unknown) => Response } = {},
+) {
   const calls: { url: string; body: unknown }[] = [];
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     calls.push({
@@ -37,7 +45,9 @@ function stubServer(overrides: { preflight?: () => Response } = {}) {
       body: init?.body === undefined ? null : JSON.parse(String(init.body)),
     });
     if (url.endsWith("/remove/preflight")) {
-      return overrides.preflight?.() ?? jsonResponse(preflightAnswer);
+      const body =
+        init?.body === undefined ? null : JSON.parse(String(init.body));
+      return overrides.preflight?.(body) ?? jsonResponse(preflightAnswer);
     }
     return jsonResponse(emptyReport);
   });
@@ -74,8 +84,8 @@ describe("BulkRemoveSkillAction", () => {
         call.url.endsWith("/remove/preflight"),
       );
       expect(preflights.map((call) => call.body)).toEqual([
-        { type: "skill", name: "tdd", target: TARGETS[0] },
-        { type: "skill", name: "tdd", target: TARGETS[1] },
+        { type: "skill", name: "tdd", target: TARGETS[0]?.target },
+        { type: "skill", name: "tdd", target: TARGETS[1]?.target },
       ]);
     });
   });
@@ -96,25 +106,29 @@ describe("BulkRemoveSkillAction", () => {
     expect(runs).toHaveLength(1);
     expect(runs[0]?.body).toEqual({
       name: "tdd",
-      targets: [{ target: TARGETS[0] }, { target: TARGETS[1] }],
+      targets: [{ target: TARGETS[0]?.target }, { target: TARGETS[1]?.target }],
     });
   });
 
   it("takes a target its own check refused out of the run rather than guessing", async () => {
     // A refusal is an answer: the server already said this target cannot be
-    // removed, so the run is told rather than left to rediscover it.
+    // removed, so the run is told rather than left to rediscover it. The other
+    // target still goes — one unreachable repo does not stop a good removal,
+    // and the confirm counts only what it will walk (#423).
     const calls = stubServer({
-      preflight: () =>
-        jsonResponse(
-          { error: "repo-not-registered", message: "Not registered." },
-          404,
-        ),
+      preflight: (body) =>
+        (body as { target: { kind: string } }).target.kind === "repo"
+          ? jsonResponse(
+              { error: "repo-not-registered", message: "Not registered." },
+              404,
+            )
+          : jsonResponse(preflightAnswer),
     });
     renderAction();
     await openDialog();
 
     const confirm = await screen.findByRole("button", {
-      name: "remove from 2 →",
+      name: "remove from 1 →",
     });
     await waitFor(() => expect(confirm).toBeEnabled());
     await userEvent.click(confirm);
@@ -124,11 +138,59 @@ describe("BulkRemoveSkillAction", () => {
       expect(runs[0]?.body).toEqual({
         name: "tdd",
         targets: [
-          { target: TARGETS[0], refused: "repo-not-registered" },
-          { target: TARGETS[1], refused: "repo-not-registered" },
+          { target: TARGETS[0]?.target },
+          { target: TARGETS[1]?.target, refused: "repo-not-registered" },
         ],
       });
     });
+  });
+
+  it("names what cannot be removed, in a group of its own", async () => {
+    stubServer({
+      preflight: (body) =>
+        (body as { target: { kind: string } }).target.kind === "repo"
+          ? jsonResponse(
+              { error: "repo-not-registered", message: "Not registered." },
+              404,
+            )
+          : jsonResponse(preflightAnswer),
+    });
+    renderAction();
+    await openDialog();
+
+    const group = await screen.findByRole("group", {
+      name: "✕ CAN'T BE REMOVED · 1",
+    });
+    expect(group).toHaveTextContent("/dev/acme-web");
+    expect(group).toHaveTextContent("repo not registered");
+  });
+
+  it("weighs a copy with local edits as a cost, naming the version it destroys", async () => {
+    // The check answered: this copy carries work the removal deletes. It is a
+    // row with its price on it, never part of the clean count (#423).
+    stubServer({
+      preflight: (body) =>
+        (body as { target: { kind: string } }).target.kind === "repo"
+          ? jsonResponse({
+              check: { scope: "repo", warning: "local-edits-will-be-lost" },
+              reclaim: null,
+            })
+          : jsonResponse(preflightAnswer),
+    });
+    renderAction();
+    await openDialog();
+
+    const group = await screen.findByRole("group", {
+      name: "▲ LOSES WORK · 1",
+    });
+    expect(group).toHaveTextContent("/dev/acme-web");
+    expect(group).toHaveTextContent("v1.0.0");
+    expect(group).toHaveTextContent("local edits — deleted too");
+    expect(
+      screen.getByRole("button", {
+        name: "remove from 2 · 1 lose local edits →",
+      }),
+    ).toBeEnabled();
   });
 
   it("refreshes the targets it removed from, so what still shows still needs removing", async () => {
@@ -160,10 +222,7 @@ describe("BulkRemoveSkillAction", () => {
     });
     render(
       <QueryClientProvider client={queryClient}>
-        <BulkRemoveSkillAction
-          skillName="tdd"
-          targets={[{ kind: "repo", repoPath: "/dev/acme-web" }]}
-        />
+        <BulkRemoveSkillAction skillName="tdd" targets={[ACME_WEB]} />
         <DeployStatePanel repo="/dev/acme-web" />
       </QueryClientProvider>,
     );
@@ -199,7 +258,7 @@ describe("BulkRemoveSkillAction", () => {
           : new Promise<Response>(() => {});
       }),
     );
-    renderAction([{ kind: "repo", repoPath: "/dev/acme-web" }]);
+    renderAction([ACME_WEB]);
     const openIt = async () =>
       userEvent.click(
         screen.getByRole("button", { name: "remove from all 1 →" }),
@@ -255,10 +314,7 @@ describe("BulkRemoveSkillAction", () => {
     });
     render(
       <QueryClientProvider client={queryClient}>
-        <BulkRemoveSkillAction
-          skillName="tdd"
-          targets={[{ kind: "repo", repoPath: "/dev/acme-web" }]}
-        />
+        <BulkRemoveSkillAction skillName="tdd" targets={[ACME_WEB]} />
         <DeployStatePanel repo="/dev/acme-web" />
       </QueryClientProvider>,
     );

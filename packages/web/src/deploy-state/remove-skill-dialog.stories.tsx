@@ -177,7 +177,8 @@ export const CheckFailed: Story = {
 export const CheckRefused: Story = {
   args: {
     preflight: {
-      kind: "refused",
+      kind: "refused" as const,
+      code: "repo-not-registered" as const,
       message: "That repo is not registered with Maestro.",
     },
   },
