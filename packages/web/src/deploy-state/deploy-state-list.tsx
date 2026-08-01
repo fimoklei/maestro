@@ -193,6 +193,9 @@ export function DeployStateList({
                 // The token that came with the paths the dialog just named, not
                 // a client-rebuilt list a direct request could guess.
                 confirmedReclaimToken: preflight.data?.reclaim?.token,
+                // The answer this very dialog stated the cost from, so the
+                // server can tell a confirmed removal from a claimed one.
+                confirmedRemovalReceipt: preflight.data?.receipt,
               },
               {
                 onError: (error) => {

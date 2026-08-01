@@ -14,8 +14,8 @@ import type { DeployedLocation } from "./deployed-location";
 import type { DeployedRefLookup } from "./deployed-ref";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import { isValidSkillSlug } from "./package-ref";
-import { type ReclaimConsent, ReclaimConsentIssuer } from "./reclaim-consent";
 import { reclaimTools } from "./reclaim-untargeted-copies";
+import { type ReclaimConsent, RemoveConsentIssuer } from "./remove-consent";
 
 // Reads the ref from the target's own lockfile, never from the caller.
 export type DeployedRefPort = {
@@ -34,6 +34,9 @@ type RemoveDeployedSkillInput = {
   // Token from this request's own `preflight`, never a client-supplied path
   // list. Missing, stale, or guessed reclaims nothing (#390).
   confirmedReclaimToken?: string;
+  // Receipt from this request's own `preflight`. Distinct from the reclaim
+  // token: this one licenses deleting a copy carrying local edits (#458).
+  confirmedRemovalReceipt?: string;
 };
 
 // Each member's meaning for the user is the server's `removeErrorResponses`
@@ -47,6 +50,7 @@ export type RemoveDeployedSkillError =
   | "lockfile-malformed"
   | "ref-unresolvable"
   | "deployed-unreadable"
+  | "local-edits-unconfirmed"
   | "remove-in-progress"
   | "remove-failed";
 
@@ -168,6 +172,9 @@ type RemovePreflightResult =
       // Paths and token in one field, so neither can reach the confirmation
       // without the other.
       reclaim: ReclaimConsent | null;
+      // Beside the check, never instead of it: the proof only exists on an
+      // answer that also stated the cost (#458).
+      receipt: string;
     }
   | { ok: false; error: RemovePreflightError };
 
@@ -193,11 +200,11 @@ export class RemoveDeployedSkill {
     location: Pick<DeployedLocation, "treeRoot">;
   };
 
-  private readonly consent: ReclaimConsentIssuer;
+  private readonly consent: RemoveConsentIssuer;
 
   constructor(deps: RemoveDeployedSkill["deps"]) {
     this.deps = deps;
-    this.consent = new ReclaimConsentIssuer({
+    this.consent = new RemoveConsentIssuer({
       treeRoot: (target) => deps.location.treeRoot(target),
     });
   }
@@ -236,6 +243,7 @@ export class RemoveDeployedSkill {
         ok: true,
         check: await this.runCheck(input, scope, reclaim),
         reclaim,
+        receipt: this.consent.receipt(input),
       };
     } catch {
       return { ok: false, error: "preflight-failed" };
@@ -380,8 +388,8 @@ export class RemoveDeployedSkill {
         return { ok: false, error: lookup.reason };
       }
 
-      // The user already confirmed the consequence `preflight` stated, so an
-      // edited copy goes; only an unreadable one still refuses (#337).
+      // An edited copy goes once the consequence `preflight` stated was priced
+      // for this very request; an unreadable one refuses outright (#337, #458).
       const deployedState = await this.deps.deployedContent.classify({
         target,
         name: input.name,
@@ -389,6 +397,15 @@ export class RemoveDeployedSkill {
       const refusal = GUARD_REFUSALS[deployedState];
       if (refusal !== undefined) {
         return { ok: false, error: refusal };
+      }
+      if (
+        deployedState === "diverged" &&
+        !this.consent.accepts(
+          { target, name: input.name },
+          input.confirmedRemovalReceipt,
+        )
+      ) {
+        return { ok: false, error: "local-edits-unconfirmed" };
       }
 
       const removed = await this.deps.apm.removeSkill({

@@ -63,6 +63,9 @@ describe("bulk remove HTTP route", () => {
     // Repo paths where apm ran and did not confirm — the case that leaves a
     // disk probe to report.
     unprovenRepos?: string[];
+    // Repo paths whose deployed copy carries local edits, so the guard has a
+    // cost to price and a receipt to require (#458).
+    divergedRepos?: string[];
   }) {
     const fs = new NodeFileSystem();
     const registry = realRegistry(fs, join(home, "config.json"));
@@ -70,13 +73,19 @@ describe("bulk remove HTTP route", () => {
     const removeCalls: Array<{ target: DeployTarget; ref: string }> = [];
     const fails = new Set(options?.failRepos ?? []);
     const unproven = new Set(options?.unprovenRepos ?? []);
+    const diverged = new Set(options?.divergedRepos ?? []);
     const location = new DeployedLocation({ HOME: home });
     const locks = new InFlightLocks();
     const remove = new RemoveDeployedSkill({
       registry,
       locks,
       deployedRef: new DeployedRefAdapter({ fs, location }),
-      deployedContent: { classify: async () => "clean" },
+      deployedContent: {
+        classify: async ({ target }) =>
+          target.kind === "repo" && diverged.has(target.repoPath)
+            ? "diverged"
+            : "clean",
+      },
       apm: {
         removeSkill: async (input) => {
           removeCalls.push(input);
@@ -261,6 +270,73 @@ describe("bulk remove HTTP route", () => {
     expect(report.removed).toEqual([
       { target: repoTarget(repoB), version: "v0.5.1" },
     ]);
+  });
+
+  // Per target, both ways: the batch is the place where one target's answer
+  // could quietly speak for the next one, so it must not (#458).
+  it("keeps an unproven target out of apm and still finishes the batch", async () => {
+    const { app, registry, removeCalls } = makeApp({ divergedRepos: [repoA] });
+    await writeRepoLockfile(repoA);
+    await writeRepoLockfile(repoB);
+    await registry.register(repoA);
+    await registry.register(repoB);
+
+    const response = await post(app, {
+      name: "tdd",
+      targets: [{ target: repoTarget(repoA) }, { target: repoTarget(repoB) }],
+    });
+
+    const report = (await response.json()) as BulkRemoveReport;
+    expect(report.failed).toEqual([
+      { target: repoTarget(repoA), reason: "local-edits-unconfirmed" },
+    ]);
+    expect(report.removed).toEqual([
+      { target: repoTarget(repoB), version: "v0.5.1" },
+    ]);
+    expect(removeCalls.map((call) => call.target)).toEqual([repoTarget(repoB)]);
+  });
+
+  it("removes that same target once its own preflight receipt rides along", async () => {
+    const { app, registry, removeCalls } = makeApp({ divergedRepos: [repoA] });
+    await writeRepoLockfile(repoA);
+    await registry.register(repoA);
+
+    const preflight = await app.request("/api/deploy/remove/preflight", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        type: "skill",
+        name: "tdd",
+        target: repoTarget(repoA),
+      }),
+    });
+    const { receipt } = (await preflight.json()) as { receipt: string };
+    const response = await post(app, {
+      name: "tdd",
+      targets: [
+        { target: repoTarget(repoA), confirmedRemovalReceipt: receipt },
+      ],
+    });
+
+    const report = (await response.json()) as BulkRemoveReport;
+    expect(report.removed).toEqual([
+      { target: repoTarget(repoA), version: "v0.5.1" },
+    ]);
+    expect(removeCalls).toHaveLength(1);
+  });
+
+  it("rejects a receipt that is not even token-shaped, at the edge", async () => {
+    const { app, registry, removeCalls } = makeApp({ divergedRepos: [repoA] });
+    await writeRepoLockfile(repoA);
+    await registry.register(repoA);
+
+    const response = await post(app, {
+      name: "tdd",
+      targets: [{ target: repoTarget(repoA), confirmedRemovalReceipt: "nope" }],
+    });
+
+    expect(response.status).toBe(400);
+    expect(removeCalls).toEqual([]);
   });
 
   it("fails an unregistered repo without letting apm or its lockfile be touched", async () => {

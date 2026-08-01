@@ -40,6 +40,7 @@ const preflightOk = (warning: RemoveWarning | null) => ({
   ok: true,
   check: { scope: "repo", warning },
   reclaim: null,
+  receipt: expect.any(String),
 });
 
 // The same, on the scope that answers per detected tool rather than once for
@@ -48,6 +49,7 @@ const globalPreflightOk = (tools: RemoveToolCheck[]) => ({
   ok: true,
   check: { scope: "global", tools },
   reclaim: null,
+  receipt: expect.any(String),
 });
 
 type Overrides = {
@@ -134,6 +136,17 @@ function buildUseCase(overrides: Overrides = {}) {
     location: { treeRoot: overrides.treeRoot ?? (() => "/home") },
   });
   return { useCase, calls };
+}
+
+// The receipt the cockpit gets from its own preflight and echoes back. Taken
+// from the use-case rather than hand-built, so no test can mint one the
+// implementation would never issue.
+async function receiptFor(
+  useCase: RemoveDeployedSkill,
+  request: { type: string; name: string; target: DeployTarget },
+) {
+  const preflight = await useCase.preflight(request);
+  return preflight.ok ? preflight.receipt : undefined;
 }
 
 describe("RemoveDeployedSkill", () => {
@@ -265,8 +278,11 @@ describe("RemoveDeployedSkill", () => {
 
   it("removes a copy with local edits once the user has confirmed", async () => {
     const { useCase, calls } = buildUseCase({ deployedState: "diverged" });
+    const confirmedRemovalReceipt = await receiptFor(useCase, removeTdd);
 
-    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+    await expect(
+      useCase.execute({ ...removeTdd, confirmedRemovalReceipt }),
+    ).resolves.toEqual({
       ok: true,
       removed: {
         type: "skill",
@@ -291,6 +307,65 @@ describe("RemoveDeployedSkill", () => {
       },
     });
     expect(calls.removes).toEqual([{ target: removeTdd.target, ref: REF }]);
+  });
+
+  // Consent is proven, not taken on the caller's word: apm deletes an edited
+  // copy silently, so a request that carries no receipt from this server's own
+  // preflight is one nobody can show the warning for (#458).
+
+  it("refuses a copy with local edits when nothing proves the cost was stated", async () => {
+    const { useCase, calls } = buildUseCase({ deployedState: "diverged" });
+
+    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+      ok: false,
+      error: "local-edits-unconfirmed",
+    });
+    expect(calls.removes).toEqual([]);
+  });
+
+  it("refuses a receipt a caller merely guessed", async () => {
+    const { useCase, calls } = buildUseCase({ deployedState: "diverged" });
+
+    await expect(
+      useCase.execute({
+        ...removeTdd,
+        confirmedRemovalReceipt: "a".repeat(64),
+      }),
+    ).resolves.toEqual({ ok: false, error: "local-edits-unconfirmed" });
+    expect(calls.removes).toEqual([]);
+  });
+
+  it("refuses a receipt priced for a different skill", async () => {
+    const { useCase, calls } = buildUseCase({ deployedState: "diverged" });
+    const otherSkill = await receiptFor(useCase, {
+      ...removeTdd,
+      name: "jobs",
+    });
+
+    await expect(
+      useCase.execute({ ...removeTdd, confirmedRemovalReceipt: otherSkill }),
+    ).resolves.toEqual({ ok: false, error: "local-edits-unconfirmed" });
+    expect(calls.removes).toEqual([]);
+  });
+
+  it("refuses a receipt priced for a different target", async () => {
+    const { useCase, calls } = buildUseCase({ deployedState: "diverged" });
+    const otherTarget = await receiptFor(useCase, removeTddGlobally);
+
+    await expect(
+      useCase.execute({ ...removeTdd, confirmedRemovalReceipt: otherTarget }),
+    ).resolves.toEqual({ ok: false, error: "local-edits-unconfirmed" });
+    expect(calls.removes).toEqual([]);
+  });
+
+  it("refuses the global copy's local edits on the same terms", async () => {
+    const { useCase, calls } = buildUseCase({ deployedState: "diverged" });
+
+    await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
+      ok: false,
+      error: "local-edits-unconfirmed",
+    });
+    expect(calls.removes).toEqual([]);
   });
 
   it("refuses a deployed copy it cannot read", async () => {
@@ -751,7 +826,7 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
 // must name that path by tool so the dialog can state it, and a path
 // preflight could not build is dropped rather than guessed.
 describe("RemoveDeployedSkill.preflight naming the reclaim", () => {
-  // Which leftovers qualify, and where they sit, is ReclaimConsentIssuer's own
+  // Which leftovers qualify, and where they sit, is RemoveConsentIssuer's own
   // rule and is tested there. What matters here is that preflight hands the
   // confirmation the whole consent — paths and token together.
   it("hands the confirmation the leftover paths together with their token", async () => {
@@ -770,6 +845,7 @@ describe("RemoveDeployedSkill.preflight naming the reclaim", () => {
         previews: [{ tool: "claude", path: "/home/.claude/skills/tdd" }],
         token: expect.any(String),
       },
+      receipt: expect.any(String),
     });
   });
 
@@ -818,6 +894,7 @@ describe("RemoveDeployedSkill.preflight naming the reclaim", () => {
         previews: [{ tool: "claude", path: "/home/.claude/skills/tdd" }],
         token: expect.any(String),
       },
+      receipt: expect.any(String),
     });
   });
 });

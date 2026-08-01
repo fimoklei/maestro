@@ -1,6 +1,4 @@
-// The consent a global removal needs before force-deleting a copy apm's own
-// uninstall cannot reach: the paths the confirmation states, plus a token
-// proving they came from this server's own preflight. See #339, #390.
+// Consents only preflight can mint: reclaim (#339, #390), receipt (#458).
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { join } from "node:path";
 import type { DeployTarget } from "./deploy-skill";
@@ -22,15 +20,19 @@ export type ReclaimConsent = {
   token: string;
 };
 
-// `detected` is the live tool probe; undefined on the per-repo path, where
-// nothing is ever reclaimed.
-export type ReclaimScope = {
+// What one removal is about, before any question of leftovers.
+export type RemoveScope = {
   target: DeployTarget;
   name: string;
+};
+
+// `detected` is the live tool probe; undefined on the per-repo path, where
+// nothing is ever reclaimed.
+export type ReclaimScope = RemoveScope & {
   detected: readonly SupportedTool[] | undefined;
 };
 
-export class ReclaimConsentIssuer {
+export class RemoveConsentIssuer {
   // Never exposed over the wire, so a valid token can only exist because this
   // instance's own `offer` produced it.
   private readonly secret = randomBytes(32);
@@ -65,6 +67,17 @@ export class ReclaimConsentIssuer {
       : null;
   }
 
+  // The proof that this server priced the removal itself, minted by every
+  // preflight that answers. Unlike a reclaim, it names no paths: what it
+  // authorizes is deleting the copy the request already names (#458).
+  receipt(scope: RemoveScope): string {
+    return this.sign({ kind: "receipt", ...this.canonicalScope(scope) });
+  }
+
+  accepts(scope: RemoveScope, receipt: string | undefined): boolean {
+    return receipt !== undefined && this.matches(this.receipt(scope), receipt);
+  }
+
   private previews(scope: ReclaimScope): ReclaimPreview[] {
     if (scope.detected === undefined) {
       return [];
@@ -97,15 +110,29 @@ export class ReclaimConsentIssuer {
     scope: ReclaimScope,
     previews: readonly ReclaimPreview[],
   ): string {
-    const canonical = JSON.stringify({
+    return this.sign({
+      kind: "reclaim",
+      ...this.canonicalScope(scope),
+      paths: previews.map((entry) => `${entry.tool}:${entry.path}`).sort(),
+    });
+  }
+
+  private canonicalScope(scope: RemoveScope) {
+    return {
       target:
         scope.target.kind === "repo"
           ? { kind: "repo", repoPath: scope.target.repoPath }
           : { kind: "global" },
       name: scope.name,
-      paths: previews.map((entry) => `${entry.tool}:${entry.path}`).sort(),
-    });
-    return createHmac("sha256", this.secret).update(canonical).digest("hex");
+    };
+  }
+
+  // `kind` keeps the two apart: neither token may ever pass as the other, since
+  // they authorize different destruction.
+  private sign(payload: Record<string, unknown>): string {
+    return createHmac("sha256", this.secret)
+      .update(JSON.stringify(payload))
+      .digest("hex");
   }
 
   // Constant-time; anything malformed fails the match rather than throwing.

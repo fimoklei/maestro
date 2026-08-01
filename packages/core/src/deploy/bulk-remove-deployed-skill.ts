@@ -14,6 +14,9 @@ export type BulkRemoveTarget = {
   // Minted by this target's own preflight; the walk forwards it untouched so a
   // global removal reclaims exactly the copies the user confirmed (#390).
   confirmedReclaimToken?: string;
+  // Also this target's own, so one target's confirmation never licenses
+  // destroying the local edits in the copy next to it (#458).
+  confirmedRemovalReceipt?: string;
   // Set when this target's own preflight already refused it. Skipped rather
   // than attempted, so a bulk run never retries a question already answered.
   refused?: RemovePreflightError;
@@ -74,6 +77,7 @@ export class BulkRemoveDeployedSkill {
           name: input.name,
           target: entry.target,
           confirmedReclaimToken: entry.confirmedReclaimToken,
+          confirmedRemovalReceipt: entry.confirmedRemovalReceipt,
         });
       } catch {
         result = { ok: false, error: "remove-failed" };

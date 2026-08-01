@@ -28,7 +28,7 @@ export { InventoryGitAdapter } from "./deploy/inventory-git";
 export type {
   ReclaimConsent,
   ReclaimPreview,
-} from "./deploy/reclaim-consent";
+} from "./deploy/remove-consent";
 export {
   type RemoveCheck,
   RemoveDeployedSkill,

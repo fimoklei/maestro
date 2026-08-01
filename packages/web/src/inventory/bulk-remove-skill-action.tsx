@@ -80,11 +80,14 @@ function BulkRemoveRun({
       const preflight = preflights[index];
       const refused = refusedPreflightCode(preflight?.error);
       const token = preflight?.data?.reclaim?.token;
+      const receipt = preflight?.data?.receipt;
       return {
         target,
         // Only where the check minted one: the token authorises deleting the
         // exact leftover copies the user was shown (#390).
         ...(token === undefined ? {} : { confirmedReclaimToken: token }),
+        // This target's own receipt, from this target's own check (#458).
+        ...(receipt === undefined ? {} : { confirmedRemovalReceipt: receipt }),
         ...(refused === null ? {} : { refused }),
       };
     });

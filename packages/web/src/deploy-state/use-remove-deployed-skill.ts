@@ -15,6 +15,9 @@ export type RemoveRequest = {
   // Proves the confirmation the user saw came from an actual preflight call,
   // not a path a direct request could guess.
   confirmedReclaimToken?: string;
+  // The same proof for the removal itself: without it the server refuses to
+  // delete a copy carrying local edits (#458).
+  confirmedRemovalReceipt?: string;
 };
 
 // The outcome is reported from the server's answer, never the screen's own

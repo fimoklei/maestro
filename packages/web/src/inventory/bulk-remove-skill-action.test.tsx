@@ -21,10 +21,16 @@ const jsonResponse = (body: unknown, status = 200) =>
     headers: { "content-type": "application/json" },
   });
 
-const preflightAnswer = {
+// A receipt per target, so a test can tell "each entry carries its own answer"
+// apart from "one answer was copied across the batch" (#458).
+const receiptFor = (target: DeployTarget) =>
+  target.kind === "global" ? "g".repeat(64) : "r".repeat(64);
+
+const preflightAnswer = (target: DeployTarget) => ({
   check: { scope: "repo", warning: null },
   reclaim: null,
-};
+  receipt: receiptFor(target),
+});
 
 const emptyReport = { name: "tdd", removed: [], refused: [], failed: [] };
 
@@ -37,7 +43,10 @@ function stubServer(overrides: { preflight?: () => Response } = {}) {
       body: init?.body === undefined ? null : JSON.parse(String(init.body)),
     });
     if (url.endsWith("/remove/preflight")) {
-      return overrides.preflight?.() ?? jsonResponse(preflightAnswer);
+      const { target } = JSON.parse(String(init?.body)) as {
+        target: DeployTarget;
+      };
+      return overrides.preflight?.() ?? jsonResponse(preflightAnswer(target));
     }
     return jsonResponse(emptyReport);
   });
@@ -96,7 +105,16 @@ describe("BulkRemoveSkillAction", () => {
     expect(runs).toHaveLength(1);
     expect(runs[0]?.body).toEqual({
       name: "tdd",
-      targets: [{ target: TARGETS[0] }, { target: TARGETS[1] }],
+      targets: [
+        {
+          target: TARGETS[0],
+          confirmedRemovalReceipt: receiptFor(TARGETS[0] as DeployTarget),
+        },
+        {
+          target: TARGETS[1],
+          confirmedRemovalReceipt: receiptFor(TARGETS[1] as DeployTarget),
+        },
+      ],
     });
   });
 
