@@ -122,7 +122,7 @@ export const ReportPartial: Story = {
         {
           label: "/dev/acme-api",
           outcome: "failed",
-          reason: "target is held by another operation",
+          reason: "target is held by another operation — still there",
         },
         {
           label: "/dev/legacy-etl",

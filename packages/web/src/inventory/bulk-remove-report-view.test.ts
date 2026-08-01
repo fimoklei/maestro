@@ -115,6 +115,60 @@ describe("bulkRemoveReportView — a partial run", () => {
 
   // A row nobody can name is still a target the run left behind; dropping it
   // would report a cleaner run than the one that happened.
+  // A failed removal can still have taken the copy off disk. The row says so:
+  // "go and look" and "nothing left to do" are opposite instructions.
+  it("adds what the probe proved about a failed target's copy", () => {
+    const probed = (outcome: unknown) =>
+      view({
+        report: report({
+          failed: [
+            {
+              target: TARGETS[0]?.target ?? { kind: "global" },
+              reason: "remove-failed",
+              outcome,
+            } as never,
+          ],
+        }),
+      }) as { leftAlone: { reason: string }[] };
+
+    expect(
+      probed({ scope: "repo", state: "removed" }).leftAlone[0]?.reason,
+    ).toBe("apm did not complete the removal — gone anyway");
+    expect(
+      probed({ scope: "repo", state: "not-removed" }).leftAlone[0]?.reason,
+    ).toBe("apm did not complete the removal — still there");
+    // A probe that could not answer proves nothing, so it says nothing (J04).
+    expect(
+      probed({ scope: "repo", state: "unknown" }).leftAlone[0]?.reason,
+    ).toBe("apm did not complete the removal");
+  });
+
+  // apm removes for every tool at once, so one tool still holding a copy means
+  // the target is not clear — the worst answer wins.
+  it("reads a global probe as still there when any tool still holds a copy", () => {
+    const mixed = view({
+      report: report({
+        failed: [
+          {
+            target: TARGETS[0]?.target ?? { kind: "global" },
+            reason: "remove-failed",
+            outcome: {
+              scope: "global",
+              tools: [
+                { tool: "claude-code", state: "removed" },
+                { tool: "codex", state: "not-removed" },
+              ],
+            },
+          } as never,
+        ],
+      }),
+    }) as { leftAlone: { reason: string }[] };
+
+    expect(mixed.leftAlone[0]?.reason).toBe(
+      "apm did not complete the removal — still there",
+    );
+  });
+
   // A row whose reason this build cannot name is still a target left behind;
   // a blank slot beside it would read as no reason at all.
   it("falls back to the raw code when the run names a reason it does not know", () => {

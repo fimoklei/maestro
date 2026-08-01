@@ -4,7 +4,11 @@
 // run that never produced a report states no counts at all — zeroes would read
 // as a clean run that removed nothing.
 
-import type { BulkRemoveReport, RemoveDeployedSkillError } from "@maestro/core";
+import type {
+  BulkRemoveReport,
+  RemoveDeployedSkillError,
+  RemoveOutcome,
+} from "@maestro/core";
 import { HttpError } from "../api/http";
 import { REFUSAL_REASON } from "./bulk-remove-dialog-view";
 import type { BulkRemoveCandidate } from "./bulk-remove-targets";
@@ -101,6 +105,28 @@ export function bulkRemoveReportView(input: {
   };
 }
 
+// What the server's own probe of the disk found after apm failed, appended to
+// the reason. A failed removal can still have taken the copy off: "go and
+// look" and "nothing left to do" are opposite instructions. Silence where the
+// probe proved nothing — an unanswered probe is not a clean copy (J04).
+function probed(outcome: RemoveOutcome | undefined): string {
+  if (outcome === undefined) {
+    return "";
+  }
+  // apm removes for every tool at once, so one tool still holding a copy
+  // leaves the whole target uncleared.
+  const states =
+    outcome.scope === "repo"
+      ? [outcome.state]
+      : outcome.tools.map((entry) => entry.state);
+  if (states.includes("not-removed")) {
+    return " — still there";
+  }
+  return states.length > 0 && states.every((state) => state === "removed")
+    ? " — gone anyway"
+    : "";
+}
+
 // In the order the confirmation listed them, so the rows sit where the user
 // just read them. A target the run names but the caller did not list still
 // gets a row — under its own key rather than dropped.
@@ -131,7 +157,7 @@ function orderedLeftAlone(
     rows.set(key, {
       label: labels.get(key) ?? key,
       outcome: "failed",
-      reason: FAILURE_REASON[row.reason] ?? row.reason,
+      reason: `${FAILURE_REASON[row.reason] ?? row.reason}${probed(row.outcome)}`,
     });
   }
 
