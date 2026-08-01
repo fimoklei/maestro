@@ -61,7 +61,7 @@ const COST_ORDER: Exclude<RemoveRowWarning, "none">[] = [
 // Terse where the server's own sentence is prose — the row has one line and
 // the message is the wrong length for it. An unrecognised code falls back to
 // itself rather than to silence.
-const REFUSAL_REASON: Record<RefusalCode, string> = {
+export const REFUSAL_REASON: Record<RefusalCode, string> = {
   "repo-not-registered": "repo not registered",
   "no-supported-tool": "no supported tool here",
   "invalid-name": "not a valid skill name",

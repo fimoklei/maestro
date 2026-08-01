@@ -11,8 +11,7 @@ const allClean: BulkRemoveDialogView = {
   confirmLabel: "remove from 4 →",
 };
 
-// One story per state this dialog ships (#422, #423). The per-target report
-// arrives with its own ticket and its own story.
+// One story per state this dialog ships (#422, #423, #424).
 const meta = {
   title: "Inventory/BulkRemoveDialog",
   component: BulkRemoveDialog,
@@ -21,7 +20,7 @@ const meta = {
     targetCount: 4,
     view: allClean,
     isRemoving: false,
-    error: null,
+    report: null,
     onCancel: () => {},
     onConfirm: () => {},
   },
@@ -91,7 +90,58 @@ export const Running: Story = {
 // The answer was lost. What the run did is unknown, so the panel says so.
 export const OutcomeUnknown: Story = {
   args: {
-    error:
-      "Maestro lost its server's answer and cannot say what was removed. Close this and check the targets before trying again.",
+    report: {
+      kind: "outcome-unknown",
+      label: "the outcome is unknown",
+      message:
+        "Maestro lost its server's answer and cannot say what was removed. Close this and check the targets before trying again.",
+    },
+  },
+};
+
+// Every target came off: one line, no group, and nothing left to do but leave.
+export const ReportClean: Story = {
+  args: {
+    report: {
+      kind: "clean",
+      title: { before: "Removed ", after: "" },
+      counts: "removed 4 · refused 0 · failed 0",
+    },
+  },
+};
+
+// The split is in the title, and every target left behind carries both the
+// class that skipped it and its own reason.
+export const ReportPartial: Story = {
+  args: {
+    report: {
+      kind: "partial",
+      title: { before: "Removed ", after: " from 2 of 4" },
+      counts: "removed 2 · refused 1 · failed 1",
+      leftAlone: [
+        {
+          label: "/dev/acme-api",
+          outcome: "failed",
+          reason: "target is held by another operation — still there",
+        },
+        {
+          label: "/dev/legacy-etl",
+          outcome: "refused",
+          reason: "repo not registered",
+        },
+      ],
+    },
+  },
+};
+
+// The server answered before the walk began, so nothing was removed anywhere
+// and the confirm body it would act on comes back with the failure.
+export const ReportNeverStarted: Story = {
+  args: {
+    report: {
+      kind: "never-started",
+      label: "the run never started",
+      message: "Malformed request. Nothing was removed anywhere. Try again.",
+    },
   },
 };

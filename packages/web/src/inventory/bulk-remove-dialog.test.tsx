@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { BulkRemoveDialog } from "./bulk-remove-dialog";
 import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
+import type { BulkRemoveReportView } from "./bulk-remove-report-view";
 
 const allClean: BulkRemoveDialogView = {
   kind: "grouped",
@@ -38,19 +39,28 @@ function renderDialog(
 ) {
   const onCancel = vi.fn();
   const onConfirm = vi.fn();
-  render(
+  const dialog = (
+    extra: Partial<React.ComponentProps<typeof BulkRemoveDialog>>,
+  ) => (
     <BulkRemoveDialog
       skillName="tdd"
       targetCount={3}
       view={allClean}
       isRemoving={false}
-      error={null}
+      report={null}
       onCancel={onCancel}
       onConfirm={onConfirm}
       {...props}
-    />,
+      {...extra}
+    />
   );
-  return { onCancel, onConfirm };
+  const view = render(dialog({}));
+  return {
+    onCancel,
+    onConfirm,
+    rerender: (extra: Partial<React.ComponentProps<typeof BulkRemoveDialog>>) =>
+      view.rerender(dialog(extra)),
+  };
 }
 
 describe("BulkRemoveDialog — while the checks run", () => {
@@ -238,8 +248,12 @@ describe("BulkRemoveDialog — during the run", () => {
     // The body tells the user to close and check. A live confirm beside it
     // would repeat a destructive run whose result nobody has seen.
     const { onCancel, onConfirm } = renderDialog({
-      error:
-        "Maestro lost its server's answer and cannot say what was removed.",
+      report: {
+        kind: "outcome-unknown",
+        label: "the outcome is unknown",
+        message:
+          "Maestro lost its server's answer and cannot say what was removed.",
+      },
     });
 
     expect(screen.queryByRole("button", { name: /^remove from/i })).toBeNull();
@@ -249,5 +263,121 @@ describe("BulkRemoveDialog — during the run", () => {
     await userEvent.click(screen.getByRole("button", { name: "close" }));
     expect(onCancel).toHaveBeenCalledTimes(1);
     expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  // The server answered before the walk began, so the same attempt can simply
+  // be made again — and the body it would act on is still on screen.
+  it("keeps the confirm live when the run never started", async () => {
+    const { onConfirm } = renderDialog({
+      view: withCost,
+      report: {
+        kind: "never-started",
+        label: "the run never started",
+        message: "Malformed request. Nothing was removed anywhere. Try again.",
+      },
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "the run never started",
+    );
+    expect(screen.getByText("▲ LOSES WORK · 2")).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: /^remove from/i }),
+    );
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("BulkRemoveDialog — once the run reports", () => {
+  const clean: BulkRemoveReportView = {
+    kind: "clean",
+    title: { before: "Removed ", after: "" },
+    counts: "removed 3 · refused 0 · failed 0",
+  };
+
+  const partial: BulkRemoveReportView = {
+    kind: "partial",
+    title: { before: "Removed ", after: " from 1 of 3" },
+    counts: "removed 1 · refused 1 · failed 1",
+    leftAlone: [
+      {
+        label: "/dev/acme-api",
+        outcome: "failed",
+        reason: "target is held by another operation",
+      },
+      {
+        label: "/dev/legacy-etl",
+        outcome: "refused",
+        reason: "repo not registered",
+      },
+    ],
+  };
+
+  it("reads as one line when every target came off, with no group beside it", () => {
+    renderDialog({ report: clean });
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAccessibleName("Removed tdd");
+    expect(dialog).toHaveTextContent("removed 3 · refused 0 · failed 0");
+    expect(screen.queryByText(/LEFT ALONE/)).toBeNull();
+    expect(screen.queryByText(/clean copies/)).toBeNull();
+  });
+
+  it("names the split in the title, so the outcome lands before any detail", () => {
+    renderDialog({ report: partial });
+
+    expect(screen.getByRole("dialog")).toHaveAccessibleName(
+      "Removed tdd from 1 of 3",
+    );
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      "removed 1 · refused 1 · failed 1",
+    );
+  });
+
+  it("gives every left-alone target its class and its own reason", () => {
+    renderDialog({ report: partial });
+
+    const group = screen.getByRole("group", { name: "✕ LEFT ALONE · 2" });
+    expect(group).toHaveTextContent("/dev/acme-api");
+    expect(group).toHaveTextContent("failed");
+    expect(group).toHaveTextContent("target is held by another operation");
+    expect(group).toHaveTextContent("/dev/legacy-etl");
+    expect(group).toHaveTextContent("refused");
+    expect(group).toHaveTextContent("repo not registered");
+  });
+
+  it("takes the danger outline once a target was left behind", () => {
+    renderDialog({ report: partial });
+    expect(screen.getByRole("dialog")).toHaveClass("border-danger-border");
+  });
+
+  // Nothing left to confirm: the run is over, and a control that reran it
+  // would recount targets the pane behind is already re-reading.
+  it("leaves one way out and no retry, whatever the run left behind", async () => {
+    const { onCancel } = renderDialog({ report: clean });
+    expect(
+      screen.getAllByRole("button").map((control) => control.textContent),
+    ).toEqual(["done"]);
+
+    await userEvent.click(screen.getByRole("button", { name: "done" }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("says close rather than done when the run left something behind", () => {
+    renderDialog({ report: partial });
+    expect(
+      screen.getAllByRole("button").map((control) => control.textContent),
+    ).toEqual(["close"]);
+  });
+
+  it("announces the outcome in a live region mounted before it", () => {
+    const { rerender } = renderDialog({});
+    const live = screen.getByLabelText("Bulk remove result");
+    expect(live).toHaveTextContent("");
+
+    rerender({ report: partial });
+    expect(screen.getByLabelText("Bulk remove result")).toHaveTextContent(
+      "Removed tdd from 1 of 3 · removed 1 · refused 1 · failed 1",
+    );
   });
 });

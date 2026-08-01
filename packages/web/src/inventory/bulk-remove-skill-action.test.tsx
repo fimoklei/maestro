@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DeployStatePanel } from "../deploy-state/deploy-state-panel";
@@ -47,7 +47,10 @@ const emptyReport = { name: "tdd", removed: [], refused: [], failed: [] };
 
 // One mock for both routes: the preflight answers, the bulk run reports.
 function stubServer(
-  overrides: { preflight?: (body: unknown) => Response } = {},
+  overrides: {
+    preflight?: (body: unknown) => Response;
+    report?: (body: unknown) => Response;
+  } = {},
 ) {
   const calls: { url: string; body: unknown }[] = [];
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
@@ -61,7 +64,9 @@ function stubServer(
         overrides.preflight?.(body) ?? jsonResponse(answerFor(body.target))
       );
     }
-    return jsonResponse(emptyReport);
+    const body =
+      init?.body === undefined ? null : JSON.parse(String(init.body));
+    return overrides.report?.(body) ?? jsonResponse(emptyReport);
   });
   vi.stubGlobal("fetch", fetchMock);
   return calls;
@@ -102,8 +107,19 @@ describe("BulkRemoveSkillAction", () => {
     });
   });
 
-  it("sends one request for the whole run, and closes when it finishes", async () => {
-    const calls = stubServer();
+  it("sends one request for the whole run, and reports what it did", async () => {
+    const calls = stubServer({
+      report: () =>
+        jsonResponse({
+          name: "tdd",
+          removed: TARGETS.map((candidate) => ({
+            target: candidate.target,
+            version: "v1.0.0",
+          })),
+          refused: [],
+          failed: [],
+        }),
+    });
     renderAction();
     await openDialog();
 
@@ -113,7 +129,12 @@ describe("BulkRemoveSkillAction", () => {
     await waitFor(() => expect(confirm).toBeEnabled());
     await userEvent.click(confirm);
 
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    // The run's outcome replaces the question rather than vanishing with it.
+    const dialog = await screen.findByRole("dialog", { name: "Removed tdd" });
+    expect(dialog).toHaveTextContent("removed 2 · refused 0 · failed 0");
+    await userEvent.click(screen.getByRole("button", { name: "done" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+
     const runs = calls.filter((call) => call.url.endsWith("/remove/bulk"));
     expect(runs).toHaveLength(1);
     expect(runs[0]?.body).toEqual({
@@ -219,7 +240,7 @@ describe("BulkRemoveSkillAction", () => {
     ).toBeEnabled();
   });
 
-  it("refreshes the targets it removed from, so what still shows still needs removing", async () => {
+  it("refreshes the targets it removed from once the report is closed", async () => {
     // The pane and the inventory's deployed column read the same queries; a
     // stale one would keep listing a copy that is gone (frontend.md).
     let removed = false;
@@ -262,6 +283,9 @@ describe("BulkRemoveSkillAction", () => {
     });
     await waitFor(() => expect(confirm).toBeEnabled());
     await userEvent.click(confirm);
+    // The pane behind the report is re-read on the way out, so what it lists
+    // afterwards is exactly what still holds the skill.
+    await userEvent.click(await screen.findByRole("button", { name: "done" }));
 
     expect(await screen.findByText(/empty/i)).toBeInTheDocument();
   });
@@ -359,6 +383,66 @@ describe("BulkRemoveSkillAction", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       /cannot say what was removed/i,
     );
+    await userEvent.click(screen.getByRole("button", { name: "close" }));
     expect(await screen.findByText(/empty/i)).toBeInTheDocument();
+  });
+
+  it("says the run never started when the server refuses the request", async () => {
+    // The server answered, so nothing was walked. The same attempt is still on
+    // offer, against the body it would act on.
+    stubServer({
+      report: () =>
+        jsonResponse(
+          { error: "invalid-body", message: "Malformed request." },
+          400,
+        ),
+    });
+    renderAction([ACME_WEB]);
+    await userEvent.click(
+      screen.getByRole("button", { name: "remove from all 1 →" }),
+    );
+    const confirm = await screen.findByRole("button", {
+      name: "remove from 1 →",
+    });
+    await waitFor(() => expect(confirm).toBeEnabled());
+    await userEvent.click(confirm);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "the run never started",
+    );
+    expect(screen.getByRole("dialog")).not.toHaveTextContent(/refused 0/);
+    expect(
+      screen.getByRole("button", { name: "remove from 1 →" }),
+    ).toBeEnabled();
+  });
+
+  it("names every target the run left behind, with its class and its reason", async () => {
+    stubServer({
+      report: () =>
+        jsonResponse({
+          name: "tdd",
+          removed: [{ target: TARGETS[0]?.target, version: "v1.0.0" }],
+          refused: [{ target: ACME_WEB.target, reason: "repo-not-registered" }],
+          failed: [],
+        }),
+    });
+    renderAction();
+    await openDialog();
+
+    const confirm = await screen.findByRole("button", {
+      name: "remove from 2 →",
+    });
+    await waitFor(() => expect(confirm).toBeEnabled());
+    await userEvent.click(confirm);
+
+    expect(
+      await screen.findByRole("dialog", { name: "Removed tdd from 1 of 2" }),
+    ).toBeInTheDocument();
+    const group = screen.getByRole("group", { name: "✕ LEFT ALONE · 1" });
+    expect(group).toHaveTextContent("/dev/acme-web");
+    expect(group).toHaveTextContent("refused");
+    expect(group).toHaveTextContent("repo not registered");
+    const controls = within(screen.getByRole("dialog")).getAllByRole("button");
+    expect(controls.map((control) => control.textContent)).toEqual(["close"]);
   });
 });

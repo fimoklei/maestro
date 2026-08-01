@@ -2,19 +2,19 @@ import { useId } from "react";
 import { useModalDialog } from "../shell/use-modal-dialog";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
+import { FailureNote } from "../ui/failure-note";
 import { panelBorderFor } from "../ui/panel-border";
 import { StatusDot } from "../ui/status-dot";
 import { TypeTag } from "../ui/type-tag";
-import type {
-  BulkRemoveCostRow,
-  BulkRemoveDialogView,
-  BulkRemoveRefusalRow,
-} from "./bulk-remove-dialog-view";
+import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
+import type { BulkRemoveReportView } from "./bulk-remove-report-view";
 
-// The bulk remove's confirmation (#422), grouped by what it costs (#423). The
-// body is the weighing itself: a clean target is a number, a costly one is a
-// row with its reason. Presentational — the host owns the checks, the request
-// and the in-flight flag; bulkRemoveDialogView owns the grouping.
+// The bulk remove's confirmation (#422), grouped by what it costs (#423), and
+// the report that replaces it once the run answers (#424). The body is the
+// weighing itself: a clean target is a number, a costly one is a row with its
+// reason — and afterwards, a removed target is a number and a left-alone one
+// is a row. Presentational — the host owns the checks, the request and the
+// in-flight flag; the two view models own the grouping.
 
 // One inset line, the shape every non-grouped body takes: the checks, the
 // walk, and the clean count all read as one statement about the whole run.
@@ -69,6 +69,15 @@ const GROUP_TONE = {
   },
 } as const;
 
+// One row of a group. `reason` is the right-hand slot, `detail` the line under
+// it — a report row needs both: the class that left the target alone, and why.
+type GroupRow = {
+  label: string;
+  version?: string;
+  reason: string;
+  detail?: string;
+};
+
 // A box of static text with its own accessible name, so the whole cost is read
 // out with the question rather than found afterwards.
 function ReasonGroup({
@@ -80,7 +89,7 @@ function ReasonGroup({
   id: string;
   heading: string;
   tone: keyof typeof GROUP_TONE;
-  rows: (BulkRemoveCostRow | BulkRemoveRefusalRow)[];
+  rows: GroupRow[];
 }) {
   const colours = GROUP_TONE[tone];
   return (
@@ -105,22 +114,27 @@ function ReasonGroup({
           <li
             key={row.label}
             className={cn(
-              "flex items-center justify-between gap-2.5 px-2.5 py-2",
+              "flex flex-col gap-1 px-2.5 py-2",
               colours.fill,
               index < rows.length - 1 && colours.divider,
             )}
           >
-            <span className="flex min-w-0 items-baseline gap-2.5">
-              <span className="truncate text-fg">{row.label}</span>
-              {"version" in row ? (
-                <span className="shrink-0 text-dim text-mono-sm">
-                  {row.version}
-                </span>
-              ) : null}
+            <span className="flex items-center justify-between gap-2.5">
+              <span className="flex min-w-0 items-baseline gap-2.5">
+                <span className="truncate text-fg">{row.label}</span>
+                {row.version === undefined ? null : (
+                  <span className="shrink-0 text-dim text-mono-sm">
+                    {row.version}
+                  </span>
+                )}
+              </span>
+              <span className={cn("shrink-0 text-mono-sm", colours.ink)}>
+                {row.reason}
+              </span>
             </span>
-            <span className={cn("shrink-0 text-mono-sm", colours.ink)}>
-              {row.reason}
-            </span>
+            {row.detail === undefined ? null : (
+              <span className="text-fg-2 text-mono-sm">{row.detail}</span>
+            )}
           </li>
         ))}
       </ul>
@@ -133,7 +147,7 @@ export function BulkRemoveDialog({
   targetCount,
   view,
   isRemoving,
-  error,
+  report,
   onCancel,
   onConfirm,
 }: {
@@ -143,9 +157,9 @@ export function BulkRemoveDialog({
   targetCount: number;
   view: BulkRemoveDialogView;
   isRemoving: boolean;
-  // The answer was lost, so what the run did is unknown. Stated in one line
-  // here; the per-target report is its own ticket (#424).
-  error: string | null;
+  // What the run answered, or null while there is nothing to report yet. It
+  // replaces the body, the title and the footer — the question is over (#424).
+  report: BulkRemoveReportView | null;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -160,12 +174,28 @@ export function BulkRemoveDialog({
   // Nothing to walk is not a run: a refusal never blocks the others, but with
   // no others left the control would name a removal of nothing.
   const confirmable = grouped !== null && grouped.removableCount > 0;
+  // The run is over and its outcome is on screen. Its own title, its own
+  // footer, and no weighing left to draw.
+  const done =
+    report?.kind === "clean" || report?.kind === "partial" ? report : null;
+  // The request never produced a report. "never-started" is answered and
+  // repeatable; "outcome-unknown" is neither, so it keeps #422's dead end.
+  const failure =
+    report?.kind === "never-started" || report?.kind === "outcome-unknown"
+      ? report
+      : null;
   // One source for the title: the accessible name and the visible words are
   // the same sentence, so they cannot drift apart.
-  const title = isRemoving
-    ? { before: "Removing ", after: "" }
-    : { before: "Remove ", after: ` from ${targetCount} targets?` };
+  const title =
+    done?.title ??
+    (isRemoving
+      ? { before: "Removing ", after: "" }
+      : { before: "Remove ", after: ` from ${targetCount} targets?` });
   const heading = `${title.before}${skillName}${title.after}`;
+  // "done" only where nothing was left behind: a run that left targets alone
+  // is closed, not finished.
+  const closeLabel =
+    done?.kind === "clean" ? "done" : report === null ? "cancel" : "close";
   // Only skills reach this dialog today, same as the single one.
   const type = "skill" as const;
 
@@ -174,21 +204,56 @@ export function BulkRemoveDialog({
   const costId = `${dialogId}-cost`;
   const refusedId = `${dialogId}-refused`;
   const bodyId = `${dialogId}-body`;
+  const countsId = `${dialogId}-counts`;
+  const leftAloneId = `${dialogId}-left-alone`;
 
-  // The whole body, in the order the states outrank each other: a run whose
-  // answer was lost, then the run itself, then the checks in front of it, then
-  // the weighing. The groups exist only in that last state — during the walk
-  // they would price a decision already taken.
+  // The whole body, in the order the states outrank each other: the run's own
+  // report, then a request that produced none, then the run itself, then the
+  // checks in front of it, then the weighing. The groups exist only in that
+  // last state — during the walk they would price a decision already taken.
   const described =
-    error !== null || isRemoving || grouped === null
-      ? bodyId
-      : [
-          grouped.cleanLine === null ? null : cleanId,
-          grouped.cost.length === 0 ? null : costId,
-          grouped.refused.length === 0 ? null : refusedId,
-        ]
+    done !== null
+      ? [countsId, done.kind === "partial" ? leftAloneId : null]
           .filter((id) => id !== null)
-          .join(" ");
+          .join(" ")
+      : failure !== null || isRemoving || grouped === null
+        ? bodyId
+        : [
+            grouped.cleanLine === null ? null : cleanId,
+            grouped.cost.length === 0 ? null : costId,
+            grouped.refused.length === 0 ? null : refusedId,
+          ]
+            .filter((id) => id !== null)
+            .join(" ");
+
+  // The weighing itself, drawn once: it is the confirmation's body, and it
+  // comes back beside a request that never started.
+  const weighing =
+    grouped === null ? null : (
+      <>
+        {grouped.cleanLine === null ? null : (
+          <SummaryRow id={cleanId} tone="clean">
+            {grouped.cleanLine}
+          </SummaryRow>
+        )}
+        {grouped.cost.length === 0 ? null : (
+          <ReasonGroup
+            id={costId}
+            tone="cost"
+            heading={`▲ LOSES WORK · ${grouped.cost.length}`}
+            rows={grouped.cost}
+          />
+        )}
+        {grouped.refused.length === 0 ? null : (
+          <ReasonGroup
+            id={refusedId}
+            tone="refusal"
+            heading={`✕ CAN'T BE REMOVED · ${grouped.refused.length}`}
+            rows={grouped.refused}
+          />
+        )}
+      </>
+    );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 p-6">
@@ -214,8 +279,9 @@ export function BulkRemoveDialog({
           // would push its own cancel out of reach.
           "relative flex max-h-[calc(100vh-3rem)] w-full max-w-[460px] flex-col overflow-hidden rounded-card border bg-chrome outline-none",
           panelBorderFor({
-            failure: error !== null,
-            cost: !isRemoving && (grouped?.cost.length ?? 0) > 0,
+            failure: failure !== null || done?.kind === "partial",
+            cost:
+              done === null && !isRemoving && (grouped?.cost.length ?? 0) > 0,
           }),
         )}
       >
@@ -229,14 +295,48 @@ export function BulkRemoveDialog({
         </div>
 
         <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-3.5 py-3">
-          {error !== null ? (
-            <p
-              id={bodyId}
-              role="alert"
-              className="rounded-item border border-danger-border bg-danger-bg px-3 py-2.5 font-ui text-desc text-fg-2"
-            >
-              {error}
-            </p>
+          {/* Mounted empty from first render — a live region created with its
+              first message announces unreliably (remove-skill-dialog.tsx). The
+              report itself is ordinary content, read where it is. */}
+          <span
+            role="status"
+            aria-live="polite"
+            aria-label="Bulk remove result"
+            className="sr-only"
+          >
+            {done === null ? "" : `${heading} · ${done.counts}`}
+          </span>
+          {done !== null ? (
+            <>
+              <SummaryRow id={countsId} tone="clean">
+                {done.counts}
+              </SummaryRow>
+              {done.kind === "partial" ? (
+                <ReasonGroup
+                  id={leftAloneId}
+                  tone="refusal"
+                  heading={`✕ LEFT ALONE · ${done.leftAlone.length}`}
+                  // The class in the right-hand slot, the reason under it: one
+                  // without the other says nothing to act on.
+                  rows={done.leftAlone.map((row) => ({
+                    label: row.label,
+                    reason: row.outcome,
+                    detail: row.reason,
+                  }))}
+                />
+              ) : null}
+            </>
+          ) : failure !== null ? (
+            <>
+              <FailureNote
+                id={bodyId}
+                label={failure.label}
+                message={failure.message}
+              />
+              {/* Only where the attempt can be repeated: the body the confirm
+                  beside it would act on comes back with it. */}
+              {failure.kind === "never-started" ? weighing : null}
+            </>
           ) : isRemoving ? (
             // The wait explained rather than blank. No per-target progress and
             // no abort: there is no partial-state exit to offer.
@@ -253,29 +353,7 @@ export function BulkRemoveDialog({
               </SummaryRow>
             </div>
           ) : (
-            <>
-              {grouped.cleanLine === null ? null : (
-                <SummaryRow id={cleanId} tone="clean">
-                  {grouped.cleanLine}
-                </SummaryRow>
-              )}
-              {grouped.cost.length === 0 ? null : (
-                <ReasonGroup
-                  id={costId}
-                  tone="cost"
-                  heading={`▲ LOSES WORK · ${grouped.cost.length}`}
-                  rows={grouped.cost}
-                />
-              )}
-              {grouped.refused.length === 0 ? null : (
-                <ReasonGroup
-                  id={refusedId}
-                  tone="refusal"
-                  heading={`✕ CAN'T BE REMOVED · ${grouped.refused.length}`}
-                  rows={grouped.refused}
-                />
-              )}
-            </>
+            weighing
           )}
         </div>
 
@@ -288,12 +366,12 @@ export function BulkRemoveDialog({
             disabled={isRemoving}
             onClick={onCancel}
           >
-            {error === null ? "cancel" : "close"}
+            {closeLabel}
           </Button>
-          {/* Absent, not disabled, once the outcome is unknown: the body says
-              to go and look, and a confirm beside it would repeat a run
-              nobody has seen the result of. Reopening re-checks. */}
-          {error === null ? (
+          {/* Absent, not disabled, once the run is over or its outcome is
+              unknown: there is nothing left to confirm, and a control beside
+              either would rerun a removal already made or unseen. */}
+          {report === null || report.kind === "never-started" ? (
             <Button
               type="button"
               className="shrink-0"
