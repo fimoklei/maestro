@@ -254,6 +254,13 @@ const removeErrorResponses: Record<
     message:
       "Removing this copy would delete local changes that never went through central, and this request carries no proof that warning was shown. Start the removal again from the cockpit.",
   },
+  "unverifiable-edits-unconfirmed": {
+    // Never the wording above: this copy predates content tracking, so claiming
+    // it carries local changes would state more than the check found (J04).
+    status: 409,
+    message:
+      "This copy predates content tracking, so Maestro cannot tell whether removing it deletes local changes, and this request carries no proof that was stated. Start the removal again from the cockpit.",
+  },
   "remove-in-progress": {
     status: 409,
     message:

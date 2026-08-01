@@ -337,6 +337,50 @@ describe("remove HTTP route", () => {
     expect(removeCalls).toEqual([]);
   });
 
+  it("refuses a copy whose edits it cannot rule out, in its own words", async () => {
+    const { app, registry, removeCalls } = makeApp({
+      deployedState: "unverifiable",
+    });
+    await writeFile(
+      join(repo, "apm.lock.yaml"),
+      lockfileWith([skillEntry("tdd")]),
+      "utf8",
+    );
+    await registry.register(repo);
+
+    const response = await removeTdd(app, repo);
+    const body = (await response.json()) as { error: string; message: string };
+
+    expect(response.status).toBe(409);
+    expect(body.error).toBe("unverifiable-edits-unconfirmed");
+    // Never the diverged wording: the check found no edits, only no way to
+    // look for them (J04).
+    expect(body.message).not.toContain("would delete local changes");
+    expect(removeCalls).toEqual([]);
+  });
+
+  it("removes that same copy once its own preflight receipt rides along", async () => {
+    const { app, registry, removeCalls } = makeApp({
+      deployedState: "unverifiable",
+    });
+    await writeFile(
+      join(repo, "apm.lock.yaml"),
+      lockfileWith([skillEntry("tdd")]),
+      "utf8",
+    );
+    await registry.register(repo);
+
+    const response = await removeRequest(app, {
+      type: "skill",
+      name: "tdd",
+      target: { kind: "repo", repoPath: repo },
+      confirmedRemovalReceipt: await receiptFromPreflight(app, repo),
+    });
+
+    expect(response.status).toBe(200);
+    expect(removeCalls).toHaveLength(1);
+  });
+
   it("refuses a receipt the caller minted for a different skill", async () => {
     const { app, registry, removeCalls } = makeApp({
       deployedState: "diverged",
@@ -439,7 +483,14 @@ describe("remove HTTP route", () => {
     );
     await registry.register(repo);
 
-    const response = await removeTdd(app, repo);
+    // The real guard reads a lockfile with no content baseline, so this copy is
+    // unverifiable and needs its receipt like any other priced removal.
+    const response = await removeRequest(app, {
+      type: "skill",
+      name: "tdd",
+      target: { kind: "repo", repoPath: repo },
+      confirmedRemovalReceipt: await receiptFromPreflight(app, repo),
+    });
 
     expect(response.status).toBe(502);
     expect((await response.json()) as unknown).toMatchObject({
@@ -552,6 +603,14 @@ describe("remove HTTP route", () => {
         reclaim: { token: string } | null;
       };
       return reclaim?.token;
+    }
+
+    async function receiptFromGlobalPreflight(
+      app: ReturnType<typeof makeApp>["app"],
+    ): Promise<string | undefined> {
+      const response = await preflightGlobally(app);
+      const { receipt } = (await response.json()) as { receipt?: string };
+      return receipt;
     }
 
     it("removes the skill with the ref the global lockfile records", async () => {
@@ -827,7 +886,14 @@ describe("remove HTTP route", () => {
       // Only Codex still has a copy: apm came off Claude Code and could not say so.
       await writeSkillFile(".agents/skills/tdd/SKILL.md");
 
-      const response = await removeGlobally(app);
+      // Unverifiable against a baseline-less lockfile, so the run carries the
+      // receipt its own preflight issued.
+      const response = await removeRequest(app, {
+        type: "skill",
+        name: "tdd",
+        target: { kind: "global" },
+        confirmedRemovalReceipt: await receiptFromGlobalPreflight(app),
+      });
 
       expect(response.status).toBe(502);
       expect((await response.json()) as unknown).toMatchObject({

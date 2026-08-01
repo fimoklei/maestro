@@ -51,6 +51,7 @@ export type RemoveDeployedSkillError =
   | "ref-unresolvable"
   | "deployed-unreadable"
   | "local-edits-unconfirmed"
+  | "unverifiable-edits-unconfirmed"
   | "remove-in-progress"
   | "remove-failed";
 
@@ -69,6 +70,16 @@ const GUARD_REFUSALS: Partial<
 > = {
   unreadable: "deployed-unreadable",
   "lockfile-malformed": "lockfile-malformed",
+};
+
+// The states that destroy work the confirmation had to price: edits we saw,
+// and edits we could not rule out. Each names its own refusal, so neither
+// claims what the other found (J04).
+const RECEIPT_REQUIRED: Partial<
+  Record<DeployedContentState, RemoveDeployedSkillError>
+> = {
+  diverged: "local-edits-unconfirmed",
+  unverifiable: "unverifiable-edits-unconfirmed",
 };
 
 // Absent means nothing to lose ("clean", "not-deployed") — silence in a
@@ -398,14 +409,15 @@ export class RemoveDeployedSkill {
       if (refusal !== undefined) {
         return { ok: false, error: refusal };
       }
+      const unproven = RECEIPT_REQUIRED[deployedState];
       if (
-        deployedState === "diverged" &&
+        unproven !== undefined &&
         !this.consent.accepts(
           { target, name: input.name },
           input.confirmedRemovalReceipt,
         )
       ) {
-        return { ok: false, error: "local-edits-unconfirmed" };
+        return { ok: false, error: unproven };
       }
 
       const removed = await this.deps.apm.removeSkill({

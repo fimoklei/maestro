@@ -296,8 +296,11 @@ describe("RemoveDeployedSkill", () => {
 
   it("removes a copy whose edits cannot be checked once the user has confirmed", async () => {
     const { useCase, calls } = buildUseCase({ deployedState: "unverifiable" });
+    const confirmedRemovalReceipt = await receiptFor(useCase, removeTdd);
 
-    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+    await expect(
+      useCase.execute({ ...removeTdd, confirmedRemovalReceipt }),
+    ).resolves.toEqual({
       ok: true,
       removed: {
         type: "skill",
@@ -319,6 +322,19 @@ describe("RemoveDeployedSkill", () => {
     await expect(useCase.execute(removeTdd)).resolves.toEqual({
       ok: false,
       error: "local-edits-unconfirmed",
+    });
+    expect(calls.removes).toEqual([]);
+  });
+
+  // A copy with no baseline to compare against is not a clean one: nothing
+  // rules out local work, so it is priced and proven like an edited copy —
+  // under its own wording, which never claims edits we did not see (J04).
+  it("refuses a copy whose edits cannot be ruled out when nothing proves the cost was stated", async () => {
+    const { useCase, calls } = buildUseCase({ deployedState: "unverifiable" });
+
+    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+      ok: false,
+      error: "unverifiable-edits-unconfirmed",
     });
     expect(calls.removes).toEqual([]);
   });
