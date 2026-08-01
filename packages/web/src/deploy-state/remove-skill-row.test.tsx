@@ -58,6 +58,8 @@ function checkFor(warning: string | null, init: RequestInit) {
 
 // A fetch stub that answers the pre-confirmation check and leaves everything
 // else to the caller.
+const RECEIPT = "b".repeat(64);
+
 function stubFetch(
   warning: string | null,
   onRemove: () => Response | Promise<Response> = () =>
@@ -81,6 +83,9 @@ function stubFetch(
               reclaim.length > 0
                 ? { previews: reclaim, token: "a".repeat(64) }
                 : null,
+            // The proof the removal itself was priced, which the confirmation
+            // has to send back or the server refuses it (#458).
+            receipt: RECEIPT,
           },
           200,
         )
@@ -196,6 +201,9 @@ describe("removing a deployed skill from a row", () => {
       type: "skill",
       name: "tdd",
       target: { kind: "repo", repoPath: REPO },
+      // Sent on every removal, not only an edited copy: the screen does not
+      // second-guess which copies the server will price (#458).
+      confirmedRemovalReceipt: RECEIPT,
     });
   });
 
@@ -677,6 +685,7 @@ describe("removing a deployed skill from a row", () => {
         type: "skill",
         name: "tdd",
         target: { kind: "global" },
+        confirmedRemovalReceipt: RECEIPT,
       });
     });
 
@@ -722,6 +731,7 @@ describe("removing a deployed skill from a row", () => {
         name: "tdd",
         target: { kind: "global" },
         confirmedReclaimToken: "a".repeat(64),
+        confirmedRemovalReceipt: RECEIPT,
       });
     });
   });

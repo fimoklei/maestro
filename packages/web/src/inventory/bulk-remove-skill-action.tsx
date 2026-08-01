@@ -94,6 +94,8 @@ function BulkRemoveRun({
         // Only where the check minted one: the token authorises deleting the
         // exact leftover copies the user was shown (#390).
         token: result.data?.reclaim?.token,
+        // This target's own receipt, from this target's own check (#458).
+        receipt: result.data?.receipt,
       })),
   });
 
@@ -112,9 +114,12 @@ function BulkRemoveRun({
       const check = checks[index];
       const refused = refusedPreflightCode(check?.view ?? STILL_CHECKING);
       const token = check?.token;
+      const receipt = check?.receipt;
       return {
         target: candidate.target,
         ...(token === undefined ? {} : { confirmedReclaimToken: token }),
+        // This target's own receipt, from this target's own check (#458).
+        ...(receipt === undefined ? {} : { confirmedRemovalReceipt: receipt }),
         ...(refused === null ? {} : { refused }),
       };
     });

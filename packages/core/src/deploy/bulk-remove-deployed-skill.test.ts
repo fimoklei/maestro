@@ -11,7 +11,12 @@ type Scripted = Awaited<ReturnType<RemoveDeployedSkill["execute"]>>;
 const key = (target: DeployTarget) =>
   target.kind === "global" ? "global" : target.repoPath;
 
-type Call = { key: string; name: string; token: string | undefined };
+type Call = {
+  key: string;
+  name: string;
+  token: string | undefined;
+  receipt?: string;
+};
 
 function fakeRemove(
   script: Record<string, Scripted>,
@@ -23,6 +28,7 @@ function fakeRemove(
         key: key(input.target),
         name: input.name,
         token: input.confirmedReclaimToken,
+        receipt: input.confirmedRemovalReceipt,
       });
       const result = script[key(input.target)];
       if (!result) {
@@ -269,6 +275,50 @@ describe("BulkRemoveDeployedSkill", () => {
     expect(calls).toEqual([
       { key: "global", name: "tdd", token },
       { key: "/repo-a", name: "tdd", token: undefined },
+    ]);
+  });
+
+  // Each target was priced by its own preflight, so each carries its own proof;
+  // one receipt can never speak for the target next to it (#458).
+  it("passes each target's removal receipt through to its own removal", async () => {
+    const calls: Call[] = [];
+    const receipt = "b".repeat(64);
+    const bulk = new BulkRemoveDeployedSkill({
+      remove: fakeRemove(
+        { global: ok("v1.0.0"), "/repo-a": ok("v1.0.0") },
+        calls,
+      ),
+    });
+
+    await bulk.execute({
+      name: "tdd",
+      targets: [
+        { target: global, confirmedRemovalReceipt: receipt },
+        { target: repo("/repo-a") },
+      ],
+    });
+
+    expect(calls.map((call) => call.receipt)).toEqual([receipt, undefined]);
+  });
+
+  it("keeps an unproven target's refusal to its own row and finishes the batch", async () => {
+    const bulk = new BulkRemoveDeployedSkill({
+      remove: fakeRemove({
+        "/repo-a": { ok: false, error: "local-edits-unconfirmed" },
+        "/repo-b": ok("v1.0.0"),
+      }),
+    });
+
+    const report = await bulk.execute({
+      name: "tdd",
+      targets: [{ target: repo("/repo-a") }, { target: repo("/repo-b") }],
+    });
+
+    expect(report.failed).toEqual([
+      { target: repo("/repo-a"), reason: "local-edits-unconfirmed" },
+    ]);
+    expect(report.removed).toEqual([
+      { target: repo("/repo-b"), version: "v1.0.0" },
     ]);
   });
 });

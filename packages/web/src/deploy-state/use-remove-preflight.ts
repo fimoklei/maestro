@@ -16,6 +16,9 @@ export type RemovePreflight = {
   // Null when there's nothing to reclaim (always true on a repo target). One
   // field, not two, so the screen can never show a path it has no token for.
   reclaim: ReclaimConsent | null;
+  // Optional on the wire: a server that predates the guard sends none, and the
+  // removal then refuses rather than the screen inventing one (#458).
+  receipt?: string;
 };
 
 // Shared with the bulk path, which runs one of these per target through

@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { DeployStatePanel } from "../deploy-state/deploy-state-panel";
 import { BulkRemoveSkillAction } from "./bulk-remove-skill-action";
 import type { BulkRemoveCandidate } from "./bulk-remove-targets";
+import type { DeployTarget } from "./use-deploy-skill";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -19,6 +20,7 @@ const TARGETS: BulkRemoveCandidate[] = [
   },
 ];
 
+const GLOBAL = TARGETS[0] as BulkRemoveCandidate;
 const ACME_WEB = TARGETS[1] as BulkRemoveCandidate;
 
 const jsonResponse = (body: unknown, status = 200) =>
@@ -27,10 +29,19 @@ const jsonResponse = (body: unknown, status = 200) =>
     headers: { "content-type": "application/json" },
   });
 
-const preflightAnswer = {
+// A receipt per target, so a test can tell "each entry carries its own answer"
+// apart from "one answer was copied across the batch" (#458).
+const receiptFor = (target: DeployTarget) =>
+  target.kind === "global" ? "g".repeat(64) : "r".repeat(64);
+
+const answerFor = (target: DeployTarget) => ({
   check: { scope: "repo", warning: null },
   reclaim: null,
-};
+  receipt: receiptFor(target),
+});
+
+// The clean answer for the target every override leaves alone.
+const preflightAnswer = answerFor(GLOBAL.target);
 
 const emptyReport = { name: "tdd", removed: [], refused: [], failed: [] };
 
@@ -45,9 +56,10 @@ function stubServer(
       body: init?.body === undefined ? null : JSON.parse(String(init.body)),
     });
     if (url.endsWith("/remove/preflight")) {
-      const body =
-        init?.body === undefined ? null : JSON.parse(String(init.body));
-      return overrides.preflight?.(body) ?? jsonResponse(preflightAnswer);
+      const body = JSON.parse(String(init?.body)) as { target: DeployTarget };
+      return (
+        overrides.preflight?.(body) ?? jsonResponse(answerFor(body.target))
+      );
     }
     return jsonResponse(emptyReport);
   });
@@ -106,7 +118,16 @@ describe("BulkRemoveSkillAction", () => {
     expect(runs).toHaveLength(1);
     expect(runs[0]?.body).toEqual({
       name: "tdd",
-      targets: [{ target: TARGETS[0]?.target }, { target: TARGETS[1]?.target }],
+      targets: [
+        {
+          target: GLOBAL.target,
+          confirmedRemovalReceipt: receiptFor(GLOBAL.target),
+        },
+        {
+          target: ACME_WEB.target,
+          confirmedRemovalReceipt: receiptFor(ACME_WEB.target),
+        },
+      ],
     });
   });
 
@@ -138,8 +159,13 @@ describe("BulkRemoveSkillAction", () => {
       expect(runs[0]?.body).toEqual({
         name: "tdd",
         targets: [
-          { target: TARGETS[0]?.target },
-          { target: TARGETS[1]?.target, refused: "repo-not-registered" },
+          // The target that did get an answer carries its receipt; the refused
+          // one never had a check to mint it.
+          {
+            target: GLOBAL.target,
+            confirmedRemovalReceipt: receiptFor(GLOBAL.target),
+          },
+          { target: ACME_WEB.target, refused: "repo-not-registered" },
         ],
       });
     });

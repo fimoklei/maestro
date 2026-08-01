@@ -51,8 +51,9 @@ const targetSchema = z.discriminatedUnion("kind", [
 ]);
 
 // Proves the confirmation came from this server's own preflight, not a
-// client-built path list. Shaped as core mints it (allowlist, security.md).
-const reclaimTokenSchema = z
+// client-built claim. Shaped as core mints it (allowlist, security.md); which
+// destruction a given token authorizes is core's business, not the edge's.
+const consentTokenSchema = z
   .string()
   .regex(/^[0-9a-f]{64}$/)
   .optional();
@@ -77,7 +78,8 @@ const removeBodySchema = z.object({
   type: z.string(),
   name: z.string(),
   target: targetSchema,
-  confirmedReclaimToken: reclaimTokenSchema,
+  confirmedReclaimToken: consentTokenSchema,
+  confirmedRemovalReceipt: consentTokenSchema,
 });
 
 const PATH_BODY_MESSAGE = "Expected a JSON body with a path.";
@@ -245,6 +247,20 @@ const removeErrorResponses: Record<
     message:
       "The deployed copy exists but could not be read, so Maestro cannot tell whether removing it would delete local changes. Check its permissions and that it is a directory, then try again.",
   },
+  "local-edits-unconfirmed": {
+    // 409: the request is well-formed, but nothing shows the user was told what
+    // the removal costs. Starting again from the cockpit states it (#458).
+    status: 409,
+    message:
+      "Removing this copy would delete local changes that never went through central, and this request carries no proof that warning was shown. Start the removal again from the cockpit.",
+  },
+  "unverifiable-edits-unconfirmed": {
+    // Never the wording above: this copy predates content tracking, so claiming
+    // it carries local changes would state more than the check found (J04).
+    status: 409,
+    message:
+      "This copy predates content tracking, so Maestro cannot tell whether removing it deletes local changes, and this request carries no proof that was stated. Start the removal again from the cockpit.",
+  },
   "remove-in-progress": {
     status: 409,
     message:
@@ -291,7 +307,8 @@ const bulkRemoveBodySchema = z.object({
     .array(
       z.object({
         target: targetSchema,
-        confirmedReclaimToken: reclaimTokenSchema,
+        confirmedReclaimToken: consentTokenSchema,
+        confirmedRemovalReceipt: consentTokenSchema,
         refused: z.enum(refusalCodes).optional(),
       }),
     )
@@ -567,7 +584,11 @@ export function createApp(deps: AppDeps) {
       const { status, message } = removePreflightErrorResponses[result.error];
       return c.json({ error: result.error, message }, status);
     }
-    return c.json({ check: result.check, reclaim: result.reclaim });
+    return c.json({
+      check: result.check,
+      reclaim: result.reclaim,
+      receipt: result.receipt,
+    });
   });
 
   // Always 200 with a report — a per-skill refusal is data, not an HTTP error.
