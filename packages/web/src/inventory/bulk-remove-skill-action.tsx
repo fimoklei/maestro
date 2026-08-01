@@ -1,5 +1,5 @@
 import type { BulkRemoveTarget } from "@maestro/core";
-import { useQueries } from "@tanstack/react-query";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   type RemovePreflightView,
@@ -10,14 +10,10 @@ import { removePreflightQueryOptions } from "../deploy-state/use-remove-prefligh
 import { Button } from "../ui/button";
 import { BulkRemoveDialog } from "./bulk-remove-dialog";
 import { bulkRemoveDialogView } from "./bulk-remove-dialog-view";
+import { bulkRemoveReportView } from "./bulk-remove-report-view";
 import type { BulkRemoveCandidate } from "./bulk-remove-targets";
 import { useBulkRemove } from "./use-bulk-remove";
-
-// Never "nothing was removed": a lost answer does not prove the walk never
-// ran, and the server removes one target at a time. The pane behind this is
-// re-read either way, so the honest instruction is to go and look.
-const OUTCOME_UNKNOWN =
-  "Maestro lost its server's answer and cannot say what was removed. Close this and check the targets before trying again.";
+import { invalidateTarget } from "./use-deploy-skill";
 
 // useQueries returns one result per query, so this stands in for nothing. It
 // is a running check rather than a clean copy, because a missing answer has
@@ -75,6 +71,19 @@ function BulkRemoveRun({
   onClose: () => void;
 }) {
   const run = useBulkRemove();
+  const queryClient = useQueryClient();
+
+  // On the way out, not when the request settles: the report is still being
+  // read while the run is over, and the pane behind it is what the user
+  // returns to. A dialog that removed nothing has nothing to re-read.
+  const close = () => {
+    if (!run.isIdle) {
+      for (const candidate of targets) {
+        invalidateTarget(queryClient, candidate.target);
+      }
+    }
+    onClose();
+  };
 
   // Every target's own check, in parallel and never cached (#337 applied to a
   // whole list). One view per target, read by both the screen and the run —
@@ -118,7 +127,7 @@ function BulkRemoveRun({
         ...(refused === null ? {} : { refused }),
       };
     });
-    run.mutate({ name: skillName, targets: entries }, { onSuccess: onClose });
+    run.mutate({ name: skillName, targets: entries });
   };
 
   return (
@@ -127,8 +136,12 @@ function BulkRemoveRun({
       targetCount={targets.length}
       view={view}
       isRemoving={run.isPending}
-      error={run.isError ? OUTCOME_UNKNOWN : null}
-      onCancel={onClose}
+      report={bulkRemoveReportView({
+        targets,
+        report: run.data,
+        error: run.error,
+      })}
+      onCancel={close}
       onConfirm={confirm}
     />
   );

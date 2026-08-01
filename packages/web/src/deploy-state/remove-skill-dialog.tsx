@@ -1,8 +1,9 @@
 import type { RemoveOutcome, RemoveTargetState } from "@maestro/core";
-import { type ReactNode, useId } from "react";
+import { useId } from "react";
 import { useModalDialog } from "../shell/use-modal-dialog";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
+import { FailureNote } from "../ui/failure-note";
 import { panelBorderFor } from "../ui/panel-border";
 import { TypeTag } from "../ui/type-tag";
 import {
@@ -16,44 +17,6 @@ import type { RemovePreflightView } from "./remove-preflight-view";
 // Silence would read as nothing-to-lose, the one thing an unfinished check
 // cannot promise (J04) — it names no cost, so no amber and no ▲ (deployed-view.ts).
 const CHECKING_TEXT = "Checking this copy for local edits…";
-
-const GLYPH_BLOCK = "flex gap-1.5";
-
-// One component for both failures — rendered separately, they once diverged
-// into a glyphed refusal and a glyph-less error (#387). Danger red, not amber (#213).
-function FailureNote({
-  id,
-  label,
-  message,
-  children,
-}: {
-  id?: string;
-  label: string;
-  message: string;
-  children?: ReactNode;
-}) {
-  return (
-    <div
-      id={id}
-      role="alert"
-      className={cn(
-        GLYPH_BLOCK,
-        "rounded-control border border-danger-border bg-danger-bg px-2.5 py-2.5",
-      )}
-    >
-      <span aria-hidden="true" className="font-mono text-danger-ink text-desc">
-        ✕
-      </span>
-      <div className="flex min-w-0 flex-col gap-1">
-        <span className="font-semibold font-ui text-danger-ink text-desc">
-          {label}
-        </span>
-        <span className="font-ui text-desc text-fg-2">{message}</span>
-        {children}
-      </div>
-    </div>
-  );
-}
 
 type LedgerRowPlacement = { id: string; last: boolean };
 
