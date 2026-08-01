@@ -187,6 +187,7 @@ describe("removePreflightView", () => {
         }),
       ).toEqual({
         kind: "refused",
+        code: "repo-not-registered",
         message: "That repo is not registered with Maestro.",
       });
     });
@@ -267,9 +268,13 @@ describe("removePreflightView", () => {
     ] as const;
 
     for (const [code, message] of refusals) {
-      it(`carries the server's own wording for ${code}`, () => {
+      // The code travels beside the wording: the bulk dialog names a refusal
+      // in a right-aligned slot a full sentence does not fit, and the run is
+      // told which refusal it was (#423).
+      it(`carries the server's own wording and code for ${code}`, () => {
         expect(failedView(new HttpError(403, message, code))).toEqual({
           kind: "refused",
+          code,
           message,
         });
       });

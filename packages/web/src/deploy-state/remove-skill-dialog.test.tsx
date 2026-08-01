@@ -719,7 +719,11 @@ describe("RemoveSkillDialog", () => {
         ).map((warning) =>
           toolChecks({ claude: warning, codex: warning }, leftover),
         ),
-        { kind: "refused", message: "no global deployment to remove." },
+        {
+          kind: "refused" as const,
+          code: "repo-not-registered" as const,
+          message: "no global deployment to remove.",
+        },
       ];
 
       for (const preflight of states) {
@@ -890,6 +894,7 @@ describe("RemoveSkillDialog", () => {
   describe("when the check came back refused", () => {
     const refused = {
       kind: "refused" as const,
+      code: "repo-not-registered" as const,
       message: "That repo is not registered with Maestro.",
     };
 
