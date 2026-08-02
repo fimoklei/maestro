@@ -15,7 +15,7 @@ export type BulkRemoveCheckedTarget = {
   preflight: RemovePreflightView;
 };
 
-export type BulkRemoveCostRow = {
+type BulkRemoveCostRow = {
   label: string;
   // Only here: this is the group where "which version am I destroying" is a
   // real question.
