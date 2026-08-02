@@ -30,7 +30,7 @@
     "@maestro/server": "workspace:*",
     "@types/node": "^24.9.1",
     "knip": "^6.29.0",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.0",
     "vitest": "^4.1.7"
   }
 }
