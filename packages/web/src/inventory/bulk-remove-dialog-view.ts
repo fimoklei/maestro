@@ -37,7 +37,7 @@ export type BulkRemoveDialogView =
       cost: BulkRemoveCostRow[];
       refused: BulkRemoveRefusalRow[];
       // Targets the run will actually walk: the refused ones are skipped by
-      // it, so the control names what it does.
+      // it, so the control names what it does (#423 settles this).
       removableCount: number;
       confirmLabel: string;
     };
