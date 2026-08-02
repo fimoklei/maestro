@@ -57,7 +57,7 @@ The act of reproducing a primitive or bundle from the central inventory into a t
 _Avoid_: install (that is APM's verb for the mechanism), copy, sync.
 
 **Remove**:
-The act of undoing a **Deploy**: the primitive disappears from the target and from the target's lockfile bookkeeping, via APM. Scoped to one target — removing a deploy never touches the central inventory copy. A global remove covers the full set of detected tools, mirroring how a global deploy targets them as one set.
+The act of undoing a **Deploy**: the primitive disappears from each target and from that target's lockfile bookkeeping, via APM. Scoped to one or more targets — one action can retire a primitive from every target it is deployed to, walking them one at a time and reporting per target what happened. Scoped to targets either way: removing a deploy never touches the central inventory copy. A global remove covers the full set of detected tools, mirroring how a global deploy targets them as one set.
 _Avoid_: undeploy (constructed jargon), uninstall (APM's verb for the mechanism), delete (ambiguous with deleting from the central inventory).
 
 **Target**:
