@@ -23,6 +23,21 @@ const pidFile = join(repoRoot, ".maestro-dev.pid");
 const cockpitPorts = [Number(process.env.PORT ?? 3000), 5173];
 const smoke = process.argv.includes("--smoke");
 
+// A shell that never loaded nvm hands us the system node, and the failure lands
+// far downstream (corepack, vite) as something that looks unrelated.
+const requiredMajor = Number(
+  /\d+/.exec(
+    JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8")).engines
+      .node,
+  )[0],
+);
+if (Number(process.versions.node.split(".")[0]) < requiredMajor) {
+  console.error(
+    `[dev] needs node >=${requiredMajor}, got ${process.versions.node} — run \`nvm use\` in this shell`,
+  );
+  process.exit(1);
+}
+
 function isAlive(pid) {
   try {
     process.kill(pid, 0);
@@ -104,6 +119,20 @@ if (smoke) {
   console.log(
     `[smoke] MAESTRO_HOME=${env.MAESTRO_HOME} HOME=${env.HOME} (isolated from real data)`,
   );
+
+  // Corepack keeps the pinned pnpm under $HOME, so the redirect above hides it
+  // and every start would re-download it into a sandbox we wipe on teardown.
+  // A package-manager binary is dev tooling, not the user data smoke isolates.
+  // Same precedence corepack itself reads, against the real HOME: guessing
+  // ~/.cache would point at an empty directory wherever XDG_CACHE_HOME is set.
+  env.COREPACK_HOME =
+    process.env.COREPACK_HOME ??
+    join(
+      process.env.XDG_CACHE_HOME ?? join(homedir(), ".cache"),
+      "node",
+      "corepack",
+    );
+  env.COREPACK_ENABLE_DOWNLOAD_PROMPT = "0";
 
   // Only this dev-tooling harness bridges credentials to apm — the product
   // never does (.claude/rules/security.md). gh's token is HOME-independent,
