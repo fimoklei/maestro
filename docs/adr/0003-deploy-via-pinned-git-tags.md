@@ -48,6 +48,12 @@ resolved from the central inventory's Git remote.**
 - The "see central" inventory view reads the **local** `agent-harness` clone;
   **deploy** pulls the tagged ref from the **remote**. Maestro must surface any
   gap between the two, never hide it.
+- **The subpath is `.apm/skills/<name>`**, so a deployable ref reads
+  `github.com/<owner>/<repo>/.apm/skills/<name>#vX.Y.Z`. Corrected 2026-08-01
+  (ADR-0021, issue #360): this ADR never fixed the subpath, and the
+  `…/skills/tdd#v0.5.0` examples above describe the retired `agent-harness`
+  shape. They are left as written — they record what was observed against apm
+  0.16.0 — but they are not the shape to copy.
 
 **MVP1 application** (scope-level, reversible — not the binding part): the tracer
 deploys the **latest published tag** with no version picker. Resolving "latest

@@ -1,0 +1,96 @@
+# ADR-0021 — The harness is writable in the working tree, deployable only from a tag
+
+- **Status:** Accepted
+- **Date:** 2026-08-01 (issue #352, closing write-up of the authoring-side map #343)
+
+## Context
+
+Maestro shipped consumer-only: connect a local clone of the central inventory,
+deploy skills out of it. Two statements were bound on the strength of that, and
+the authoring route breaks both.
+
+- `CONTEXT.md` → *Inventory source*: **"Read-only; Maestro never writes back to
+  it."**
+- ADR-0015 point 2 puts the same promise on the connect gate's success state —
+  `read-only, never writes back` — and calls that the product's strongest
+  moment.
+
+The authoring route (#399) has Maestro commit, push and tag inside that same
+repo. So the promise is not a wording slip; it is a decision that has to be
+reversed on the record, in every place the repo treats as binding.
+
+The reversal is narrower than it first looks. Maestro writes in the **working
+tree** and consumers deploy from a **tag** (ADR-0003). Those are two different
+states of one repo, and only the first is writable. Nothing in the consumer's
+experience changes.
+
+Three inputs arrived from tickets that closed before this one:
+
+- **#360** — the harness shape is a single constant, `.apm/skills/<name>`, and a
+  harness is recognised by `apm.yml` in the repo root. `agent-harness` is retired
+  rather than migrated, so no repo carries two shapes. #360 ruled that the shape
+  belongs in *this* ADR, not in ADR-0003.
+- **#347** — the states had to be visible on a screen before they could be
+  named. The Harness view shows movements in three tables: *Pending release*,
+  *Pending review*, *Pending promotion*.
+- **ADR-0019 §4** — "harness" means the agent platform in APM's glossary and the
+  inventory repo here, recorded there as **drift** and explicitly left for this
+  ADR to settle.
+
+## Decision
+
+**The harness is one repo in two states. Maestro writes in the working state;
+consumers deploy only from the released state.**
+
+1. **Working harness** — the repo as it stands right now, uncommitted edits
+   included. Maestro writes here, and only here. It carries no quality promise.
+2. **Released harness** — the harness at its latest published tag. The only
+   thing consumers deploy from, and the only state the curated bar applies to.
+3. **The curated bar moves, it does not disappear.** `CONTEXT.md`'s
+   *Curated / Production-ready* rule now attaches to the released harness.
+   "Central" keeps meaning curated, because a consumer never sees anything else.
+4. **The harness shape is `.apm/skills/<name>`**, and a harness is recognised by
+   `apm.yml` in the repo root — APM's own marker, never a skills directory.
+   Grounds and rejected alternatives are in #360.
+5. **"Harness" is this repo's name**, in the glossary as well as on the screen.
+   `CONTEXT.md` gains it as a term with an *Avoid* line naming APM's opposite
+   meaning. This resolves ADR-0019 §4 from drift to a decision.
+6. **`Harness` and `Central inventory` both stand.** They are the same repo seen
+   from two sides — the author's and the consumer's. Neither is renamed.
+
+## Consequences
+
+- **ADR-0015 is amended, not superseded.** Its headline — first run is a connect
+  gate, not a wizard — is untouched. Its read-only promise is rewritten to the
+  narrower one that is true.
+- **ADR-0003 gets a correction, not an amendment.** Its decision (tag-pinned
+  refs) never changed; its examples describe the retired `agent-harness` shape
+  and its *Decision* never fixed the subpath.
+- **Drift is unchanged.** ADR-0005 and ADR-0007 measure a target against tags,
+  which apm resolves. A target that is current with the released harness is not
+  drifted, however far the working harness has moved on. That gap is the
+  *Pending release* table (#347), not a third drift facet.
+- **ADR-0016 is untouched.** It governs Inventory, and nothing here does (#347).
+- The connect gate's success copy loses a line it can no longer honour. The
+  reassurance beat stays; what it reassures about narrows to the truth.
+- A newcomer who reads APM first meets "harness" twice, at opposite ends of the
+  pipe. The *Avoid* line is the whole mitigation; the word is on a screen and a
+  glossary cannot outvote that.
+
+## Rejected alternatives
+
+- **One name for the repo — retire "Central inventory".** Tidier glossary. It
+  costs about fifty occurrences across eight files including user-facing
+  connect-gate copy and its tests, which is build work, and this ticket's own
+  terms forbid deciding build questions here.
+- **New nouns for the two states — `draft` / `catalogue`, or `published`.**
+  Rejected on two counts: `CONTEXT.md` already lists "published" under *Avoid*,
+  and #347 put a **release** button on the screen. The screen word wins. Two
+  adjectives on one noun also add no vocabulary at all.
+- **A third drift facet for unreleased work.** It collapses two questions that
+  live on two screens — *is my repo behind?* and *is the team's work out yet?*
+- **Rename the Harness view to keep `harness` reserved for APM.** Aligns with the
+  engine, re-opens #347, and puts two entries reading "Inventory" in one sidebar
+  — the outcome #347 rejected.
+- **A separate ADR for the harness shape.** Rejected on #360: nobody looks for a
+  directory constant in an ADR of its own, and ADR-0003 is consumer-side.
