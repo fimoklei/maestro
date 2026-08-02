@@ -102,6 +102,12 @@
 }
 
 @layer base {
+  /* The UA paints native controls (checkbox, select popup, scrollbar, autofill)
+     from color-scheme, not from data-theme; without it the unchecked checkbox is
+     pure white. Move onto the [data-theme] selectors when a light theme ships. */
+  :root {
+    color-scheme: dark;
+  }
   html,
   body,
   #root {
