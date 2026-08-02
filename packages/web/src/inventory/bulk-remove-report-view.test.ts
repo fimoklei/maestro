@@ -169,6 +169,31 @@ describe("bulkRemoveReportView — a partial run", () => {
     );
   });
 
+  // The two refusals #483 added. They stay apart (J04): one says the edits were
+  // seen and never priced, the other that they could not be checked at all.
+  it("names both unconfirmed-edits refusals without letting them share a wording", () => {
+    const reasonFor = (reason: string) =>
+      (
+        view({
+          report: report({
+            failed: [
+              {
+                target: TARGETS[0]?.target ?? { kind: "global" },
+                reason: reason as never,
+              },
+            ],
+          }),
+        }) as { leftAlone: { reason: string }[] }
+      ).leftAlone[0]?.reason;
+
+    const seen = reasonFor("local-edits-unconfirmed");
+    const unverifiable = reasonFor("unverifiable-edits-unconfirmed");
+
+    expect(seen).not.toBe("local-edits-unconfirmed");
+    expect(unverifiable).not.toBe("unverifiable-edits-unconfirmed");
+    expect(seen).not.toBe(unverifiable);
+  });
+
   // A row whose reason this build cannot name is still a target left behind;
   // a blank slot beside it would read as no reason at all.
   it("falls back to the raw code when the run names a reason it does not know", () => {

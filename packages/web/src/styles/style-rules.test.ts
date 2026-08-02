@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-// Two DESIGN.md rules that no rendering test can see. The vitest/jsdom lane
+// DESIGN.md rules that no rendering test can see. The vitest/jsdom lane
 // renders without CSS (LEARNINGS · web/styling-is-test-invisible), so a dropped
 // utility stays green forever; these guards read the source instead.
 
@@ -54,6 +54,18 @@ describe("placeholder colour", () => {
       .map(({ path }) => path.slice(SRC_DIR.length));
 
     expect(offenders).toEqual([]);
+  });
+});
+
+// DESIGN.md §2: hierarchy comes from lightness steps. The UA paints native
+// controls (checkbox, select popup, scrollbar, autofill) from color-scheme, not
+// from data-theme, so without this every unchecked checkbox is pure white —
+// brighter than --text-1 — and drowns out the amber checked state (issue #468).
+describe("native control colour scheme", () => {
+  it("theme.css declares a dark color-scheme", () => {
+    const themeCss = readFileSync(join(SRC_DIR, "styles/theme.css"), "utf8");
+
+    expect(themeCss).toMatch(/color-scheme:\s*dark;/);
   });
 });
 
