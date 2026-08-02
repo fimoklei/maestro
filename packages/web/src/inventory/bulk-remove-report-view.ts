@@ -55,6 +55,10 @@ const FAILURE_REASON: Record<RemoveDeployedSkillError, string> = {
   "lockfile-malformed": "lockfile could not be read",
   "ref-unresolvable": "its version could not be resolved",
   "deployed-unreadable": "deployed copy could not be read",
+  // Never one wording for both: the first found edits, the second found no way
+  // to look (J04).
+  "local-edits-unconfirmed": "local changes were never confirmed",
+  "unverifiable-edits-unconfirmed": "local changes could not be checked",
   "remove-in-progress": "target is held by another operation",
   "remove-failed": "apm did not complete the removal",
 };
