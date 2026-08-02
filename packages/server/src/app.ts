@@ -247,19 +247,13 @@ const removeErrorResponses: Record<
     message:
       "The deployed copy exists but could not be read, so Maestro cannot tell whether removing it would delete local changes. Check its permissions and that it is a directory, then try again.",
   },
-  "local-edits-unconfirmed": {
-    // 409: the request is well-formed, but nothing shows the user was told what
-    // the removal costs. Starting again from the cockpit states it (#458).
+  "cost-not-acknowledged": {
+    // 409: the request is well-formed, but the copy on disk is not the one it
+    // agreed to lose — either it changed since, or nothing was agreed at all.
+    // What it costs now travels beside this message, never inside it (#364).
     status: 409,
     message:
-      "Removing this copy would delete local changes that never went through central, and this request carries no proof that warning was shown. Start the removal again from the cockpit.",
-  },
-  "unverifiable-edits-unconfirmed": {
-    // Never the wording above: this copy predates content tracking, so claiming
-    // it carries local changes would state more than the check found (J04).
-    status: 409,
-    message:
-      "This copy predates content tracking, so Maestro cannot tell whether removing it deletes local changes, and this request carries no proof that was stated. Start the removal again from the cockpit.",
+      "Maestro checked the deployed copy again, and this request has not agreed to what removing it would delete now. Nothing was removed — confirm what the check found to go ahead.",
   },
   "remove-in-progress": {
     status: 409,
@@ -560,11 +554,20 @@ export function createApp(deps: AppDeps) {
       const { status, message } = removeErrorResponses[result.error];
       // Omitted, never null: a failure that never reached apm has no outcome,
       // and an absent key cannot be mistaken for one the server proved (#416).
+      // The restated cost and its receipt travel the same way — together, or
+      // the confirmation would name a cost it cannot act on (#364).
       return c.json(
         {
           error: result.error,
           message,
           ...(result.outcome ? { outcome: result.outcome } : {}),
+          ...(result.check && result.receipt
+            ? {
+                check: result.check,
+                receipt: result.receipt,
+                reclaim: result.reclaim ?? null,
+              }
+            : {}),
         },
         status,
       );

@@ -1,4 +1,5 @@
 import type { RemoveOutcome } from "@maestro/core";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { HttpError } from "../api/http";
 import {
@@ -16,10 +17,15 @@ import { RemovalTrace, type TracedRemoval } from "./removal-trace";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
 import { removePreflightView } from "./remove-preflight-view";
 import { RemoveSkillDialog } from "./remove-skill-dialog";
+import { restatedCost } from "./restated-cost";
 import { UpdateSkillAction } from "./update-skill-action";
 import type { DeployedPrimitive, SkippedEntry } from "./use-deploy-state";
 import { useRemoveDeployedSkill } from "./use-remove-deployed-skill";
-import { useRemovePreflight } from "./use-remove-preflight";
+import {
+  type RemovePreflight,
+  removePreflightQueryOptions,
+  useRemovePreflight,
+} from "./use-remove-preflight";
 
 // Per-skill drift badge. State is carried in text, never colour alone, so
 // "unknown" never reads as up-to-date (J04). Renders nothing while pending.
@@ -45,15 +51,18 @@ const driftBadge: Record<
 const alreadyGone = (error: unknown) =>
   error instanceof HttpError && error.code === "not-deployed";
 
-// What the panel needs to report a failure: apm's own words, and what the
-// server proved about each target afterwards.
-type RemovalFailure = {
-  message: string;
-  outcome: RemoveOutcome | null;
-};
+// What one attempt came back with. One union rather than two states, because
+// an attempt has one outcome: a removal that ran and failed, or one that ran
+// nothing because its cost was never agreed to (#364).
+type RemovalNews =
+  // apm's own words, and what the server proved about each target afterwards.
+  | { kind: "failed"; message: string; outcome: RemoveOutcome | null }
+  // The server's words for a removal it did not start.
+  | { kind: "restated"; message: string };
 
 // apm's own words when the server sent them, a plain sentence otherwise.
-const removalFailure = (error: unknown): RemovalFailure => ({
+const removalFailure = (error: unknown): RemovalNews => ({
+  kind: "failed",
   message:
     error instanceof HttpError
       ? error.message
@@ -100,9 +109,10 @@ export function DeployStateList({
   // mutation's error, and the panel would leave its failed state during the
   // attempt that state offered (#415). Message and outcome travel together, so
   // a ledger can never outlive the failure it reports on (#416).
-  const [failure, setFailure] = useState<RemovalFailure | null>(null);
+  const [news, setNews] = useState<RemovalNews | null>(null);
   const [justRemoved, setJustRemoved] = useState(false);
   const [removed, setRemoved] = useState<TracedRemoval[]>([]);
+  const queryClient = useQueryClient();
   const remove = useRemoveDeployedSkill();
   // Global's location is apm's own, resolved server-side (J07).
   const wireTarget: DeployTarget =
@@ -161,7 +171,7 @@ export function DeployStateList({
                   label: "remove…",
                   onSelect: () => {
                     remove.reset();
-                    setFailure(null);
+                    setNews(null);
                     setRemoving(primitive.name);
                   },
                 },
@@ -181,8 +191,9 @@ export function DeployStateList({
           target={target}
           isRemoving={remove.isPending}
           preflight={removePreflightView(preflight)}
-          error={failure?.message ?? null}
-          outcome={failure?.outcome ?? null}
+          error={news?.kind === "failed" ? news.message : null}
+          restated={news?.kind === "restated" ? news.message : null}
+          outcome={news?.kind === "failed" ? news.outcome : null}
           onCancel={() => setRemoving(null)}
           onConfirm={() =>
             remove.mutate(
@@ -199,13 +210,31 @@ export function DeployStateList({
               },
               {
                 onError: (error) => {
-                  if (failure !== null && alreadyGone(error)) {
-                    setFailure(null);
+                  if (news?.kind === "failed" && alreadyGone(error)) {
+                    setNews(null);
                     setRemoving(null);
                     setJustRemoved(true);
                     return;
                   }
-                  setFailure(removalFailure(error));
+                  // The server priced the copy again and took no action. Its
+                  // answer replaces the one on screen whole — cost, receipt and
+                  // leftovers — so the next confirm can never pair one attempt's
+                  // price with another's consent (#364).
+                  const cost = restatedCost(error);
+                  if (cost !== null) {
+                    queryClient.setQueryData(
+                      removePreflightQueryOptions(removing, wireTarget)
+                        .queryKey,
+                      (): RemovePreflight => ({
+                        check: cost.check,
+                        receipt: cost.receipt,
+                        reclaim: cost.reclaim,
+                      }),
+                    );
+                    setNews({ kind: "restated", message: cost.message });
+                    return;
+                  }
+                  setNews(removalFailure(error));
                 },
                 // Only a proven removal closes the dialog — a failure keeps it
                 // open with apm's reason.

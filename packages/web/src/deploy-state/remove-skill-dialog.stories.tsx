@@ -44,6 +44,7 @@ const meta = {
     isRemoving: false,
     preflight: repoCheck("none"),
     error: null,
+    restated: null,
     outcome: null,
     onCancel: () => undefined,
     onConfirm: () => undefined,
@@ -124,6 +125,17 @@ export const Retrying: Story = {
   args: {
     isRemoving: true,
     error: "apm did not confirm the removal. Check apm and try again.",
+  },
+};
+
+// The copy changed between the check and the click, so the removal stopped
+// having done nothing (#364). Amber, not red: the ledger states what it costs
+// now, and the footer still offers the first removal rather than a retry.
+export const CostRestated: Story = {
+  args: {
+    preflight: repoCheck("local-edits"),
+    restated:
+      "Maestro checked the deployed copy again and it is not the one this request agreed to remove, so nothing was removed. Confirm what it found now to go ahead.",
   },
 };
 

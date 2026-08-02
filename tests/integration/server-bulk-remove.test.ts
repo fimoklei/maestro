@@ -162,6 +162,22 @@ describe("bulk remove HTTP route", () => {
       () => false,
     );
 
+  // Each target's own preflight receipt, minted by this app: every removal runs
+  // at a cost that was priced, and the walk forwards the proof untouched (#364).
+  async function entriesFor(app: App, targets: DeployTarget[]) {
+    const entries = [];
+    for (const target of targets) {
+      const response = await app.request("/api/deploy/remove/preflight", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ type: "skill", name: "tdd", target }),
+      });
+      const { receipt } = (await response.json()) as { receipt?: string };
+      entries.push({ target, confirmedRemovalReceipt: receipt });
+    }
+    return entries;
+  }
+
   // The token a real preflight against this app would return, so the bulk run
   // proves the actual preflight→run contract rather than a hand-built path.
   async function globalReclaimToken(app: App): Promise<string | undefined> {
@@ -188,7 +204,7 @@ describe("bulk remove HTTP route", () => {
 
     const response = await post(app, {
       name: "tdd",
-      targets: [{ target: globalTarget }, { target: repoTarget(repoA) }],
+      targets: await entriesFor(app, [globalTarget, repoTarget(repoA)]),
     });
 
     expect(response.status).toBe(200);
@@ -222,11 +238,11 @@ describe("bulk remove HTTP route", () => {
 
     const response = await post(app, {
       name: "tdd",
-      targets: [
-        { target: repoTarget(repoA) },
-        { target: repoTarget(repoB) },
-        { target: globalTarget },
-      ],
+      targets: await entriesFor(app, [
+        repoTarget(repoA),
+        repoTarget(repoB),
+        globalTarget,
+      ]),
     });
 
     expect(response.status).toBe(200);
@@ -255,7 +271,7 @@ describe("bulk remove HTTP route", () => {
 
     const response = await post(app, {
       name: "tdd",
-      targets: [{ target: repoTarget(repoA) }, { target: repoTarget(repoB) }],
+      targets: await entriesFor(app, [repoTarget(repoA), repoTarget(repoB)]),
     });
 
     expect(response.status).toBe(200);
@@ -283,12 +299,15 @@ describe("bulk remove HTTP route", () => {
 
     const response = await post(app, {
       name: "tdd",
-      targets: [{ target: repoTarget(repoA) }, { target: repoTarget(repoB) }],
+      targets: [
+        { target: repoTarget(repoA) },
+        ...(await entriesFor(app, [repoTarget(repoB)])),
+      ],
     });
 
     const report = (await response.json()) as BulkRemoveReport;
     expect(report.failed).toEqual([
-      { target: repoTarget(repoA), reason: "local-edits-unconfirmed" },
+      { target: repoTarget(repoA), reason: "cost-not-acknowledged" },
     ]);
     expect(report.removed).toEqual([
       { target: repoTarget(repoB), version: "v0.5.1" },
@@ -347,7 +366,7 @@ describe("bulk remove HTTP route", () => {
 
     const response = await post(app, {
       name: "tdd",
-      targets: [{ target: repoTarget(repoB) }, { target: repoTarget(repoA) }],
+      targets: await entriesFor(app, [repoTarget(repoB), repoTarget(repoA)]),
     });
 
     expect(response.status).toBe(200);
@@ -372,7 +391,7 @@ describe("bulk remove HTTP route", () => {
       name: "tdd",
       targets: [
         { target: repoTarget(repoA), refused: "preflight-failed" },
-        { target: repoTarget(repoB) },
+        ...(await entriesFor(app, [repoTarget(repoB)])),
       ],
     });
 
@@ -400,8 +419,11 @@ describe("bulk remove HTTP route", () => {
     const response = await post(app, {
       name: "tdd",
       targets: [
-        { target: globalTarget, confirmedReclaimToken },
-        { target: repoTarget(repoA) },
+        {
+          ...(await entriesFor(app, [globalTarget]))[0],
+          confirmedReclaimToken,
+        },
+        ...(await entriesFor(app, [repoTarget(repoA)])),
       ],
     });
 
@@ -416,7 +438,7 @@ describe("bulk remove HTTP route", () => {
 
     const response = await post(app, {
       name: "tdd",
-      targets: [{ target: globalTarget }],
+      targets: await entriesFor(app, [globalTarget]),
     });
 
     expect(response.status).toBe(200);
@@ -446,9 +468,15 @@ describe("bulk remove HTTP route", () => {
     const { app, removeCalls } = makeApp();
     await writeGlobalLockfile();
 
+    const [priced] = await entriesFor(app, [globalTarget]);
     const response = await post(app, {
       name: "tdd",
-      targets: [{ target: { kind: "global", repoPath: "/etc" } }],
+      targets: [
+        {
+          target: { kind: "global", repoPath: "/etc" },
+          confirmedRemovalReceipt: priced?.confirmedRemovalReceipt,
+        },
+      ],
     });
 
     expect(response.status).toBe(200);

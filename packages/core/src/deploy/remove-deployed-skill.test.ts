@@ -149,11 +149,29 @@ async function receiptFor(
   return preflight.ok ? preflight.receipt : undefined;
 }
 
+// The pair the cockpit drives: price the removal, then run it at the cost that
+// was priced. Every removal needs its own preflight's receipt (#364), so a test
+// about anything else goes through both halves rather than restating consent.
+async function confirmedExecute(
+  useCase: RemoveDeployedSkill,
+  request: {
+    type: string;
+    name: string;
+    target: DeployTarget;
+    confirmedReclaimToken?: string;
+  },
+) {
+  return useCase.execute({
+    ...request,
+    confirmedRemovalReceipt: await receiptFor(useCase, request),
+  });
+}
+
 describe("RemoveDeployedSkill", () => {
   it("hands apm the tag-pinned ref the lockfile records", async () => {
     const { useCase, calls } = buildUseCase();
 
-    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+    await expect(confirmedExecute(useCase, removeTdd)).resolves.toEqual({
       ok: true,
       removed: {
         type: "skill",
@@ -177,7 +195,7 @@ describe("RemoveDeployedSkill", () => {
       },
     });
 
-    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+    await expect(confirmedExecute(useCase, removeTdd)).resolves.toEqual({
       ok: true,
       removed: {
         type: "skill",
@@ -194,15 +212,17 @@ describe("RemoveDeployedSkill", () => {
   it("reports the detected tools a global removal ran against", async () => {
     const { useCase } = buildUseCase({ detectedTools: ["claude"] });
 
-    await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
-      ok: true,
-      removed: {
-        type: "skill",
-        name: "tdd",
-        version: VERSION,
-        scope: { kind: "global", tools: ["claude"] },
+    await expect(confirmedExecute(useCase, removeTddGlobally)).resolves.toEqual(
+      {
+        ok: true,
+        removed: {
+          type: "skill",
+          name: "tdd",
+          version: VERSION,
+          scope: { kind: "global", tools: ["claude"] },
+        },
       },
-    });
+    );
   });
 
   it("refuses a primitive type other than a skill", async () => {
@@ -321,7 +341,10 @@ describe("RemoveDeployedSkill", () => {
 
     await expect(useCase.execute(removeTdd)).resolves.toEqual({
       ok: false,
-      error: "local-edits-unconfirmed",
+      error: "cost-not-acknowledged",
+      check: { scope: "repo", warning: "local-edits-will-be-lost" },
+      receipt: expect.any(String),
+      reclaim: null,
     });
     expect(calls.removes).toEqual([]);
   });
@@ -334,7 +357,10 @@ describe("RemoveDeployedSkill", () => {
 
     await expect(useCase.execute(removeTdd)).resolves.toEqual({
       ok: false,
-      error: "unverifiable-edits-unconfirmed",
+      error: "cost-not-acknowledged",
+      check: { scope: "repo", warning: "cannot-verify-local-edits" },
+      receipt: expect.any(String),
+      reclaim: null,
     });
     expect(calls.removes).toEqual([]);
   });
@@ -347,7 +373,7 @@ describe("RemoveDeployedSkill", () => {
         ...removeTdd,
         confirmedRemovalReceipt: "a".repeat(64),
       }),
-    ).resolves.toEqual({ ok: false, error: "local-edits-unconfirmed" });
+    ).resolves.toMatchObject({ ok: false, error: "cost-not-acknowledged" });
     expect(calls.removes).toEqual([]);
   });
 
@@ -360,7 +386,7 @@ describe("RemoveDeployedSkill", () => {
 
     await expect(
       useCase.execute({ ...removeTdd, confirmedRemovalReceipt: otherSkill }),
-    ).resolves.toEqual({ ok: false, error: "local-edits-unconfirmed" });
+    ).resolves.toMatchObject({ ok: false, error: "cost-not-acknowledged" });
     expect(calls.removes).toEqual([]);
   });
 
@@ -370,16 +396,16 @@ describe("RemoveDeployedSkill", () => {
 
     await expect(
       useCase.execute({ ...removeTdd, confirmedRemovalReceipt: otherTarget }),
-    ).resolves.toEqual({ ok: false, error: "local-edits-unconfirmed" });
+    ).resolves.toMatchObject({ ok: false, error: "cost-not-acknowledged" });
     expect(calls.removes).toEqual([]);
   });
 
   it("refuses the global copy's local edits on the same terms", async () => {
     const { useCase, calls } = buildUseCase({ deployedState: "diverged" });
 
-    await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
+    await expect(useCase.execute(removeTddGlobally)).resolves.toMatchObject({
       ok: false,
-      error: "local-edits-unconfirmed",
+      error: "cost-not-acknowledged",
     });
     expect(calls.removes).toEqual([]);
   });
@@ -412,7 +438,7 @@ describe("RemoveDeployedSkill", () => {
     // Nothing on disk to protect: the lockfile entry exists (the ref resolved),
     // but no deployed copy does. Removing it is exactly the tidy-up the user
     // asked for.
-    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+    await expect(confirmedExecute(useCase, removeTdd)).resolves.toEqual({
       ok: true,
       removed: {
         type: "skill",
@@ -427,7 +453,7 @@ describe("RemoveDeployedSkill", () => {
   it("fails closed when apm did not prove the removal", async () => {
     const { useCase } = buildUseCase({ removed: false });
 
-    await expect(useCase.execute(removeTdd)).resolves.toMatchObject({
+    await expect(confirmedExecute(useCase, removeTdd)).resolves.toMatchObject({
       ok: false,
       error: "remove-failed",
     });
@@ -452,7 +478,7 @@ describe("RemoveDeployedSkill", () => {
       location: { treeRoot: () => "/home" },
     });
 
-    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+    await expect(confirmedExecute(useCase, removeTdd)).resolves.toEqual({
       ok: false,
       error: "remove-failed",
     });
@@ -491,6 +517,179 @@ describe("RemoveDeployedSkill", () => {
   });
 });
 
+// Between the check and the click, an editor autosave can turn a clean copy
+// into an edited one. Consent names the state it was given for, so the removal
+// compares what the confirmation showed against what it now finds, and a
+// difference stops it (#364). The cost of #337's warn-don't-block stance.
+describe("RemoveDeployedSkill when the copy changed since it was priced", () => {
+  // Clean when the confirmation priced it, edited by the time the user clicked.
+  function racingUseCase(overrides: Overrides = {}) {
+    let state: DeployedContentState = "clean";
+    const built = buildUseCase({
+      ...overrides,
+      deployedStateForScope: () => state,
+    });
+    return { ...built, edit: () => (state = "diverged") };
+  }
+
+  it("removes nothing and states the cost it found instead", async () => {
+    const { useCase, calls, edit } = racingUseCase();
+    const confirmedRemovalReceipt = await receiptFor(useCase, removeTdd);
+    edit();
+
+    await expect(
+      useCase.execute({ ...removeTdd, confirmedRemovalReceipt }),
+    ).resolves.toEqual({
+      ok: false,
+      error: "cost-not-acknowledged",
+      check: { scope: "repo", warning: "local-edits-will-be-lost" },
+      receipt: expect.any(String),
+      reclaim: null,
+    });
+    expect(calls.removes).toEqual([]);
+  });
+
+  // Not a lock: the answer carries the proof for the state it just found, so
+  // confirming again goes through without pricing the removal a second time.
+  it("hands back a receipt the same removal can be confirmed with", async () => {
+    const { useCase, calls, edit } = racingUseCase();
+    const stale = await receiptFor(useCase, removeTdd);
+    edit();
+    const refused = await useCase.execute({
+      ...removeTdd,
+      confirmedRemovalReceipt: stale,
+    });
+
+    await expect(
+      useCase.execute({
+        ...removeTdd,
+        confirmedRemovalReceipt: refused.ok ? undefined : refused.receipt,
+      }),
+    ).resolves.toEqual({
+      ok: true,
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: REPO_SCOPE,
+      },
+    });
+    expect(calls.removes).toEqual([{ target: removeTdd.target, ref: REF }]);
+  });
+
+  // One tool's copy changing is enough: the confirmation states a cost per row,
+  // so a row that no longer reads the way it did was never agreed to (#414).
+  it("refuses when one tool's global copy changed and the others did not", async () => {
+    let edited: SupportedTool | null = null;
+    const { useCase, calls } = buildUseCase({
+      detectedTools: ["claude", "codex"],
+      deployedStateForScope: (tools) =>
+        tools?.[0] === edited ? "diverged" : "clean",
+    });
+    const confirmedRemovalReceipt = await receiptFor(
+      useCase,
+      removeTddGlobally,
+    );
+    edited = "codex";
+
+    await expect(
+      useCase.execute({ ...removeTddGlobally, confirmedRemovalReceipt }),
+    ).resolves.toEqual({
+      ok: false,
+      error: "cost-not-acknowledged",
+      check: {
+        scope: "global",
+        tools: [
+          { tool: "claude", warning: null },
+          { tool: "codex", warning: "local-edits-will-be-lost" },
+        ],
+      },
+      receipt: expect.any(String),
+      reclaim: null,
+    });
+    expect(calls.removes).toEqual([]);
+  });
+
+  // The leftover copies a global removal would delete are part of the same
+  // question, and the machine's tools can change between the two halves too. A
+  // refusal that restated only the cost would leave the next attempt echoing a
+  // token minted for a tool set that no longer exists (#390).
+  it("hands back the leftover consent it found, not the one the dialog holds", async () => {
+    let detected: SupportedTool[] = ["claude", "codex"];
+    let edited = false;
+    const { useCase, calls } = buildUseCase({
+      detectTools: async () => detected,
+      deployedStateForScope: (tools) =>
+        edited && tools?.[0] === "codex" ? "diverged" : "clean",
+    });
+    const stale = await receiptFor(useCase, removeTddGlobally);
+    // Claude Code has dropped off the machine, so its copy is now a leftover
+    // apm's own uninstall will not reach — and the copy that is left carries
+    // edits, so the cost differs and the removal stops.
+    detected = ["codex"];
+    edited = true;
+    const refused = await useCase.execute({
+      ...removeTddGlobally,
+      confirmedRemovalReceipt: stale,
+    });
+
+    expect(refused).toEqual({
+      ok: false,
+      error: "cost-not-acknowledged",
+      check: {
+        scope: "global",
+        tools: [
+          { tool: "codex", warning: "local-edits-will-be-lost" },
+          { tool: "claude", warning: null },
+        ],
+      },
+      receipt: expect.any(String),
+      reclaim: {
+        previews: [{ tool: "claude", path: "/home/.claude/skills/tdd" }],
+        token: expect.any(String),
+      },
+    });
+    // And that token is the one the retry can act on.
+    await expect(
+      useCase.execute({
+        ...removeTddGlobally,
+        confirmedRemovalReceipt: refused.ok ? undefined : refused.receipt,
+        confirmedReclaimToken: refused.ok ? undefined : refused.reclaim?.token,
+      }),
+    ).resolves.toMatchObject({ ok: true });
+    expect(calls.cleanups).toEqual([
+      { target: { kind: "global" }, name: "tdd", tools: ["claude"] },
+    ]);
+  });
+
+  // Nothing to compare against is not a free pass: a request that acknowledges
+  // no cost is treated exactly like one that acknowledged a stale one, even
+  // where the copy is clean and there is nothing to lose.
+  it("refuses a removal that acknowledges no cost at all", async () => {
+    const { useCase, calls } = buildUseCase({ deployedState: "clean" });
+
+    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+      ok: false,
+      error: "cost-not-acknowledged",
+      check: { scope: "repo", warning: null },
+      receipt: expect.any(String),
+      reclaim: null,
+    });
+    expect(calls.removes).toEqual([]);
+  });
+
+  // The copy is the one the user was warned about, so the removal runs exactly
+  // as it did before this guard existed.
+  it("goes ahead when the copy still reads the way it was priced", async () => {
+    const { useCase, calls } = buildUseCase({ deployedState: "diverged" });
+
+    await expect(confirmedExecute(useCase, removeTdd)).resolves.toMatchObject({
+      ok: true,
+    });
+    expect(calls.removes).toEqual([{ target: removeTdd.target, ref: REF }]);
+  });
+});
+
 // The user scope. One action removes the skill from every detected tool, because
 // apm's uninstall has no -t and the one lever that looks like per-tool scoping
 // orphans the other tools' files (apm-behavior.md § Remove, ADR-0013).
@@ -498,15 +697,17 @@ describe("RemoveDeployedSkill on the global target", () => {
   it("removes the skill in one action, naming the global scope to apm", async () => {
     const { useCase, calls } = buildUseCase();
 
-    await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
-      ok: true,
-      removed: {
-        type: "skill",
-        name: "tdd",
-        version: VERSION,
-        scope: GLOBAL_SCOPE,
+    await expect(confirmedExecute(useCase, removeTddGlobally)).resolves.toEqual(
+      {
+        ok: true,
+        removed: {
+          type: "skill",
+          name: "tdd",
+          version: VERSION,
+          scope: GLOBAL_SCOPE,
+        },
       },
-    });
+    );
     expect(calls.removes).toEqual([{ target: { kind: "global" }, ref: REF }]);
   });
 
@@ -515,15 +716,17 @@ describe("RemoveDeployedSkill on the global target", () => {
     // is no client path for the registry to gate (J07).
     const { useCase, calls } = buildUseCase({ registered: false });
 
-    await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
-      ok: true,
-      removed: {
-        type: "skill",
-        name: "tdd",
-        version: VERSION,
-        scope: GLOBAL_SCOPE,
+    await expect(confirmedExecute(useCase, removeTddGlobally)).resolves.toEqual(
+      {
+        ok: true,
+        removed: {
+          type: "skill",
+          name: "tdd",
+          version: VERSION,
+          scope: GLOBAL_SCOPE,
+        },
       },
-    });
+    );
     expect(calls.removes).toHaveLength(1);
   });
 
@@ -532,14 +735,16 @@ describe("RemoveDeployedSkill on the global target", () => {
     // deletes by its own recorded targets, which still name a tool that has
     // since dropped out. Scanning only the detected set would let apm delete an
     // edited copy the confirmation never mentioned. The scan therefore covers
-    // every supported tool — the guard's own default (undefined).
+    // every supported tool — the guard's own default (undefined). The per-tool
+    // calls around it are the pricing, which answers a different question (#414).
     const { useCase, calls } = buildUseCase({ detectedTools: ["claude"] });
 
-    await useCase.execute(removeTddGlobally);
+    await confirmedExecute(useCase, removeTddGlobally);
 
-    expect(calls.classifies).toEqual([
-      { target: { kind: "global" }, tools: undefined },
-    ]);
+    expect(calls.classifies).toContainEqual({
+      target: { kind: "global" },
+      tools: undefined,
+    });
   });
 
   it("refuses when the machine has no detected tool to remove from", async () => {
@@ -692,7 +897,10 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
     const confirmedReclaimToken = await confirmedTokenFor(useCase);
 
     await expect(
-      useCase.execute({ ...removeTddGlobally, confirmedReclaimToken }),
+      confirmedExecute(useCase, {
+        ...removeTddGlobally,
+        confirmedReclaimToken,
+      }),
     ).resolves.toEqual({
       ok: true,
       removed: {
@@ -712,15 +920,17 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
     // removal must not delete more than the user agreed to.
     const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
 
-    await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
-      ok: true,
-      removed: {
-        type: "skill",
-        name: "tdd",
-        version: VERSION,
-        scope: CODEX_SCOPE,
+    await expect(confirmedExecute(useCase, removeTddGlobally)).resolves.toEqual(
+      {
+        ok: true,
+        removed: {
+          type: "skill",
+          name: "tdd",
+          version: VERSION,
+          scope: CODEX_SCOPE,
+        },
       },
-    });
+    );
     expect(calls.cleanups).toEqual([]);
   });
 
@@ -730,7 +940,7 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
     const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
 
     await expect(
-      useCase.execute({
+      confirmedExecute(useCase, {
         ...removeTddGlobally,
         confirmedReclaimToken: "a".repeat(64),
       }),
@@ -756,7 +966,7 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
     const staleToken = await confirmedTokenFor(preflightUseCase);
     const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
 
-    await useCase.execute({
+    await confirmedExecute(useCase, {
       ...removeTddGlobally,
       confirmedReclaimToken: staleToken,
     });
@@ -770,7 +980,10 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
     });
     const confirmedReclaimToken = await confirmedTokenFor(useCase);
 
-    await useCase.execute({ ...removeTddGlobally, confirmedReclaimToken });
+    await confirmedExecute(useCase, {
+      ...removeTddGlobally,
+      confirmedReclaimToken,
+    });
 
     expect(calls.cleanups).toEqual([]);
   });
@@ -780,7 +993,7 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
     // absent Codex proves nothing about them, so the copy stays (#202).
     const { useCase, calls } = buildUseCase({ detectedTools: ["claude"] });
 
-    await useCase.execute(removeTddGlobally);
+    await confirmedExecute(useCase, removeTddGlobally);
 
     expect(calls.cleanups).toEqual([]);
   });
@@ -795,7 +1008,10 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
     const confirmedReclaimToken = await confirmedTokenFor(useCase);
 
     await expect(
-      useCase.execute({ ...removeTddGlobally, confirmedReclaimToken }),
+      confirmedExecute(useCase, {
+        ...removeTddGlobally,
+        confirmedReclaimToken,
+      }),
     ).resolves.toMatchObject({
       ok: false,
       error: "remove-failed",
@@ -813,7 +1029,10 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
     const confirmedReclaimToken = await confirmedTokenFor(useCase);
 
     await expect(
-      useCase.execute({ ...removeTddGlobally, confirmedReclaimToken }),
+      confirmedExecute(useCase, {
+        ...removeTddGlobally,
+        confirmedReclaimToken,
+      }),
     ).resolves.toEqual({
       ok: true,
       removed: {
@@ -831,7 +1050,7 @@ describe("RemoveDeployedSkill cleaning up after a global remove", () => {
     const { useCase, calls } = buildUseCase({ detectedTools: ["codex"] });
     const confirmedReclaimToken = await confirmedTokenFor(useCase);
 
-    await useCase.execute({ ...removeTdd, confirmedReclaimToken });
+    await confirmedExecute(useCase, { ...removeTdd, confirmedReclaimToken });
 
     expect(calls.cleanups).toEqual([]);
   });
@@ -1054,7 +1273,7 @@ describe("RemoveDeployedSkill reporting a failed removal per target", () => {
       probe: async () => "not-deployed",
     });
 
-    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+    await expect(confirmedExecute(useCase, removeTdd)).resolves.toEqual({
       ok: false,
       error: "remove-failed",
       outcome: { scope: "repo", state: "removed" },
@@ -1067,7 +1286,7 @@ describe("RemoveDeployedSkill reporting a failed removal per target", () => {
       probe: async () => "clean",
     });
 
-    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+    await expect(confirmedExecute(useCase, removeTdd)).resolves.toEqual({
       ok: false,
       error: "remove-failed",
       outcome: { scope: "repo", state: "not-removed" },
@@ -1082,17 +1301,19 @@ describe("RemoveDeployedSkill reporting a failed removal per target", () => {
         tools?.[0] === "claude" ? "not-deployed" : "diverged",
     });
 
-    await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
-      ok: false,
-      error: "remove-failed",
-      outcome: {
-        scope: "global",
-        tools: [
-          { tool: "claude", state: "removed" },
-          { tool: "codex", state: "not-removed" },
-        ],
+    await expect(confirmedExecute(useCase, removeTddGlobally)).resolves.toEqual(
+      {
+        ok: false,
+        error: "remove-failed",
+        outcome: {
+          scope: "global",
+          tools: [
+            { tool: "claude", state: "removed" },
+            { tool: "codex", state: "not-removed" },
+          ],
+        },
       },
-    });
+    );
   });
 
   it("keeps the detected tools in the order the confirmation showed them", async () => {
@@ -1101,7 +1322,7 @@ describe("RemoveDeployedSkill reporting a failed removal per target", () => {
       detectedTools: ["codex", "claude"],
       probe: async () => "clean",
     });
-    const result = await useCase.execute(removeTddGlobally);
+    const result = await confirmedExecute(useCase, removeTddGlobally);
 
     expect(
       result.ok === false && result.outcome?.scope === "global"
@@ -1118,7 +1339,7 @@ describe("RemoveDeployedSkill reporting a failed removal per target", () => {
       },
     });
 
-    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+    await expect(confirmedExecute(useCase, removeTdd)).resolves.toEqual({
       ok: false,
       error: "remove-failed",
       outcome: { scope: "repo", state: "unknown" },
@@ -1132,7 +1353,7 @@ describe("RemoveDeployedSkill reporting a failed removal per target", () => {
         probe: async () => state,
       });
 
-      await expect(useCase.execute(removeTdd)).resolves.toEqual({
+      await expect(confirmedExecute(useCase, removeTdd)).resolves.toEqual({
         ok: false,
         error: "remove-failed",
         outcome: { scope: "repo", state: "unknown" },
@@ -1147,7 +1368,7 @@ describe("RemoveDeployedSkill reporting a failed removal per target", () => {
       lookup: { ok: false, reason: "not-deployed" },
     });
 
-    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+    await expect(confirmedExecute(useCase, removeTdd)).resolves.toEqual({
       ok: false,
       error: "not-deployed",
     });
@@ -1157,7 +1378,7 @@ describe("RemoveDeployedSkill reporting a failed removal per target", () => {
   it("reports nothing when the guard refused before apm ran", async () => {
     const { useCase, calls } = buildUseCase({ deployedState: "unreadable" });
 
-    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+    await expect(confirmedExecute(useCase, removeTdd)).resolves.toEqual({
       ok: false,
       error: "deployed-unreadable",
     });

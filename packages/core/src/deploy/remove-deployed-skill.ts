@@ -50,8 +50,7 @@ export type RemoveDeployedSkillError =
   | "lockfile-malformed"
   | "ref-unresolvable"
   | "deployed-unreadable"
-  | "local-edits-unconfirmed"
-  | "unverifiable-edits-unconfirmed"
+  | "cost-not-acknowledged"
   | "remove-in-progress"
   | "remove-failed";
 
@@ -70,16 +69,6 @@ const GUARD_REFUSALS: Partial<
 > = {
   unreadable: "deployed-unreadable",
   "lockfile-malformed": "lockfile-malformed",
-};
-
-// The states that destroy work the confirmation had to price: edits we saw,
-// and edits we could not rule out. Each names its own refusal, so neither
-// claims what the other found (J04).
-const RECEIPT_REQUIRED: Partial<
-  Record<DeployedContentState, RemoveDeployedSkillError>
-> = {
-  diverged: "local-edits-unconfirmed",
-  unverifiable: "unverifiable-edits-unconfirmed",
 };
 
 // Absent means nothing to lose ("clean", "not-deployed") — silence in a
@@ -107,6 +96,13 @@ export type RemoveToolCheck = {
 export type RemoveCheck =
   | { scope: "repo"; warning: RemoveWarning | null }
   | { scope: "global"; tools: readonly RemoveToolCheck[] };
+
+// A repo's deployed copy spans several tool subtrees, so its one row is priced
+// from the one aggregate answer — the same state the guard above refuses on.
+const repoCheck = (state: DeployedContentState): RemoveCheck => ({
+  scope: "repo",
+  warning: GUARD_WARNINGS[state] ?? null,
+});
 
 // What a probe of one target's disk found once apm failed to confirm. A probe
 // that could not answer is "unknown", never "removed" (J04).
@@ -169,11 +165,17 @@ type RemoveDeployedSkillResult =
       };
     }
   // `outcome` is present only where apm ran and left something to probe; a
-  // failure that never reached it has no outcome to report.
+  // failure that never reached it has no outcome to report. The other three
+  // appear only where the removal stopped because the cost it found was never
+  // agreed to: together they are the whole restated question, so the next
+  // attempt never mixes a fresh cost with a stale consent (#364).
   | {
       ok: false;
       error: RemoveDeployedSkillError;
       outcome?: RemoveOutcome;
+      check?: RemoveCheck;
+      receipt?: string;
+      reclaim?: ReclaimConsent | null;
     };
 
 type RemovePreflightResult =
@@ -242,23 +244,33 @@ export class RemoveDeployedSkill {
     }
 
     try {
-      // The reclaim comes first because the check follows it: a copy the
-      // removal would delete is a copy the confirmation has to price, whether
-      // or not this machine still has the tool that reads it.
-      const reclaim = this.consent.offer({
-        target: input.target,
-        name: input.name,
-        detected: scope.scope === "global" ? scope.detected : undefined,
-      });
+      const { check, reclaim } = await this.price(input, scope);
       return {
         ok: true,
-        check: await this.runCheck(input, scope, reclaim),
+        check,
         reclaim,
-        receipt: this.consent.receipt(input),
+        receipt: this.consent.receipt(input, check),
       };
     } catch {
       return { ok: false, error: "preflight-failed" };
     }
+  }
+
+  // One pricing, run by both halves against the same seam: the confirmation
+  // states it, and the removal proves the request agreed to the one it finds
+  // (#364). The reclaim comes first because the check follows it — a copy the
+  // removal would delete is a copy to price, whether or not this machine still
+  // has the tool that reads it.
+  private async price(
+    input: RemoveDeployedSkillInput,
+    scope: ResolvedScope & { ok: true },
+  ): Promise<{ check: RemoveCheck; reclaim: ReclaimConsent | null }> {
+    const reclaim = this.consent.offer({
+      target: input.target,
+      name: input.name,
+      detected: scope.scope === "global" ? scope.detected : undefined,
+    });
+    return { check: await this.runCheck(input, scope, reclaim), reclaim };
   }
 
   // The global scope asks per tool, because that is the grain the confirmation
@@ -272,11 +284,12 @@ export class RemoveDeployedSkill {
     reclaim: ReclaimConsent | null,
   ): Promise<RemoveCheck> {
     if (scope.scope === "repo") {
-      const state = await this.deps.deployedContent.classify({
-        target: input.target,
-        name: input.name,
-      });
-      return { scope: "repo", warning: GUARD_WARNINGS[state] ?? null };
+      return repoCheck(
+        await this.deps.deployedContent.classify({
+          target: input.target,
+          name: input.name,
+        }),
+      );
     }
     const priced = [
       ...scope.detected,
@@ -335,9 +348,8 @@ export class RemoveDeployedSkill {
       return { ok: false, error: scope.error };
     }
 
-    const detected = scope.scope === "global" ? scope.detected : undefined;
     const run = await this.deps.locks.run(lockKey, () =>
-      this.remove(input, detected),
+      this.remove(input, scope),
     );
     return run.ok ? run.value : { ok: false, error: "remove-in-progress" };
   }
@@ -385,9 +397,10 @@ export class RemoveDeployedSkill {
 
   private async remove(
     input: RemoveDeployedSkillInput,
-    detected: readonly SupportedTool[] | undefined,
+    scope: ResolvedScope & { ok: true },
   ): Promise<RemoveDeployedSkillResult> {
     const target = input.target;
+    const detected = scope.scope === "global" ? scope.detected : undefined;
     // Swallow rather than rethrow: a raw apm message may carry a token and must
     // never reach the transport layer (security.md).
     try {
@@ -409,15 +422,35 @@ export class RemoveDeployedSkill {
       if (refusal !== undefined) {
         return { ok: false, error: refusal };
       }
-      const unproven = RECEIPT_REQUIRED[deployedState];
+
+      // Priced again, and only a receipt minted for what is found now lets the
+      // removal through. An editor autosave between the check and the click
+      // therefore stops it, and so does a request that acknowledged nothing
+      // (#364). The repo scope reuses the state the guard just read and has no
+      // leftovers by definition; the global scope prices per tool, the grain
+      // the confirmation states costs at.
+      const priced =
+        scope.scope === "repo"
+          ? { check: repoCheck(deployedState), reclaim: null }
+          : await this.price(input, scope);
+      const consentScope = { target, name: input.name };
       if (
-        unproven !== undefined &&
         !this.consent.accepts(
-          { target, name: input.name },
+          consentScope,
+          priced.check,
           input.confirmedRemovalReceipt,
         )
       ) {
-        return { ok: false, error: unproven };
+        // The whole question again, so confirming the restated cost is one more
+        // click rather than a second pricing round — and so the next attempt
+        // cannot pair this cost with the consent of an older one (#364).
+        return {
+          ok: false,
+          error: "cost-not-acknowledged",
+          check: priced.check,
+          receipt: this.consent.receipt(consentScope, priced.check),
+          reclaim: priced.reclaim,
+        };
       }
 
       const removed = await this.deps.apm.removeSkill({
