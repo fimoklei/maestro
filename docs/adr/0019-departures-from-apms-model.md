@@ -73,23 +73,23 @@ Six entries. Each names what APM says, what this route does, and the verdict:
   hears about it. A provenance receipt was proposed against this cost and
   rejected on #351 — a receipt notifies nobody.
 
-### 4. "Harness" means something else here than in APM — drift
+### 4. "Harness" means something else here than in APM — deliberate
 
 - **APM:** a harness is the **agent platform** — Copilot, Claude, Cursor —
   detected from `.github/`, `.claude/` (quickstart glossary). It is where
   primitives *arrive*.
 - **This route:** "harness" is the central inventory repo — where primitives
   *depart from* — and #347 banked **Harness** as the authoring view's name.
-- **Drift, not a decision.** Nobody chose to reuse APM's word for the opposite
-  end of the pipe; it arrived with the repo name `agent-harness` and reached
-  the screen from there. `CONTEXT.md` already lists `harness` under *Avoid*
-  ("that is the inventory repo, not the product") and the view was named it
-  anyway.
+- **Arrived as drift, kept on purpose.** Nobody chose to reuse APM's word for
+  the opposite end of the pipe; it came with the repo name `agent-harness` and
+  reached the screen from there. #352 settled it 2026-08-01: the word stays,
+  because #347 put it on a screen and a glossary cannot outvote that. Renaming
+  the view would re-open #347 and leave two sidebar entries reading "Inventory".
+  `CONTEXT.md` now carries **Harness** as a real term whose *Avoid* line names
+  APM's meaning; ADR-0021 records the decision.
 - **Consequence:** a newcomer who reads APM first learns *harness = my tool*,
-  then opens a Harness view whose subject is the team's shared repo.
-- **Not corrected here.** Naming the published and working states is #352's
-  job — its *Record* list already owns the `CONTEXT.md` terms and the *Avoid*
-  list. This entry is an input to it.
+  then opens a Harness view whose subject is the team's shared repo. The *Avoid*
+  line is the whole mitigation.
 
 ### 5. `.apm/skills/` is APM's shape; root `skills/` is legacy — resolved drift
 

@@ -2,6 +2,8 @@
 
 - **Status:** Accepted
 - **Date:** 2026-07-20
+- **Amended 2026-08-01** by ADR-0021 (issue #352) — see *Amendments*. The
+  headline decision stands; three points below no longer hold as written.
 
 ## Context
 
@@ -82,3 +84,24 @@ beyond it is.
   state or as the picker's default. Rejected outright: registration keeps a
   single deliberate route, and a bulk opt-out default sits badly with the
   write promise made in the same breath.
+
+## Amendments
+
+### 2026-08-01 — ADR-0021, issue #352
+
+The gate itself is unchanged: welcome plus connect form, no wizard, unreachable
+once configured. Three points were written when Maestro was consumer-only.
+
+- **Point 2 — the read-only promise.** `read-only, never writes back` is no
+  longer true of the repository. Maestro writes into the **working harness**
+  when the author promotes or releases (ADR-0021). The reassurance beat stays
+  and the promise narrows to the one that holds: **a deploy never writes back to
+  the inventory.** Exact copy is still decided at build time; this fixes the
+  content.
+- **Point 3 — "the gate lands on Inventory".** No longer fixed. A joining member
+  may have Maestro clone the harness for them (#366), and the landing screen
+  follows the outcome of that. Inventory stays the landing for the case this ADR
+  described — a local clone that already exists.
+- **Point 1 — "two screens".** Still two screens, but the second is no longer
+  guaranteed instant: the connect form now accepts a GitHub URL as well as a
+  path, and a clone takes as long as it takes (#366).

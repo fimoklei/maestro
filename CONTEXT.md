@@ -33,11 +33,23 @@ A Model Context Protocol server declared as a primitive so it can be deployed in
 _Avoid_: integration, connector.
 
 **Central inventory**:
-The single curated, production-ready collection of primitives, held in the `agent-harness` Git repository. The source you deploy *from*. "Central" means curated and ready to deploy — not a draft scratchpad.
+The single curated, production-ready collection of primitives, held in the **Harness** Git repository. The source you deploy *from*. "Central" means curated and ready to deploy — not a draft scratchpad, because a consumer only ever sees the **Released harness**.
 _Avoid_: skills repo, library, catalog (a catalog is passive; the inventory is the governed source).
 
+**Harness**:
+The Git repository the team writes primitives into — the same repository the **Central inventory** names, seen from the author's side instead of the consumer's. Skills live at `.apm/skills/<name>`, and a repository counts as a harness when `apm.yml` sits in its root (ADR-0021).
+_Avoid_: harness in APM's sense (there it means the agent platform — Claude, Copilot, Cursor — the end primitives *arrive* at, not depart from), skills repo.
+
+**Working harness**:
+The harness as it stands right now, uncommitted edits included. The only state Maestro writes into, and the one that carries no quality promise (ADR-0021).
+_Avoid_: draft, scratchpad, local inventory.
+
+**Released harness**:
+The harness at its latest published tag. The only state consumers deploy from, and the only one the **Curated / Production-ready** bar applies to (ADR-0021, ADR-0003).
+_Avoid_: published inventory, catalogue, main (a merge is not a release).
+
 **Inventory source**:
-The connection that points Maestro at the central inventory — the path of a local *clone* of the Central inventory, not any folder that happens to hold skills (a git URL is the Future "Connect & sync" form), managed behind the ⚙ settings view. Connect requires the clone to have a parseable git origin remote, checked offline, so deploys can resolve versions from it later. Distinct from the **Central inventory** itself: the source is the *pointer*, the inventory is *what it points at*. Read-only; Maestro never writes back to it.
+The connection that points Maestro at the central inventory — the path of a local *clone* of the Central inventory, not any folder that happens to hold skills (a git URL is the Future "Connect & sync" form), managed behind the ⚙ settings view. Connect requires the clone to have a parseable git origin remote, checked offline, so deploys can resolve versions from it later. Distinct from the **Central inventory** itself: the source is the *pointer*, the inventory is *what it points at*. Deploying never writes back to it; authoring does, in the **Working harness** only, and never as a side effect of a deploy (ADR-0021).
 _Avoid_: inventory path (too narrow — names only today's local-path form), connection.
 
 **Connect gate**:
@@ -45,7 +57,7 @@ The single mandatory first-run moment — a welcome and the connect form — whe
 _Avoid_: wizard (the retired multi-step shape), onboarding flow, setup flow.
 
 **Curated / Production-ready**:
-The quality bar for anything in the **central inventory**: reviewed and deemed safe to deploy. In MVP1 the curator is one person (the owner). The path from contribution to curated is the future governed lifecycle.
+The quality bar for anything in the **Released harness**: reviewed and deemed safe to deploy. The **Working harness** carries no such promise — a tag is where the promise is made (ADR-0021). In MVP1 the curator is one person (the owner). The path from contribution to curated is the future governed lifecycle.
 _Avoid_: published, approved (those name the future lifecycle step, not the state).
 
 **Bundle**:
@@ -89,11 +101,11 @@ The answer to "what is deployed where, and at which version" — across consumin
 _Avoid_: status, adoption (adoption is the future team-scale framing of the same idea).
 
 **Drift**:
-The umbrella term for a deployed primitive that no longer matches the central inventory. Has two facets, surfaced by the deploy-state view: **Version drift** and **Content drift**. When unqualified, "drift" means the union; in a feature that only covers one facet, qualify it.
+The umbrella term for a deployed primitive that no longer matches the **Released harness**. Has two facets, surfaced by the deploy-state view: **Version drift** and **Content drift**. When unqualified, "drift" means the union; in a feature that only covers one facet, qualify it. Drift never measures against the **Working harness**: work that is merged but not tagged is not drift, it is the *Pending release* table on the Harness view (ADR-0021).
 _Avoid_: staleness, out-of-sync.
 
 **Version drift**:
-A deployed primitive whose pinned version lags the latest tag in the central inventory. Detectable via `apm outdated`; the cockpit shows it as the **deployed → latest version pair** (e.g. `2.1.0 → 2.3.1`), read straight from `apm outdated`'s output — not a binary flag, and not a "versions behind" distance (ADR-0007). This is the facet MVP1 surfaces.
+A deployed primitive whose pinned version lags the latest tag on the **Released harness**. Detectable via `apm outdated`; the cockpit shows it as the **deployed → latest version pair** (e.g. `2.1.0 → 2.3.1`), read straight from `apm outdated`'s output — not a binary flag, and not a "versions behind" distance (ADR-0007). This is the facet MVP1 surfaces.
 _Avoid_: outdated (that is APM's word for the mechanism).
 
 **Content drift**:
