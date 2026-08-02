@@ -169,29 +169,22 @@ describe("bulkRemoveReportView — a partial run", () => {
     );
   });
 
-  // The two refusals #483 added. They stay apart (J04): one says the edits were
-  // seen and never priced, the other that they could not be checked at all.
-  it("names both unconfirmed-edits refusals without letting them share a wording", () => {
-    const reasonFor = (reason: string) =>
-      (
-        view({
-          report: report({
-            failed: [
-              {
-                target: TARGETS[0]?.target ?? { kind: "global" },
-                reason: reason as never,
-              },
-            ],
-          }),
-        }) as { leftAlone: { reason: string }[] }
-      ).leftAlone[0]?.reason;
+  // A target whose copy changed between the check and the run (#364). The row
+  // says so in words, never by echoing the server's code.
+  it("names a target whose copy was no longer the one that was priced", () => {
+    const changed = view({
+      report: report({
+        failed: [
+          {
+            target: TARGETS[0]?.target ?? { kind: "global" },
+            reason: "cost-not-acknowledged",
+          },
+        ],
+      }),
+    }) as { leftAlone: { reason: string }[] };
 
-    const seen = reasonFor("local-edits-unconfirmed");
-    const unverifiable = reasonFor("unverifiable-edits-unconfirmed");
-
-    expect(seen).not.toBe("local-edits-unconfirmed");
-    expect(unverifiable).not.toBe("unverifiable-edits-unconfirmed");
-    expect(seen).not.toBe(unverifiable);
+    expect(changed.leftAlone[0]?.reason).not.toBe("cost-not-acknowledged");
+    expect(changed.leftAlone[0]?.reason).toMatch(/\S/);
   });
 
   // A row whose reason this build cannot name is still a target left behind;

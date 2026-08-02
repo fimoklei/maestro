@@ -170,12 +170,24 @@ describe("the deploy-state read after a removal", () => {
 
   type App = ReturnType<typeof makeApp>["app"];
 
-  const removeSkill = (app: App, body: unknown) =>
-    app.request("/api/deploy/remove", {
+  // Priced through the route's own preflight first, then removed at that price:
+  // a removal that acknowledges no cost is refused (#364).
+  const removeSkill = async (
+    app: App,
+    body: { type: string; name: string; target: unknown },
+  ) => {
+    const preflight = await app.request("/api/deploy/remove/preflight", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     });
+    const { receipt } = (await preflight.json()) as { receipt?: string };
+    return app.request("/api/deploy/remove", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...body, confirmedRemovalReceipt: receipt }),
+    });
+  };
 
   const removeTddFromRepo = (app: App) =>
     removeSkill(app, {

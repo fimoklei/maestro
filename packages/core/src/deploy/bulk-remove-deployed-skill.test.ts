@@ -304,7 +304,7 @@ describe("BulkRemoveDeployedSkill", () => {
   it("keeps an unproven target's refusal to its own row and finishes the batch", async () => {
     const bulk = new BulkRemoveDeployedSkill({
       remove: fakeRemove({
-        "/repo-a": { ok: false, error: "local-edits-unconfirmed" },
+        "/repo-a": { ok: false, error: "cost-not-acknowledged" },
         "/repo-b": ok("v1.0.0"),
       }),
     });
@@ -315,7 +315,7 @@ describe("BulkRemoveDeployedSkill", () => {
     });
 
     expect(report.failed).toEqual([
-      { target: repo("/repo-a"), reason: "local-edits-unconfirmed" },
+      { target: repo("/repo-a"), reason: "cost-not-acknowledged" },
     ]);
     expect(report.removed).toEqual([
       { target: repo("/repo-b"), version: "v1.0.0" },

@@ -154,14 +154,23 @@ describe("apm output never reaches the client", () => {
     );
     await registry.register(repo);
 
+    const request = {
+      type: "skill",
+      name: "tdd",
+      target: { kind: "repo", repoPath: repo },
+    };
+    // Priced first, so the removal reaches apm rather than stopping at the
+    // unacknowledged-cost refusal (#364).
+    const preflight = await app.request("/api/deploy/remove/preflight", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(request),
+    });
+    const { receipt } = (await preflight.json()) as { receipt?: string };
     const response = await app.request("/api/deploy/remove", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        type: "skill",
-        name: "tdd",
-        target: { kind: "repo", repoPath: repo },
-      }),
+      body: JSON.stringify({ ...request, confirmedRemovalReceipt: receipt }),
     });
     return { status: response.status, body: await response.text() };
   }

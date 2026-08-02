@@ -226,6 +226,58 @@ describe("removing a deployed skill from a row", () => {
     });
   });
 
+  // The window #364 closes: the copy is clean when the confirmation prices it,
+  // and carries edits by the time the click lands. The dialog states what it
+  // costs now and takes a second yes without being reopened.
+  it("restates the cost and takes a second yes when the copy changed under the check", async () => {
+    const RESTATED = "c".repeat(64);
+    let attempts = 0;
+    const fetchMock = stubFetch(null, () => {
+      attempts += 1;
+      return attempts === 1
+        ? jsonResponse(
+            {
+              error: "cost-not-acknowledged",
+              message:
+                "That copy is not the one this request agreed to remove.",
+              check: { scope: "repo", warning: "local-edits-will-be-lost" },
+              receipt: RESTATED,
+            },
+            409,
+          )
+        : jsonResponse(
+            { removed: { type: "skill", name: "tdd", version: "v0.5.0" } },
+            200,
+          );
+    });
+    renderRow();
+
+    const dialog = await openRemoveDialog();
+    await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
+
+    expect(
+      await within(dialog).findByText(
+        "That copy is not the one this request agreed to remove.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText("local edits — deleted too"),
+    ).toBeInTheDocument();
+
+    // Still the first offer, not a retry: nothing was removed.
+    await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
+
+    await waitFor(() => {
+      expect(removeCalls(fetchMock)).toHaveLength(2);
+    });
+    const [, init] = removeCalls(fetchMock)[1] as [string, RequestInit];
+    // The receipt that came with the restated cost, so the second yes answers
+    // the question the first refusal asked.
+    expect(JSON.parse(String(init.body))).toMatchObject({
+      confirmedRemovalReceipt: RESTATED,
+    });
+  });
+
   it("says so when the copy cannot be checked at all", async () => {
     stubFetch("cannot-verify-local-edits");
     renderRow();
@@ -711,6 +763,63 @@ describe("removing a deployed skill from a row", () => {
 
     // A global removal can force-delete an undetected tool's copy — confirm
     // must echo preflight's own token, never a client-rebuilt path list.
+    // The machine's tools can change between the check and the click too, so a
+    // restated cost brings its own leftovers. Sending the older token beside
+    // the newer cost would leave a copy the dialog named still on disk (#390).
+    it("confirms a restated cost with the leftovers that came with it", async () => {
+      const RESTATED = "c".repeat(64);
+      const RESTATED_TOKEN = "d".repeat(64);
+      let attempts = 0;
+      const fetchMock = stubFetch(null, () => {
+        attempts += 1;
+        return attempts === 1
+          ? jsonResponse(
+              {
+                error: "cost-not-acknowledged",
+                message: "That copy is not the one this request agreed to.",
+                check: {
+                  scope: "global",
+                  tools: [
+                    { tool: "codex", warning: "local-edits-will-be-lost" },
+                    { tool: "claude", warning: null },
+                  ],
+                },
+                receipt: RESTATED,
+                reclaim: {
+                  previews: [
+                    { tool: "claude", path: "/Users/me/.claude/skills/tdd" },
+                  ],
+                  token: RESTATED_TOKEN,
+                },
+              },
+              409,
+            )
+          : jsonResponse(
+              { removed: { type: "skill", name: "tdd", version: "v0.5.0" } },
+              200,
+            );
+      }, [{ tool: "claude", path: "/Users/me/.claude/skills/tdd" }]);
+      renderGlobalRow();
+
+      await openRemoveDialog();
+      await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
+      await waitFor(() => {
+        expect(removeCalls(fetchMock)).toHaveLength(1);
+      });
+      await userEvent.click(
+        await screen.findByRole("button", { name: CONFIRM }),
+      );
+
+      await waitFor(() => {
+        expect(removeCalls(fetchMock)).toHaveLength(2);
+      });
+      const [, init] = removeCalls(fetchMock)[1] as [string, RequestInit];
+      expect(JSON.parse(String(init.body))).toMatchObject({
+        confirmedRemovalReceipt: RESTATED,
+        confirmedReclaimToken: RESTATED_TOKEN,
+      });
+    });
+
     it("names the leftover copy and confirms with preflight's own token", async () => {
       const fetchMock = stubFetch(null, undefined, [
         { tool: "claude", path: "/Users/me/.claude/skills/tdd" },

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DeployTarget } from "./deploy-skill";
 import { RemoveConsentIssuer } from "./remove-consent";
+import type { RemoveCheck } from "./remove-deployed-skill";
 
 const GLOBAL: DeployTarget = { kind: "global" };
 const REPO: DeployTarget = { kind: "repo", repoPath: "/repo" };
@@ -124,29 +125,52 @@ describe("RemoveConsentIssuer.grants", () => {
 describe("RemoveConsentIssuer receipts", () => {
   const scope = { target: GLOBAL, name: "tdd" };
 
-  it("accepts back the receipt it minted for the same skill and target", () => {
+  // The cost the confirmation stated. A receipt is minted against one of these,
+  // so a copy that changed since cannot pass as the one the user agreed to (#364).
+  const CLEAN = {
+    scope: "global",
+    tools: [
+      { tool: "claude", warning: null },
+      { tool: "codex", warning: null },
+    ],
+  } as const satisfies RemoveCheck;
+  const EDITED = {
+    scope: "global",
+    tools: [
+      { tool: "claude", warning: "local-edits-will-be-lost" },
+      { tool: "codex", warning: null },
+    ],
+  } as const satisfies RemoveCheck;
+
+  it("accepts back the receipt it minted for the same skill, target and cost", () => {
     const consent = issuer();
 
-    expect(consent.accepts(scope, consent.receipt(scope))).toBe(true);
+    expect(consent.accepts(scope, CLEAN, consent.receipt(scope, CLEAN))).toBe(
+      true,
+    );
   });
 
   it("refuses a request that carries no receipt at all", () => {
-    expect(issuer().accepts(scope, undefined)).toBe(false);
+    expect(issuer().accepts(scope, CLEAN, undefined)).toBe(false);
   });
 
   it("refuses a receipt a caller merely guessed", () => {
-    expect(issuer().accepts(scope, "a".repeat(64))).toBe(false);
+    expect(issuer().accepts(scope, CLEAN, "a".repeat(64))).toBe(false);
   });
 
   it("refuses a receipt that is not even token-shaped", () => {
-    expect(issuer().accepts(scope, "not-hex")).toBe(false);
+    expect(issuer().accepts(scope, CLEAN, "not-hex")).toBe(false);
   });
 
   it("refuses a receipt minted for a different skill", () => {
     const consent = issuer();
 
     expect(
-      consent.accepts(scope, consent.receipt({ ...scope, name: "jobs" })),
+      consent.accepts(
+        scope,
+        CLEAN,
+        consent.receipt({ ...scope, name: "jobs" }, CLEAN),
+      ),
     ).toBe(false);
   });
 
@@ -154,12 +178,43 @@ describe("RemoveConsentIssuer receipts", () => {
     const consent = issuer();
 
     expect(
-      consent.accepts(scope, consent.receipt({ ...scope, target: REPO })),
+      consent.accepts(
+        scope,
+        CLEAN,
+        consent.receipt({ ...scope, target: REPO }, CLEAN),
+      ),
     ).toBe(false);
   });
 
+  // The window #364 closes: the copy was clean when the user was warned and
+  // carries edits by the time the removal runs, so the consent no longer
+  // describes what would be destroyed.
+  it("refuses a receipt minted for a cost the copy no longer carries", () => {
+    const consent = issuer();
+
+    expect(consent.accepts(scope, EDITED, consent.receipt(scope, CLEAN))).toBe(
+      false,
+    );
+  });
+
+  // The tool probe orders its own answer, and the same set of answers in
+  // another order is the same cost — refusing it would cost a click for nothing.
+  it("accepts a receipt whose tools answered in a different order", () => {
+    const consent = issuer();
+    const reordered: RemoveCheck = {
+      scope: "global",
+      tools: [...CLEAN.tools].reverse(),
+    };
+
+    expect(
+      consent.accepts(scope, reordered, consent.receipt(scope, CLEAN)),
+    ).toBe(true);
+  });
+
   it("refuses a receipt minted by another instance", () => {
-    expect(issuer().accepts(scope, issuer().receipt(scope))).toBe(false);
+    expect(issuer().accepts(scope, CLEAN, issuer().receipt(scope, CLEAN))).toBe(
+      false,
+    );
   });
 
   // Each token names the destruction it authorizes; one standing in for the
@@ -168,13 +223,15 @@ describe("RemoveConsentIssuer receipts", () => {
     const consent = issuer();
     const offer = consent.offer({ ...scope, detected: ["codex"] });
 
-    expect(consent.accepts(scope, offer?.token)).toBe(false);
+    expect(consent.accepts(scope, CLEAN, offer?.token)).toBe(false);
   });
 
   it("never accepts a receipt in place of a reclaim token", () => {
     const consent = issuer();
     const reclaimScope = { ...scope, detected: ["codex"] as const };
 
-    expect(consent.grants(reclaimScope, consent.receipt(scope))).toBeNull();
+    expect(
+      consent.grants(reclaimScope, consent.receipt(scope, CLEAN)),
+    ).toBeNull();
   });
 });

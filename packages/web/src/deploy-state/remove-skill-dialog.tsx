@@ -132,6 +132,7 @@ export function RemoveSkillDialog({
   target,
   isRemoving,
   error,
+  restated,
   outcome,
   preflight,
   onCancel,
@@ -149,6 +150,10 @@ export function RemoveSkillDialog({
   // The server's reason for a refused/failed removal, not the same as a
   // refused `preflight` (which happens before there's anything to confirm).
   error: string | null;
+  // The server's reason for stopping a removal it took no action on, because
+  // nothing showed the request agreed to what the copy costs now. Apart from
+  // `error`: the ledger states that cost, and the removal is still on offer.
+  restated: string | null;
   // What the server's own probe proved about each target after that failure.
   // Null where it proved nothing: an outcome nobody observed is never drawn.
   outcome: RemoveOutcome | null;
@@ -299,6 +304,32 @@ export function RemoveSkillDialog({
                 label="can't be removed"
                 message={preflight.message}
               />
+            ) : null}
+            {/* Amber, not danger red: nothing failed and nothing was deleted —
+                the price went up, and the rows above already carry it. */}
+            {restated ? (
+              <div
+                role="alert"
+                className="flex gap-1.5 rounded-control border border-line-drift bg-amber-bg px-2.5 py-2.5"
+              >
+                <span
+                  aria-hidden="true"
+                  className="font-mono text-amber-ink text-desc"
+                >
+                  ▲
+                </span>
+                <div className="flex min-w-0 flex-col gap-1">
+                  {/* States what happened, never why: the copy may have
+                      changed, or the request may have agreed to nothing at
+                      all, and only the server knows which (J04). */}
+                  <span className="font-semibold font-ui text-amber-ink text-desc">
+                    nothing was removed
+                  </span>
+                  <span className="font-ui text-desc text-fg-2">
+                    {restated}
+                  </span>
+                </div>
+              </div>
             ) : null}
             {error ? (
               <FailureNote label="the removal failed" message={error}>

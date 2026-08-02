@@ -7,11 +7,20 @@ import {
   reclaimableUntargetedTools,
   type SupportedTool,
 } from "./deploy-tools";
+import type { RemoveCheck } from "./remove-deployed-skill";
 
 export type ReclaimPreview = {
   tool: SupportedTool;
   path: string;
 };
+
+// Order-independent, like the reclaim's own paths: the tool probe orders its
+// answer, and the same answers in another order are the same cost.
+function canonicalCheck(check: RemoveCheck): string[] {
+  return check.scope === "repo"
+    ? [`repo:${check.warning ?? "none"}`]
+    : check.tools.map((row) => `${row.tool}:${row.warning ?? "none"}`).sort();
+}
 
 // One type, so a named path can never reach the screen without the token that
 // authorizes deleting it, nor a token authorize paths nobody was shown.
@@ -69,13 +78,26 @@ export class RemoveConsentIssuer {
 
   // The proof that this server priced the removal itself, minted by every
   // preflight that answers. Unlike a reclaim, it names no paths: what it
-  // authorizes is deleting the copy the request already names (#458).
-  receipt(scope: RemoveScope): string {
-    return this.sign({ kind: "receipt", ...this.canonicalScope(scope) });
+  // authorizes is deleting the copy the request already names, at the cost the
+  // check found (#458, #364).
+  receipt(scope: RemoveScope, check: RemoveCheck): string {
+    return this.sign({
+      kind: "receipt",
+      ...this.canonicalScope(scope),
+      check: canonicalCheck(check),
+    });
   }
 
-  accepts(scope: RemoveScope, receipt: string | undefined): boolean {
-    return receipt !== undefined && this.matches(this.receipt(scope), receipt);
+  // `check` is what the removal found just now, not what the caller claims: a
+  // receipt minted for a different cost is no consent for this one (#364).
+  accepts(
+    scope: RemoveScope,
+    check: RemoveCheck,
+    receipt: string | undefined,
+  ): boolean {
+    return (
+      receipt !== undefined && this.matches(this.receipt(scope, check), receipt)
+    );
   }
 
   private previews(scope: ReclaimScope): ReclaimPreview[] {

@@ -65,6 +65,7 @@ function renderDialog({
   target = REPO_TARGET as Parameters<typeof RemoveSkillDialog>[0]["target"],
   isRemoving = false,
   error = null as string | null,
+  restated = null as string | null,
   outcome = null as RemoveOutcome | null,
   version = "v0.5.0" as string | null,
   preflight = repoCheck("none") as RemovePreflightView,
@@ -78,6 +79,7 @@ function renderDialog({
       target={target}
       isRemoving={isRemoving}
       error={error}
+      restated={restated}
       outcome={outcome}
       preflight={preflight}
       onCancel={onCancel}
@@ -318,6 +320,69 @@ describe("RemoveSkillDialog", () => {
 
     expect(screen.getByRole("button", { name: /removing/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: "close" })).toBeDisabled();
+  });
+
+  // The removal stopped because the copy is no longer the one this panel
+  // priced, and it deleted nothing on the way (#364). Everything below keeps
+  // that apart from a failure: nothing ran, so nothing is being retried.
+  describe("when the copy changed since the check", () => {
+    const RESTATED = "That copy is not the one this request agreed to remove.";
+
+    it("states the server's reason in the panel", () => {
+      renderDialog({
+        restated: RESTATED,
+        preflight: repoCheck("local-edits"),
+      });
+
+      expect(screen.getByRole("alert")).toHaveTextContent(RESTATED);
+    });
+
+    it("wears the amber of a cost, never the danger of a failure", () => {
+      renderDialog({
+        restated: RESTATED,
+        preflight: repoCheck("local-edits"),
+      });
+
+      const alert = screen.getByRole("alert");
+      expect(alert.className).toContain("amber");
+      expect(alert.className).not.toContain("danger");
+      // Never-Colour-Alone: the glyph and the words carry it without colour.
+      expect(alert).toHaveTextContent("▲");
+      expect(alert).toHaveTextContent(/nothing was removed/i);
+    });
+
+    // The whole point of restating: the ledger states what the removal would
+    // cost now, where a failure's dialog drops the cost it named before.
+    it("keeps the ledger, stating the cost it found this time", () => {
+      renderDialog({
+        restated: RESTATED,
+        preflight: repoCheck("local-edits"),
+      });
+
+      expect(screen.getByText("local edits — deleted too")).toBeInTheDocument();
+    });
+
+    it("still offers the first removal, because nothing has happened yet", () => {
+      renderDialog({
+        restated: RESTATED,
+        preflight: repoCheck("local-edits"),
+      });
+
+      expect(screen.getByRole("button", { name: "remove →" })).toBeEnabled();
+      expect(screen.getByRole("button", { name: "cancel" })).toBeEnabled();
+      expect(screen.queryByRole("button", { name: "retry →" })).toBeNull();
+    });
+
+    it("confirms the restated cost from that same control", async () => {
+      const { onConfirm } = renderDialog({
+        restated: RESTATED,
+        preflight: repoCheck("local-edits"),
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: "remove →" }));
+
+      expect(onConfirm).toHaveBeenCalledTimes(1);
+    });
   });
 
   // A warning and a failure used to render as the same object: same fill, same

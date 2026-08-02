@@ -145,7 +145,10 @@ describe("remove HTTP route", () => {
       body: JSON.stringify(body),
     });
 
-  const removeTdd = (
+  // The pair the cockpit drives: price the removal, then run it at the cost
+  // that was priced. Every removal needs its own preflight's receipt (#364), so
+  // a test about anything else sends both halves.
+  const removeTdd = async (
     app: ReturnType<typeof makeApp>["app"],
     repoPath: string,
   ) =>
@@ -153,6 +156,7 @@ describe("remove HTTP route", () => {
       type: "skill",
       name: "tdd",
       target: { kind: "repo", repoPath },
+      confirmedRemovalReceipt: await receiptFromPreflight(app, repoPath),
     });
 
   it("removes a deployed skill with the ref its lockfile records", async () => {
@@ -327,17 +331,28 @@ describe("remove HTTP route", () => {
     );
     await registry.register(repo);
 
-    const response = await removeTdd(app, repo);
+    const response = await removeRequest(app, {
+      type: "skill",
+      name: "tdd",
+      target: { kind: "repo", repoPath: repo },
+    });
 
     expect(response.status).toBe(409);
+    // The cost rides along with the refusal, so the confirmation can state what
+    // was found without asking again (#364).
     expect(await response.json()).toEqual({
-      error: "local-edits-unconfirmed",
-      message: expect.stringContaining("local changes"),
+      error: "cost-not-acknowledged",
+      message: expect.stringMatching(/\S/),
+      check: { scope: "repo", warning: "local-edits-will-be-lost" },
+      receipt: expect.stringMatching(/^[0-9a-f]{64}$/),
+      // Null on a repo, whose targets are its own apm.yml — but present, so the
+      // confirmation replaces the whole consent rather than half of it (#364).
+      reclaim: null,
     });
     expect(removeCalls).toEqual([]);
   });
 
-  it("refuses a copy whose edits it cannot rule out, in its own words", async () => {
+  it("keeps an unverifiable copy's own wording in the cost it restates", async () => {
     const { app, registry, removeCalls } = makeApp({
       deployedState: "unverifiable",
     });
@@ -348,14 +363,18 @@ describe("remove HTTP route", () => {
     );
     await registry.register(repo);
 
-    const response = await removeTdd(app, repo);
-    const body = (await response.json()) as { error: string; message: string };
+    const response = await removeRequest(app, {
+      type: "skill",
+      name: "tdd",
+      target: { kind: "repo", repoPath: repo },
+    });
 
     expect(response.status).toBe(409);
-    expect(body.error).toBe("unverifiable-edits-unconfirmed");
     // Never the diverged wording: the check found no edits, only no way to
     // look for them (J04).
-    expect(body.message).not.toContain("would delete local changes");
+    expect((await response.json()) as unknown).toMatchObject({
+      check: { scope: "repo", warning: "cannot-verify-local-edits" },
+    });
     expect(removeCalls).toEqual([]);
   });
 
@@ -428,6 +447,91 @@ describe("remove HTTP route", () => {
 
     expect(response.status).toBe(400);
     expect(removeCalls).toEqual([]);
+  });
+
+  // The window #364 closes, over the real guard on a real tree: the file the
+  // confirmation priced as clean is edited before the click lands.
+  it("refuses and restates the cost when the copy changed after the check", async () => {
+    const { app, registry, removeCalls } = makeApp({
+      realDeployedContent: true,
+    });
+    const deployed = join(repo, ".claude", "skills", "tdd", "SKILL.md");
+    await writeFile(
+      join(repo, "apm.lock.yaml"),
+      lockfileWith([
+        [
+          skillEntry("tdd"),
+          "  deployed_file_hashes:",
+          `    .claude/skills/tdd/SKILL.md: sha256:${TDD_SKILL_SHA256}`,
+        ].join("\n"),
+      ]),
+      "utf8",
+    );
+    await mkdir(dirname(deployed), { recursive: true });
+    await writeFile(deployed, SKILL_FILE_CONTENT, "utf8");
+    await registry.register(repo);
+    const stale = await receiptFromPreflight(app, repo);
+    await writeFile(deployed, "# tdd, edited since\n", "utf8");
+
+    const response = await removeRequest(app, {
+      type: "skill",
+      name: "tdd",
+      target: { kind: "repo", repoPath: repo },
+      confirmedRemovalReceipt: stale,
+    });
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: "cost-not-acknowledged",
+      message: expect.stringMatching(/\S/),
+      check: { scope: "repo", warning: "local-edits-will-be-lost" },
+      receipt: expect.stringMatching(/^[0-9a-f]{64}$/),
+      reclaim: null,
+    });
+    expect(removeCalls).toEqual([]);
+  });
+
+  // Not a lock: the refusal's own receipt is what the confirmation sends back,
+  // so agreeing to the new cost is one more click.
+  it("removes the changed copy once the restated cost is confirmed", async () => {
+    const { app, registry, removeCalls } = makeApp({
+      realDeployedContent: true,
+    });
+    const deployed = join(repo, ".claude", "skills", "tdd", "SKILL.md");
+    await writeFile(
+      join(repo, "apm.lock.yaml"),
+      lockfileWith([
+        [
+          skillEntry("tdd"),
+          "  deployed_file_hashes:",
+          `    .claude/skills/tdd/SKILL.md: sha256:${TDD_SKILL_SHA256}`,
+        ].join("\n"),
+      ]),
+      "utf8",
+    );
+    await mkdir(dirname(deployed), { recursive: true });
+    await writeFile(deployed, SKILL_FILE_CONTENT, "utf8");
+    await registry.register(repo);
+    const stale = await receiptFromPreflight(app, repo);
+    await writeFile(deployed, "# tdd, edited since\n", "utf8");
+    const refused = (await (
+      await removeRequest(app, {
+        type: "skill",
+        name: "tdd",
+        target: { kind: "repo", repoPath: repo },
+        confirmedRemovalReceipt: stale,
+      })
+    ).json()) as { receipt: string };
+
+    const response = await removeRequest(app, {
+      type: "skill",
+      name: "tdd",
+      target: { kind: "repo", repoPath: repo },
+      confirmedRemovalReceipt: refused.receipt,
+    });
+
+    expect(response.status).toBe(200);
+    expect(removeCalls).toHaveLength(1);
   });
 
   it("still refuses a copy it cannot read, confirmed or not", async () => {
@@ -581,7 +685,7 @@ describe("remove HTTP route", () => {
         }),
       });
 
-    const removeGlobally = (
+    const removeGlobally = async (
       app: ReturnType<typeof makeApp>["app"],
       confirmedReclaimToken?: string,
     ) =>
@@ -589,6 +693,7 @@ describe("remove HTTP route", () => {
         type: "skill",
         name: "tdd",
         target: { kind: "global" },
+        confirmedRemovalReceipt: await receiptFromGlobalPreflight(app),
         ...(confirmedReclaimToken ? { confirmedReclaimToken } : {}),
       });
 
@@ -646,6 +751,7 @@ describe("remove HTTP route", () => {
         type: "skill",
         name: "tdd",
         target: { kind: "global", repoPath: "/etc" },
+        confirmedRemovalReceipt: await receiptFromGlobalPreflight(app),
       });
 
       expect(response.status).toBe(200);
@@ -663,7 +769,8 @@ describe("remove HTTP route", () => {
 
       await removeGlobally(app);
 
-      expect(classifyCalls).toEqual([{ tools: undefined }]);
+      // The removal's own guard, beside the per-tool calls that price it (#414).
+      expect(classifyCalls).toContainEqual({ tools: undefined });
     });
 
     it("answers per detected tool against a real tree", async () => {
