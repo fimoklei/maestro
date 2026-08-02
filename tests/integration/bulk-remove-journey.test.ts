@@ -1,0 +1,237 @@
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import {
+  type BulkRemoveReport,
+  DeployedCleanupAdapter,
+  DeployedLocation,
+  DeployedRefAdapter,
+  type DeployTarget,
+  GlobalDeployStateReader,
+  InFlightLocks,
+  InventoryReader,
+  NodeFileSystem,
+  RemoveDeployedSkill,
+  type SupportedTool,
+} from "@maestro/core";
+import { createApp } from "@maestro/server";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { realRegistry } from "../helpers/real-registry";
+import { stubBrowse } from "../helpers/stub-browse";
+import { stubConnect } from "../helpers/stub-connect";
+import { stubDeploy } from "../helpers/stub-deploy";
+import { stubDrift } from "../helpers/stub-drift";
+
+// The whole job (#409). server-bulk-remove.test.ts asserts the report the route
+// returns; this asserts the screen afterwards, so apm has to be faithful: it
+// deletes a target's lockfile with its last dependency (apm-behavior.md § Remove).
+
+const TOOLS: SupportedTool[] = ["claude", "codex"];
+
+// Which tools a global entry carries. The global read groups per tool from
+// these, so a skill only shows on a card whose tool has a file.
+const globalFiles = (name: string) =>
+  TOOLS.map((tool) =>
+    tool === "claude"
+      ? `.claude/skills/${name}/SKILL.md`
+      : `.agents/skills/${name}/SKILL.md`,
+  );
+
+const lockfileFor = (names: string[], withFiles: boolean) =>
+  [
+    "lockfile_version: '1'",
+    "dependencies:",
+    ...names.flatMap((name) => [
+      "- repo_url: fimoklei/agent-harness",
+      "  host: github.com",
+      "  resolved_ref: v0.5.1",
+      `  virtual_path: skills/${name}`,
+      "  package_type: claude_skill",
+      ...(withFiles
+        ? ["  deployed_files:", ...globalFiles(name).map((f) => `  - ${f}`)]
+        : []),
+    ]),
+    "",
+  ].join("\n");
+
+describe("retiring a skill from every target it is deployed to", () => {
+  let home: string;
+  let repoA: string;
+  let repoB: string;
+
+  beforeEach(async () => {
+    home = await mkdtemp(join(tmpdir(), "maestro-bulk-journey-home-"));
+    repoA = await mkdtemp(join(tmpdir(), "maestro-bulk-journey-repo-a-"));
+    repoB = await mkdtemp(join(tmpdir(), "maestro-bulk-journey-repo-b-"));
+  });
+
+  afterEach(async () => {
+    for (const dir of [home, repoA, repoB]) {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  // Repo paths whose apm call throws, so one target can fail while the batch
+  // finishes.
+  function makeApp(failRepos: string[] = []) {
+    const fs = new NodeFileSystem();
+    const registry = realRegistry(fs, join(home, "config.json"));
+    const fails = new Set(failRepos);
+    // What apm believes is installed in each scope, kept beside the lockfiles
+    // the fake rewrites.
+    const state = new Map<string, string[]>();
+    // HOME redirected at the sandbox throughout, so no test can read or write
+    // the real ~/.apm (.claude/rules/apm-driver.md § Danger).
+    const location = new DeployedLocation({ HOME: home });
+    const apmRoot = join(home, ".apm");
+
+    const lockfilePath = (target: DeployTarget) =>
+      target.kind === "repo"
+        ? join(target.repoPath, "apm.lock.yaml")
+        : join(apmRoot, "apm.lock.yaml");
+
+    const key = (target: DeployTarget) =>
+      target.kind === "repo" ? target.repoPath : "global";
+
+    const writeLockfile = async (target: DeployTarget) => {
+      const names = state.get(key(target)) ?? [];
+      const path = lockfilePath(target);
+      if (names.length === 0) {
+        await rm(path, { force: true });
+        return;
+      }
+      await mkdir(dirname(path), { recursive: true });
+      await writeFile(
+        path,
+        lockfileFor(names, target.kind === "global"),
+        "utf8",
+      );
+    };
+
+    const locks = new InFlightLocks();
+    const remove = new RemoveDeployedSkill({
+      registry,
+      locks,
+      deployedRef: new DeployedRefAdapter({ fs, location }),
+      deployedContent: { classify: async () => "clean" as const },
+      apm: {
+        removeSkill: async ({ target, ref }) => {
+          if (target.kind === "repo" && fails.has(target.repoPath)) {
+            throw new Error("apm uninstall failed: token in stderr");
+          }
+          const names = state.get(key(target)) ?? [];
+          state.set(
+            key(target),
+            names.filter((name) => !ref.includes(`/skills/${name}#`)),
+          );
+          await writeLockfile(target);
+          return { ok: true };
+        },
+      },
+      deployedCleanup: new DeployedCleanupAdapter({ location }),
+      toolPresence: { detectGlobalTools: async () => TOOLS },
+      canonicalPath: (path) => fs.realpath(path),
+      location,
+    });
+
+    const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
+    const app = createApp({
+      registry,
+      inventory,
+      deployState: new GlobalDeployStateReader({
+        fs,
+        toolPresence: { detectGlobalTools: async () => TOOLS },
+      }),
+      deploy: stubDeploy({ inventory, registry, locks }),
+      remove,
+      drift: stubDrift({ registry }),
+      resolveGlobalRoot: () => apmRoot,
+      connect: stubConnect(),
+      browse: stubBrowse(),
+      enforceOriginHost: false,
+    });
+
+    return {
+      app,
+      async deployTo(target: DeployTarget, names: string[]) {
+        state.set(key(target), [...names]);
+        await writeLockfile(target);
+        if (target.kind === "repo") {
+          await registry.register(target.repoPath);
+        }
+      },
+    };
+  }
+
+  type App = ReturnType<typeof makeApp>["app"];
+
+  const repoTarget = (repoPath: string): DeployTarget => ({
+    kind: "repo",
+    repoPath,
+  });
+  const globalTarget: DeployTarget = { kind: "global" };
+
+  const repoNames = async (app: App, repoPath: string) => {
+    const response = await app.request(
+      `/api/deploy-state?repo=${encodeURIComponent(repoPath)}`,
+    );
+    expect(response.status).toBe(200);
+    const { primitives } = (await response.json()) as {
+      primitives: { name: string }[];
+    };
+    return primitives.map((primitive) => primitive.name);
+  };
+
+  const globalNamesPerTool = async (app: App) => {
+    const response = await app.request("/api/deploy-state/global");
+    expect(response.status).toBe(200);
+    const { tools } = (await response.json()) as {
+      tools: { tool: string; primitives: { name: string }[] }[];
+    };
+    return tools.map((group) => ({
+      tool: group.tool,
+      names: group.primitives.map((primitive) => primitive.name),
+    }));
+  };
+
+  it("clears the rows it removed and leaves the one it could not touch", async () => {
+    const { app, deployTo } = makeApp([repoB]);
+    await deployTo(globalTarget, ["tdd", "jobs"]);
+    await deployTo(repoTarget(repoA), ["tdd"]);
+    await deployTo(repoTarget(repoB), ["tdd", "jobs"]);
+
+    const response = await app.request("/api/deploy/remove/bulk", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        name: "tdd",
+        targets: [
+          { target: globalTarget },
+          { target: repoTarget(repoA) },
+          { target: repoTarget(repoB) },
+        ],
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    const report = (await response.json()) as BulkRemoveReport;
+    expect(report.removed).toEqual([
+      { target: globalTarget, version: "v0.5.1" },
+      { target: repoTarget(repoA), version: "v0.5.1" },
+    ]);
+    expect(report.failed).toEqual([
+      { target: repoTarget(repoB), reason: "remove-failed" },
+    ]);
+    // No raw apm output (which may carry a token) leaks into the report.
+    expect(JSON.stringify(report)).not.toContain("token in stderr");
+
+    // The screen after the run: gone where it was removed, still listed where
+    // it was not, and the skills the user did not name are untouched.
+    expect(await globalNamesPerTool(app)).toEqual([
+      { tool: "claude", names: ["jobs"] },
+      { tool: "codex", names: ["jobs"] },
+    ]);
+    expect(await repoNames(app, repoA)).toEqual([]);
+    expect(await repoNames(app, repoB)).toEqual(["tdd", "jobs"]);
+  });
+});
