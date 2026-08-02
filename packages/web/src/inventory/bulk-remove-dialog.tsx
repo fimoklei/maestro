@@ -24,7 +24,7 @@ function SummaryRow({
   children,
 }: {
   id?: string;
-  tone: "clean" | "waiting" | "running";
+  tone: "clean" | "done" | "waiting" | "running";
   children: React.ReactNode;
 }) {
   return (
@@ -34,6 +34,12 @@ function SummaryRow({
     >
       {tone === "clean" ? (
         <StatusDot status="ok" />
+      ) : tone === "done" ? (
+        // A tick, not the dot: the run is over, and the dot states a live
+        // deploy-state everywhere else it appears.
+        <span aria-hidden="true" className="text-green-ink text-mono-sm">
+          ✓
+        </span>
       ) : (
         // Turning, not still: the run and the checks both take time nobody
         // can shorten, and a static mark would read as a hang.
@@ -308,7 +314,7 @@ export function BulkRemoveDialog({
           </span>
           {done !== null ? (
             <>
-              <SummaryRow id={countsId} tone="clean">
+              <SummaryRow id={countsId} tone="done">
                 {done.counts}
               </SummaryRow>
               {done.kind === "partial" ? (
@@ -361,7 +367,9 @@ export function BulkRemoveDialog({
           <Button
             type="button"
             className="shrink-0"
-            variant="quiet"
+            // Success only where the run finished clean: it is then the one
+            // control on the panel, and a quiet button would read as a dismiss.
+            variant={done?.kind === "clean" ? "success" : "quiet"}
             size="sm"
             disabled={isRemoving}
             onClick={onCancel}
