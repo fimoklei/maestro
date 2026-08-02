@@ -171,6 +171,23 @@ describe("retiring a skill from every target it is deployed to", () => {
   });
   const globalTarget: DeployTarget = { kind: "global" };
 
+  // Consent is per target and per priced cost, so the run has to carry the
+  // receipt this app minted for each one (#364) — a hand-built entry would
+  // prove the walk, not the preflight→run contract the cockpit follows.
+  const entriesFor = async (app: App, targets: DeployTarget[]) => {
+    const entries = [];
+    for (const target of targets) {
+      const response = await app.request("/api/deploy/remove/preflight", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ type: "skill", name: "tdd", target }),
+      });
+      const { receipt } = (await response.json()) as { receipt?: string };
+      entries.push({ target, confirmedRemovalReceipt: receipt });
+    }
+    return entries;
+  };
+
   const repoNames = async (app: App, repoPath: string) => {
     const response = await app.request(
       `/api/deploy-state?repo=${encodeURIComponent(repoPath)}`,
@@ -200,17 +217,15 @@ describe("retiring a skill from every target it is deployed to", () => {
     await deployTo(repoTarget(repoA), ["tdd"]);
     await deployTo(repoTarget(repoB), ["tdd", "jobs"]);
 
+    const targets = await entriesFor(app, [
+      globalTarget,
+      repoTarget(repoA),
+      repoTarget(repoB),
+    ]);
     const response = await app.request("/api/deploy/remove/bulk", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        name: "tdd",
-        targets: [
-          { target: globalTarget },
-          { target: repoTarget(repoA) },
-          { target: repoTarget(repoB) },
-        ],
-      }),
+      body: JSON.stringify({ name: "tdd", targets }),
     });
 
     expect(response.status).toBe(200);
