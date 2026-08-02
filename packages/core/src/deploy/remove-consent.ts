@@ -1,4 +1,5 @@
 // Consents only preflight can mint: reclaim (#339, #390), receipt (#458).
+// Stateless by design — see ADR-0020.
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { join } from "node:path";
 import type { DeployTarget } from "./deploy-skill";
@@ -42,8 +43,7 @@ export type ReclaimScope = RemoveScope & {
 };
 
 export class RemoveConsentIssuer {
-  // Never exposed over the wire, so a valid token can only exist because this
-  // instance's own `offer` produced it.
+  // Never exposed over the wire, never persisted (ADR-0020).
   private readonly secret = randomBytes(32);
   private readonly treeRoot: (target: DeployTarget) => string;
 
@@ -51,8 +51,7 @@ export class RemoveConsentIssuer {
     this.treeRoot = deps.treeRoot;
   }
 
-  // Null when there is nothing to reclaim: no consent exists for an empty set,
-  // so no token exists to replay.
+  // Null when there is nothing to reclaim: an empty set mints no token.
   offer(scope: ReclaimScope): ReclaimConsent | null {
     const previews = this.previews(scope);
     return previews.length === 0
@@ -61,8 +60,8 @@ export class RemoveConsentIssuer {
   }
 
   // Returns the paths, not a yes/no, so the caller deletes the set the
-  // confirmation named rather than deriving its own (#390). The preview is
-  // rebuilt here, so a token minted for a different scope cannot carry over.
+  // confirmation named rather than deriving its own (#390). Rebuild the preview
+  // here; never compare against a caller-supplied set (ADR-0020).
   grants(
     scope: ReclaimScope,
     token: string | undefined,
