@@ -10,10 +10,11 @@ export function WelcomeView() {
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
       <div className="flex max-w-md flex-col items-center gap-2.5">
-        <h1 className="m-0 font-semibold font-ui text-fg text-title">
+        <span aria-hidden="true" className="connect-gate-signal" />
+        <h1 className="connect-gate-title m-0 font-semibold font-ui text-fg text-title">
           Central inventory not connected
         </h1>
-        <p className="m-0 text-body text-muted">
+        <p className="connect-gate-body m-0 text-body text-muted">
           Maestro reads primitives from a local{" "}
           <span className="font-mono">agent-harness</span> clone. The cockpit
           stays empty until it has one.
@@ -21,7 +22,7 @@ export function WelcomeView() {
         <Button
           variant="primary"
           size="lg"
-          className="mt-1"
+          className="connect-gate-cta mt-1"
           onClick={() => navigate("/welcome/connect")}
         >
           Connect inventory →
