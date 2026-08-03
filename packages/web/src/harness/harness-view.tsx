@@ -3,7 +3,7 @@ import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { SectionHeader } from "../ui/section-header";
 import { HarnessStrip } from "./harness-strip";
-import { freshnessLabel, releaseSummary } from "./harness-view-model";
+import { freshnessLabel, RELEASE_SUMMARIES } from "./harness-view-model";
 import { useHarness, useRefreshHarness } from "./use-harness";
 
 // The Harness home base: what the released harness is, how fresh that picture
@@ -51,7 +51,7 @@ export function HarnessView() {
           </HarnessStrip>
           <Card className="mt-3" padded>
             <p className="m-0 font-mono text-desc text-muted">
-              {releaseSummary(state.releaseState)}
+              {RELEASE_SUMMARIES[state.releaseState]}
             </p>
           </Card>
         </>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { freshnessLabel, releaseSummary } from "./harness-view-model";
+import { freshnessLabel, RELEASE_SUMMARIES } from "./harness-view-model";
 
 const NOW = new Date("2026-08-03T12:00:00.000Z");
 
@@ -70,23 +70,25 @@ describe("freshnessLabel", () => {
   });
 });
 
-describe("releaseSummary", () => {
+describe("RELEASE_SUMMARIES", () => {
   it("reads a quiet harness as nothing waiting", () => {
-    expect(releaseSummary("released")).toBe("Everything merged is released.");
+    expect(RELEASE_SUMMARIES["released"]).toBe(
+      "Everything merged is released.",
+    );
   });
 
   it("names merged work the released harness does not carry yet", () => {
-    expect(releaseSummary("pending-release")).toBe(
+    expect(RELEASE_SUMMARIES["pending-release"]).toBe(
       "Merged changes are waiting for release.",
     );
   });
 
   it("reads a harness before its first tag as a normal day", () => {
-    expect(releaseSummary("never-released")).toBe("No release yet.");
+    expect(RELEASE_SUMMARIES["never-released"]).toBe("No release yet.");
   });
 
   it("admits it cannot tell before the first fetch", () => {
-    expect(releaseSummary("unknown")).toBe(
+    expect(RELEASE_SUMMARIES["unknown"]).toBe(
       "Not fetched yet, so what is waiting is unknown.",
     );
   });

@@ -4,17 +4,14 @@
 // server-harness.test.ts. No root means the git port is never reached.
 import { ReadHarnessState } from "@maestro/core";
 
+const unreachable = (): never => {
+  throw new Error("stub harness git port was reached");
+};
+
 export function stubHarness(): ReadHarnessState {
   return new ReadHarnessState({
     resolveRoot: async () => undefined,
-    git: {
-      fetch: async () => {
-        throw new Error("stub harness git port was reached");
-      },
-      readFacts: async () => {
-        throw new Error("stub harness git port was reached");
-      },
-    },
+    git: { fetch: unreachable, readFacts: unreachable },
     freshness: {
       read: async () => ({ outcome: null, lastFetchedAt: null }),
       record: async () => {},

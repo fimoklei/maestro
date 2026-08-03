@@ -42,7 +42,7 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
     await git(root, "push", "--tags", "origin", "HEAD:main");
     await git(root, "fetch", "--tags", "origin");
     await git(root, "remote", "set-head", "origin", "--auto");
-  });
+  }, 30_000);
 
   afterEach(async () => {
     await rm(base, { recursive: true, force: true });

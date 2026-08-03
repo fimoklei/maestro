@@ -7,8 +7,6 @@ import type {
   HarnessFreshnessPort,
 } from "./read-harness-state";
 
-const NEVER: HarnessFreshness = { outcome: null, lastFetchedAt: null };
-
 export class HarnessFreshnessStore implements HarnessFreshnessPort {
   private readonly store: ConfigStore;
 
@@ -18,7 +16,7 @@ export class HarnessFreshnessStore implements HarnessFreshnessPort {
 
   async read(): Promise<HarnessFreshness> {
     const config = await this.store.read();
-    return config.harnessFreshness ?? NEVER;
+    return config.harnessFreshness ?? { outcome: null, lastFetchedAt: null };
   }
 
   async record(freshness: HarnessFreshness): Promise<void> {

@@ -22,12 +22,8 @@ const REMOTE_HEAD = "refs/remotes/origin/HEAD";
 
 // Maestro never asks for credentials and never stores them: git may use what
 // the user's own configuration already provides, but may not stop and prompt.
-const nonInteractiveEnv = (): NodeJS.ProcessEnv => ({
-  ...process.env,
-  GIT_TERMINAL_PROMPT: "0",
-  // Left alone when the user configured their own ssh command.
-  GIT_SSH_COMMAND: process.env.GIT_SSH_COMMAND ?? "ssh -o BatchMode=yes",
-});
+// An ssh key prompt slips past this and is bounded by the timeout instead.
+const NON_INTERACTIVE = { GIT_TERMINAL_PROMPT: "0" };
 
 // Tab-separated so a tag name containing spaces stays one field. The third
 // field is the commit an annotated tag points at; lightweight tags leave it
@@ -39,16 +35,17 @@ export class HarnessGitAdapter implements HarnessGitPort {
   // `origin/HEAD` at the remote's current default branch. Neither touches HEAD,
   // the index, or the working tree.
   async fetch(root: string): Promise<HarnessFetchOutcome> {
-    const env = nonInteractiveEnv();
+    const options = {
+      env: { ...process.env, ...NON_INTERACTIVE },
+      timeout: FETCH_TIMEOUT_MS,
+    };
     try {
-      await run("git", ["-C", root, "fetch", "--tags", "origin"], {
-        env,
-        timeout: FETCH_TIMEOUT_MS,
-      });
-      await run("git", ["-C", root, "remote", "set-head", "origin", "--auto"], {
-        env,
-        timeout: FETCH_TIMEOUT_MS,
-      });
+      await run("git", ["-C", root, "fetch", "--tags", "origin"], options);
+      await run(
+        "git",
+        ["-C", root, "remote", "set-head", "origin", "--auto"],
+        options,
+      );
       return "fetched";
     } catch (error) {
       const killed = (error as { killed?: boolean }).killed === true;
@@ -100,16 +97,11 @@ export class HarnessGitAdapter implements HarnessGitPort {
       return [];
     }
 
-    return listing
-      .split("\n")
-      .filter((line) => line.length > 0)
-      .flatMap((line) => {
-        const [name, objectName, peeled] = line.split("\t");
-        const commit =
-          peeled !== undefined && peeled.length > 0 ? peeled : objectName;
-        return name === undefined || commit === undefined
-          ? []
-          : [{ name, commit }];
-      });
+    return listing.split("\n").flatMap((line) => {
+      const [name, objectName = "", peeled = ""] = line.split("\t");
+      // Peeled wins: an annotated tag's own object id is not the commit.
+      const commit = peeled || objectName;
+      return name && commit ? [{ name, commit }] : [];
+    });
   }
 }

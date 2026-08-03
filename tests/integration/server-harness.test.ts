@@ -73,7 +73,7 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
     // ordinary clone an author would already have.
     await git(root, "fetch", "--tags", "origin");
     await git(root, "remote", "set-head", "origin", "--auto");
-  });
+  }, 30_000);
 
   afterEach(async () => {
     await rm(base, { recursive: true, force: true });

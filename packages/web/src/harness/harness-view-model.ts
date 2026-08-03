@@ -46,12 +46,9 @@ export const freshnessLabel = (
     : `${cause} — last fetched ${ago(freshness.lastFetchedAt, now)}`;
 };
 
-const SUMMARIES: Record<HarnessReleaseState, string> = {
+export const RELEASE_SUMMARIES: Record<HarnessReleaseState, string> = {
   released: "Everything merged is released.",
   "pending-release": "Merged changes are waiting for release.",
   "never-released": "No release yet.",
   unknown: "Not fetched yet, so what is waiting is unknown.",
 };
-
-export const releaseSummary = (state: HarnessReleaseState): string =>
-  SUMMARIES[state];
