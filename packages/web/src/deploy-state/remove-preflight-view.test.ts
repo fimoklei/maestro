@@ -9,7 +9,7 @@ import type { RemovePreflight } from "./use-remove-preflight";
 const answered = {
   data: undefined,
   error: null,
-  isFetching: false,
+  fetchStatus: "idle" as const,
   isError: false,
 };
 
@@ -157,25 +157,61 @@ describe("removePreflightView", () => {
     });
   });
 
-  // The second case is the one a reopened confirmation hits: an earlier
-  // answer sits in `data` while the fresh check runs, and reporting it would
-  // price this removal from the last one — reclaim token included (#381).
-  it("reports a check still in flight as checking, never as clean", () => {
+  // Every unsettled check, whatever else is in hand. The last three are the
+  // ones a reopened confirmation hits: an earlier answer or an earlier failure
+  // is still there while the fresh check runs, and reporting either would price
+  // this removal from the last one — reclaim token included (#381).
+  describe("while a check has not settled", () => {
     const checking = {
       kind: "offered",
       check: { kind: "unanswered", warning: "checking" },
       reclaim: [],
     };
-    expect(removePreflightView({ ...answered, isFetching: true })).toEqual(
-      checking,
-    );
-    expect(
-      removePreflightView({
-        ...answered,
-        data: { check: { scope: "repo", warning: null }, reclaim: RECLAIMED },
-        isFetching: true,
-      }),
-    ).toEqual(checking);
+    const cached = {
+      check: { scope: "repo", warning: null },
+      reclaim: RECLAIMED,
+    } as const;
+
+    it("reports nothing yet known as checking, never as clean", () => {
+      expect(
+        removePreflightView({ ...answered, fetchStatus: "fetching" }),
+      ).toEqual(checking);
+    });
+
+    it("reports a cached answer as checking, not as this removal's", () => {
+      expect(
+        removePreflightView({
+          ...answered,
+          data: cached,
+          fetchStatus: "fetching",
+        }),
+      ).toEqual(checking);
+    });
+
+    // A refetch after a failure keeps isError true. Reading the failure first
+    // would offer a confirm the previous answer's token could still price.
+    it("reports a refetch after a failure as checking, not as failed", () => {
+      expect(
+        removePreflightView({
+          ...answered,
+          data: cached,
+          error: new Error("network"),
+          isError: true,
+          fetchStatus: "fetching",
+        }),
+      ).toEqual(checking);
+    });
+
+    // Paused offline: nothing is in flight, and nothing has answered either.
+    it("reports a paused check as checking, however long it waits", () => {
+      expect(
+        removePreflightView({
+          ...answered,
+          data: cached,
+          fetchStatus: "paused",
+        }),
+      ).toEqual(checking);
+    });
   });
 
   // A failed refetch keeps the previous data; carrying it through would name
