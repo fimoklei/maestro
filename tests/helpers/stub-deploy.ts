@@ -22,6 +22,12 @@ export const stubDeploy = (deps: {
       resolveLatestTag: async () => ({ ok: false, reason: "no-tag" }),
       deploySkill: async () => ({ ok: true as const }),
     },
+    recordedPackage: {
+      read: async () => ({
+        kind: "recorded" as const,
+        reading: { kind: "skill" as const, name: "tdd" },
+      }),
+    },
     inventoryGit: {
       skillExistsAtTag: async () => false,
       skillDivergesFromTag: async () => false,

@@ -5,12 +5,8 @@
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
 import { access, readdir, readFile } from "node:fs/promises";
-import { join } from "node:path";
-import {
-  claudeSkillName,
-  parseLockfile,
-  unreadableCovers,
-} from "../lockfile/lockfile";
+import { basename, join } from "node:path";
+import { parseLockfile, unreadableCovers } from "../lockfile/lockfile";
 import type {
   DeployedContentPort,
   DeployedContentState,
@@ -123,7 +119,10 @@ export class DeployedContentAdapter implements DeployedContentPort {
       return { kind: "malformed" };
     }
 
-    const entry = parsed.entries.find((e) => claudeSkillName(e) === name);
+    // By name, never by package_type: the copy on disk belongs to this skill
+    // whatever apm recorded it as, and a hybrid record's hashes are still its
+    // baseline (#358).
+    const entry = parsed.entries.find((e) => basename(e.virtual_path) === name);
     if (entry === undefined) {
       return { kind: "none" };
     }

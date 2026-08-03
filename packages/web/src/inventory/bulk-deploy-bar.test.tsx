@@ -97,7 +97,13 @@ describe("BulkDeployBar", () => {
     stubReads({
       target: { kind: "global" },
       deployed: [{ name: "tdd", version: "v1.0.0" }],
-      attention: [{ name: "review", error: "deployed-diverged-from-lock" }],
+      attention: [
+        {
+          name: "review",
+          error: "deployed-diverged-from-lock",
+          forceable: true,
+        },
+      ],
       failed: [],
     });
     renderBar(

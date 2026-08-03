@@ -57,7 +57,13 @@ describe("bulkDeployReportView", () => {
     const view = expectReportView(
       bulkDeployReportView({
         report: report({
-          attention: [{ name: "tdd", error: "deployed-diverged-from-lock" }],
+          attention: [
+            {
+              name: "tdd",
+              error: "deployed-diverged-from-lock",
+              forceable: true,
+            },
+          ],
         }),
         skippedClean: [],
         targetLabel: "global",
@@ -66,7 +72,7 @@ describe("bulkDeployReportView", () => {
 
     expect(view.tone).toBe("attention");
     expect(view.attention).toEqual([
-      { name: "tdd", error: "deployed-diverged-from-lock" },
+      { name: "tdd", error: "deployed-diverged-from-lock", forceable: true },
     ]);
   });
 
@@ -110,7 +116,13 @@ describe("bulkDeployReportView", () => {
       bulkDeployReportView({
         report: report({
           deployed: [{ name: "tdd", version: "v1.2.0" }],
-          attention: [{ name: "review", error: "deployed-diverged-from-lock" }],
+          attention: [
+            {
+              name: "review",
+              error: "deployed-diverged-from-lock",
+              forceable: true,
+            },
+          ],
           failed: [{ error: "auth-required", names: ["research", "grill"] }],
         }),
         skippedClean: ["docs"],

@@ -20,7 +20,7 @@ const ran = (behind: { name: string; current: string; latest: string }[]) =>
 const pair = (name: string) => ({ name, current: "v1.0.0", latest: "v1.1.0" });
 
 const deployedNames = (names: string[]) =>
-  ({ status: "ready", names, skippedCount: 0 }) as const;
+  ({ status: "ready", names, skippedCount: 0, attentionCount: 0 }) as const;
 
 const deployedPrimitives = (names: string[]): DeployedPrimitive[] =>
   names.map((name) => ({ type: "skill", name, version: "v0.5.1" }));
@@ -166,6 +166,7 @@ describe("driftViewModel — targetIndicator", () => {
         status: "ready",
         names: [],
         skippedCount: 1,
+        attentionCount: 0,
       }),
     ).toBe("ok");
   });

@@ -1,20 +1,31 @@
 import type { UseQueryResult } from "@tanstack/react-query";
+import { skippedNeedsAttention } from "./skipped-entry-text";
 import type { DeployedPrimitive, SkippedEntry } from "./use-deploy-state";
 
 // Pending/unknown must stay distinct from confirmed-empty, or the drift
 // roll-up reads "in sync" while a real behind entry is hidden (the J04 lie).
 // `skippedCount`: a target with 0 primitives but skipped entries isn't empty.
+// `attentionCount`: skipped entries the user can act on (#358).
 export type DeployedView =
   | { status: "pending" }
   | { status: "unknown" }
-  | { status: "ready"; names: string[]; skippedCount: number };
+  | {
+      status: "ready";
+      names: string[];
+      skippedCount: number;
+      attentionCount: number;
+    };
 
 // `read` is optional: pass it only when the caller renders stale rows after a
 // failed refetch (the sidebar does), so that case maps to "unknown", not a
 // false "ready" (J04, see above). Omitting it stays "ready".
+// `attentionCount` is the global section's, not this tool's: an entry apm
+// could not manage names no tool, and every card reads the same lockfile — so
+// they all carry it rather than one card guessing (#358).
 export function toolDeployedView(
   names: string[],
   read?: { data: unknown; isError: boolean },
+  attentionCount = 0,
 ): DeployedView {
   if (read?.isError) {
     return { status: "unknown" };
@@ -22,7 +33,7 @@ export function toolDeployedView(
   if (read !== undefined && read.data === undefined) {
     return { status: "pending" };
   }
-  return { status: "ready", names, skippedCount: 0 };
+  return { status: "ready", names, skippedCount: 0, attentionCount };
 }
 
 export function toDeployedView(
@@ -44,5 +55,7 @@ export function toDeployedView(
     status: "ready",
     names: deployState.data.primitives.map((primitive) => primitive.name),
     skippedCount: deployState.data.skipped.length,
+    attentionCount: deployState.data.skipped.filter(skippedNeedsAttention)
+      .length,
   };
 }

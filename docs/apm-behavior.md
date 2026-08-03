@@ -138,6 +138,13 @@ deployments:                    # one row per deployed file per tool
 - The reader filters `package_type === "claude_skill"`; a two-tool entry
   holds multiple `deployed_files`, so a skill is surfaced once per entry,
   not once per file.
+- **Four `package_type` values have been measured for a skill install**, all
+  under the install command's success marker and exit 0 (2026-07-27/28,
+  `docs/research/354-marketplace-as-release-gate.md`, `.../379-does-p3-exist.md`):
+  `claude_skill` (a plain skill), `hybrid` (the subpath also holds an
+  `apm.yml`), `marketplace_plugin` (it holds a `.claude-plugin/plugin.json`),
+  and `invalid` (no `SKILL.md` — nothing is deployed and `deployments` is
+  empty). Only the first is manageable as a skill.
 - `deployed_file_hashes` is a plain per-file sha256 of content — identical
   across the `.claude`/`.agents` copies, reproducible.
 - `content_hash` is apm-internal and did not reproduce (eight hashing
@@ -424,7 +431,7 @@ against apm 0.26.0, the version this document describes.
 
 ## Unobserved — spike before relying
 
-- Hook and MCP deploys (`apm mcp` is a separate command surface). Only
-  `package_type: claude_skill` has ever been observed.
+- Hook and MCP deploys (`apm mcp` is a separate command surface). No
+  `package_type` other than the four above has been observed.
 - Custom ports in git refs after apm PRs #2210/#2211 (see Reference
   grammar).

@@ -3,6 +3,7 @@
 // ADR-0011.
 import type { OutdatedResult } from "../drift/parse-outdated";
 import type { InventoryResult } from "../inventory/inventory-reader";
+import type { PackageReading } from "../lockfile/lockfile";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type { SupportedTool } from "./deploy-tools";
 import { parseGitOrigin } from "./git-origin";
@@ -82,6 +83,20 @@ export type DeployedContentPort = {
   }): Promise<DeployedContentState>;
 };
 
+// What apm recorded for the package this deploy just installed. Anything short
+// of an entry we read is "unverified", never a stand-in for success: apm's own
+// marker is what this read exists to distrust (#358).
+export type RecordedPackageResult =
+  | { kind: "recorded"; reading: PackageReading }
+  | { kind: "unverified" };
+
+export type RecordedPackagePort = {
+  read(input: {
+    target: DeployTarget;
+    name: string;
+  }): Promise<RecordedPackageResult>;
+};
+
 // A subtree-scoped filesystem removal, never `apm uninstall -g`, which deletes
 // beyond its lockfile (apm-driver.md § Danger). Idempotent — a missing copy is
 // a no-op. See ADR-0013, #136.
@@ -124,11 +139,21 @@ export type DeploySkillError =
   | "no-supported-tool"
   | "auth-required"
   | "destination-symlinked"
+  // apm installed the package but recorded it as something Maestro cannot
+  // manage as a skill; the files are on disk and stay there (#358).
+  | "deployed-unsupported-package-type"
+  // apm's own verdict that the attempt placed nothing, worn under a success
+  // marker (#358).
+  | "deploy-recorded-invalid"
+  // apm reported an install Maestro could not confirm from the lockfile (#358).
+  | "deploy-unverified"
   | "deploy-failed";
 
 type DeploySkillResult =
   | { ok: true; deployed: { type: "skill"; name: string; version: string } }
-  | { ok: false; error: DeploySkillError };
+  // `packageType` is one of our own readings of apm's recorded type, never apm
+  // prose (ADR-0018).
+  | { ok: false; error: DeploySkillError; packageType?: string };
 
 export class DeploySkill {
   private readonly deps: {
@@ -137,6 +162,7 @@ export class DeploySkill {
     apm: Pick<ApmDriverPort, "resolveLatestTag" | "deploySkill">;
     inventoryGit: InventoryGitPort;
     deployedContent: DeployedContentPort;
+    recordedPackage: RecordedPackagePort;
     // Global path only (ADR-0011, #136).
     deployedCleanup: DeployedCleanupPort;
     // Global path only (ADR-0011); a repo deploy never consults it.
@@ -237,12 +263,21 @@ export class DeploySkill {
         name: input.name,
         tools: globalTools,
       });
+      // Files apm placed under a package type it could not manage are apm's
+      // own, not local work: refusing the corrected release over them would
+      // strand the target on the broken one (#358).
+      const standing = await this.deps.recordedPackage.read({
+        target: input.target,
+        name: input.name,
+      });
+      const apmOwnsCopy =
+        standing.kind === "recorded" && standing.reading.kind !== "skill";
       // `force` never overrides "unreadable" or "lockfile-malformed": with no
       // baseline the overwrite would be blind, not informed (ADR-0006).
       if (deployedState === "diverged" && !input.force) {
         return { ok: false, error: "deployed-diverged-from-lock" };
       }
-      if (deployedState === "unverifiable" && !input.force) {
+      if (deployedState === "unverifiable" && !input.force && !apmOwnsCopy) {
         return { ok: false, error: "deployed-unverifiable" };
       }
       if (deployedState === "unreadable") {
@@ -271,6 +306,30 @@ export class DeploySkill {
               ? "destination-symlinked"
               : "deploy-failed",
         };
+      }
+
+      // apm exits 0 and prints its success marker even for a package it
+      // recorded as invalid, so the record is the only honest outcome (#358).
+      // Read before the reclaim: nothing is tidied up around it.
+      const recorded = await this.deps.recordedPackage.read({
+        target: input.target,
+        name: input.name,
+      });
+      if (recorded.kind === "unverified") {
+        return { ok: false, error: "deploy-unverified" };
+      }
+      if (recorded.reading.kind !== "skill") {
+        return recorded.reading.kind === "invalid"
+          ? {
+              ok: false,
+              error: "deploy-recorded-invalid",
+              packageType: recorded.reading.packageType,
+            }
+          : {
+              ok: false,
+              error: "deployed-unsupported-package-type",
+              packageType: recorded.reading.packageType,
+            };
       }
 
       // After a proven install, never before, so a failed install never

@@ -21,6 +21,7 @@ const target = (
     status: "ready",
     names: primitives.map((primitive) => primitive.name),
     skippedCount: 0,
+    attentionCount: 0,
   },
   primitives: primitives.map((primitive) => ({
     type: "skill" as const,

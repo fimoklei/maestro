@@ -55,6 +55,21 @@ export const NoToolDetected: Story = {
   args: { tools: [] },
 };
 
+// A skill apm materialized under a type Maestro cannot manage: named with its
+// recorded type and the one-line recovery, never dropped from the section.
+export const UnsupportedDeployment: Story = {
+  args: {
+    tools: [{ tool: "claude", primitives: [] }],
+    skipped: [
+      {
+        reason: "unmanageable-skill",
+        virtualPath: "skills/tdd",
+        packageType: "hybrid",
+      },
+    ],
+  },
+};
+
 export const Loading: Story = {
   args: { isLoading: true, tools: [] },
 };

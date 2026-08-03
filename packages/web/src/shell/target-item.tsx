@@ -30,6 +30,8 @@ function targetReading(
       return { visible: "in sync" };
     case "empty":
       return { visible: "empty" };
+    case "attention":
+      return { visible: "attention" };
     case "unverified":
       return { visible: "unverified" };
     case "pending":

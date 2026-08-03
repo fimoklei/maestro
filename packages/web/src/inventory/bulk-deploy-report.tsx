@@ -14,10 +14,30 @@ const errorLabels: Partial<Record<DeploySkillError, string>> = {
   "no-published-tag": "no published tag contains it",
   "auth-required": "GitHub authentication is missing or expired",
   "deploy-failed": "the deploy could not be completed",
+  "deployed-unsupported-package-type":
+    "apm recorded a type Maestro cannot manage as a skill",
+  "deploy-recorded-invalid": "apm recorded the deployment as invalid",
+  "deploy-unverified": "apm's install could not be confirmed from the lockfile",
+};
+
+// The bulk route returns codes, not prose, so the one recovery step a row can
+// act on lives here — the same guidance the single-deploy message carries.
+const recoverySteps: Partial<Record<DeploySkillError, string>> = {
+  "deployed-unsupported-package-type":
+    "Correct the package shape in the harness, release a corrected tag, and deploy again.",
+  "deploy-recorded-invalid":
+    "Fix the package shape in the harness (a skill needs a SKILL.md), release a corrected tag, and deploy again.",
+  "deploy-unverified":
+    "Check the target's lockfile (apm.lock.yaml), then try again.",
 };
 
 function errorLabel(error: DeploySkillError): string {
   return errorLabels[error] ?? error;
+}
+
+function RecoveryStep({ error }: { error: DeploySkillError }) {
+  const step = recoverySteps[error];
+  return step ? <span className="text-dim">{step}</span> : null;
 }
 
 export function BulkDeployReport({
@@ -131,9 +151,11 @@ export function BulkDeployReport({
                     </span>
                     <span className="truncate text-amber-ink">
                       {errorLabel(row.error)}
+                      {row.packageType ? ` (${row.packageType})` : ""}
                     </span>
+                    <RecoveryStep error={row.error} />
                   </span>
-                  {onForce ? (
+                  {onForce && row.forceable ? (
                     <Button
                       variant="quiet"
                       size="sm"
@@ -161,6 +183,7 @@ export function BulkDeployReport({
                   <span className="text-amber-ink">
                     {errorLabel(row.error)}
                   </span>
+                  <RecoveryStep error={row.error} />
                 </li>
               ))}
             </ul>

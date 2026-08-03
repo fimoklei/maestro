@@ -49,10 +49,20 @@ describe("chosenBulkDeployTargets", () => {
 
     expect(targets).toHaveLength(2);
     expect(targets[0]).toMatchObject({
-      deployed: { status: "ready", names: ["tdd"], skippedCount: 0 },
+      deployed: {
+        status: "ready",
+        names: ["tdd"],
+        skippedCount: 0,
+        attentionCount: 0,
+      },
     });
     expect(targets[1]).toMatchObject({
-      deployed: { status: "ready", names: [], skippedCount: 0 },
+      deployed: {
+        status: "ready",
+        names: [],
+        skippedCount: 0,
+        attentionCount: 0,
+      },
     });
   });
 
@@ -114,7 +124,12 @@ describe("chosenBulkDeployTargets", () => {
       {
         label: "/repo",
         target: { kind: "repo", repoPath: "/dev/acme-web" },
-        deployed: { status: "ready", names: ["tdd"], skippedCount: 0 },
+        deployed: {
+          status: "ready",
+          names: ["tdd"],
+          skippedCount: 0,
+          attentionCount: 0,
+        },
         primitives: [{ type: "skill", name: "tdd", version: "v1.0.0" }],
         drift: d,
       },

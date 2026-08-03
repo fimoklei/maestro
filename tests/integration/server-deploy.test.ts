@@ -8,6 +8,7 @@ import {
   InFlightLocks,
   InventoryReader,
   NodeFileSystem,
+  RecordedPackageAdapter,
   type SupportedTool,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
@@ -55,7 +56,7 @@ describe("deploy HTTP route", () => {
   });
   const globalTarget: DeployTarget = { kind: "global" };
 
-  const capturedLockfile = (ref: string) =>
+  const capturedLockfile = (ref: string, packageType = "claude_skill") =>
     [
       "lockfile_version: '1'",
       "apm_version: 0.16.0",
@@ -66,7 +67,7 @@ describe("deploy HTTP route", () => {
       `  resolved_ref: ${ref}`,
       "  virtual_path: .apm/skills/tdd",
       "  is_virtual: true",
-      "  package_type: claude_skill",
+      `  package_type: ${packageType}`,
       "  deployed_files:",
       "  - .claude/skills/tdd",
       "  content_hash: sha256:abc",
@@ -89,6 +90,8 @@ describe("deploy HTTP route", () => {
     // Which tools a global deploy detects on the machine (ADR-0011). Defaults to
     // both; an empty list drives the no-supported-tool refusal (#131).
     globalTools?: SupportedTool[];
+    // What apm records for the package it just installed (#358).
+    recordedType?: string;
   }) {
     const fs = new NodeFileSystem();
     const registry = realRegistry(fs, join(home, "config.json"));
@@ -145,7 +148,7 @@ describe("deploy HTTP route", () => {
             input.target.kind === "repo" ? input.target.repoPath : globalRoot;
           await writeFile(
             join(dest, "apm.lock.yaml"),
-            capturedLockfile("v0.5.1"),
+            capturedLockfile("v0.5.1", options?.recordedType),
             "utf8",
           );
           return { ok: true };
@@ -172,6 +175,18 @@ describe("deploy HTTP route", () => {
         detectGlobalTools: async () =>
           options?.globalTools ?? ["claude", "codex"],
       },
+      recordedPackage: new RecordedPackageAdapter({
+        fs,
+        // Mirrors DeployedLocation, aimed at this run's temp roots: the fake
+        // apm writes its lockfile where the real one would.
+        location: {
+          lockfilePath: (target) =>
+            join(
+              target.kind === "repo" ? target.repoPath : globalRoot,
+              "apm.lock.yaml",
+            ),
+        },
+      }),
       canonicalPath: (path) => fs.realpath(path),
       inventoryOriginUrl: async () =>
         "git@github.com:fimoklei/agent-harness.git",
@@ -222,6 +237,71 @@ describe("deploy HTTP route", () => {
     expect(await readFile(join(repo, "apm.lock.yaml"), "utf8")).toContain(
       "v0.5.1",
     );
+  });
+
+  it("refuses to call a hybrid record a deploy, and leaves the files alone", async () => {
+    const { app, registry } = makeApp({ recordedType: "hybrid" });
+    await registry.register(repo);
+
+    const res = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: repoTarget(repo),
+    });
+
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as {
+      error: string;
+      message: string;
+      packageType: string;
+    };
+    expect(body.error).toBe("deployed-unsupported-package-type");
+    expect(body.packageType).toBe("hybrid");
+    // Left in place: the outcome is reported, never tidied up around (#358).
+    expect(await readFile(join(repo, "apm.lock.yaml"), "utf8")).toContain(
+      "hybrid",
+    );
+  });
+
+  it("deploys a corrected release over an unsupported result, unforced", async () => {
+    // The state an unsupported deploy leaves: hybrid files on disk with no
+    // baseline of their own, which the destination guard calls unverifiable.
+    // They are apm's, not local work, so the corrected release goes through
+    // without a forced overwrite (#358).
+    const { app, registry } = makeApp({ destUnverifiable: true });
+    await registry.register(repo);
+    await writeFile(
+      join(repo, "apm.lock.yaml"),
+      capturedLockfile("v0.5.0", "hybrid"),
+      "utf8",
+    );
+
+    const res = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: repoTarget(repo),
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+    });
+  });
+
+  it("reports apm's invalid record as a failed deploy, never a success", async () => {
+    const { app, registry } = makeApp({ recordedType: "invalid" });
+    await registry.register(repo);
+
+    const res = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: repoTarget(repo),
+    });
+
+    expect(res.status).toBe(502);
+    const body = (await res.json()) as { error: string; message: string };
+    expect(body.error).toBe("deploy-recorded-invalid");
+    expect(body.message).toMatch(/placed no files/i);
   });
 
   it("deploys a skill globally, with no repo registered", async () => {

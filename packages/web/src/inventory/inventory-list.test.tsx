@@ -25,7 +25,7 @@ const deployedTo = (
 ): DeploymentTarget => ({
   label: "",
   target: { kind: "global" },
-  deployed: { status: "ready", names, skippedCount: 0 },
+  deployed: { status: "ready", names, skippedCount: 0, attentionCount: 0 },
   primitives: names.map((name) => ({
     type: "skill" as const,
     name,

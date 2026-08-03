@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { DeploySkill, type DeployTarget } from "./deploy-skill";
+import {
+  DeploySkill,
+  type DeployTarget,
+  type RecordedPackageResult,
+} from "./deploy-skill";
 import type { SupportedTool } from "./deploy-tools";
 import { InFlightLocks } from "./in-flight-locks";
 
@@ -87,6 +91,13 @@ const buildDeps = (
         "codex",
       ],
     },
+    recordedPackage: {
+      read: async (_input: { target: DeployTarget; name: string }) =>
+        ({
+          kind: "recorded",
+          reading: { kind: "skill", name: "tdd" },
+        }) as RecordedPackageResult,
+    },
     canonicalPath: async (path: string) => path,
     locks: new InFlightLocks(),
     ...overrides,
@@ -95,6 +106,155 @@ const buildDeps = (
 };
 
 describe("DeploySkill", () => {
+  it("refuses to call a hybrid record a clean deploy, and leaves its files alone", async () => {
+    const { deps, cleaned } = buildDeps({
+      recordedPackage: {
+        read: async () => ({
+          kind: "recorded" as const,
+          reading: { kind: "unsupported" as const, packageType: "hybrid" },
+        }),
+      },
+    });
+
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "deployed-unsupported-package-type",
+      packageType: "hybrid",
+    });
+    expect(cleaned).toEqual([]);
+  });
+
+  it("refuses to call a marketplace_plugin record a clean deploy", async () => {
+    const { deps } = buildDeps({
+      recordedPackage: {
+        read: async () => ({
+          kind: "recorded" as const,
+          reading: {
+            kind: "unsupported" as const,
+            packageType: "marketplace_plugin",
+          },
+        }),
+      },
+    });
+
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "deployed-unsupported-package-type",
+      packageType: "marketplace_plugin",
+    });
+  });
+
+  it("reports apm's invalid verdict as a failed deploy, never as a success", async () => {
+    const { deps } = buildDeps({
+      recordedPackage: {
+        read: async () => ({
+          kind: "recorded" as const,
+          reading: { kind: "invalid" as const, packageType: "invalid" },
+        }),
+      },
+    });
+
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "deploy-recorded-invalid",
+      packageType: "invalid",
+    });
+  });
+
+  it("deploys a corrected release over an unsupported result, through the normal flow", async () => {
+    // Run one records hybrid and is refused. Its files stay, with no baseline
+    // of their own, which the guard would normally refuse as unverifiable —
+    // but they are apm's, not local work, so the corrected release goes
+    // through unforced (#358).
+    let installs = 0;
+    const reads: string[] = [];
+    const { deps } = buildDeps({
+      deployedContent: {
+        classify: async () =>
+          installs === 0
+            ? ("not-deployed" as const)
+            : ("unverifiable" as const),
+      },
+      recordedPackage: {
+        read: async () => {
+          reads.push("read");
+          if (installs === 0) {
+            return { kind: "unverified" as const };
+          }
+          return installs === 1
+            ? {
+                kind: "recorded" as const,
+                reading: {
+                  kind: "unsupported" as const,
+                  packageType: "hybrid",
+                },
+              }
+            : {
+                kind: "recorded" as const,
+                reading: { kind: "skill" as const, name: "tdd" },
+              };
+        },
+      },
+      apm: {
+        resolveLatestTag: async () => ({ ok: true as const, tag: "v0.5.1" }),
+        deploySkill: async () => {
+          installs += 1;
+          return { ok: true as const };
+        },
+      },
+    });
+    const deploy = new DeploySkill(deps);
+    const request = {
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    };
+
+    expect(await deploy.execute(request)).toEqual({
+      ok: false,
+      error: "deployed-unsupported-package-type",
+      packageType: "hybrid",
+    });
+    expect(await deploy.execute(request)).toEqual({
+      ok: true,
+      deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+    });
+  });
+
+  it("refuses to call an install clean when the record cannot be read", async () => {
+    // apm's own marker is the evidence this read exists to distrust, so an
+    // unreadable record fails closed rather than passing as success (#58).
+    const { deps } = buildDeps({
+      recordedPackage: { read: async () => ({ kind: "unverified" as const }) },
+    });
+
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({ ok: false, error: "deploy-unverified" });
+  });
+
   it("deploys a known skill to a registered repo at the latest tag", async () => {
     const { deps, deployed } = buildDeps();
     const result = await new DeploySkill(deps).execute({

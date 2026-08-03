@@ -38,6 +38,7 @@ describe("DeployedContentAdapter", () => {
   const writeLockfile = async (
     name: string,
     hashes: Record<string, string>,
+    packageType = "claude_skill",
   ) => {
     const lines = Object.entries(hashes).map(
       ([path, hash]) => `      ${path}: ${hash}`,
@@ -45,7 +46,7 @@ describe("DeployedContentAdapter", () => {
     const yaml = [
       "dependencies:",
       `  - virtual_path: .apm/skills/${name}`,
-      "    package_type: claude_skill",
+      `    package_type: ${packageType}`,
       "    resolved_ref: v0.5.1",
       "    deployed_file_hashes:",
       ...lines,
@@ -397,6 +398,26 @@ describe("DeployedContentAdapter", () => {
     await writeLockfile("tdd", {
       ".claude/skills/tdd/logo.png": sha(bytes),
     });
+
+    await expect(
+      adapter().classify({
+        target: { kind: "repo", repoPath: root },
+        name: "tdd",
+      }),
+    ).resolves.toBe("clean");
+  });
+
+  it("verifies a copy apm recorded under a package type it could not manage", async () => {
+    // A hybrid entry still records the hashes of the files it placed. Reading
+    // the baseline by name keeps those files verifiable, so the corrected
+    // release is not refused as unverifiable local work (#358).
+    const body = "deployed\n";
+    await writeDeployed(".claude/skills/tdd/SKILL.md", body);
+    await writeLockfile(
+      "tdd",
+      { ".claude/skills/tdd/SKILL.md": sha(body) },
+      "hybrid",
+    );
 
     await expect(
       adapter().classify({

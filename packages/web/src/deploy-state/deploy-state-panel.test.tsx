@@ -84,6 +84,34 @@ describe("DeployStatePanel", () => {
     expect(screen.queryByText("● empty")).not.toBeInTheDocument();
   });
 
+  it("reads a repo holding an invalid record as attention, never as in sync", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input).startsWith("/api/drift")
+          ? jsonResponse({ behind: [] }, 200)
+          : jsonResponse(
+              {
+                primitives: [],
+                skipped: [
+                  {
+                    reason: "invalid-package",
+                    virtualPath: "skills/tdd",
+                    packageType: "invalid",
+                  },
+                ],
+              },
+              200,
+            ),
+      ),
+    );
+    renderPanel("/Users/me/project");
+
+    expect(await screen.findByText("▲ attention")).toBeInTheDocument();
+    expect(screen.getByText(/placed no files/i)).toBeInTheDocument();
+    expect(screen.queryByText("● in sync")).not.toBeInTheDocument();
+  });
+
   it("surfaces a visible error when the lockfile cannot be read", async () => {
     vi.stubGlobal(
       "fetch",

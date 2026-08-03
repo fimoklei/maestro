@@ -117,6 +117,13 @@ describe("bulk deploy HTTP route", () => {
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => false,
       },
+      // A proven skill record: this journey is not about the post-install read.
+      recordedPackage: {
+        read: async () => ({
+          kind: "recorded" as const,
+          reading: { kind: "skill" as const, name: "tdd" },
+        }),
+      },
       deployedContent: {
         classify: async ({ name }) =>
           diverged.has(name) ? "diverged" : "not-deployed",
@@ -184,7 +191,7 @@ describe("bulk deploy HTTP route", () => {
     const body = (await res.json()) as BulkDeployReport;
     expect(body.deployed).toEqual([{ name: "tdd", version: "v0.5.1" }]);
     expect(body.attention).toEqual([
-      { name: "review", error: "deployed-diverged-from-lock" },
+      { name: "review", error: "deployed-diverged-from-lock", forceable: true },
     ]);
     expect(body.failed).toEqual([{ error: "deploy-failed", names: ["docs"] }]);
     // No raw apm output (which may carry a token) leaks into the report.

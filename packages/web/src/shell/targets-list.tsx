@@ -2,6 +2,7 @@ import {
   toDeployedView,
   toolDeployedView,
 } from "../deploy-state/deployed-view";
+import { skippedNeedsAttention } from "../deploy-state/skipped-entry-text";
 import { toolPresentation } from "../deploy-state/tool-presentation";
 import { useDeployState } from "../deploy-state/use-deploy-state";
 import {
@@ -39,6 +40,10 @@ export function TargetsList() {
   // keeps the honest states visible instead (J03/J04).
   const detecting = globalDeploy.data === undefined;
 
+  const globalAttention = (globalDeploy.data?.skipped ?? []).filter(
+    skippedNeedsAttention,
+  ).length;
+
   return (
     <ul aria-label="Targets">
       {detecting ? (
@@ -54,6 +59,9 @@ export function TargetsList() {
             group={group}
             drift={globalDrift}
             read={toolsRead}
+            // Section-wide: a global entry apm could not manage names no tool,
+            // so no row may read as empty while it stands (#358).
+            attentionCount={globalAttention}
           />
         ))
       )}
@@ -68,14 +76,16 @@ function ToolTargetItem({
   group,
   drift,
   read,
+  attentionCount,
 }: {
   group: ToolDeployState;
   drift: DriftViewModel;
   read: { data: unknown; isError: boolean };
+  attentionCount: number;
 }) {
   const names = group.primitives.map((primitive) => primitive.name);
   const toolDrift = drift.forTool(names);
-  const deployed = toolDeployedView(names, read);
+  const deployed = toolDeployedView(names, read, attentionCount);
   return (
     <TargetItem
       label={toolPresentation(group.tool).label}

@@ -20,6 +20,9 @@ export type DriftStatus =
 // needs a deployed skill behind; the un-run states never read as "ok".
 export type TargetDriftIndicator =
   | "ok"
+  // An entry on disk the user has to fix — outranks every drift reading, since
+  // a target holding one is neither empty nor in sync (#358).
+  | "attention"
   | "drift"
   | "empty"
   | "unknown"
@@ -104,6 +107,9 @@ function fromDriftView(view: DriftView): DriftViewModel {
   const rollUp = (
     deployed: DeployedView,
   ): { state: TargetDriftIndicator; behindCount: number } => {
+    if (deployed.status === "ready" && deployed.attentionCount > 0) {
+      return { state: "attention", behindCount: 0 };
+    }
     if (
       deployed.status === "ready" &&
       deployed.names.length === 0 &&
