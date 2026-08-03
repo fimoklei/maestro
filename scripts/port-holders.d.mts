@@ -24,3 +24,25 @@ export function findPortHolders(
 
 /** Null when every port is free. */
 export function describeHeldPorts(holders: PortHolder[]): string | null;
+
+export interface ForeignPortHolder extends PortHolder {
+  /** The worktree whose directory the holder runs in. */
+  worktree: string;
+}
+
+/** Empty when git could not be asked — never read as "no worktrees exist". */
+export function listWorktrees(
+  repoRoot: string,
+  git?: (args: string[]) => string,
+  resolve?: (path: string) => string,
+): string[];
+
+export function partitionHolders(
+  holders: PortHolder[],
+  attribution: { self: string; worktrees: string[] },
+): { foreign: ForeignPortHolder[]; evictable: PortHolder[] };
+
+/** Null when no other worktree holds a port. */
+export function describeForeignHolders(
+  foreign: ForeignPortHolder[],
+): string | null;

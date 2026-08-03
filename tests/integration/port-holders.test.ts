@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  describeForeignHolders,
   describeHeldPorts,
   findPortHolders,
+  listWorktrees,
+  partitionHolders,
   pidsOnPort,
 } from "../../scripts/port-holders.mjs";
 
@@ -162,5 +165,138 @@ describe("describeHeldPorts", () => {
 
     expect(message).toContain("3000");
     expect(message).not.toContain("null");
+  });
+});
+
+const mainWorktree = "/Users/m/maestro";
+const nestedWorktree = "/Users/m/maestro/.claude/worktrees/issue396";
+const siblingWorktree = "/Users/m/maestro/.claude/worktrees/issue417";
+const worktrees = [mainWorktree, nestedWorktree, siblingWorktree];
+
+/** A `git worktree list --porcelain` transcript over the paths given. */
+function stubGit(paths: string[]) {
+  return () =>
+    `${paths
+      .map(
+        (path) =>
+          `worktree ${path}\nHEAD 0123456789abcdef\nbranch refs/heads/x\n`,
+      )
+      .join("\n")}\n`;
+}
+
+describe("listWorktrees", () => {
+  const keepPath = (path: string) => path;
+
+  it("reads every worktree path git reports", () => {
+    expect(
+      listWorktrees("/Users/m/maestro", stubGit(worktrees), keepPath),
+    ).toEqual(worktrees);
+  });
+
+  it("resolves each path, so a symlinked checkout still matches", () => {
+    // Attribution compares strings; an unresolved path would make this
+    // worktree's own run look like a sibling's, and the launcher never starts.
+    const resolve = (path: string) => path.replace("/Users/m", "/real/m");
+
+    expect(
+      listWorktrees("/Users/m/maestro", stubGit([mainWorktree]), resolve),
+    ).toEqual(["/real/m/maestro"]);
+  });
+
+  it("keeps a path it cannot resolve", () => {
+    const missing = () => {
+      throw new Error("ENOENT");
+    };
+
+    expect(
+      listWorktrees("/Users/m/maestro", stubGit([mainWorktree]), missing),
+    ).toEqual([mainWorktree]);
+  });
+
+  it("answers nothing when git cannot be asked", () => {
+    // No worktree list means no attribution: every holder is unowned, which
+    // keeps today's freeing behaviour rather than blocking on a failed lookup.
+    expect(
+      listWorktrees("/Users/m/maestro", brokenLsof("ENOENT") as () => string),
+    ).toEqual([]);
+  });
+});
+
+describe("partitionHolders", () => {
+  const holderIn = (cwd: string | null, port = 5173) => ({
+    port,
+    pid: 4821,
+    command: "node",
+    cwd,
+  });
+
+  it("refuses a holder that belongs to another worktree", () => {
+    const { foreign, evictable } = partitionHolders(
+      [holderIn(siblingWorktree)],
+      {
+        self: nestedWorktree,
+        worktrees,
+      },
+    );
+
+    expect(evictable).toEqual([]);
+    expect(foreign).toEqual([
+      { ...holderIn(siblingWorktree), worktree: siblingWorktree },
+    ]);
+  });
+
+  it("evicts a previous run in this worktree", () => {
+    // Deep inside it, as a dev server started from packages/web would be.
+    const { foreign, evictable } = partitionHolders(
+      [holderIn(`${nestedWorktree}/packages/web`)],
+      { self: nestedWorktree, worktrees },
+    );
+
+    expect(foreign).toEqual([]);
+    expect(evictable).toEqual([holderIn(`${nestedWorktree}/packages/web`)]);
+  });
+
+  it("frees a holder no worktree owns", () => {
+    const { foreign, evictable } = partitionHolders(
+      [holderIn("/Applications/SomeApp.app"), holderIn(null)],
+      { self: nestedWorktree, worktrees },
+    );
+
+    expect(foreign).toEqual([]);
+    expect(evictable).toHaveLength(2);
+  });
+
+  it("attributes a nested worktree to itself, not to the repo containing it", () => {
+    // This worktree lives inside the main one, so the longest match decides —
+    // a prefix match would read every nested run as the main worktree's.
+    const { foreign } = partitionHolders([holderIn(nestedWorktree)], {
+      self: mainWorktree,
+      worktrees,
+    });
+
+    expect(foreign.map((holder) => holder.worktree)).toEqual([nestedWorktree]);
+  });
+});
+
+describe("describeForeignHolders", () => {
+  it("says nothing when no foreign worktree holds a port", () => {
+    expect(describeForeignHolders([])).toBeNull();
+  });
+
+  it("names the port, the process and the worktree holding it", () => {
+    const message = describeForeignHolders([
+      {
+        port: 3000,
+        pid: 4821,
+        command: "node",
+        cwd: `${siblingWorktree}/packages/server`,
+        worktree: siblingWorktree,
+      },
+    ]);
+
+    expect(message).toContain("3000");
+    expect(message).toContain("node");
+    expect(message).toContain("4821");
+    expect(message).toContain(siblingWorktree);
   });
 });
