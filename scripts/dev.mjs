@@ -1,5 +1,7 @@
-// Single-instance dev launcher: keeps only one Maestro running at a time, and
-// with --smoke, runs an ephemeral, isolated rehearsal environment (ADR-0010).
+// Dev launcher: keeps one Maestro running per worktree — each on its own pair
+// of ports (scripts/cockpit-ports.mjs), so a sibling checkout can serve at the
+// same time — and with --smoke, an ephemeral, isolated rehearsal environment
+// (ADR-0010).
 import { execFileSync, spawn } from "node:child_process";
 import {
   existsSync,
@@ -12,6 +14,7 @@ import {
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { cockpitPorts, cockpitUrls } from "./cockpit-ports.mjs";
 import {
   describeForeignHolders,
   describeHeldPorts,
@@ -24,7 +27,8 @@ import { seedSandbox, writeSmokeMarker } from "./seed-sandbox.mjs";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const pidFile = join(repoRoot, ".maestro-dev.pid");
-const cockpitPorts = [Number(process.env.PORT ?? 3000), 5173];
+const ports = cockpitPorts();
+const cockpitPortList = [ports.server, ports.web];
 const smoke = process.argv.includes("--smoke");
 
 // A shell that never loaded nvm hands us the system node, and the failure lands
@@ -88,10 +92,10 @@ if (existsSync(pidFile)) {
   rmSync(pidFile, { force: true });
 }
 
-// 2. Refuse when a port belongs to a sibling worktree — killing it would stop
-// that session's cockpit silently, and it has happened in both directions.
+// 2. Refuse every holder but this worktree's own: the pair is derived from
+// this path, so anything else on it is work this launcher did not start.
 const { foreign, evictable } = partitionHolders(
-  findPortHolders(cockpitPorts),
+  findPortHolders(cockpitPortList),
   attribution,
 );
 const foreignRefusal = describeForeignHolders(foreign);
@@ -100,8 +104,8 @@ if (foreignRefusal !== null) {
   process.exit(1);
 }
 
-// 3. Fallback: free the ports this run may take — its own previous instance,
-// and anything no worktree claims.
+// 3. Fallback: free this worktree's own previous instance, when the pidfile
+// above did not already catch it.
 let freedSomething = false;
 for (const { port, pid } of evictable) {
   // A lookup that could not answer names no pid here; step 4 refuses on it.
@@ -121,7 +125,7 @@ if (freedSomething) {
 // 4. Refuse when a holder survived the kill above — another user's process, or
 // one that restarted itself. Starting anyway hands the cockpit's URL to it, so
 // every later screenshot would prove that process rather than this worktree.
-const stillHeld = describeHeldPorts(findPortHolders(cockpitPorts));
+const stillHeld = describeHeldPorts(findPortHolders(cockpitPortList));
 if (stillHeld !== null) {
   console.error(stillHeld);
   process.exit(1);
@@ -130,6 +134,11 @@ if (stillHeld !== null) {
 // 5. Start server + web as one detached group so we can kill the whole tree.
 const env = { ...process.env };
 const sandbox = join(repoRoot, ".maestro-sandbox");
+
+// The children bind what the resolver decided, so nothing downstream re-derives
+// a pair of its own.
+env.PORT = String(ports.server);
+env.WEB_PORT = String(ports.web);
 
 function wipeSandbox() {
   rmSync(sandbox, { recursive: true, force: true });
@@ -223,6 +232,11 @@ const child = spawn(
 );
 
 writeFileSync(pidFile, String(child.pid));
+
+const urls = cockpitUrls(ports);
+console.log(
+  `[dev] this worktree's cockpit: ${urls.web} (api ${urls.api}) — \`pnpm cockpit:url\` prints it again`,
+);
 
 // Detached, so this pid leads the process group every server below it belongs
 // to. `pnpm smoke:ready` compares against it before writing anything, because
