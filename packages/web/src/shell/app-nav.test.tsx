@@ -24,6 +24,7 @@ const HARNESS_STATE = {
   defaultBranch: "main",
   releaseState: "released",
   freshness: { outcome: null, lastFetchedAt: null },
+  movements: [],
 };
 
 function stubEmptyServer() {

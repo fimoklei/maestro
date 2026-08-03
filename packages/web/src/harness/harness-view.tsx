@@ -3,7 +3,12 @@ import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { SectionHeader } from "../ui/section-header";
 import { HarnessStrip } from "./harness-strip";
-import { freshnessLabel, RELEASE_SUMMARIES } from "./harness-view-model";
+import {
+  freshnessLabel,
+  movementSections,
+  RELEASE_SUMMARIES,
+} from "./harness-view-model";
+import { MovementTable } from "./movement-table";
 import { useHarness, useRefreshHarness } from "./use-harness";
 
 // The Harness home base: what the released harness is, how fresh that picture
@@ -64,6 +69,18 @@ export function HarnessView() {
               {RELEASE_SUMMARIES[state.releaseState]}
             </p>
           </Card>
+          {movementSections(state.movements).map((section) => (
+            <section key={section.state} className="mt-4">
+              <SectionHeader
+                level={3}
+                title={section.title}
+                meta={`${section.movements.length} · ${section.meta}`}
+              />
+              <Card>
+                <MovementTable movements={section.movements} />
+              </Card>
+            </section>
+          ))}
         </>
       )}
     </section>

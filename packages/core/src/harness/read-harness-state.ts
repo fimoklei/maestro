@@ -2,6 +2,7 @@
 // Git details stay behind the port — no stdout, stderr, or remote text reaches
 // this use-case, so none can reach a response (ADR-0021, security.md).
 import { parseGitOrigin } from "../deploy/git-origin";
+import { classifyMovement, type MovementState } from "./classify-movement";
 import { highestReleaseTag } from "./release-tag";
 
 export type HarnessFetchOutcome = "fetched" | "offline" | "fetch-failed";
@@ -22,9 +23,19 @@ export type HarnessFacts = {
   tags: HarnessTag[];
 };
 
+// One tree hash per canonical skill directory, at each of the four places a
+// skill's content can sit. A name absent from a map is a skill absent there.
+export type HarnessSkillTrees = {
+  remote: Record<string, string>;
+  promote: Record<string, string>;
+  local: Record<string, string>;
+  working: Record<string, string>;
+};
+
 export interface HarnessGitPort {
   fetch(root: string): Promise<HarnessFetchOutcome>;
   readFacts(root: string): Promise<HarnessFacts>;
+  readSkillTrees(root: string): Promise<HarnessSkillTrees>;
 }
 
 // Every call names the harness root: one record per harness, so connecting a
@@ -43,12 +54,18 @@ export type HarnessReleaseState =
   | "never-released"
   | "unknown";
 
+export type HarnessMovement = {
+  skill: string;
+  state: MovementState;
+};
+
 export type HarnessState = {
   origin: string;
   releasedVersion: string | null;
   defaultBranch: string | null;
   releaseState: HarnessReleaseState;
   freshness: HarnessFreshness;
+  movements: HarnessMovement[];
 };
 
 export type HarnessStateError = "not-configured" | "no-usable-origin";
@@ -131,6 +148,7 @@ export class ReadHarnessState {
     // that as "no release exists" would invent a fact (ADR-0021).
     const confirmed = freshness.lastFetchedAt !== null;
     const released = confirmed ? highestReleaseTag(facts.tags) : null;
+    const movements = skillMovements(await this.deps.git.readSkillTrees(root));
     return {
       ok: true,
       state: {
@@ -141,10 +159,27 @@ export class ReadHarnessState {
           ? releaseState(released, facts.defaultBranchCommit)
           : "unknown",
         freshness,
+        movements,
       },
     };
   }
 }
+
+// Every name any of the four refs knows, so a skill that exists only on a
+// promote branch or only on disk is still asked about. Sorted, so the tables
+// do not reshuffle between reads.
+const skillMovements = (trees: HarnessSkillTrees): HarnessMovement[] => {
+  const names = new Set(Object.values(trees).flatMap(Object.keys));
+  return [...names].sort().flatMap((skill) => {
+    const state = classifyMovement({
+      remote: trees.remote[skill] ?? null,
+      promote: trees.promote[skill] ?? null,
+      local: trees.local[skill] ?? null,
+      working: trees.working[skill] ?? null,
+    });
+    return state === null ? [] : [{ skill, state }];
+  });
+};
 
 const releaseState = (
   released: HarnessTag | null,

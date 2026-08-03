@@ -3,6 +3,7 @@ import type {
   HarnessFacts,
   HarnessFetchOutcome,
   HarnessFreshness,
+  HarnessSkillTrees,
 } from "./read-harness-state";
 import { ReadHarnessState } from "./read-harness-state";
 
@@ -40,12 +41,22 @@ function stubFreshness(
   };
 }
 
+// A harness whose one skill sits at the same content everywhere: the quiet
+// case each movement test moves a single ref away from.
+const SETTLED_TREES: HarnessSkillTrees = {
+  remote: { tdd: "same" },
+  promote: {},
+  local: { tdd: "same" },
+  working: { tdd: "same" },
+};
+
 function buildRead(overrides?: {
   facts?: Partial<HarnessFacts>;
   root?: string | undefined;
   resolveRoot?: () => Promise<string | undefined>;
   fetch?: () => Promise<HarnessFetchOutcome>;
   freshness?: ReturnType<typeof stubFreshness>;
+  trees?: Partial<HarnessSkillTrees>;
 }) {
   return new ReadHarnessState({
     resolveRoot:
@@ -55,6 +66,7 @@ function buildRead(overrides?: {
     git: {
       fetch: overrides?.fetch ?? (async () => "fetched"),
       readFacts: async () => ({ ...FACTS, ...overrides?.facts }),
+      readSkillTrees: async () => ({ ...SETTLED_TREES, ...overrides?.trees }),
     },
     freshness: overrides?.freshness ?? stubFreshness(FETCHED),
   });
@@ -72,6 +84,7 @@ describe("ReadHarnessState", () => {
         defaultBranch: "main",
         releaseState: "released",
         freshness: FETCHED,
+        movements: [],
       },
     });
   });
@@ -149,6 +162,63 @@ describe("ReadHarnessState", () => {
   });
 });
 
+describe("ReadHarnessState movements", () => {
+  it("lists every skill that has moved, one state each, in name order", async () => {
+    const read = buildRead({
+      trees: {
+        remote: { docs: "same", tdd: "same" },
+        promote: { tdd: "pushed" },
+        local: { docs: "same", tdd: "same" },
+        working: { docs: "edited", tdd: "same" },
+      },
+    });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: {
+        movements: [
+          { skill: "docs", state: "pending-promotion" },
+          { skill: "tdd", state: "pending-review" },
+        ],
+      },
+    });
+  });
+
+  it("finds a skill that exists only on a promote branch", async () => {
+    // A brand-new skill someone pushed for review is in none of the other
+    // three refs; taking only origin/HEAD's names would miss it entirely.
+    const read = buildRead({
+      trees: {
+        remote: {},
+        promote: { fresh: "pushed" },
+        local: {},
+        working: {},
+      },
+    });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: { movements: [{ skill: "fresh", state: "pending-review" }] },
+    });
+  });
+
+  it("leaves a clone that is only behind with nothing of its own waiting", async () => {
+    const read = buildRead({
+      trees: {
+        remote: { tdd: "newer" },
+        promote: {},
+        local: { tdd: "older" },
+        working: { tdd: "older" },
+      },
+    });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: { movements: [] },
+    });
+  });
+});
+
 describe("ReadHarnessState refresh", () => {
   const AT = new Date("2026-08-03T09:14:00.000Z");
 
@@ -222,6 +292,10 @@ describe("ReadHarnessState refresh", () => {
           readFor.push(root);
           return FACTS;
         },
+        readSkillTrees: async (root) => {
+          readFor.push(root);
+          return SETTLED_TREES;
+        },
       },
       freshness: stubFreshness(),
     });
@@ -229,7 +303,7 @@ describe("ReadHarnessState refresh", () => {
     await read.refresh(AT);
 
     expect(fetched).toEqual(["/harness-a"]);
-    expect(readFor).toEqual(["/harness-a"]);
+    expect(readFor).toEqual(["/harness-a", "/harness-a"]);
   });
 
   it("answers two refreshes at once with one fetch", async () => {

@@ -2,13 +2,21 @@
 // through argument arrays (security.md). Nothing leaves as stdout or stderr — a
 // failure leaves as a class, a read as a named field (ADR-0021).
 import { execFile } from "node:child_process";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { promisify } from "node:util";
 import { readConfiguredGitOriginUrl } from "../deploy/git-origin-url";
+import {
+  HARNESS_SKILLS_DIR,
+  harnessSkillSubpath,
+} from "../inventory/harness-layout";
 import { classifyFetchFailure } from "./classify-fetch-failure";
 import type {
   HarnessFacts,
   HarnessFetchOutcome,
   HarnessGitPort,
+  HarnessSkillTrees,
   HarnessTag,
 } from "./read-harness-state";
 
@@ -26,6 +34,10 @@ const REMOTE_HEAD = "refs/remotes/origin/HEAD";
 const MAESTRO_TAGS = "refs/maestro/tags";
 const TAG_REFSPEC = `+refs/tags/*:${MAESTRO_TAGS}/*`;
 const BRANCH_REFSPEC = "+refs/heads/*:refs/remotes/origin/*";
+
+// One branch per skill under review, named after the skill it carries. Fetched
+// by the branch refspec above, so what is read here is what the team pushed.
+const PROMOTE_BRANCHES = "refs/remotes/origin/maestro";
 
 // Maestro never asks for credentials and never stores them: git may use what
 // the user's own configuration already provides, but may not stop and prompt.
@@ -89,6 +101,91 @@ export class HarnessGitAdapter implements HarnessGitPort {
       defaultBranchCommit: await this.read(root, ["rev-parse", REMOTE_HEAD]),
       tags: await this.readTags(root),
     };
+  }
+
+  // The four places one skill's content can sit. The working read goes through
+  // a temporary index so untracked files count, while the author's real index,
+  // HEAD and working tree are never read or written (ADR-0021).
+  async readSkillTrees(root: string): Promise<HarnessSkillTrees> {
+    return {
+      remote: await this.skillTreesAt(root, REMOTE_HEAD),
+      promote: await this.promoteTrees(root),
+      local: await this.skillTreesAt(root, "HEAD"),
+      working: await this.workingSkillTrees(root),
+    };
+  }
+
+  // One tree hash per skill directory under the canonical skills path. An
+  // absent path is a harness with no skills there, never a failure.
+  private async skillTreesAt(
+    root: string,
+    treeish: string,
+  ): Promise<Record<string, string>> {
+    const listing = await this.read(root, [
+      "ls-tree",
+      `${treeish}:${HARNESS_SKILLS_DIR}`,
+    ]);
+    if (listing === null) {
+      return {};
+    }
+    return Object.fromEntries(
+      listing.split("\n").flatMap((line) => {
+        const [meta = "", name = ""] = line.split("\t");
+        const [, type, hash] = meta.split(" ");
+        // Directories only: a loose file beside the skills is not a skill.
+        return type === "tree" && hash && name ? [[name, hash] as const] : [];
+      }),
+    );
+  }
+
+  // Each promote branch is asked only about the skill it is named for: a
+  // branch carrying anything else is not that skill's review.
+  private async promoteTrees(root: string): Promise<Record<string, string>> {
+    const listing = await this.read(root, [
+      "for-each-ref",
+      `--format=%(refname:lstrip=${PROMOTE_BRANCHES.split("/").length})`,
+      PROMOTE_BRANCHES,
+    ]);
+    if (listing === null) {
+      return {};
+    }
+
+    const named = await Promise.all(
+      listing.split("\n").map(async (skill) => {
+        const hash = await this.read(root, [
+          "rev-parse",
+          `${PROMOTE_BRANCHES}/${skill}:${harnessSkillSubpath(skill)}`,
+        ]);
+        // A branch that only deletes its skill leaves no tree to hash, so it
+        // does not surface here — a deletion under review is not yet read.
+        return hash === null ? [] : [[skill, hash] as const];
+      }),
+    );
+    return Object.fromEntries(named.flat());
+  }
+
+  // Writes to a throwaway index, so `add` sees untracked files and deletions
+  // without the author's staged work moving. Only the objects git writes for
+  // the hashes survive, and those are unreferenced.
+  private async workingSkillTrees(
+    root: string,
+  ): Promise<Record<string, string>> {
+    const indexDir = await mkdtemp(join(tmpdir(), "maestro-harness-index-"));
+    const env = { ...process.env, GIT_INDEX_FILE: join(indexDir, "index") };
+    try {
+      await run("git", ["-C", root, "read-tree", "--empty"], { env });
+      await run("git", ["-C", root, "add", "-A", "--", HARNESS_SKILLS_DIR], {
+        env,
+      });
+      const { stdout } = await run("git", ["-C", root, "write-tree"], { env });
+      return await this.skillTreesAt(root, stdout.trim());
+    } catch {
+      // No skills path on disk at all — `add` refuses a pathspec that matches
+      // nothing, and that is an empty harness, not a broken read.
+      return {};
+    } finally {
+      await rm(indexDir, { recursive: true, force: true });
+    }
   }
 
   // Null on any failure, so an unset `origin/HEAD` reads as "not known"
