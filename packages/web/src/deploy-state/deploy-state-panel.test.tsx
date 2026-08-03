@@ -65,7 +65,11 @@ describe("DeployStatePanel", () => {
           {
             primitives: [],
             skipped: [
-              { virtualPath: "hooks/format", packageType: "claude_hook" },
+              {
+                reason: "unsupported-type",
+                virtualPath: "hooks/format",
+                packageType: "claude_hook",
+              },
             ],
           },
           200,
@@ -146,7 +150,11 @@ describe("DeployStatePanel", () => {
           {
             primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
             skipped: [
-              { virtualPath: "hooks/format", packageType: "claude_hook" },
+              {
+                reason: "unsupported-type",
+                virtualPath: "hooks/format",
+                packageType: "claude_hook",
+              },
             ],
           },
           200,

@@ -18,6 +18,7 @@ import type { RemoveDialogTarget } from "./remove-ledger-rows";
 import { removePreflightView } from "./remove-preflight-view";
 import { RemoveSkillDialog } from "./remove-skill-dialog";
 import { restatedCost } from "./restated-cost";
+import { skippedEntryKey, skippedEntryText } from "./skipped-entry-text";
 import { UpdateSkillAction } from "./update-skill-action";
 import type { DeployedPrimitive, SkippedEntry } from "./use-deploy-state";
 import { useRemoveDeployedSkill } from "./use-remove-deployed-skill";
@@ -270,10 +271,9 @@ export function DeployStateList({
       )}
       {skipped.length > 0 && (
         <ul className="px-card-x py-row-y text-dim text-tag">
-          {skipped.map((entry) => (
-            <li key={entry.virtualPath}>
-              Skipped {entry.virtualPath} (unsupported type {entry.packageType}
-              ).
+          {skipped.map((entry, index) => (
+            <li key={skippedEntryKey(entry, index)}>
+              {skippedEntryText(entry)}
             </li>
           ))}
         </ul>

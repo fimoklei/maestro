@@ -4,6 +4,7 @@ import { Card } from "../ui/card";
 import { SectionHeader } from "../ui/section-header";
 import { DeployStateList } from "./deploy-state-list";
 import { toolDeployedView } from "./deployed-view";
+import { skippedEntryKey, skippedEntryText } from "./skipped-entry-text";
 import { TargetStatusChip } from "./target-status-chip";
 import { toolPresentation } from "./tool-presentation";
 import type { SkippedEntry } from "./use-deploy-state";
@@ -108,15 +109,13 @@ function ToolTargetCard({
   );
 }
 
-// Unsupported package_type entries carry no known deployed subtree, so they
-// surface once per section rather than duplicated on every card.
+// Skipped entries carry no known deployed subtree, so they surface once per
+// section rather than duplicated on every card.
 function SkippedNotice({ skipped }: { skipped: SkippedEntry[] }) {
   return (
     <ul className="mt-3 text-dim text-tag">
-      {skipped.map((entry) => (
-        <li key={entry.virtualPath}>
-          Skipped {entry.virtualPath} (unsupported type {entry.packageType}).
-        </li>
+      {skipped.map((entry, index) => (
+        <li key={skippedEntryKey(entry, index)}>{skippedEntryText(entry)}</li>
       ))}
     </ul>
   );

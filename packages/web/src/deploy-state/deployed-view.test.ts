@@ -20,6 +20,7 @@ const skill = (name: string): DeployedPrimitive => ({
 });
 
 const skipped = (virtualPath: string): SkippedEntry => ({
+  reason: "unsupported-type",
   virtualPath,
   packageType: "hook",
 });
