@@ -27,6 +27,7 @@ import { centralInventoryPath } from "../helpers/real-registry";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
+import { stubHarness } from "../helpers/stub-harness";
 import { stubRemove } from "../helpers/stub-remove";
 
 // Integration lane: drives the real Hono connect endpoint via app.request,
@@ -78,6 +79,7 @@ describe("inventory connect HTTP route", () => {
     return createApp({
       registry,
       inventory,
+      harness: stubHarness(),
       connect: new ConnectInventory({ fs, store, originUrl: readGitOriginUrl }),
       deployState,
       deploy: stubDeploy({ inventory, registry, locks }),

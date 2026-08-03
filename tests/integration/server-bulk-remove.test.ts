@@ -20,6 +20,7 @@ import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
+import { stubHarness } from "../helpers/stub-harness";
 
 // Integration lane: the bulk-remove route over the real Hono app, driving the
 // real RemoveDeployedSkill (its guards intact) once per target. Only the apm
@@ -111,6 +112,7 @@ describe("bulk remove HTTP route", () => {
       remove,
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => join(home, ".apm"),
+      harness: stubHarness(),
       connect: stubConnect(),
       browse: stubBrowse(),
       enforceOriginHost: false,

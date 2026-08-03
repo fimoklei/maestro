@@ -19,6 +19,7 @@ import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
+import { stubHarness } from "../helpers/stub-harness";
 
 // What a user's screen shows after a removal. server-remove.test.ts asserts the
 // ref apm is handed; this asserts the row disappearing, which needs a faithful
@@ -149,6 +150,7 @@ describe("the deploy-state read after a removal", () => {
       remove,
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => apmRoot,
+      harness: stubHarness(),
       connect: stubConnect(),
       browse: stubBrowse(),
       enforceOriginHost: false,

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Sidebar } from "./sidebar";
@@ -56,6 +56,36 @@ describe("Sidebar", () => {
     expect(
       screen.getByRole("complementary", { name: /sidebar/i }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("Sidebar grouping", () => {
+  it("keeps the author's Harness out of the consumer-facing views", async () => {
+    // Authoring state must not compete with Inventory, so the nav is grouped
+    // rather than one flat list (ADR-0021, #516).
+    stubServer({ notConfigured: false });
+    renderSidebar("/");
+
+    expect(
+      await screen.findByRole("navigation", { name: /consume/i }),
+    ).toBeInTheDocument();
+    const author = screen.getByRole("navigation", { name: /author/i });
+    expect(
+      within(author).getByRole("button", { name: "Harness" }),
+    ).toBeInTheDocument();
+    expect(
+      within(author).queryByRole("button", { name: "Inventory" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("dims the Harness with the rest of the nav on a first run", async () => {
+    stubServer({ notConfigured: true });
+    renderSidebar();
+
+    // "none yet" is the tell that the first-run read has landed; asserting
+    // before it would catch the nav in its pre-read, enabled state.
+    await screen.findByText(/none yet/i);
+    expect(screen.getByRole("button", { name: "Harness" })).toBeDisabled();
   });
 });
 

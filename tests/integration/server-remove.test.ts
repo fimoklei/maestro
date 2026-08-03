@@ -22,6 +22,7 @@ import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
+import { stubHarness } from "../helpers/stub-harness";
 
 // Integration lane: the remove route over the real Hono app, a real registry and
 // a real lockfile on disk. Only the apm driver is faked — what it is handed is
@@ -128,6 +129,7 @@ describe("remove HTTP route", () => {
       remove,
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => join(home, "apm"),
+      harness: stubHarness(),
       connect: stubConnect(),
       browse: stubBrowse(),
       enforceOriginHost: false,

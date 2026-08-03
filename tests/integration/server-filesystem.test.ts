@@ -22,6 +22,7 @@ import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
+import { stubHarness } from "../helpers/stub-harness";
 import { stubRemove } from "../helpers/stub-remove";
 
 // Integration lane: drives the real browse route against a real sandbox
@@ -54,6 +55,7 @@ describe("filesystem browse HTTP route", () => {
     return createApp({
       registry,
       inventory,
+      harness: stubHarness(),
       connect: stubConnect(),
       deployState,
       deploy: stubDeploy({ inventory, registry, locks }),

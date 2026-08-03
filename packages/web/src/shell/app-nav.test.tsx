@@ -16,14 +16,26 @@ function jsonResponse(body: unknown, status: number) {
   });
 }
 
+// The harness read has its own shape, so it answers separately: the catch-all
+// body would reach the Harness view without the fields it renders.
+const HARNESS_STATE = {
+  origin: "github.com/fimoklei/agent-harness",
+  releasedVersion: "v0.5.0",
+  defaultBranch: "main",
+  releaseState: "released",
+  freshness: { outcome: null, lastFetchedAt: null },
+};
+
 function stubEmptyServer() {
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () =>
-      jsonResponse(
-        { ok: true, repos: [], primitives: [], skipped: [], behind: [] },
-        200,
-      ),
+    vi.fn(async (input: RequestInfo | URL) =>
+      String(input).startsWith("/api/harness")
+        ? jsonResponse(HARNESS_STATE, 200)
+        : jsonResponse(
+            { ok: true, repos: [], primitives: [], skipped: [], behind: [] },
+            200,
+          ),
     ),
   );
 }
@@ -73,6 +85,22 @@ describe("cockpit navigation", () => {
 
     expect(
       await screen.findByRole("heading", { name: /central inventory/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /deploy-state/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("opens the Harness home base from the Author group", async () => {
+    stubEmptyServer();
+    renderApp();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Harness" }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { level: 2, name: /harness/i }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: /deploy-state/i }),

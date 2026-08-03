@@ -60,6 +60,16 @@ export {
   BrowseFilesystem,
   type BrowseSuccess,
 } from "./filesystem/browse-filesystem";
+export { HarnessFreshnessStore } from "./harness/harness-freshness-store";
+export { HarnessGitAdapter } from "./harness/harness-git";
+export {
+  type HarnessFreshness,
+  type HarnessReleaseState,
+  type HarnessState,
+  type HarnessStateError,
+  type HarnessStateResult,
+  ReadHarnessState,
+} from "./harness/read-harness-state";
 export {
   ConnectInventory,
   type ConnectInventoryError,
