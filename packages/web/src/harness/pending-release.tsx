@@ -18,11 +18,11 @@ const SECTIONS: { kind: SkillMovementKind; label: string }[] = [
   { kind: "removed", label: "Removed" },
 ];
 
-export interface PendingReleaseProps {
+export function PendingRelease({
+  movements,
+}: {
   movements: PendingSkillMovement[];
-}
-
-export function PendingRelease({ movements }: PendingReleaseProps) {
+}) {
   if (movements.length === 0) {
     return null;
   }

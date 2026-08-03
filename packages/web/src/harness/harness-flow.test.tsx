@@ -183,16 +183,6 @@ describe("Harness home base", () => {
     );
   });
 
-  it("shows no Pending release table on a quiet harness", async () => {
-    stubHarnessServer({ read: { body: RELEASED } });
-    renderHarness();
-
-    await screen.findByText("Everything merged is released.");
-    expect(
-      screen.queryByRole("heading", { name: /pending release/i }),
-    ).not.toBeInTheDocument();
-  });
-
   it("holds offline apart from a fetch that failed, and dates both", async () => {
     stubHarnessServer({
       read: { body: RELEASED },

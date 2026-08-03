@@ -25,21 +25,11 @@ type Story = StoryObj<typeof meta>;
 
 export const EveryKind: Story = {};
 
-// The ordinary day for most harnesses: one kind of movement, one table.
+// One kind of movement, one table: the ordinary day, and a first release.
 export const AddedOnly: Story = {
   args: {
     movements: [
-      { kind: "added", name: "research", author: "Grace" },
       { kind: "added", name: "impeccable", author: null },
-    ],
-  },
-};
-
-// A first release: the whole remote skill set is the delta.
-export const FirstRelease: Story = {
-  args: {
-    movements: [
-      { kind: "added", name: "grilling", author: "Linus" },
       { kind: "added", name: "research", author: "Grace" },
       { kind: "added", name: "tdd", author: "Ada" },
     ],

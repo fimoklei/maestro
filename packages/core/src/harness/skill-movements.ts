@@ -28,24 +28,17 @@ export const diffSkillTrees = (
   const previousByName = new Map(previous.map((s) => [s.name, s.treeHash]));
   const currentByName = new Map(current.map((s) => [s.name, s.treeHash]));
 
-  const byName = (a: { name: string }, b: { name: string }) =>
-    a.name.localeCompare(b.name, "en");
-
-  const added = current
-    .filter((skill) => !previousByName.has(skill.name))
-    .sort(byName);
+  const added = current.filter((skill) => !previousByName.has(skill.name));
   // Consumed as renames are paired off, so a copied skill cannot claim the same
   // removal twice.
-  const dropped = previous
-    .filter((skill) => !currentByName.has(skill.name))
-    .sort(byName);
+  const dropped = previous.filter((skill) => !currentByName.has(skill.name));
 
   const movements: SkillMovement[] = current
     .filter((skill) => {
       const before = previousByName.get(skill.name);
       return before !== undefined && before !== skill.treeHash;
     })
-    .map((skill) => ({ kind: "changed", name: skill.name }) as SkillMovement);
+    .map((skill) => ({ kind: "changed", name: skill.name }));
 
   for (const skill of added) {
     const match = dropped.findIndex((gone) => gone.treeHash === skill.treeHash);
@@ -61,5 +54,5 @@ export const diffSkillTrees = (
     movements.push({ kind: "removed", name: gone.name });
   }
 
-  return movements.sort(byName);
+  return movements.sort((a, b) => a.name.localeCompare(b.name, "en"));
 };

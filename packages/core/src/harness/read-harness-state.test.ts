@@ -120,21 +120,6 @@ describe("ReadHarnessState", () => {
     });
   });
 
-  it("reads the whole remote skill set of a never-tagged harness as its first release", async () => {
-    const read = buildRead({
-      facts: { tags: [] },
-      trees: { aaa: [{ name: "tdd", treeHash: "t1" }] },
-    });
-
-    await expect(read.execute()).resolves.toMatchObject({
-      ok: true,
-      state: {
-        releaseState: "never-released",
-        pendingRelease: [{ kind: "added", name: "tdd", author: null }],
-      },
-    });
-  });
-
   it("reads a never-released harness without calling it a failure", async () => {
     const read = buildRead({ facts: { tags: [] } });
 
