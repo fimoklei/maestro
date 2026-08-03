@@ -20,6 +20,13 @@ const FETCH_TIMEOUT_MS = 60_000;
 
 const REMOTE_HEAD = "refs/remotes/origin/HEAD";
 
+// Remote tags land in a namespace Maestro owns, never in `refs/tags`: an
+// unpushed local tag must not be read as a release, and pruning here can never
+// delete a tag the author made (#516).
+const MAESTRO_TAGS = "refs/maestro/tags";
+const TAG_REFSPEC = `+refs/tags/*:${MAESTRO_TAGS}/*`;
+const BRANCH_REFSPEC = "+refs/heads/*:refs/remotes/origin/*";
+
 // Maestro never asks for credentials and never stores them: git may use what
 // the user's own configuration already provides, but may not stop and prompt.
 // An ssh key prompt slips past this and is bounded by the timeout instead.
@@ -28,7 +35,7 @@ const NON_INTERACTIVE = { GIT_TERMINAL_PROMPT: "0" };
 // Tab-separated so a tag name containing spaces stays one field. The third
 // field is the commit an annotated tag points at; lightweight tags leave it
 // empty.
-const TAG_FORMAT = "%(refname:short)\t%(objectname)\t%(*objectname)";
+const TAG_FORMAT = `%(refname:lstrip=${MAESTRO_TAGS.split("/").length})\t%(objectname)\t%(*objectname)`;
 
 export class HarnessGitAdapter implements HarnessGitPort {
   // Fetches the remote's commits and tags, then re-points the local
@@ -40,7 +47,11 @@ export class HarnessGitAdapter implements HarnessGitPort {
       timeout: FETCH_TIMEOUT_MS,
     };
     try {
-      await run("git", ["-C", root, "fetch", "--tags", "origin"], options);
+      await run(
+        "git",
+        ["-C", root, "fetch", "--prune", "origin", BRANCH_REFSPEC, TAG_REFSPEC],
+        options,
+      );
       await run(
         "git",
         ["-C", root, "remote", "set-head", "origin", "--auto"],
@@ -91,7 +102,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
     const listing = await this.read(root, [
       "for-each-ref",
       `--format=${TAG_FORMAT}`,
-      "refs/tags",
+      MAESTRO_TAGS,
     ]);
     if (listing === null) {
       return [];

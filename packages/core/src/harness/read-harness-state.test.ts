@@ -26,8 +26,8 @@ function stubFreshness(
 ) {
   let current = initial;
   return {
-    read: async () => current,
-    record: async (freshness: HarnessFreshness) => {
+    read: async (_root: string) => current,
+    record: async (_root: string, freshness: HarnessFreshness) => {
       current = freshness;
     },
   };
@@ -36,12 +36,15 @@ function stubFreshness(
 function buildRead(overrides?: {
   facts?: Partial<HarnessFacts>;
   root?: string | undefined;
+  resolveRoot?: () => Promise<string | undefined>;
   fetch?: () => Promise<HarnessFetchOutcome>;
   freshness?: ReturnType<typeof stubFreshness>;
 }) {
   return new ReadHarnessState({
-    resolveRoot: async () =>
-      overrides && "root" in overrides ? overrides.root : "/harness",
+    resolveRoot:
+      overrides?.resolveRoot ??
+      (async () =>
+        overrides && "root" in overrides ? overrides.root : "/harness"),
     git: {
       fetch: overrides?.fetch ?? (async () => "fetched"),
       readFacts: async () => ({ ...FACTS, ...overrides?.facts }),
@@ -175,6 +178,33 @@ describe("ReadHarnessState refresh", () => {
         freshness: { outcome: "fetch-failed", lastFetchedAt: null },
       },
     });
+  });
+
+  it("reads back the same harness it fetched, even if the connection changed", async () => {
+    // Reconnecting between the fetch and the read would otherwise fetch one
+    // harness and report the other's facts.
+    const roots = ["/harness-a", "/harness-b"];
+    const fetched: string[] = [];
+    const readFor: string[] = [];
+    const read = new ReadHarnessState({
+      resolveRoot: async () => roots.shift() ?? "/harness-b",
+      git: {
+        fetch: async (root) => {
+          fetched.push(root);
+          return "fetched";
+        },
+        readFacts: async (root) => {
+          readFor.push(root);
+          return FACTS;
+        },
+      },
+      freshness: stubFreshness(),
+    });
+
+    await read.refresh(AT);
+
+    expect(fetched).toEqual(["/harness-a"]);
+    expect(readFor).toEqual(["/harness-a"]);
   });
 
   it("never fetches from a harness that is not connected", async () => {

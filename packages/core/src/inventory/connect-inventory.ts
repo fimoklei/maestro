@@ -49,8 +49,9 @@ export class ConnectInventory {
       return { ok: false, error: "no-usable-origin" };
     }
 
-    const config = await this.store.read();
-    await this.store.write({ ...config, inventoryPath: validated.path });
+    await this.store.update((config) => ({
+      config: { ...config, inventoryPath: validated.path },
+    }));
     return { ok: true, inventoryPath: validated.path };
   }
 }

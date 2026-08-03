@@ -33,6 +33,13 @@ export function HarnessView() {
         <p className="text-dim text-tag">Loading the harness…</p>
       ) : (
         <>
+          {refresh.isError ? (
+            // A failed refresh is not a failed read: the state below stands,
+            // and saying nothing would let it pass as freshly fetched.
+            <p role="alert" className="mb-2 text-amber-ink text-tag">
+              Refresh failed: {refresh.error.message}
+            </p>
+          ) : null}
           <HarnessStrip
             releasedVersion={state.releasedVersion}
             defaultBranch={state.defaultBranch}

@@ -40,8 +40,9 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
     await commit("first skill");
     await git(root, "tag", "v0.1.0");
     await git(root, "push", "--tags", "origin", "HEAD:main");
-    await git(root, "fetch", "--tags", "origin");
-    await git(root, "remote", "set-head", "origin", "--auto");
+    // Seeded through the adapter, so the clone carries exactly the refs the
+    // product's own fetch writes.
+    await new HarnessGitAdapter().fetch(root);
   }, 30_000);
 
   afterEach(async () => {
@@ -58,6 +59,11 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
     expect(facts.defaultBranch).toBe("main");
     expect(facts.defaultBranchCommit).toBe(head);
     expect(facts.tags).toEqual([{ name: "v0.1.0", commit: head }]);
+    // Named here, not just implied by the read: the fetch and the read agree
+    // on one namespace, and it is not the author's own `refs/tags`.
+    expect(
+      (await git(root, "rev-parse", "refs/maestro/tags/v0.1.0")).stdout.trim(),
+    ).toBe(head);
   });
 
   it("reads an annotated tag as the commit it points at, not the tag object", async () => {
@@ -65,6 +71,7 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
     // id against a commit would read a released harness as pending.
     await git(root, "tag", "-a", "v0.2.0", "-m", "release");
     await git(root, "push", "--tags", "origin");
+    await adapter().fetch(root);
 
     const facts = await adapter().readFacts(root);
 
@@ -89,6 +96,29 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
     expect(facts.tags.map((tag) => tag.name)).toContain("v0.2.0");
     const remoteHead = (await git(other, "rev-parse", "HEAD")).stdout.trim();
     expect(facts.defaultBranchCommit).toBe(remoteHead);
+  });
+
+  it("never presents an unpushed local tag as the released version", async () => {
+    await commit("work in progress");
+    await git(root, "tag", "v9.9.9");
+
+    await adapter().fetch(root);
+
+    const facts = await adapter().readFacts(root);
+    expect(facts.tags.map((tag) => tag.name)).not.toContain("v9.9.9");
+  });
+
+  it("drops a tag the remote no longer has, and keeps the author's own", async () => {
+    await git(root, "tag", "mine");
+    await git(remote, "tag", "-d", "v0.1.0");
+
+    await adapter().fetch(root);
+
+    const facts = await adapter().readFacts(root);
+    expect(facts.tags.map((tag) => tag.name)).not.toContain("v0.1.0");
+    // Pruning must reach only Maestro's own namespace: deleting the author's
+    // local tags would be a change to their repository.
+    expect((await git(root, "tag", "--list")).stdout).toContain("mine");
   });
 
   it("follows the remote when its default branch is renamed", async () => {

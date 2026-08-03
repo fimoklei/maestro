@@ -825,9 +825,12 @@ function realDeps(): AppDeps {
     harness: new ReadHarnessState({
       resolveRoot: async () => {
         const path = resolveInventoryPath(await store.read(), process.env);
-        return path === undefined
-          ? undefined
-          : await fs.realpath(path).catch(() => path);
+        if (path === undefined) {
+          return undefined;
+        }
+        // A path git cannot be pointed at is a harness that is not connected —
+        // never the raw path, which would run git against something unresolved.
+        return await fs.realpath(path).catch(() => undefined);
       },
       git: new HarnessGitAdapter(),
       freshness: new HarnessFreshnessStore({ store }),

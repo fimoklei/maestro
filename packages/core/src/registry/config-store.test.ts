@@ -56,4 +56,73 @@ describe("ConfigStore", () => {
 
     await expect(store.read()).rejects.toThrow(ConfigError);
   });
+
+  it("reads a fetch time that is not a real moment as no record at all", async () => {
+    // The config is hand-editable, and a bad timestamp reaches a date
+    // formatter that throws. Dropping the record costs an age label; refusing
+    // the file would take the registry and the inventory down with it.
+    const fs = new InMemoryFileSystem({
+      files: {
+        [CONFIG_PATH]: JSON.stringify({
+          repos: [],
+          harnessFreshness: {
+            root: "/home/me/agent-harness",
+            outcome: "fetched",
+            lastFetchedAt: "yesterday-ish",
+          },
+        }),
+      },
+    });
+    const store = new ConfigStore({ fs, configPath: () => CONFIG_PATH });
+
+    await expect(store.read()).resolves.toEqual({ repos: [] });
+  });
+
+  it("keeps the registry readable when an older freshness record is on disk", async () => {
+    const fs = new InMemoryFileSystem({
+      files: {
+        [CONFIG_PATH]: JSON.stringify({
+          repos: [{ path: "/Users/me/project" }],
+          harnessFreshness: { outcome: "fetched", lastFetchedAt: null },
+        }),
+      },
+    });
+    const store = new ConfigStore({ fs, configPath: () => CONFIG_PATH });
+
+    await expect(store.read()).resolves.toEqual({
+      repos: [{ path: "/Users/me/project" }],
+    });
+  });
+
+  it("lets one update finish before the next reads, so neither is lost", async () => {
+    const fs = new InMemoryFileSystem();
+    const store = new ConfigStore({ fs, configPath: () => CONFIG_PATH });
+
+    await Promise.all([
+      store.update((config) => ({
+        config: { ...config, repos: [{ path: "/Users/me/project" }] },
+      })),
+      store.update((config) => ({
+        config: { ...config, inventoryPath: "/Users/me/agent-harness" },
+      })),
+    ]);
+
+    await expect(store.read()).resolves.toEqual({
+      repos: [{ path: "/Users/me/project" }],
+      inventoryPath: "/Users/me/agent-harness",
+    });
+  });
+
+  it("skips the write when an update decides there is nothing to change", async () => {
+    const fs = new InMemoryFileSystem();
+    const store = new ConfigStore({ fs, configPath: () => CONFIG_PATH });
+    await store.write({ repos: [{ path: "/Users/me/project" }] });
+
+    const refused = await store.update(() => ({ result: "refused" as const }));
+
+    expect(refused).toBe("refused");
+    await expect(store.read()).resolves.toEqual({
+      repos: [{ path: "/Users/me/project" }],
+    });
+  });
 });

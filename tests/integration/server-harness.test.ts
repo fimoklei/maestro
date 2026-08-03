@@ -69,10 +69,10 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
     await git(root, "commit", "-m", "first skill");
     await git(root, "tag", "v0.1.0");
     await git(root, "push", "--tags", "origin", "HEAD:main");
-    // A clone of an empty repo has no origin/HEAD; one fetch makes it the
-    // ordinary clone an author would already have.
-    await git(root, "fetch", "--tags", "origin");
-    await git(root, "remote", "set-head", "origin", "--auto");
+    // A clone of an empty repo has no origin/HEAD, and released tags live in
+    // Maestro's own namespace; one adapter fetch makes it the ordinary clone
+    // an author who has opened the Harness once would already have.
+    await new HarnessGitAdapter().fetch(root);
   }, 30_000);
 
   afterEach(async () => {

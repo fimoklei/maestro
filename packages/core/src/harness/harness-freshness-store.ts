@@ -14,13 +14,18 @@ export class HarnessFreshnessStore implements HarnessFreshnessPort {
     this.store = deps.store;
   }
 
-  async read(): Promise<HarnessFreshness> {
-    const config = await this.store.read();
-    return config.harnessFreshness ?? { outcome: null, lastFetchedAt: null };
+  // One record, for whichever harness is connected. A record left by another
+  // root reads as never fetched: an age is only ever the age of this harness.
+  async read(root: string): Promise<HarnessFreshness> {
+    const record = (await this.store.read()).harnessFreshness;
+    return record === undefined || record.root !== root
+      ? { outcome: null, lastFetchedAt: null }
+      : { outcome: record.outcome, lastFetchedAt: record.lastFetchedAt };
   }
 
-  async record(freshness: HarnessFreshness): Promise<void> {
-    const config = await this.store.read();
-    await this.store.write({ ...config, harnessFreshness: freshness });
+  async record(root: string, freshness: HarnessFreshness): Promise<void> {
+    await this.store.update((config) => ({
+      config: { ...config, harnessFreshness: { root, ...freshness } },
+    }));
   }
 }

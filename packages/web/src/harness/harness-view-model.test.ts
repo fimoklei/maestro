@@ -19,6 +19,23 @@ describe("freshnessLabel", () => {
     ).toBe("Fetched 4 min ago");
   });
 
+  it("reads a timestamp it cannot make sense of as no time at all", () => {
+    // The config is hand-editable; a date formatter fed a bad string throws
+    // and takes the whole view down (#516).
+    expect(
+      freshnessLabel(
+        { outcome: "fetched", lastFetchedAt: "yesterday-ish" },
+        NOW,
+      ),
+    ).toBe("Not fetched yet");
+  });
+
+  it("reads a fetch with no time recorded as no fetch at all", () => {
+    expect(
+      freshnessLabel({ outcome: "fetched", lastFetchedAt: null }, NOW),
+    ).toBe("Not fetched yet");
+  });
+
   it("reads a fetch seconds old as just now", () => {
     expect(
       freshnessLabel(

@@ -18,10 +18,6 @@ export class Registry {
   private readonly resolveCentralInventoryPath: (
     config: MaestroConfig,
   ) => Promise<string | undefined> | string | undefined;
-  // Serializes register's read-modify-write: the store rewrites the whole file,
-  // so two concurrent registrations would clobber each other.
-  private tail: Promise<unknown> = Promise.resolve();
-
   constructor(deps: {
     fs: FileSystemPort;
     store: ConfigStore;
@@ -51,37 +47,35 @@ export class Registry {
     return repos.some((repo) => repo.path === real);
   }
 
+  // Read-modify-write through the store's one lock, so a registration landing
+  // beside a connect or a freshness record cannot drop either.
   async register(input: string): Promise<RegisterResult> {
-    const result = this.tail.then(() => this.registerExclusive(input));
-    // Keep the chain alive even when a registration rejects.
-    this.tail = result.catch(() => undefined);
-    return result;
-  }
-
-  private async registerExclusive(input: string): Promise<RegisterResult> {
     const validated = await validateRepoPath(input, this.fs);
     if (!validated.ok) {
       return { ok: false, error: validated.error };
     }
 
-    const config = await this.store.read();
-    const inventoryPath = await this.resolveCentralInventoryPath(config);
-    if (inventoryPath !== undefined) {
-      const canonicalInventoryPath = await this.fs
-        .realpath(inventoryPath)
-        .catch(() => inventoryPath);
-      if (validated.path === canonicalInventoryPath) {
-        return { ok: false, error: "central-inventory" };
+    return this.store.update<RegisterResult>(async (config) => {
+      const inventoryPath = await this.resolveCentralInventoryPath(config);
+      if (inventoryPath !== undefined) {
+        const canonicalInventoryPath = await this.fs
+          .realpath(inventoryPath)
+          .catch(() => inventoryPath);
+        if (validated.path === canonicalInventoryPath) {
+          return { result: { ok: false, error: "central-inventory" } };
+        }
       }
-    }
-    const repo: RegisteredRepo = { path: validated.path };
-    const next = config.repos.some((r) => r.path === repo.path)
-      ? config.repos
-      : [...config.repos, repo];
+      const repo: RegisteredRepo = { path: validated.path };
+      const next = config.repos.some((r) => r.path === repo.path)
+        ? config.repos
+        : [...config.repos, repo];
 
-    // Spread, because the store rewrites the whole file: without it a
-    // registration wipes a value another use-case persisted.
-    await this.store.write({ ...config, repos: next });
-    return { ok: true, repos: next };
+      // Spread, because the store rewrites the whole file: without it a
+      // registration wipes a value another use-case persisted.
+      return {
+        config: { ...config, repos: next },
+        result: { ok: true, repos: next },
+      };
+    });
   }
 }

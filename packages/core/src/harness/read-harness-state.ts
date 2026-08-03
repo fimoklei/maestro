@@ -27,9 +27,11 @@ export interface HarnessGitPort {
   readFacts(root: string): Promise<HarnessFacts>;
 }
 
+// Every call names the harness root: one record per harness, so connecting a
+// second one never inherits the first one's age (#516).
 export interface HarnessFreshnessPort {
-  read(): Promise<HarnessFreshness>;
-  record(freshness: HarnessFreshness): Promise<void>;
+  read(root: string): Promise<HarnessFreshness>;
+  record(root: string, freshness: HarnessFreshness): Promise<void>;
 }
 
 // `never-released` and `pending-release` are ordinary days, not errors.
@@ -76,13 +78,15 @@ export class ReadHarnessState {
     }
 
     const outcome = await this.deps.git.fetch(root);
-    const previous = await this.deps.freshness.read();
-    await this.deps.freshness.record({
+    const previous = await this.deps.freshness.read(root);
+    await this.deps.freshness.record(root, {
       outcome,
       lastFetchedAt:
         outcome === "fetched" ? at.toISOString() : previous.lastFetchedAt,
     });
-    return this.execute();
+    // The root resolved above, never a second lookup: a reconnect in between
+    // would fetch one harness and report the other.
+    return this.stateFor(root);
   }
 
   async execute(): Promise<HarnessStateResult> {
@@ -90,7 +94,10 @@ export class ReadHarnessState {
     if (root === undefined) {
       return { ok: false, error: "not-configured" };
     }
+    return this.stateFor(root);
+  }
 
+  private async stateFor(root: string): Promise<HarnessStateResult> {
     const facts = await this.deps.git.readFacts(root);
     const origin =
       facts.originUrl === null ? null : parseGitOrigin(facts.originUrl);
@@ -106,7 +113,7 @@ export class ReadHarnessState {
         releasedVersion: released?.name ?? null,
         defaultBranch: facts.defaultBranch,
         releaseState: releaseState(released, facts.defaultBranchCommit),
-        freshness: await this.deps.freshness.read(),
+        freshness: await this.deps.freshness.read(root),
       },
     };
   }

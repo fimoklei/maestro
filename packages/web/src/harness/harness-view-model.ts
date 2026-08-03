@@ -12,8 +12,14 @@ const dayAndMonth = new Intl.DateTimeFormat("en-GB", {
   month: "short",
 });
 
-const ago = (iso: string, now: Date): string => {
-  const elapsed = now.getTime() - Date.parse(iso);
+// Null when the string is not a moment, so a hand-edited config reads as
+// "never fetched" instead of throwing inside the date formatter (#516).
+const ago = (iso: string, now: Date): string | null => {
+  const at = Date.parse(iso);
+  if (Number.isNaN(at)) {
+    return null;
+  }
+  const elapsed = now.getTime() - at;
   if (elapsed < MINUTE) {
     return "just now";
   }
@@ -32,18 +38,20 @@ export const freshnessLabel = (
   freshness: HarnessFreshness,
   now: Date,
 ): string => {
+  const since =
+    freshness.lastFetchedAt === null ? null : ago(freshness.lastFetchedAt, now);
   if (freshness.outcome === null) {
     return "Not fetched yet";
   }
-  if (freshness.outcome === "fetched" && freshness.lastFetchedAt !== null) {
-    return `Fetched ${ago(freshness.lastFetchedAt, now)}`;
+  if (freshness.outcome === "fetched") {
+    return since === null ? "Not fetched yet" : `Fetched ${since}`;
   }
   // A failure never claims a verdict GitHub has not given: no permission gate,
   // no expired-token guess (ADR-0021, #516).
   const cause = freshness.outcome === "offline" ? "Offline" : "Fetch failed";
-  return freshness.lastFetchedAt === null
+  return since === null
     ? `${cause} — never fetched`
-    : `${cause} — last fetched ${ago(freshness.lastFetchedAt, now)}`;
+    : `${cause} — last fetched ${since}`;
 };
 
 export const RELEASE_SUMMARIES: Record<HarnessReleaseState, string> = {

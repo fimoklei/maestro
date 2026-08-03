@@ -9,12 +9,20 @@ const configSchema = z.object({
   inventoryPath: z.string().optional(),
   // How the connected Harness's last fetch went, and when one last succeeded.
   // Absent until the Harness view has fetched once.
+  // Read as absent when it does not parse, unlike the rest of the config: this
+  // is a cache of how the last fetch went, so a record left by an older shape
+  // or a hand-edited timestamp costs an age label, never the whole cockpit.
   harnessFreshness: z
     .object({
+      // Which harness the record belongs to, so a reconnect cannot inherit it.
+      root: z.string(),
       outcome: z.enum(["fetched", "offline", "fetch-failed"]).nullable(),
-      lastFetchedAt: z.string().nullable(),
+      // An ISO moment or nothing: a hand-edited "yesterday" reaches a date
+      // formatter and throws, taking the Harness view down (#516).
+      lastFetchedAt: z.iso.datetime().nullable(),
     })
-    .optional(),
+    .optional()
+    .catch(undefined),
 });
 
 export type MaestroConfig = z.infer<typeof configSchema>;
@@ -32,6 +40,7 @@ export class ConfigStore {
   // A thunk, so MAESTRO_HOME is read per access and never frozen at
   // construction.
   private readonly resolvePath: () => string;
+  private tail: Promise<unknown> = Promise.resolve();
 
   constructor(deps: { fs: FileSystemPort; configPath: () => string }) {
     this.fs = deps.fs;
@@ -62,6 +71,30 @@ export class ConfigStore {
       );
     }
     return result.data;
+  }
+
+  // The one serialized read-modify-write. Every writer rewrites the whole
+  // file, so two landing at once would silently drop one of them; a promise
+  // chain is enough because a single server owns the file.
+  // Return no `config` to leave the file untouched (a refused change).
+  async update<T = void>(
+    mutate: (config: MaestroConfig) =>
+      | Promise<{ config?: MaestroConfig; result?: T }>
+      | {
+          config?: MaestroConfig;
+          result?: T;
+        },
+  ): Promise<T> {
+    const next = this.tail.then(async () => {
+      const { config, result } = await mutate(await this.read());
+      if (config !== undefined) {
+        await this.write(config);
+      }
+      return result as T;
+    });
+    // Keep the chain alive when an update rejects.
+    this.tail = next.catch(() => undefined);
+    return next;
   }
 
   async write(config: MaestroConfig): Promise<void> {

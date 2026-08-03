@@ -23,8 +23,8 @@ function jsonResponse(body: unknown, status = 200) {
 // One stub for both routes, so a test states what the read says and what the
 // refresh finds, and nothing else.
 function stubHarnessServer(options: {
-  read: { body: unknown; status?: number };
-  refresh?: { body: unknown; status?: number };
+  read: { body: unknown; status?: number; heldUntil?: Promise<void> };
+  refresh?: { body: unknown; status?: number; rejects?: boolean };
 }) {
   const calls: string[] = [];
   vi.stubGlobal(
@@ -34,8 +34,14 @@ function stubHarnessServer(options: {
       calls.push(`${init?.method ?? "GET"} ${url}`);
       if (url.startsWith("/api/harness/refresh")) {
         const refresh = options.refresh ?? options.read;
+        if ("rejects" in refresh && refresh.rejects === true) {
+          throw new TypeError("Failed to fetch");
+        }
         return jsonResponse(refresh.body, refresh.status);
       }
+      // Held by the test rather than by a timer, so the race is decided by
+      // hand and not by the clock (testing.md — deterministic).
+      await options.read.heldUntil;
       return jsonResponse(options.read.body, options.read.status);
     }),
   );
@@ -199,6 +205,47 @@ describe("Harness home base", () => {
     renderHarness();
 
     expect(await screen.findByText("No release yet.")).toBeInTheDocument();
+  });
+
+  it("keeps the freshly fetched state when the slower read arrives late", async () => {
+    // The read and the open-time refresh race. A read that resolves last must
+    // not repaint the pre-fetch picture over the answer the refresh brought.
+    let releaseRead = () => {};
+    const heldUntil = new Promise<void>((resolve) => {
+      releaseRead = resolve;
+    });
+    stubHarnessServer({
+      read: { body: RELEASED, heldUntil },
+      refresh: {
+        body: {
+          ...RELEASED,
+          freshness: {
+            outcome: "fetched",
+            lastFetchedAt: "2026-08-03T11:56:00.000Z",
+          },
+        },
+      },
+    });
+    renderHarness();
+
+    expect(await screen.findByText("Fetched 4 min ago")).toBeInTheDocument();
+    releaseRead();
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    expect(screen.getByText("Fetched 4 min ago")).toBeInTheDocument();
+  });
+
+  it("says when a refresh could not reach the server, and stays usable", async () => {
+    stubHarnessServer({
+      read: { body: RELEASED },
+      refresh: { body: null, rejects: true },
+    });
+    renderHarness();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/refresh/i);
+    // The state that is on screen is the last one that was read, so the
+    // version still shows and the button is the way to try again.
+    expect(screen.getByText("v0.5.0")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /refresh/i })).toBeEnabled();
   });
 
   it("reports a harness that is not connected instead of an empty screen", async () => {
