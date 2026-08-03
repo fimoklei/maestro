@@ -94,26 +94,50 @@ export class HarnessGitAdapter implements HarnessGitPort {
   }
 
   // Reads the skills directory as it stands *inside* `ref`, so a ref that is
-  // not an ancestor of anything is still readable. A ref carrying no skills
-  // directory fails the read and is an empty set, not an error.
-  async readSkillTrees(root: string, ref: string): Promise<HarnessSkillTree[]> {
+  // not an ancestor of anything is still readable. Null on anything the caller
+  // must not read as a delta: an unreadable ref, or a listing git worded in a
+  // way this parser does not recognise.
+  async readSkillTrees(
+    root: string,
+    ref: string,
+  ): Promise<HarnessSkillTree[] | null> {
     // `-z`: without it git quotes and escapes any name outside plain ASCII,
     // and the quoted form would then be used as a path and shown on screen.
-    const listing = await this.read(root, [
+    const listing = await this.readOutput(root, [
       "ls-tree",
       "-z",
       `${ref}:${HARNESS_SKILLS_DIR}`,
     ]);
     if (listing === null) {
-      return [];
+      // The same failure covers a ref that does not resolve and a ref carrying
+      // no skills directory. Only the second is an empty set.
+      const resolves = await this.readOutput(root, [
+        "rev-parse",
+        "--verify",
+        "--quiet",
+        `${ref}^{commit}`,
+      ]);
+      return resolves === null ? null : [];
     }
 
-    return listing.split("\0").flatMap((entry) => {
+    const skills: HarnessSkillTree[] = [];
+    for (const entry of listing.split("\0")) {
+      if (entry === "") {
+        continue;
+      }
       // `<mode> <type> <object>\t<name>` — only a directory is a skill.
       const [meta = "", name = ""] = entry.split("\t");
-      const [, type, treeHash] = meta.split(/\s+/);
-      return type === "tree" && treeHash && name ? [{ name, treeHash }] : [];
-    });
+      const [mode, type, treeHash] = meta.split(" ");
+      if (!mode || !type || !treeHash || !name) {
+        // A line this parser cannot read would silently drop a skill, and a
+        // missing skill reads as a removal nobody made.
+        return null;
+      }
+      if (type === "tree") {
+        skills.push({ name, treeHash });
+      }
+    }
+    return skills;
   }
 
   // ponytail: one `git log` per movement; batch into a single `--name-status`
@@ -137,6 +161,20 @@ export class HarnessGitAdapter implements HarnessGitPort {
       ]),
     );
     return Object.fromEntries(authors);
+  }
+
+  // Null only when the command itself failed, so an empty answer stays an
+  // answer. Raw stdout: a `-z` listing carries names this must not touch.
+  private async readOutput(
+    root: string,
+    args: string[],
+  ): Promise<string | null> {
+    try {
+      const { stdout } = await run("git", ["-C", root, ...args]);
+      return stdout;
+    } catch {
+      return null;
+    }
   }
 
   // Null on any failure, so an unset `origin/HEAD` reads as "not known"

@@ -28,8 +28,9 @@ export interface HarnessGitPort {
   fetch(root: string): Promise<HarnessFetchOutcome>;
   readFacts(root: string): Promise<HarnessFacts>;
   // One tree hash per canonical skill directory at `ref`, so the delta is read
-  // from content rather than from which commits lead where.
-  readSkillTrees(root: string, ref: string): Promise<HarnessSkillTree[]>;
+  // from content rather than from which commits lead where. Null is a ref that
+  // could not be read at all — never an empty harness.
+  readSkillTrees(root: string, ref: string): Promise<HarnessSkillTree[] | null>;
   // Who last touched each named skill directory at `ref`; null where the
   // history gives no answer.
   readSkillAuthors(
@@ -147,19 +148,23 @@ export class ReadHarnessState {
     const confirmed = freshness.lastFetchedAt !== null;
     const released = confirmed ? highestReleaseTag(facts.tags) : null;
     const head = facts.defaultBranchCommit;
+    // Null where the two sides could not both be read. A delta nobody could
+    // compute is not an empty one (LEARNINGS.md · J04).
+    const movements =
+      confirmed && head !== null
+        ? await this.movementsSince(root, released, head)
+        : null;
     return {
       ok: true,
       state: {
         origin: `${origin.host}/${origin.ownerRepo}`,
         releasedVersion: released?.name ?? null,
         defaultBranch: facts.defaultBranch,
-        releaseState: confirmed
-          ? releaseState(released, facts.defaultBranchCommit)
-          : "unknown",
-        pendingRelease:
-          confirmed && head !== null
-            ? await this.movementsSince(root, released, head)
-            : [],
+        releaseState:
+          confirmed && movements !== null
+            ? releaseState(released, head)
+            : "unknown",
+        pendingRelease: movements ?? [],
         freshness,
       },
     };
@@ -171,26 +176,40 @@ export class ReadHarnessState {
     root: string,
     released: HarnessTag | null,
     head: string,
-  ): Promise<PendingSkillMovement[]> {
+  ): Promise<PendingSkillMovement[] | null> {
     const previous =
       released === null
         ? []
         : await this.deps.git.readSkillTrees(root, released.commit);
-    const movements = diffSkillTrees(
-      previous,
-      await this.deps.git.readSkillTrees(root, head),
-    );
+    const current = await this.deps.git.readSkillTrees(root, head);
+    if (previous === null || current === null) {
+      return null;
+    }
+    const movements = diffSkillTrees(previous, current);
 
-    // Always asked at the default branch: the commit that deleted a skill is on
-    // that side too, so one ref answers for every kind of movement.
+    // The default branch answers for every movement it carries, including the
+    // commit that deleted a skill.
     const authored = await this.deps.git.readSkillAuthors(
       root,
       head,
       movements.map((movement) => movement.name),
     );
+    // A tag off the default branch's history can carry a skill that branch
+    // never saw, so its removal has no author there. The release ref does.
+    const orphaned = movements
+      .filter(
+        (movement) =>
+          movement.kind === "removed" && authored[movement.name] == null,
+      )
+      .map((movement) => movement.name);
+    const atRelease =
+      released !== null && orphaned.length > 0
+        ? await this.deps.git.readSkillAuthors(root, released.commit, orphaned)
+        : {};
+
     return movements.map((movement) => ({
       ...movement,
-      author: authored[movement.name] ?? null,
+      author: authored[movement.name] ?? atRelease[movement.name] ?? null,
     }));
   }
 }

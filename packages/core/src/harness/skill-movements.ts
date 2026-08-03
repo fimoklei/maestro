@@ -21,6 +21,14 @@ export type SkillMovement = {
   previousName?: string;
 };
 
+const groupByHash = (skills: HarnessSkillTree[]) => {
+  const byHash = new Map<string, HarnessSkillTree[]>();
+  for (const skill of skills) {
+    byHash.set(skill.treeHash, [...(byHash.get(skill.treeHash) ?? []), skill]);
+  }
+  return byHash;
+};
+
 export const diffSkillTrees = (
   previous: HarnessSkillTree[],
   current: HarnessSkillTree[],
@@ -29,9 +37,21 @@ export const diffSkillTrees = (
   const currentByName = new Map(current.map((s) => [s.name, s.treeHash]));
 
   const added = current.filter((skill) => !previousByName.has(skill.name));
-  // Consumed as renames are paired off, so a copied skill cannot claim the same
-  // removal twice.
   const dropped = previous.filter((skill) => !currentByName.has(skill.name));
+  const addedByHash = groupByHash(added);
+  const droppedByHash = groupByHash(dropped);
+
+  // A rename is claimed only where the content points at one name on each
+  // side. Duplicated content points at several at once, and picking one of
+  // them would be a guess wearing a fact's clothes.
+  const renamedHashes = new Set(
+    [...droppedByHash]
+      .filter(
+        ([hash, gone]) =>
+          gone.length === 1 && addedByHash.get(hash)?.length === 1,
+      )
+      .map(([hash]) => hash),
+  );
 
   const movements: SkillMovement[] = current
     .filter((skill) => {
@@ -41,8 +61,9 @@ export const diffSkillTrees = (
     .map((skill) => ({ kind: "changed", name: skill.name }));
 
   for (const skill of added) {
-    const match = dropped.findIndex((gone) => gone.treeHash === skill.treeHash);
-    const gone = match === -1 ? undefined : dropped.splice(match, 1)[0];
+    const gone = renamedHashes.has(skill.treeHash)
+      ? droppedByHash.get(skill.treeHash)?.[0]
+      : undefined;
     movements.push(
       gone === undefined
         ? { kind: "added", name: skill.name }
@@ -51,7 +72,9 @@ export const diffSkillTrees = (
   }
 
   for (const gone of dropped) {
-    movements.push({ kind: "removed", name: gone.name });
+    if (!renamedHashes.has(gone.treeHash)) {
+      movements.push({ kind: "removed", name: gone.name });
+    }
   }
 
   return movements.sort((a, b) => a.name.localeCompare(b.name, "en"));

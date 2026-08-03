@@ -64,9 +64,9 @@ describe("diffSkillTrees", () => {
     ]);
   });
 
-  it("pairs a rename with the one match, leaving a second copy as an addition", () => {
-    // Duplicated content is ordinary: a copied skill must not silently consume
-    // the removal that belongs to the renamed one.
+  it("refuses to name a rename when two copies could equally be the one", () => {
+    // Content is the only rename signal, and duplicated content points at both
+    // copies at once. Picking either would put a claim in the author's mouth.
     expect(
       diffSkillTrees(
         [{ name: "tdd", treeHash: "t1" }],
@@ -76,8 +76,25 @@ describe("diffSkillTrees", () => {
         ],
       ),
     ).toEqual([
-      { kind: "renamed", name: "alpha", previousName: "tdd" },
+      { kind: "added", name: "alpha" },
       { kind: "added", name: "beta" },
+      { kind: "removed", name: "tdd" },
+    ]);
+  });
+
+  it("refuses a rename when two removals share the added skill's content", () => {
+    expect(
+      diffSkillTrees(
+        [
+          { name: "tdd", treeHash: "t1" },
+          { name: "grilling", treeHash: "t1" },
+        ],
+        [{ name: "test-first", treeHash: "t1" }],
+      ),
+    ).toEqual([
+      { kind: "removed", name: "grilling" },
+      { kind: "removed", name: "tdd" },
+      { kind: "added", name: "test-first" },
     ]);
   });
 });

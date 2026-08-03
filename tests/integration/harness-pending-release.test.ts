@@ -196,6 +196,42 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
     ]);
   });
 
+  it("names a removal's author from the release the branch never carried", async () => {
+    // The release tag sits on another history and carries a skill main never
+    // saw, so main's log of that path answers nothing and the tag must.
+    const { root } = await buildHarness("offhistory");
+    await git(root, "checkout", "-b", "side");
+    await writeSkill(root, "grilling", "side only");
+    await git(root, "add", "-A");
+    await git(root, "-c", "user.name=Mate", "commit", "-m", "add grilling");
+    await git(root, "tag", "v0.2.0");
+    await git(root, "push", "--tags", "origin", "side");
+    await git(root, "checkout", "main");
+
+    await expect(movementsOf(root)).resolves.toEqual([
+      { kind: "removed", name: "grilling", author: "Mate" },
+    ]);
+  });
+
+  it("reads a harness with no skills directory as empty, not as unreadable", async () => {
+    const { root } = await buildClone("bare");
+    await writeFile(join(root, "README.md"), "no skills yet\n", "utf8");
+    await commitAll(root, "start the harness");
+    await git(root, "push", "origin", "HEAD:main");
+
+    const read = new ReadHarnessState({
+      resolveRoot: async () => root,
+      git: new HarnessGitAdapter(),
+      freshness: { read: async () => FETCHED, record: async () => {} },
+    });
+    const result = await read.refresh(new Date("2026-08-03T08:00:00.000Z"));
+
+    expect(result).toMatchObject({
+      ok: true,
+      state: { releaseState: "never-released", pendingRelease: [] },
+    });
+  });
+
   it("reads a renamed skill directory as one movement", async () => {
     const { root } = await buildHarness("renamed");
     await git(
