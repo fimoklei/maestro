@@ -58,15 +58,19 @@ export function findPortHolders(ports, lsof = runLsof) {
   });
 }
 
+/** The opening of every held-port line: which port, and who holds it. */
+const namePortHolder = ({ port, pid, command }) =>
+  `  port ${port} — ${command ?? "an unidentified process"} (pid ${pid})`;
+
 /** The launcher's refusal to start, or null when every port is free. */
 export function describeHeldPorts(holders) {
   if (holders.length === 0) return null;
 
   const held = holders
-    .map(({ port, pid, command, cwd }) =>
-      pid === null
-        ? `  port ${port} — the holder could not be determined; the lookup failed`
-        : `  port ${port} — ${command ?? "an unidentified process"} (pid ${pid}) in ${cwd ?? "an unreadable directory"}`,
+    .map((holder) =>
+      holder.pid === null
+        ? `  port ${holder.port} — the holder could not be determined; the lookup failed`
+        : `${namePortHolder(holder)} in ${holder.cwd ?? "an unreadable directory"}`,
     )
     .join("\n");
 
@@ -144,8 +148,8 @@ export function describeForeignHolders(foreign) {
 
   const held = foreign
     .map(
-      ({ port, pid, command, worktree }) =>
-        `  port ${port} — ${command ?? "an unidentified process"} (pid ${pid}) belonging to the worktree at ${worktree}`,
+      (holder) =>
+        `${namePortHolder(holder)} belonging to the worktree at ${holder.worktree}`,
     )
     .join("\n");
 
