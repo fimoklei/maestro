@@ -5,6 +5,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -12,9 +13,12 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  describeForeignHolders,
   describeHeldPorts,
   findPortHolders,
-  pidsOnPort,
+  listWorktrees,
+  partitionHolders,
+  processWorktree,
 } from "./port-holders.mjs";
 import { seedSandbox, writeSmokeMarker } from "./seed-sandbox.mjs";
 
@@ -59,35 +63,62 @@ function sleep(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
-// 1. Kill the previous dev launcher's process group (pidfile = "the note").
+// Resolved, or a symlinked checkout reads its own previous run as a sibling's
+// and this launcher refuses to start for good.
+const attribution = {
+  self: realpathSync(repoRoot),
+  worktrees: listWorktrees(repoRoot),
+};
+
+// 1. Kill the previous dev launcher's process group (pidfile = "the note"),
+// but only once the process proves it is ours: a pidfile left by a run that
+// died without cleanup can name a pid the OS has since handed to someone else.
 if (existsSync(pidFile)) {
   const previous = Number(readFileSync(pidFile, "utf8").trim());
   if (Number.isInteger(previous) && previous > 0 && isAlive(previous)) {
-    console.log(`[dev] evicting previous dev run (pid ${previous})`);
-    killGroup(previous, "SIGTERM");
+    if (processWorktree(previous, attribution) === attribution.self) {
+      console.log(`[dev] evicting previous dev run (pid ${previous})`);
+      killGroup(previous, "SIGTERM");
+    } else {
+      console.warn(
+        `[dev] stale pidfile: pid ${previous} is not this worktree's dev run — leaving it alone`,
+      );
+    }
   }
   rmSync(pidFile, { force: true });
 }
 
-// 2. Fallback: free the ports in case something unrelated still holds them.
+// 2. Refuse when a port belongs to a sibling worktree — killing it would stop
+// that session's cockpit silently, and it has happened in both directions.
+const { foreign, evictable } = partitionHolders(
+  findPortHolders(cockpitPorts),
+  attribution,
+);
+const foreignRefusal = describeForeignHolders(foreign);
+if (foreignRefusal !== null) {
+  console.error(foreignRefusal);
+  process.exit(1);
+}
+
+// 3. Fallback: free the ports this run may take — its own previous instance,
+// and anything no worktree claims.
 let freedSomething = false;
-for (const port of cockpitPorts) {
-  // A lookup that could not answer frees nothing here; step 3 refuses on it.
-  for (const pid of pidsOnPort(port) ?? []) {
-    try {
-      process.kill(pid, "SIGKILL");
-      console.log(`[dev] freeing port ${port} (pid ${pid})`);
-      freedSomething = true;
-    } catch {
-      // already gone
-    }
+for (const { port, pid } of evictable) {
+  // A lookup that could not answer names no pid here; step 4 refuses on it.
+  if (pid === null) continue;
+  try {
+    process.kill(pid, "SIGKILL");
+    console.log(`[dev] freeing port ${port} (pid ${pid})`);
+    freedSomething = true;
+  } catch {
+    // already gone
   }
 }
 if (freedSomething) {
   sleep(300); // let the OS release the sockets before we rebind
 }
 
-// 3. Refuse when a holder survived the kill above — another user's process, or
+// 4. Refuse when a holder survived the kill above — another user's process, or
 // one that restarted itself. Starting anyway hands the cockpit's URL to it, so
 // every later screenshot would prove that process rather than this worktree.
 const stillHeld = describeHeldPorts(findPortHolders(cockpitPorts));
@@ -96,7 +127,7 @@ if (stillHeld !== null) {
   process.exit(1);
 }
 
-// 4. Start server + web as one detached group so we can kill the whole tree.
+// 5. Start server + web as one detached group so we can kill the whole tree.
 const env = { ...process.env };
 const sandbox = join(repoRoot, ".maestro-sandbox");
 
