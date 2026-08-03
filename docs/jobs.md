@@ -33,6 +33,10 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 | Job | Main | Job story |
 |---|---|---|
+| Release merged Harness changes · [#496](https://github.com/fimoklei/maestro/issues/496) | C | *When* reviewed Harness changes are merged, *I want to* see what is still unreleased and publish a version from the cockpit, *so I can* make approved skills available without inspecting refs or tagging by hand. |
+
+**Why now:** It closes the weekly authoring loop first: merged changes are
+already team-approved, but remain invisible and still require manual tag work.
 
 ## LATER
 
