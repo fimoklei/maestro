@@ -147,7 +147,7 @@ describe("ConnectView", () => {
           {
             error: "not-an-inventory",
             message:
-              "That directory has no skills/ folder, so it is not an inventory.",
+              "That directory has no apm.yml, so it is not an inventory.",
           },
           422,
         ),
@@ -162,9 +162,7 @@ describe("ConnectView", () => {
       screen.getByRole("button", { name: /^connect inventory$/i }),
     );
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      /no skills\/ folder/i,
-    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(/no apm\.yml/i);
     expect(screen.queryByText("deploy-state-landed")).not.toBeInTheDocument();
   });
 
@@ -175,7 +173,7 @@ describe("ConnectView", () => {
           {
             error: "no-usable-origin",
             message:
-              "That folder has skills/, but its git origin is missing, unreadable, or in a form apm cannot resolve.",
+              "That folder has an apm.yml, but its git origin is missing, unreadable, or in a form apm cannot resolve.",
           },
           422,
         ),

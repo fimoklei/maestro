@@ -6,7 +6,7 @@ const tddEntry: LockfileEntry = {
   host: "github.com",
   repo_url: "fimoklei/agent-harness",
   resolved_ref: "v0.5.1",
-  virtual_path: "skills/tdd",
+  virtual_path: ".apm/skills/tdd",
   package_type: "claude_skill",
 };
 
@@ -14,7 +14,7 @@ describe("refForDeployedSkill", () => {
   it("rebuilds the tag-pinned ref the install used", () => {
     expect(refForDeployedSkill([tddEntry], "tdd")).toEqual({
       ok: true,
-      ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+      ref: "github.com/fimoklei/agent-harness/.apm/skills/tdd#v0.5.1",
       version: "v0.5.1",
     });
   });
@@ -31,11 +31,11 @@ describe("refForDeployedSkill", () => {
     const jobsEntry: LockfileEntry = {
       ...tddEntry,
       resolved_ref: "v0.4.0",
-      virtual_path: "skills/jobs",
+      virtual_path: ".apm/skills/jobs",
     };
     expect(refForDeployedSkill([jobsEntry, tddEntry], "tdd")).toEqual({
       ok: true,
-      ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+      ref: "github.com/fimoklei/agent-harness/.apm/skills/tdd#v0.5.1",
       version: "v0.5.1",
     });
   });
@@ -51,7 +51,7 @@ describe("refForDeployedSkill", () => {
     const hookEntry: LockfileEntry = {
       ...tddEntry,
       package_type: "claude_hook",
-      virtual_path: "hooks/tdd",
+      virtual_path: ".apm/hooks/tdd",
     };
     expect(refForDeployedSkill([hookEntry], "tdd")).toEqual({
       ok: false,
@@ -80,7 +80,7 @@ describe("refForDeployedSkill", () => {
   // different installed package. The row names one skill; the ref must name
   // that same skill, or nothing is removed.
 
-  it("refuses an entry whose path is not this skill's own skills/ path", () => {
+  it("refuses an entry whose path is not this skill's own .apm/skills/ path", () => {
     // basename() alone would accept this: the row would read "tdd" while the
     // ref aimed somewhere else entirely.
     const elsewhere: LockfileEntry = {
@@ -88,6 +88,16 @@ describe("refForDeployedSkill", () => {
       virtual_path: "vendor/other/tdd",
     };
     expect(refForDeployedSkill([elsewhere], "tdd")).toEqual({
+      ok: false,
+      reason: "ref-unresolvable",
+    });
+  });
+
+  // The retired Harness shape is not a fallback: a row written against a root
+  // skills/ subpath no longer resolves to a ref (ADR-0021 §4).
+  it("refuses an entry written against the retired root skills/ path", () => {
+    const retired: LockfileEntry = { ...tddEntry, virtual_path: "skills/tdd" };
+    expect(refForDeployedSkill([retired], "tdd")).toEqual({
       ok: false,
       reason: "ref-unresolvable",
     });

@@ -17,14 +17,17 @@ function makeConnect(
   });
 }
 
+// A Harness is recognised by its apm.yml manifest — never by a skills/ dir.
+function harnessSeed() {
+  return {
+    directories: { "/Users/me/agent-harness": "/Users/me/agent-harness" },
+    files: { "/Users/me/agent-harness/apm.yml": "dependencies: []\n" },
+  };
+}
+
 describe("ConnectInventory", () => {
-  it("persists inventoryPath for a clone whose directory contains skills/", async () => {
-    const fs = new InMemoryFileSystem({
-      directories: {
-        "/Users/me/agent-harness": "/Users/me/agent-harness",
-        "/Users/me/agent-harness/skills": "/Users/me/agent-harness/skills",
-      },
-    });
+  it("persists inventoryPath for a clone carrying an apm.yml manifest", async () => {
+    const fs = new InMemoryFileSystem(harnessSeed());
     const connect = makeConnect(fs);
 
     const result = await connect.connect("/Users/me/agent-harness");
@@ -40,7 +43,7 @@ describe("ConnectInventory", () => {
     expect(stored.inventoryPath).toBe("/Users/me/agent-harness");
   });
 
-  it("rejects a directory without a skills/ subdirectory and persists nothing", async () => {
+  it("rejects a directory without an apm.yml manifest and persists nothing", async () => {
     const fs = new InMemoryFileSystem({
       directories: { "/Users/me/not-harness": "/Users/me/not-harness" },
     });
@@ -56,13 +59,35 @@ describe("ConnectInventory", () => {
     expect(stored.inventoryPath).toBeUndefined();
   });
 
-  it("rejects a clone without an origin remote as no-usable-origin and persists nothing", async () => {
+  it("rejects a directory named apm.yml, which manifests nothing", async () => {
     const fs = new InMemoryFileSystem({
       directories: {
-        "/Users/me/agent-harness": "/Users/me/agent-harness",
-        "/Users/me/agent-harness/skills": "/Users/me/agent-harness/skills",
+        "/Users/me/odd": "/Users/me/odd",
+        "/Users/me/odd/apm.yml": "/Users/me/odd/apm.yml",
       },
     });
+
+    await expect(makeConnect(fs).connect("/Users/me/odd")).resolves.toEqual({
+      ok: false,
+      error: "not-an-inventory",
+    });
+  });
+
+  it("rejects the retired root skills/ shape, which is no longer a fallback", async () => {
+    const fs = new InMemoryFileSystem({
+      directories: {
+        "/Users/me/old-harness": "/Users/me/old-harness",
+        "/Users/me/old-harness/skills": "/Users/me/old-harness/skills",
+      },
+    });
+
+    await expect(
+      makeConnect(fs).connect("/Users/me/old-harness"),
+    ).resolves.toEqual({ ok: false, error: "not-an-inventory" });
+  });
+
+  it("rejects a clone without an origin remote as no-usable-origin and persists nothing", async () => {
+    const fs = new InMemoryFileSystem(harnessSeed());
     const connect = makeConnect(fs, null);
 
     const result = await connect.connect("/Users/me/agent-harness");
@@ -76,12 +101,7 @@ describe("ConnectInventory", () => {
   });
 
   it("rejects a clone whose origin is unparseable as no-usable-origin", async () => {
-    const fs = new InMemoryFileSystem({
-      directories: {
-        "/Users/me/agent-harness": "/Users/me/agent-harness",
-        "/Users/me/agent-harness/skills": "/Users/me/agent-harness/skills",
-      },
-    });
+    const fs = new InMemoryFileSystem(harnessSeed());
     const connect = makeConnect(fs, "/Users/me/some-local-mirror");
 
     await expect(connect.connect("/Users/me/agent-harness")).resolves.toEqual({

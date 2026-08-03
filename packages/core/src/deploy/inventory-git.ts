@@ -2,6 +2,7 @@
 // separator keeps tag and name data, never command text (security.md).
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { harnessSkillSubpath } from "../inventory/harness-layout";
 import type { InventoryGitPort } from "./deploy-skill";
 
 const run = promisify(execFile);
@@ -27,14 +28,14 @@ export class InventoryGitAdapter implements InventoryGitPort {
       "--name-only",
       tag,
       "--",
-      `skills/${name}`,
+      harnessSkillSubpath(name),
     ]);
     return stdout.trim().length > 0;
   }
 
   async skillDivergesFromTag(tag: string, name: string): Promise<boolean> {
     const root = await this.root();
-    const subtree = `skills/${name}`;
+    const subtree = harnessSkillSubpath(name);
 
     // `diff --quiet` exits 1 on a difference; any other non-zero is a real git
     // failure and must propagate.

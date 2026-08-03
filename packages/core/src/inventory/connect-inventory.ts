@@ -5,6 +5,7 @@ import { parseGitOrigin } from "../deploy/git-origin";
 import type { ConfigStore } from "../registry/config-store";
 import type { FileSystemPort } from "../registry/file-system";
 import { type RepoPathError, validateRepoPath } from "../registry/repo-path";
+import { HARNESS_MANIFEST } from "./harness-layout";
 
 export type ConnectInventoryError =
   | RepoPathError
@@ -36,7 +37,10 @@ export class ConnectInventory {
       return { ok: false, error: validated.error };
     }
 
-    if (!(await this.fs.isDirectory(join(validated.path, "skills")))) {
+    // A real file, so a directory or a symlink wearing the manifest's name is
+    // refused here exactly as the picker refuses it (#148).
+    const manifest = join(validated.path, HARNESS_MANIFEST);
+    if (!(await this.fs.isFileEntry(manifest))) {
       return { ok: false, error: "not-an-inventory" };
     }
 

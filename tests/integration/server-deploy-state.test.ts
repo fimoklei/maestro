@@ -64,7 +64,7 @@ describe("deploy-state HTTP route", () => {
     "  host: github.com",
     "  resolved_commit: ec491f154c9d5c9a6c5db56d1946c4c34f3899bb",
     "  resolved_ref: v0.5.0",
-    "  virtual_path: skills/tdd",
+    "  virtual_path: .apm/skills/tdd",
     "  is_virtual: true",
     "  package_type: claude_skill",
     "  deployed_files:",

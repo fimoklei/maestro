@@ -13,7 +13,7 @@ function skillEntry(opts?: { hashes?: boolean }): string {
   return [
     "dependencies:",
     "  - resolved_ref: v0.5.0",
-    "    virtual_path: skills/tdd",
+    "    virtual_path: .apm/skills/tdd",
     "    package_type: claude_skill",
     ...hashes,
     "",
@@ -29,7 +29,7 @@ describe("parseLockfile", () => {
       entries: [
         {
           resolved_ref: "v0.5.0",
-          virtual_path: "skills/tdd",
+          virtual_path: ".apm/skills/tdd",
           package_type: "claude_skill",
         },
       ],
@@ -45,7 +45,7 @@ describe("parseLockfile", () => {
       entries: [
         {
           resolved_ref: "v0.5.0",
-          virtual_path: "skills/tdd",
+          virtual_path: ".apm/skills/tdd",
           package_type: "claude_skill",
           deployed_file_hashes: { ".claude/skills/tdd/SKILL.md": "sha256:abc" },
         },
@@ -67,10 +67,10 @@ describe("parseLockfile", () => {
   it("keeps the readable entries when one entry is missing resolved_ref", () => {
     const raw = [
       "dependencies:",
-      "  - virtual_path: skills/local-one",
+      "  - virtual_path: .apm/skills/local-one",
       "    package_type: claude_skill",
       "  - resolved_ref: v0.5.0",
-      "    virtual_path: skills/tdd",
+      "    virtual_path: .apm/skills/tdd",
       "    package_type: claude_skill",
       "",
     ].join("\n");
@@ -80,11 +80,11 @@ describe("parseLockfile", () => {
       entries: [
         {
           resolved_ref: "v0.5.0",
-          virtual_path: "skills/tdd",
+          virtual_path: ".apm/skills/tdd",
           package_type: "claude_skill",
         },
       ],
-      unreadable: [{ virtualPath: "skills/local-one" }],
+      unreadable: [{ virtualPath: ".apm/skills/local-one" }],
     });
   });
 
@@ -101,7 +101,9 @@ describe("parseLockfile", () => {
 
 describe("unreadableCovers", () => {
   it("covers a skill an unreadable entry names", () => {
-    expect(unreadableCovers([{ virtualPath: "skills/tdd" }], "tdd")).toBe(true);
+    expect(unreadableCovers([{ virtualPath: ".apm/skills/tdd" }], "tdd")).toBe(
+      true,
+    );
   });
 
   it("covers every skill when an unreadable entry cannot be named", () => {
@@ -109,9 +111,9 @@ describe("unreadableCovers", () => {
   });
 
   it("leaves a skill no unreadable entry names alone", () => {
-    expect(unreadableCovers([{ virtualPath: "skills/other" }], "tdd")).toBe(
-      false,
-    );
+    expect(
+      unreadableCovers([{ virtualPath: ".apm/skills/other" }], "tdd"),
+    ).toBe(false);
   });
 });
 
@@ -120,7 +122,7 @@ describe("claudeSkillName", () => {
     expect(
       claudeSkillName({
         resolved_ref: "v0.5.0",
-        virtual_path: "skills/tdd",
+        virtual_path: ".apm/skills/tdd",
         package_type: "claude_skill",
       }),
     ).toBe("tdd");

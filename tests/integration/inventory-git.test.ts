@@ -17,9 +17,9 @@ describe("InventoryGitAdapter", () => {
   const git = (...args: string[]) => run("git", args, { cwd: root });
 
   const addSkill = async (name: string) => {
-    await mkdir(join(root, "skills", name), { recursive: true });
+    await mkdir(join(root, ".apm", "skills", name), { recursive: true });
     await writeFile(
-      join(root, "skills", name, "SKILL.md"),
+      join(root, ".apm", "skills", name, "SKILL.md"),
       `---\nname: ${name}\ndescription: A skill\n---\n`,
       "utf8",
     );
@@ -73,7 +73,7 @@ describe("InventoryGitAdapter", () => {
 
   it("detects a tracked file edited since the tag", async () => {
     await writeFile(
-      join(root, "skills", "tdd", "SKILL.md"),
+      join(root, ".apm", "skills", "tdd", "SKILL.md"),
       "---\nname: tdd\ndescription: Edited locally\n---\n",
       "utf8",
     );
@@ -87,7 +87,7 @@ describe("InventoryGitAdapter", () => {
     // git diff alone misses untracked files; a brand-new reference file in
     // the skill is still drift the tag does not contain.
     await writeFile(
-      join(root, "skills", "tdd", "extra.md"),
+      join(root, ".apm", "skills", "tdd", "extra.md"),
       "new reference\n",
       "utf8",
     );

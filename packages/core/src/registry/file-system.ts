@@ -22,12 +22,16 @@ export interface FileSystemPort {
   // symlinked ".git" counts without its target being resolved or disclosed.
   exists(path: string): Promise<boolean>;
 
+  // A regular file and nothing else — a symlink reports false without its
+  // target being resolved, matching what browse reads off a dirent (#148).
+  isFileEntry(path: string): Promise<boolean>;
+
   // Null when the file does not exist; other read failures reject.
   readFile(path: string): Promise<string | null>;
 
   // Unfiltered — callers decide which entry types they want, so browse can find
   // symlinked directories and validate each one itself (#148). Empty when the
-  // directory does not exist: a missing skills/ is "no skills", not an error.
+  // directory does not exist: a missing .apm/skills/ is "no skills", not an error.
   listRawEntries(path: string): Promise<RawDirEntry[]>;
 
   // Atomic (temp file + rename), creating parent directories as needed.

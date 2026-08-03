@@ -53,7 +53,7 @@ function renderDialog({
   return { onSelect, onClose };
 }
 
-const noFacts = { isGitRepo: false, hasSkillsSubdir: false };
+const noFacts = { isGitRepo: false, hasApmManifest: false };
 
 // The home-ceiling response shape: no parent key, a single "~" breadcrumb.
 const homeResponse = {
@@ -354,7 +354,7 @@ describe("BrowseDialog", () => {
               {
                 name: "acme-web",
                 path: "/home/me/acme-web",
-                facts: { isGitRepo: true, hasSkillsSubdir: true },
+                facts: { isGitRepo: true, hasApmManifest: true },
               },
               { name: "notes", path: "/home/me/notes", facts: noFacts },
             ],
@@ -387,7 +387,7 @@ describe("BrowseDialog", () => {
               {
                 name: "agent-harness",
                 path: "/home/me/agent-harness",
-                facts: { isGitRepo: true, hasSkillsSubdir: true },
+                facts: { isGitRepo: true, hasApmManifest: true },
               },
             ],
           },
@@ -879,14 +879,14 @@ describe("BrowseDialog", () => {
         path: "/home/me/acme-web",
         isHidden: false,
         isSymlink: false,
-        facts: { isGitRepo: true, hasSkillsSubdir: false },
+        facts: { isGitRepo: true, hasApmManifest: false },
       },
       {
         name: "payments-api",
         path: "/home/me/payments-api",
         isHidden: false,
         isSymlink: false,
-        facts: { isGitRepo: true, hasSkillsSubdir: false },
+        facts: { isGitRepo: true, hasApmManifest: false },
       },
       {
         name: "scratch",
@@ -1018,7 +1018,7 @@ describe("BrowseDialog", () => {
             path: "/home/me/nested/billing-svc",
             isHidden: false,
             isSymlink: false,
-            facts: { isGitRepo: true, hasSkillsSubdir: false },
+            facts: { isGitRepo: true, hasApmManifest: false },
           },
         ],
       };

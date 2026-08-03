@@ -58,7 +58,7 @@ describe("remove HTTP route", () => {
       "- repo_url: fimoklei/agent-harness",
       "  host: github.com",
       `  resolved_ref: ${tag}`,
-      `  virtual_path: skills/${name}`,
+      `  virtual_path: .apm/skills/${name}`,
       "  package_type: claude_skill",
     ].join("\n");
 
@@ -182,7 +182,7 @@ describe("remove HTTP route", () => {
     expect(removeCalls).toEqual([
       {
         target: { kind: "repo", repoPath: repo },
-        ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+        ref: "github.com/fimoklei/agent-harness/.apm/skills/tdd#v0.5.1",
       },
     ]);
   });
@@ -263,7 +263,7 @@ describe("remove HTTP route", () => {
       lockfileWith([
         [
           "- resolved_ref: v0.5.1",
-          "  virtual_path: skills/tdd",
+          "  virtual_path: .apm/skills/tdd",
           "  package_type: claude_skill",
         ].join("\n"),
       ]),
@@ -736,7 +736,7 @@ describe("remove HTTP route", () => {
       expect(removeCalls).toEqual([
         {
           target: { kind: "global" },
-          ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+          ref: "github.com/fimoklei/agent-harness/.apm/skills/tdd#v0.5.1",
         },
       ]);
     });
@@ -758,7 +758,7 @@ describe("remove HTTP route", () => {
       expect(removeCalls).toEqual([
         {
           target: { kind: "global" },
-          ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+          ref: "github.com/fimoklei/agent-harness/.apm/skills/tdd#v0.5.1",
         },
       ]);
     });

@@ -53,7 +53,7 @@ describe("DeployedContentAdapter — global target", () => {
     );
     const yaml = [
       "dependencies:",
-      "  - virtual_path: skills/tdd",
+      "  - virtual_path: .apm/skills/tdd",
       "    package_type: claude_skill",
       "    resolved_ref: v0.5.1",
       "    deployed_file_hashes:",

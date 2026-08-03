@@ -336,12 +336,12 @@ const connectErrorResponses: Record<
   },
   "not-an-inventory": {
     status: 422,
-    message: "That directory has no skills/ folder, so it is not an inventory.",
+    message: "That directory has no apm.yml, so it is not an inventory.",
   },
   "no-usable-origin": {
     status: 422,
     message:
-      "That folder has skills/, but its git origin is missing, unreadable, or in a form apm cannot resolve. Deploys read versions from GitHub tags, so point Maestro at a clone whose origin is a GitHub repo over https or ssh.",
+      "That folder has an apm.yml, but its git origin is missing, unreadable, or in a form apm cannot resolve. Deploys read versions from GitHub tags, so point Maestro at a clone whose origin is a GitHub repo over https or ssh.",
   },
 };
 

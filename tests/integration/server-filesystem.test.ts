@@ -96,14 +96,14 @@ describe("filesystem browse HTTP route", () => {
           path: join(realDev, "repo-a"),
           isHidden: false,
           isSymlink: false,
-          facts: { isGitRepo: false, hasSkillsSubdir: false },
+          facts: { isGitRepo: false, hasApmManifest: false },
         },
         {
           name: "repo-b",
           path: join(realDev, "repo-b"),
           isHidden: false,
           isSymlink: false,
-          facts: { isGitRepo: false, hasSkillsSubdir: false },
+          facts: { isGitRepo: false, hasApmManifest: false },
         },
       ],
     });
@@ -126,14 +126,14 @@ describe("filesystem browse HTTP route", () => {
         path: join(realHome, ".config"),
         isHidden: true,
         isSymlink: false,
-        facts: { isGitRepo: false, hasSkillsSubdir: false },
+        facts: { isGitRepo: false, hasApmManifest: false },
       },
       {
         name: "dev",
         path: join(realHome, "dev"),
         isHidden: false,
         isSymlink: false,
-        facts: { isGitRepo: false, hasSkillsSubdir: false },
+        facts: { isGitRepo: false, hasApmManifest: false },
       },
     ]);
   });
@@ -158,14 +158,14 @@ describe("filesystem browse HTTP route", () => {
         path: join(realDev, "actual-repo"),
         isHidden: false,
         isSymlink: false,
-        facts: { isGitRepo: false, hasSkillsSubdir: false },
+        facts: { isGitRepo: false, hasApmManifest: false },
       },
       {
         name: "linked-repo",
         path: join(realDev, "linked-repo"),
         isHidden: false,
         isSymlink: true,
-        facts: { isGitRepo: false, hasSkillsSubdir: false },
+        facts: { isGitRepo: false, hasApmManifest: false },
       },
     ]);
   });
@@ -214,7 +214,7 @@ describe("filesystem browse HTTP route", () => {
     expect(body.entries.map((e) => e.name)).toEqual([]);
   });
 
-  it("reports git-repo and skills/-subdir facts for real directories", async () => {
+  it("reports git-repo and apm.yml facts for real directories", async () => {
     // A directory-form .git (the common case).
     await mkdir(join(home, "repo", ".git"), { recursive: true });
     // A file-form .git, as a git worktree has.
@@ -224,8 +224,9 @@ describe("filesystem browse HTTP route", () => {
       "gitdir: ../repo/.git/worktrees/x",
       "utf8",
     );
-    // A folder that looks like an inventory.
-    await mkdir(join(home, "inventory", "skills"), { recursive: true });
+    // A folder that looks like a Harness: an apm.yml manifest, no skills/ dir.
+    await mkdir(join(home, "inventory"), { recursive: true });
+    await writeFile(join(home, "inventory", "apm.yml"), "dependencies: []\n");
     // A plain folder with neither.
     await mkdir(join(home, "plain"), { recursive: true });
     const realHome = await nodeRealpath(home);
@@ -242,28 +243,28 @@ describe("filesystem browse HTTP route", () => {
         path: join(realHome, "inventory"),
         isHidden: false,
         isSymlink: false,
-        facts: { isGitRepo: false, hasSkillsSubdir: true },
+        facts: { isGitRepo: false, hasApmManifest: true },
       },
       {
         name: "plain",
         path: join(realHome, "plain"),
         isHidden: false,
         isSymlink: false,
-        facts: { isGitRepo: false, hasSkillsSubdir: false },
+        facts: { isGitRepo: false, hasApmManifest: false },
       },
       {
         name: "repo",
         path: join(realHome, "repo"),
         isHidden: false,
         isSymlink: false,
-        facts: { isGitRepo: true, hasSkillsSubdir: false },
+        facts: { isGitRepo: true, hasApmManifest: false },
       },
       {
         name: "worktree",
         path: join(realHome, "worktree"),
         isHidden: false,
         isSymlink: false,
-        facts: { isGitRepo: true, hasSkillsSubdir: false },
+        facts: { isGitRepo: true, hasApmManifest: false },
       },
     ]);
   });
@@ -296,7 +297,7 @@ describe("filesystem browse HTTP route", () => {
     const body = (await res.json()) as {
       entries: {
         name: string;
-        facts: { isGitRepo: boolean; hasSkillsSubdir: boolean };
+        facts: { isGitRepo: boolean; hasApmManifest: boolean };
       }[];
     };
     const factsFor = (name: string) =>
@@ -306,21 +307,21 @@ describe("filesystem browse HTTP route", () => {
     // resolved, so an existing and a missing outside target read the same.
     expect(factsFor("git-to-existing")).toEqual({
       isGitRepo: true,
-      hasSkillsSubdir: false,
+      hasApmManifest: false,
     });
     expect(factsFor("git-to-missing")).toEqual({
       isGitRepo: true,
-      hasSkillsSubdir: false,
+      hasApmManifest: false,
     });
     // A symlinked skills/ is invisible to the directory listing this fact
     // reads from — never true, regardless of what it points at.
     expect(factsFor("skills-to-existing")).toEqual({
       isGitRepo: false,
-      hasSkillsSubdir: false,
+      hasApmManifest: false,
     });
     expect(factsFor("skills-to-missing")).toEqual({
       isGitRepo: false,
-      hasSkillsSubdir: false,
+      hasApmManifest: false,
     });
   });
 
@@ -342,7 +343,7 @@ describe("filesystem browse HTTP route", () => {
           path: join(realHome, "dev"),
           isHidden: false,
           isSymlink: false,
-          facts: { isGitRepo: false, hasSkillsSubdir: false },
+          facts: { isGitRepo: false, hasApmManifest: false },
         },
       ],
     });

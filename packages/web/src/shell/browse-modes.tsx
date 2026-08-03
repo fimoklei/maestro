@@ -34,9 +34,7 @@ export const browseModes: Record<BrowseDialogMode, BrowseModeConfig> = {
     title: "Select inventory folder",
     confirmLabel: () => "use this folder →",
     badges: ({ entry }) =>
-      entry.facts.hasSkillsSubdir ? (
-        <Chip tone="drift">◆ inventory</Chip>
-      ) : null,
+      entry.facts.hasApmManifest ? <Chip tone="drift">◆ inventory</Chip> : null,
     // Read-only promise is made on the connect gate itself (ADR-0015).
     writePromise: null,
   },

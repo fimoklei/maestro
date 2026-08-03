@@ -25,7 +25,7 @@ function isNotFound(error: unknown): boolean {
   );
 }
 
-// A missing directory reads as empty: a missing skills/ folder is "no skills",
+// A missing directory reads as empty: a missing .apm/skills/ is "no skills",
 // not a failure to browse it.
 async function readdirOrEmpty<T>(op: () => Promise<T[]>): Promise<T[]> {
   try {
@@ -65,6 +65,14 @@ export class NodeFileSystem implements FileSystemPort {
     try {
       await lstat(path);
       return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async isFileEntry(path: string): Promise<boolean> {
+    try {
+      return (await lstat(path)).isFile();
     } catch {
       return false;
     }

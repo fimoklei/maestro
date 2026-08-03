@@ -31,7 +31,7 @@ const globalLockfile = (names: string[]) =>
       "- repo_url: fimoklei/agent-harness",
       "  host: github.com",
       "  resolved_ref: v0.5.1",
-      `  virtual_path: skills/${name}`,
+      `  virtual_path: .apm/skills/${name}`,
       "  package_type: claude_skill",
       // The per-tool attribution the global read groups by (#187).
       "  deployed_files:",
@@ -51,9 +51,9 @@ describe("bulk deploy HTTP route", () => {
     harness = await mkdtemp(join(tmpdir(), "maestro-bulk-harness-"));
     globalRoot = await mkdtemp(join(tmpdir(), "maestro-bulk-global-"));
     for (const name of ["tdd", "review", "docs"]) {
-      await mkdir(join(harness, "skills", name), { recursive: true });
+      await mkdir(join(harness, ".apm", "skills", name), { recursive: true });
       await writeFile(
-        join(harness, "skills", name, "SKILL.md"),
+        join(harness, ".apm", "skills", name, "SKILL.md"),
         `---\nname: ${name}\ndescription: ${name} skill\n---\n`,
         "utf8",
       );

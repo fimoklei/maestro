@@ -17,7 +17,7 @@ const meta = {
       path: "/home/me/repos/acme-web",
       isHidden: false,
       isSymlink: false,
-      facts: { isGitRepo: true, hasSkillsSubdir: false },
+      facts: { isGitRepo: true, hasApmManifest: false },
     },
   },
 } satisfies Meta<typeof BrowseEntryRow>;
@@ -48,7 +48,7 @@ export const NotARepo: Story = {
       path: "/home/me/repos/scratch",
       isHidden: false,
       isSymlink: false,
-      facts: { isGitRepo: false, hasSkillsSubdir: false },
+      facts: { isGitRepo: false, hasApmManifest: false },
     },
   },
 };
@@ -68,7 +68,7 @@ export const ConnectModeInventory: Story = {
       path: "/home/me/agent-harness",
       isHidden: false,
       isSymlink: true,
-      facts: { isGitRepo: true, hasSkillsSubdir: true },
+      facts: { isGitRepo: true, hasApmManifest: true },
     },
   },
 };

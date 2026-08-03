@@ -52,7 +52,7 @@ describe("bulk remove HTTP route", () => {
       "- repo_url: fimoklei/agent-harness",
       "  host: github.com",
       `  resolved_ref: ${tag}`,
-      `  virtual_path: skills/${name}`,
+      `  virtual_path: .apm/skills/${name}`,
       "  package_type: claude_skill",
     ].join("\n");
 
@@ -223,8 +223,8 @@ describe("bulk remove HTTP route", () => {
       repoTarget(repoA),
     ]);
     expect(removeCalls.map((call) => call.ref)).toEqual([
-      "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
-      "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+      "github.com/fimoklei/agent-harness/.apm/skills/tdd#v0.5.1",
+      "github.com/fimoklei/agent-harness/.apm/skills/tdd#v0.5.1",
     ]);
   });
 

@@ -31,9 +31,11 @@ retries as a full bare clone) — keep real `apm` out of the fast test loop
 
 ### Reference grammar
 
-The Maestro form is `github.com/<owner>/<repo>/skills/<name>#vX.Y.Z` — a
+The Maestro form is `github.com/<owner>/<repo>/.apm/skills/<name>#vX.Y.Z` — a
 tag-pinned virtual package (owner/repo taken from the local clone's `origin`
-remote, subpath `skills/<name>`). It yields `resolved_ref` +
+remote, subpath `.apm/skills/<name>`, ADR-0021 §4). The captures below were
+taken against the retired root `skills/` shape and are left as observed. It
+yields `resolved_ref` +
 `resolved_commit` + `content_hash` in the lockfile. The alternatives are
 unusable or forbidden:
 
@@ -329,7 +331,7 @@ ever reporting them (above). Maestro's own detection:
   global (#61): the global lockfile (`~/.apm/apm.lock.yaml`) keys its hashes
   HOME-relative, the same form as per-repo, so the identical compare applies
   with deployed root = `HOME`.
-- **Source drift:** tree-diff the local `skills/<name>` subtree against the
+- **Source drift:** tree-diff the local `.apm/skills/<name>` subtree against the
   freshly resolved **latest** tag (`local-diverged-from-tag`, via
   `InventoryGitAdapter`) — never recompute `content_hash`.
 

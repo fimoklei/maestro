@@ -36,7 +36,7 @@ const lockfileFor = (
       "- repo_url: fimoklei/agent-harness",
       "  host: github.com",
       "  resolved_ref: v0.5.1",
-      `  virtual_path: skills/${name}`,
+      `  virtual_path: .apm/skills/${name}`,
       "  package_type: claude_skill",
       ...(deployedFiles
         ? ["  deployed_files:", ...deployedFiles(name).map((f) => `  - ${f}`)]

@@ -23,6 +23,9 @@ const run = promisify(execFile);
 
 const enabled = process.env.MAESTRO_REAL_APM === "1";
 
+// The retired demo Harness, pinned at a historic tag: its trees still carry
+// the old root `skills/` subpath, which is what this canary must ask apm for.
+// The canonical shape Maestro writes today is `.apm/skills/<name>` (ADR-0021).
 const HARNESS = "fimoklei/agent-harness";
 const SKILL = "tdd";
 

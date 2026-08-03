@@ -1,5 +1,7 @@
 // Reads the ref a remove must reuse from the target's own lockfile, never from
 // what the inventory points at today (apm-driver.md § Remove).
+
+import { harnessSkillSubpath } from "../inventory/harness-layout";
 import {
   claudeSkillName,
   type LockfileEntry,
@@ -54,7 +56,7 @@ export function refForDeployedSkill(
     OWNER_REPO.test(entry.repo_url) &&
     // The row names one skill; the ref must name that same skill. basename()
     // alone would accept `vendor/other/tdd` for a row reading "tdd".
-    entry.virtual_path === `skills/${name}` &&
+    entry.virtual_path === harnessSkillSubpath(name) &&
     VERSION_TAG.test(entry.resolved_ref);
   if (!trustworthy) {
     return { ok: false, reason: "ref-unresolvable" };
