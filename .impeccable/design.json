@@ -261,7 +261,12 @@
       {
         "name": "state-transition",
         "value": "150ms ease-out on background-color, border-color and color",
-        "purpose": "The only motion in the system, declared once and reused by every hoverable control. Gated behind prefers-reduced-motion: no-preference, so the reduced alternative is an instant colour change."
+        "purpose": "The system's working motion, declared once and reused by every hoverable control. Gated behind prefers-reduced-motion: no-preference, so the reduced alternative is an instant colour change."
+      },
+      {
+        "name": "gate-arrival",
+        "value": "500-600ms cubic-bezier(0.16, 1, 0.3, 1) on opacity, translateY and scaleX, once on mount",
+        "purpose": "The connect gate's welcome screen only (ADR-0022). The empty first screen states its own emptiness on arrival: a 1px amber rule draws in, then heading, copy and action resolve in sequence. Flat fills only, nothing loops, gated behind prefers-reduced-motion: no-preference. Any other surface keeps the entrance-animation ban."
       }
     ],
     "breakpoints": [

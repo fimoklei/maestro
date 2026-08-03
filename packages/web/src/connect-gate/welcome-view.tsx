@@ -10,7 +10,7 @@ export function WelcomeView() {
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
       <div className="flex max-w-md flex-col items-center gap-2.5">
-        <span aria-hidden="true" className="connect-gate-signal" />
+        <span aria-hidden="true" className="connect-gate-rule" />
         <h1 className="connect-gate-title m-0 font-semibold font-ui text-fg text-title">
           Central inventory not connected
         </h1>

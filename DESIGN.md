@@ -506,7 +506,9 @@ done. The logo is typographic — a bold mono "M" on an amber rounded tile.
 - **Do** give every clickable surface a visible hover, not just a pointer cursor —
   one step up its own ramp, colour only.
 - **Do** declare that transition once and reuse it. Retyping the duration per
-  component is how the window drifts out of the range this document states.
+  component is how the window drifts out of the range this document states. The
+  connect gate's arrival (ADR-0022) declares its own window the same way, in one
+  place, and runs once on mount — nothing in the cockpit loops.
 - **Do** use dashed borders for additive affordances, and only for those.
 
 ### Don't:
@@ -519,7 +521,9 @@ done. The logo is typographic — a bold mono "M" on an amber rounded tile.
   shows state, it does not comfort.
 - **Don't** strip structure down to a bare terminal dump; mono is the voice, but
   hierarchy and alignment still do the reading work.
-- **Don't** add entrance animations, hover scaling, or decorative motion.
+- **Don't** add entrance animations, hover scaling, or decorative motion. The
+  connect gate's welcome screen is the single exception (ADR-0022); a second one
+  amends that ADR rather than citing it.
 - **Don't** hover a control onto the active surface — that is the colour of a
   standing choice, and reusing it makes hover and selected indistinguishable.
 - **Don't** ship a `cursor-pointer` with no colour change behind it; the cursor
