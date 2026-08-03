@@ -265,8 +265,8 @@
       },
       {
         "name": "gate-arrival",
-        "value": "500-600ms cubic-bezier(0.16, 1, 0.3, 1) on opacity, translateY and scaleX, once on mount",
-        "purpose": "The connect gate's welcome screen only (ADR-0022). The empty first screen states its own emptiness on arrival: a 1px amber rule draws in, then heading, copy and action resolve in sequence. Flat fills only, nothing loops, gated behind prefers-reduced-motion: no-preference. Any other surface keeps the entrance-animation ban."
+        "value": "500-600ms cubic-bezier(0.16, 1, 0.3, 1) on opacity, translateY, scaleX and blur, once on mount",
+        "purpose": "The connect gate's welcome screen only (ADR-0022). The empty first screen states its own emptiness on arrival: a 1px amber rule fades in from both ends, then heading, copy and action resolve from blurred to sharp in sequence. Gradient and blur are allowed inside this sequence and nowhere else, never on a static surface. Nothing loops; gated behind prefers-reduced-motion: no-preference. Any other surface keeps the entrance-animation ban."
       }
     ],
     "breakpoints": [

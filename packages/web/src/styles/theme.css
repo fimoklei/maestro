@@ -164,6 +164,7 @@
   from {
     opacity: 0;
     transform: translateY(8px);
+    filter: blur(5px);
   }
 }
 
@@ -171,7 +172,7 @@
   display: block;
   width: 96px;
   height: 1px;
-  background: var(--amber);
+  background: linear-gradient(90deg, transparent, var(--amber), transparent);
   opacity: 0.55;
 }
 

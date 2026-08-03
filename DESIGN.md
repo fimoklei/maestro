@@ -515,6 +515,9 @@ done. The logo is typographic — a bold mono "M" on an amber rounded tile.
 
 - **Don't** add a `box-shadow` anywhere, in either theme.
 - **Don't** use gradients, textures, blur, backdrop-filter, or glassmorphism.
+  The connect gate's arrival is the single exception (ADR-0022): a gradient may
+  fade a rule out at its ends, and blur may resolve to sharp inside that one
+  sequence. Neither may sit on a static surface anywhere.
 - **Don't** build hero metric tiles, gradient accents, pill shapes, or cards
   nested inside cards — that is the generic SaaS dashboard this system rejects.
 - **Don't** add illustrations, emoji, or reassuring marketing copy; the cockpit

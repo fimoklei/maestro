@@ -31,9 +31,15 @@ surface keeps the ban unchanged.**
 
 1. **Scope is the screen, not the pattern.** `WelcomeView` only. A second
    surface wanting entrance motion amends this ADR; it does not cite it.
-2. **The material stays inside the system.** Flat fills, no gradient, no blur,
-   no shadow. The arrival is opacity, `translateY`, and a horizontal scale on a
-   1px amber rule — nothing the "Don't" list forbids for any other reason.
+2. **Gradient and blur are allowed, in motion, on this screen only.** The rule
+   fades out at both ends with a gradient, and the three elements resolve from
+   blurred to sharp. Both are bans elsewhere for the same reason as the shadow
+   ban: on a working surface they are decoration that costs legibility. Here
+   they are the sequence itself — the gradient is what makes a 1px line read as
+   a signal rather than a divider, and the blur is what makes the text arrive
+   rather than appear. Neither may sit on a static surface anywhere, including
+   this one: outside the animation the gate is flat fills, and the shadow ban
+   is untouched.
 3. **Nothing loops.** The sequence runs once on mount and ends. No ambient
    pulse, no infinite animation anywhere in the cockpit.
 4. **Duration and easing are declared once**, next to the rules that use them,
@@ -46,9 +52,12 @@ surface keeps the ban unchanged.**
 
 ## Consequences
 
-- DESIGN.md's "Don't add entrance animations" now reads "except the connect
-  gate (ADR-0022)", and `design.json` carries a second motion entry,
-  `gate-arrival`, scoped to that screen.
+- DESIGN.md's "Don't add entrance animations" and its gradient/blur ban both now
+  read "except the connect gate (ADR-0022)", and `design.json` carries a second
+  motion entry, `gate-arrival`, scoped to that screen.
+- Two "Don't" lines now carry an exception. That is the ceiling: a third would
+  mean the bans describe a system nobody follows, and the honest move then is to
+  rewrite them, not to add a fourth ADR.
 - The design system's single-motion claim is gone. The replacement claim is
   narrower and still checkable: **two motions, each named, each owned by one
   file.** A third needs an ADR.
@@ -68,6 +77,8 @@ surface keeps the ban unchanged.**
   signal on it. The strongest version of the idea, and the first thing to
   irritate someone who leaves the screen open. An infinite animation is a
   standing cost for a one-time message.
-- **Keep the gradient rule and the entrance blur.** Both read well and both
-  break bans that have nothing to do with entrance motion. Narrowing the ADR to
-  one rule keeps it arguable.
+- **Drop the gradient rule and the entrance blur** to keep this ADR down to one
+  amended rule. Cheaper to argue and weaker on screen: a flat 1px line is a
+  divider, and text that fades without resolving does not arrive. The sequence
+  is the reason for the exception, so it is worth stating in full rather than
+  trimming to whatever needed the least permission.
