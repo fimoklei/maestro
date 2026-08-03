@@ -19,7 +19,7 @@ export type BulkDeployReportView =
       // Successes that replaced a behind copy (#292).
       updated: { name: string; version: string }[];
       skipped: string[];
-      attention: { name: string; error: DeploySkillError }[];
+      attention: BulkDeployReport["attention"];
       failed: { error: DeploySkillError; names: string[] }[];
       counts: BulkReportCounts;
     }

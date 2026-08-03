@@ -4,7 +4,11 @@ import { Card } from "../ui/card";
 import { SectionHeader } from "../ui/section-header";
 import { DeployStateList } from "./deploy-state-list";
 import { toolDeployedView } from "./deployed-view";
-import { skippedEntryKey, skippedEntryText } from "./skipped-entry-text";
+import {
+  skippedEntryKey,
+  skippedEntryText,
+  skippedNeedsAttention,
+} from "./skipped-entry-text";
 import { TargetStatusChip } from "./target-status-chip";
 import { toolPresentation } from "./tool-presentation";
 import type { SkippedEntry } from "./use-deploy-state";
@@ -113,9 +117,16 @@ function ToolTargetCard({
 // section rather than duplicated on every card.
 function SkippedNotice({ skipped }: { skipped: SkippedEntry[] }) {
   return (
-    <ul className="mt-3 text-dim text-tag">
+    <ul className="mt-3 space-y-1 text-tag">
       {skipped.map((entry, index) => (
-        <li key={skippedEntryKey(entry, index)}>{skippedEntryText(entry)}</li>
+        <li
+          key={skippedEntryKey(entry, index)}
+          className={
+            skippedNeedsAttention(entry) ? "text-amber-ink" : "text-dim"
+          }
+        >
+          {skippedEntryText(entry)}
+        </li>
       ))}
     </ul>
   );

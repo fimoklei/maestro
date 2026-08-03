@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { skippedEntryKey, skippedEntryText } from "./skipped-entry-text";
+import {
+  skippedEntryKey,
+  skippedEntryText,
+  skippedNeedsAttention,
+} from "./skipped-entry-text";
 
 describe("skippedEntryText", () => {
   it("names the unsupported type of a skipped entry", () => {
@@ -10,6 +14,27 @@ describe("skippedEntryText", () => {
         packageType: "claude_hook",
       }),
     ).toBe("Skipped hooks/format (unsupported type claude_hook).");
+  });
+
+  it("names the recorded type of an unsupported deployment and says the files stay", () => {
+    const text = skippedEntryText({
+      reason: "unsupported-package",
+      virtualPath: "skills/tdd",
+      packageType: "hybrid",
+    });
+
+    expect(text).toContain("hybrid");
+    expect(text).toMatch(/still in place/i);
+  });
+
+  it("states that an invalid record placed nothing at all", () => {
+    expect(
+      skippedEntryText({
+        reason: "invalid-package",
+        virtualPath: "skills/tdd",
+        packageType: "invalid",
+      }),
+    ).toMatch(/placed no files/i);
   });
 
   it("says one entry could not be read, not that the lockfile is broken", () => {
@@ -30,5 +55,27 @@ describe("skippedEntryKey", () => {
     const unnamed = { reason: "unreadable", virtualPath: null } as const;
 
     expect(skippedEntryKey(unnamed, 0)).not.toBe(skippedEntryKey(unnamed, 1));
+  });
+});
+
+describe("skippedNeedsAttention", () => {
+  it("is false for a primitive Maestro simply does not manage", () => {
+    expect(
+      skippedNeedsAttention({
+        reason: "unsupported-type",
+        virtualPath: "hooks/format",
+        packageType: "claude_hook",
+      }),
+    ).toBe(false);
+  });
+
+  it("is true for a skill the user can recover", () => {
+    expect(
+      skippedNeedsAttention({
+        reason: "unsupported-package",
+        virtualPath: "skills/tdd",
+        packageType: "marketplace_plugin",
+      }),
+    ).toBe(true);
   });
 });

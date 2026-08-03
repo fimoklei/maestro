@@ -32,7 +32,7 @@ const deployedTarget = (
   behind: { name: string; current: string; latest: string }[] = [],
 ): DeploymentTarget => ({
   ...paneFields,
-  deployed: { status: "ready", names, skippedCount: 0 },
+  deployed: { status: "ready", names, skippedCount: 0, attentionCount: 0 },
   drift: ranDrift(behind),
 });
 
@@ -124,7 +124,12 @@ describe("rollUpDeployment — unknown count (?) keeps J04 honesty", () => {
     const targets: DeploymentTarget[] = [
       {
         ...paneFields,
-        deployed: { status: "ready", names: ["tdd"], skippedCount: 0 },
+        deployed: {
+          status: "ready",
+          names: ["tdd"],
+          skippedCount: 0,
+          attentionCount: 0,
+        },
         drift: drift({ data: { ok: false } }),
       },
     ];
@@ -135,7 +140,12 @@ describe("rollUpDeployment — unknown count (?) keeps J04 honesty", () => {
     const targets: DeploymentTarget[] = [
       {
         ...paneFields,
-        deployed: { status: "ready", names: ["tdd"], skippedCount: 0 },
+        deployed: {
+          status: "ready",
+          names: ["tdd"],
+          skippedCount: 0,
+          attentionCount: 0,
+        },
         drift: drift({ data: { ok: false, reason: "unverified" } }),
       },
     ];
@@ -146,7 +156,12 @@ describe("rollUpDeployment — unknown count (?) keeps J04 honesty", () => {
     const targets: DeploymentTarget[] = [
       {
         ...paneFields,
-        deployed: { status: "ready", names: ["tdd"], skippedCount: 0 },
+        deployed: {
+          status: "ready",
+          names: ["tdd"],
+          skippedCount: 0,
+          attentionCount: 0,
+        },
         drift: drift({ data: undefined }),
       },
     ];
@@ -160,7 +175,12 @@ describe("rollUpDeployment — unknown count (?) keeps J04 honesty", () => {
     const targets: DeploymentTarget[] = [
       {
         ...paneFields,
-        deployed: { status: "ready", names: ["tdd"], skippedCount: 0 },
+        deployed: {
+          status: "ready",
+          names: ["tdd"],
+          skippedCount: 0,
+          attentionCount: 0,
+        },
         drift: drift({ data: undefined }),
       },
     ];

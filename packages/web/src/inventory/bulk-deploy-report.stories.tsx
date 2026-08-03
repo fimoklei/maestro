@@ -43,7 +43,13 @@ export const WithAttentionAndFailure: Story = {
       deployed: [{ name: "tdd", version: "v1.2.0" }],
       updated: [],
       skipped: ["docs"],
-      attention: [{ name: "review", error: "deployed-diverged-from-lock" }],
+      attention: [
+        {
+          name: "review",
+          error: "deployed-diverged-from-lock",
+          forceable: true,
+        },
+      ],
       failed: [{ error: "auth-required", names: ["research", "grill"] }],
       counts: { deployed: 1, skipped: 1, attention: 1, failed: 2 },
     },

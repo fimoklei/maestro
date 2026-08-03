@@ -102,6 +102,8 @@ describe("update journey against the real destination guard", () => {
     return new DeploySkill({
       inventory,
       registry: { isRegistered: async () => true },
+      // Nothing recorded: this journey is not about the post-install read (#358).
+      recordedPackage: { read: async () => null },
       apm: {
         resolveLatestTag: async () => ({ ok: true, tag: LATEST_TAG }),
         deploySkill: async (input) => {

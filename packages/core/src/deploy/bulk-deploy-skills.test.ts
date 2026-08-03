@@ -34,6 +34,64 @@ function fail(error: DeploySkillError): Scripted {
 }
 
 describe("BulkDeploySkills", () => {
+  it("reports an unsupported package type as attention, with no force to offer", async () => {
+    const bulk = new BulkDeploySkills({
+      deploy: fakeDeploy({
+        tdd: {
+          ok: false,
+          error: "deployed-unsupported-package-type",
+          packageType: "hybrid",
+        },
+      }),
+    });
+
+    const report = await bulk.execute({
+      names: ["tdd"],
+      target: { kind: "global" },
+    });
+
+    expect(report.attention).toEqual([
+      {
+        name: "tdd",
+        error: "deployed-unsupported-package-type",
+        packageType: "hybrid",
+        forceable: false,
+      },
+    ]);
+    expect(report.failed).toEqual([]);
+  });
+
+  it("keeps a forceable refusal marked as one", async () => {
+    const bulk = new BulkDeploySkills({
+      deploy: fakeDeploy({ tdd: fail("deployed-diverged-from-lock") }),
+    });
+
+    const report = await bulk.execute({
+      names: ["tdd"],
+      target: { kind: "global" },
+    });
+
+    expect(report.attention).toEqual([
+      { name: "tdd", error: "deployed-diverged-from-lock", forceable: true },
+    ]);
+  });
+
+  it("counts apm's invalid verdict as a failure, never as a success", async () => {
+    const bulk = new BulkDeploySkills({
+      deploy: fakeDeploy({ tdd: fail("deploy-recorded-invalid") }),
+    });
+
+    const report = await bulk.execute({
+      names: ["tdd"],
+      target: { kind: "global" },
+    });
+
+    expect(report.deployed).toEqual([]);
+    expect(report.failed).toEqual([
+      { error: "deploy-recorded-invalid", names: ["tdd"] },
+    ]);
+  });
+
   it("deploys every staged skill to the target and collects the successes", async () => {
     const bulk = new BulkDeploySkills({
       deploy: fakeDeploy({
@@ -99,7 +157,7 @@ describe("BulkDeploySkills", () => {
 
     expect(report.deployed).toEqual([{ name: "tdd", version: "v1.2.0" }]);
     expect(report.attention).toEqual([
-      { name: "review", error: "deployed-diverged-from-lock" },
+      { name: "review", error: "deployed-diverged-from-lock", forceable: true },
     ]);
     expect(report.failed).toEqual([]);
   });

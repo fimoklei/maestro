@@ -87,6 +87,10 @@ const buildDeps = (
         "codex",
       ],
     },
+    recordedPackage: {
+      read: async (_input: { target: DeployTarget; name: string }) =>
+        "claude_skill" as string | null,
+    },
     canonicalPath: async (path: string) => path,
     locks: new InFlightLocks(),
     ...overrides,
@@ -95,6 +99,72 @@ const buildDeps = (
 };
 
 describe("DeploySkill", () => {
+  it("refuses to call a hybrid record a clean deploy, and leaves its files alone", async () => {
+    const { deps, cleaned } = buildDeps({
+      recordedPackage: { read: async () => "hybrid" },
+    });
+
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "deployed-unsupported-package-type",
+      packageType: "hybrid",
+    });
+    expect(cleaned).toEqual([]);
+  });
+
+  it("refuses to call a marketplace_plugin record a clean deploy", async () => {
+    const { deps } = buildDeps({
+      recordedPackage: { read: async () => "marketplace_plugin" },
+    });
+
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: globalTarget,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "deployed-unsupported-package-type",
+      packageType: "marketplace_plugin",
+    });
+  });
+
+  it("reports apm's invalid verdict as a failed deploy, never as a success", async () => {
+    const { deps } = buildDeps({
+      recordedPackage: { read: async () => "invalid" },
+    });
+
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({ ok: false, error: "deploy-recorded-invalid" });
+  });
+
+  it("keeps the install apm proved when no record can be read", async () => {
+    const { deps } = buildDeps({ recordedPackage: { read: async () => null } });
+
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+    });
+  });
+
   it("deploys a known skill to a registered repo at the latest tag", async () => {
     const { deps, deployed } = buildDeps();
     const result = await new DeploySkill(deps).execute({

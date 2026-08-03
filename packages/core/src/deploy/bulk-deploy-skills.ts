@@ -13,7 +13,15 @@ export type BulkDeployInput = {
 };
 
 type BulkDeployedRow = { name: string; version: string };
-type BulkAttentionRow = { name: string; error: DeploySkillError };
+// `forceable` keeps the offer honest: a per-item force clears a not-proven-clean
+// refusal, but re-running the same install over an unsupported package type only
+// records it again (#358).
+type BulkAttentionRow = {
+  name: string;
+  error: DeploySkillError;
+  packageType?: string;
+  forceable: boolean;
+};
 type BulkFailure = { error: DeploySkillError; names: string[] };
 
 export type BulkDeployReport = {
@@ -51,7 +59,12 @@ export class BulkDeploySkills {
       if (result.ok) {
         deployed.push({ name, version: result.deployed.version });
       } else if (ATTENTION_ERRORS.has(result.error)) {
-        attention.push({ name, error: result.error });
+        attention.push({
+          name,
+          error: result.error,
+          ...(result.packageType ? { packageType: result.packageType } : {}),
+          forceable: FORCEABLE_ERRORS.has(result.error),
+        });
       } else {
         const names = failures.get(result.error) ?? [];
         names.push(name);
@@ -68,9 +81,17 @@ export class BulkDeploySkills {
   }
 }
 
-// Exactly the refusals a per-item force can override, so "attention" means a
-// force is still available. Every other error is a genuine failure.
+// A refusal the user acts on, whether or not a force is the action. Every other
+// error is a genuine failure — including apm's invalid verdict, which deployed
+// nothing (#358).
 const ATTENTION_ERRORS: ReadonlySet<DeploySkillError> = new Set([
+  "deployed-diverged-from-lock",
+  "deployed-unverifiable",
+  "deployed-unsupported-package-type",
+]);
+
+// Exactly the refusals a per-item force can override (ADR-0006).
+const FORCEABLE_ERRORS: ReadonlySet<DeploySkillError> = new Set([
   "deployed-diverged-from-lock",
   "deployed-unverifiable",
 ]);

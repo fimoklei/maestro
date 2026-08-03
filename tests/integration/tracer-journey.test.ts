@@ -91,6 +91,8 @@ describe("the tracer journey through one cockpit", () => {
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => false,
       },
+      // Nothing recorded: this journey is not about the post-install read (#358).
+      recordedPackage: { read: async () => null },
       deployedContent: { classify: async () => "not-deployed" as const },
       deployedCleanup: { removeSkillTargets: async () => undefined },
       toolPresence: { detectGlobalTools: async () => ["claude"] },

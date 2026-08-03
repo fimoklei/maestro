@@ -39,7 +39,12 @@ export function chosenBulkDeployTargets(params: {
       return {
         label: toolPresentation(tool.tool).label,
         target,
-        deployed: { status: "ready", names, skippedCount: 0 },
+        deployed: {
+          status: "ready" as const,
+          names,
+          skippedCount: 0,
+          attentionCount: 0,
+        },
         primitives: tool.primitives,
         drift: drift.forTool(names),
       };
@@ -57,6 +62,7 @@ export function chosenBulkDeployTargets(params: {
               status: "ready",
               names: repoPrimitives.map((primitive) => primitive.name),
               skippedCount: 0,
+              attentionCount: 0,
             },
       primitives: repoPrimitives ?? [],
       drift,

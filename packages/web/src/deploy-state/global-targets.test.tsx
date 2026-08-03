@@ -34,6 +34,24 @@ function renderTargets(props: Partial<Parameters<typeof GlobalTargets>[0]>) {
 }
 
 describe("GlobalTargets", () => {
+  it("names the recorded type of an unsupported deployment and how to recover", () => {
+    renderTargets({
+      tools: [{ tool: "claude", primitives: [] }],
+      skipped: [
+        {
+          reason: "unsupported-package",
+          virtualPath: "skills/tdd",
+          packageType: "hybrid",
+        },
+      ],
+    });
+
+    expect(
+      screen.getByText(/skills\/tdd is deployed as hybrid/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/release a corrected tag/i)).toBeInTheDocument();
+  });
+
   it("always labels the Global targets section, even while loading", () => {
     renderTargets({ isLoading: true });
     expect(screen.getByText(/global targets/i)).toBeInTheDocument();

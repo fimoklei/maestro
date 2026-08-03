@@ -37,7 +37,50 @@ function skillEntry(ref: string, virtualPath: string): string {
   return `- repo_url: fimoklei/agent-harness\n  host: github.com\n  resolved_commit: ec491f154c9d5c9a6c5db56d1946c4c34f3899bb\n  resolved_ref: ${ref}\n  virtual_path: ${virtualPath}\n  is_virtual: true\n  package_type: claude_skill\n  deployed_files:\n  - .claude/${virtualPath}\n  content_hash: sha256:abc\n`;
 }
 
+// The same entry under any package_type apm may record.
+function typedEntry(virtualPath: string, packageType: string): string {
+  return `- repo_url: fimoklei/agent-harness\n  host: github.com\n  resolved_commit: ec491f154c9d5c9a6c5db56d1946c4c34f3899bb\n  resolved_ref: v0.5.0\n  virtual_path: ${virtualPath}\n  is_virtual: true\n  package_type: ${packageType}\n  deployed_files:\n  - .claude/${virtualPath}\n  content_hash: sha256:abc\n`;
+}
+
 describe("DeployStateReader", () => {
+  it("marks a hybrid skill as unsupported, not as a different primitive", async () => {
+    const fs = new InMemoryFileSystem({
+      files: { [LOCKFILE]: lockfile(typedEntry("skills/tdd", "hybrid")) },
+    });
+    const reader = new DeployStateReader({ fs });
+
+    await expect(reader.read(REPO)).resolves.toEqual({
+      ok: true,
+      primitives: [],
+      skipped: [
+        {
+          reason: "unsupported-package",
+          virtualPath: "skills/tdd",
+          packageType: "hybrid",
+        },
+      ],
+    });
+  });
+
+  it("marks apm's invalid verdict as invalid, so the row cannot read as deployed", async () => {
+    const fs = new InMemoryFileSystem({
+      files: { [LOCKFILE]: lockfile(typedEntry("skills/tdd", "invalid")) },
+    });
+    const reader = new DeployStateReader({ fs });
+
+    await expect(reader.read(REPO)).resolves.toEqual({
+      ok: true,
+      primitives: [],
+      skipped: [
+        {
+          reason: "invalid-package",
+          virtualPath: "skills/tdd",
+          packageType: "invalid",
+        },
+      ],
+    });
+  });
+
   it("lists a deployed skill with its name and human tag version", async () => {
     const fs = new InMemoryFileSystem({
       files: { [LOCKFILE]: lockfile(skillEntry("v0.5.0", "skills/tdd")) },

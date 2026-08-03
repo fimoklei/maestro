@@ -80,10 +80,39 @@ export function unreadableCovers(
   );
 }
 
-// The identity rule, written once so no layer re-implements it.
-export function claudeSkillName(entry: LockfileEntry): string | null {
-  if (entry.package_type !== "claude_skill") {
-    return null;
+// What apm recorded, in the terms the cockpit reports: a manageable skill, a
+// package it materialized but Maestro cannot manage as one, apm's own "this
+// attempt placed nothing" verdict, or a different primitive altogether (#358).
+export type PackageClass = "skill" | "unsupported" | "invalid" | "other";
+
+// `hybrid` and `marketplace_plugin` are what apm 0.26.0 writes for a skill
+// carrying a per-skill apm.yml or plugin.json (docs/apm-behavior.md).
+const UNSUPPORTED_TYPES = new Set(["hybrid", "marketplace_plugin"]);
+
+export function classifyPackageType(packageType: string): PackageClass {
+  if (packageType === "claude_skill") {
+    return "skill";
   }
-  return basename(entry.virtual_path);
+  if (packageType === "invalid") {
+    return "invalid";
+  }
+  return UNSUPPORTED_TYPES.has(packageType) ? "unsupported" : "other";
+}
+
+// A skill carries its name; every other reading carries the type to report.
+export type PackageReading =
+  | { kind: "skill"; name: string }
+  | { kind: Exclude<PackageClass, "skill">; packageType: string };
+
+// The identity rule, written once so no layer re-implements it.
+export function readPackage(entry: LockfileEntry): PackageReading {
+  const kind = classifyPackageType(entry.package_type);
+  return kind === "skill"
+    ? { kind, name: basename(entry.virtual_path) }
+    : { kind, packageType: entry.package_type };
+}
+
+export function claudeSkillName(entry: LockfileEntry): string | null {
+  const reading = readPackage(entry);
+  return reading.kind === "skill" ? reading.name : null;
 }

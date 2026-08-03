@@ -21,6 +21,7 @@ import {
   InventoryGitAdapter,
   InventoryReader,
   NodeFileSystem,
+  RecordedPackageAdapter,
   Registry,
   RemoveDeployedSkill,
   type RemoveDeployedSkillError,
@@ -198,6 +199,18 @@ const deployErrorResponses: Record<
     status: 409,
     message:
       "The skill's destination directory is a symlink, and apm refuses to deploy into one. Replace that per-skill link with a real directory, or move the link one level up so the whole skills directory is the symlink (for example .claude/skills -> .agents/skills), then try again.",
+  },
+  "deployed-unsupported-package-type": {
+    // 409, not 502: apm installed something, and the package shape is the
+    // user's to correct (#358).
+    status: 409,
+    message:
+      "apm installed this package but recorded it as a type Maestro cannot manage as a skill. Its files were left in place. Remove the per-skill apm.yml or plugin.json from the harness, release a corrected tag, and deploy again.",
+  },
+  "deploy-recorded-invalid": {
+    status: 502,
+    message:
+      "apm recorded this deployment as invalid and placed no files, even though it reported success. Fix the package shape in the harness (a skill needs a SKILL.md), release a corrected tag, and deploy again.",
   },
   "deploy-failed": {
     status: 502,
@@ -538,7 +551,16 @@ export function createApp(deps: AppDeps) {
     const result = await deps.deploy.execute(body.data);
     if (!result.ok) {
       const { status, message } = deployErrorResponses[result.error];
-      return c.json({ error: result.error, message }, status);
+      // The recorded type is one of our own readings of apm's lockfile field,
+      // never a line of apm prose (ADR-0018, security.md).
+      return c.json(
+        {
+          error: result.error,
+          message,
+          ...(result.packageType ? { packageType: result.packageType } : {}),
+        },
+        status,
+      );
     }
     return c.json({ deployed: result.deployed });
   });
@@ -744,6 +766,12 @@ function realDeps(): AppDeps {
         resolveInventoryPath(await store.read(), process.env),
     }),
     deployedContent: new DeployedContentAdapter({ location: deployedLocation }),
+    // apm's success marker says nothing about what it recorded, so the lockfile
+    // is read back before the deploy is called clean (#358).
+    recordedPackage: new RecordedPackageAdapter({
+      fs,
+      location: deployedLocation,
+    }),
     // Reconciles an untargeted tool's leftover copy after a narrowed global
     // deploy (ADR-0011, #136) — a direct subtree rm, never `apm uninstall -g`.
     deployedCleanup: new DeployedCleanupAdapter({ location: deployedLocation }),

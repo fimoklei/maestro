@@ -79,7 +79,13 @@ describe("BulkDeployReport", () => {
       <BulkDeployReport
         view={view({
           tone: "attention",
-          attention: [{ name: "tdd", error: "deployed-diverged-from-lock" }],
+          attention: [
+            {
+              name: "tdd",
+              error: "deployed-diverged-from-lock",
+              forceable: true,
+            },
+          ],
           counts: { deployed: 0, skipped: 0, attention: 1, failed: 0 },
         })}
         onForce={onForce}

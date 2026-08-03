@@ -79,7 +79,12 @@ export function useDeploymentTargets(
         // One removal covers every tool, so each tool row names the same
         // global target (ADR-0013).
         target: { kind: "global" },
-        deployed: { status: "ready", names, skippedCount: 0 },
+        deployed: {
+          status: "ready" as const,
+          names,
+          skippedCount: 0,
+          attentionCount: 0,
+        },
         primitives: tool.primitives,
         drift: globalDrift.forTool(names),
       });

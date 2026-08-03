@@ -358,6 +358,36 @@ describe("DeploySkillAction", () => {
     );
   });
 
+  it("names the recorded package type, and offers no force that cannot help", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              error: "deployed-unsupported-package-type",
+              message:
+                "apm installed this package but recorded it as a type Maestro cannot manage as a skill.",
+              packageType: "hybrid",
+            }),
+            { status: 409, headers: { "content-type": "application/json" } },
+          ),
+      ),
+    );
+    renderAction(
+      <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /recorded type: hybrid/i,
+    );
+    expect(
+      screen.queryByRole("button", { name: /reinstall fresh/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("offers an inline Reinstall-fresh confirm that re-deploys with force", async () => {
     // ADR-0006: a not-proven-clean copy is confirm-and-proceed at the Deploy
     // entry point too, not a refusal. The inline button re-runs the same deploy

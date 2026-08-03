@@ -3,6 +3,7 @@
 // ADR-0011.
 import type { OutdatedResult } from "../drift/parse-outdated";
 import type { InventoryResult } from "../inventory/inventory-reader";
+import { classifyPackageType } from "../lockfile/lockfile";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type { SupportedTool } from "./deploy-tools";
 import { parseGitOrigin } from "./git-origin";
@@ -82,6 +83,13 @@ export type DeployedContentPort = {
   }): Promise<DeployedContentState>;
 };
 
+// What apm recorded for the package this deploy just installed. `null` covers
+// no lockfile, no entry and an unreadable one alike: with nothing recorded the
+// install apm proved stands (#358).
+export type RecordedPackagePort = {
+  read(input: { target: DeployTarget; name: string }): Promise<string | null>;
+};
+
 // A subtree-scoped filesystem removal, never `apm uninstall -g`, which deletes
 // beyond its lockfile (apm-driver.md § Danger). Idempotent — a missing copy is
 // a no-op. See ADR-0013, #136.
@@ -124,11 +132,19 @@ export type DeploySkillError =
   | "no-supported-tool"
   | "auth-required"
   | "destination-symlinked"
+  // apm installed the package but recorded it as something Maestro cannot
+  // manage as a skill; the files are on disk and stay there (#358).
+  | "deployed-unsupported-package-type"
+  // apm's own verdict that the attempt placed nothing, worn under a success
+  // marker (#358).
+  | "deploy-recorded-invalid"
   | "deploy-failed";
 
 type DeploySkillResult =
   | { ok: true; deployed: { type: "skill"; name: string; version: string } }
-  | { ok: false; error: DeploySkillError };
+  // `packageType` is one of our own readings of apm's recorded type, never apm
+  // prose (ADR-0018).
+  | { ok: false; error: DeploySkillError; packageType?: string };
 
 export class DeploySkill {
   private readonly deps: {
@@ -137,6 +153,7 @@ export class DeploySkill {
     apm: Pick<ApmDriverPort, "resolveLatestTag" | "deploySkill">;
     inventoryGit: InventoryGitPort;
     deployedContent: DeployedContentPort;
+    recordedPackage: RecordedPackagePort;
     // Global path only (ADR-0011, #136).
     deployedCleanup: DeployedCleanupPort;
     // Global path only (ADR-0011); a repo deploy never consults it.
@@ -271,6 +288,24 @@ export class DeploySkill {
               ? "destination-symlinked"
               : "deploy-failed",
         };
+      }
+
+      // apm exits 0 and prints its success marker even for a package it
+      // recorded as invalid, so the record is the only honest outcome (#358).
+      // Read before the reclaim: an unsupported result is reported, not tidied
+      // up around.
+      const recorded = await this.deps.recordedPackage.read({
+        target: input.target,
+        name: input.name,
+      });
+      if (recorded !== null && classifyPackageType(recorded) !== "skill") {
+        return recorded === "invalid"
+          ? { ok: false, error: "deploy-recorded-invalid" }
+          : {
+              ok: false,
+              error: "deployed-unsupported-package-type",
+              packageType: recorded,
+            };
       }
 
       // After a proven install, never before, so a failed install never

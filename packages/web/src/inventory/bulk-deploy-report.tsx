@@ -14,6 +14,9 @@ const errorLabels: Partial<Record<DeploySkillError, string>> = {
   "no-published-tag": "no published tag contains it",
   "auth-required": "GitHub authentication is missing or expired",
   "deploy-failed": "the deploy could not be completed",
+  "deployed-unsupported-package-type":
+    "apm recorded a type Maestro cannot manage as a skill",
+  "deploy-recorded-invalid": "apm recorded the deployment as invalid",
 };
 
 function errorLabel(error: DeploySkillError): string {
@@ -131,9 +134,10 @@ export function BulkDeployReport({
                     </span>
                     <span className="truncate text-amber-ink">
                       {errorLabel(row.error)}
+                      {row.packageType ? ` (${row.packageType})` : ""}
                     </span>
                   </span>
-                  {onForce ? (
+                  {onForce && row.forceable ? (
                     <Button
                       variant="quiet"
                       size="sm"
