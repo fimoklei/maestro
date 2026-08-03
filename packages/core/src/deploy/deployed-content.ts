@@ -6,7 +6,11 @@ import { createHash } from "node:crypto";
 import { constants } from "node:fs";
 import { access, readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { claudeSkillName, parseLockfile } from "../lockfile/lockfile";
+import {
+  claudeSkillName,
+  parseLockfile,
+  unreadableCovers,
+} from "../lockfile/lockfile";
 import type {
   DeployedContentPort,
   DeployedContentState,
@@ -112,6 +116,10 @@ export class DeployedContentAdapter implements DeployedContentPort {
 
     const parsed = parseLockfile(raw);
     if (!parsed.ok) {
+      return { kind: "malformed" };
+    }
+
+    if (unreadableCovers(parsed.unreadable, name)) {
       return { kind: "malformed" };
     }
 

@@ -154,7 +154,31 @@ describe("DeployStateReader", () => {
     expect(result).toEqual({
       ok: true,
       primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
-      skipped: [{ virtualPath: "hooks/format", packageType: "claude_hook" }],
+      skipped: [
+        {
+          reason: "unsupported-type",
+          virtualPath: "hooks/format",
+          packageType: "claude_hook",
+        },
+      ],
+    });
+  });
+
+  it("keeps the readable skills when one entry cannot be interpreted", async () => {
+    // apm writes a `source: local` entry with no resolved_ref (#357).
+    const localEntry =
+      "- virtual_path: skills/local-one\n  package_type: claude_skill\n  source: local\n";
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(localEntry + skillEntry("v0.5.0", "skills/tdd")),
+      },
+    });
+    const reader = new DeployStateReader({ fs });
+
+    await expect(reader.read(REPO)).resolves.toEqual({
+      ok: true,
+      primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+      skipped: [{ reason: "unreadable", virtualPath: "skills/local-one" }],
     });
   });
 });

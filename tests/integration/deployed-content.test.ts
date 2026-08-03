@@ -110,6 +110,51 @@ describe("DeployedContentAdapter", () => {
     ).resolves.toBe("lockfile-malformed");
   });
 
+  it("reports lockfile-malformed when this skill's own entry cannot be read", async () => {
+    // The view now skips an uninterpretable entry (#357), but the guard must not
+    // read that skip as "nothing deployed" for the very skill it hides (#58).
+    await writeDeployed(".claude/skills/tdd/SKILL.md", "deployed\n");
+    await writeFile(
+      join(root, "apm.lock.yaml"),
+      "dependencies:\n  - virtual_path: skills/tdd\n    package_type: claude_skill\n    source: local\n",
+      "utf8",
+    );
+
+    await expect(
+      adapter().classify({
+        target: { kind: "repo", repoPath: root },
+        name: "tdd",
+      }),
+    ).resolves.toBe("lockfile-malformed");
+  });
+
+  it("leaves another skill readable when one entry cannot be read", async () => {
+    await writeDeployed(".claude/skills/tdd/SKILL.md", "deployed\n");
+    await writeFile(
+      join(root, "apm.lock.yaml"),
+      [
+        "dependencies:",
+        "  - virtual_path: skills/local-one",
+        "    package_type: claude_skill",
+        "    source: local",
+        "  - virtual_path: skills/tdd",
+        "    package_type: claude_skill",
+        "    resolved_ref: v0.5.1",
+        "    deployed_file_hashes:",
+        `      .claude/skills/tdd/SKILL.md: ${sha("deployed\n")}`,
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    await expect(
+      adapter().classify({
+        target: { kind: "repo", repoPath: root },
+        name: "tdd",
+      }),
+    ).resolves.toBe("clean");
+  });
+
   it("reports unverifiable for a legacy entry with no recorded hashes", async () => {
     // A pre-0.20.0 install records the entry but no deployed_file_hashes, so the
     // deployed copy could hold edits we cannot detect. Distinct from a true

@@ -1,15 +1,12 @@
 // Server-state hook for a single repo's deploy-state, keyed by repo path
 // (frontend.md).
+import type { DeployedPrimitive, SkippedEntry } from "@maestro/core";
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 
-export type DeployedPrimitive = {
-  type: "skill";
-  name: string;
-  version: string;
-};
-
-export type SkippedEntry = { virtualPath: string; packageType: string };
+// Re-exported rather than copied, so the two ends of the wire cannot drift
+// (architecture.md).
+export type { DeployedPrimitive, SkippedEntry };
 
 type DeployStateResponse = {
   primitives: DeployedPrimitive[];

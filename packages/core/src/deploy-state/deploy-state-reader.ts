@@ -2,7 +2,11 @@
 // must never blur: missing is "nothing deployed", an unsupported package_type is
 // skipped and surfaced, and malformed is a visible error (#58).
 import { join } from "node:path";
-import { claudeSkillName, parseLockfile } from "../lockfile/lockfile";
+import {
+  claudeSkillName,
+  parseLockfile,
+  type UnreadableEntry,
+} from "../lockfile/lockfile";
 import type { FileSystemPort } from "../registry/file-system";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type { DeployedPrimitive, SkippedEntry } from "./deploy-state-types";
@@ -39,11 +43,12 @@ export class DeployStateReader {
     }
 
     const primitives: DeployedPrimitive[] = [];
-    const skipped: SkippedEntry[] = [];
+    const skipped: SkippedEntry[] = unreadableAsSkipped(parsed.unreadable);
     for (const entry of parsed.entries) {
       const name = claudeSkillName(entry);
       if (name === null) {
         skipped.push({
+          reason: "unsupported-type",
           virtualPath: entry.virtual_path,
           packageType: entry.package_type,
         });
@@ -57,6 +62,15 @@ export class DeployStateReader {
     }
     return { ok: true, primitives, skipped };
   }
+}
+
+function unreadableAsSkipped(
+  unreadable: readonly UnreadableEntry[],
+): SkippedEntry[] {
+  return unreadable.map((entry) => ({
+    reason: "unreadable",
+    virtualPath: entry.virtualPath,
+  }));
 }
 
 // A separate type so the tool-presence dependency is required by the
@@ -88,6 +102,11 @@ export class GlobalDeployStateReader extends DeployStateReader {
     if (!parsed.ok) {
       return { ok: false, error: "malformed" };
     }
-    return { ok: true, ...groupPrimitivesByTool(parsed.entries, detected) };
+    const grouped = groupPrimitivesByTool(parsed.entries, detected);
+    return {
+      ok: true,
+      tools: grouped.tools,
+      skipped: [...unreadableAsSkipped(parsed.unreadable), ...grouped.skipped],
+    };
   }
 }

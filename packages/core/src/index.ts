@@ -44,6 +44,10 @@ export {
   DeployStateReader,
   GlobalDeployStateReader,
 } from "./deploy-state/deploy-state-reader";
+export type {
+  DeployedPrimitive,
+  SkippedEntry,
+} from "./deploy-state/deploy-state-types";
 export { resolveApmGlobalRoot } from "./deploy-state/resolve-apm-global-root";
 export { CheckVersionDrift } from "./drift/check-version-drift";
 export type { VersionDrift } from "./drift/parse-outdated";
