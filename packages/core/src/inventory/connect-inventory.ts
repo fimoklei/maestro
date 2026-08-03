@@ -37,13 +37,10 @@ export class ConnectInventory {
       return { ok: false, error: validated.error };
     }
 
-    // A directory wearing the manifest's name manifests nothing, so presence
-    // alone is not the check.
+    // A real file, so a directory or a symlink wearing the manifest's name is
+    // refused here exactly as the picker refuses it (#148).
     const manifest = join(validated.path, HARNESS_MANIFEST);
-    const isHarness =
-      (await this.fs.exists(manifest)) &&
-      !(await this.fs.isDirectory(manifest));
-    if (!isHarness) {
+    if (!(await this.fs.isFileEntry(manifest))) {
       return { ok: false, error: "not-an-inventory" };
     }
 

@@ -70,6 +70,12 @@ export class InMemoryFileSystem implements FileSystemPort {
     return this.isKnownDirectory(path) || this.files.has(path);
   }
 
+  // The fake has no symlink concept for a bare path, so a seeded file is the
+  // only regular file it can model.
+  async isFileEntry(path: string): Promise<boolean> {
+    return this.files.has(path);
+  }
+
   async readFile(path: string): Promise<string | null> {
     return this.files.get(path) ?? null;
   }

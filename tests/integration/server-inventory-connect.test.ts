@@ -4,6 +4,7 @@ import {
   mkdtemp,
   realpath as nodeRealpath,
   rm,
+  symlink,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -184,6 +185,26 @@ describe("inventory connect HTTP route", () => {
     expect(body.error).toBe("not-an-inventory");
     expect(body.message).toMatch(/\S/);
     expect(body.message).not.toContain(plain);
+  });
+
+  // The picker refuses a symlinked manifest outright (#148), so connect has to
+  // agree: the manifest is a real file in the repo root or it is not a Harness.
+  it.each([
+    ["dangling", "does-not-exist"],
+    ["file-target", "real-manifest.yml"],
+  ])("rejects a %s symlinked apm.yml as 422", async (_label, target) => {
+    const linked = join(dir, `linked-${target}`);
+    await mkdir(linked, { recursive: true });
+    await writeFile(join(linked, "real-manifest.yml"), "dependencies: []\n");
+    await symlink(join(linked, target), join(linked, "apm.yml"));
+    await initGitClone(linked);
+
+    const res = await postConnect(makeApp(), { path: linked });
+
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as { error: string }).error).toBe(
+      "not-an-inventory",
+    );
   });
 
   // The retired shape is not a fallback (ADR-0021 §4): a clone that would have
