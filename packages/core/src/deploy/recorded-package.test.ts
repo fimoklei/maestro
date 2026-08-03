@@ -22,19 +22,23 @@ describe("RecordedPackageAdapter", () => {
     const read = adapter({ [LOCKFILE]: lockfile("skills/tdd", "invalid") });
 
     await expect(read.read({ target, name: "tdd" })).resolves.toEqual({
-      kind: "invalid",
-      packageType: "invalid",
+      kind: "recorded",
+      reading: { kind: "invalid", packageType: "invalid" },
     });
   });
 
-  it("answers null when no lockfile exists", async () => {
-    await expect(adapter({}).read({ target, name: "tdd" })).resolves.toBeNull();
+  it("leaves a missing lockfile unverified, never recorded", async () => {
+    await expect(adapter({}).read({ target, name: "tdd" })).resolves.toEqual({
+      kind: "unverified",
+    });
   });
 
-  it("answers null when the lockfile cannot be parsed", async () => {
+  it("leaves a lockfile it cannot parse unverified", async () => {
     const read = adapter({ [LOCKFILE]: "dependencies: not-a-list\n" });
 
-    await expect(read.read({ target, name: "tdd" })).resolves.toBeNull();
+    await expect(read.read({ target, name: "tdd" })).resolves.toEqual({
+      kind: "unverified",
+    });
   });
 
   it("reads an entry a harness recorded under its own subpath", async () => {
@@ -43,14 +47,16 @@ describe("RecordedPackageAdapter", () => {
     });
 
     await expect(read.read({ target, name: "tdd" })).resolves.toEqual({
-      kind: "unsupported",
-      packageType: "hybrid",
+      kind: "recorded",
+      reading: { kind: "unsupported", packageType: "hybrid" },
     });
   });
 
   it("does not let another skill's entry answer for this one", async () => {
     const read = adapter({ [LOCKFILE]: lockfile("skills/review", "invalid") });
 
-    await expect(read.read({ target, name: "tdd" })).resolves.toBeNull();
+    await expect(read.read({ target, name: "tdd" })).resolves.toEqual({
+      kind: "unverified",
+    });
   });
 });

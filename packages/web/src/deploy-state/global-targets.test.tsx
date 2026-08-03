@@ -34,6 +34,22 @@ function renderTargets(props: Partial<Parameters<typeof GlobalTargets>[0]>) {
 }
 
 describe("GlobalTargets", () => {
+  it("never reads a tool card as empty while a global record needs attention", () => {
+    renderTargets({
+      tools: [{ tool: "claude", primitives: [] }],
+      skipped: [
+        {
+          reason: "invalid-package",
+          virtualPath: "skills/tdd",
+          packageType: "invalid",
+        },
+      ],
+    });
+
+    expect(screen.getByText("▲ attention")).toBeInTheDocument();
+    expect(screen.queryByText("● empty")).not.toBeInTheDocument();
+  });
+
   it("names the recorded type of an unsupported deployment and how to recover", () => {
     renderTargets({
       tools: [{ tool: "claude", primitives: [] }],

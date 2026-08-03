@@ -3,7 +3,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   ApmCliDriver,
-  DeployedLocation,
   DeploySkill,
   type DeployTarget,
   InFlightLocks,
@@ -178,7 +177,15 @@ describe("deploy HTTP route", () => {
       },
       recordedPackage: new RecordedPackageAdapter({
         fs,
-        location: new DeployedLocation({ ...process.env, HOME: home }),
+        // Mirrors DeployedLocation, aimed at this run's temp roots: the fake
+        // apm writes its lockfile where the real one would.
+        location: {
+          lockfilePath: (target) =>
+            join(
+              target.kind === "repo" ? target.repoPath : globalRoot,
+              "apm.lock.yaml",
+            ),
+        },
       }),
       canonicalPath: (path) => fs.realpath(path),
       inventoryOriginUrl: async () =>
@@ -254,6 +261,31 @@ describe("deploy HTTP route", () => {
     expect(await readFile(join(repo, "apm.lock.yaml"), "utf8")).toContain(
       "hybrid",
     );
+  });
+
+  it("deploys a corrected release over an unsupported result, unforced", async () => {
+    // The state an unsupported deploy leaves: hybrid files on disk with no
+    // baseline of their own, which the destination guard calls unverifiable.
+    // They are apm's, not local work, so the corrected release goes through
+    // without a forced overwrite (#358).
+    const { app, registry } = makeApp({ destUnverifiable: true });
+    await registry.register(repo);
+    await writeFile(
+      join(repo, "apm.lock.yaml"),
+      capturedLockfile("v0.5.0", "hybrid"),
+      "utf8",
+    );
+
+    const res = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: repoTarget(repo),
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+    });
   });
 
   it("reports apm's invalid record as a failed deploy, never a success", async () => {

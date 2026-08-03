@@ -165,3 +165,25 @@ describe("classifyPackageType", () => {
     expect(classifyPackageType("claude_hook")).toBe("other");
   });
 });
+
+describe("parseLockfile package_type shape", () => {
+  it("refuses an entry whose package_type is not a bounded token", () => {
+    // The one apm-derived field that crosses to the browser, so it is checked
+    // where apm's output is first read (ADR-0018).
+    const raw = [
+      "dependencies:",
+      "- resolved_ref: v0.5.0",
+      "  virtual_path: skills/tdd",
+      '  package_type: "<script>alert(1)</script>"',
+      "",
+    ].join("\n");
+
+    const parsed = parseLockfile(raw);
+
+    expect(parsed).toEqual({
+      ok: true,
+      entries: [],
+      unreadable: [{ virtualPath: "skills/tdd" }],
+    });
+  });
+});

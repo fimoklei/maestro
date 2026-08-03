@@ -12,7 +12,9 @@ import { z } from "zod";
 const lockfileEntrySchema = z.object({
   resolved_ref: z.string(),
   virtual_path: z.string(),
-  package_type: z.string(),
+  // Bounded here, where apm output is first read: this value is the one
+  // apm-derived field an HTTP response carries (ADR-0018, security.md).
+  package_type: z.string().regex(/^[a-z0-9_-]{1,40}$/i),
   host: z.string().optional(),
   repo_url: z.string().optional(),
   deployed_files: z.array(z.string()).optional(),

@@ -212,6 +212,11 @@ const deployErrorResponses: Record<
     message:
       "apm recorded this deployment as invalid and placed no files, even though it reported success. Fix the package shape in the harness (a skill needs a SKILL.md), release a corrected tag, and deploy again.",
   },
+  "deploy-unverified": {
+    status: 502,
+    message:
+      "apm reported the install as done, but Maestro could not confirm it from the lockfile (apm.lock.yaml), so the deploy is not treated as proven. Check the target's lockfile, then try again.",
+  },
   "deploy-failed": {
     status: 502,
     message: "The deploy could not be completed. Check apm and try again.",

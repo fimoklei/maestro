@@ -19,9 +19,13 @@ export type DeployedView =
 // `read` is optional: pass it only when the caller renders stale rows after a
 // failed refetch (the sidebar does), so that case maps to "unknown", not a
 // false "ready" (J04, see above). Omitting it stays "ready".
+// `attentionCount` is the global section's, not this tool's: an entry apm
+// could not manage names no tool, and every card reads the same lockfile — so
+// they all carry it rather than one card guessing (#358).
 export function toolDeployedView(
   names: string[],
   read?: { data: unknown; isError: boolean },
+  attentionCount = 0,
 ): DeployedView {
   if (read?.isError) {
     return { status: "unknown" };
@@ -29,7 +33,7 @@ export function toolDeployedView(
   if (read !== undefined && read.data === undefined) {
     return { status: "pending" };
   }
-  return { status: "ready", names, skippedCount: 0, attentionCount: 0 };
+  return { status: "ready", names, skippedCount: 0, attentionCount };
 }
 
 export function toDeployedView(

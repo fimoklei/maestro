@@ -83,14 +83,18 @@ export type DeployedContentPort = {
   }): Promise<DeployedContentState>;
 };
 
-// What apm recorded for the package this deploy just installed. `null` covers
-// no lockfile, no entry and an unreadable one alike: with nothing recorded the
-// install apm proved stands (#358).
+// What apm recorded for the package this deploy just installed. Anything short
+// of an entry we read is "unverified", never a stand-in for success: apm's own
+// marker is what this read exists to distrust (#358).
+export type RecordedPackageResult =
+  | { kind: "recorded"; reading: PackageReading }
+  | { kind: "unverified" };
+
 export type RecordedPackagePort = {
   read(input: {
     target: DeployTarget;
     name: string;
-  }): Promise<PackageReading | null>;
+  }): Promise<RecordedPackageResult>;
 };
 
 // A subtree-scoped filesystem removal, never `apm uninstall -g`, which deletes
@@ -141,6 +145,8 @@ export type DeploySkillError =
   // apm's own verdict that the attempt placed nothing, worn under a success
   // marker (#358).
   | "deploy-recorded-invalid"
+  // apm reported an install Maestro could not confirm from the lockfile (#358).
+  | "deploy-unverified"
   | "deploy-failed";
 
 type DeploySkillResult =
@@ -257,12 +263,21 @@ export class DeploySkill {
         name: input.name,
         tools: globalTools,
       });
+      // Files apm placed under a package type it could not manage are apm's
+      // own, not local work: refusing the corrected release over them would
+      // strand the target on the broken one (#358).
+      const standing = await this.deps.recordedPackage.read({
+        target: input.target,
+        name: input.name,
+      });
+      const apmOwnsCopy =
+        standing.kind === "recorded" && standing.reading.kind !== "skill";
       // `force` never overrides "unreadable" or "lockfile-malformed": with no
       // baseline the overwrite would be blind, not informed (ADR-0006).
       if (deployedState === "diverged" && !input.force) {
         return { ok: false, error: "deployed-diverged-from-lock" };
       }
-      if (deployedState === "unverifiable" && !input.force) {
+      if (deployedState === "unverifiable" && !input.force && !apmOwnsCopy) {
         return { ok: false, error: "deployed-unverifiable" };
       }
       if (deployedState === "unreadable") {
@@ -300,13 +315,20 @@ export class DeploySkill {
         target: input.target,
         name: input.name,
       });
-      if (recorded !== null && recorded.kind !== "skill") {
-        return recorded.kind === "invalid"
-          ? { ok: false, error: "deploy-recorded-invalid" }
+      if (recorded.kind === "unverified") {
+        return { ok: false, error: "deploy-unverified" };
+      }
+      if (recorded.reading.kind !== "skill") {
+        return recorded.reading.kind === "invalid"
+          ? {
+              ok: false,
+              error: "deploy-recorded-invalid",
+              packageType: recorded.reading.packageType,
+            }
           : {
               ok: false,
               error: "deployed-unsupported-package-type",
-              packageType: recorded.packageType,
+              packageType: recorded.reading.packageType,
             };
       }
 

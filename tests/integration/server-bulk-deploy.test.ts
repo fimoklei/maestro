@@ -117,8 +117,13 @@ describe("bulk deploy HTTP route", () => {
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => false,
       },
-      // Nothing recorded: this journey is not about the post-install read (#358).
-      recordedPackage: { read: async () => null },
+      // A proven skill record: this journey is not about the post-install read.
+      recordedPackage: {
+        read: async () => ({
+          kind: "recorded" as const,
+          reading: { kind: "skill" as const, name: "tdd" },
+        }),
+      },
       deployedContent: {
         classify: async ({ name }) =>
           diverged.has(name) ? "diverged" : "not-deployed",

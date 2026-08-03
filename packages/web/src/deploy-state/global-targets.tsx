@@ -54,6 +54,8 @@ export function GlobalTargets({
               key={group.tool}
               group={group}
               drift={drift}
+              // Section-wide, since a skipped entry names no tool (#358).
+              attentionCount={skipped.filter(skippedNeedsAttention).length}
               // A removal triggered from one card covers every detected tool (#338).
               detectedTools={tools.map((detected) => detected.tool)}
             />
@@ -72,10 +74,12 @@ function ToolTargetCard({
   group,
   drift,
   detectedTools,
+  attentionCount,
 }: {
   group: ToolDeployState;
   drift: DriftViewModel;
   detectedTools: string[];
+  attentionCount: number;
 }) {
   const { label, destination } = toolPresentation(group.tool);
   // Where focus goes when a removal destroys the row it was triggered from.
@@ -83,7 +87,9 @@ function ToolTargetCard({
   const names = group.primitives.map((primitive) => primitive.name);
   // Narrowed to this tool's skills, so a skill behind elsewhere doesn't leak in.
   const toolDrift = drift.forTool(names);
-  const indicator = toolDrift.targetIndicator(toolDeployedView(names));
+  const indicator = toolDrift.targetIndicator(
+    toolDeployedView(names, undefined, attentionCount),
+  );
 
   return (
     <Card
