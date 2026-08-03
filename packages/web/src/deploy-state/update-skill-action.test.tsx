@@ -71,6 +71,48 @@ describe("Update action on a behind skill", () => {
     ).toBeInTheDocument();
   });
 
+  it("labels the action alone, and names the skill only to a screen reader", async () => {
+    // The row already prints the skill name three cells to the left, so the
+    // visible label must not repeat it — while the accessible name still must,
+    // since a screen reader reads the button out of that context.
+    stubReads(tddDeployed, {
+      behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+    });
+    renderPanel("/Users/me/project");
+
+    const update = await screen.findByRole("button", { name: /update tdd/i });
+    expect(update).toHaveTextContent("update →");
+    expect(update.textContent).not.toMatch(/tdd/);
+  });
+
+  it("states the action alone while an update is in flight too", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/deploy") && !url.includes("deploy-state")) {
+        // Never resolves: the pending label is the one under test.
+        return new Promise<Response>(() => undefined);
+      }
+      if (url.includes("/api/drift")) {
+        return jsonResponse({
+          behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+        });
+      }
+      return jsonResponse(tddDeployed, 200);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderPanel("/Users/me/project");
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /update tdd/i }),
+    );
+
+    const pending = await screen.findByRole("button", {
+      name: /updating tdd/i,
+    });
+    expect(pending).toHaveTextContent("updating…");
+    expect(pending.textContent).not.toMatch(/tdd/);
+  });
+
   it("offers no Update action for an up-to-date skill", async () => {
     stubReads(tddDeployed, { behind: [] });
     renderPanel("/Users/me/project");

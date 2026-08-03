@@ -8,7 +8,7 @@ describe("RegisterRepoHint", () => {
 
     expect(
       screen.getByText(
-        "No repositories registered yet — add one with + repo in the sidebar.",
+        "No repositories registered yet — register one with + repo in the sidebar.",
       ),
     ).toBeInTheDocument();
   });
