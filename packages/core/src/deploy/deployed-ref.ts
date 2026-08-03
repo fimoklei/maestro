@@ -4,6 +4,7 @@ import {
   claudeSkillName,
   type LockfileEntry,
   parseLockfile,
+  unreadableCovers,
 } from "../lockfile/lockfile";
 import type { FileSystemPort } from "../registry/file-system";
 import type { DeployTarget } from "./deploy-skill";
@@ -89,6 +90,11 @@ export class DeployedRefAdapter {
     }
     const parsed = parseLockfile(raw);
     if (!parsed.ok) {
+      return { ok: false, reason: "lockfile-malformed" };
+    }
+    // An entry we cannot read may be this very skill's, and "not deployed" would
+    // aim a removal at nothing while the copy stays on disk (#58, #357).
+    if (unreadableCovers(parsed.unreadable, input.name)) {
       return { ok: false, reason: "lockfile-malformed" };
     }
     return refForDeployedSkill(parsed.entries, input.name);

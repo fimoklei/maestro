@@ -92,7 +92,11 @@ describe("GlobalTargets", () => {
     renderTargets({
       tools: [],
       skipped: [
-        { virtualPath: "hooks/pre-commit", packageType: "claude_hook" },
+        {
+          reason: "unsupported-type",
+          virtualPath: "hooks/pre-commit",
+          packageType: "claude_hook",
+        },
       ],
     });
 

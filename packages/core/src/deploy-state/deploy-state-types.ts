@@ -6,6 +6,9 @@ export type DeployedPrimitive = {
   version: string;
 };
 
-// A parseable entry of an unsupported package_type, surfaced so the cockpit can
-// warn instead of silently dropping it.
-export type SkippedEntry = { virtualPath: string; packageType: string };
+// An entry that yielded no primitive, surfaced with its reason so the cockpit
+// warns instead of silently dropping it — and so "one entry could not be read"
+// never reads as "this lockfile is broken" (#357).
+export type SkippedEntry =
+  | { reason: "unsupported-type"; virtualPath: string; packageType: string }
+  | { reason: "unreadable"; virtualPath: string | null };

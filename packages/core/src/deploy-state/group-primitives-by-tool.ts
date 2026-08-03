@@ -29,6 +29,7 @@ export function groupPrimitivesByTool(
     const name = claudeSkillName(entry);
     if (name === null) {
       skipped.push({
+        reason: "unsupported-type",
         virtualPath: entry.virtual_path,
         packageType: entry.package_type,
       });

@@ -102,7 +102,11 @@ describe("groupPrimitivesByTool", () => {
       },
     ]);
     expect(result.skipped).toEqual([
-      { virtualPath: "hooks/format", packageType: "claude_hook" },
+      {
+        reason: "unsupported-type",
+        virtualPath: "hooks/format",
+        packageType: "claude_hook",
+      },
     ]);
   });
 });
