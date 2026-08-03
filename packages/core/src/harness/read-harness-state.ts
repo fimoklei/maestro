@@ -24,10 +24,12 @@ export type HarnessFacts = {
 };
 
 // One tree hash per canonical skill directory, at each of the four places a
-// skill's content can sit. A name absent from a map is a skill absent there.
+// skill's content can sit. A name absent from a map is a skill absent there —
+// except in `promote`, where the key is the branch and a null value is a
+// branch proposing to delete its skill.
 export type HarnessSkillTrees = {
   remote: Record<string, string>;
-  promote: Record<string, string>;
+  promote: Record<string, string | null>;
   local: Record<string, string>;
   working: Record<string, string>;
 };
@@ -173,7 +175,10 @@ const skillMovements = (trees: HarnessSkillTrees): HarnessMovement[] => {
   return [...names].sort().flatMap((skill) => {
     const state = classifyMovement({
       remote: trees.remote[skill] ?? null,
-      promote: trees.promote[skill] ?? null,
+      // Presence of the key, not of a hash: the branch may be deleting it.
+      promote: Object.hasOwn(trees.promote, skill)
+        ? { tree: trees.promote[skill] ?? null }
+        : null,
       local: trees.local[skill] ?? null,
       working: trees.working[skill] ?? null,
     });

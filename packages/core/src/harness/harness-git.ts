@@ -2,7 +2,7 @@
 // through argument arrays (security.md). Nothing leaves as stdout or stderr — a
 // failure leaves as a class, a read as a named field (ADR-0021).
 import { execFile } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { access, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -140,8 +140,11 @@ export class HarnessGitAdapter implements HarnessGitPort {
   }
 
   // Each promote branch is asked only about the skill it is named for: a
-  // branch carrying anything else is not that skill's review.
-  private async promoteTrees(root: string): Promise<Record<string, string>> {
+  // branch carrying anything else is not that skill's review. Every branch
+  // gets a key; a null value is a branch proposing to delete its skill.
+  private async promoteTrees(
+    root: string,
+  ): Promise<Record<string, string | null>> {
     const listing = await this.read(root, [
       "for-each-ref",
       `--format=%(refname:lstrip=${PROMOTE_BRANCHES.split("/").length})`,
@@ -157,12 +160,10 @@ export class HarnessGitAdapter implements HarnessGitPort {
           "rev-parse",
           `${PROMOTE_BRANCHES}/${skill}:${harnessSkillSubpath(skill)}`,
         ]);
-        // A branch that only deletes its skill leaves no tree to hash, so it
-        // does not surface here — a deletion under review is not yet read.
-        return hash === null ? [] : [[skill, hash] as const];
+        return [skill, hash] as const;
       }),
     );
-    return Object.fromEntries(named.flat());
+    return Object.fromEntries(named);
   }
 
   // Writes to a throwaway index, so `add` sees untracked files and deletions
@@ -171,20 +172,27 @@ export class HarnessGitAdapter implements HarnessGitPort {
   private async workingSkillTrees(
     root: string,
   ): Promise<Record<string, string>> {
+    // No skills path is an empty harness. Every other failure below is left to
+    // throw: reading one as "nothing on disk" would show the author's whole
+    // harness as locally deleted, which is a confident wrong answer.
+    if (!(await pathExists(join(root, HARNESS_SKILLS_DIR)))) {
+      return {};
+    }
+
     const indexDir = await mkdtemp(join(tmpdir(), "maestro-harness-index-"));
-    // The file does not exist yet, and git reads an absent index as an empty
-    // one — so `add` starts from nothing without a read-tree to empty it.
     const env = { ...process.env, GIT_INDEX_FILE: join(indexDir, "index") };
     try {
+      // Seeded from HEAD, because git exempts only already-tracked files from
+      // the ignore rules — from an empty index a tracked-but-ignored skill
+      // file would silently drop out of the hash. An unborn HEAD has none.
+      await run("git", ["-C", root, "read-tree", "HEAD"], { env }).catch(
+        () => {},
+      );
       await run("git", ["-C", root, "add", "-A", "--", HARNESS_SKILLS_DIR], {
         env,
       });
       const { stdout } = await run("git", ["-C", root, "write-tree"], { env });
       return await this.skillTreesAt(root, stdout.trim());
-    } catch {
-      // No skills path on disk at all — `add` refuses a pathspec that matches
-      // nothing, and that is an empty harness, not a broken read.
-      return {};
     } finally {
       await rm(indexDir, { recursive: true, force: true });
     }
@@ -220,3 +228,9 @@ export class HarnessGitAdapter implements HarnessGitPort {
     });
   }
 }
+
+const pathExists = (path: string): Promise<boolean> =>
+  access(path).then(
+    () => true,
+    () => false,
+  );

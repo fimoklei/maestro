@@ -202,6 +202,24 @@ describe("ReadHarnessState movements", () => {
     });
   });
 
+  it("surfaces a promote branch that proposes deleting its skill", async () => {
+    // The branch carries no tree for the skill, which is not the same fact as
+    // there being no branch — a deletion is a review like any other.
+    const read = buildRead({
+      trees: {
+        remote: { tdd: "same" },
+        promote: { tdd: null },
+        local: { tdd: "same" },
+        working: { tdd: "same" },
+      },
+    });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: { movements: [{ skill: "tdd", state: "pending-review" }] },
+    });
+  });
+
   it("leaves a clone that is only behind with nothing of its own waiting", async () => {
     const read = buildRead({
       trees: {

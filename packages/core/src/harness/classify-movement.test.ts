@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { classifyMovement, type SkillTreeHashes } from "./classify-movement";
 
 // A skill whose content is the same everywhere: the released, quiet case each
-// test moves one hash away from.
+// test moves one hash away from. No promote branch carries it.
 const SETTLED: SkillTreeHashes = {
   remote: "same",
   promote: null,
@@ -10,13 +10,16 @@ const SETTLED: SkillTreeHashes = {
   working: "same",
 };
 
+/** A promote branch that exists and carries `tree` — absent when null. */
+const branch = (tree: string | null) => ({ tree });
+
 describe("classifyMovement", () => {
   it("reads a skill that is the same everywhere as nothing pending", () => {
     expect(classifyMovement(SETTLED)).toBeNull();
   });
 
   it("reads a promote branch the default branch does not carry as pending review", () => {
-    expect(classifyMovement({ ...SETTLED, promote: "pushed" })).toBe(
+    expect(classifyMovement({ ...SETTLED, promote: branch("pushed") })).toBe(
       "pending-review",
     );
   });
@@ -24,7 +27,9 @@ describe("classifyMovement", () => {
   it("stops calling a merged promote branch pending review", () => {
     // The branch content reached origin/HEAD, so the review is over even though
     // nobody deleted the branch.
-    expect(classifyMovement({ ...SETTLED, promote: "same" })).toBeNull();
+    expect(
+      classifyMovement({ ...SETTLED, promote: branch("same") }),
+    ).toBeNull();
   });
 
   it("reads edited working content as pending promotion", () => {
@@ -80,7 +85,7 @@ describe("classifyMovement", () => {
     expect(
       classifyMovement({
         remote: "same",
-        promote: "pushed",
+        promote: branch("pushed"),
         local: "same",
         working: "edited",
       }),
@@ -88,14 +93,33 @@ describe("classifyMovement", () => {
   });
 
   it("tests origin/HEAD before the promote branch", () => {
-    // A promote branch left behind on an older revision is not a review the
-    // team is waiting on — it is a stale branch, and the merged content wins.
+    // The branch's content reached origin/HEAD while this clone stayed behind.
+    // Reading the branch first would call the merged work a review still open.
     expect(
       classifyMovement({
         remote: "newer",
-        promote: "newer",
+        promote: branch("newer"),
         local: "older",
         working: "older",
+      }),
+    ).toBeNull();
+  });
+
+  it("reads a promote branch that removes the skill as pending review", () => {
+    // Deleting a skill is a proposal like any other, and it is exactly the
+    // branch that carries no tree to hash.
+    expect(classifyMovement({ ...SETTLED, promote: branch(null) })).toBe(
+      "pending-review",
+    );
+  });
+
+  it("keeps a branch that removes a skill the harness never had quiet", () => {
+    expect(
+      classifyMovement({
+        remote: null,
+        promote: branch(null),
+        local: null,
+        working: null,
       }),
     ).toBeNull();
   });

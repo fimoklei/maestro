@@ -1,13 +1,17 @@
 // Where one skill sits, from tree hashes alone (ADR-0021).
 
+// A promote branch that carries no tree for its skill is proposing to delete
+// it, which is not the same fact as having no promote branch at all.
+export type PromoteBranch = { tree: string | null };
+
 // `null` is a skill absent at that ref, and compares like any other value: an
 // absent skill differs from a present one, which is what makes an addition and
 // a deletion fall out of the same two tests below.
 export type SkillTreeHashes = {
   /** The skill's tree at `origin/HEAD` — the merged truth. */
   remote: string | null;
-  /** Its tree on `maestro/<skill>`, the promote branch, or null if there is none. */
-  promote: string | null;
+  /** Its `maestro/<skill>` promote branch, or null when there is none. */
+  promote: PromoteBranch | null;
   /** Its tree at local `HEAD`. */
   local: string | null;
   /** Its tree on disk, untracked files included. */
@@ -22,10 +26,10 @@ export const classifyMovement = ({
   local,
   working,
 }: SkillTreeHashes): MovementState | null => {
-  // origin/HEAD is tested first, so a promote branch whose content already
-  // merged is over, and a branch left on an older revision is stale rather
-  // than a review the team is waiting on.
-  if (promote !== null && promote !== remote) {
+  // origin/HEAD is tested first, so a branch whose content already merged is
+  // over. Anything else is a review still open, an older branch included:
+  // proving it merged needs commit ancestry, which ADR-0021 rules out.
+  if (promote !== null && promote.tree !== remote) {
     return "pending-review";
   }
   // Differing from local HEAD too is what separates the author's own edit from

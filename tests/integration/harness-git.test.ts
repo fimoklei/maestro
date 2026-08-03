@@ -228,6 +228,55 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
       expect(trees.promote.tdd).not.toBe(trees.remote.tdd);
     });
 
+    it("names a promote branch that proposes deleting its skill", async () => {
+      // The branch carries no tree to hash, and dropping it would hide a
+      // deletion that is waiting for review.
+      await git(root, "checkout", "-q", "-b", "maestro/tdd");
+      await rm(join(root, ".apm", "skills", "tdd"), { recursive: true });
+      await git(root, "add", "-A");
+      await git(root, "commit", "-q", "-m", "propose removing tdd");
+      await git(root, "push", "-q", "origin", "HEAD:refs/heads/maestro/tdd");
+      await git(root, "checkout", "-q", "-");
+      await adapter().fetch(root);
+
+      const trees = await adapter().readSkillTrees(root);
+
+      expect(Object.hasOwn(trees.promote, "tdd")).toBe(true);
+      expect(trees.promote.tdd).toBeNull();
+    });
+
+    it("hashes a tracked skill file the same even when a rule ignores it", async () => {
+      // git exempts an already-tracked file from the ignore rules. An index
+      // built from nothing knows of no tracked files, so the file would drop
+      // out and an untouched skill would read as edited.
+      await writeFile(join(root, ".gitignore"), "*.log\n", "utf8");
+      await writeFile(
+        join(root, ".apm", "skills", "tdd", "notes.log"),
+        "kept\n",
+        "utf8",
+      );
+      await git(root, "add", "-A", "-f");
+      await git(root, "commit", "-q", "-m", "track an ignored file");
+
+      const trees = await adapter().readSkillTrees(root);
+
+      expect(trees.working.tdd).toBe(trees.local.tdd);
+    });
+
+    it("refuses to read a failed git call as a harness with nothing on disk", async () => {
+      // Reporting every skill as gone would be a confident wrong answer, and
+      // the author would see their whole harness as deleted locally.
+      const notARepo = join(base, "loose");
+      await mkdir(join(notARepo, ".apm", "skills", "tdd"), { recursive: true });
+      await writeFile(
+        join(notARepo, ".apm", "skills", "tdd", "SKILL.md"),
+        "---\n---\n",
+        "utf8",
+      );
+
+      await expect(adapter().readSkillTrees(notARepo)).rejects.toThrow();
+    });
+
     it("reads a harness with no skills directory as no skills at all", async () => {
       await rm(join(root, ".apm"), { recursive: true, force: true });
       await git(root, "add", ".");
