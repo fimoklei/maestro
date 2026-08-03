@@ -1,6 +1,7 @@
-// Who holds the cockpit's ports. Every worktree serves on the same
-// localhost:3000/5173, so a server left running in a sibling keeps answering
-// and a screenshot proves the wrong tree (.claude/skills/verify-in-smoke).
+// Who holds the cockpit's ports. Each worktree serves on its own pair
+// (scripts/cockpit-ports.mjs), so a holder here is either this worktree's own
+// previous run or an unrelated process — never a sibling's, unless two pairs
+// collide, which this still refuses (.claude/skills/verify-in-smoke).
 import { execFileSync } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { sep } from "node:path";

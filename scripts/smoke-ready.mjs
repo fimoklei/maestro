@@ -7,20 +7,18 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { cockpitPorts, cockpitUrls } from "./cockpit-ports.mjs";
 import { pidsOnPort } from "./port-holders.mjs";
 import { MARKER_FILE, seededPaths } from "./seed-sandbox.mjs";
 
-const SERVER_ORIGIN = "http://127.0.0.1:3000";
-// By name, not by address: Vite binds localhost, which on this machine resolves
-// to ::1 only — probing 127.0.0.1 reports a running cockpit as absent
-// (measured 2026-07-26, vite 8.1.5).
-const WEB_ORIGIN = "http://localhost:5173";
+const PORTS = cockpitPorts();
+const { web: WEB_ORIGIN, api: SERVER_ORIGIN } = cockpitUrls(PORTS);
 // The cockpit's own origin: the server refuses a state-changing request without
 // an allowlisted Origin header (packages/server/src/origin-host-guard.ts).
-const BROWSER_ORIGIN = "http://localhost:5173";
+const BROWSER_ORIGIN = WEB_ORIGIN;
 // Both ports `dev.mjs` binds as one group, so ownership covers what the browser
 // renders and not only what the API answers.
-const COCKPIT_PORTS = [3000, 5173];
+const COCKPIT_PORTS = [PORTS.server, PORTS.web];
 
 const wallClock = () => Date.now();
 const realSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -206,7 +204,7 @@ function requireOwnership(repoRoot, label, refusal) {
 function check(repoRoot) {
   requireOwnership(repoRoot, "smoke:check", "the cockpit is not yours");
   console.log(
-    `[smoke:check] ports ${COCKPIT_PORTS.join(" and ")} still belong to this checkout's \`pnpm smoke\` run.`,
+    `[smoke:check] ${WEB_ORIGIN} (ports ${COCKPIT_PORTS.join(" and ")}) still belongs to this checkout's \`pnpm smoke\` run.`,
   );
 }
 
@@ -229,7 +227,7 @@ async function main() {
     // Fail closed: an unanswered cockpit is not a slow one we may assume into
     // existence.
     console.error(
-      "[smoke:ready] nothing answered on 127.0.0.1:3000 and :5173 within 60s.\n" +
+      `[smoke:ready] nothing answered on ${SERVER_ORIGIN} and ${WEB_ORIGIN} within 60s.\n` +
         "Start the cockpit first: `pnpm smoke` (in the background), then re-run this.",
     );
     process.exit(1);
