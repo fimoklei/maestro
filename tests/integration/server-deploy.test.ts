@@ -506,10 +506,11 @@ describe("deploy HTTP route", () => {
     });
 
     expect(res.status).toBe(409);
-    expect(await res.json()).toEqual({
-      error: "local-diverged-from-tag",
-      message: expect.stringMatching(/tag/i),
-    });
+    const body = (await res.json()) as { error: string; message: string };
+    expect(body.error).toBe("local-diverged-from-tag");
+    expect(body.message).toMatch(/tag and push the change first/i);
+    // The cockpit's voice never addresses the reader as "you" (PRODUCT.md).
+    expect(body.message).not.toMatch(/\byou\b|\byour\b/i);
     expect(deployCalls).toEqual([]);
   });
 

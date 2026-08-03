@@ -38,7 +38,7 @@ export function DeployStatePanel({
         <p className="px-card-x py-row-y text-dim text-tag">Loading…</p>
       ) : deployState.isError ? (
         <p role="alert" className="px-card-x py-row-y text-amber-ink text-tag">
-          Could not read this repo's deploy-state.
+          Could not read this repo's deploy-state. Reload the page to try again.
         </p>
       ) : (
         <DeployStateList

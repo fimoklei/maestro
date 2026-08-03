@@ -121,8 +121,10 @@ describe("DeployStatePanel", () => {
     );
     renderPanel("/Users/me/project");
 
+    // The whole sentence, recovery included: a read failure with no way out
+    // leaves the user guessing.
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      /could not read/i,
+      "Could not read this repo's deploy-state. Reload the page to try again.",
     );
   });
 

@@ -32,7 +32,7 @@ export const InsideAView: Story = {
   args: {
     level: 3,
     title: "Global targets",
-    meta: "supported coding assistants",
+    meta: "2 detected",
   },
 };
 

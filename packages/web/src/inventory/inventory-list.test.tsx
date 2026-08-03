@@ -141,9 +141,9 @@ describe("InventoryList", () => {
 
     // Once for the whole list, not once per row: a 36-skill inventory would
     // otherwise print the same sentence 36 times.
-    expect(
-      screen.getAllByText(/consuming repos are registered via/i),
-    ).toHaveLength(1);
+    expect(screen.getAllByText(/no repositories registered yet/i)).toHaveLength(
+      1,
+    );
   });
 
   it("hides the hint while the registry is still unread", () => {
@@ -159,7 +159,7 @@ describe("InventoryList", () => {
     );
 
     expect(
-      screen.queryByText(/consuming repos are registered via/i),
+      screen.queryByText(/no repositories registered yet/i),
     ).not.toBeInTheDocument();
   });
 
@@ -207,7 +207,7 @@ describe("InventoryList", () => {
     );
 
     expect(
-      screen.queryByText(/consuming repos are registered via/i),
+      screen.queryByText(/no repositories registered yet/i),
     ).not.toBeInTheDocument();
   });
 

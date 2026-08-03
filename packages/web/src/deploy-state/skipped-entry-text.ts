@@ -7,7 +7,7 @@ const RELEASE_AGAIN =
 
 export function skippedEntryText(entry: SkippedEntry): string {
   if (entry.reason === "unsupported-type") {
-    return `Skipped ${entry.virtualPath} (unsupported type ${entry.packageType}).`;
+    return `Skipped ${entry.virtualPath} — Maestro does not manage ${entry.packageType}. Its files are still in place.`;
   }
   if (entry.reason === "unmanageable-skill") {
     return `${entry.virtualPath} is deployed as ${entry.packageType}, which Maestro cannot manage as a skill. Its files are still in place. ${RELEASE_AGAIN}`;

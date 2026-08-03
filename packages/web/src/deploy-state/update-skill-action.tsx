@@ -18,15 +18,20 @@ export function UpdateSkillAction({
 
   return (
     <span>
+      {/* The row already names the skill three cells to the left, so the label
+          states the action alone; the accessible name still carries the name. */}
       <Button
         variant="ghost"
         size="sm"
         disabled={deploy.isPending}
+        aria-label={
+          deploy.isPending ? `Updating ${skillName}…` : `Update ${skillName}`
+        }
         onClick={() =>
           deploy.mutate({ type: "skill", name: skillName, target })
         }
       >
-        {deploy.isPending ? `Updating ${skillName}…` : `Update ${skillName}`}
+        {deploy.isPending ? "updating…" : "update →"}
       </Button>
       {deploy.isError ? (
         // Offers an inline confirmed reinstall instead of dead-ending (ADR-0006, #66).

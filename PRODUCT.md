@@ -2,13 +2,8 @@
 
 Strategic design context for Maestro. The full product thesis lives in
 `docs/brief.md`; this file carries the design-relevant distillation and the
-decisions that only exist here (register, platform, anti-references,
-accessibility). On any conflict about product scope or the MVP1 bet,
-`docs/brief.md` wins.
-
-## Register
-
-product
+decisions that only exist here (platform, anti-references, accessibility). On
+any conflict about product scope or the MVP1 bet, `docs/brief.md` wins.
 
 ## Platform
 

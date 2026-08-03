@@ -160,7 +160,7 @@ const deployErrorResponses: Record<
   "local-diverged-from-tag": {
     status: 409,
     message:
-      "Your local skill differs from its latest published tag. Tag and push your change first.",
+      "The local skill differs from its latest published tag. Tag and push the change first.",
   },
   "deployed-diverged-from-lock": {
     status: 409,
