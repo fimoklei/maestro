@@ -23,7 +23,7 @@ type BulkRemoveCostRow = {
   reason: string;
 };
 
-export type BulkRemoveRefusalRow = { label: string; reason: string };
+type BulkRemoveRefusalRow = { label: string; reason: string };
 
 export type BulkRemoveDialogView =
   // No target has been priced yet, so no group can be drawn. Answered-of-total
