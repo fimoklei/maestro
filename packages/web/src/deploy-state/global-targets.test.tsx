@@ -73,6 +73,25 @@ describe("GlobalTargets", () => {
     expect(screen.getByText(/global targets/i)).toBeInTheDocument();
   });
 
+  it("counts the detected tools beside the section title", () => {
+    renderTargets({
+      tools: [
+        { tool: "claude", primitives: [] },
+        { tool: "codex", primitives: [] },
+      ],
+    });
+
+    expect(screen.getByText("2 detected")).toBeInTheDocument();
+  });
+
+  it("states no count before the read has landed", () => {
+    // An unread section is not a zero-tool one — the same J03 split the body
+    // already makes between loading, failed, and honestly empty.
+    renderTargets({ isLoading: true });
+
+    expect(screen.queryByText(/detected/i)).not.toBeInTheDocument();
+  });
+
   it("renders one card per detected tool, headlined by the tool name", () => {
     renderTargets({
       tools: [
@@ -144,6 +163,8 @@ describe("GlobalTargets", () => {
     renderTargets({ isError: true });
 
     expect(screen.getByRole("alert")).toHaveTextContent(/could not read/i);
+    // A read failure names a way out; a dead end leaves the user guessing.
+    expect(screen.getByRole("alert")).toHaveTextContent(/reload the page/i);
     // The error must not be mistaken for "no tools detected".
     expect(
       screen.queryByText(/install claude code or codex/i),

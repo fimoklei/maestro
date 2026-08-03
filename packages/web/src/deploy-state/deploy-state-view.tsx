@@ -96,7 +96,7 @@ function RepositoriesSection() {
         <p className="text-dim text-tag">Loading registered repos…</p>
       ) : isError ? (
         <p role="alert" className="text-amber-ink text-tag">
-          Could not load registered repos.
+          Could not load registered repos. Reload the page to try again.
         </p>
       ) : null}
     </section>

@@ -270,7 +270,7 @@ export function DeployStateList({
       <RemovalTrace removed={removed} />
       {orphans.length > 0 && (
         <p className="px-card-x py-row-y text-amber-ink text-tag">
-          Also behind (not deployed here): {orphans.join(", ")}
+          Reported behind, not deployed here: {orphans.join(", ")}
         </p>
       )}
       {skipped.length > 0 && (

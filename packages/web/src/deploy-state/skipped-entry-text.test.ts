@@ -13,7 +13,9 @@ describe("skippedEntryText", () => {
         virtualPath: "hooks/format",
         packageType: "claude_hook",
       }),
-    ).toBe("Skipped hooks/format (unsupported type claude_hook).");
+    ).toBe(
+      "Skipped hooks/format — Maestro does not manage claude_hook. Its files are still in place.",
+    );
   });
 
   it("names the recorded type of an unsupported deployment and says the files stay", () => {

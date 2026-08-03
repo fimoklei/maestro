@@ -61,7 +61,7 @@ describe("DeploySkillAction", () => {
       await screen.findByRole("button", { name: /deploy/i }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText(/consuming repos are registered via/i),
+      screen.queryByText(/no repositories registered yet/i),
     ).not.toBeInTheDocument();
   });
 
@@ -338,7 +338,7 @@ describe("DeploySkillAction", () => {
             JSON.stringify({
               error: "local-diverged-from-tag",
               message:
-                "Your local skill differs from its latest published tag. Tag and push your change first.",
+                "The local skill differs from its latest published tag. Tag and push the change first.",
             }),
             {
               status: 409,
@@ -354,7 +354,7 @@ describe("DeploySkillAction", () => {
     await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      /tag and push your change/i,
+      /tag and push the change/i,
     );
   });
 

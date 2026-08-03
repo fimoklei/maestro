@@ -32,16 +32,18 @@ export function GlobalTargets({
 }) {
   return (
     <section>
+      {/* A count, like every other section's meta — an unread section states
+          none, since zero detected is a finding, not a blank. */}
       <SectionHeader
         level={3}
         title="Global targets"
-        meta="supported coding assistants"
+        meta={isLoading || isError ? undefined : `${tools.length} detected`}
       />
       {isLoading ? (
         <p className="text-dim text-tag">Loading…</p>
       ) : isError ? (
         <p role="alert" className="text-amber-ink text-tag">
-          Could not read the global deploy-state.
+          Could not read the global deploy-state. Reload the page to try again.
         </p>
       ) : tools.length === 0 ? (
         <p role="status" className="text-dim text-tag">

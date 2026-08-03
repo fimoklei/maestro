@@ -225,7 +225,7 @@ describe("Update action on a behind skill", () => {
           JSON.stringify({
             error: "local-diverged-from-tag",
             message:
-              "Your local skill differs from its latest published tag. Tag and push your change first.",
+              "The local skill differs from its latest published tag. Tag and push the change first.",
           }),
           { status: 409, headers: { "content-type": "application/json" } },
         );
@@ -245,7 +245,7 @@ describe("Update action on a behind skill", () => {
     );
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      /tag and push your change/i,
+      /tag and push the change/i,
     );
   });
 
@@ -388,7 +388,7 @@ describe("Update action on a behind skill", () => {
           JSON.stringify({
             error: "local-diverged-from-tag",
             message:
-              "Your local skill differs from its latest published tag. Tag and push your change first.",
+              "The local skill differs from its latest published tag. Tag and push the change first.",
           }),
           { status: 409, headers: { "content-type": "application/json" } },
         );

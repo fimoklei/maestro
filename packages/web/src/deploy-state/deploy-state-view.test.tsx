@@ -154,7 +154,7 @@ describe("DeployStateView sections", () => {
 
     expect(screen.getByText(/loading registered repos/i)).toBeInTheDocument();
     expect(
-      screen.queryByText(/consuming repos are registered via/i),
+      screen.queryByText(/no repositories registered yet/i),
     ).not.toBeInTheDocument();
   });
 
@@ -170,7 +170,7 @@ describe("DeployStateView sections", () => {
     ).toBeInTheDocument();
     // A failed registry read must not masquerade as "no repos registered".
     expect(
-      screen.queryByText(/consuming repos are registered via/i),
+      screen.queryByText(/no repositories registered yet/i),
     ).not.toBeInTheDocument();
   });
 
@@ -239,7 +239,7 @@ describe("DeployStateView sections", () => {
     // as a state of that section rather than a stray line under Global targets.
     expect(heading.parentElement).toContainElement(meta);
     expect(
-      screen.getByText(/consuming repos are registered via/i),
+      screen.getByText(/no repositories registered yet/i),
     ).toBeInTheDocument();
   });
 
@@ -259,7 +259,7 @@ describe("DeployStateView sections", () => {
     // The card labels the repo by its path tail; its full path is the title (#211).
     expect(await screen.findByTitle("/Users/me/a")).toBeInTheDocument();
     expect(
-      screen.queryByText(/consuming repos are registered via/i),
+      screen.queryByText(/no repositories registered yet/i),
     ).not.toBeInTheDocument();
   });
 

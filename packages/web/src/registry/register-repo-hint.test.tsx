@@ -3,12 +3,12 @@ import { describe, expect, it } from "vitest";
 import { RegisterRepoHint } from "./register-repo-hint";
 
 describe("RegisterRepoHint", () => {
-  it("names where consuming repos are registered", () => {
+  it("states the empty registry and names where a repo is registered", () => {
     render(<RegisterRepoHint />);
 
     expect(
       screen.getByText(
-        "Consuming repos are registered via + repo in the sidebar.",
+        "No repositories registered yet — add one with + repo in the sidebar.",
       ),
     ).toBeInTheDocument();
   });
