@@ -68,8 +68,13 @@ export {
   type HarnessState,
   type HarnessStateError,
   type HarnessStateResult,
+  type PendingSkillMovement,
   ReadHarnessState,
 } from "./harness/read-harness-state";
+export type {
+  SkillMovement,
+  SkillMovementKind,
+} from "./harness/skill-movements";
 export {
   ConnectInventory,
   type ConnectInventoryError,

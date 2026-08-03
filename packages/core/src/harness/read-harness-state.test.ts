@@ -5,6 +5,7 @@ import type {
   HarnessFreshness,
 } from "./read-harness-state";
 import { ReadHarnessState } from "./read-harness-state";
+import type { HarnessSkillTree } from "./skill-movements";
 
 // A harness Maestro has fetched at least once: only then do the tags it reads
 // mean anything.
@@ -40,13 +41,25 @@ function stubFreshness(
   };
 }
 
+// Skill trees per ref, keyed by the commit the use-case asks about. Anything
+// unlisted is a ref carrying no skills at all; an explicit null is a ref the
+// adapter could not read.
+type TreesByRef = Record<string, HarnessSkillTree[] | null>;
+
 function buildRead(overrides?: {
   facts?: Partial<HarnessFacts>;
   root?: string | undefined;
   resolveRoot?: () => Promise<string | undefined>;
   fetch?: () => Promise<HarnessFetchOutcome>;
   freshness?: ReturnType<typeof stubFreshness>;
+  trees?: TreesByRef;
+  authors?: Record<string, string>;
+  // Who the released ref's own history names, where the default branch's
+  // history names nobody.
+  authorsAtRelease?: Record<string, string>;
 }) {
+  const head =
+    overrides?.facts?.defaultBranchCommit ?? FACTS.defaultBranchCommit;
   return new ReadHarnessState({
     resolveRoot:
       overrides?.resolveRoot ??
@@ -55,6 +68,15 @@ function buildRead(overrides?: {
     git: {
       fetch: overrides?.fetch ?? (async () => "fetched"),
       readFacts: async () => ({ ...FACTS, ...overrides?.facts }),
+      readSkillTrees: async (_root: string, ref: string) =>
+        overrides?.trees?.[ref] === undefined ? [] : overrides.trees[ref],
+      readSkillAuthors: async (_root: string, ref: string, names: string[]) => {
+        const known =
+          ref === head ? overrides?.authors : overrides?.authorsAtRelease;
+        return Object.fromEntries(
+          names.map((name) => [name, known?.[name] ?? null]),
+        );
+      },
     },
     freshness: overrides?.freshness ?? stubFreshness(FETCHED),
   });
@@ -71,7 +93,71 @@ describe("ReadHarnessState", () => {
         releasedVersion: "v0.5.0",
         defaultBranch: "main",
         releaseState: "released",
+        pendingRelease: [],
         freshness: FETCHED,
+      },
+    });
+  });
+
+  it("names each movement's author alongside what merged since the release", async () => {
+    const read = buildRead({
+      facts: { defaultBranchCommit: "bbb" },
+      trees: {
+        aaa: [
+          { name: "tdd", treeHash: "t1" },
+          { name: "grilling", treeHash: "g1" },
+        ],
+        bbb: [
+          { name: "tdd", treeHash: "t2" },
+          { name: "research", treeHash: "r1" },
+        ],
+      },
+      authors: { tdd: "Ada", research: "Grace", grilling: "Linus" },
+    });
+
+    const result = await read.execute();
+
+    expect(result).toMatchObject({
+      ok: true,
+      state: {
+        pendingRelease: [
+          { kind: "removed", name: "grilling", author: "Linus" },
+          { kind: "added", name: "research", author: "Grace" },
+          { kind: "changed", name: "tdd", author: "Ada" },
+        ],
+      },
+    });
+  });
+
+  it("calls the comparison unknown when a ref's skills could not be read", async () => {
+    // An unreadable ref is not an empty harness: reading it as one would
+    // report every skill as removed (LEARNINGS.md · J04).
+    const read = buildRead({
+      facts: { defaultBranchCommit: "bbb" },
+      trees: { aaa: [{ name: "tdd", treeHash: "t1" }], bbb: null },
+    });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: { releaseState: "unknown", pendingRelease: [] },
+    });
+  });
+
+  it("names a removal's author from the release when the branch never had it", async () => {
+    // A tag on another history carries a skill the default branch never saw,
+    // so a log of that path at the branch answers nothing.
+    const read = buildRead({
+      facts: { defaultBranchCommit: "bbb" },
+      trees: { aaa: [{ name: "grilling", treeHash: "g1" }], bbb: [] },
+      authorsAtRelease: { grilling: "Linus" },
+    });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: {
+        pendingRelease: [
+          { kind: "removed", name: "grilling", author: "Linus" },
+        ],
       },
     });
   });
@@ -109,7 +195,12 @@ describe("ReadHarnessState", () => {
 
     expect(result).toMatchObject({
       ok: true,
-      state: { releasedVersion: "v0.5.0", releaseState: "unknown" },
+      state: {
+        releasedVersion: "v0.5.0",
+        releaseState: "unknown",
+        // Nothing to compare against is not "nothing merged".
+        pendingRelease: [],
+      },
     });
   });
 
@@ -222,6 +313,8 @@ describe("ReadHarnessState refresh", () => {
           readFor.push(root);
           return FACTS;
         },
+        readSkillTrees: async () => [],
+        readSkillAuthors: async () => ({}),
       },
       freshness: stubFreshness(),
     });
