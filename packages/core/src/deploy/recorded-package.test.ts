@@ -21,7 +21,10 @@ describe("RecordedPackageAdapter", () => {
   it("reads the package_type apm recorded for the deployed skill", async () => {
     const read = adapter({ [LOCKFILE]: lockfile("skills/tdd", "invalid") });
 
-    await expect(read.read({ target, name: "tdd" })).resolves.toBe("invalid");
+    await expect(read.read({ target, name: "tdd" })).resolves.toEqual({
+      kind: "invalid",
+      packageType: "invalid",
+    });
   });
 
   it("answers null when no lockfile exists", async () => {
@@ -34,8 +37,19 @@ describe("RecordedPackageAdapter", () => {
     await expect(read.read({ target, name: "tdd" })).resolves.toBeNull();
   });
 
-  it("does not let another package's entry answer for the skill", async () => {
-    const read = adapter({ [LOCKFILE]: lockfile("hooks/tdd", "claude_hook") });
+  it("reads an entry a harness recorded under its own subpath", async () => {
+    const read = adapter({
+      [LOCKFILE]: lockfile(".apm/skills/tdd", "hybrid"),
+    });
+
+    await expect(read.read({ target, name: "tdd" })).resolves.toEqual({
+      kind: "unsupported",
+      packageType: "hybrid",
+    });
+  });
+
+  it("does not let another skill's entry answer for this one", async () => {
+    const read = adapter({ [LOCKFILE]: lockfile("skills/review", "invalid") });
 
     await expect(read.read({ target, name: "tdd" })).resolves.toBeNull();
   });

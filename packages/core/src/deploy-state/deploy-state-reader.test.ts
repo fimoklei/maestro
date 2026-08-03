@@ -54,7 +54,7 @@ describe("DeployStateReader", () => {
       primitives: [],
       skipped: [
         {
-          reason: "unsupported-package",
+          reason: "unmanageable-skill",
           virtualPath: "skills/tdd",
           packageType: "hybrid",
         },

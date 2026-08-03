@@ -1,7 +1,12 @@
 // Reads back what apm recorded for the skill it just installed. apm exits 0 and
 // prints its success marker even for a package it recorded as invalid, so this
 // is the only machine-readable verdict there is (#358, apm-behavior.md).
-import { parseLockfile } from "../lockfile/lockfile";
+import { basename } from "node:path";
+import {
+  type PackageReading,
+  parseLockfile,
+  readPackage,
+} from "../lockfile/lockfile";
 import type { FileSystemPort } from "../registry/file-system";
 import type { DeployTarget, RecordedPackagePort } from "./deploy-skill";
 import type { DeployedLocation } from "./deployed-location";
@@ -21,7 +26,7 @@ export class RecordedPackageAdapter implements RecordedPackagePort {
   async read(input: {
     target: DeployTarget;
     name: string;
-  }): Promise<string | null> {
+  }): Promise<PackageReading | null> {
     const raw = await this.fs.readFile(
       this.location.lockfilePath(input.target),
     );
@@ -32,14 +37,13 @@ export class RecordedPackageAdapter implements RecordedPackagePort {
     if (!parsed.ok) {
       return null;
     }
-    // An entry too broken to parse leaves nothing recorded, and the install apm
-    // proved stands: inventing a failure from an unreadable row would be the
-    // opposite lie to the one this read exists to stop (#357, #358).
-    // The exact path our own deploy writes, so a hook or a vendored lookalike
-    // can never answer for the skill that was asked for (deployed-ref.ts).
+    // basename, never a literal `skills/<name>`: a harness is free to record
+    // its own subpath (LEARNINGS · ref-subpath-is-literal).
     const entry = parsed.entries.find(
-      (candidate) => candidate.virtual_path === `skills/${input.name}`,
+      (candidate) => basename(candidate.virtual_path) === input.name,
     );
-    return entry?.package_type ?? null;
+    // Nothing recorded — no entry, or one too broken to parse — leaves the
+    // install apm proved standing (#357).
+    return entry === undefined ? null : readPackage(entry);
   }
 }

@@ -58,12 +58,12 @@ export class BulkDeploySkills {
       }
       if (result.ok) {
         deployed.push({ name, version: result.deployed.version });
-      } else if (ATTENTION_ERRORS.has(result.error)) {
+      } else if (ATTENTION[result.error]) {
         attention.push({
           name,
           error: result.error,
           ...(result.packageType ? { packageType: result.packageType } : {}),
-          forceable: FORCEABLE_ERRORS.has(result.error),
+          forceable: ATTENTION[result.error]?.forceable ?? false,
         });
       } else {
         const names = failures.get(result.error) ?? [];
@@ -81,17 +81,11 @@ export class BulkDeploySkills {
   }
 }
 
-// A refusal the user acts on, whether or not a force is the action. Every other
-// error is a genuine failure — including apm's invalid verdict, which deployed
-// nothing (#358).
-const ATTENTION_ERRORS: ReadonlySet<DeploySkillError> = new Set([
-  "deployed-diverged-from-lock",
-  "deployed-unverifiable",
-  "deployed-unsupported-package-type",
-]);
-
-// Exactly the refusals a per-item force can override (ADR-0006).
-const FORCEABLE_ERRORS: ReadonlySet<DeploySkillError> = new Set([
-  "deployed-diverged-from-lock",
-  "deployed-unverifiable",
-]);
+// One owner for both readings: a refusal the user acts on, and whether a force
+// is the action (ADR-0006). Every error absent here is a genuine failure —
+// including apm's invalid verdict, which deployed nothing (#358).
+const ATTENTION: Partial<Record<DeploySkillError, { forceable: boolean }>> = {
+  "deployed-diverged-from-lock": { forceable: true },
+  "deployed-unverifiable": { forceable: true },
+  "deployed-unsupported-package-type": { forceable: false },
+};

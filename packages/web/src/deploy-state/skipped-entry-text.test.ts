@@ -18,7 +18,7 @@ describe("skippedEntryText", () => {
 
   it("names the recorded type of an unsupported deployment and says the files stay", () => {
     const text = skippedEntryText({
-      reason: "unsupported-package",
+      reason: "unmanageable-skill",
       virtualPath: "skills/tdd",
       packageType: "hybrid",
     });
@@ -72,7 +72,7 @@ describe("skippedNeedsAttention", () => {
   it("is true for a skill the user can recover", () => {
     expect(
       skippedNeedsAttention({
-        reason: "unsupported-package",
+        reason: "unmanageable-skill",
         virtualPath: "skills/tdd",
         packageType: "marketplace_plugin",
       }),

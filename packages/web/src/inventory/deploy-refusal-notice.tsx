@@ -8,17 +8,15 @@ const FORCEABLE_REFUSALS = new Set([
   "deployed-unverifiable",
 ]);
 
-// Read past `message`, so an unvalidated body can never render as anything but
-// a short type name.
+// The server sends its own reading of the recorded type, never apm prose
+// (ADR-0018); this only reads past `message` to render it.
 function recordedPackageType(error: Error): string | null {
   if (!(error instanceof HttpError)) {
     return null;
   }
   const value = (error.body as { packageType?: unknown } | undefined)
     ?.packageType;
-  return typeof value === "string" && /^[a-z_]{1,40}$/.test(value)
-    ? value
-    : null;
+  return typeof value === "string" ? value : null;
 }
 
 // A refusal the user can override adds an inline "Reinstall fresh" button

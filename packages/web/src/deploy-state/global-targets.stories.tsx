@@ -62,7 +62,7 @@ export const UnsupportedDeployment: Story = {
     tools: [{ tool: "claude", primitives: [] }],
     skipped: [
       {
-        reason: "unsupported-package",
+        reason: "unmanageable-skill",
         virtualPath: "skills/tdd",
         packageType: "hybrid",
       },

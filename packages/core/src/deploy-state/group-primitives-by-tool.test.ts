@@ -123,7 +123,7 @@ describe("groupPrimitivesByTool", () => {
     expect(result.tools).toEqual([{ tool: "claude", primitives: [] }]);
     expect(result.skipped).toEqual([
       {
-        reason: "unsupported-package",
+        reason: "unmanageable-skill",
         virtualPath: "skills/tdd",
         packageType: "hybrid",
       },

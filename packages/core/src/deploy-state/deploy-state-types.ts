@@ -14,7 +14,7 @@ export type DeployedPrimitive = {
 // a skill Maestro cannot manage apart from a different primitive (#358).
 export type SkippedEntry =
   | {
-      reason: "unsupported-type" | "unsupported-package" | "invalid-package";
+      reason: "unsupported-type" | "unmanageable-skill" | "invalid-package";
       virtualPath: string;
       packageType: string;
     }
@@ -22,7 +22,7 @@ export type SkippedEntry =
 
 const REASON: Record<Exclude<PackageClass, "skill">, SkippedEntry["reason"]> = {
   other: "unsupported-type",
-  unsupported: "unsupported-package",
+  unsupported: "unmanageable-skill",
   invalid: "invalid-package",
 };
 

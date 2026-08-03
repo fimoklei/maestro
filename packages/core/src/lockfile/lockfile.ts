@@ -85,8 +85,8 @@ export function unreadableCovers(
 // attempt placed nothing" verdict, or a different primitive altogether (#358).
 export type PackageClass = "skill" | "unsupported" | "invalid" | "other";
 
-// `hybrid` and `marketplace_plugin` are what apm 0.26.0 writes for a skill
-// carrying a per-skill apm.yml or plugin.json (docs/apm-behavior.md).
+// What apm 0.26.0 writes for a skill that also carries an apm.yml or a
+// plugin.json (docs/apm-behavior.md § Lockfile).
 const UNSUPPORTED_TYPES = new Set(["hybrid", "marketplace_plugin"]);
 
 export function classifyPackageType(packageType: string): PackageClass {

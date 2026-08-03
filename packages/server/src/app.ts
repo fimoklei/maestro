@@ -205,7 +205,7 @@ const deployErrorResponses: Record<
     // user's to correct (#358).
     status: 409,
     message:
-      "apm installed this package but recorded it as a type Maestro cannot manage as a skill. Its files were left in place. Remove the per-skill apm.yml or plugin.json from the harness, release a corrected tag, and deploy again.",
+      "apm installed this package but recorded it as a type Maestro cannot manage as a skill. Its files were left in place. Correct the package shape in the harness, release a corrected tag, and deploy again.",
   },
   "deploy-recorded-invalid": {
     status: 502,

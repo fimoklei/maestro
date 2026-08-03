@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { PackageReading } from "../lockfile/lockfile";
 import { DeploySkill, type DeployTarget } from "./deploy-skill";
 import type { SupportedTool } from "./deploy-tools";
 import { InFlightLocks } from "./in-flight-locks";
@@ -89,7 +90,7 @@ const buildDeps = (
     },
     recordedPackage: {
       read: async (_input: { target: DeployTarget; name: string }) =>
-        "claude_skill" as string | null,
+        ({ kind: "skill", name: "tdd" }) as PackageReading | null,
     },
     canonicalPath: async (path: string) => path,
     locks: new InFlightLocks(),
@@ -101,7 +102,9 @@ const buildDeps = (
 describe("DeploySkill", () => {
   it("refuses to call a hybrid record a clean deploy, and leaves its files alone", async () => {
     const { deps, cleaned } = buildDeps({
-      recordedPackage: { read: async () => "hybrid" },
+      recordedPackage: {
+        read: async () => ({ kind: "unsupported", packageType: "hybrid" }),
+      },
     });
 
     const result = await new DeploySkill(deps).execute({
@@ -120,7 +123,12 @@ describe("DeploySkill", () => {
 
   it("refuses to call a marketplace_plugin record a clean deploy", async () => {
     const { deps } = buildDeps({
-      recordedPackage: { read: async () => "marketplace_plugin" },
+      recordedPackage: {
+        read: async () => ({
+          kind: "unsupported",
+          packageType: "marketplace_plugin",
+        }),
+      },
     });
 
     const result = await new DeploySkill(deps).execute({
@@ -138,7 +146,9 @@ describe("DeploySkill", () => {
 
   it("reports apm's invalid verdict as a failed deploy, never as a success", async () => {
     const { deps } = buildDeps({
-      recordedPackage: { read: async () => "invalid" },
+      recordedPackage: {
+        read: async () => ({ kind: "invalid", packageType: "invalid" }),
+      },
     });
 
     const result = await new DeploySkill(deps).execute({
@@ -148,6 +158,38 @@ describe("DeploySkill", () => {
     });
 
     expect(result).toEqual({ ok: false, error: "deploy-recorded-invalid" });
+  });
+
+  it("deploys a corrected release over an unsupported result, through the normal flow", async () => {
+    // The harness fixed the package shape and released again: the second run
+    // takes no special path, it just reads a skill record this time (#358).
+    let attempt = 0;
+    const { deps } = buildDeps({
+      recordedPackage: {
+        read: async () => {
+          attempt += 1;
+          return attempt === 1
+            ? { kind: "unsupported" as const, packageType: "hybrid" }
+            : { kind: "skill" as const, name: "tdd" };
+        },
+      },
+    });
+    const deploy = new DeploySkill(deps);
+    const first = {
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    };
+
+    expect(await deploy.execute(first)).toEqual({
+      ok: false,
+      error: "deployed-unsupported-package-type",
+      packageType: "hybrid",
+    });
+    expect(await deploy.execute(first)).toEqual({
+      ok: true,
+      deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+    });
   });
 
   it("keeps the install apm proved when no record can be read", async () => {

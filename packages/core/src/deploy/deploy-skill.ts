@@ -3,7 +3,7 @@
 // ADR-0011.
 import type { OutdatedResult } from "../drift/parse-outdated";
 import type { InventoryResult } from "../inventory/inventory-reader";
-import { classifyPackageType } from "../lockfile/lockfile";
+import type { PackageReading } from "../lockfile/lockfile";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type { SupportedTool } from "./deploy-tools";
 import { parseGitOrigin } from "./git-origin";
@@ -87,7 +87,10 @@ export type DeployedContentPort = {
 // no lockfile, no entry and an unreadable one alike: with nothing recorded the
 // install apm proved stands (#358).
 export type RecordedPackagePort = {
-  read(input: { target: DeployTarget; name: string }): Promise<string | null>;
+  read(input: {
+    target: DeployTarget;
+    name: string;
+  }): Promise<PackageReading | null>;
 };
 
 // A subtree-scoped filesystem removal, never `apm uninstall -g`, which deletes
@@ -292,19 +295,18 @@ export class DeploySkill {
 
       // apm exits 0 and prints its success marker even for a package it
       // recorded as invalid, so the record is the only honest outcome (#358).
-      // Read before the reclaim: an unsupported result is reported, not tidied
-      // up around.
+      // Read before the reclaim: nothing is tidied up around it.
       const recorded = await this.deps.recordedPackage.read({
         target: input.target,
         name: input.name,
       });
-      if (recorded !== null && classifyPackageType(recorded) !== "skill") {
-        return recorded === "invalid"
+      if (recorded !== null && recorded.kind !== "skill") {
+        return recorded.kind === "invalid"
           ? { ok: false, error: "deploy-recorded-invalid" }
           : {
               ok: false,
               error: "deployed-unsupported-package-type",
-              packageType: recorded,
+              packageType: recorded.packageType,
             };
       }
 

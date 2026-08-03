@@ -9,7 +9,7 @@ export function skippedEntryText(entry: SkippedEntry): string {
   if (entry.reason === "unsupported-type") {
     return `Skipped ${entry.virtualPath} (unsupported type ${entry.packageType}).`;
   }
-  if (entry.reason === "unsupported-package") {
+  if (entry.reason === "unmanageable-skill") {
     return `${entry.virtualPath} is deployed as ${entry.packageType}, which Maestro cannot manage as a skill. Its files are still in place. ${RELEASE_AGAIN}`;
   }
   if (entry.reason === "invalid-package") {
@@ -30,6 +30,6 @@ export function skippedEntryKey(entry: SkippedEntry, index: number): string {
 // the same as a primitive Maestro simply does not manage (#358).
 export function skippedNeedsAttention(entry: SkippedEntry): boolean {
   return (
-    entry.reason === "unsupported-package" || entry.reason === "invalid-package"
+    entry.reason === "unmanageable-skill" || entry.reason === "invalid-package"
   );
 }
