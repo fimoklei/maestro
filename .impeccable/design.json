@@ -261,7 +261,12 @@
       {
         "name": "state-transition",
         "value": "150ms ease-out on background-color, border-color and color",
-        "purpose": "The only motion in the system, declared once and reused by every hoverable control. Gated behind prefers-reduced-motion: no-preference, so the reduced alternative is an instant colour change."
+        "purpose": "The system's working motion, declared once and reused by every hoverable control. Gated behind prefers-reduced-motion: no-preference, so the reduced alternative is an instant colour change."
+      },
+      {
+        "name": "gate-arrival",
+        "value": "whole sequence within 600ms, cubic-bezier(0.16, 1, 0.3, 1), on opacity, translateY, scaleX and blur, once on mount",
+        "purpose": "The connect gate's welcome screen only (ADR-0022). The empty first screen states its own emptiness on arrival: a 1px amber rule draws in, then heading, copy and action resolve from blurred to sharp in sequence. The rule's gradient fill stays on the finished screen; the blur exists only inside the keyframe. 600ms caps the whole sequence, last element included, so no control is clickable while still invisible. Nothing loops; gated behind prefers-reduced-motion: no-preference. Any other surface keeps the entrance-animation ban."
       }
     ],
     "breakpoints": [
@@ -378,7 +383,7 @@
       "Two action signals (amber, green) plus a danger red for errors, and four fixed primitive-type colours",
       "Tight 3–6px radii; nothing pill-shaped, no circles except status dots",
       "Cockpit density: 14px card padding, 9px rows, 12px gaps, 24px between sections",
-      "Flat fills only — no gradients, textures, blur, or transparency layers"
+      "Flat fills only — no gradients, textures, blur, or transparency layers, except the connect gate's arrival (ADR-0022)"
     ],
     "rules": [
       {
@@ -446,11 +451,11 @@
     ],
     "donts": [
       "Don't add a box-shadow anywhere, in either theme.",
-      "Don't use gradients, textures, blur, backdrop-filter, or glassmorphism.",
+      "Don't use gradients, textures, blur, backdrop-filter, or glassmorphism. The connect gate's arrival is the single exception (ADR-0022): a gradient fades its 1px rule out at both ends, and blur resolves to sharp inside that one sequence.",
       "Don't build hero metric tiles, gradient accents, pill shapes, or cards nested inside cards.",
       "Don't add illustrations, emoji, or reassuring marketing copy.",
       "Don't strip structure down to a bare terminal dump.",
-      "Don't add entrance animations, hover scaling, or decorative motion.",
+      "Don't add entrance animations, hover scaling, or decorative motion. The connect gate's welcome screen is the single exception (ADR-0022); a second one amends that ADR rather than citing it.",
       "Don't hover a control onto the active surface — that is the colour of a standing choice, and reusing it makes hover and selected indistinguishable.",
       "Don't ship a cursor-pointer with no colour change behind it; the cursor moves, the screen must too.",
       "Don't leave a transition un-gated by motion-safe:; a bare transition-colors ignores prefers-reduced-motion.",
