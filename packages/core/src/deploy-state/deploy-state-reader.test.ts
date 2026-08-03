@@ -166,7 +166,7 @@ const GLOBAL_LOCKFILE = `${GLOBAL_ROOT}/apm.lock.yaml`;
 // A two-tool skill entry (both .claude and .agents copies), the shape apm writes
 // for `-t claude,codex` (apm-driver.md).
 function twoToolEntry(ref: string, name: string): string {
-  return `- repo_url: fimoklei/agent-harness\n  host: github.com\n  resolved_commit: ec491f154c9d5c9a6c5db56d1946c4c34f3899bb\n  resolved_ref: ${ref}\n  virtual_path: skills/${name}\n  is_virtual: true\n  package_type: claude_skill\n  deployed_files:\n  - .claude/skills/${name}\n  - .agents/skills/${name}\n  content_hash: sha256:abc\n`;
+  return `- repo_url: fimoklei/agent-harness\n  host: github.com\n  resolved_commit: ec491f154c9d5c9a6c5db56d1946c4c34f3899bb\n  resolved_ref: ${ref}\n  virtual_path: .apm/skills/${name}\n  is_virtual: true\n  package_type: claude_skill\n  deployed_files:\n  - .claude/skills/${name}\n  - .agents/skills/${name}\n  content_hash: sha256:abc\n`;
 }
 
 describe("GlobalDeployStateReader.readGlobal", () => {

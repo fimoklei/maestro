@@ -35,9 +35,9 @@ describe("deploy HTTP route", () => {
     harness = await mkdtemp(join(tmpdir(), "maestro-harness-"));
     repo = await mkdtemp(join(tmpdir(), "maestro-target-"));
     globalRoot = await mkdtemp(join(tmpdir(), "maestro-global-"));
-    await mkdir(join(harness, "skills", "tdd"), { recursive: true });
+    await mkdir(join(harness, ".apm", "skills", "tdd"), { recursive: true });
     await writeFile(
-      join(harness, "skills", "tdd", "SKILL.md"),
+      join(harness, ".apm", "skills", "tdd", "SKILL.md"),
       "---\nname: tdd\ndescription: Test-driven development\n---\n",
       "utf8",
     );
@@ -64,7 +64,7 @@ describe("deploy HTTP route", () => {
       "  host: github.com",
       "  resolved_commit: 471c4b26471c4b26471c4b26471c4b26471c4b26",
       `  resolved_ref: ${ref}`,
-      "  virtual_path: skills/tdd",
+      "  virtual_path: .apm/skills/tdd",
       "  is_virtual: true",
       "  package_type: claude_skill",
       "  deployed_files:",
@@ -215,7 +215,7 @@ describe("deploy HTTP route", () => {
     expect(deployCalls).toEqual([
       {
         target: repoTarget(repo),
-        ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+        ref: "github.com/fimoklei/agent-harness/.apm/skills/tdd#v0.5.1",
       },
     ]);
     // The deploy-state read now sees the skill at its tag — the see-back half.
@@ -242,7 +242,7 @@ describe("deploy HTTP route", () => {
     expect(deployCalls).toEqual([
       {
         target: globalTarget,
-        ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+        ref: "github.com/fimoklei/agent-harness/.apm/skills/tdd#v0.5.1",
         // Both tools present on this machine, so both are targeted (ADR-0011).
         tools: ["claude", "codex"],
       },
@@ -269,7 +269,7 @@ describe("deploy HTTP route", () => {
     expect(deployCalls).toEqual([
       {
         target: globalTarget,
-        ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+        ref: "github.com/fimoklei/agent-harness/.apm/skills/tdd#v0.5.1",
         tools: ["claude"],
       },
     ]);

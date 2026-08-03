@@ -146,7 +146,7 @@ describe("apm output never reaches the client", () => {
         "- repo_url: fimoklei/agent-harness",
         "  host: github.com",
         "  resolved_ref: v0.5.1",
-        "  virtual_path: skills/tdd",
+        "  virtual_path: .apm/skills/tdd",
         "  package_type: claude_skill",
         "",
       ].join("\n"),

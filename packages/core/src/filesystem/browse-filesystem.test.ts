@@ -40,14 +40,14 @@ describe("BrowseFilesystem", () => {
           path: "/home/user/dev/repo-a",
           isHidden: false,
           isSymlink: false,
-          facts: { isGitRepo: false, hasSkillsSubdir: false },
+          facts: { isGitRepo: false, hasApmManifest: false },
         },
         {
           name: "repo-b",
           path: "/home/user/dev/repo-b",
           isHidden: false,
           isSymlink: false,
-          facts: { isGitRepo: false, hasSkillsSubdir: false },
+          facts: { isGitRepo: false, hasApmManifest: false },
         },
       ],
     });
@@ -99,7 +99,7 @@ describe("BrowseFilesystem", () => {
           path: "/home/user/dev/linked",
           isHidden: false,
           isSymlink: true,
-          facts: { isGitRepo: false, hasSkillsSubdir: false },
+          facts: { isGitRepo: false, hasApmManifest: false },
         },
       ],
     });
@@ -219,7 +219,7 @@ describe("BrowseFilesystem", () => {
         {
           name: "linked",
           isSymlink: true,
-          facts: { isGitRepo: false, hasSkillsSubdir: false },
+          facts: { isGitRepo: false, hasApmManifest: false },
         },
       ],
     });
@@ -289,7 +289,7 @@ describe("BrowseFilesystem", () => {
     expect(result).toMatchObject({
       ok: true,
       entries: [
-        { name: "repo", facts: { isGitRepo: true, hasSkillsSubdir: false } },
+        { name: "repo", facts: { isGitRepo: true, hasApmManifest: false } },
       ],
     });
   });
@@ -317,26 +317,26 @@ describe("BrowseFilesystem", () => {
       entries: [
         {
           name: "worktree",
-          facts: { isGitRepo: true, hasSkillsSubdir: false },
+          facts: { isGitRepo: true, hasApmManifest: false },
         },
       ],
     });
   });
 
-  it("reports a folder holding a skills/ subdir", async () => {
+  it("reports a folder holding an apm.yml manifest", async () => {
     const browse = makeBrowse({
       directories: {
         "/home/user": "/home/user",
         "/home/user/dev": "/home/user/dev",
         "/home/user/dev/inventory": "/home/user/dev/inventory",
-        "/home/user/dev/inventory/skills": "/home/user/dev/inventory/skills",
       },
+      files: { "/home/user/dev/inventory/apm.yml": "dependencies: []\n" },
       listings: {
         "/home/user/dev": ["inventory"],
-        // hasSkillsSubdir reads the directory listing (not a direct
-        // isDirectory probe) so a symlinked "skills" can never be resolved
-        // and disclosed — see the comment in browse-filesystem.ts.
-        "/home/user/dev/inventory": ["skills"],
+        // hasApmManifest reads the directory listing (not a direct probe) so a
+        // symlinked "apm.yml" can never be resolved and disclosed — see the
+        // comment in browse-filesystem.ts.
+        "/home/user/dev/inventory": ["apm.yml"],
       },
     });
 
@@ -347,9 +347,32 @@ describe("BrowseFilesystem", () => {
       entries: [
         {
           name: "inventory",
-          facts: { isGitRepo: false, hasSkillsSubdir: true },
+          facts: { isGitRepo: false, hasApmManifest: true },
         },
       ],
+    });
+  });
+
+  // Resolving it is what would leak a path outside the ceiling (#148), so a
+  // symlinked manifest is refused rather than followed.
+  it("does not count a symlinked apm.yml as a manifest", async () => {
+    const browse = makeBrowse({
+      directories: {
+        "/home/user": "/home/user",
+        "/home/user/dev": "/home/user/dev",
+        "/home/user/dev/inventory": "/home/user/dev/inventory",
+        // A differing target is the fake's convention for a symlink.
+        "/home/user/dev/inventory/apm.yml": "/elsewhere/apm.yml",
+      },
+      listings: {
+        "/home/user/dev": ["inventory"],
+        "/home/user/dev/inventory": ["apm.yml"],
+      },
+    });
+
+    await expect(browse.browse("/home/user/dev")).resolves.toMatchObject({
+      ok: true,
+      entries: [{ name: "inventory", facts: { hasApmManifest: false } }],
     });
   });
 
@@ -368,7 +391,7 @@ describe("BrowseFilesystem", () => {
     expect(result).toMatchObject({
       ok: true,
       entries: [
-        { name: "plain", facts: { isGitRepo: false, hasSkillsSubdir: false } },
+        { name: "plain", facts: { isGitRepo: false, hasApmManifest: false } },
       ],
     });
   });
@@ -400,7 +423,7 @@ describe("BrowseFilesystem", () => {
       entries: [
         {
           name: "swapped",
-          facts: { isGitRepo: false, hasSkillsSubdir: false },
+          facts: { isGitRepo: false, hasApmManifest: false },
         },
       ],
     });
@@ -427,7 +450,7 @@ describe("BrowseFilesystem", () => {
           path: "/home/user/dev",
           isHidden: false,
           isSymlink: false,
-          facts: { isGitRepo: false, hasSkillsSubdir: false },
+          facts: { isGitRepo: false, hasApmManifest: false },
         },
       ],
     });

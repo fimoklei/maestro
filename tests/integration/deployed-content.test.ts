@@ -44,7 +44,7 @@ describe("DeployedContentAdapter", () => {
     );
     const yaml = [
       "dependencies:",
-      `  - virtual_path: skills/${name}`,
+      `  - virtual_path: .apm/skills/${name}`,
       "    package_type: claude_skill",
       "    resolved_ref: v0.5.1",
       "    deployed_file_hashes:",
@@ -119,7 +119,7 @@ describe("DeployedContentAdapter", () => {
       join(root, "apm.lock.yaml"),
       [
         "dependencies:",
-        "  - virtual_path: skills/tdd",
+        "  - virtual_path: .apm/skills/tdd",
         "    package_type: claude_skill",
         "    resolved_ref: v0.4.0",
         "",

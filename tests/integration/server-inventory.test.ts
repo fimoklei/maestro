@@ -33,7 +33,7 @@ describe("inventory HTTP route", () => {
   });
 
   async function writeSkill(name: string, description: string) {
-    const skillDir = join(dir, "skills", name);
+    const skillDir = join(dir, ".apm", "skills", name);
     await mkdir(skillDir, { recursive: true });
     await writeFile(
       join(skillDir, "SKILL.md"),
@@ -86,9 +86,9 @@ describe("inventory HTTP route", () => {
   it("skips a skill with no frontmatter without hiding the valid ones", async () => {
     // A SKILL.md the parser cannot read is dropped from the listing, never
     // turned into an error that blanks the whole inventory.
-    await mkdir(join(dir, "skills", "broken"), { recursive: true });
+    await mkdir(join(dir, ".apm", "skills", "broken"), { recursive: true });
     await writeFile(
-      join(dir, "skills", "broken", "SKILL.md"),
+      join(dir, ".apm", "skills", "broken", "SKILL.md"),
       "# broken\nno frontmatter\n",
       "utf8",
     );

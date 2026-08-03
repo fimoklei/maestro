@@ -110,7 +110,7 @@ describe("DeploySkill", () => {
     expect(deployed).toEqual([
       {
         target: repo("/registered/repo"),
-        ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+        ref: "github.com/fimoklei/agent-harness/.apm/skills/tdd#v0.5.1",
       },
     ]);
   });
@@ -132,7 +132,7 @@ describe("DeploySkill", () => {
     expect(deployed).toEqual([
       {
         target: globalTarget,
-        ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+        ref: "github.com/fimoklei/agent-harness/.apm/skills/tdd#v0.5.1",
         tools: ["claude", "codex"],
       },
     ]);
@@ -155,7 +155,7 @@ describe("DeploySkill", () => {
     expect(deployed).toEqual([
       {
         target: globalTarget,
-        ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+        ref: "github.com/fimoklei/agent-harness/.apm/skills/tdd#v0.5.1",
         tools: ["claude"],
       },
     ]);
@@ -355,7 +355,7 @@ describe("DeploySkill", () => {
     expect(deployed).toEqual([
       {
         target: repo("/registered/repo"),
-        ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1",
+        ref: "github.com/fimoklei/agent-harness/.apm/skills/tdd#v0.5.1",
       },
     ]);
   });

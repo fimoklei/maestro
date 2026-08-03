@@ -2,6 +2,7 @@
 // path — the browsed one and each entry — runs normalize → realpath → assert
 // inside the home ceiling, in that order (security.md, #148).
 import { dirname, join, relative, resolve, sep } from "node:path";
+import { HARNESS_MANIFEST } from "../inventory/harness-layout";
 import type { FileSystemPort, RawDirEntry } from "../registry/file-system";
 import { isWithinRoot } from "./browse-path";
 
@@ -14,7 +15,7 @@ export type BrowseError =
 // Observations, never badge decisions — the client badges per mode (#150).
 export type BrowseEntryFacts = {
   isGitRepo: boolean;
-  hasSkillsSubdir: boolean;
+  hasApmManifest: boolean;
 };
 
 export type BrowseEntry = {
@@ -146,7 +147,7 @@ export class BrowseFilesystem {
           return {
             ...entry,
             isHidden,
-            facts: { isGitRepo: false, hasSkillsSubdir: false },
+            facts: { isGitRepo: false, hasApmManifest: false },
           };
         }
         const [isGitRepo, children] = await Promise.all([
@@ -158,8 +159,14 @@ export class BrowseFilesystem {
           isHidden,
           facts: {
             isGitRepo,
-            hasSkillsSubdir: children.some(
-              (child) => child.isDirectory && child.name === "skills",
+            // Read off the listing, never probed directly, and a symlinked
+            // manifest is refused outright: resolving one would disclose a
+            // path outside the ceiling (ADR-0009, #148).
+            hasApmManifest: children.some(
+              (child) =>
+                child.name === HARNESS_MANIFEST &&
+                !child.isDirectory &&
+                !child.isSymlink,
             ),
           },
         };

@@ -17,7 +17,7 @@ function jsonResponse(body: unknown, status: number) {
   });
 }
 
-const repoFacts = { isGitRepo: true, hasSkillsSubdir: false };
+const repoFacts = { isGitRepo: true, hasApmManifest: false };
 
 // Stateful registry: empty until a POST registers a repo, after which the
 // Targets list refetches. A refused path answers 400.

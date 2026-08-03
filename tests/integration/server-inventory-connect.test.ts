@@ -44,12 +44,13 @@ describe("inventory connect HTTP route", () => {
 
   async function makeClone(options?: { origin?: boolean }): Promise<string> {
     const clone = join(dir, "agent-harness");
-    await mkdir(join(clone, "skills", "tdd"), { recursive: true });
+    await mkdir(join(clone, ".apm", "skills", "tdd"), { recursive: true });
     await writeFile(
-      join(clone, "skills", "tdd", "SKILL.md"),
+      join(clone, ".apm", "skills", "tdd", "SKILL.md"),
       "---\nname: tdd\ndescription: Test-driven development loop\n---\n\n# tdd\n",
       "utf8",
     );
+    await writeFile(join(clone, "apm.yml"), "dependencies: []\n", "utf8");
     await initGitClone(clone, options);
     return clone;
   }
@@ -172,7 +173,7 @@ describe("inventory connect HTTP route", () => {
     );
   });
 
-  it("rejects a directory without skills/ as 422 not-an-inventory", async () => {
+  it("rejects a directory without apm.yml as 422 not-an-inventory", async () => {
     const plain = join(dir, "plain");
     await mkdir(plain, { recursive: true });
 
@@ -185,7 +186,27 @@ describe("inventory connect HTTP route", () => {
     expect(body.message).not.toContain(plain);
   });
 
-  it("rejects a skills/ folder without a usable git origin as 422 no-usable-origin", async () => {
+  // The retired shape is not a fallback (ADR-0021 §4): a clone that would have
+  // connected before must now be refused all the way out to the HTTP edge.
+  it("rejects the retired root skills/ shape as 422 not-an-inventory", async () => {
+    const retired = join(dir, "old-harness");
+    await mkdir(join(retired, "skills", "tdd"), { recursive: true });
+    await writeFile(
+      join(retired, "skills", "tdd", "SKILL.md"),
+      "---\nname: tdd\ndescription: Test-driven development loop\n---\n",
+      "utf8",
+    );
+    await initGitClone(retired);
+
+    const res = await postConnect(makeApp(), { path: retired });
+
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as { error: string }).error).toBe(
+      "not-an-inventory",
+    );
+  });
+
+  it("rejects a Harness without a usable git origin as 422 no-usable-origin", async () => {
     const clone = await makeClone({ origin: false });
 
     const res = await postConnect(makeApp(), { path: clone });
@@ -204,15 +225,14 @@ describe("inventory connect HTTP route", () => {
     expect(((await res.json()) as { error: string }).error).toBe("relative");
   });
 
-  it("still reports success when the persisted path connects but its skills/ becomes unreadable before the count re-read", async () => {
-    // stat (isDirectory, what connect checks) only needs +x on the *parent*
-    // path components, so a 0o000 skills/ dir still passes connect's own
-    // is-an-inventory check; readdir (what the count re-read needs) requires
+  it("still reports success when the persisted path connects but its .apm/skills/ becomes unreadable before the count re-read", async () => {
+    // connect only probes apm.yml, so a 0o000 .apm/skills/ dir still passes
+    // its is-an-inventory check; readdir (what the count re-read needs) requires
     // +r on the directory itself and fails. The path is already persisted by
     // the time that second read runs — the response must not turn into a 500
     // for a state change that already succeeded (Codex review finding).
     const clone = await makeClone();
-    const skillsDir = join(clone, "skills");
+    const skillsDir = join(clone, ".apm", "skills");
     await chmod(skillsDir, 0o000);
     const app = makeApp();
 

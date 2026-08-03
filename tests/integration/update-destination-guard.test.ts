@@ -54,7 +54,7 @@ describe("update journey against the real destination guard", () => {
     );
     const yaml = [
       "dependencies:",
-      `  - virtual_path: skills/${name}`,
+      `  - virtual_path: .apm/skills/${name}`,
       "    package_type: claude_skill",
       `    resolved_ref: ${tag}`,
       "    deployed_file_hashes:",
@@ -69,7 +69,7 @@ describe("update journey against the real destination guard", () => {
   const writeLegacyLockfile = async (name: string) => {
     const yaml = [
       "dependencies:",
-      `  - virtual_path: skills/${name}`,
+      `  - virtual_path: .apm/skills/${name}`,
       "    package_type: claude_skill",
       "    resolved_ref: v0.4.0",
       "",

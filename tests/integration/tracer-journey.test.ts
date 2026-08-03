@@ -31,7 +31,7 @@ const lockfileAtTag = (tag: string) =>
     "- repo_url: fimoklei/agent-harness",
     "  host: github.com",
     `  resolved_ref: ${tag}`,
-    "  virtual_path: skills/tdd",
+    "  virtual_path: .apm/skills/tdd",
     "  package_type: claude_skill",
     "  deployed_files:",
     "  - .claude/skills/tdd",
@@ -47,9 +47,10 @@ describe("the tracer journey through one cockpit", () => {
     home = await mkdtemp(join(tmpdir(), "maestro-tracer-home-"));
     harness = await mkdtemp(join(tmpdir(), "maestro-tracer-harness-"));
     repo = await mkdtemp(join(tmpdir(), "maestro-tracer-repo-"));
-    await mkdir(join(harness, "skills", "tdd"), { recursive: true });
+    await mkdir(join(harness, ".apm", "skills", "tdd"), { recursive: true });
+    await writeFile(join(harness, "apm.yml"), "dependencies: []\n", "utf8");
     await writeFile(
-      join(harness, "skills", "tdd", "SKILL.md"),
+      join(harness, ".apm", "skills", "tdd", "SKILL.md"),
       "---\nname: tdd\ndescription: Test-driven development loop\n---\n",
       "utf8",
     );

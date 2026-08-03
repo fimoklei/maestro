@@ -27,7 +27,7 @@ export interface FileSystemPort {
 
   // Unfiltered — callers decide which entry types they want, so browse can find
   // symlinked directories and validate each one itself (#148). Empty when the
-  // directory does not exist: a missing skills/ is "no skills", not an error.
+  // directory does not exist: a missing .apm/skills/ is "no skills", not an error.
   listRawEntries(path: string): Promise<RawDirEntry[]>;
 
   // Atomic (temp file + rename), creating parent directories as needed.

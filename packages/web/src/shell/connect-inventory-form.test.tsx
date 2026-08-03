@@ -105,12 +105,12 @@ describe("ConnectInventoryForm", () => {
         path=""
         onPathChange={vi.fn()}
         onSubmit={vi.fn()}
-        error="That directory has no skills/ folder, so it is not an inventory."
+        error="That directory has no apm.yml, so it is not an inventory."
         onBrowse={vi.fn()}
       />,
     );
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/no skills\/ folder/i);
+    expect(screen.getByRole("alert")).toHaveTextContent(/no apm\.yml/i);
     expect(
       screen.queryByRole("button", { name: /browse again/i }),
     ).not.toBeInTheDocument();
@@ -174,7 +174,7 @@ describe("ConnectInventoryForm", () => {
         path="/home/me/not-an-inventory"
         onPathChange={vi.fn()}
         onSubmit={vi.fn()}
-        error="That directory has no skills/ folder, so it is not an inventory."
+        error="That directory has no apm.yml, so it is not an inventory."
       />,
     );
     expect(input).toHaveFocus();

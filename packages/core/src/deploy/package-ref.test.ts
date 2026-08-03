@@ -29,6 +29,6 @@ describe("buildSkillPackageRef", () => {
         name: "tdd",
         tag: "v0.5.1",
       }),
-    ).toBe("github.com/fimoklei/agent-harness/skills/tdd#v0.5.1");
+    ).toBe("github.com/fimoklei/agent-harness/.apm/skills/tdd#v0.5.1");
   });
 });

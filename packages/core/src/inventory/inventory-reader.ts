@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { parse } from "yaml";
 import { z } from "zod";
 import type { FileSystemPort } from "../registry/file-system";
+import { HARNESS_SKILLS_DIR } from "./harness-layout";
 
 type Primitive = { type: "skill"; name: string; description: string };
 
@@ -12,15 +13,14 @@ export type InventoryResult =
   | { ok: true; primitives: Primitive[] }
   | { ok: false; error: "not-configured" };
 
+// `name` is prose, not identity — the directory under .apm/skills/ decides that
+// (ADR-0021 §4), so only the description is read here.
 const frontmatterSchema = z.object({
-  name: z.string(),
   description: z.string(),
 });
 
 // Null on anything malformed, so the caller can skip the skill.
-function parseSkillFrontmatter(
-  raw: string,
-): { name: string; description: string } | null {
+function parseSkillFrontmatter(raw: string): { description: string } | null {
   const match = /^---\n([\s\S]*?)\n---/.exec(raw);
   const block = match?.[1];
   if (block === undefined) {
@@ -67,7 +67,7 @@ export class InventoryReader {
       return { ok: false, error: "not-configured" };
     }
 
-    const skillsDir = join(root, "skills");
+    const skillsDir = join(root, HARNESS_SKILLS_DIR);
     const entries = await this.fs.listRawEntries(skillsDir);
     const primitives: Primitive[] = [];
     for (const { name } of entries.filter((entry) => entry.isDirectory)) {
@@ -81,7 +81,7 @@ export class InventoryReader {
       }
       primitives.push({
         type: "skill",
-        name: parsed.name,
+        name,
         description: parsed.description,
       });
     }

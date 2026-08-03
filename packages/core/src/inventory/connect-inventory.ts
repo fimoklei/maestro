@@ -5,6 +5,7 @@ import { parseGitOrigin } from "../deploy/git-origin";
 import type { ConfigStore } from "../registry/config-store";
 import type { FileSystemPort } from "../registry/file-system";
 import { type RepoPathError, validateRepoPath } from "../registry/repo-path";
+import { HARNESS_MANIFEST } from "./harness-layout";
 
 export type ConnectInventoryError =
   | RepoPathError
@@ -36,7 +37,13 @@ export class ConnectInventory {
       return { ok: false, error: validated.error };
     }
 
-    if (!(await this.fs.isDirectory(join(validated.path, "skills")))) {
+    // A directory wearing the manifest's name manifests nothing, so presence
+    // alone is not the check.
+    const manifest = join(validated.path, HARNESS_MANIFEST);
+    const isHarness =
+      (await this.fs.exists(manifest)) &&
+      !(await this.fs.isDirectory(manifest));
+    if (!isHarness) {
       return { ok: false, error: "not-an-inventory" };
     }
 

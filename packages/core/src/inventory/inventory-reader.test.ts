@@ -4,8 +4,8 @@ import { InventoryReader } from "./inventory-reader";
 
 const INVENTORY = "/inv";
 
-// Builds the SKILL.md text an agent-harness skill ships: YAML frontmatter
-// between --- fences, then markdown body the reader ignores.
+// Builds the SKILL.md text a Harness skill ships: YAML frontmatter between ---
+// fences, then markdown body the reader ignores.
 function skillFile(name: string, description: string): string {
   return `---\nname: ${name}\ndescription: ${description}\n---\n\n# ${name}\n`;
 }
@@ -15,7 +15,7 @@ function skillFile(name: string, description: string): string {
 function skillDirs(...names: string[]): Record<string, string> {
   return Object.fromEntries(
     names.map((name) => {
-      const path = `${INVENTORY}/skills/${name}`;
+      const path = `${INVENTORY}/.apm/skills/${name}`;
       return [path, path];
     }),
   );
@@ -25,9 +25,9 @@ describe("InventoryReader", () => {
   it("lists a skill with its name and one-line description", async () => {
     const fs = new InMemoryFileSystem({
       directories: { [INVENTORY]: INVENTORY, ...skillDirs("tdd") },
-      listings: { [`${INVENTORY}/skills`]: ["tdd"] },
+      listings: { [`${INVENTORY}/.apm/skills`]: ["tdd"] },
       files: {
-        [`${INVENTORY}/skills/tdd/SKILL.md`]: skillFile(
+        [`${INVENTORY}/.apm/skills/tdd/SKILL.md`]: skillFile(
           "tdd",
           "Test-driven development loop",
         ),
@@ -53,10 +53,10 @@ describe("InventoryReader", () => {
         [INVENTORY]: INVENTORY,
         ...skillDirs("tdd", "diagnose"),
       },
-      listings: { [`${INVENTORY}/skills`]: ["tdd", "diagnose"] },
+      listings: { [`${INVENTORY}/.apm/skills`]: ["tdd", "diagnose"] },
       files: {
-        [`${INVENTORY}/skills/tdd/SKILL.md`]: skillFile("tdd", "TDD loop"),
-        [`${INVENTORY}/skills/diagnose/SKILL.md`]: skillFile(
+        [`${INVENTORY}/.apm/skills/tdd/SKILL.md`]: skillFile("tdd", "TDD loop"),
+        [`${INVENTORY}/.apm/skills/diagnose/SKILL.md`]: skillFile(
           "diagnose",
           "Disciplined diagnosis loop",
         ),
@@ -82,10 +82,10 @@ describe("InventoryReader", () => {
   it("skips a skill whose SKILL.md is missing and lists the rest", async () => {
     const fs = new InMemoryFileSystem({
       directories: { [INVENTORY]: INVENTORY, ...skillDirs("broken", "tdd") },
-      listings: { [`${INVENTORY}/skills`]: ["broken", "tdd"] },
+      listings: { [`${INVENTORY}/.apm/skills`]: ["broken", "tdd"] },
       files: {
         // "broken" has a directory entry but no SKILL.md on disk.
-        [`${INVENTORY}/skills/tdd/SKILL.md`]: skillFile("tdd", "TDD loop"),
+        [`${INVENTORY}/.apm/skills/tdd/SKILL.md`]: skillFile("tdd", "TDD loop"),
       },
     });
     const reader = new InventoryReader({ fs, resolvePath: () => INVENTORY });
@@ -98,14 +98,36 @@ describe("InventoryReader", () => {
     });
   });
 
+  // The directory under .apm/skills/ is the skill's identity (ADR-0003); a
+  // frontmatter name that disagrees is prose, not a second source of truth.
+  it("names a skill by its directory, not by its frontmatter name", async () => {
+    const fs = new InMemoryFileSystem({
+      directories: { [INVENTORY]: INVENTORY, ...skillDirs("tdd") },
+      listings: { [`${INVENTORY}/.apm/skills`]: ["tdd"] },
+      files: {
+        [`${INVENTORY}/.apm/skills/tdd/SKILL.md`]: skillFile(
+          "Test Driven Development",
+          "TDD loop",
+        ),
+      },
+    });
+    const reader = new InventoryReader({ fs, resolvePath: () => INVENTORY });
+
+    await expect(reader.read()).resolves.toEqual({
+      ok: true,
+      primitives: [{ type: "skill", name: "tdd", description: "TDD loop" }],
+    });
+  });
+
   it("skips a skill with malformed frontmatter and lists the rest", async () => {
     const fs = new InMemoryFileSystem({
       directories: { [INVENTORY]: INVENTORY, ...skillDirs("bad", "tdd") },
-      listings: { [`${INVENTORY}/skills`]: ["bad", "tdd"] },
+      listings: { [`${INVENTORY}/.apm/skills`]: ["bad", "tdd"] },
       files: {
         // "bad" has a SKILL.md but its frontmatter lacks a description.
-        [`${INVENTORY}/skills/bad/SKILL.md`]: "---\nname: bad\n---\n\n# bad\n",
-        [`${INVENTORY}/skills/tdd/SKILL.md`]: skillFile("tdd", "TDD loop"),
+        [`${INVENTORY}/.apm/skills/bad/SKILL.md`]:
+          "---\nname: bad\n---\n\n# bad\n",
+        [`${INVENTORY}/.apm/skills/tdd/SKILL.md`]: skillFile("tdd", "TDD loop"),
       },
     });
     const reader = new InventoryReader({ fs, resolvePath: () => INVENTORY });

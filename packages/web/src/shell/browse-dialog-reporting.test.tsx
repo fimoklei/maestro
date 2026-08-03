@@ -76,7 +76,7 @@ describe("registration reporting (issue #175)", () => {
               {
                 name: "acme-web",
                 path: "/home/me/acme-web",
-                facts: { isGitRepo: true, hasSkillsSubdir: false },
+                facts: { isGitRepo: true, hasApmManifest: false },
               },
             ],
           },

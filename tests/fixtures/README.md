@@ -45,7 +45,9 @@ Phrases a fixture comment must never contain: `is a symlink`,
   ran against the real home (`LEARNINGS.md`).
 - Auth, where needed, via `GITHUB_APM_PAT` + `GITHUB_TOKEN` from `gh auth token`
   — the `HOME` redirect strips the gh credential helper.
-- Skill under test: `github.com/fimoklei/agent-harness/skills/tdd`.
+- Skill under test: `github.com/fimoklei/agent-harness/skills/tdd` — the retired
+  demo Harness at a historic tag, so these captures carry the old root `skills/`
+  subpath. The canonical shape is `.apm/skills/<name>` (ADR-0021).
 
 "Streams" records what the file holds, because the driver classifies
 `stdout + "\n" + stderr` for `install`, but reads stdout alone for `view` and

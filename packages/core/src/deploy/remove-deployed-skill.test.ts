@@ -10,7 +10,7 @@ import {
 } from "./remove-deployed-skill";
 
 const VERSION = "v0.5.1";
-const REF = `github.com/fimoklei/agent-harness/skills/tdd#${VERSION}`;
+const REF = `github.com/fimoklei/agent-harness/.apm/skills/tdd#${VERSION}`;
 
 // The scope a successful removal reports: the tools it actually ran against,
 // never the set the caller had in view.
@@ -190,7 +190,7 @@ describe("RemoveDeployedSkill", () => {
     const { useCase } = buildUseCase({
       lookup: {
         ok: true,
-        ref: "github.com/fimoklei/agent-harness/skills/tdd#v0.9.0",
+        ref: "github.com/fimoklei/agent-harness/.apm/skills/tdd#v0.9.0",
         version: "v0.9.0",
       },
     });

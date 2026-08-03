@@ -13,7 +13,7 @@ function skillEntry(opts?: { hashes?: boolean }): string {
   return [
     "dependencies:",
     "  - resolved_ref: v0.5.0",
-    "    virtual_path: skills/tdd",
+    "    virtual_path: .apm/skills/tdd",
     "    package_type: claude_skill",
     ...hashes,
     "",
@@ -29,7 +29,7 @@ describe("parseLockfile", () => {
       entries: [
         {
           resolved_ref: "v0.5.0",
-          virtual_path: "skills/tdd",
+          virtual_path: ".apm/skills/tdd",
           package_type: "claude_skill",
         },
       ],
@@ -44,7 +44,7 @@ describe("parseLockfile", () => {
       entries: [
         {
           resolved_ref: "v0.5.0",
-          virtual_path: "skills/tdd",
+          virtual_path: ".apm/skills/tdd",
           package_type: "claude_skill",
           deployed_file_hashes: { ".claude/skills/tdd/SKILL.md": "sha256:abc" },
         },
@@ -65,7 +65,7 @@ describe("parseLockfile", () => {
   it("fails when an entry is missing resolved_ref", () => {
     const raw = [
       "dependencies:",
-      "  - virtual_path: skills/tdd",
+      "  - virtual_path: .apm/skills/tdd",
       "    package_type: claude_skill",
       "",
     ].join("\n");
@@ -79,7 +79,7 @@ describe("claudeSkillName", () => {
     expect(
       claudeSkillName({
         resolved_ref: "v0.5.0",
-        virtual_path: "skills/tdd",
+        virtual_path: ".apm/skills/tdd",
         package_type: "claude_skill",
       }),
     ).toBe("tdd");
