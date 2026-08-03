@@ -1,6 +1,10 @@
 // Turns the Harness state the server sends into the two sentences the home
 // base shows. Pure and clock-injected, so the age is testable.
-import type { HarnessFreshness, HarnessReleaseState } from "./use-harness";
+import type {
+  HarnessFreshness,
+  HarnessMovement,
+  HarnessReleaseState,
+} from "./use-harness";
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
@@ -53,6 +57,34 @@ export const freshnessLabel = (
     ? `${cause} — never fetched`
     : `${cause} — last fetched ${since}`;
 };
+
+// One section per state, in the order the route runs backwards: what is waiting
+// on the team, then what has not left this disk. The section names the state,
+// so no row has to repeat it (#347).
+const MOVEMENT_SECTIONS = [
+  {
+    state: "pending-review",
+    title: "Pending review",
+    meta: "Pushed, waiting for input",
+  },
+  {
+    state: "pending-promotion",
+    title: "Pending promotion",
+    meta: "local on disk",
+  },
+] as const satisfies readonly {
+  state: HarnessMovement["state"];
+  title: string;
+  meta: string;
+}[];
+
+// An empty section is absent rather than shown empty, so a quiet harness reads
+// as an answer instead of a form with nothing in it.
+export const movementSections = (movements: HarnessMovement[]) =>
+  MOVEMENT_SECTIONS.map((section) => ({
+    ...section,
+    movements: movements.filter((movement) => movement.state === section.state),
+  })).filter((section) => section.movements.length > 0);
 
 export const RELEASE_SUMMARIES: Record<HarnessReleaseState, string> = {
   released: "Everything merged is released.",

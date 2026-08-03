@@ -64,6 +64,7 @@ export { HarnessFreshnessStore } from "./harness/harness-freshness-store";
 export { HarnessGitAdapter } from "./harness/harness-git";
 export {
   type HarnessFreshness,
+  type HarnessMovement,
   type HarnessReleaseState,
   type HarnessState,
   type HarnessStateError,

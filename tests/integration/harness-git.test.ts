@@ -161,4 +161,145 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
       originUrl: null,
     });
   });
+
+  describe("skill trees", () => {
+    // Null is a ref nobody could read, which every test here but its own case
+    // treats as the failure it is rather than working around it.
+    const movementTrees = async (path: string) => {
+      const trees = await adapter().readMovementTrees(path);
+      if (trees === null) {
+        throw new Error("every ref should have been readable");
+      }
+      return trees;
+    };
+
+    const writeSkill = async (name: string, body: string) => {
+      await mkdir(join(root, ".apm", "skills", name), { recursive: true });
+      await writeFile(
+        join(root, ".apm", "skills", name, "SKILL.md"),
+        `---\ndescription: ${body}\n---\n`,
+        "utf8",
+      );
+    };
+
+    it("reads one tree hash per skill directory at every ref", async () => {
+      const trees = await movementTrees(root);
+
+      const hash = (
+        await git(root, "rev-parse", "HEAD:.apm/skills/tdd")
+      ).stdout.trim();
+      expect(trees.remote).toEqual({ tdd: hash });
+      expect(trees.local).toEqual({ tdd: hash });
+      expect(trees.working).toEqual({ tdd: hash });
+      expect(trees.promote).toEqual({});
+    });
+
+    it("includes a skill that exists only as untracked files on disk", async () => {
+      await writeSkill("draft", "never committed");
+
+      const trees = await movementTrees(root);
+
+      expect(Object.keys(trees.working).sort()).toEqual(["draft", "tdd"]);
+      expect(trees.local).not.toHaveProperty("draft");
+    });
+
+    it("reads an edited skill as different content without committing it", async () => {
+      await writeSkill("tdd", "edited on disk");
+
+      const trees = await movementTrees(root);
+
+      expect(trees.working.tdd).not.toBe(trees.local.tdd);
+    });
+
+    it("leaves the author's real index and working tree untouched", async () => {
+      // The temporary index is the whole point: an author's staged work must
+      // survive a read of the Harness view (ADR-0021).
+      await writeFile(join(root, "staged.md"), "staged\n", "utf8");
+      await git(root, "add", "staged.md");
+      await writeSkill("draft", "never committed");
+      const before = (await git(root, "status", "--porcelain")).stdout;
+
+      await movementTrees(root);
+
+      expect((await git(root, "status", "--porcelain")).stdout).toBe(before);
+    });
+
+    it("reads a skill's content on its promote branch", async () => {
+      await writeSkill("tdd", "up for review");
+      await git(root, "add", ".");
+      await git(root, "commit", "-m", "propose");
+      await git(root, "push", "origin", "HEAD:refs/heads/maestro/tdd");
+      await git(root, "reset", "--hard", "HEAD~1");
+      await adapter().fetch(root);
+
+      const trees = await movementTrees(root);
+
+      expect(Object.keys(trees.promote)).toEqual(["tdd"]);
+      expect(trees.promote.tdd).not.toBe(trees.remote.tdd);
+    });
+
+    it("names a promote branch that proposes deleting its skill", async () => {
+      // The branch carries no tree to hash, and dropping it would hide a
+      // deletion that is waiting for review.
+      await git(root, "checkout", "-q", "-b", "maestro/tdd");
+      await rm(join(root, ".apm", "skills", "tdd"), { recursive: true });
+      await git(root, "add", "-A");
+      await git(root, "commit", "-q", "-m", "propose removing tdd");
+      await git(root, "push", "-q", "origin", "HEAD:refs/heads/maestro/tdd");
+      await git(root, "checkout", "-q", "-");
+      await adapter().fetch(root);
+
+      const trees = await movementTrees(root);
+
+      expect(Object.hasOwn(trees.promote, "tdd")).toBe(true);
+      expect(trees.promote.tdd).toBeNull();
+    });
+
+    it("hashes a tracked skill file the same even when a rule ignores it", async () => {
+      // git exempts an already-tracked file from the ignore rules. An index
+      // built from nothing knows of no tracked files, so the file would drop
+      // out and an untouched skill would read as edited.
+      await writeFile(join(root, ".gitignore"), "*.log\n", "utf8");
+      await writeFile(
+        join(root, ".apm", "skills", "tdd", "notes.log"),
+        "kept\n",
+        "utf8",
+      );
+      await git(root, "add", "-A", "-f");
+      await git(root, "commit", "-q", "-m", "track an ignored file");
+
+      const trees = await movementTrees(root);
+
+      expect(trees.working.tdd).toBe(trees.local.tdd);
+    });
+
+    it("refuses to read a failed git call as a harness with nothing on disk", async () => {
+      // Reporting every skill as gone would be a confident wrong answer, and
+      // the author would see their whole harness as deleted locally.
+      const notARepo = join(base, "loose");
+      await mkdir(join(notARepo, ".apm", "skills", "tdd"), { recursive: true });
+      await writeFile(
+        join(notARepo, ".apm", "skills", "tdd", "SKILL.md"),
+        "---\n---\n",
+        "utf8",
+      );
+
+      await expect(adapter().readMovementTrees(notARepo)).rejects.toThrow();
+    });
+
+    it("reads a harness with no skills directory as no skills at all", async () => {
+      await rm(join(root, ".apm"), { recursive: true, force: true });
+      await git(root, "add", ".");
+      await git(root, "commit", "-m", "drop skills");
+      await git(root, "push", "origin", "HEAD:main");
+      await adapter().fetch(root);
+
+      await expect(adapter().readMovementTrees(root)).resolves.toEqual({
+        remote: {},
+        promote: {},
+        local: {},
+        working: {},
+      });
+    });
+  });
 });

@@ -1,6 +1,6 @@
 import type { HarnessState } from "@maestro/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -13,6 +13,7 @@ const RELEASED: HarnessState = {
   releaseState: "released",
   pendingRelease: [],
   freshness: { outcome: null, lastFetchedAt: null },
+  movements: [],
 };
 
 function jsonResponse(body: unknown, status = 200) {
@@ -284,6 +285,83 @@ describe("Harness home base", () => {
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /refresh/i })).toBeEnabled(),
     );
+  });
+
+  it("groups what was pushed apart from what is still on disk", async () => {
+    stubHarnessServer({
+      read: {
+        body: {
+          ...RELEASED,
+          movements: [
+            { skill: "code-review", state: "pending-review" },
+            { skill: "lint-rules", state: "pending-promotion" },
+          ],
+        },
+      },
+    });
+    renderHarness();
+
+    const review = (
+      await screen.findByRole("heading", { level: 3, name: /pending review/i })
+    ).closest("section");
+    const promotion = (
+      await screen.findByRole("heading", {
+        level: 3,
+        name: /pending promotion/i,
+      })
+    ).closest("section");
+    expect(
+      within(review as HTMLElement).getByText("code-review"),
+    ).toBeVisible();
+    expect(
+      within(promotion as HTMLElement).getByText("lint-rules"),
+    ).toBeVisible();
+    // One skill, one table: a row never repeats its own state elsewhere.
+    expect(screen.getAllByText("code-review")).toHaveLength(1);
+  });
+
+  it("leaves out a section that holds nothing", async () => {
+    stubHarnessServer({
+      read: {
+        body: {
+          ...RELEASED,
+          movements: [{ skill: "lint-rules", state: "pending-promotion" }],
+        },
+      },
+    });
+    renderHarness();
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 3,
+        name: /pending promotion/i,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/pending review/i)).not.toBeInTheDocument();
+  });
+
+  it("shows no movement tables on a quiet day", async () => {
+    stubHarnessServer({ read: { body: RELEASED } });
+    renderHarness();
+
+    expect(
+      await screen.findByText("Everything merged is released."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  it("never turns a clone that is only behind into work of your own", async () => {
+    // The remote moved ahead of this checkout. That is the team's change, and
+    // presenting it as a local movement would invite promoting old content.
+    stubHarnessServer({
+      read: { body: { ...RELEASED, releaseState: "pending-release" } },
+    });
+    renderHarness();
+
+    expect(
+      await screen.findByText("Merged changes are waiting for release."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/pending promotion/i)).not.toBeInTheDocument();
   });
 
   it("reports a harness that is not connected instead of an empty screen", async () => {

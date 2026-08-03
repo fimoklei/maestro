@@ -25,6 +25,7 @@ const HARNESS_STATE = {
   releaseState: "released",
   pendingRelease: [],
   freshness: { outcome: null, lastFetchedAt: null },
+  movements: [],
 };
 
 function stubEmptyServer() {

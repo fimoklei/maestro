@@ -2,6 +2,7 @@
 // Git details stay behind the port — no stdout, stderr, or remote text reaches
 // this use-case, so none can reach a response (ADR-0021, security.md).
 import { parseGitOrigin } from "../deploy/git-origin";
+import { classifyMovement, type MovementState } from "./classify-movement";
 import { highestReleaseTag } from "./release-tag";
 import type { HarnessSkillTree, SkillMovement } from "./skill-movements";
 import { diffSkillTrees } from "./skill-movements";
@@ -24,6 +25,17 @@ export type HarnessFacts = {
   tags: HarnessTag[];
 };
 
+// One tree hash per canonical skill directory, at each of the four places a
+// skill's content can sit. A name absent from a map is a skill absent there —
+// except in `promote`, where the key is the branch and a null value is a
+// branch proposing to delete its skill.
+export type HarnessSkillTrees = {
+  remote: Record<string, string>;
+  promote: Record<string, string | null>;
+  local: Record<string, string>;
+  working: Record<string, string>;
+};
+
 export interface HarnessGitPort {
   fetch(root: string): Promise<HarnessFetchOutcome>;
   readFacts(root: string): Promise<HarnessFacts>;
@@ -38,6 +50,9 @@ export interface HarnessGitPort {
     ref: string,
     names: string[],
   ): Promise<Record<string, string | null>>;
+  // The four places a skill's content can sit locally, for the movement
+  // tables. Null where a ref could not be read, on the same rule as above.
+  readMovementTrees(root: string): Promise<HarnessSkillTrees | null>;
 }
 
 // Every call names the harness root: one record per harness, so connecting a
@@ -58,6 +73,11 @@ export type HarnessReleaseState =
 
 export type PendingSkillMovement = SkillMovement & { author: string | null };
 
+export type HarnessMovement = {
+  skill: string;
+  state: MovementState;
+};
+
 export type HarnessState = {
   origin: string;
   releasedVersion: string | null;
@@ -65,6 +85,7 @@ export type HarnessState = {
   releaseState: HarnessReleaseState;
   pendingRelease: PendingSkillMovement[];
   freshness: HarnessFreshness;
+  movements: HarnessMovement[];
 };
 
 export type HarnessStateError = "not-configured" | "no-usable-origin";
@@ -154,6 +175,9 @@ export class ReadHarnessState {
       confirmed && head !== null
         ? await this.movementsSince(root, released, head)
         : null;
+    // Same rule, one ref set further: an unreadable ref leaves the local
+    // tables unknown rather than reading as nothing waiting.
+    const trees = await this.deps.git.readMovementTrees(root);
     return {
       ok: true,
       state: {
@@ -161,11 +185,12 @@ export class ReadHarnessState {
         releasedVersion: released?.name ?? null,
         defaultBranch: facts.defaultBranch,
         releaseState:
-          confirmed && movements !== null
+          confirmed && movements !== null && trees !== null
             ? releaseState(released, head)
             : "unknown",
         pendingRelease: movements ?? [],
         freshness,
+        movements: trees === null ? [] : movementsFromTrees(trees),
       },
     };
   }
@@ -213,6 +238,25 @@ export class ReadHarnessState {
     }));
   }
 }
+
+// Every name any of the four refs knows, so a skill that exists only on a
+// promote branch or only on disk is still asked about. Sorted, so the tables
+// do not reshuffle between reads.
+const movementsFromTrees = (trees: HarnessSkillTrees): HarnessMovement[] => {
+  const names = new Set(Object.values(trees).flatMap(Object.keys));
+  return [...names].sort().flatMap((skill) => {
+    const state = classifyMovement({
+      remote: trees.remote[skill] ?? null,
+      // Presence of the key, not of a hash: the branch may be deleting it.
+      promote: Object.hasOwn(trees.promote, skill)
+        ? { tree: trees.promote[skill] ?? null }
+        : null,
+      local: trees.local[skill] ?? null,
+      working: trees.working[skill] ?? null,
+    });
+    return state === null ? [] : [{ skill, state }];
+  });
+};
 
 const releaseState = (
   released: HarnessTag | null,

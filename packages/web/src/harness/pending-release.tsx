@@ -1,4 +1,5 @@
 import { Card } from "../ui/card";
+import { SectionHeader } from "../ui/section-header";
 import {
   Table,
   TableBody,
@@ -28,8 +29,14 @@ export function PendingRelease({
   }
 
   return (
-    <section className="mt-3">
-      <h3 className="m-label mb-2">Pending release</h3>
+    <section className="mt-4">
+      {/* The same heading as the two tables below it: three sections on one
+          screen, one shape (#347). */}
+      <SectionHeader
+        level={3}
+        title="Pending release"
+        meta={`${movements.length} · Ready to be released`}
+      />
       {SECTIONS.map(({ kind, label }) => {
         const inSection = movements.filter(
           (movement) => movement.kind === kind,

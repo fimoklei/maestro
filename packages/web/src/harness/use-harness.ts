@@ -4,6 +4,7 @@
 
 import type {
   HarnessFreshness,
+  HarnessMovement,
   HarnessReleaseState,
   HarnessState,
   PendingSkillMovement,
@@ -16,6 +17,7 @@ import { requestJson } from "../api/http";
 // one core defines (architecture.md).
 export type {
   HarnessFreshness,
+  HarnessMovement,
   HarnessReleaseState,
   HarnessState,
   PendingSkillMovement,
