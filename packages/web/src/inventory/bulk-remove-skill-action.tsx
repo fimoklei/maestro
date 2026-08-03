@@ -97,7 +97,7 @@ function BulkRemoveRun({
         view: removePreflightView({
           data: result.data,
           error: result.error,
-          isPending: result.isPending,
+          isFetching: result.isFetching,
           isError: result.isError,
         }),
         // Only where the check minted one: the token authorises deleting the

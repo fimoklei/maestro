@@ -9,7 +9,7 @@ import type { RemovePreflight } from "./use-remove-preflight";
 const answered = {
   data: undefined,
   error: null,
-  isPending: false,
+  isFetching: false,
   isError: false,
 };
 
@@ -157,12 +157,25 @@ describe("removePreflightView", () => {
     });
   });
 
+  // The second case is the one a reopened confirmation hits: an earlier
+  // answer sits in `data` while the fresh check runs, and reporting it would
+  // price this removal from the last one — reclaim token included (#381).
   it("reports a check still in flight as checking, never as clean", () => {
-    expect(removePreflightView({ ...answered, isPending: true })).toEqual({
+    const checking = {
       kind: "offered",
       check: { kind: "unanswered", warning: "checking" },
       reclaim: [],
-    });
+    };
+    expect(removePreflightView({ ...answered, isFetching: true })).toEqual(
+      checking,
+    );
+    expect(
+      removePreflightView({
+        ...answered,
+        data: { check: { scope: "repo", warning: null }, reclaim: RECLAIMED },
+        isFetching: true,
+      }),
+    ).toEqual(checking);
   });
 
   // A failed refetch keeps the previous data; carrying it through would name

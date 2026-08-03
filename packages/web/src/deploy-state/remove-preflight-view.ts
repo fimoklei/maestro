@@ -102,7 +102,9 @@ const unanswered = (
 export function removePreflightView(query: {
   data: RemovePreflight | undefined;
   error: unknown;
-  isPending: boolean;
+  // Not isPending: it is only true before the first answer ever arrived, so it
+  // goes false for good once one is cached. isFetching covers both (#381).
+  isFetching: boolean;
   isError: boolean;
 }): RemovePreflightView {
   // Error before data: a failed refetch leaves a now-disproved answer in hand.
@@ -111,6 +113,11 @@ export function removePreflightView(query: {
     return refused === null
       ? unanswered("check-failed")
       : { kind: "refused", ...refused };
+  }
+  // A check in flight has made no claim yet, whatever is still in `data` —
+  // an earlier answer's warning and reclaim token are not this removal's (#381).
+  if (query.isFetching) {
+    return unanswered("checking");
   }
   // Also covers the query being switched off, which happens only with no
   // dialog on screen to read the answer.
