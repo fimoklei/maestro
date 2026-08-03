@@ -1,6 +1,8 @@
 import type { DeploySkillError } from "@maestro/core";
 import { Button } from "../ui/button";
 import { Chip } from "../ui/chip";
+import { cn } from "../ui/cn";
+import { HOVER_TRANSITION } from "../ui/hover-transition";
 import type { BulkDeployReportView } from "./bulk-deploy-report-view";
 
 // One summary line + per-skill detail on expand (#292). Presentational —
@@ -84,11 +86,13 @@ export function BulkDeployReport({
       </span>
       <details className="rounded-control border border-line bg-inset px-card-x py-row-y">
         <summary
-          className={
+          className={cn(
+            "cursor-pointer font-mono text-mono-sm",
+            HOVER_TRANSITION,
             view.tone === "success"
-              ? "cursor-pointer font-mono text-green-ink text-mono-sm"
-              : "cursor-pointer font-mono text-amber-ink text-mono-sm"
-          }
+              ? "text-green-ink hover:text-green-hover"
+              : "text-amber-ink hover:text-amber-hover",
+          )}
         >
           {summary}
         </summary>

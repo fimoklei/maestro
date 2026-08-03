@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { HOVER_TRANSITION } from "../ui/hover-transition";
 import { BulkDeployReport } from "./bulk-deploy-report";
 import type { BulkDeployReportView } from "./bulk-deploy-report-view";
 
@@ -126,6 +127,22 @@ describe("BulkDeployReport", () => {
     );
     expect(onForce).toHaveBeenCalledWith("tdd");
   });
+
+  // DESIGN.md §6: a cursor-pointer with no hover step changes the cursor and
+  // nothing else. jsdom renders no CSS, so the class strings are the evidence.
+  it.each([
+    ["success", "hover:text-green-hover"],
+    ["attention", "hover:text-amber-hover"],
+  ] as const)(
+    "moves the %s summary one step up its ramp on hover",
+    (tone, hoverClass) => {
+      const { container } = render(<BulkDeployReport view={view({ tone })} />);
+
+      const summary = container.querySelector("summary");
+      expect(summary?.className).toContain(hoverClass);
+      expect(summary?.className).toContain(HOVER_TRANSITION);
+    },
+  );
 
   it("shows a distinct failure message when the request itself failed, never a summary of counts", () => {
     render(
