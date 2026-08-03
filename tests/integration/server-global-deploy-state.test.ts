@@ -16,6 +16,7 @@ import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
+import { stubHarness } from "../helpers/stub-harness";
 import { stubRemove } from "../helpers/stub-remove";
 
 // Integration lane for global (user-scope) deploy-state, now grouped per detected
@@ -80,6 +81,7 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
       remove: stubRemove({ registry, locks }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => apmRoot,
+      harness: stubHarness(),
       connect: stubConnect(),
       browse: stubBrowse(),
       enforceOriginHost: false,

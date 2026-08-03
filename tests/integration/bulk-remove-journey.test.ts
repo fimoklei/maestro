@@ -21,6 +21,7 @@ import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
+import { stubHarness } from "../helpers/stub-harness";
 
 // The whole job (#409). server-bulk-remove.test.ts asserts the report the route
 // returns; this asserts the screen afterwards, so apm has to be faithful: it
@@ -146,6 +147,7 @@ describe("retiring a skill from every target it is deployed to", () => {
       remove,
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => apmRoot,
+      harness: stubHarness(),
       connect: stubConnect(),
       browse: stubBrowse(),
       enforceOriginHost: false,

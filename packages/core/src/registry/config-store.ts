@@ -7,6 +7,14 @@ const configSchema = z.object({
   repos: z.array(z.object({ path: z.string() })),
   // Absent on a fresh config; the inventory then falls back to the env var.
   inventoryPath: z.string().optional(),
+  // How the connected Harness's last fetch went, and when one last succeeded.
+  // Absent until the Harness view has fetched once.
+  harnessFreshness: z
+    .object({
+      outcome: z.enum(["fetched", "offline", "fetch-failed"]).nullable(),
+      lastFetchedAt: z.string().nullable(),
+    })
+    .optional(),
 });
 
 export type MaestroConfig = z.infer<typeof configSchema>;

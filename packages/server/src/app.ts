@@ -17,10 +17,15 @@ import {
   DeploySkill,
   type DeploySkillError,
   GlobalDeployStateReader,
+  HarnessFreshnessStore,
+  HarnessGitAdapter,
+  type HarnessStateError,
+  type HarnessStateResult,
   InFlightLocks,
   InventoryGitAdapter,
   InventoryReader,
   NodeFileSystem,
+  ReadHarnessState,
   Registry,
   RemoveDeployedSkill,
   type RemoveDeployedSkillError,
@@ -345,6 +350,23 @@ const connectErrorResponses: Record<
   },
 };
 
+// Mirrors the connect table: nothing connected is a 409, a connected clone
+// whose origin apm could never resolve is a 422.
+const harnessErrorResponses: Record<
+  HarnessStateError,
+  { status: 409 | 422; message: string }
+> = {
+  "not-configured": {
+    status: 409,
+    message: "No harness is connected. Set the agent-harness clone path.",
+  },
+  "no-usable-origin": {
+    status: 422,
+    message:
+      "The harness clone's origin remote is missing, unreadable, or in a form apm cannot resolve. Maestro releases to GitHub tags, so it needs a GitHub origin over https or ssh.",
+  },
+};
+
 // outside-root is 403 (the info-disclosure boundary); no message echoes the
 // path (security.md).
 const browseErrorResponses: Record<
@@ -372,6 +394,7 @@ const browseErrorResponses: Record<
 export type AppDeps = {
   registry: Registry;
   inventory: InventoryReader;
+  harness: ReadHarnessState;
   connect: ConnectInventory;
   browse: BrowseFilesystem;
   // Serves both per-repo and global routes, so tool presence is required —
@@ -425,6 +448,27 @@ export function createApp(deps: AppDeps) {
   app.get("/api/inventory/config", async (c) => {
     return c.json({ inventoryPath: await deps.inventory.configuredPath() });
   });
+
+  // The Harness home base's two operations. Neither takes a path: both resolve
+  // and canonicalize the single connected harness server-side, so no request
+  // can point git at a directory of its choosing (security.md).
+  const harnessResponse = (c: Context, result: HarnessStateResult) => {
+    if (!result.ok) {
+      const { status, message } = harnessErrorResponses[result.error];
+      return c.json({ error: result.error, message }, status);
+    }
+    return c.json(result.state);
+  };
+
+  app.get("/api/harness", async (c) =>
+    harnessResponse(c, await deps.harness.execute()),
+  );
+
+  // A POST: fetching reaches the network and writes refs, so it belongs behind
+  // the Origin/Host guard, never on a GET.
+  app.post("/api/harness/refresh", async (c) =>
+    harnessResponse(c, await deps.harness.refresh(new Date())),
+  );
 
   // Offline connect: persist a user-pasted path as the inventory. No git
   // clone (J11, deferred).
@@ -776,6 +820,18 @@ function realDeps(): AppDeps {
   return {
     registry,
     inventory,
+    // Same connected clone the inventory reads, canonicalized per call so a
+    // path saved after startup is picked up and a symlinked one is resolved.
+    harness: new ReadHarnessState({
+      resolveRoot: async () => {
+        const path = resolveInventoryPath(await store.read(), process.env);
+        return path === undefined
+          ? undefined
+          : await fs.realpath(path).catch(() => path);
+      },
+      git: new HarnessGitAdapter(),
+      freshness: new HarnessFreshnessStore({ store }),
+    }),
     // Checked offline against local git config, so the error lands before
     // the first deploy (#147).
     connect: new ConnectInventory({ fs, store, originUrl: readGitOriginUrl }),

@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router";
 import { ConnectView } from "../connect-gate/connect-view";
 import { WelcomeView } from "../connect-gate/welcome-view";
 import { DeployStateView } from "../deploy-state/deploy-state-view";
+import { HarnessView } from "../harness/harness-view";
 import { InventoryPanel } from "../inventory/inventory-panel";
 import { AppShell } from "./app-shell";
 import { InventorySourceView } from "./inventory-source-view";
@@ -15,6 +16,7 @@ export function AppRoutes() {
       <Route element={<AppShell />}>
         <Route index element={<DeployStateView />} />
         <Route path="inventory" element={<InventoryPanel />} />
+        <Route path="harness" element={<HarnessView />} />
         <Route path="source" element={<InventorySourceView />} />
         <Route path="welcome" element={<WelcomeView />} />
         <Route path="welcome/connect" element={<ConnectView />} />
