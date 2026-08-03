@@ -26,23 +26,36 @@ export function findPortHolders(
 export function describeHeldPorts(holders: PortHolder[]): string | null;
 
 export interface ForeignPortHolder extends PortHolder {
-  /** The worktree whose directory the holder runs in. */
-  worktree: string;
+  /** The worktree the holder runs in; null when ownership is unknown. */
+  worktree: string | null;
 }
 
-/** Empty when git could not be asked — never read as "no worktrees exist". */
+/** Which worktree owns what. A null list means ownership cannot be decided. */
+export interface Attribution {
+  self: string;
+  worktrees: string[] | null;
+}
+
+/** Null when git could not be asked — never an empty list. */
 export function listWorktrees(
   repoRoot: string,
   git?: (args: string[]) => string,
   resolve?: (path: string) => string,
-): string[];
+): string[] | null;
 
 export function partitionHolders(
   holders: PortHolder[],
-  attribution: { self: string; worktrees: string[] },
+  attribution: Attribution,
 ): { foreign: ForeignPortHolder[]; evictable: PortHolder[] };
 
-/** Null when no other worktree holds a port. */
+/** Null when the process cannot be placed in a worktree. */
+export function processWorktree(
+  pid: number,
+  attribution: Pick<Attribution, "worktrees">,
+  lsof?: (args: string[]) => string,
+): string | null;
+
+/** Null when every holder is this run's to take. */
 export function describeForeignHolders(
   foreign: ForeignPortHolder[],
 ): string | null;

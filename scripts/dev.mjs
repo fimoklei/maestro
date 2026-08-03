@@ -18,6 +18,7 @@ import {
   findPortHolders,
   listWorktrees,
   partitionHolders,
+  processWorktree,
 } from "./port-holders.mjs";
 import { seedSandbox, writeSmokeMarker } from "./seed-sandbox.mjs";
 
@@ -62,24 +63,37 @@ function sleep(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
-// 1. Kill the previous dev launcher's process group (pidfile = "the note").
+// Resolved, or a symlinked checkout reads its own previous run as a sibling's
+// and this launcher refuses to start for good.
+const attribution = {
+  self: realpathSync(repoRoot),
+  worktrees: listWorktrees(repoRoot),
+};
+
+// 1. Kill the previous dev launcher's process group (pidfile = "the note"),
+// but only once the process proves it is ours: a pidfile left by a run that
+// died without cleanup can name a pid the OS has since handed to someone else.
 if (existsSync(pidFile)) {
   const previous = Number(readFileSync(pidFile, "utf8").trim());
   if (Number.isInteger(previous) && previous > 0 && isAlive(previous)) {
-    console.log(`[dev] evicting previous dev run (pid ${previous})`);
-    killGroup(previous, "SIGTERM");
+    if (processWorktree(previous, attribution) === attribution.self) {
+      console.log(`[dev] evicting previous dev run (pid ${previous})`);
+      killGroup(previous, "SIGTERM");
+    } else {
+      console.warn(
+        `[dev] stale pidfile: pid ${previous} is not this worktree's dev run — leaving it alone`,
+      );
+    }
   }
   rmSync(pidFile, { force: true });
 }
 
 // 2. Refuse when a port belongs to a sibling worktree — killing it would stop
 // that session's cockpit silently, and it has happened in both directions.
-const { foreign, evictable } = partitionHolders(findPortHolders(cockpitPorts), {
-  // Resolved, or a symlinked checkout reads its own previous run as a
-  // sibling's and this launcher refuses to start for good.
-  self: realpathSync(repoRoot),
-  worktrees: listWorktrees(repoRoot),
-});
+const { foreign, evictable } = partitionHolders(
+  findPortHolders(cockpitPorts),
+  attribution,
+);
 const foreignRefusal = describeForeignHolders(foreign);
 if (foreignRefusal !== null) {
   console.error(foreignRefusal);

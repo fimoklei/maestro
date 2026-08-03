@@ -83,8 +83,9 @@ export function describeHeldPorts(holders) {
 }
 
 /**
- * Every worktree of this repo; empty when git could not be asked. Resolved,
- * because attribution compares these against paths the caller resolved too.
+ * Every worktree of this repo, or null when git could not be asked — never an
+ * empty list, which would read as "no worktree owns these ports" and free
+ * them. Resolved, because attribution compares against resolved paths.
  */
 export function listWorktrees(repoRoot, git = runGit, resolve = realpathSync) {
   try {
@@ -100,9 +101,7 @@ export function listWorktrees(repoRoot, git = runGit, resolve = realpathSync) {
         }
       });
   } catch {
-    // No list means no attribution, so every holder stays evictable — the
-    // behaviour before worktrees were told apart.
-    return [];
+    return null;
   }
 }
 
@@ -122,11 +121,19 @@ function worktreeOwning(cwd, worktrees) {
 }
 
 /**
- * Split port holders into the ones another worktree owns — which this run must
- * refuse rather than kill — and the ones it may free: its own previous run, and
- * anything no worktree claims.
+ * Split port holders into the ones this run must refuse rather than kill —
+ * another worktree's, and every holder when ownership could not be established
+ * at all — and the ones it may free: its own previous run, and anything no
+ * worktree claims.
  */
 export function partitionHolders(holders, { self, worktrees }) {
+  if (worktrees === null) {
+    return {
+      foreign: holders.map((holder) => ({ ...holder, worktree: null })),
+      evictable: [],
+    };
+  }
+
   const foreign = [];
   const evictable = [];
 
@@ -142,21 +149,32 @@ export function partitionHolders(holders, { self, worktrees }) {
   return { foreign, evictable };
 }
 
-/** The launcher's refusal to evict a sibling worktree, or null when free to go. */
+/**
+ * The worktree a running process sits in; null when that cannot be
+ * established, so a caller about to signal it holds off instead.
+ */
+export function processWorktree(pid, { worktrees }, lsof = runLsof) {
+  if (worktrees === null) return null;
+
+  return worktreeOwning(describeProcess(pid, lsof).cwd, worktrees);
+}
+
+/** The launcher's refusal to evict a holder it may not kill, or null when free to go. */
 export function describeForeignHolders(foreign) {
   if (foreign.length === 0) return null;
 
   const held = foreign
-    .map(
-      (holder) =>
-        `${namePortHolder(holder)} belonging to the worktree at ${holder.worktree}`,
+    .map((holder) =>
+      holder.worktree === null
+        ? `${namePortHolder(holder)}, whose worktree could not be determined`
+        : `${namePortHolder(holder)} belonging to the worktree at ${holder.worktree}`,
     )
     .join("\n");
 
   return [
-    "[dev] refusing to start: a cockpit port belongs to another worktree.",
+    "[dev] refusing to start: a cockpit port is not this worktree's to take.",
     held,
-    "Killing it would stop that session's cockpit without telling it.",
+    "Killing it would stop another session's cockpit without telling it.",
     "Fix: stop that worktree's dev run, then run this again.",
   ].join("\n");
 }

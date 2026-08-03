@@ -6,6 +6,7 @@ import {
   listWorktrees,
   partitionHolders,
   pidsOnPort,
+  processWorktree,
 } from "../../scripts/port-holders.mjs";
 
 interface FakeProcess {
@@ -213,12 +214,12 @@ describe("listWorktrees", () => {
     ).toEqual([mainWorktree]);
   });
 
-  it("answers nothing when git cannot be asked", () => {
-    // No worktree list means no attribution: every holder is unowned, which
-    // keeps today's freeing behaviour rather than blocking on a failed lookup.
+  it("answers null when git cannot be asked", () => {
+    // Never an empty list: that reads as "no worktrees own these ports" and
+    // every holder would be killed — the eviction this whole seam prevents.
     expect(
       listWorktrees("/Users/m/maestro", brokenLsof("ENOENT") as () => string),
-    ).toEqual([]);
+    ).toBeNull();
   });
 });
 
@@ -276,11 +277,65 @@ describe("partitionHolders", () => {
 
     expect(foreign.map((holder) => holder.worktree)).toEqual([nestedWorktree]);
   });
+
+  it("refuses every holder when ownership could not be established", () => {
+    // A failed worktree lookup must not read as "nobody owns these ports" —
+    // that frees a sibling's cockpit on a passing git hiccup.
+    const { foreign, evictable } = partitionHolders(
+      [holderIn(siblingWorktree), holderIn("/Applications/SomeApp.app")],
+      { self: nestedWorktree, worktrees: null },
+    );
+
+    expect(evictable).toEqual([]);
+    expect(foreign.map((holder) => holder.worktree)).toEqual([null, null]);
+  });
+});
+
+describe("processWorktree", () => {
+  const launcher: FakeProcess = {
+    pid: 771,
+    command: "node",
+    cwd: nestedWorktree,
+  };
+
+  it("names the worktree a running process sits in", () => {
+    expect(processWorktree(771, { worktrees }, stubLsof([launcher]))).toEqual(
+      nestedWorktree,
+    );
+  });
+
+  it("answers null when the process cannot be read", () => {
+    // A pid the pidfile names but the OS has reused reads as unowned, so the
+    // launcher discards the note instead of killing a stranger's process group.
+    expect(processWorktree(771, { worktrees }, stubLsof([]))).toBeNull();
+  });
+
+  it("answers null when the worktree list is unavailable", () => {
+    expect(
+      processWorktree(771, { worktrees: null }, stubLsof([launcher])),
+    ).toBeNull();
+  });
 });
 
 describe("describeForeignHolders", () => {
   it("says nothing when no foreign worktree holds a port", () => {
     expect(describeForeignHolders([])).toBeNull();
+  });
+
+  it("states that ownership is unknown rather than printing null", () => {
+    const message = describeForeignHolders([
+      {
+        port: 3000,
+        pid: 4821,
+        command: "node",
+        cwd: siblingWorktree,
+        worktree: null,
+      },
+    ]);
+
+    expect(message).toContain("3000");
+    expect(message).toContain("4821");
+    expect(message).not.toContain("null");
   });
 
   it("names the port, the process and the worktree holding it", () => {
