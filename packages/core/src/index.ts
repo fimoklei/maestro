@@ -60,7 +60,6 @@ export {
   BrowseFilesystem,
   type BrowseSuccess,
 } from "./filesystem/browse-filesystem";
-export type { MovementState } from "./harness/classify-movement";
 export { HarnessFreshnessStore } from "./harness/harness-freshness-store";
 export { HarnessGitAdapter } from "./harness/harness-git";
 export {

@@ -28,7 +28,7 @@ export function MovementTable({ movements }: { movements: HarnessMovement[] }) {
           {movements.map((movement) => (
             <TableRow key={movement.skill}>
               <TableCell>
-                <TypeTag type="skill" />
+                <TypeTag />
               </TableCell>
               <TableCell
                 title={movement.skill}

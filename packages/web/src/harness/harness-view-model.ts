@@ -4,7 +4,6 @@ import type {
   HarnessFreshness,
   HarnessMovement,
   HarnessReleaseState,
-  MovementState,
 } from "./use-harness";
 
 const MINUTE = 60_000;
@@ -74,7 +73,7 @@ const MOVEMENT_SECTIONS = [
     meta: "local on disk",
   },
 ] as const satisfies readonly {
-  state: MovementState;
+  state: HarnessMovement["state"];
   title: string;
   meta: string;
 }[];

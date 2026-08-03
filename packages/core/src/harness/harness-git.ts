@@ -121,8 +121,11 @@ export class HarnessGitAdapter implements HarnessGitPort {
     root: string,
     treeish: string,
   ): Promise<Record<string, string>> {
+    // `-d` is the filter: a loose file beside the skills is not a skill.
     const listing = await this.read(root, [
       "ls-tree",
+      "-d",
+      "--format=%(objectname)%x09%(path)",
       `${treeish}:${HARNESS_SKILLS_DIR}`,
     ]);
     if (listing === null) {
@@ -130,10 +133,8 @@ export class HarnessGitAdapter implements HarnessGitPort {
     }
     return Object.fromEntries(
       listing.split("\n").flatMap((line) => {
-        const [meta = "", name = ""] = line.split("\t");
-        const [, type, hash] = meta.split(" ");
-        // Directories only: a loose file beside the skills is not a skill.
-        return type === "tree" && hash && name ? [[name, hash] as const] : [];
+        const [hash = "", name = ""] = line.split("\t");
+        return hash && name ? [[name, hash] as const] : [];
       }),
     );
   }
@@ -171,9 +172,10 @@ export class HarnessGitAdapter implements HarnessGitPort {
     root: string,
   ): Promise<Record<string, string>> {
     const indexDir = await mkdtemp(join(tmpdir(), "maestro-harness-index-"));
+    // The file does not exist yet, and git reads an absent index as an empty
+    // one — so `add` starts from nothing without a read-tree to empty it.
     const env = { ...process.env, GIT_INDEX_FILE: join(indexDir, "index") };
     try {
-      await run("git", ["-C", root, "read-tree", "--empty"], { env });
       await run("git", ["-C", root, "add", "-A", "--", HARNESS_SKILLS_DIR], {
         env,
       });
