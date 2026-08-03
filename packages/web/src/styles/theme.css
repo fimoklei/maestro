@@ -152,3 +152,53 @@
 .m-mono {
   font-family: var(--font-mono);
 }
+
+/* The connect gate's arrival — the one entrance animation in the cockpit, and
+   only on that screen (ADR-0022). Runs once on mount; nothing loops. */
+@keyframes connect-gate-rule {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes connect-gate-resolve {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(5px);
+  }
+}
+
+.connect-gate-rule {
+  display: block;
+  width: 96px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--amber), transparent);
+  opacity: 0.55;
+}
+
+/* Declared once, the way hover-transition.ts owns the colour transition. The
+   last delay plus the duration is the sequence's total; ADR-0022 caps it at
+   600ms so the action never sits invisible while it is already clickable. */
+:root {
+  --gate-arrival-duration: 420ms;
+  --gate-arrival-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .connect-gate-rule {
+    animation: connect-gate-rule var(--gate-arrival-duration)
+      var(--gate-arrival-ease) backwards;
+  }
+  .connect-gate-title {
+    animation: connect-gate-resolve var(--gate-arrival-duration) 60ms
+      var(--gate-arrival-ease) backwards;
+  }
+  .connect-gate-body {
+    animation: connect-gate-resolve var(--gate-arrival-duration) 120ms
+      var(--gate-arrival-ease) backwards;
+  }
+  .connect-gate-cta {
+    animation: connect-gate-resolve var(--gate-arrival-duration) 180ms
+      var(--gate-arrival-ease) backwards;
+  }
+}

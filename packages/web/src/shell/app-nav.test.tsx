@@ -23,6 +23,7 @@ const HARNESS_STATE = {
   releasedVersion: "v0.5.0",
   defaultBranch: "main",
   releaseState: "released",
+  pendingRelease: [],
   freshness: { outcome: null, lastFetchedAt: null },
   movements: [],
 };

@@ -163,6 +163,16 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
   });
 
   describe("skill trees", () => {
+    // Null is a ref nobody could read, which every test here but its own case
+    // treats as the failure it is rather than working around it.
+    const movementTrees = async (path: string) => {
+      const trees = await adapter().readMovementTrees(path);
+      if (trees === null) {
+        throw new Error("every ref should have been readable");
+      }
+      return trees;
+    };
+
     const writeSkill = async (name: string, body: string) => {
       await mkdir(join(root, ".apm", "skills", name), { recursive: true });
       await writeFile(
@@ -173,7 +183,7 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
     };
 
     it("reads one tree hash per skill directory at every ref", async () => {
-      const trees = await adapter().readSkillTrees(root);
+      const trees = await movementTrees(root);
 
       const hash = (
         await git(root, "rev-parse", "HEAD:.apm/skills/tdd")
@@ -187,7 +197,7 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
     it("includes a skill that exists only as untracked files on disk", async () => {
       await writeSkill("draft", "never committed");
 
-      const trees = await adapter().readSkillTrees(root);
+      const trees = await movementTrees(root);
 
       expect(Object.keys(trees.working).sort()).toEqual(["draft", "tdd"]);
       expect(trees.local).not.toHaveProperty("draft");
@@ -196,7 +206,7 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
     it("reads an edited skill as different content without committing it", async () => {
       await writeSkill("tdd", "edited on disk");
 
-      const trees = await adapter().readSkillTrees(root);
+      const trees = await movementTrees(root);
 
       expect(trees.working.tdd).not.toBe(trees.local.tdd);
     });
@@ -209,7 +219,7 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
       await writeSkill("draft", "never committed");
       const before = (await git(root, "status", "--porcelain")).stdout;
 
-      await adapter().readSkillTrees(root);
+      await movementTrees(root);
 
       expect((await git(root, "status", "--porcelain")).stdout).toBe(before);
     });
@@ -222,7 +232,7 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
       await git(root, "reset", "--hard", "HEAD~1");
       await adapter().fetch(root);
 
-      const trees = await adapter().readSkillTrees(root);
+      const trees = await movementTrees(root);
 
       expect(Object.keys(trees.promote)).toEqual(["tdd"]);
       expect(trees.promote.tdd).not.toBe(trees.remote.tdd);
@@ -239,7 +249,7 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
       await git(root, "checkout", "-q", "-");
       await adapter().fetch(root);
 
-      const trees = await adapter().readSkillTrees(root);
+      const trees = await movementTrees(root);
 
       expect(Object.hasOwn(trees.promote, "tdd")).toBe(true);
       expect(trees.promote.tdd).toBeNull();
@@ -258,7 +268,7 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
       await git(root, "add", "-A", "-f");
       await git(root, "commit", "-q", "-m", "track an ignored file");
 
-      const trees = await adapter().readSkillTrees(root);
+      const trees = await movementTrees(root);
 
       expect(trees.working.tdd).toBe(trees.local.tdd);
     });
@@ -274,7 +284,7 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
         "utf8",
       );
 
-      await expect(adapter().readSkillTrees(notARepo)).rejects.toThrow();
+      await expect(adapter().readMovementTrees(notARepo)).rejects.toThrow();
     });
 
     it("reads a harness with no skills directory as no skills at all", async () => {
@@ -284,7 +294,7 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
       await git(root, "push", "origin", "HEAD:main");
       await adapter().fetch(root);
 
-      await expect(adapter().readSkillTrees(root)).resolves.toEqual({
+      await expect(adapter().readMovementTrees(root)).resolves.toEqual({
         remote: {},
         promote: {},
         local: {},

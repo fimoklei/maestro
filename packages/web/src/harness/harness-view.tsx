@@ -9,6 +9,7 @@ import {
   RELEASE_SUMMARIES,
 } from "./harness-view-model";
 import { MovementTable } from "./movement-table";
+import { PendingRelease } from "./pending-release";
 import { useHarness, useRefreshHarness } from "./use-harness";
 
 // The Harness home base: what the released harness is, how fresh that picture
@@ -69,6 +70,9 @@ export function HarnessView() {
               {RELEASE_SUMMARIES[state.releaseState]}
             </p>
           </Card>
+          {/* The three tables in the order the route runs backwards: what a
+              release carries out, then what it does not touch (#347). */}
+          <PendingRelease movements={state.pendingRelease} />
           {movementSections(state.movements).map((section) => (
             <section key={section.state} className="mt-4">
               <SectionHeader

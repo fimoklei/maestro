@@ -3,6 +3,8 @@
 - **Status:** Accepted — amends ADR-0004 (Tailwind v4 `@theme` stays; the
   shadcn-catalogue-from-scratch scope is dropped)
 - **Date:** 2026-06-19
+- **Amended 2026-08-03** by ADR-0022 — the motion rule gains one exception, the
+  connect gate's welcome screen. Everything else stands.
 
 ## Context
 

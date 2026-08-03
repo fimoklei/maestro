@@ -229,7 +229,8 @@ light ramp is re-derived to AA (issue #209).
 - Two action signals (amber, green) plus a danger red for errors, and four fixed primitive-type colours
 - Tight 3–6px radii; nothing pill-shaped, no circles except status dots
 - Cockpit density: 14px card padding, 9px rows, 12px gaps, 24px between sections
-- Flat fills only — no gradients, textures, blur, or transparency layers
+- Flat fills only — no gradients, textures, blur, or transparency layers,
+  except the connect gate's arrival (ADR-0022)
 
 ## 2. Colors
 
@@ -352,8 +353,9 @@ raised because it is one lightness step lighter than what surrounds it and is
 outlined with a hairline, not because it floats.
 
 Backgrounds are flat fills only. No gradients, textures, patterns, blur, or
-backdrop-filter. The single use of alpha is the 10–12% tint inside a status chip,
-paired with a ~25–30% alpha border of the same colour.
+backdrop-filter — the connect gate's arrival is the one exception (ADR-0022).
+The single use of alpha is the 10–12% tint inside a status chip, paired with a
+~25–30% alpha border of the same colour.
 
 ### Named Rules
 
@@ -506,20 +508,27 @@ done. The logo is typographic — a bold mono "M" on an amber rounded tile.
 - **Do** give every clickable surface a visible hover, not just a pointer cursor —
   one step up its own ramp, colour only.
 - **Do** declare that transition once and reuse it. Retyping the duration per
-  component is how the window drifts out of the range this document states.
+  component is how the window drifts out of the range this document states. The
+  connect gate's arrival (ADR-0022) declares its own window the same way, in one
+  place, and runs once on mount — nothing in the cockpit loops.
 - **Do** use dashed borders for additive affordances, and only for those.
 
 ### Don't:
 
 - **Don't** add a `box-shadow` anywhere, in either theme.
 - **Don't** use gradients, textures, blur, backdrop-filter, or glassmorphism.
+  The connect gate's arrival is the single exception (ADR-0022): a gradient
+  fades its 1px rule out at both ends and stays on the finished screen, and
+  blur resolves the text to sharp inside that one sequence and nowhere else.
 - **Don't** build hero metric tiles, gradient accents, pill shapes, or cards
   nested inside cards — that is the generic SaaS dashboard this system rejects.
 - **Don't** add illustrations, emoji, or reassuring marketing copy; the cockpit
   shows state, it does not comfort.
 - **Don't** strip structure down to a bare terminal dump; mono is the voice, but
   hierarchy and alignment still do the reading work.
-- **Don't** add entrance animations, hover scaling, or decorative motion.
+- **Don't** add entrance animations, hover scaling, or decorative motion. The
+  connect gate's welcome screen is the single exception (ADR-0022); a second one
+  amends that ADR rather than citing it.
 - **Don't** hover a control onto the active surface — that is the colour of a
   standing choice, and reusing it makes hover and selected indistinguishable.
 - **Don't** ship a `cursor-pointer` with no colour change behind it; the cursor

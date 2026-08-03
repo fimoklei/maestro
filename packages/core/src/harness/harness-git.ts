@@ -19,6 +19,7 @@ import type {
   HarnessSkillTrees,
   HarnessTag,
 } from "./read-harness-state";
+import type { HarnessSkillTree } from "./skill-movements";
 
 const run = promisify(execFile);
 
@@ -103,40 +104,22 @@ export class HarnessGitAdapter implements HarnessGitPort {
     };
   }
 
-  // The four places one skill's content can sit. The working read goes through
-  // a temporary index so untracked files count, while the author's real index,
-  // HEAD and working tree are never read or written (ADR-0021).
-  async readSkillTrees(root: string): Promise<HarnessSkillTrees> {
-    return {
-      remote: await this.skillTreesAt(root, REMOTE_HEAD),
-      promote: await this.promoteTrees(root),
-      local: await this.skillTreesAt(root, "HEAD"),
-      working: await this.workingSkillTrees(root),
-    };
-  }
-
-  // One tree hash per skill directory under the canonical skills path. An
-  // absent path is a harness with no skills there, never a failure.
-  private async skillTreesAt(
-    root: string,
-    treeish: string,
-  ): Promise<Record<string, string>> {
-    // `-d` is the filter: a loose file beside the skills is not a skill.
-    const listing = await this.read(root, [
-      "ls-tree",
-      "-d",
-      "--format=%(objectname)%x09%(path)",
-      `${treeish}:${HARNESS_SKILLS_DIR}`,
-    ]);
-    if (listing === null) {
-      return {};
+  // The four places one skill's content can sit, read through the same ref
+  // reader the release delta uses. Null where a ref could not be read, so an
+  // unreadable clone never reads as one with nothing waiting.
+  async readMovementTrees(root: string): Promise<HarnessSkillTrees | null> {
+    const remote = await this.readSkillTrees(root, REMOTE_HEAD);
+    const local = await this.readSkillTrees(root, "HEAD");
+    const working = await this.workingSkillTrees(root);
+    if (remote === null || local === null || working === null) {
+      return null;
     }
-    return Object.fromEntries(
-      listing.split("\n").flatMap((line) => {
-        const [hash = "", name = ""] = line.split("\t");
-        return hash && name ? [[name, hash] as const] : [];
-      }),
-    );
+    return {
+      remote: byName(remote),
+      promote: await this.promoteTrees(root),
+      local: byName(local),
+      working: byName(working),
+    };
   }
 
   // Each promote branch is asked only about the skill it is named for: a
@@ -171,12 +154,12 @@ export class HarnessGitAdapter implements HarnessGitPort {
   // the hashes survive, and those are unreferenced.
   private async workingSkillTrees(
     root: string,
-  ): Promise<Record<string, string>> {
+  ): Promise<HarnessSkillTree[] | null> {
     // No skills path is an empty harness. Every other failure below is left to
     // throw: reading one as "nothing on disk" would show the author's whole
     // harness as locally deleted, which is a confident wrong answer.
     if (!(await pathExists(join(root, HARNESS_SKILLS_DIR)))) {
-      return {};
+      return [];
     }
 
     const indexDir = await mkdtemp(join(tmpdir(), "maestro-harness-index-"));
@@ -192,9 +175,93 @@ export class HarnessGitAdapter implements HarnessGitPort {
         env,
       });
       const { stdout } = await run("git", ["-C", root, "write-tree"], { env });
-      return await this.skillTreesAt(root, stdout.trim());
+      return await this.readSkillTrees(root, stdout.trim());
     } finally {
       await rm(indexDir, { recursive: true, force: true });
+    }
+  }
+
+  // Reads the skills directory as it stands *inside* `ref`, so a ref that is
+  // not an ancestor of anything is still readable. Null on anything the caller
+  // must not read as a delta: an unreadable ref, or a listing git worded in a
+  // way this parser does not recognise.
+  async readSkillTrees(
+    root: string,
+    ref: string,
+  ): Promise<HarnessSkillTree[] | null> {
+    // `-z`: without it git quotes and escapes any name outside plain ASCII,
+    // and the quoted form would then be used as a path and shown on screen.
+    const listing = await this.readOutput(root, [
+      "ls-tree",
+      "-z",
+      `${ref}:${HARNESS_SKILLS_DIR}`,
+    ]);
+    if (listing === null) {
+      // The same failure covers a ref that does not resolve and a ref carrying
+      // no skills directory. Only the second is an empty set.
+      const resolves = await this.readOutput(root, [
+        "rev-parse",
+        "--verify",
+        "--quiet",
+        `${ref}^{commit}`,
+      ]);
+      return resolves === null ? null : [];
+    }
+
+    const skills: HarnessSkillTree[] = [];
+    for (const entry of listing.split("\0")) {
+      if (entry === "") {
+        continue;
+      }
+      // `<mode> <type> <object>\t<name>` — only a directory is a skill.
+      const [meta = "", name = ""] = entry.split("\t");
+      const [mode, type, treeHash] = meta.split(" ");
+      if (!mode || !type || !treeHash || !name) {
+        // A line this parser cannot read would silently drop a skill, and a
+        // missing skill reads as a removal nobody made.
+        return null;
+      }
+      if (type === "tree") {
+        skills.push({ name, treeHash });
+      }
+    }
+    return skills;
+  }
+
+  // ponytail: one `git log` per movement; batch into a single `--name-status`
+  // walk if a first release of a large harness makes the read slow.
+  async readSkillAuthors(
+    root: string,
+    ref: string,
+    names: string[],
+  ): Promise<Record<string, string | null>> {
+    const authors = await Promise.all(
+      names.map(async (name) => [
+        name,
+        await this.read(root, [
+          "log",
+          "-1",
+          "--format=%an",
+          ref,
+          "--",
+          `${HARNESS_SKILLS_DIR}/${name}`,
+        ]),
+      ]),
+    );
+    return Object.fromEntries(authors);
+  }
+
+  // Null only when the command itself failed, so an empty answer stays an
+  // answer. Raw stdout: a `-z` listing carries names this must not touch.
+  private async readOutput(
+    root: string,
+    args: string[],
+  ): Promise<string | null> {
+    try {
+      const { stdout } = await run("git", ["-C", root, ...args]);
+      return stdout;
+    } catch {
+      return null;
     }
   }
 
@@ -234,3 +301,6 @@ const pathExists = (path: string): Promise<boolean> =>
     () => true,
     () => false,
   );
+
+const byName = (skills: HarnessSkillTree[]): Record<string, string> =>
+  Object.fromEntries(skills.map((skill) => [skill.name, skill.treeHash]));

@@ -7,6 +7,8 @@ import type {
   HarnessMovement,
   HarnessReleaseState,
   HarnessState,
+  PendingSkillMovement,
+  SkillMovementKind,
 } from "@maestro/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
@@ -18,6 +20,8 @@ export type {
   HarnessMovement,
   HarnessReleaseState,
   HarnessState,
+  PendingSkillMovement,
+  SkillMovementKind,
 };
 
 const HARNESS_KEY = ["harness", "state"] as const;

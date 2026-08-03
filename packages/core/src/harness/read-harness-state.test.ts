@@ -6,6 +6,7 @@ import type {
   HarnessSkillTrees,
 } from "./read-harness-state";
 import { ReadHarnessState } from "./read-harness-state";
+import type { HarnessSkillTree } from "./skill-movements";
 
 // A harness Maestro has fetched at least once: only then do the tags it reads
 // mean anything.
@@ -41,6 +42,11 @@ function stubFreshness(
   };
 }
 
+// Skill trees per ref, keyed by the commit the use-case asks about. Anything
+// unlisted is a ref carrying no skills at all; an explicit null is a ref the
+// adapter could not read.
+type TreesByRef = Record<string, HarnessSkillTree[] | null>;
+
 // A harness whose one skill sits at the same content everywhere: the quiet
 // case each movement test moves a single ref away from.
 const SETTLED_TREES: HarnessSkillTrees = {
@@ -56,8 +62,16 @@ function buildRead(overrides?: {
   resolveRoot?: () => Promise<string | undefined>;
   fetch?: () => Promise<HarnessFetchOutcome>;
   freshness?: ReturnType<typeof stubFreshness>;
-  trees?: Partial<HarnessSkillTrees>;
+  trees?: TreesByRef;
+  authors?: Record<string, string>;
+  // Who the released ref's own history names, where the default branch's
+  // history names nobody.
+  authorsAtRelease?: Record<string, string>;
+  // The four local refs behind the movement tables, unrelated to `trees`.
+  movementTrees?: Partial<HarnessSkillTrees> | null;
 }) {
+  const head =
+    overrides?.facts?.defaultBranchCommit ?? FACTS.defaultBranchCommit;
   return new ReadHarnessState({
     resolveRoot:
       overrides?.resolveRoot ??
@@ -66,7 +80,19 @@ function buildRead(overrides?: {
     git: {
       fetch: overrides?.fetch ?? (async () => "fetched"),
       readFacts: async () => ({ ...FACTS, ...overrides?.facts }),
-      readSkillTrees: async () => ({ ...SETTLED_TREES, ...overrides?.trees }),
+      readSkillTrees: async (_root: string, ref: string) =>
+        overrides?.trees?.[ref] === undefined ? [] : overrides.trees[ref],
+      readSkillAuthors: async (_root: string, ref: string, names: string[]) => {
+        const known =
+          ref === head ? overrides?.authors : overrides?.authorsAtRelease;
+        return Object.fromEntries(
+          names.map((name) => [name, known?.[name] ?? null]),
+        );
+      },
+      readMovementTrees: async () =>
+        overrides?.movementTrees === null
+          ? null
+          : { ...SETTLED_TREES, ...overrides?.movementTrees },
     },
     freshness: overrides?.freshness ?? stubFreshness(FETCHED),
   });
@@ -83,8 +109,72 @@ describe("ReadHarnessState", () => {
         releasedVersion: "v0.5.0",
         defaultBranch: "main",
         releaseState: "released",
+        pendingRelease: [],
         freshness: FETCHED,
         movements: [],
+      },
+    });
+  });
+
+  it("names each movement's author alongside what merged since the release", async () => {
+    const read = buildRead({
+      facts: { defaultBranchCommit: "bbb" },
+      trees: {
+        aaa: [
+          { name: "tdd", treeHash: "t1" },
+          { name: "grilling", treeHash: "g1" },
+        ],
+        bbb: [
+          { name: "tdd", treeHash: "t2" },
+          { name: "research", treeHash: "r1" },
+        ],
+      },
+      authors: { tdd: "Ada", research: "Grace", grilling: "Linus" },
+    });
+
+    const result = await read.execute();
+
+    expect(result).toMatchObject({
+      ok: true,
+      state: {
+        pendingRelease: [
+          { kind: "removed", name: "grilling", author: "Linus" },
+          { kind: "added", name: "research", author: "Grace" },
+          { kind: "changed", name: "tdd", author: "Ada" },
+        ],
+      },
+    });
+  });
+
+  it("calls the comparison unknown when a ref's skills could not be read", async () => {
+    // An unreadable ref is not an empty harness: reading it as one would
+    // report every skill as removed (LEARNINGS.md · J04).
+    const read = buildRead({
+      facts: { defaultBranchCommit: "bbb" },
+      trees: { aaa: [{ name: "tdd", treeHash: "t1" }], bbb: null },
+    });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: { releaseState: "unknown", pendingRelease: [] },
+    });
+  });
+
+  it("names a removal's author from the release when the branch never had it", async () => {
+    // A tag on another history carries a skill the default branch never saw,
+    // so a log of that path at the branch answers nothing.
+    const read = buildRead({
+      facts: { defaultBranchCommit: "bbb" },
+      trees: { aaa: [{ name: "grilling", treeHash: "g1" }], bbb: [] },
+      authorsAtRelease: { grilling: "Linus" },
+    });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: {
+        pendingRelease: [
+          { kind: "removed", name: "grilling", author: "Linus" },
+        ],
       },
     });
   });
@@ -122,7 +212,12 @@ describe("ReadHarnessState", () => {
 
     expect(result).toMatchObject({
       ok: true,
-      state: { releasedVersion: "v0.5.0", releaseState: "unknown" },
+      state: {
+        releasedVersion: "v0.5.0",
+        releaseState: "unknown",
+        // Nothing to compare against is not "nothing merged".
+        pendingRelease: [],
+      },
     });
   });
 
@@ -165,7 +260,7 @@ describe("ReadHarnessState", () => {
 describe("ReadHarnessState movements", () => {
   it("lists every skill that has moved, one state each, in name order", async () => {
     const read = buildRead({
-      trees: {
+      movementTrees: {
         remote: { docs: "same", tdd: "same" },
         promote: { tdd: "pushed" },
         local: { docs: "same", tdd: "same" },
@@ -188,7 +283,7 @@ describe("ReadHarnessState movements", () => {
     // A brand-new skill someone pushed for review is in none of the other
     // three refs; taking only origin/HEAD's names would miss it entirely.
     const read = buildRead({
-      trees: {
+      movementTrees: {
         remote: {},
         promote: { fresh: "pushed" },
         local: {},
@@ -206,7 +301,7 @@ describe("ReadHarnessState movements", () => {
     // The branch carries no tree for the skill, which is not the same fact as
     // there being no branch — a deletion is a review like any other.
     const read = buildRead({
-      trees: {
+      movementTrees: {
         remote: { tdd: "same" },
         promote: { tdd: null },
         local: { tdd: "same" },
@@ -222,7 +317,7 @@ describe("ReadHarnessState movements", () => {
 
   it("leaves a clone that is only behind with nothing of its own waiting", async () => {
     const read = buildRead({
-      trees: {
+      movementTrees: {
         remote: { tdd: "newer" },
         promote: {},
         local: { tdd: "older" },
@@ -233,6 +328,17 @@ describe("ReadHarnessState movements", () => {
     await expect(read.execute()).resolves.toMatchObject({
       ok: true,
       state: { movements: [] },
+    });
+  });
+
+  it("calls the whole picture unknown when a local ref could not be read", async () => {
+    // An empty table would say nothing is waiting, which is a claim this read
+    // cannot back (LEARNINGS.md · J04).
+    const read = buildRead({ movementTrees: null });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: { movements: [], releaseState: "unknown" },
     });
   });
 });
@@ -310,7 +416,9 @@ describe("ReadHarnessState refresh", () => {
           readFor.push(root);
           return FACTS;
         },
-        readSkillTrees: async (root) => {
+        readSkillTrees: async () => [],
+        readSkillAuthors: async () => ({}),
+        readMovementTrees: async (root) => {
           readFor.push(root);
           return SETTLED_TREES;
         },
