@@ -257,14 +257,16 @@ describe("partitionHolders", () => {
     expect(evictable).toEqual([holderIn(`${nestedWorktree}/packages/web`)]);
   });
 
-  it("frees a holder no worktree owns", () => {
+  it("refuses a holder no worktree owns", () => {
+    // The pair is derived from the worktree's path, so an unrecognised holder
+    // is somebody else's service — killing it costs their work, not ours.
     const { foreign, evictable } = partitionHolders(
       [holderIn("/Applications/SomeApp.app"), holderIn(null)],
       { self: nestedWorktree, worktrees },
     );
 
-    expect(foreign).toEqual([]);
-    expect(evictable).toHaveLength(2);
+    expect(evictable).toEqual([]);
+    expect(foreign.map((holder) => holder.worktree)).toEqual([null, null]);
   });
 
   it("attributes a nested worktree to itself, not to the repo containing it", () => {

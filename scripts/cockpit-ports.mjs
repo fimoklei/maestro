@@ -4,9 +4,9 @@
 import { realpathSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { listWorktrees } from "./port-holders.mjs";
 
-// Private range, clear of the ephemeral ports macOS hands out from 49152, with
-// room for 2000 worktrees before two pairs can collide.
+// Private range, clear of the ephemeral ports macOS hands out from 49152.
 const FIRST_PAIR = 20000;
 const PAIRS = 2000;
 
@@ -25,9 +25,41 @@ function pinned(value) {
   return Number.isInteger(port) && port > 0 && port < 65536 ? port : null;
 }
 
-/** The server and web ports belonging to the worktree at `worktreePath`. */
-export function cockpitPortsFor(worktreePath, env = process.env) {
-  const server = FIRST_PAIR + (hash(worktreePath) % PAIRS) * 2;
+/**
+ * Which slot each worktree ends up in. Two paths can hash to the same one, so
+ * the loser steps to the next free slot — walked in sorted order, and over the
+ * whole list, so every worktree computes the same map without being told what
+ * the others took.
+ */
+function assignSlots(worktrees) {
+  const taken = new Set();
+  const slots = new Map();
+
+  for (const path of [...worktrees].sort()) {
+    let slot = hash(path) % PAIRS;
+    while (taken.has(slot)) slot = (slot + 1) % PAIRS;
+    taken.add(slot);
+    slots.set(path, slot);
+  }
+
+  return slots;
+}
+
+/**
+ * The server and web ports belonging to the worktree at `worktreePath`. Pass
+ * the repo's worktrees to keep two of them off one pair; without that list
+ * (git could not be asked) the path's own slot is the best answer available.
+ */
+export function cockpitPortsFor(
+  worktreePath,
+  env = process.env,
+  worktrees = null,
+) {
+  const slot =
+    worktrees?.includes(worktreePath) === true
+      ? assignSlots(worktrees).get(worktreePath)
+      : hash(worktreePath) % PAIRS;
+  const server = FIRST_PAIR + slot * 2;
 
   return {
     server: pinned(env.PORT) ?? server,
@@ -39,7 +71,7 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** This checkout's own pair. Resolved, so a symlinked path reads as one worktree. */
 export function cockpitPorts(env = process.env) {
-  return cockpitPortsFor(realpathSync(repoRoot), env);
+  return cockpitPortsFor(realpathSync(repoRoot), env, listWorktrees(repoRoot));
 }
 
 /** Where to point a browser and an API call, in full. */

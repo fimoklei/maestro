@@ -122,10 +122,10 @@ function worktreeOwning(cwd, worktrees) {
 }
 
 /**
- * Split port holders into the ones this run must refuse rather than kill —
- * another worktree's, and every holder when ownership could not be established
- * at all — and the ones it may free: its own previous run, and anything no
- * worktree claims.
+ * Split port holders into the ones this run may free — only its own worktree's
+ * previous run — and the ones it must refuse rather than kill: everything else.
+ * The pair is derived from this worktree's path, so a holder that is not ours
+ * is an unrelated service, and killing it would cost somebody else's work.
  */
 export function partitionHolders(holders, { self, worktrees }) {
   if (worktrees === null) {
@@ -140,7 +140,7 @@ export function partitionHolders(holders, { self, worktrees }) {
 
   for (const holder of holders) {
     const worktree = worktreeOwning(holder.cwd, worktrees);
-    if (worktree !== null && worktree !== self) {
+    if (worktree !== self) {
       foreign.push({ ...holder, worktree });
     } else {
       evictable.push(holder);
@@ -167,7 +167,7 @@ export function describeForeignHolders(foreign) {
   const held = foreign
     .map((holder) =>
       holder.worktree === null
-        ? `${namePortHolder(holder)}, whose worktree could not be determined`
+        ? `${namePortHolder(holder)} in ${holder.cwd ?? "an unreadable directory"}, which no worktree of this repo claims`
         : `${namePortHolder(holder)} belonging to the worktree at ${holder.worktree}`,
     )
     .join("\n");
@@ -175,7 +175,8 @@ export function describeForeignHolders(foreign) {
   return [
     "[dev] refusing to start: a cockpit port is not this worktree's to take.",
     held,
-    "Killing it would stop another session's cockpit without telling it.",
-    "Fix: stop that worktree's dev run, then run this again.",
+    "Killing it would stop work this launcher did not start.",
+    "Fix: stop that process, or give this worktree a different pair with",
+    "PORT= and WEB_PORT= (two worktrees can derive the same one).",
   ].join("\n");
 }

@@ -92,8 +92,8 @@ if (existsSync(pidFile)) {
   rmSync(pidFile, { force: true });
 }
 
-// 2. Refuse when a port belongs to a sibling worktree — killing it would stop
-// that session's cockpit silently, and it has happened in both directions.
+// 2. Refuse every holder but this worktree's own: the pair is derived from
+// this path, so anything else on it is work this launcher did not start.
 const { foreign, evictable } = partitionHolders(
   findPortHolders(cockpitPortList),
   attribution,
@@ -104,8 +104,8 @@ if (foreignRefusal !== null) {
   process.exit(1);
 }
 
-// 3. Fallback: free the ports this run may take — its own previous instance,
-// and anything no worktree claims.
+// 3. Fallback: free this worktree's own previous instance, when the pidfile
+// above did not already catch it.
 let freedSomething = false;
 for (const { port, pid } of evictable) {
   // A lookup that could not answer names no pid here; step 4 refuses on it.
