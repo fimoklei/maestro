@@ -143,12 +143,25 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
 
   it("reads the repository facts of the connected harness", async () => {
     const app = makeApp(root);
+    await refreshHarness(app);
 
     await expect(readHarness(app)).resolves.toMatchObject({
       origin: "github.com/fimoklei/agent-harness",
       releasedVersion: "v0.1.0",
       defaultBranch: "main",
       releaseState: "released",
+      freshness: { outcome: "fetched" },
+    });
+  });
+
+  it("names no release before a fetch of its own has confirmed one", async () => {
+    // The clone carries the author's tags, not Maestro's; calling that "no
+    // release yet" would state a fact nothing has checked (#516).
+    const app = makeApp(root);
+
+    await expect(readHarness(app)).resolves.toMatchObject({
+      releasedVersion: null,
+      releaseState: "unknown",
       freshness: { outcome: null, lastFetchedAt: null },
     });
   });

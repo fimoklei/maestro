@@ -6,6 +6,13 @@ import type {
 } from "./read-harness-state";
 import { ReadHarnessState } from "./read-harness-state";
 
+// A harness Maestro has fetched at least once: only then do the tags it reads
+// mean anything.
+const FETCHED: HarnessFreshness = {
+  outcome: "fetched",
+  lastFetchedAt: "2026-08-01T07:00:00.000Z",
+};
+
 const FACTS: HarnessFacts = {
   originUrl: "git@github.com:fimoklei/agent-harness.git",
   defaultBranch: "main",
@@ -49,7 +56,7 @@ function buildRead(overrides?: {
       fetch: overrides?.fetch ?? (async () => "fetched"),
       readFacts: async () => ({ ...FACTS, ...overrides?.facts }),
     },
-    freshness: overrides?.freshness ?? stubFreshness(),
+    freshness: overrides?.freshness ?? stubFreshness(FETCHED),
   });
 }
 
@@ -64,7 +71,7 @@ describe("ReadHarnessState", () => {
         releasedVersion: "v0.5.0",
         defaultBranch: "main",
         releaseState: "released",
-        freshness: { outcome: null, lastFetchedAt: null },
+        freshness: FETCHED,
       },
     });
   });
@@ -103,6 +110,21 @@ describe("ReadHarnessState", () => {
     expect(result).toMatchObject({
       ok: true,
       state: { releasedVersion: "v0.5.0", releaseState: "unknown" },
+    });
+  });
+
+  it("never calls a harness unreleased on tags no fetch has confirmed", async () => {
+    // Before Maestro's first successful fetch the clone carries none of the
+    // tags Maestro reads, and an empty list there means "not looked yet" —
+    // reading it as "no release exists" invents the very fact #516 forbids.
+    const read = buildRead({
+      facts: { tags: [] },
+      freshness: stubFreshness(),
+    });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: { releasedVersion: null, releaseState: "unknown" },
     });
   });
 
@@ -168,7 +190,10 @@ describe("ReadHarnessState refresh", () => {
   });
 
   it("holds a fetch that got a reply saying no apart from no network at all", async () => {
-    const read = buildRead({ fetch: async () => "fetch-failed" });
+    const read = buildRead({
+      fetch: async () => "fetch-failed",
+      freshness: stubFreshness(),
+    });
 
     const result = await read.refresh(AT);
 
@@ -205,6 +230,30 @@ describe("ReadHarnessState refresh", () => {
 
     expect(fetched).toEqual(["/harness-a"]);
     expect(readFor).toEqual(["/harness-a"]);
+  });
+
+  it("answers two refreshes at once with one fetch", async () => {
+    // The view opens under StrictMode and a second tab is an ordinary day:
+    // two fetches of one clone race each other over the same git refs.
+    let fetches = 0;
+    let releaseFetch = () => {};
+    const held = new Promise<void>((resolve) => {
+      releaseFetch = resolve;
+    });
+    const read = buildRead({
+      fetch: async () => {
+        fetches += 1;
+        await held;
+        return "fetched";
+      },
+    });
+
+    const both = Promise.all([read.refresh(AT), read.refresh(AT)]);
+    releaseFetch();
+    const [first, second] = await both;
+
+    expect(fetches).toBe(1);
+    expect(first).toEqual(second);
   });
 
   it("never fetches from a harness that is not connected", async () => {

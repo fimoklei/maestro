@@ -29,8 +29,13 @@ const BRANCH_REFSPEC = "+refs/heads/*:refs/remotes/origin/*";
 
 // Maestro never asks for credentials and never stores them: git may use what
 // the user's own configuration already provides, but may not stop and prompt.
-// An ssh key prompt slips past this and is bounded by the timeout instead.
-const NON_INTERACTIVE = { GIT_TERMINAL_PROMPT: "0" };
+// `GIT_TERMINAL_PROMPT` covers https; ssh has its own prompts (passphrase,
+// host-key confirmation), and only BatchMode refuses them. Without it a locked
+// key holds the open-time fetch until the timeout and reports it as offline.
+const NON_INTERACTIVE = {
+  GIT_TERMINAL_PROMPT: "0",
+  GIT_SSH_COMMAND: "ssh -oBatchMode=yes",
+};
 
 // Tab-separated so a tag name containing spaces stays one field. The third
 // field is the commit an annotated tag points at; lightweight tags leave it

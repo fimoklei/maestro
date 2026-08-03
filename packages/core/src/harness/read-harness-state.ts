@@ -64,6 +64,11 @@ export class ReadHarnessState {
     freshness: HarnessFreshnessPort;
   };
 
+  // One fetch per harness at a time: the view opens under StrictMode and a
+  // second tab is ordinary, and two fetches race over the same git refs.
+  // Callers arriving mid-flight share the answer rather than being refused.
+  private inFlight = new Map<string, Promise<HarnessStateResult>>();
+
   constructor(deps: ReadHarnessState["deps"]) {
     this.deps = deps;
   }
@@ -77,6 +82,21 @@ export class ReadHarnessState {
       return { ok: false, error: "not-configured" };
     }
 
+    const running = this.inFlight.get(root);
+    if (running !== undefined) {
+      return running;
+    }
+    const fetching = this.fetchAndRead(root, at).finally(() => {
+      this.inFlight.delete(root);
+    });
+    this.inFlight.set(root, fetching);
+    return fetching;
+  }
+
+  private async fetchAndRead(
+    root: string,
+    at: Date,
+  ): Promise<HarnessStateResult> {
     const outcome = await this.deps.git.fetch(root);
     const previous = await this.deps.freshness.read(root);
     await this.deps.freshness.record(root, {
@@ -99,21 +119,28 @@ export class ReadHarnessState {
 
   private async stateFor(root: string): Promise<HarnessStateResult> {
     const facts = await this.deps.git.readFacts(root);
+    const freshness = await this.deps.freshness.read(root);
     const origin =
       facts.originUrl === null ? null : parseGitOrigin(facts.originUrl);
     if (origin === null) {
       return { ok: false, error: "no-usable-origin" };
     }
 
-    const released = highestReleaseTag(facts.tags);
+    // Releases are only what a fetch of Maestro's own tag namespace found. Until
+    // one has succeeded the list is empty because nobody looked, and reading
+    // that as "no release exists" would invent a fact (ADR-0021).
+    const confirmed = freshness.lastFetchedAt !== null;
+    const released = confirmed ? highestReleaseTag(facts.tags) : null;
     return {
       ok: true,
       state: {
         origin: `${origin.host}/${origin.ownerRepo}`,
         releasedVersion: released?.name ?? null,
         defaultBranch: facts.defaultBranch,
-        releaseState: releaseState(released, facts.defaultBranchCommit),
-        freshness: await this.deps.freshness.read(root),
+        releaseState: confirmed
+          ? releaseState(released, facts.defaultBranchCommit)
+          : "unknown",
+        freshness,
       },
     };
   }

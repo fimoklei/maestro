@@ -30,10 +30,12 @@ export function useRefreshHarness() {
   return useMutation({
     mutationFn: () =>
       requestJson<HarnessState>("/api/harness/refresh", { method: "POST" }),
-    onSuccess: async (state) => {
+    onSuccess: (state) => {
       // The plain read races this one on open. Cancelling it first stops a
       // slower GET from repainting the pre-fetch picture over this answer.
-      await queryClient.cancelQueries({ queryKey: HARNESS_KEY });
+      // Not awaited: the cancel takes effect at once, and waiting for the
+      // aborted request would hold the mutation open across a remount.
+      void queryClient.cancelQueries({ queryKey: HARNESS_KEY });
       queryClient.setQueryData(HARNESS_KEY, state);
     },
   });

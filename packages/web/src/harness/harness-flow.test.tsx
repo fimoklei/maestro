@@ -2,6 +2,7 @@ import type { HarnessState } from "@maestro/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HarnessView } from "./harness-view";
 
@@ -52,10 +53,14 @@ function renderHarness() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
+  // StrictMode, because the real app mounts under it and replays every effect
+  // — the open-time refresh must still be one request.
   return render(
-    <QueryClientProvider client={queryClient}>
-      <HarnessView />
-    </QueryClientProvider>,
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <HarnessView />
+      </QueryClientProvider>
+    </StrictMode>,
   );
 }
 
@@ -118,9 +123,11 @@ describe("Harness home base", () => {
     const calls = stubHarnessServer({ read: { body: RELEASED } });
     renderHarness();
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: /refresh/i }),
-    );
+    // The open-time refresh disables the button while it runs; clicking into
+    // that window would land on nothing.
+    const button = await screen.findByRole("button", { name: /refresh/i });
+    await waitFor(() => expect(button).toBeEnabled());
+    await userEvent.click(button);
 
     await waitFor(() =>
       expect(
@@ -189,7 +196,9 @@ describe("Harness home base", () => {
       screen.queryByText(/permission|not allowed|access denied/i),
     ).not.toBeInTheDocument();
     // Refresh is the one way back, so a failure must never disable it.
-    expect(screen.getByRole("button", { name: /refresh/i })).toBeEnabled();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /refresh/i })).toBeEnabled(),
+    );
   });
 
   it("reads a harness before its first release as a normal day", async () => {
@@ -245,7 +254,9 @@ describe("Harness home base", () => {
     // The state that is on screen is the last one that was read, so the
     // version still shows and the button is the way to try again.
     expect(screen.getByText("v0.5.0")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /refresh/i })).toBeEnabled();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /refresh/i })).toBeEnabled(),
+    );
   });
 
   it("reports a harness that is not connected instead of an empty screen", async () => {

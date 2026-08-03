@@ -16,8 +16,11 @@ export function HarnessView() {
 
   // Opening the view fetches, the same act the Refresh button repeats. A
   // mutation, not a query: it reaches the network and writes git refs.
+  // Scheduled rather than called, so StrictMode's replayed first mount cancels
+  // its own request in cleanup: one open, one fetch of the author's git refs.
   useEffect(() => {
-    fetchRemote();
+    const scheduled = setTimeout(fetchRemote);
+    return () => clearTimeout(scheduled);
   }, [fetchRemote]);
 
   const state = harness.data;
