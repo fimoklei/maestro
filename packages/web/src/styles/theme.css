@@ -176,9 +176,11 @@
   opacity: 0.55;
 }
 
-/* Declared once, the way hover-transition.ts owns the colour transition. */
+/* Declared once, the way hover-transition.ts owns the colour transition. The
+   last delay plus the duration is the sequence's total; ADR-0022 caps it at
+   600ms so the action never sits invisible while it is already clickable. */
 :root {
-  --gate-arrival-duration: 560ms;
+  --gate-arrival-duration: 420ms;
   --gate-arrival-ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -188,15 +190,15 @@
       var(--gate-arrival-ease) backwards;
   }
   .connect-gate-title {
-    animation: connect-gate-resolve var(--gate-arrival-duration) 120ms
+    animation: connect-gate-resolve var(--gate-arrival-duration) 60ms
       var(--gate-arrival-ease) backwards;
   }
   .connect-gate-body {
-    animation: connect-gate-resolve var(--gate-arrival-duration) 230ms
+    animation: connect-gate-resolve var(--gate-arrival-duration) 120ms
       var(--gate-arrival-ease) backwards;
   }
   .connect-gate-cta {
-    animation: connect-gate-resolve var(--gate-arrival-duration) 350ms
+    animation: connect-gate-resolve var(--gate-arrival-duration) 180ms
       var(--gate-arrival-ease) backwards;
   }
 }

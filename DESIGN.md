@@ -229,7 +229,8 @@ light ramp is re-derived to AA (issue #209).
 - Two action signals (amber, green) plus a danger red for errors, and four fixed primitive-type colours
 - Tight 3–6px radii; nothing pill-shaped, no circles except status dots
 - Cockpit density: 14px card padding, 9px rows, 12px gaps, 24px between sections
-- Flat fills only — no gradients, textures, blur, or transparency layers
+- Flat fills only — no gradients, textures, blur, or transparency layers,
+  except the connect gate's arrival (ADR-0022)
 
 ## 2. Colors
 
@@ -352,8 +353,9 @@ raised because it is one lightness step lighter than what surrounds it and is
 outlined with a hairline, not because it floats.
 
 Backgrounds are flat fills only. No gradients, textures, patterns, blur, or
-backdrop-filter. The single use of alpha is the 10–12% tint inside a status chip,
-paired with a ~25–30% alpha border of the same colour.
+backdrop-filter — the connect gate's arrival is the one exception (ADR-0022).
+The single use of alpha is the 10–12% tint inside a status chip, paired with a
+~25–30% alpha border of the same colour.
 
 ### Named Rules
 
@@ -515,9 +517,9 @@ done. The logo is typographic — a bold mono "M" on an amber rounded tile.
 
 - **Don't** add a `box-shadow` anywhere, in either theme.
 - **Don't** use gradients, textures, blur, backdrop-filter, or glassmorphism.
-  The connect gate's arrival is the single exception (ADR-0022): a gradient may
-  fade a rule out at its ends, and blur may resolve to sharp inside that one
-  sequence. Neither may sit on a static surface anywhere.
+  The connect gate's arrival is the single exception (ADR-0022): a gradient
+  fades its 1px rule out at both ends and stays on the finished screen, and
+  blur resolves the text to sharp inside that one sequence and nowhere else.
 - **Don't** build hero metric tiles, gradient accents, pill shapes, or cards
   nested inside cards — that is the generic SaaS dashboard this system rejects.
 - **Don't** add illustrations, emoji, or reassuring marketing copy; the cockpit

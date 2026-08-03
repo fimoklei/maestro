@@ -31,21 +31,22 @@ surface keeps the ban unchanged.**
 
 1. **Scope is the screen, not the pattern.** `WelcomeView` only. A second
    surface wanting entrance motion amends this ADR; it does not cite it.
-2. **Gradient and blur are allowed, in motion, on this screen only.** The rule
-   fades out at both ends with a gradient, and the three elements resolve from
-   blurred to sharp. Both are bans elsewhere for the same reason as the shadow
-   ban: on a working surface they are decoration that costs legibility. Here
-   they are the sequence itself — the gradient is what makes a 1px line read as
-   a signal rather than a divider, and the blur is what makes the text arrive
-   rather than appear. Neither may sit on a static surface anywhere, including
-   this one: outside the animation the gate is flat fills, and the shadow ban
-   is untouched.
+2. **Gradient and blur are allowed on this screen only, each in its own way.**
+   The 1px rule is filled with a gradient that fades it out at both ends, and
+   it keeps that fill after the animation and under `prefers-reduced-motion` —
+   the fade is what makes a hairline read as a signal rather than a divider, so
+   a version that only appears mid-animation would be the wrong thing on the
+   finished screen. The blur is the opposite: it exists only inside the
+   keyframe, resolving the text from soft to sharp, and never lands on a
+   static surface. Everything else on the gate stays flat fills, and the shadow
+   ban is untouched.
 3. **Nothing loops.** The sequence runs once on mount and ends. No ambient
    pulse, no infinite animation anywhere in the cockpit.
 4. **Duration and easing are declared once**, next to the rules that use them,
-   the same way `hover-transition.ts` owns the colour transition. The arrival's
-   window is 500–600ms — long enough to read as authored, and it never gates a
-   control the user is waiting on.
+   the same way `hover-transition.ts` owns the colour transition. The window is
+   600ms for the **whole sequence**, last element included, not per element:
+   a control that is already clickable must not still be invisible, and a
+   stagger measured per element is how that gap opens.
 5. **Gated behind `prefers-reduced-motion`.** The reduced alternative is the
    finished screen, immediately. The default state is fully visible, so a
    stylesheet that never loads cannot hide the screen.
