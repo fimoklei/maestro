@@ -4,6 +4,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { readConfiguredGitOriginUrl } from "../deploy/git-origin-url";
+import { HARNESS_SKILLS_DIR } from "../inventory/harness-layout";
 import { classifyFetchFailure } from "./classify-fetch-failure";
 import type {
   HarnessFacts,
@@ -11,6 +12,7 @@ import type {
   HarnessGitPort,
   HarnessTag,
 } from "./read-harness-state";
+import type { HarnessSkillTree } from "./skill-movements";
 
 const run = promisify(execFile);
 
@@ -89,6 +91,52 @@ export class HarnessGitAdapter implements HarnessGitPort {
       defaultBranchCommit: await this.read(root, ["rev-parse", REMOTE_HEAD]),
       tags: await this.readTags(root),
     };
+  }
+
+  // Reads the skills directory as it stands *inside* `ref`, so a ref that is
+  // not an ancestor of anything is still readable. A ref carrying no skills
+  // directory fails the read and is an empty set, not an error.
+  async readSkillTrees(root: string, ref: string): Promise<HarnessSkillTree[]> {
+    // `-z`: without it git quotes and escapes any name outside plain ASCII,
+    // and the quoted form would then be used as a path and shown on screen.
+    const listing = await this.read(root, [
+      "ls-tree",
+      "-z",
+      `${ref}:${HARNESS_SKILLS_DIR}`,
+    ]);
+    if (listing === null) {
+      return [];
+    }
+
+    return listing.split("\0").flatMap((entry) => {
+      // `<mode> <type> <object>\t<name>` — only a directory is a skill.
+      const [meta = "", name = ""] = entry.split("\t");
+      const [, type, treeHash] = meta.split(/\s+/);
+      return type === "tree" && treeHash && name ? [{ name, treeHash }] : [];
+    });
+  }
+
+  // ponytail: one `git log` per movement; batch into a single `--name-status`
+  // walk if a first release of a large harness makes the read slow.
+  async readSkillAuthors(
+    root: string,
+    ref: string,
+    names: string[],
+  ): Promise<Record<string, string | null>> {
+    const authors = await Promise.all(
+      names.map(async (name) => [
+        name,
+        await this.read(root, [
+          "log",
+          "-1",
+          "--format=%an",
+          ref,
+          "--",
+          `${HARNESS_SKILLS_DIR}/${name}`,
+        ]),
+      ]),
+    );
+    return Object.fromEntries(authors);
   }
 
   // Null on any failure, so an unset `origin/HEAD` reads as "not known"

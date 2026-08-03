@@ -11,6 +11,7 @@ const RELEASED: HarnessState = {
   releasedVersion: "v0.5.0",
   defaultBranch: "main",
   releaseState: "released",
+  pendingRelease: [],
   freshness: { outcome: null, lastFetchedAt: null },
 };
 
@@ -154,6 +155,42 @@ describe("Harness home base", () => {
     expect(
       await screen.findByText("Merged changes are waiting for release."),
     ).toBeInTheDocument();
+  });
+
+  it("lists the merged skills that are waiting, with their authors", async () => {
+    stubHarnessServer({
+      read: {
+        body: {
+          ...RELEASED,
+          releaseState: "pending-release",
+          pendingRelease: [
+            { kind: "added", name: "research", author: "Grace" },
+            { kind: "changed", name: "tdd", author: "Ada" },
+          ],
+        },
+      },
+    });
+    renderHarness();
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 3,
+        name: /pending release/i,
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("row", { name: /research/ })).toHaveTextContent(
+      "Grace",
+    );
+  });
+
+  it("shows no Pending release table on a quiet harness", async () => {
+    stubHarnessServer({ read: { body: RELEASED } });
+    renderHarness();
+
+    await screen.findByText("Everything merged is released.");
+    expect(
+      screen.queryByRole("heading", { name: /pending release/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("holds offline apart from a fetch that failed, and dates both", async () => {

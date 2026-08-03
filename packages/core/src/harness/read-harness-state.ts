@@ -3,6 +3,8 @@
 // this use-case, so none can reach a response (ADR-0021, security.md).
 import { parseGitOrigin } from "../deploy/git-origin";
 import { highestReleaseTag } from "./release-tag";
+import type { HarnessSkillTree, SkillMovement } from "./skill-movements";
+import { diffSkillTrees } from "./skill-movements";
 
 export type HarnessFetchOutcome = "fetched" | "offline" | "fetch-failed";
 
@@ -25,6 +27,16 @@ export type HarnessFacts = {
 export interface HarnessGitPort {
   fetch(root: string): Promise<HarnessFetchOutcome>;
   readFacts(root: string): Promise<HarnessFacts>;
+  // One tree hash per canonical skill directory at `ref`, so the delta is read
+  // from content rather than from which commits lead where.
+  readSkillTrees(root: string, ref: string): Promise<HarnessSkillTree[]>;
+  // Who last touched each named skill directory at `ref`; null where the
+  // history gives no answer.
+  readSkillAuthors(
+    root: string,
+    ref: string,
+    names: string[],
+  ): Promise<Record<string, string | null>>;
 }
 
 // Every call names the harness root: one record per harness, so connecting a
@@ -43,11 +55,14 @@ export type HarnessReleaseState =
   | "never-released"
   | "unknown";
 
+export type PendingSkillMovement = SkillMovement & { author: string | null };
+
 export type HarnessState = {
   origin: string;
   releasedVersion: string | null;
   defaultBranch: string | null;
   releaseState: HarnessReleaseState;
+  pendingRelease: PendingSkillMovement[];
   freshness: HarnessFreshness;
 };
 
@@ -131,6 +146,7 @@ export class ReadHarnessState {
     // that as "no release exists" would invent a fact (ADR-0021).
     const confirmed = freshness.lastFetchedAt !== null;
     const released = confirmed ? highestReleaseTag(facts.tags) : null;
+    const head = facts.defaultBranchCommit;
     return {
       ok: true,
       state: {
@@ -140,9 +156,42 @@ export class ReadHarnessState {
         releaseState: confirmed
           ? releaseState(released, facts.defaultBranchCommit)
           : "unknown",
+        pendingRelease:
+          confirmed && head !== null
+            ? await this.movementsSince(root, released, head)
+            : [],
         freshness,
       },
     };
+  }
+
+  // Both refs are commits, so a tag pointing outside the default branch's
+  // history is compared like any other: the delta is content, not reachability.
+  private async movementsSince(
+    root: string,
+    released: HarnessTag | null,
+    head: string,
+  ): Promise<PendingSkillMovement[]> {
+    const previous =
+      released === null
+        ? []
+        : await this.deps.git.readSkillTrees(root, released.commit);
+    const movements = diffSkillTrees(
+      previous,
+      await this.deps.git.readSkillTrees(root, head),
+    );
+
+    // Always asked at the default branch: the commit that deleted a skill is on
+    // that side too, so one ref answers for every kind of movement.
+    const authored = await this.deps.git.readSkillAuthors(
+      root,
+      head,
+      movements.map((movement) => movement.name),
+    );
+    return movements.map((movement) => ({
+      ...movement,
+      author: authored[movement.name] ?? null,
+    }));
   }
 }
 

@@ -6,13 +6,21 @@ import type {
   HarnessFreshness,
   HarnessReleaseState,
   HarnessState,
+  PendingSkillMovement,
+  SkillMovementKind,
 } from "@maestro/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 
 // Re-exported rather than copied, so the browser's shape cannot drift from the
 // one core defines (architecture.md).
-export type { HarnessFreshness, HarnessReleaseState, HarnessState };
+export type {
+  HarnessFreshness,
+  HarnessReleaseState,
+  HarnessState,
+  PendingSkillMovement,
+  SkillMovementKind,
+};
 
 const HARNESS_KEY = ["harness", "state"] as const;
 

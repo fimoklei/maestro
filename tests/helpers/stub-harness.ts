@@ -11,7 +11,12 @@ const unreachable = (): never => {
 export function stubHarness(): ReadHarnessState {
   return new ReadHarnessState({
     resolveRoot: async () => undefined,
-    git: { fetch: unreachable, readFacts: unreachable },
+    git: {
+      fetch: unreachable,
+      readFacts: unreachable,
+      readSkillTrees: unreachable,
+      readSkillAuthors: unreachable,
+    },
     freshness: {
       read: async () => ({ outcome: null, lastFetchedAt: null }),
       record: async () => {},

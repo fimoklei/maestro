@@ -5,6 +5,7 @@ import type {
   HarnessFreshness,
 } from "./read-harness-state";
 import { ReadHarnessState } from "./read-harness-state";
+import type { HarnessSkillTree } from "./skill-movements";
 
 // A harness Maestro has fetched at least once: only then do the tags it reads
 // mean anything.
@@ -40,12 +41,18 @@ function stubFreshness(
   };
 }
 
+// Skill trees per ref, keyed by the commit the use-case asks about. Anything
+// unlisted is a ref carrying no skills at all.
+type TreesByRef = Record<string, HarnessSkillTree[]>;
+
 function buildRead(overrides?: {
   facts?: Partial<HarnessFacts>;
   root?: string | undefined;
   resolveRoot?: () => Promise<string | undefined>;
   fetch?: () => Promise<HarnessFetchOutcome>;
   freshness?: ReturnType<typeof stubFreshness>;
+  trees?: TreesByRef;
+  authors?: Record<string, string>;
 }) {
   return new ReadHarnessState({
     resolveRoot:
@@ -55,6 +62,12 @@ function buildRead(overrides?: {
     git: {
       fetch: overrides?.fetch ?? (async () => "fetched"),
       readFacts: async () => ({ ...FACTS, ...overrides?.facts }),
+      readSkillTrees: async (_root: string, ref: string) =>
+        overrides?.trees?.[ref] ?? [],
+      readSkillAuthors: async (_root: string, _ref: string, names: string[]) =>
+        Object.fromEntries(
+          names.map((name) => [name, overrides?.authors?.[name] ?? null]),
+        ),
     },
     freshness: overrides?.freshness ?? stubFreshness(FETCHED),
   });
@@ -71,7 +84,53 @@ describe("ReadHarnessState", () => {
         releasedVersion: "v0.5.0",
         defaultBranch: "main",
         releaseState: "released",
+        pendingRelease: [],
         freshness: FETCHED,
+      },
+    });
+  });
+
+  it("names each movement's author alongside what merged since the release", async () => {
+    const read = buildRead({
+      facts: { defaultBranchCommit: "bbb" },
+      trees: {
+        aaa: [
+          { name: "tdd", treeHash: "t1" },
+          { name: "grilling", treeHash: "g1" },
+        ],
+        bbb: [
+          { name: "tdd", treeHash: "t2" },
+          { name: "research", treeHash: "r1" },
+        ],
+      },
+      authors: { tdd: "Ada", research: "Grace", grilling: "Linus" },
+    });
+
+    const result = await read.execute();
+
+    expect(result).toMatchObject({
+      ok: true,
+      state: {
+        pendingRelease: [
+          { kind: "removed", name: "grilling", author: "Linus" },
+          { kind: "added", name: "research", author: "Grace" },
+          { kind: "changed", name: "tdd", author: "Ada" },
+        ],
+      },
+    });
+  });
+
+  it("reads the whole remote skill set of a never-tagged harness as its first release", async () => {
+    const read = buildRead({
+      facts: { tags: [] },
+      trees: { aaa: [{ name: "tdd", treeHash: "t1" }] },
+    });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: {
+        releaseState: "never-released",
+        pendingRelease: [{ kind: "added", name: "tdd", author: null }],
       },
     });
   });
@@ -109,7 +168,12 @@ describe("ReadHarnessState", () => {
 
     expect(result).toMatchObject({
       ok: true,
-      state: { releasedVersion: "v0.5.0", releaseState: "unknown" },
+      state: {
+        releasedVersion: "v0.5.0",
+        releaseState: "unknown",
+        // Nothing to compare against is not "nothing merged".
+        pendingRelease: [],
+      },
     });
   });
 
@@ -222,6 +286,8 @@ describe("ReadHarnessState refresh", () => {
           readFor.push(root);
           return FACTS;
         },
+        readSkillTrees: async () => [],
+        readSkillAuthors: async () => ({}),
       },
       freshness: stubFreshness(),
     });

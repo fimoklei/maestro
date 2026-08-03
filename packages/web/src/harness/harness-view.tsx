@@ -4,6 +4,7 @@ import { Card } from "../ui/card";
 import { SectionHeader } from "../ui/section-header";
 import { HarnessStrip } from "./harness-strip";
 import { freshnessLabel, RELEASE_SUMMARIES } from "./harness-view-model";
+import { PendingRelease } from "./pending-release";
 import { useHarness, useRefreshHarness } from "./use-harness";
 
 // The Harness home base: what the released harness is, how fresh that picture
@@ -64,6 +65,7 @@ export function HarnessView() {
               {RELEASE_SUMMARIES[state.releaseState]}
             </p>
           </Card>
+          <PendingRelease movements={state.pendingRelease} />
         </>
       )}
     </section>
