@@ -192,10 +192,8 @@
   display: block;
   width: 96px;
   height: 1px;
-  margin-bottom: 6px;
   opacity: 0.55;
   background: linear-gradient(90deg, transparent, var(--amber), transparent);
-  transform-origin: center;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -204,18 +202,16 @@
       connect-gate-draw 520ms cubic-bezier(0.16, 1, 0.3, 1) both,
       connect-gate-carrier 3.2s 700ms ease-in-out infinite;
   }
-  .connect-gate-title,
-  .connect-gate-body,
-  .connect-gate-cta {
-    animation: connect-gate-resolve 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
   .connect-gate-title {
-    animation-delay: 120ms;
+    animation: connect-gate-resolve 560ms 120ms cubic-bezier(0.16, 1, 0.3, 1)
+      both;
   }
   .connect-gate-body {
-    animation-delay: 230ms;
+    animation: connect-gate-resolve 560ms 230ms cubic-bezier(0.16, 1, 0.3, 1)
+      both;
   }
   .connect-gate-cta {
-    animation-delay: 350ms;
+    animation: connect-gate-resolve 560ms 350ms cubic-bezier(0.16, 1, 0.3, 1)
+      both;
   }
 }
