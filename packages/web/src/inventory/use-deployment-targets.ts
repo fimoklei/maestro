@@ -4,6 +4,7 @@
 
 import { useQueries } from "@tanstack/react-query";
 import { toDeployedView } from "../deploy-state/deployed-view";
+import { skippedNeedsAttention } from "../deploy-state/skipped-entry-text";
 import { toolPresentation } from "../deploy-state/tool-presentation";
 import { deployStateQueryOptions } from "../deploy-state/use-deploy-state";
 import { useGlobalDeployState } from "../deploy-state/use-global-deploy-state";
@@ -72,6 +73,9 @@ export function useDeploymentTargets(
       drift: globalDrift,
     });
   } else {
+    const globalAttention = (globalDeploy.data?.skipped ?? []).filter(
+      skippedNeedsAttention,
+    ).length;
     for (const tool of globalDeploy.data?.tools ?? []) {
       const names = tool.primitives.map((primitive) => primitive.name);
       targets.push({
@@ -79,7 +83,14 @@ export function useDeploymentTargets(
         // One removal covers every tool, so each tool row names the same
         // global target (ADR-0013).
         target: { kind: "global" },
-        deployed: { status: "ready", names, skippedCount: 0 },
+        deployed: {
+          status: "ready" as const,
+          names,
+          skippedCount: 0,
+          // Section-wide: a global entry apm could not manage names no tool,
+          // so no tool row may read as in sync while it stands (#358).
+          attentionCount: globalAttention,
+        },
         primitives: tool.primitives,
         drift: globalDrift.forTool(names),
       });

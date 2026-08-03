@@ -1,5 +1,5 @@
-// On success, invalidates the target's deploy-state query so the panel
-// refetches without a manual reload (frontend.md).
+// After every deploy attempt, invalidates the target's deploy-state query so
+// the panel refetches without a manual reload (frontend.md).
 import {
   type QueryClient,
   useMutation,
@@ -49,7 +49,9 @@ export function useDeploySkill() {
         method: "POST",
         body: JSON.stringify(request),
       }),
-    onSuccess: (_data, request) =>
+    // Settled, not success: apm can change the target and the deploy still be
+    // refused on what it recorded, and a stale panel would outlive it (#358).
+    onSettled: (_data, _error, request) =>
       invalidateTarget(queryClient, request.target),
   });
 }

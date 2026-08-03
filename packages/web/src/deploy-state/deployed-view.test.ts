@@ -22,7 +22,7 @@ const skill = (name: string): DeployedPrimitive => ({
 const skipped = (virtualPath: string): SkippedEntry => ({
   reason: "unsupported-type",
   virtualPath,
-  packageType: "hook",
+  packageType: "claude_hook",
 });
 
 describe("toDeployedView", () => {
@@ -31,7 +31,12 @@ describe("toDeployedView", () => {
       toDeployedView(
         query({ data: { primitives: [skill("tdd")], skipped: [] } }),
       ),
-    ).toEqual({ status: "ready", names: ["tdd"], skippedCount: 0 });
+    ).toEqual({
+      status: "ready",
+      names: ["tdd"],
+      skippedCount: 0,
+      attentionCount: 0,
+    });
   });
 
   it("maps an empty deployment to ready with no names, not pending", () => {
@@ -41,6 +46,7 @@ describe("toDeployedView", () => {
       status: "ready",
       names: [],
       skippedCount: 0,
+      attentionCount: 0,
     });
   });
 
@@ -53,7 +59,12 @@ describe("toDeployedView", () => {
           data: { primitives: [], skipped: [skipped("hooks/pre-commit")] },
         }),
       ),
-    ).toEqual({ status: "ready", names: [], skippedCount: 1 });
+    ).toEqual({
+      status: "ready",
+      names: [],
+      skippedCount: 1,
+      attentionCount: 0,
+    });
   });
 
   it("maps no data yet to pending", () => {
@@ -79,6 +90,7 @@ describe("toolDeployedView", () => {
       status: "ready",
       names: ["tdd"],
       skippedCount: 0,
+      attentionCount: 0,
     });
   });
 
@@ -87,6 +99,7 @@ describe("toolDeployedView", () => {
       status: "ready",
       names: ["tdd"],
       skippedCount: 0,
+      attentionCount: 0,
     });
   });
 

@@ -4,7 +4,11 @@ import { Card } from "../ui/card";
 import { SectionHeader } from "../ui/section-header";
 import { DeployStateList } from "./deploy-state-list";
 import { toolDeployedView } from "./deployed-view";
-import { skippedEntryKey, skippedEntryText } from "./skipped-entry-text";
+import {
+  skippedEntryKey,
+  skippedEntryText,
+  skippedNeedsAttention,
+} from "./skipped-entry-text";
 import { TargetStatusChip } from "./target-status-chip";
 import { toolPresentation } from "./tool-presentation";
 import type { SkippedEntry } from "./use-deploy-state";
@@ -50,6 +54,8 @@ export function GlobalTargets({
               key={group.tool}
               group={group}
               drift={drift}
+              // Section-wide, since a skipped entry names no tool (#358).
+              attentionCount={skipped.filter(skippedNeedsAttention).length}
               // A removal triggered from one card covers every detected tool (#338).
               detectedTools={tools.map((detected) => detected.tool)}
             />
@@ -68,10 +74,12 @@ function ToolTargetCard({
   group,
   drift,
   detectedTools,
+  attentionCount,
 }: {
   group: ToolDeployState;
   drift: DriftViewModel;
   detectedTools: string[];
+  attentionCount: number;
 }) {
   const { label, destination } = toolPresentation(group.tool);
   // Where focus goes when a removal destroys the row it was triggered from.
@@ -79,7 +87,9 @@ function ToolTargetCard({
   const names = group.primitives.map((primitive) => primitive.name);
   // Narrowed to this tool's skills, so a skill behind elsewhere doesn't leak in.
   const toolDrift = drift.forTool(names);
-  const indicator = toolDrift.targetIndicator(toolDeployedView(names));
+  const indicator = toolDrift.targetIndicator(
+    toolDeployedView(names, undefined, attentionCount),
+  );
 
   return (
     <Card
@@ -113,9 +123,16 @@ function ToolTargetCard({
 // section rather than duplicated on every card.
 function SkippedNotice({ skipped }: { skipped: SkippedEntry[] }) {
   return (
-    <ul className="mt-3 text-dim text-tag">
+    <ul className="mt-3 space-y-1 text-tag">
       {skipped.map((entry, index) => (
-        <li key={skippedEntryKey(entry, index)}>{skippedEntryText(entry)}</li>
+        <li
+          key={skippedEntryKey(entry, index)}
+          className={
+            skippedNeedsAttention(entry) ? "text-amber-ink" : "text-dim"
+          }
+        >
+          {skippedEntryText(entry)}
+        </li>
       ))}
     </ul>
   );

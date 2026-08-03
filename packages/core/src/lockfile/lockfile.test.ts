@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { claudeSkillName, parseLockfile, unreadableCovers } from "./lockfile";
+import {
+  classifyPackageType,
+  claudeSkillName,
+  parseLockfile,
+  unreadableCovers,
+} from "./lockfile";
 
 // A tag-pinned claude_skill entry the way apm writes it (apm-driver.md): the
 // human tag, the virtual path, the type, and the optional per-file hashes.
@@ -136,5 +141,49 @@ describe("claudeSkillName", () => {
         package_type: "claude_hook",
       }),
     ).toBeNull();
+  });
+});
+
+describe("classifyPackageType", () => {
+  it("classifies a claude_skill as a skill", () => {
+    expect(classifyPackageType("claude_skill")).toBe("skill");
+  });
+
+  it("classifies a materialized hybrid as unsupported, not as another primitive", () => {
+    expect(classifyPackageType("hybrid")).toBe("unsupported");
+  });
+
+  it("classifies a marketplace_plugin as unsupported", () => {
+    expect(classifyPackageType("marketplace_plugin")).toBe("unsupported");
+  });
+
+  it("classifies apm's own invalid verdict as invalid", () => {
+    expect(classifyPackageType("invalid")).toBe("invalid");
+  });
+
+  it("classifies a genuinely different primitive as other", () => {
+    expect(classifyPackageType("claude_hook")).toBe("other");
+  });
+});
+
+describe("parseLockfile package_type shape", () => {
+  it("refuses an entry whose package_type is not a bounded token", () => {
+    // The one apm-derived field that crosses to the browser, so it is checked
+    // where apm's output is first read (ADR-0018).
+    const raw = [
+      "dependencies:",
+      "- resolved_ref: v0.5.0",
+      "  virtual_path: skills/tdd",
+      '  package_type: "<script>alert(1)</script>"',
+      "",
+    ].join("\n");
+
+    const parsed = parseLockfile(raw);
+
+    expect(parsed).toEqual({
+      ok: true,
+      entries: [],
+      unreadable: [{ virtualPath: "skills/tdd" }],
+    });
   });
 });

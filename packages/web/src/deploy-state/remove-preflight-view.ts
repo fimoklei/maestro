@@ -102,9 +102,18 @@ const unanswered = (
 export function removePreflightView(query: {
   data: RemovePreflight | undefined;
   error: unknown;
-  isPending: boolean;
+  // Not isPending or isFetching: isPending goes false for good once any answer
+  // is cached, and isFetching misses a fetch paused offline. Only fetchStatus
+  // tells an unsettled check from a settled one (#381).
+  fetchStatus: "fetching" | "paused" | "idle";
   isError: boolean;
 }): RemovePreflightView {
+  // Ahead of both the failure and the data below: whatever either still holds
+  // belongs to the check before this one. Its warning and reclaim token would
+  // price a removal nothing has checked yet (#381).
+  if (query.fetchStatus !== "idle") {
+    return unanswered("checking");
+  }
   // Error before data: a failed refetch leaves a now-disproved answer in hand.
   if (query.isError) {
     const refused = refusal(query.error);

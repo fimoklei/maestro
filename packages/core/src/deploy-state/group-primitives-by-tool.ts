@@ -2,8 +2,12 @@
 // copies in deployed_files (apm-behavior.md § Lockfile), so an entry is
 // attributed per prefix found there and to no other tool (ADR-0011).
 import { DEPLOY_TOOLS, type SupportedTool } from "../deploy/deploy-tools";
-import { claudeSkillName, type LockfileEntry } from "../lockfile/lockfile";
-import type { DeployedPrimitive, SkippedEntry } from "./deploy-state-types";
+import { type LockfileEntry, readPackage } from "../lockfile/lockfile";
+import {
+  type DeployedPrimitive,
+  type SkippedEntry,
+  skippedFromReading,
+} from "./deploy-state-types";
 
 export type ToolDeployState = {
   tool: SupportedTool;
@@ -26,13 +30,9 @@ export function groupPrimitivesByTool(
   const skipped: SkippedEntry[] = [];
 
   for (const entry of entries) {
-    const name = claudeSkillName(entry);
-    if (name === null) {
-      skipped.push({
-        reason: "unsupported-type",
-        virtualPath: entry.virtual_path,
-        packageType: entry.package_type,
-      });
+    const reading = readPackage(entry);
+    if (reading.kind !== "skill") {
+      skipped.push(skippedFromReading(reading, entry.virtual_path));
       continue;
     }
     for (const group of tools) {
@@ -40,7 +40,7 @@ export function groupPrimitivesByTool(
       if (prefix !== undefined && entryTargetsPrefix(entry, prefix)) {
         group.primitives.push({
           type: "skill",
-          name,
+          name: reading.name,
           version: entry.resolved_ref,
         });
       }

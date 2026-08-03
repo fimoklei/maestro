@@ -15,7 +15,7 @@ function target(
   return {
     label,
     target: { kind: "global" },
-    deployed: { status: "ready", names, skippedCount: 0 },
+    deployed: { status: "ready", names, skippedCount: 0, attentionCount: 0 },
     primitives: [],
     drift: driftViewModel({ data: { behind }, isError: false }),
   };

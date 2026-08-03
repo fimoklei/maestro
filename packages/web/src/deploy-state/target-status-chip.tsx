@@ -12,6 +12,9 @@ export function TargetStatusChip({
   if (indicator === "ok") {
     return <Chip tone="ok">● in sync</Chip>;
   }
+  if (indicator === "attention") {
+    return <Chip tone="drift">▲ attention</Chip>;
+  }
   if (indicator === "drift") {
     return <Chip tone="drift">▲ drift</Chip>;
   }

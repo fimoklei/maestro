@@ -1,9 +1,14 @@
-// Who holds the cockpit's ports. Every worktree serves on the same
-// localhost:3000/5173, so a server left running in a sibling keeps answering
-// and a screenshot proves the wrong tree (.claude/skills/verify-in-smoke).
+// Who holds the cockpit's ports. Each worktree serves on its own pair
+// (scripts/cockpit-ports.mjs), so a holder here is either this worktree's own
+// previous run or an unrelated process — never a sibling's, unless two pairs
+// collide, which this still refuses (.claude/skills/verify-in-smoke).
 import { execFileSync } from "node:child_process";
+import { realpathSync } from "node:fs";
+import { sep } from "node:path";
 
 const runLsof = (args) => execFileSync("lsof", args, { encoding: "utf8" });
+
+const runGit = (args) => execFileSync("git", args, { encoding: "utf8" });
 
 /**
  * Listening pids on a port; empty when it is free, null when the lookup could
@@ -54,15 +59,19 @@ export function findPortHolders(ports, lsof = runLsof) {
   });
 }
 
+/** The opening of every held-port line: which port, and who holds it. */
+const namePortHolder = ({ port, pid, command }) =>
+  `  port ${port} — ${command ?? "an unidentified process"} (pid ${pid})`;
+
 /** The launcher's refusal to start, or null when every port is free. */
 export function describeHeldPorts(holders) {
   if (holders.length === 0) return null;
 
   const held = holders
-    .map(({ port, pid, command, cwd }) =>
-      pid === null
-        ? `  port ${port} — the holder could not be determined; the lookup failed`
-        : `  port ${port} — ${command ?? "an unidentified process"} (pid ${pid}) in ${cwd ?? "an unreadable directory"}`,
+    .map((holder) =>
+      holder.pid === null
+        ? `  port ${holder.port} — the holder could not be determined; the lookup failed`
+        : `${namePortHolder(holder)} in ${holder.cwd ?? "an unreadable directory"}`,
     )
     .join("\n");
 
@@ -71,5 +80,103 @@ export function describeHeldPorts(holders) {
     held,
     "Anything you screenshot now would show that process, not this worktree.",
     "Fix: stop it, then run this again.",
+  ].join("\n");
+}
+
+/**
+ * Every worktree of this repo, or null when git could not be asked — never an
+ * empty list, which would read as "no worktree owns these ports" and free
+ * them. Resolved, because attribution compares against resolved paths.
+ */
+export function listWorktrees(repoRoot, git = runGit, resolve = realpathSync) {
+  try {
+    return git(["-C", repoRoot, "worktree", "list", "--porcelain"])
+      .split("\n")
+      .filter((line) => line.startsWith("worktree "))
+      .map((line) => {
+        const path = line.slice("worktree ".length).trim();
+        try {
+          return resolve(path);
+        } catch {
+          return path; // a pruned worktree still names itself
+        }
+      });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The worktree a directory sits in, or null when none owns it. Longest match
+ * wins: worktrees live *inside* the main one, so a plain prefix test would
+ * read every nested run as the main worktree's. Paths must arrive resolved.
+ */
+function worktreeOwning(cwd, worktrees) {
+  if (cwd === null) return null;
+
+  return (
+    worktrees
+      .filter((path) => cwd === path || cwd.startsWith(path + sep))
+      .sort((a, b) => b.length - a.length)[0] ?? null
+  );
+}
+
+/**
+ * Split port holders into the ones this run may free — only its own worktree's
+ * previous run — and the ones it must refuse rather than kill: everything else.
+ * The pair is derived from this worktree's path, so a holder that is not ours
+ * is an unrelated service, and killing it would cost somebody else's work.
+ */
+export function partitionHolders(holders, { self, worktrees }) {
+  if (worktrees === null) {
+    return {
+      foreign: holders.map((holder) => ({ ...holder, worktree: null })),
+      evictable: [],
+    };
+  }
+
+  const foreign = [];
+  const evictable = [];
+
+  for (const holder of holders) {
+    const worktree = worktreeOwning(holder.cwd, worktrees);
+    if (worktree !== self) {
+      foreign.push({ ...holder, worktree });
+    } else {
+      evictable.push(holder);
+    }
+  }
+
+  return { foreign, evictable };
+}
+
+/**
+ * The worktree a running process sits in; null when that cannot be
+ * established, so a caller about to signal it holds off instead.
+ */
+export function processWorktree(pid, { worktrees }, lsof = runLsof) {
+  if (worktrees === null) return null;
+
+  return worktreeOwning(describeProcess(pid, lsof).cwd, worktrees);
+}
+
+/** The launcher's refusal to evict a holder it may not kill, or null when free to go. */
+export function describeForeignHolders(foreign) {
+  if (foreign.length === 0) return null;
+
+  const held = foreign
+    .map((holder) =>
+      holder.worktree === null
+        ? `${namePortHolder(holder)} in ${holder.cwd ?? "an unreadable directory"}, which no worktree of this repo claims`
+        : `${namePortHolder(holder)} belonging to the worktree at ${holder.worktree}`,
+    )
+    .join("\n");
+
+  return [
+    "[dev] refusing to start: a cockpit port is not this worktree's to take.",
+    held,
+    "Killing it would stop work this launcher did not start.",
+    "Fix: stop that process, or give this worktree a different pair with",
+    "PORT= and WEB_PORT= (two worktrees can derive the same one).",
   ].join("\n");
 }

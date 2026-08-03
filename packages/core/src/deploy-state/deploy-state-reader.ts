@@ -1,15 +1,20 @@
 // Reads a target's apm.lock.yaml, never the network. Three outcomes the cockpit
-// must never blur: missing is "nothing deployed", an unsupported package_type is
-// skipped and surfaced, and malformed is a visible error (#58).
+// must never blur: missing is "nothing deployed", an entry that is not a
+// manageable skill is skipped with its reading, and malformed is a visible
+// error (#58, #358).
 import { join } from "node:path";
 import {
-  claudeSkillName,
   parseLockfile,
+  readPackage,
   type UnreadableEntry,
 } from "../lockfile/lockfile";
 import type { FileSystemPort } from "../registry/file-system";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
-import type { DeployedPrimitive, SkippedEntry } from "./deploy-state-types";
+import {
+  type DeployedPrimitive,
+  type SkippedEntry,
+  skippedFromReading,
+} from "./deploy-state-types";
 import {
   groupPrimitivesByTool,
   type ToolDeployState,
@@ -45,18 +50,14 @@ export class DeployStateReader {
     const primitives: DeployedPrimitive[] = [];
     const skipped: SkippedEntry[] = unreadableAsSkipped(parsed.unreadable);
     for (const entry of parsed.entries) {
-      const name = claudeSkillName(entry);
-      if (name === null) {
-        skipped.push({
-          reason: "unsupported-type",
-          virtualPath: entry.virtual_path,
-          packageType: entry.package_type,
-        });
+      const reading = readPackage(entry);
+      if (reading.kind !== "skill") {
+        skipped.push(skippedFromReading(reading, entry.virtual_path));
         continue;
       }
       primitives.push({
         type: "skill",
-        name,
+        name: reading.name,
         version: entry.resolved_ref,
       });
     }

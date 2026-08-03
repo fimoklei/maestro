@@ -26,6 +26,35 @@ function view(overrides: Partial<ReportView> = {}): ReportView {
 }
 
 describe("BulkDeployReport", () => {
+  it("gives an unsupported row the same recovery step as a single deploy", () => {
+    render(
+      <BulkDeployReport
+        view={{
+          tone: "attention",
+          targetLabel: "Global",
+          deployed: [],
+          updated: [],
+          skipped: [],
+          attention: [
+            {
+              name: "tdd",
+              error: "deployed-unsupported-package-type",
+              packageType: "hybrid",
+              forceable: false,
+            },
+          ],
+          failed: [{ error: "deploy-recorded-invalid", names: ["review"] }],
+          counts: { deployed: 0, skipped: 0, attention: 1, failed: 1 },
+        }}
+      />,
+    );
+
+    expect(screen.getByText(/\(hybrid\)/)).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/release a corrected tag, and deploy again/i),
+    ).toHaveLength(2);
+  });
+
   it("summarises the run and names the target", () => {
     render(
       <BulkDeployReport
@@ -79,7 +108,13 @@ describe("BulkDeployReport", () => {
       <BulkDeployReport
         view={view({
           tone: "attention",
-          attention: [{ name: "tdd", error: "deployed-diverged-from-lock" }],
+          attention: [
+            {
+              name: "tdd",
+              error: "deployed-diverged-from-lock",
+              forceable: true,
+            },
+          ],
           counts: { deployed: 0, skipped: 0, attention: 1, failed: 0 },
         })}
         onForce={onForce}

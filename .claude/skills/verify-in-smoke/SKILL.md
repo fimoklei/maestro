@@ -11,11 +11,11 @@ Five things make a `pnpm smoke` run, screenshot, or test result lie to you. Chec
 
 `pnpm dev` reads the real `~/.maestro`, which usually already holds config — first-run behavior (the connect gate) never renders there. → Use `pnpm smoke` for anything first-run; it wipes `.maestro-sandbox` on start (ADR-0010).
 
-## Wrong worktree: a sibling is squatting the port
+## Wrong address: the port belongs to the worktree
 
-Every worktree defaults to the same ports (3000/5173). A dev server left running in a sibling worktree can keep holding the port, so your screenshot shows the wrong branch. → Start the cockpit from *this* worktree: `pnpm smoke` kills whatever holds those ports first, and refuses to start (naming the process and its directory) when a holder survives. Screenshot only against a cockpit you started here.
+Each worktree serves on its own pair of ports, derived from its path — there is no fixed 5173. A URL copied from a doc, another session, or an open tab points at whatever worktree owns that port. → Ask this worktree: `pnpm cockpit:url`, or read the line `pnpm dev`/`pnpm smoke` prints on start. Screenshot only that address, against a cockpit you started here.
 
-Starting it here only settles the moment you started. A sibling worktree's `pnpm smoke`, run later, kills your listener and rebinds the same ports — your open tab keeps pointing there and says nothing. → Run `pnpm smoke:check` before each screenshot; it re-asks who owns 3000 *and* 5173 — the port the browser renders from — and seeds nothing, so it is safe to repeat.
+Owning it at start does not settle it. → Run `pnpm smoke:check` before each screenshot; it re-asks who holds *this* worktree's two ports — including the one the browser renders from — and seeds nothing, so it is safe to repeat.
 
 ## Wrong path: the browse ceiling is HOME
 
@@ -23,7 +23,7 @@ The filesystem-browse endpoint's root ceiling is `os.homedir()` (ADR-0009). Unde
 
 ## Wrong session: leaked browser state
 
-`localStorage` is scoped to the origin, and every worktree serves on the same `localhost:5173` — a remembered value (e.g. the last browsed folder) survives from one worktree's session into another's, and reads as a product bug. → Clear it before trusting: `agent-browser eval "localStorage.clear(); location.reload()"`.
+`localStorage` is scoped to the origin, so a worktree keeps its own — but a value left by an earlier run of *this* worktree (e.g. the last browsed folder) survives a restart and reads as a product bug. → Clear it before trusting: `agent-browser eval "localStorage.clear(); location.reload()"`.
 
 ## Wrong signal: chained commands flake
 

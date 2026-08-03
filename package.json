@@ -12,6 +12,7 @@
     "smoke": "node scripts/dev.mjs --smoke",
     "smoke:ready": "node scripts/smoke-ready.mjs",
     "smoke:check": "node scripts/smoke-ready.mjs --check",
+    "cockpit:url": "node scripts/cockpit-ports.mjs",
     "build": "pnpm -r build",
     "test": "node scripts/run-tests.mjs",
     "test:core": "node scripts/run-tests.mjs --project core",

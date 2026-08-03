@@ -81,8 +81,9 @@ a job on the board changes it.
 
 Run from the repo root.
 
-- `pnpm dev` — start server and web (single instance: kills a previous run
-  and frees ports 3000/5173 first).
+- `pnpm dev` — start server and web for this worktree, on its own pair of ports
+  (kills this worktree's previous run first; `pnpm cockpit:url` prints the
+  address).
 - `pnpm smoke` — same as `dev` but against an isolated sandbox config
   (`MAESTRO_HOME=.maestro-sandbox`), so it never touches the real `~/.maestro`.
 - `pnpm test` — whole suite. `test:core` / `test:web` / `test:integration` — one lane.

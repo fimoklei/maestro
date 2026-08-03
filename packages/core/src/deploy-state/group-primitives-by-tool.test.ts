@@ -109,4 +109,24 @@ describe("groupPrimitivesByTool", () => {
       },
     ]);
   });
+
+  it("keeps a hybrid skill apart from a genuinely different primitive", () => {
+    const hybrid: LockfileEntry = {
+      resolved_ref: "v0.5.0",
+      virtual_path: "skills/tdd",
+      package_type: "hybrid",
+      deployed_files: [".claude/skills/tdd"],
+    };
+
+    const result = groupPrimitivesByTool([hybrid], ["claude"]);
+
+    expect(result.tools).toEqual([{ tool: "claude", primitives: [] }]);
+    expect(result.skipped).toEqual([
+      {
+        reason: "unmanageable-skill",
+        virtualPath: "skills/tdd",
+        packageType: "hybrid",
+      },
+    ]);
+  });
 });
