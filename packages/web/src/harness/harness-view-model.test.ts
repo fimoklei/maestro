@@ -113,8 +113,10 @@ describe("releaseEnabled", () => {
     ).toBe(false);
   });
 
-  it("disables Release before any fetch has been attempted", () => {
-    expect(releaseEnabled({ outcome: null, lastFetchedAt: null })).toBe(false);
+  it("leaves Release open before any fetch has been attempted", () => {
+    // Offline and fetch-failed are the two states that disable it (#519).
+    // Anything else opens the dialog, which states the server's own answer.
+    expect(releaseEnabled({ outcome: null, lastFetchedAt: null })).toBe(true);
   });
 });
 

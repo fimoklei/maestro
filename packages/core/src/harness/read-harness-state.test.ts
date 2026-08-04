@@ -241,6 +241,17 @@ describe("ReadHarnessState", () => {
     });
   });
 
+  it("never calls a harness unreleased on tags it could not read", async () => {
+    // A failed read of the tag namespace is not an empty one. Reading it as
+    // "no release exists" is the same invented fact, one layer down.
+    const read = buildRead({ facts: { tags: null } });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: { releasedVersion: null, releaseState: "unknown" },
+    });
+  });
+
   it("refuses when no harness is connected", async () => {
     const read = buildRead({ root: undefined });
 

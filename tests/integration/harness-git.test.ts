@@ -51,6 +51,13 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
 
   const adapter = () => new HarnessGitAdapter();
 
+  // Null is a namespace the adapter could not read at all. Asserting that
+  // apart from the names keeps a read failure from passing as "no releases".
+  const tagNames = (tags: { name: string }[] | null): string[] => {
+    expect(tags).not.toBeNull();
+    return (tags ?? []).map((tag) => tag.name);
+  };
+
   it("reads the origin, default branch, and release tags of the clone", async () => {
     const facts = await adapter().readFacts(root);
 
@@ -93,7 +100,7 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
     await expect(adapter().fetch(root)).resolves.toBe("fetched");
 
     const facts = await adapter().readFacts(root);
-    expect(facts.tags.map((tag) => tag.name)).toContain("v0.2.0");
+    expect(tagNames(facts.tags)).toContain("v0.2.0");
     const remoteHead = (await git(other, "rev-parse", "HEAD")).stdout.trim();
     expect(facts.defaultBranchCommit).toBe(remoteHead);
   });
@@ -105,7 +112,7 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
     await adapter().fetch(root);
 
     const facts = await adapter().readFacts(root);
-    expect(facts.tags.map((tag) => tag.name)).not.toContain("v9.9.9");
+    expect(tagNames(facts.tags)).not.toContain("v9.9.9");
   });
 
   it("drops a tag the remote no longer has, and keeps the author's own", async () => {
@@ -115,7 +122,9 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
     await adapter().fetch(root);
 
     const facts = await adapter().readFacts(root);
-    expect(facts.tags.map((tag) => tag.name)).not.toContain("v0.1.0");
+    // Emptied, not unreadable: a namespace with nothing in it is an answer,
+    // and only a failed read is null (#519).
+    expect(facts.tags).toEqual([]);
     // Pruning must reach only Maestro's own namespace: deleting the author's
     // local tags would be a change to their repository.
     expect((await git(root, "tag", "--list")).stdout).toContain("mine");

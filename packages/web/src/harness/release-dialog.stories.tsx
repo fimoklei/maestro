@@ -80,7 +80,8 @@ export const WithFindings: Story = {
   },
 };
 
-// Nothing merged since the last release: a quiet plan the author can still cut.
+// Nothing merged since the last release: a quiet plan the author can still
+// cut, and one that says so rather than claiming a change.
 export const NoChanges: Story = {
   args: {
     load: {
@@ -88,7 +89,7 @@ export const NoChanges: Story = {
       plan: {
         ...PLAN,
         proposedStep: "patch",
-        reason: "Only existing skills changed.",
+        reason: "Nothing has changed since the last release.",
         delta: [],
         findings: [],
       },

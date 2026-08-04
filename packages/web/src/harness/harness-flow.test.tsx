@@ -27,10 +27,22 @@ function jsonResponse(body: unknown, status = 200) {
 // refresh finds, and nothing else.
 function stubHarnessServer(options: {
   read: { body: unknown; status?: number; heldUntil?: Promise<void> };
-  refresh?: { body: unknown; status?: number; rejects?: boolean };
-  plan?: { body: unknown; status?: number };
+  refresh?: {
+    body: unknown;
+    status?: number;
+    rejects?: boolean;
+    heldUntil?: Promise<void>;
+  };
+  // One entry per plan request, so a test can hold the second one and read
+  // what the reopened dialog shows while it is still in flight.
+  plan?: {
+    body: unknown;
+    status?: number;
+    holds?: (Promise<void> | undefined)[];
+  };
 }) {
   const calls: string[] = [];
+  let planCalls = 0;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -38,6 +50,8 @@ function stubHarnessServer(options: {
       calls.push(`${init?.method ?? "GET"} ${url}`);
       if (url.startsWith("/api/harness/release-plan")) {
         const plan = options.plan ?? { body: {}, status: 500 };
+        await ("holds" in plan ? plan.holds?.[planCalls] : undefined);
+        planCalls += 1;
         return jsonResponse(plan.body, plan.status);
       }
       if (url.startsWith("/api/harness/refresh")) {
@@ -45,6 +59,7 @@ function stubHarnessServer(options: {
         if ("rejects" in refresh && refresh.rejects === true) {
           throw new TypeError("Failed to fetch");
         }
+        await ("heldUntil" in refresh ? refresh.heldUntil : undefined);
         return jsonResponse(refresh.body, refresh.status);
       }
       // Held by the test rather than by a timer, so the race is decided by
@@ -415,9 +430,59 @@ describe("Harness home base", () => {
 
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("v1.3.0")).toBeInTheDocument();
-    expect(within(dialog).getByText("A skill was added.")).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/proposed v1\.3\.0 — A skill was added\./),
+    ).toBeInTheDocument();
     // The advisory finding shows without disabling anything (#519).
     expect(within(dialog).getByText(/broken/)).toBeInTheDocument();
+  });
+
+  it("keeps Release out of reach while a refresh is still moving the refs", async () => {
+    // A refresh rewrites the very refs a plan reads. Planning across one can
+    // price a release from a revision that no longer stands (#519).
+    let finishRefresh = () => {};
+    const heldUntil = new Promise<void>((resolve) => {
+      finishRefresh = resolve;
+    });
+    stubHarnessServer({
+      read: { body: FETCHED },
+      refresh: { body: FETCHED, heldUntil },
+    });
+    renderHarness();
+
+    const release = await screen.findByRole("button", { name: /^release$/i });
+    await waitFor(() => expect(release).toBeDisabled());
+
+    finishRefresh();
+
+    await waitFor(() => expect(release).toBeEnabled());
+  });
+
+  it("never stands the last plan in for the one being fetched again", async () => {
+    let answerSecond = () => {};
+    const secondPlan = new Promise<void>((resolve) => {
+      answerSecond = resolve;
+    });
+    stubHarnessServer({
+      read: { body: FETCHED },
+      plan: { body: PLAN, holds: [undefined, secondPlan] },
+    });
+    renderHarness();
+
+    const release = await screen.findByRole("button", { name: /^release$/i });
+    await waitFor(() => expect(release).toBeEnabled());
+    await userEvent.click(release);
+    expect(await screen.findByText("v1.3.0")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /close/i }));
+    await userEvent.click(release);
+
+    // A plan is a snapshot of one moment. The delta may have moved since, so
+    // the old numbers must not stand in while the new ones are in flight.
+    expect(await screen.findByText(/planning/i)).toBeInTheDocument();
+    expect(screen.queryByText("v1.3.0")).not.toBeInTheDocument();
+
+    answerSecond();
   });
 
   it("reports a harness that is not connected instead of an empty screen", async () => {

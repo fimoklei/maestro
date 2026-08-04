@@ -37,4 +37,22 @@ describe("validateSkillStructure", () => {
       "empty-description",
     );
   });
+
+  it("reports a closing delimiter that is not a line of its own", () => {
+    expect(validateSkillStructure("---\ndescription: ok\n---junk\n")).toBe(
+      "invalid-frontmatter",
+    );
+  });
+
+  it("reports frontmatter that is a list rather than a mapping", () => {
+    expect(validateSkillStructure("---\n- one\n- two\n---\n")).toBe(
+      "invalid-frontmatter",
+    );
+  });
+
+  it("reports frontmatter that is a bare scalar", () => {
+    expect(validateSkillStructure("---\njust a sentence\n---\n")).toBe(
+      "invalid-frontmatter",
+    );
+  });
 });

@@ -42,9 +42,9 @@ export function useHarness() {
   });
 }
 
-// The release plan for the dialog, fetched only while it is open. Never cached
-// past the opening: a plan is a snapshot of one moment's delta, and a stale one
-// would price a release the remote has already moved past.
+// The release plan for the dialog, fetched only while it is open. A plan is a
+// snapshot of one moment's delta, and a stale one would price a release the
+// remote has already moved past.
 export function useReleasePlan(enabled: boolean) {
   return useQuery({
     queryKey: RELEASE_PLAN_KEY,
@@ -53,6 +53,14 @@ export function useReleasePlan(enabled: boolean) {
     staleTime: 0,
     gcTime: 0,
   });
+}
+
+// Closing the dialog must discard the plan, not park it. `gcTime: 0` collects
+// nothing while the hook stays mounted, so reopening would render the previous
+// revision and version until the new request lands (#519).
+export function useDiscardReleasePlan() {
+  const queryClient = useQueryClient();
+  return () => queryClient.removeQueries({ queryKey: RELEASE_PLAN_KEY });
 }
 
 // Writes the fetched state straight into the query cache: a refresh already

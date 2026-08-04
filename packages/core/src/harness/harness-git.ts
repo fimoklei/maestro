@@ -298,22 +298,28 @@ export class HarnessGitAdapter implements HarnessGitPort {
     }
   }
 
-  private async readTags(root: string): Promise<HarnessTag[]> {
-    const listing = await this.read(root, [
+  // `readOutput`, not `read`: an empty listing is a namespace with no tags,
+  // and only a failed command is null. Collapsing the two would read a git
+  // failure as a harness that has never been released (#519).
+  private async readTags(root: string): Promise<HarnessTag[] | null> {
+    const listing = await this.readOutput(root, [
       "for-each-ref",
       `--format=${TAG_FORMAT}`,
       MAESTRO_TAGS,
     ]);
     if (listing === null) {
-      return [];
+      return null;
     }
 
-    return listing.split("\n").flatMap((line) => {
-      const [name, objectName = "", peeled = ""] = line.split("\t");
-      // Peeled wins: an annotated tag's own object id is not the commit.
-      const commit = peeled || objectName;
-      return name && commit ? [{ name, commit }] : [];
-    });
+    return listing
+      .trim()
+      .split("\n")
+      .flatMap((line) => {
+        const [name, objectName = "", peeled = ""] = line.split("\t");
+        // Peeled wins: an annotated tag's own object id is not the commit.
+        const commit = peeled || objectName;
+        return name && commit ? [{ name, commit }] : [];
+      });
   }
 }
 

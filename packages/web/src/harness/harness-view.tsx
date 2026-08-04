@@ -12,7 +12,12 @@ import {
 import { MovementTable } from "./movement-table";
 import { PendingRelease } from "./pending-release";
 import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
-import { useHarness, useRefreshHarness, useReleasePlan } from "./use-harness";
+import {
+  useDiscardReleasePlan,
+  useHarness,
+  useRefreshHarness,
+  useReleasePlan,
+} from "./use-harness";
 
 // The Harness home base: what the released harness is, how fresh that picture
 // is, and whether anything merged is waiting. It leads with state and reads on
@@ -25,6 +30,11 @@ export function HarnessView() {
   // dialog is open (frontend.md).
   const [planOpen, setPlanOpen] = useState(false);
   const plan = useReleasePlan(planOpen);
+  const discardPlan = useDiscardReleasePlan();
+  const closePlan = () => {
+    setPlanOpen(false);
+    discardPlan();
+  };
 
   // Opening the view fetches, the same act the Refresh button repeats. A
   // mutation, not a query: it reaches the network and writes git refs.
@@ -61,13 +71,14 @@ export function HarnessView() {
             // Read at render, so the age is current every time the strip paints.
             status={freshnessLabel(state.freshness, new Date())}
           >
-            {/* Disabled only while the remote's answer is unknown — an
-                offline or failed fetch (releaseEnabled). Advisory findings
-                and server replies never gate it (#519). */}
+            {/* Closed while the remote's answer is unknown — an offline or
+                failed fetch (releaseEnabled) — and while a refresh is still
+                rewriting the refs a plan reads. Advisory findings and server
+                replies never gate it (#519). */}
             <Button
               variant="primary"
               size="sm"
-              disabled={!releaseEnabled(state.freshness)}
+              disabled={!releaseEnabled(state.freshness) || refresh.isPending}
               onClick={() => setPlanOpen(true)}
             >
               release
@@ -106,7 +117,7 @@ export function HarnessView() {
             <ReleaseDialog
               origin={state.origin}
               load={planLoad(plan)}
-              onClose={() => setPlanOpen(false)}
+              onClose={closePlan}
             />
           ) : null}
         </>

@@ -62,4 +62,27 @@ describe("proposeReleaseVersion", () => {
     expect(proposal.versions.patch).toBe("v0.10.10");
     expect(proposal.versions.minor).toBe("v0.11.0");
   });
+
+  it("keeps a version part past the safe integer range exact", () => {
+    const proposal = proposeReleaseVersion("v9007199254740993.0.0", [changed]);
+
+    expect(proposal.versions.patch).toBe("v9007199254740993.0.1");
+    expect(proposal.versions.major).toBe("v9007199254740994.0.0");
+  });
+
+  it("reads a leading-zero tag as no release at all", () => {
+    // `v01.2.3` is not a semantic version. Counting it as one would bump from
+    // a number nobody published.
+    const proposal = proposeReleaseVersion("v01.2.3", [changed]);
+
+    expect(proposal.versions[proposal.proposedStep]).toBe("v0.1.0");
+    expect(proposal.reason).toContain("First release");
+  });
+
+  it("says nothing changed rather than claiming existing skills did", () => {
+    const proposal = proposeReleaseVersion("v1.2.3", []);
+
+    expect(proposal.reason).toBe("Nothing has changed since the last release.");
+    expect(proposal.proposedStep).toBe("patch");
+  });
 });

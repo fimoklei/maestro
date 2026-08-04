@@ -3,7 +3,6 @@ import { useModalDialog } from "../shell/use-modal-dialog";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { FailureNote } from "../ui/failure-note";
-import { SectionHeader } from "../ui/section-header";
 import { SegmentedControl } from "../ui/segmented-control";
 import { PendingRelease } from "./pending-release";
 import type { ReleasePlan, SemverStep, StructuralProblem } from "./use-harness";
@@ -100,36 +99,22 @@ export function ReleaseDialog({
   );
 }
 
-// The chosen step is UI-state: it starts at the proposal and never leaves the
-// dialog (frontend.md). The version beside it is read from the plan's map, so
-// the browser never re-derives semver.
+// Consequences first: what the tag would carry, then what is risky about it,
+// and only then the number. The chosen step is UI-state — it starts at the
+// proposal and never leaves the dialog (frontend.md). Every version comes from
+// the plan's map, so the browser never re-derives semver.
 function PlanBody({ plan }: { plan: ReleasePlan }) {
   const [step, setStep] = useState<SemverStep>(plan.proposedStep);
 
   return (
     <>
-      <Card padded>
-        <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
-          <div className="flex flex-col gap-1.5">
-            <span className="m-label">Proposed version</span>
-            <span className="font-mono text-fg text-title">
-              {plan.versions[step]}
-            </span>
-            <span className="font-ui text-desc text-muted">{plan.reason}</span>
-          </div>
-          <SegmentedControl
-            label="Version step"
-            segments={STEP_SEGMENTS}
-            value={step}
-            onChange={setStep}
-          />
-        </div>
-        <dl className="mt-4 flex flex-wrap gap-x-10 gap-y-3">
-          <Fact label="Previous tag" value={plan.previousTag ?? "none yet"} />
-          <Fact label="Branch" value={plan.defaultBranch} />
-          <Fact label="Revision" value={plan.revision.slice(0, 7)} />
-        </dl>
-      </Card>
+      {plan.delta.length === 0 ? (
+        <p className="font-ui text-desc text-muted">
+          No skill has changed since the last release.
+        </p>
+      ) : (
+        <PendingRelease movements={plan.delta} />
+      )}
 
       {plan.findings.length === 0 ? null : (
         <div
@@ -151,13 +136,34 @@ function PlanBody({ plan }: { plan: ReleasePlan }) {
         </div>
       )}
 
-      {plan.delta.length === 0 ? (
-        <p className="font-ui text-desc text-muted">
-          No skill has changed since the last release.
-        </p>
-      ) : (
-        <PendingRelease movements={plan.delta} />
-      )}
+      <Card padded>
+        <dl className="flex flex-wrap gap-x-10 gap-y-3">
+          <Fact label="Previous tag" value={plan.previousTag ?? "none yet"} />
+          <Fact label="Branch" value={plan.defaultBranch} />
+          {/* The whole commit: a short hash is not the exact revision, and
+              need not be unique in a repository this size (#519). */}
+          <Fact label="Revision" value={plan.revision} />
+        </dl>
+        <div className="mt-4 flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
+          <div className="flex flex-col gap-1.5">
+            <span className="m-label">Releasing as</span>
+            <span className="font-mono text-fg text-title">
+              {plan.versions[step]}
+            </span>
+            {/* Maestro's proposal is a fact about the delta, so it stands
+                unchanged beside whatever the author picks. */}
+            <span className="font-ui text-desc text-muted">
+              {`Maestro proposed ${plan.versions[plan.proposedStep]} — ${plan.reason}`}
+            </span>
+          </div>
+          <SegmentedControl
+            label="Version step"
+            segments={STEP_SEGMENTS}
+            value={step}
+            onChange={setStep}
+          />
+        </div>
+      </Card>
     </>
   );
 }

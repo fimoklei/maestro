@@ -26,11 +26,13 @@ export type HarnessFreshness = {
 
 export type HarnessTag = { name: string; commit: string };
 
+// `tags: null` is a namespace that could not be read at all — never a harness
+// with no releases. An empty list is only ever "looked, found none".
 export type HarnessFacts = {
   originUrl: string | null;
   defaultBranch: string | null;
   defaultBranchCommit: string | null;
-  tags: HarnessTag[];
+  tags: HarnessTag[] | null;
 };
 
 // One tree hash per canonical skill directory, at each of the four places a
@@ -212,16 +214,32 @@ export class ReadHarnessState {
       return { ok: false, error: "no-usable-origin" };
     }
 
-    // A plan needs a remote to compare against: a confirmed fetch and a
-    // readable origin/HEAD. Without both there is no delta, only a missing one.
+    // A plan needs a remote to compare against: a confirmed fetch, a readable
+    // origin/HEAD, and a tag namespace that was read at all. A failed tag read
+    // is not a first release — proposing v0.1.0 over it would collide with a
+    // version that already exists (#519).
     const confirmed = freshness.lastFetchedAt !== null;
     const head = facts.defaultBranchCommit;
-    if (!confirmed || head === null || facts.defaultBranch === null) {
+    const tags = facts.tags;
+    if (
+      !confirmed ||
+      head === null ||
+      facts.defaultBranch === null ||
+      tags === null
+    ) {
       return { ok: false, error: "no-answer" };
     }
 
-    const released = highestReleaseTag(facts.tags);
-    const delta = await this.movementsSince(root, released, head);
+    // One read of origin/HEAD's skills serves both the delta and the checks.
+    // Two reads can disagree, and a second one that failed would report "no
+    // advisories" for checks that never ran.
+    const current = await this.deps.git.readSkillTrees(root, head);
+    if (current === null) {
+      return { ok: false, error: "no-answer" };
+    }
+
+    const released = highestReleaseTag(tags);
+    const delta = await this.movementsSince(root, released, head, current);
     if (delta === null) {
       return { ok: false, error: "no-answer" };
     }
@@ -231,13 +249,15 @@ export class ReadHarnessState {
       ok: true,
       plan: {
         delta,
-        previousTag: released?.name ?? null,
+        // The proposal's own reading of the tag, so the dialog never names a
+        // previous release the version was not computed from.
+        previousTag: proposal.previousTag,
         proposedStep: proposal.proposedStep,
         reason: proposal.reason,
         versions: proposal.versions,
         revision: head,
         defaultBranch: facts.defaultBranch,
-        findings: await this.structuralFindings(root, head),
+        findings: await this.structuralFindings(root, head, current),
       },
     };
   }
@@ -248,11 +268,8 @@ export class ReadHarnessState {
   private async structuralFindings(
     root: string,
     head: string,
+    trees: HarnessSkillTree[],
   ): Promise<StructuralFinding[]> {
-    const trees = await this.deps.git.readSkillTrees(root, head);
-    if (trees === null) {
-      return [];
-    }
     const names = trees.map((tree) => tree.name).sort();
     const manifests = await this.deps.git.readSkillManifests(root, head, names);
     return names.flatMap((name) => {
@@ -270,18 +287,24 @@ export class ReadHarnessState {
       return { ok: false, error: "no-usable-origin" };
     }
 
-    // Releases are only what a fetch of Maestro's own tag namespace found. Until
-    // one has succeeded the list is empty because nobody looked, and reading
-    // that as "no release exists" would invent a fact (ADR-0021).
+    // Releases are only what a fetch of Maestro's own tag namespace found.
+    // Before one has succeeded, or when the namespace could not be read, the
+    // list says nothing — and reading that as "no release exists" would invent
+    // a fact (ADR-0021).
     const confirmed = freshness.lastFetchedAt !== null;
-    const released = confirmed ? highestReleaseTag(facts.tags) : null;
+    const tags = confirmed ? facts.tags : null;
+    const released = tags === null ? null : highestReleaseTag(tags);
     const head = facts.defaultBranchCommit;
     // Null where the two sides could not both be read. A delta nobody could
     // compute is not an empty one (LEARNINGS.md · J04).
-    const movements =
-      confirmed && head !== null
-        ? await this.movementsSince(root, released, head)
+    const current =
+      tags !== null && head !== null
+        ? await this.deps.git.readSkillTrees(root, head)
         : null;
+    const movements =
+      current === null || head === null
+        ? null
+        : await this.movementsSince(root, released, head, current);
     // Same rule, one ref set further: an unreadable ref leaves the local
     // tables unknown rather than reading as nothing waiting.
     const trees = await this.deps.git.readMovementTrees(root);
@@ -292,7 +315,7 @@ export class ReadHarnessState {
         releasedVersion: released?.name ?? null,
         defaultBranch: facts.defaultBranch,
         releaseState:
-          confirmed && movements !== null && trees !== null
+          tags !== null && movements !== null && trees !== null
             ? releaseState(released, head)
             : "unknown",
         pendingRelease: movements ?? [],
@@ -308,13 +331,13 @@ export class ReadHarnessState {
     root: string,
     released: HarnessTag | null,
     head: string,
+    current: HarnessSkillTree[],
   ): Promise<PendingSkillMovement[] | null> {
     const previous =
       released === null
         ? []
         : await this.deps.git.readSkillTrees(root, released.commit);
-    const current = await this.deps.git.readSkillTrees(root, head);
-    if (previous === null || current === null) {
+    if (previous === null) {
       return null;
     }
     const movements = diffSkillTrees(previous, current);

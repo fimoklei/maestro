@@ -18,7 +18,9 @@ export const validateSkillStructure = (
   if (raw === null) {
     return "missing-manifest";
   }
-  const block = /^---\n([\s\S]*?)\n---/.exec(raw)?.[1];
+  // Both delimiters are whole lines: `---junk` closes nothing, and matching it
+  // would read a manifest git never opened as frontmatter.
+  const block = /^---\n([\s\S]*?)\n---[ \t]*(?:\r?\n|$)/.exec(raw)?.[1];
   if (block === undefined) {
     return "invalid-frontmatter";
   }
@@ -28,10 +30,12 @@ export const validateSkillStructure = (
   } catch {
     return "invalid-frontmatter";
   }
-  const description =
-    typeof data === "object" && data !== null
-      ? (data as Record<string, unknown>).description
-      : undefined;
+  // A list or a bare scalar parses but is not frontmatter. Reading it as a
+  // mapping with no description would name the wrong problem.
+  if (typeof data !== "object" || data === null || Array.isArray(data)) {
+    return "invalid-frontmatter";
+  }
+  const { description } = data as Record<string, unknown>;
   if (typeof description !== "string" || description.trim() === "") {
     return "empty-description";
   }

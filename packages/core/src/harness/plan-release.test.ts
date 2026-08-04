@@ -38,17 +38,20 @@ function buildRead(overrides?: {
   trees?: TreesByRef;
   authors?: Record<string, string>;
   manifests?: Record<string, string | null>;
+  onReadSkillTrees?: (ref: string) => void;
 }) {
-  const head =
-    overrides?.facts?.defaultBranchCommit ?? FACTS.defaultBranchCommit;
   return new ReadHarnessState({
     resolveRoot: async () =>
       overrides && "root" in overrides ? overrides.root : "/harness",
     git: {
       fetch: async () => "fetched",
       readFacts: async () => ({ ...FACTS, ...overrides?.facts }),
-      readSkillTrees: async (_root: string, ref: string) =>
-        overrides?.trees?.[ref] === undefined ? [] : overrides.trees[ref],
+      readSkillTrees: async (_root: string, ref: string) => {
+        overrides?.onReadSkillTrees?.(ref);
+        return overrides?.trees?.[ref] === undefined
+          ? []
+          : overrides.trees[ref];
+      },
       readSkillAuthors: async (_root: string, _ref: string, names: string[]) =>
         Object.fromEntries(
           names.map((name) => [name, overrides?.authors?.[name] ?? null]),
@@ -181,6 +184,31 @@ describe("ReadHarnessState.planRelease", () => {
       ok: false,
       error: "no-answer",
     });
+  });
+
+  it("has no answer when the release tags could not be read", async () => {
+    // An unreadable tag namespace is not an unreleased harness: planning from
+    // it would propose v0.1.0 over a release that already exists (#519).
+    const read = buildRead({ facts: { tags: null } });
+
+    await expect(read.planRelease()).resolves.toEqual({
+      ok: false,
+      error: "no-answer",
+    });
+  });
+
+  it("reads origin/HEAD's skills once, so the delta and the checks agree", async () => {
+    // Two reads of the same ref can disagree, and a failed second read once
+    // reported "no advisories" for checks that never ran.
+    const refs: string[] = [];
+    const read = buildRead({
+      trees: { old: [], head: [{ name: "tdd", treeHash: "t1" }] },
+      onReadSkillTrees: (ref) => refs.push(ref),
+    });
+
+    await read.planRelease();
+
+    expect(refs.filter((ref) => ref === "head")).toHaveLength(1);
   });
 
   it("refuses when no harness is connected", async () => {
