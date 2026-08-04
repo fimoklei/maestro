@@ -28,6 +28,7 @@ function jsonResponse(body: unknown, status = 200) {
 function stubHarnessServer(options: {
   read: { body: unknown; status?: number; heldUntil?: Promise<void> };
   refresh?: { body: unknown; status?: number; rejects?: boolean };
+  plan?: { body: unknown; status?: number };
 }) {
   const calls: string[] = [];
   vi.stubGlobal(
@@ -35,6 +36,10 @@ function stubHarnessServer(options: {
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       calls.push(`${init?.method ?? "GET"} ${url}`);
+      if (url.startsWith("/api/harness/release-plan")) {
+        const plan = options.plan ?? { body: {}, status: 500 };
+        return jsonResponse(plan.body, plan.status);
+      }
       if (url.startsWith("/api/harness/refresh")) {
         const refresh = options.refresh ?? options.read;
         if ("rejects" in refresh && refresh.rejects === true) {
@@ -362,6 +367,57 @@ describe("Harness home base", () => {
       await screen.findByText("Merged changes are waiting for release."),
     ).toBeInTheDocument();
     expect(screen.queryByText(/pending promotion/i)).not.toBeInTheDocument();
+  });
+
+  const FETCHED: HarnessState = {
+    ...RELEASED,
+    releaseState: "pending-release",
+    freshness: {
+      outcome: "fetched",
+      lastFetchedAt: "2026-08-03T11:56:00.000Z",
+    },
+  };
+
+  const PLAN = {
+    delta: [{ kind: "added", name: "research", author: "Grace" }],
+    previousTag: "v1.2.3",
+    proposedStep: "minor",
+    reason: "A skill was added.",
+    versions: { major: "v2.0.0", minor: "v1.3.0", patch: "v1.2.4" },
+    revision: "0123456789abcdef0123456789abcdef01234567",
+    defaultBranch: "main",
+    findings: [{ skill: "broken", problem: "missing-manifest" }],
+  };
+
+  it("keeps Release out of reach until a fetch has answered", async () => {
+    stubHarnessServer({
+      read: {
+        body: {
+          ...RELEASED,
+          freshness: { outcome: "offline", lastFetchedAt: null },
+        },
+      },
+    });
+    renderHarness();
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /^release$/i })).toBeDisabled(),
+    );
+  });
+
+  it("opens a consequences-first plan when the author asks to release", async () => {
+    stubHarnessServer({ read: { body: FETCHED }, plan: { body: PLAN } });
+    renderHarness();
+
+    const release = await screen.findByRole("button", { name: /^release$/i });
+    await waitFor(() => expect(release).toBeEnabled());
+    await userEvent.click(release);
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("v1.3.0")).toBeInTheDocument();
+    expect(within(dialog).getByText("A skill was added.")).toBeInTheDocument();
+    // The advisory finding shows without disabling anything (#519).
+    expect(within(dialog).getByText(/broken/)).toBeInTheDocument();
   });
 
   it("reports a harness that is not connected instead of an empty screen", async () => {

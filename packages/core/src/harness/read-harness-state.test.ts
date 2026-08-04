@@ -93,6 +93,11 @@ function buildRead(overrides?: {
         overrides?.movementTrees === null
           ? null
           : { ...SETTLED_TREES, ...overrides?.movementTrees },
+      readSkillManifests: async (
+        _root: string,
+        _ref: string,
+        names: string[],
+      ) => Object.fromEntries(names.map((name) => [name, null])),
     },
     freshness: overrides?.freshness ?? stubFreshness(FETCHED),
   });
@@ -422,6 +427,7 @@ describe("ReadHarnessState refresh", () => {
           readFor.push(root);
           return SETTLED_TREES;
         },
+        readSkillManifests: async () => ({}),
       },
       freshness: stubFreshness(),
     });

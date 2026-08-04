@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { freshnessLabel, RELEASE_SUMMARIES } from "./harness-view-model";
+import {
+  freshnessLabel,
+  RELEASE_SUMMARIES,
+  releaseEnabled,
+} from "./harness-view-model";
 
 const NOW = new Date("2026-08-03T12:00:00.000Z");
 
@@ -84,6 +88,33 @@ describe("freshnessLabel", () => {
 
     expect(label).toBe("Fetch failed — never fetched");
     expect(label).not.toMatch(/permission|denied|not allowed|access/i);
+  });
+});
+
+describe("releaseEnabled", () => {
+  it("enables Release once a fetch has answered", () => {
+    expect(
+      releaseEnabled({
+        outcome: "fetched",
+        lastFetchedAt: "2026-08-03T11:56:00.000Z",
+      }),
+    ).toBe(true);
+  });
+
+  it("disables Release when the last fetch found no network", () => {
+    expect(releaseEnabled({ outcome: "offline", lastFetchedAt: null })).toBe(
+      false,
+    );
+  });
+
+  it("disables Release when the last fetch failed", () => {
+    expect(
+      releaseEnabled({ outcome: "fetch-failed", lastFetchedAt: null }),
+    ).toBe(false);
+  });
+
+  it("disables Release before any fetch has been attempted", () => {
+    expect(releaseEnabled({ outcome: null, lastFetchedAt: null })).toBe(false);
   });
 });
 

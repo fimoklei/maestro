@@ -267,6 +267,91 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
     expect(body.message).not.toContain(base);
   });
 
+  type PlanBody = {
+    previousTag: string | null;
+    proposedStep: string;
+    versions: { major: string; minor: string; patch: string };
+    revision: string;
+    defaultBranch: string;
+    delta: { kind: string; name: string; author: string | null }[];
+    findings: { skill: string; problem: string }[];
+  };
+
+  it("plans a patch release from the team's merged skill edit", async () => {
+    const app = makeApp(root);
+    // A teammate edits the one existing skill and pushes it merged.
+    const other = join(base, "other");
+    await run("git", ["clone", remote, other]);
+    await git(other, "config", "user.email", "mate@example.com");
+    await git(other, "config", "user.name", "Mate");
+    await writeFile(
+      join(other, ".apm", "skills", "tdd", "SKILL.md"),
+      "---\ndescription: A sharper test-driven loop\n---\n",
+      "utf8",
+    );
+    await git(other, "add", ".");
+    await git(other, "commit", "-m", "sharpen tdd");
+    await git(other, "push", "origin", "HEAD:main");
+    await refreshHarness(app);
+
+    const res = await app.request("/api/harness/release-plan");
+    expect(res.status).toBe(200);
+    const plan = (await res.json()) as PlanBody;
+
+    expect(plan.previousTag).toBe("v0.1.0");
+    expect(plan.proposedStep).toBe("patch");
+    expect(plan.versions).toEqual({
+      major: "v1.0.0",
+      minor: "v0.2.0",
+      patch: "v0.1.1",
+    });
+    expect(plan.defaultBranch).toBe("main");
+    expect(plan.revision).toMatch(/^[0-9a-f]{40}$/);
+    expect(plan.delta).toEqual([
+      { kind: "changed", name: "tdd", author: "Mate" },
+    ]);
+    expect(plan.findings).toEqual([]);
+  });
+
+  it("reports a structurally broken skill without refusing the plan", async () => {
+    const app = makeApp(root);
+    const other = join(base, "other");
+    await run("git", ["clone", remote, other]);
+    await git(other, "config", "user.email", "mate@example.com");
+    await git(other, "config", "user.name", "Mate");
+    // A new skill whose manifest has an empty description: advisory, not fatal.
+    await mkdir(join(other, ".apm", "skills", "broken"), { recursive: true });
+    await writeFile(
+      join(other, ".apm", "skills", "broken", "SKILL.md"),
+      "---\ndescription: ''\n---\n",
+      "utf8",
+    );
+    await git(other, "add", ".");
+    await git(other, "commit", "-m", "add broken skill");
+    await git(other, "push", "origin", "HEAD:main");
+    await refreshHarness(app);
+
+    const res = await app.request("/api/harness/release-plan");
+    expect(res.status).toBe(200);
+    const plan = (await res.json()) as PlanBody;
+
+    expect(plan.proposedStep).toBe("minor");
+    expect(plan.findings).toEqual([
+      { skill: "broken", problem: "empty-description" },
+    ]);
+  });
+
+  it("refuses a plan with a readable error before any fetch has confirmed a remote", async () => {
+    const app = makeApp(root);
+
+    const res = await app.request("/api/harness/release-plan");
+
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { error: string; message: string };
+    expect(body.error).toBe("no-answer");
+    expect(body.message).toMatch(/\S/);
+  });
+
   it("leaves the author's checkout untouched across a refresh", async () => {
     const app = makeApp(root);
     await teammatePushes("team-change");

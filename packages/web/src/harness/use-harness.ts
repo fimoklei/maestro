@@ -8,7 +8,11 @@ import type {
   HarnessReleaseState,
   HarnessState,
   PendingSkillMovement,
+  ReleasePlan,
+  SemverStep,
   SkillMovementKind,
+  StructuralFinding,
+  StructuralProblem,
 } from "@maestro/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
@@ -21,15 +25,33 @@ export type {
   HarnessReleaseState,
   HarnessState,
   PendingSkillMovement,
+  ReleasePlan,
+  SemverStep,
   SkillMovementKind,
+  StructuralFinding,
+  StructuralProblem,
 };
 
 const HARNESS_KEY = ["harness", "state"] as const;
+const RELEASE_PLAN_KEY = ["harness", "release-plan"] as const;
 
 export function useHarness() {
   return useQuery({
     queryKey: HARNESS_KEY,
     queryFn: () => requestJson<HarnessState>("/api/harness"),
+  });
+}
+
+// The release plan for the dialog, fetched only while it is open. Never cached
+// past the opening: a plan is a snapshot of one moment's delta, and a stale one
+// would price a release the remote has already moved past.
+export function useReleasePlan(enabled: boolean) {
+  return useQuery({
+    queryKey: RELEASE_PLAN_KEY,
+    queryFn: () => requestJson<ReleasePlan>("/api/harness/release-plan"),
+    enabled,
+    staleTime: 0,
+    gcTime: 0,
   });
 }
 

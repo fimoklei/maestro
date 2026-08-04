@@ -251,6 +251,27 @@ export class HarnessGitAdapter implements HarnessGitPort {
     return Object.fromEntries(authors);
   }
 
+  // Each named skill's SKILL.md read from `ref`'s own tree, so an uncommitted
+  // edit never counts toward a structural finding. Null where `git show` cannot
+  // find the file — a missing manifest, which the plan reports rather than fails
+  // on. Raw stdout: the frontmatter is parsed in core, never here.
+  async readSkillManifests(
+    root: string,
+    ref: string,
+    names: string[],
+  ): Promise<Record<string, string | null>> {
+    const manifests = await Promise.all(
+      names.map(async (name) => [
+        name,
+        await this.readOutput(root, [
+          "show",
+          `${ref}:${harnessSkillSubpath(name)}/SKILL.md`,
+        ]),
+      ]),
+    );
+    return Object.fromEntries(manifests);
+  }
+
   // Null only when the command itself failed, so an empty answer stays an
   // answer. Raw stdout: a `-z` listing carries names this must not touch.
   private async readOutput(

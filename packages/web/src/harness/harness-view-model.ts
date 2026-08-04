@@ -86,6 +86,13 @@ export const movementSections = (movements: HarnessMovement[]) =>
     movements: movements.filter((movement) => movement.state === section.state),
   })).filter((section) => section.movements.length > 0);
 
+// Release is offered only once a fetch has answered: `offline` and
+// `fetch-failed` are the two no-answer classes, and a plan off a stale picture
+// could publish a delta the remote has already moved past (#519). Advisory
+// findings and ordinary server replies never gate it — only the fetch does.
+export const releaseEnabled = (freshness: HarnessFreshness): boolean =>
+  freshness.outcome === "fetched";
+
 export const RELEASE_SUMMARIES: Record<HarnessReleaseState, string> = {
   released: "Everything merged is released.",
   "pending-release": "Merged changes are waiting for release.",

@@ -3,9 +3,17 @@
 // this use-case, so none can reach a response (ADR-0021, security.md).
 import { parseGitOrigin } from "../deploy/git-origin";
 import { classifyMovement, type MovementState } from "./classify-movement";
+import {
+  proposeReleaseVersion,
+  type SemverStep,
+} from "./propose-release-version";
 import { highestReleaseTag } from "./release-tag";
 import type { HarnessSkillTree, SkillMovement } from "./skill-movements";
 import { diffSkillTrees } from "./skill-movements";
+import {
+  type StructuralFinding,
+  validateSkillStructure,
+} from "./validate-skill-structure";
 
 export type HarnessFetchOutcome = "fetched" | "offline" | "fetch-failed";
 
@@ -53,6 +61,14 @@ export interface HarnessGitPort {
   // The four places a skill's content can sit locally, for the movement
   // tables. Null where a ref could not be read, on the same rule as above.
   readMovementTrees(root: string): Promise<HarnessSkillTrees | null>;
+  // The raw SKILL.md text of each named skill at `ref`, for the release plan's
+  // structural findings. Null where the file is absent — never an empty string,
+  // which is a present-but-blank manifest.
+  readSkillManifests(
+    root: string,
+    ref: string,
+    names: string[],
+  ): Promise<Record<string, string | null>>;
 }
 
 // Every call names the harness root: one record per harness, so connecting a
@@ -93,6 +109,31 @@ export type HarnessStateError = "not-configured" | "no-usable-origin";
 export type HarnessStateResult =
   | { ok: true; state: HarnessState }
   | { ok: false; error: HarnessStateError };
+
+// Everything the consequences-first release dialog states before the author
+// picks a step. Advisory `findings` explain risk but never disable a release
+// (#519). `revision` is the exact origin/HEAD commit a later job will tag.
+export type ReleasePlan = {
+  delta: PendingSkillMovement[];
+  previousTag: string | null;
+  proposedStep: SemverStep;
+  reason: string;
+  versions: Record<SemverStep, string>;
+  revision: string;
+  defaultBranch: string;
+  findings: StructuralFinding[];
+};
+
+// `no-answer` is a plan Maestro could not compute because the remote gave none
+// to compare against — never an empty release (LEARNINGS.md · J04).
+export type ReleasePlanError =
+  | "not-configured"
+  | "no-usable-origin"
+  | "no-answer";
+
+export type ReleasePlanResult =
+  | { ok: true; plan: ReleasePlan }
+  | { ok: false; error: ReleasePlanError };
 
 export class ReadHarnessState {
   private readonly deps: {
@@ -152,6 +193,72 @@ export class ReadHarnessState {
       return { ok: false, error: "not-configured" };
     }
     return this.stateFor(root);
+  }
+
+  // The release plan the dialog reads: the merged delta with authors, the
+  // proposed version and its reason, the exact revision a tag would point at,
+  // and advisory structural findings. A read of already-fetched refs — the
+  // network re-check at confirmation belongs to a later job (#520, #521).
+  async planRelease(): Promise<ReleasePlanResult> {
+    const root = await this.deps.resolveRoot();
+    if (root === undefined) {
+      return { ok: false, error: "not-configured" };
+    }
+    const facts = await this.deps.git.readFacts(root);
+    const freshness = await this.deps.freshness.read(root);
+    const origin =
+      facts.originUrl === null ? null : parseGitOrigin(facts.originUrl);
+    if (origin === null) {
+      return { ok: false, error: "no-usable-origin" };
+    }
+
+    // A plan needs a remote to compare against: a confirmed fetch and a
+    // readable origin/HEAD. Without both there is no delta, only a missing one.
+    const confirmed = freshness.lastFetchedAt !== null;
+    const head = facts.defaultBranchCommit;
+    if (!confirmed || head === null || facts.defaultBranch === null) {
+      return { ok: false, error: "no-answer" };
+    }
+
+    const released = highestReleaseTag(facts.tags);
+    const delta = await this.movementsSince(root, released, head);
+    if (delta === null) {
+      return { ok: false, error: "no-answer" };
+    }
+
+    const proposal = proposeReleaseVersion(released?.name ?? null, delta);
+    return {
+      ok: true,
+      plan: {
+        delta,
+        previousTag: released?.name ?? null,
+        proposedStep: proposal.proposedStep,
+        reason: proposal.reason,
+        versions: proposal.versions,
+        revision: head,
+        defaultBranch: facts.defaultBranch,
+        findings: await this.structuralFindings(root, head),
+      },
+    };
+  }
+
+  // The three advisory rules over every skill at origin/HEAD, not only the
+  // moved ones: an unchanged skill can still ship a broken manifest. One
+  // finding per failing skill, in name order (#519).
+  private async structuralFindings(
+    root: string,
+    head: string,
+  ): Promise<StructuralFinding[]> {
+    const trees = await this.deps.git.readSkillTrees(root, head);
+    if (trees === null) {
+      return [];
+    }
+    const names = trees.map((tree) => tree.name).sort();
+    const manifests = await this.deps.git.readSkillManifests(root, head, names);
+    return names.flatMap((name) => {
+      const problem = validateSkillStructure(manifests[name] ?? null);
+      return problem === null ? [] : [{ skill: name, problem }];
+    });
   }
 
   private async stateFor(root: string): Promise<HarnessStateResult> {
