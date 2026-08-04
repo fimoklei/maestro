@@ -3,10 +3,14 @@
 // another product is neither refused nor specially handled (ADR-0021).
 import type { HarnessTag } from "./read-harness-state";
 
-const releaseTagPattern = /^v\d+\.\d+\.\d+$/;
+// No leading zeros: `v01.2.3` is not a semantic version (semver.org §2), and
+// reading it as one would bump from a number nobody published. One pattern for
+// both the highest-tag search and the proposal, so the two cannot disagree.
+export const RELEASE_TAG_PATTERN =
+  /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
 export const highestReleaseTag = (tags: HarnessTag[]): HarnessTag | null => {
-  const releases = tags.filter((tag) => releaseTagPattern.test(tag.name));
+  const releases = tags.filter((tag) => RELEASE_TAG_PATTERN.test(tag.name));
   if (releases.length === 0) {
     return null;
   }

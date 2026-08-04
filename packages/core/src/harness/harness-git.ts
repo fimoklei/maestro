@@ -251,6 +251,27 @@ export class HarnessGitAdapter implements HarnessGitPort {
     return Object.fromEntries(authors);
   }
 
+  // Each named skill's SKILL.md read from `ref`'s own tree, so an uncommitted
+  // edit never counts toward a structural finding. Null where `git show` cannot
+  // find the file — a missing manifest, which the plan reports rather than fails
+  // on. Raw stdout: the frontmatter is parsed in core, never here.
+  async readSkillManifests(
+    root: string,
+    ref: string,
+    names: string[],
+  ): Promise<Record<string, string | null>> {
+    const manifests = await Promise.all(
+      names.map(async (name) => [
+        name,
+        await this.readOutput(root, [
+          "show",
+          `${ref}:${harnessSkillSubpath(name)}/SKILL.md`,
+        ]),
+      ]),
+    );
+    return Object.fromEntries(manifests);
+  }
+
   // Null only when the command itself failed, so an empty answer stays an
   // answer. Raw stdout: a `-z` listing carries names this must not touch.
   private async readOutput(
@@ -277,22 +298,28 @@ export class HarnessGitAdapter implements HarnessGitPort {
     }
   }
 
-  private async readTags(root: string): Promise<HarnessTag[]> {
-    const listing = await this.read(root, [
+  // `readOutput`, not `read`: an empty listing is a namespace with no tags,
+  // and only a failed command is null. Collapsing the two would read a git
+  // failure as a harness that has never been released (#519).
+  private async readTags(root: string): Promise<HarnessTag[] | null> {
+    const listing = await this.readOutput(root, [
       "for-each-ref",
       `--format=${TAG_FORMAT}`,
       MAESTRO_TAGS,
     ]);
     if (listing === null) {
-      return [];
+      return null;
     }
 
-    return listing.split("\n").flatMap((line) => {
-      const [name, objectName = "", peeled = ""] = line.split("\t");
-      // Peeled wins: an annotated tag's own object id is not the commit.
-      const commit = peeled || objectName;
-      return name && commit ? [{ name, commit }] : [];
-    });
+    return listing
+      .trim()
+      .split("\n")
+      .flatMap((line) => {
+        const [name, objectName = "", peeled = ""] = line.split("\t");
+        // Peeled wins: an annotated tag's own object id is not the commit.
+        const commit = peeled || objectName;
+        return name && commit ? [{ name, commit }] : [];
+      });
   }
 }
 

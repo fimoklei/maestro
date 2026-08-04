@@ -86,6 +86,14 @@ export const movementSections = (movements: HarnessMovement[]) =>
     movements: movements.filter((movement) => movement.state === section.state),
   })).filter((section) => section.movements.length > 0);
 
+// `offline` and `fetch-failed` are the two no-answer classes, and only they
+// close Release: a plan off a picture the remote never answered for could
+// publish a delta that has already moved (#519). Every other state opens the
+// dialog, which states the server's own reply — advisory findings and
+// recognised replies never gate the button.
+export const releaseEnabled = (freshness: HarnessFreshness): boolean =>
+  freshness.outcome !== "offline" && freshness.outcome !== "fetch-failed";
+
 export const RELEASE_SUMMARIES: Record<HarnessReleaseState, string> = {
   released: "Everything merged is released.",
   "pending-release": "Merged changes are waiting for release.",

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { SectionHeader } from "../ui/section-header";
@@ -7,10 +7,17 @@ import {
   freshnessLabel,
   movementSections,
   RELEASE_SUMMARIES,
+  releaseEnabled,
 } from "./harness-view-model";
 import { MovementTable } from "./movement-table";
 import { PendingRelease } from "./pending-release";
-import { useHarness, useRefreshHarness } from "./use-harness";
+import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
+import {
+  useDiscardReleasePlan,
+  useHarness,
+  useRefreshHarness,
+  useReleasePlan,
+} from "./use-harness";
 
 // The Harness home base: what the released harness is, how fresh that picture
 // is, and whether anything merged is waiting. It leads with state and reads on
@@ -19,6 +26,15 @@ export function HarnessView() {
   const harness = useHarness();
   const refresh = useRefreshHarness();
   const { mutate: fetchRemote } = refresh;
+  // Plan open/closed is UI-state; the plan itself is fetched only while the
+  // dialog is open (frontend.md).
+  const [planOpen, setPlanOpen] = useState(false);
+  const plan = useReleasePlan(planOpen);
+  const discardPlan = useDiscardReleasePlan();
+  const closePlan = () => {
+    setPlanOpen(false);
+    discardPlan();
+  };
 
   // Opening the view fetches, the same act the Refresh button repeats. A
   // mutation, not a query: it reaches the network and writes git refs.
@@ -55,6 +71,18 @@ export function HarnessView() {
             // Read at render, so the age is current every time the strip paints.
             status={freshnessLabel(state.freshness, new Date())}
           >
+            {/* Closed while the remote's answer is unknown — an offline or
+                failed fetch (releaseEnabled) — and while a refresh is still
+                rewriting the refs a plan reads. Advisory findings and server
+                replies never gate it (#519). */}
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={!releaseEnabled(state.freshness) || refresh.isPending}
+              onClick={() => setPlanOpen(true)}
+            >
+              release
+            </Button>
             <Button
               variant="quiet"
               size="sm"
@@ -85,8 +113,27 @@ export function HarnessView() {
               </Card>
             </section>
           ))}
+          {planOpen ? (
+            <ReleaseDialog
+              origin={state.origin}
+              load={planLoad(plan)}
+              onClose={closePlan}
+            />
+          ) : null}
         </>
       )}
     </section>
   );
+}
+
+// The dialog stays mounted through loading, error, and the ready plan, so the
+// query's three states become its one prop.
+function planLoad(plan: ReturnType<typeof useReleasePlan>): ReleasePlanLoad {
+  if (plan.data !== undefined) {
+    return { kind: "ready", plan: plan.data };
+  }
+  if (plan.isError) {
+    return { kind: "error", message: plan.error.message };
+  }
+  return { kind: "loading" };
 }

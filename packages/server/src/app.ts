@@ -28,6 +28,8 @@ import {
   ReadHarnessState,
   RecordedPackageAdapter,
   Registry,
+  type ReleasePlanError,
+  type ReleasePlanResult,
   RemoveDeployedSkill,
   type RemoveDeployedSkillError,
   type RemovePreflightError,
@@ -385,6 +387,21 @@ const harnessErrorResponses: Record<
   },
 };
 
+// A plan shares the state read's two refusals and adds one: `no-answer` is a
+// remote nothing has fetched, so there is no delta to plan against. A 409, like
+// nothing-connected — a precondition the author clears with Refresh.
+const releasePlanErrorResponses: Record<
+  ReleasePlanError,
+  { status: 409 | 422; message: string }
+> = {
+  ...harnessErrorResponses,
+  "no-answer": {
+    status: 409,
+    message:
+      "Maestro has not fetched the remote yet, so it cannot plan a release. Refresh the harness and try again.",
+  },
+};
+
 // outside-root is 403 (the info-disclosure boundary); no message echoes the
 // path (security.md).
 const browseErrorResponses: Record<
@@ -487,6 +504,19 @@ export function createApp(deps: AppDeps) {
   app.post("/api/harness/refresh", async (c) =>
     harnessResponse(c, await deps.harness.refresh(new Date())),
   );
+
+  // The release plan for the consequences-first dialog. A GET: it reads the
+  // already-fetched refs and writes nothing — the network re-check at
+  // confirmation belongs to a later job (#520). Resolves the harness
+  // server-side like the reads above, so no path crosses from the browser.
+  app.get("/api/harness/release-plan", async (c) => {
+    const result: ReleasePlanResult = await deps.harness.planRelease();
+    if (!result.ok) {
+      const { status, message } = releasePlanErrorResponses[result.error];
+      return c.json({ error: result.error, message }, status);
+    }
+    return c.json(result.plan);
+  });
 
   // Offline connect: persist a user-pasted path as the inventory. No git
   // clone (J11, deferred).

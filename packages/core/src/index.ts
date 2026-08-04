@@ -62,6 +62,7 @@ export {
 } from "./filesystem/browse-filesystem";
 export { HarnessFreshnessStore } from "./harness/harness-freshness-store";
 export { HarnessGitAdapter } from "./harness/harness-git";
+export type { SemverStep } from "./harness/propose-release-version";
 export {
   type HarnessFreshness,
   type HarnessMovement,
@@ -71,11 +72,18 @@ export {
   type HarnessStateResult,
   type PendingSkillMovement,
   ReadHarnessState,
+  type ReleasePlan,
+  type ReleasePlanError,
+  type ReleasePlanResult,
 } from "./harness/read-harness-state";
 export type {
   SkillMovement,
   SkillMovementKind,
 } from "./harness/skill-movements";
+export type {
+  StructuralFinding,
+  StructuralProblem,
+} from "./harness/validate-skill-structure";
 export {
   ConnectInventory,
   type ConnectInventoryError,

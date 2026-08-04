@@ -93,6 +93,11 @@ function buildRead(overrides?: {
         overrides?.movementTrees === null
           ? null
           : { ...SETTLED_TREES, ...overrides?.movementTrees },
+      readSkillManifests: async (
+        _root: string,
+        _ref: string,
+        names: string[],
+      ) => Object.fromEntries(names.map((name) => [name, null])),
     },
     freshness: overrides?.freshness ?? stubFreshness(FETCHED),
   });
@@ -229,6 +234,17 @@ describe("ReadHarnessState", () => {
       facts: { tags: [] },
       freshness: stubFreshness(),
     });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: { releasedVersion: null, releaseState: "unknown" },
+    });
+  });
+
+  it("never calls a harness unreleased on tags it could not read", async () => {
+    // A failed read of the tag namespace is not an empty one. Reading it as
+    // "no release exists" is the same invented fact, one layer down.
+    const read = buildRead({ facts: { tags: null } });
 
     await expect(read.execute()).resolves.toMatchObject({
       ok: true,
@@ -422,6 +438,7 @@ describe("ReadHarnessState refresh", () => {
           readFor.push(root);
           return SETTLED_TREES;
         },
+        readSkillManifests: async () => ({}),
       },
       freshness: stubFreshness(),
     });
