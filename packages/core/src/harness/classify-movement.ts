@@ -2,7 +2,7 @@
 
 // A promote branch that carries no tree for its skill is proposing to delete
 // it, which is not the same fact as having no promote branch at all.
-export type PromoteBranch = { tree: string | null };
+type PromoteBranch = { tree: string | null };
 
 // `null` is a skill absent at that ref, and compares like any other value: an
 // absent skill differs from a present one, which is what makes an addition and
