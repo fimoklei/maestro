@@ -191,9 +191,10 @@ describe("SkillDetailPane", () => {
     trigger.remove();
   });
 
-  it("keeps the deploy action out of the scrolling reading matter", () => {
-    // Description scrolls in its own region so it never pushes the deploy
-    // control out of reach. Pane-beside-table layout is browser-measured (testing.md).
+  it("puts the deploy control in the same flow as the deployed-to block it changes", () => {
+    // The reach and the control that changes it are one thought (#470): the
+    // control follows the list instead of being anchored to the pane's bottom
+    // edge. The resulting gap is browser-measured (testing.md).
     renderPane({ deployAction: <button type="button">Deploy</button> });
 
     const action = screen.getByRole("button", { name: "Deploy" });
@@ -201,7 +202,18 @@ describe("SkillDetailPane", () => {
     const scroller = pane.querySelector(".overflow-y-auto");
 
     expect(scroller).not.toBeNull();
-    expect(scroller?.contains(action)).toBe(false);
+    expect(scroller?.contains(action)).toBe(true);
+  });
+
+  it("puts the deploy control in the block that pins itself", () => {
+    // Only the wiring. Whether it pins is a browser measurement (testing.md),
+    // which jsdom cannot make.
+    renderPane({ deployAction: <button type="button">Deploy</button> });
+
+    const action = screen.getByRole("button", { name: "Deploy" });
+    const pane = screen.getByRole("complementary", { name: /tdd detail/i });
+
+    expect(pane.querySelector(".sticky")?.contains(action)).toBe(true);
   });
 
   it("hosts the remove action under the deploy one, in its own labelled section", () => {
@@ -222,15 +234,13 @@ describe("SkillDetailPane", () => {
     expect(screen.queryByText("Remove")).toBeNull();
   });
 
-  it("keeps the remove action out of the scrolling reading matter too", () => {
+  it("puts the remove action in that same pinning block", () => {
     // A long deployed-to list must never hide the action that clears it.
     renderPane({ removeAction: <button type="button">remove all →</button> });
 
     const action = screen.getByRole("button", { name: "remove all →" });
     const pane = screen.getByRole("complementary", { name: /tdd detail/i });
 
-    expect(pane.querySelector(".overflow-y-auto")?.contains(action)).toBe(
-      false,
-    );
+    expect(pane.querySelector(".sticky")?.contains(action)).toBe(true);
   });
 });

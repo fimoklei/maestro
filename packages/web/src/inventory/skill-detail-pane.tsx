@@ -51,9 +51,9 @@ export function SkillDetailPane({
       ref={ref}
       id={paneId}
       aria-label={`${primitive.name} detail`}
-      // Beside the table (wide) it stands still at full height, so the deploy
-      // control is always on screen (PRODUCT.md principle 4). Below it
-      // (narrow) it's the last thing on the page, full width, no height bound.
+      // Beside the table (wide) it holds full height, so the deploy control is
+      // always reachable (PRODUCT.md principle 4). Below it (narrow) it's the
+      // last thing on the page, full width, no height bound.
       className="flex w-full flex-none flex-col overflow-clip border-line border-t bg-inset min-[1200px]:w-80 min-[1200px]:border-t-0 min-[1200px]:border-l"
     >
       <div className="flex flex-none items-center border-line-faint border-b px-card-x py-row-y">
@@ -74,9 +74,8 @@ export function SkillDetailPane({
         </button>
       </div>
 
-      {/* Only the reading matter scrolls. The label row above and the deploy
-          and remove controls below stay put, so a skill with a long
-          description can never push this pane's actions out of reach. */}
+      {/* One flow below the label row, so the deploy control sits directly
+          under the reach it changes (#470). */}
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="border-line-faint border-b px-card-x py-row-y">
           <div className="flex items-center gap-2">
@@ -121,26 +120,35 @@ export function SkillDetailPane({
             <p className="text-desc text-dim">not deployed to any target yet</p>
           )}
         </div>
-      </div>
 
-      {/* Both directions sit below the scroller, so a long deployed-to list
-          can never hide either one. */}
-      <div className="flex-none border-line-row border-t px-card-x py-row-y">
-        <div className="mb-2 text-dim text-tag uppercase tracking-tag">
-          Deploy
+        {/* Sticky, so both directions follow the reach while it fits and only
+            pin themselves once a long list scrolls past them. Opaque, since
+            that list passes underneath. */}
+        <div className="sticky bottom-0 bg-inset">
+          <ActionSection label="Deploy">{deployAction}</ActionSection>
+          {removeAction === null ? null : (
+            <ActionSection label="Remove">{removeAction}</ActionSection>
+          )}
         </div>
-        {deployAction}
       </div>
-
-      {removeAction === null ? null : (
-        <div className="flex-none border-line-row border-t px-card-x py-row-y">
-          <div className="mb-2 text-dim text-tag uppercase tracking-tag">
-            Remove
-          </div>
-          {removeAction}
-        </div>
-      )}
     </aside>
+  );
+}
+
+function ActionSection({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="border-line-row border-t px-card-x py-row-y">
+      <div className="mb-2 text-dim text-tag uppercase tracking-tag">
+        {label}
+      </div>
+      {children}
+    </div>
   );
 }
 
