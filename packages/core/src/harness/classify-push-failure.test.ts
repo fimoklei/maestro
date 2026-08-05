@@ -11,6 +11,14 @@ describe("classifyPushFailure", () => {
     ).toBe("already-exists");
   });
 
+  it("reads a lease the remote no longer matches as a stale tip", () => {
+    expect(
+      classifyPushFailure(
+        "error: atomic push failed for ref refs/heads/main. status: 7\nTo /path/remote.git\n ! [rejected]        291b10c10bd3c6e69181314286b9a60d58b8e08e -> main (stale info)\n ! [rejected]        291b10c10bd3c6e69181314286b9a60d58b8e08e -> v1.1.0 (atomic push failed)\nerror: failed to push some refs to '/path/remote.git'\n",
+      ),
+    ).toBe("stale-tip");
+  });
+
   it("reads an unresolvable host as offline", () => {
     expect(
       classifyPushFailure(

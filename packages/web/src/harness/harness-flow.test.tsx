@@ -37,6 +37,7 @@ function stubHarnessServer(options: {
     status?: number;
     rejects?: boolean;
     heldUntil?: Promise<void>;
+    afterPublish?: unknown;
   };
   // One entry per plan request, so a test can hold the second one and read
   // what the reopened dialog shows while it is still in flight.
@@ -45,13 +46,16 @@ function stubHarnessServer(options: {
     status?: number;
     holds?: (Promise<void> | undefined)[];
   };
-  // A confirmed publish; `read.afterPublish` is what a plain read shows once
-  // it has gone through, proving the quiet state needs no second refresh.
+  // A confirmed publish. `afterPublish` on either route is what that route
+  // answers once it has gone through, so a test can say which of the two the
+  // quiet state is painted from.
   publish?: { body: unknown; status?: number };
 }) {
   const calls: string[] = [];
   let planCalls = 0;
   let published = false;
+  const answer = (route: { body: unknown; afterPublish?: unknown }) =>
+    published && "afterPublish" in route ? route.afterPublish : route.body;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -76,16 +80,12 @@ function stubHarnessServer(options: {
           throw new TypeError("Failed to fetch");
         }
         await ("heldUntil" in refresh ? refresh.heldUntil : undefined);
-        return jsonResponse(refresh.body, refresh.status);
+        return jsonResponse(answer(refresh), refresh.status);
       }
       // Held by the test rather than by a timer, so the race is decided by
       // hand and not by the clock (testing.md — deterministic).
       await options.read.heldUntil;
-      const body =
-        published && "afterPublish" in options.read
-          ? options.read.afterPublish
-          : options.read.body;
-      return jsonResponse(body, options.read.status);
+      return jsonResponse(answer(options.read), options.read.status);
     }),
   );
   return calls;
@@ -505,9 +505,12 @@ describe("Harness home base", () => {
     answerSecond();
   });
 
-  it("publishes the chosen step and settles into the quiet state without a second refresh", async () => {
-    const calls = stubHarnessServer({
-      read: {
+  it("publishes the chosen step and settles into the quiet state read from the remote", async () => {
+    // The local tag mirror the plain read paints from can fail to be written,
+    // so the picture after a publish is fetched rather than read (#520).
+    stubHarnessServer({
+      read: { body: FETCHED },
+      refresh: {
         body: FETCHED,
         afterPublish: { ...RELEASED, releasedVersion: "v1.3.0" },
       },
@@ -527,7 +530,33 @@ describe("Harness home base", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
     );
     expect(await screen.findByText("v1.3.0")).toBeInTheDocument();
-    expect(calls.filter((call) => call === "GET /api/harness")).toHaveLength(2);
+  });
+
+  it("falls back to a plain read when the post-publish fetch cannot reach the remote", async () => {
+    // The release is already on the remote; a fetch that fails afterwards is
+    // never allowed to report the publish itself as failed (#520).
+    stubHarnessServer({
+      read: {
+        body: FETCHED,
+        afterPublish: { ...RELEASED, releasedVersion: "v1.3.0" },
+      },
+      refresh: { body: FETCHED, rejects: true },
+      plan: { body: PLAN },
+      publish: { body: { tag: "v1.3.0", revision: PLAN.revision } },
+    });
+    renderHarness();
+
+    const release = await screen.findByRole("button", { name: /^release$/i });
+    await waitFor(() => expect(release).toBeEnabled());
+    await userEvent.click(release);
+    await screen.findByText("v1.3.0");
+
+    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(await screen.findByText("v1.3.0")).toBeInTheDocument();
   });
 
   it("keeps the dialog open and states a failed publish as a readable error", async () => {

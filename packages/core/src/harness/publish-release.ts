@@ -78,7 +78,13 @@ export class PublishRelease {
     }
 
     const head = facts.defaultBranchCommit;
-    if (outcome !== "fetched" || head === null || facts.tags === null) {
+    const branch = facts.defaultBranch;
+    if (
+      outcome !== "fetched" ||
+      head === null ||
+      branch === null ||
+      facts.tags === null
+    ) {
       return { ok: false, error: "no-answer" };
     }
 
@@ -97,12 +103,17 @@ export class PublishRelease {
     const { versions } = proposeReleaseVersion(released?.name ?? null, []);
     const tag = versions[step];
 
-    const push = await this.deps.git.publishTag(root, tag, head);
+    const push = await this.deps.git.publishTag(root, tag, head, branch);
     switch (push) {
       case "pushed":
         return { ok: true, tag, revision: head };
       case "already-exists":
         return { ok: false, error: "already-released" };
+      // The branch moved between this confirmation's read and its push, so the
+      // lease refused and nothing was created. Same answer as a plan the
+      // remote has moved past: read again and decide again.
+      case "stale-tip":
+        return { ok: false, error: "plan-changed" };
       case "offline":
         return { ok: false, error: "no-answer" };
       case "push-failed":

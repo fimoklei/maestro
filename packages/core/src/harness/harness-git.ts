@@ -83,17 +83,38 @@ export class HarnessGitAdapter implements HarnessGitPort {
   // Pushes `<commit>:refs/tags/<name>` directly: the tag is created on the
   // remote by the push itself, so no local tag object exists to clean up, and
   // nothing here can move HEAD, the index, or the working tree (#520).
+  //
+  // The branch refspec is a lease on the tip, never an update: `--atomic`
+  // refuses the tag along with a lease git finds stale — see ADR-0023.
   async publishTag(
     root: string,
     name: string,
     commit: string,
+    defaultBranch: string,
   ): Promise<PublishTagOutcome> {
     const options = gitOptions();
-    const refspec = `${commit}:refs/tags/${name}`;
+    const branchRef = `refs/heads/${defaultBranch}`;
     try {
-      await run("git", ["-C", root, "push", "origin", refspec], options);
+      await run(
+        "git",
+        [
+          "-C",
+          root,
+          "push",
+          "--atomic",
+          `--force-with-lease=${branchRef}:${commit}`,
+          "origin",
+          `${commit}:refs/tags/${name}`,
+          `${commit}:${branchRef}`,
+        ],
+        options,
+      );
     } catch (error) {
-      return classifyGitError(error, classifyPushFailure);
+      const failure = classifyGitError(error, classifyPushFailure);
+      const settled = await this.settlePush(root, name, commit, failure);
+      if (settled !== "pushed") {
+        return settled;
+      }
     }
     // The push already made this true on the remote — that is the commit
     // point. Mirroring it locally is a same-process optimisation, not part of
@@ -106,6 +127,38 @@ export class HarnessGitAdapter implements HarnessGitPort {
       options,
     ).catch(() => {});
     return "pushed";
+  }
+
+  // A push can time out on the way back from a remote that already wrote the
+  // tag, and reported as a failure it strands the author: their own retry then
+  // reads that tag. So anything but a worded refusal asks the remote (#520).
+  private async settlePush(
+    root: string,
+    name: string,
+    commit: string,
+    failure: PublishTagOutcome,
+  ): Promise<PublishTagOutcome> {
+    if (failure === "already-exists" || failure === "stale-tip") {
+      return failure;
+    }
+    // Not `read`: the remote may be unreachable here, so this needs the same
+    // timeout and no-prompt env every other reach out has. An unasked question
+    // reads the same as an absent tag — both leave the failure standing.
+    const listing = await run(
+      "git",
+      ["-C", root, "ls-remote", "origin", `refs/tags/${name}`],
+      gitOptions(),
+    ).then(
+      ({ stdout }) => stdout.trim(),
+      () => "",
+    );
+    if (listing === "") {
+      return failure;
+    }
+    const [published] = listing.split("\t");
+    // A different object under that name is another author's tag, annotated or
+    // not: never this push's, and never one to force over.
+    return published === commit ? "pushed" : "already-exists";
   }
 
   async readFacts(root: string): Promise<HarnessFacts> {

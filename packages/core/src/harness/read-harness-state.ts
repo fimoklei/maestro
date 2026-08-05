@@ -19,9 +19,12 @@ export type HarnessFetchOutcome = "fetched" | "offline" | "fetch-failed";
 
 // `already-exists` is a remote refusal, not a failure: another author's tag
 // already claims that exact name, and the push must never force over it.
+// `stale-tip` is the lease refusing: the branch moved after this confirmation
+// read it, so nothing was created.
 export type PublishTagOutcome =
   | "pushed"
   | "already-exists"
+  | "stale-tip"
   | "offline"
   | "push-failed";
 
@@ -80,11 +83,13 @@ export interface HarnessGitPort {
     names: string[],
   ): Promise<Record<string, string | null>>;
   // Creates and pushes one lightweight tag at the exact commit given, never a
-  // mutable ref and never `--force` (#520).
+  // mutable ref and never `--force`. `defaultBranch` is never written: it is
+  // the lease the tag rides on (ADR-0023).
   publishTag(
     root: string,
     name: string,
     commit: string,
+    defaultBranch: string,
   ): Promise<PublishTagOutcome>;
 }
 

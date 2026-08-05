@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { InFlightLocks } from "../deploy/in-flight-locks";
 import { PublishRelease } from "./publish-release";
-import type { HarnessFacts, HarnessFreshness } from "./read-harness-state";
+import type {
+  HarnessFacts,
+  HarnessFreshness,
+  PublishTagOutcome,
+} from "./read-harness-state";
 
 const AT = new Date("2026-08-04T12:00:00.000Z");
 
@@ -23,8 +27,8 @@ function buildPublish(overrides?: {
   freshness?: HarnessFreshness;
   fetchOutcome?: "fetched" | "offline" | "fetch-failed";
   fetchHold?: Promise<void>;
-  publishTagOutcome?: "pushed" | "already-exists" | "offline" | "push-failed";
-  onPublishTag?: (name: string, commit: string) => void;
+  publishTagOutcome?: PublishTagOutcome;
+  onPublishTag?: (name: string, commit: string, branch: string) => void;
   onFreshnessRecord?: (root: string, freshness: HarnessFreshness) => void;
   locks?: InFlightLocks;
 }) {
@@ -47,8 +51,13 @@ function buildPublish(overrides?: {
         working: {},
       }),
       readSkillManifests: async () => ({}),
-      publishTag: async (_root: string, name: string, commit: string) => {
-        overrides?.onPublishTag?.(name, commit);
+      publishTag: async (
+        _root: string,
+        name: string,
+        commit: string,
+        branch: string,
+      ) => {
+        overrides?.onPublishTag?.(name, commit, branch);
         return overrides?.publishTagOutcome ?? "pushed";
       },
     },
@@ -109,16 +118,26 @@ describe("PublishRelease", () => {
     });
   });
 
+  it("has no answer when the default branch could not be named", async () => {
+    const publish = buildPublish({ facts: { defaultBranch: null } });
+
+    await expect(publish.execute("patch", "v1.2.3", AT)).resolves.toEqual({
+      ok: false,
+      error: "no-answer",
+    });
+  });
+
   it("tags the freshly read revision with the chosen step's version", async () => {
-    const calls: { name: string; commit: string }[] = [];
+    const calls: { name: string; commit: string; branch: string }[] = [];
     const publish = buildPublish({
-      onPublishTag: (name, commit) => calls.push({ name, commit }),
+      onPublishTag: (name, commit, branch) =>
+        calls.push({ name, commit, branch }),
     });
 
     const result = await publish.execute("minor", "v1.2.3", AT);
 
     expect(result).toEqual({ ok: true, tag: "v1.3.0", revision: "head" });
-    expect(calls).toEqual([{ name: "v1.3.0", commit: "head" }]);
+    expect(calls).toEqual([{ name: "v1.3.0", commit: "head", branch: "main" }]);
   });
 
   it("proposes v0.1.0-style versions for a never-released harness", async () => {
@@ -171,6 +190,18 @@ describe("PublishRelease", () => {
     await expect(publish.execute("patch", "v1.2.3", AT)).resolves.toEqual({
       ok: false,
       error: "publish-failed",
+    });
+  });
+
+  it("refuses a release whose branch tip moved between the read and the push", async () => {
+    // The lease git refused: what this confirmation read as the tip is not
+    // what the remote still has, so the tag would name a commit the branch has
+    // already moved past. `--atomic` means nothing was created (#520).
+    const publish = buildPublish({ publishTagOutcome: "stale-tip" });
+
+    await expect(publish.execute("patch", "v1.2.3", AT)).resolves.toEqual({
+      ok: false,
+      error: "plan-changed",
     });
   });
 
