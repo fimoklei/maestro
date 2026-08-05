@@ -63,13 +63,42 @@ export function useDiscardReleasePlan() {
   return () => queryClient.removeQueries({ queryKey: RELEASE_PLAN_KEY });
 }
 
+// Confirming a release: the server re-reads the remote and tags the exact
+// commit it finds, so this sends only the chosen step, never a path or a
+// cached revision. `previousTag` travels along so the server can tell a
+// remote that has moved past this plan from one that hasn't — a concurrent
+// teammate's release, or a retry of this very confirmation (#520).
+//
+// The picture afterwards is fetched, never read: the plain read paints from a
+// local tag mirror whose write can fail, and a fetch that fails falls back to
+// it — the release already happened either way.
+export function usePublishRelease() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: { step: SemverStep; previousTag: string | null }) =>
+      requestJson<{ tag: string; revision: string }>("/api/harness/release", {
+        method: "POST",
+        body: JSON.stringify(request),
+      }),
+    onSuccess: () => {
+      void queryClient.cancelQueries({ queryKey: HARNESS_KEY });
+      void fetchHarnessState().then(
+        (state) => queryClient.setQueryData(HARNESS_KEY, state),
+        () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
+      );
+    },
+  });
+}
+
+const fetchHarnessState = () =>
+  requestJson<HarnessState>("/api/harness/refresh", { method: "POST" });
+
 // Writes the fetched state straight into the query cache: a refresh already
 // carries the answer, so re-reading it would only show an older picture first.
 export function useRefreshHarness() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () =>
-      requestJson<HarnessState>("/api/harness/refresh", { method: "POST" }),
+    mutationFn: fetchHarnessState,
     onSuccess: (state) => {
       // The plain read races this one on open. Cancelling it first stops a
       // slower GET from repainting the pre-fetch picture over this answer.

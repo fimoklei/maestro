@@ -1,0 +1,241 @@
+import { describe, expect, it } from "vitest";
+import { InFlightLocks } from "../deploy/in-flight-locks";
+import { PublishRelease } from "./publish-release";
+import type {
+  HarnessFacts,
+  HarnessFreshness,
+  PublishTagOutcome,
+} from "./read-harness-state";
+
+const AT = new Date("2026-08-04T12:00:00.000Z");
+
+const FACTS: HarnessFacts = {
+  originUrl: "git@github.com:fimoklei/agent-harness.git",
+  defaultBranch: "main",
+  defaultBranchCommit: "head",
+  tags: [{ name: "v1.2.3", commit: "old" }],
+};
+
+const FRESHNESS: HarnessFreshness = {
+  outcome: "fetched",
+  lastFetchedAt: "2026-08-01T07:00:00.000Z",
+};
+
+function buildPublish(overrides?: {
+  root?: string | undefined;
+  facts?: Partial<HarnessFacts>;
+  freshness?: HarnessFreshness;
+  fetchOutcome?: "fetched" | "offline" | "fetch-failed";
+  fetchHold?: Promise<void>;
+  publishTagOutcome?: PublishTagOutcome;
+  onPublishTag?: (name: string, commit: string, branch: string) => void;
+  onFreshnessRecord?: (root: string, freshness: HarnessFreshness) => void;
+  locks?: InFlightLocks;
+}) {
+  return new PublishRelease({
+    resolveRoot: async () =>
+      overrides && "root" in overrides ? overrides.root : "/harness",
+    locks: overrides?.locks ?? new InFlightLocks(),
+    git: {
+      fetch: async () => {
+        await overrides?.fetchHold;
+        return overrides?.fetchOutcome ?? "fetched";
+      },
+      readFacts: async () => ({ ...FACTS, ...overrides?.facts }),
+      readSkillTrees: async () => [],
+      readSkillAuthors: async () => ({}),
+      readMovementTrees: async () => ({
+        remote: {},
+        promote: {},
+        local: {},
+        working: {},
+      }),
+      readSkillManifests: async () => ({}),
+      publishTag: async (
+        _root: string,
+        name: string,
+        commit: string,
+        branch: string,
+      ) => {
+        overrides?.onPublishTag?.(name, commit, branch);
+        return overrides?.publishTagOutcome ?? "pushed";
+      },
+    },
+    freshness: {
+      read: async () => overrides?.freshness ?? FRESHNESS,
+      record: async (root, freshness) => {
+        overrides?.onFreshnessRecord?.(root, freshness);
+      },
+    },
+  });
+}
+
+describe("PublishRelease", () => {
+  it("refuses when no harness is connected", async () => {
+    const publish = buildPublish({ root: undefined });
+
+    await expect(publish.execute("patch", "v1.2.3", AT)).resolves.toEqual({
+      ok: false,
+      error: "not-configured",
+    });
+  });
+
+  it("refuses an origin apm could never resolve", async () => {
+    const publish = buildPublish({ facts: { originUrl: "/srv/mirror.git" } });
+
+    await expect(publish.execute("patch", "v1.2.3", AT)).resolves.toEqual({
+      ok: false,
+      error: "no-usable-origin",
+    });
+  });
+
+  it("has no answer when the confirmation's own fetch cannot reach the remote", async () => {
+    const publish = buildPublish({ fetchOutcome: "offline" });
+
+    await expect(publish.execute("patch", "v1.2.3", AT)).resolves.toEqual({
+      ok: false,
+      error: "no-answer",
+    });
+  });
+
+  it("has no answer when the default branch tip could not be read", async () => {
+    const publish = buildPublish({
+      facts: { defaultBranchCommit: null },
+    });
+
+    await expect(publish.execute("patch", "v1.2.3", AT)).resolves.toEqual({
+      ok: false,
+      error: "no-answer",
+    });
+  });
+
+  it("has no answer when the release tags could not be read", async () => {
+    const publish = buildPublish({ facts: { tags: null } });
+
+    await expect(publish.execute("patch", "v1.2.3", AT)).resolves.toEqual({
+      ok: false,
+      error: "no-answer",
+    });
+  });
+
+  it("has no answer when the default branch could not be named", async () => {
+    const publish = buildPublish({ facts: { defaultBranch: null } });
+
+    await expect(publish.execute("patch", "v1.2.3", AT)).resolves.toEqual({
+      ok: false,
+      error: "no-answer",
+    });
+  });
+
+  it("tags the freshly read revision with the chosen step's version", async () => {
+    const calls: { name: string; commit: string; branch: string }[] = [];
+    const publish = buildPublish({
+      onPublishTag: (name, commit, branch) =>
+        calls.push({ name, commit, branch }),
+    });
+
+    const result = await publish.execute("minor", "v1.2.3", AT);
+
+    expect(result).toEqual({ ok: true, tag: "v1.3.0", revision: "head" });
+    expect(calls).toEqual([{ name: "v1.3.0", commit: "head", branch: "main" }]);
+  });
+
+  it("proposes v0.1.0-style versions for a never-released harness", async () => {
+    const publish = buildPublish({ facts: { tags: [] } });
+
+    await expect(publish.execute("minor", null, AT)).resolves.toEqual({
+      ok: true,
+      tag: "v0.1.0",
+      revision: "head",
+    });
+  });
+
+  it("records its own fetch's freshness, not the plan's", async () => {
+    const records: { root: string; freshness: HarnessFreshness }[] = [];
+    const publish = buildPublish({
+      onFreshnessRecord: (root, freshness) => records.push({ root, freshness }),
+    });
+
+    await publish.execute("patch", "v1.2.3", AT);
+
+    expect(records).toEqual([
+      {
+        root: "/harness",
+        freshness: { outcome: "fetched", lastFetchedAt: AT.toISOString() },
+      },
+    ]);
+  });
+
+  it("reports someone else's race to the same version as already released", async () => {
+    const publish = buildPublish({ publishTagOutcome: "already-exists" });
+
+    await expect(publish.execute("patch", "v1.2.3", AT)).resolves.toEqual({
+      ok: false,
+      error: "already-released",
+    });
+  });
+
+  it("has no answer when the push itself cannot reach the remote", async () => {
+    const publish = buildPublish({ publishTagOutcome: "offline" });
+
+    await expect(publish.execute("patch", "v1.2.3", AT)).resolves.toEqual({
+      ok: false,
+      error: "no-answer",
+    });
+  });
+
+  it("reports any other push refusal as a failed publish", async () => {
+    const publish = buildPublish({ publishTagOutcome: "push-failed" });
+
+    await expect(publish.execute("patch", "v1.2.3", AT)).resolves.toEqual({
+      ok: false,
+      error: "publish-failed",
+    });
+  });
+
+  it("refuses a release whose branch tip moved between the read and the push", async () => {
+    // The lease git refused: what this confirmation read as the tip is not
+    // what the remote still has, so the tag would name a commit the branch has
+    // already moved past. `--atomic` means nothing was created (#520).
+    const publish = buildPublish({ publishTagOutcome: "stale-tip" });
+
+    await expect(publish.execute("patch", "v1.2.3", AT)).resolves.toEqual({
+      ok: false,
+      error: "plan-changed",
+    });
+  });
+
+  it("refuses a plan whose previous tag no longer matches the freshly read remote", async () => {
+    // The remote moved past what the author's dialog last showed them —
+    // someone else released, or an earlier retry of this same confirmation
+    // already did. Publishing the step blindly would price a second release
+    // off a previous tag that no longer exists (#520).
+    const publish = buildPublish({
+      facts: { tags: [{ name: "v1.3.0", commit: "new" }] },
+    });
+
+    await expect(publish.execute("patch", "v1.2.3", AT)).resolves.toEqual({
+      ok: false,
+      error: "plan-changed",
+    });
+  });
+
+  it("refuses a second confirmation for the same harness while one is already running", async () => {
+    let releaseFetch = () => {};
+    const held = new Promise<void>((resolve) => {
+      releaseFetch = resolve;
+    });
+    const publish = buildPublish({ fetchHold: held });
+
+    const first = publish.execute("patch", "v1.2.3", AT);
+    const second = await publish.execute("patch", "v1.2.3", AT);
+
+    expect(second).toEqual({ ok: false, error: "publish-in-progress" });
+    releaseFetch();
+    await expect(first).resolves.toEqual({
+      ok: true,
+      tag: "v1.2.4",
+      revision: "head",
+    });
+  });
+});

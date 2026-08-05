@@ -15,6 +15,7 @@ import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
+import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 
 // The tracer journey end to end: register, see, deploy, see it back. Each step
@@ -118,6 +119,7 @@ describe("the tracer journey through one cockpit", () => {
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => join(home, ".apm"),
       harness: stubHarness(),
+      publish: stubPublish(),
       connect: stubConnect(),
       browse: stubBrowse(),
       enforceOriginHost: false,

@@ -16,6 +16,7 @@ import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
+import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 
 // Integration lane: the bulk-deploy route over the real Hono app, driving the
@@ -147,6 +148,7 @@ describe("bulk deploy HTTP route", () => {
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => globalRoot,
       harness: stubHarness(),
+      publish: stubPublish(),
       connect: stubConnect(),
       browse: stubBrowse(),
       enforceOriginHost: false,

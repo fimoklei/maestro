@@ -311,4 +311,145 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
       });
     });
   });
+
+  describe("publishTag", () => {
+    it("creates and pushes a lightweight tag at the exact commit, without a local tag object", async () => {
+      const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
+
+      await expect(
+        adapter().publishTag(root, "v0.2.0", head, "main"),
+      ).resolves.toBe("pushed");
+
+      const remoteTag = (
+        await git(remote, "rev-parse", "refs/tags/v0.2.0")
+      ).stdout.trim();
+      expect(remoteTag).toBe(head);
+      expect((await git(root, "tag", "--list")).stdout).not.toContain("v0.2.0");
+    });
+
+    it("mirrors the pushed tag locally, so a read afterwards needs no second fetch", async () => {
+      const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
+
+      await adapter().publishTag(root, "v0.2.0", head, "main");
+
+      const facts = await adapter().readFacts(root);
+      expect(facts.tags).toContainEqual({ name: "v0.2.0", commit: head });
+    });
+
+    it("refuses to overwrite a name the remote already has at a different commit", async () => {
+      const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
+      await adapter().publishTag(root, "v0.2.0", head, "main");
+      await commit("second skill");
+      const nextHead = (await git(root, "rev-parse", "HEAD")).stdout.trim();
+
+      await expect(
+        adapter().publishTag(root, "v0.2.0", nextHead, "main"),
+      ).resolves.toBe("already-exists");
+      expect(
+        (await git(remote, "rev-parse", "refs/tags/v0.2.0")).stdout.trim(),
+      ).toBe(head);
+    });
+
+    it("refuses to tag a tip the remote branch has already moved past", async () => {
+      // The window issue #520's one-read-then-push design leaves open: a
+      // teammate pushes between the two. The lease turns that into a refusal,
+      // and `--atomic` means no tag was created at the commit the branch left
+      // behind (#520).
+      const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
+      const other = join(base, "other");
+      await run("git", ["clone", remote, other]);
+      await git(other, "config", "user.email", "other@example.com");
+      await git(other, "config", "user.name", "Other");
+      await writeFile(join(other, "theirs.md"), "theirs\n", "utf8");
+      await git(other, "add", ".");
+      await git(other, "commit", "-m", "their commit");
+      await git(other, "push", "origin", "HEAD:main");
+
+      await expect(
+        adapter().publishTag(root, "v0.2.0", head, "main"),
+      ).resolves.toBe("stale-tip");
+
+      await expect(
+        git(remote, "rev-parse", "refs/tags/v0.2.0"),
+      ).rejects.toThrow();
+    });
+
+    // A push that errors out after the remote already wrote the tag — a
+    // timeout on the way back, a receive-pack that fails at the end. Reported
+    // as a failure it would strand the author: the retry reads the tag their
+    // own attempt created and refuses the whole plan (#520).
+    const failAfterAccepting = async () => {
+      const script = join(base, "receive-pack.sh");
+      await writeFile(script, '#!/bin/sh\ngit-receive-pack "$@"\nexit 1\n', {
+        encoding: "utf8",
+        mode: 0o755,
+      });
+      await git(root, "config", "remote.origin.receivepack", script);
+    };
+
+    it("reads a push that failed after the remote took the tag as pushed", async () => {
+      const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
+      await failAfterAccepting();
+
+      await expect(
+        adapter().publishTag(root, "v0.2.0", head, "main"),
+      ).resolves.toBe("pushed");
+
+      const facts = await adapter().readFacts(root);
+      expect(facts.tags).toContainEqual({ name: "v0.2.0", commit: head });
+    });
+
+    it("leaves a push that never reached the remote as the failure it was", async () => {
+      const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
+      await git(root, "remote", "set-url", "origin", join(base, "gone.git"));
+
+      await expect(
+        adapter().publishTag(root, "v0.2.0", head, "main"),
+      ).resolves.toBe("push-failed");
+    });
+
+    it("leaves the author's checkout where it was", async () => {
+      const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
+      await writeFile(join(root, "staged.md"), "staged\n", "utf8");
+      await git(root, "add", "staged.md");
+
+      await adapter().publishTag(root, "v0.2.0", head, "main");
+
+      expect((await git(root, "rev-parse", "HEAD")).stdout.trim()).toBe(head);
+      expect((await git(root, "status", "--porcelain")).stdout).toContain(
+        "A  staged.md",
+      );
+    });
+
+    it("reports a remote that is not there as a failed push, and does not throw", async () => {
+      const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
+      await git(root, "remote", "set-url", "origin", join(base, "gone.git"));
+
+      await expect(
+        adapter().publishTag(root, "v0.2.0", head, "main"),
+      ).resolves.toBe("push-failed");
+    });
+
+    it("reports the tag as pushed even when the local mirror update fails", async () => {
+      // The remote tag is the fact that matters; a local bookkeeping write
+      // that loses a lock race must never turn an already-published release
+      // into a reported failure (#520).
+      const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
+      const lockDir = join(root, ".git", "refs", "maestro", "tags");
+      await mkdir(lockDir, { recursive: true });
+      const lockFile = join(lockDir, "v0.2.0.lock");
+      await writeFile(lockFile, "", "utf8");
+
+      try {
+        await expect(
+          adapter().publishTag(root, "v0.2.0", head, "main"),
+        ).resolves.toBe("pushed");
+      } finally {
+        await rm(lockFile, { force: true });
+      }
+      expect(
+        (await git(remote, "rev-parse", "refs/tags/v0.2.0")).stdout.trim(),
+      ).toBe(head);
+    });
+  });
 });

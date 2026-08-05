@@ -29,23 +29,35 @@ const FINDING_TEXT: Record<StructuralProblem, string> = {
 };
 
 // The consequences-first release plan: what the tag would carry, the proposed
-// number and why, and the exact revision it points at. Presentational — the
-// host owns the query. There is no publish control here; tagging is a later
-// job (#520), so the plan ends at the author's chosen step.
+// number and why, and the exact revision it points at, then the author's
+// chosen step and the action that tags it. Presentational — the host owns
+// both the plan query and the publish mutation.
 export function ReleaseDialog({
   origin,
   load,
   onClose,
+  onPublish,
+  publishing,
+  publishError,
 }: {
   origin: string;
   load: ReleasePlanLoad;
   onClose: () => void;
+  onPublish: (step: SemverStep, previousTag: string | null) => void;
+  publishing: boolean;
+  publishError: string | null;
 }) {
   const { panelRef, requestClose } = useModalDialog({
     onClose,
     closeEnabled: true,
   });
   const heading = `Release ${origin}`;
+  // `null` until the author overrides it; the proposal fills in until then, so
+  // one state serves both the display and what Publish sends.
+  const [chosenStep, setChosenStep] = useState<SemverStep | null>(null);
+  const step =
+    load.kind === "ready" ? (chosenStep ?? load.plan.proposedStep) : null;
+  const previousTag = load.kind === "ready" ? load.plan.previousTag : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 p-6">
@@ -78,7 +90,14 @@ export function ReleaseDialog({
           ) : load.kind === "error" ? (
             <FailureNote label="no plan to show" message={load.message} />
           ) : (
-            <PlanBody plan={load.plan} />
+            <PlanBody
+              plan={load.plan}
+              step={chosenStep ?? load.plan.proposedStep}
+              onStepChange={setChosenStep}
+            />
+          )}
+          {publishError === null ? null : (
+            <FailureNote label="release not published" message={publishError} />
           )}
         </div>
 
@@ -93,6 +112,16 @@ export function ReleaseDialog({
           >
             close
           </Button>
+          <Button
+            type="button"
+            className="shrink-0"
+            variant="primary"
+            size="sm"
+            disabled={step === null || publishing}
+            onClick={() => step !== null && onPublish(step, previousTag)}
+          >
+            {publishing ? "publishing…" : "publish"}
+          </Button>
         </div>
       </div>
     </div>
@@ -100,12 +129,18 @@ export function ReleaseDialog({
 }
 
 // Consequences first: what the tag would carry, then what is risky about it,
-// and only then the number. The chosen step is UI-state — it starts at the
-// proposal and never leaves the dialog (frontend.md). Every version comes from
-// the plan's map, so the browser never re-derives semver.
-function PlanBody({ plan }: { plan: ReleasePlan }) {
-  const [step, setStep] = useState<SemverStep>(plan.proposedStep);
-
+// and only then the number. The chosen step is lifted to the dialog, which
+// also needs it for Publish. Every version comes from the plan's map, so the
+// browser never re-derives semver.
+function PlanBody({
+  plan,
+  step,
+  onStepChange,
+}: {
+  plan: ReleasePlan;
+  step: SemverStep;
+  onStepChange: (step: SemverStep) => void;
+}) {
   return (
     <>
       {plan.delta.length === 0 ? (
@@ -160,7 +195,7 @@ function PlanBody({ plan }: { plan: ReleasePlan }) {
             label="Version step"
             segments={STEP_SEGMENTS}
             value={step}
-            onChange={setStep}
+            onChange={onStepChange}
           />
         </div>
       </Card>

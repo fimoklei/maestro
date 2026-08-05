@@ -25,6 +25,9 @@ import {
   InventoryGitAdapter,
   InventoryReader,
   NodeFileSystem,
+  PublishRelease,
+  type PublishReleaseError,
+  type PublishReleaseResult,
   ReadHarnessState,
   RecordedPackageAdapter,
   Registry,
@@ -89,6 +92,17 @@ const removeBodySchema = z.object({
   confirmedReclaimToken: consentTokenSchema,
   confirmedRemovalReceipt: consentTokenSchema,
 });
+
+// `previousTag` proves the confirmation is against the plan the author saw,
+// not a blind step: the server refuses when the freshly read remote no
+// longer agrees with it (#520).
+const publishReleaseBodySchema = z.object({
+  step: z.enum(["major", "minor", "patch"]),
+  previousTag: z.string().nullable(),
+});
+
+const RELEASE_BODY_MESSAGE =
+  'Expected a JSON body with a version step and the plan\'s previous tag ({ step: "major" | "minor" | "patch", previousTag: string | null }).';
 
 const PATH_BODY_MESSAGE = "Expected a JSON body with a path.";
 
@@ -402,6 +416,40 @@ const releasePlanErrorResponses: Record<
   },
 };
 
+// Confirmation is its own remote read, so its `no-answer` covers both a
+// failed re-fetch and a push that could not reach the remote — either way,
+// nothing was published and a retry is the way forward (#520).
+const publishReleaseErrorResponses: Record<
+  PublishReleaseError,
+  { status: 409 | 422 | 502; message: string }
+> = {
+  ...harnessErrorResponses,
+  "no-answer": {
+    status: 409,
+    message:
+      "Maestro could not reach the remote to confirm this release. Refresh and try again.",
+  },
+  "already-released": {
+    status: 409,
+    message:
+      "Someone already published this version. Refresh to see the current release, then plan again.",
+  },
+  "plan-changed": {
+    status: 409,
+    message:
+      "The release plan is out of date — the previous tag has changed since you opened it. Refresh and plan again.",
+  },
+  "publish-failed": {
+    status: 502,
+    message: "The tag could not be pushed. Check the remote and try again.",
+  },
+  "publish-in-progress": {
+    status: 409,
+    message:
+      "A release for this harness is already being confirmed. Wait for it to finish.",
+  },
+};
+
 // outside-root is 403 (the info-disclosure boundary); no message echoes the
 // path (security.md).
 const browseErrorResponses: Record<
@@ -430,6 +478,7 @@ export type AppDeps = {
   registry: Registry;
   inventory: InventoryReader;
   harness: ReadHarnessState;
+  publish: PublishRelease;
   connect: ConnectInventory;
   browse: BrowseFilesystem;
   // Serves both per-repo and global routes, so tool presence is required —
@@ -516,6 +565,32 @@ export function createApp(deps: AppDeps) {
       return c.json({ error: result.error, message }, status);
     }
     return c.json(result.plan);
+  });
+
+  // Confirming a release: a POST behind the Origin/Host guard, since it
+  // reaches the network and pushes a tag. Takes only the chosen step and the
+  // plan's previous tag — never a path or a revision — so the server
+  // re-reads the remote and computes the exact commit to tag itself, rather
+  // than trusting what the browser saw at plan time (#520).
+  app.post("/api/harness/release", async (c) => {
+    const body = await parseBody(
+      c,
+      publishReleaseBodySchema,
+      RELEASE_BODY_MESSAGE,
+    );
+    if (!body.ok) {
+      return body.response;
+    }
+    const result: PublishReleaseResult = await deps.publish.execute(
+      body.data.step,
+      body.data.previousTag,
+      new Date(),
+    );
+    if (!result.ok) {
+      const { status, message } = publishReleaseErrorResponses[result.error];
+      return c.json({ error: result.error, message }, status);
+    }
+    return c.json({ tag: result.tag, revision: result.revision });
   });
 
   // Offline connect: persist a user-pasted path as the inventory. No git
@@ -830,6 +905,20 @@ function realDeps(): AppDeps {
     apm,
     canonicalPath: (path) => fs.realpath(path),
   });
+  // Shared by the harness read and the release confirm below, so both name
+  // the same connected clone.
+  const harnessRoot = async () => {
+    const path = resolveInventoryPath(await store.read(), process.env);
+    if (path === undefined) {
+      return undefined;
+    }
+    // A path git cannot be pointed at is a harness that is not connected —
+    // never the raw path, which would run git against something unresolved.
+    return await fs.realpath(path).catch(() => undefined);
+  };
+  const harnessGit = new HarnessGitAdapter();
+  const harnessFreshness = new HarnessFreshnessStore({ store });
+
   // Shared instance: a global deploy's lockfile root and deploy tree differ
   // (~/.apm vs ~/.claude/skills, apm-driver.md #56/#61) — guard and cleanup agree by construction.
   const deployedLocation = new DeployedLocation(process.env);
@@ -885,18 +974,21 @@ function realDeps(): AppDeps {
     inventory,
     // Same connected clone the inventory reads, canonicalized per call so a
     // path saved after startup is picked up and a symlinked one is resolved.
+    // Shared by the read and the publish below, so both name the same harness.
     harness: new ReadHarnessState({
-      resolveRoot: async () => {
-        const path = resolveInventoryPath(await store.read(), process.env);
-        if (path === undefined) {
-          return undefined;
-        }
-        // A path git cannot be pointed at is a harness that is not connected —
-        // never the raw path, which would run git against something unresolved.
-        return await fs.realpath(path).catch(() => undefined);
-      },
-      git: new HarnessGitAdapter(),
-      freshness: new HarnessFreshnessStore({ store }),
+      resolveRoot: harnessRoot,
+      git: harnessGit,
+      freshness: harnessFreshness,
+    }),
+    // Confirmation's own remote read, never the plan's cached one — the same
+    // harness, git port, and freshness record as the read above (#520).
+    publish: new PublishRelease({
+      resolveRoot: harnessRoot,
+      git: harnessGit,
+      freshness: harnessFreshness,
+      // Own lock, not the apm write lock above: a second confirmation for the
+      // same harness must wait, not race the first one's push (#520).
+      locks: new InFlightLocks(),
     }),
     // Checked offline against local git config, so the error lands before
     // the first deploy (#147).

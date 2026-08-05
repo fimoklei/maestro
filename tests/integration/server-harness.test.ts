@@ -25,6 +25,7 @@ import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
+import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 
 const run = promisify(execFile);
@@ -118,6 +119,7 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
         git: new HarnessGitAdapter(),
         freshness: new HarnessFreshnessStore({ store }),
       }),
+      publish: stubPublish(),
       deployState: stubDeployState({ fs }),
       deploy: stubDeploy({ inventory, registry, locks }),
       remove: stubRemove({ registry, locks }),

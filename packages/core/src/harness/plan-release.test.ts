@@ -70,6 +70,9 @@ function buildRead(overrides?: {
               : goodManifest(name),
           ]),
         ),
+      publishTag: async () => {
+        throw new Error("git port's publishTag was reached");
+      },
     },
     freshness: {
       read: async () => overrides?.freshness ?? FETCHED,

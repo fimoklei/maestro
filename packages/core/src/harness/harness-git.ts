@@ -12,20 +12,22 @@ import {
   harnessSkillSubpath,
 } from "../inventory/harness-layout";
 import { classifyFetchFailure } from "./classify-fetch-failure";
+import { classifyPushFailure } from "./classify-push-failure";
 import type {
   HarnessFacts,
   HarnessFetchOutcome,
   HarnessGitPort,
   HarnessSkillTrees,
   HarnessTag,
+  PublishTagOutcome,
 } from "./read-harness-state";
 import type { HarnessSkillTree } from "./skill-movements";
 
 const run = promisify(execFile);
 
-// A cockpit read must end. Without this a hung connection holds the request
-// open for as long as git is willing to wait, which is forever.
-const FETCH_TIMEOUT_MS = 60_000;
+// A cockpit read or a confirm must end. Without this a hung connection holds
+// the request open for as long as git is willing to wait, which is forever.
+const GIT_TIMEOUT_MS = 60_000;
 
 const REMOTE_HEAD = "refs/remotes/origin/HEAD";
 
@@ -60,10 +62,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
   // `origin/HEAD` at the remote's current default branch. Neither touches HEAD,
   // the index, or the working tree.
   async fetch(root: string): Promise<HarnessFetchOutcome> {
-    const options = {
-      env: { ...process.env, ...NON_INTERACTIVE },
-      timeout: FETCH_TIMEOUT_MS,
-    };
+    const options = gitOptions();
     try {
       await run(
         "git",
@@ -77,16 +76,89 @@ export class HarnessGitAdapter implements HarnessGitPort {
       );
       return "fetched";
     } catch (error) {
-      const killed = (error as { killed?: boolean }).killed === true;
-      // A run we cut off got no answer at all, which is the offline class —
-      // reading it as a reply would put words in the remote's mouth.
-      if (killed) {
-        return "offline";
-      }
-      return classifyFetchFailure(
-        String((error as { stderr?: string }).stderr),
-      );
+      return classifyGitError(error, classifyFetchFailure);
     }
+  }
+
+  // Pushes `<commit>:refs/tags/<name>` directly: the tag is created on the
+  // remote by the push itself, so no local tag object exists to clean up, and
+  // nothing here can move HEAD, the index, or the working tree (#520).
+  //
+  // The branch refspec is a lease on the tip, never an update: `--atomic`
+  // refuses the tag along with a lease git finds stale — see ADR-0023.
+  async publishTag(
+    root: string,
+    name: string,
+    commit: string,
+    defaultBranch: string,
+  ): Promise<PublishTagOutcome> {
+    const options = gitOptions();
+    const branchRef = `refs/heads/${defaultBranch}`;
+    try {
+      await run(
+        "git",
+        [
+          "-C",
+          root,
+          "push",
+          "--atomic",
+          `--force-with-lease=${branchRef}:${commit}`,
+          "origin",
+          `${commit}:refs/tags/${name}`,
+          `${commit}:${branchRef}`,
+        ],
+        options,
+      );
+    } catch (error) {
+      const failure = classifyGitError(error, classifyPushFailure);
+      const settled = await this.settlePush(root, name, commit, failure);
+      if (settled !== "pushed") {
+        return settled;
+      }
+    }
+    // The push already made this true on the remote — that is the commit
+    // point. Mirroring it locally is a same-process optimisation, not part of
+    // the outcome: a lock collision here must never turn an already-published
+    // release into a reported failure. A later fetch reconciles the mirror
+    // from the real tag either way (#520).
+    await run(
+      "git",
+      ["-C", root, "update-ref", `${MAESTRO_TAGS}/${name}`, commit],
+      options,
+    ).catch(() => {});
+    return "pushed";
+  }
+
+  // A push can time out on the way back from a remote that already wrote the
+  // tag, and reported as a failure it strands the author: their own retry then
+  // reads that tag. So anything but a worded refusal asks the remote (#520).
+  private async settlePush(
+    root: string,
+    name: string,
+    commit: string,
+    failure: PublishTagOutcome,
+  ): Promise<PublishTagOutcome> {
+    if (failure === "already-exists" || failure === "stale-tip") {
+      return failure;
+    }
+    // Not `read`: the remote may be unreachable here, so this needs the same
+    // timeout and no-prompt env every other reach out has. An unasked question
+    // reads the same as an absent tag — both leave the failure standing.
+    const listing = await run(
+      "git",
+      ["-C", root, "ls-remote", "origin", `refs/tags/${name}`],
+      gitOptions(),
+    ).then(
+      ({ stdout }) => stdout.trim(),
+      () => "",
+    );
+    if (listing === "") {
+      return failure;
+    }
+    const [published] = listing.split("\t");
+    // A different object under that name is another author's tag, annotated or
+    // not: never this push's, and never one to force over.
+    return published === commit ? "pushed" : "already-exists";
   }
 
   async readFacts(root: string): Promise<HarnessFacts> {
@@ -322,6 +394,24 @@ export class HarnessGitAdapter implements HarnessGitPort {
       });
   }
 }
+
+const gitOptions = () => ({
+  env: { ...process.env, ...NON_INTERACTIVE },
+  timeout: GIT_TIMEOUT_MS,
+});
+
+// A run we cut off got no answer at all, which is the offline class —
+// reading it as a reply would put words in the remote's mouth. Anything else
+// is a reply, worded by the caller's own classifier.
+const classifyGitError = <T>(
+  error: unknown,
+  classify: (stderr: string) => T,
+): "offline" | T => {
+  const killed = (error as { killed?: boolean }).killed === true;
+  return killed
+    ? "offline"
+    : classify(String((error as { stderr?: string }).stderr));
+};
 
 const pathExists = (path: string): Promise<boolean> =>
   access(path).then(
