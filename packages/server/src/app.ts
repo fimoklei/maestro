@@ -93,12 +93,16 @@ const removeBodySchema = z.object({
   confirmedRemovalReceipt: consentTokenSchema,
 });
 
+// `previousTag` proves the confirmation is against the plan the author saw,
+// not a blind step: the server refuses when the freshly read remote no
+// longer agrees with it (#520).
 const publishReleaseBodySchema = z.object({
   step: z.enum(["major", "minor", "patch"]),
+  previousTag: z.string().nullable(),
 });
 
 const RELEASE_BODY_MESSAGE =
-  'Expected a JSON body with a version step ({ step: "major" | "minor" | "patch" }).';
+  'Expected a JSON body with a version step and the plan\'s previous tag ({ step: "major" | "minor" | "patch", previousTag: string | null }).';
 
 const PATH_BODY_MESSAGE = "Expected a JSON body with a path.";
 
@@ -430,9 +434,19 @@ const publishReleaseErrorResponses: Record<
     message:
       "Someone already published this version. Refresh to see the current release, then plan again.",
   },
+  "plan-changed": {
+    status: 409,
+    message:
+      "The release plan is out of date — the previous tag has changed since you opened it. Refresh and plan again.",
+  },
   "publish-failed": {
     status: 502,
     message: "The tag could not be pushed. Check the remote and try again.",
+  },
+  "publish-in-progress": {
+    status: 409,
+    message:
+      "A release for this harness is already being confirmed. Wait for it to finish.",
   },
 };
 
@@ -554,10 +568,10 @@ export function createApp(deps: AppDeps) {
   });
 
   // Confirming a release: a POST behind the Origin/Host guard, since it
-  // reaches the network and pushes a tag. Takes only the chosen step — never
-  // a path or a revision — so the server re-reads the remote and computes the
-  // exact commit to tag itself, rather than trusting what the browser saw at
-  // plan time (#520).
+  // reaches the network and pushes a tag. Takes only the chosen step and the
+  // plan's previous tag — never a path or a revision — so the server
+  // re-reads the remote and computes the exact commit to tag itself, rather
+  // than trusting what the browser saw at plan time (#520).
   app.post("/api/harness/release", async (c) => {
     const body = await parseBody(
       c,
@@ -569,6 +583,7 @@ export function createApp(deps: AppDeps) {
     }
     const result: PublishReleaseResult = await deps.publish.execute(
       body.data.step,
+      body.data.previousTag,
       new Date(),
     );
     if (!result.ok) {
@@ -971,6 +986,9 @@ function realDeps(): AppDeps {
       resolveRoot: harnessRoot,
       git: harnessGit,
       freshness: harnessFreshness,
+      // Own lock, not the apm write lock above: a second confirmation for the
+      // same harness must wait, not race the first one's push (#520).
+      locks: new InFlightLocks(),
     }),
     // Checked offline against local git config, so the error lands before
     // the first deploy (#147).

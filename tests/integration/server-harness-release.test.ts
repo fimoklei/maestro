@@ -89,6 +89,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
         resolveRoot,
         git: new HarnessGitAdapter(),
         freshness: new HarnessFreshnessStore({ store }),
+        locks: new InFlightLocks(),
       }),
       deployState: stubDeployState({ fs }),
       deploy: stubDeploy({ inventory, registry, locks }),
@@ -113,7 +114,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
     await app.request("/api/harness/refresh", { method: "POST" });
     const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
 
-    const res = await publish(app, { step: "patch" });
+    const res = await publish(app, { step: "patch", previousTag: "v0.1.0" });
 
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({
@@ -129,7 +130,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
     const app = makeApp(root);
     await app.request("/api/harness/refresh", { method: "POST" });
 
-    await publish(app, { step: "patch" });
+    await publish(app, { step: "patch", previousTag: "v0.1.0" });
     const res = await app.request("/api/harness");
 
     await expect(res.json()).resolves.toMatchObject({
@@ -145,7 +146,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
     await writeFile(join(root, "wip.md"), "work in progress\n", "utf8");
     await git(root, "add", "wip.md");
 
-    await publish(app, { step: "patch" });
+    await publish(app, { step: "patch", previousTag: "v0.1.0" });
 
     expect((await git(root, "rev-parse", "HEAD")).stdout.trim()).toBe(before);
     expect((await git(root, "status", "--porcelain")).stdout).toContain(
@@ -157,7 +158,11 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
     const app = makeApp(root);
     await app.request("/api/harness/refresh", { method: "POST" });
 
-    const res = await publish(app, { step: "patch", path: "/etc" });
+    const res = await publish(app, {
+      step: "patch",
+      previousTag: "v0.1.0",
+      path: "/etc",
+    });
 
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toMatchObject({ tag: "v0.1.1" });
@@ -166,17 +171,31 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
   it("rejects a request without a valid version step", async () => {
     const app = makeApp(root);
 
-    const res = await publish(app, { step: "sideways" });
+    const res = await publish(app, {
+      step: "sideways",
+      previousTag: "v0.1.0",
+    });
 
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: string; message: string };
     expect(body.error).toBe("invalid-body");
   });
 
+  it("refuses a confirmation whose previous tag no longer matches the remote", async () => {
+    const app = makeApp(root);
+    await app.request("/api/harness/refresh", { method: "POST" });
+
+    const res = await publish(app, { step: "patch", previousTag: "v9.9.9" });
+
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { error: string; message: string };
+    expect(body.error).toBe("plan-changed");
+  });
+
   it("refuses with a readable error when no harness is connected", async () => {
     const app = makeApp(undefined);
 
-    const res = await publish(app, { step: "patch" });
+    const res = await publish(app, { step: "patch", previousTag: "v0.1.0" });
 
     expect(res.status).toBe(409);
     const body = (await res.json()) as { error: string; message: string };

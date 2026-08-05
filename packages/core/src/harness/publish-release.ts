@@ -1,4 +1,5 @@
 import { parseGitOrigin } from "../deploy/git-origin";
+import type { InFlightLocks } from "../deploy/in-flight-locks";
 import {
   proposeReleaseVersion,
   type SemverStep,
@@ -14,7 +15,9 @@ export type PublishReleaseError =
   | "no-usable-origin"
   | "no-answer"
   | "already-released"
-  | "publish-failed";
+  | "plan-changed"
+  | "publish-failed"
+  | "publish-in-progress";
 
 export type PublishReleaseResult =
   | { ok: true; tag: string; revision: string }
@@ -25,18 +28,40 @@ export class PublishRelease {
     resolveRoot: () => Promise<string | undefined>;
     git: HarnessGitPort;
     freshness: HarnessFreshnessPort;
+    locks: InFlightLocks;
   };
 
   constructor(deps: PublishRelease["deps"]) {
     this.deps = deps;
   }
 
-  async execute(step: SemverStep, at: Date): Promise<PublishReleaseResult> {
+  // `previousTag` is what the author's dialog last showed them — the seam a
+  // concurrent teammate's release or a retried confirmation of this very
+  // request would break. One lock per harness turns two overlapping
+  // confirmations into one that runs and one that is told to wait, rather
+  // than two pushes racing for the same version (#520).
+  async execute(
+    step: SemverStep,
+    previousTag: string | null,
+    at: Date,
+  ): Promise<PublishReleaseResult> {
     const root = await this.deps.resolveRoot();
     if (root === undefined) {
       return { ok: false, error: "not-configured" };
     }
 
+    const run = await this.deps.locks.run(root, () =>
+      this.publish(root, step, previousTag, at),
+    );
+    return run.ok ? run.value : { ok: false, error: "publish-in-progress" };
+  }
+
+  private async publish(
+    root: string,
+    step: SemverStep,
+    previousTag: string | null,
+    at: Date,
+  ): Promise<PublishReleaseResult> {
     const outcome = await this.deps.git.fetch(root);
     const previous = await this.deps.freshness.read(root);
     await this.deps.freshness.record(root, {
@@ -58,6 +83,14 @@ export class PublishRelease {
     }
 
     const released = highestReleaseTag(facts.tags);
+    // The remote has moved past what the plan priced this against — someone
+    // else released, or an earlier attempt at this same confirmation already
+    // did. Publishing the step blindly would bump a version that no longer
+    // exists (#520).
+    if ((released?.name ?? null) !== previousTag) {
+      return { ok: false, error: "plan-changed" };
+    }
+
     // The delta never travels here: every step's version is a pure function
     // of the previous tag, so the empty movements list changes nothing this
     // reads (#520).

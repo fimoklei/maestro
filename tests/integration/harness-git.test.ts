@@ -371,5 +371,27 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
         "push-failed",
       );
     });
+
+    it("reports the tag as pushed even when the local mirror update fails", async () => {
+      // The remote tag is the fact that matters; a local bookkeeping write
+      // that loses a lock race must never turn an already-published release
+      // into a reported failure (#520).
+      const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
+      const lockDir = join(root, ".git", "refs", "maestro", "tags");
+      await mkdir(lockDir, { recursive: true });
+      const lockFile = join(lockDir, "v0.2.0.lock");
+      await writeFile(lockFile, "", "utf8");
+
+      try {
+        await expect(adapter().publishTag(root, "v0.2.0", head)).resolves.toBe(
+          "pushed",
+        );
+      } finally {
+        await rm(lockFile, { force: true });
+      }
+      expect(
+        (await git(remote, "rev-parse", "refs/tags/v0.2.0")).stdout.trim(),
+      ).toBe(head);
+    });
   });
 });

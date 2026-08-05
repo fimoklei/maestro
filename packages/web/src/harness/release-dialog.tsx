@@ -43,7 +43,7 @@ export function ReleaseDialog({
   origin: string;
   load: ReleasePlanLoad;
   onClose: () => void;
-  onPublish: (step: SemverStep) => void;
+  onPublish: (step: SemverStep, previousTag: string | null) => void;
   publishing: boolean;
   publishError: string | null;
 }) {
@@ -57,6 +57,7 @@ export function ReleaseDialog({
   const [chosenStep, setChosenStep] = useState<SemverStep | null>(null);
   const step =
     load.kind === "ready" ? (chosenStep ?? load.plan.proposedStep) : null;
+  const previousTag = load.kind === "ready" ? load.plan.previousTag : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 p-6">
@@ -117,7 +118,7 @@ export function ReleaseDialog({
             variant="primary"
             size="sm"
             disabled={step === null || publishing}
-            onClick={() => step !== null && onPublish(step)}
+            onClick={() => step !== null && onPublish(step, previousTag)}
           >
             {publishing ? "publishing…" : "publish"}
           </Button>

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { InFlightLocks } from "../deploy/in-flight-locks";
 import { PublishRelease } from "./publish-release";
 import type { HarnessFacts, HarnessFreshness } from "./read-harness-state";
 
@@ -21,15 +22,21 @@ function buildPublish(overrides?: {
   facts?: Partial<HarnessFacts>;
   freshness?: HarnessFreshness;
   fetchOutcome?: "fetched" | "offline" | "fetch-failed";
+  fetchHold?: Promise<void>;
   publishTagOutcome?: "pushed" | "already-exists" | "offline" | "push-failed";
   onPublishTag?: (name: string, commit: string) => void;
   onFreshnessRecord?: (root: string, freshness: HarnessFreshness) => void;
+  locks?: InFlightLocks;
 }) {
   return new PublishRelease({
     resolveRoot: async () =>
       overrides && "root" in overrides ? overrides.root : "/harness",
+    locks: overrides?.locks ?? new InFlightLocks(),
     git: {
-      fetch: async () => overrides?.fetchOutcome ?? "fetched",
+      fetch: async () => {
+        await overrides?.fetchHold;
+        return overrides?.fetchOutcome ?? "fetched";
+      },
       readFacts: async () => ({ ...FACTS, ...overrides?.facts }),
       readSkillTrees: async () => [],
       readSkillAuthors: async () => ({}),
@@ -58,7 +65,7 @@ describe("PublishRelease", () => {
   it("refuses when no harness is connected", async () => {
     const publish = buildPublish({ root: undefined });
 
-    await expect(publish.execute("patch", AT)).resolves.toEqual({
+    await expect(publish.execute("patch", "v1.2.3", AT)).resolves.toEqual({
       ok: false,
       error: "not-configured",
     });
@@ -67,7 +74,7 @@ describe("PublishRelease", () => {
   it("refuses an origin apm could never resolve", async () => {
     const publish = buildPublish({ facts: { originUrl: "/srv/mirror.git" } });
 
-    await expect(publish.execute("patch", AT)).resolves.toEqual({
+    await expect(publish.execute("patch", "v1.2.3", AT)).resolves.toEqual({
       ok: false,
       error: "no-usable-origin",
     });
@@ -76,7 +83,7 @@ describe("PublishRelease", () => {
   it("has no answer when the confirmation's own fetch cannot reach the remote", async () => {
     const publish = buildPublish({ fetchOutcome: "offline" });
 
-    await expect(publish.execute("patch", AT)).resolves.toEqual({
+    await expect(publish.execute("patch", "v1.2.3", AT)).resolves.toEqual({
       ok: false,
       error: "no-answer",
     });
@@ -87,7 +94,7 @@ describe("PublishRelease", () => {
       facts: { defaultBranchCommit: null },
     });
 
-    await expect(publish.execute("patch", AT)).resolves.toEqual({
+    await expect(publish.execute("patch", "v1.2.3", AT)).resolves.toEqual({
       ok: false,
       error: "no-answer",
     });
@@ -96,7 +103,7 @@ describe("PublishRelease", () => {
   it("has no answer when the release tags could not be read", async () => {
     const publish = buildPublish({ facts: { tags: null } });
 
-    await expect(publish.execute("patch", AT)).resolves.toEqual({
+    await expect(publish.execute("patch", "v1.2.3", AT)).resolves.toEqual({
       ok: false,
       error: "no-answer",
     });
@@ -108,7 +115,7 @@ describe("PublishRelease", () => {
       onPublishTag: (name, commit) => calls.push({ name, commit }),
     });
 
-    const result = await publish.execute("minor", AT);
+    const result = await publish.execute("minor", "v1.2.3", AT);
 
     expect(result).toEqual({ ok: true, tag: "v1.3.0", revision: "head" });
     expect(calls).toEqual([{ name: "v1.3.0", commit: "head" }]);
@@ -117,7 +124,7 @@ describe("PublishRelease", () => {
   it("proposes v0.1.0-style versions for a never-released harness", async () => {
     const publish = buildPublish({ facts: { tags: [] } });
 
-    await expect(publish.execute("minor", AT)).resolves.toEqual({
+    await expect(publish.execute("minor", null, AT)).resolves.toEqual({
       ok: true,
       tag: "v0.1.0",
       revision: "head",
@@ -130,7 +137,7 @@ describe("PublishRelease", () => {
       onFreshnessRecord: (root, freshness) => records.push({ root, freshness }),
     });
 
-    await publish.execute("patch", AT);
+    await publish.execute("patch", "v1.2.3", AT);
 
     expect(records).toEqual([
       {
@@ -143,7 +150,7 @@ describe("PublishRelease", () => {
   it("reports someone else's race to the same version as already released", async () => {
     const publish = buildPublish({ publishTagOutcome: "already-exists" });
 
-    await expect(publish.execute("patch", AT)).resolves.toEqual({
+    await expect(publish.execute("patch", "v1.2.3", AT)).resolves.toEqual({
       ok: false,
       error: "already-released",
     });
@@ -152,7 +159,7 @@ describe("PublishRelease", () => {
   it("has no answer when the push itself cannot reach the remote", async () => {
     const publish = buildPublish({ publishTagOutcome: "offline" });
 
-    await expect(publish.execute("patch", AT)).resolves.toEqual({
+    await expect(publish.execute("patch", "v1.2.3", AT)).resolves.toEqual({
       ok: false,
       error: "no-answer",
     });
@@ -161,9 +168,43 @@ describe("PublishRelease", () => {
   it("reports any other push refusal as a failed publish", async () => {
     const publish = buildPublish({ publishTagOutcome: "push-failed" });
 
-    await expect(publish.execute("patch", AT)).resolves.toEqual({
+    await expect(publish.execute("patch", "v1.2.3", AT)).resolves.toEqual({
       ok: false,
       error: "publish-failed",
+    });
+  });
+
+  it("refuses a plan whose previous tag no longer matches the freshly read remote", async () => {
+    // The remote moved past what the author's dialog last showed them —
+    // someone else released, or an earlier retry of this same confirmation
+    // already did. Publishing the step blindly would price a second release
+    // off a previous tag that no longer exists (#520).
+    const publish = buildPublish({
+      facts: { tags: [{ name: "v1.3.0", commit: "new" }] },
+    });
+
+    await expect(publish.execute("patch", "v1.2.3", AT)).resolves.toEqual({
+      ok: false,
+      error: "plan-changed",
+    });
+  });
+
+  it("refuses a second confirmation for the same harness while one is already running", async () => {
+    let releaseFetch = () => {};
+    const held = new Promise<void>((resolve) => {
+      releaseFetch = resolve;
+    });
+    const publish = buildPublish({ fetchHold: held });
+
+    const first = publish.execute("patch", "v1.2.3", AT);
+    const second = await publish.execute("patch", "v1.2.3", AT);
+
+    expect(second).toEqual({ ok: false, error: "publish-in-progress" });
+    releaseFetch();
+    await expect(first).resolves.toEqual({
+      ok: true,
+      tag: "v1.2.4",
+      revision: "head",
     });
   });
 });

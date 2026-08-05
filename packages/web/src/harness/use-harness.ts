@@ -65,16 +65,19 @@ export function useDiscardReleasePlan() {
 
 // Confirming a release: the server re-reads the remote and tags the exact
 // commit it finds, so this sends only the chosen step, never a path or a
-// cached revision. Success invalidates the harness read — the tag it just
-// pushed is the fact that repaints the quiet state, and the plan is gone the
-// moment it is chosen anyway.
+// cached revision. `previousTag` travels along so the server can tell a
+// remote that has moved past this plan from one that hasn't — a concurrent
+// teammate's release, or a retry of this very confirmation (#520). Success
+// invalidates the harness read — the tag it just pushed is the fact that
+// repaints the quiet state, and the plan is gone the moment it is chosen
+// anyway.
 export function usePublishRelease() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (step: SemverStep) =>
+    mutationFn: (request: { step: SemverStep; previousTag: string | null }) =>
       requestJson<{ tag: string; revision: string }>("/api/harness/release", {
         method: "POST",
-        body: JSON.stringify({ step }),
+        body: JSON.stringify(request),
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: HARNESS_KEY });

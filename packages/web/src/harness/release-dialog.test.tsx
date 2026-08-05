@@ -135,7 +135,7 @@ describe("ReleaseDialog", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
 
-    expect(onPublish).toHaveBeenCalledWith("minor");
+    expect(onPublish).toHaveBeenCalledWith("minor", "v1.2.3");
   });
 
   it("publishes the step the author chose, not the proposal", async () => {
@@ -145,7 +145,7 @@ describe("ReleaseDialog", () => {
     await userEvent.click(screen.getByRole("button", { name: "major" }));
     await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
 
-    expect(onPublish).toHaveBeenCalledWith("major");
+    expect(onPublish).toHaveBeenCalledWith("major", "v1.2.3");
   });
 
   it("disables publish and says so while a release is in flight", () => {

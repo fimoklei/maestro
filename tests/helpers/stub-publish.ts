@@ -2,7 +2,7 @@
 // that exercise other routes but must satisfy createApp's publish dependency.
 // The release route is never hit in those scenarios — it is covered in
 // server-harness-release.test.ts. No root means the git port is never reached.
-import { PublishRelease } from "@maestro/core";
+import { InFlightLocks, PublishRelease } from "@maestro/core";
 
 const unreachable = (): never => {
   throw new Error("stub publish git port was reached");
@@ -24,5 +24,6 @@ export function stubPublish(): PublishRelease {
       read: async () => ({ outcome: null, lastFetchedAt: null }),
       record: async () => {},
     },
+    locks: new InFlightLocks(),
   });
 }

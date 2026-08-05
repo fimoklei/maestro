@@ -95,14 +95,16 @@ export class HarnessGitAdapter implements HarnessGitPort {
     } catch (error) {
       return classifyGitError(error, classifyPushFailure);
     }
-    // The push just made this true on the remote: writing it into the mirror
-    // directly keeps a read afterwards consistent without the second network
-    // round-trip a confirm must not make (#520).
+    // The push already made this true on the remote — that is the commit
+    // point. Mirroring it locally is a same-process optimisation, not part of
+    // the outcome: a lock collision here must never turn an already-published
+    // release into a reported failure. A later fetch reconciles the mirror
+    // from the real tag either way (#520).
     await run(
       "git",
       ["-C", root, "update-ref", `${MAESTRO_TAGS}/${name}`, commit],
       options,
-    );
+    ).catch(() => {});
     return "pushed";
   }
 
