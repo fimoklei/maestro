@@ -40,11 +40,6 @@ A story is documentation, not a test (behaviour → `.test.tsx`, see `testing.md
 - CSF3 (`satisfies Meta<typeof X>`, `StoryObj`); no legacy `storiesOf`.
 - Title is `Group/Component`; reuse existing groups.
 
-## Accessibility (baseline)
-
-- Semantic HTML: real `<button>`, `<form>`, `<label htmlFor>`. Never a clickable `<div>`. Keep Radix accessibility.
-- Every input has an associated label; errors are readable text tied to the field.
-
 ## Not in this step
 
 - No global client-state library (Redux/Zustand). A client-side router arrives with the multi-view structure (ADR-0004).
