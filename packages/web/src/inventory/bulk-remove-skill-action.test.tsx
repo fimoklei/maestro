@@ -270,7 +270,7 @@ describe("BulkRemoveSkillAction", () => {
     render(
       <QueryClientProvider client={queryClient}>
         <BulkRemoveSkillAction skillName="tdd" targets={[ACME_WEB]} />
-        <DeployStatePanel repo="/dev/acme-web" />
+        <DeployStatePanel repo="/dev/acme-web" onStartDeploy={() => {}} />
       </QueryClientProvider>,
     );
 
@@ -365,7 +365,7 @@ describe("BulkRemoveSkillAction", () => {
     render(
       <QueryClientProvider client={queryClient}>
         <BulkRemoveSkillAction skillName="tdd" targets={[ACME_WEB]} />
-        <DeployStatePanel repo="/dev/acme-web" />
+        <DeployStatePanel repo="/dev/acme-web" onStartDeploy={() => {}} />
       </QueryClientProvider>,
     );
 

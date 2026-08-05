@@ -39,7 +39,7 @@ function renderPanel(repo: string) {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <DeployStatePanel repo={repo} />
+      <DeployStatePanel repo={repo} onStartDeploy={() => {}} />
     </QueryClientProvider>,
   );
 }

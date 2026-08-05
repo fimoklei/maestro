@@ -1,15 +1,13 @@
 import { useNavigate } from "react-router";
 import { RegisterRepoHint } from "../registry/register-repo-hint";
 import { useRegistry } from "../registry/use-registry";
-import { Button } from "../ui/button";
 import { SectionHeader } from "../ui/section-header";
 import { DeployStatePanel } from "./deploy-state-panel";
 import { GlobalDeployStatePanel } from "./global-deploy-state-panel";
 import { useGlobalDeployState } from "./use-global-deploy-state";
 
 // The landing view: deploy-state across every global target and registered
-// repo. On a genuine cold start, offers the first deploy from its own heading
-// row rather than a banner, with meta stating "nothing deployed" plainly.
+// repo. On a genuine cold start, its meta states "nothing deployed" plainly.
 export function DeployStateView() {
   const navigate = useNavigate();
   const registry = useRegistry();
@@ -38,26 +36,16 @@ export function DeployStateView() {
               ? `${targetCount} ${targetCount === 1 ? "target" : "targets"}`
               : ""
         }
-      >
-        {isColdStart ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate("/inventory")}
-          >
-            deploy a skill →
-          </Button>
-        ) : null}
-      </SectionHeader>
-      <GlobalDeployStatePanel />
-      <RepositoriesSection />
+      />
+      <GlobalDeployStatePanel onStartDeploy={() => navigate("/inventory")} />
+      <RepositoriesSection onStartDeploy={() => navigate("/inventory")} />
     </section>
   );
 }
 
 // Own sub-section, not a footnote under Global targets. Reads the registry
 // itself — Query dedupes the shared key with the view above (frontend.md).
-function RepositoriesSection() {
+function RepositoriesSection({ onStartDeploy }: { onStartDeploy: () => void }) {
   const { data, isLoading, isError, isSuccess } = useRegistry();
   const repos = data?.repos ?? [];
   // Whole set drives each label so shared-prefix repos stay distinct (#211).
@@ -83,6 +71,7 @@ function RepositoriesSection() {
               key={repo.path}
               repo={repo.path}
               siblings={repoPaths}
+              onStartDeploy={onStartDeploy}
             />
           ))}
         </div>

@@ -20,7 +20,7 @@ function renderPanel() {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <GlobalDeployStatePanel />
+      <GlobalDeployStatePanel onStartDeploy={() => {}} />
     </QueryClientProvider>,
   );
 }

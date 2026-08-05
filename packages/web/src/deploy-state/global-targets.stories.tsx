@@ -12,6 +12,7 @@ const meta = {
     isError: false,
     skipped: [],
     drift: driftViewModel({ data: { behind: [] }, isError: false }),
+    onStartDeploy: () => {},
   },
 } satisfies Meta<typeof GlobalTargets>;
 

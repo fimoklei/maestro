@@ -526,14 +526,14 @@ describe("DeploySkillAction", () => {
           repos={[{ path: "/projects/alpha" }]}
           registryReady
         />
-        <DeployStatePanel repo="/projects/alpha" />
+        <DeployStatePanel repo="/projects/alpha" onStartDeploy={() => {}} />
       </>,
     );
 
     // The panel has loaded and reads empty before the deploy.
     expect(await screen.findByText("● empty")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
+    await userEvent.click(screen.getByRole("button", { name: "Deploy →" }));
 
     // The panel updates without a reload: the deploy invalidated its query.
     expect(await screen.findByText("v0.5.1")).toBeInTheDocument();
@@ -571,7 +571,7 @@ describe("DeploySkillAction", () => {
           repos={[{ path: "/projects/alpha" }]}
           registryReady
         />
-        <DeployStatePanel repo="/projects/alpha" />
+        <DeployStatePanel repo="/projects/alpha" onStartDeploy={() => {}} />
       </>,
     );
 
@@ -616,14 +616,14 @@ describe("DeploySkillAction", () => {
     renderAction(
       <>
         <DeploySkillAction skillName="tdd" repos={[]} registryReady />
-        <GlobalDeployStatePanel />
+        <GlobalDeployStatePanel onStartDeploy={() => {}} />
       </>,
     );
 
     // The panel has loaded and reads empty before the deploy.
     expect(await screen.findByText("● empty")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
+    await userEvent.click(screen.getByRole("button", { name: "Deploy →" }));
 
     expect(await screen.findByText("v0.5.1")).toBeInTheDocument();
   });
@@ -661,7 +661,7 @@ describe("DeploySkillAction", () => {
     renderAction(
       <>
         <DeploySkillAction skillName="tdd" repos={[]} registryReady />
-        <GlobalDeployStatePanel />
+        <GlobalDeployStatePanel onStartDeploy={() => {}} />
       </>,
     );
 
