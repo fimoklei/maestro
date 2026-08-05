@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -46,31 +46,35 @@ function stubColdStart() {
   );
 }
 
+function stubEmptyTargets() {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string) => {
+      const target = String(url);
+      if (target.includes("/api/registry/repos")) {
+        return jsonResponse({ repos: [{ path: "/Users/me/project" }] }, 200);
+      }
+      if (target.includes("/api/deploy-state/global")) {
+        return jsonResponse(
+          {
+            tools: [
+              { tool: "claude", primitives: [] },
+              { tool: "codex", primitives: [] },
+            ],
+            skipped: [],
+          },
+          200,
+        );
+      }
+      if (target.includes("/api/deploy-state")) {
+        return jsonResponse({ primitives: [], skipped: [] }, 200);
+      }
+      return jsonResponse({ behind: [] }, 200);
+    }),
+  );
+}
+
 describe("DeployStateView cold start", () => {
-  it("offers the first deploy from the heading row, not from a banner above it", async () => {
-    stubColdStart();
-    renderView();
-
-    const action = await screen.findByRole("button", {
-      name: /deploy a skill/i,
-    });
-    // The action belongs to the view's own heading, so nothing floats above the
-    // title as an orphaned banner.
-    const heading = screen.getByRole("heading", { name: /deploy-state/i });
-    expect(heading.parentElement).toContainElement(action);
-  });
-
-  it("sends the first deploy to the inventory", async () => {
-    stubColdStart();
-    renderView();
-
-    await userEvent.click(
-      await screen.findByRole("button", { name: /deploy a skill/i }),
-    );
-
-    expect(screen.getByText("inventory view")).toBeInTheDocument();
-  });
-
   it("states plainly that nothing is deployed instead of counting targets", async () => {
     stubColdStart();
     renderView();
@@ -78,7 +82,34 @@ describe("DeployStateView cold start", () => {
     expect(await screen.findByText("nothing deployed")).toBeInTheDocument();
   });
 
-  it("drops the first-deploy action once a skill is deployed globally", async () => {
+  it("offers a deploy action in every confirmed-empty target", async () => {
+    stubEmptyTargets();
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("button", { name: "deploy →" })).toHaveLength(
+        3,
+      );
+    });
+  });
+
+  it("starts a deploy from an empty target without the sidebar", async () => {
+    stubEmptyTargets();
+    renderView();
+
+    const [action] = await screen.findAllByRole("button", {
+      name: "deploy →",
+    });
+    if (!action) {
+      throw new Error("Expected an empty-target deploy action.");
+    }
+
+    await userEvent.click(action);
+
+    expect(screen.getByText("inventory view")).toBeInTheDocument();
+  });
+
+  it("does not offer a target deploy action once a skill is deployed globally", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string) => {
@@ -106,9 +137,7 @@ describe("DeployStateView cold start", () => {
 
     // The global panel renders its deployed skill, so we know data has loaded.
     expect(await screen.findByText("tdd")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /deploy a skill/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "deploy →" })).toBeNull();
   });
 });
 

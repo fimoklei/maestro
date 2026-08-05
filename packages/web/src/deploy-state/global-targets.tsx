@@ -9,6 +9,7 @@ import {
   skippedEntryText,
   skippedNeedsAttention,
 } from "./skipped-entry-text";
+import { TargetDeployAction } from "./target-deploy-action";
 import { TargetStatusChip } from "./target-status-chip";
 import { toolPresentation } from "./tool-presentation";
 import type { SkippedEntry } from "./use-deploy-state";
@@ -23,12 +24,14 @@ export function GlobalTargets({
   tools,
   skipped,
   drift,
+  onStartDeploy,
 }: {
   isLoading: boolean;
   isError: boolean;
   tools: ToolDeployState[];
   skipped: SkippedEntry[];
   drift: DriftViewModel;
+  onStartDeploy: () => void;
 }) {
   return (
     <section>
@@ -60,6 +63,7 @@ export function GlobalTargets({
               attentionCount={skipped.filter(skippedNeedsAttention).length}
               // A removal triggered from one card covers every detected tool (#338).
               detectedTools={tools.map((detected) => detected.tool)}
+              onStartDeploy={onStartDeploy}
             />
           ))}
         </div>
@@ -77,11 +81,13 @@ function ToolTargetCard({
   drift,
   detectedTools,
   attentionCount,
+  onStartDeploy,
 }: {
   group: ToolDeployState;
   drift: DriftViewModel;
   detectedTools: string[];
   attentionCount: number;
+  onStartDeploy: () => void;
 }) {
   const { label, destination } = toolPresentation(group.tool);
   // Where focus goes when a removal destroys the row it was triggered from.
@@ -110,13 +116,17 @@ function ToolTargetCard({
       drift={indicator === "drift"}
       status={<TargetStatusChip indicator={indicator} />}
     >
-      <DeployStateList
-        primitives={group.primitives}
-        skipped={[]}
-        drift={toolDrift}
-        target={{ kind: "global", tools: detectedTools }}
-        onRemoved={() => headerRef.current?.focus()}
-      />
+      {indicator === "empty" ? (
+        <TargetDeployAction onStartDeploy={onStartDeploy} />
+      ) : (
+        <DeployStateList
+          primitives={group.primitives}
+          skipped={[]}
+          drift={toolDrift}
+          target={{ kind: "global", tools: detectedTools }}
+          onRemoved={() => headerRef.current?.focus()}
+        />
+      )}
     </Card>
   );
 }

@@ -27,6 +27,7 @@ function renderTargets(props: Partial<Parameters<typeof GlobalTargets>[0]>) {
         tools={[]}
         skipped={[]}
         drift={READY_NO_DRIFT}
+        onStartDeploy={() => {}}
         {...props}
       />
     </QueryClientProvider>,

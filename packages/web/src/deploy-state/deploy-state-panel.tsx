@@ -5,6 +5,7 @@ import { targetLabel } from "../shell/target-label";
 import { Card } from "../ui/card";
 import { DeployStateList } from "./deploy-state-list";
 import { toDeployedView } from "./deployed-view";
+import { TargetDeployAction } from "./target-deploy-action";
 import { TargetStatusChip } from "./target-status-chip";
 import { useDeployState } from "./use-deploy-state";
 
@@ -14,11 +15,13 @@ import { useDeployState } from "./use-deploy-state";
 export function DeployStatePanel({
   repo,
   siblings = [],
+  onStartDeploy,
 }: {
   repo: string;
   // Every registered repo path, so the label grows only far enough to stay
   // distinct from the others (#211). Empty when rendered in isolation.
   siblings?: string[];
+  onStartDeploy: () => void;
 }) {
   const deployState = useDeployState(repo);
   const drift = driftViewModel(useDrift(repo));
@@ -40,6 +43,8 @@ export function DeployStatePanel({
         <p role="alert" className="px-card-x py-row-y text-amber-ink text-tag">
           Could not read this repo's deploy-state. Reload the page to try again.
         </p>
+      ) : indicator === "empty" ? (
+        <TargetDeployAction onStartDeploy={onStartDeploy} />
       ) : (
         <DeployStateList
           primitives={deployState.data?.primitives ?? []}

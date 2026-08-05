@@ -38,7 +38,7 @@ function renderPanel(repo: string) {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <DeployStatePanel repo={repo} />
+      <DeployStatePanel repo={repo} onStartDeploy={() => {}} />
     </QueryClientProvider>,
   );
 }
@@ -49,7 +49,7 @@ function renderGlobalPanel() {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <GlobalDeployStatePanel />
+      <GlobalDeployStatePanel onStartDeploy={() => {}} />
     </QueryClientProvider>,
   );
 }
