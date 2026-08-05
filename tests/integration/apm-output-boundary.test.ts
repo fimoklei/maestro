@@ -28,6 +28,7 @@ import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
+import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 
 // The curated sentence the failure is allowed to say, from the server's
@@ -135,6 +136,7 @@ describe("apm output never reaches the client", () => {
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => join(home, "apm"),
       harness: stubHarness(),
+      publish: stubPublish(),
       connect: stubConnect(),
       browse: stubBrowse(),
       enforceOriginHost: false,
@@ -240,6 +242,7 @@ describe("apm output never reaches the client", () => {
         }),
         resolveGlobalRoot: () => join(home, "apm"),
         harness: stubHarness(),
+        publish: stubPublish(),
         connect: stubConnect(),
         browse: stubBrowse(),
         enforceOriginHost: false,

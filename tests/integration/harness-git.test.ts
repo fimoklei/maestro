@@ -311,4 +311,65 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
       });
     });
   });
+
+  describe("publishTag", () => {
+    it("creates and pushes a lightweight tag at the exact commit, without a local tag object", async () => {
+      const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
+
+      await expect(adapter().publishTag(root, "v0.2.0", head)).resolves.toBe(
+        "pushed",
+      );
+
+      const remoteTag = (
+        await git(remote, "rev-parse", "refs/tags/v0.2.0")
+      ).stdout.trim();
+      expect(remoteTag).toBe(head);
+      expect((await git(root, "tag", "--list")).stdout).not.toContain("v0.2.0");
+    });
+
+    it("mirrors the pushed tag locally, so a read afterwards needs no second fetch", async () => {
+      const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
+
+      await adapter().publishTag(root, "v0.2.0", head);
+
+      const facts = await adapter().readFacts(root);
+      expect(facts.tags).toContainEqual({ name: "v0.2.0", commit: head });
+    });
+
+    it("refuses to overwrite a name the remote already has at a different commit", async () => {
+      const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
+      await adapter().publishTag(root, "v0.2.0", head);
+      await commit("second skill");
+      const nextHead = (await git(root, "rev-parse", "HEAD")).stdout.trim();
+
+      await expect(
+        adapter().publishTag(root, "v0.2.0", nextHead),
+      ).resolves.toBe("already-exists");
+      expect(
+        (await git(remote, "rev-parse", "refs/tags/v0.2.0")).stdout.trim(),
+      ).toBe(head);
+    });
+
+    it("leaves the author's checkout where it was", async () => {
+      const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
+      await writeFile(join(root, "staged.md"), "staged\n", "utf8");
+      await git(root, "add", "staged.md");
+
+      await adapter().publishTag(root, "v0.2.0", head);
+
+      expect((await git(root, "rev-parse", "HEAD")).stdout.trim()).toBe(head);
+      expect((await git(root, "status", "--porcelain")).stdout).toContain(
+        "A  staged.md",
+      );
+    });
+
+    it("reports a remote that is not there as a failed push, and does not throw", async () => {
+      const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
+      await git(root, "remote", "set-url", "origin", join(base, "gone.git"));
+
+      await expect(adapter().publishTag(root, "v0.2.0", head)).resolves.toBe(
+        "push-failed",
+      );
+    });
+  });
 });

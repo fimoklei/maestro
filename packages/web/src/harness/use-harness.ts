@@ -63,6 +63,25 @@ export function useDiscardReleasePlan() {
   return () => queryClient.removeQueries({ queryKey: RELEASE_PLAN_KEY });
 }
 
+// Confirming a release: the server re-reads the remote and tags the exact
+// commit it finds, so this sends only the chosen step, never a path or a
+// cached revision. Success invalidates the harness read — the tag it just
+// pushed is the fact that repaints the quiet state, and the plan is gone the
+// moment it is chosen anyway.
+export function usePublishRelease() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (step: SemverStep) =>
+      requestJson<{ tag: string; revision: string }>("/api/harness/release", {
+        method: "POST",
+        body: JSON.stringify({ step }),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: HARNESS_KEY });
+    },
+  });
+}
+
 // Writes the fetched state straight into the query cache: a refresh already
 // carries the answer, so re-reading it would only show an older picture first.
 export function useRefreshHarness() {

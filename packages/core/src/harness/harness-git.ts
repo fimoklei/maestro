@@ -12,20 +12,22 @@ import {
   harnessSkillSubpath,
 } from "../inventory/harness-layout";
 import { classifyFetchFailure } from "./classify-fetch-failure";
+import { classifyPushFailure } from "./classify-push-failure";
 import type {
   HarnessFacts,
   HarnessFetchOutcome,
   HarnessGitPort,
   HarnessSkillTrees,
   HarnessTag,
+  PublishTagOutcome,
 } from "./read-harness-state";
 import type { HarnessSkillTree } from "./skill-movements";
 
 const run = promisify(execFile);
 
-// A cockpit read must end. Without this a hung connection holds the request
-// open for as long as git is willing to wait, which is forever.
-const FETCH_TIMEOUT_MS = 60_000;
+// A cockpit read or a confirm must end. Without this a hung connection holds
+// the request open for as long as git is willing to wait, which is forever.
+const GIT_TIMEOUT_MS = 60_000;
 
 const REMOTE_HEAD = "refs/remotes/origin/HEAD";
 
@@ -60,10 +62,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
   // `origin/HEAD` at the remote's current default branch. Neither touches HEAD,
   // the index, or the working tree.
   async fetch(root: string): Promise<HarnessFetchOutcome> {
-    const options = {
-      env: { ...process.env, ...NON_INTERACTIVE },
-      timeout: FETCH_TIMEOUT_MS,
-    };
+    const options = gitOptions();
     try {
       await run(
         "git",
@@ -77,16 +76,34 @@ export class HarnessGitAdapter implements HarnessGitPort {
       );
       return "fetched";
     } catch (error) {
-      const killed = (error as { killed?: boolean }).killed === true;
-      // A run we cut off got no answer at all, which is the offline class —
-      // reading it as a reply would put words in the remote's mouth.
-      if (killed) {
-        return "offline";
-      }
-      return classifyFetchFailure(
-        String((error as { stderr?: string }).stderr),
-      );
+      return classifyGitError(error, classifyFetchFailure);
     }
+  }
+
+  // Pushes `<commit>:refs/tags/<name>` directly: the tag is created on the
+  // remote by the push itself, so no local tag object exists to clean up, and
+  // nothing here can move HEAD, the index, or the working tree (#520).
+  async publishTag(
+    root: string,
+    name: string,
+    commit: string,
+  ): Promise<PublishTagOutcome> {
+    const options = gitOptions();
+    const refspec = `${commit}:refs/tags/${name}`;
+    try {
+      await run("git", ["-C", root, "push", "origin", refspec], options);
+    } catch (error) {
+      return classifyGitError(error, classifyPushFailure);
+    }
+    // The push just made this true on the remote: writing it into the mirror
+    // directly keeps a read afterwards consistent without the second network
+    // round-trip a confirm must not make (#520).
+    await run(
+      "git",
+      ["-C", root, "update-ref", `${MAESTRO_TAGS}/${name}`, commit],
+      options,
+    );
+    return "pushed";
   }
 
   async readFacts(root: string): Promise<HarnessFacts> {
@@ -322,6 +339,24 @@ export class HarnessGitAdapter implements HarnessGitPort {
       });
   }
 }
+
+const gitOptions = () => ({
+  env: { ...process.env, ...NON_INTERACTIVE },
+  timeout: GIT_TIMEOUT_MS,
+});
+
+// A run we cut off got no answer at all, which is the offline class —
+// reading it as a reply would put words in the remote's mouth. Anything else
+// is a reply, worded by the caller's own classifier.
+const classifyGitError = <T>(
+  error: unknown,
+  classify: (stderr: string) => T,
+): "offline" | T => {
+  const killed = (error as { killed?: boolean }).killed === true;
+  return killed
+    ? "offline"
+    : classify(String((error as { stderr?: string }).stderr));
+};
 
 const pathExists = (path: string): Promise<boolean> =>
   access(path).then(

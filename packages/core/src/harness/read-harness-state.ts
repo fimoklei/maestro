@@ -17,6 +17,14 @@ import {
 
 export type HarnessFetchOutcome = "fetched" | "offline" | "fetch-failed";
 
+// `already-exists` is a remote refusal, not a failure: another author's tag
+// already claims that exact name, and the push must never force over it.
+export type PublishTagOutcome =
+  | "pushed"
+  | "already-exists"
+  | "offline"
+  | "push-failed";
+
 // `outcome: null` means no fetch has been attempted yet; `lastFetchedAt: null`
 // means none has ever succeeded. The two are independent.
 export type HarnessFreshness = {
@@ -71,6 +79,13 @@ export interface HarnessGitPort {
     ref: string,
     names: string[],
   ): Promise<Record<string, string | null>>;
+  // Creates and pushes one lightweight tag at the exact commit given, never a
+  // mutable ref and never `--force` (#520).
+  publishTag(
+    root: string,
+    name: string,
+    commit: string,
+  ): Promise<PublishTagOutcome>;
 }
 
 // Every call names the harness root: one record per harness, so connecting a

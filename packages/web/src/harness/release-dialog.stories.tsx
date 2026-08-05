@@ -29,6 +29,9 @@ const meta = {
   args: {
     origin: "github.com/fimoklei/agent-harness",
     onClose: () => {},
+    onPublish: () => {},
+    publishing: false,
+    publishError: null,
     load: { kind: "ready", plan: PLAN },
   },
 } satisfies Meta<typeof ReleaseDialog>;
@@ -108,5 +111,16 @@ export const CouldNotPlan: Story = {
       message:
         "Maestro has not fetched the remote yet, so it cannot plan a release. Refresh the harness and try again.",
     },
+  },
+};
+
+export const Publishing: Story = {
+  args: { publishing: true },
+};
+
+export const PublishFailed: Story = {
+  args: {
+    publishError:
+      "Someone already published this version. Refresh to see the current release, then plan again.",
   },
 };

@@ -18,6 +18,7 @@ export function stubHarness(): ReadHarnessState {
       readSkillAuthors: unreachable,
       readMovementTrees: unreachable,
       readSkillManifests: unreachable,
+      publishTag: unreachable,
     },
     freshness: {
       read: async () => ({ outcome: null, lastFetchedAt: null }),

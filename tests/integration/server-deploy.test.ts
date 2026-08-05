@@ -19,6 +19,7 @@ import { stubConnect } from "../helpers/stub-connect";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
+import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 
 // Integration lane: the deploy route over the real Hono app, real temp dirs,
@@ -201,6 +202,7 @@ describe("deploy HTTP route", () => {
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => globalRoot,
       harness: stubHarness(),
+      publish: stubPublish(),
       connect: stubConnect(),
       browse: stubBrowse(),
       enforceOriginHost: false,

@@ -64,6 +64,11 @@ export { HarnessFreshnessStore } from "./harness/harness-freshness-store";
 export { HarnessGitAdapter } from "./harness/harness-git";
 export type { SemverStep } from "./harness/propose-release-version";
 export {
+  PublishRelease,
+  type PublishReleaseError,
+  type PublishReleaseResult,
+} from "./harness/publish-release";
+export {
   type HarnessFreshness,
   type HarnessMovement,
   type HarnessReleaseState,
@@ -71,6 +76,7 @@ export {
   type HarnessStateError,
   type HarnessStateResult,
   type PendingSkillMovement,
+  type PublishTagOutcome,
   ReadHarnessState,
   type ReleasePlan,
   type ReleasePlanError,

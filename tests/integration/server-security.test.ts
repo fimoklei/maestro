@@ -11,6 +11,7 @@ import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
+import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 
 // Integration lane with the Origin/Host guard ENABLED (production posture).
@@ -45,6 +46,7 @@ describe("write-route Origin/Host guard", () => {
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
       harness: stubHarness(),
+      publish: stubPublish(),
       connect: stubConnect(),
       browse: stubBrowse(),
       enforceOriginHost: true,

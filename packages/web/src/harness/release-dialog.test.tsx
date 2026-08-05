@@ -18,12 +18,23 @@ const PLAN: ReleasePlan = {
   findings: [],
 };
 
-const renderReady = (plan: Partial<ReleasePlan> = {}, onClose = vi.fn()) =>
+const renderReady = (
+  plan: Partial<ReleasePlan> = {},
+  overrides: {
+    onClose?: () => void;
+    onPublish?: (step: ReleasePlan["proposedStep"]) => void;
+    publishing?: boolean;
+    publishError?: string | null;
+  } = {},
+) =>
   render(
     <ReleaseDialog
       origin="github.com/fimoklei/agent-harness"
       load={{ kind: "ready", plan: { ...PLAN, ...plan } }}
-      onClose={onClose}
+      onClose={overrides.onClose ?? vi.fn()}
+      onPublish={overrides.onPublish ?? vi.fn()}
+      publishing={overrides.publishing ?? false}
+      publishError={overrides.publishError ?? null}
     />,
   );
 
@@ -118,13 +129,41 @@ describe("ReleaseDialog", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("does not offer a publish action — planning stops before the tag", () => {
-    renderReady();
+  it("publishes the proposed step when the author does not override it", async () => {
+    const onPublish = vi.fn();
+    renderReady({}, { onPublish });
 
-    expect(
-      screen.queryByRole("button", { name: /release →|publish|tag/i }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /close/i })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+
+    expect(onPublish).toHaveBeenCalledWith("minor");
+  });
+
+  it("publishes the step the author chose, not the proposal", async () => {
+    const onPublish = vi.fn();
+    renderReady({}, { onPublish });
+
+    await userEvent.click(screen.getByRole("button", { name: "major" }));
+    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+
+    expect(onPublish).toHaveBeenCalledWith("major");
+  });
+
+  it("disables publish and says so while a release is in flight", () => {
+    renderReady({}, { publishing: true });
+
+    expect(screen.getByRole("button", { name: /publishing/i })).toBeDisabled();
+  });
+
+  it("states a failed publish as a readable error", () => {
+    renderReady(
+      {},
+      {
+        publishError:
+          "The tag could not be pushed. Check the remote and try again.",
+      },
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/could not be pushed/i);
   });
 
   it("says it is working while the plan is still loading", () => {
@@ -133,6 +172,9 @@ describe("ReleaseDialog", () => {
         origin="github.com/fimoklei/agent-harness"
         load={{ kind: "loading" }}
         onClose={vi.fn()}
+        onPublish={vi.fn()}
+        publishing={false}
+        publishError={null}
       />,
     );
 
@@ -145,6 +187,9 @@ describe("ReleaseDialog", () => {
         origin="github.com/fimoklei/agent-harness"
         load={{ kind: "error", message: "Refresh the harness and try again." }}
         onClose={vi.fn()}
+        onPublish={vi.fn()}
+        publishing={false}
+        publishError={null}
       />,
     );
 

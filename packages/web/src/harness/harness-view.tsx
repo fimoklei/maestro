@@ -12,9 +12,11 @@ import {
 import { MovementTable } from "./movement-table";
 import { PendingRelease } from "./pending-release";
 import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
+import type { SemverStep } from "./use-harness";
 import {
   useDiscardReleasePlan,
   useHarness,
+  usePublishRelease,
   useRefreshHarness,
   useReleasePlan,
 } from "./use-harness";
@@ -31,9 +33,15 @@ export function HarnessView() {
   const [planOpen, setPlanOpen] = useState(false);
   const plan = useReleasePlan(planOpen);
   const discardPlan = useDiscardReleasePlan();
+  const publish = usePublishRelease();
   const closePlan = () => {
     setPlanOpen(false);
     discardPlan();
+    // A failed attempt must not haunt the next time this dialog opens.
+    publish.reset();
+  };
+  const handlePublish = (step: SemverStep) => {
+    publish.mutate(step, { onSuccess: closePlan });
   };
 
   // Opening the view fetches, the same act the Refresh button repeats. A
@@ -118,6 +126,9 @@ export function HarnessView() {
               origin={state.origin}
               load={planLoad(plan)}
               onClose={closePlan}
+              onPublish={handlePublish}
+              publishing={publish.isPending}
+              publishError={publish.isError ? publish.error.message : null}
             />
           ) : null}
         </>

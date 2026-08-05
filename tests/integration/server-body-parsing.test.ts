@@ -8,6 +8,7 @@ import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
+import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 
 // Integration lane: pins the 400 every POST route answers to a body it cannot
@@ -43,6 +44,7 @@ describe("POST body parsing", () => {
       registry,
       inventory,
       harness: stubHarness(),
+      publish: stubPublish(),
       connect: stubConnect(),
       browse: stubBrowse(),
       deployState: stubDeployState({ fs }),

@@ -98,6 +98,9 @@ function buildRead(overrides?: {
         _ref: string,
         names: string[],
       ) => Object.fromEntries(names.map((name) => [name, null])),
+      publishTag: async () => {
+        throw new Error("git port's publishTag was reached");
+      },
     },
     freshness: overrides?.freshness ?? stubFreshness(FETCHED),
   });
@@ -439,6 +442,9 @@ describe("ReadHarnessState refresh", () => {
           return SETTLED_TREES;
         },
         readSkillManifests: async () => ({}),
+        publishTag: async () => {
+          throw new Error("git port's publishTag was reached");
+        },
       },
       freshness: stubFreshness(),
     });

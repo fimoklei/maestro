@@ -26,7 +26,12 @@ function jsonResponse(body: unknown, status = 200) {
 // One stub for both routes, so a test states what the read says and what the
 // refresh finds, and nothing else.
 function stubHarnessServer(options: {
-  read: { body: unknown; status?: number; heldUntil?: Promise<void> };
+  read: {
+    body: unknown;
+    status?: number;
+    heldUntil?: Promise<void>;
+    afterPublish?: unknown;
+  };
   refresh?: {
     body: unknown;
     status?: number;
@@ -40,9 +45,13 @@ function stubHarnessServer(options: {
     status?: number;
     holds?: (Promise<void> | undefined)[];
   };
+  // A confirmed publish; `read.afterPublish` is what a plain read shows once
+  // it has gone through, proving the quiet state needs no second refresh.
+  publish?: { body: unknown; status?: number };
 }) {
   const calls: string[] = [];
   let planCalls = 0;
+  let published = false;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -53,6 +62,13 @@ function stubHarnessServer(options: {
         await ("holds" in plan ? plan.holds?.[planCalls] : undefined);
         planCalls += 1;
         return jsonResponse(plan.body, plan.status);
+      }
+      if (url === "/api/harness/release") {
+        const pub = options.publish ?? { body: {}, status: 500 };
+        if ((pub.status ?? 200) < 400) {
+          published = true;
+        }
+        return jsonResponse(pub.body, pub.status);
       }
       if (url.startsWith("/api/harness/refresh")) {
         const refresh = options.refresh ?? options.read;
@@ -65,7 +81,11 @@ function stubHarnessServer(options: {
       // Held by the test rather than by a timer, so the race is decided by
       // hand and not by the clock (testing.md — deterministic).
       await options.read.heldUntil;
-      return jsonResponse(options.read.body, options.read.status);
+      const body =
+        published && "afterPublish" in options.read
+          ? options.read.afterPublish
+          : options.read.body;
+      return jsonResponse(body, options.read.status);
     }),
   );
   return calls;
@@ -483,6 +503,58 @@ describe("Harness home base", () => {
     expect(screen.queryByText("v1.3.0")).not.toBeInTheDocument();
 
     answerSecond();
+  });
+
+  it("publishes the chosen step and settles into the quiet state without a second refresh", async () => {
+    const calls = stubHarnessServer({
+      read: {
+        body: FETCHED,
+        afterPublish: { ...RELEASED, releasedVersion: "v1.3.0" },
+      },
+      plan: { body: PLAN },
+      publish: { body: { tag: "v1.3.0", revision: PLAN.revision } },
+    });
+    renderHarness();
+
+    const release = await screen.findByRole("button", { name: /^release$/i });
+    await waitFor(() => expect(release).toBeEnabled());
+    await userEvent.click(release);
+    await screen.findByText("v1.3.0");
+
+    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(await screen.findByText("v1.3.0")).toBeInTheDocument();
+    expect(calls.filter((call) => call === "GET /api/harness")).toHaveLength(2);
+  });
+
+  it("keeps the dialog open and states a failed publish as a readable error", async () => {
+    stubHarnessServer({
+      read: { body: FETCHED },
+      plan: { body: PLAN },
+      publish: {
+        body: {
+          error: "already-released",
+          message: "Someone already published this version.",
+        },
+        status: 409,
+      },
+    });
+    renderHarness();
+
+    const release = await screen.findByRole("button", { name: /^release$/i });
+    await waitFor(() => expect(release).toBeEnabled());
+    await userEvent.click(release);
+    await screen.findByText("v1.3.0");
+
+    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText(/already published this version/i),
+    ).toBeInTheDocument();
   });
 
   it("reports a harness that is not connected instead of an empty screen", async () => {
