@@ -8,9 +8,10 @@ const run = promisify(execFile);
 const REMOTE_HEAD = "refs/remotes/origin/HEAD";
 const REMOTE_BRANCHES = "refs/remotes/origin";
 
-// The refspec of a clone that fetches every branch. A narrower one (`git clone
-// --single-branch`) leaves refs the repair below must not reason from.
-const ALL_BRANCHES = "refs/heads/*";
+// The refspec of a clone that mirrors every branch into `origin/`. A narrower
+// one (`git clone --single-branch`), a wildcard aimed elsewhere, or an
+// exclusion beside it all leave refs the repair below must not reason from.
+const ALL_BRANCHES = `refs/heads/*:${REMOTE_BRANCHES}/*`;
 
 export const resolveDefaultBranch = async (
   repoPath: string,
@@ -34,20 +35,25 @@ export const resolveDefaultBranch = async (
   return await readRemoteDefaultBranch(repoPath);
 };
 
-// `origin/main` names the local mirror; the branch is what follows. One owner
-// for that strip: connect refuses a Harness on this answer and the release
-// pushes to it, so the two may never disagree.
+// Whole, never `--short`: a target outside `origin/` or one a prune deleted
+// still reads back as a plausible name. One owner for the rule — connect
+// refuses a Harness on this answer and the release pushes to it.
 export const readRemoteDefaultBranch = async (
   repoPath: string,
 ): Promise<string | null> => {
-  const ref = await git(repoPath, ["symbolic-ref", "--short", REMOTE_HEAD]);
-  return ref === null ? null : ref.replace(/^origin\//, "");
+  const target = await git(repoPath, ["symbolic-ref", REMOTE_HEAD]);
+  if (target === null || !target.startsWith(`${REMOTE_BRANCHES}/`)) {
+    return null;
+  }
+  if (!(await resolvesToCommit(repoPath, target))) {
+    return null;
+  }
+  return target.slice(`${REMOTE_BRANCHES}/`.length);
 };
 
-// The remote's only branch, and therefore the one its HEAD must point at — not
-// a guess, which is why both halves are required: a clone that fetches every
-// branch, holding exactly one. A single-branch clone holds one ref because it
-// asked for one, and that ref says nothing about the remote's default.
+// The remote's only branch, and so the one its HEAD must point at. Both halves
+// are what make it proof: a clone that mirrors every branch, holding exactly
+// one. Holding one because it asked for one says nothing about the remote.
 const provenSoleBranch = async (repoPath: string): Promise<string | null> => {
   if (!(await fetchesEveryBranch(repoPath))) {
     return null;
@@ -61,20 +67,41 @@ const provenSoleBranch = async (repoPath: string): Promise<string | null> => {
   ]);
   const branches =
     listing?.split("\n").filter((name) => name !== "" && name !== "HEAD") ?? [];
-  return branches.length === 1 ? (branches[0] ?? null) : null;
+  const only = branches.length === 1 ? branches[0] : undefined;
+  if (only === undefined) {
+    return null;
+  }
+  return (await resolvesToCommit(repoPath, `${REMOTE_BRANCHES}/${only}`))
+    ? only
+    : null;
 };
 
 const fetchesEveryBranch = async (repoPath: string): Promise<boolean> => {
-  const refspecs = await git(repoPath, [
-    "config",
-    "--get-all",
-    "remote.origin.fetch",
-  ]);
+  const refspecs =
+    (
+      await git(repoPath, ["config", "--get-all", "remote.origin.fetch"])
+    )?.split("\n") ?? [];
+  // A `^` refspec excludes what the wildcard would otherwise have brought in,
+  // so one of them anywhere leaves the namespace incomplete.
+  if (refspecs.some((refspec) => refspec.startsWith("^"))) {
+    return false;
+  }
   // The leading `+` is force-update, which this question does not turn on.
-  return (refspecs?.split("\n") ?? []).some((refspec) =>
-    refspec.replace(/^\+/, "").startsWith(`${ALL_BRANCHES}:`),
+  return refspecs.some(
+    (refspec) => refspec.replace(/^\+/, "") === ALL_BRANCHES,
   );
 };
+
+const resolvesToCommit = async (
+  repoPath: string,
+  ref: string,
+): Promise<boolean> =>
+  (await git(repoPath, [
+    "rev-parse",
+    "--verify",
+    "--quiet",
+    `${ref}^{commit}`,
+  ])) !== null;
 
 // Null on any failure, so an unset `origin/HEAD` reads as "not known" rather
 // than throwing. Output is trimmed, never parsed here.

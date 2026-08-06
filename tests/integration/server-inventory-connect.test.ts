@@ -160,6 +160,65 @@ describe("inventory connect HTTP route", () => {
     expect(await readRemoteHead(clone)).toBe("refs/remotes/origin/trunk");
   });
 
+  // A fetch that pruned the default branch leaves `origin/HEAD` pointing at a
+  // ref that is gone. It reads back as a branch name and names nothing.
+  it("rejects a dangling origin/HEAD rather than reading it as the default branch", async () => {
+    const clone = await makeClone({
+      defaultBranch: "main",
+      defaultBranchExists: false,
+    });
+
+    const res = await postConnect(makeApp(), { path: clone });
+
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as { error: string }).error).toBe(
+      "no-default-branch",
+    );
+  });
+
+  // A wildcard is not the same question as a wildcard into `origin/*`: mirrored
+  // somewhere else, `origin/` holds whatever an older fetch left behind.
+  it("refuses to repair when the branch wildcard maps somewhere other than origin", async () => {
+    const clone = await makeClone({
+      defaultBranch: false,
+      remoteBranches: ["trunk"],
+    });
+    await run("git", [
+      "-C",
+      clone,
+      "config",
+      "remote.origin.fetch",
+      "+refs/heads/*:refs/remotes/mirror/*",
+    ]);
+
+    const res = await postConnect(makeApp(), { path: clone });
+
+    expect(res.status).toBe(422);
+    expect(await readRemoteHead(clone)).toBeNull();
+  });
+
+  // `^refs/heads/x` excludes a branch from the wildcard, so the namespace is
+  // incomplete however complete the positive refspec looks.
+  it("refuses to repair when a negative refspec narrows the wildcard", async () => {
+    const clone = await makeClone({
+      defaultBranch: false,
+      remoteBranches: ["trunk"],
+    });
+    await run("git", [
+      "-C",
+      clone,
+      "config",
+      "--add",
+      "remote.origin.fetch",
+      "^refs/heads/release",
+    ]);
+
+    const res = await postConnect(makeApp(), { path: clone });
+
+    expect(res.status).toBe(422);
+    expect(await readRemoteHead(clone)).toBeNull();
+  });
+
   // A `--single-branch` clone holds one remote branch because it asked for
   // one, so that branch proves nothing about which one the remote leads with.
   it("refuses a single-branch clone rather than repairing origin/HEAD from its one branch", async () => {
