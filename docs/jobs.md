@@ -31,12 +31,7 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 ## NEXT
 
-| Job | Main | Job story |
-|---|---|---|
-| Release merged Harness changes · [#496](https://github.com/fimoklei/maestro/issues/496) | C | *When* reviewed Harness changes are merged, *I want to* see what is still unreleased and publish a version from the cockpit, *so I can* make approved skills available without inspecting refs or tagging by hand. |
-
-**Why now:** It closes the weekly authoring loop first: merged changes are
-already team-approved, but remain invisible and still require manual tag work.
+Empty — pick the next job.
 
 ## LATER
 
@@ -79,6 +74,7 @@ All shipped **skills-only**, solo, local-first.
 | Reach an actionable cockpit on first open · [#208](https://github.com/fimoklei/maestro/issues/208) → [#216](https://github.com/fimoklei/maestro/issues/216)–[#218](https://github.com/fimoklei/maestro/issues/218), [#221](https://github.com/fimoklei/maestro/pull/221) | A, B | *When* I open Maestro before it knows my inventory or my targets, *I want to* reach a state I can act on, *so I can* get on with my errand instead of completing a setup flow first. |
 | See a skill's deploy-state before deploying from Inventory · [#283](https://github.com/fimoklei/maestro/issues/283) → [#285](https://github.com/fimoklei/maestro/issues/285)–[#292](https://github.com/fimoklei/maestro/issues/292) | A, B | *When* I deploy a skill from the Inventory, *I want to* see at a glance whether it is already deployed and where, *so I can* avoid a blind or duplicate deploy. |
 | Bulk-deploy staged skills to one target · [#292](https://github.com/fimoklei/maestro/issues/292) | B | *When* several skills belong on the same target, *I want to* stage them and push them in one action, reading one report, *so I can* provision that target without going skill by skill. |
+| Release merged Harness changes · [#496](https://github.com/fimoklei/maestro/issues/496) → [#515](https://github.com/fimoklei/maestro/issues/515)–[#521](https://github.com/fimoklei/maestro/issues/521) | C | *When* reviewed Harness changes are merged, *I want to* see what is still unreleased and publish a version from the cockpit, *so I can* make approved skills available without inspecting refs or tagging by hand. |
 
 Three of these jobs carry intent the job story above does not:
 
