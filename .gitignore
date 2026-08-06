@@ -36,6 +36,6 @@ storybook-static/
 # are ignored. A symlink pointing outside the repo is per-machine; a relative
 # one into .agents/skills/ is tracked, because Claude Code discovers skills
 # under .claude/skills/ and a fresh worktree gets none otherwise.
-.agents/skills/impeccable/
-.claude/skills/impeccable/
+.agents/skills/impeccable
+.claude/skills/impeccable
 .claude/skills/codex-review
