@@ -14,5 +14,6 @@ export function stubConnect(): ConnectInventory {
       configPath: () => "/nonexistent-maestro/config.json",
     }),
     originUrl: async () => null,
+    defaultBranch: async () => null,
   });
 }

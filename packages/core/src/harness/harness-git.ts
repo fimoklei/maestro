@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { readConfiguredGitOriginUrl } from "../deploy/git-origin-url";
+import { readRemoteDefaultBranch } from "../inventory/default-branch";
 import {
   HARNESS_SKILLS_DIR,
   harnessSkillSubpath,
@@ -162,15 +163,9 @@ export class HarnessGitAdapter implements HarnessGitPort {
   }
 
   async readFacts(root: string): Promise<HarnessFacts> {
-    const defaultBranchRef = await this.read(root, [
-      "symbolic-ref",
-      "--short",
-      REMOTE_HEAD,
-    ]);
     return {
       originUrl: await readConfiguredGitOriginUrl(root),
-      // `origin/main` names the local mirror; the branch is what follows.
-      defaultBranch: defaultBranchRef?.replace(/^origin\//, "") ?? null,
+      defaultBranch: await readRemoteDefaultBranch(root),
       defaultBranchCommit: await this.read(root, ["rev-parse", REMOTE_HEAD]),
       tags: await this.readTags(root),
     };

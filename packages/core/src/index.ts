@@ -93,7 +93,9 @@ export type {
 export {
   ConnectInventory,
   type ConnectInventoryError,
+  type ConnectOutcome,
 } from "./inventory/connect-inventory";
+export { resolveDefaultBranch } from "./inventory/default-branch";
 export {
   InventoryReader,
   type InventoryResult,
