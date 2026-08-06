@@ -22,7 +22,7 @@ const OUTCOME_UNKNOWN =
 
 // Which class left this target behind. Both words appear on the row: a reason
 // alone does not say whether the run refused to try or tried and failed.
-export type BulkRemoveLeftAloneRow = {
+type BulkRemoveLeftAloneRow = {
   label: string;
   outcome: "refused" | "failed";
   reason: string;
