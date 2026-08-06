@@ -40,6 +40,7 @@ import {
   readGitOriginUrl,
   resolveApmGlobalRoot,
   resolveApmScratchCwd,
+  resolveDefaultBranch,
   resolveInventoryPath,
   resolveMaestroConfigPath,
   ToolPresenceAdapter,
@@ -384,6 +385,11 @@ const connectErrorResponses: Record<
     message:
       "That folder has an apm.yml, but its git origin is missing, unreadable, or in a form apm cannot resolve. Deploys read versions from GitHub tags, so point Maestro at a clone whose origin is a GitHub repo over https or ssh.",
   },
+  "no-default-branch": {
+    status: 422,
+    message:
+      "That folder is a Harness, but Maestro cannot tell which branch its origin treats as the default, and it will not guess one. Run `git fetch origin` and `git remote set-head origin --auto` in the clone, then connect again.",
+  },
 };
 
 // Mirrors the connect table: nothing connected is a 409, a connected clone
@@ -626,7 +632,11 @@ export function createApp(deps: AppDeps) {
       primitiveCount = 0;
     }
 
-    return c.json({ inventoryPath: result.inventoryPath, primitiveCount });
+    return c.json({
+      outcome: result.outcome,
+      inventoryPath: result.inventoryPath,
+      primitiveCount,
+    });
   });
 
   // Read-only directory browser (ADR-0009). POST deliberately, so the guard
@@ -1004,7 +1014,12 @@ function realDeps(): AppDeps {
     }),
     // Checked offline against local git config, so the error lands before
     // the first deploy (#147).
-    connect: new ConnectInventory({ fs, store, originUrl: readGitOriginUrl }),
+    connect: new ConnectInventory({
+      fs,
+      store,
+      originUrl: readGitOriginUrl,
+      defaultBranch: resolveDefaultBranch,
+    }),
     browse: new BrowseFilesystem({ fs, homeRoot: () => homedir() }),
     deployState,
     deploy,

@@ -1,3 +1,4 @@
+import { execFile } from "node:child_process";
 import {
   chmod,
   mkdir,
@@ -9,6 +10,7 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import {
   BrowseFilesystem,
   ConfigStore,
@@ -18,11 +20,12 @@ import {
   NodeFileSystem,
   Registry,
   readGitOriginUrl,
+  resolveDefaultBranch,
   resolveInventoryPath,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { initGitClone } from "../helpers/git-fixture";
+import { type GitCloneOptions, initGitClone } from "../helpers/git-fixture";
 import { centralInventoryPath } from "../helpers/real-registry";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
@@ -30,6 +33,9 @@ import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
+
+const run = promisify(execFile);
+const REMOTE_HEAD = "refs/remotes/origin/HEAD";
 
 // Integration lane: drives the real Hono connect endpoint via app.request,
 // backed by a real ConfigStore on a temp dir. The Origin/Host guard is disabled
@@ -45,7 +51,7 @@ describe("inventory connect HTTP route", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  async function makeClone(options?: { origin?: boolean }): Promise<string> {
+  async function makeClone(options?: GitCloneOptions): Promise<string> {
     const clone = join(dir, "agent-harness");
     await mkdir(join(clone, ".apm", "skills", "tdd"), { recursive: true });
     await writeFile(
@@ -82,7 +88,12 @@ describe("inventory connect HTTP route", () => {
       inventory,
       harness: stubHarness(),
       publish: stubPublish(),
-      connect: new ConnectInventory({ fs, store, originUrl: readGitOriginUrl }),
+      connect: new ConnectInventory({
+        fs,
+        store,
+        originUrl: readGitOriginUrl,
+        defaultBranch: resolveDefaultBranch,
+      }),
       deployState,
       deploy: stubDeploy({ inventory, registry, locks }),
       remove: stubRemove({ registry, locks }),
@@ -93,6 +104,15 @@ describe("inventory connect HTTP route", () => {
       browse: new BrowseFilesystem({ fs, homeRoot: () => dir }),
       enforceOriginHost: false,
     });
+  }
+
+  // Durable repository state, not the response: what the connect left behind
+  // in the clone is what a later authoring step will read.
+  async function readRemoteHead(clone: string): Promise<string | null> {
+    return await run("git", ["-C", clone, "symbolic-ref", REMOTE_HEAD]).then(
+      ({ stdout }) => stdout.trim(),
+      () => null,
+    );
   }
 
   function postConnect(app: ReturnType<typeof makeApp>, body: unknown) {
@@ -111,9 +131,75 @@ describe("inventory connect HTTP route", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
+      outcome: "found",
       inventoryPath: await nodeRealpath(clone),
       primitiveCount: 1,
     });
+  });
+
+  it("connects a Harness whose default branch is not named main", async () => {
+    const clone = await makeClone({ defaultBranch: "trunk" });
+
+    const res = await postConnect(makeApp(), { path: clone });
+
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { outcome: string }).outcome).toBe("found");
+  });
+
+  // A clone git never recorded `origin/HEAD` for still knows its one remote
+  // branch, so the connect repairs the pointer instead of refusing.
+  it("repairs a missing origin/HEAD from the single remote branch and connects", async () => {
+    const clone = await makeClone({
+      defaultBranch: false,
+      remoteBranches: ["trunk"],
+    });
+
+    const res = await postConnect(makeApp(), { path: clone });
+
+    expect(res.status).toBe(200);
+    expect(await readRemoteHead(clone)).toBe("refs/remotes/origin/trunk");
+  });
+
+  // A `--single-branch` clone holds one remote branch because it asked for
+  // one, so that branch proves nothing about which one the remote leads with.
+  it("refuses a single-branch clone rather than repairing origin/HEAD from its one branch", async () => {
+    const clone = await makeClone({
+      defaultBranch: false,
+      remoteBranches: ["develop"],
+    });
+    await run("git", [
+      "-C",
+      clone,
+      "config",
+      "remote.origin.fetch",
+      "+refs/heads/develop:refs/remotes/origin/develop",
+    ]);
+
+    const res = await postConnect(makeApp(), { path: clone });
+
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as { error: string }).error).toBe(
+      "no-default-branch",
+    );
+    expect(await readRemoteHead(clone)).toBeNull();
+  });
+
+  it("rejects a Harness whose default branch cannot be established as 422 no-default-branch", async () => {
+    // Two remote branches and no `origin/HEAD`: nothing local says which one
+    // the remote leads with, and connect refuses rather than picking.
+    const clone = await makeClone({
+      defaultBranch: false,
+      remoteBranches: ["trunk", "release"],
+    });
+
+    const res = await postConnect(makeApp(), { path: clone });
+
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { error: string; message: string };
+    expect(body.error).toBe("no-default-branch");
+    expect(body.message).toMatch(/\S/);
+    expect(body.message).not.toContain(clone);
+    expect(await readRemoteHead(clone)).toBeNull();
   });
 
   it("after a successful connect the inventory read lists the central skills", async () => {

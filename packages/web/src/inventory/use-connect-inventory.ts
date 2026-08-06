@@ -1,10 +1,14 @@
 // A successful connect invalidates the inventory query so the cockpit
 // refetches the now-readable skills (frontend.md).
+import type { ConnectOutcome } from "@maestro/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 import { INVENTORY_CONFIG_KEY, INVENTORY_KEY } from "./use-inventory";
 
+// `outcome` is the server's name for what connecting did, carried through so
+// the gate's completion copy never has to infer it (#498).
 export type ConnectResponse = {
+  outcome: ConnectOutcome;
   inventoryPath: string;
   primitiveCount: number;
 };

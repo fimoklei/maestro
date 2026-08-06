@@ -49,7 +49,7 @@ The harness at its latest published tag. The only state consumers deploy from, a
 _Avoid_: published inventory, catalogue, main (a merge is not a release).
 
 **Inventory source**:
-The connection that points Maestro at the central inventory — the path of a local *clone* of the Central inventory, not any folder that happens to hold skills (a git URL is the Future "Connect & sync" form), managed behind the ⚙ settings view. Connect requires the clone to have a parseable git origin remote, checked offline, so deploys can resolve versions from it later. Distinct from the **Central inventory** itself: the source is the *pointer*, the inventory is *what it points at*. Deploying never writes back to it; authoring does, in the **Working harness** only, and never as a side effect of a deploy (ADR-0021).
+The connection that points Maestro at the central inventory — the path of a local *clone* of the Central inventory, not any folder that happens to hold skills (a git URL is the Future "Connect & sync" form), managed behind the ⚙ settings view. Connect requires the clone to have a parseable git origin remote and a resolvable default branch, both read offline, so deploys can resolve versions from it later and authoring knows which branch to release to; a missing `origin/HEAD` is repaired where the local refs prove the answer, and refused where they do not (#553). Distinct from the **Central inventory** itself: the source is the *pointer*, the inventory is *what it points at*. Deploying never writes back to it; authoring does, in the **Working harness** only, and never as a side effect of a deploy (ADR-0021).
 _Avoid_: inventory path (too narrow — names only today's local-path form), connection.
 
 **Connect gate**:

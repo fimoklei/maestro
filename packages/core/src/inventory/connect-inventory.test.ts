@@ -9,11 +9,13 @@ const PARSEABLE_ORIGIN = "git@github.com:fimoklei/agent-harness.git";
 function makeConnect(
   fs: InMemoryFileSystem,
   originUrl: string | null = PARSEABLE_ORIGIN,
+  defaultBranch: string | null = "main",
 ): ConnectInventory {
   return new ConnectInventory({
     fs,
     store: new ConfigStore({ fs, configPath: () => CONFIG_PATH }),
     originUrl: async () => originUrl,
+    defaultBranch: async () => defaultBranch,
   });
 }
 
@@ -34,6 +36,7 @@ describe("ConnectInventory", () => {
 
     expect(result).toEqual({
       ok: true,
+      outcome: "found",
       inventoryPath: "/Users/me/agent-harness",
     });
     const stored = await new ConfigStore({
@@ -108,6 +111,31 @@ describe("ConnectInventory", () => {
       ok: false,
       error: "no-usable-origin",
     });
+  });
+
+  it("connects a Harness whose default branch is not named main", async () => {
+    const fs = new InMemoryFileSystem(harnessSeed());
+    const connect = makeConnect(fs, PARSEABLE_ORIGIN, "trunk");
+
+    await expect(connect.connect("/Users/me/agent-harness")).resolves.toEqual({
+      ok: true,
+      outcome: "found",
+      inventoryPath: "/Users/me/agent-harness",
+    });
+  });
+
+  it("rejects a clone whose default branch cannot be established and persists nothing", async () => {
+    const fs = new InMemoryFileSystem(harnessSeed());
+    const connect = makeConnect(fs, PARSEABLE_ORIGIN, null);
+
+    const result = await connect.connect("/Users/me/agent-harness");
+
+    expect(result).toEqual({ ok: false, error: "no-default-branch" });
+    const stored = await new ConfigStore({
+      fs,
+      configPath: () => CONFIG_PATH,
+    }).read();
+    expect(stored.inventoryPath).toBeUndefined();
   });
 
   it("rejects a relative or traversal path as relative", async () => {
