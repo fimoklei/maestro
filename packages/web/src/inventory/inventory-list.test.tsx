@@ -466,14 +466,44 @@ describe("InventoryList", () => {
       />,
     );
 
-    // The Actions column and its inline deploy control are gone; nothing deploys
-    // from a row before the pane is opened.
+    // The Actions column and its inline deploy control are gone; no row deploys
+    // on its own before the pane is opened. The view-level strip above the
+    // table is not a row control (#473).
     expect(
       screen.queryByRole("columnheader", { name: "Actions" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /deploy/i }),
+      within(screen.getByRole("table")).queryByRole("button", {
+        name: /deploy/i,
+      }),
     ).not.toBeInTheDocument();
+  });
+
+  it("sends the primary deploy control to the first skill when nothing is staged", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        const body = url.startsWith("/api/drift/global")
+          ? { behind: [] }
+          : { tools: [{ tool: "claude", primitives: [] }], skipped: [] };
+        return new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }),
+    );
+    renderList(
+      <InventoryList primitives={primitives} repos={[]} registryReady />,
+    );
+
+    const deploy = await screen.findByRole("button", { name: "deploy →" });
+    await vi.waitFor(() => expect(deploy).not.toBeDisabled());
+    await userEvent.click(deploy);
+
+    expect(
+      screen.getByRole("checkbox", { name: /stage tdd for bulk/i }),
+    ).toHaveFocus();
   });
 
   it("closes the pane when its close control is activated", async () => {
@@ -644,8 +674,10 @@ describe("InventoryList", () => {
       <InventoryList primitives={primitives} repos={[]} registryReady />,
     );
 
-    // No bulk bar until something is staged.
-    expect(screen.queryByText(/staged for bulk/i)).not.toBeInTheDocument();
+    // The strip stands from the start and counts up from nothing (#473).
+    expect(
+      screen.getByRole("status", { name: /bulk selection/i }),
+    ).toHaveTextContent(/0 staged for bulk/i);
 
     await userEvent.click(screen.getByRole("checkbox", { name: /stage tdd/i }));
     await userEvent.click(

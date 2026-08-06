@@ -244,7 +244,7 @@ describe("DeploySkillAction", () => {
     });
   });
 
-  it("shows already synced and offers Re-deploy for a proven current target", async () => {
+  it("shows already synced and offers re-deploy for a proven current target", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
@@ -272,13 +272,13 @@ describe("DeploySkillAction", () => {
 
     expect(await screen.findByText("● already synced")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Re-deploy" }),
+      screen.getByRole("button", { name: "re-deploy" }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Deploy →" }),
+      screen.queryByRole("button", { name: "deploy →" }),
     ).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Re-deploy" }));
+    await userEvent.click(screen.getByRole("button", { name: "re-deploy" }));
 
     const deployCall = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
       ([url]) => url === "/api/deploy",
@@ -291,7 +291,7 @@ describe("DeploySkillAction", () => {
     });
   });
 
-  it("returns to Deploy when the selected target is not synced", async () => {
+  it("returns to deploy when the selected target is not synced", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
@@ -322,7 +322,7 @@ describe("DeploySkillAction", () => {
     );
 
     expect(
-      await screen.findByRole("button", { name: "Deploy →" }),
+      await screen.findByRole("button", { name: "deploy →" }),
     ).toBeInTheDocument();
     expect(screen.queryByText("● already synced")).not.toBeInTheDocument();
   });
@@ -521,11 +521,14 @@ describe("DeploySkillAction", () => {
     vi.stubGlobal("fetch", fetchMock);
     renderAction(
       <>
-        <DeploySkillAction
-          skillName="tdd"
-          repos={[{ path: "/projects/alpha" }]}
-          registryReady
-        />
+        {/* Named, because the empty panel offers a `deploy →` of its own (#472). */}
+        <section aria-label="Pane action">
+          <DeploySkillAction
+            skillName="tdd"
+            repos={[{ path: "/projects/alpha" }]}
+            registryReady
+          />
+        </section>
         <DeployStatePanel repo="/projects/alpha" onStartDeploy={() => {}} />
       </>,
     );
@@ -533,7 +536,12 @@ describe("DeploySkillAction", () => {
     // The panel has loaded and reads empty before the deploy.
     expect(await screen.findByText("● empty")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Deploy →" }));
+    await userEvent.click(
+      within(screen.getByRole("region", { name: "Pane action" })).getByRole(
+        "button",
+        { name: "deploy →" },
+      ),
+    );
 
     // The panel updates without a reload: the deploy invalidated its query.
     expect(await screen.findByText("v0.5.1")).toBeInTheDocument();
@@ -615,7 +623,10 @@ describe("DeploySkillAction", () => {
     vi.stubGlobal("fetch", fetchMock);
     renderAction(
       <>
-        <DeploySkillAction skillName="tdd" repos={[]} registryReady />
+        {/* Named, because the empty panel offers a `deploy →` of its own (#472). */}
+        <section aria-label="Pane action">
+          <DeploySkillAction skillName="tdd" repos={[]} registryReady />
+        </section>
         <GlobalDeployStatePanel onStartDeploy={() => {}} />
       </>,
     );
@@ -623,7 +634,12 @@ describe("DeploySkillAction", () => {
     // The panel has loaded and reads empty before the deploy.
     expect(await screen.findByText("● empty")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Deploy →" }));
+    await userEvent.click(
+      within(screen.getByRole("region", { name: "Pane action" })).getByRole(
+        "button",
+        { name: "deploy →" },
+      ),
+    );
 
     expect(await screen.findByText("v0.5.1")).toBeInTheDocument();
   });

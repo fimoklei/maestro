@@ -68,11 +68,12 @@ export function DeploySkillAction({
 
   const selectId = `deploy-${skillName}-target`;
 
+  // Lowercase mono, like every other action label (DESIGN.md §6).
   const buttonLabel = !registryReady
-    ? "Loading targets…"
+    ? "loading targets…"
     : deploy.isPending
-      ? "Deploying…"
-      : "Deploy →";
+      ? "deploying…"
+      : "deploy →";
 
   return (
     // Wraps: the 320px pane clips overflow, and wider states would otherwise
@@ -112,7 +113,7 @@ export function DeploySkillAction({
               deploy.mutate({ type: "skill", name: skillName, target })
             }
           >
-            {deploy.isPending ? "Deploying…" : "Re-deploy"}
+            {deploy.isPending ? "deploying…" : "re-deploy"}
           </Button>
         </>
       ) : (
