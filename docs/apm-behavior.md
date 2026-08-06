@@ -400,6 +400,13 @@ neutral cwd.
 Facts the authoring-side wayfinder map (issue #343) rests on. Captured
 against apm 0.26.0, the version this document describes.
 
+- **apm scaffolds `apm.yml` and nothing else.** `apm init -y` writes one
+  file — no `README.md`, no `.apm/`, no `.gitkeep`. `plugin.json` comes only
+  from `apm plugin init`, the plugin-author workflow whose next step is
+  `apm pack`, so it has no place in a Harness consumed per skill by
+  tag-pinned ref. `README.md` is read, never written: the registry publish
+  archive bundles root docs when present (`commands/publish.py:232`). →
+  `docs/research/552-empty-repo-and-scaffold-shape.md`
 - **apm never creates a git tag.** Tagging is the human's act; the release
   gates apm offers are `apm pack --check-versions` and `--check-clean`, both
   reading local `apm.yml`/artifact state, never git. →
@@ -409,7 +416,11 @@ against apm 0.26.0, the version this document describes.
   warnings list that `_run_validation_mode` never prints; the
   `All primitives validated successfully!` marker fires over a file that
   failed to parse. Exit 1 only for a missing `apm.yml`, no APM content, or a
-  discovery exception (source). → `docs/research/346-apm-proof-owner.md`
+  discovery exception (source). "No APM content" includes the canonical
+  Harness — a skill at `.apm/skills/<name>/SKILL.md` exits 1 exactly like an
+  empty repo, closing the question #344 left open. →
+  `docs/research/346-apm-proof-owner.md`,
+  `docs/research/552-empty-repo-and-scaffold-shape.md`
 - **Plain `apm compile` overwrites a hand-authored root context file.**
   `--target codex` rewrites `AGENTS.md`; `--target claude` rewrites
   `CLAUDE.md`; both replace existing content with a generated build. Only
