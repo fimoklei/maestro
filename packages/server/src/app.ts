@@ -93,16 +93,17 @@ const removeBodySchema = z.object({
   confirmedRemovalReceipt: consentTokenSchema,
 });
 
-// `previousTag` proves the confirmation is against the plan the author saw,
-// not a blind step: the server refuses when the freshly read remote no
-// longer agrees with it (#520).
+// `previousTag` and `revision` prove the confirmation is against the plan the
+// author saw: the server refuses when the freshly read remote no longer agrees
+// with either, and computes what to tag from its own read (#520, #521).
 const publishReleaseBodySchema = z.object({
   step: z.enum(["major", "minor", "patch"]),
   previousTag: z.string().nullable(),
+  revision: z.string(),
 });
 
 const RELEASE_BODY_MESSAGE =
-  'Expected a JSON body with a version step and the plan\'s previous tag ({ step: "major" | "minor" | "patch", previousTag: string | null }).';
+  'Expected a JSON body with a version step and the plan\'s previous tag and revision ({ step: "major" | "minor" | "patch", previousTag: string | null, revision: string }).';
 
 const PATH_BODY_MESSAGE = "Expected a JSON body with a path.";
 
@@ -429,15 +430,17 @@ const publishReleaseErrorResponses: Record<
     message:
       "Maestro could not reach the remote to confirm this release. Refresh and try again.",
   },
+  // Both are ordinary races, not dead ends: nothing was overwritten, and the
+  // reply carries the recomputed plan the author confirms instead (#521).
   "already-released": {
     status: 409,
     message:
-      "Someone already published this version. Refresh to see the current release, then plan again.",
+      "Someone else took that version first. Check the recomputed plan and confirm again.",
   },
   "plan-changed": {
     status: 409,
     message:
-      "The release plan is out of date — the previous tag has changed since you opened it. Refresh and plan again.",
+      "The remote moved while you were deciding, so this plan no longer stands. Check the recomputed plan and confirm again.",
   },
   "publish-failed": {
     status: 502,
@@ -582,13 +585,17 @@ export function createApp(deps: AppDeps) {
       return body.response;
     }
     const result: PublishReleaseResult = await deps.publish.execute(
-      body.data.step,
-      body.data.previousTag,
+      body.data,
       new Date(),
     );
     if (!result.ok) {
       const { status, message } = publishReleaseErrorResponses[result.error];
-      return c.json({ error: result.error, message }, status);
+      // The refusal carries the plan that replaces it, so the dialog can take
+      // a new confirmation without the author leaving it (#521).
+      return c.json(
+        { error: result.error, message, plan: result.recomputed },
+        status,
+      );
     }
     return c.json({ tag: result.tag, revision: result.revision });
   });
@@ -969,23 +976,27 @@ function realDeps(): AppDeps {
     locks: apmWriteLocks,
     location: deployedLocation,
   });
+  // Same connected clone the inventory reads, canonicalized per call so a
+  // path saved after startup is picked up and a symlinked one is resolved.
+  // Shared by the read and the publish below, so both name the same harness.
+  const harness = new ReadHarnessState({
+    resolveRoot: harnessRoot,
+    git: harnessGit,
+    freshness: harnessFreshness,
+  });
   return {
     registry,
     inventory,
-    // Same connected clone the inventory reads, canonicalized per call so a
-    // path saved after startup is picked up and a symlinked one is resolved.
-    // Shared by the read and the publish below, so both name the same harness.
-    harness: new ReadHarnessState({
-      resolveRoot: harnessRoot,
-      git: harnessGit,
-      freshness: harnessFreshness,
-    }),
+    harness,
     // Confirmation's own remote read, never the plan's cached one — the same
     // harness, git port, and freshness record as the read above (#520).
     publish: new PublishRelease({
       resolveRoot: harnessRoot,
       git: harnessGit,
       freshness: harnessFreshness,
+      // A refused plan answers with the one that replaces it, computed by the
+      // same reader the dialog's own plan request goes through (#521).
+      replan: () => harness.planRelease(),
       // Own lock, not the apm write lock above: a second confirmation for the
       // same harness must wait, not race the first one's push (#520).
       locks: new InFlightLocks(),

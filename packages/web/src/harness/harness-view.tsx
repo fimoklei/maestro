@@ -40,8 +40,12 @@ export function HarnessView() {
     // A failed attempt must not haunt the next time this dialog opens.
     publish.reset();
   };
-  const handlePublish = (step: SemverStep, previousTag: string | null) => {
-    publish.mutate({ step, previousTag }, { onSuccess: closePlan });
+  const handlePublish = (
+    step: SemverStep,
+    previousTag: string | null,
+    revision: string,
+  ) => {
+    publish.mutate({ step, previousTag, revision }, { onSuccess: closePlan });
   };
 
   // Opening the view fetches, the same act the Refresh button repeats. A

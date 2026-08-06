@@ -5,8 +5,11 @@ import {
   type SemverStep,
 } from "./propose-release-version";
 import type {
+  HarnessFetchOutcome,
   HarnessFreshnessPort,
   HarnessGitPort,
+  ReleasePlan,
+  ReleasePlanResult,
 } from "./read-harness-state";
 import { highestReleaseTag } from "./release-tag";
 
@@ -19,15 +22,26 @@ export type PublishReleaseError =
   | "publish-failed"
   | "publish-in-progress";
 
+// What the author's dialog last showed them. Both fields are compared against
+// the freshly read remote, never used as the thing to tag (#520).
+export type ReleaseConfirmation = {
+  step: SemverStep;
+  previousTag: string | null;
+  revision: string;
+};
+
+// `recomputed` turns a refused plan into the next one to confirm rather than a
+// dead end. Absent unless the refs behind it are current (#521).
 export type PublishReleaseResult =
   | { ok: true; tag: string; revision: string }
-  | { ok: false; error: PublishReleaseError };
+  | { ok: false; error: PublishReleaseError; recomputed?: ReleasePlan };
 
 export class PublishRelease {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
     git: HarnessGitPort;
     freshness: HarnessFreshnessPort;
+    replan: () => Promise<ReleasePlanResult>;
     locks: InFlightLocks;
   };
 
@@ -35,14 +49,11 @@ export class PublishRelease {
     this.deps = deps;
   }
 
-  // `previousTag` is what the author's dialog last showed them — the seam a
-  // concurrent teammate's release or a retried confirmation of this very
-  // request would break. One lock per harness turns two overlapping
-  // confirmations into one that runs and one that is told to wait, rather
-  // than two pushes racing for the same version (#520).
+  // The confirmation carries the plan the author saw, so a remote that moved
+  // under it can be told from one that did not. One lock per harness, so two
+  // overlapping confirmations never race for the same version (#520).
   async execute(
-    step: SemverStep,
-    previousTag: string | null,
+    confirmation: ReleaseConfirmation,
     at: Date,
   ): Promise<PublishReleaseResult> {
     const root = await this.deps.resolveRoot();
@@ -51,24 +62,17 @@ export class PublishRelease {
     }
 
     const run = await this.deps.locks.run(root, () =>
-      this.publish(root, step, previousTag, at),
+      this.publish(root, confirmation, at),
     );
     return run.ok ? run.value : { ok: false, error: "publish-in-progress" };
   }
 
   private async publish(
     root: string,
-    step: SemverStep,
-    previousTag: string | null,
+    confirmation: ReleaseConfirmation,
     at: Date,
   ): Promise<PublishReleaseResult> {
-    const outcome = await this.deps.git.fetch(root);
-    const previous = await this.deps.freshness.read(root);
-    await this.deps.freshness.record(root, {
-      outcome,
-      lastFetchedAt:
-        outcome === "fetched" ? at.toISOString() : previous.lastFetchedAt,
-    });
+    const outcome = await this.refetch(root, at);
 
     const facts = await this.deps.git.readFacts(root);
     const origin =
@@ -89,35 +93,79 @@ export class PublishRelease {
     }
 
     const released = highestReleaseTag(facts.tags);
-    // The remote has moved past what the plan priced this against — someone
-    // else released, or an earlier attempt at this same confirmation already
-    // did. Publishing the step blindly would bump a version that no longer
-    // exists (#520).
-    if ((released?.name ?? null) !== previousTag) {
-      return { ok: false, error: "plan-changed" };
-    }
-
     // The delta never travels here: every step's version is a pure function
     // of the previous tag, so the empty movements list changes nothing this
     // reads (#520).
     const { versions } = proposeReleaseVersion(released?.name ?? null, []);
-    const tag = versions[step];
+    const tag = versions[confirmation.step];
+
+    // The three ways the remote can have moved out from under the plan: a
+    // higher tag appeared, the tip advanced, or the version is taken. Each
+    // would publish something other than what the dialog priced (#521).
+    const stale =
+      (released?.name ?? null) !== confirmation.previousTag ||
+      head !== confirmation.revision ||
+      facts.tags.some((existing) => existing.name === tag);
+    if (stale) {
+      // The mismatch was found in refs this call just fetched, so they already
+      // carry the plan that replaces this one.
+      return await this.refuse("plan-changed", true);
+    }
 
     const push = await this.deps.git.publishTag(root, tag, head, branch);
     switch (push) {
       case "pushed":
         return { ok: true, tag, revision: head };
+      // The name was taken between this read and this push: nothing was
+      // overwritten, and nothing about it is terminal.
       case "already-exists":
-        return { ok: false, error: "already-released" };
-      // The branch moved between this confirmation's read and its push, so the
-      // lease refused and nothing was created. Same answer as a plan the
-      // remote has moved past: read again and decide again.
+        return await this.refuse(
+          "already-released",
+          await this.madeCurrent(root, at),
+        );
+      // The lease refused, so `--atomic` created nothing. Same answer as a
+      // plan the remote has moved past: read again and decide again.
       case "stale-tip":
-        return { ok: false, error: "plan-changed" };
+        return await this.refuse(
+          "plan-changed",
+          await this.madeCurrent(root, at),
+        );
       case "offline":
         return { ok: false, error: "no-answer" };
       case "push-failed":
         return { ok: false, error: "publish-failed" };
     }
+  }
+
+  // A refused plan is answered with the plan that replaces it — but only from
+  // refs known to be current. `planRelease` reads local refs and asks only
+  // that something was once fetched, so it cannot notice a stale mirror.
+  private async refuse(
+    error: PublishReleaseError,
+    refsAreCurrent: boolean,
+  ): Promise<PublishReleaseResult> {
+    const replanned = refsAreCurrent ? await this.deps.replan() : null;
+    return replanned?.ok
+      ? { ok: false, error, recomputed: replanned.plan }
+      : { ok: false, error };
+  }
+
+  // A push the remote refused proves the local refs are behind it, so they are
+  // fetched again. False where that fetch found nothing to be current from.
+  private async madeCurrent(root: string, at: Date): Promise<boolean> {
+    return (await this.refetch(root, at)) === "fetched";
+  }
+
+  // Records what this fetch found, so the freshness the screen shows is this
+  // confirmation's own reach at the remote and never the plan's.
+  private async refetch(root: string, at: Date): Promise<HarnessFetchOutcome> {
+    const outcome = await this.deps.git.fetch(root);
+    const previous = await this.deps.freshness.read(root);
+    await this.deps.freshness.record(root, {
+      outcome,
+      lastFetchedAt:
+        outcome === "fetched" ? at.toISOString() : previous.lastFetchedAt,
+    });
+    return outcome;
   }
 }

@@ -15,7 +15,7 @@ import type {
   StructuralProblem,
 } from "@maestro/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { requestJson } from "../api/http";
+import { HttpError, requestJson } from "../api/http";
 
 // Re-exported rather than copied, so the browser's shape cannot drift from the
 // one core defines (architecture.md).
@@ -63,19 +63,20 @@ export function useDiscardReleasePlan() {
   return () => queryClient.removeQueries({ queryKey: RELEASE_PLAN_KEY });
 }
 
-// Confirming a release: the server re-reads the remote and tags the exact
-// commit it finds, so this sends only the chosen step, never a path or a
-// cached revision. `previousTag` travels along so the server can tell a
-// remote that has moved past this plan from one that hasn't — a concurrent
-// teammate's release, or a retry of this very confirmation (#520).
+// Confirming a release. `previousTag` and `revision` are what the server
+// compares the freshly read remote against; neither is ever the thing to tag,
+// and no path travels (#520, #521).
 //
 // The picture afterwards is fetched, never read: the plain read paints from a
-// local tag mirror whose write can fail, and a fetch that fails falls back to
-// it — the release already happened either way.
+// local tag mirror whose write can fail, and the release already happened.
 export function usePublishRelease() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (request: { step: SemverStep; previousTag: string | null }) =>
+    mutationFn: (request: {
+      step: SemverStep;
+      previousTag: string | null;
+      revision: string;
+    }) =>
       requestJson<{ tag: string; revision: string }>("/api/harness/release", {
         method: "POST",
         body: JSON.stringify(request),
@@ -87,8 +88,46 @@ export function usePublishRelease() {
         () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
       );
     },
+    // A refused plan comes back with the one that replaces it. Without a
+    // replacement the old plan is asked for again, never left standing (#521).
+    onError: (error) => {
+      const plan = recomputedPlan(error);
+      if (plan === null) {
+        void queryClient.invalidateQueries({ queryKey: RELEASE_PLAN_KEY });
+        return;
+      }
+      queryClient.setQueryData(RELEASE_PLAN_KEY, plan);
+    },
   });
 }
+
+// Every field the dialog reads, checked before the body is shown as a plan: a
+// reply missing one must read as absent rather than paint a half-empty dialog
+// (security.md).
+function recomputedPlan(error: unknown): ReleasePlan | null {
+  if (!(error instanceof HttpError)) {
+    return null;
+  }
+  const plan = (error.body as { plan?: unknown } | undefined)?.plan;
+  if (plan === null || typeof plan !== "object") {
+    return null;
+  }
+  const shape = plan as Partial<ReleasePlan>;
+  const versions = shape.versions;
+  const complete =
+    typeof shape.revision === "string" &&
+    typeof shape.defaultBranch === "string" &&
+    typeof shape.reason === "string" &&
+    typeof shape.proposedStep === "string" &&
+    (shape.previousTag === null || typeof shape.previousTag === "string") &&
+    Array.isArray(shape.delta) &&
+    Array.isArray(shape.findings) &&
+    versions !== undefined &&
+    STEPS.every((step) => typeof versions[step] === "string");
+  return complete ? (plan as ReleasePlan) : null;
+}
+
+const STEPS: readonly SemverStep[] = ["major", "minor", "patch"];
 
 const fetchHarnessState = () =>
   requestJson<HarnessState>("/api/harness/refresh", { method: "POST" });

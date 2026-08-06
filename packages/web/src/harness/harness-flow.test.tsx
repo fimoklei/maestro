@@ -48,11 +48,20 @@ function stubHarnessServer(options: {
   };
   // A confirmed publish. `afterPublish` on either route is what that route
   // answers once it has gone through, so a test can say which of the two the
-  // quiet state is painted from.
-  publish?: { body: unknown; status?: number };
+  // quiet state is painted from. `retry` answers every call after the first, so
+  // a refusal followed by a retry is one stub.
+  publish?: {
+    body: unknown;
+    status?: number;
+    retry?: { body: unknown; status?: number };
+  };
+  // Every release confirmation's parsed body, in order, so a test can state
+  // what the browser sent without reading it back off the screen.
+  confirmations?: Record<string, unknown>[];
 }) {
   const calls: string[] = [];
   let planCalls = 0;
+  let publishCalls = 0;
   let published = false;
   const answer = (route: { body: unknown; afterPublish?: unknown }) =>
     published && "afterPublish" in route ? route.afterPublish : route.body;
@@ -68,7 +77,11 @@ function stubHarnessServer(options: {
         return jsonResponse(plan.body, plan.status);
       }
       if (url === "/api/harness/release") {
-        const pub = options.publish ?? { body: {}, status: 500 };
+        options.confirmations?.push(JSON.parse(String(init?.body)));
+        const first = options.publish ?? { body: {}, status: 500 };
+        const pub =
+          publishCalls > 0 && first.retry !== undefined ? first.retry : first;
+        publishCalls += 1;
         if ((pub.status ?? 200) < 400) {
           published = true;
         }
@@ -557,6 +570,202 @@ describe("Harness home base", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
     );
     expect(await screen.findByText("v1.3.0")).toBeInTheDocument();
+  });
+
+  // The plan the server recomputes after refusing the one above: a release
+  // further along, priced from the tag that appeared while the author decided.
+  const RECOMPUTED = {
+    ...PLAN,
+    previousTag: "v1.3.0",
+    proposedStep: "patch",
+    reason: "Nothing has changed since the last release.",
+    versions: { major: "v2.0.0", minor: "v1.4.0", patch: "v1.3.1" },
+    revision: "89abcdef0123456789abcdef0123456789abcdef",
+  };
+
+  it("sends the previous tag and revision the plan was priced from", async () => {
+    const confirmations: Record<string, unknown>[] = [];
+    stubHarnessServer({
+      read: { body: FETCHED },
+      plan: { body: PLAN },
+      publish: { body: { tag: "v1.3.0", revision: PLAN.revision } },
+      confirmations,
+    });
+    renderHarness();
+
+    const release = await screen.findByRole("button", { name: /^release$/i });
+    await waitFor(() => expect(release).toBeEnabled());
+    await userEvent.click(release);
+    await screen.findByText("v1.3.0");
+    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+
+    await waitFor(() => expect(confirmations).toHaveLength(1));
+    expect(confirmations[0]).toEqual({
+      step: "minor",
+      previousTag: "v1.2.3",
+      revision: PLAN.revision,
+    });
+  });
+
+  it("shows the recomputed plan in place when the remote moved under the old one", async () => {
+    stubHarnessServer({
+      read: { body: FETCHED },
+      plan: { body: PLAN },
+      publish: {
+        body: {
+          error: "plan-changed",
+          message: "The remote moved while you were deciding.",
+          plan: RECOMPUTED,
+        },
+        status: 409,
+      },
+    });
+    renderHarness();
+
+    const release = await screen.findByRole("button", { name: /^release$/i });
+    await waitFor(() => expect(release).toBeEnabled());
+    await userEvent.click(release);
+    await screen.findByText("v1.3.0");
+    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      await within(dialog).findByText(/the remote moved while you were/i),
+    ).toBeInTheDocument();
+    // The numbers the refusal replaced them with, and none of the old ones.
+    expect(within(dialog).getByText("v1.3.1")).toBeInTheDocument();
+    expect(within(dialog).getByText("v1.3.0")).toBeInTheDocument();
+    expect(within(dialog).queryByText(PLAN.revision)).not.toBeInTheDocument();
+  });
+
+  it("drops the author's old step choice with the plan it belonged to", async () => {
+    // "major" against v1.2.3 is v2.0.0; against the recomputed v1.3.0 it is a
+    // different release entirely. Carrying the choice over would confirm a
+    // version the author never picked (#521).
+    stubHarnessServer({
+      read: { body: FETCHED },
+      plan: { body: PLAN },
+      publish: {
+        body: {
+          error: "plan-changed",
+          message: "The remote moved while you were deciding.",
+          plan: RECOMPUTED,
+        },
+        status: 409,
+      },
+    });
+    renderHarness();
+
+    const release = await screen.findByRole("button", { name: /^release$/i });
+    await waitFor(() => expect(release).toBeEnabled());
+    await userEvent.click(release);
+    await screen.findByText("v1.3.0");
+    await userEvent.click(screen.getByRole("button", { name: /^major$/i }));
+    expect(await screen.findByText("v2.0.0")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+
+    // Back on the recomputed plan's own proposal, not the old choice's v2.0.0.
+    expect(await screen.findByText("v1.3.1")).toBeInTheDocument();
+    expect(screen.queryByText("v2.0.0")).not.toBeInTheDocument();
+  });
+
+  it("confirms the recomputed plan without reopening the dialog", async () => {
+    const confirmations: Record<string, unknown>[] = [];
+    stubHarnessServer({
+      read: { body: FETCHED },
+      refresh: {
+        body: FETCHED,
+        afterPublish: { ...RELEASED, releasedVersion: "v1.3.1" },
+      },
+      plan: { body: PLAN },
+      publish: {
+        body: {
+          error: "plan-changed",
+          message: "The remote moved while you were deciding.",
+          plan: RECOMPUTED,
+        },
+        status: 409,
+        retry: { body: { tag: "v1.3.1", revision: RECOMPUTED.revision } },
+      },
+      confirmations,
+    });
+    renderHarness();
+
+    const release = await screen.findByRole("button", { name: /^release$/i });
+    await waitFor(() => expect(release).toBeEnabled());
+    await userEvent.click(release);
+    await screen.findByText("v1.3.0");
+    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+    await screen.findByText("v1.3.1");
+
+    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(confirmations[1]).toEqual({
+      step: "patch",
+      previousTag: "v1.3.0",
+      revision: RECOMPUTED.revision,
+    });
+  });
+
+  it("plans again when a refusal carries no recomputed plan", async () => {
+    // The recompute had no answer of its own. The old numbers must not stand:
+    // the dialog asks for a new plan rather than showing a refused one.
+    const calls = stubHarnessServer({
+      read: { body: FETCHED },
+      plan: { body: PLAN },
+      publish: {
+        body: {
+          error: "plan-changed",
+          message: "The remote moved while you were deciding.",
+        },
+        status: 409,
+      },
+    });
+    renderHarness();
+
+    const release = await screen.findByRole("button", { name: /^release$/i });
+    await waitFor(() => expect(release).toBeEnabled());
+    await userEvent.click(release);
+    await screen.findByText("v1.3.0");
+    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+
+    await waitFor(() =>
+      expect(
+        calls.filter((call) => call.includes("/api/harness/release-plan")),
+      ).toHaveLength(2),
+    );
+  });
+
+  it("plans again rather than paint a refusal's half-shaped plan", async () => {
+    const calls = stubHarnessServer({
+      read: { body: FETCHED },
+      plan: { body: PLAN },
+      publish: {
+        body: {
+          error: "plan-changed",
+          message: "The remote moved while you were deciding.",
+          plan: { ...RECOMPUTED, versions: undefined },
+        },
+        status: 409,
+      },
+    });
+    renderHarness();
+
+    const release = await screen.findByRole("button", { name: /^release$/i });
+    await waitFor(() => expect(release).toBeEnabled());
+    await userEvent.click(release);
+    await screen.findByText("v1.3.0");
+    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+
+    await waitFor(() =>
+      expect(
+        calls.filter((call) => call.includes("/api/harness/release-plan")),
+      ).toHaveLength(2),
+    );
   });
 
   it("keeps the dialog open and states a failed publish as a readable error", async () => {

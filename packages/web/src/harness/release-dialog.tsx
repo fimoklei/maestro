@@ -43,7 +43,11 @@ export function ReleaseDialog({
   origin: string;
   load: ReleasePlanLoad;
   onClose: () => void;
-  onPublish: (step: SemverStep, previousTag: string | null) => void;
+  onPublish: (
+    step: SemverStep,
+    previousTag: string | null,
+    revision: string,
+  ) => void;
   publishing: boolean;
   publishError: string | null;
 }) {
@@ -55,9 +59,21 @@ export function ReleaseDialog({
   // `null` until the author overrides it; the proposal fills in until then, so
   // one state serves both the display and what Publish sends.
   const [chosenStep, setChosenStep] = useState<SemverStep | null>(null);
+  // A step chosen against one previous tag names a different release under
+  // the recomputed one, so the choice is dropped with the plan it belonged
+  // to (#521).
+  const planId =
+    load.kind === "ready"
+      ? `${load.plan.previousTag}@${load.plan.revision}`
+      : null;
+  const [shownPlanId, setShownPlanId] = useState(planId);
+  if (planId !== shownPlanId) {
+    setShownPlanId(planId);
+    setChosenStep(null);
+  }
   const step =
     load.kind === "ready" ? (chosenStep ?? load.plan.proposedStep) : null;
-  const previousTag = load.kind === "ready" ? load.plan.previousTag : null;
+  const plan = load.kind === "ready" ? load.plan : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 p-6">
@@ -117,8 +133,12 @@ export function ReleaseDialog({
             className="shrink-0"
             variant="primary"
             size="sm"
-            disabled={step === null || publishing}
-            onClick={() => step !== null && onPublish(step, previousTag)}
+            disabled={step === null || plan === null || publishing}
+            onClick={() =>
+              step !== null &&
+              plan !== null &&
+              onPublish(step, plan.previousTag, plan.revision)
+            }
           >
             {publishing ? "publishing…" : "publish"}
           </Button>
