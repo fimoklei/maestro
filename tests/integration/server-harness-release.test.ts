@@ -90,7 +90,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
         resolveRoot,
         git: new HarnessGitAdapter(),
         freshness: new HarnessFreshnessStore({ store }),
-        replan: () => harness.planRelease(),
+        replan: (root) => harness.planReleaseAt(root),
         locks: new InFlightLocks(),
       }),
       deployState: stubDeployState({ fs }),
@@ -138,6 +138,24 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
     await git(root, "config", "remote.origin.receivepack", script);
   };
 
+  // Exactly what the dialog holds and echoes back: the three fields the
+  // confirmation is checked against. Captured before a race is staged, so a
+  // test sends the plan the author actually saw.
+  const capturePlan = async (app: ReturnType<typeof makeApp>) => {
+    const plan = (await (
+      await app.request("/api/harness/release-plan")
+    ).json()) as {
+      previousTag: string | null;
+      previousTagCommit: string | null;
+      revision: string;
+    };
+    return {
+      previousTag: plan.previousTag,
+      previousTagCommit: plan.previousTagCommit,
+      revision: plan.revision,
+    };
+  };
+
   it("confirms a patch release at the freshly read revision", async () => {
     const app = makeApp(root);
     await app.request("/api/harness/refresh", { method: "POST" });
@@ -145,8 +163,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
 
     const res = await publish(app, {
       step: "patch",
-      previousTag: "v0.1.0",
-      revision: head,
+      ...(await capturePlan(app)),
     });
 
     expect(res.status).toBe(200);
@@ -165,8 +182,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
 
     await publish(app, {
       step: "patch",
-      previousTag: "v0.1.0",
-      revision: await headOf(root),
+      ...(await capturePlan(app)),
     });
     const res = await app.request("/api/harness");
 
@@ -185,8 +201,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
 
     await publish(app, {
       step: "patch",
-      previousTag: "v0.1.0",
-      revision: before,
+      ...(await capturePlan(app)),
     });
 
     expect((await git(root, "rev-parse", "HEAD")).stdout.trim()).toBe(before);
@@ -201,8 +216,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
 
     const res = await publish(app, {
       step: "patch",
-      previousTag: "v0.1.0",
-      revision: await headOf(root),
+      ...(await capturePlan(app)),
       path: "/etc",
     });
 
@@ -216,6 +230,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
     const res = await publish(app, {
       step: "sideways",
       previousTag: "v0.1.0",
+      previousTagCommit: await headOf(root),
       revision: await headOf(root),
     });
 
@@ -241,6 +256,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
     const res = await publish(app, {
       step: "patch",
       previousTag: "v9.9.9",
+      previousTagCommit: await headOf(root),
       revision: await headOf(root),
     });
 
@@ -255,6 +271,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
     const res = await publish(app, {
       step: "patch",
       previousTag: "v0.1.0",
+      previousTagCommit: "0".repeat(40),
       revision: "0".repeat(40),
     });
 
@@ -270,13 +287,17 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
     type Refusal = {
       error: string;
       message: string;
-      plan?: { previousTag: string | null; revision: string };
+      plan?: {
+        previousTag: string | null;
+        previousTagCommit: string | null;
+        revision: string;
+      };
     };
 
     it("refuses a plan the branch tip has moved past, and recomputes it", async () => {
       const app = makeApp(root);
       await app.request("/api/harness/refresh", { method: "POST" });
-      const planned = await headOf(root);
+      const plan = await capturePlan(app);
       const other = await teammate();
       await writeFile(join(other, "theirs.md"), "theirs\n", "utf8");
       await git(other, "add", ".");
@@ -285,8 +306,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
 
       const res = await publish(app, {
         step: "patch",
-        previousTag: "v0.1.0",
-        revision: planned,
+        ...plan,
       });
 
       expect(res.status).toBe(409);
@@ -301,15 +321,14 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
     it("refuses a plan a higher tag appeared under, and recomputes from that tag", async () => {
       const app = makeApp(root);
       await app.request("/api/harness/refresh", { method: "POST" });
-      const planned = await headOf(root);
+      const plan = await capturePlan(app);
       const other = await teammate();
       await git(other, "tag", "v0.2.0");
       await git(other, "push", "--tags", "origin");
 
       const res = await publish(app, {
         step: "patch",
-        previousTag: "v0.1.0",
-        revision: planned,
+        ...plan,
       });
 
       expect(res.status).toBe(409);
@@ -318,20 +337,46 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
       expect(body.plan?.previousTag).toBe("v0.2.0");
     });
 
+    it("refuses a plan whose previous tag was force-moved under the same name", async () => {
+      // The version numbers all still line up — only the commit the previous
+      // release points at has changed, and with it the delta the author read.
+      const app = makeApp(root);
+      await app.request("/api/harness/refresh", { method: "POST" });
+      const plan = await capturePlan(app);
+      const other = await teammate();
+      await git(other, "checkout", "-b", "side");
+      await writeFile(join(other, "side.md"), "side\n", "utf8");
+      await git(other, "add", ".");
+      await git(other, "commit", "-m", "side commit");
+      await git(other, "tag", "-f", "v0.1.0");
+      await git(other, "push", "--force", "origin", "HEAD:refs/heads/side");
+      await git(other, "push", "--force", "--tags", "origin");
+
+      const res = await publish(app, { step: "patch", ...plan });
+
+      expect(res.status).toBe(409);
+      const body = (await res.json()) as Refusal;
+      expect(body.error).toBe("plan-changed");
+      expect(body.plan?.previousTag).toBe("v0.1.0");
+      expect(body.plan?.previousTagCommit).toBe(await headOf(other));
+      await expect(
+        git(remote, "rev-parse", "refs/tags/v0.1.1"),
+      ).rejects.toThrow();
+    });
+
     it("refuses a confirmation whose own version the remote already carries", async () => {
       // The tag the plan proposes is taken, but the tip has not moved: the
       // fetch at confirmation time sees it, so the push is never asked.
       const app = makeApp(root);
       await app.request("/api/harness/refresh", { method: "POST" });
-      const planned = await headOf(root);
+      const plan = await capturePlan(app);
       const other = await teammate();
       await git(other, "tag", "v0.1.1");
       await git(other, "push", "--tags", "origin");
 
       const res = await publish(app, {
         step: "patch",
-        previousTag: "v0.1.0",
-        revision: planned,
+        ...plan,
       });
 
       expect(res.status).toBe(409);
@@ -357,7 +402,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
 
       const app = makeApp(root);
       await app.request("/api/harness/refresh", { method: "POST" });
-      const planned = await headOf(root);
+      const plan = await capturePlan(app);
       // The remote takes the name mid-push, after this confirmation's own
       // fetch has already answered. Only a hook inside the push can stage
       // that: no read, however fresh, can see it coming.
@@ -365,8 +410,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
 
       const res = await publish(app, {
         step: "patch",
-        previousTag: "v0.1.0",
-        revision: planned,
+        ...plan,
       });
 
       expect(res.status).toBe(409);
@@ -386,6 +430,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
       const res = await publish(app, {
         step: "patch",
         previousTag: "v9.9.9",
+        previousTagCommit: await headOf(root),
         revision: await headOf(root),
       });
 
@@ -420,8 +465,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
 
       const res = await publish(app, {
         step: "patch",
-        previousTag: "v0.1.0",
-        revision: before,
+        ...(await capturePlan(app)),
       });
 
       expect(res.status).toBe(502);
@@ -466,8 +510,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
 
       const res = await publish(app, {
         step: "patch",
-        previousTag: "v0.1.0",
-        revision: head,
+        ...(await capturePlan(app)),
       });
 
       expect(res.status).toBe(200);
@@ -500,8 +543,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
 
       const res = await publish(app, {
         step: "patch",
-        previousTag: "v0.4.0",
-        revision: head,
+        ...(await capturePlan(app)),
       });
 
       expect(res.status).toBe(200);
@@ -523,6 +565,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
       const res = await publish(app, {
         step: "patch",
         previousTag: "v0.1.0",
+        previousTagCommit: await headOf(root),
         revision: await headOf(root),
       });
 

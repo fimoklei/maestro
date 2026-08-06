@@ -28,6 +28,7 @@ const FRESHNESS: HarnessFreshness = {
 const RECOMPUTED: ReleasePlan = {
   delta: [],
   previousTag: "v1.3.0",
+  previousTagCommit: "moved",
   proposedStep: "patch",
   reason: "Nothing has changed since the last release.",
   versions: { major: "v2.0.0", minor: "v1.4.0", patch: "v1.3.1" },
@@ -41,6 +42,7 @@ const RECOMPUTED: ReleasePlan = {
 const CONFIRMED: ReleaseConfirmation = {
   step: "patch",
   previousTag: "v1.2.3",
+  previousTagCommit: "old",
   revision: "head",
 };
 
@@ -57,7 +59,7 @@ function buildPublish(overrides?: {
   onPublishTag?: (name: string, commit: string, branch: string) => void;
   onFreshnessRecord?: (root: string, freshness: HarnessFreshness) => void;
   onFetch?: () => void;
-  replan?: () => Promise<ReleasePlanResult>;
+  replan?: (root: string) => Promise<ReleasePlanResult>;
   locks?: InFlightLocks;
 }) {
   let fetches = 0;
@@ -177,7 +179,15 @@ describe("PublishRelease", () => {
     const publish = buildPublish({ facts: { tags: [] } });
 
     await expect(
-      publish.execute({ ...CONFIRMED, step: "minor", previousTag: null }, AT),
+      publish.execute(
+        {
+          ...CONFIRMED,
+          step: "minor",
+          previousTag: null,
+          previousTagCommit: null,
+        },
+        AT,
+      ),
     ).resolves.toEqual({
       ok: true,
       tag: "v0.1.0",
@@ -278,6 +288,24 @@ describe("PublishRelease", () => {
     expect(calls).toEqual([]);
   });
 
+  it("refuses a plan whose previous tag was force-moved to another commit", async () => {
+    // The name is unchanged, so nothing about the version looks stale — but
+    // the delta the author read was computed from where that tag used to
+    // point. Publishing it would ship a comparison nobody reviewed (#521).
+    const calls: string[] = [];
+    const publish = buildPublish({
+      facts: { tags: [{ name: "v1.2.3", commit: "moved" }] },
+      onPublishTag: (name) => calls.push(name),
+    });
+
+    await expect(publish.execute(CONFIRMED, AT)).resolves.toEqual({
+      ok: false,
+      error: "plan-changed",
+      recomputed: RECOMPUTED,
+    });
+    expect(calls).toEqual([]);
+  });
+
   it("refuses a plan whose proposed version the remote already carries", async () => {
     // A tag the fetch already shows is not this release to make, whatever the
     // highest tag says. Refused here, so the push is never asked (#521).
@@ -345,6 +373,23 @@ describe("PublishRelease", () => {
       ok: false,
       error: "plan-changed",
     });
+  });
+
+  it("recomputes against the harness it locked, not whichever is connected now", async () => {
+    // Connecting a second harness mid-flight must not let a refusal for one
+    // repository answer with a plan for another (#521).
+    const roots: string[] = [];
+    const publish = buildPublish({
+      publishTagOutcome: "stale-tip",
+      replan: async (root) => {
+        roots.push(root);
+        return { ok: true, plan: RECOMPUTED };
+      },
+    });
+
+    await publish.execute(CONFIRMED, AT);
+
+    expect(roots).toEqual(["/harness"]);
   });
 
   it("still refuses when the recompute itself has no answer", async () => {

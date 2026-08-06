@@ -75,6 +75,7 @@ export function usePublishRelease() {
     mutationFn: (request: {
       step: SemverStep;
       previousTag: string | null;
+      previousTagCommit: string | null;
       revision: string;
     }) =>
       requestJson<{ tag: string; revision: string }>("/api/harness/release", {
@@ -101,9 +102,9 @@ export function usePublishRelease() {
   });
 }
 
-// Every field the dialog reads, checked before the body is shown as a plan: a
-// reply missing one must read as absent rather than paint a half-empty dialog
-// (security.md).
+// Every field the dialog reads, down to each list element: a reply the dialog
+// would crash on or render half-blank must read as absent, so the author is
+// asked for a fresh plan instead (security.md).
 function recomputedPlan(error: unknown): ReleasePlan | null {
   if (!(error instanceof HttpError)) {
     return null;
@@ -118,16 +119,52 @@ function recomputedPlan(error: unknown): ReleasePlan | null {
     typeof shape.revision === "string" &&
     typeof shape.defaultBranch === "string" &&
     typeof shape.reason === "string" &&
-    typeof shape.proposedStep === "string" &&
-    (shape.previousTag === null || typeof shape.previousTag === "string") &&
-    Array.isArray(shape.delta) &&
-    Array.isArray(shape.findings) &&
+    isOneOf(shape.proposedStep, STEPS) &&
+    isNullableString(shape.previousTag) &&
+    isNullableString(shape.previousTagCommit) &&
     versions !== undefined &&
-    STEPS.every((step) => typeof versions[step] === "string");
+    versions !== null &&
+    STEPS.every((step) => typeof versions[step] === "string") &&
+    isArrayOf(shape.delta, isMovement) &&
+    isArrayOf(shape.findings, isFinding);
   return complete ? (plan as ReleasePlan) : null;
 }
 
-const STEPS: readonly SemverStep[] = ["major", "minor", "patch"];
+const STEPS = ["major", "minor", "patch"] as const;
+const MOVEMENT_KINDS = ["added", "changed", "removed", "renamed"] as const;
+const PROBLEMS = [
+  "missing-manifest",
+  "invalid-frontmatter",
+  "empty-description",
+] as const;
+
+const isOneOf = <T extends string>(
+  value: unknown,
+  allowed: readonly T[],
+): boolean => allowed.includes(value as T);
+
+const isNullableString = (value: unknown): boolean =>
+  value === null || typeof value === "string";
+
+const isArrayOf = (
+  value: unknown,
+  element: (entry: Record<string, unknown>) => boolean,
+): boolean =>
+  Array.isArray(value) &&
+  value.every(
+    (entry) =>
+      entry !== null &&
+      typeof entry === "object" &&
+      element(entry as Record<string, unknown>),
+  );
+
+const isMovement = (entry: Record<string, unknown>): boolean =>
+  isOneOf(entry.kind, MOVEMENT_KINDS) &&
+  typeof entry.name === "string" &&
+  isNullableString(entry.author);
+
+const isFinding = (entry: Record<string, unknown>): boolean =>
+  typeof entry.skill === "string" && isOneOf(entry.problem, PROBLEMS);
 
 const fetchHarnessState = () =>
   requestJson<HarnessState>("/api/harness/refresh", { method: "POST" });

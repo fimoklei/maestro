@@ -99,11 +99,12 @@ const removeBodySchema = z.object({
 const publishReleaseBodySchema = z.object({
   step: z.enum(["major", "minor", "patch"]),
   previousTag: z.string().nullable(),
+  previousTagCommit: z.string().nullable(),
   revision: z.string(),
 });
 
 const RELEASE_BODY_MESSAGE =
-  'Expected a JSON body with a version step and the plan\'s previous tag and revision ({ step: "major" | "minor" | "patch", previousTag: string | null, revision: string }).';
+  'Expected a JSON body with a version step and the plan\'s previous tag, that tag\'s commit, and its revision ({ step: "major" | "minor" | "patch", previousTag: string | null, previousTagCommit: string | null, revision: string }).';
 
 const PATH_BODY_MESSAGE = "Expected a JSON body with a path.";
 
@@ -994,9 +995,9 @@ function realDeps(): AppDeps {
       resolveRoot: harnessRoot,
       git: harnessGit,
       freshness: harnessFreshness,
-      // A refused plan answers with the one that replaces it, computed by the
-      // same reader the dialog's own plan request goes through (#521).
-      replan: () => harness.planRelease(),
+      // Bound to the root the publication already resolved and locked, so a
+      // harness connected mid-flight cannot answer for it (#521).
+      replan: (root) => harness.planReleaseAt(root),
       // Own lock, not the apm write lock above: a second confirmation for the
       // same harness must wait, not race the first one's push (#520).
       locks: new InFlightLocks(),

@@ -10,6 +10,7 @@ const PLAN: ReleasePlan = {
     { kind: "changed", name: "tdd", author: "Ada" },
   ],
   previousTag: "v1.2.3",
+  previousTagCommit: "fedcba9876543210fedcba9876543210fedcba98",
   proposedStep: "minor",
   reason: "A skill was added.",
   versions: { major: "v2.0.0", minor: "v1.3.0", patch: "v1.2.4" },
@@ -135,7 +136,7 @@ describe("ReleaseDialog", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
 
-    expect(onPublish).toHaveBeenCalledWith("minor", "v1.2.3", PLAN.revision);
+    expect(onPublish).toHaveBeenCalledWith("minor", PLAN);
   });
 
   it("publishes the step the author chose, not the proposal", async () => {
@@ -145,7 +146,7 @@ describe("ReleaseDialog", () => {
     await userEvent.click(screen.getByRole("button", { name: "major" }));
     await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
 
-    expect(onPublish).toHaveBeenCalledWith("major", "v1.2.3", PLAN.revision);
+    expect(onPublish).toHaveBeenCalledWith("major", PLAN);
   });
 
   it("drops the author's step choice when the plan underneath it is replaced", async () => {
@@ -159,6 +160,7 @@ describe("ReleaseDialog", () => {
     const recomputed: ReleasePlan = {
       ...PLAN,
       previousTag: "v1.3.0",
+      previousTagCommit: "1111111111111111111111111111111111111111",
       proposedStep: "patch",
       versions: { major: "v2.0.0", minor: "v1.4.0", patch: "v1.3.1" },
       revision: "89abcdef0123456789abcdef0123456789abcdef",
@@ -175,11 +177,7 @@ describe("ReleaseDialog", () => {
     );
 
     await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
-    expect(onPublish).toHaveBeenCalledWith(
-      "patch",
-      "v1.3.0",
-      recomputed.revision,
-    );
+    expect(onPublish).toHaveBeenCalledWith("patch", recomputed);
   });
 
   it("disables publish and says so while a release is in flight", () => {

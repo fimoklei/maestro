@@ -22,11 +22,12 @@ export type PublishReleaseError =
   | "publish-failed"
   | "publish-in-progress";
 
-// What the author's dialog last showed them. Both fields are compared against
+// What the author's dialog last showed them. Every field is compared against
 // the freshly read remote, never used as the thing to tag (#520).
 export type ReleaseConfirmation = {
   step: SemverStep;
   previousTag: string | null;
+  previousTagCommit: string | null;
   revision: string;
 };
 
@@ -41,7 +42,10 @@ export class PublishRelease {
     resolveRoot: () => Promise<string | undefined>;
     git: HarnessGitPort;
     freshness: HarnessFreshnessPort;
-    replan: () => Promise<ReleasePlanResult>;
+    // Takes the root this publication already resolved and locked, so a
+    // harness connected mid-flight can never answer for the one being
+    // published (#521).
+    replan: (root: string) => Promise<ReleasePlanResult>;
     locks: InFlightLocks;
   };
 
@@ -99,17 +103,18 @@ export class PublishRelease {
     const { versions } = proposeReleaseVersion(released?.name ?? null, []);
     const tag = versions[confirmation.step];
 
-    // The three ways the remote can have moved out from under the plan: a
-    // higher tag appeared, the tip advanced, or the version is taken. Each
-    // would publish something other than what the dialog priced (#521).
+    // Every way the remote can have moved out from under the plan: a higher
+    // tag appeared, the previous one was force-moved, the tip advanced, or the
+    // version is taken. Each publishes something the dialog never priced.
     const stale =
       (released?.name ?? null) !== confirmation.previousTag ||
+      (released?.commit ?? null) !== confirmation.previousTagCommit ||
       head !== confirmation.revision ||
       facts.tags.some((existing) => existing.name === tag);
     if (stale) {
       // The mismatch was found in refs this call just fetched, so they already
       // carry the plan that replaces this one.
-      return await this.refuse("plan-changed", true);
+      return await this.refuse(root, "plan-changed", true);
     }
 
     const push = await this.deps.git.publishTag(root, tag, head, branch);
@@ -120,6 +125,7 @@ export class PublishRelease {
       // overwritten, and nothing about it is terminal.
       case "already-exists":
         return await this.refuse(
+          root,
           "already-released",
           await this.madeCurrent(root, at),
         );
@@ -127,6 +133,7 @@ export class PublishRelease {
       // plan the remote has moved past: read again and decide again.
       case "stale-tip":
         return await this.refuse(
+          root,
           "plan-changed",
           await this.madeCurrent(root, at),
         );
@@ -141,10 +148,11 @@ export class PublishRelease {
   // refs known to be current. `planRelease` reads local refs and asks only
   // that something was once fetched, so it cannot notice a stale mirror.
   private async refuse(
+    root: string,
     error: PublishReleaseError,
     refsAreCurrent: boolean,
   ): Promise<PublishReleaseResult> {
-    const replanned = refsAreCurrent ? await this.deps.replan() : null;
+    const replanned = refsAreCurrent ? await this.deps.replan(root) : null;
     return replanned?.ok
       ? { ok: false, error, recomputed: replanned.plan }
       : { ok: false, error };

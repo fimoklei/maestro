@@ -138,6 +138,9 @@ export type HarnessStateResult =
 export type ReleasePlan = {
   delta: PendingSkillMovement[];
   previousTag: string | null;
+  // Where that tag pointed when the delta was computed. A tag force-moved
+  // under an unchanged name would otherwise price a release nobody read.
+  previousTagCommit: string | null;
   proposedStep: SemverStep;
   reason: string;
   versions: Record<SemverStep, string>;
@@ -226,6 +229,13 @@ export class ReadHarnessState {
     if (root === undefined) {
       return { ok: false, error: "not-configured" };
     }
+    return await this.planReleaseAt(root);
+  }
+
+  // The same plan against a root the caller already resolved and holds. A
+  // refused publication recomputes through here, so its answer can never come
+  // from a harness that was connected while its own push was in flight (#521).
+  async planReleaseAt(root: string): Promise<ReleasePlanResult> {
     const facts = await this.deps.git.readFacts(root);
     const freshness = await this.deps.freshness.read(root);
     const origin =
@@ -272,6 +282,10 @@ export class ReadHarnessState {
         // The proposal's own reading of the tag, so the dialog never names a
         // previous release the version was not computed from.
         previousTag: proposal.previousTag,
+        // Null wherever the proposal found no tag to bump from, so the two
+        // fields always describe the same release.
+        previousTagCommit:
+          proposal.previousTag === null ? null : (released?.commit ?? null),
         proposedStep: proposal.proposedStep,
         reason: proposal.reason,
         versions: proposal.versions,

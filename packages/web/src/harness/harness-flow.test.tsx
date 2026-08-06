@@ -429,6 +429,7 @@ describe("Harness home base", () => {
   const PLAN = {
     delta: [{ kind: "added", name: "research", author: "Grace" }],
     previousTag: "v1.2.3",
+    previousTagCommit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     proposedStep: "minor",
     reason: "A skill was added.",
     versions: { major: "v2.0.0", minor: "v1.3.0", patch: "v1.2.4" },
@@ -577,6 +578,7 @@ describe("Harness home base", () => {
   const RECOMPUTED = {
     ...PLAN,
     previousTag: "v1.3.0",
+    previousTagCommit: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     proposedStep: "patch",
     reason: "Nothing has changed since the last release.",
     versions: { major: "v2.0.0", minor: "v1.4.0", patch: "v1.3.1" },
@@ -603,6 +605,7 @@ describe("Harness home base", () => {
     expect(confirmations[0]).toEqual({
       step: "minor",
       previousTag: "v1.2.3",
+      previousTagCommit: PLAN.previousTagCommit,
       revision: PLAN.revision,
     });
   });
@@ -707,6 +710,7 @@ describe("Harness home base", () => {
     expect(confirmations[1]).toEqual({
       step: "patch",
       previousTag: "v1.3.0",
+      previousTagCommit: RECOMPUTED.previousTagCommit,
       revision: RECOMPUTED.revision,
     });
   });
@@ -740,7 +744,13 @@ describe("Harness home base", () => {
     );
   });
 
-  it("plans again rather than paint a refusal's half-shaped plan", async () => {
+  // Three shapes the dialog would crash on or render blank. Each must read as
+  // "no recomputed plan" and send the author back for a fresh one (#521).
+  it.each([
+    ["a missing version map", { versions: undefined }],
+    ["a movement that is not one", { delta: [null] }],
+    ["a step the dialog has no version for", { proposedStep: "sideways" }],
+  ])("plans again rather than paint %s", async (_name, broken) => {
     const calls = stubHarnessServer({
       read: { body: FETCHED },
       plan: { body: PLAN },
@@ -748,7 +758,7 @@ describe("Harness home base", () => {
         body: {
           error: "plan-changed",
           message: "The remote moved while you were deciding.",
-          plan: { ...RECOMPUTED, versions: undefined },
+          plan: { ...RECOMPUTED, ...broken },
         },
         status: 409,
       },

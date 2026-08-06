@@ -43,11 +43,7 @@ export function ReleaseDialog({
   origin: string;
   load: ReleasePlanLoad;
   onClose: () => void;
-  onPublish: (
-    step: SemverStep,
-    previousTag: string | null,
-    revision: string,
-  ) => void;
+  onPublish: (step: SemverStep, plan: ReleasePlan) => void;
   publishing: boolean;
   publishError: string | null;
 }) {
@@ -64,7 +60,11 @@ export function ReleaseDialog({
   // to (#521).
   const planId =
     load.kind === "ready"
-      ? `${load.plan.previousTag}@${load.plan.revision}`
+      ? [
+          load.plan.previousTag,
+          load.plan.previousTagCommit,
+          load.plan.revision,
+        ].join("@")
       : null;
   const [shownPlanId, setShownPlanId] = useState(planId);
   if (planId !== shownPlanId) {
@@ -135,9 +135,7 @@ export function ReleaseDialog({
             size="sm"
             disabled={step === null || plan === null || publishing}
             onClick={() =>
-              step !== null &&
-              plan !== null &&
-              onPublish(step, plan.previousTag, plan.revision)
+              step !== null && plan !== null && onPublish(step, plan)
             }
           >
             {publishing ? "publishing…" : "publish"}
