@@ -1,14 +1,15 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { InventoryPanel } from "./inventory-panel";
 
-// Deploy moved from the row into the detail pane (ADR-0016), so the deploy control
-// only exists once a skill's row is selected. Opening the pane is the precondition
-// for asserting anything about that control.
+// Deploy moved from the row into the detail pane (ADR-0016), so opening the pane
+// is the precondition for asserting anything about its deploy control. Returns
+// the pane's scope — the standing strip above the table shares its labels (#473).
 async function openPane(name: string) {
   await userEvent.click(await screen.findByRole("button", { name }));
+  return within(await screen.findByRole("complementary"));
 }
 
 afterEach(() => {
@@ -124,10 +125,10 @@ describe("InventoryPanel", () => {
     );
     renderPanel();
 
-    await openPane("tdd");
+    const pane = await openPane("tdd");
 
     expect(await screen.findByLabelText(/deploy tdd to/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /deploy/i })).toBeEnabled();
+    expect(pane.getByRole("button", { name: /deploy/i })).toBeEnabled();
   });
 
   it("disables the deploy action while the registry is still loading", async () => {
@@ -150,10 +151,10 @@ describe("InventoryPanel", () => {
     );
     renderPanel();
 
-    await openPane("tdd");
+    const pane = await openPane("tdd");
 
     expect(
-      await screen.findByRole("button", { name: /loading targets/i }),
+      await pane.findByRole("button", { name: /loading targets/i }),
     ).toBeDisabled();
   });
 
@@ -201,10 +202,10 @@ describe("InventoryPanel", () => {
     );
     renderPanel();
 
-    await openPane("tdd");
+    const pane = await openPane("tdd");
 
     expect(
-      await screen.findByRole("button", { name: /loading targets/i }),
+      await pane.findByRole("button", { name: /loading targets/i }),
     ).toBeDisabled();
   });
 

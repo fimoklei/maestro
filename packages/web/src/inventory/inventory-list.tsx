@@ -75,6 +75,8 @@ export function InventoryList({
   // A ref map, not one ref: the pane instance persists across a row switch,
   // so the trigger is looked up fresh per selection (skill-detail-pane.tsx).
   const rowButtonRefs = useRef(new Map<string, HTMLButtonElement>());
+  // Where the standing deploy control sends an empty-handed run (#473).
+  const stageBoxRefs = useRef(new Map<string, HTMLInputElement>());
   const getTriggerElement = useCallback(
     (name: string) => rowButtonRefs.current.get(name) ?? null,
     [],
@@ -153,14 +155,16 @@ export function InventoryList({
           onChange={setFilter}
         />
       </div>
-      {staged.size > 0 ? (
-        <BulkDeployBar
-          stagedNames={[...staged]}
-          hiddenCount={hiddenCount}
-          repos={repos}
-          registryReady={registryReady}
-        />
-      ) : null}
+      <BulkDeployBar
+        stagedNames={[...staged]}
+        hiddenCount={hiddenCount}
+        repos={repos}
+        registryReady={registryReady}
+        onPickSkills={() => {
+          const first = visible[0];
+          if (first) stageBoxRefs.current.get(first.name)?.focus();
+        }}
+      />
       {/* Real scrollbar below the table's floor, never a silent clip. Named
           and focusable (WCAG 2.1.1). */}
       <section
@@ -232,6 +236,10 @@ export function InventoryList({
                       onClick={(event) => event.stopPropagation()}
                     >
                       <input
+                        ref={(el) => {
+                          if (el) stageBoxRefs.current.set(primitive.name, el);
+                          else stageBoxRefs.current.delete(primitive.name);
+                        }}
                         type="checkbox"
                         checked={staged.has(primitive.name)}
                         onChange={() => toggleStagedName(primitive.name)}
