@@ -24,6 +24,7 @@ export function stubPublish(): PublishRelease {
       read: async () => ({ outcome: null, lastFetchedAt: null }),
       record: async () => {},
     },
+    replan: unreachable,
     locks: new InFlightLocks(),
   });
 }

@@ -12,7 +12,7 @@ import {
 import { MovementTable } from "./movement-table";
 import { PendingRelease } from "./pending-release";
 import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
-import type { SemverStep } from "./use-harness";
+import type { ReleasePlan, SemverStep } from "./use-harness";
 import {
   useDiscardReleasePlan,
   useHarness,
@@ -40,8 +40,16 @@ export function HarnessView() {
     // A failed attempt must not haunt the next time this dialog opens.
     publish.reset();
   };
-  const handlePublish = (step: SemverStep, previousTag: string | null) => {
-    publish.mutate({ step, previousTag }, { onSuccess: closePlan });
+  const handlePublish = (step: SemverStep, plan: ReleasePlan) => {
+    publish.mutate(
+      {
+        step,
+        previousTag: plan.previousTag,
+        previousTagCommit: plan.previousTagCommit,
+        revision: plan.revision,
+      },
+      { onSuccess: closePlan },
+    );
   };
 
   // Opening the view fetches, the same act the Refresh button repeats. A

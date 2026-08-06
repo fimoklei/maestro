@@ -15,6 +15,7 @@ const PLAN: ReleasePlan = {
     { kind: "removed", name: "grilling", author: "Linus" },
   ],
   previousTag: "v1.2.3",
+  previousTagCommit: "fedcba9876543210fedcba9876543210fedcba98",
   proposedStep: "major",
   reason: "A skill was removed or renamed.",
   versions: { major: "v2.0.0", minor: "v1.3.0", patch: "v1.2.4" },
