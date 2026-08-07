@@ -11,7 +11,6 @@ import type {
   ReleasePlan,
   SemverStep,
   SkillMovementKind,
-  StructuralFinding,
   StructuralProblem,
 } from "@maestro/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -28,7 +27,6 @@ export type {
   ReleasePlan,
   SemverStep,
   SkillMovementKind,
-  StructuralFinding,
   StructuralProblem,
 };
 
