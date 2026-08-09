@@ -36,16 +36,34 @@ describe("classifyCloneFailure", () => {
     ).toBe("clone-unavailable");
   });
 
-  it("names an unreachable remote as unavailable", () => {
+  it("names an ssh remote that refuses the path as unavailable", () => {
     expect(
       classifyCloneFailure(
-        "fatal: unable to access ...: Could not resolve host",
+        "ERROR: Repository not found.\nfatal: Could not read from remote repository.",
       ),
     ).toBe("clone-unavailable");
   });
 
-  it("names an empty failure as unavailable, never as an auth problem", () => {
-    expect(classifyCloneFailure("")).toBe("clone-unavailable");
+  // Blaming the repository for a local or network failure sends the user to
+  // check a URL that was never the problem.
+  it("names an unreachable host as a plain failure, not an unavailable repository", () => {
+    expect(
+      classifyCloneFailure(
+        "fatal: unable to access 'https://github.com/o/r.git/': Could not resolve host: github.com",
+      ),
+    ).toBe("clone-failed");
+  });
+
+  it("names a destination git cannot write to as a plain failure", () => {
+    expect(
+      classifyCloneFailure(
+        "fatal: could not create work tree dir 'r': Permission denied",
+      ),
+    ).toBe("clone-failed");
+  });
+
+  it("names an empty failure as a plain failure, never as an auth problem", () => {
+    expect(classifyCloneFailure("")).toBe("clone-failed");
   });
 
   // Git wraps and cases its own text freely; a phrase split across a line

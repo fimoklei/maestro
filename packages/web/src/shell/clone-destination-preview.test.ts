@@ -49,4 +49,10 @@ describe("previewCloneChild", () => {
   it("has nothing to preview for a url on a non-default port", () => {
     expect(previewCloneChild("https://github.com:8443/o/r")).toBeNull();
   });
+
+  // The server clones these, so hiding the destination picker for them would
+  // send the clone to the default parent with no way to change it.
+  it("names the folder for an ssh url spelling out the default port", () => {
+    expect(previewCloneChild("ssh://github.com:22/o/r.git")).toBe("r");
+  });
 });

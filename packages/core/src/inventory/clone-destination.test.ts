@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { InMemoryFileSystem } from "../registry/file-system.fake";
 import { classifyCloneDestination } from "./clone-destination";
+import type { HeadProbe } from "./head-commit";
 
 const DEST = "/Users/me/agent-harness";
 const OWNER_REPO = "fimoklei/agent-harness";
@@ -9,13 +10,13 @@ function classify(
   fs: InMemoryFileSystem,
   {
     originUrl = "git@github.com:fimoklei/agent-harness.git",
-    headCommit = "a1b2c3d",
-  }: { originUrl?: string | null; headCommit?: string | null } = {},
+    head = "commit",
+  }: { originUrl?: string | null; head?: HeadProbe } = {},
 ) {
   return classifyCloneDestination(DEST, OWNER_REPO, {
     fs,
     originUrl: async () => originUrl,
-    headCommit: async () => headCommit,
+    probeHead: async () => head,
   });
 }
 
@@ -96,21 +97,46 @@ describe("classifyCloneDestination", () => {
   it("reports a repository with no commit at HEAD as a partial clone", async () => {
     const fs = new InMemoryFileSystem(partialCloneSeed());
 
-    await expect(classify(fs, { headCommit: null })).resolves.toBe(
+    await expect(classify(fs, { head: "no-head" })).resolves.toBe(
       "partial-clone",
     );
   });
 
-  // An interrupted clone is unusable whatever its remote says, so the origin
-  // is never consulted for one.
-  it("reports a partial clone even when its origin is another repository", async () => {
+  // Only a clone of the repository being asked for can be the leftover of
+  // *this* clone. Another repository with no commit yet is someone else's.
+  it("reports a commitless repository of another origin as occupied", async () => {
     const fs = new InMemoryFileSystem(partialCloneSeed());
 
     await expect(
       classify(fs, {
-        headCommit: null,
+        head: "no-head",
         originUrl: "git@github.com:someone/else.git",
       }),
-    ).resolves.toBe("partial-clone");
+    ).resolves.toBe("occupied");
+  });
+
+  it("reports a commitless repository with no readable origin as occupied", async () => {
+    const fs = new InMemoryFileSystem(partialCloneSeed());
+
+    await expect(
+      classify(fs, { head: "no-head", originUrl: null }),
+    ).resolves.toBe("occupied");
+  });
+
+  // Git failing to answer is not git answering "empty" — the recovery advice
+  // for a partial clone is to delete the folder.
+  it("reports a repository git cannot inspect as occupied", async () => {
+    const fs = new InMemoryFileSystem(partialCloneSeed());
+
+    await expect(classify(fs, { head: "unknown" })).resolves.toBe("occupied");
+  });
+
+  it("reports a directory it cannot list as occupied", async () => {
+    const fs = new InMemoryFileSystem({
+      directories: { [DEST]: DEST },
+      unreadable: [DEST],
+    });
+
+    await expect(classify(fs)).resolves.toBe("occupied");
   });
 });

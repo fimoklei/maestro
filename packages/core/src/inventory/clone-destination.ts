@@ -3,6 +3,7 @@
 import { join } from "node:path";
 import { parseGitOrigin } from "../deploy/git-origin";
 import type { FileSystemPort } from "../registry/file-system";
+import type { HeadProbe } from "./head-commit";
 
 export type CloneDestinationState =
   | "free"
@@ -16,7 +17,7 @@ export const classifyCloneDestination = async (
   deps: {
     fs: FileSystemPort;
     originUrl: (path: string) => Promise<string | null>;
-    headCommit: (path: string) => Promise<string | null>;
+    probeHead: (path: string) => Promise<HeadProbe>;
   },
 ): Promise<CloneDestinationState> => {
   const { fs } = deps;
@@ -31,21 +32,26 @@ export const classifyCloneDestination = async (
 
   if (!(await fs.exists(join(destination, ".git")))) {
     // git itself clones into an existing empty directory; anything else in
-    // there is data that is not ours to move.
-    return (await fs.listRawEntries(destination)).length === 0
-      ? "free"
-      : "occupied";
+    // there is data that is not ours to move. A directory that will not open
+    // is not knowably empty, so it counts as holding something.
+    const entries = await fs.listRawEntries(destination).catch(() => null);
+    return entries?.length === 0 ? "free" : "occupied";
   }
 
-  // No commit at HEAD is what an interrupted clone leaves: git writes the
-  // remote before it fetches, so the origin says nothing here.
-  if ((await deps.headCommit(destination)) === null) {
-    return "partial-clone";
+  // Git failing to look is not git reporting an empty repository, and only
+  // partial-clone carries "delete this folder" as its recovery.
+  const head = await deps.probeHead(destination);
+  if (head === "unknown") {
+    return "occupied";
   }
 
+  // Read before the missing commit is interpreted: an interrupted clone
+  // already carries the remote it was cloning, so a repository with no commit
+  // and another origin is someone else's, not this clone's leftover.
   const origin = await deps.originUrl(destination);
   const parsed = origin === null ? null : parseGitOrigin(origin);
-  return parsed?.ownerRepo.toLowerCase() === ownerRepo.toLowerCase()
-    ? "same-origin"
-    : "occupied";
+  if (parsed?.ownerRepo.toLowerCase() !== ownerRepo.toLowerCase()) {
+    return "occupied";
+  }
+  return head === "commit" ? "same-origin" : "partial-clone";
 };

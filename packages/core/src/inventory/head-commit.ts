@@ -1,13 +1,14 @@
-// The commit HEAD resolves to, or null when there is none — the signal that
-// separates a usable clone from the shell an interrupted one leaves (#555).
+// Whether a repository has a commit at HEAD, as three answers rather than two:
+// git failing to look is not git reporting an empty repository, and only a
+// proven empty one may be read as an interrupted clone (#555).
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 const run = promisify(execFile);
 
-export const resolveHeadCommit = async (
-  repoPath: string,
-): Promise<string | null> => {
+export type HeadProbe = "commit" | "no-head" | "unknown";
+
+export const probeHead = async (repoPath: string): Promise<HeadProbe> => {
   try {
     const { stdout } = await run("git", [
       "-C",
@@ -17,9 +18,14 @@ export const resolveHeadCommit = async (
       "--quiet",
       "HEAD^{commit}",
     ]);
-    const commit = stdout.trim();
-    return commit.length > 0 ? commit : null;
-  } catch {
-    return null;
+    return stdout.trim().length > 0 ? "commit" : "no-head";
+  } catch (error) {
+    // `--quiet` makes "HEAD names no commit" exit 1 and print nothing. Every
+    // other failure — no repository, no permission, no git — says something.
+    const { code, stderr } = error as {
+      code?: number | string;
+      stderr?: string;
+    };
+    return code === 1 && (stderr ?? "").trim() === "" ? "no-head" : "unknown";
   }
 };

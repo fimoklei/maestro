@@ -1,11 +1,16 @@
 // Connects the central inventory: a local path offline, a GitHub URL by
 // cloning it first. Every check but the clone itself reads local git config.
 // Errors are typed and path-free (security.md).
-import { join, sep } from "node:path";
+import { join } from "node:path";
 import { parseGitOrigin } from "../deploy/git-origin";
+import { isWithinRoot } from "../filesystem/browse-path";
 import type { ConfigStore } from "../registry/config-store";
 import type { FileSystemPort } from "../registry/file-system";
-import { type RepoPathError, validateRepoPath } from "../registry/repo-path";
+import {
+  normalizeRepoPathInput,
+  type RepoPathError,
+  validateRepoPath,
+} from "../registry/repo-path";
 import type { CloneFailure } from "./classify-clone-failure";
 import { classifyCloneDestination } from "./clone-destination";
 import type { CloneRepositoryPort } from "./clone-repository";
@@ -15,6 +20,7 @@ import {
   cloneDestination,
 } from "./connect-input";
 import { HARNESS_MANIFEST } from "./harness-layout";
+import type { HeadProbe } from "./head-commit";
 
 export type ConnectInventoryError =
   | RepoPathError
@@ -23,6 +29,7 @@ export type ConnectInventoryError =
   | "invalid-parent"
   | "destination-occupied"
   | "destination-partial-clone"
+  | "clone-in-progress"
   | "not-an-inventory"
   | "no-usable-origin"
   | "no-default-branch";
@@ -40,9 +47,13 @@ export class ConnectInventory {
   private readonly store: ConfigStore;
   private readonly originUrl: (path: string) => Promise<string | null>;
   private readonly defaultBranch: (path: string) => Promise<string | null>;
-  private readonly headCommit: (path: string) => Promise<string | null>;
+  private readonly probeHead: (path: string) => Promise<HeadProbe>;
   private readonly homeRoot: () => string;
   private readonly cloneRepository: CloneRepositoryPort;
+  // Destinations this instance is cloning into right now. A second request
+  // would read the first one's half-written clone as an interrupted one and
+  // tell the user to delete it (#555).
+  private readonly cloning = new Set<string>();
 
   constructor(deps: {
     fs: FileSystemPort;
@@ -51,7 +62,7 @@ export class ConnectInventory {
     defaultBranch: (path: string) => Promise<string | null>;
     // Separates a usable clone already on disk from the shell an interrupted
     // one leaves behind (#555).
-    headCommit: (path: string) => Promise<string | null>;
+    probeHead: (path: string) => Promise<HeadProbe>;
     // The same ceiling browsing uses, so a proposed clone destination sits
     // where the picker can reach it (#554).
     homeRoot: () => string;
@@ -61,7 +72,7 @@ export class ConnectInventory {
     this.store = deps.store;
     this.originUrl = deps.originUrl;
     this.defaultBranch = deps.defaultBranch;
-    this.headCommit = deps.headCommit;
+    this.probeHead = deps.probeHead;
     this.homeRoot = deps.homeRoot;
     this.cloneRepository = deps.clone;
   }
@@ -87,10 +98,25 @@ export class ConnectInventory {
     }
 
     const destination = cloneDestination(parent, route.repoName);
+    if (this.cloning.has(destination)) {
+      return { ok: false, error: "clone-in-progress" };
+    }
+    this.cloning.add(destination);
+    try {
+      return await this.cloneInto(destination, route);
+    } finally {
+      this.cloning.delete(destination);
+    }
+  }
+
+  private async cloneInto(
+    destination: string,
+    route: { url: string; ownerRepo: string },
+  ): Promise<ConnectInventoryResult> {
     const state = await classifyCloneDestination(destination, route.ownerRepo, {
       fs: this.fs,
       originUrl: this.originUrl,
-      headCommit: this.headCommit,
+      probeHead: this.probeHead,
     });
     if (state === "occupied") {
       return { ok: false, error: "destination-occupied" };
@@ -114,20 +140,31 @@ export class ConnectInventory {
   }
 
   // The chosen parent crosses a trust boundary and is where a clone gets
-  // written, so it is resolved and then asserted to sit inside the one allowed
-  // root — the same home ceiling the picker offers (security.md).
+  // written, so it runs the picker's own order: refuse lexically outside the
+  // home ceiling before touching disk, resolve, then check containment again
+  // against the canonical ceiling (ADR-0009, security.md).
   private async resolveParent(chosen?: string): Promise<string | null> {
-    const home = this.homeRoot();
+    const rawHome = this.homeRoot();
+    // Raw and resolved home both count: they differ under a symlinked prefix
+    // (macOS /var -> /private/var).
+    const home = await this.fs.realpath(rawHome).catch(() => rawHome);
     if (chosen === undefined) {
       return home;
     }
-    const validated = await validateRepoPath(chosen, this.fs);
+    const normalized = normalizeRepoPathInput(chosen);
+    if (
+      !normalized.ok ||
+      (!isWithinRoot(normalized.path, home) &&
+        !isWithinRoot(normalized.path, rawHome))
+    ) {
+      return null;
+    }
+    const validated = await validateRepoPath(normalized.path, this.fs);
     if (!validated.ok) {
       return null;
     }
-    return validated.path === home || validated.path.startsWith(`${home}${sep}`)
-      ? validated.path
-      : null;
+    // A symlink lexically inside home but resolving outside is caught here.
+    return isWithinRoot(validated.path, home) ? validated.path : null;
   }
 
   private async connectDirectory(

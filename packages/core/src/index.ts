@@ -103,7 +103,8 @@ export {
   type ConnectOutcome,
 } from "./inventory/connect-inventory";
 export { resolveDefaultBranch } from "./inventory/default-branch";
-export { resolveHeadCommit } from "./inventory/head-commit";
+export type { HeadProbe } from "./inventory/head-commit";
+export { probeHead } from "./inventory/head-commit";
 export {
   InventoryReader,
   type InventoryResult,

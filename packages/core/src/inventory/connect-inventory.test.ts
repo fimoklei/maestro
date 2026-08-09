@@ -3,6 +3,7 @@ import { ConfigStore } from "../registry/config-store";
 import { InMemoryFileSystem } from "../registry/file-system.fake";
 import type { CloneOutcome, CloneRepositoryPort } from "./clone-repository";
 import { ConnectInventory } from "./connect-inventory";
+import type { HeadProbe } from "./head-commit";
 
 const CONFIG_PATH = "/home/me/.maestro/config.json";
 const PARSEABLE_ORIGIN = "git@github.com:fimoklei/agent-harness.git";
@@ -31,15 +32,16 @@ function makeConnect(
   originUrl: string | null = PARSEABLE_ORIGIN,
   defaultBranch: string | null = "main",
   clone: CloneRepositoryPort = new FakeClone(fs),
-  headCommit: string | null = "a1b2c3d",
+  head: HeadProbe = "commit",
+  homeRoot: string = HOME_ROOT,
 ): ConnectInventory {
   return new ConnectInventory({
     fs,
     store: new ConfigStore({ fs, configPath: () => CONFIG_PATH }),
     originUrl: async () => originUrl,
     defaultBranch: async () => defaultBranch,
-    headCommit: async () => headCommit,
-    homeRoot: () => HOME_ROOT,
+    probeHead: async () => head,
+    homeRoot: () => homeRoot,
     clone,
   });
 }
@@ -380,7 +382,7 @@ describe("ConnectInventory", () => {
         "main",
         clone,
         // No commit at HEAD: what an interrupted clone leaves behind.
-        null,
+        "no-head",
       );
 
       const result = await connect.connect(
@@ -390,6 +392,87 @@ describe("ConnectInventory", () => {
       expect(result).toEqual({ ok: false, error: "destination-partial-clone" });
       expect(clone.calls).toEqual([]);
       expect(await fs.isDirectory(destination)).toBe(true);
+    });
+
+    // The ceiling is compared canonical-to-canonical: on macOS a home under
+    // /var resolves to /private/var, and a real choice must not be refused
+    // for it (ADR-0009).
+    it("accepts a parent inside a home whose own path is a symlink", async () => {
+      const linked = "/private/Users/me";
+      const fs = new InMemoryFileSystem({
+        directories: {
+          [HOME_ROOT]: linked,
+          [`${HOME_ROOT}/Projects`]: `${linked}/Projects`,
+          [`${linked}/Projects`]: `${linked}/Projects`,
+        },
+      });
+      const clone = new FakeClone(fs);
+      const connect = makeConnect(fs, PARSEABLE_ORIGIN, "main", clone);
+
+      await connect.connect("https://github.com/o/r.git", {
+        parent: `${HOME_ROOT}/Projects`,
+      });
+
+      expect(clone.calls[0]?.destination).toBe(`${linked}/Projects/r`);
+    });
+
+    // The lexical refusal comes first, so a path outside the ceiling is never
+    // resolved — not even to throw it away (security.md).
+    it("refuses a parent outside the ceiling without resolving it", async () => {
+      const fs = new InMemoryFileSystem({
+        directories: {
+          [HOME_ROOT]: HOME_ROOT,
+          "/etc/passwd.d": "/etc/passwd.d",
+        },
+      });
+      const resolved: string[] = [];
+      const original = fs.realpath.bind(fs);
+      fs.realpath = async (path: string) => {
+        resolved.push(path);
+        return original(path);
+      };
+      const connect = makeConnect(fs);
+
+      await expect(
+        connect.connect("https://github.com/o/r.git", {
+          parent: "/etc/passwd.d",
+        }),
+      ).resolves.toEqual({ ok: false, error: "invalid-parent" });
+      expect(resolved).not.toContain("/etc/passwd.d");
+    });
+
+    // Two requests for the same destination: the second would classify the
+    // first one's half-written clone and tell the user to delete it (#555).
+    it("refuses a second connect while the first is still cloning there", async () => {
+      const fs = new InMemoryFileSystem({
+        directories: { [HOME_ROOT]: HOME_ROOT },
+      });
+      let announce: () => void = () => {};
+      let release: () => void = () => {};
+      const cloning = new Promise<void>((resolve) => {
+        announce = resolve;
+      });
+      const finish = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const clone: CloneRepositoryPort = {
+        clone: async (_url, destination) => {
+          announce();
+          await finish;
+          await fs.ensureDir(destination);
+          await fs.writeFile(`${destination}/apm.yml`, "dependencies: []\n");
+          return "cloned";
+        },
+      };
+      const connect = makeConnect(fs, PARSEABLE_ORIGIN, "main", clone);
+
+      const first = connect.connect("https://github.com/o/r.git");
+      await cloning;
+      const second = await connect.connect("https://github.com/o/r.git");
+      release();
+
+      expect(second).toEqual({ ok: false, error: "clone-in-progress" });
+      expect((await first).ok).toBe(true);
     });
   });
 

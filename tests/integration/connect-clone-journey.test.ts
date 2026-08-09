@@ -23,10 +23,10 @@ import {
   InFlightLocks,
   InventoryReader,
   NodeFileSystem,
+  probeHead,
   Registry,
   readConfiguredGitOriginUrl,
   resolveDefaultBranch,
-  resolveHeadCommit,
   resolveInventoryPath,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
@@ -131,7 +131,7 @@ describe("joining a Harness by its GitHub url", () => {
         store,
         originUrl: readConfiguredGitOriginUrl,
         defaultBranch: resolveDefaultBranch,
-        headCommit: resolveHeadCommit,
+        probeHead,
         homeRoot: () => home,
         clone: new GitCloneAdapter(),
       }),
@@ -314,6 +314,28 @@ describe("joining a Harness by its GitHub url", () => {
       await expect(
         readFile(join(partial, ".git", "config"), "utf8"),
       ).resolves.toContain("origin");
+    });
+
+    // A fresh repository of someone else's is not this clone's leftover, and
+    // the partial-clone message would tell the user to delete it.
+    it("reports a commitless repository of another origin as occupied", async () => {
+      const other = join(home, "agent-harness");
+      await run("git", ["init", "-b", "main", other]);
+      await run("git", [
+        "-C",
+        other,
+        "remote",
+        "add",
+        "origin",
+        "https://github.com/someone/else",
+      ]);
+
+      const res = await postConnect(makeApp(), { path: GITHUB_URL });
+
+      expect(res.status).toBe(409);
+      expect(((await res.json()) as { error: string }).error).toBe(
+        "destination-occupied",
+      );
     });
   });
 });

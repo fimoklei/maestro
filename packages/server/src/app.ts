@@ -29,6 +29,7 @@ import {
   PublishRelease,
   type PublishReleaseError,
   type PublishReleaseResult,
+  probeHead,
   ReadHarnessState,
   RecordedPackageAdapter,
   Registry,
@@ -43,7 +44,6 @@ import {
   resolveApmGlobalRoot,
   resolveApmScratchCwd,
   resolveDefaultBranch,
-  resolveHeadCommit,
   resolveInventoryPath,
   resolveMaestroConfigPath,
   ToolPresenceAdapter,
@@ -411,8 +411,13 @@ const connectErrorResponses: Record<
     message:
       "A half-finished clone is already there, left by an interrupted attempt. Maestro left it untouched: delete that folder yourself, or clone into another one.",
   },
+  "clone-in-progress": {
+    status: 409,
+    message:
+      "Maestro is already cloning that Harness into that folder. Wait for it to finish, then try again.",
+  },
   // GitHub answers a missing, a private and a mistyped repository the same
-  // way, so these two are the only honest classes (#555).
+  // way, so those three share one class (#555).
   "clone-auth-failed": {
     status: 422,
     message:
@@ -422,6 +427,12 @@ const connectErrorResponses: Record<
     status: 422,
     message:
       "That repository is not available to you. It may not exist, may be private, or the URL may be mistyped — GitHub answers all three the same way, so Maestro will not guess which.",
+  },
+  // Nothing about the repository was in question, so nothing here blames it.
+  "clone-failed": {
+    status: 422,
+    message:
+      "Git could not finish the clone. That is usually local — no disk space, no write access to the folder, or a connection that dropped. Check those and try again.",
   },
   "not-an-inventory": {
     status: 422,
@@ -1071,7 +1082,7 @@ function realDeps(): AppDeps {
       // what apm's refs are built from (LEARNINGS · git-remote-get-url).
       originUrl: readConfiguredGitOriginUrl,
       defaultBranch: resolveDefaultBranch,
-      headCommit: resolveHeadCommit,
+      probeHead,
       // The default ceiling, which the picker can move (#555). Browsing uses
       // the same one, so a cloned Harness lands where it can reach it (#554).
       homeRoot: () => homedir(),

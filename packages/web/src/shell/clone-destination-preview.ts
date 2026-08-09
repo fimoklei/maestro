@@ -9,6 +9,8 @@ const SCP_LIKE = /^[^/\s]+@([^/\s:]+):(.+)$/;
 
 const GITHUB_HOST = "github.com";
 
+const DEFAULT_PORTS: Record<string, string> = { "https:": "443", "ssh:": "22" };
+
 export function previewCloneChild(input: string): string | null {
   const trimmed = input.trim().replace(/\/+$/, "");
   const parts = splitHostAndPath(trimmed);
@@ -28,9 +30,15 @@ function splitHostAndPath(
   if (input.includes("://")) {
     try {
       const url = new URL(input);
-      // Both are refused by the server, so neither may be shown a
-      // destination it will never clone into (core's `parseGitOrigin`).
-      if (url.username !== "" || url.password !== "" || url.port !== "") {
+      // Refused by the server, so neither may be shown a destination it will
+      // never clone into (core's `parseGitOrigin`). A port only counts against
+      // the url when it is not the transport's own default — `URL` blanks that
+      // for https but not for ssh.
+      if (
+        url.username !== "" ||
+        url.password !== "" ||
+        (url.port !== "" && url.port !== DEFAULT_PORTS[url.protocol])
+      ) {
         return null;
       }
       return { host: url.hostname, path: url.pathname };
