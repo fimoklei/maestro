@@ -383,6 +383,11 @@ const connectErrorResponses: Record<
     message:
       "That is not a GitHub repository URL. Maestro clones a Harness from a GitHub repository over https or ssh, or connects a local clone by its path.",
   },
+  "url-carries-credentials": {
+    status: 400,
+    message:
+      "That URL carries a username or token. Maestro never stores credentials, and git would write them into the clone. Paste the plain repository URL and let your own git credentials do the rest.",
+  },
   "clone-failed": {
     status: 422,
     message:

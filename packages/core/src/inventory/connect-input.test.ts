@@ -75,6 +75,32 @@ describe("classifyConnectInput", () => {
     });
   });
 
+  // git writes the clone url into the clone's own config, so a pasted token
+  // would be stored on disk — Maestro never keeps a credential (security.md).
+  it("refuses a url carrying credentials rather than cloning with them", () => {
+    expect(
+      classifyConnectInput("https://user:token@github.com/fimoklei/harness"),
+    ).toEqual({ ok: false, error: "url-carries-credentials" });
+  });
+
+  it("refuses a url carrying a bare username", () => {
+    expect(classifyConnectInput("https://token@github.com/o/r")).toEqual({
+      ok: false,
+      error: "url-carries-credentials",
+    });
+  });
+
+  // The ssh user is not a credential: it is how every scp-like GitHub remote
+  // is spelled, and no secret is stored by accepting it.
+  it("keeps accepting the ssh user in the scp-like form", () => {
+    expect(classifyConnectInput("git@github.com:o/r.git")).toEqual({
+      ok: true,
+      kind: "url",
+      url: "git@github.com:o/r.git",
+      repoName: "r",
+    });
+  });
+
   it("refuses a repository name that would escape the destination parent", () => {
     expect(classifyConnectInput("https://github.com/owner/..")).toEqual({
       ok: false,

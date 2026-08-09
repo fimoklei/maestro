@@ -205,6 +205,22 @@ describe("joining a Harness by its GitHub url", () => {
     ).rejects.toThrow();
   });
 
+  // git writes the clone url into the clone's config, so a pasted token would
+  // land on disk. It has to be refused before any git runs (security.md).
+  it("refuses a url carrying a token, so git never sees or stores it", async () => {
+    const res = await postConnect(makeApp(), {
+      path: "https://user:t0ken@github.com/fimoklei/agent-harness",
+    });
+
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string; message: string };
+    expect(body.error).toBe("url-carries-credentials");
+    expect(body.message).not.toContain("t0ken");
+    await expect(
+      readFile(join(home, "agent-harness", ".git", "config")),
+    ).rejects.toThrow();
+  });
+
   it("reports a GitHub url that cannot be cloned without exposing git's output", async () => {
     const res = await postConnect(makeApp(), {
       path: MISSING_URL,
