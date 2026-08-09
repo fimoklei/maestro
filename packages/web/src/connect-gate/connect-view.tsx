@@ -2,10 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { useInventoryConfig } from "../inventory/use-inventory";
 import { ConnectInventoryPanel } from "../shell/connect-inventory-panel";
-import { SourceLabel } from "../shell/source-label";
-import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { SectionHeader } from "../ui/section-header";
+import { ConnectSuccessView } from "./connect-success-view";
 
 // The connect gate's second screen (ADR-0015): shares ConnectInventoryPanel
 // with Settings' re-point (PRD #93), but lands on an explicit "Continue" so
@@ -33,40 +32,29 @@ export function ConnectView() {
     <div className="flex flex-col gap-4">
       <SectionHeader
         level={1}
+        className="flex-wrap"
         title="Connect central inventory"
-        meta="the path of a local agent-harness clone"
+        meta="a local Harness clone or GitHub URL"
       />
       <Card padded className="max-w-lg">
+        <p className="mb-3 text-dim text-tag">
+          A private Harness works when each teammate has their own Git and APM
+          access.
+        </p>
         <ConnectInventoryPanel
           onSuccess={() => setHasConnected(true)}
           renderSuccess={(result) => {
-            // A scaffold lands on the Harness, where its first skill gets
-            // authored; every other route lands on the read-only Inventory
-            // (#556).
-            const scaffolded = result.outcome === "scaffolded";
             return (
-              <div className="flex flex-col gap-3">
-                <p className="text-green-ink text-tag">
-                  {scaffolded
-                    ? "✓ Harness scaffolded and pushed · ready for its first skill"
-                    : `✓ ${result.primitiveCount} primitives found · deploys never write back`}
-                </p>
-                {/* Shared with the Settings steady state so the two can't drift apart (#211). */}
-                <SourceLabel path={result.inventoryPath} />
-                <div>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() =>
-                      navigate(scaffolded ? "/harness" : "/inventory")
-                    }
-                  >
-                    {scaffolded
-                      ? "Continue to harness →"
-                      : "Continue to inventory →"}
-                  </Button>
-                </div>
-              </div>
+              <ConnectSuccessView
+                outcome={result.outcome}
+                primitiveCount={result.primitiveCount}
+                inventoryPath={result.inventoryPath}
+                onContinue={() =>
+                  navigate(
+                    result.outcome === "scaffolded" ? "/harness" : "/inventory",
+                  )
+                }
+              />
             );
           }}
         />

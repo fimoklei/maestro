@@ -15,9 +15,8 @@ export function WelcomeView() {
           Central inventory not connected
         </h1>
         <p className="connect-gate-body m-0 text-body text-muted">
-          Maestro reads primitives from a local{" "}
-          <span className="font-mono">agent-harness</span> clone. The cockpit
-          stays empty until it has one.
+          Maestro reads primitives from a local Harness clone or a GitHub
+          repository. The cockpit stays empty until it has one.
         </p>
         <Button
           variant="primary"

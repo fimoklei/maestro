@@ -185,7 +185,7 @@ const deployErrorResponses: Record<
   },
   "inventory-not-configured": {
     status: 409,
-    message: "No inventory is configured. Set the agent-harness clone path.",
+    message: "No inventory is configured. Set the Harness source path.",
   },
   "repo-not-registered": {
     status: 403,
@@ -560,7 +560,7 @@ const harnessErrorResponses: Record<
 > = {
   "not-configured": {
     status: 409,
-    message: "No harness is connected. Set the agent-harness clone path.",
+    message: "No Harness is connected. Set the Harness source path.",
   },
   "no-usable-origin": {
     status: 422,
@@ -689,8 +689,7 @@ export function createApp(deps: AppDeps) {
       return c.json(
         {
           error: result.error,
-          message:
-            "No inventory is configured. Set the agent-harness clone path.",
+          message: "No inventory is configured. Set the Harness source path.",
         },
         409,
       );

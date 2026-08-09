@@ -68,7 +68,7 @@ export function ConnectInventoryForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-2">
       <label htmlFor="inventory-path" className="m-label">
-        Inventory path
+        Inventory path or GitHub URL
       </label>
       <div className="flex items-end gap-2">
         <input
@@ -77,7 +77,7 @@ export function ConnectInventoryForm({
           name="inventory-path"
           value={path}
           onChange={(event) => onPathChange(event.target.value)}
-          placeholder="/path/to/agent-harness or https://github.com/owner/repo"
+          placeholder="/path/to/harness or https://github.com/owner/repo"
           aria-describedby={error ? "inventory-path-error" : undefined}
           // An offer is not a malformed field: the path is fine, it just has no
           // Harness in it yet.

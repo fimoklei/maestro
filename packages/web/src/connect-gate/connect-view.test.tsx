@@ -39,7 +39,11 @@ function stubApi({
       return connect
         ? connect()
         : jsonResponse(
-            { inventoryPath: "/home/me/agent-harness", primitiveCount: 7 },
+            {
+              outcome: "found",
+              inventoryPath: "/home/me/agent-harness",
+              primitiveCount: 7,
+            },
             200,
           );
     },
@@ -86,7 +90,9 @@ describe("ConnectView", () => {
     );
 
     expect(await screen.findByText(/7 primitives found/i)).toBeInTheDocument();
-    expect(screen.getByText(/deploys never write back/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/deploys never write back to this harness/i),
+    ).toBeInTheDocument();
   });
 
   it("names the connected source on the confirmation, beyond its basename", async () => {

@@ -798,7 +798,7 @@ describe("Harness home base", () => {
       read: {
         body: {
           error: "not-configured",
-          message: "No harness is connected. Set the agent-harness clone path.",
+          message: "No Harness is connected. Set the Harness source path.",
         },
         status: 409,
       },
