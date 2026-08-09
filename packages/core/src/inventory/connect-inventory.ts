@@ -1,11 +1,13 @@
 // Connects the central inventory: a local path offline, a GitHub URL by
 // cloning it first. Every check but the clone itself reads local git config.
 // Errors are typed and path-free (security.md).
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { parseGitOrigin } from "../deploy/git-origin";
 import type { ConfigStore } from "../registry/config-store";
 import type { FileSystemPort } from "../registry/file-system";
 import { type RepoPathError, validateRepoPath } from "../registry/repo-path";
+import type { CloneFailure } from "./classify-clone-failure";
+import { classifyCloneDestination } from "./clone-destination";
 import type { CloneRepositoryPort } from "./clone-repository";
 import {
   type ConnectInputError,
@@ -17,7 +19,10 @@ import { HARNESS_MANIFEST } from "./harness-layout";
 export type ConnectInventoryError =
   | RepoPathError
   | ConnectInputError
-  | "clone-failed"
+  | CloneFailure
+  | "invalid-parent"
+  | "destination-occupied"
+  | "destination-partial-clone"
   | "not-an-inventory"
   | "no-usable-origin"
   | "no-default-branch";
@@ -35,6 +40,7 @@ export class ConnectInventory {
   private readonly store: ConfigStore;
   private readonly originUrl: (path: string) => Promise<string | null>;
   private readonly defaultBranch: (path: string) => Promise<string | null>;
+  private readonly headCommit: (path: string) => Promise<string | null>;
   private readonly homeRoot: () => string;
   private readonly cloneRepository: CloneRepositoryPort;
 
@@ -43,6 +49,9 @@ export class ConnectInventory {
     store: ConfigStore;
     originUrl: (path: string) => Promise<string | null>;
     defaultBranch: (path: string) => Promise<string | null>;
+    // Separates a usable clone already on disk from the shell an interrupted
+    // one leaves behind (#555).
+    headCommit: (path: string) => Promise<string | null>;
     // The same ceiling browsing uses, so a proposed clone destination sits
     // where the picker can reach it (#554).
     homeRoot: () => string;
@@ -52,11 +61,18 @@ export class ConnectInventory {
     this.store = deps.store;
     this.originUrl = deps.originUrl;
     this.defaultBranch = deps.defaultBranch;
+    this.headCommit = deps.headCommit;
     this.homeRoot = deps.homeRoot;
     this.cloneRepository = deps.clone;
   }
 
-  async connect(input: string): Promise<ConnectInventoryResult> {
+  // `parent` is the folder a clone lands *in*; the child folder is always the
+  // repository's own name. Modelled that way so the destination itself is
+  // never put through existing-path validation (#555).
+  async connect(
+    input: string,
+    options: { parent?: string } = {},
+  ): Promise<ConnectInventoryResult> {
     const route = classifyConnectInput(input);
     if (!route.ok) {
       return { ok: false, error: route.error };
@@ -65,15 +81,53 @@ export class ConnectInventory {
       return this.connectDirectory(input, "found");
     }
 
-    const destination = cloneDestination(this.homeRoot(), route.repoName);
-    if (
-      (await this.cloneRepository.clone(route.url, destination)) !== "cloned"
-    ) {
-      return { ok: false, error: "clone-failed" };
+    const parent = await this.resolveParent(options.parent);
+    if (parent === null) {
+      return { ok: false, error: "invalid-parent" };
+    }
+
+    const destination = cloneDestination(parent, route.repoName);
+    const state = await classifyCloneDestination(destination, route.ownerRepo, {
+      fs: this.fs,
+      originUrl: this.originUrl,
+      headCommit: this.headCommit,
+    });
+    if (state === "occupied") {
+      return { ok: false, error: "destination-occupied" };
+    }
+    if (state === "partial-clone") {
+      return { ok: false, error: "destination-partial-clone" };
+    }
+    // A copy of this very repository is what the user was about to make, so it
+    // is connected rather than duplicated. Nothing on disk is touched.
+    if (state === "same-origin") {
+      return this.connectDirectory(destination, "found");
+    }
+
+    const cloned = await this.cloneRepository.clone(route.url, destination);
+    if (cloned !== "cloned") {
+      return { ok: false, error: cloned };
     }
     // A clone that lands but does not connect stays on disk: it is a real
     // repository, and deleting one is never Maestro's to do (#498).
     return this.connectDirectory(destination, "joined");
+  }
+
+  // The chosen parent crosses a trust boundary and is where a clone gets
+  // written, so it is resolved and then asserted to sit inside the one allowed
+  // root — the same home ceiling the picker offers (security.md).
+  private async resolveParent(chosen?: string): Promise<string | null> {
+    const home = this.homeRoot();
+    if (chosen === undefined) {
+      return home;
+    }
+    const validated = await validateRepoPath(chosen, this.fs);
+    if (!validated.ok) {
+      return null;
+    }
+    return validated.path === home || validated.path.startsWith(`${home}${sep}`)
+      ? validated.path
+      : null;
   }
 
   private async connectDirectory(

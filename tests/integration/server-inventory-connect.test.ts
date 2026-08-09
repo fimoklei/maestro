@@ -21,6 +21,7 @@ import {
   Registry,
   readConfiguredGitOriginUrl,
   resolveDefaultBranch,
+  resolveHeadCommit,
   resolveInventoryPath,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
@@ -93,10 +94,11 @@ describe("inventory connect HTTP route", () => {
         store,
         originUrl: readConfiguredGitOriginUrl,
         defaultBranch: resolveDefaultBranch,
+        headCommit: resolveHeadCommit,
         // No URL is connected here; the clone journey lives in
         // connect-clone-journey.test.ts.
         homeRoot: () => dir,
-        clone: { clone: async () => "clone-failed" },
+        clone: { clone: async () => "clone-unavailable" },
       }),
       deployState,
       deploy: stubDeploy({ inventory, registry, locks }),

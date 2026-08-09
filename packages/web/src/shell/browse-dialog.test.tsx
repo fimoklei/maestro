@@ -12,6 +12,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { RegistrationOutcome } from "../registry/use-register-repos";
 import { BrowseDialog } from "./browse-dialog";
 import { readLastFolder, writeLastFolder } from "./browse-last-folder";
+import type { BrowseDialogMode } from "./browse-modes";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -26,7 +27,7 @@ function jsonResponse(body: unknown, status: number) {
 }
 
 function renderDialog({
-  mode = "connect" as "connect" | "register",
+  mode = "connect" as BrowseDialogMode,
   onSelect = vi.fn(),
   onClose = vi.fn(),
   registeredPaths = undefined as ReadonlySet<string> | undefined,
@@ -1240,6 +1241,27 @@ describe("BrowseDialog", () => {
       });
       expect(confirm).not.toHaveAccessibleDescription(/writes nothing/i);
       expect(screen.queryByText(/writes nothing/i)).not.toBeInTheDocument();
+    });
+
+    // Picking a clone parent does write — a new folder appears in it — so the
+    // promise here is about what stays untouched (#555).
+    it("promises in clone-parent mode that nothing already there is disturbed", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => jsonResponse(homeResponse, 200)),
+      );
+      renderDialog({ mode: "clone-parent" });
+
+      const confirm = await screen.findByRole("button", {
+        name: /clone into this folder/i,
+      });
+      expect(confirm).toHaveAccessibleDescription(
+        /named after the repository/i,
+      );
+      expect(confirm).toHaveAccessibleDescription(/renamed, moved or deleted/i);
+      expect(
+        screen.getByRole("heading", { name: /select a folder to clone into/i }),
+      ).toBeInTheDocument();
     });
   });
 

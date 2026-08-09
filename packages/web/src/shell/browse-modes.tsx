@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { Chip } from "../ui/chip";
 import type { BrowseEntry } from "./use-browse-filesystem";
 
-export type BrowseDialogMode = "register" | "connect";
+export type BrowseDialogMode = "register" | "connect" | "clone-parent";
 
 type BrowseModeConfig = {
   title: string;
@@ -37,5 +37,15 @@ export const browseModes: Record<BrowseDialogMode, BrowseModeConfig> = {
       entry.facts.hasApmManifest ? <Chip tone="drift">◆ inventory</Chip> : null,
     // Read-only promise is made on the connect gate itself (ADR-0015).
     writePromise: null,
+  },
+  // Picks the folder a clone lands *in*, so the badge marks the one thing that
+  // would block it: a Harness already sitting there (#555).
+  "clone-parent": {
+    title: "Select a folder to clone into",
+    confirmLabel: () => "clone into this folder →",
+    badges: ({ entry }) =>
+      entry.facts.hasApmManifest ? <Chip tone="drift">◆ inventory</Chip> : null,
+    writePromise:
+      "The Harness is cloned into a new folder here, named after the repository. Nothing already in this folder is renamed, moved or deleted.",
   },
 };

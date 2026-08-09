@@ -10,6 +10,7 @@ describe("classifyConnectInput", () => {
       kind: "url",
       url: "https://github.com/fimoklei/agent-harness.git",
       repoName: "agent-harness",
+      ownerRepo: "fimoklei/agent-harness",
     });
   });
 
@@ -21,6 +22,7 @@ describe("classifyConnectInput", () => {
       kind: "url",
       url: "git@github.com:fimoklei/agent-harness.git",
       repoName: "agent-harness",
+      ownerRepo: "fimoklei/agent-harness",
     });
   });
 
@@ -30,6 +32,7 @@ describe("classifyConnectInput", () => {
       kind: "url",
       url: "https://github.com/o/r",
       repoName: "r",
+      ownerRepo: "o/r",
     });
   });
 
@@ -98,6 +101,7 @@ describe("classifyConnectInput", () => {
       kind: "url",
       url: "git@github.com:o/r.git",
       repoName: "r",
+      ownerRepo: "o/r",
     });
   });
 

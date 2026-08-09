@@ -43,6 +43,7 @@ import {
   resolveApmGlobalRoot,
   resolveApmScratchCwd,
   resolveDefaultBranch,
+  resolveHeadCommit,
   resolveInventoryPath,
   resolveMaestroConfigPath,
   ToolPresenceAdapter,
@@ -53,7 +54,12 @@ import { originHostGuard } from "./origin-host-guard";
 
 const registerBodySchema = z.object({ path: z.string() });
 
-const connectBodySchema = z.object({ path: z.string() });
+// `parent` is the folder a cloned Harness lands in — absent means the home
+// ceiling, and it is ignored entirely on the local-path route (#555).
+const connectBodySchema = z.object({
+  path: z.string(),
+  parent: z.string().optional(),
+});
 
 const browseBodySchema = z.object({ path: z.string() });
 
@@ -366,10 +372,12 @@ const repoPathErrorMessages: Record<
 };
 
 // Path-shape failures are 400; a real directory that isn't an inventory is
-// 422. No message echoes the path — it may be a misconfigured secret.
+// 422; a destination something else already holds is a 409 the user clears by
+// choosing elsewhere. No message echoes the path — it may be a misconfigured
+// secret.
 const connectErrorResponses: Record<
   ConnectInventoryError,
-  { status: 400 | 422; message: string }
+  { status: 400 | 409 | 422; message: string }
 > = {
   missing: { status: 400, message: repoPathErrorMessages.missing },
   relative: { status: 400, message: repoPathErrorMessages.relative },
@@ -388,10 +396,32 @@ const connectErrorResponses: Record<
     message:
       "That URL carries a username or token. Maestro never stores credentials, and git would write them into the clone. Paste the plain repository URL and let your own git credentials do the rest.",
   },
-  "clone-failed": {
+  "invalid-parent": {
+    status: 400,
+    message:
+      "That is not a folder Maestro can clone into. Choose an existing folder inside your home area, and the Harness will land in it under its own name.",
+  },
+  "destination-occupied": {
+    status: 409,
+    message:
+      "Something else already sits where that Harness would land. Maestro never renames or deletes what it finds, so choose another folder to clone into.",
+  },
+  "destination-partial-clone": {
+    status: 409,
+    message:
+      "A half-finished clone is already there, left by an interrupted attempt. Maestro left it untouched: delete that folder yourself, or clone into another one.",
+  },
+  // GitHub answers a missing, a private and a mistyped repository the same
+  // way, so these two are the only honest classes (#555).
+  "clone-auth-failed": {
     status: 422,
     message:
-      "Maestro could not clone that repository. Check that the URL is right, that you have git access to it, and that nothing else already occupies the destination folder.",
+      "Git could not prove who you are to GitHub. Maestro uses your own git credentials and never stores any, so sign in with git (or add your SSH key) and try again.",
+  },
+  "clone-unavailable": {
+    status: 422,
+    message:
+      "That repository is not available to you. It may not exist, may be private, or the URL may be mistyped — GitHub answers all three the same way, so Maestro will not guess which.",
   },
   "not-an-inventory": {
     status: 422,
@@ -632,7 +662,9 @@ export function createApp(deps: AppDeps) {
       return body.response;
     }
 
-    const result = await deps.connect.connect(body.data.path);
+    const result = await deps.connect.connect(body.data.path, {
+      parent: body.data.parent,
+    });
     if (!result.ok) {
       const { status, message } = connectErrorResponses[result.error];
       return c.json({ error: result.error, message }, status);
@@ -1039,8 +1071,9 @@ function realDeps(): AppDeps {
       // what apm's refs are built from (LEARNINGS · git-remote-get-url).
       originUrl: readConfiguredGitOriginUrl,
       defaultBranch: resolveDefaultBranch,
-      // The ceiling browsing already uses, so a cloned Harness lands where
-      // the picker can reach it (#554).
+      headCommit: resolveHeadCommit,
+      // The default ceiling, which the picker can move (#555). Browsing uses
+      // the same one, so a cloned Harness lands where it can reach it (#554).
       homeRoot: () => homedir(),
       clone: new GitCloneAdapter(),
     }),

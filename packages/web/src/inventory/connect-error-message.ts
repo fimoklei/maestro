@@ -9,7 +9,8 @@ export function connectErrorMessage(error: unknown): string | null {
   return error ? "Could not connect the inventory." : null;
 }
 
-// Both surfaces recognise this by typed code, never by string-matching (#147).
-export function isNoUsableOriginError(error: unknown): boolean {
-  return error instanceof HttpError && error.code === "no-usable-origin";
+// Refusals are recognised by their typed code, never by string-matching the
+// message (#147).
+export function connectErrorCode(error: unknown): string | null {
+  return error instanceof HttpError ? (error.code ?? null) : null;
 }
