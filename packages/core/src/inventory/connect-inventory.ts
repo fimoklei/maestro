@@ -13,6 +13,7 @@ import {
   cloneDestination,
 } from "./connect-input";
 import { HARNESS_MANIFEST } from "./harness-layout";
+import type { ScaffoldOffers } from "./scaffold-offers";
 
 export type ConnectInventoryError =
   | RepoPathError
@@ -42,6 +43,7 @@ export class ConnectInventory {
   private readonly isRepositoryRoot: (path: string) => Promise<boolean>;
   private readonly homeRoot: () => string;
   private readonly cloneRepository: CloneRepositoryPort;
+  private readonly offers: ScaffoldOffers;
 
   constructor(deps: {
     fs: FileSystemPort;
@@ -55,6 +57,9 @@ export class ConnectInventory {
     // where the picker can reach it (#554).
     homeRoot: () => string;
     clone: CloneRepositoryPort;
+    // Where a `scaffoldable` refusal records the path it just offered, which
+    // is the only path the scaffold use case will act on.
+    offers: ScaffoldOffers;
   }) {
     this.fs = deps.fs;
     this.store = deps.store;
@@ -63,6 +68,7 @@ export class ConnectInventory {
     this.isRepositoryRoot = deps.isRepositoryRoot;
     this.homeRoot = deps.homeRoot;
     this.cloneRepository = deps.clone;
+    this.offers = deps.offers;
   }
 
   async connect(input: string): Promise<ConnectInventoryResult> {
@@ -102,9 +108,13 @@ export class ConnectInventory {
     // read before the offer, so an arbitrary folder never gets one (#556).
     const manifest = join(validated.path, HARNESS_MANIFEST);
     if (!(await this.fs.isFileEntry(manifest))) {
-      return origin !== null && (await this.isRepositoryRoot(validated.path))
-        ? { ok: false, error: "scaffoldable", scaffoldPath: validated.path }
-        : { ok: false, error: "not-an-inventory" };
+      if (origin === null || !(await this.isRepositoryRoot(validated.path))) {
+        return { ok: false, error: "not-an-inventory" };
+      }
+      // The offer is the scaffold's only authority to write into this
+      // repository, so making one is what records it (#556).
+      this.offers.offer(validated.path);
+      return { ok: false, error: "scaffoldable", scaffoldPath: validated.path };
     }
 
     if (origin === null) {

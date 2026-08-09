@@ -49,6 +49,7 @@ import {
   resolveMaestroConfigPath,
   ScaffoldHarness,
   type ScaffoldHarnessError,
+  ScaffoldOffers,
   ToolPresenceAdapter,
 } from "@maestro/core";
 import { type Context, Hono } from "hono";
@@ -472,6 +473,21 @@ const scaffoldErrorResponses: Record<
     status: 409,
     message:
       "That clone is checked out on a branch other than its default. Switch to the default branch and try again.",
+  },
+  "not-offered": {
+    status: 409,
+    message:
+      "Maestro only scaffolds a repository it has just offered to scaffold. Connect that repository again to get the offer.",
+  },
+  busy: {
+    status: 409,
+    message:
+      "That repository is already being scaffolded. Wait for the first attempt to finish.",
+  },
+  "write-failed": {
+    status: 422,
+    message:
+      "Maestro could not write the Harness files into that repository, so it removed the ones it had written. Check that you can write to that folder, then try again.",
   },
   "commit-failed": {
     status: 422,
@@ -1123,9 +1139,13 @@ function realDeps(): AppDeps {
     git: harnessGit,
     freshness: harnessFreshness,
   });
+  // One register for both use cases: connect writes the offers the scaffold
+  // will only act on (#556).
+  const scaffoldOffers = new ScaffoldOffers();
   const connect = new ConnectInventory({
     fs,
     store,
+    offers: scaffoldOffers,
     // The URL the author configured, not the one a transport rewrite sends git
     // to: connect gates on the repository's identity, which is what apm's refs
     // are built from (LEARNINGS · git-remote-get-url).
@@ -1163,6 +1183,10 @@ function realDeps(): AppDeps {
     scaffold: new ScaffoldHarness({
       fs,
       git: new GitHarnessScaffoldAdapter(),
+      // Own lock, keyed on the repository being scaffolded: two scaffolds of
+      // one clone would interleave their collision checks (#556).
+      locks: new InFlightLocks(),
+      offers: scaffoldOffers,
       originUrl: readConfiguredGitOriginUrl,
       connect: (path) => connect.connect(path),
     }),

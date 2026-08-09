@@ -28,6 +28,7 @@ import {
   readConfiguredGitOriginUrl,
   resolveDefaultBranch,
   resolveInventoryPath,
+  ScaffoldOffers,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -133,6 +134,7 @@ describe("joining a Harness by its GitHub url", () => {
         originUrl: readConfiguredGitOriginUrl,
         defaultBranch: resolveDefaultBranch,
         isRepositoryRoot,
+        offers: new ScaffoldOffers(),
         homeRoot: () => home,
         clone: new GitCloneAdapter(),
       }),

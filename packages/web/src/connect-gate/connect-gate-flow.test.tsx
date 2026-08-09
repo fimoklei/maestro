@@ -85,9 +85,7 @@ describe("connect gate", () => {
       screen.getByRole("button", { name: /^connect inventory$/i }),
     );
     expect(await screen.findByText(/3 primitives found/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/read-only, never writes back/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/deploys never write back/i)).toBeInTheDocument();
 
     // The beat holds until the continue action is taken — it does not
     // auto-navigate the instant the mutation resolves (ADR-0015).

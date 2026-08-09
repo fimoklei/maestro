@@ -17,6 +17,11 @@ type FakeSeed = {
   // Full entry paths registered nowhere else: a Dirent reports the type, but
   // realpath() throws (#148).
   danglingSymlinks?: string[];
+  // Models the write-side TOCTOU race: absent to exists(), yet an exclusive
+  // create finds the path already taken.
+  racedIntoExistence?: string[];
+  // Paths whose write rejects, so a caller's partial-failure path can be run.
+  unwritable?: string[];
 };
 
 export class InMemoryFileSystem implements FileSystemPort {
@@ -26,6 +31,8 @@ export class InMemoryFileSystem implements FileSystemPort {
   private readonly unreadable: Set<string>;
   private readonly racedAwayAsDirectory: Set<string>;
   private readonly danglingSymlinks: Set<string>;
+  private readonly racedIntoExistence: Set<string>;
+  private readonly unwritable: Set<string>;
 
   constructor(seed: FakeSeed = {}) {
     this.directories = new Map(Object.entries(seed.directories ?? {}));
@@ -34,6 +41,8 @@ export class InMemoryFileSystem implements FileSystemPort {
     this.unreadable = new Set(seed.unreadable ?? []);
     this.racedAwayAsDirectory = new Set(seed.racedAwayAsDirectory ?? []);
     this.danglingSymlinks = new Set(seed.danglingSymlinks ?? []);
+    this.racedIntoExistence = new Set(seed.racedIntoExistence ?? []);
+    this.unwritable = new Set(seed.unwritable ?? []);
   }
 
   async realpath(path: string): Promise<string> {
@@ -106,6 +115,28 @@ export class InMemoryFileSystem implements FileSystemPort {
 
   async writeFile(path: string, contents: string): Promise<void> {
     this.files.set(path, contents);
+  }
+
+  async createNewFile(path: string, contents: string): Promise<boolean> {
+    if (this.unwritable.has(path)) {
+      throw new Error(`EACCES: permission denied, open '${path}'`);
+    }
+    if (this.racedIntoExistence.has(path) || (await this.exists(path))) {
+      return false;
+    }
+    this.files.set(path, contents);
+    return true;
+  }
+
+  async remove(path: string): Promise<void> {
+    this.files.delete(path);
+    this.directories.delete(path);
+    for (const known of [...this.files.keys(), ...this.directories.keys()]) {
+      if (known.startsWith(`${path}/`)) {
+        this.files.delete(known);
+        this.directories.delete(known);
+      }
+    }
   }
 
   async ensureDir(path: string): Promise<void> {

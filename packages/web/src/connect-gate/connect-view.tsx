@@ -9,7 +9,7 @@ import { SectionHeader } from "../ui/section-header";
 
 // The connect gate's second screen (ADR-0015): shares ConnectInventoryPanel
 // with Settings' re-point (PRD #93), but lands on an explicit "Continue" so
-// the read-only promise stays on screen long enough to read.
+// the reassurance beat stays on screen long enough to read (ADR-0021).
 export function ConnectView() {
   const config = useInventoryConfig();
   const navigate = useNavigate();
@@ -49,7 +49,7 @@ export function ConnectView() {
                 <p className="text-green-ink text-tag">
                   {scaffolded
                     ? "✓ Harness scaffolded and pushed · ready for its first skill"
-                    : `✓ ${result.primitiveCount} primitives found · read-only, never writes back`}
+                    : `✓ ${result.primitiveCount} primitives found · deploys never write back`}
                 </p>
                 {/* Shared with the Settings steady state so the two can't drift apart (#211). */}
                 <SourceLabel path={result.inventoryPath} />

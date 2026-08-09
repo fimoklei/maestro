@@ -23,6 +23,7 @@ import {
   readConfiguredGitOriginUrl,
   resolveDefaultBranch,
   resolveInventoryPath,
+  ScaffoldOffers,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -96,6 +97,7 @@ describe("inventory connect HTTP route", () => {
         originUrl: readConfiguredGitOriginUrl,
         defaultBranch: resolveDefaultBranch,
         isRepositoryRoot,
+        offers: new ScaffoldOffers(),
         // No URL is connected here; the clone journey lives in
         // connect-clone-journey.test.ts.
         homeRoot: () => dir,

@@ -153,7 +153,9 @@ export function ConnectInventoryForm({
           // the two never compete for the same weight (#147, #556).
           variant={noUsableOrigin || scaffoldOffer ? "quiet" : "primary"}
           size="sm"
-          disabled={isPending}
+          // A running scaffold takes submit down with it: both mutations end in
+          // the one inventory path, so whichever finished last would win (#556).
+          disabled={isPending || scaffoldOffer?.isPending === true}
         >
           {submitLabel}
         </Button>

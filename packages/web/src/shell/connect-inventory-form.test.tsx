@@ -197,6 +197,11 @@ describe("ConnectInventoryForm", () => {
     expect(
       screen.queryByRole("button", { name: /scaffold the harness/i }),
     ).not.toBeInTheDocument();
+    // A scaffold writes, commits and pushes. A connect started beside it would
+    // race it for the one inventory path, so submit goes down with it (#556).
+    expect(
+      screen.getByRole("button", { name: /^connect inventory$/i }),
+    ).toBeDisabled();
   });
 
   it("shows a plain error rather than an offer when no offer is given", () => {

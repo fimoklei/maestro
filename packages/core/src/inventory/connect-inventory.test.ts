@@ -3,6 +3,7 @@ import { ConfigStore } from "../registry/config-store";
 import { InMemoryFileSystem } from "../registry/file-system.fake";
 import type { CloneOutcome, CloneRepositoryPort } from "./clone-repository";
 import { ConnectInventory } from "./connect-inventory";
+import { ScaffoldOffers } from "./scaffold-offers";
 
 const CONFIG_PATH = "/home/me/.maestro/config.json";
 const PARSEABLE_ORIGIN = "git@github.com:fimoklei/agent-harness.git";
@@ -31,6 +32,7 @@ function makeConnect(
   originUrl: string | null = PARSEABLE_ORIGIN,
   defaultBranch: string | null = "main",
   clone: CloneRepositoryPort = new FakeClone(fs),
+  offers: ScaffoldOffers = new ScaffoldOffers(),
 ): ConnectInventory {
   return new ConnectInventory({
     fs,
@@ -39,6 +41,7 @@ function makeConnect(
     defaultBranch: async () => defaultBranch,
     isRepositoryRoot: async () => true,
     homeRoot: () => HOME_ROOT,
+    offers,
     clone,
   });
 }
@@ -104,6 +107,35 @@ describe("ConnectInventory", () => {
     });
   });
 
+  // The offer is the scaffold's only authority to write into the repository,
+  // so a refusal that does not make one leaves it unscaffoldable (#556).
+  it("records the offer it hands out, and records nothing when it refuses", async () => {
+    const offers = new ScaffoldOffers();
+    const offered = new InMemoryFileSystem({
+      directories: { "/Users/me/empty": "/Users/me/empty" },
+    });
+    await makeConnect(
+      offered,
+      PARSEABLE_ORIGIN,
+      "main",
+      new FakeClone(offered),
+      offers,
+    ).connect("/Users/me/empty");
+    expect(offers.holds("/Users/me/empty")).toBe(true);
+
+    const refused = new InMemoryFileSystem({
+      directories: { "/Users/me/plain": "/Users/me/plain" },
+    });
+    await makeConnect(
+      refused,
+      null,
+      "main",
+      new FakeClone(refused),
+      offers,
+    ).connect("/Users/me/plain");
+    expect(offers.holds("/Users/me/plain")).toBe(false);
+  });
+
   it("rejects the retired root skills/ shape, which is no longer a fallback", async () => {
     const fs = new InMemoryFileSystem({
       directories: {
@@ -156,6 +188,7 @@ describe("ConnectInventory", () => {
       isRepositoryRoot: async () => false,
       homeRoot: () => HOME_ROOT,
       clone: new FakeClone(fs),
+      offers: new ScaffoldOffers(),
     });
 
     await expect(connect.connect("/Users/me/repo/docs")).resolves.toEqual({

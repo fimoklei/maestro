@@ -43,6 +43,10 @@ export interface HarnessScaffoldGitPort {
     message: string,
   ): Promise<ScaffoldCommitOutcome>;
 
+  // Drops these paths from the index without touching the working tree, so a
+  // rolled-back scaffold leaves no staged entry claiming a deleted file.
+  unstage(root: string, paths: string[]): Promise<void>;
+
   push(root: string, branch: string): Promise<ScaffoldPushOutcome>;
 
   setOriginHead(root: string, branch: string): Promise<void>;
@@ -84,6 +88,24 @@ export class GitHarnessScaffoldAdapter implements HarnessScaffoldGitPort {
       return "committed";
     } catch {
       return "commit-failed";
+    }
+  }
+
+  // `rm --cached` rather than `reset`: the scaffold's own commit can be the
+  // repository's first, and `reset` has no HEAD to reset against there.
+  async unstage(root: string, paths: string[]): Promise<void> {
+    try {
+      await this.git(root, [
+        "rm",
+        "--cached",
+        "-r",
+        "--ignore-unmatch",
+        "--",
+        ...paths,
+      ]);
+    } catch {
+      // The rollback already removed the files; a stale index entry is worth
+      // reporting nothing extra about, and the caller's error is the real one.
     }
   }
 

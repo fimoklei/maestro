@@ -1,6 +1,7 @@
 // The canonical empty Harness, written as data so one reader owns the shape.
 // apm scaffolds `apm.yml` and nothing else, and `plugin.json` belongs to the
 // plugin-author workflow — see docs/research/552-empty-repo-and-scaffold-shape.md.
+import { stringify } from "yaml";
 import { HARNESS_MANIFEST, HARNESS_SKILLS_DIR } from "./harness-layout";
 
 export type ScaffoldFile = { path: string; contents: string };
@@ -20,6 +21,15 @@ export const SCAFFOLD_ENTRIES = [
   HARNESS_MANIFEST,
 ];
 
+// The top of every tree the scaffold creates, and so exactly what a rollback
+// removes: nothing under these existed before SCAFFOLD_ENTRIES was cleared.
+export const SCAFFOLD_ROOTS = [
+  ".apm",
+  ".github",
+  "README.md",
+  HARNESS_MANIFEST,
+];
+
 export const canonicalHarnessFiles = (ownerRepo: string): ScaffoldFile[] => {
   const repo = ownerRepo.split("/")[1] ?? ownerRepo;
   return [
@@ -30,11 +40,15 @@ export const canonicalHarnessFiles = (ownerRepo: string): ScaffoldFile[] => {
   ];
 };
 
+// A repository name is a valid YAML scalar only by accident: `true`, `null`
+// and `123` are legal GitHub names that parse as non-strings unquoted.
+const scalar = (value: string) => stringify(value).trimEnd();
+
 // `apm init -y`'s own output, reproduced rather than shelled out to: the
 // command writes this one file and nothing else (#552 S1).
-const manifest = (repo: string) => `name: ${repo}
+const manifest = (repo: string) => `name: ${scalar(repo)}
 version: 1.0.0
-description: APM project for ${repo}
+description: ${scalar(`APM project for ${repo}`)}
 author: Developer
 # Which agent platforms to deploy to (uncomment to pin):
 # targets:

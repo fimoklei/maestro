@@ -28,6 +28,7 @@ import {
   resolveDefaultBranch,
   resolveInventoryPath,
   ScaffoldHarness,
+  ScaffoldOffers,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -117,6 +118,9 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
       fs,
       resolvePath: async () => resolveInventoryPath(await store.read(), {}),
     });
+    // One register, as production wires it: connect's offer is the scaffold's
+    // authority to write into the repository (#556).
+    const offers = new ScaffoldOffers();
     const connect = new ConnectInventory({
       fs,
       store,
@@ -125,6 +129,7 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
       isRepositoryRoot,
       homeRoot: () => home,
       clone: new GitCloneAdapter(),
+      offers,
     });
     const locks = new InFlightLocks();
     const registry = new Registry({
@@ -142,6 +147,8 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
       scaffold: new ScaffoldHarness({
         fs,
         git: new GitHarnessScaffoldAdapter(),
+        locks: new InFlightLocks(),
+        offers,
         originUrl: readConfiguredGitOriginUrl,
         connect: (path) => connect.connect(path),
       }),
@@ -279,6 +286,56 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
     );
   });
 
+  // The refusal tells the user to fix git's identity and try again, so the
+  // clone has to be back where it started for that retry to mean anything.
+  it("removes a half-written scaffold when the commit fails, so a retry works", async () => {
+    const app = makeApp();
+    const offered = await offerFor(app);
+    // An empty ident is refused by git itself, whatever the machine's config
+    // says (measured, git 2.50.1: "fatal: empty ident name (for <>)").
+    process.env.GIT_AUTHOR_NAME = "";
+    process.env.GIT_AUTHOR_EMAIL = "";
+    process.env.GIT_COMMITTER_NAME = "";
+    process.env.GIT_COMMITTER_EMAIL = "";
+
+    const failed = await post(app, "/api/harness/scaffold", { path: offered });
+
+    expect(failed.status).toBe(422);
+    expect(await failed.json()).toMatchObject({ error: "commit-failed" });
+    for (const file of CANONICAL_FILES) {
+      await expect(readFile(join(clone, file), "utf8")).rejects.toThrow();
+    }
+    // Neither on disk nor claimed by the index.
+    expect(await read(clone, "status", "--porcelain")).toBe("");
+
+    process.env.GIT_AUTHOR_NAME = "Fixture";
+    process.env.GIT_AUTHOR_EMAIL = "fixture@example.invalid";
+    process.env.GIT_COMMITTER_NAME = "Fixture";
+    process.env.GIT_COMMITTER_EMAIL = "fixture@example.invalid";
+
+    const retry = await post(app, "/api/harness/scaffold", { path: offered });
+
+    expect(retry.status).toBe(200);
+    expect(await read(clone, "rev-list", "--count", "HEAD")).toBe("1");
+  });
+
+  // The route writes, commits and pushes with the machine's own git
+  // credentials, so the path it acts on is not the client's to pick (#556).
+  it("refuses a repository the gate never offered, without touching it", async () => {
+    const app = makeApp();
+    // A real clone of the same empty repository, reached without ever asking
+    // the gate about it.
+    const sneaked = join(home, "sneaked");
+    await run("git", ["clone", GITHUB_URL, sneaked]);
+
+    const res = await post(app, "/api/harness/scaffold", { path: sneaked });
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ error: "not-offered" });
+    await expect(readFile(join(sneaked, "apm.yml"), "utf8")).rejects.toThrow();
+    await expect(git(sneaked, "rev-parse", "HEAD")).rejects.toThrow();
+  });
+
   it("names the repository-relative path of an entry it would overwrite", async () => {
     const app = makeApp();
     const offered = await offerFor(app);
@@ -344,24 +401,22 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
       "not-an-inventory",
     );
 
+    // Refused for having no offer, one step before the scaffold's own
+    // repository check reads it (that check is covered in scaffold-harness.test.ts).
     const res = await post(app, "/api/harness/scaffold", { path: inside });
-    expect(res.status).toBe(422);
-    expect(((await res.json()) as { error: string }).error).toBe(
-      "not-a-repository",
-    );
+    expect(res.status).toBe(409);
+    expect(((await res.json()) as { error: string }).error).toBe("not-offered");
     await expect(readFile(join(inside, "apm.yml"), "utf8")).rejects.toThrow();
     await expect(git(clone, "rev-parse", "HEAD")).rejects.toThrow();
   });
 
-  it("refuses to scaffold a directory that is not a repository", async () => {
+  it("refuses to scaffold a plain directory the gate never offered", async () => {
     const plain = join(base, "just-a-folder");
     await mkdir(plain);
 
     const res = await post(makeApp(), "/api/harness/scaffold", { path: plain });
 
-    expect(res.status).toBe(422);
-    expect(((await res.json()) as { error: string }).error).toBe(
-      "not-a-repository",
-    );
+    expect(res.status).toBe(409);
+    expect(((await res.json()) as { error: string }).error).toBe("not-offered");
   });
 });

@@ -30,6 +30,17 @@ describe("canonicalHarnessFiles", () => {
     expect(manifest.dependencies).toEqual({ apm: [], mcp: [] });
   });
 
+  it.each(["true", "null", "123", "no", "1.0"])(
+    "keeps a YAML-significant repository name a string: %s",
+    (name) => {
+      const manifest = parse(
+        byPath(`fimoklei/${name}`)?.get("apm.yml")?.contents as string,
+      );
+      expect(manifest.name).toBe(name);
+      expect(manifest.description).toBe(`APM project for ${name}`);
+    },
+  );
+
   it("keeps .apm/skills/ reachable by git with a placeholder file", () => {
     // Git tracks files, never directories, so an empty skills directory would
     // never reach the remote (#552 S5).

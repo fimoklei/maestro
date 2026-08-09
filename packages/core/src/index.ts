@@ -117,6 +117,7 @@ export {
   ScaffoldHarness,
   type ScaffoldHarnessError,
 } from "./inventory/scaffold-harness";
+export { ScaffoldOffers } from "./inventory/scaffold-offers";
 export { resolveMaestroConfigPath } from "./registry/config-path";
 export { ConfigStore } from "./registry/config-store";
 export type { FileSystemPort } from "./registry/file-system";

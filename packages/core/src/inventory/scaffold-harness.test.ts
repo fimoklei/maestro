@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { InFlightLocks } from "../deploy/in-flight-locks";
 import { ConfigStore } from "../registry/config-store";
 import { InMemoryFileSystem } from "../registry/file-system.fake";
 import type { ConnectInventoryResult } from "./connect-inventory";
+import { SCAFFOLD_ENTRIES } from "./harness-scaffold-files";
 import type {
   HarnessScaffoldGitPort,
   ScaffoldPushOutcome,
 } from "./harness-scaffold-git";
 import { ScaffoldHarness } from "./scaffold-harness";
+import { ScaffoldOffers } from "./scaffold-offers";
 
 const REPO = "/Users/me/agent-harness";
 const CONFIG_PATH = "/home/me/.maestro/config.json";
@@ -18,6 +21,7 @@ class FakeGit implements HarnessScaffoldGitPort {
   readonly commits: { paths: string[]; message: string }[] = [];
   readonly pushes: string[] = [];
   readonly originHeads: string[] = [];
+  readonly unstaged: string[] = [];
   repositoryRootAnswer = true;
 
   constructor(
@@ -55,6 +59,9 @@ class FakeGit implements HarnessScaffoldGitPort {
   async setOriginHead(_root: string, branch: string) {
     this.originHeads.push(branch);
   }
+  async unstage(_root: string, paths: string[]) {
+    this.unstaged.push(...paths);
+  }
 }
 
 function make(
@@ -69,9 +76,15 @@ function make(
     inventoryPath: path,
   }),
 ) {
+  // Pre-offered: every test but the one below reaches the scaffold through a
+  // connect that already refused this path and offered it.
+  const offers = new ScaffoldOffers();
+  offers.offer(REPO);
   return new ScaffoldHarness({
     fs,
     git,
+    locks: new InFlightLocks(),
+    offers,
     originUrl: async () => originUrl,
     connect,
   });
@@ -232,6 +245,31 @@ describe("ScaffoldHarness", () => {
     expect(git.pushes).toEqual([]);
   });
 
+  // The endpoint writes, commits and pushes with ambient git credentials, so
+  // the path may not be the client's to pick (security.md, #556).
+  it("refuses a path connect never offered to scaffold", async () => {
+    const fs = emptyRepo();
+    const git = new FakeGit();
+    const scaffold = new ScaffoldHarness({
+      fs,
+      git,
+      locks: new InFlightLocks(),
+      offers: new ScaffoldOffers(),
+      originUrl: async () => ORIGIN,
+      connect: async (path) => ({
+        ok: true,
+        outcome: "scaffolded",
+        inventoryPath: path,
+      }),
+    });
+
+    const result = await scaffold.scaffold(REPO);
+
+    expect(result).toEqual({ ok: false, error: "not-offered" });
+    expect(await fs.exists(`${REPO}/apm.yml`)).toBe(false);
+    expect(git.commits).toEqual([]);
+  });
+
   it("refuses a relative path before touching anything", async () => {
     await expect(make(emptyRepo()).scaffold("../elsewhere")).resolves.toEqual({
       ok: false,
@@ -267,6 +305,84 @@ describe("ScaffoldHarness", () => {
       error: "commit-failed",
     });
     expect(git.pushes).toEqual([]);
+  });
+
+  // A half-scaffold is unretryable: the apm.yml it left behind makes the next
+  // attempt answer already-a-harness, and the message says to retry (#556).
+  it("removes everything it wrote when the commit fails", async () => {
+    const fs = emptyRepo();
+    const git = new FakeGit(undefined, { commit: "commit-failed" });
+
+    await make(fs, git).scaffold(REPO);
+
+    for (const entry of SCAFFOLD_ENTRIES) {
+      expect(await fs.exists(`${REPO}/${entry}`)).toBe(false);
+    }
+    // Deleting the files without this would leave the index claiming them.
+    expect(git.unstaged.sort()).toEqual([
+      ".apm/skills/.gitkeep",
+      ".github/workflows/skill-check.yml",
+      "README.md",
+      "apm.yml",
+    ]);
+  });
+
+  it("reports a failed write and removes the files it got as far as", async () => {
+    const fs = new InMemoryFileSystem({
+      directories: { [REPO]: REPO },
+      unwritable: [`${REPO}/README.md`],
+    });
+    const git = new FakeGit();
+
+    const result = await make(fs, git).scaffold(REPO);
+
+    expect(result).toEqual({ ok: false, error: "write-failed" });
+    expect(await fs.exists(`${REPO}/apm.yml`)).toBe(false);
+    expect(git.commits).toEqual([]);
+  });
+
+  it("refuses a path that appeared between the collision check and the write", async () => {
+    const fs = new InMemoryFileSystem({
+      directories: { [REPO]: REPO },
+      racedIntoExistence: [`${REPO}/README.md`],
+    });
+    const git = new FakeGit();
+
+    const result = await make(fs, git).scaffold(REPO);
+
+    expect(result).toEqual({
+      ok: false,
+      error: "path-occupied",
+      path: "README.md",
+    });
+    expect(await fs.exists(`${REPO}/apm.yml`)).toBe(false);
+    expect(git.commits).toEqual([]);
+  });
+
+  it("refuses a second scaffold of the same repository while one is running", async () => {
+    const fs = emptyRepo();
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let reachedConnect = () => {};
+    const running = new Promise<void>((resolve) => {
+      reachedConnect = resolve;
+    });
+    const scaffold = make(fs, new FakeGit(), ORIGIN, async (path) => {
+      reachedConnect();
+      await held;
+      return { ok: true, outcome: "scaffolded", inventoryPath: path };
+    });
+
+    const first = scaffold.scaffold(REPO);
+    await running;
+    await expect(scaffold.scaffold(REPO)).resolves.toEqual({
+      ok: false,
+      error: "busy",
+    });
+    release();
+    expect((await first).ok).toBe(true);
   });
 
   it("creates no tag", async () => {
