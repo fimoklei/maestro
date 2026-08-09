@@ -121,16 +121,20 @@ describe("ConnectInventoryForm", () => {
     expect(onPathChange).toHaveBeenCalledWith("/x");
   });
 
-  it("renders the no-usable-origin card with a browse-again call to action", async () => {
-    const onBrowse = vi.fn();
+  it("renders a recoverable refusal as a card with its own call to action", async () => {
+    const onAction = vi.fn();
     render(
       <ConnectInventoryForm
         path="/home/me/skills-only-folder"
         onPathChange={vi.fn()}
         onSubmit={vi.fn()}
         error="Server explanation of the refusal."
-        noUsableOrigin
-        onBrowse={onBrowse}
+        recovery={{
+          title: "no usable git origin",
+          actionLabel: "browse again…",
+          onAction,
+        }}
+        onBrowse={vi.fn()}
       />,
     );
 
@@ -140,7 +144,97 @@ describe("ConnectInventoryForm", () => {
     await userEvent.click(
       screen.getByRole("button", { name: /browse again/i }),
     );
-    expect(onBrowse).toHaveBeenCalledOnce();
+    expect(onAction).toHaveBeenCalledOnce();
+  });
+
+  // The occupied destination is refused, never worked around — the way out is
+  // another parent folder (#555).
+  it("offers another folder when the destination is occupied", async () => {
+    const onAction = vi.fn();
+    render(
+      <ConnectInventoryForm
+        path="https://github.com/fimoklei/agent-harness"
+        onPathChange={vi.fn()}
+        onSubmit={vi.fn()}
+        error="Something else already sits where that Harness would land."
+        recovery={{
+          title: "destination is taken",
+          actionLabel: "choose another folder…",
+          onAction,
+        }}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /choose another folder/i }),
+    );
+    expect(onAction).toHaveBeenCalledOnce();
+  });
+
+  describe("the clone destination", () => {
+    it("shows the folder a pasted GitHub url would clone into", () => {
+      render(
+        <ConnectInventoryForm
+          path="https://github.com/fimoklei/agent-harness"
+          onPathChange={vi.fn()}
+          onSubmit={vi.fn()}
+          cloneParent="/Users/me/Projects"
+          onChooseParent={vi.fn()}
+        />,
+      );
+
+      expect(
+        screen.getByText("/Users/me/Projects/agent-harness"),
+      ).toBeInTheDocument();
+    });
+
+    it("names the home folder while no parent has been chosen", () => {
+      render(
+        <ConnectInventoryForm
+          path="https://github.com/fimoklei/agent-harness"
+          onPathChange={vi.fn()}
+          onSubmit={vi.fn()}
+          onChooseParent={vi.fn()}
+        />,
+      );
+
+      expect(
+        screen.getByText("your home folder/agent-harness"),
+      ).toBeInTheDocument();
+    });
+
+    it("shows no destination for a local path, which is not cloned", () => {
+      render(
+        <ConnectInventoryForm
+          path="/Users/me/agent-harness"
+          onPathChange={vi.fn()}
+          onSubmit={vi.fn()}
+          onChooseParent={vi.fn()}
+        />,
+      );
+
+      expect(screen.queryByText(/clone into/i)).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /change folder/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("opens the parent picker from the destination row", async () => {
+      const onChooseParent = vi.fn();
+      render(
+        <ConnectInventoryForm
+          path="https://github.com/fimoklei/agent-harness"
+          onPathChange={vi.fn()}
+          onSubmit={vi.fn()}
+          onChooseParent={onChooseParent}
+        />,
+      );
+
+      await userEvent.click(
+        screen.getByRole("button", { name: /change folder/i }),
+      );
+      expect(onChooseParent).toHaveBeenCalledOnce();
+    });
   });
 
   it("keeps the plain error text for errors other than no-usable-origin", () => {

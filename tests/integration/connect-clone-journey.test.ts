@@ -23,6 +23,7 @@ import {
   InFlightLocks,
   InventoryReader,
   NodeFileSystem,
+  probeHead,
   Registry,
   readConfiguredGitOriginUrl,
   resolveDefaultBranch,
@@ -130,6 +131,7 @@ describe("joining a Harness by its GitHub url", () => {
         store,
         originUrl: readConfiguredGitOriginUrl,
         defaultBranch: resolveDefaultBranch,
+        probeHead,
         homeRoot: () => home,
         clone: new GitCloneAdapter(),
       }),
@@ -221,6 +223,8 @@ describe("joining a Harness by its GitHub url", () => {
     ).rejects.toThrow();
   });
 
+  // Missing, private and mistyped are indistinguishable from the outside, so
+  // they share one message rather than being guessed apart (#555).
   it("reports a GitHub url that cannot be cloned without exposing git's output", async () => {
     const res = await postConnect(makeApp(), {
       path: MISSING_URL,
@@ -228,7 +232,110 @@ describe("joining a Harness by its GitHub url", () => {
 
     expect(res.status).toBe(422);
     const body = (await res.json()) as { error: string; message: string };
-    expect(body.error).toBe("clone-failed");
+    expect(body.error).toBe("clone-unavailable");
     expect(body.message).not.toContain(base);
+  });
+
+  describe("choosing where the clone lands", () => {
+    it("clones into a chosen parent instead of the home ceiling", async () => {
+      const parent = join(home, "Projects");
+      await mkdir(parent);
+
+      const res = await postConnect(makeApp(), { path: GITHUB_URL, parent });
+
+      expect(res.status).toBe(200);
+      expect(
+        ((await res.json()) as { inventoryPath: string }).inventoryPath,
+      ).toBe(join(parent, "agent-harness"));
+      expect(
+        await readFile(join(parent, "agent-harness", "apm.yml"), "utf8"),
+      ).toBe("dependencies: []\n");
+    });
+
+    it("refuses a parent folder that does not exist", async () => {
+      const res = await postConnect(makeApp(), {
+        path: GITHUB_URL,
+        parent: join(home, "nowhere"),
+      });
+
+      expect(res.status).toBe(400);
+      expect(((await res.json()) as { error: string }).error).toBe(
+        "invalid-parent",
+      );
+    });
+
+    // A forgotten local copy is connected, never duplicated — and the marker
+    // proves the folder on disk was left exactly as it was found.
+    it("connects an existing clone of the same repository instead of re-cloning", async () => {
+      await postConnect(makeApp(), { path: GITHUB_URL });
+      const clone = join(home, "agent-harness");
+      await writeFile(join(clone, "MARKER"), "mine\n", "utf8");
+
+      const res = await postConnect(makeApp(), { path: GITHUB_URL });
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({
+        outcome: "found",
+        inventoryPath: clone,
+        primitiveCount: 1,
+      });
+      expect(await readFile(join(clone, "MARKER"), "utf8")).toBe("mine\n");
+    });
+
+    it("refuses a destination occupied by something else and leaves it alone", async () => {
+      const occupied = join(home, "agent-harness");
+      await mkdir(occupied);
+      await writeFile(join(occupied, "notes.txt"), "mine\n", "utf8");
+
+      const res = await postConnect(makeApp(), { path: GITHUB_URL });
+
+      expect(res.status).toBe(409);
+      const body = (await res.json()) as { error: string; message: string };
+      expect(body.error).toBe("destination-occupied");
+      expect(body.message).not.toContain(base);
+      expect(await readFile(join(occupied, "notes.txt"), "utf8")).toBe(
+        "mine\n",
+      );
+    });
+
+    // What an interrupted clone leaves: a repository with a remote and no
+    // commit at HEAD. Reported with recovery guidance, never cloned over.
+    it("reports a partial clone and leaves it on disk", async () => {
+      const partial = join(home, "agent-harness");
+      await run("git", ["init", "-b", "main", partial]);
+      await run("git", ["-C", partial, "remote", "add", "origin", GITHUB_URL]);
+
+      const res = await postConnect(makeApp(), { path: GITHUB_URL });
+
+      expect(res.status).toBe(409);
+      const body = (await res.json()) as { error: string; message: string };
+      expect(body.error).toBe("destination-partial-clone");
+      expect(body.message).not.toContain(base);
+      await expect(
+        readFile(join(partial, ".git", "config"), "utf8"),
+      ).resolves.toContain("origin");
+    });
+
+    // A fresh repository of someone else's is not this clone's leftover, and
+    // the partial-clone message would tell the user to delete it.
+    it("reports a commitless repository of another origin as occupied", async () => {
+      const other = join(home, "agent-harness");
+      await run("git", ["init", "-b", "main", other]);
+      await run("git", [
+        "-C",
+        other,
+        "remote",
+        "add",
+        "origin",
+        "https://github.com/someone/else",
+      ]);
+
+      const res = await postConnect(makeApp(), { path: GITHUB_URL });
+
+      expect(res.status).toBe(409);
+      expect(((await res.json()) as { error: string }).error).toBe(
+        "destination-occupied",
+      );
+    });
   });
 });

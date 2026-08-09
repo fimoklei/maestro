@@ -18,6 +18,7 @@ import {
   InFlightLocks,
   InventoryReader,
   NodeFileSystem,
+  probeHead,
   Registry,
   readConfiguredGitOriginUrl,
   resolveDefaultBranch,
@@ -93,10 +94,11 @@ describe("inventory connect HTTP route", () => {
         store,
         originUrl: readConfiguredGitOriginUrl,
         defaultBranch: resolveDefaultBranch,
+        probeHead,
         // No URL is connected here; the clone journey lives in
         // connect-clone-journey.test.ts.
         homeRoot: () => dir,
-        clone: { clone: async () => "clone-failed" },
+        clone: { clone: async () => "clone-unavailable" },
       }),
       deployState,
       deploy: stubDeploy({ inventory, registry, locks }),

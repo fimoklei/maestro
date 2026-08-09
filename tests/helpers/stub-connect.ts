@@ -15,7 +15,8 @@ export function stubConnect(): ConnectInventory {
     }),
     originUrl: async () => null,
     defaultBranch: async () => null,
+    probeHead: async () => "unknown" as const,
     homeRoot: () => "/nonexistent-maestro",
-    clone: { clone: async () => "clone-failed" },
+    clone: { clone: async () => "clone-unavailable" },
   });
 }
