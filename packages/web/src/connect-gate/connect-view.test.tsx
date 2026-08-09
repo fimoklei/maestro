@@ -1,20 +1,13 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { jsonResponse, renderWithQuery } from "../test-utils";
 import { ConnectView } from "./connect-view";
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
-
-function jsonResponse(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
 
 function stubApi({
   connect,
@@ -56,19 +49,14 @@ function stubApi({
 }
 
 function renderView() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={["/welcome/connect"]}>
-        <Routes>
-          <Route path="/welcome/connect" element={<ConnectView />} />
-          <Route path="/inventory" element={<div>inventory-landed</div>} />
-          <Route path="/" element={<div>deploy-state-landed</div>} />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <MemoryRouter initialEntries={["/welcome/connect"]}>
+      <Routes>
+        <Route path="/welcome/connect" element={<ConnectView />} />
+        <Route path="/inventory" element={<div>inventory-landed</div>} />
+        <Route path="/" element={<div>deploy-state-landed</div>} />
+      </Routes>
+    </MemoryRouter>,
   );
 }
 

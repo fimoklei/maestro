@@ -1,7 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { QueryClient } from "@tanstack/react-query";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { jsonResponse, renderWithQuery } from "../test-utils";
 import { DeployStateList } from "./deploy-state-list";
 
 afterEach(() => {
@@ -10,13 +11,6 @@ afterEach(() => {
 
 const tdd = { type: "skill" as const, name: "tdd", version: "v0.5.0" };
 const REPO = "/Users/me/project";
-
-function jsonResponse(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
 
 // The confirmation's own control. Fixed text: the skill name left the label
 // with #411, because the dialog's title already carries it. Only one dialog is
@@ -108,20 +102,15 @@ function renderRow({
   onRemoved?: () => void;
   primitives?: (typeof tdd)[];
 } = {}) {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
   const list = (primitives: (typeof tdd)[]) => (
-    <QueryClientProvider client={queryClient}>
-      <DeployStateList
-        primitives={primitives}
-        skipped={[]}
-        target={target}
-        onRemoved={onRemoved}
-      />
-    </QueryClientProvider>
+    <DeployStateList
+      primitives={primitives}
+      skipped={[]}
+      target={target}
+      onRemoved={onRemoved}
+    />
   );
-  const { rerender } = render(list(primitives));
+  const { rerender } = renderWithQuery(list(primitives));
   // The refetch that follows a landed removal, as the card sees it: the row is
   // gone from the server's answer and the list re-renders without it.
   const withoutTdd = () => rerender(list([]));

@@ -1,8 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DeployStatePanel } from "../deploy-state/deploy-state-panel";
+import { jsonResponse, renderWithQuery } from "../test-utils";
 import { BulkRemoveSkillAction } from "./bulk-remove-skill-action";
 import type { BulkRemoveCandidate } from "./bulk-remove-targets";
 import type { DeployTarget } from "./use-deploy-skill";
@@ -22,12 +22,6 @@ const TARGETS: BulkRemoveCandidate[] = [
 
 const GLOBAL = TARGETS[0] as BulkRemoveCandidate;
 const ACME_WEB = TARGETS[1] as BulkRemoveCandidate;
-
-const jsonResponse = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
 
 // A receipt per target, so a test can tell "each entry carries its own answer"
 // apart from "one answer was copied across the batch" (#458).
@@ -73,14 +67,7 @@ function stubServer(
 }
 
 function renderAction(targets = TARGETS) {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  render(
-    <QueryClientProvider client={queryClient}>
-      <BulkRemoveSkillAction skillName="tdd" targets={targets} />
-    </QueryClientProvider>,
-  );
+  renderWithQuery(<BulkRemoveSkillAction skillName="tdd" targets={targets} />);
 }
 
 const openDialog = async () => {
@@ -264,14 +251,11 @@ describe("BulkRemoveSkillAction", () => {
       }),
     );
 
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
-    render(
-      <QueryClientProvider client={queryClient}>
+    renderWithQuery(
+      <>
         <BulkRemoveSkillAction skillName="tdd" targets={[ACME_WEB]} />
         <DeployStatePanel repo="/dev/acme-web" onStartDeploy={() => {}} />
-      </QueryClientProvider>,
+      </>,
     );
 
     expect(await screen.findByText("v1.0.0")).toBeInTheDocument();
@@ -356,17 +340,11 @@ describe("BulkRemoveSkillAction", () => {
       }),
     );
 
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false },
-        mutations: { retry: false },
-      },
-    });
-    render(
-      <QueryClientProvider client={queryClient}>
+    renderWithQuery(
+      <>
         <BulkRemoveSkillAction skillName="tdd" targets={[ACME_WEB]} />
         <DeployStatePanel repo="/dev/acme-web" onStartDeploy={() => {}} />
-      </QueryClientProvider>,
+      </>,
     );
 
     expect(await screen.findByText("v1.0.0")).toBeInTheDocument();

@@ -1,8 +1,9 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
 import type { VersionDrift } from "../drift/use-drift";
+import { renderWithQuery } from "../test-utils";
 import { GlobalTargets } from "./global-targets";
 
 // Presentational, fed via props. QueryClientProvider only satisfies the
@@ -16,21 +17,16 @@ const ranDrift = (behind: VersionDrift[]) =>
 const READY_NO_DRIFT = ranDrift([]);
 
 function renderTargets(props: Partial<Parameters<typeof GlobalTargets>[0]>) {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <GlobalTargets
-        isLoading={false}
-        isError={false}
-        tools={[]}
-        skipped={[]}
-        drift={READY_NO_DRIFT}
-        onStartDeploy={() => {}}
-        {...props}
-      />
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <GlobalTargets
+      isLoading={false}
+      isError={false}
+      tools={[]}
+      skipped={[]}
+      drift={READY_NO_DRIFT}
+      onStartDeploy={() => {}}
+      {...props}
+    />,
   );
 }
 

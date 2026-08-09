@@ -1,18 +1,11 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { jsonResponse, renderWithQuery } from "../test-utils";
 import { DeployStatePanel } from "./deploy-state-panel";
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
-
-function jsonResponse(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
 
 // Routes the panel's two queries (deploy-state and drift) by URL, so each
 // scenario can pin one deployed skill and a distinct drift outcome.
@@ -34,13 +27,8 @@ function stubFetch(
 }
 
 function renderPanel(repo: string) {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <DeployStatePanel repo={repo} onStartDeploy={() => {}} />
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <DeployStatePanel repo={repo} onStartDeploy={() => {}} />,
   );
 }
 

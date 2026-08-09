@@ -1,28 +1,14 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { jsonResponse, renderWithQuery } from "../test-utils";
 import { GlobalDeployStatePanel } from "./global-deploy-state-panel";
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function jsonResponse(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
-
 function renderPanel() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <GlobalDeployStatePanel onStartDeploy={() => {}} />
-    </QueryClientProvider>,
-  );
+  return renderWithQuery(<GlobalDeployStatePanel onStartDeploy={() => {}} />);
 }
 
 describe("GlobalDeployStatePanel", () => {
