@@ -4,13 +4,19 @@ import { RegisterRepoHint } from "./register-repo-hint";
 
 describe("RegisterRepoHint", () => {
   it("states the empty registry and names where a repo is registered", () => {
+    const { container } = render(<RegisterRepoHint />);
+
+    expect(container.textContent).toBe(
+      "No repositories registered. Register one with + repo in the sidebar.",
+    );
+  });
+
+  it("sets the control label in mono, the way the sidebar button renders it", () => {
+    // DESIGN.md §3, the Mono-Is-Data Rule: an action label is mono, so the
+    // sentence must not flatten `+ repo` into the surrounding sans.
     render(<RegisterRepoHint />);
 
-    expect(
-      screen.getByText(
-        "No repositories registered yet — register one with + repo in the sidebar.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText("+ repo")).toHaveClass("font-mono");
   });
 
   it("offers nothing to click", () => {

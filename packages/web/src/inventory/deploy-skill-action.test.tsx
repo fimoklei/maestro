@@ -50,7 +50,7 @@ describe("DeploySkillAction", () => {
       await screen.findByRole("button", { name: /deploy/i }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText(/no repositories registered yet/i),
+      screen.queryByText(/no repositories registered\./i),
     ).not.toBeInTheDocument();
   });
 

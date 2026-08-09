@@ -171,7 +171,7 @@ describe("DeployStateView sections", () => {
 
     expect(screen.getByText(/loading registered repos/i)).toBeInTheDocument();
     expect(
-      screen.queryByText(/no repositories registered yet/i),
+      screen.queryByText(/no repositories registered\./i),
     ).not.toBeInTheDocument();
   });
 
@@ -189,7 +189,7 @@ describe("DeployStateView sections", () => {
     ).toBeInTheDocument();
     // A failed registry read must not masquerade as "no repos registered".
     expect(
-      screen.queryByText(/no repositories registered yet/i),
+      screen.queryByText(/no repositories registered\./i),
     ).not.toBeInTheDocument();
   });
 
@@ -252,14 +252,14 @@ describe("DeployStateView sections", () => {
     );
     renderView();
 
-    const meta = await screen.findByText(/none registered/i);
+    const hint = await screen.findByText(/no repositories registered\./i);
     const heading = screen.getByRole("heading", { name: /repositories/i });
-    // The meta belongs to the Repositories heading, so the empty registry reads
-    // as a state of that section rather than a stray line under Global targets.
-    expect(heading.parentElement).toContainElement(meta);
-    expect(
-      screen.getByText(/no repositories registered yet/i),
-    ).toBeInTheDocument();
+    // The hint reads as a state of that section rather than a stray line under
+    // Global targets.
+    expect(heading.closest("section")).toContainElement(hint);
+    // The heading meta stays empty here: "none registered" would repeat the
+    // hint's own first sentence two lines above it.
+    expect(screen.queryByText(/none registered/i)).not.toBeInTheDocument();
   });
 
   it("drops the sidebar hint once a repo is registered", async () => {
@@ -278,7 +278,7 @@ describe("DeployStateView sections", () => {
     // The card labels the repo by its path tail; its full path is the title (#211).
     expect(await screen.findByTitle("/Users/me/a")).toBeInTheDocument();
     expect(
-      screen.queryByText(/no repositories registered yet/i),
+      screen.queryByText(/no repositories registered\./i),
     ).not.toBeInTheDocument();
   });
 
