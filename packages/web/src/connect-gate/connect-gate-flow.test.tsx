@@ -101,6 +101,55 @@ describe("connect gate", () => {
     ).toBeInTheDocument();
   });
 
+  // Joining by URL is the same gate, the same field and the same landing: only
+  // the server's outcome differs (#554).
+  it("joins a Harness pasted as a GitHub url and lands on Inventory", async () => {
+    let inventoryPath: string | null = null;
+    const connectBodies: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.startsWith("/api/inventory/config")) {
+          return jsonResponse({ inventoryPath }, 200);
+        }
+        if (
+          url.startsWith("/api/inventory/connect") &&
+          init?.method === "POST"
+        ) {
+          connectBodies.push(String(init.body));
+          inventoryPath = "/home/me/agent-harness";
+          return jsonResponse(
+            { outcome: "joined", inventoryPath, primitiveCount: 3 },
+            200,
+          );
+        }
+        return jsonResponse(
+          { ok: true, repos: [], primitives: [], skipped: [], behind: [] },
+          200,
+        );
+      }),
+    );
+    renderApp("/welcome/connect");
+
+    await userEvent.type(
+      await screen.findByLabelText(/inventory path/i),
+      "https://github.com/fimoklei/agent-harness",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /^connect inventory$/i }),
+    );
+
+    expect(connectBodies).toEqual([
+      JSON.stringify({ path: "https://github.com/fimoklei/agent-harness" }),
+    ]);
+    expect(await screen.findByText(/3 primitives found/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /continue/i }));
+    expect(
+      await screen.findByRole("heading", { name: /^central inventory$/i }),
+    ).toBeInTheDocument();
+  });
+
   it("advertises no register-repos step and no progress strip", async () => {
     stubServer();
     renderApp("/welcome");

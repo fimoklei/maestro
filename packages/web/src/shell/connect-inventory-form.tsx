@@ -55,7 +55,7 @@ export function ConnectInventoryForm({
           name="inventory-path"
           value={path}
           onChange={(event) => onPathChange(event.target.value)}
-          placeholder="/path/to/agent-harness"
+          placeholder="/path/to/agent-harness or https://github.com/owner/repo"
           aria-describedby={error ? "inventory-path-error" : undefined}
           aria-invalid={error ? true : undefined}
           // No outline-none: it poisons --tw-outline-style and hides the ring (#227).
@@ -67,6 +67,15 @@ export function ConnectInventoryForm({
           </Button>
         ) : null}
       </div>
+      {isPending ? (
+        // A clone has no honest percentage to show and nothing safe to cancel
+        // mid-way, so the wait is stated in words. Worded for both routes: the
+        // form is shared with Settings' re-point, which never clones (#554).
+        <p role="status" className="text-dim text-tag">
+          Connecting. A GitHub URL is being cloned first, which can take a
+          minute — this stays open until it finishes.
+        </p>
+      ) : null}
       {error ? (
         noUsableOrigin ? (
           // Submit stays available (steps down to quiet) so a hand-corrected

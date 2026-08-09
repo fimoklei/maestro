@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { readConfiguredGitOriginUrl } from "../deploy/git-origin-url";
+import { NON_INTERACTIVE } from "../git/non-interactive";
 import { readRemoteDefaultBranch } from "../inventory/default-branch";
 import {
   HARNESS_SKILLS_DIR,
@@ -42,16 +43,6 @@ const BRANCH_REFSPEC = "+refs/heads/*:refs/remotes/origin/*";
 // One branch per skill under review, named after the skill it carries. Fetched
 // by the branch refspec above, so what is read here is what the team pushed.
 const PROMOTE_BRANCHES = "refs/remotes/origin/maestro";
-
-// Maestro never asks for credentials and never stores them: git may use what
-// the user's own configuration already provides, but may not stop and prompt.
-// `GIT_TERMINAL_PROMPT` covers https; ssh has its own prompts (passphrase,
-// host-key confirmation), and only BatchMode refuses them. Without it a locked
-// key holds the open-time fetch until the timeout and reports it as offline.
-const NON_INTERACTIVE = {
-  GIT_TERMINAL_PROMPT: "0",
-  GIT_SSH_COMMAND: "ssh -oBatchMode=yes",
-};
 
 // Tab-separated so a tag name containing spaces stays one field. The third
 // field is the commit an annotated tag points at; lightweight tags leave it

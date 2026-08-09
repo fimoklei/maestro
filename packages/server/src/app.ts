@@ -16,6 +16,7 @@ import {
   DeployedRefAdapter,
   DeploySkill,
   type DeploySkillError,
+  GitCloneAdapter,
   GlobalDeployStateReader,
   HarnessFreshnessStore,
   HarnessGitAdapter,
@@ -37,6 +38,7 @@ import {
   type RemoveDeployedSkillError,
   type RemovePreflightError,
   type RepoPathError,
+  readConfiguredGitOriginUrl,
   readGitOriginUrl,
   resolveApmGlobalRoot,
   resolveApmScratchCwd,
@@ -376,6 +378,16 @@ const connectErrorResponses: Record<
     status: 400,
     message: repoPathErrorMessages["not-a-directory"],
   },
+  "not-a-github-url": {
+    status: 400,
+    message:
+      "That is not a GitHub repository URL. Maestro clones a Harness from a GitHub repository over https or ssh, or connects a local clone by its path.",
+  },
+  "clone-failed": {
+    status: 422,
+    message:
+      "Maestro could not clone that repository. Check that the URL is right, that you have git access to it, and that nothing else already occupies the destination folder.",
+  },
   "not-an-inventory": {
     status: 422,
     message: "That directory has no apm.yml, so it is not an inventory.",
@@ -607,8 +619,8 @@ export function createApp(deps: AppDeps) {
     return c.json({ tag: result.tag, revision: result.revision });
   });
 
-  // Offline connect: persist a user-pasted path as the inventory. No git
-  // clone (J11, deferred).
+  // Connect: a pasted path is persisted offline; a GitHub URL is cloned to a
+  // new folder under the home ceiling first and then connected (#554).
   app.post("/api/inventory/connect", async (c) => {
     const body = await parseBody(c, connectBodySchema, PATH_BODY_MESSAGE);
     if (!body.ok) {
@@ -1017,8 +1029,15 @@ function realDeps(): AppDeps {
     connect: new ConnectInventory({
       fs,
       store,
-      originUrl: readGitOriginUrl,
+      // The URL the author configured, not the one a transport rewrite
+      // sends git to: connect gates on the repository's identity, which is
+      // what apm's refs are built from (LEARNINGS · git-remote-get-url).
+      originUrl: readConfiguredGitOriginUrl,
       defaultBranch: resolveDefaultBranch,
+      // The ceiling browsing already uses, so a cloned Harness lands where
+      // the picker can reach it (#554).
+      homeRoot: () => homedir(),
+      clone: new GitCloneAdapter(),
     }),
     browse: new BrowseFilesystem({ fs, homeRoot: () => homedir() }),
     deployState,

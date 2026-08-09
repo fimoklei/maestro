@@ -19,7 +19,7 @@ import {
   InventoryReader,
   NodeFileSystem,
   Registry,
-  readGitOriginUrl,
+  readConfiguredGitOriginUrl,
   resolveDefaultBranch,
   resolveInventoryPath,
 } from "@maestro/core";
@@ -91,8 +91,12 @@ describe("inventory connect HTTP route", () => {
       connect: new ConnectInventory({
         fs,
         store,
-        originUrl: readGitOriginUrl,
+        originUrl: readConfiguredGitOriginUrl,
         defaultBranch: resolveDefaultBranch,
+        // No URL is connected here; the clone journey lives in
+        // connect-clone-journey.test.ts.
+        homeRoot: () => dir,
+        clone: { clone: async () => "clone-failed" },
       }),
       deployState,
       deploy: stubDeploy({ inventory, registry, locks }),
