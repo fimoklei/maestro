@@ -1,21 +1,44 @@
 import { describe, expect, it } from "vitest";
 import { ConfigStore } from "../registry/config-store";
 import { InMemoryFileSystem } from "../registry/file-system.fake";
+import type { CloneOutcome, CloneRepositoryPort } from "./clone-repository";
 import { ConnectInventory } from "./connect-inventory";
 
 const CONFIG_PATH = "/home/me/.maestro/config.json";
 const PARSEABLE_ORIGIN = "git@github.com:fimoklei/agent-harness.git";
+const HOME_ROOT = "/Users/me";
+
+// Records what it was asked to clone and seeds the destination the way git
+// would: the Harness the URL points at, already on disk.
+class FakeClone {
+  readonly calls: { url: string; destination: string }[] = [];
+  constructor(
+    private readonly fs: InMemoryFileSystem,
+    private readonly outcome: CloneOutcome = "cloned",
+  ) {}
+  async clone(url: string, destination: string): Promise<CloneOutcome> {
+    this.calls.push({ url, destination });
+    if (this.outcome === "cloned") {
+      await this.fs.ensureDir(destination);
+      await this.fs.writeFile(`${destination}/apm.yml`, "dependencies: []\n");
+    }
+    return this.outcome;
+  }
+}
 
 function makeConnect(
   fs: InMemoryFileSystem,
   originUrl: string | null = PARSEABLE_ORIGIN,
   defaultBranch: string | null = "main",
+  clone: CloneRepositoryPort = new FakeClone(fs),
 ): ConnectInventory {
   return new ConnectInventory({
     fs,
     store: new ConfigStore({ fs, configPath: () => CONFIG_PATH }),
     originUrl: async () => originUrl,
     defaultBranch: async () => defaultBranch,
+    homeRoot: () => HOME_ROOT,
+    clone,
   });
 }
 
@@ -136,6 +159,76 @@ describe("ConnectInventory", () => {
       configPath: () => CONFIG_PATH,
     }).read();
     expect(stored.inventoryPath).toBeUndefined();
+  });
+
+  it("clones a GitHub url into a new folder under the home ceiling and joins it", async () => {
+    const fs = new InMemoryFileSystem();
+    const clone = new FakeClone(fs);
+    const connect = makeConnect(fs, PARSEABLE_ORIGIN, "main", clone);
+
+    const result = await connect.connect(
+      "https://github.com/fimoklei/agent-harness.git",
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      outcome: "joined",
+      inventoryPath: "/Users/me/agent-harness",
+    });
+    expect(clone.calls).toEqual([
+      {
+        url: "https://github.com/fimoklei/agent-harness.git",
+        destination: "/Users/me/agent-harness",
+      },
+    ]);
+  });
+
+  it("refuses a non-GitHub remote url without cloning anything", async () => {
+    const fs = new InMemoryFileSystem();
+    const clone = new FakeClone(fs);
+    const connect = makeConnect(fs, PARSEABLE_ORIGIN, "main", clone);
+
+    const result = await connect.connect("https://gitlab.com/o/r.git");
+
+    expect(result).toEqual({ ok: false, error: "not-a-github-url" });
+    expect(clone.calls).toEqual([]);
+  });
+
+  it("reports a failed clone and persists nothing", async () => {
+    const fs = new InMemoryFileSystem();
+    const connect = makeConnect(
+      fs,
+      PARSEABLE_ORIGIN,
+      "main",
+      new FakeClone(fs, "clone-failed"),
+    );
+
+    const result = await connect.connect("https://github.com/o/r.git");
+
+    expect(result).toEqual({ ok: false, error: "clone-failed" });
+    const stored = await new ConfigStore({
+      fs,
+      configPath: () => CONFIG_PATH,
+    }).read();
+    expect(stored.inventoryPath).toBeUndefined();
+  });
+
+  // The clone succeeded and stays on disk; only the connect is refused, so a
+  // second attempt is the user's to make, not Maestro's to clean up (#554).
+  it("refuses a cloned repository that carries no apm.yml", async () => {
+    const fs = new InMemoryFileSystem();
+    const clone: CloneRepositoryPort = {
+      clone: async (_url, destination) => {
+        await fs.ensureDir(destination);
+        return "cloned";
+      },
+    };
+    const connect = makeConnect(fs, PARSEABLE_ORIGIN, "main", clone);
+
+    await expect(
+      connect.connect("https://github.com/o/r.git"),
+    ).resolves.toEqual({ ok: false, error: "not-an-inventory" });
+    expect(await fs.isDirectory("/Users/me/r")).toBe(true);
   });
 
   it("rejects a relative or traversal path as relative", async () => {

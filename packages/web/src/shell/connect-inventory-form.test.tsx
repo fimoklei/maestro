@@ -30,6 +30,50 @@ describe("ConnectInventoryForm", () => {
     ).not.toBeInTheDocument();
   });
 
+  // Cloning can run for minutes with nothing else on screen, so the wait is
+  // stated in sentences — never a percentage, and with nothing to cancel (#554).
+  it("states progress as a sentence while the connect is running", () => {
+    render(
+      <ConnectInventoryForm
+        path="https://github.com/fimoklei/agent-harness"
+        onPathChange={vi.fn()}
+        onSubmit={vi.fn()}
+        isPending
+      />,
+    );
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent(/cloned/i);
+    expect(status).not.toHaveTextContent(/%/);
+    expect(
+      screen.queryByRole("button", { name: /cancel/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows no progress sentence when nothing is running", () => {
+    render(
+      <ConnectInventoryForm
+        path=""
+        onPathChange={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("accepts a GitHub url in the same field, without a second input", () => {
+    render(
+      <ConnectInventoryForm
+        path="https://github.com/fimoklei/agent-harness"
+        onPathChange={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+    expect(screen.getAllByRole("textbox")).toHaveLength(1);
+    expect(screen.getByLabelText(/inventory path/i)).toHaveValue(
+      "https://github.com/fimoklei/agent-harness",
+    );
+  });
+
   it("renders the given path as the field value", () => {
     render(
       <ConnectInventoryForm

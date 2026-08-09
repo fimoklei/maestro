@@ -22,7 +22,10 @@ export { DeployedCleanupAdapter } from "./deploy/deployed-cleanup";
 export { DeployedContentAdapter } from "./deploy/deployed-content";
 export { DeployedLocation } from "./deploy/deployed-location";
 export { DeployedRefAdapter } from "./deploy/deployed-ref";
-export { readGitOriginUrl } from "./deploy/git-origin-url";
+export {
+  readConfiguredGitOriginUrl,
+  readGitOriginUrl,
+} from "./deploy/git-origin-url";
 export { InFlightLocks } from "./deploy/in-flight-locks";
 export { InventoryGitAdapter } from "./deploy/inventory-git";
 export { RecordedPackageAdapter } from "./deploy/recorded-package";
@@ -90,6 +93,10 @@ export type {
   StructuralFinding,
   StructuralProblem,
 } from "./harness/validate-skill-structure";
+export {
+  type CloneRepositoryPort,
+  GitCloneAdapter,
+} from "./inventory/clone-repository";
 export {
   ConnectInventory,
   type ConnectInventoryError,
