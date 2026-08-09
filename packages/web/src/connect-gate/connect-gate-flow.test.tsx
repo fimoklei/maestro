@@ -22,7 +22,10 @@ function stubServer() {
       }
       if (url.startsWith("/api/inventory/connect") && init?.method === "POST") {
         inventoryPath = "/home/me/agent-harness";
-        return jsonResponse({ inventoryPath, primitiveCount: 3 }, 200);
+        return jsonResponse(
+          { outcome: "found", inventoryPath, primitiveCount: 3 },
+          200,
+        );
       }
       return jsonResponse(
         { ok: true, repos: [], primitives: [], skipped: [], behind: [] },
@@ -73,7 +76,9 @@ describe("connect gate", () => {
       screen.getByRole("button", { name: /^connect inventory$/i }),
     );
     expect(await screen.findByText(/3 primitives found/i)).toBeInTheDocument();
-    expect(screen.getByText(/deploys never write back/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/deploys never write back to this harness/i),
+    ).toBeInTheDocument();
 
     // The beat holds until the continue action is taken — it does not
     // auto-navigate the instant the mutation resolves (ADR-0015).
@@ -129,7 +134,12 @@ describe("connect gate", () => {
     expect(connectBodies).toEqual([
       JSON.stringify({ path: "https://github.com/fimoklei/agent-harness" }),
     ]);
+    expect(await screen.findByText(/harness joined/i)).toBeInTheDocument();
     expect(await screen.findByText(/3 primitives found/i)).toBeInTheDocument();
+    expect(screen.getByText(/cloned harness/i)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/deploys never write back to this harness/i),
+    ).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /continue/i }));
     expect(
       await screen.findByRole("heading", { name: /^central inventory$/i }),
@@ -213,6 +223,16 @@ describe("connect gate", () => {
     expect(scaffoldBodies).toEqual([
       JSON.stringify({ path: "/home/me/team-harness" }),
     ]);
+    expect(await screen.findByText(/harness scaffolded/i)).toBeInTheDocument();
+    expect(screen.getByText(/harness is empty/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/skill-check workflow is advisory/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /only becomes a gate if the team makes it a required check/i,
+      ),
+    ).toBeInTheDocument();
     await userEvent.click(
       await screen.findByRole("button", { name: /continue/i }),
     );
@@ -303,6 +323,52 @@ describe("connect gate", () => {
     expect(screen.queryByText(/\d\s·\s/)).not.toBeInTheDocument();
   });
 
+  it("shows the private-Harness access note on the connect screen", async () => {
+    stubServer();
+    renderApp("/welcome/connect");
+
+    expect(
+      await screen.findByText(
+        /a private harness works when each teammate has their own git and apm access/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("states clone progress while a GitHub URL is still connecting", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.startsWith("/api/inventory/config")) {
+          return jsonResponse({ inventoryPath: null }, 200);
+        }
+        if (
+          url.startsWith("/api/inventory/connect") &&
+          init?.method === "POST"
+        ) {
+          return new Promise<Response>(() => {});
+        }
+        return jsonResponse(
+          { ok: true, repos: [], primitives: [], skipped: [], behind: [] },
+          200,
+        );
+      }),
+    );
+    renderApp("/welcome/connect");
+
+    await userEvent.type(
+      await screen.findByLabelText(/inventory path/i),
+      "https://github.com/fimoklei/agent-harness",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /^connect inventory$/i }),
+    );
+
+    const status = await screen.findByRole("status");
+    expect(status).toHaveTextContent(/being cloned/i);
+    expect(status).not.toHaveTextContent(/%/);
+  });
+
   it.each(["/welcome/repos", "/nonsense"])(
     "sends %s somewhere real rather than rendering nothing",
     async (route) => {
@@ -376,7 +442,10 @@ describe("connect gate", () => {
           init?.method === "POST"
         ) {
           inventoryPath = "/home/me/agent-harness";
-          return jsonResponse({ inventoryPath, primitiveCount: 3 }, 200);
+          return jsonResponse(
+            { outcome: "found", inventoryPath, primitiveCount: 3 },
+            200,
+          );
         }
         return jsonResponse(
           { ok: true, repos: [], primitives: [], skipped: [], behind: [] },

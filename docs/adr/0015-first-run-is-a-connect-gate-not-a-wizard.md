@@ -2,8 +2,9 @@
 
 - **Status:** Accepted
 - **Date:** 2026-07-20
-- **Amended 2026-08-01** by ADR-0021 (issue #352) — see *Amendments*. The
-  headline decision stands; three points below no longer hold as written.
+- **Amended 2026-08-01** by ADR-0021 (issue #352) and 2026-08-09 by issue
+  #557 — see *Amendments*. The headline decision stands; three points below
+  no longer hold as written.
 
 ## Context
 
@@ -18,8 +19,9 @@ here.` cards with no deploy affordance, so the most memorable moment of
 onboarding is a dead end.
 
 Two facts framed the decision. The strongest moment in the product —
-`✓ 36 primitives found · read-only, never writes back` — exists *because* the
-wizard forces a stop-and-read beat, so dissolving everything risks losing it.
+`✓ 36 primitives found · deploys never write back to this Harness` — exists
+*because* the wizard forces a stop-and-read beat, so dissolving everything
+risks losing it.
 And registering a repo, the moment Maestro is granted a **write** target,
 carried no safety clause at all; nobody had yet decided what Maestro promises
 about folders it can write into. Issue
@@ -38,15 +40,19 @@ beyond it is.
    more than the flow delivers. The first-run gate guards both routes;
    a configured install cannot re-enter them. Copy follows the voice rule
    (no "you"/"we") and each screen carries a real `<h1>`.
-2. **The reassurance beat stays on the gate.** Connect success keeps its
-   explicit confirmation state — the primitive count plus
-   `read-only, never writes back` — with a deliberate continue action, not an
-   auto-navigate. This is where that promise lives.
-3. **The gate lands on Inventory,** not Deploy-state. The first image after
-   setup is the connected primitives with their `deploy →` actions — and a
-   deploy is genuinely possible immediately, because global targets exist
-   without any registration (detected tools, ADR-0011). This retires the
-   critique's P0 empty-state ending.
+2. **The reassurance beat stays on the gate.** Connect success keeps an
+   explicit, outcome-specific confirmation state with a deliberate continue
+   action, not an auto-navigate. A found Harness reports its primitive count
+   and that deploys never write back to it; a joined Harness reports its count
+   and that the clone is ready; a scaffolded Harness says it is empty and that
+   its skill-check workflow is advisory until the team makes it a required
+   check.
+3. **The gate lands according to the outcome.** Found and joined Harnesses
+   land in Inventory, where the connected primitives have their `deploy →`
+   actions. A scaffolded Harness lands in Harness, ready for its first skill.
+   Global targets exist without registration (detected tools, ADR-0011), so
+   the Inventory route is actionable immediately. This retires the critique's
+   P0 empty-state ending.
 4. **Registration has exactly one control: `+ repo` in the sidebar.** The
    empty Deploy-state and the deploy target picker (when no repos are
    registered) each gain an informational line pointing at it — information,
@@ -92,12 +98,12 @@ beyond it is.
 The gate itself is unchanged: welcome plus connect form, no wizard, unreachable
 once configured. Three points were written when Maestro was consumer-only.
 
-- **Point 2 — the read-only promise.** `read-only, never writes back` is no
-  longer true of the repository. Maestro writes into the **working harness**
-  when the author promotes or releases (ADR-0021). The reassurance beat stays
-  and the promise narrows to the one that holds: **a deploy never writes back to
-  the inventory.** Exact copy is still decided at build time; this fixes the
-  content.
+- **Point 2 — the no-write promise.** The repository is not read-only: Maestro
+  writes into the **working harness** when the author promotes or releases
+  (ADR-0021). The reassurance beat stays and the promise narrows to the one
+  that holds: **a deploy never writes back to the inventory.** Issue #557 then
+  names that promise only on the found outcome, while joined and scaffolded
+  outcomes describe their writes.
 - **Point 3 — "the gate lands on Inventory".** No longer fixed. A joining member
   may have Maestro clone the harness for them (#366), and the landing screen
   follows the outcome of that. Inventory stays the landing for the case this ADR
@@ -105,3 +111,12 @@ once configured. Three points were written when Maestro was consumer-only.
 - **Point 1 — "two screens".** Still two screens, but the second is no longer
   guaranteed instant: the connect form now accepts a GitHub URL as well as a
   path, and a clone takes as long as it takes (#366).
+
+### 2026-08-09 — Issue #557
+
+The connect gate now names the outcome it completed. Found and joined land in
+Inventory with their primitive count; scaffolded lands in Harness and says
+that its empty skill-check workflow is advisory unless the team makes it a
+required check. The gate also states the practical private-repository
+condition — each teammate needs their own Git and APM access — without trying
+to detect repository visibility.

@@ -95,6 +95,17 @@ describe("Sidebar first-run rendering", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("marks itself hidden below md on a gate route", async () => {
+    stubServer({ notConfigured: true });
+    renderSidebar("/welcome/connect");
+
+    await screen.findByText(/none yet/i);
+
+    expect(screen.getByRole("complementary", { name: /sidebar/i })).toHaveClass(
+      "max-md:hidden",
+    );
+  });
+
   it("renders the interactive nav and register affordance when configured", async () => {
     stubServer({ notConfigured: false });
     renderSidebar("/");
