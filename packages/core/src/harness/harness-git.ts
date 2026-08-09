@@ -15,12 +15,14 @@ import {
 } from "../inventory/harness-layout";
 import { classifyFetchFailure } from "./classify-fetch-failure";
 import { classifyPushFailure } from "./classify-push-failure";
+import { PROMOTE_NAMESPACE, promoteBranch } from "./promote-branch";
 import type {
   HarnessFacts,
   HarnessFetchOutcome,
   HarnessGitPort,
   HarnessSkillTrees,
   HarnessTag,
+  PromoteSkillOutcome,
   PublishTagOutcome,
 } from "./read-harness-state";
 import type { HarnessSkillTree } from "./skill-movements";
@@ -42,7 +44,10 @@ const BRANCH_REFSPEC = "+refs/heads/*:refs/remotes/origin/*";
 
 // One branch per skill under review, named after the skill it carries. Fetched
 // by the branch refspec above, so what is read here is what the team pushed.
-const PROMOTE_BRANCHES = "refs/remotes/origin/maestro";
+const PROMOTE_BRANCHES = `refs/remotes/origin/${PROMOTE_NAMESPACE}`;
+
+// Fixed, so a pull request starts legibly without Maestro asking for a message.
+const PROMOTE_SUBJECT = "Promote skill: ";
 
 // Tab-separated so a tag name containing spaces stays one field. The third
 // field is the commit an annotated tag points at; lightweight tags leave it
@@ -151,6 +156,152 @@ export class HarnessGitAdapter implements HarnessGitPort {
     // A different object under that name is another author's tag, annotated or
     // not: never this push's, and never one to force over.
     return published === commit ? "pushed" : "already-exists";
+  }
+
+  // The promotion commit, built entirely in loose objects and two throwaway
+  // indexes: `base`'s tree with exactly this skill's directory replaced by what
+  // is on disk. Nothing here checks out, stages in the author's index, moves
+  // HEAD, or names a local branch — the commit reaches the remote as a bare
+  // object id (#574).
+  async pushSkillPromotion(
+    root: string,
+    name: string,
+    base: string,
+  ): Promise<PromoteSkillOutcome> {
+    const subpath = harnessSkillSubpath(name);
+    if (!(await pathExists(join(root, subpath)))) {
+      // A skill that is not on disk is a deletion, and a deletion is its own
+      // confirmed route (#580) — never something a promotion infers.
+      return "skill-missing";
+    }
+
+    const indexDir = await mkdtemp(join(tmpdir(), "maestro-harness-promote-"));
+    try {
+      const skillTree = await this.hashWorkingSkill(root, subpath, indexDir);
+      const commit = await this.commitSkillOnto(
+        root,
+        { name, subpath, tree: skillTree },
+        base,
+        indexDir,
+      );
+      // The push classifies its own reply; everything above it is local object
+      // work, and any way git refuses that is one failure to retry. Whatever it
+      // said about it stays here: a class crosses, never git's words or a path
+      // (ADR-0021, security.md).
+      return await this.pushPromotion(root, name, commit);
+    } catch {
+      return "push-failed";
+    } finally {
+      await rm(indexDir, { recursive: true, force: true });
+    }
+  }
+
+  // The skill exactly as it sits on disk. Seeded from HEAD for the same reason
+  // `workingSkillTrees` is: git exempts only already-tracked files from the
+  // ignore rules, so an index built from nothing would drop them.
+  private async hashWorkingSkill(
+    root: string,
+    subpath: string,
+    indexDir: string,
+  ): Promise<string> {
+    const options = indexOptions(join(indexDir, "working"));
+    // Only an unborn HEAD has no tree to seed from; every other failure here is
+    // left to the caller's own classification.
+    await run("git", ["-C", root, "read-tree", "HEAD"], options).catch(
+      () => {},
+    );
+    await run("git", ["-C", root, "add", "-A", "--", subpath], options);
+    const { stdout } = await run("git", ["-C", root, "write-tree"], options);
+    return (
+      await run(
+        "git",
+        ["-C", root, "rev-parse", `${stdout.trim()}:${subpath}`],
+        options,
+      )
+    ).stdout.trim();
+  }
+
+  // `read-tree --prefix` refuses a path the index already holds, so the base's
+  // own copy is dropped from the index first. `--cached` and no `-u` anywhere:
+  // both commands write the throwaway index and nothing else.
+  private async commitSkillOnto(
+    root: string,
+    skill: { name: string; subpath: string; tree: string },
+    base: string,
+    indexDir: string,
+  ): Promise<string> {
+    const options = indexOptions(join(indexDir, "promote"));
+    await run("git", ["-C", root, "read-tree", base], options);
+    await run(
+      "git",
+      [
+        "-C",
+        root,
+        "rm",
+        "-r",
+        "-f",
+        "-q",
+        "--cached",
+        "--ignore-unmatch",
+        "--",
+        skill.subpath,
+      ],
+      options,
+    );
+    await run(
+      "git",
+      ["-C", root, "read-tree", `--prefix=${skill.subpath}/`, skill.tree],
+      options,
+    );
+    const { stdout: tree } = await run(
+      "git",
+      ["-C", root, "write-tree"],
+      options,
+    );
+    // No author, no signing flag: whatever the author's own git is configured
+    // to do is what this commit carries (#574).
+    const { stdout: commit } = await run(
+      "git",
+      [
+        "-C",
+        root,
+        "commit-tree",
+        tree.trim(),
+        "-p",
+        base,
+        "-m",
+        `${PROMOTE_SUBJECT}${skill.name}`,
+      ],
+      options,
+    );
+    return commit.trim();
+  }
+
+  // Never `--force`: a branch this commit does not descend from is a refusal to
+  // report, not a history to overwrite. Making it cumulative is #578.
+  private async pushPromotion(
+    root: string,
+    name: string,
+    commit: string,
+  ): Promise<PromoteSkillOutcome> {
+    try {
+      await run(
+        "git",
+        [
+          "-C",
+          root,
+          "push",
+          "origin",
+          `${commit}:refs/heads/${promoteBranch(name)}`,
+        ],
+        gitOptions(),
+      );
+      return "pushed";
+    } catch (error) {
+      return classifyGitError(error, classifyFetchFailure) === "offline"
+        ? "offline"
+        : "push-failed";
+    }
   }
 
   async readFacts(root: string): Promise<HarnessFacts> {
@@ -385,6 +536,13 @@ const gitOptions = () => ({
   env: { ...process.env, ...NON_INTERACTIVE },
   timeout: GIT_TIMEOUT_MS,
 });
+
+// The same options pointed at a throwaway index, so a command that stages
+// anything writes there and never in the author's own (#574).
+const indexOptions = (indexFile: string) => {
+  const options = gitOptions();
+  return { ...options, env: { ...options.env, GIT_INDEX_FILE: indexFile } };
+};
 
 // A run we cut off got no answer at all, which is the offline class —
 // reading it as a reply would put words in the remote's mouth. Anything else

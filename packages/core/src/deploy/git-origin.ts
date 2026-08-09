@@ -2,7 +2,7 @@
 // whose transport apm's ref cannot carry, is null — the caller reads that as
 // "origin unavailable", never a guess. See ADR-0014, #152.
 
-type GitOrigin = { host: string; ownerRepo: string };
+export type GitOrigin = { host: string; ownerRepo: string };
 
 // scp-like SSH form has no `://` and uses a colon before the path.
 const scpPattern = /^[^/]+@([^:]+):(.+?)(?:\.git)?$/;
