@@ -91,6 +91,13 @@
       ]
     },
     {
+      "matchDepNames": ["typescript-6"],
+      "allowedVersions": "<7",
+      "prBodyNotes": [
+        "**Held on 6 deliberately.** This alias is the parser behind the web/core import-boundary guard, not the compiler. TypeScript 7 removed the in-process JS parser, so a major here breaks the guard; the compiler itself tracks `typescript`."
+      ]
+    },
+    {
       "matchPackageNames": ["pnpm"],
       "groupName": "pnpm toolchain",
       "prBodyNotes": [

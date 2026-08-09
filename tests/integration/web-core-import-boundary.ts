@@ -18,8 +18,11 @@
 // reaches for by accident. Deliberate runtime evasion (eval, a computed
 // specifier, globalThis tricks) is out of scope — no static check can close that
 // and this guard does not pretend to.
+// The parser is pinned to TypeScript 6 on purpose, independent of the compiler
+// the repo builds with: 7.0 dropped the in-process JS parser, exposing the AST
+// only through a spawned Go server (`typescript/unstable/*`, itself unstable).
 import { dirname, resolve } from "node:path";
-import ts from "typescript";
+import ts from "typescript-6";
 
 // core by package name, or any subpath. Anchored so `@maestro/core-ish` never
 // matches.
