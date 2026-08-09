@@ -1,5 +1,11 @@
-import { QueryClient } from "@tanstack/react-query";
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -691,8 +697,13 @@ describe("BrowseDialog", () => {
         },
       );
       vi.stubGlobal("fetch", fetchMock);
-      renderWithQuery(
-        <BrowseDialog mode="connect" onSelect={vi.fn()} onClose={vi.fn()} />,
+      // Production defaults on purpose — retries stay on, which is what makes
+      // the one-request count below prove the hook's own guard rather than the
+      // test client's. Never renderWithQuery here.
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <BrowseDialog mode="connect" onSelect={vi.fn()} onClose={vi.fn()} />
+        </QueryClientProvider>,
       );
 
       expect(await screen.findByText("already at home")).toBeInTheDocument();
