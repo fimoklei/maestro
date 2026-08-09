@@ -95,7 +95,7 @@ describe("Sidebar first-run rendering", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("lets the connect gate use the full viewport on small screens", async () => {
+  it("marks itself hidden below md on a gate route", async () => {
     stubServer({ notConfigured: true });
     renderSidebar("/welcome/connect");
 

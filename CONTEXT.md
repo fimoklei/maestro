@@ -49,7 +49,7 @@ The harness at its latest published tag. The only state consumers deploy from, a
 _Avoid_: published inventory, catalogue, main (a merge is not a release).
 
 **Inventory source**:
-The connection that points Maestro at the Central inventory: an existing local Harness clone, a GitHub repository to clone, or an empty GitHub repository to scaffold; a parseable git origin and resolvable default branch are required before the connection is accepted (#553–#556). Found and joined sources land in Inventory; a scaffolded source lands in Harness. Deploys never write back to the source, while joining and scaffolding may write as described in ADR-0021.
+The connection that points Maestro at the Central inventory: an existing local Harness clone, a GitHub repository to clone, or an empty GitHub repository to scaffold; a parseable git origin and resolvable default branch are required before the connection is accepted (#553–#556). Found and joined sources land in Inventory; a scaffolded source lands in Harness. Deploys never write back to the source, while joining and scaffolding write (ADR-0015).
 _Avoid_: inventory path (too narrow — names only today's local-path form), connection.
 
 **Connect gate**:
