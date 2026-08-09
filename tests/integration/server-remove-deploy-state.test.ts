@@ -21,6 +21,7 @@ import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubPublish } from "../helpers/stub-publish";
+import { stubScaffold } from "../helpers/stub-scaffold";
 
 // What a user's screen shows after a removal. server-remove.test.ts asserts the
 // ref apm is handed; this asserts the row disappearing, which needs a faithful
@@ -154,6 +155,7 @@ describe("the deploy-state read after a removal", () => {
       harness: stubHarness(),
       publish: stubPublish(),
       connect: stubConnect(),
+      scaffold: stubScaffold(),
       browse: stubBrowse(),
       enforceOriginHost: false,
     });

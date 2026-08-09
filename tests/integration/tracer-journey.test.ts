@@ -17,6 +17,7 @@ import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
+import { stubScaffold } from "../helpers/stub-scaffold";
 
 // The tracer journey end to end: register, see, deploy, see it back. Each step
 // is covered on its own elsewhere; what only this file proves is that they
@@ -121,6 +122,7 @@ describe("the tracer journey through one cockpit", () => {
       harness: stubHarness(),
       publish: stubPublish(),
       connect: stubConnect(),
+      scaffold: stubScaffold(),
       browse: stubBrowse(),
       enforceOriginHost: false,
     });

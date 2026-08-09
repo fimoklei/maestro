@@ -19,22 +19,27 @@ export type ConnectInventoryError =
   | ConnectInputError
   | "clone-failed"
   | "not-an-inventory"
+  | "scaffoldable"
   | "no-usable-origin"
   | "no-default-branch";
 
 // What connecting did, named by the use case rather than inferred at the edge.
-// The scaffold route adds its own outcome to this union (#498).
-export type ConnectOutcome = "found" | "joined";
+export type ConnectOutcome = "found" | "joined" | "scaffolded";
 
+// `scaffoldable` refuses to connect and carries an offer instead. The path
+// travels with it because a cloned repository sits somewhere the user never
+// typed (#556).
 export type ConnectInventoryResult =
   | { ok: true; outcome: ConnectOutcome; inventoryPath: string }
-  | { ok: false; error: ConnectInventoryError };
+  | { ok: false; error: "scaffoldable"; scaffoldPath: string }
+  | { ok: false; error: Exclude<ConnectInventoryError, "scaffoldable"> };
 
 export class ConnectInventory {
   private readonly fs: FileSystemPort;
   private readonly store: ConfigStore;
   private readonly originUrl: (path: string) => Promise<string | null>;
   private readonly defaultBranch: (path: string) => Promise<string | null>;
+  private readonly isRepositoryRoot: (path: string) => Promise<boolean>;
   private readonly homeRoot: () => string;
   private readonly cloneRepository: CloneRepositoryPort;
 
@@ -43,6 +48,9 @@ export class ConnectInventory {
     store: ConfigStore;
     originUrl: (path: string) => Promise<string | null>;
     defaultBranch: (path: string) => Promise<string | null>;
+    // Guards the offer: every other git read answers from the enclosing
+    // repository, so a subdirectory would otherwise read as a clone (#556).
+    isRepositoryRoot: (path: string) => Promise<boolean>;
     // The same ceiling browsing uses, so a proposed clone destination sits
     // where the picker can reach it (#554).
     homeRoot: () => string;
@@ -52,6 +60,7 @@ export class ConnectInventory {
     this.store = deps.store;
     this.originUrl = deps.originUrl;
     this.defaultBranch = deps.defaultBranch;
+    this.isRepositoryRoot = deps.isRepositoryRoot;
     this.homeRoot = deps.homeRoot;
     this.cloneRepository = deps.clone;
   }
@@ -85,15 +94,20 @@ export class ConnectInventory {
       return { ok: false, error: validated.error };
     }
 
+    const originUrl = await this.originUrl(validated.path);
+    const origin = originUrl === null ? null : parseGitOrigin(originUrl);
+
     // A real file, so a directory or a symlink wearing the manifest's name is
-    // refused here exactly as the picker refuses it (#148).
+    // refused here exactly as the picker refuses it (#148). Repository truth is
+    // read before the offer, so an arbitrary folder never gets one (#556).
     const manifest = join(validated.path, HARNESS_MANIFEST);
     if (!(await this.fs.isFileEntry(manifest))) {
-      return { ok: false, error: "not-an-inventory" };
+      return origin !== null && (await this.isRepositoryRoot(validated.path))
+        ? { ok: false, error: "scaffoldable", scaffoldPath: validated.path }
+        : { ok: false, error: "not-an-inventory" };
     }
 
-    const originUrl = await this.originUrl(validated.path);
-    if (originUrl === null || parseGitOrigin(originUrl) === null) {
+    if (origin === null) {
       return { ok: false, error: "no-usable-origin" };
     }
 

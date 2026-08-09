@@ -39,25 +39,36 @@ export function ConnectView() {
       <Card padded className="max-w-lg">
         <ConnectInventoryPanel
           onSuccess={() => setHasConnected(true)}
-          renderSuccess={(result) => (
-            <div className="flex flex-col gap-3">
-              <p className="text-green-ink text-tag">
-                ✓ {result.primitiveCount} primitives found · read-only, never
-                writes back
-              </p>
-              {/* Shared with the Settings steady state so the two can't drift apart (#211). */}
-              <SourceLabel path={result.inventoryPath} />
-              <div>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => navigate("/inventory")}
-                >
-                  Continue to inventory →
-                </Button>
+          renderSuccess={(result) => {
+            // A scaffold lands on the Harness, where its first skill gets
+            // authored; every other route lands on the read-only Inventory
+            // (#556).
+            const scaffolded = result.outcome === "scaffolded";
+            return (
+              <div className="flex flex-col gap-3">
+                <p className="text-green-ink text-tag">
+                  {scaffolded
+                    ? "✓ Harness scaffolded and pushed · ready for its first skill"
+                    : `✓ ${result.primitiveCount} primitives found · read-only, never writes back`}
+                </p>
+                {/* Shared with the Settings steady state so the two can't drift apart (#211). */}
+                <SourceLabel path={result.inventoryPath} />
+                <div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() =>
+                      navigate(scaffolded ? "/harness" : "/inventory")
+                    }
+                  >
+                    {scaffolded
+                      ? "Continue to harness →"
+                      : "Continue to inventory →"}
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          }}
         />
       </Card>
     </div>

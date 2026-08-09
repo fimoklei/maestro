@@ -30,6 +30,7 @@ import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
+import { stubScaffold } from "../helpers/stub-scaffold";
 
 // The curated sentence the failure is allowed to say, from the server's
 // `removeErrorResponses` table. Spelled out here so a change to the wording has
@@ -138,6 +139,7 @@ describe("apm output never reaches the client", () => {
       harness: stubHarness(),
       publish: stubPublish(),
       connect: stubConnect(),
+      scaffold: stubScaffold(),
       browse: stubBrowse(),
       enforceOriginHost: false,
     });
@@ -244,6 +246,7 @@ describe("apm output never reaches the client", () => {
         harness: stubHarness(),
         publish: stubPublish(),
         connect: stubConnect(),
+        scaffold: stubScaffold(),
         browse: stubBrowse(),
         enforceOriginHost: false,
       });

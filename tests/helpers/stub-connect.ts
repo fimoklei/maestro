@@ -15,6 +15,7 @@ export function stubConnect(): ConnectInventory {
     }),
     originUrl: async () => null,
     defaultBranch: async () => null,
+    isRepositoryRoot: async () => false,
     homeRoot: () => "/nonexistent-maestro",
     clone: { clone: async () => "clone-failed" },
   });

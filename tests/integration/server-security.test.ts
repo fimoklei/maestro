@@ -13,6 +13,7 @@ import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
+import { stubScaffold } from "../helpers/stub-scaffold";
 
 // Integration lane with the Origin/Host guard ENABLED (production posture).
 // Blocks DNS-rebinding / CSRF: a malicious site POSTing to localhost to make
@@ -48,6 +49,7 @@ describe("write-route Origin/Host guard", () => {
       harness: stubHarness(),
       publish: stubPublish(),
       connect: stubConnect(),
+      scaffold: stubScaffold(),
       browse: stubBrowse(),
       enforceOriginHost: true,
     });

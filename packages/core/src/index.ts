@@ -104,10 +104,19 @@ export {
 } from "./inventory/connect-inventory";
 export { resolveDefaultBranch } from "./inventory/default-branch";
 export {
+  GitHarnessScaffoldAdapter,
+  type HarnessScaffoldGitPort,
+} from "./inventory/harness-scaffold-git";
+export {
   InventoryReader,
   type InventoryResult,
 } from "./inventory/inventory-reader";
+export { isRepositoryRoot } from "./inventory/repository-root";
 export { resolveInventoryPath } from "./inventory/resolve-inventory-path";
+export {
+  ScaffoldHarness,
+  type ScaffoldHarnessError,
+} from "./inventory/scaffold-harness";
 export { resolveMaestroConfigPath } from "./registry/config-path";
 export { ConfigStore } from "./registry/config-store";
 export type { FileSystemPort } from "./registry/file-system";

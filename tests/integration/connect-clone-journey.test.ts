@@ -22,6 +22,7 @@ import {
   GitCloneAdapter,
   InFlightLocks,
   InventoryReader,
+  isRepositoryRoot,
   NodeFileSystem,
   Registry,
   readConfiguredGitOriginUrl,
@@ -37,6 +38,7 @@ import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
+import { stubScaffold } from "../helpers/stub-scaffold";
 
 const run = promisify(execFile);
 
@@ -130,9 +132,11 @@ describe("joining a Harness by its GitHub url", () => {
         store,
         originUrl: readConfiguredGitOriginUrl,
         defaultBranch: resolveDefaultBranch,
+        isRepositoryRoot,
         homeRoot: () => home,
         clone: new GitCloneAdapter(),
       }),
+      scaffold: stubScaffold(),
       deployState: stubDeployState({ fs }),
       deploy: stubDeploy({ inventory, registry, locks }),
       remove: stubRemove({ registry, locks }),

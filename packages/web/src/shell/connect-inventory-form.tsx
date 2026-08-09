@@ -10,6 +10,9 @@ type ConnectInventoryFormProps = {
   onSubmit: (path: string) => void;
   error?: string | null;
   noUsableOrigin?: boolean;
+  // A GitHub repository with no apm.yml: the refusal carries one offer, shown
+  // in place of the plain error so the gate keeps its single field (#556).
+  scaffoldOffer?: { path: string; onAccept: () => void; isPending: boolean };
   isPending?: boolean;
   onBrowse?: () => void;
   // Re-point flow overrides this so a returning user isn't told to "Connect"
@@ -24,6 +27,7 @@ export function ConnectInventoryForm({
   onSubmit,
   error,
   noUsableOrigin = false,
+  scaffoldOffer,
   isPending = false,
   onBrowse,
   submitLabel = "Connect inventory",
@@ -57,7 +61,9 @@ export function ConnectInventoryForm({
           onChange={(event) => onPathChange(event.target.value)}
           placeholder="/path/to/agent-harness or https://github.com/owner/repo"
           aria-describedby={error ? "inventory-path-error" : undefined}
-          aria-invalid={error ? true : undefined}
+          // An offer is not a malformed field: the path is fine, it just has no
+          // Harness in it yet.
+          aria-invalid={error && !scaffoldOffer ? true : undefined}
           // No outline-none: it poisons --tw-outline-style and hides the ring (#227).
           className="flex-1 rounded-control border border-line bg-inset px-2 py-1.5 font-mono text-fg text-mono-sm placeholder:text-dim focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
         />
@@ -76,7 +82,34 @@ export function ConnectInventoryForm({
           minute — this stays open until it finishes.
         </p>
       ) : null}
-      {error ? (
+      {error && scaffoldOffer ? (
+        <div
+          id="inventory-path-error"
+          role="status"
+          className="flex flex-col gap-1.5 rounded-control border border-line bg-inset px-3 py-2.5"
+        >
+          <span className="font-semibold text-fg text-tag">
+            Not a Harness yet
+          </span>
+          <span className="text-fg-2 text-tag">{error}</span>
+          <span className="font-mono text-dim text-mono-sm">
+            {scaffoldOffer.path}
+          </span>
+          <div className="mt-1">
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              disabled={scaffoldOffer.isPending}
+              onClick={scaffoldOffer.onAccept}
+            >
+              {scaffoldOffer.isPending
+                ? "Scaffolding…"
+                : "Scaffold the Harness"}
+            </Button>
+          </div>
+        </div>
+      ) : error ? (
         noUsableOrigin ? (
           // Submit stays available (steps down to quiet) so a hand-corrected
           // path can still be resubmitted alongside "browse again…" (#147).
@@ -116,7 +149,9 @@ export function ConnectInventoryForm({
       <div className="flex gap-2">
         <Button
           type="submit"
-          variant={noUsableOrigin ? "quiet" : "primary"}
+          // Steps down whenever the error region owns the primary action, so
+          // the two never compete for the same weight (#147, #556).
+          variant={noUsableOrigin || scaffoldOffer ? "quiet" : "primary"}
           size="sm"
           disabled={isPending}
         >

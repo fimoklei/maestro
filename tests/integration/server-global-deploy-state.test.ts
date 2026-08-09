@@ -19,6 +19,7 @@ import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
+import { stubScaffold } from "../helpers/stub-scaffold";
 
 // Integration lane for global (user-scope) deploy-state, now grouped per detected
 // tool (ADR-0011, J03). The server resolves the user-scope location itself — no
@@ -85,6 +86,7 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
       harness: stubHarness(),
       publish: stubPublish(),
       connect: stubConnect(),
+      scaffold: stubScaffold(),
       browse: stubBrowse(),
       enforceOriginHost: false,
     });

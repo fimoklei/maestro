@@ -2,11 +2,13 @@ import { type ReactNode, useState } from "react";
 import {
   connectErrorMessage,
   isNoUsableOriginError,
+  scaffoldOfferPath,
 } from "../inventory/connect-error-message";
 import {
   type ConnectResponse,
   useConnectInventory,
 } from "../inventory/use-connect-inventory";
+import { useScaffoldHarness } from "../inventory/use-scaffold-harness";
 import { BrowseDialog } from "./browse-dialog";
 import { ConnectInventoryForm } from "./connect-inventory-form";
 import { useBrowsePicker } from "./use-browse-picker";
@@ -31,26 +33,50 @@ export function ConnectInventoryPanel({
   secondaryAction,
 }: ConnectInventoryPanelProps) {
   const connect = useConnectInventory();
+  const scaffold = useScaffoldHarness();
   const [path, setPath] = useState(initialPath);
   const browse = useBrowsePicker(([selected]) => setPath(selected ?? ""));
 
   function handleSubmit(submittedPath: string) {
+    scaffold.reset();
     connect.mutate(submittedPath, {
       onSuccess: (result) => onSuccess?.(result),
     });
   }
 
+  // Both routes end the same way, so the success slot does not care which
+  // mutation got there (#556).
+  const succeeded = scaffold.isSuccess ? scaffold.data : connect.data;
+  // A failed scaffold replaces the offer with what went wrong; the field stays
+  // editable so another path can be submitted.
+  const offerPath = scaffold.error ? null : scaffoldOfferPath(connect.error);
+
   return (
     <>
-      {connect.isSuccess && renderSuccess ? (
-        renderSuccess(connect.data)
+      {succeeded && renderSuccess ? (
+        renderSuccess(succeeded)
       ) : (
         <ConnectInventoryForm
           path={path}
           onPathChange={setPath}
           onSubmit={handleSubmit}
-          error={connectErrorMessage(connect.error)}
+          error={
+            connectErrorMessage(scaffold.error) ??
+            connectErrorMessage(connect.error)
+          }
           noUsableOrigin={isNoUsableOriginError(connect.error)}
+          scaffoldOffer={
+            offerPath
+              ? {
+                  path: offerPath,
+                  isPending: scaffold.isPending,
+                  onAccept: () =>
+                    scaffold.mutate(offerPath, {
+                      onSuccess: (result) => onSuccess?.(result),
+                    }),
+                }
+              : undefined
+          }
           isPending={connect.isPending}
           onBrowse={browse.openBrowse}
           submitLabel={submitLabel}

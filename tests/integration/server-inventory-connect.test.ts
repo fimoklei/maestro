@@ -17,6 +17,7 @@ import {
   ConnectInventory,
   InFlightLocks,
   InventoryReader,
+  isRepositoryRoot,
   NodeFileSystem,
   Registry,
   readConfiguredGitOriginUrl,
@@ -33,6 +34,7 @@ import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
+import { stubScaffold } from "../helpers/stub-scaffold";
 
 const run = promisify(execFile);
 const REMOTE_HEAD = "refs/remotes/origin/HEAD";
@@ -93,11 +95,13 @@ describe("inventory connect HTTP route", () => {
         store,
         originUrl: readConfiguredGitOriginUrl,
         defaultBranch: resolveDefaultBranch,
+        isRepositoryRoot,
         // No URL is connected here; the clone journey lives in
         // connect-clone-journey.test.ts.
         homeRoot: () => dir,
         clone: { clone: async () => "clone-failed" },
       }),
+      scaffold: stubScaffold(),
       deployState,
       deploy: stubDeploy({ inventory, registry, locks }),
       remove: stubRemove({ registry, locks }),
@@ -139,6 +143,33 @@ describe("inventory connect HTTP route", () => {
       inventoryPath: await nodeRealpath(clone),
       primitiveCount: 1,
     });
+  });
+
+  it("offers the scaffold for a GitHub repository that has no apm.yml", async () => {
+    const repo = join(dir, "empty-repo");
+    await mkdir(repo, { recursive: true });
+    await initGitClone(repo);
+
+    const res = await postConnect(makeApp(), { path: repo });
+
+    expect(res.status).toBe(422);
+    expect(await res.json()).toEqual({
+      error: "scaffoldable",
+      message: expect.stringContaining("no apm.yml"),
+      // The offer carries the path so a cloned repository the user never typed
+      // can still be scaffolded.
+      path: await nodeRealpath(repo),
+    });
+  });
+
+  it("never offers the scaffold for a directory that is not a repository", async () => {
+    const plain = join(dir, "just-a-folder");
+    await mkdir(plain, { recursive: true });
+
+    const res = await postConnect(makeApp(), { path: plain });
+
+    expect(res.status).toBe(422);
+    expect(await res.json()).toMatchObject({ error: "not-an-inventory" });
   });
 
   it("connects a Harness whose default branch is not named main", async () => {
@@ -345,7 +376,7 @@ describe("inventory connect HTTP route", () => {
   it.each([
     ["dangling", "does-not-exist"],
     ["file-target", "real-manifest.yml"],
-  ])("rejects a %s symlinked apm.yml as 422", async (_label, target) => {
+  ])("refuses to connect a %s symlinked apm.yml", async (_label, target) => {
     const linked = join(dir, `linked-${target}`);
     await mkdir(linked, { recursive: true });
     await writeFile(join(linked, "real-manifest.yml"), "dependencies: []\n");
@@ -354,15 +385,17 @@ describe("inventory connect HTTP route", () => {
 
     const res = await postConnect(makeApp(), { path: linked });
 
+    // A GitHub repository, so the refusal carries the scaffold offer — which is
+    // itself the proof the symlink was never read as a manifest (#556).
     expect(res.status).toBe(422);
     expect(((await res.json()) as { error: string }).error).toBe(
-      "not-an-inventory",
+      "scaffoldable",
     );
   });
 
   // The retired shape is not a fallback (ADR-0021 §4): a clone that would have
   // connected before must now be refused all the way out to the HTTP edge.
-  it("rejects the retired root skills/ shape as 422 not-an-inventory", async () => {
+  it("refuses to connect the retired root skills/ shape", async () => {
     const retired = join(dir, "old-harness");
     await mkdir(join(retired, "skills", "tdd"), { recursive: true });
     await writeFile(
@@ -376,7 +409,7 @@ describe("inventory connect HTTP route", () => {
 
     expect(res.status).toBe(422);
     expect(((await res.json()) as { error: string }).error).toBe(
-      "not-an-inventory",
+      "scaffoldable",
     );
   });
 

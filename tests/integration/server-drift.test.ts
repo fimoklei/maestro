@@ -17,6 +17,7 @@ import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
+import { stubScaffold } from "../helpers/stub-scaffold";
 
 // Integration lane: drives the real Hono app via app.request. The drift route
 // is registry-gated like deploy-state. A check that could not run is a 200 with
@@ -71,6 +72,7 @@ describe("drift HTTP route", () => {
       harness: stubHarness(),
       publish: stubPublish(),
       connect: stubConnect(),
+      scaffold: stubScaffold(),
       browse: stubBrowse(),
       enforceOriginHost: false,
     });
