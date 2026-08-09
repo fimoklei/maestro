@@ -437,4 +437,35 @@ describe("ConnectInventoryForm", () => {
     await userEvent.click(screen.getByRole("button", { name: /connect/i }));
     expect(onSubmit).toHaveBeenCalledWith("/home/me/agent-harness");
   });
+
+  it("submits the path when the keyboard activates the form", async () => {
+    const onSubmit = vi.fn();
+    render(
+      <ConnectInventoryForm
+        path="/home/me/agent-harness"
+        onPathChange={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    screen.getByLabelText(/inventory path/i).focus();
+    await userEvent.keyboard("{Enter}");
+
+    expect(onSubmit).toHaveBeenCalledWith("/home/me/agent-harness");
+  });
+
+  it("marks a submitted error as invalid and ties it to the field", () => {
+    render(
+      <ConnectInventoryForm
+        path="/home/me/not-a-harness"
+        onPathChange={vi.fn()}
+        onSubmit={vi.fn()}
+        error="That directory has no apm.yml."
+      />,
+    );
+
+    const input = screen.getByLabelText(/inventory path/i);
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(input).toHaveAttribute("aria-describedby", "inventory-path-error");
+  });
 });

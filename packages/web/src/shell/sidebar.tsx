@@ -35,7 +35,10 @@ export function Sidebar() {
   return (
     <aside
       aria-label="Sidebar"
-      className="flex w-64 shrink-0 flex-col gap-0.5 overflow-y-auto border-line border-r p-2.5"
+      className={cn(
+        "flex w-64 shrink-0 flex-col gap-0.5 overflow-y-auto border-line border-r p-2.5",
+        onGate && "max-md:hidden",
+      )}
     >
       {NAV_GROUPS.map((group, index) => (
         <div key={group.label}>

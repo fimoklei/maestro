@@ -21,7 +21,7 @@ export const AsPageTitle: Story = {
   args: {
     level: 1,
     title: "Connect central inventory",
-    meta: "the path of a local agent-harness clone",
+    meta: "a local Harness clone or GitHub URL",
   },
 };
 

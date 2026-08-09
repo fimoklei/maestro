@@ -39,7 +39,7 @@ export function InventoryPanel() {
         <p role="alert" className="text-amber-ink text-tag">
           {inventory.error instanceof HttpError &&
           inventory.error.status === 409
-            ? "No inventory is configured. Set the agent-harness clone path."
+            ? "No inventory is configured. Set the Harness source path."
             : "Could not load the inventory."}
         </p>
       ) : (

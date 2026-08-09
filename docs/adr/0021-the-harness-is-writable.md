@@ -11,9 +11,8 @@ the authoring route breaks both.
 
 - `CONTEXT.md` → *Inventory source*: **"Read-only; Maestro never writes back to
   it."**
-- ADR-0015 point 2 puts the same promise on the connect gate's success state —
-  `read-only, never writes back` — and calls that the product's strongest
-  moment.
+- ADR-0015 point 2 puts the same no-write promise on the connect gate's success
+  state and calls that the product's strongest moment.
 
 The authoring route (#399) has Maestro commit, push and tag inside that same
 repo. So the promise is not a wording slip; it is a decision that has to be
@@ -71,8 +70,9 @@ consumers deploy only from the released state.**
   drifted, however far the working harness has moved on. That gap is the
   *Pending release* table (#347), not a third drift facet.
 - **ADR-0016 is untouched.** It governs Inventory, and nothing here does (#347).
-- The connect gate's success copy loses a line it can no longer honour. The
-  reassurance beat stays; what it reassures about narrows to the truth.
+- Issue #557 makes the connect gate's success copy outcome-specific: found keeps
+  the deploy no-write promise, while joined and scaffolded describe their
+  writes and landings honestly.
 - A newcomer who reads APM first meets "harness" twice, at opposite ends of the
   pipe. The *Avoid* line is the whole mitigation; the word is on a screen and a
   glossary cannot outvote that.

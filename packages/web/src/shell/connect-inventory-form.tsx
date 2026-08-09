@@ -68,7 +68,7 @@ export function ConnectInventoryForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-2">
       <label htmlFor="inventory-path" className="m-label">
-        Inventory path
+        Inventory path or GitHub URL
       </label>
       <div className="flex items-end gap-2">
         <input
