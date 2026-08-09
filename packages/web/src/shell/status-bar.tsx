@@ -114,8 +114,8 @@ export function StatusBarView({
 
   return (
     <header className="flex items-center gap-3 border-line-chip border-b px-4 py-2.5">
-      <Logo wordmark context={context} />
-      <Chip tone={view.tone} className="ml-auto">
+      <Logo wordmark context={context} className="min-w-0" />
+      <Chip tone={view.tone} className="ml-auto shrink-0">
         <span className="inline-flex items-center gap-1.5">
           <StatusDot status={view.dot} />
           {view.label}

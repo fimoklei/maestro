@@ -48,7 +48,11 @@ export function Logo({
         </span>
       ) : null}
       {context ? (
-        <span className="font-mono text-chip text-dim">{context}</span>
+        // min-w-0 + overflow-hidden: without them this flex item keeps its
+        // content width and a long context overlaps whatever follows it.
+        <span className="min-w-0 overflow-hidden font-mono text-chip text-dim">
+          {context}
+        </span>
       ) : null}
     </div>
   );
