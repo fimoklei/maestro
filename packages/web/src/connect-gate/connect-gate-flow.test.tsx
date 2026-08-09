@@ -1,20 +1,13 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppRoutes } from "../shell/app-router";
+import { jsonResponse, renderWithQuery } from "../test-utils";
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
-
-function jsonResponse(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
 
 // Stateful: config starts unconfigured, "connects" once POSTed — mirrors
 // server-state (frontend.md), not a static fixture.
@@ -40,15 +33,10 @@ function stubServer() {
 }
 
 function renderApp(path: string) {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[path]}>
-        <AppRoutes />
-      </MemoryRouter>
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <MemoryRouter initialEntries={[path]}>
+      <AppRoutes />
+    </MemoryRouter>,
   );
 }
 

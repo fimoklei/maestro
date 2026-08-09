@@ -2,18 +2,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { jsonResponse, renderWithQuery } from "../test-utils";
 import { StatusBar } from "./status-bar";
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
-
-function jsonResponse(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
 
 // Routes by URL: /api/health and /api/inventory/config. `health: "down"`
 // fails the probe; `config` is a body or "error" to fail the config read.
@@ -45,15 +39,10 @@ function stubServer(opts: {
 }
 
 function renderStatusBar(initialPath = "/") {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[initialPath]}>
-        <StatusBar />
-      </MemoryRouter>
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <MemoryRouter initialEntries={[initialPath]}>
+      <StatusBar />
+    </MemoryRouter>,
   );
 }
 

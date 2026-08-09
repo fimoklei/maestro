@@ -1,20 +1,13 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { jsonResponse, renderWithQuery } from "../test-utils";
 import { AppRoutes } from "./app-router";
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
-
-function jsonResponse(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
 
 // The config endpoint drives the gate: it answers 200 with inventoryPath null
 // when nothing is connected (no retry delay, unlike an error signal). Every other
@@ -68,15 +61,10 @@ function stubServerConfigFailsOnce({
 }
 
 function renderAt(path: string) {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[path]}>
-        <AppRoutes />
-      </MemoryRouter>
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <MemoryRouter initialEntries={[path]}>
+      <AppRoutes />
+    </MemoryRouter>,
   );
 }
 

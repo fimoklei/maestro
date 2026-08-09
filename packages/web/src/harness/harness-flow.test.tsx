@@ -1,9 +1,9 @@
 import type { HarnessState } from "@maestro/core";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { jsonResponse, renderWithQuery } from "../test-utils";
 import { HarnessView } from "./harness-view";
 
 const RELEASED: HarnessState = {
@@ -15,13 +15,6 @@ const RELEASED: HarnessState = {
   freshness: { outcome: null, lastFetchedAt: null },
   movements: [],
 };
-
-function jsonResponse(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
 
 // One stub for both routes, so a test states what the read says and what the
 // refresh finds, and nothing else.
@@ -105,16 +98,11 @@ function stubHarnessServer(options: {
 }
 
 function renderHarness() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-  });
   // StrictMode, because the real app mounts under it and replays every effect
   // — the open-time refresh must still be one request.
-  return render(
+  return renderWithQuery(
     <StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <HarnessView />
-      </QueryClientProvider>
+      <HarnessView />
     </StrictMode>,
   );
 }

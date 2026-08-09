@@ -1,8 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
+import { renderWithQuery } from "../test-utils";
 import type { DeploymentTarget } from "./deployed-rollup";
 import { InventoryList } from "./inventory-list";
 import type { Primitive } from "./use-inventory";
@@ -44,12 +44,7 @@ const primitives: Primitive[] = [
 ];
 
 function renderList(ui: React.ReactNode) {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
-  );
+  return renderWithQuery(ui);
 }
 
 describe("InventoryList", () => {
