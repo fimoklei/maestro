@@ -11,9 +11,11 @@ Never take design values (colour, size, spacing) from a flow screen; build from 
 
 Mandatory for any change that alters what `packages/web` renders:
 
-1. Start `pnpm smoke` in the background, then run `pnpm smoke:ready` — it waits
-   for the cockpit, connects the inventory and registers one repo, so the
-   screen starts populated. Plain `pnpm dev` starts empty and costs a detour.
+1. Start `pnpm smoke` in the background. It seeds the sandbox HOME and connects
+   nothing (ADR-0010), so the cockpit comes up on the connect gate.
+   - Verifying a first-run screen → stop here; that is the state you need.
+   - Verifying anything the cockpit shows once connected → run `pnpm smoke:ready`,
+     which waits for the cockpit, connects the inventory and registers one repo.
 2. Screenshot the changed UI with `agent-browser`.
 3. Compare against the design source; on mismatch, fix before claiming done.
 4. Run the `verify-in-smoke` checks before treating the screenshot as proof.
