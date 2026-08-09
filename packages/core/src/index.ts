@@ -63,6 +63,18 @@ export {
   BrowseFilesystem,
   type BrowseSuccess,
 } from "./filesystem/browse-filesystem";
+export {
+  CopySkillFolder,
+  type CopySkillFolderError,
+  type CopySkillFolderInput,
+  type CopySkillFolderResult,
+} from "./filesystem/copy-skill-folder";
+export {
+  type CopyEntryFacts,
+  type CopyEntryKind,
+  type CopyTreeFsPort,
+  NodeCopyTreeFs,
+} from "./filesystem/copy-tree-fs";
 export { HarnessFreshnessStore } from "./harness/harness-freshness-store";
 export { HarnessGitAdapter } from "./harness/harness-git";
 export type { SemverStep } from "./harness/propose-release-version";
