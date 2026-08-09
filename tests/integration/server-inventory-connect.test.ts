@@ -19,6 +19,7 @@ import {
   InventoryReader,
   isRepositoryRoot,
   NodeFileSystem,
+  probeHead,
   Registry,
   readConfiguredGitOriginUrl,
   resolveDefaultBranch,
@@ -98,10 +99,11 @@ describe("inventory connect HTTP route", () => {
         defaultBranch: resolveDefaultBranch,
         isRepositoryRoot,
         offers: new ScaffoldOffers(),
+        probeHead,
         // No URL is connected here; the clone journey lives in
         // connect-clone-journey.test.ts.
         homeRoot: () => dir,
-        clone: { clone: async () => "clone-failed" },
+        clone: { clone: async () => "clone-unavailable" },
       }),
       scaffold: stubScaffold(),
       deployState,

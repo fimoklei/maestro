@@ -3,6 +3,7 @@ import { ConfigStore } from "../registry/config-store";
 import { InMemoryFileSystem } from "../registry/file-system.fake";
 import type { CloneOutcome, CloneRepositoryPort } from "./clone-repository";
 import { ConnectInventory } from "./connect-inventory";
+import type { HeadProbe } from "./head-commit";
 import { ScaffoldOffers } from "./scaffold-offers";
 
 const CONFIG_PATH = "/home/me/.maestro/config.json";
@@ -32,6 +33,8 @@ function makeConnect(
   originUrl: string | null = PARSEABLE_ORIGIN,
   defaultBranch: string | null = "main",
   clone: CloneRepositoryPort = new FakeClone(fs),
+  head: HeadProbe = "commit",
+  homeRoot: string = HOME_ROOT,
   offers: ScaffoldOffers = new ScaffoldOffers(),
 ): ConnectInventory {
   return new ConnectInventory({
@@ -40,7 +43,8 @@ function makeConnect(
     originUrl: async () => originUrl,
     defaultBranch: async () => defaultBranch,
     isRepositoryRoot: async () => true,
-    homeRoot: () => HOME_ROOT,
+    probeHead: async () => head,
+    homeRoot: () => homeRoot,
     offers,
     clone,
   });
@@ -119,6 +123,8 @@ describe("ConnectInventory", () => {
       PARSEABLE_ORIGIN,
       "main",
       new FakeClone(offered),
+      "commit",
+      HOME_ROOT,
       offers,
     ).connect("/Users/me/empty");
     expect(offers.holds("/Users/me/empty")).toBe(true);
@@ -131,6 +137,8 @@ describe("ConnectInventory", () => {
       null,
       "main",
       new FakeClone(refused),
+      "commit",
+      HOME_ROOT,
       offers,
     ).connect("/Users/me/plain");
     expect(offers.holds("/Users/me/plain")).toBe(false);
@@ -186,6 +194,7 @@ describe("ConnectInventory", () => {
       originUrl: async () => PARSEABLE_ORIGIN,
       defaultBranch: async () => "main",
       isRepositoryRoot: async () => false,
+      probeHead: async () => "commit",
       homeRoot: () => HOME_ROOT,
       clone: new FakeClone(fs),
       offers: new ScaffoldOffers(),
@@ -289,23 +298,282 @@ describe("ConnectInventory", () => {
     expect(clone.calls).toEqual([]);
   });
 
-  it("reports a failed clone and persists nothing", async () => {
+  it("reports a clone refused for credentials and persists nothing", async () => {
     const fs = new InMemoryFileSystem();
     const connect = makeConnect(
       fs,
       PARSEABLE_ORIGIN,
       "main",
-      new FakeClone(fs, "clone-failed"),
+      new FakeClone(fs, "clone-auth-failed"),
     );
 
     const result = await connect.connect("https://github.com/o/r.git");
 
-    expect(result).toEqual({ ok: false, error: "clone-failed" });
+    expect(result).toEqual({ ok: false, error: "clone-auth-failed" });
     const stored = await new ConfigStore({
       fs,
       configPath: () => CONFIG_PATH,
     }).read();
     expect(stored.inventoryPath).toBeUndefined();
+  });
+
+  it("reports a repository GitHub will not hand over as unavailable", async () => {
+    const fs = new InMemoryFileSystem();
+    const connect = makeConnect(
+      fs,
+      PARSEABLE_ORIGIN,
+      "main",
+      new FakeClone(fs, "clone-unavailable"),
+    );
+
+    await expect(
+      connect.connect("https://github.com/o/r.git"),
+    ).resolves.toEqual({ ok: false, error: "clone-unavailable" });
+  });
+
+  describe("choosing where the clone lands", () => {
+    const PARENT = "/Users/me/Projects";
+
+    it("clones into the chosen parent under the repository's own name", async () => {
+      const fs = new InMemoryFileSystem({
+        directories: { [PARENT]: PARENT },
+      });
+      const clone = new FakeClone(fs);
+      const connect = makeConnect(fs, PARSEABLE_ORIGIN, "main", clone);
+
+      const result = await connect.connect(
+        "https://github.com/fimoklei/agent-harness.git",
+        { parent: PARENT },
+      );
+
+      expect(result).toEqual({
+        ok: true,
+        outcome: "joined",
+        inventoryPath: `${PARENT}/agent-harness`,
+      });
+      expect(clone.calls[0]?.destination).toBe(`${PARENT}/agent-harness`);
+    });
+
+    it("refuses a parent that is not an existing directory", async () => {
+      const fs = new InMemoryFileSystem();
+      const clone = new FakeClone(fs);
+      const connect = makeConnect(fs, PARSEABLE_ORIGIN, "main", clone);
+
+      const result = await connect.connect("https://github.com/o/r.git", {
+        parent: "/Users/me/nowhere",
+      });
+
+      expect(result).toEqual({ ok: false, error: "invalid-parent" });
+      expect(clone.calls).toEqual([]);
+    });
+
+    // The picker cannot reach past the home ceiling, and neither may a
+    // hand-made request: this is where a clone gets written (security.md).
+    it("refuses a parent outside the home ceiling", async () => {
+      const fs = new InMemoryFileSystem({
+        directories: { "/etc": "/etc" },
+      });
+      const clone = new FakeClone(fs);
+      const connect = makeConnect(fs, PARSEABLE_ORIGIN, "main", clone);
+
+      const result = await connect.connect("https://github.com/o/r.git", {
+        parent: "/etc",
+      });
+
+      expect(result).toEqual({ ok: false, error: "invalid-parent" });
+      expect(clone.calls).toEqual([]);
+    });
+
+    // A neighbour whose name merely starts with the ceiling's is outside it.
+    it("refuses a sibling of the home ceiling sharing its prefix", async () => {
+      const sibling = `${HOME_ROOT}-elsewhere`;
+      const fs = new InMemoryFileSystem({
+        directories: { [sibling]: sibling },
+      });
+      const connect = makeConnect(fs);
+
+      await expect(
+        connect.connect("https://github.com/o/r.git", { parent: sibling }),
+      ).resolves.toEqual({ ok: false, error: "invalid-parent" });
+    });
+
+    it("accepts the home ceiling itself as the parent", async () => {
+      const fs = new InMemoryFileSystem({
+        directories: { [HOME_ROOT]: HOME_ROOT },
+      });
+      const clone = new FakeClone(fs);
+      const connect = makeConnect(fs, PARSEABLE_ORIGIN, "main", clone);
+
+      const result = await connect.connect("https://github.com/o/r.git", {
+        parent: HOME_ROOT,
+      });
+
+      expect(result.ok).toBe(true);
+      expect(clone.calls[0]?.destination).toBe(`${HOME_ROOT}/r`);
+    });
+
+    it("refuses a relative parent", async () => {
+      const fs = new InMemoryFileSystem();
+      const connect = makeConnect(fs);
+
+      await expect(
+        connect.connect("https://github.com/o/r.git", { parent: "../etc" }),
+      ).resolves.toEqual({ ok: false, error: "invalid-parent" });
+    });
+
+    // A forgotten local copy is not a reason to make a second one.
+    it("connects an existing clone of the same repository instead of re-cloning", async () => {
+      const destination = `${HOME_ROOT}/agent-harness`;
+      const fs = new InMemoryFileSystem({
+        directories: {
+          [destination]: destination,
+          [`${destination}/.git`]: `${destination}/.git`,
+        },
+        listings: { [destination]: [".git", "apm.yml"] },
+        files: { [`${destination}/apm.yml`]: "dependencies: []\n" },
+      });
+      const clone = new FakeClone(fs);
+      const connect = makeConnect(fs, PARSEABLE_ORIGIN, "main", clone);
+
+      const result = await connect.connect(
+        "https://github.com/fimoklei/agent-harness.git",
+      );
+
+      expect(result).toEqual({
+        ok: true,
+        outcome: "found",
+        inventoryPath: destination,
+      });
+      expect(clone.calls).toEqual([]);
+    });
+
+    it("refuses a destination occupied by anything else, leaving it alone", async () => {
+      const destination = `${HOME_ROOT}/agent-harness`;
+      const fs = new InMemoryFileSystem({
+        directories: { [destination]: destination },
+        listings: { [destination]: ["notes.txt"] },
+        files: { [`${destination}/notes.txt`]: "mine" },
+      });
+      const clone = new FakeClone(fs);
+      const connect = makeConnect(fs, PARSEABLE_ORIGIN, "main", clone);
+
+      const result = await connect.connect(
+        "https://github.com/fimoklei/agent-harness.git",
+      );
+
+      expect(result).toEqual({ ok: false, error: "destination-occupied" });
+      expect(clone.calls).toEqual([]);
+      expect(await fs.readFile(`${destination}/notes.txt`)).toBe("mine");
+    });
+
+    it("reports a partial clone rather than cloning over it", async () => {
+      const destination = `${HOME_ROOT}/agent-harness`;
+      const fs = new InMemoryFileSystem({
+        directories: {
+          [destination]: destination,
+          [`${destination}/.git`]: `${destination}/.git`,
+        },
+        listings: { [destination]: [".git"] },
+      });
+      const clone = new FakeClone(fs);
+      const connect = makeConnect(
+        fs,
+        PARSEABLE_ORIGIN,
+        "main",
+        clone,
+        // No commit at HEAD: what an interrupted clone leaves behind.
+        "no-head",
+      );
+
+      const result = await connect.connect(
+        "https://github.com/fimoklei/agent-harness.git",
+      );
+
+      expect(result).toEqual({ ok: false, error: "destination-partial-clone" });
+      expect(clone.calls).toEqual([]);
+      expect(await fs.isDirectory(destination)).toBe(true);
+    });
+
+    // The ceiling is compared canonical-to-canonical: on macOS a home under
+    // /var resolves to /private/var, and a real choice must not be refused
+    // for it (ADR-0009).
+    it("accepts a parent inside a home whose own path is a symlink", async () => {
+      const linked = "/private/Users/me";
+      const fs = new InMemoryFileSystem({
+        directories: {
+          [HOME_ROOT]: linked,
+          [`${HOME_ROOT}/Projects`]: `${linked}/Projects`,
+          [`${linked}/Projects`]: `${linked}/Projects`,
+        },
+      });
+      const clone = new FakeClone(fs);
+      const connect = makeConnect(fs, PARSEABLE_ORIGIN, "main", clone);
+
+      await connect.connect("https://github.com/o/r.git", {
+        parent: `${HOME_ROOT}/Projects`,
+      });
+
+      expect(clone.calls[0]?.destination).toBe(`${linked}/Projects/r`);
+    });
+
+    // The lexical refusal comes first, so a path outside the ceiling is never
+    // resolved — not even to throw it away (security.md).
+    it("refuses a parent outside the ceiling without resolving it", async () => {
+      const fs = new InMemoryFileSystem({
+        directories: {
+          [HOME_ROOT]: HOME_ROOT,
+          "/etc/passwd.d": "/etc/passwd.d",
+        },
+      });
+      const resolved: string[] = [];
+      const original = fs.realpath.bind(fs);
+      fs.realpath = async (path: string) => {
+        resolved.push(path);
+        return original(path);
+      };
+      const connect = makeConnect(fs);
+
+      await expect(
+        connect.connect("https://github.com/o/r.git", {
+          parent: "/etc/passwd.d",
+        }),
+      ).resolves.toEqual({ ok: false, error: "invalid-parent" });
+      expect(resolved).not.toContain("/etc/passwd.d");
+    });
+
+    // Two requests for the same destination: the second would classify the
+    // first one's half-written clone and tell the user to delete it (#555).
+    it("refuses a second connect while the first is still cloning there", async () => {
+      const fs = new InMemoryFileSystem({
+        directories: { [HOME_ROOT]: HOME_ROOT },
+      });
+      let announce: () => void = () => {};
+      let release: () => void = () => {};
+      const cloning = new Promise<void>((resolve) => {
+        announce = resolve;
+      });
+      const finish = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const clone: CloneRepositoryPort = {
+        clone: async (_url, destination) => {
+          announce();
+          await finish;
+          await fs.ensureDir(destination);
+          await fs.writeFile(`${destination}/apm.yml`, "dependencies: []\n");
+          return "cloned";
+        },
+      };
+      const connect = makeConnect(fs, PARSEABLE_ORIGIN, "main", clone);
+
+      const first = connect.connect("https://github.com/o/r.git");
+      await cloning;
+      const second = await connect.connect("https://github.com/o/r.git");
+      release();
+
+      expect(second).toEqual({ ok: false, error: "clone-in-progress" });
+      expect((await first).ok).toBe(true);
+    });
   });
 
   // The clone succeeded and stays on disk; only the connect is refused, so a

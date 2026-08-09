@@ -1,9 +1,9 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { DriftViewModel } from "../drift/drift-view-model";
 import { driftViewModel } from "../drift/drift-view-model";
 import type { DriftResponse } from "../drift/use-drift";
+import { renderWithQuery } from "../test-utils";
 import { DeployStateList } from "./deploy-state-list";
 
 const tdd = { type: "skill" as const, name: "tdd", version: "v0.5.0" };
@@ -18,15 +18,13 @@ const behindTdd = checked({
 const upToDate = checked({ behind: [] });
 
 function renderList(drift: DriftViewModel) {
-  return render(
-    <QueryClientProvider client={new QueryClient()}>
-      <DeployStateList
-        primitives={[tdd]}
-        skipped={[]}
-        drift={drift}
-        target={{ kind: "repo", repoPath: "/Users/me/project" }}
-      />
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <DeployStateList
+      primitives={[tdd]}
+      skipped={[]}
+      drift={drift}
+      target={{ kind: "repo", repoPath: "/Users/me/project" }}
+    />,
   );
 }
 

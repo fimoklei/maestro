@@ -1,31 +1,12 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { jsonResponse, renderWithQuery } from "../test-utils";
 import { BulkDeployBar } from "./bulk-deploy-bar";
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
-
-const jsonResponse = (body: unknown) =>
-  new Response(JSON.stringify(body), {
-    status: 200,
-    headers: { "content-type": "application/json" },
-  });
-
-function renderBar(ui: React.ReactNode) {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  // `wrapper`, not an inline element: it survives `rerender`, which the bar's
-  // queries need.
-  return render(ui, {
-    wrapper: ({ children }) => (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    ),
-  });
-}
 
 // A fetch stub for the cockpit's read queries plus the bulk route. Deploy-state
 // reads empty (nothing deployed), drift is up-to-date, and the bulk route
@@ -63,7 +44,7 @@ function stubReads(bulkReport: unknown) {
 describe("BulkDeployBar", () => {
   it("states deploy as the view's primary action with nothing staged", async () => {
     stubReads(null);
-    renderBar(
+    renderWithQuery(
       <BulkDeployBar
         stagedNames={[]}
         hiddenCount={0}
@@ -82,7 +63,7 @@ describe("BulkDeployBar", () => {
   it("asks for a pick instead of deploying when nothing is staged", async () => {
     stubReads(null);
     const onPickSkills = vi.fn();
-    renderBar(
+    renderWithQuery(
       <BulkDeployBar
         stagedNames={[]}
         hiddenCount={0}
@@ -114,7 +95,7 @@ describe("BulkDeployBar", () => {
       registryReady: true,
       onPickSkills: () => {},
     };
-    const { rerender } = renderBar(
+    const { rerender } = renderWithQuery(
       <BulkDeployBar stagedNames={[]} {...props} />,
     );
 
@@ -142,7 +123,7 @@ describe("BulkDeployBar", () => {
       attention: [],
       failed: [],
     });
-    renderBar(
+    renderWithQuery(
       <BulkDeployBar
         stagedNames={["tdd", "review"]}
         hiddenCount={0}
@@ -182,7 +163,7 @@ describe("BulkDeployBar", () => {
       ],
       failed: [],
     });
-    renderBar(
+    renderWithQuery(
       <BulkDeployBar
         stagedNames={["tdd", "review"]}
         hiddenCount={0}
@@ -233,7 +214,7 @@ describe("BulkDeployBar", () => {
       }),
     );
 
-    renderBar(
+    renderWithQuery(
       <BulkDeployBar
         stagedNames={["tdd"]}
         hiddenCount={0}
@@ -289,7 +270,7 @@ describe("BulkDeployBar", () => {
       }),
     );
 
-    renderBar(
+    renderWithQuery(
       <BulkDeployBar
         stagedNames={["tdd"]}
         hiddenCount={0}
@@ -338,7 +319,7 @@ describe("BulkDeployBar", () => {
       }),
     );
 
-    renderBar(
+    renderWithQuery(
       <BulkDeployBar
         stagedNames={["tdd"]}
         hiddenCount={0}

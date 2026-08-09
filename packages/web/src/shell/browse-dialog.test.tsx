@@ -10,23 +10,18 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { RegistrationOutcome } from "../registry/use-register-repos";
+import { jsonResponse, renderWithQuery } from "../test-utils";
 import { BrowseDialog } from "./browse-dialog";
 import { readLastFolder, writeLastFolder } from "./browse-last-folder";
+import type { BrowseDialogMode } from "./browse-modes";
 
 afterEach(() => {
   vi.unstubAllGlobals();
   window.localStorage.clear();
 });
 
-function jsonResponse(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
-
 function renderDialog({
-  mode = "connect" as "connect" | "register",
+  mode = "connect" as BrowseDialogMode,
   onSelect = vi.fn(),
   onClose = vi.fn(),
   registeredPaths = undefined as ReadonlySet<string> | undefined,
@@ -34,21 +29,16 @@ function renderDialog({
   outcomes = undefined as readonly RegistrationOutcome[] | undefined,
   isRegistering = undefined as boolean | undefined,
 } = {}) {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  render(
-    <QueryClientProvider client={queryClient}>
-      <BrowseDialog
-        mode={mode}
-        onSelect={onSelect}
-        onClose={onClose}
-        registeredPaths={registeredPaths}
-        inventoryPath={inventoryPath}
-        outcomes={outcomes}
-        isRegistering={isRegistering}
-      />
-    </QueryClientProvider>,
+  renderWithQuery(
+    <BrowseDialog
+      mode={mode}
+      onSelect={onSelect}
+      onClose={onClose}
+      registeredPaths={registeredPaths}
+      inventoryPath={inventoryPath}
+      outcomes={outcomes}
+      isRegistering={isRegistering}
+    />,
   );
   return { onSelect, onClose };
 }
@@ -707,6 +697,9 @@ describe("BrowseDialog", () => {
         },
       );
       vi.stubGlobal("fetch", fetchMock);
+      // Production defaults on purpose — retries stay on, which is what makes
+      // the one-request count below prove the hook's own guard rather than the
+      // test client's. Never renderWithQuery here.
       render(
         <QueryClientProvider client={new QueryClient()}>
           <BrowseDialog mode="connect" onSelect={vi.fn()} onClose={vi.fn()} />
@@ -1241,6 +1234,27 @@ describe("BrowseDialog", () => {
       expect(confirm).not.toHaveAccessibleDescription(/writes nothing/i);
       expect(screen.queryByText(/writes nothing/i)).not.toBeInTheDocument();
     });
+
+    // Picking a clone parent does write — a new folder appears in it — so the
+    // promise here is about what stays untouched (#555).
+    it("promises in clone-parent mode that nothing already there is disturbed", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => jsonResponse(homeResponse, 200)),
+      );
+      renderDialog({ mode: "clone-parent" });
+
+      const confirm = await screen.findByRole("button", {
+        name: /clone into this folder/i,
+      });
+      expect(confirm).toHaveAccessibleDescription(
+        /named after the repository/i,
+      );
+      expect(confirm).toHaveAccessibleDescription(/renamed, moved or deleted/i);
+      expect(
+        screen.getByRole("heading", { name: /select a folder to clone into/i }),
+      ).toBeInTheDocument();
+    });
   });
 
   // Everything a keyboard user expects from a modal (issue #214): focus lands
@@ -1255,11 +1269,8 @@ describe("BrowseDialog", () => {
       isRegistering?: boolean;
     } = {}) {
       const [open, setOpen] = useState(false);
-      const queryClient = new QueryClient({
-        defaultOptions: { queries: { retry: false } },
-      });
       return (
-        <QueryClientProvider client={queryClient}>
+        <>
           <button type="button" onClick={() => setOpen(true)}>
             browse…
           </button>
@@ -1271,7 +1282,7 @@ describe("BrowseDialog", () => {
               isRegistering={isRegistering}
             />
           ) : null}
-        </QueryClientProvider>
+        </>
       );
     }
 
@@ -1294,7 +1305,7 @@ describe("BrowseDialog", () => {
         "fetch",
         vi.fn(async () => jsonResponse(homeResponse, 200)),
       );
-      render(<TriggerHarness />);
+      renderWithQuery(<TriggerHarness />);
 
       const trigger = screen.getByRole("button", { name: /browse/i });
       await userEvent.click(trigger);

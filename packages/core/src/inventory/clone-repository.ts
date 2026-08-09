@@ -4,6 +4,10 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { NON_INTERACTIVE } from "../git/non-interactive";
+import {
+  type CloneFailure,
+  classifyCloneFailure,
+} from "./classify-clone-failure";
 
 const run = promisify(execFile);
 
@@ -12,7 +16,7 @@ const run = promisify(execFile);
 // so this is the only thing that ends a stalled clone.
 const CLONE_TIMEOUT_MS = 600_000;
 
-export type CloneOutcome = "cloned" | "clone-failed";
+export type CloneOutcome = "cloned" | CloneFailure;
 
 export interface CloneRepositoryPort {
   clone(url: string, destination: string): Promise<CloneOutcome>;
@@ -29,8 +33,9 @@ export class GitCloneAdapter implements CloneRepositoryPort {
         timeout: CLONE_TIMEOUT_MS,
       });
       return "cloned";
-    } catch {
-      return "clone-failed";
+    } catch (error) {
+      // git's own words are read here and dropped; only the class travels.
+      return classifyCloneFailure((error as { stderr?: string }).stderr ?? "");
     }
   }
 }

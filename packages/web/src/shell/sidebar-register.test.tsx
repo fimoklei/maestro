@@ -1,21 +1,14 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { jsonResponse, renderWithQuery } from "../test-utils";
 import { Sidebar } from "./sidebar";
 
 afterEach(() => {
   vi.unstubAllGlobals();
   window.localStorage.clear();
 });
-
-function jsonResponse(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
 
 const repoFacts = { isGitRepo: true, hasApmManifest: false };
 
@@ -77,15 +70,10 @@ function stubServer({
 }
 
 function renderSidebar() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={["/"]}>
-        <Sidebar />
-      </MemoryRouter>
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <MemoryRouter initialEntries={["/"]}>
+      <Sidebar />
+    </MemoryRouter>,
   );
 }
 

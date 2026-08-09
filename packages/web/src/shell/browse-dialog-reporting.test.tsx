@@ -1,8 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { RegistrationOutcome } from "../registry/use-register-repos";
+import { jsonResponse, renderWithQuery } from "../test-utils";
 import { BrowseDialog } from "./browse-dialog";
 
 // Confirming a register-mode selection turns the picker into a per-repo
@@ -12,13 +12,6 @@ afterEach(() => {
   vi.unstubAllGlobals();
   window.localStorage.clear();
 });
-
-function jsonResponse(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
 
 const homeResponse = {
   requestedPath: "/home/me",
@@ -34,24 +27,19 @@ function renderDialog({
   outcomes = undefined as RegistrationOutcome[] | undefined,
   isRegistering = undefined as boolean | undefined,
 } = {}) {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
   const dialog = (props: {
     outcomes?: RegistrationOutcome[];
     isRegistering?: boolean;
   }) => (
-    <QueryClientProvider client={queryClient}>
-      <BrowseDialog
-        mode={mode}
-        onSelect={onSelect}
-        onClose={onClose}
-        outcomes={props.outcomes}
-        isRegistering={props.isRegistering}
-      />
-    </QueryClientProvider>
+    <BrowseDialog
+      mode={mode}
+      onSelect={onSelect}
+      onClose={onClose}
+      outcomes={props.outcomes}
+      isRegistering={props.isRegistering}
+    />
   );
-  const { rerender } = render(dialog({ outcomes, isRegistering }));
+  const { rerender } = renderWithQuery(dialog({ outcomes, isRegistering }));
   return {
     onSelect,
     onClose,

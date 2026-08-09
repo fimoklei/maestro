@@ -107,6 +107,8 @@ export {
   GitHarnessScaffoldAdapter,
   type HarnessScaffoldGitPort,
 } from "./inventory/harness-scaffold-git";
+export type { HeadProbe } from "./inventory/head-commit";
+export { probeHead } from "./inventory/head-commit";
 export {
   InventoryReader,
   type InventoryResult,

@@ -1,20 +1,13 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { jsonResponse, renderWithQuery } from "../test-utils";
 import { DeployStatePanel } from "./deploy-state-panel";
 import { GlobalDeployStatePanel } from "./global-deploy-state-panel";
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
-
-function jsonResponse(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
 
 // Routes the panel's two read queries (deploy-state and drift) by URL, so each
 // scenario can pin one deployed skill and a distinct drift outcome. The deploy
@@ -33,25 +26,13 @@ function stubReads(deployState: unknown, drift: unknown, driftStatus = 200) {
 }
 
 function renderPanel(repo: string) {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <DeployStatePanel repo={repo} onStartDeploy={() => {}} />
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <DeployStatePanel repo={repo} onStartDeploy={() => {}} />,
   );
 }
 
 function renderGlobalPanel() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <GlobalDeployStatePanel onStartDeploy={() => {}} />
-    </QueryClientProvider>,
-  );
+  return renderWithQuery(<GlobalDeployStatePanel onStartDeploy={() => {}} />);
 }
 
 const tddDeployed = {

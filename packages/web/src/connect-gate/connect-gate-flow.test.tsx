@@ -1,20 +1,13 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppRoutes } from "../shell/app-router";
+import { jsonResponse, renderWithQuery } from "../test-utils";
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
-
-function jsonResponse(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
 
 // Stateful: config starts unconfigured, "connects" once POSTed — mirrors
 // server-state (frontend.md), not a static fixture.
@@ -40,15 +33,10 @@ function stubServer() {
 }
 
 function renderApp(path: string) {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[path]}>
-        <AppRoutes />
-      </MemoryRouter>
-    </QueryClientProvider>,
+  return renderWithQuery(
+    <MemoryRouter initialEntries={[path]}>
+      <AppRoutes />
+    </MemoryRouter>,
   );
 }
 
@@ -231,6 +219,75 @@ describe("connect gate", () => {
     expect(
       await screen.findByRole("heading", { name: /^harness$/i }),
     ).toBeInTheDocument();
+  });
+
+  // The whole recovery journey for #555: the refused destination hands the
+  // user the parent picker, and the retry carries the folder they chose.
+  it("recovers from an occupied destination by cloning into another folder", async () => {
+    const connectBodies: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.startsWith("/api/inventory/config")) {
+          return jsonResponse({ inventoryPath: null }, 200);
+        }
+        if (url.startsWith("/api/filesystem/children")) {
+          return jsonResponse(
+            {
+              path: "/home/me",
+              breadcrumbs: [{ name: "~", path: "/home/me" }],
+              entries: [],
+            },
+            200,
+          );
+        }
+        if (
+          url.startsWith("/api/inventory/connect") &&
+          init?.method === "POST"
+        ) {
+          connectBodies.push(String(init.body));
+          return jsonResponse(
+            {
+              error: "destination-occupied",
+              message: "Something else already sits where that Harness lands.",
+            },
+            409,
+          );
+        }
+        return jsonResponse(
+          { ok: true, repos: [], primitives: [], skipped: [], behind: [] },
+          200,
+        );
+      }),
+    );
+    renderApp("/welcome/connect");
+
+    await userEvent.type(
+      await screen.findByLabelText(/inventory path/i),
+      "https://github.com/fimoklei/agent-harness",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /^connect inventory$/i }),
+    );
+
+    // The refusal offers the one action that clears it, and it opens the
+    // picker for the parent folder — not the one for a local Harness.
+    await userEvent.click(
+      await screen.findByRole("button", { name: /choose another folder/i }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: /clone into this folder/i }),
+    );
+
+    expect(screen.getByText("/home/me/agent-harness")).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: /^connect inventory$/i }),
+    );
+    expect(JSON.parse(connectBodies[1] ?? "{}")).toEqual({
+      path: "https://github.com/fimoklei/agent-harness",
+      parent: "/home/me",
+    });
   });
 
   it("advertises no register-repos step and no progress strip", async () => {

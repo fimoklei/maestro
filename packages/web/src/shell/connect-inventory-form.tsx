@@ -1,5 +1,14 @@
 import { type FormEvent, type ReactNode, useEffect, useRef } from "react";
 import { Button } from "../ui/button";
+import { previewCloneChild } from "./clone-destination-preview";
+
+// A refusal the user clears by choosing somewhere else, rendered as a card
+// with the one action that clears it (#147, #555).
+type ConnectRecovery = {
+  title: string;
+  actionLabel: string;
+  onAction: () => void;
+};
 
 // Presentational form for the offline connect flow, shared by the connect
 // gate and Settings' re-point view (PRD #93). Path is a controlled prop, not
@@ -9,12 +18,16 @@ type ConnectInventoryFormProps = {
   onPathChange: (path: string) => void;
   onSubmit: (path: string) => void;
   error?: string | null;
-  noUsableOrigin?: boolean;
+  recovery?: ConnectRecovery | null;
   // A GitHub repository with no apm.yml: the refusal carries one offer, shown
   // in place of the plain error so the gate keeps its single field (#556).
   scaffoldOffer?: { path: string; onAccept: () => void; isPending: boolean };
   isPending?: boolean;
   onBrowse?: () => void;
+  // Where a cloned Harness lands. null means the home ceiling the server
+  // falls back to; the child folder is always the repository's own name.
+  cloneParent?: string | null;
+  onChooseParent?: () => void;
   // Re-point flow overrides this so a returning user isn't told to "Connect"
   // a source they already have (#229).
   submitLabel?: string;
@@ -26,14 +39,19 @@ export function ConnectInventoryForm({
   onPathChange,
   onSubmit,
   error,
-  noUsableOrigin = false,
+  recovery = null,
   scaffoldOffer,
   isPending = false,
   onBrowse,
+  cloneParent = null,
+  onChooseParent,
   submitLabel = "Connect inventory",
   secondaryAction,
 }: ConnectInventoryFormProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  // Only a url is cloned, so only a url has a destination to show. The server
+  // classifies the input again and remains the authority on both.
+  const cloneChild = previewCloneChild(path);
 
   // A rejected submit hands focus back to the field to fix (#214).
   useEffect(() => {
@@ -73,6 +91,26 @@ export function ConnectInventoryForm({
           </Button>
         ) : null}
       </div>
+      {cloneChild ? (
+        <div className="flex items-center gap-2">
+          <p className="text-dim text-tag">
+            Clone into{" "}
+            <span className="font-mono text-fg text-mono-sm">
+              {`${cloneParent ?? "your home folder"}/${cloneChild}`}
+            </span>
+          </p>
+          {onChooseParent ? (
+            <Button
+              type="button"
+              variant="quiet"
+              size="sm"
+              onClick={onChooseParent}
+            >
+              change folder…
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
       {isPending ? (
         // A clone has no honest percentage to show and nothing safe to cancel
         // mid-way, so the wait is stated in words. Worded for both routes: the
@@ -110,30 +148,29 @@ export function ConnectInventoryForm({
           </div>
         </div>
       ) : error ? (
-        noUsableOrigin ? (
+        recovery ? (
           // Submit stays available (steps down to quiet) so a hand-corrected
-          // path can still be resubmitted alongside "browse again…" (#147).
+          // path can still be resubmitted alongside the recovery action (#147).
           <div
             id="inventory-path-error"
             role="alert"
             className="flex flex-col gap-1.5 rounded-control border border-danger-border bg-danger-bg px-3 py-2.5"
           >
             <span className="font-semibold text-danger-ink text-tag">
-              <span aria-hidden="true">✕ </span>no usable git origin
+              <span aria-hidden="true">✕ </span>
+              {recovery.title}
             </span>
             <span className="text-fg-2 text-tag">{error}</span>
-            {onBrowse ? (
-              <div className="mt-1">
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="sm"
-                  onClick={onBrowse}
-                >
-                  browse again…
-                </Button>
-              </div>
-            ) : null}
+            <div className="mt-1">
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={recovery.onAction}
+              >
+                {recovery.actionLabel}
+              </Button>
+            </div>
           </div>
         ) : (
           <p
@@ -151,7 +188,7 @@ export function ConnectInventoryForm({
           type="submit"
           // Steps down whenever the error region owns the primary action, so
           // the two never compete for the same weight (#147, #556).
-          variant={noUsableOrigin || scaffoldOffer ? "quiet" : "primary"}
+          variant={recovery || scaffoldOffer ? "quiet" : "primary"}
           size="sm"
           // A running scaffold takes submit down with it: both mutations end in
           // the one inventory path, so whichever finished last would win (#556).

@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
-import {
-  isNoUsableOriginError,
-  scaffoldOfferPath,
-} from "./connect-error-message";
+import { connectErrorCode, scaffoldOfferPath } from "./connect-error-message";
 
 const refusal = (code: string, body?: unknown) =>
   new HttpError(422, "message", code, body);
@@ -36,7 +33,7 @@ describe("scaffoldOfferPath", () => {
 
   it("does not confuse the offer with a no-usable-origin refusal", () => {
     const offer = refusal("scaffoldable", { path: "/home/me/r" });
-    expect(isNoUsableOriginError(offer)).toBe(false);
+    expect(connectErrorCode(offer)).toBe("scaffoldable");
     expect(scaffoldOfferPath(refusal("no-usable-origin"))).toBeNull();
   });
 });

@@ -16,10 +16,12 @@ export type ConnectResponse = {
 export function useConnectInventory() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (path: string) =>
+    // `parent` is the folder a cloned Harness lands in; omitted, the server
+    // uses the home ceiling (#555).
+    mutationFn: (variables: { path: string; parent?: string }) =>
       requestJson<ConnectResponse>("/api/inventory/connect", {
         method: "POST",
-        body: JSON.stringify({ path }),
+        body: JSON.stringify(variables),
       }),
     onSuccess: (data) => {
       // Seeded synchronously — invalidateQueries alone wouldn't land before

@@ -1,7 +1,7 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { jsonResponse, renderWithQuery } from "../test-utils";
 import { InventoryPanel } from "./inventory-panel";
 
 // Deploy moved from the row into the detail pane (ADR-0016), so opening the pane
@@ -16,22 +16,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function jsonResponse(body: unknown, status: number) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
-
 function renderPanel() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <InventoryPanel />
-    </QueryClientProvider>,
-  );
+  return renderWithQuery(<InventoryPanel />);
 }
 
 // Routes by URL: inventory, registry (deploy repo choice), and each target's

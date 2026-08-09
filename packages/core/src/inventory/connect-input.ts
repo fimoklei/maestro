@@ -8,7 +8,7 @@ export type ConnectInputError = "not-a-github-url" | "url-carries-credentials";
 
 export type ConnectInputRoute =
   | { ok: true; kind: "path" }
-  | { ok: true; kind: "url"; url: string; repoName: string }
+  | { ok: true; kind: "url"; url: string; repoName: string; ownerRepo: string }
   | { ok: false; error: ConnectInputError };
 
 // A remote spelling, not a local one: a scheme, or the scp-like `user@host:`
@@ -42,13 +42,19 @@ export const classifyConnectInput = (input: string): ConnectInputRoute => {
     return { ok: false, error: "not-a-github-url" };
   }
   const repoName = origin.ownerRepo.split("/")[1] ?? "";
-  // The name becomes a new folder under the home ceiling, so a relative
+  // The name becomes a new folder inside the chosen parent, so a relative
   // segment here would place the clone outside it (security.md).
   if (repoName === "" || repoName === "." || repoName === "..") {
     return { ok: false, error: "not-a-github-url" };
   }
-  return { ok: true, kind: "url", url: trimmed, repoName };
+  return {
+    ok: true,
+    kind: "url",
+    url: trimmed,
+    repoName,
+    ownerRepo: origin.ownerRepo,
+  };
 };
 
-export const cloneDestination = (homeRoot: string, repoName: string): string =>
-  join(homeRoot, repoName);
+export const cloneDestination = (parent: string, repoName: string): string =>
+  join(parent, repoName);

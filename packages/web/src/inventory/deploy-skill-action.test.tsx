@@ -1,30 +1,19 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DeployStatePanel } from "../deploy-state/deploy-state-panel";
 import { GlobalDeployStatePanel } from "../deploy-state/global-deploy-state-panel";
+import { jsonResponse, renderWithQuery } from "../test-utils";
 import { DeploySkillAction } from "./deploy-skill-action";
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const jsonResponse = (body: unknown) =>
-  new Response(JSON.stringify(body), {
-    status: 200,
-    headers: { "content-type": "application/json" },
-  });
-
 const repos = [{ path: "/projects/alpha" }, { path: "/projects/beta" }];
 
 function renderAction(ui: React.ReactNode) {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
-  );
+  return renderWithQuery(ui);
 }
 
 describe("DeploySkillAction", () => {
