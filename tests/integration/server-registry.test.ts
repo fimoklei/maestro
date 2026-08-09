@@ -19,6 +19,7 @@ import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
+import { stubScaffold } from "../helpers/stub-scaffold";
 
 // Integration lane: drives the real Hono app via app.request, backed by a real
 // Registry on a temp config dir. The Origin/Host guard is constructed disabled
@@ -51,6 +52,7 @@ describe("registry HTTP routes", () => {
       harness: stubHarness(),
       publish: stubPublish(),
       connect: stubConnect(),
+      scaffold: stubScaffold(),
       browse: stubBrowse(),
       enforceOriginHost: false,
     });

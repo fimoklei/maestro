@@ -7,6 +7,7 @@ import {
   readFile,
   realpath,
   rename,
+  rm,
   stat,
   writeFile,
 } from "node:fs/promises";
@@ -105,6 +106,25 @@ export class NodeFileSystem implements FileSystemPort {
     const tmp = `${path}.tmp-${process.pid}-${writeCounter++}`;
     await writeFile(tmp, contents, "utf8");
     await rename(tmp, path);
+  }
+
+  // "wx" is the exclusive create: the kernel refuses an existing destination,
+  // where writeFile's closing rename would replace it.
+  async createNewFile(path: string, contents: string): Promise<boolean> {
+    await mkdir(dirname(path), { recursive: true });
+    try {
+      await writeFile(path, contents, { encoding: "utf8", flag: "wx" });
+      return true;
+    } catch (error) {
+      if ((error as { code?: string }).code === "EEXIST") {
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  async remove(path: string): Promise<void> {
+    await rm(path, { recursive: true, force: true });
   }
 
   async ensureDir(path: string): Promise<void> {

@@ -86,9 +86,7 @@ describe("ConnectView", () => {
     );
 
     expect(await screen.findByText(/7 primitives found/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/read-only, never writes back/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/deploys never write back/i)).toBeInTheDocument();
   });
 
   it("names the connected source on the confirmation, beyond its basename", async () => {

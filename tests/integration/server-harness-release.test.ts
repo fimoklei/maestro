@@ -25,6 +25,7 @@ import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubRemove } from "../helpers/stub-remove";
+import { stubScaffold } from "../helpers/stub-scaffold";
 
 const run = promisify(execFile);
 
@@ -99,6 +100,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
       connect: stubConnect(),
+      scaffold: stubScaffold(),
       browse: stubBrowse(),
       enforceOriginHost: false,
     });

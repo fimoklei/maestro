@@ -18,6 +18,7 @@ import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
+import { stubScaffold } from "../helpers/stub-scaffold";
 
 // Integration lane: the bulk-deploy route over the real Hono app, driving the
 // real DeploySkill (its guards intact) once per staged skill. Only the ApmDriver
@@ -150,6 +151,7 @@ describe("bulk deploy HTTP route", () => {
       harness: stubHarness(),
       publish: stubPublish(),
       connect: stubConnect(),
+      scaffold: stubScaffold(),
       browse: stubBrowse(),
       enforceOriginHost: false,
     });

@@ -17,6 +17,7 @@ import {
   DeploySkill,
   type DeploySkillError,
   GitCloneAdapter,
+  GitHarnessScaffoldAdapter,
   GlobalDeployStateReader,
   HarnessFreshnessStore,
   HarnessGitAdapter,
@@ -25,6 +26,7 @@ import {
   InFlightLocks,
   InventoryGitAdapter,
   InventoryReader,
+  isRepositoryRoot,
   NodeFileSystem,
   PublishRelease,
   type PublishReleaseError,
@@ -46,6 +48,9 @@ import {
   resolveDefaultBranch,
   resolveInventoryPath,
   resolveMaestroConfigPath,
+  ScaffoldHarness,
+  type ScaffoldHarnessError,
+  ScaffoldOffers,
   ToolPresenceAdapter,
 } from "@maestro/core";
 import { type Context, Hono } from "hono";
@@ -122,6 +127,18 @@ const TARGET_BODY_MESSAGE =
 
 const BULK_BODY_MESSAGE =
   'Expected a JSON body with a non-empty names array and a target ({ kind: "repo", repoPath } or { kind: "global" }).';
+
+// Read through the same InventoryReader the primitives route uses, so the two
+// cannot drift. Degrades to 0: a read failure must not turn an
+// already-successful connect or scaffold into a 500.
+async function countPrimitives(inventory: InventoryReader): Promise<number> {
+  try {
+    const read = await inventory.read();
+    return read.ok ? read.primitives.length : 0;
+  } catch {
+    return 0;
+  }
+}
 
 // Every POST route's front door: unparsable JSON and a wrong shape are the
 // same 400, so a route only supplies its schema and its own wording.
@@ -371,13 +388,11 @@ const repoPathErrorMessages: Record<
     "The central inventory cannot be registered as a consuming repo.",
 };
 
-// Path-shape failures are 400; a real directory that isn't an inventory is
-// 422; a destination something else already holds is a 409 the user clears by
-// choosing elsewhere. No message echoes the path — it may be a misconfigured
-// secret.
-const connectErrorResponses: Record<
-  ConnectInventoryError,
-  { status: 400 | 409 | 422; message: string }
+// A malformed path is a 400 wherever it arrives, so every path-taking table
+// spreads this rather than re-spelling it.
+const REPO_PATH_RESPONSES: Record<
+  RepoPathError,
+  { status: 400; message: string }
 > = {
   missing: { status: 400, message: repoPathErrorMessages.missing },
   relative: { status: 400, message: repoPathErrorMessages.relative },
@@ -386,6 +401,17 @@ const connectErrorResponses: Record<
     status: 400,
     message: repoPathErrorMessages["not-a-directory"],
   },
+};
+
+// Path-shape failures are 400; a real directory that isn't an inventory is
+// 422; a destination something else already holds is a 409 the user clears by
+// choosing elsewhere. No message echoes the path — it may be a misconfigured
+// secret.
+const connectErrorResponses: Record<
+  ConnectInventoryError,
+  { status: 400 | 409 | 422; message: string }
+> = {
+  ...REPO_PATH_RESPONSES,
   "not-a-github-url": {
     status: 400,
     message:
@@ -438,6 +464,13 @@ const connectErrorResponses: Record<
     status: 422,
     message: "That directory has no apm.yml, so it is not an inventory.",
   },
+  // A refusal that carries an offer: the body adds the path the scaffold would
+  // write to (#556).
+  scaffoldable: {
+    status: 422,
+    message:
+      "That GitHub repository has no apm.yml, so it is not a Harness yet. Maestro can scaffold the canonical empty Harness into it and push that first commit to the repository's default branch.",
+  },
   "no-usable-origin": {
     status: 422,
     message:
@@ -447,6 +480,75 @@ const connectErrorResponses: Record<
     status: 422,
     message:
       "That folder is a Harness, but Maestro cannot tell which branch its origin treats as the default, and it will not guess one. Run `git fetch origin` and `git remote set-head origin --auto` in the clone, then connect again.",
+  },
+};
+
+// Accepting the offer the connect table hands out. A push the remote refused
+// is a 422 like any other precondition the user resolves — Maestro pre-checks
+// no permission, so it has nothing earlier to say (#556).
+const scaffoldErrorResponses: Record<
+  ScaffoldHarnessError,
+  { status: 400 | 409 | 422 | 502; message: string }
+> = {
+  ...REPO_PATH_RESPONSES,
+  "not-a-repository": {
+    status: 422,
+    message:
+      "That folder is not a GitHub repository clone, so there is nothing to scaffold a Harness into.",
+  },
+  "already-a-harness": {
+    status: 409,
+    message: "That repository already has an apm.yml, so it is a Harness.",
+  },
+  "path-occupied": {
+    status: 409,
+    message:
+      "The scaffold would overwrite something already in that repository, so it wrote nothing.",
+  },
+  "no-default-branch": {
+    status: 422,
+    message:
+      "Maestro cannot tell which branch that repository's origin treats as the default, and it will not guess one. Run `git fetch origin` and `git remote set-head origin --auto` in the clone, then try again.",
+  },
+  "not-on-default-branch": {
+    status: 409,
+    message:
+      "That clone is checked out on a branch other than its default. Switch to the default branch and try again.",
+  },
+  "not-offered": {
+    status: 409,
+    message:
+      "Maestro only scaffolds a repository it has just offered to scaffold. Connect that repository again to get the offer.",
+  },
+  busy: {
+    status: 409,
+    message:
+      "That repository is already being scaffolded. Wait for the first attempt to finish.",
+  },
+  "write-failed": {
+    status: 422,
+    message:
+      "Maestro could not write the Harness files into that repository, so it removed the ones it had written. Check that you can write to that folder, then try again.",
+  },
+  "commit-failed": {
+    status: 422,
+    message:
+      "Maestro wrote the Harness files but git would not commit them. Check that git has an author identity configured in that repository, then try again.",
+  },
+  "push-rejected": {
+    status: 422,
+    message:
+      "The Harness is committed in your clone, but GitHub refused the push. Check that you can push to that repository's default branch, then push the commit yourself.",
+  },
+  "push-offline": {
+    status: 502,
+    message:
+      "The Harness is committed in your clone, but GitHub could not be reached. Push the commit yourself once you are back online.",
+  },
+  "connect-failed": {
+    status: 422,
+    message:
+      "The Harness was scaffolded and pushed, but Maestro could not connect it. Connect it by its path.",
   },
 };
 
@@ -548,6 +650,7 @@ export type AppDeps = {
   harness: ReadHarnessState;
   publish: PublishRelease;
   connect: ConnectInventory;
+  scaffold: ScaffoldHarness;
   browse: BrowseFilesystem;
   // Serves both per-repo and global routes, so tool presence is required —
   // omitting it is a compile error here, not a 500 discovered later (#187).
@@ -678,24 +781,48 @@ export function createApp(deps: AppDeps) {
     });
     if (!result.ok) {
       const { status, message } = connectErrorResponses[result.error];
+      if (result.error === "scaffoldable") {
+        return c.json(
+          { error: result.error, message, path: result.scaffoldPath },
+          status,
+        );
+      }
       return c.json({ error: result.error, message }, status);
-    }
-
-    // Re-read through the same InventoryReader the primitives route uses, so
-    // the two can't drift. A failure here must not turn an already-successful
-    // connect into a 500 — degrades to 0 instead.
-    let primitiveCount = 0;
-    try {
-      const read = await deps.inventory.read();
-      primitiveCount = read.ok ? read.primitives.length : 0;
-    } catch {
-      primitiveCount = 0;
     }
 
     return c.json({
       outcome: result.outcome,
       inventoryPath: result.inventoryPath,
-      primitiveCount,
+      primitiveCount: await countPrimitives(deps.inventory),
+    });
+  });
+
+  // Accepting the scaffold offer connect handed out. The path is re-checked
+  // from scratch in core — this endpoint takes one from the client, and the
+  // offer that carried it is not evidence (security.md, #556).
+  app.post("/api/harness/scaffold", async (c) => {
+    const body = await parseBody(c, connectBodySchema, PATH_BODY_MESSAGE);
+    if (!body.ok) {
+      return body.response;
+    }
+
+    const result = await deps.scaffold.scaffold(body.data.path);
+    if (!result.ok) {
+      const { status, message } = scaffoldErrorResponses[result.error];
+      if (result.error === "path-occupied") {
+        // Repository-relative, and nothing else about the repository.
+        return c.json(
+          { error: result.error, message, path: result.path },
+          status,
+        );
+      }
+      return c.json({ error: result.error, message }, status);
+    }
+
+    return c.json({
+      outcome: result.outcome,
+      inventoryPath: result.inventoryPath,
+      primitiveCount: await countPrimitives(deps.inventory),
     });
   });
 
@@ -1055,6 +1182,26 @@ function realDeps(): AppDeps {
     git: harnessGit,
     freshness: harnessFreshness,
   });
+  // One register for both use cases: connect writes the offers the scaffold
+  // will only act on (#556).
+  const scaffoldOffers = new ScaffoldOffers();
+  const connect = new ConnectInventory({
+    fs,
+    store,
+    offers: scaffoldOffers,
+    // The URL the author configured, not the one a transport rewrite sends git
+    // to: connect gates on the repository's identity, which is what apm's refs
+    // are built from (LEARNINGS · git-remote-get-url).
+    originUrl: readConfiguredGitOriginUrl,
+    defaultBranch: resolveDefaultBranch,
+    isRepositoryRoot,
+    probeHead,
+    // The default ceiling, which the picker can move (#555). Browsing uses the
+    // same one, so a cloned Harness lands where it can reach it (#554).
+    homeRoot: () => homedir(),
+    clone: new GitCloneAdapter(),
+  });
+
   return {
     registry,
     inventory,
@@ -1074,19 +1221,18 @@ function realDeps(): AppDeps {
     }),
     // Checked offline against local git config, so the error lands before
     // the first deploy (#147).
-    connect: new ConnectInventory({
+    connect,
+    // Connects through the same use case, so a scaffolded Harness passes
+    // exactly the checks a joined one does (#556).
+    scaffold: new ScaffoldHarness({
       fs,
-      store,
-      // The URL the author configured, not the one a transport rewrite
-      // sends git to: connect gates on the repository's identity, which is
-      // what apm's refs are built from (LEARNINGS · git-remote-get-url).
+      git: new GitHarnessScaffoldAdapter(),
+      // Own lock, keyed on the repository being scaffolded: two scaffolds of
+      // one clone would interleave their collision checks (#556).
+      locks: new InFlightLocks(),
+      offers: scaffoldOffers,
       originUrl: readConfiguredGitOriginUrl,
-      defaultBranch: resolveDefaultBranch,
-      probeHead,
-      // The default ceiling, which the picker can move (#555). Browsing uses
-      // the same one, so a cloned Harness lands where it can reach it (#554).
-      homeRoot: () => homedir(),
-      clone: new GitCloneAdapter(),
+      connect: (path) => connect.connect(path),
     }),
     browse: new BrowseFilesystem({ fs, homeRoot: () => homedir() }),
     deployState,

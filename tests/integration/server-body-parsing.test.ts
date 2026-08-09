@@ -10,6 +10,7 @@ import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
+import { stubScaffold } from "../helpers/stub-scaffold";
 
 // Integration lane: pins the 400 every POST route answers to a body it cannot
 // parse. One table over all seven, so the shared parse step cannot drift a
@@ -46,6 +47,7 @@ describe("POST body parsing", () => {
       harness: stubHarness(),
       publish: stubPublish(),
       connect: stubConnect(),
+      scaffold: stubScaffold(),
       browse: stubBrowse(),
       deployState: stubDeployState({ fs }),
       deploy: stubDeploy({ inventory, registry, locks }),

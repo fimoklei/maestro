@@ -4,6 +4,7 @@ import { InMemoryFileSystem } from "../registry/file-system.fake";
 import type { CloneOutcome, CloneRepositoryPort } from "./clone-repository";
 import { ConnectInventory } from "./connect-inventory";
 import type { HeadProbe } from "./head-commit";
+import { ScaffoldOffers } from "./scaffold-offers";
 
 const CONFIG_PATH = "/home/me/.maestro/config.json";
 const PARSEABLE_ORIGIN = "git@github.com:fimoklei/agent-harness.git";
@@ -34,14 +35,17 @@ function makeConnect(
   clone: CloneRepositoryPort = new FakeClone(fs),
   head: HeadProbe = "commit",
   homeRoot: string = HOME_ROOT,
+  offers: ScaffoldOffers = new ScaffoldOffers(),
 ): ConnectInventory {
   return new ConnectInventory({
     fs,
     store: new ConfigStore({ fs, configPath: () => CONFIG_PATH }),
     originUrl: async () => originUrl,
     defaultBranch: async () => defaultBranch,
+    isRepositoryRoot: async () => true,
     probeHead: async () => head,
     homeRoot: () => homeRoot,
+    offers,
     clone,
   });
 }
@@ -77,7 +81,8 @@ describe("ConnectInventory", () => {
     const fs = new InMemoryFileSystem({
       directories: { "/Users/me/not-harness": "/Users/me/not-harness" },
     });
-    const connect = makeConnect(fs);
+    // No origin, so no repository truth to offer a scaffold against (#556).
+    const connect = makeConnect(fs, null);
 
     const result = await connect.connect("/Users/me/not-harness");
 
@@ -97,10 +102,46 @@ describe("ConnectInventory", () => {
       },
     });
 
+    // A GitHub repository, so the offer stands; the scaffold's own guard is
+    // what refuses the occupied name, and it can name the path (#556).
     await expect(makeConnect(fs).connect("/Users/me/odd")).resolves.toEqual({
       ok: false,
-      error: "not-an-inventory",
+      error: "scaffoldable",
+      scaffoldPath: "/Users/me/odd",
     });
+  });
+
+  // The offer is the scaffold's only authority to write into the repository,
+  // so a refusal that does not make one leaves it unscaffoldable (#556).
+  it("records the offer it hands out, and records nothing when it refuses", async () => {
+    const offers = new ScaffoldOffers();
+    const offered = new InMemoryFileSystem({
+      directories: { "/Users/me/empty": "/Users/me/empty" },
+    });
+    await makeConnect(
+      offered,
+      PARSEABLE_ORIGIN,
+      "main",
+      new FakeClone(offered),
+      "commit",
+      HOME_ROOT,
+      offers,
+    ).connect("/Users/me/empty");
+    expect(offers.holds("/Users/me/empty")).toBe(true);
+
+    const refused = new InMemoryFileSystem({
+      directories: { "/Users/me/plain": "/Users/me/plain" },
+    });
+    await makeConnect(
+      refused,
+      null,
+      "main",
+      new FakeClone(refused),
+      "commit",
+      HOME_ROOT,
+      offers,
+    ).connect("/Users/me/plain");
+    expect(offers.holds("/Users/me/plain")).toBe(false);
   });
 
   it("rejects the retired root skills/ shape, which is no longer a fallback", async () => {
@@ -113,6 +154,65 @@ describe("ConnectInventory", () => {
 
     await expect(
       makeConnect(fs).connect("/Users/me/old-harness"),
+    ).resolves.toEqual({
+      ok: false,
+      error: "scaffoldable",
+      scaffoldPath: "/Users/me/old-harness",
+    });
+  });
+
+  it("offers the scaffold for a GitHub repository that has no apm.yml", async () => {
+    const fs = new InMemoryFileSystem({
+      directories: { "/Users/me/empty-repo": "/Users/me/empty-repo" },
+    });
+
+    const result = await makeConnect(fs).connect("/Users/me/empty-repo");
+
+    expect(result).toEqual({
+      ok: false,
+      error: "scaffoldable",
+      scaffoldPath: "/Users/me/empty-repo",
+    });
+    // Nothing is connected by an offer — the user has not accepted it yet.
+    const stored = await new ConfigStore({
+      fs,
+      configPath: () => CONFIG_PATH,
+    }).read();
+    expect(stored.inventoryPath).toBeUndefined();
+  });
+
+  // The origin url is answered by the enclosing repository, so a subdirectory
+  // reads as a GitHub clone. Offering to scaffold one would aim the write and
+  // the push at a repository the user never pointed at.
+  it("never offers the scaffold for a subdirectory of a repository", async () => {
+    const fs = new InMemoryFileSystem({
+      directories: { "/Users/me/repo/docs": "/Users/me/repo/docs" },
+    });
+    const connect = new ConnectInventory({
+      fs,
+      store: new ConfigStore({ fs, configPath: () => CONFIG_PATH }),
+      originUrl: async () => PARSEABLE_ORIGIN,
+      defaultBranch: async () => "main",
+      isRepositoryRoot: async () => false,
+      probeHead: async () => "commit",
+      homeRoot: () => HOME_ROOT,
+      clone: new FakeClone(fs),
+      offers: new ScaffoldOffers(),
+    });
+
+    await expect(connect.connect("/Users/me/repo/docs")).resolves.toEqual({
+      ok: false,
+      error: "not-an-inventory",
+    });
+  });
+
+  it("never offers the scaffold for a repository whose origin is not GitHub", async () => {
+    const fs = new InMemoryFileSystem({
+      directories: { "/Users/me/mirror": "/Users/me/mirror" },
+    });
+
+    await expect(
+      makeConnect(fs, "https://gitlab.com/o/r.git").connect("/Users/me/mirror"),
     ).resolves.toEqual({ ok: false, error: "not-an-inventory" });
   });
 
@@ -478,8 +578,9 @@ describe("ConnectInventory", () => {
 
   // The clone succeeded and stays on disk; only the connect is refused, so a
   // second attempt is the user's to make, not Maestro's to clean up (#554).
-  it("refuses a cloned repository that carries no apm.yml", async () => {
+  it("offers the scaffold for an empty repository it just cloned", async () => {
     const fs = new InMemoryFileSystem();
+    // A clone of an empty repository: a real directory, no apm.yml.
     const clone: CloneRepositoryPort = {
       clone: async (_url, destination) => {
         await fs.ensureDir(destination);
@@ -490,7 +591,12 @@ describe("ConnectInventory", () => {
 
     await expect(
       connect.connect("https://github.com/o/r.git"),
-    ).resolves.toEqual({ ok: false, error: "not-an-inventory" });
+    ).resolves.toEqual({
+      ok: false,
+      error: "scaffoldable",
+      // The destination, not the url the user typed.
+      scaffoldPath: "/Users/me/r",
+    });
     expect(await fs.isDirectory("/Users/me/r")).toBe(true);
   });
 

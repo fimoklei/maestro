@@ -73,9 +73,7 @@ describe("connect gate", () => {
       screen.getByRole("button", { name: /^connect inventory$/i }),
     );
     expect(await screen.findByText(/3 primitives found/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/read-only, never writes back/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/deploys never write back/i)).toBeInTheDocument();
 
     // The beat holds until the continue action is taken — it does not
     // auto-navigate the instant the mutation resolves (ADR-0015).
@@ -135,6 +133,91 @@ describe("connect gate", () => {
     await userEvent.click(screen.getByRole("button", { name: /continue/i }));
     expect(
       await screen.findByRole("heading", { name: /^central inventory$/i }),
+    ).toBeInTheDocument();
+  });
+
+  // Scaffolding is the same gate and the same field too: the refusal to
+  // connect carries the offer, and accepting it lands on Harness (#556).
+  it("scaffolds an empty GitHub repository and lands on Harness", async () => {
+    let inventoryPath: string | null = null;
+    const scaffoldBodies: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.startsWith("/api/inventory/config")) {
+          return jsonResponse({ inventoryPath }, 200);
+        }
+        if (
+          url.startsWith("/api/inventory/connect") &&
+          init?.method === "POST"
+        ) {
+          return jsonResponse(
+            {
+              error: "scaffoldable",
+              message: "That GitHub repository has no apm.yml.",
+              path: "/home/me/team-harness",
+            },
+            422,
+          );
+        }
+        // A freshly scaffolded Harness: nothing released, nothing pending.
+        // The view refreshes on mount, so both routes must answer in shape.
+        if (url === "/api/harness" || url === "/api/harness/refresh") {
+          return jsonResponse(
+            {
+              origin: "github.com/fimoklei/team-harness",
+              releasedVersion: null,
+              defaultBranch: "trunk",
+              releaseState: "never-released",
+              pendingRelease: [],
+              freshness: { outcome: null, lastFetchedAt: null },
+              movements: [],
+            },
+            200,
+          );
+        }
+        if (
+          url.startsWith("/api/harness/scaffold") &&
+          init?.method === "POST"
+        ) {
+          scaffoldBodies.push(String(init.body));
+          inventoryPath = "/home/me/team-harness";
+          return jsonResponse(
+            { outcome: "scaffolded", inventoryPath, primitiveCount: 0 },
+            200,
+          );
+        }
+        return jsonResponse(
+          { ok: true, repos: [], primitives: [], skipped: [], behind: [] },
+          200,
+        );
+      }),
+    );
+    renderApp("/welcome/connect");
+
+    await userEvent.type(
+      await screen.findByLabelText(/inventory path/i),
+      "https://github.com/fimoklei/team-harness",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /^connect inventory$/i }),
+    );
+
+    // The offer appears in place: no second screen, no mode button.
+    await userEvent.click(
+      await screen.findByRole("button", { name: /scaffold the harness/i }),
+    );
+
+    // The path the offer carried, not the url the user typed.
+    expect(scaffoldBodies).toEqual([
+      JSON.stringify({ path: "/home/me/team-harness" }),
+    ]);
+    await userEvent.click(
+      await screen.findByRole("button", { name: /continue/i }),
+    );
+    expect(
+      await screen.findByRole("heading", { name: /^harness$/i }),
     ).toBeInTheDocument();
   });
 

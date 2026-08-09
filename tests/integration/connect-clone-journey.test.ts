@@ -22,12 +22,14 @@ import {
   GitCloneAdapter,
   InFlightLocks,
   InventoryReader,
+  isRepositoryRoot,
   NodeFileSystem,
   probeHead,
   Registry,
   readConfiguredGitOriginUrl,
   resolveDefaultBranch,
   resolveInventoryPath,
+  ScaffoldOffers,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -38,6 +40,7 @@ import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
+import { stubScaffold } from "../helpers/stub-scaffold";
 
 const run = promisify(execFile);
 
@@ -131,10 +134,13 @@ describe("joining a Harness by its GitHub url", () => {
         store,
         originUrl: readConfiguredGitOriginUrl,
         defaultBranch: resolveDefaultBranch,
+        isRepositoryRoot,
+        offers: new ScaffoldOffers(),
         probeHead,
         homeRoot: () => home,
         clone: new GitCloneAdapter(),
       }),
+      scaffold: stubScaffold(),
       deployState: stubDeployState({ fs }),
       deploy: stubDeploy({ inventory, registry, locks }),
       remove: stubRemove({ registry, locks }),

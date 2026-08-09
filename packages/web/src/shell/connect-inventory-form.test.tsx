@@ -237,6 +237,83 @@ describe("ConnectInventoryForm", () => {
     });
   });
 
+  // One offer on the same gate: no second screen, no mode button (#556).
+  it("offers the scaffold in place, naming the repository it would write to", async () => {
+    const onAccept = vi.fn();
+    render(
+      <ConnectInventoryForm
+        path="https://github.com/fimoklei/team-harness"
+        onPathChange={vi.fn()}
+        onSubmit={vi.fn()}
+        error="That GitHub repository has no apm.yml."
+        scaffoldOffer={{
+          path: "/home/me/team-harness",
+          onAccept,
+          isPending: false,
+        }}
+      />,
+    );
+
+    const offer = screen.getByRole("status");
+    expect(offer).toHaveTextContent(/not a harness yet/i);
+    expect(offer).toHaveTextContent("That GitHub repository has no apm.yml.");
+    expect(offer).toHaveTextContent("/home/me/team-harness");
+    // The field stays editable and submittable beside the offer.
+    expect(screen.getByLabelText(/inventory path/i)).not.toHaveAttribute(
+      "aria-invalid",
+    );
+    expect(
+      screen.getByRole("button", { name: /^connect inventory$/i }),
+    ).toBeEnabled();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /scaffold the harness/i }),
+    );
+    expect(onAccept).toHaveBeenCalledOnce();
+  });
+
+  it("disables the offer while the scaffold is running", () => {
+    render(
+      <ConnectInventoryForm
+        path="https://github.com/fimoklei/team-harness"
+        onPathChange={vi.fn()}
+        onSubmit={vi.fn()}
+        error="That GitHub repository has no apm.yml."
+        scaffoldOffer={{
+          path: "/home/me/team-harness",
+          onAccept: vi.fn(),
+          isPending: true,
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /scaffolding/i })).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: /scaffold the harness/i }),
+    ).not.toBeInTheDocument();
+    // A scaffold writes, commits and pushes. A connect started beside it would
+    // race it for the one inventory path, so submit goes down with it (#556).
+    expect(
+      screen.getByRole("button", { name: /^connect inventory$/i }),
+    ).toBeDisabled();
+  });
+
+  it("shows a plain error rather than an offer when no offer is given", () => {
+    render(
+      <ConnectInventoryForm
+        path="/home/me/empty"
+        onPathChange={vi.fn()}
+        onSubmit={vi.fn()}
+        error="The Harness is committed in your clone, but GitHub refused the push."
+      />,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/GitHub refused/i);
+    expect(
+      screen.queryByRole("button", { name: /scaffold the harness/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("keeps the plain error text for errors other than no-usable-origin", () => {
     render(
       <ConnectInventoryForm

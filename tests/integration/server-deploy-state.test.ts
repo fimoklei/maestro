@@ -13,6 +13,7 @@ import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
+import { stubScaffold } from "../helpers/stub-scaffold";
 
 // Integration lane: drives the real Hono app via app.request against real temp
 // dirs. The deploy-state route is registry-gated — membership is checked before
@@ -46,6 +47,7 @@ describe("deploy-state HTTP route", () => {
       harness: stubHarness(),
       publish: stubPublish(),
       connect: stubConnect(),
+      scaffold: stubScaffold(),
       browse: stubBrowse(),
       enforceOriginHost: false,
     });

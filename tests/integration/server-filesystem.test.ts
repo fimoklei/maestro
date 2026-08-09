@@ -25,6 +25,7 @@ import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
+import { stubScaffold } from "../helpers/stub-scaffold";
 
 // Integration lane: drives the real browse route against a real sandbox
 // filesystem. Home-root ceiling, dirs-only filtering, and symlink resolution —
@@ -59,6 +60,7 @@ describe("filesystem browse HTTP route", () => {
       harness: stubHarness(),
       publish: stubPublish(),
       connect: stubConnect(),
+      scaffold: stubScaffold(),
       deployState,
       deploy: stubDeploy({ inventory, registry, locks }),
       remove: stubRemove({ registry, locks }),

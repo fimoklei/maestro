@@ -21,6 +21,7 @@ import {
 } from "./connect-input";
 import { HARNESS_MANIFEST } from "./harness-layout";
 import type { HeadProbe } from "./head-commit";
+import type { ScaffoldOffers } from "./scaffold-offers";
 
 export type ConnectInventoryError =
   | RepoPathError
@@ -31,25 +32,31 @@ export type ConnectInventoryError =
   | "destination-partial-clone"
   | "clone-in-progress"
   | "not-an-inventory"
+  | "scaffoldable"
   | "no-usable-origin"
   | "no-default-branch";
 
 // What connecting did, named by the use case rather than inferred at the edge.
-// The scaffold route adds its own outcome to this union (#498).
-export type ConnectOutcome = "found" | "joined";
+export type ConnectOutcome = "found" | "joined" | "scaffolded";
 
+// `scaffoldable` refuses to connect and carries an offer instead. The path
+// travels with it because a cloned repository sits somewhere the user never
+// typed (#556).
 export type ConnectInventoryResult =
   | { ok: true; outcome: ConnectOutcome; inventoryPath: string }
-  | { ok: false; error: ConnectInventoryError };
+  | { ok: false; error: "scaffoldable"; scaffoldPath: string }
+  | { ok: false; error: Exclude<ConnectInventoryError, "scaffoldable"> };
 
 export class ConnectInventory {
   private readonly fs: FileSystemPort;
   private readonly store: ConfigStore;
   private readonly originUrl: (path: string) => Promise<string | null>;
   private readonly defaultBranch: (path: string) => Promise<string | null>;
+  private readonly isRepositoryRoot: (path: string) => Promise<boolean>;
   private readonly probeHead: (path: string) => Promise<HeadProbe>;
   private readonly homeRoot: () => string;
   private readonly cloneRepository: CloneRepositoryPort;
+  private readonly offers: ScaffoldOffers;
   // Destinations this instance is cloning into right now. A second request
   // would read the first one's half-written clone as an interrupted one and
   // tell the user to delete it (#555).
@@ -60,6 +67,9 @@ export class ConnectInventory {
     store: ConfigStore;
     originUrl: (path: string) => Promise<string | null>;
     defaultBranch: (path: string) => Promise<string | null>;
+    // Guards the offer: every other git read answers from the enclosing
+    // repository, so a subdirectory would otherwise read as a clone (#556).
+    isRepositoryRoot: (path: string) => Promise<boolean>;
     // Separates a usable clone already on disk from the shell an interrupted
     // one leaves behind (#555).
     probeHead: (path: string) => Promise<HeadProbe>;
@@ -67,14 +77,19 @@ export class ConnectInventory {
     // where the picker can reach it (#554).
     homeRoot: () => string;
     clone: CloneRepositoryPort;
+    // Where a `scaffoldable` refusal records the path it just offered, which
+    // is the only path the scaffold use case will act on.
+    offers: ScaffoldOffers;
   }) {
     this.fs = deps.fs;
     this.store = deps.store;
     this.originUrl = deps.originUrl;
     this.defaultBranch = deps.defaultBranch;
+    this.isRepositoryRoot = deps.isRepositoryRoot;
     this.probeHead = deps.probeHead;
     this.homeRoot = deps.homeRoot;
     this.cloneRepository = deps.clone;
+    this.offers = deps.offers;
   }
 
   // `parent` is the folder a clone lands *in*; the child folder is always the
@@ -176,15 +191,24 @@ export class ConnectInventory {
       return { ok: false, error: validated.error };
     }
 
+    const originUrl = await this.originUrl(validated.path);
+    const origin = originUrl === null ? null : parseGitOrigin(originUrl);
+
     // A real file, so a directory or a symlink wearing the manifest's name is
-    // refused here exactly as the picker refuses it (#148).
+    // refused here exactly as the picker refuses it (#148). Repository truth is
+    // read before the offer, so an arbitrary folder never gets one (#556).
     const manifest = join(validated.path, HARNESS_MANIFEST);
     if (!(await this.fs.isFileEntry(manifest))) {
-      return { ok: false, error: "not-an-inventory" };
+      if (origin === null || !(await this.isRepositoryRoot(validated.path))) {
+        return { ok: false, error: "not-an-inventory" };
+      }
+      // The offer is the scaffold's only authority to write into this
+      // repository, so making one is what records it (#556).
+      this.offers.offer(validated.path);
+      return { ok: false, error: "scaffoldable", scaffoldPath: validated.path };
     }
 
-    const originUrl = await this.originUrl(validated.path);
-    if (originUrl === null || parseGitOrigin(originUrl) === null) {
+    if (origin === null) {
       return { ok: false, error: "no-usable-origin" };
     }
 

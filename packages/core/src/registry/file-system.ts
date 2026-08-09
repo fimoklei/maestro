@@ -37,5 +37,15 @@ export interface FileSystemPort {
   // Atomic (temp file + rename), creating parent directories as needed.
   writeFile(path: string, contents: string): Promise<void>;
 
+  // Exclusive create: false when the path already exists, and never a
+  // replacement of what is there. This is what a caller that checked for
+  // collisions earlier uses, so a path that appeared since is refused rather
+  // than clobbered.
+  createNewFile(path: string, contents: string): Promise<boolean>;
+
+  // Recursive, and a missing path is not an error — this is the rollback of a
+  // partial write, which cannot know how far it got.
+  remove(path: string): Promise<void>;
+
   ensureDir(path: string): Promise<void>;
 }
