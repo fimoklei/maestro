@@ -26,6 +26,8 @@ type BrowseDialogProps = {
   // before the server enforces the same rule for pasted paths.
   inventoryPath?: string;
   outcomes?: readonly RegistrationOutcome[];
+  // The run's whole selection, so the report lists the repos still queued.
+  runPaths?: readonly string[];
   isRegistering?: boolean;
 };
 
@@ -36,6 +38,7 @@ export function BrowseDialog({
   registeredPaths,
   inventoryPath,
   outcomes = [],
+  runPaths,
   isRegistering = false,
 }: BrowseDialogProps) {
   const { title, confirmLabel, writePromise } = browseModes[mode];
@@ -150,7 +153,11 @@ export function BrowseDialog({
         </div>
 
         {reporting ? (
-          <BrowseRunReport outcomes={outcomes} isRegistering={isRegistering} />
+          <BrowseRunReport
+            outcomes={outcomes}
+            runPaths={runPaths}
+            isRegistering={isRegistering}
+          />
         ) : (
           <>
             <div className="flex flex-col gap-2.5 border-line-row border-b px-3.5 py-3">
