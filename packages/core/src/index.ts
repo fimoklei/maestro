@@ -77,6 +77,11 @@ export {
 } from "./filesystem/copy-tree-fs";
 export { HarnessFreshnessStore } from "./harness/harness-freshness-store";
 export { HarnessGitAdapter } from "./harness/harness-git";
+export {
+  PromoteSkill,
+  type PromoteSkillError,
+  type PromoteSkillResult,
+} from "./harness/promote-skill";
 export type { SemverStep } from "./harness/propose-release-version";
 export {
   PublishRelease,
@@ -91,6 +96,7 @@ export {
   type HarnessStateError,
   type HarnessStateResult,
   type PendingSkillMovement,
+  type PromoteSkillOutcome,
   type PublishTagOutcome,
   ReadHarnessState,
   type ReleasePlan,

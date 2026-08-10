@@ -73,6 +73,10 @@ function buildRead(overrides?: {
       publishTag: async () => {
         throw new Error("git port's publishTag was reached");
       },
+      // Reading state never promotes; reaching this would mean a read wrote.
+      pushSkillPromotion: async () => {
+        throw new Error("git port's pushSkillPromotion was reached");
+      },
     },
     freshness: {
       read: async () => overrides?.freshness ?? FETCHED,
