@@ -95,6 +95,11 @@ function buildPublish(overrides?: {
         overrides?.onPublishTag?.(name, commit, branch);
         return overrides?.publishTagOutcome ?? "pushed";
       },
+      // Publishing a release never promotes; reaching this would mean one call
+      // took the other's route.
+      pushSkillPromotion: async () => {
+        throw new Error("git port's pushSkillPromotion was reached");
+      },
     },
     freshness: {
       read: async () => overrides?.freshness ?? FRESHNESS,

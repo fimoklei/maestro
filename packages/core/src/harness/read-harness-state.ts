@@ -11,6 +11,7 @@ import {
   proposeReleaseVersion,
   type SemverStep,
 } from "./propose-release-version";
+import { recordFetch } from "./record-fetch";
 import { highestReleaseTag } from "./release-tag";
 import type { HarnessSkillTree, SkillMovement } from "./skill-movements";
 import { diffSkillTrees } from "./skill-movements";
@@ -30,6 +31,22 @@ export type PublishTagOutcome =
   | "already-exists"
   | "stale-tip"
   | "offline"
+  | "push-failed";
+
+// `skill-missing` is a working harness with no such directory: a deletion is
+// its own confirmed route (#580), never something a promotion infers. `offline`
+// is a push that got no answer at all; `push-failed` is any reply that refused
+// it, and both leave a retry available.
+export type PromoteSkillOutcome =
+  | "pushed"
+  | "skill-missing"
+  | "offline"
+  // The clone's push destination is not the origin the pull-request link is
+  // built from, so nothing was pushed — see `push-destination.ts`.
+  | "push-elsewhere"
+  // The skill's directory moved while it was being read, so what was built is
+  // a tree the author never had.
+  | "source-changed"
   | "push-failed";
 
 // `outcome: null` means no fetch has been attempted yet; `lastFetchedAt: null`
@@ -95,6 +112,15 @@ export interface HarnessGitPort {
     commit: string,
     defaultBranch: string,
   ): Promise<PublishTagOutcome>;
+  // Builds one commit — `baseCommit`'s tree with exactly `.apm/skills/<name>`
+  // replaced by the working harness's copy — and pushes it to `maestro/<name>`,
+  // creating that branch when it does not exist. Never checks out, stages in
+  // the real index, moves HEAD, or force-pushes (#574).
+  pushSkillPromotion(
+    root: string,
+    name: string,
+    baseCommit: string,
+  ): Promise<PromoteSkillOutcome>;
 }
 
 // Every call names the harness root: one record per harness, so connecting a
@@ -207,13 +233,7 @@ export class ReadHarnessState {
     root: string,
     at: Date,
   ): Promise<HarnessStateResult> {
-    const outcome = await this.deps.git.fetch(root);
-    const previous = await this.deps.freshness.read(root);
-    await this.deps.freshness.record(root, {
-      outcome,
-      lastFetchedAt:
-        outcome === "fetched" ? at.toISOString() : previous.lastFetchedAt,
-    });
+    await recordFetch(this.deps, root, at);
     // The root resolved above, never a second lookup: a reconnect in between
     // would fetch one harness and report the other.
     return this.stateFor(root);

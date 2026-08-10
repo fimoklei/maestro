@@ -5,12 +5,12 @@ import {
   type SemverStep,
 } from "./propose-release-version";
 import type {
-  HarnessFetchOutcome,
   HarnessFreshnessPort,
   HarnessGitPort,
   ReleasePlan,
   ReleasePlanResult,
 } from "./read-harness-state";
+import { recordFetch } from "./record-fetch";
 import { highestReleaseTag } from "./release-tag";
 
 export type PublishReleaseError =
@@ -76,7 +76,9 @@ export class PublishRelease {
     confirmation: ReleaseConfirmation,
     at: Date,
   ): Promise<PublishReleaseResult> {
-    const outcome = await this.refetch(root, at);
+    // Records what this fetch found, so the freshness the screen shows is this
+    // confirmation's own reach at the remote and never the plan's.
+    const outcome = await recordFetch(this.deps, root, at);
 
     const facts = await this.deps.git.readFacts(root);
     const origin =
@@ -161,19 +163,6 @@ export class PublishRelease {
   // A push the remote refused proves the local refs are behind it, so they are
   // fetched again. False where that fetch found nothing to be current from.
   private async madeCurrent(root: string, at: Date): Promise<boolean> {
-    return (await this.refetch(root, at)) === "fetched";
-  }
-
-  // Records what this fetch found, so the freshness the screen shows is this
-  // confirmation's own reach at the remote and never the plan's.
-  private async refetch(root: string, at: Date): Promise<HarnessFetchOutcome> {
-    const outcome = await this.deps.git.fetch(root);
-    const previous = await this.deps.freshness.read(root);
-    await this.deps.freshness.record(root, {
-      outcome,
-      lastFetchedAt:
-        outcome === "fetched" ? at.toISOString() : previous.lastFetchedAt,
-    });
-    return outcome;
+    return (await recordFetch(this.deps, root, at)) === "fetched";
   }
 }

@@ -1,0 +1,311 @@
+// Promoting one skill, against a real clone and a real remote. The remote is a
+// bare repo on disk, so the whole suite is offline: no network lane, no
+// credentials (.claude/rules/testing.md).
+import { execFile } from "node:child_process";
+import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { promisify } from "node:util";
+import {
+  type HarnessFreshness,
+  HarnessGitAdapter,
+  InFlightLocks,
+  PromoteSkill,
+} from "@maestro/core";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+const run = promisify(execFile);
+
+const AT = new Date("2026-08-09T12:00:00.000Z");
+
+const ORIGIN_URL = "git@github.com:fimoklei/agent-harness.git";
+
+describe("promoting a skill", { timeout: 30_000 }, () => {
+  let base: string;
+  let remote: string;
+  let root: string;
+  let freshness: HarnessFreshness;
+
+  const git = (cwd: string, ...args: string[]) => run("git", args, { cwd });
+
+  const writeSkill = async (name: string, body: string) => {
+    await mkdir(join(root, ".apm", "skills", name), { recursive: true });
+    await writeFile(
+      join(root, ".apm", "skills", name, "SKILL.md"),
+      `---\ndescription: ${body}\n---\n`,
+      "utf8",
+    );
+  };
+
+  const promoter = () =>
+    new PromoteSkill({
+      resolveRoot: async () => root,
+      git: new HarnessGitAdapter(),
+      freshness: {
+        read: async () => freshness,
+        record: async (_root, next) => {
+          freshness = next;
+        },
+      },
+      locks: new InFlightLocks(),
+    });
+
+  beforeEach(async () => {
+    base = await mkdtemp(join(tmpdir(), "maestro-harness-promote-"));
+    remote = join(base, "remote.git");
+    root = join(base, "clone");
+    freshness = { outcome: null, lastFetchedAt: null };
+    await run("git", ["init", "--bare", "-b", "main", remote]);
+    await run("git", ["clone", remote, root]);
+    await git(root, "config", "user.email", "test@example.com");
+    await git(root, "config", "user.name", "Test");
+    // The clone names a GitHub origin, which is what the pull-request URL is
+    // built from, and git rewrites it to the bare repo next door — so the suite
+    // stays offline (LEARNINGS · git-remote-get-url).
+    await git(root, "config", `url.${remote}.insteadOf`, ORIGIN_URL);
+    await git(root, "remote", "set-url", "origin", ORIGIN_URL);
+    await writeSkill("tdd", "as published");
+    await writeFile(join(root, "README.md"), "harness\n", "utf8");
+    await git(root, "add", ".");
+    await git(root, "commit", "-m", "first skill");
+    await git(root, "push", "origin", "HEAD:main");
+    await new HarnessGitAdapter().fetch(root);
+  }, 30_000);
+
+  afterEach(async () => {
+    await rm(base, { recursive: true, force: true });
+  });
+
+  // The remote's own view of the pushed branch, so nothing is proved from the
+  // clone that pushed it.
+  const promoted = async (skill: string, ...args: string[]) =>
+    (await git(remote, ...args, `refs/heads/maestro/${skill}`)).stdout.trim();
+
+  it("pushes the edited skill to its own branch, and nothing else with it", async () => {
+    // A local commit and a staged file the author never asked to publish: the
+    // promotion is built from the fetched tip, so neither can ride along.
+    await writeFile(join(root, "notes.md"), "mine\n", "utf8");
+    await git(root, "add", "notes.md");
+    await git(root, "commit", "-m", "local only");
+    await writeFile(join(root, "staged.md"), "staged\n", "utf8");
+    await git(root, "add", "staged.md");
+    await writeSkill("tdd", "edited on disk");
+
+    await expect(promoter().execute("tdd", AT)).resolves.toEqual({
+      ok: true,
+      branch: "maestro/tdd",
+      pullRequestUrl: expect.stringContaining("/compare/main...maestro/tdd"),
+    });
+
+    expect(await promoted("tdd", "log", "-1", "--format=%s")).toBe(
+      "Promote skill: tdd",
+    );
+    const files = await promoted("tdd", "ls-tree", "-r", "--name-only");
+    expect(files.split("\n").sort()).toEqual([
+      ".apm/skills/tdd/SKILL.md",
+      "README.md",
+    ]);
+    expect(
+      (
+        await git(
+          remote,
+          "show",
+          "refs/heads/maestro/tdd:.apm/skills/tdd/SKILL.md",
+        )
+      ).stdout,
+    ).toContain("edited on disk");
+  });
+
+  it("starts from the fetched tip, so a teammate's merged work is kept", async () => {
+    const other = join(base, "other");
+    await run("git", ["clone", remote, other]);
+    await git(other, "config", "user.email", "mate@example.com");
+    await git(other, "config", "user.name", "Mate");
+    await writeFile(join(other, "theirs.md"), "theirs\n", "utf8");
+    await git(other, "add", ".");
+    await git(other, "commit", "-m", "team change");
+    await git(other, "push", "origin", "HEAD:main");
+    await writeSkill("tdd", "edited on disk");
+
+    await expect(promoter().execute("tdd", AT)).resolves.toMatchObject({
+      ok: true,
+    });
+
+    const files = await promoted("tdd", "ls-tree", "-r", "--name-only");
+    expect(files).toContain("theirs.md");
+    // One commit on top of the tip the fetch found, never a second root.
+    expect(
+      (
+        await git(remote, "rev-parse", "refs/heads/maestro/tdd~1")
+      ).stdout.trim(),
+    ).toBe((await git(other, "rev-parse", "HEAD")).stdout.trim());
+  });
+
+  it("promotes a skill that exists only as untracked files on disk", async () => {
+    await writeSkill("jobs", "brand new");
+
+    await expect(promoter().execute("jobs", AT)).resolves.toMatchObject({
+      ok: true,
+      branch: "maestro/jobs",
+    });
+
+    const files = await promoted("jobs", "ls-tree", "-r", "--name-only");
+    expect(files.split("\n").sort()).toEqual([
+      ".apm/skills/jobs/SKILL.md",
+      ".apm/skills/tdd/SKILL.md",
+      "README.md",
+    ]);
+  });
+
+  it("runs none of the clone's own hooks, which are the author's and not this push's", async () => {
+    // A pre-push hook is free to write in the working tree or fail after the
+    // remote already took the push. Neither belongs to a promotion that
+    // promises to leave the checkout alone.
+    await writeFile(
+      join(root, ".git", "hooks", "pre-push"),
+      "#!/bin/sh\necho hooked > hooked.md\n",
+      { mode: 0o755 },
+    );
+    await writeSkill("tdd", "edited on disk");
+
+    await expect(promoter().execute("tdd", AT)).resolves.toMatchObject({
+      ok: true,
+    });
+
+    await expect(access(join(root, "hooked.md"))).rejects.toThrow();
+  });
+
+  it("leaves HEAD, the real index, and the working tree exactly as they were", async () => {
+    await writeFile(join(root, "staged.md"), "staged\n", "utf8");
+    await git(root, "add", "staged.md");
+    await writeSkill("tdd", "edited on disk");
+    const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
+    const status = (await git(root, "status", "--porcelain")).stdout;
+    const branches = (await git(root, "branch", "--list")).stdout;
+
+    await promoter().execute("tdd", AT);
+
+    expect((await git(root, "rev-parse", "HEAD")).stdout.trim()).toBe(head);
+    expect((await git(root, "status", "--porcelain")).stdout).toBe(status);
+    // No local branch either: the commit only ever exists as an object here.
+    expect((await git(root, "branch", "--list")).stdout).toBe(branches);
+  });
+
+  it("moves the skill into Pending review, so a refresh reads it back", async () => {
+    await writeSkill("tdd", "edited on disk");
+
+    await promoter().execute("tdd", AT);
+    await new HarnessGitAdapter().fetch(root);
+
+    const trees = await new HarnessGitAdapter().readMovementTrees(root);
+    expect(trees?.promote.tdd).toBe(trees?.working.tdd);
+    expect(trees?.promote.tdd).not.toBe(trees?.remote.tdd);
+  });
+
+  it("reports a skill the working harness does not have", async () => {
+    await expect(promoter().execute("absent", AT)).resolves.toEqual({
+      ok: false,
+      error: "skill-missing",
+    });
+  });
+
+  it("leaves a refused push as a failure the author can press again", async () => {
+    // A branch already carrying work this commit does not descend from: the
+    // remote refuses, and nothing is forced over it (#578 makes it cumulative).
+    const other = join(base, "other");
+    await run("git", ["clone", remote, other]);
+    await git(other, "config", "user.email", "mate@example.com");
+    await git(other, "config", "user.name", "Mate");
+    await writeFile(join(other, "theirs.md"), "theirs\n", "utf8");
+    await git(other, "add", ".");
+    await git(other, "commit", "-m", "their promotion");
+    await git(other, "push", "origin", "HEAD:refs/heads/maestro/tdd");
+    const theirs = (await git(other, "rev-parse", "HEAD")).stdout.trim();
+    await writeSkill("tdd", "edited on disk");
+
+    await expect(promoter().execute("tdd", AT)).resolves.toEqual({
+      ok: false,
+      error: "promote-failed",
+    });
+
+    expect(await promoted("tdd", "rev-parse")).toBe(theirs);
+  });
+
+  it("refuses when the skill changes on disk while it is being read", async () => {
+    // A clean filter that edits the file it is filtering: the same thing a
+    // multi-file editor save does to a directory git is halfway through
+    // reading. What that first read caught is a tree the author never had.
+    const mutate = join(base, "mutate.sh");
+    await writeFile(mutate, "#!/bin/sh\ncat\necho later >> $1\n", {
+      mode: 0o755,
+    });
+    await writeSkill("tdd", "edited on disk");
+    await writeFile(
+      join(root, ".gitattributes"),
+      ".apm/skills/tdd/* filter=mutate\n",
+      "utf8",
+    );
+    await git(root, "config", "filter.mutate.clean", `${mutate} %f`);
+
+    await expect(promoter().execute("tdd", AT)).resolves.toEqual({
+      ok: false,
+      error: "source-changed",
+    });
+
+    await expect(
+      git(remote, "rev-parse", "--verify", "refs/heads/maestro/tdd"),
+    ).rejects.toThrow();
+  });
+
+  it("refuses when the push would land in a repository the link never names", async () => {
+    // A fork push-url over an upstream fetch-url: `git push origin` would
+    // publish the skill to `fork.git` while the author is handed a
+    // pull-request link into the origin they connected.
+    const fork = join(base, "fork.git");
+    await run("git", ["init", "--bare", "-b", "main", fork]);
+    await git(root, "config", "remote.origin.pushurl", fork);
+    await writeSkill("tdd", "edited on disk");
+
+    await expect(promoter().execute("tdd", AT)).resolves.toEqual({
+      ok: false,
+      error: "push-elsewhere",
+    });
+
+    expect(
+      (await git(fork, "for-each-ref", "--format=%(refname)")).stdout.trim(),
+    ).toBe("");
+  });
+
+  it("keeps a git failure behind a typed value, naming no path or git output", async () => {
+    // An ignore rule over the skill's own directory: `git add` stages nothing,
+    // so there is no tree to build the commit from. Whatever git says about it
+    // is git's to keep — the caller gets a class (#574, security.md).
+    await writeFile(join(root, ".gitignore"), ".apm/skills/draft/\n", "utf8");
+    await writeSkill("draft", "ignored on disk");
+
+    const result = await promoter().execute("draft", AT);
+
+    expect(result).toEqual({ ok: false, error: "promote-failed" });
+    expect(JSON.stringify(result)).not.toContain(root);
+  });
+
+  it("reports a remote that could not be reached, and records the failed fetch", async () => {
+    // The origin stays a GitHub URL — only what git resolves it to is gone, so
+    // this is an unreachable remote and not an unusable one.
+    await git(root, "config", "--unset", `url.${remote}.insteadOf`);
+    await git(
+      root,
+      "config",
+      `url.${join(base, "gone.git")}.insteadOf`,
+      ORIGIN_URL,
+    );
+    await writeSkill("tdd", "edited on disk");
+
+    await expect(promoter().execute("tdd", AT)).resolves.toEqual({
+      ok: false,
+      error: "no-answer",
+    });
+
+    expect(freshness.outcome).toBe("fetch-failed");
+  });
+});
