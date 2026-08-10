@@ -2,7 +2,11 @@
 // Git details stay behind the port — no stdout, stderr, or remote text reaches
 // this use-case, so none can reach a response (ADR-0021, security.md).
 import { parseGitOrigin } from "../deploy/git-origin";
-import { classifyMovement, type MovementState } from "./classify-movement";
+import {
+  classifyMovement,
+  isLocalDeletion,
+  type MovementState,
+} from "./classify-movement";
 import {
   proposeReleaseVersion,
   type SemverStep,
@@ -114,6 +118,9 @@ export type PendingSkillMovement = SkillMovement & { author: string | null };
 export type HarnessMovement = {
   skill: string;
   state: MovementState;
+  // True when the skill was tracked at local HEAD and is gone from disk — a
+  // deletion the view labels `deleted locally` (#575).
+  deletion: boolean;
 };
 
 export type HarnessState = {
@@ -409,7 +416,7 @@ export class ReadHarnessState {
 const movementsFromTrees = (trees: HarnessSkillTrees): HarnessMovement[] => {
   const names = new Set(Object.values(trees).flatMap(Object.keys));
   return [...names].sort().flatMap((skill) => {
-    const state = classifyMovement({
+    const hashes = {
       remote: trees.remote[skill] ?? null,
       // Presence of the key, not of a hash: the branch may be deleting it.
       promote: Object.hasOwn(trees.promote, skill)
@@ -417,8 +424,11 @@ const movementsFromTrees = (trees: HarnessSkillTrees): HarnessMovement[] => {
         : null,
       local: trees.local[skill] ?? null,
       working: trees.working[skill] ?? null,
-    });
-    return state === null ? [] : [{ skill, state }];
+    };
+    const state = classifyMovement(hashes);
+    return state === null
+      ? []
+      : [{ skill, state, deletion: isLocalDeletion(hashes) }];
   });
 };
 

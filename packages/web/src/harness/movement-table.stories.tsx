@@ -23,12 +23,17 @@ type Story = StoryObj<typeof meta>;
 export const PendingReview: Story = {
   args: {
     movements: [
-      { skill: "code-review", state: "pending-review" },
-      { skill: "test-helper", state: "pending-review" },
+      { skill: "code-review", state: "pending-review", deletion: false },
+      { skill: "test-helper", state: "pending-review", deletion: false },
     ],
   },
 };
 
 export const PendingPromotion: Story = {
-  args: { movements: [{ skill: "lint-rules", state: "pending-promotion" }] },
+  args: {
+    movements: [
+      { skill: "lint-rules", state: "pending-promotion", deletion: false },
+      { skill: "tdd", state: "pending-promotion", deletion: true },
+    ],
+  },
 };
