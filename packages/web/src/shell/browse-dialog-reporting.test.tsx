@@ -122,14 +122,16 @@ describe("registration reporting (issue #175)", () => {
     });
 
     await screen.findByRole("list", { name: /result/i });
-    expect(screen.getByText("/home/me/acme-api")).toBeInTheDocument();
-    expect(screen.queryByText("/home/me/acme-web")).not.toBeInTheDocument();
+    // Named the way the sidebar names a target (#211), so the assertion is on
+    // the repo, not on the prefix the label drops.
+    expect(screen.getByTitle("/home/me/acme-api")).toBeInTheDocument();
+    expect(screen.queryByTitle("/home/me/acme-web")).not.toBeInTheDocument();
 
     update({ isRegistering: false, outcomes: [skipped, registered] });
 
     const rows = screen.getAllByRole("listitem");
-    expect(rows[0]).toHaveTextContent("/home/me/acme-api");
-    expect(rows[1]).toHaveTextContent("/home/me/acme-web");
+    expect(rows[0]).toHaveTextContent("acme-api");
+    expect(rows[1]).toHaveTextContent("acme-web");
   });
 
   it("reports each outcome's own reason", async () => {

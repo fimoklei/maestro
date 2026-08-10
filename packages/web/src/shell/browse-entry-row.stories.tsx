@@ -26,7 +26,8 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-// A git repo in register mode: selectable, badged `git`.
+// A git repo in register mode: selectable, and unbadged — being a repo is what
+// the listing is for, so only the refusals carry a chip.
 export const SelectableRepo: Story = {};
 
 // Ticked for registration — the row highlights so a selection spread over
@@ -58,8 +59,8 @@ export const CentralInventory: Story = {
   args: { inventoryPath: "/home/me/repos/acme-web" },
 };
 
-// Connect mode never selects: no checkbox, no spacer, and an inventory hint
-// instead of the git badge.
+// Connect mode never selects: no checkbox, no spacer, and an inventory hint as
+// its only badge.
 export const ConnectModeInventory: Story = {
   args: {
     mode: "connect",

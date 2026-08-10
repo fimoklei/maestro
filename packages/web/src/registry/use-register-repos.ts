@@ -24,6 +24,8 @@ export function useRegisterRepos() {
   const register = useRegisterRepo();
   const queryClient = useQueryClient();
   const [outcomes, setOutcomes] = useState<RegistrationOutcome[]>([]);
+  // The run's whole selection, so the report can list what it still owes.
+  const [runPaths, setRunPaths] = useState<string[]>([]);
   const [isRegistering, setIsRegistering] = useState(false);
 
   async function registerRepos(paths: string[]) {
@@ -33,6 +35,7 @@ export function useRegisterRepos() {
     }
     setIsRegistering(true);
     setOutcomes([]);
+    setRunPaths(paths);
     try {
       // The entry not there before a call is what the server stored — the
       // only way to learn a repo's canonical path. Seeded from cache since
@@ -52,10 +55,11 @@ export function useRegisterRepos() {
   function reset() {
     if (!isRegistering) {
       setOutcomes([]);
+      setRunPaths([]);
     }
   }
 
-  return { outcomes, isRegistering, registerRepos, reset };
+  return { outcomes, runPaths, isRegistering, registerRepos, reset };
 }
 
 function cachedPaths(

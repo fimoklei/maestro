@@ -38,6 +38,7 @@ export function useRegisterPicker() {
       onSelect: browse.selectBrowse,
       onClose: browse.closeBrowse,
       outcomes: registerSelection.outcomes,
+      runPaths: registerSelection.runPaths,
       isRegistering: registerSelection.isRegistering,
     },
   } as const;
