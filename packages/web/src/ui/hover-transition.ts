@@ -1,4 +1,8 @@
-// Single owner of the hover colour transition — see DESIGN.md §5, PRODUCT.md
+// Single owner of the hover transition window — see DESIGN.md §5, PRODUCT.md
 // (motion-safe: honors prefers-reduced-motion).
-export const HOVER_TRANSITION =
-  "motion-safe:transition-colors motion-safe:duration-150 motion-safe:ease-out";
+const WINDOW = "motion-safe:duration-150 motion-safe:ease-out";
+
+export const HOVER_TRANSITION = `motion-safe:transition-colors ${WINDOW}`;
+
+// For a control that appears on hover or focus rather than changing colour.
+export const REVEAL_TRANSITION = `motion-safe:transition-opacity ${WINDOW}`;

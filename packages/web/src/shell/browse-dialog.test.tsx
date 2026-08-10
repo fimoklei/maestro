@@ -333,7 +333,7 @@ describe("BrowseDialog", () => {
     ).toBeInTheDocument();
   });
 
-  it("badges a git repo and an already-registered repo in register mode, never the inventory badge", async () => {
+  it("badges an already-registered repo in register mode, never git or the inventory badge", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
@@ -359,7 +359,9 @@ describe("BrowseDialog", () => {
     });
 
     const row = await screen.findByRole("button", { name: "acme-web" });
-    expect(row).toHaveTextContent("git");
+    // Being a git repo is the norm here; only the refusal ("not a git repo")
+    // is worth a chip.
+    expect(row).not.toHaveTextContent("git");
     expect(row).toHaveTextContent("● registered");
     expect(row).not.toHaveTextContent("◆ inventory");
     const other = await screen.findByRole("button", { name: "notes" });
@@ -466,7 +468,7 @@ describe("BrowseDialog", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("reveals hidden entries, dimmed, when the hidden hint or toolbar toggle is used", async () => {
+  it("reveals hidden entries, dimmed, and offers the same hint to hide them again", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
@@ -503,17 +505,42 @@ describe("BrowseDialog", () => {
     const hiddenRow = await screen.findByRole("button", { name: ".config" });
     expect(hiddenRow).toBeInTheDocument();
     expect(screen.getByText(".config/")).toHaveClass("text-dim");
-    // The toggle itself now reflects the revealed state.
-    expect(
-      screen.getByRole("button", { name: /hidden/i, pressed: true }),
-    ).toBeInTheDocument();
 
-    // Flipping the toolbar toggle back off hides it again.
+    // The hint is the only hidden-items control: it now offers the way back.
     await userEvent.click(
-      screen.getByRole("button", { name: /hidden/i, pressed: true }),
+      screen.getByRole("button", { name: /1 hidden item.*shown.*hide/i }),
     );
     expect(
       screen.queryByRole("button", { name: ".config" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the hidden-items control out of the toolbar", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse(
+          {
+            ...homeResponse,
+            entries: [
+              {
+                name: "projects",
+                path: "/home/me/projects",
+                isHidden: false,
+                isSymlink: false,
+                facts: noFacts,
+              },
+            ],
+          },
+          200,
+        ),
+      ),
+    );
+    renderDialog();
+
+    await screen.findByRole("button", { name: "projects" });
+    expect(
+      screen.queryByRole("button", { name: /hidden/i, pressed: false }),
     ).not.toBeInTheDocument();
   });
 
@@ -1218,7 +1245,8 @@ describe("BrowseDialog", () => {
       expect(register).toHaveAccessibleDescription(
         /only on an explicit deploy/i,
       );
-      expect(register).toHaveAccessibleDescription(/apm's bookkeeping/i);
+      // The deploy's own blast radius is that flow's promise, not this one's.
+      expect(register).not.toHaveAccessibleDescription(/apm's bookkeeping/i);
     });
 
     it("omits the write promise in connect mode, which registers nothing", async () => {

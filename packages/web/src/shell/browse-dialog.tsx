@@ -185,19 +185,6 @@ export function BrowseDialog({
                 ) : (
                   <span className="font-mono text-dim text-mono-sm">…</span>
                 )}
-                <span className="flex-1" />
-                <button
-                  type="button"
-                  aria-pressed={showHidden}
-                  onClick={() => setShowHidden((current) => !current)}
-                  className={`shrink-0 cursor-pointer whitespace-nowrap rounded-control border px-2.5 py-[5px] font-mono text-mono-sm ${HOVER_TRANSITION} ${
-                    showHidden
-                      ? "border-amber-border bg-amber-bg text-amber-ink"
-                      : "border-line-chip text-dim hover:bg-inset hover:text-fg-2"
-                  }`}
-                >
-                  {showHidden ? "◑" : "◐"} hidden
-                </button>
               </div>
               <div className="flex items-center gap-2 rounded-control border border-line bg-inset px-2.5 py-[7px]">
                 <label htmlFor="browse-filter" className="sr-only">
@@ -234,18 +221,20 @@ export function BrowseDialog({
                   />
                 ))
               )}
-              {!showHidden && !browse.isPending && hiddenCount > 0 ? (
+              {/* The only hidden-items control: it states the count, offers
+                  the way back, and leaves when the folder hides nothing. */}
+              {!browse.isPending && hiddenCount > 0 ? (
                 <button
                   type="button"
-                  onClick={() => setShowHidden(true)}
+                  onClick={() => setShowHidden((current) => !current)}
                   className={`flex cursor-pointer items-center gap-2 rounded-control px-2.5 py-2 text-left hover:bg-inset ${HOVER_TRANSITION}`}
                 >
                   <span className="font-mono text-dim text-tag">
-                    {hiddenCount} hidden item{hiddenCount === 1 ? "" : "s"} not
-                    shown
+                    {hiddenCount} hidden item{hiddenCount === 1 ? "" : "s"}{" "}
+                    {showHidden ? "shown" : "not shown"}
                   </span>
                   <span className="font-mono text-amber-ink text-tag">
-                    · show
+                    · {showHidden ? "hide" : "show"}
                   </span>
                 </button>
               ) : null}
