@@ -36,7 +36,7 @@ export function MovementTable({ movements }: { movements: HarnessMovement[] }) {
                     the one label this read carries — a deletion, the only
                     movement named today; additions and edits stay bare (#575). */}
                 <div className="flex min-w-0 items-center gap-2">
-                  <span className="truncate font-mono text-fg">
+                  <span className="min-w-0 truncate font-mono text-fg">
                     {movement.skill}
                   </span>
                   {movement.deletion ? (

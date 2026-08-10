@@ -37,3 +37,17 @@ export const PendingPromotion: Story = {
     ],
   },
 };
+
+// A name long enough to overflow the narrow table must still leave room for the
+// deletion chip: the name truncates, the chip stays (#575).
+export const LongNameDeletion: Story = {
+  args: {
+    movements: [
+      {
+        skill: "a-very-long-unbroken-skill-name-that-would-overflow-the-cell",
+        state: "pending-promotion",
+        deletion: true,
+      },
+    ],
+  },
+};
