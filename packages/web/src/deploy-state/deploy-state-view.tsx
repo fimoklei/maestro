@@ -56,11 +56,11 @@ function RepositoriesSection({ onStartDeploy }: { onStartDeploy: () => void }) {
       <SectionHeader
         level={3}
         title="Repositories"
+        // No meta on an empty registry: RegisterRepoHint below already states
+        // it, and the two lines would sit two rows apart.
         meta={
-          isSuccess
-            ? repos.length === 0
-              ? "none registered"
-              : `${repos.length} registered`
+          isSuccess && repos.length > 0
+            ? `${repos.length} registered`
             : undefined
         }
       />

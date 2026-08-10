@@ -6,6 +6,11 @@ const meta = {
   component: BrowseRunReport,
   args: {
     isRegistering: false,
+    runPaths: [
+      "/Users/me/acme-web",
+      "/Users/me/payments-api",
+      "/Users/me/design-system",
+    ],
     outcomes: [
       {
         requestedPath: "/Users/me/acme-web",
@@ -47,6 +52,7 @@ export const Mixed: Story = {};
 
 export const AllRegistered: Story = {
   args: {
+    runPaths: ["/Users/me/acme-web", "/Users/me/payments-api"],
     outcomes: [
       {
         requestedPath: "/Users/me/acme-web",
@@ -64,7 +70,8 @@ export const AllRegistered: Story = {
   },
 };
 
-// Mid-run: the report is already on screen, with the repos it has finished.
+// Mid-run: every repo of the selection is already listed, so the list never
+// grows under the reader — the queued ones only wait for their mark.
 export const Registering: Story = {
   args: {
     isRegistering: true,

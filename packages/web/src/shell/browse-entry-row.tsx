@@ -1,5 +1,5 @@
 import { Chip } from "../ui/chip";
-import { HOVER_TRANSITION } from "../ui/hover-transition";
+import { HOVER_TRANSITION, REVEAL_TRANSITION } from "../ui/hover-transition";
 import { type BrowseDialogMode, browseModes } from "./browse-modes";
 import type { BrowseEntry } from "./use-browse-filesystem";
 
@@ -33,7 +33,7 @@ export function BrowseEntryRow({
 
   return (
     <div
-      className={`flex items-center gap-2.5 rounded-control border px-2.5 py-[7px] ${HOVER_TRANSITION} ${
+      className={`group flex items-center gap-2.5 rounded-control border px-2.5 py-[7px] ${HOVER_TRANSITION} ${
         checked
           ? "border-amber-border bg-amber-bg"
           : "border-transparent hover:bg-inset"
@@ -74,7 +74,12 @@ export function BrowseEntryRow({
         <span className="flex shrink-0 items-center gap-1.5">
           {browseModes[mode].badges({ entry, isRegistered })}
           {unavailableReason ? <Chip>{unavailableReason}</Chip> : null}
-          <span className="w-3.5 text-right font-mono text-data text-dim">
+          {/* Reserved, not removed: the row keeps its width, so revealing the
+              glyph never shifts the badges beside it. */}
+          <span
+            aria-hidden="true"
+            className={`w-3.5 text-right font-mono text-data text-dim opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 ${REVEAL_TRANSITION}`}
+          >
             →
           </span>
         </span>
