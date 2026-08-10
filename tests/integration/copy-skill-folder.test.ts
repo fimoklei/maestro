@@ -139,7 +139,11 @@ describe("CopySkillFolder", () => {
       ).toBe("asset\n");
     });
 
-    it("counts a tree at the limits as acceptable", async () => {
+    // 1000 real files: about a second on its own, past the default 5s when the
+    // whole suite runs its lanes in parallel.
+    it("counts a tree at the limits as acceptable", {
+      timeout: 30_000,
+    }, async () => {
       for (let i = 0; i < 1000; i++) {
         await write(`f${i}.md`, "x");
       }
