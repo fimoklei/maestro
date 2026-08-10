@@ -1,3 +1,4 @@
+import { Chip } from "../ui/chip";
 import {
   Table,
   TableBody,
@@ -30,11 +31,20 @@ export function MovementTable({ movements }: { movements: HarnessMovement[] }) {
               <TableCell>
                 <TypeTag />
               </TableCell>
-              <TableCell
-                title={movement.skill}
-                className="truncate font-mono text-data text-fg"
-              >
-                {movement.skill}
+              <TableCell title={movement.skill} className="text-data">
+                {/* Name truncates, the chip stays: a long name must not clip
+                    the one label this read carries — a deletion, the only
+                    movement named today; additions and edits stay bare (#575). */}
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="min-w-0 truncate font-mono text-fg">
+                    {movement.skill}
+                  </span>
+                  {movement.deletion ? (
+                    <Chip tone="drift" className="shrink-0">
+                      deleted locally
+                    </Chip>
+                  ) : null}
+                </div>
               </TableCell>
             </TableRow>
           ))}
