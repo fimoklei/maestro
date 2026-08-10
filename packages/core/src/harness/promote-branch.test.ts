@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { isValidSkillSlug } from "../deploy/package-ref";
 import {
   isPromotableSkillName,
   promoteBranch,
@@ -30,7 +31,16 @@ describe("promoteCompareUrl", () => {
 describe("isPromotableSkillName", () => {
   it("accepts an ordinary skill directory name", () => {
     expect(isPromotableSkillName("workflow-commit")).toBe(true);
-    expect(isPromotableSkillName("tdd.v2_1")).toBe(true);
+    expect(isPromotableSkillName("tdd")).toBe(true);
+  });
+
+  it("holds a promotion to the one name a deploy could carry", () => {
+    // Promoting is the first step toward a deploy, and `isValidSkillSlug` is
+    // what a deploy's package ref accepts. A name only one of the two takes
+    // buys a review branch nothing downstream can install.
+    for (const name of ["tdd.v2_1", "TDD", "my_skill"]) {
+      expect(isPromotableSkillName(name)).toBe(isValidSkillSlug(name));
+    }
   });
 
   it("refuses a name that would leave the skills directory", () => {

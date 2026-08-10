@@ -37,6 +37,12 @@ export type PromoteSkillOutcome =
   | "pushed"
   | "skill-missing"
   | "offline"
+  // The clone's push destination is not the origin the pull-request link is
+  // built from, so nothing was pushed — see `push-destination.ts`.
+  | "push-elsewhere"
+  // The skill's directory moved while it was being read, so what was built is
+  // a tree the author never had.
+  | "source-changed"
   | "push-failed";
 
 // `outcome: null` means no fetch has been attempted yet; `lastFetchedAt: null`

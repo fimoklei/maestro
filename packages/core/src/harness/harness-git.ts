@@ -3,10 +3,13 @@
 // failure leaves as a class, a read as a named field (ADR-0021).
 import { execFile } from "node:child_process";
 import { access, mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { devNull, tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { readConfiguredGitOriginUrl } from "../deploy/git-origin-url";
+import {
+  readConfiguredGitOriginUrl,
+  readGitOriginUrl,
+} from "../deploy/git-origin-url";
 import { NON_INTERACTIVE } from "../git/non-interactive";
 import { readRemoteDefaultBranch } from "../inventory/default-branch";
 import {
@@ -16,6 +19,7 @@ import {
 import { classifyFetchFailure } from "./classify-fetch-failure";
 import { classifyPushFailure } from "./classify-push-failure";
 import { PROMOTE_NAMESPACE, promoteBranch } from "./promote-branch";
+import { pushesWhereItFetched } from "./push-destination";
 import type {
   HarnessFacts,
   HarnessFetchOutcome,
@@ -97,6 +101,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
         [
           "-C",
           root,
+          ...NO_HOOKS,
           "push",
           "--atomic",
           `--force-with-lease=${branchRef}:${commit}`,
@@ -175,6 +180,13 @@ export class HarnessGitAdapter implements HarnessGitPort {
       return "skill-missing";
     }
 
+    // Asked before any object is written: `git push origin` resolves its own
+    // destination, and one that is not where the fetch came from would publish
+    // this skill under a link naming somewhere else.
+    if (!(await this.pushLandsWhereItFetched(root))) {
+      return "push-elsewhere";
+    }
+
     const indexDir = await mkdtemp(join(tmpdir(), "maestro-harness-promote-"));
     try {
       const skillTree = await this.hashWorkingSkill(root, subpath, indexDir);
@@ -184,6 +196,16 @@ export class HarnessGitAdapter implements HarnessGitPort {
         base,
         indexDir,
       );
+      // `git add` walks the directory file by file, so a save landing halfway
+      // through leaves a tree mixing two revisions. Read again and refuse a
+      // tree that moved: a pushed branch is not something to take back.
+      // ponytail: detects the race, does not prevent it — a promotion of a
+      // directory being written to is refused, never silently repaired.
+      if (
+        (await this.hashWorkingSkill(root, subpath, indexDir)) !== skillTree
+      ) {
+        return "source-changed";
+      }
       // The push classifies its own reply; everything above it is local object
       // work, and any way git refuses that is one failure to retry. Whatever it
       // said about it stays here: a class crosses, never git's words or a path
@@ -194,6 +216,23 @@ export class HarnessGitAdapter implements HarnessGitPort {
     } finally {
       await rm(indexDir, { recursive: true, force: true });
     }
+  }
+
+  // Both sides as git itself resolves them: `--push --all` names every push
+  // destination after `pushurl` and `pushInsteadOf`, and `get-url` the fetch one
+  // after `insteadOf`. An unreadable side is no destination at all.
+  private async pushLandsWhereItFetched(root: string): Promise<boolean> {
+    const listed = await this.read(root, [
+      "remote",
+      "get-url",
+      "--push",
+      "--all",
+      "origin",
+    ]);
+    return pushesWhereItFetched(
+      await readGitOriginUrl(root),
+      listed === null ? [] : listed.split("\n").filter((url) => url !== ""),
+    );
   }
 
   // The skill exactly as it sits on disk. Seeded from HEAD for the same reason
@@ -290,6 +329,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
         [
           "-C",
           root,
+          ...NO_HOOKS,
           "push",
           "origin",
           `${commit}:refs/heads/${promoteBranch(name)}`,
@@ -536,6 +576,14 @@ const gitOptions = () => ({
   env: { ...process.env, ...NON_INTERACTIVE },
   timeout: GIT_TIMEOUT_MS,
 });
+
+// The author's hooks are theirs, and these commands promise to leave the
+// checkout alone: a `pre-push` hook is free to write in the working tree, or to
+// fail after the remote already took the push. `devNull` is a hooks directory
+// git finds nothing in, so none of them run. Passed as `-c` rather than through
+// `GIT_CONFIG_*`, which would silently drop config the caller's env already
+// carries (#574).
+const NO_HOOKS = ["-c", `core.hooksPath=${devNull}`];
 
 // The same options pointed at a throwaway index, so a command that stages
 // anything writes there and never in the author's own (#574).

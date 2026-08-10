@@ -21,6 +21,8 @@ export type PromoteSkillError =
   | "invalid-skill"
   | "no-answer"
   | "skill-missing"
+  | "push-elsewhere"
+  | "source-changed"
   | "promote-failed"
   | "promote-in-progress";
 
@@ -91,6 +93,10 @@ export class PromoteSkill {
         };
       case "skill-missing":
         return { ok: false, error: "skill-missing" };
+      case "push-elsewhere":
+        return { ok: false, error: "push-elsewhere" };
+      case "source-changed":
+        return { ok: false, error: "source-changed" };
       case "offline":
         return { ok: false, error: "no-answer" };
       case "push-failed":

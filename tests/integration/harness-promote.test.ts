@@ -2,7 +2,7 @@
 // bare repo on disk, so the whole suite is offline: no network lane, no
 // credentials (.claude/rules/testing.md).
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -157,6 +157,24 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
     ]);
   });
 
+  it("runs none of the clone's own hooks, which are the author's and not this push's", async () => {
+    // A pre-push hook is free to write in the working tree or fail after the
+    // remote already took the push. Neither belongs to a promotion that
+    // promises to leave the checkout alone.
+    await writeFile(
+      join(root, ".git", "hooks", "pre-push"),
+      "#!/bin/sh\necho hooked > hooked.md\n",
+      { mode: 0o755 },
+    );
+    await writeSkill("tdd", "edited on disk");
+
+    await expect(promoter().execute("tdd", AT)).resolves.toMatchObject({
+      ok: true,
+    });
+
+    await expect(access(join(root, "hooked.md"))).rejects.toThrow();
+  });
+
   it("leaves HEAD, the real index, and the working tree exactly as they were", async () => {
     await writeFile(join(root, "staged.md"), "staged\n", "utf8");
     await git(root, "add", "staged.md");
@@ -211,6 +229,51 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
     });
 
     expect(await promoted("tdd", "rev-parse")).toBe(theirs);
+  });
+
+  it("refuses when the skill changes on disk while it is being read", async () => {
+    // A clean filter that edits the file it is filtering: the same thing a
+    // multi-file editor save does to a directory git is halfway through
+    // reading. What that first read caught is a tree the author never had.
+    const mutate = join(base, "mutate.sh");
+    await writeFile(mutate, "#!/bin/sh\ncat\necho later >> $1\n", {
+      mode: 0o755,
+    });
+    await writeSkill("tdd", "edited on disk");
+    await writeFile(
+      join(root, ".gitattributes"),
+      ".apm/skills/tdd/* filter=mutate\n",
+      "utf8",
+    );
+    await git(root, "config", "filter.mutate.clean", `${mutate} %f`);
+
+    await expect(promoter().execute("tdd", AT)).resolves.toEqual({
+      ok: false,
+      error: "source-changed",
+    });
+
+    await expect(
+      git(remote, "rev-parse", "--verify", "refs/heads/maestro/tdd"),
+    ).rejects.toThrow();
+  });
+
+  it("refuses when the push would land in a repository the link never names", async () => {
+    // A fork push-url over an upstream fetch-url: `git push origin` would
+    // publish the skill to `fork.git` while the author is handed a
+    // pull-request link into the origin they connected.
+    const fork = join(base, "fork.git");
+    await run("git", ["init", "--bare", "-b", "main", fork]);
+    await git(root, "config", "remote.origin.pushurl", fork);
+    await writeSkill("tdd", "edited on disk");
+
+    await expect(promoter().execute("tdd", AT)).resolves.toEqual({
+      ok: false,
+      error: "push-elsewhere",
+    });
+
+    expect(
+      (await git(fork, "for-each-ref", "--format=%(refname)")).stdout.trim(),
+    ).toBe("");
   });
 
   it("keeps a git failure behind a typed value, naming no path or git output", async () => {

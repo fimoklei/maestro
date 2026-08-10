@@ -2,23 +2,18 @@
 // pull request. Maestro never calls the GitHub API — the URL is built from the
 // connected origin and the branch name (#574).
 import type { GitOrigin } from "../deploy/git-origin";
+import { isValidSkillSlug } from "../deploy/package-ref";
 
 // The one namespace promote branches live in, written once: the adapter pushes
 // into it and the movement read reads back out of it.
 export const PROMOTE_NAMESPACE = "maestro";
 
-// A skill's identity is its directory name, and that name is spent twice: as a
-// git pathspec under `.apm/skills`, and as the last segment of a ref. Plain
-// directory names only, so neither can be steered elsewhere (security.md).
-const PLAIN_DIRECTORY_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
-
-// The trailing three are git's own refname rules (`git check-ref-format`):
-// refused here, so they read as a bad name rather than as a remote refusal.
+// A skill's identity is its directory name, and promoting is the first step
+// toward deploying it — so the gate is the deploy's own slug rule, never a
+// second one beside it. A slug is also a plain directory name and a legal
+// refname, so it can be spent as a pathspec and as a ref (security.md).
 export const isPromotableSkillName = (name: string): boolean =>
-  PLAIN_DIRECTORY_NAME.test(name) &&
-  !name.includes("..") &&
-  !name.endsWith(".") &&
-  !name.endsWith(".lock");
+  isValidSkillSlug(name);
 
 export const promoteBranch = (name: string): string =>
   `${PROMOTE_NAMESPACE}/${name}`;

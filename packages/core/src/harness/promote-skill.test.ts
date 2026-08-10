@@ -182,6 +182,15 @@ describe("PromoteSkill", () => {
     });
   });
 
+  it("refuses a clone whose push destination is not the origin the link names", async () => {
+    const promote = buildPromote({ outcome: "push-elsewhere" });
+
+    await expect(promote.execute("tdd", AT)).resolves.toEqual({
+      ok: false,
+      error: "push-elsewhere",
+    });
+  });
+
   it("leaves a refused push as a failure the author can press again", async () => {
     const promote = buildPromote({ outcome: "push-failed" });
 
