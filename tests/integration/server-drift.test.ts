@@ -15,6 +15,7 @@ import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubHarness } from "../helpers/stub-harness";
+import { stubImport } from "../helpers/stub-import";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
@@ -62,6 +63,7 @@ describe("drift HTTP route", () => {
     });
     const locks = new InFlightLocks();
     const app = createApp({
+      importSkill: stubImport(),
       registry,
       inventory,
       deployState: stubDeployState({ fs }),

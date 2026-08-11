@@ -25,6 +25,7 @@ import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
+import { stubImport } from "../helpers/stub-import";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
@@ -109,6 +110,7 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
     });
     const locks = new InFlightLocks();
     return createApp({
+      importSkill: stubImport(),
       registry,
       inventory,
       harness: new ReadHarnessState({

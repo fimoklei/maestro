@@ -7,6 +7,10 @@ import type {
   HarnessMovement,
   HarnessReleaseState,
   HarnessState,
+  ImportCheck,
+  ImportNameBlocker,
+  ImportSourceBlocker,
+  ManifestAdvisory,
   PendingSkillMovement,
   ReleasePlan,
   SemverStep,
@@ -23,6 +27,10 @@ export type {
   HarnessMovement,
   HarnessReleaseState,
   HarnessState,
+  ImportCheck,
+  ImportNameBlocker,
+  ImportSourceBlocker,
+  ManifestAdvisory,
   PendingSkillMovement,
   ReleasePlan,
   SemverStep,
@@ -166,6 +174,41 @@ const isFinding = (entry: Record<string, unknown>): boolean =>
 
 const fetchHarnessState = () =>
   requestJson<HarnessState>("/api/harness/refresh", { method: "POST" });
+
+// What Import would do with the picked folder and the chosen name, re-asked
+// whenever either changes — the server owns every refusal, so the button never
+// decides one itself. Disabled until a folder is picked.
+export function useImportCheck(source: string | null, name: string | null) {
+  return useQuery({
+    queryKey: ["harness", "import-check", source, name] as const,
+    queryFn: () =>
+      requestJson<ImportCheck>("/api/harness/import/check", {
+        method: "POST",
+        body: JSON.stringify(name === null ? { source } : { source, name }),
+      }),
+    enabled: source !== null,
+    // A check is a snapshot of the disk at one moment, and the disk is the
+    // author's to change while the dialog is open.
+    staleTime: 0,
+    gcTime: 0,
+  });
+}
+
+// Importing itself. The harness read is invalidated rather than written: what
+// landed shows up as a pending promotion, which only the read can say (#576).
+export function useImportSkill() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: { source: string; name: string }) =>
+      requestJson<{ name: string }>("/api/harness/import", {
+        method: "POST",
+        body: JSON.stringify(request),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: HARNESS_KEY });
+    },
+  });
+}
 
 // Writes the fetched state straight into the query cache: a refresh already
 // carries the answer, so re-reading it would only show an older picture first.

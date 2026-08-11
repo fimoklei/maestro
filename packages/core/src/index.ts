@@ -78,6 +78,15 @@ export {
 export { HarnessFreshnessStore } from "./harness/harness-freshness-store";
 export { HarnessGitAdapter } from "./harness/harness-git";
 export {
+  type ImportCheck,
+  type ImportCheckResult,
+  type ImportNameBlocker,
+  ImportSkill,
+  type ImportSkillError,
+  type ImportSkillResult,
+  type ImportSourceBlocker,
+} from "./harness/import-skill";
+export {
   PromoteSkill,
   type PromoteSkillError,
   type PromoteSkillResult,
@@ -103,6 +112,7 @@ export {
   type ReleasePlanError,
   type ReleasePlanResult,
 } from "./harness/read-harness-state";
+export type { ManifestAdvisory } from "./harness/skill-manifest";
 export type {
   SkillMovement,
   SkillMovementKind,

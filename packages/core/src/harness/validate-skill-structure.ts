@@ -10,6 +10,31 @@ export type StructuralProblem =
 
 export type StructuralFinding = { skill: string; problem: StructuralProblem };
 
+// The frontmatter block and what it parses to, or null where the manifest has
+// no readable one. Shared with import, so both read a manifest the same way.
+export const readFrontmatter = (
+  raw: string,
+): { block: string; data: Record<string, unknown> } | null => {
+  // Both delimiters are whole lines: `---junk` closes nothing, and matching it
+  // would read a manifest git never opened as frontmatter.
+  const block = /^---\n([\s\S]*?)\n---[ \t]*(?:\r?\n|$)/.exec(raw)?.[1];
+  if (block === undefined) {
+    return null;
+  }
+  let data: unknown;
+  try {
+    data = parse(block);
+  } catch {
+    return null;
+  }
+  // A list or a bare scalar parses but is not frontmatter. Reading it as a
+  // mapping with no description would name the wrong problem.
+  if (typeof data !== "object" || data === null || Array.isArray(data)) {
+    return null;
+  }
+  return { block, data: data as Record<string, unknown> };
+};
+
 // Null where the skill passes every rule. `raw` is null when the file is
 // absent at the ref — never an empty string, which is a present-but-blank file.
 export const validateSkillStructure = (
@@ -18,24 +43,11 @@ export const validateSkillStructure = (
   if (raw === null) {
     return "missing-manifest";
   }
-  // Both delimiters are whole lines: `---junk` closes nothing, and matching it
-  // would read a manifest git never opened as frontmatter.
-  const block = /^---\n([\s\S]*?)\n---[ \t]*(?:\r?\n|$)/.exec(raw)?.[1];
-  if (block === undefined) {
+  const frontmatter = readFrontmatter(raw);
+  if (frontmatter === null) {
     return "invalid-frontmatter";
   }
-  let data: unknown;
-  try {
-    data = parse(block);
-  } catch {
-    return "invalid-frontmatter";
-  }
-  // A list or a bare scalar parses but is not frontmatter. Reading it as a
-  // mapping with no description would name the wrong problem.
-  if (typeof data !== "object" || data === null || Array.isArray(data)) {
-    return "invalid-frontmatter";
-  }
-  const { description } = data as Record<string, unknown>;
+  const { description } = frontmatter.data;
   if (typeof description !== "string" || description.trim() === "") {
     return "empty-description";
   }

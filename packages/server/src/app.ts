@@ -10,6 +10,7 @@ import {
   ConfigStore,
   ConnectInventory,
   type ConnectInventoryError,
+  CopySkillFolder,
   DeployedCleanupAdapter,
   DeployedContentAdapter,
   DeployedLocation,
@@ -23,10 +24,13 @@ import {
   HarnessGitAdapter,
   type HarnessStateError,
   type HarnessStateResult,
+  ImportSkill,
+  type ImportSkillError,
   InFlightLocks,
   InventoryGitAdapter,
   InventoryReader,
   isRepositoryRoot,
+  NodeCopyTreeFs,
   NodeFileSystem,
   PublishRelease,
   type PublishReleaseError,
@@ -67,6 +71,13 @@ const connectBodySchema = z.object({
 });
 
 const browseBodySchema = z.object({ path: z.string() });
+
+// The destination is never sent: the connected Harness is resolved server-side.
+// `name` absent asks for Maestro's proposal (#576).
+const importBodySchema = z.object({
+  source: z.string(),
+  name: z.string().optional(),
+});
 
 // One spelling for every route that names a target: global carries no path, so
 // no untrusted path crosses the boundary on it (J07).
@@ -121,6 +132,9 @@ const RELEASE_BODY_MESSAGE =
   'Expected a JSON body with a version step and the plan\'s previous tag, that tag\'s commit, and its revision ({ step: "major" | "minor" | "patch", previousTag: string | null, previousTagCommit: string | null, revision: string }).';
 
 const PATH_BODY_MESSAGE = "Expected a JSON body with a path.";
+
+const IMPORT_BODY_MESSAGE =
+  "Expected a JSON body with a source folder and an optional name.";
 
 const TARGET_BODY_MESSAGE =
   'Expected a JSON body with type, name, and target ({ kind: "repo", repoPath } or { kind: "global" }).';
@@ -620,6 +634,95 @@ const publishReleaseErrorResponses: Record<
   },
 };
 
+// Import states every refusal in Maestro's own words — never a filesystem
+// message, and never the path it read (#576, security.md). The copy's own
+// refusals come through unchanged from core's typed set.
+const importErrorResponses: Record<
+  ImportSkillError,
+  { status: 400 | 403 | 409 | 422 | 500; message: string }
+> = {
+  "not-configured": {
+    status: 409,
+    message: "No Harness is connected. Set the Harness source path.",
+  },
+  "source-unreadable": {
+    status: 422,
+    message: "Maestro could not read that folder.",
+  },
+  // 403 like browse: the same ceiling, and the reply names no path.
+  "outside-root": {
+    status: 403,
+    message: "That folder is outside the area Maestro can read.",
+  },
+  "deployed-copy": {
+    status: 409,
+    message:
+      "That folder is a copy Maestro deployed. Import the skill from where you author it, not from a deployed target.",
+  },
+  "missing-manifest": {
+    status: 422,
+    message: "That folder has no SKILL.md, so it is not a skill.",
+  },
+  "invalid-frontmatter": {
+    status: 422,
+    message: "The SKILL.md frontmatter does not parse. Fix it and try again.",
+  },
+  "empty-description": {
+    status: 422,
+    message: "The SKILL.md description is empty. Fill it in and try again.",
+  },
+  "invalid-name": {
+    status: 400,
+    message:
+      "A skill name is lowercase letters, digits and single hyphens, like code-review.",
+  },
+  "name-taken": {
+    status: 409,
+    message: "The Harness already has a skill with that name.",
+  },
+  "not-found": {
+    status: 422,
+    message: "That folder no longer exists.",
+  },
+  "not-a-directory": { status: 422, message: "That path is not a folder." },
+  "destination-exists": {
+    status: 409,
+    message: "The Harness already has a skill with that name.",
+  },
+  "unsafe-link": {
+    status: 422,
+    message:
+      "That folder holds a symbolic link Maestro will not follow. Nothing was copied.",
+  },
+  "hard-linked-file": {
+    status: 422,
+    message:
+      "That folder holds a file shared with somewhere else on disk. Nothing was copied.",
+  },
+  "special-file": {
+    status: 422,
+    message:
+      "That folder holds something that is not a plain file or folder. Nothing was copied.",
+  },
+  "too-many-files": {
+    status: 422,
+    message: "That folder holds over 1,000 files. Nothing was copied.",
+  },
+  "too-large": {
+    status: 422,
+    message: "That folder is over 50 MiB. Nothing was copied.",
+  },
+  "source-changed": {
+    status: 409,
+    message:
+      "The folder changed while it was being copied. Nothing was copied.",
+  },
+  "copy-failed": {
+    status: 500,
+    message: "The copy did not finish. Nothing was left in the Harness.",
+  },
+};
+
 // outside-root is 403 (the info-disclosure boundary); no message echoes the
 // path (security.md).
 const browseErrorResponses: Record<
@@ -648,6 +751,7 @@ export type AppDeps = {
   registry: Registry;
   inventory: InventoryReader;
   harness: ReadHarnessState;
+  importSkill: ImportSkill;
   publish: PublishRelease;
   connect: ConnectInventory;
   scaffold: ScaffoldHarness;
@@ -765,6 +869,40 @@ export function createApp(deps: AppDeps) {
       );
     }
     return c.json({ tag: result.tag, revision: result.revision });
+  });
+
+  // What Import would do, before it does it: the proposed name, the refusals,
+  // and the advisory findings. A POST like every other path-taking read, so the
+  // Origin/Host guard covers it. A refusal is data here, not a failure — only
+  // an unconnected harness is a status.
+  app.post("/api/harness/import/check", async (c) => {
+    const body = await parseBody(c, importBodySchema, IMPORT_BODY_MESSAGE);
+    if (!body.ok) {
+      return body.response;
+    }
+
+    const result = await deps.importSkill.check(body.data);
+    if (!result.ok) {
+      const { status, message } = importErrorResponses[result.error];
+      return c.json({ error: result.error, message }, status);
+    }
+    return c.json(result.check);
+  });
+
+  // Importing itself. Re-judges everything the check judged, so a source or a
+  // harness that moved since is refused rather than copied (security.md).
+  app.post("/api/harness/import", async (c) => {
+    const body = await parseBody(c, importBodySchema, IMPORT_BODY_MESSAGE);
+    if (!body.ok) {
+      return body.response;
+    }
+
+    const result = await deps.importSkill.execute(body.data);
+    if (!result.ok) {
+      const { status, message } = importErrorResponses[result.error];
+      return c.json({ error: result.error, message }, status);
+    }
+    return c.json({ name: result.name });
   });
 
   // Connect: a pasted path is persisted offline; a GitHub URL is cloned to a
@@ -1205,6 +1343,19 @@ function realDeps(): AppDeps {
     registry,
     inventory,
     harness,
+    // The same connected clone every harness read names. Deployed roots are
+    // read per call, so a repo registered after startup counts (#576).
+    importSkill: new ImportSkill({
+      resolveRoot: harnessRoot,
+      fs,
+      // The picker's ceiling, so what can be imported is what can be browsed.
+      homeRoot: () => homedir(),
+      copy: new CopySkillFolder({ fs: new NodeCopyTreeFs() }),
+      deployedRoots: async () => [
+        deployedLocation.treeRoot({ kind: "global" }),
+        ...(await registry.list()).map((repo) => repo.path),
+      ],
+    }),
     // Confirmation's own remote read, never the plan's cached one — the same
     // harness, git port, and freshness record as the read above (#520).
     publish: new PublishRelease({
