@@ -22,6 +22,7 @@ const meta = {
     onImport: () => {},
     importing: false,
     importError: null,
+    imported: null,
   },
 } satisfies Meta<typeof ImportDialog>;
 
@@ -79,6 +80,11 @@ export const WithAdvisories: Story = {
       },
     },
   },
+};
+
+// After the import: what landed, and what the copy left behind.
+export const Imported: Story = {
+  args: { imported: { name: "code-review", skipped: 12 } },
 };
 
 // A refused import: Maestro's own sentence, never a filesystem message.

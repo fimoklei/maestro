@@ -721,6 +721,11 @@ const importErrorResponses: Record<
     status: 500,
     message: "The copy did not finish. Nothing was left in the Harness.",
   },
+  "destination-unsafe": {
+    status: 409,
+    message:
+      "The Harness's skills folder does not sit inside the Harness. Nothing was copied.",
+  },
 };
 
 // outside-root is 403 (the info-disclosure boundary); no message echoes the
@@ -902,7 +907,7 @@ export function createApp(deps: AppDeps) {
       const { status, message } = importErrorResponses[result.error];
       return c.json({ error: result.error, message }, status);
     }
-    return c.json({ name: result.name });
+    return c.json({ name: result.name, skipped: result.skipped });
   });
 
   // Connect: a pasted path is persisted offline; a GitHub URL is cloned to a

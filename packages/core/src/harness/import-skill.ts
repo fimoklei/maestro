@@ -7,6 +7,7 @@ import { isValidSkillSlug } from "../deploy/package-ref";
 import { isWithinRoot } from "../filesystem/browse-path";
 import type {
   CopySkillFolderError,
+  CopySkillFolderInput,
   CopySkillFolderResult,
 } from "../filesystem/copy-skill-folder";
 import { HARNESS_SKILLS_DIR } from "../inventory/harness-layout";
@@ -34,6 +35,9 @@ export type ImportNameBlocker = "invalid-name" | "name-taken";
 
 export type ImportSkillError =
   | "not-configured"
+  // The harness's own skills directory does not resolve inside the harness —
+  // a symlinked `.apm` would place the copy somewhere else entirely.
+  | "destination-unsafe"
   | ImportSourceBlocker
   | ImportNameBlocker
   | CopySkillFolderError;
@@ -51,7 +55,9 @@ export type ImportCheckResult =
   | { ok: false; error: "not-configured" };
 
 export type ImportSkillResult =
-  | { ok: true; name: string }
+  // `skipped` is what the copy left behind: the `.git` entries, counted at
+  // every depth, so the author is told what did not come along.
+  | { ok: true; name: string; skipped: number }
   | { ok: false; error: ImportSkillError };
 
 export type ImportSkillInput = { source: string; name?: string };
@@ -85,7 +91,7 @@ export class ImportSkill {
     if (root === undefined) {
       return { ok: false, error: "not-configured" };
     }
-    return { ok: true, check: await this.inspect(root, input) };
+    return { ok: true, check: (await this.inspect(root, input)).check };
   }
 
   async execute(input: ImportSkillInput): Promise<ImportSkillResult> {
@@ -95,33 +101,57 @@ export class ImportSkill {
     }
     // Judged again here, never trusting the check the browser saw: the source
     // and the harness both move between the two calls (security.md).
-    const check = await this.inspect(root, input);
+    const { check, source } = await this.inspect(root, input);
     if (check.sourceBlocker !== null) {
       return { ok: false, error: check.sourceBlocker };
     }
     if (check.nameBlocker !== null) {
       return { ok: false, error: check.nameBlocker };
     }
+    if (source === null) {
+      return { ok: false, error: "source-unreadable" };
+    }
 
-    const destinationParent = join(root, HARNESS_SKILLS_DIR);
-    await this.deps.fs.ensureDir(destinationParent);
+    const destinationParent = await this.skillsDir(root);
+    if (destinationParent === null) {
+      return { ok: false, error: "destination-unsafe" };
+    }
     const copied = await this.deps.copy.copy({
-      source: input.source,
+      // The canonical source the checks were made against, never the path the
+      // browser sent: a link retargeted since would otherwise pick the tree.
+      source,
       destinationParent,
       name: check.name,
+      // Inside the staging tree, so a manifest that cannot be made to agree
+      // with the directory name refuses the whole import (#576).
+      finalize: (payload) => this.stampName(payload, check.name),
     });
     if (!copied.ok) {
       return { ok: false, error: copied.error };
     }
 
-    await this.stampName(copied.path, check.name);
-    return { ok: true, name: check.name };
+    return { ok: true, name: check.name, skipped: copied.skipped };
+  }
+
+  // The harness's skills directory, created and then proved to resolve inside
+  // the harness itself. Null where it does not: a symlinked `.apm` is a
+  // destination outside the fixed root (security.md).
+  private async skillsDir(root: string): Promise<string | null> {
+    const lexical = join(root, HARNESS_SKILLS_DIR);
+    try {
+      await this.deps.fs.ensureDir(lexical);
+      const real = await this.deps.fs.realpath(lexical);
+      const realRoot = await this.deps.fs.realpath(root);
+      return isWithinRoot(real, realRoot) ? real : null;
+    } catch {
+      return null;
+    }
   }
 
   private async inspect(
     root: string,
     input: ImportSkillInput,
-  ): Promise<ImportCheck> {
+  ): Promise<{ check: ImportCheck; source: string | null }> {
     const source = await this.realSource(input.source);
     const raw =
       source === null
@@ -129,12 +159,13 @@ export class ImportSkill {
         : await this.readManifest(join(source, "SKILL.md"));
     const name =
       input.name ?? proposeSkillSlug(source === null ? "" : basename(source));
-    return {
+    const check: ImportCheck = {
       name,
       sourceBlocker: await this.judgeSource(source, raw),
       nameBlocker: await this.judgeName(root, name),
       advisories: raw === null ? [] : manifestAdvisories(raw),
     };
+    return { check, source };
   }
 
   // Canonical, so the deployed-copy rule compares what the author picked with
@@ -212,23 +243,36 @@ export class ImportSkill {
       : null;
   }
 
-  // The directory name is the skill's identity, so the copied manifest is made
-  // to agree with it. A manifest with no frontmatter is left as it is — the
-  // structural rules already refused that source.
-  private async stampName(path: string, name: string): Promise<void> {
-    const manifest = join(path, "SKILL.md");
+  // The directory name is the skill's identity, so the staged manifest is made
+  // to agree with it. False refuses the import: a copy whose manifest names a
+  // different skill is not the thing the author asked to import.
+  private async stampName(payload: string, name: string): Promise<boolean> {
+    const manifest = join(payload, "SKILL.md");
     const raw = await this.readManifest(manifest);
     if (raw === null) {
-      return;
+      return false;
     }
     const stamped = rewriteFrontmatterName(raw, name);
-    if (stamped !== raw) {
+    if (stamped === null) {
+      return false;
+    }
+    if (stamped === raw) {
+      return true;
+    }
+    try {
       await this.deps.fs.writeFile(manifest, stamped);
+      return true;
+    } catch {
+      return false;
     }
   }
 }
 
-type CopyRequest = { source: string; destinationParent: string; name: string };
+// The copy's own input shape, minus the fields this use-case never sends.
+type CopyRequest = Pick<
+  CopySkillFolderInput,
+  "source" | "destinationParent" | "name" | "finalize"
+>;
 
 // True where the folder sits in or under any tool's deployed skills directory,
 // under the home or a registered repository. Importing one back would copy a

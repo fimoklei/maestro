@@ -194,13 +194,17 @@ export function useImportCheck(source: string | null, name: string | null) {
   });
 }
 
+// What an import landed, and what it left behind: `skipped` counts the `.git`
+// entries the copy did not carry.
+export type ImportOutcome = { name: string; skipped: number };
+
 // Importing itself. The harness read is invalidated rather than written: what
 // landed shows up as a pending promotion, which only the read can say (#576).
 export function useImportSkill() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (request: { source: string; name: string }) =>
-      requestJson<{ name: string }>("/api/harness/import", {
+      requestJson<ImportOutcome>("/api/harness/import", {
         method: "POST",
         body: JSON.stringify(request),
       }),

@@ -173,10 +173,12 @@ export function HarnessView() {
               onPickSource={picker.openBrowse}
               onNameChange={setEditedName}
               onClose={closeImport}
+              // The dialog stays open on success: it is where the import's
+              // outcome is stated, and closing would take that with it.
               onImport={() =>
-                source !== null &&
-                importSkill.mutate({ source, name }, { onSuccess: closeImport })
+                source !== null && importSkill.mutate({ source, name })
               }
+              imported={importSkill.data ?? null}
               importing={importSkill.isPending}
               importError={
                 importSkill.isError ? importSkill.error.message : null

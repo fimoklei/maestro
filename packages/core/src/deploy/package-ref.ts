@@ -5,8 +5,14 @@ import { harnessSkillSubpath } from "../inventory/harness-layout";
 
 const skillSlugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
+// A directory name, a git refname component and a package ref segment all at
+// once, so it stays short enough for every one of them.
+const MAX_SLUG_LENGTH = 64;
+
 export const isValidSkillSlug = (name: string): boolean =>
-  skillSlugPattern.test(name);
+  name.length <= MAX_SLUG_LENGTH && skillSlugPattern.test(name);
+
+export { MAX_SLUG_LENGTH };
 
 export const buildSkillPackageRef = (input: {
   host: string;

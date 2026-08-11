@@ -21,7 +21,12 @@ function harness(
     ...overrides.files,
   };
   // "/" is the ceiling every case but the outside-root one runs under.
-  const directories = new Set(["/", SOURCE, ...(overrides.directories ?? [])]);
+  const directories = new Set([
+    "/",
+    ROOT,
+    SOURCE,
+    ...(overrides.directories ?? []),
+  ]);
   const copied: { input: unknown }[] = [];
 
   const fs = {
@@ -38,7 +43,9 @@ function harness(
     writeFile: async (path: string, contents: string) => {
       files[path] = contents;
     },
-    ensureDir: vi.fn(async () => {}),
+    ensureDir: vi.fn(async (path: string) => {
+      directories.add(path);
+    }),
   };
 
   const importSkill = new ImportSkill({
@@ -51,10 +58,15 @@ function harness(
         if (overrides.copy) {
           return overrides.copy();
         }
+        const staged = `${input.destinationParent}/.staging`;
+        files[`${staged}/SKILL.md`] = MANIFEST;
+        if (input.finalize !== undefined && !(await input.finalize(staged))) {
+          return { ok: false, error: "copy-failed" };
+        }
         const path = `${input.destinationParent}/${input.name}`;
         directories.add(path);
-        files[`${path}/SKILL.md`] = MANIFEST;
-        return { ok: true, path };
+        files[`${path}/SKILL.md`] = files[`${staged}/SKILL.md`] as string;
+        return { ok: true, path, skipped: 0 };
       },
     },
     deployedRoots: async () => overrides.deployedRoots ?? [],
@@ -216,8 +228,10 @@ describe("ImportSkill.execute", () => {
   it("copies the folder under the harness's skills directory", async () => {
     const result = await disk.importSkill.execute({ source: SOURCE });
 
-    expect(result).toEqual({ ok: true, name: "code-review" });
-    expect(disk.copied).toEqual([
+    expect(result).toEqual({ ok: true, name: "code-review", skipped: 0 });
+    // The canonical source and the harness's own skills directory, never a
+    // path the caller supplied.
+    expect(disk.copied).toMatchObject([
       {
         input: {
           source: SOURCE,

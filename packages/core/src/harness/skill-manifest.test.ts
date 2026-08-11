@@ -51,7 +51,28 @@ describe("rewriteFrontmatterName", () => {
     expect(rewritten).toContain("Costs $& per run.");
   });
 
-  it("returns a manifest without frontmatter unchanged", () => {
-    expect(rewriteFrontmatterName("plain text", "new-name")).toBe("plain text");
+  it("refuses a manifest with no frontmatter to name", () => {
+    expect(rewriteFrontmatterName("plain text", "new-name")).toBeNull();
+  });
+
+  it("rebuilds a quoted key rather than adding a second name", () => {
+    const rewritten = rewriteFrontmatterName(
+      manifest('"name": old-name\ndescription: Short.'),
+      "new-name",
+    );
+
+    expect(rewritten).not.toBeNull();
+    expect(rewritten).toContain("new-name");
+    expect(rewritten).not.toContain("old-name");
+  });
+
+  it("rebuilds a block scalar name", () => {
+    const rewritten = rewriteFrontmatterName(
+      manifest("name: |\n  old-name\ndescription: Short."),
+      "new-name",
+    );
+
+    expect(rewritten).not.toBeNull();
+    expect(rewritten).not.toContain("old-name");
   });
 });

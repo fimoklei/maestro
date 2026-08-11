@@ -72,7 +72,7 @@ function stubImportServer(options: {
       if (url === "/api/harness/import") {
         imports.push(JSON.parse(String(init?.body)));
         return jsonResponse(
-          options.importBody ?? { name: "code-review" },
+          options.importBody ?? { name: "code-review", skipped: 3 },
           options.importStatus,
         );
       }
@@ -117,11 +117,14 @@ describe("Harness import flow", () => {
     await waitFor(() => {
       expect(imports).toEqual([{ source: SOURCE, name: "code-review" }]);
     });
-    // The dialog closes, and the harness read is asked again — what landed is
-    // a pending promotion, which only the server can say.
-    await waitFor(() => {
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    });
+    // The dialog stays open and states what landed, including what the copy
+    // left behind; the harness read is asked again for the new movement.
+    expect(
+      await screen.findByText(/landed in the Harness as a pending promotion/i),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText(/3 \.git entries were skipped/i),
+    ).toBeInTheDocument();
     await waitFor(() => {
       expect(
         calls.filter((call) => call === "GET /api/harness").length,

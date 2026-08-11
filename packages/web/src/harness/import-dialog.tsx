@@ -30,6 +30,7 @@ export function ImportDialog({
   onImport,
   importing,
   importError,
+  imported,
 }: {
   source: string | null;
   name: string;
@@ -40,6 +41,9 @@ export function ImportDialog({
   onImport: () => void;
   importing: boolean;
   importError: string | null;
+  // Null until an import lands. It stays on screen after it does, so what the
+  // copy left behind is readable rather than gone with the dialog (#576).
+  imported: { name: string; skipped: number } | null;
 }) {
   const { panelRef, requestClose } = useModalDialog({
     onClose,
@@ -151,6 +155,18 @@ export function ImportDialog({
             </div>
           )}
 
+          {imported === null ? null : (
+            <p role="status" className="m-0 font-ui text-desc text-fg-2">
+              <span className="font-mono text-fg">{imported.name}</span> landed
+              in the Harness as a pending promotion.
+              {imported.skipped === 0
+                ? null
+                : imported.skipped === 1
+                  ? " 1 .git entry was skipped."
+                  : ` ${imported.skipped} .git entries were skipped.`}
+            </p>
+          )}
+
           {importError === null ? null : (
             <FailureNote label="nothing imported" message={importError} />
           )}
@@ -173,7 +189,7 @@ export function ImportDialog({
             className="shrink-0"
             variant="primary"
             size="sm"
-            disabled={!importEnabled(check) || importing}
+            disabled={!importEnabled(check) || importing || imported !== null}
             onClick={onImport}
           >
             {importing ? "importing…" : "import"}

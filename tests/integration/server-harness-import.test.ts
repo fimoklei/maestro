@@ -6,6 +6,7 @@ import {
   readFile,
   rm,
   stat,
+  symlink,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -110,7 +111,7 @@ describe("harness import HTTP route", () => {
     const response = await importSkill(app, { source });
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ name: "code-review" });
+    expect(await response.json()).toEqual({ name: "code-review", skipped: 1 });
     const landed = join(harnessRoot, ".apm", "skills", "code-review");
     expect(await readFile(join(landed, "references", "notes.md"), "utf8")).toBe(
       "notes\n",
@@ -185,6 +186,48 @@ describe("harness import HTTP route", () => {
 
     expect(response.status).toBe(409);
     expect(await response.json()).toMatchObject({ error: "deployed-copy" });
+  });
+
+  it("reports the .git entries the copy left behind", async () => {
+    const app = makeApp();
+
+    const response = await importSkill(app, { source });
+
+    expect(await response.json()).toEqual({ name: "code-review", skipped: 1 });
+  });
+
+  it("refuses a harness whose skills folder points outside the harness", async () => {
+    const elsewhere = join(base, "elsewhere");
+    await mkdir(elsewhere, { recursive: true });
+    await rm(join(harnessRoot, ".apm"), { recursive: true });
+    await mkdir(join(harnessRoot, ".apm"), { recursive: true });
+    await symlink(elsewhere, join(harnessRoot, ".apm", "skills"));
+    const app = makeApp();
+
+    const response = await importSkill(app, { source });
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({
+      error: "destination-unsafe",
+    });
+    expect(await readdir(elsewhere)).toEqual([]);
+  });
+
+  it("rebuilds a manifest whose name is not a plain scalar", async () => {
+    // A frontmatter that parses and describes, but whose `name` is a mapping:
+    // the textual rewrite cannot fix it, so the document one does.
+    await writeFile(
+      join(source, "SKILL.md"),
+      "---\nname:\n  first: a\ndescription: Reviews code.\n---\n",
+      "utf8",
+    );
+    const app = makeApp();
+
+    const response = await importSkill(app, { source, name: "reviewer" });
+
+    expect(response.status).toBe(200);
+    const landed = join(harnessRoot, ".apm", "skills", "reviewer", "SKILL.md");
+    expect(await readFile(landed, "utf8")).toContain("name: reviewer");
   });
 
   it("refuses a folder outside the ceiling the picker browses", async () => {
