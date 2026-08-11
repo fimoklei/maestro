@@ -39,6 +39,7 @@ import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubImport } from "../helpers/stub-import";
+import { stubPromote } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 
@@ -146,6 +147,7 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
       inventory,
       harness: stubHarness(),
       publish: stubPublish(),
+      promote: stubPromote(),
       connect,
       // The real adapter: this journey's whole point is the git it runs.
       scaffold: new ScaffoldHarness({

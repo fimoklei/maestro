@@ -3,28 +3,20 @@
 // The release route is never hit in those scenarios — it is covered in
 // server-harness-release.test.ts. No root means the git port is never reached.
 import { InFlightLocks, PublishRelease } from "@maestro/core";
+import {
+  unfetchedFreshness,
+  unreachableHarnessGit,
+} from "./unreachable-harness";
 
 const unreachable = (): never => {
-  throw new Error("stub publish git port was reached");
+  throw new Error("stub publish replan was reached");
 };
 
 export function stubPublish(): PublishRelease {
   return new PublishRelease({
     resolveRoot: async () => undefined,
-    git: {
-      fetch: unreachable,
-      readFacts: unreachable,
-      readSkillTrees: unreachable,
-      readSkillAuthors: unreachable,
-      readMovementTrees: unreachable,
-      readSkillManifests: unreachable,
-      publishTag: unreachable,
-      pushSkillPromotion: unreachable,
-    },
-    freshness: {
-      read: async () => ({ outcome: null, lastFetchedAt: null }),
-      record: async () => {},
-    },
+    git: unreachableHarnessGit(),
+    freshness: unfetchedFreshness(),
     replan: unreachable,
     locks: new InFlightLocks(),
   });

@@ -24,6 +24,7 @@ function stubHarnessServer(options: {
     status?: number;
     heldUntil?: Promise<void>;
     afterPublish?: unknown;
+    afterPromote?: unknown;
   };
   refresh?: {
     body: unknown;
@@ -48,6 +49,12 @@ function stubHarnessServer(options: {
     status?: number;
     retry?: { body: unknown; status?: number };
   };
+  // A promotion of one skill. `afterPromote` on the read is the picture the
+  // invalidated query then paints, so a test can state where the row moved to.
+  promote?: { body: unknown; status?: number };
+  // Every promotion's parsed body, in order, so a test can state which skill
+  // the row action named.
+  promotions?: Record<string, unknown>[];
   // Every release confirmation's parsed body, in order, so a test can state
   // what the browser sent without reading it back off the screen.
   confirmations?: Record<string, unknown>[];
@@ -56,8 +63,19 @@ function stubHarnessServer(options: {
   let planCalls = 0;
   let publishCalls = 0;
   let published = false;
-  const answer = (route: { body: unknown; afterPublish?: unknown }) =>
-    published && "afterPublish" in route ? route.afterPublish : route.body;
+  let promoted = false;
+  const answer = (route: {
+    body: unknown;
+    afterPublish?: unknown;
+    afterPromote?: unknown;
+  }) => {
+    if (published && "afterPublish" in route) {
+      return route.afterPublish;
+    }
+    return promoted && "afterPromote" in route
+      ? route.afterPromote
+      : route.body;
+  };
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -68,6 +86,14 @@ function stubHarnessServer(options: {
         await ("holds" in plan ? plan.holds?.[planCalls] : undefined);
         planCalls += 1;
         return jsonResponse(plan.body, plan.status);
+      }
+      if (url === "/api/harness/promote") {
+        options.promotions?.push(JSON.parse(String(init?.body)));
+        const push = options.promote ?? { body: {}, status: 500 };
+        if ((push.status ?? 200) < 400) {
+          promoted = true;
+        }
+        return jsonResponse(push.body, push.status);
       }
       if (url === "/api/harness/release") {
         options.confirmations?.push(JSON.parse(String(init?.body)));
@@ -791,6 +817,161 @@ describe("Harness home base", () => {
     expect(
       within(dialog).getByText(/already published this version/i),
     ).toBeInTheDocument();
+  });
+
+  // One skill waiting on disk, and the picture once it has been pushed: the row
+  // moves because the harness read says so, never because the browser kept a
+  // receipt of the press (#577).
+  const ON_DISK: HarnessState = {
+    ...RELEASED,
+    freshness: {
+      outcome: "fetched",
+      lastFetchedAt: "2026-08-03T11:56:00.000Z",
+    },
+    movements: [
+      { skill: "lint-rules", state: "pending-promotion", deletion: false },
+      { skill: "code-review", state: "pending-promotion", deletion: false },
+    ],
+  };
+
+  const REVIEWED: HarnessState = {
+    ...ON_DISK,
+    movements: [
+      { skill: "lint-rules", state: "pending-review", deletion: false },
+      { skill: "code-review", state: "pending-promotion", deletion: false },
+    ],
+  };
+
+  const PUSHED = {
+    branch: "maestro/lint-rules",
+    pullRequestUrl:
+      "https://github.com/fimoklei/agent-harness/compare/main...maestro/lint-rules?expand=1",
+  };
+
+  const promoteRow = async (skill: string) => {
+    const row = (await screen.findByText(skill)).closest("tr") as HTMLElement;
+    await userEvent.click(
+      within(row).getByRole("button", { name: /^promote$/i }),
+    );
+  };
+
+  it("promotes the skill whose row it is, and nothing else", async () => {
+    const promotions: Record<string, unknown>[] = [];
+    stubHarnessServer({
+      read: { body: ON_DISK },
+      promote: { body: PUSHED },
+      promotions,
+    });
+    renderHarness();
+
+    await promoteRow("lint-rules");
+
+    await waitFor(() => expect(promotions).toEqual([{ name: "lint-rules" }]));
+  });
+
+  it("moves the promoted row to Pending review and opens the pull-request flow", async () => {
+    stubHarnessServer({
+      read: { body: ON_DISK, afterPromote: REVIEWED },
+      promote: { body: PUSHED },
+    });
+    renderHarness();
+
+    await promoteRow("lint-rules");
+
+    const review = (
+      await screen.findByRole("heading", { level: 3, name: /pending review/i })
+    ).closest("section") as HTMLElement;
+    const link = await within(review).findByRole("link", {
+      name: /pull request/i,
+    });
+    expect(link).toHaveAttribute("href", PUSHED.pullRequestUrl);
+    expect(within(review).getByText("lint-rules")).toBeVisible();
+    // The pressed button moved out from under the keyboard; focus follows what
+    // replaced it rather than falling back to the document.
+    expect(link).toHaveFocus();
+  });
+
+  it("re-reads the harness after a promotion, rather than moving the row itself", async () => {
+    const calls = stubHarnessServer({
+      read: { body: ON_DISK, afterPromote: REVIEWED },
+      promote: { body: PUSHED },
+    });
+    renderHarness();
+    await screen.findByText("lint-rules");
+    const before = calls.filter((call) => call === "GET /api/harness").length;
+
+    await promoteRow("lint-rules");
+
+    await waitFor(() =>
+      expect(
+        calls.filter((call) => call === "GET /api/harness").length,
+      ).toBeGreaterThan(before),
+    );
+  });
+
+  it("states a refused promotion on the row, with the press still available", async () => {
+    stubHarnessServer({
+      read: { body: ON_DISK },
+      promote: {
+        body: {
+          error: "promote-failed",
+          message: "The skill could not be pushed. Check the remote.",
+        },
+        status: 502,
+      },
+    });
+    renderHarness();
+
+    await promoteRow("lint-rules");
+
+    expect(await screen.findByText(/could not be pushed/i)).toBeInTheDocument();
+    const row = screen.getByText("lint-rules").closest("tr") as HTMLElement;
+    expect(
+      within(row).getByRole("button", { name: /^promote$/i }),
+    ).toBeEnabled();
+  });
+
+  it("keeps Promote out of reach until a fetch has answered", async () => {
+    stubHarnessServer({
+      read: {
+        body: {
+          ...ON_DISK,
+          freshness: { outcome: "offline", lastFetchedAt: null },
+        },
+      },
+    });
+    renderHarness();
+
+    const row = (await screen.findByText("lint-rules")).closest(
+      "tr",
+    ) as HTMLElement;
+    await waitFor(() =>
+      expect(
+        within(row).getByRole("button", { name: /^promote$/i }),
+      ).toBeDisabled(),
+    );
+  });
+
+  it("offers no Promote on a row that is already pushed, or on a deletion", async () => {
+    // A deletion publishes by removal, which takes a confirmation of its own
+    // (#497) — this row action never promotes one by a single press.
+    stubHarnessServer({
+      read: {
+        body: {
+          ...ON_DISK,
+          movements: [
+            { skill: "lint-rules", state: "pending-review", deletion: false },
+            { skill: "old-skill", state: "pending-promotion", deletion: true },
+          ],
+        },
+      },
+    });
+    renderHarness();
+
+    await screen.findByText("lint-rules");
+    expect(
+      screen.queryByRole("button", { name: /^promote$/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("reports a harness that is not connected instead of an empty screen", async () => {

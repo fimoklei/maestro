@@ -32,6 +32,9 @@ import {
   isRepositoryRoot,
   NodeCopyTreeFs,
   NodeFileSystem,
+  PromoteSkill,
+  type PromoteSkillError,
+  type PromoteSkillResult,
   PublishRelease,
   type PublishReleaseError,
   type PublishReleaseResult,
@@ -127,6 +130,12 @@ const publishReleaseBodySchema = z.object({
   previousTagCommit: z.string().nullable(),
   revision: z.string(),
 });
+
+// A name, never a path: the harness the skill belongs to is resolved
+// server-side, so the browser cannot point a promotion at another repository.
+const promoteBodySchema = z.object({ name: z.string() });
+
+const PROMOTE_BODY_MESSAGE = "Expected a JSON body with a skill name.";
 
 const RELEASE_BODY_MESSAGE =
   'Expected a JSON body with a version step and the plan\'s previous tag, that tag\'s commit, and its revision ({ step: "major" | "minor" | "patch", previousTag: string | null, previousTagCommit: string | null, revision: string }).';
@@ -634,6 +643,52 @@ const publishReleaseErrorResponses: Record<
   },
 };
 
+// Promotion shares the state read's two refusals and states the rest in
+// Maestro's own words — never git's, and never the path it ran in
+// (security.md). Nothing here is a dead end: every refusal leaves the clone as
+// it was, so a retry is another press (#577).
+const promoteErrorResponses: Record<
+  PromoteSkillError,
+  { status: 400 | 409 | 422 | 502; message: string }
+> = {
+  ...harnessErrorResponses,
+  "invalid-skill": {
+    status: 400,
+    message:
+      "A skill name is lowercase letters, digits and single hyphens, like code-review.",
+  },
+  // The rule that closes Release: with no answer from the remote, the tip this
+  // commit would be built on is unknown.
+  "no-answer": {
+    status: 409,
+    message:
+      "Maestro could not reach the remote to promote this skill. Refresh and try again.",
+  },
+  "skill-missing": {
+    status: 422,
+    message: "That skill is no longer in the Harness working tree.",
+  },
+  "push-elsewhere": {
+    status: 422,
+    message:
+      "The harness clone pushes somewhere other than the origin it fetches from, so Maestro will not publish this skill.",
+  },
+  "source-changed": {
+    status: 409,
+    message:
+      "The skill changed on disk while Maestro was reading it. Nothing was pushed — try again.",
+  },
+  "promote-failed": {
+    status: 502,
+    message: "The skill could not be pushed. Check the remote and try again.",
+  },
+  "promote-in-progress": {
+    status: 409,
+    message:
+      "A promotion for this harness is already running. Wait for it to finish.",
+  },
+};
+
 // Import states every refusal in Maestro's own words — never a filesystem
 // message, and never the path it read (#576, security.md). The copy's own
 // refusals come through unchanged from core's typed set.
@@ -758,6 +813,7 @@ export type AppDeps = {
   harness: ReadHarnessState;
   importSkill: ImportSkill;
   publish: PublishRelease;
+  promote: PromoteSkill;
   connect: ConnectInventory;
   scaffold: ScaffoldHarness;
   browse: BrowseFilesystem;
@@ -874,6 +930,29 @@ export function createApp(deps: AppDeps) {
       );
     }
     return c.json({ tag: result.tag, revision: result.revision });
+  });
+
+  // Promoting one skill: a POST behind the Origin/Host guard, since it fetches
+  // and pushes. Takes the skill's name and nothing else — the harness is
+  // resolved server-side, and the reply carries the branch and the link that
+  // opens GitHub's own pull-request flow (#577).
+  app.post("/api/harness/promote", async (c) => {
+    const body = await parseBody(c, promoteBodySchema, PROMOTE_BODY_MESSAGE);
+    if (!body.ok) {
+      return body.response;
+    }
+    const result: PromoteSkillResult = await deps.promote.execute(
+      body.data.name,
+      new Date(),
+    );
+    if (!result.ok) {
+      const { status, message } = promoteErrorResponses[result.error];
+      return c.json({ error: result.error, message }, status);
+    }
+    return c.json({
+      branch: result.branch,
+      pullRequestUrl: result.pullRequestUrl,
+    });
   });
 
   // What Import would do, before it does it: the proposed name, the refusals,
@@ -1372,6 +1451,16 @@ function realDeps(): AppDeps {
       replan: (root) => harness.planReleaseAt(root),
       // Own lock, not the apm write lock above: a second confirmation for the
       // same harness must wait, not race the first one's push (#520).
+      locks: new InFlightLocks(),
+    }),
+    // The same connected clone, git port, and freshness record the read and
+    // the release use, so all three speak about one harness (#577).
+    promote: new PromoteSkill({
+      resolveRoot: harnessRoot,
+      git: harnessGit,
+      freshness: harnessFreshness,
+      // Own lock: two promotions of the same harness must queue, not race each
+      // other's temporary index and push.
       locks: new InFlightLocks(),
     }),
     // Checked offline against local git config, so the error lands before
