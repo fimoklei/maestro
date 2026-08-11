@@ -338,6 +338,49 @@ describe("ReadHarnessState movements", () => {
     });
   });
 
+  it("marks a skill deleted from disk as a local deletion", async () => {
+    const read = buildRead({
+      movementTrees: {
+        remote: { tdd: "same" },
+        promote: {},
+        local: { tdd: "same" },
+        working: {},
+      },
+    });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: {
+        movements: [
+          { skill: "tdd", state: "pending-promotion", deletion: true },
+        ],
+      },
+    });
+  });
+
+  it("reads a renamed directory as one deletion and one addition", async () => {
+    // Renames are not inferred: the old name is a deletion and the new name an
+    // addition, each progressing on its own (#575).
+    const read = buildRead({
+      movementTrees: {
+        remote: { "old-name": "same" },
+        promote: {},
+        local: { "old-name": "same" },
+        working: { "new-name": "same" },
+      },
+    });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: {
+        movements: [
+          { skill: "new-name", state: "pending-promotion", deletion: false },
+          { skill: "old-name", state: "pending-promotion", deletion: true },
+        ],
+      },
+    });
+  });
+
   it("leaves a clone that is only behind with nothing of its own waiting", async () => {
     const read = buildRead({
       movementTrees: {

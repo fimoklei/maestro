@@ -40,3 +40,9 @@ export const classifyMovement = ({
   }
   return null;
 };
+
+// A movement that removes a skill from this disk: it was tracked at local HEAD
+// and is gone from the working tree. Renames are not inferred, so a moved
+// directory is this plus a separate addition, each read on its own (#575).
+export const isLocalDeletion = ({ local, working }: SkillTreeHashes): boolean =>
+  local !== null && working === null;

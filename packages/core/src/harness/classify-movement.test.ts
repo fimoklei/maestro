@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { classifyMovement, type SkillTreeHashes } from "./classify-movement";
+import {
+  classifyMovement,
+  isLocalDeletion,
+  type SkillTreeHashes,
+} from "./classify-movement";
 
 // A skill whose content is the same everywhere: the released, quiet case each
 // test moves one hash away from. No promote branch carries it.
@@ -122,5 +126,43 @@ describe("classifyMovement", () => {
         working: null,
       }),
     ).toBeNull();
+  });
+});
+
+describe("isLocalDeletion", () => {
+  it("reads a skill present at local HEAD and gone from disk as a deletion", () => {
+    expect(isLocalDeletion({ ...SETTLED, working: null })).toBe(true);
+  });
+
+  it("reads a skill added on disk as no deletion", () => {
+    expect(
+      isLocalDeletion({
+        remote: null,
+        promote: null,
+        local: null,
+        working: "new",
+      }),
+    ).toBe(false);
+  });
+
+  it("reads an edited skill as no deletion", () => {
+    expect(isLocalDeletion({ ...SETTLED, working: "edited" })).toBe(false);
+  });
+
+  it("never reads a skill this clone has not pulled yet as a deletion", () => {
+    // Present on the remote, absent locally and at local HEAD: a clone that is
+    // behind, never the author's own deletion (#575).
+    expect(
+      isLocalDeletion({
+        remote: "newer",
+        promote: null,
+        local: null,
+        working: null,
+      }),
+    ).toBe(false);
+  });
+
+  it("reads a settled skill as no deletion", () => {
+    expect(isLocalDeletion(SETTLED)).toBe(false);
   });
 });

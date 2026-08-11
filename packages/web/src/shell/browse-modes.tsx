@@ -25,14 +25,12 @@ export const browseModes: Record<BrowseDialogMode, BrowseModeConfig> = {
   register: {
     title: "Select repos to register",
     confirmLabel: (count) => `register ${count} selected →`,
-    badges: ({ entry, isRegistered }) => (
-      <>
-        {entry.facts.isGitRepo ? <Chip tone="dim">git</Chip> : null}
-        {isRegistered ? <Chip tone="ok">● registered</Chip> : null}
-      </>
-    ),
+    // A git repo is what this listing is for; only the refusal earns a chip,
+    // and browse-entry-row.tsx already writes that one.
+    badges: ({ isRegistered }) =>
+      isRegistered ? <Chip tone="ok">● registered</Chip> : null,
     writePromise:
-      "Registering writes nothing. Writes happen only on an explicit deploy, and touch only the chosen primitive plus apm's bookkeeping.",
+      "Registering writes nothing. Writes happen only on an explicit deploy.",
   },
   connect: {
     title: "Select inventory folder",
