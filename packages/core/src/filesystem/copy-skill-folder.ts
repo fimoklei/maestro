@@ -27,14 +27,20 @@ export type CopySkillFolderError =
   // The filesystem refused a read or a write. Never carries its reason.
   | "copy-failed";
 
+// `skipped` counts the `.git` entries left behind, so a caller can say what a
+// successful copy did not carry.
 export type CopySkillFolderResult =
-  | { ok: true; path: string }
+  | { ok: true; path: string; skipped: number }
   | { ok: false; error: CopySkillFolderError };
 
 export type CopySkillFolderInput = {
   source: string;
   destinationParent: string;
   name: string;
+  // Runs on the staged copy, before the rename that publishes it. False
+  // refuses the whole operation, so anything the caller must still write to
+  // the tree happens while nothing is visible (#576).
+  finalize?: (payload: string) => Promise<boolean>;
 };
 
 // `link` is the symbolic link this file was reached through, whose containment
@@ -46,7 +52,16 @@ type PlannedFile = {
   facts: CopyEntryFacts;
 };
 
-type Plan = { dirs: string[]; files: PlannedFile[]; bytes: number };
+// A directory is remembered with the identity it was walked under, so a
+// swapped directory is caught before its planned files are read.
+type PlannedDir = { relPath: string; readPath: string; identity: string };
+
+type Plan = {
+  dirs: PlannedDir[];
+  files: PlannedFile[];
+  bytes: number;
+  skipped: number;
+};
 
 // What every step of the walk needs and nothing that changes between steps:
 // the canonical source root the containment checks answer to, and the plan
@@ -84,7 +99,7 @@ export class CopySkillFolder {
       return { ok: false, error: "destination-exists" };
     }
 
-    const plan: Plan = { dirs: [], files: [], bytes: 0 };
+    const plan: Plan = { dirs: [], files: [], bytes: 0, skipped: 0 };
     const refusal = await this.planDirectory(
       { root, plan },
       root,
@@ -95,7 +110,13 @@ export class CopySkillFolder {
       return { ok: false, error: refusal };
     }
 
-    return this.materialize(input.destinationParent, destination, root, plan);
+    return this.materialize(
+      input.destinationParent,
+      destination,
+      root,
+      plan,
+      input.finalize,
+    );
   }
 
   // Walks one directory and everything under it, deciding but never writing.
@@ -112,6 +133,7 @@ export class CopySkillFolder {
     }
     for (const name of names) {
       if (name === SKIPPED_ENTRY) {
+        walk.plan.skipped += 1;
         continue;
       }
       const refusal = await this.planEntry(
@@ -171,6 +193,7 @@ export class CopySkillFolder {
     // The skip is about repository internals, not about the name of the entry
     // that leads to them: a link is judged by where it lands.
     if (isRepositoryInternal(walk.root, target)) {
+      walk.plan.skipped += 1;
       return null;
     }
     const facts = await this.fs.describe(target);
@@ -202,7 +225,11 @@ export class CopySkillFolder {
     relPath: string,
     ancestors: Set<string>,
   ): Promise<CopySkillFolderError | null> {
-    walk.plan.dirs.push(relPath);
+    const facts = await this.fs.describe(dir);
+    if (facts === null || facts.kind !== "directory") {
+      return "source-changed";
+    }
+    walk.plan.dirs.push({ relPath, readPath: dir, identity: facts.identity });
     return this.planDirectory(walk, dir, relPath, new Set([...ancestors, dir]));
   }
 
@@ -214,6 +241,7 @@ export class CopySkillFolder {
     destination: string,
     root: string,
     plan: Plan,
+    finalize: CopySkillFolderInput["finalize"],
   ): Promise<CopySkillFolderResult> {
     let staging: string;
     try {
@@ -228,18 +256,27 @@ export class CopySkillFolder {
     try {
       await this.fs.makeDir(payload);
       for (const dir of plan.dirs) {
-        await this.fs.makeDir(join(payload, dir));
+        // The directory the plan walked, not a name that now leads elsewhere.
+        const now = await this.fs.describe(dir.readPath);
+        if (
+          now === null ||
+          now.kind !== "directory" ||
+          now.identity !== dir.identity
+        ) {
+          return { ok: false, error: "source-changed" };
+        }
+        await this.fs.makeDir(join(payload, dir.relPath));
       }
       for (const file of plan.files) {
-        const refusal = await this.verifyUnchanged(root, file);
+        const refusal = await this.copyOne(root, payload, file);
         if (refusal !== null) {
           return { ok: false, error: refusal };
         }
-        await this.fs.copyFile(
-          file.readPath,
-          join(payload, file.relPath),
-          file.facts.executable,
-        );
+      }
+      // The caller's own writes land here, while the copy is still invisible:
+      // after the rename there is no failure left that can be undone.
+      if (finalize !== undefined && !(await finalize(payload))) {
+        return { ok: false, error: "copy-failed" };
       }
       // Re-read at the point of use: the destination was free when the plan was
       // made, and this is the last moment before it is claimed.
@@ -247,13 +284,50 @@ export class CopySkillFolder {
         return { ok: false, error: "destination-exists" };
       }
       await this.fs.movePath(payload, destination);
-      return { ok: true, path: destination };
+      return { ok: true, path: destination, skipped: plan.skipped };
     } catch {
       return { ok: false, error: "copy-failed" };
     } finally {
       // After a successful move this removes an empty directory; after anything
       // else it removes the half-built copy.
       await this.fs.removePath(staging).catch(() => {});
+    }
+  }
+
+  // Copies one planned file through an opened descriptor: the bytes written
+  // are the bytes of the entry the descriptor holds, so a name swapped after
+  // the check cannot redirect the read.
+  private async copyOne(
+    root: string,
+    payload: string,
+    file: PlannedFile,
+  ): Promise<CopySkillFolderError | null> {
+    const refusal = await this.verifyUnchanged(root, file);
+    if (refusal !== null) {
+      return refusal;
+    }
+    const open = await this.fs.openFile(file.readPath);
+    if (open === null) {
+      return "source-changed";
+    }
+    try {
+      const facts = await open.facts();
+      if (
+        facts === null ||
+        facts.kind !== "file" ||
+        facts.size !== file.facts.size ||
+        facts.identity !== file.facts.identity
+      ) {
+        return "source-changed";
+      }
+      await this.fs.writeFile(
+        join(payload, file.relPath),
+        await open.read(),
+        file.facts.executable,
+      );
+      return null;
+    } finally {
+      await open.close().catch(() => {});
     }
   }
 

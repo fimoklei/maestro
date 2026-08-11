@@ -38,6 +38,7 @@ import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
+import { stubImport } from "../helpers/stub-import";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 
@@ -140,6 +141,7 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
       resolveCentralInventoryPath: centralInventoryPath,
     });
     return createApp({
+      importSkill: stubImport(),
       registry,
       inventory,
       harness: stubHarness(),

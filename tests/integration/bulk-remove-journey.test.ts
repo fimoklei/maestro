@@ -22,6 +22,7 @@ import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
+import { stubImport } from "../helpers/stub-import";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubScaffold } from "../helpers/stub-scaffold";
 
@@ -139,6 +140,7 @@ describe("retiring a skill from every target it is deployed to", () => {
 
     const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
     const app = createApp({
+      importSkill: stubImport(),
       registry,
       inventory,
       deployState: new GlobalDeployStateReader({

@@ -16,6 +16,7 @@ import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
+import { stubImport } from "../helpers/stub-import";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
@@ -138,6 +139,7 @@ describe("bulk deploy HTTP route", () => {
         "git@github.com:fimoklei/agent-harness.git",
     });
     const app = createApp({
+      importSkill: stubImport(),
       registry,
       inventory,
       deployState: new GlobalDeployStateReader({

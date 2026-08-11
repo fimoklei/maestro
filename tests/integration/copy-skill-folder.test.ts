@@ -77,7 +77,7 @@ describe("CopySkillFolder", () => {
 
       const result = await copy();
 
-      expect(result).toEqual({ ok: true, path: destination() });
+      expect(result).toMatchObject({ ok: true, path: destination() });
       expect(await readFile(join(destination(), "SKILL.md"), "utf8")).toBe(
         "# skill\n",
       );
@@ -100,7 +100,7 @@ describe("CopySkillFolder", () => {
       await write("nested/.git/HEAD", "ref: refs/heads/main\n");
       await write("nested/kept.md", "kept\n");
 
-      expect(await copy()).toEqual({ ok: true, path: destination() });
+      expect(await copy()).toMatchObject({ ok: true, path: destination() });
 
       expect(await readdir(destination())).toEqual(["SKILL.md", "nested"]);
       expect(await readdir(join(destination(), "nested"))).toEqual(["kept.md"]);
@@ -112,7 +112,7 @@ describe("CopySkillFolder", () => {
       await symlink(join(source, ".git"), join(source, "alias"));
       await symlink(join(source, ".git/config"), join(source, "smuggled.txt"));
 
-      expect(await copy()).toEqual({ ok: true, path: destination() });
+      expect(await copy()).toMatchObject({ ok: true, path: destination() });
 
       // The rule is about repository internals, not about the name of the
       // entry that leads to them.
@@ -124,7 +124,7 @@ describe("CopySkillFolder", () => {
       await symlink(join(source, "real/asset.txt"), join(source, "link.txt"));
       await symlink(join(source, "real"), join(source, "linked-dir"));
 
-      expect(await copy()).toEqual({ ok: true, path: destination() });
+      expect(await copy()).toMatchObject({ ok: true, path: destination() });
 
       expect(await readFile(join(destination(), "link.txt"), "utf8")).toBe(
         "asset\n",
@@ -148,7 +148,7 @@ describe("CopySkillFolder", () => {
         await write(`f${i}.md`, "x");
       }
 
-      expect(await copy()).toEqual({ ok: true, path: destination() });
+      expect(await copy()).toMatchObject({ ok: true, path: destination() });
     });
   });
 
@@ -244,7 +244,7 @@ describe("CopySkillFolder", () => {
       await write("SKILL.md", "# skill\n");
       await write(".git/pack", "x".repeat(50 * 1024 * 1024 + 1));
 
-      expect(await copy()).toEqual({ ok: true, path: destination() });
+      expect(await copy()).toMatchObject({ ok: true, path: destination() });
     });
   });
 
@@ -257,14 +257,14 @@ describe("CopySkillFolder", () => {
       disturb: () => Promise<void>,
     ): Promise<CopySkillFolderResult> => {
       const fs = new NodeCopyTreeFs();
-      const original = fs.copyFile.bind(fs);
+      const original = fs.openFile.bind(fs);
       let disturbed = false;
-      fs.copyFile = async (from, to, executable) => {
+      fs.openFile = async (path) => {
         if (!disturbed) {
           disturbed = true;
           await disturb();
         }
-        return original(from, to, executable);
+        return original(path);
       };
       return new CopySkillFolder({ fs }).copy({
         source,

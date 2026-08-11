@@ -21,6 +21,7 @@ import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
+import { stubImport } from "../helpers/stub-import";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubScaffold } from "../helpers/stub-scaffold";
 
@@ -107,6 +108,7 @@ describe("bulk remove HTTP route", () => {
       location,
     });
     const app = createApp({
+      importSkill: stubImport(),
       registry,
       inventory,
       deployState: stubDeployState({ fs }),

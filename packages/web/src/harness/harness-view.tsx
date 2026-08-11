@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { BrowseDialog } from "../shell/browse-dialog";
+import { useBrowsePicker } from "../shell/use-browse-picker";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { SectionHeader } from "../ui/section-header";
@@ -9,6 +11,7 @@ import {
   RELEASE_SUMMARIES,
   releaseEnabled,
 } from "./harness-view-model";
+import { type ImportCheckLoad, ImportDialog } from "./import-dialog";
 import { MovementTable } from "./movement-table";
 import { PendingRelease } from "./pending-release";
 import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
@@ -16,6 +19,8 @@ import type { ReleasePlan, SemverStep } from "./use-harness";
 import {
   useDiscardReleasePlan,
   useHarness,
+  useImportCheck,
+  useImportSkill,
   usePublishRelease,
   useRefreshHarness,
   useReleasePlan,
@@ -50,6 +55,28 @@ export function HarnessView() {
       },
       { onSuccess: closePlan },
     );
+  };
+
+  // Import: the picked folder and the name are UI-state; every refusal comes
+  // from the server's check, so nothing here decides one (#576).
+  const [importOpen, setImportOpen] = useState(false);
+  const [source, setSource] = useState<string | null>(null);
+  // Null until the author types: Maestro's proposal fills the field until then,
+  // and a new folder brings a new proposal.
+  const [editedName, setEditedName] = useState<string | null>(null);
+  const importCheck = useImportCheck(source, editedName);
+  const importSkill = useImportSkill();
+  const picker = useBrowsePicker((paths) => {
+    setSource(paths[0] ?? null);
+    setEditedName(null);
+    importSkill.reset();
+  });
+  const name = editedName ?? importCheck.data?.name ?? "";
+  const closeImport = () => {
+    setImportOpen(false);
+    setSource(null);
+    setEditedName(null);
+    importSkill.reset();
   };
 
   // Opening the view fetches, the same act the Refresh button repeats. A
@@ -108,6 +135,15 @@ export function HarnessView() {
             >
               refresh
             </Button>
+            {/* Import touches the working tree only, so no remote answer gates
+                it — what lands shows up under Pending promotion. */}
+            <Button
+              variant="quiet"
+              size="sm"
+              onClick={() => setImportOpen(true)}
+            >
+              import skill
+            </Button>
           </HarnessStrip>
           <Card className="mt-3" padded>
             <p className="m-0 font-mono text-desc text-muted">
@@ -129,6 +165,33 @@ export function HarnessView() {
               </Card>
             </section>
           ))}
+          {importOpen && !picker.open ? (
+            <ImportDialog
+              source={source}
+              name={name}
+              load={importLoad(source, importCheck)}
+              onPickSource={picker.openBrowse}
+              onNameChange={setEditedName}
+              onClose={closeImport}
+              // The dialog stays open on success: it is where the import's
+              // outcome is stated, and closing would take that with it.
+              onImport={() =>
+                source !== null && importSkill.mutate({ source, name })
+              }
+              imported={importSkill.data ?? null}
+              importing={importSkill.isPending}
+              importError={
+                importSkill.isError ? importSkill.error.message : null
+              }
+            />
+          ) : null}
+          {picker.open ? (
+            <BrowseDialog
+              mode="import-source"
+              onSelect={picker.selectBrowse}
+              onClose={picker.closeBrowse}
+            />
+          ) : null}
           {planOpen ? (
             <ReleaseDialog
               origin={state.origin}
@@ -143,6 +206,24 @@ export function HarnessView() {
       )}
     </section>
   );
+}
+
+// Idle until a folder is picked: with nothing to judge there is no refusal to
+// state, and "loading" would claim a request that was never made.
+function importLoad(
+  source: string | null,
+  check: ReturnType<typeof useImportCheck>,
+): ImportCheckLoad {
+  if (source === null) {
+    return { kind: "idle" };
+  }
+  if (check.data !== undefined) {
+    return { kind: "ready", check: check.data };
+  }
+  if (check.isError) {
+    return { kind: "error", message: check.error.message };
+  }
+  return { kind: "loading" };
 }
 
 // The dialog stays mounted through loading, error, and the ready plan, so the
