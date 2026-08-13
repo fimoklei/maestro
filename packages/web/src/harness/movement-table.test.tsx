@@ -8,7 +8,12 @@ describe("MovementTable", () => {
     render(
       <MovementTable
         movements={[
-          { skill: "tdd", state: "pending-promotion", deletion: true },
+          {
+            skill: "tdd",
+            state: "pending-promotion",
+            deletion: true,
+            concurrentChange: false,
+          },
         ]}
       />,
     );
@@ -22,7 +27,12 @@ describe("MovementTable", () => {
     render(
       <MovementTable
         movements={[
-          { skill: longName, state: "pending-promotion", deletion: true },
+          {
+            skill: longName,
+            state: "pending-promotion",
+            deletion: true,
+            concurrentChange: false,
+          },
         ]}
       />,
     );
@@ -35,7 +45,12 @@ describe("MovementTable", () => {
     render(
       <MovementTable
         movements={[
-          { skill: "lint-rules", state: "pending-promotion", deletion: false },
+          {
+            skill: "lint-rules",
+            state: "pending-promotion",
+            deletion: false,
+            concurrentChange: false,
+          },
         ]}
       />,
     );
@@ -61,8 +76,18 @@ describe("MovementTable", () => {
     render(
       <MovementTable
         movements={[
-          { skill: "lint-rules", state: "pending-promotion", deletion: false },
-          { skill: "code-review", state: "pending-promotion", deletion: false },
+          {
+            skill: "lint-rules",
+            state: "pending-promotion",
+            deletion: false,
+            concurrentChange: false,
+          },
+          {
+            skill: "code-review",
+            state: "pending-promotion",
+            deletion: false,
+            concurrentChange: false,
+          },
         ]}
         promote={{ ...promote, onPromote: (skill) => pressed.push(skill) }}
       />,
@@ -79,8 +104,18 @@ describe("MovementTable", () => {
     render(
       <MovementTable
         movements={[
-          { skill: "lint-rules", state: "pending-review", deletion: false },
-          { skill: "old-skill", state: "pending-promotion", deletion: true },
+          {
+            skill: "lint-rules",
+            state: "pending-review",
+            deletion: false,
+            concurrentChange: false,
+          },
+          {
+            skill: "old-skill",
+            state: "pending-promotion",
+            deletion: true,
+            concurrentChange: false,
+          },
         ]}
         promote={promote}
       />,
@@ -95,8 +130,18 @@ describe("MovementTable", () => {
     render(
       <MovementTable
         movements={[
-          { skill: "lint-rules", state: "pending-promotion", deletion: false },
-          { skill: "code-review", state: "pending-promotion", deletion: false },
+          {
+            skill: "lint-rules",
+            state: "pending-promotion",
+            deletion: false,
+            concurrentChange: false,
+          },
+          {
+            skill: "code-review",
+            state: "pending-promotion",
+            deletion: false,
+            concurrentChange: false,
+          },
         ]}
         promote={{ ...promote, pending: "lint-rules" }}
       />,
@@ -114,7 +159,12 @@ describe("MovementTable", () => {
     render(
       <MovementTable
         movements={[
-          { skill: "lint-rules", state: "pending-promotion", deletion: false },
+          {
+            skill: "lint-rules",
+            state: "pending-promotion",
+            deletion: false,
+            concurrentChange: false,
+          },
         ]}
         promote={{ ...promote, enabled: false }}
       />,
@@ -127,8 +177,18 @@ describe("MovementTable", () => {
     render(
       <MovementTable
         movements={[
-          { skill: "lint-rules", state: "pending-review", deletion: false },
-          { skill: "code-review", state: "pending-review", deletion: false },
+          {
+            skill: "lint-rules",
+            state: "pending-review",
+            deletion: false,
+            concurrentChange: false,
+          },
+          {
+            skill: "code-review",
+            state: "pending-review",
+            deletion: false,
+            concurrentChange: false,
+          },
         ]}
         promote={{
           ...promote,
@@ -157,7 +217,12 @@ describe("MovementTable", () => {
     render(
       <MovementTable
         movements={[
-          { skill: "lint-rules", state: "pending-promotion", deletion: false },
+          {
+            skill: "lint-rules",
+            state: "pending-promotion",
+            deletion: false,
+            concurrentChange: false,
+          },
         ]}
         promote={{
           ...promote,
@@ -177,7 +242,12 @@ describe("MovementTable", () => {
     render(
       <MovementTable
         movements={[
-          { skill: "lint-rules", state: "pending-promotion", deletion: false },
+          {
+            skill: "lint-rules",
+            state: "pending-promotion",
+            deletion: false,
+            concurrentChange: false,
+          },
         ]}
         promote={{
           ...promote,
@@ -190,5 +260,60 @@ describe("MovementTable", () => {
       "The remote refused it.",
     );
     expect(screen.getByRole("button", { name: "promote" })).toBeEnabled();
+  });
+
+  it("warns that promoting replaces a teammate's change, and keeps the press available", () => {
+    render(
+      <MovementTable
+        movements={[
+          {
+            skill: "lint-rules",
+            state: "pending-promotion",
+            deletion: false,
+            concurrentChange: true,
+          },
+        ]}
+        promote={promote}
+      />,
+    );
+
+    expect(screen.getByText(/replaces/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "promote" })).toBeEnabled();
+  });
+
+  it("shows no concurrent-change warning when nobody else touched the skill", () => {
+    render(
+      <MovementTable
+        movements={[
+          {
+            skill: "lint-rules",
+            state: "pending-promotion",
+            deletion: false,
+            concurrentChange: false,
+          },
+        ]}
+        promote={promote}
+      />,
+    );
+
+    expect(screen.queryByText(/replaces/i)).not.toBeInTheDocument();
+  });
+
+  it("never warns on a deletion, which has no press this table offers", () => {
+    render(
+      <MovementTable
+        movements={[
+          {
+            skill: "old-skill",
+            state: "pending-promotion",
+            deletion: true,
+            concurrentChange: true,
+          },
+        ]}
+        promote={promote}
+      />,
+    );
+
+    expect(screen.queryByText(/replaces/i)).not.toBeInTheDocument();
   });
 });

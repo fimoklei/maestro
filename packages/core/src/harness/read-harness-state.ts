@@ -4,6 +4,7 @@
 import { parseGitOrigin } from "../deploy/git-origin";
 import {
   classifyMovement,
+  isConcurrentlyChanged,
   isLocalDeletion,
   type MovementState,
 } from "./classify-movement";
@@ -147,6 +148,10 @@ export type HarnessMovement = {
   // True when the skill was tracked at local HEAD and is gone from disk — a
   // deletion the view labels `deleted locally` (#575).
   deletion: boolean;
+  // True when origin/HEAD's content already differs from local HEAD — a
+  // teammate's merged change. Promoting still replaces it; this is what
+  // makes that visible before the press (#579).
+  concurrentChange: boolean;
 };
 
 export type HarnessState = {
@@ -448,7 +453,14 @@ const movementsFromTrees = (trees: HarnessSkillTrees): HarnessMovement[] => {
     const state = classifyMovement(hashes);
     return state === null
       ? []
-      : [{ skill, state, deletion: isLocalDeletion(hashes) }];
+      : [
+          {
+            skill,
+            state,
+            deletion: isLocalDeletion(hashes),
+            concurrentChange: isConcurrentlyChanged(hashes),
+          },
+        ];
   });
 };
 

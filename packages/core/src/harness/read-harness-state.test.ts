@@ -407,6 +407,57 @@ describe("ReadHarnessState movements", () => {
       state: { movements: [], releaseState: "unknown" },
     });
   });
+
+  it("flags a local edit whose remote content already moved on as a concurrent change", async () => {
+    // A teammate pushed straight to origin/HEAD while this clone edited the
+    // same skill: both differ from local HEAD, and promoting still replaces
+    // whatever the remote holds (#579).
+    const read = buildRead({
+      movementTrees: {
+        remote: { tdd: "theirs" },
+        promote: {},
+        local: { tdd: "same" },
+        working: { tdd: "mine" },
+      },
+    });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: {
+        movements: [
+          {
+            skill: "tdd",
+            state: "pending-promotion",
+            concurrentChange: true,
+          },
+        ],
+      },
+    });
+  });
+
+  it("leaves a plain local edit with no concurrent change", async () => {
+    const read = buildRead({
+      movementTrees: {
+        remote: { tdd: "same" },
+        promote: {},
+        local: { tdd: "same" },
+        working: { tdd: "edited" },
+      },
+    });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: {
+        movements: [
+          {
+            skill: "tdd",
+            state: "pending-promotion",
+            concurrentChange: false,
+          },
+        ],
+      },
+    });
+  });
 });
 
 describe("ReadHarnessState refresh", () => {

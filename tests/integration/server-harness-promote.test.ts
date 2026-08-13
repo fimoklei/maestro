@@ -180,7 +180,12 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       await app.request("/api/harness/refresh", { method: "POST" })
     ).json()) as HarnessState;
     expect(promoted.movements).toEqual([
-      { skill: "tdd", state: "pending-review", deletion: false },
+      {
+        skill: "tdd",
+        state: "pending-review",
+        deletion: false,
+        concurrentChange: false,
+      },
     ]);
 
     // Merged the way a reviewer would, in the fixture's own remote: the row is
@@ -215,7 +220,12 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       await app.request("/api/harness/refresh", { method: "POST" })
     ).json()) as HarnessState;
     expect(state.movements).toEqual([
-      { skill: "tdd", state: "pending-review", deletion: false },
+      {
+        skill: "tdd",
+        state: "pending-review",
+        deletion: false,
+        concurrentChange: false,
+      },
     ]);
   });
 
@@ -265,6 +275,56 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     });
     expect(body).not.toContain(root);
     expect(body).not.toContain("git");
+  });
+
+  it("flags a skill a teammate already changed on GitHub before it is promoted", async () => {
+    // The teammate never touches a promote branch — a direct push to the
+    // default branch is enough to make replacing it visible (#579).
+    const other = join(base, "other");
+    await run("git", ["clone", remote, other]);
+    await git(other, "config", "user.email", "mate@example.com");
+    await git(other, "config", "user.name", "Mate");
+    await writeFile(
+      join(other, ".apm", "skills", "tdd", "SKILL.md"),
+      "---\ndescription: sharpened by a teammate\n---\n",
+      "utf8",
+    );
+    await git(other, "add", ".");
+    await git(other, "commit", "-m", "team change");
+    await git(other, "push", "origin", "HEAD:main");
+    await writeSkill("tdd", "edited on disk");
+    const app = makeApp(root);
+
+    const state = (await (
+      await app.request("/api/harness/refresh", { method: "POST" })
+    ).json()) as HarnessState;
+
+    expect(state.movements).toEqual([
+      {
+        skill: "tdd",
+        state: "pending-promotion",
+        deletion: false,
+        concurrentChange: true,
+      },
+    ]);
+  });
+
+  it("shows no concurrent-change warning when nobody else touched the skill", async () => {
+    await writeSkill("tdd", "edited on disk");
+    const app = makeApp(root);
+
+    const state = (await (
+      await app.request("/api/harness/refresh", { method: "POST" })
+    ).json()) as HarnessState;
+
+    expect(state.movements).toEqual([
+      {
+        skill: "tdd",
+        state: "pending-promotion",
+        deletion: false,
+        concurrentChange: false,
+      },
+    ]);
   });
 
   it("closes promote while the remote's answer is unknown", async () => {

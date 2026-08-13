@@ -23,8 +23,18 @@ type Story = StoryObj<typeof meta>;
 export const PendingReview: Story = {
   args: {
     movements: [
-      { skill: "code-review", state: "pending-review", deletion: false },
-      { skill: "test-helper", state: "pending-review", deletion: false },
+      {
+        skill: "code-review",
+        state: "pending-review",
+        deletion: false,
+        concurrentChange: false,
+      },
+      {
+        skill: "test-helper",
+        state: "pending-review",
+        deletion: false,
+        concurrentChange: false,
+      },
     ],
   },
 };
@@ -32,8 +42,18 @@ export const PendingReview: Story = {
 export const PendingPromotion: Story = {
   args: {
     movements: [
-      { skill: "lint-rules", state: "pending-promotion", deletion: false },
-      { skill: "tdd", state: "pending-promotion", deletion: true },
+      {
+        skill: "lint-rules",
+        state: "pending-promotion",
+        deletion: false,
+        concurrentChange: false,
+      },
+      {
+        skill: "tdd",
+        state: "pending-promotion",
+        deletion: true,
+        concurrentChange: false,
+      },
     ],
   },
 };
@@ -53,8 +73,34 @@ const promotable = {
 export const Promotable: Story = {
   args: {
     movements: [
-      { skill: "lint-rules", state: "pending-promotion", deletion: false },
-      { skill: "tdd", state: "pending-promotion", deletion: true },
+      {
+        skill: "lint-rules",
+        state: "pending-promotion",
+        deletion: false,
+        concurrentChange: false,
+      },
+      {
+        skill: "tdd",
+        state: "pending-promotion",
+        deletion: true,
+        concurrentChange: false,
+      },
+    ],
+    promote: promotable,
+  },
+};
+
+// A teammate already changed this skill on GitHub, past local HEAD.
+// Advisory, not a gate: the press stays there beside it (#579).
+export const ConcurrentChange: Story = {
+  args: {
+    movements: [
+      {
+        skill: "lint-rules",
+        state: "pending-promotion",
+        deletion: false,
+        concurrentChange: true,
+      },
     ],
     promote: promotable,
   },
@@ -63,8 +109,18 @@ export const Promotable: Story = {
 export const PromoteInFlight: Story = {
   args: {
     movements: [
-      { skill: "lint-rules", state: "pending-promotion", deletion: false },
-      { skill: "code-review", state: "pending-promotion", deletion: false },
+      {
+        skill: "lint-rules",
+        state: "pending-promotion",
+        deletion: false,
+        concurrentChange: false,
+      },
+      {
+        skill: "code-review",
+        state: "pending-promotion",
+        deletion: false,
+        concurrentChange: false,
+      },
     ],
     promote: { ...promotable, pending: "lint-rules" },
   },
@@ -73,7 +129,12 @@ export const PromoteInFlight: Story = {
 export const Promoted: Story = {
   args: {
     movements: [
-      { skill: "lint-rules", state: "pending-review", deletion: false },
+      {
+        skill: "lint-rules",
+        state: "pending-review",
+        deletion: false,
+        concurrentChange: false,
+      },
     ],
     promote: {
       ...promotable,
@@ -88,7 +149,12 @@ export const Promoted: Story = {
 export const PromoteRefused: Story = {
   args: {
     movements: [
-      { skill: "lint-rules", state: "pending-promotion", deletion: false },
+      {
+        skill: "lint-rules",
+        state: "pending-promotion",
+        deletion: false,
+        concurrentChange: false,
+      },
     ],
     promote: {
       ...promotable,
@@ -105,7 +171,12 @@ export const PromoteRefused: Story = {
 export const PromoteClosed: Story = {
   args: {
     movements: [
-      { skill: "lint-rules", state: "pending-promotion", deletion: false },
+      {
+        skill: "lint-rules",
+        state: "pending-promotion",
+        deletion: false,
+        concurrentChange: false,
+      },
     ],
     promote: { ...promotable, enabled: false },
   },
@@ -120,6 +191,7 @@ export const LongNameDeletion: Story = {
         skill: "a-very-long-unbroken-skill-name-that-would-overflow-the-cell",
         state: "pending-promotion",
         deletion: true,
+        concurrentChange: false,
       },
     ],
   },

@@ -86,6 +86,13 @@ export function MovementTable({
                     {promote.failed.message}
                   </p>
                 ) : null}
+                {promotable(movement) && movement.concurrentChange ? (
+                  // Advisory, not a gate: review on GitHub is the merge
+                  // safety net, so the press stays available beside it (#579).
+                  <p role="status" className="mt-1 text-amber-ink text-tag">
+                    Changed by a teammate. Promoting replaces their version.
+                  </p>
+                ) : null}
               </TableCell>
               {actions && promote ? (
                 <TableCell>{promoteCell(movement, promote)}</TableCell>

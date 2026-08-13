@@ -46,3 +46,9 @@ export const classifyMovement = ({
 // directory is this plus a separate addition, each read on its own (#575).
 export const isLocalDeletion = ({ local, working }: SkillTreeHashes): boolean =>
   local !== null && working === null;
+
+// origin/HEAD moved past what local HEAD last saw. Never the promote branch
+// too — classifyMovement already reads an unmerged branch as pending-review,
+// so comparing it here would relabel the author's own review as a teammate's.
+export const isConcurrentlyChanged = ({ remote, local }: SkillTreeHashes) =>
+  remote !== local;

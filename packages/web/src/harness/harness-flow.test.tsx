@@ -829,16 +829,36 @@ describe("Harness home base", () => {
       lastFetchedAt: "2026-08-03T11:56:00.000Z",
     },
     movements: [
-      { skill: "lint-rules", state: "pending-promotion", deletion: false },
-      { skill: "code-review", state: "pending-promotion", deletion: false },
+      {
+        skill: "lint-rules",
+        state: "pending-promotion",
+        deletion: false,
+        concurrentChange: false,
+      },
+      {
+        skill: "code-review",
+        state: "pending-promotion",
+        deletion: false,
+        concurrentChange: false,
+      },
     ],
   };
 
   const REVIEWED: HarnessState = {
     ...ON_DISK,
     movements: [
-      { skill: "lint-rules", state: "pending-review", deletion: false },
-      { skill: "code-review", state: "pending-promotion", deletion: false },
+      {
+        skill: "lint-rules",
+        state: "pending-review",
+        deletion: false,
+        concurrentChange: false,
+      },
+      {
+        skill: "code-review",
+        state: "pending-promotion",
+        deletion: false,
+        concurrentChange: false,
+      },
     ],
   };
 
@@ -863,6 +883,44 @@ describe("Harness home base", () => {
       promotions,
     });
     renderHarness();
+
+    await promoteRow("lint-rules");
+
+    await waitFor(() => expect(promotions).toEqual([{ name: "lint-rules" }]));
+  });
+
+  it("warns that a teammate already changed the skill, and still lets it be promoted", async () => {
+    // #579: the signal is content, never a block — review on GitHub remains
+    // the merge safety net, so Promote stays pressable beside the warning.
+    const promotions: Record<string, unknown>[] = [];
+    stubHarnessServer({
+      read: {
+        body: {
+          ...ON_DISK,
+          movements: [
+            {
+              skill: "lint-rules",
+              state: "pending-promotion",
+              deletion: false,
+              concurrentChange: true,
+            },
+            ON_DISK.movements[1],
+          ],
+        },
+      },
+      promote: { body: PUSHED },
+      promotions,
+    });
+    renderHarness();
+
+    const warned = (await screen.findByText("lint-rules")).closest(
+      "tr",
+    ) as HTMLElement;
+    expect(within(warned).getByText(/replaces/i)).toBeInTheDocument();
+    const untouched = screen
+      .getByText("code-review")
+      .closest("tr") as HTMLElement;
+    expect(within(untouched).queryByText(/replaces/i)).not.toBeInTheDocument();
 
     await promoteRow("lint-rules");
 
@@ -960,8 +1018,18 @@ describe("Harness home base", () => {
         body: {
           ...ON_DISK,
           movements: [
-            { skill: "lint-rules", state: "pending-review", deletion: false },
-            { skill: "old-skill", state: "pending-promotion", deletion: true },
+            {
+              skill: "lint-rules",
+              state: "pending-review",
+              deletion: false,
+              concurrentChange: false,
+            },
+            {
+              skill: "old-skill",
+              state: "pending-promotion",
+              deletion: true,
+              concurrentChange: false,
+            },
           ],
         },
       },
