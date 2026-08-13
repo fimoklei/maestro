@@ -56,6 +56,10 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
     root = join(base, "clone");
     freshness = { outcome: null, lastFetchedAt: null };
     await run("git", ["init", "--bare", "-b", "main", remote]);
+    // The remote commits too (a receive-pack hook below), and a bare repo on a
+    // CI runner has no identity to fall back on — git refuses to guess one.
+    await git(remote, "config", "user.email", "remote@example.com");
+    await git(remote, "config", "user.name", "Remote");
     await run("git", ["clone", remote, root]);
     await git(root, "config", "user.email", "test@example.com");
     await git(root, "config", "user.name", "Test");
