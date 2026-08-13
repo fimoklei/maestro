@@ -32,7 +32,7 @@ function buildPromote(overrides?: {
   onPush?: (root: string, name: string, base: string) => void;
   onFreshnessRecord?: (root: string, freshness: HarnessFreshness) => void;
   trees?: Record<string, HarnessSkillTree[]>;
-  localIncludesRemote?: boolean;
+  mergeBase?: string | null;
 }) {
   return new PromoteSkill({
     resolveRoot: async () =>
@@ -46,7 +46,10 @@ function buildPromote(overrides?: {
       readFacts: async () => ({ ...FACTS, ...overrides?.facts }),
       readSkillTrees: async (_root: string, ref: string) =>
         overrides?.trees?.[ref] ?? [],
-      localIncludesRemote: async () => overrides?.localIncludesRemote ?? false,
+      mergeBaseCommit: async () =>
+        overrides && "mergeBase" in overrides
+          ? (overrides.mergeBase ?? null)
+          : "base",
       readSkillAuthors: async () => ({}),
       readMovementTrees: async () => ({
         remote: {},
@@ -226,10 +229,39 @@ describe("PromoteSkill", () => {
     const pushed: string[] = [];
     const promote = buildPromote({
       onPush: (root, name, base) => pushed.push(root, name, base),
-      localIncludesRemote: true,
       trees: {
         head: [{ name: "tdd", treeHash: "old" }],
         HEAD: [{ name: "tdd", treeHash: "mine" }],
+        base: [{ name: "tdd", treeHash: "old" }],
+      },
+    });
+
+    await expect(promote.execute("tdd", AT)).resolves.toMatchObject({
+      ok: true,
+    });
+    expect(pushed).toEqual(["/harness", "tdd", "head"]);
+  });
+
+  it("never lets a teammate's change to a different skill block this promotion", async () => {
+    // origin/HEAD diverged from local HEAD, but only `jobs` moved there since
+    // the fork — `tdd`'s tree at the fork point still matches origin/HEAD's,
+    // so this skill was never a teammate's doing (#579).
+    const pushed: string[] = [];
+    const promote = buildPromote({
+      onPush: (root, name, base) => pushed.push(root, name, base),
+      trees: {
+        head: [
+          { name: "tdd", treeHash: "same" },
+          { name: "jobs", treeHash: "theirs" },
+        ],
+        HEAD: [
+          { name: "tdd", treeHash: "mine" },
+          { name: "jobs", treeHash: "old" },
+        ],
+        base: [
+          { name: "tdd", treeHash: "same" },
+          { name: "jobs", treeHash: "old" },
+        ],
       },
     });
 

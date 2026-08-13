@@ -225,19 +225,38 @@ describe("isConcurrentlyChanged", () => {
 
   it("never reads the author's own unpushed commit as a teammate's change", () => {
     // remote differs from local HEAD here only because local is ahead, not
-    // behind — local HEAD already carries everything origin/HEAD has, so the
-    // difference is this author's own unpushed commit (#579's false positive).
+    // behind — origin/HEAD never moved this skill since the fork point, so
+    // the difference is this author's own unpushed commit (#579's false
+    // positive).
     expect(
       isConcurrentlyChanged(
         { remote: "old", promote: null, local: "mine", working: "mine" },
-        true,
+        "old",
       ),
     ).toBe(false);
   });
 
-  it("still reads a real divergence as a concurrent change when local does not include remote", () => {
-    expect(isConcurrentlyChanged({ ...SETTLED, remote: "newer" }, false)).toBe(
+  it("still reads a real divergence as a concurrent change when the merge base does not match remote", () => {
+    expect(isConcurrentlyChanged({ ...SETTLED, remote: "newer" }, "same")).toBe(
       true,
     );
+  });
+
+  it("never lets an unrelated commit on origin/HEAD block a different skill's promotion", () => {
+    // The two branches diverged, but origin/HEAD's tree for this skill is
+    // exactly what it was at the fork point — a teammate changed some other
+    // skill, not this one (#579's other false positive).
+    expect(
+      isConcurrentlyChanged(
+        { remote: "same", promote: null, local: "mine", working: "mine" },
+        "same",
+      ),
+    ).toBe(false);
+  });
+
+  it("falls back to the plain comparison when the merge base could not be read", () => {
+    expect(
+      isConcurrentlyChanged({ ...SETTLED, remote: "newer" }, undefined),
+    ).toBe(true);
   });
 });

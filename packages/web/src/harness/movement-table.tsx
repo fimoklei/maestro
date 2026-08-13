@@ -87,10 +87,13 @@ export function MovementTable({
                   </p>
                 ) : null}
                 {promotable(movement) && movement.concurrentChange ? (
-                  // Advisory, not a gate: review on GitHub is the merge
-                  // safety net, so the press stays available beside it (#579).
+                  // The press stays available — pressing it re-checks this
+                  // fact against the remote and, finding it still true,
+                  // refuses with the same explanation on this row rather
+                  // than silently replacing the teammate's version (#579).
                   <p role="status" className="mt-1 text-amber-ink text-tag">
-                    Changed by a teammate. Promoting replaces their version.
+                    Changed by a teammate. Promoting will be refused until you
+                    pull their change.
                   </p>
                 ) : null}
               </TableCell>

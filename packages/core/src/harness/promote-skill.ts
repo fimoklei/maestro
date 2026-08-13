@@ -92,11 +92,16 @@ export class PromoteSkill {
     // The same fact the cockpit warns with, recomputed against what this
     // fetch just brought back rather than the read that rendered the warning
     // — a teammate's push landing in between must still be caught here, or
-    // promoting silently overwrites it (#579).
-    const [remoteTrees, localTrees, localIncludesRemote] = await Promise.all([
+    // promoting silently overwrites it. Scoped to this one skill via the
+    // merge base, so an unrelated commit elsewhere on origin/HEAD never
+    // blocks this promotion (#579).
+    const mergeBase = await this.deps.git.mergeBaseCommit(root);
+    const [remoteTrees, localTrees, mergeBaseTrees] = await Promise.all([
       this.deps.git.readSkillTrees(root, head),
       this.deps.git.readSkillTrees(root, "HEAD"),
-      this.deps.git.localIncludesRemote(root),
+      mergeBase === null
+        ? Promise.resolve(null)
+        : this.deps.git.readSkillTrees(root, mergeBase),
     ]);
     if (remoteTrees === null || localTrees === null) {
       return { ok: false, error: "no-answer" };
@@ -109,12 +114,22 @@ export class PromoteSkill {
         local: localTrees.find((tree) => tree.name === name)?.treeHash ?? null,
         working: null,
       },
-      localIncludesRemote,
+      mergeBaseTrees === null
+        ? undefined
+        : (mergeBaseTrees.find((tree) => tree.name === name)?.treeHash ?? null),
     );
     if (concurrentChange) {
       return { ok: false, error: "concurrent-change" };
     }
 
+    // ponytail: this check and the push below are not atomic — a teammate's
+    // push landing in the gap (local object work only, no further network
+    // call until the push itself) still rides through. Closing it needs a
+    // lease on origin/HEAD's tip, and that lease is whole-repo where this
+    // check is one skill: it would refuse pushes over an unrelated commit,
+    // trading this bug for the one just fixed above. Detects the race,
+    // does not prevent it, the same trade-off `source-changed` already
+    // accepts for the working tree a few lines below (#579).
     const push = await this.deps.git.pushSkillPromotion(root, name, head);
     switch (push) {
       case "pushed":

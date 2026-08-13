@@ -51,12 +51,18 @@ export const isLocalDeletion = ({ local, working }: SkillTreeHashes): boolean =>
 // too — classifyMovement already reads an unmerged branch as pending-review,
 // so comparing it here would relabel the author's own review as a teammate's.
 //
-// A tree-hash difference alone cannot tell "remote moved" from "local moved
-// ahead of remote" (ADR-0021 — no ancestry from hashes). `localIncludesRemote`
-// carries that one commit-level fact from outside the port's tree reads: when
-// local HEAD already contains everything origin/HEAD has, any difference is
-// this author's own unpushed commit, never a teammate's (#579).
+// A tree-hash difference alone cannot tell "remote moved this skill" from
+// "local moved ahead of remote" (ADR-0021 — no ancestry from hashes).
+// `atMergeBase` is this skill's tree at the merge base of local HEAD and
+// origin/HEAD — the fork point both sides last agreed on. Remote matching it
+// means origin/HEAD never touched this skill since the fork, so any
+// difference from local is this author's own commit, never a teammate's;
+// this is scoped to the one skill, unlike a whole-repo ancestry check, so an
+// unrelated commit elsewhere on origin/HEAD never blocks this skill (#579).
+// `undefined` (the merge base itself unreadable) falls back to the plain
+// comparison — the safer side for a warning that guards against overwriting
+// someone else's work.
 export const isConcurrentlyChanged = (
   { remote, local }: SkillTreeHashes,
-  localIncludesRemote = false,
-) => remote !== local && !localIncludesRemote;
+  atMergeBase?: string | null,
+) => remote !== local && (atMergeBase === undefined || remote !== atMergeBase);

@@ -916,11 +916,13 @@ describe("Harness home base", () => {
     const warned = (await screen.findByText("lint-rules")).closest(
       "tr",
     ) as HTMLElement;
-    expect(within(warned).getByText(/replaces/i)).toBeInTheDocument();
+    expect(within(warned).getByText(/pull their change/i)).toBeInTheDocument();
     const untouched = screen
       .getByText("code-review")
       .closest("tr") as HTMLElement;
-    expect(within(untouched).queryByText(/replaces/i)).not.toBeInTheDocument();
+    expect(
+      within(untouched).queryByText(/pull their change/i),
+    ).not.toBeInTheDocument();
 
     await promoteRow("lint-rules");
 

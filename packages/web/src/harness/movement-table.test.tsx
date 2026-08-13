@@ -262,7 +262,7 @@ describe("MovementTable", () => {
     expect(screen.getByRole("button", { name: "promote" })).toBeEnabled();
   });
 
-  it("warns that promoting replaces a teammate's change, and keeps the press available", () => {
+  it("warns that promoting a teammate's change will be refused, and keeps the press available", () => {
     render(
       <MovementTable
         movements={[
@@ -277,7 +277,7 @@ describe("MovementTable", () => {
       />,
     );
 
-    expect(screen.getByText(/replaces/i)).toBeInTheDocument();
+    expect(screen.getByText(/pull their change/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "promote" })).toBeEnabled();
   });
 
@@ -296,7 +296,7 @@ describe("MovementTable", () => {
       />,
     );
 
-    expect(screen.queryByText(/replaces/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/pull their change/i)).not.toBeInTheDocument();
   });
 
   it("never warns on a deletion, which has no press this table offers", () => {
@@ -314,6 +314,6 @@ describe("MovementTable", () => {
       />,
     );
 
-    expect(screen.queryByText(/replaces/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/pull their change/i)).not.toBeInTheDocument();
   });
 });

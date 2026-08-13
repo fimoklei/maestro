@@ -57,7 +57,7 @@ function buildRead(overrides?: {
           names.map((name) => [name, overrides?.authors?.[name] ?? null]),
         ),
       readMovementTrees: async () => SETTLED_TREES,
-      localIncludesRemote: async () => false,
+      mergeBaseCommit: async () => null,
       readSkillManifests: async (
         _root: string,
         _ref: string,

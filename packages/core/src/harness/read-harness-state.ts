@@ -96,9 +96,10 @@ export interface HarnessGitPort {
   // The four places a skill's content can sit locally, for the movement
   // tables. Null where a ref could not be read, on the same rule as above.
   readMovementTrees(root: string): Promise<HarnessSkillTrees | null>;
-  // Whether local HEAD's history already contains origin/HEAD, the one
-  // commit-level fact a tree-hash comparison alone cannot give (#579).
-  localIncludesRemote(root: string): Promise<boolean>;
+  // The fork point local HEAD and origin/HEAD last agreed on, the one
+  // commit-level fact a tree-hash comparison alone cannot give (#579). Null
+  // when it could not be read.
+  mergeBaseCommit(root: string): Promise<string | null>;
   // The raw SKILL.md text of each named skill at `ref`, for the release plan's
   // structural findings. Null where the file is absent — never an empty string,
   // which is a present-but-blank manifest.
@@ -377,7 +378,7 @@ export class ReadHarnessState {
     // Same rule, one ref set further: an unreadable ref leaves the local
     // tables unknown rather than reading as nothing waiting.
     const trees = await this.deps.git.readMovementTrees(root);
-    const localIncludesRemote = await this.deps.git.localIncludesRemote(root);
+    const atMergeBase = await this.skillTreesAtMergeBase(root);
     return {
       ok: true,
       state: {
@@ -390,10 +391,27 @@ export class ReadHarnessState {
             : "unknown",
         pendingRelease: movements ?? [],
         freshness,
-        movements:
-          trees === null ? [] : movementsFromTrees(trees, localIncludesRemote),
+        movements: trees === null ? [] : movementsFromTrees(trees, atMergeBase),
       },
     };
+  }
+
+  // Each skill's tree at the fork point local HEAD and origin/HEAD last
+  // agreed on, so `isConcurrentlyChanged` can tell a teammate's change to
+  // this one skill apart from the author's own unpushed commit (#579). `null`
+  // — the merge base or its trees could not be read — falls back to the
+  // plain remote-vs-local comparison for every skill.
+  private async skillTreesAtMergeBase(
+    root: string,
+  ): Promise<Record<string, string> | null> {
+    const mergeBase = await this.deps.git.mergeBaseCommit(root);
+    if (mergeBase === null) {
+      return null;
+    }
+    const trees = await this.deps.git.readSkillTrees(root, mergeBase);
+    return trees === null
+      ? null
+      : Object.fromEntries(trees.map((tree) => [tree.name, tree.treeHash]));
   }
 
   // Both refs are commits, so a tag pointing outside the default branch's
@@ -445,7 +463,7 @@ export class ReadHarnessState {
 // do not reshuffle between reads.
 const movementsFromTrees = (
   trees: HarnessSkillTrees,
-  localIncludesRemote: boolean,
+  atMergeBase: Record<string, string> | null,
 ): HarnessMovement[] => {
   const names = new Set(Object.values(trees).flatMap(Object.keys));
   return [...names].sort().flatMap((skill) => {
@@ -468,7 +486,7 @@ const movementsFromTrees = (
             deletion: isLocalDeletion(hashes),
             concurrentChange: isConcurrentlyChanged(
               hashes,
-              localIncludesRemote,
+              atMergeBase === null ? undefined : (atMergeBase[skill] ?? null),
             ),
           },
         ];

@@ -11,7 +11,7 @@ export const unreachableHarnessGit = () => ({
   readSkillTrees: unreachable,
   readSkillAuthors: unreachable,
   readMovementTrees: unreachable,
-  localIncludesRemote: unreachable,
+  mergeBaseCommit: unreachable,
   readSkillManifests: unreachable,
   publishTag: unreachable,
   pushSkillPromotion: unreachable,
