@@ -114,8 +114,8 @@ export interface HarnessGitPort {
   ): Promise<PublishTagOutcome>;
   // Builds one commit — `baseCommit`'s tree with exactly `.apm/skills/<name>`
   // replaced by the working harness's copy — and pushes it to `maestro/<name>`,
-  // creating that branch when it does not exist. Never checks out, stages in
-  // the real index, moves HEAD, or force-pushes (#574).
+  // creating or fast-forwarding that branch. Never checks out, stages in the
+  // real index, moves HEAD, or force-pushes (#574, #578).
   pushSkillPromotion(
     root: string,
     name: string,

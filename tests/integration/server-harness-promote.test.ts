@@ -199,10 +199,9 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
   });
 
   it("never forces the promote branch, whatever a second press answers", async () => {
-    // A reply the browser never saw: the author presses again. Whether the
-    // second commit is byte-identical to the first — same tree, same parent,
-    // same second — or a new object the remote refuses as no descendant, the
-    // branch is never rewritten. A cumulative branch is #578's job.
+    // A reply the browser never saw: the author presses again with nothing
+    // changed. The branch already carries this content, so the second press
+    // publishes no new commit and never rewrites the branch (#578).
     await writeSkill("tdd", "edited on disk");
     const app = makeApp(root);
     await promote(app, { name: "tdd" });
@@ -242,20 +241,14 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     expect(await response.json()).toMatchObject({ error: "not-configured" });
   });
 
-  it("states a refused push in Maestro's words, leaking no git output or path", async () => {
-    // A branch carrying work this commit does not descend from: the remote
-    // refuses, and nothing is forced over it.
-    const other = join(base, "other");
-    await run("git", ["clone", remote, other]);
-    await git(other, "config", "user.email", "mate@example.com");
-    await git(other, "config", "user.name", "Mate");
-    await writeFile(join(other, "theirs.md"), "theirs\n", "utf8");
-    await git(other, "add", ".");
-    await git(other, "commit", "-m", "their promotion");
-    await git(other, "push", "origin", "HEAD:refs/heads/maestro/tdd");
-    await writeSkill("tdd", "edited on disk");
+  it("states a build failure in Maestro's words, leaking no git output or path", async () => {
+    // An ignore rule over the skill's own directory: `git add` stages
+    // nothing, so there is no tree to build the commit from. Whatever git
+    // says about it is git's to keep — the caller gets a class.
+    await writeFile(join(root, ".gitignore"), ".apm/skills/draft/\n", "utf8");
+    await writeSkill("draft", "ignored on disk");
 
-    const response = await promote(makeApp(root), { name: "tdd" });
+    const response = await promote(makeApp(root), { name: "draft" });
     const body = await response.text();
 
     expect(response.status).toBe(502);
@@ -265,6 +258,106 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     });
     expect(body).not.toContain(root);
     expect(body).not.toContain("git");
+  });
+
+  it("appends a second promotion onto the existing branch", async () => {
+    await writeSkill("tdd", "first edit");
+    const app = makeApp(root);
+    await promote(app, { name: "tdd" });
+    const first = await promoted("rev-parse");
+    await writeSkill("tdd", "second edit");
+
+    const response = await promote(app, { name: "tdd" });
+
+    expect(response.status).toBe(200);
+    const second = await promoted("rev-parse");
+    expect(second).not.toBe(first);
+    expect(
+      (
+        await git(remote, "rev-parse", "refs/heads/maestro/tdd~1")
+      ).stdout.trim(),
+    ).toBe(first);
+    expect(
+      (
+        await git(remote, "rev-list", "--count", "main..refs/heads/maestro/tdd")
+      ).stdout.trim(),
+    ).toBe("2");
+  });
+
+  it("reports success when a promote's reply was lost after the remote already took it", async () => {
+    await writeSkill("tdd", "edited on disk");
+    const app = makeApp(root);
+    await promote(app, { name: "tdd" });
+
+    // A push that errors out after the remote already applied it — a timeout
+    // on the way back, a receive-pack that fails at the end (#577).
+    const script = join(base, "receive-pack.sh");
+    await writeFile(script, '#!/bin/sh\ngit-receive-pack "$@"\nexit 1\n', {
+      encoding: "utf8",
+      mode: 0o755,
+    });
+    await git(root, "config", "remote.origin.receivepack", script);
+    await writeSkill("tdd", "second edit");
+
+    const response = await promote(app, { name: "tdd" });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      branch: "maestro/tdd",
+      pullRequestUrl:
+        "https://github.com/fimoklei/agent-harness/compare/main...maestro/tdd?expand=1",
+    });
+    expect(
+      (
+        await git(remote, "rev-list", "--count", "main..refs/heads/maestro/tdd")
+      ).stdout.trim(),
+    ).toBe("2");
+  });
+
+  it("leaves the repository untouched when a promote push is rejected, and a retry appends cleanly", async () => {
+    await writeSkill("tdd", "first edit");
+    const app = makeApp(root);
+    await promote(app, { name: "tdd" });
+    const first = await promoted("rev-parse");
+
+    // A hook that refuses every push, so the rejection is deterministic.
+    await writeFile(
+      join(remote, "hooks", "pre-receive"),
+      "#!/bin/sh\nexit 1\n",
+      { mode: 0o755 },
+    );
+    await writeFile(join(root, "staged.md"), "staged\n", "utf8");
+    await git(root, "add", "staged.md");
+    const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
+    const status = (await git(root, "status", "--porcelain")).stdout;
+    const branches = (await git(root, "branch", "--list")).stdout;
+    await writeSkill("tdd", "second edit");
+
+    const response = await promote(app, { name: "tdd" });
+    const body = await response.text();
+
+    expect(response.status).toBe(502);
+    expect(JSON.parse(body)).toEqual({
+      error: "promote-failed",
+      message: expect.any(String),
+    });
+    expect(body).not.toContain(root);
+    expect(body).not.toContain("git");
+    expect(await promoted("rev-parse")).toBe(first);
+    expect((await git(root, "rev-parse", "HEAD")).stdout.trim()).toBe(head);
+    expect((await git(root, "status", "--porcelain")).stdout).toBe(status);
+    expect((await git(root, "branch", "--list")).stdout).toBe(branches);
+
+    // Never automatic: this is a fresh press, made by the test.
+    await rm(join(remote, "hooks", "pre-receive"));
+    const retry = await promote(app, { name: "tdd" });
+
+    expect(retry.status).toBe(200);
+    expect(
+      (
+        await git(remote, "rev-list", "--count", "main..refs/heads/maestro/tdd")
+      ).stdout.trim(),
+    ).toBe("2");
   });
 
   it("closes promote while the remote's answer is unknown", async () => {
