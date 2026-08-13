@@ -681,7 +681,7 @@ const promoteErrorResponses: Record<
   "concurrent-change": {
     status: 409,
     message:
-      "A teammate's change landed on this skill since you last refreshed. Nothing was pushed — refresh the Harness and check before promoting again.",
+      "A teammate's change landed on this skill. Nothing was pushed — pull it into the harness clone, then try promoting again.",
   },
   "promote-failed": {
     status: 502,

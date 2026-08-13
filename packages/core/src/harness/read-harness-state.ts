@@ -96,10 +96,12 @@ export interface HarnessGitPort {
   // The four places a skill's content can sit locally, for the movement
   // tables. Null where a ref could not be read, on the same rule as above.
   readMovementTrees(root: string): Promise<HarnessSkillTrees | null>;
-  // The fork point local HEAD and origin/HEAD last agreed on, the one
-  // commit-level fact a tree-hash comparison alone cannot give (#579). Null
-  // when it could not be read.
-  mergeBaseCommit(root: string): Promise<string | null>;
+  // The fork point local HEAD and `remoteCommit` last agreed on, the one
+  // commit-level fact a tree-hash comparison alone cannot give (#579). Takes
+  // the exact commit rather than resolving `origin/HEAD` itself, so it never
+  // compares against a remote snapshot newer than the caller's own. Null when
+  // it could not be read.
+  mergeBaseCommit(root: string, remoteCommit: string): Promise<string | null>;
   // The raw SKILL.md text of each named skill at `ref`, for the release plan's
   // structural findings. Null where the file is absent — never an empty string,
   // which is a present-but-blank manifest.
@@ -378,7 +380,8 @@ export class ReadHarnessState {
     // Same rule, one ref set further: an unreadable ref leaves the local
     // tables unknown rather than reading as nothing waiting.
     const trees = await this.deps.git.readMovementTrees(root);
-    const atMergeBase = await this.skillTreesAtMergeBase(root);
+    const atMergeBase =
+      head === null ? null : await this.skillTreesAtMergeBase(root, head);
     return {
       ok: true,
       state: {
@@ -396,15 +399,18 @@ export class ReadHarnessState {
     };
   }
 
-  // Each skill's tree at the fork point local HEAD and origin/HEAD last
-  // agreed on, so `isConcurrentlyChanged` can tell a teammate's change to
-  // this one skill apart from the author's own unpushed commit (#579). `null`
-  // — the merge base or its trees could not be read — falls back to the
-  // plain remote-vs-local comparison for every skill.
+  // Each skill's tree at the fork point local HEAD and `head` last agreed on,
+  // so `isConcurrentlyChanged` can tell a teammate's change to this one skill
+  // apart from the author's own unpushed commit (#579). `head` is the same
+  // commit the rest of this read already settled on, never a fresh resolve of
+  // `origin/HEAD` — that ref can move under a concurrent fetch elsewhere in
+  // the app. `null` — the merge base or its trees could not be read — falls
+  // back to the plain remote-vs-local comparison for every skill.
   private async skillTreesAtMergeBase(
     root: string,
+    head: string,
   ): Promise<Record<string, string> | null> {
-    const mergeBase = await this.deps.git.mergeBaseCommit(root);
+    const mergeBase = await this.deps.git.mergeBaseCommit(root, head);
     if (mergeBase === null) {
       return null;
     }

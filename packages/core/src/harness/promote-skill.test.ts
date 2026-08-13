@@ -33,23 +33,41 @@ function buildPromote(overrides?: {
   onFreshnessRecord?: (root: string, freshness: HarnessFreshness) => void;
   trees?: Record<string, HarnessSkillTree[]>;
   mergeBase?: string | null;
+  onMergeBaseCommit?: (remoteCommit: string) => void;
+  // Facts per call, in order — a teammate's push landing between the two
+  // in-promote checks, in the same shape a real re-fetch would surface.
+  factsPerCall?: Partial<HarnessFacts>[];
+  onFetch?: () => void;
 }) {
+  let factsCall = 0;
   return new PromoteSkill({
     resolveRoot: async () =>
       overrides && "root" in overrides ? overrides.root : "/harness",
     locks: new InFlightLocks(),
     git: {
       fetch: async () => {
+        overrides?.onFetch?.();
         await overrides?.fetchHold;
         return overrides?.fetchOutcome ?? "fetched";
       },
-      readFacts: async () => ({ ...FACTS, ...overrides?.facts }),
+      readFacts: async () => {
+        const perCall = overrides?.factsPerCall;
+        const facts =
+          perCall === undefined
+            ? overrides?.facts
+            : (perCall[Math.min(factsCall, perCall.length - 1)] ??
+              overrides?.facts);
+        factsCall += 1;
+        return { ...FACTS, ...facts };
+      },
       readSkillTrees: async (_root: string, ref: string) =>
         overrides?.trees?.[ref] ?? [],
-      mergeBaseCommit: async () =>
-        overrides && "mergeBase" in overrides
+      mergeBaseCommit: async (_root: string, remoteCommit: string) => {
+        overrides?.onMergeBaseCommit?.(remoteCommit);
+        return overrides && "mergeBase" in overrides
           ? (overrides.mergeBase ?? null)
-          : "base",
+          : "base";
+      },
       readSkillAuthors: async () => ({}),
       readMovementTrees: async () => ({
         remote: {},
@@ -269,6 +287,78 @@ describe("PromoteSkill", () => {
       ok: true,
     });
     expect(pushed).toEqual(["/harness", "tdd", "head"]);
+  });
+
+  it("refetches and rechecks right before the push, catching a teammate's push landing in between", async () => {
+    // The first check finds nothing concurrent, at "head-1". A teammate
+    // pushes before this promotion's own pre-push refetch, moving the
+    // default branch to "head-2" with a new tree for this skill — the
+    // second check must catch it, and the push must never run (#579).
+    let fetches = 0;
+    const pushed: string[] = [];
+    const promote = buildPromote({
+      onFetch: () => {
+        fetches += 1;
+      },
+      onPush: (root, name, base) => pushed.push(root, name, base),
+      factsPerCall: [
+        { defaultBranchCommit: "head-1" },
+        { defaultBranchCommit: "head-2" },
+      ],
+      trees: {
+        "head-1": [{ name: "tdd", treeHash: "same" }],
+        "head-2": [{ name: "tdd", treeHash: "theirs" }],
+        HEAD: [{ name: "tdd", treeHash: "same" }],
+        base: [{ name: "tdd", treeHash: "same" }],
+      },
+    });
+
+    await expect(promote.execute("tdd", AT)).resolves.toEqual({
+      ok: false,
+      error: "concurrent-change",
+    });
+    expect(fetches).toBe(2);
+    expect(pushed).toEqual([]);
+  });
+
+  it("builds the push on the tip its own pre-push refetch found, not the first check's", async () => {
+    const pushed: string[] = [];
+    const promote = buildPromote({
+      onPush: (root, name, base) => pushed.push(root, name, base),
+      factsPerCall: [
+        { defaultBranchCommit: "head-1" },
+        { defaultBranchCommit: "head-2" },
+      ],
+      trees: {
+        "head-1": [{ name: "tdd", treeHash: "same" }],
+        "head-2": [{ name: "tdd", treeHash: "same" }],
+        HEAD: [{ name: "tdd", treeHash: "same" }],
+        base: [{ name: "tdd", treeHash: "same" }],
+      },
+    });
+
+    await expect(promote.execute("tdd", AT)).resolves.toMatchObject({
+      ok: true,
+    });
+    expect(pushed).toEqual(["/harness", "tdd", "head-2"]);
+  });
+
+  it("asks for the merge base against the exact commit each check just read, never a mutable ref", async () => {
+    // Both checks pass a captured commit, one per read of the default
+    // branch — never a shared ref that a concurrent fetch elsewhere could
+    // have re-pointed in between (#579).
+    const remoteCommits: string[] = [];
+    const promote = buildPromote({
+      onMergeBaseCommit: (remoteCommit) => remoteCommits.push(remoteCommit),
+      factsPerCall: [
+        { defaultBranchCommit: "head-1" },
+        { defaultBranchCommit: "head-2" },
+      ],
+    });
+
+    await promote.execute("tdd", AT);
+
+    expect(remoteCommits).toEqual(["head-1", "head-2"]);
   });
 
   it("refuses a second promotion of the same harness while one is in flight", async () => {
