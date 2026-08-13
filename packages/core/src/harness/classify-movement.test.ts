@@ -222,4 +222,22 @@ describe("isConcurrentlyChanged", () => {
       }),
     ).toBe(true);
   });
+
+  it("never reads the author's own unpushed commit as a teammate's change", () => {
+    // remote differs from local HEAD here only because local is ahead, not
+    // behind — local HEAD already carries everything origin/HEAD has, so the
+    // difference is this author's own unpushed commit (#579's false positive).
+    expect(
+      isConcurrentlyChanged(
+        { remote: "old", promote: null, local: "mine", working: "mine" },
+        true,
+      ),
+    ).toBe(false);
+  });
+
+  it("still reads a real divergence as a concurrent change when local does not include remote", () => {
+    expect(isConcurrentlyChanged({ ...SETTLED, remote: "newer" }, false)).toBe(
+      true,
+    );
+  });
 });

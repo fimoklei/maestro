@@ -69,6 +69,7 @@ function buildRead(overrides?: {
   authorsAtRelease?: Record<string, string>;
   // The four local refs behind the movement tables, unrelated to `trees`.
   movementTrees?: Partial<HarnessSkillTrees> | null;
+  localIncludesRemote?: boolean;
 }) {
   const head =
     overrides?.facts?.defaultBranchCommit ?? FACTS.defaultBranchCommit;
@@ -93,6 +94,7 @@ function buildRead(overrides?: {
         overrides?.movementTrees === null
           ? null
           : { ...SETTLED_TREES, ...overrides?.movementTrees },
+      localIncludesRemote: async () => overrides?.localIncludesRemote ?? false,
       readSkillManifests: async (
         _root: string,
         _ref: string,
@@ -458,6 +460,32 @@ describe("ReadHarnessState movements", () => {
       },
     });
   });
+
+  it("never flags the author's own unpushed commit as a teammate's change", async () => {
+    // Local HEAD differs from origin/HEAD only because local is ahead — local
+    // already carries everything origin/HEAD has (#579's false positive).
+    const read = buildRead({
+      localIncludesRemote: true,
+      movementTrees: {
+        remote: { tdd: "old" },
+        promote: {},
+        local: { tdd: "mine-1" },
+        working: { tdd: "mine-2" },
+      },
+    });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: {
+        movements: [
+          {
+            skill: "tdd",
+            concurrentChange: false,
+          },
+        ],
+      },
+    });
+  });
 });
 
 describe("ReadHarnessState refresh", () => {
@@ -539,6 +567,7 @@ describe("ReadHarnessState refresh", () => {
           readFor.push(root);
           return SETTLED_TREES;
         },
+        localIncludesRemote: async () => false,
         readSkillManifests: async () => ({}),
         publishTag: async () => {
           throw new Error("git port's publishTag was reached");

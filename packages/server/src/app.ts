@@ -678,6 +678,11 @@ const promoteErrorResponses: Record<
     message:
       "The skill changed on disk while Maestro was reading it. Nothing was pushed — try again.",
   },
+  "concurrent-change": {
+    status: 409,
+    message:
+      "A teammate's change landed on this skill since you last refreshed. Nothing was pushed — refresh the Harness and check before promoting again.",
+  },
   "promote-failed": {
     status: 502,
     message: "The skill could not be pushed. Check the remote and try again.",

@@ -50,5 +50,13 @@ export const isLocalDeletion = ({ local, working }: SkillTreeHashes): boolean =>
 // origin/HEAD moved past what local HEAD last saw. Never the promote branch
 // too — classifyMovement already reads an unmerged branch as pending-review,
 // so comparing it here would relabel the author's own review as a teammate's.
-export const isConcurrentlyChanged = ({ remote, local }: SkillTreeHashes) =>
-  remote !== local;
+//
+// A tree-hash difference alone cannot tell "remote moved" from "local moved
+// ahead of remote" (ADR-0021 — no ancestry from hashes). `localIncludesRemote`
+// carries that one commit-level fact from outside the port's tree reads: when
+// local HEAD already contains everything origin/HEAD has, any difference is
+// this author's own unpushed commit, never a teammate's (#579).
+export const isConcurrentlyChanged = (
+  { remote, local }: SkillTreeHashes,
+  localIncludesRemote = false,
+) => remote !== local && !localIncludesRemote;

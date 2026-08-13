@@ -327,6 +327,59 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     ]);
   });
 
+  it("refuses to push over a teammate's change its own fetch just found, never silently replacing it", async () => {
+    // The teammate's push lands after this test's setup already fetched once —
+    // exactly the window between the cockpit's last read and the press. Promote
+    // re-fetches on its own, so the refusal must come from that fresh read, not
+    // from a stale warning (#579).
+    const other = join(base, "other");
+    await run("git", ["clone", remote, other]);
+    await git(other, "config", "user.email", "mate@example.com");
+    await git(other, "config", "user.name", "Mate");
+    await writeFile(
+      join(other, ".apm", "skills", "tdd", "SKILL.md"),
+      "---\ndescription: sharpened by a teammate\n---\n",
+      "utf8",
+    );
+    await git(other, "add", ".");
+    await git(other, "commit", "-m", "team change");
+    await git(other, "push", "origin", "HEAD:main");
+    await writeSkill("tdd", "edited on disk");
+
+    const response = await promote(makeApp(root), { name: "tdd" });
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: "concurrent-change",
+      message: expect.stringContaining("teammate"),
+    });
+    expect((await git(remote, "branch", "--list", "maestro/tdd")).stdout).toBe(
+      "",
+    );
+  });
+
+  it("still pushes the author's own unpushed commit, never mistaking it for a teammate's", async () => {
+    await git(root, "config", "user.email", "test@example.com");
+    await git(root, "config", "user.name", "Test");
+    await writeSkill("tdd", "committed locally, not yet pushed");
+    await git(root, "add", ".");
+    await git(root, "commit", "-m", "local-only commit");
+    await writeSkill("tdd", "edited further on disk");
+
+    const response = await promote(makeApp(root), { name: "tdd" });
+
+    expect(response.status).toBe(200);
+    expect(
+      (
+        await git(
+          remote,
+          "show",
+          "refs/heads/maestro/tdd:.apm/skills/tdd/SKILL.md",
+        )
+      ).stdout,
+    ).toContain("edited further on disk");
+  });
+
   it("closes promote while the remote's answer is unknown", async () => {
     // The origin stays a GitHub URL — only what git resolves it to is gone, so
     // this is an unreachable remote, the same rule that closes Release.

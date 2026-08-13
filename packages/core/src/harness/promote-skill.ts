@@ -4,6 +4,7 @@
 // (ADR-0021, security.md).
 import { parseGitOrigin } from "../deploy/git-origin";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
+import { isConcurrentlyChanged } from "./classify-movement";
 import {
   isPromotableSkillName,
   promoteBranch,
@@ -23,6 +24,11 @@ export type PromoteSkillError =
   | "skill-missing"
   | "push-elsewhere"
   | "source-changed"
+  // Origin/HEAD carries a teammate's change to this skill that the fetch just
+  // above brought back — recomputed fresh, never from the state the cockpit
+  // showed before the press, since that can be stale by the time it lands
+  // here (#579).
+  | "concurrent-change"
   | "promote-failed"
   | "promote-in-progress";
 
@@ -81,6 +87,32 @@ export class PromoteSkill {
     const branch = facts.defaultBranch;
     if (outcome !== "fetched" || head === null || branch === null) {
       return { ok: false, error: "no-answer" };
+    }
+
+    // The same fact the cockpit warns with, recomputed against what this
+    // fetch just brought back rather than the read that rendered the warning
+    // — a teammate's push landing in between must still be caught here, or
+    // promoting silently overwrites it (#579).
+    const [remoteTrees, localTrees, localIncludesRemote] = await Promise.all([
+      this.deps.git.readSkillTrees(root, head),
+      this.deps.git.readSkillTrees(root, "HEAD"),
+      this.deps.git.localIncludesRemote(root),
+    ]);
+    if (remoteTrees === null || localTrees === null) {
+      return { ok: false, error: "no-answer" };
+    }
+    const concurrentChange = isConcurrentlyChanged(
+      {
+        remote:
+          remoteTrees.find((tree) => tree.name === name)?.treeHash ?? null,
+        promote: null,
+        local: localTrees.find((tree) => tree.name === name)?.treeHash ?? null,
+        working: null,
+      },
+      localIncludesRemote,
+    );
+    if (concurrentChange) {
+      return { ok: false, error: "concurrent-change" };
     }
 
     const push = await this.deps.git.pushSkillPromotion(root, name, head);

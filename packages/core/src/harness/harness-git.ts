@@ -395,6 +395,24 @@ export class HarnessGitAdapter implements HarnessGitPort {
     };
   }
 
+  // Whether local HEAD's history already contains origin/HEAD — the one
+  // commit-level fact tree hashes alone cannot give (ADR-0021). True means any
+  // tree-hash difference from local HEAD is this clone's own unpushed commit,
+  // never a teammate's; an unreadable ref answers `false`, the safer side for
+  // a warning that guards against overwriting someone else's work (#579).
+  async localIncludesRemote(root: string): Promise<boolean> {
+    try {
+      await run(
+        "git",
+        ["-C", root, "merge-base", "--is-ancestor", REMOTE_HEAD, "HEAD"],
+        gitOptions(),
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   // Each promote branch is asked only about the skill it is named for: a
   // branch carrying anything else is not that skill's review. Every branch
   // gets a key; a null value is a branch proposing to delete its skill.

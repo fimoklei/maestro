@@ -6,6 +6,7 @@ import type {
   HarnessFreshness,
   PromoteSkillOutcome,
 } from "./read-harness-state";
+import type { HarnessSkillTree } from "./skill-movements";
 
 const AT = new Date("2026-08-09T12:00:00.000Z");
 
@@ -30,6 +31,8 @@ function buildPromote(overrides?: {
   outcome?: PromoteSkillOutcome;
   onPush?: (root: string, name: string, base: string) => void;
   onFreshnessRecord?: (root: string, freshness: HarnessFreshness) => void;
+  trees?: Record<string, HarnessSkillTree[]>;
+  localIncludesRemote?: boolean;
 }) {
   return new PromoteSkill({
     resolveRoot: async () =>
@@ -41,7 +44,9 @@ function buildPromote(overrides?: {
         return overrides?.fetchOutcome ?? "fetched";
       },
       readFacts: async () => ({ ...FACTS, ...overrides?.facts }),
-      readSkillTrees: async () => [],
+      readSkillTrees: async (_root: string, ref: string) =>
+        overrides?.trees?.[ref] ?? [],
+      localIncludesRemote: async () => overrides?.localIncludesRemote ?? false,
       readSkillAuthors: async () => ({}),
       readMovementTrees: async () => ({
         remote: {},
@@ -198,6 +203,40 @@ describe("PromoteSkill", () => {
       ok: false,
       error: "promote-failed",
     });
+  });
+
+  it("refuses to push over a teammate's change that landed since the last refresh", async () => {
+    let reached = false;
+    const promote = buildPromote({
+      onPush: () => (reached = true),
+      trees: {
+        head: [{ name: "tdd", treeHash: "theirs" }],
+        HEAD: [{ name: "tdd", treeHash: "mine-old" }],
+      },
+    });
+
+    await expect(promote.execute("tdd", AT)).resolves.toEqual({
+      ok: false,
+      error: "concurrent-change",
+    });
+    expect(reached).toBe(false);
+  });
+
+  it("still pushes the author's own unpushed commit, never mistaking it for a teammate's", async () => {
+    const pushed: string[] = [];
+    const promote = buildPromote({
+      onPush: (root, name, base) => pushed.push(root, name, base),
+      localIncludesRemote: true,
+      trees: {
+        head: [{ name: "tdd", treeHash: "old" }],
+        HEAD: [{ name: "tdd", treeHash: "mine" }],
+      },
+    });
+
+    await expect(promote.execute("tdd", AT)).resolves.toMatchObject({
+      ok: true,
+    });
+    expect(pushed).toEqual(["/harness", "tdd", "head"]);
   });
 
   it("refuses a second promotion of the same harness while one is in flight", async () => {

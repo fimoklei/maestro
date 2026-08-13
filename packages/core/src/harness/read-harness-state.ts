@@ -96,6 +96,9 @@ export interface HarnessGitPort {
   // The four places a skill's content can sit locally, for the movement
   // tables. Null where a ref could not be read, on the same rule as above.
   readMovementTrees(root: string): Promise<HarnessSkillTrees | null>;
+  // Whether local HEAD's history already contains origin/HEAD, the one
+  // commit-level fact a tree-hash comparison alone cannot give (#579).
+  localIncludesRemote(root: string): Promise<boolean>;
   // The raw SKILL.md text of each named skill at `ref`, for the release plan's
   // structural findings. Null where the file is absent — never an empty string,
   // which is a present-but-blank manifest.
@@ -374,6 +377,7 @@ export class ReadHarnessState {
     // Same rule, one ref set further: an unreadable ref leaves the local
     // tables unknown rather than reading as nothing waiting.
     const trees = await this.deps.git.readMovementTrees(root);
+    const localIncludesRemote = await this.deps.git.localIncludesRemote(root);
     return {
       ok: true,
       state: {
@@ -386,7 +390,8 @@ export class ReadHarnessState {
             : "unknown",
         pendingRelease: movements ?? [],
         freshness,
-        movements: trees === null ? [] : movementsFromTrees(trees),
+        movements:
+          trees === null ? [] : movementsFromTrees(trees, localIncludesRemote),
       },
     };
   }
@@ -438,7 +443,10 @@ export class ReadHarnessState {
 // Every name any of the four refs knows, so a skill that exists only on a
 // promote branch or only on disk is still asked about. Sorted, so the tables
 // do not reshuffle between reads.
-const movementsFromTrees = (trees: HarnessSkillTrees): HarnessMovement[] => {
+const movementsFromTrees = (
+  trees: HarnessSkillTrees,
+  localIncludesRemote: boolean,
+): HarnessMovement[] => {
   const names = new Set(Object.values(trees).flatMap(Object.keys));
   return [...names].sort().flatMap((skill) => {
     const hashes = {
@@ -458,7 +466,10 @@ const movementsFromTrees = (trees: HarnessSkillTrees): HarnessMovement[] => {
             skill,
             state,
             deletion: isLocalDeletion(hashes),
-            concurrentChange: isConcurrentlyChanged(hashes),
+            concurrentChange: isConcurrentlyChanged(
+              hashes,
+              localIncludesRemote,
+            ),
           },
         ];
   });

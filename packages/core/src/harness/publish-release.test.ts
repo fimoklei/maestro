@@ -85,6 +85,7 @@ function buildPublish(overrides?: {
         local: {},
         working: {},
       }),
+      localIncludesRemote: async () => false,
       readSkillManifests: async () => ({}),
       publishTag: async (
         _root: string,
