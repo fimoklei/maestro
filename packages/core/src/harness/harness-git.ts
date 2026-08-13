@@ -486,6 +486,21 @@ export class HarnessGitAdapter implements HarnessGitPort {
     };
   }
 
+  // The fork point local HEAD and one exact remote commit last agreed on —
+  // the one commit-level fact tree hashes alone cannot give (ADR-0021). Takes
+  // the commit rather than resolving `origin/HEAD` itself: that ref is
+  // mutable, and a concurrent fetch elsewhere in the app can re-point it
+  // between the caller's own read of it and this call — comparing against a
+  // ref instead of the exact commit the caller already has would then mix
+  // two different snapshots of the remote (#579). Null is unreadable —
+  // unrelated histories, or a clone this fetch never reached.
+  async mergeBaseCommit(
+    root: string,
+    remoteCommit: string,
+  ): Promise<string | null> {
+    return this.read(root, ["merge-base", remoteCommit, "HEAD"]);
+  }
+
   // Each promote branch is asked only about the skill it is named for: a
   // branch carrying anything else is not that skill's review. Every branch
   // gets a key; a null value is a branch proposing to delete its skill.

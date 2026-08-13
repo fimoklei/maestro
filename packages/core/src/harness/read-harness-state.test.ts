@@ -69,6 +69,9 @@ function buildRead(overrides?: {
   authorsAtRelease?: Record<string, string>;
   // The four local refs behind the movement tables, unrelated to `trees`.
   movementTrees?: Partial<HarnessSkillTrees> | null;
+  // The ref `mergeBaseCommit` answers with; its skills come from `trees` like
+  // any other ref. `null` is an unreadable merge base.
+  mergeBase?: string | null;
 }) {
   const head =
     overrides?.facts?.defaultBranchCommit ?? FACTS.defaultBranchCommit;
@@ -93,6 +96,10 @@ function buildRead(overrides?: {
         overrides?.movementTrees === null
           ? null
           : { ...SETTLED_TREES, ...overrides?.movementTrees },
+      mergeBaseCommit: async () =>
+        overrides && "mergeBase" in overrides
+          ? (overrides.mergeBase ?? null)
+          : "base",
       readSkillManifests: async (
         _root: string,
         _ref: string,
@@ -407,6 +414,118 @@ describe("ReadHarnessState movements", () => {
       state: { movements: [], releaseState: "unknown" },
     });
   });
+
+  it("flags a local edit whose remote content already moved on as a concurrent change", async () => {
+    // A teammate pushed straight to origin/HEAD while this clone edited the
+    // same skill: both differ from local HEAD, and promoting still replaces
+    // whatever the remote holds (#579).
+    const read = buildRead({
+      movementTrees: {
+        remote: { tdd: "theirs" },
+        promote: {},
+        local: { tdd: "same" },
+        working: { tdd: "mine" },
+      },
+    });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: {
+        movements: [
+          {
+            skill: "tdd",
+            state: "pending-promotion",
+            concurrentChange: true,
+          },
+        ],
+      },
+    });
+  });
+
+  it("leaves a plain local edit with no concurrent change", async () => {
+    const read = buildRead({
+      movementTrees: {
+        remote: { tdd: "same" },
+        promote: {},
+        local: { tdd: "same" },
+        working: { tdd: "edited" },
+      },
+    });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: {
+        movements: [
+          {
+            skill: "tdd",
+            state: "pending-promotion",
+            concurrentChange: false,
+          },
+        ],
+      },
+    });
+  });
+
+  it("never flags the author's own unpushed commit as a teammate's change", async () => {
+    // origin/HEAD's tree for this skill at the fork point is exactly what it
+    // still is now — nothing landed there since. The difference from local
+    // HEAD is this author's own unpushed commit (#579's false positive).
+    const read = buildRead({
+      mergeBase: "base",
+      trees: { base: [{ name: "tdd", treeHash: "old" }] },
+      movementTrees: {
+        remote: { tdd: "old" },
+        promote: {},
+        local: { tdd: "mine-1" },
+        working: { tdd: "mine-2" },
+      },
+    });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: {
+        movements: [
+          {
+            skill: "tdd",
+            concurrentChange: false,
+          },
+        ],
+      },
+    });
+  });
+
+  it("never lets a teammate's change to a different skill block this one's promotion", async () => {
+    // The branches diverged (a teammate pushed to origin/HEAD), but that push
+    // touched only `grilling` — `tdd`'s tree at the fork point still matches
+    // origin/HEAD's now, so `tdd` was never a teammate's doing (#579).
+    const read = buildRead({
+      mergeBase: "base",
+      trees: {
+        base: [
+          { name: "tdd", treeHash: "same" },
+          { name: "grilling", treeHash: "old" },
+        ],
+      },
+      movementTrees: {
+        remote: { tdd: "same", grilling: "theirs" },
+        promote: {},
+        local: { tdd: "same", grilling: "old" },
+        working: { tdd: "mine", grilling: "old" },
+      },
+    });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: {
+        movements: [
+          {
+            skill: "tdd",
+            concurrentChange: false,
+          },
+        ],
+      },
+    });
+  });
 });
 
 describe("ReadHarnessState refresh", () => {
@@ -488,6 +607,7 @@ describe("ReadHarnessState refresh", () => {
           readFor.push(root);
           return SETTLED_TREES;
         },
+        mergeBaseCommit: async () => null,
         readSkillManifests: async () => ({}),
         publishTag: async () => {
           throw new Error("git port's publishTag was reached");

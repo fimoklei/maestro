@@ -86,6 +86,16 @@ export function MovementTable({
                     {promote.failed.message}
                   </p>
                 ) : null}
+                {promotable(movement) && movement.concurrentChange ? (
+                  // The press stays available — pressing it re-checks this
+                  // fact against the remote and, finding it still true,
+                  // refuses with the same explanation on this row rather
+                  // than silently replacing the teammate's version (#579).
+                  <p role="status" className="mt-1 text-amber-ink text-tag">
+                    Changed by a teammate. Promoting will be refused until you
+                    pull their change.
+                  </p>
+                ) : null}
               </TableCell>
               {actions && promote ? (
                 <TableCell>{promoteCell(movement, promote)}</TableCell>

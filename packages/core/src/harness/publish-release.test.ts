@@ -85,6 +85,7 @@ function buildPublish(overrides?: {
         local: {},
         working: {},
       }),
+      mergeBaseCommit: async () => null,
       readSkillManifests: async () => ({}),
       publishTag: async (
         _root: string,

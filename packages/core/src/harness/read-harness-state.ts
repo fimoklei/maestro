@@ -4,6 +4,7 @@
 import { parseGitOrigin } from "../deploy/git-origin";
 import {
   classifyMovement,
+  isConcurrentlyChanged,
   isLocalDeletion,
   type MovementState,
 } from "./classify-movement";
@@ -95,6 +96,12 @@ export interface HarnessGitPort {
   // The four places a skill's content can sit locally, for the movement
   // tables. Null where a ref could not be read, on the same rule as above.
   readMovementTrees(root: string): Promise<HarnessSkillTrees | null>;
+  // The fork point local HEAD and `remoteCommit` last agreed on, the one
+  // commit-level fact a tree-hash comparison alone cannot give (#579). Takes
+  // the exact commit rather than resolving `origin/HEAD` itself, so it never
+  // compares against a remote snapshot newer than the caller's own. Null when
+  // it could not be read.
+  mergeBaseCommit(root: string, remoteCommit: string): Promise<string | null>;
   // The raw SKILL.md text of each named skill at `ref`, for the release plan's
   // structural findings. Null where the file is absent — never an empty string,
   // which is a present-but-blank manifest.
@@ -147,6 +154,10 @@ export type HarnessMovement = {
   // True when the skill was tracked at local HEAD and is gone from disk — a
   // deletion the view labels `deleted locally` (#575).
   deletion: boolean;
+  // True when origin/HEAD's content already differs from local HEAD — a
+  // teammate's merged change. Promoting still replaces it; this is what
+  // makes that visible before the press (#579).
+  concurrentChange: boolean;
 };
 
 export type HarnessState = {
@@ -369,6 +380,8 @@ export class ReadHarnessState {
     // Same rule, one ref set further: an unreadable ref leaves the local
     // tables unknown rather than reading as nothing waiting.
     const trees = await this.deps.git.readMovementTrees(root);
+    const atMergeBase =
+      head === null ? null : await this.skillTreesAtMergeBase(root, head);
     return {
       ok: true,
       state: {
@@ -381,9 +394,30 @@ export class ReadHarnessState {
             : "unknown",
         pendingRelease: movements ?? [],
         freshness,
-        movements: trees === null ? [] : movementsFromTrees(trees),
+        movements: trees === null ? [] : movementsFromTrees(trees, atMergeBase),
       },
     };
+  }
+
+  // Each skill's tree at the fork point local HEAD and `head` last agreed on,
+  // so `isConcurrentlyChanged` can tell a teammate's change to this one skill
+  // apart from the author's own unpushed commit (#579). `head` is the same
+  // commit the rest of this read already settled on, never a fresh resolve of
+  // `origin/HEAD` — that ref can move under a concurrent fetch elsewhere in
+  // the app. `null` — the merge base or its trees could not be read — falls
+  // back to the plain remote-vs-local comparison for every skill.
+  private async skillTreesAtMergeBase(
+    root: string,
+    head: string,
+  ): Promise<Record<string, string> | null> {
+    const mergeBase = await this.deps.git.mergeBaseCommit(root, head);
+    if (mergeBase === null) {
+      return null;
+    }
+    const trees = await this.deps.git.readSkillTrees(root, mergeBase);
+    return trees === null
+      ? null
+      : Object.fromEntries(trees.map((tree) => [tree.name, tree.treeHash]));
   }
 
   // Both refs are commits, so a tag pointing outside the default branch's
@@ -433,7 +467,10 @@ export class ReadHarnessState {
 // Every name any of the four refs knows, so a skill that exists only on a
 // promote branch or only on disk is still asked about. Sorted, so the tables
 // do not reshuffle between reads.
-const movementsFromTrees = (trees: HarnessSkillTrees): HarnessMovement[] => {
+const movementsFromTrees = (
+  trees: HarnessSkillTrees,
+  atMergeBase: Record<string, string> | null,
+): HarnessMovement[] => {
   const names = new Set(Object.values(trees).flatMap(Object.keys));
   return [...names].sort().flatMap((skill) => {
     const hashes = {
@@ -448,7 +485,17 @@ const movementsFromTrees = (trees: HarnessSkillTrees): HarnessMovement[] => {
     const state = classifyMovement(hashes);
     return state === null
       ? []
-      : [{ skill, state, deletion: isLocalDeletion(hashes) }];
+      : [
+          {
+            skill,
+            state,
+            deletion: isLocalDeletion(hashes),
+            concurrentChange: isConcurrentlyChanged(
+              hashes,
+              atMergeBase === null ? undefined : (atMergeBase[skill] ?? null),
+            ),
+          },
+        ];
   });
 };
 
