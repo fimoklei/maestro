@@ -129,17 +129,17 @@ const promotable = (movement: HarnessMovement) =>
 // One cell, three readings: the press that is still to come, the wait, and the
 // link that takes a pushed skill to GitHub.
 function promoteCell(movement: HarnessMovement, promote: PromoteRowState) {
-  const pullRequest = promote.pullRequests[movement.skill];
-  if (pullRequest !== undefined) {
-    return (
+  // The freshly read row decides before this visit's links do: a skill that is
+  // promotable again outlived the branch its link points at, and the link would
+  // stand in front of the press until the page is reloaded (#577).
+  if (!promotable(movement)) {
+    const pullRequest = promote.pullRequests[movement.skill];
+    return pullRequest === undefined ? null : (
       <PullRequestLink
         href={pullRequest}
         focus={promote.justPromoted === movement.skill}
       />
     );
-  }
-  if (!promotable(movement)) {
-    return null;
   }
   const waiting = promote.pending === movement.skill;
   return (

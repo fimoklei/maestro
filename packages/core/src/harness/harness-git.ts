@@ -338,10 +338,34 @@ export class HarnessGitAdapter implements HarnessGitPort {
       );
       return "pushed";
     } catch (error) {
-      return classifyGitError(error, classifyFetchFailure) === "offline"
-        ? "offline"
-        : "push-failed";
+      const failure =
+        classifyGitError(error, classifyFetchFailure) === "offline"
+          ? "offline"
+          : "push-failed";
+      return await this.settlePromotion(root, name, commit, failure);
     }
+  }
+
+  // The lost reply `settlePush` settles for a tag: a push can fail on the way
+  // back from a remote that already moved the branch, and reported as a failure
+  // it strands the author — their retry builds a second commit on the same tip,
+  // which their own pushed branch then refuses. So the remote is asked (#577).
+  private async settlePromotion(
+    root: string,
+    name: string,
+    commit: string,
+    failure: PromoteSkillOutcome,
+  ): Promise<PromoteSkillOutcome> {
+    const listing = await run(
+      "git",
+      ["-C", root, "ls-remote", "origin", `refs/heads/${promoteBranch(name)}`],
+      gitOptions(),
+    ).then(
+      ({ stdout }) => stdout.trim(),
+      () => "",
+    );
+    const [pushed] = listing.split("\t");
+    return pushed === commit ? "pushed" : failure;
   }
 
   async readFacts(root: string): Promise<HarnessFacts> {

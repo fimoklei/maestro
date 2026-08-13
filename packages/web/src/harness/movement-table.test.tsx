@@ -150,6 +150,29 @@ describe("MovementTable", () => {
     ).toHaveFocus();
   });
 
+  it("offers the press again when a promoted skill is promotable once more", () => {
+    // The branch behind that link was merged and a later edit put the skill
+    // back in Pending promotion. The freshly read row decides, not the link
+    // this visit happens to remember (#577).
+    render(
+      <MovementTable
+        movements={[
+          { skill: "lint-rules", state: "pending-promotion", deletion: false },
+        ]}
+        promote={{
+          ...promote,
+          pullRequests: {
+            "lint-rules": "https://github.com/o/r/compare/a...b",
+          },
+          justPromoted: "lint-rules",
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "promote" })).toBeEnabled();
+    expect(screen.queryByRole("link", { name: /pull request/ })).toBeNull();
+  });
+
   it("states a refusal on the row it belongs to", () => {
     render(
       <MovementTable
