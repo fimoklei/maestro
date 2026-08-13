@@ -231,6 +231,36 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
     expect(await promoted("tdd", "rev-parse")).toBe(theirs);
   });
 
+  // A push that errors out after the remote already moved the branch — a
+  // timeout on the way back, a receive-pack that fails at the end. Reported as
+  // a failure it strands the author: their retry builds a second commit on the
+  // same tip, which the branch their own push created refuses (#577).
+  it("reads a push that failed after the remote took the branch as pushed", async () => {
+    const script = join(base, "receive-pack.sh");
+    await writeFile(script, '#!/bin/sh\ngit-receive-pack "$@"\nexit 1\n', {
+      encoding: "utf8",
+      mode: 0o755,
+    });
+    await git(root, "config", "remote.origin.receivepack", script);
+    await writeSkill("tdd", "edited on disk");
+
+    await expect(promoter().execute("tdd", AT)).resolves.toEqual({
+      ok: true,
+      branch: "maestro/tdd",
+      pullRequestUrl: expect.stringContaining("/compare/main...maestro/tdd"),
+    });
+
+    expect(
+      (
+        await git(
+          remote,
+          "show",
+          "refs/heads/maestro/tdd:.apm/skills/tdd/SKILL.md",
+        )
+      ).stdout,
+    ).toContain("edited on disk");
+  });
+
   it("refuses when the skill changes on disk while it is being read", async () => {
     // A clean filter that edits the file it is filtering: the same thing a
     // multi-file editor save does to a directory git is halfway through

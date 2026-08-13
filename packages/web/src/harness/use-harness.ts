@@ -214,6 +214,27 @@ export function useImportSkill() {
   });
 }
 
+// Where a promoted skill can be reviewed: the branch it landed on, and the URL
+// that opens GitHub's own pull-request flow. Maestro never calls GitHub's API.
+export type PromoteOutcome = { branch: string; pullRequestUrl: string };
+
+// Promoting one skill. A name travels, never a path — the server resolves the
+// harness. The harness read is invalidated rather than written: whether the row
+// is now pending review is read from git, not from this reply (#577).
+export function usePromoteSkill() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: { name: string }) =>
+      requestJson<PromoteOutcome>("/api/harness/promote", {
+        method: "POST",
+        body: JSON.stringify(request),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: HARNESS_KEY });
+    },
+  });
+}
+
 // Writes the fetched state straight into the query cache: a refresh already
 // carries the answer, so re-reading it would only show an older picture first.
 export function useRefreshHarness() {

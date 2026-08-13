@@ -21,6 +21,7 @@ import {
   useHarness,
   useImportCheck,
   useImportSkill,
+  usePromoteSkill,
   usePublishRelease,
   useRefreshHarness,
   useReleasePlan,
@@ -78,6 +79,24 @@ export function HarnessView() {
     setEditedName(null);
     importSkill.reset();
   };
+
+  // Promote: which row is waiting and what the last press refused are read off
+  // the mutation. The links are kept beside it, one per skill — a second
+  // promotion must not take the first one's way to GitHub with it (#577).
+  const promote = usePromoteSkill();
+  const [pullRequests, setPullRequests] = useState<Record<string, string>>({});
+  const promotedSkill = promote.variables?.name ?? null;
+  const promoteSkill = (name: string) =>
+    promote.mutate(
+      { name },
+      {
+        onSuccess: (outcome) =>
+          setPullRequests((links) => ({
+            ...links,
+            [name]: outcome.pullRequestUrl,
+          })),
+      },
+    );
 
   // Opening the view fetches, the same act the Refresh button repeats. A
   // mutation, not a query: it reaches the network and writes git refs.
@@ -161,7 +180,30 @@ export function HarnessView() {
                 meta={`${section.movements.length} · ${section.meta}`}
               />
               <Card>
-                <MovementTable movements={section.movements} />
+                <MovementTable
+                  movements={section.movements}
+                  promote={{
+                    onPromote: promoteSkill,
+                    // The rule that closes Release: with no answer from the
+                    // remote there is no tip to build the commit on. A refresh
+                    // or a re-read in flight is moving the very rows a press
+                    // would be aimed at.
+                    enabled:
+                      releaseEnabled(state.freshness) &&
+                      !refresh.isPending &&
+                      !harness.isFetching,
+                    pending: promote.isPending ? promotedSkill : null,
+                    pullRequests,
+                    justPromoted: promote.isSuccess ? promotedSkill : null,
+                    failed:
+                      promote.isError && promotedSkill !== null
+                        ? {
+                            skill: promotedSkill,
+                            message: promote.error.message,
+                          }
+                        : null,
+                  }}
+                />
               </Card>
             </section>
           ))}

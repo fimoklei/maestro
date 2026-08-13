@@ -24,6 +24,7 @@ import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubImport } from "../helpers/stub-import";
+import { stubPromote } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
@@ -61,6 +62,7 @@ describe("filesystem browse HTTP route", () => {
       inventory,
       harness: stubHarness(),
       publish: stubPublish(),
+      promote: stubPromote(),
       connect: stubConnect(),
       scaffold: stubScaffold(),
       deployState,
