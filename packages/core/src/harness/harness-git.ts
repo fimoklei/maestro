@@ -190,9 +190,13 @@ export class HarnessGitAdapter implements HarnessGitPort {
     try {
       const skillTree = await this.hashWorkingSkill(root, subpath, indexDir);
 
-      // The branch this fetch already brought back, if any: the next commit
-      // builds on it, never on `base` again (#578).
+      // The branch this fetch already brought back can be stale by now: local
+      // object work between that fetch and here takes time, and another
+      // author's own promotion can land on the real branch in that window.
+      // Re-fetching this one ref, right before trusting it, closes most of
+      // that window (#578).
       const branchRef = `${PROMOTE_BRANCHES}/${name}`;
+      await this.refreshPromoteBranchRef(root, name);
       const existingTip = await this.read(root, ["rev-parse", branchRef]);
       if (existingTip !== null) {
         const existingTree = await this.read(root, [
@@ -200,8 +204,15 @@ export class HarnessGitAdapter implements HarnessGitPort {
           `${branchRef}:${subpath}`,
         ]);
         // Already carries exactly this content: a press with nothing changed
-        // leaves no new commit behind.
+        // leaves no new commit behind. Re-hashed once more first: the working
+        // directory can still mutate under a clean filter or a concurrent
+        // save between the read above and this decision.
         if (existingTree === skillTree) {
+          if (
+            (await this.hashWorkingSkill(root, subpath, indexDir)) !== skillTree
+          ) {
+            return "source-changed";
+          }
           return "pushed";
         }
       }
@@ -250,6 +261,27 @@ export class HarnessGitAdapter implements HarnessGitPort {
       await readGitOriginUrl(root),
       listed === null ? [] : listed.split("\n").filter((url) => url !== ""),
     );
+  }
+
+  // Updates just this one remote-tracking ref to the branch's live tip,
+  // rather than trusting whatever the harness's last general fetch found.
+  // Failure (offline, branch deleted) leaves the existing local ref standing
+  // — the caller's own read of it then answers exactly as before this call.
+  private async refreshPromoteBranchRef(
+    root: string,
+    name: string,
+  ): Promise<void> {
+    await run(
+      "git",
+      [
+        "-C",
+        root,
+        "fetch",
+        "origin",
+        `+refs/heads/${promoteBranch(name)}:${PROMOTE_BRANCHES}/${name}`,
+      ],
+      gitOptions(),
+    ).catch(() => {});
   }
 
   // The skill exactly as it sits on disk. Seeded from HEAD for the same reason
@@ -370,22 +402,61 @@ export class HarnessGitAdapter implements HarnessGitPort {
   // back from a remote that already moved the branch, and reported as a failure
   // it strands the author — their retry builds a second commit on the same tip,
   // which their own pushed branch then refuses. So the remote is asked (#577).
+  //
+  // The live tip need not equal this push's own commit to count as settled: a
+  // teammate's own promotion can fast-forward the branch again in the time it
+  // takes the reply to come back, and this commit is still on the branch,
+  // just no longer its tip.
   private async settlePromotion(
     root: string,
     name: string,
     commit: string,
     failure: PromoteSkillOutcome,
   ): Promise<PromoteSkillOutcome> {
+    const branchRef = `refs/heads/${promoteBranch(name)}`;
     const listing = await run(
       "git",
-      ["-C", root, "ls-remote", "origin", `refs/heads/${promoteBranch(name)}`],
+      ["-C", root, "ls-remote", "origin", branchRef],
       gitOptions(),
     ).then(
       ({ stdout }) => stdout.trim(),
       () => "",
     );
     const [pushed] = listing.split("\t");
-    return pushed === commit ? "pushed" : failure;
+    if (pushed === undefined || pushed === "") {
+      return failure;
+    }
+    if (pushed === commit) {
+      return "pushed";
+    }
+    // The tip moved past this commit — fetch it locally so ancestry can
+    // actually be checked; without the object, `merge-base` cannot answer.
+    const fetched = await run(
+      "git",
+      [
+        "-C",
+        root,
+        "fetch",
+        "origin",
+        `+${branchRef}:${PROMOTE_BRANCHES}/${name}`,
+      ],
+      gitOptions(),
+    ).then(
+      () => true,
+      () => false,
+    );
+    if (!fetched) {
+      return failure;
+    }
+    const isAncestor = await run(
+      "git",
+      ["-C", root, "merge-base", "--is-ancestor", commit, pushed],
+      gitOptions(),
+    ).then(
+      () => true,
+      () => false,
+    );
+    return isAncestor ? "pushed" : failure;
   }
 
   async readFacts(root: string): Promise<HarnessFacts> {

@@ -447,6 +447,138 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
     expect(JSON.stringify(result)).not.toContain(root);
   });
 
+  it("never reports a no-op press as pushed when another actor moved the branch after the fetch", async () => {
+    const git2 = new HarnessGitAdapter();
+    const head = (await git(remote, "rev-parse", "main")).stdout.trim();
+    await writeSkill("tdd", "first edit");
+    await expect(git2.pushSkillPromotion(root, "tdd", head)).resolves.toBe(
+      "pushed",
+    );
+    const first = await promoted("tdd", "rev-parse");
+
+    // A teammate promotes their own edit straight to the branch, from a clone
+    // that never shares this process's local remote-tracking ref.
+    const other = join(base, "other");
+    await run("git", ["clone", remote, other]);
+    await git(other, "config", "user.email", "mate@example.com");
+    await git(other, "config", "user.name", "Mate");
+    await git(other, "checkout", "maestro/tdd");
+    await writeFile(
+      join(other, ".apm", "skills", "tdd", "SKILL.md"),
+      "---\ndescription: concurrent edit\n---\n",
+      "utf8",
+    );
+    await git(other, "commit", "-am", "concurrent edit");
+    await git(other, "push", "origin", "HEAD:refs/heads/maestro/tdd");
+    const concurrent = await promoted("tdd", "rev-parse");
+
+    // The clone's own local mirror of the branch is still the stale tip from
+    // before the teammate's push — nothing in this process re-fetched it.
+    await writeSkill("tdd", "first edit");
+
+    await expect(git2.pushSkillPromotion(root, "tdd", head)).resolves.toBe(
+      "pushed",
+    );
+
+    // A new commit landed on top of the teammate's, carrying this clone's own
+    // content — never a bare "pushed" that published nothing.
+    expect(await promoted("tdd", "rev-parse")).not.toBe(concurrent);
+    expect(
+      (
+        await git(remote, "rev-parse", "refs/heads/maestro/tdd~1")
+      ).stdout.trim(),
+    ).toBe(concurrent);
+    expect(
+      (
+        await git(remote, "rev-parse", "refs/heads/maestro/tdd~2")
+      ).stdout.trim(),
+    ).toBe(first);
+    expect(
+      (
+        await git(
+          remote,
+          "show",
+          "refs/heads/maestro/tdd:.apm/skills/tdd/SKILL.md",
+        )
+      ).stdout,
+    ).toContain("first edit");
+  });
+
+  it("refuses a no-op press when the skill mutates again while it is being re-verified", async () => {
+    await writeSkill("tdd", "stable content");
+    await promoter().execute("tdd", AT);
+
+    // Same mutating filter as the build path uses to detect a save mid-read —
+    // here the file is untouched on the *first* read (so the no-op shortcut
+    // would fire) but changes again before a second read could catch it.
+    const mutate = join(base, "mutate.sh");
+    await writeFile(mutate, "#!/bin/sh\ncat\necho later >> $1\n", {
+      mode: 0o755,
+    });
+    await writeFile(
+      join(root, ".gitattributes"),
+      ".apm/skills/tdd/* filter=mutate\n",
+      "utf8",
+    );
+    await git(root, "config", "filter.mutate.clean", `${mutate} %f`);
+
+    await expect(promoter().execute("tdd", AT)).resolves.toEqual({
+      ok: false,
+      error: "source-changed",
+    });
+
+    expect(
+      (
+        await git(remote, "rev-list", "--count", "main..refs/heads/maestro/tdd")
+      ).stdout.trim(),
+    ).toBe("1");
+  });
+
+  it("settles a promote whose reply was lost even when another actor fast-forwards it first", async () => {
+    await writeSkill("tdd", "first edit");
+    await promoter().execute("tdd", AT);
+    const first = await promoted("tdd", "rev-parse");
+
+    // The remote accepts the push and lands it, then — before the reply gets
+    // back — another actor fast-forwards the same branch further. The client
+    // still only sees the failed reply.
+    const script = join(base, "receive-pack.sh");
+    await writeFile(
+      script,
+      [
+        "#!/bin/sh",
+        'git-receive-pack "$@"',
+        'REPO="$1"',
+        'TIP=$(git -C "$REPO" rev-parse refs/heads/maestro/tdd)',
+        'TREE=$(git -C "$REPO" rev-parse "$TIP^{tree}")',
+        'NEXT=$(echo "advanced by a teammate" | git -C "$REPO" commit-tree "$TREE" -p "$TIP")',
+        'git -C "$REPO" update-ref refs/heads/maestro/tdd "$NEXT"',
+        "exit 1",
+        "",
+      ].join("\n"),
+      { encoding: "utf8", mode: 0o755 },
+    );
+    await git(root, "config", "remote.origin.receivepack", script);
+    await writeSkill("tdd", "second edit");
+
+    await expect(promoter().execute("tdd", AT)).resolves.toEqual({
+      ok: true,
+      branch: "maestro/tdd",
+      pullRequestUrl: expect.stringContaining("/compare/main...maestro/tdd"),
+    });
+
+    expect(
+      (
+        await git(remote, "rev-list", "--count", "main..refs/heads/maestro/tdd")
+      ).stdout.trim(),
+    ).toBe("3");
+    expect(
+      (
+        await git(remote, "rev-parse", "refs/heads/maestro/tdd~2")
+      ).stdout.trim(),
+    ).toBe(first);
+  });
+
   it("reports a remote that could not be reached, and records the failed fetch", async () => {
     // The origin stays a GitHub URL — only what git resolves it to is gone, so
     // this is an unreachable remote and not an unusable one.
