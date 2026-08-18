@@ -1,8 +1,6 @@
-// Moving one skill's *removal* into review: the same fetch, the same
-// `maestro/<skill>` branch and the same pull-request link a promotion uses,
-// with the skill's subtree taken out of the fetched tip instead of replaced.
-// Publishing by absence is never inferred — it takes a confirmation the author
-// gave against a stated origin/HEAD (ADR-0021, #580).
+// Moving one skill's removal into review: the promotion route with the subtree
+// taken out of the fetched tip instead of replaced. Publishing by absence is
+// never inferred — it takes a confirmation (ADR-0021, #580).
 import { parseGitOrigin } from "../deploy/git-origin";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import {
@@ -143,7 +141,6 @@ export class PromoteSkillDeletion {
       case "push-elsewhere":
         return { ok: false, error: "push-elsewhere" };
       case "source-changed":
-      case "skill-missing":
         return { ok: false, error: "source-changed" };
       case "offline":
         return { ok: false, error: "no-answer" };

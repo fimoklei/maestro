@@ -28,6 +28,7 @@ import type {
   HarnessTag,
   PromoteSkillOutcome,
   PublishTagOutcome,
+  SkillPushOutcome,
   WorktreeAmbiguity,
 } from "./read-harness-state";
 import type { HarnessSkillTree } from "./skill-movements";
@@ -256,7 +257,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
     root: string,
     name: string,
     base: string,
-  ): Promise<PromoteSkillOutcome> {
+  ): Promise<SkillPushOutcome> {
     const subpath = harnessSkillSubpath(name);
     // A skill that is back on disk is an edit, and takes the promotion route.
     // The use-case already read this; re-read here because the directory is
@@ -307,10 +308,9 @@ export class HarnessGitAdapter implements HarnessGitPort {
     }
   }
 
-  // Every way the working tree stops answering for the author's whole intent.
-  // Asked in a fixed order, so one tree that is several of these at once always
-  // refuses under the same name. A check that could not run at all is
-  // `unreadable` — fail-closed, never a clean answer (#580).
+  // Every way the working tree stops answering for the author's whole intent,
+  // asked in a fixed order so a tree that is several at once always refuses
+  // under the same name. A check that could not run is fail-closed (#580).
   async readWorktreeAmbiguity(root: string): Promise<WorktreeAmbiguity | null> {
     // `--type=bool` normalises git's own spellings, so `1` and `on` read the
     // same as `true`. Absent is exit 1, which `read` reports as null.
@@ -474,7 +474,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
     root: string,
     name: string,
     commit: string,
-  ): Promise<PromoteSkillOutcome> {
+  ): Promise<SkillPushOutcome> {
     try {
       await run(
         "git",
@@ -511,8 +511,8 @@ export class HarnessGitAdapter implements HarnessGitPort {
     root: string,
     name: string,
     commit: string,
-    failure: PromoteSkillOutcome,
-  ): Promise<PromoteSkillOutcome> {
+    failure: SkillPushOutcome,
+  ): Promise<SkillPushOutcome> {
     const branchRef = `refs/heads/${promoteBranch(name)}`;
     const listing = await run(
       "git",
@@ -678,12 +678,9 @@ export class HarnessGitAdapter implements HarnessGitPort {
     if (listing === null) {
       // The same failure covers a ref that does not resolve and a ref carrying
       // no skills directory. Only the second is an empty set.
-      //
-      // `^{tree}` rather than `^{commit}`: `workingSkillTrees` passes a bare
-      // tree hash, and deleting the last skill leaves `.apm/skills` with
-      // nothing git tracks — so that tree has no skills directory at all. Asked
-      // as a commit it fails to resolve, and the whole working read then goes
-      // null: an empty harness reported as an unreadable one (#580).
+      // `^{tree}`, not `^{commit}`: `workingSkillTrees` passes a bare tree
+      // hash, and deleting the last skill leaves nothing git tracks there —
+      // asked as a commit, an empty harness reads as unreadable (#580).
       const resolves = await this.readOutput(root, [
         "rev-parse",
         "--verify",

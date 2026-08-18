@@ -50,11 +50,14 @@ export type PromoteSkillOutcome =
   | "source-changed"
   | "push-failed";
 
-// Every way the working tree stops answering for the author's whole intent. A
-// removal is published from what is *absent* on disk, so a checkout that is
-// incomplete by design, or mid-way through a rewrite, reads as a deletion
-// nobody made (#580). `unreadable` is a check that could not run at all —
-// fail-closed, since an unasked question is not a clean answer.
+// What the push itself can answer. `skill-missing` is a guard read before any
+// object is written, and it is what a removal publishes rather than a way one
+// can fail — so no route driving a push has that branch to answer for (#580).
+export type SkillPushOutcome = Exclude<PromoteSkillOutcome, "skill-missing">;
+
+// A removal is published from what is absent on disk, so a checkout that is
+// incomplete by design, or mid-rewrite, reads as a deletion nobody made.
+// `unreadable` is fail-closed: an unasked question is not a clean answer.
 export type WorktreeAmbiguity =
   | "sparse-checkout"
   | "merge-in-progress"
@@ -147,7 +150,7 @@ export interface HarnessGitPort {
     root: string,
     name: string,
     baseCommit: string,
-  ): Promise<PromoteSkillOutcome>;
+  ): Promise<SkillPushOutcome>;
   // What makes the working tree stop answering for the author's whole intent,
   // or null when nothing does. Never a path or git's own words (security.md).
   readWorktreeAmbiguity(root: string): Promise<WorktreeAmbiguity | null>;

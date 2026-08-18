@@ -708,11 +708,9 @@ const promoteErrorResponses: Record<
   },
 };
 
-// Publishing a removal shares promotion's refusals and adds the ones only a
-// deletion has: a confirmation the remote moved past, a movement that is no
-// longer a deletion, and four working trees that cannot answer for the
-// author's whole intent. Maestro's own words throughout — never git's, and
-// never the path it ran in (#580, security.md).
+// Promotion's refusals plus the ones only a removal has: a confirmation the
+// remote moved past, a movement that is no longer a deletion, and four working
+// trees that cannot answer. Maestro's own words (#580, security.md).
 const deletionErrorResponses: Record<
   PromoteDeletionError,
   { status: 400 | 409 | 422 | 502; message: string }
@@ -1039,10 +1037,9 @@ export function createApp(deps: AppDeps) {
     });
   });
 
-  // Publishing a skill's removal: the same POST shape one step stricter. The
-  // body carries the origin/HEAD tree the author confirmed against, so a
-  // remote that moved under the confirmation is refused rather than removed
-  // (#580).
+  // Publishing a skill's removal: the same POST one step stricter. The body
+  // carries the origin/HEAD tree the author confirmed against, so a remote
+  // that moved under it is refused rather than removed (#580).
   app.post("/api/harness/promote/deletion", async (c) => {
     const body = await parseBody(c, deletionBodySchema, DELETION_BODY_MESSAGE);
     if (!body.ok) {

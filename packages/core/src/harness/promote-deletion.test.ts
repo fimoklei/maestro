@@ -4,7 +4,7 @@ import { PromoteSkillDeletion } from "./promote-deletion";
 import type {
   HarnessFacts,
   HarnessFreshness,
-  PromoteSkillOutcome,
+  SkillPushOutcome,
   WorktreeAmbiguity,
 } from "./read-harness-state";
 import type { HarnessSkillTree } from "./skill-movements";
@@ -30,7 +30,6 @@ const SEEN = "remote-tree";
 const TREES: Record<string, HarnessSkillTree[]> = {
   head: [{ name: "tdd", treeHash: SEEN }],
   HEAD: [{ name: "tdd", treeHash: SEEN }],
-  base: [{ name: "tdd", treeHash: SEEN }],
 };
 
 function buildDeletion(overrides?: {
@@ -38,16 +37,12 @@ function buildDeletion(overrides?: {
   facts?: Partial<HarnessFacts>;
   freshness?: HarnessFreshness;
   fetchOutcome?: "fetched" | "offline" | "fetch-failed";
-  outcome?: PromoteSkillOutcome;
+  outcome?: SkillPushOutcome;
   onPush?: (root: string, name: string, base: string) => void;
   ambiguity?: WorktreeAmbiguity | null;
   trees?: Record<string, HarnessSkillTree[]>;
-  // Trees per `readSkillTrees` call for one ref, in order — a teammate's push
-  // landing between the two in-deletion reads, as a real re-fetch surfaces it.
-  treesPerCall?: Record<string, HarnessSkillTree[][]>;
   working?: Record<string, string>;
 }) {
-  const calls: Record<string, number> = {};
   return new PromoteSkillDeletion({
     resolveRoot: async () =>
       overrides && "root" in overrides ? overrides.root : "/harness",
@@ -55,15 +50,8 @@ function buildDeletion(overrides?: {
     git: {
       fetch: async () => overrides?.fetchOutcome ?? "fetched",
       readFacts: async () => ({ ...FACTS, ...overrides?.facts }),
-      readSkillTrees: async (_root: string, ref: string) => {
-        const perCall = overrides?.treesPerCall?.[ref];
-        const call = calls[ref] ?? 0;
-        calls[ref] = call + 1;
-        if (perCall !== undefined) {
-          return perCall[Math.min(call, perCall.length - 1)] ?? [];
-        }
-        return (overrides?.trees ?? TREES)[ref] ?? [];
-      },
+      readSkillTrees: async (_root: string, ref: string) =>
+        (overrides?.trees ?? TREES)[ref] ?? [],
       mergeBaseCommit: async () => "base",
       readSkillAuthors: async () => ({}),
       readMovementTrees: async () => ({
@@ -113,7 +101,6 @@ describe("PromoteSkillDeletion", () => {
         // A teammate's change to this skill merged after the row was painted.
         head: [{ name: "tdd", treeHash: "theirs" }],
         HEAD: [{ name: "tdd", treeHash: SEEN }],
-        base: [{ name: "tdd", treeHash: SEEN }],
       },
       onPush: (root) => pushed.push(root),
     });

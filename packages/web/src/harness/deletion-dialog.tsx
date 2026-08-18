@@ -3,11 +3,9 @@ import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { FailureNote } from "../ui/failure-note";
 
-// The confirmation a removal takes before anything is pushed. Consequences
-// first: what leaves the team's harness, what the review still is, and the
-// exact origin/HEAD this confirmation is given against — a tree that moved
-// since refuses it server-side (#580). Presentational: the host owns the
-// mutation and what the row said.
+// The confirmation a removal takes before anything is pushed: consequences
+// first, then the exact origin/HEAD it is given against (#580).
+// Presentational — the host owns the mutation and what the row said.
 export function DeletionDialog({
   skill,
   origin,
