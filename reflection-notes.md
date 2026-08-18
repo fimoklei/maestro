@@ -41,7 +41,20 @@ narrow the hook to the rewrites that demonstrably work (`git`, `gh`), or upgrade
 grep+find handling. Worth measuring whether RTK still nets out positive at all.
 </details>
 
-## 2. Take the remaining weight out of the ship pipeline — FIX (extend `workflow-ship`)
+## 2. Take the remaining weight out of the ship pipeline — RESOLVED 2026-08-18
+
+`workflow-ship` already carried the linked-worktree repair (steps 1, 6–9), the
+ship-time behind-origin check (step 1) and the `git ls-remote` verification of
+gh's silent auto-delete skip (step 6). The one open gap — `git branch -d`
+refusing "not fully merged" after a squash or rebase merge — is now closed in
+step 8: on that failure only, re-read `gh pr view --json state`, and delete with
+`-D` when it says `MERGED`. Any other `-d` failure still reports and stops.
+
+Michiel's call on the review gate: **no gate**. The commit-gate hook (lint,
+typecheck, test) stays the only check; do not re-add a review round. The
+implement-start half of the behind-origin check belongs to candidate 3.
+
+<details><summary>Original diagnosis</summary>
 
 The codex review gate is already removed (A|2b172ac5|08-13: "soms lijkt het wel enterprise
 gate" → "haal de hele codex review weg") after weeks of the same complaint: "skip de review"
@@ -63,6 +76,7 @@ every ship:
   risk-tiered gate instead of none: docs/small diffs ship directly; `packages/core` diffs get
   one review round. Decision is Michiel's; the transcripts only show the old gate cost more
   than it caught.
+</details>
 
 ## 3. Fix the worktree lifecycle mechanics — FIX (worktree skill + hooks)
 
