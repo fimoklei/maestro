@@ -11,6 +11,8 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
+    // Matches the other lanes' timeout; see the root vitest.config.ts.
+    testTimeout: 20_000,
     include: ["src/**/*.test.{ts,tsx}"],
   },
 });
