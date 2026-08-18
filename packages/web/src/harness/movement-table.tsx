@@ -131,10 +131,10 @@ function PullRequestLink({ href, focus }: { href: string; focus: boolean }) {
   );
 }
 
-// A deletion publishes by removal and takes a confirmation of its own, so it is
-// not promoted by a single press from here (#497).
+// A deletion publishes by removal and takes a confirmation of its own, which
+// the host opens — from here both are the same press (#497, #580).
 const promotable = (movement: HarnessMovement) =>
-  movement.state === "pending-promotion" && !movement.deletion;
+  movement.state === "pending-promotion";
 
 // One cell, three readings: the press that is still to come, the wait, and the
 // link that takes a pushed skill to GitHub.

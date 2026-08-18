@@ -235,6 +235,23 @@ export function usePromoteSkill() {
   });
 }
 
+// Publishing a skill's removal. The confirmation carries the origin/HEAD tree
+// the row stated it against, so the server can refuse one the remote has moved
+// past — the browser never decides that itself (#580).
+export function usePromoteDeletion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: { name: string; seenRemoteTree: string }) =>
+      requestJson<PromoteOutcome>("/api/harness/promote/deletion", {
+        method: "POST",
+        body: JSON.stringify(request),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: HARNESS_KEY });
+    },
+  });
+}
+
 // Writes the fetched state straight into the query cache: a refresh already
 // carries the answer, so re-reading it would only show an older picture first.
 export function useRefreshHarness() {

@@ -23,7 +23,7 @@ import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubImport } from "../helpers/stub-import";
-import { stubPromote } from "../helpers/stub-promote";
+import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubScaffold } from "../helpers/stub-scaffold";
 
@@ -154,7 +154,7 @@ describe("retiring a skill from every target it is deployed to", () => {
       resolveGlobalRoot: () => apmRoot,
       harness: stubHarness(),
       publish: stubPublish(),
-      promote: stubPromote(),
+      ...stubPromotes(),
       connect: stubConnect(),
       scaffold: stubScaffold(),
       browse: stubBrowse(),
