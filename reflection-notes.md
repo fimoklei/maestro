@@ -41,7 +41,20 @@ narrow the hook to the rewrites that demonstrably work (`git`, `gh`), or upgrade
 grep+find handling. Worth measuring whether RTK still nets out positive at all.
 </details>
 
-## 2. Take the remaining weight out of the ship pipeline — FIX (extend `workflow-ship`)
+## 2. Take the remaining weight out of the ship pipeline — RESOLVED 2026-08-18
+
+`workflow-ship` already carried the linked-worktree repair (steps 1, 6–9), the
+ship-time behind-origin check (step 1) and the `git ls-remote` verification of
+gh's silent auto-delete skip (step 6). The one open gap — `git branch -d`
+refusing "not fully merged" after a squash or rebase merge — is now closed in
+step 8: on that failure only, re-read `gh pr view --json state`, and delete with
+`-D` when it says `MERGED`. Any other `-d` failure still reports and stops.
+
+Michiel's call on the review gate: **no gate**. The commit-gate hook (lint,
+typecheck, test) stays the only check; do not re-add a review round. The
+implement-start half of the behind-origin check belongs to candidate 3.
+
+<details><summary>Original diagnosis</summary>
 
 The codex review gate is already removed (A|2b172ac5|08-13: "soms lijkt het wel enterprise
 gate" → "haal de hele codex review weg") after weeks of the same complaint: "skip de review"
@@ -63,8 +76,25 @@ every ship:
   risk-tiered gate instead of none: docs/small diffs ship directly; `packages/core` diffs get
   one review round. Decision is Michiel's; the transcripts only show the old gate cost more
   than it caught.
+</details>
 
-## 3. Fix the worktree lifecycle mechanics — FIX (worktree skill + hooks)
+## 3. Fix the worktree lifecycle mechanics — RESOLVED 2026-08-18
+
+Three of the four sub-problems were one instruction each, now patched:
+
+- **Tilde path** — `worktree/SKILL.md` step 5 told the agent to pass `path: ~/Projects/…` to
+  `EnterWorktree`, which does not expand `~`; the literal tilde got joined to the cwd. It now
+  requires the absolute path as `git worktree list` prints it, and says why.
+- **Deleted cwd** — `workflow-ship` step 9 removed the worktree the session was standing in.
+  It now calls `ExitWorktree` (`action: "keep"`, a no-op outside such a session) first.
+- **Cleanup loop** — `worktree/SKILL.md` gained a `## Cleaning up` section (list, merged-check,
+  remove + prune, never `--force` over uncommitted work) and trigger phrases in its description,
+  so "welke worktrees staan er nog open" reaches the skill instead of ad-hoc commands.
+
+**cd-noise: no change.** The skill already runs every git command with `-C`, and
+`~/.claude/rules/workflow.md` already forbids `cd` after `EnterWorktree`. Nothing left to fix there.
+
+<details><summary>Original diagnosis</summary>
 
 - **Tilde-path bug**: "Cannot enter worktree: …/maestro/~/Projects/…: ENOENT" in 3 sessions
   spanning ≥2 weeks (C|issue249|07-22, issue516|08-03, issue519|08-04) — a literal `~` is being
@@ -77,6 +107,7 @@ every ship:
   worktree" in 8+ sessions (C|issue339, worktrees-issue214, triage-187, issue249; B: 17x in 13
   sessions). A `worktree done` path (remove worktree + branch, verify merged) closes the loop
   the skill currently leaves open.
+</details>
 
 ## 4. Spec-split skill: sub-issues + blocked-by in one move — SKILL (or extend `jobs`/`create-issue`)
 
