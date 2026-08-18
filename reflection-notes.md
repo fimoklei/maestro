@@ -78,7 +78,23 @@ every ship:
   than it caught.
 </details>
 
-## 3. Fix the worktree lifecycle mechanics — FIX (worktree skill + hooks)
+## 3. Fix the worktree lifecycle mechanics — RESOLVED 2026-08-18
+
+Three of the four sub-problems were one instruction each, now patched:
+
+- **Tilde path** — `worktree/SKILL.md` step 5 told the agent to pass `path: ~/Projects/…` to
+  `EnterWorktree`, which does not expand `~`; the literal tilde got joined to the cwd. It now
+  requires the absolute path as `git worktree list` prints it, and says why.
+- **Deleted cwd** — `workflow-ship` step 9 removed the worktree the session was standing in.
+  It now calls `ExitWorktree` (`action: "keep"`, a no-op outside such a session) first.
+- **Cleanup loop** — `worktree/SKILL.md` gained a `## Cleaning up` section (list, merged-check,
+  remove + prune, never `--force` over uncommitted work) and trigger phrases in its description,
+  so "welke worktrees staan er nog open" reaches the skill instead of ad-hoc commands.
+
+**cd-noise: no change.** The skill already runs every git command with `-C`, and
+`~/.claude/rules/workflow.md` already forbids `cd` after `EnterWorktree`. Nothing left to fix there.
+
+<details><summary>Original diagnosis</summary>
 
 - **Tilde-path bug**: "Cannot enter worktree: …/maestro/~/Projects/…: ENOENT" in 3 sessions
   spanning ≥2 weeks (C|issue249|07-22, issue516|08-03, issue519|08-04) — a literal `~` is being
@@ -91,6 +107,7 @@ every ship:
   worktree" in 8+ sessions (C|issue339, worktrees-issue214, triage-187, issue249; B: 17x in 13
   sessions). A `worktree done` path (remove worktree + branch, verify merged) closes the loop
   the skill currently leaves open.
+</details>
 
 ## 4. Spec-split skill: sub-issues + blocked-by in one move — SKILL (or extend `jobs`/`create-issue`)
 
