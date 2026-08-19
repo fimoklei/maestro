@@ -101,6 +101,10 @@ function buildPublish(overrides?: {
       pushSkillPromotion: async () => {
         throw new Error("git port's pushSkillPromotion was reached");
       },
+      pushSkillDeletion: async () => {
+        throw new Error("git port's pushSkillDeletion was reached");
+      },
+      readWorktreeAmbiguity: async () => null,
     },
     freshness: {
       read: async () => overrides?.freshness ?? FRESHNESS,

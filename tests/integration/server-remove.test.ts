@@ -24,7 +24,7 @@ import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubImport } from "../helpers/stub-import";
-import { stubPromote } from "../helpers/stub-promote";
+import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubScaffold } from "../helpers/stub-scaffold";
 
@@ -136,7 +136,7 @@ describe("remove HTTP route", () => {
       resolveGlobalRoot: () => join(home, "apm"),
       harness: stubHarness(),
       publish: stubPublish(),
-      promote: stubPromote(),
+      ...stubPromotes(),
       connect: stubConnect(),
       scaffold: stubScaffold(),
       browse: stubBrowse(),

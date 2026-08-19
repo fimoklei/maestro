@@ -28,6 +28,8 @@ import type {
   HarnessTag,
   PromoteSkillOutcome,
   PublishTagOutcome,
+  SkillPushOutcome,
+  WorktreeAmbiguity,
 } from "./read-harness-state";
 import type { HarnessSkillTree } from "./skill-movements";
 
@@ -52,6 +54,7 @@ const PROMOTE_BRANCHES = `refs/remotes/origin/${PROMOTE_NAMESPACE}`;
 
 // Fixed, so a pull request starts legibly without Maestro asking for a message.
 const PROMOTE_SUBJECT = "Promote skill: ";
+const REMOVE_SUBJECT = "Remove skill: ";
 
 // Tab-separated so a tag name containing spaces stays one field. The third
 // field is the commit an annotated tag points at; lightweight tags leave it
@@ -219,10 +222,11 @@ export class HarnessGitAdapter implements HarnessGitPort {
 
       const commit = await this.commitSkillOnto(
         root,
-        { name, subpath, tree: skillTree },
+        { subpath, tree: skillTree },
         base,
         existingTip ?? base,
         indexDir,
+        `${PROMOTE_SUBJECT}${name}`,
       );
       // `git add` walks the directory file by file, so a save landing halfway
       // through leaves a tree mixing two revisions. Read again and refuse a
@@ -244,6 +248,105 @@ export class HarnessGitAdapter implements HarnessGitPort {
     } finally {
       await rm(indexDir, { recursive: true, force: true });
     }
+  }
+
+  // The removal commit, built in one throwaway index: `base`'s tree with this
+  // skill's directory taken out. Nothing here checks out, stages in the
+  // author's index, moves HEAD, or names a local branch (#580).
+  async pushSkillDeletion(
+    root: string,
+    name: string,
+    base: string,
+  ): Promise<SkillPushOutcome> {
+    const subpath = harnessSkillSubpath(name);
+    // A skill that is back on disk is an edit, and takes the promotion route.
+    // The use-case already read this; re-read here because the directory is
+    // the author's to restore while the confirmation is in flight.
+    if (await pathExists(join(root, subpath))) {
+      return "source-changed";
+    }
+    if (!(await this.pushLandsWhereItFetched(root))) {
+      return "push-elsewhere";
+    }
+
+    const indexDir = await mkdtemp(join(tmpdir(), "maestro-harness-delete-"));
+    try {
+      const branchRef = `${PROMOTE_BRANCHES}/${name}`;
+      await this.refreshPromoteBranchRef(root, name);
+      const existingTip = await this.read(root, ["rev-parse", branchRef]);
+      if (existingTip !== null) {
+        // The branch already carries the removal: a second confirmation with
+        // nothing left to remove leaves no new commit behind.
+        const existingTree = await this.read(root, [
+          "rev-parse",
+          `${branchRef}:${subpath}`,
+        ]);
+        if (existingTree === null) {
+          return "pushed";
+        }
+      }
+
+      const commit = await this.commitSkillOnto(
+        root,
+        { subpath, tree: null },
+        base,
+        existingTip ?? base,
+        indexDir,
+        `${REMOVE_SUBJECT}${name}`,
+      );
+      // The directory reappearing between the guard above and here would make
+      // this a removal the author no longer intends. Refuse rather than push:
+      // a pushed branch is not something to take back.
+      if (await pathExists(join(root, subpath))) {
+        return "source-changed";
+      }
+      return await this.pushPromotion(root, name, commit);
+    } catch {
+      return "push-failed";
+    } finally {
+      await rm(indexDir, { recursive: true, force: true });
+    }
+  }
+
+  // Every way the working tree stops answering for the author's whole intent,
+  // asked in a fixed order so a tree that is several at once always refuses
+  // under the same name. A check that could not run is fail-closed (#580).
+  async readWorktreeAmbiguity(root: string): Promise<WorktreeAmbiguity | null> {
+    // `--type=bool` normalises git's own spellings, so `1` and `on` read the
+    // same as `true`. Absent is exit 1, which `read` reports as null.
+    const sparse = await this.read(root, [
+      "config",
+      "--type=bool",
+      "--get",
+      "core.sparseCheckout",
+    ]);
+    if (sparse === "true") {
+      return "sparse-checkout";
+    }
+    if (await this.refExists(root, "MERGE_HEAD")) {
+      return "merge-in-progress";
+    }
+    for (const dir of ["rebase-merge", "rebase-apply"]) {
+      const path = await this.read(root, ["rev-parse", "--git-path", dir]);
+      if (path !== null && (await pathExists(join(root, path)))) {
+        return "rebase-in-progress";
+      }
+    }
+    // Raw stdout: an empty listing is a tree with nothing unmerged, and only a
+    // failed command is null — collapsing the two would read a git failure as
+    // a clean working tree.
+    const unmerged = await this.readOutput(root, ["ls-files", "--unmerged"]);
+    if (unmerged === null) {
+      return "unreadable";
+    }
+    return unmerged.trim() === "" ? null : "unresolved-conflicts";
+  }
+
+  private async refExists(root: string, ref: string): Promise<boolean> {
+    return (
+      (await this.read(root, ["rev-parse", "--verify", "--quiet", ref])) !==
+      null
+    );
   }
 
   // Both sides as git itself resolves them: `--push --all` names every push
@@ -313,12 +416,16 @@ export class HarnessGitAdapter implements HarnessGitPort {
   // base's own copy is dropped from the index first. `treeBase` is always the
   // freshly fetched tip; `parent` is the existing promote branch's own tip
   // when there is one, so the push that follows is a fast-forward (#578).
+  //
+  // `tree: null` stops after the drop, which is the whole of a removal: the
+  // base's tree with exactly this one subpath gone (#580).
   private async commitSkillOnto(
     root: string,
-    skill: { name: string; subpath: string; tree: string },
+    skill: { subpath: string; tree: string | null },
     treeBase: string,
     parent: string,
     indexDir: string,
+    subject: string,
   ): Promise<string> {
     const options = indexOptions(join(indexDir, "promote"));
     await run("git", ["-C", root, "read-tree", treeBase], options);
@@ -338,11 +445,13 @@ export class HarnessGitAdapter implements HarnessGitPort {
       ],
       options,
     );
-    await run(
-      "git",
-      ["-C", root, "read-tree", `--prefix=${skill.subpath}/`, skill.tree],
-      options,
-    );
+    if (skill.tree !== null) {
+      await run(
+        "git",
+        ["-C", root, "read-tree", `--prefix=${skill.subpath}/`, skill.tree],
+        options,
+      );
+    }
     const { stdout: tree } = await run(
       "git",
       ["-C", root, "write-tree"],
@@ -352,16 +461,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
     // to do is what this commit carries (#574).
     const { stdout: commit } = await run(
       "git",
-      [
-        "-C",
-        root,
-        "commit-tree",
-        tree.trim(),
-        "-p",
-        parent,
-        "-m",
-        `${PROMOTE_SUBJECT}${skill.name}`,
-      ],
+      ["-C", root, "commit-tree", tree.trim(), "-p", parent, "-m", subject],
       options,
     );
     return commit.trim();
@@ -374,7 +474,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
     root: string,
     name: string,
     commit: string,
-  ): Promise<PromoteSkillOutcome> {
+  ): Promise<SkillPushOutcome> {
     try {
       await run(
         "git",
@@ -411,8 +511,8 @@ export class HarnessGitAdapter implements HarnessGitPort {
     root: string,
     name: string,
     commit: string,
-    failure: PromoteSkillOutcome,
-  ): Promise<PromoteSkillOutcome> {
+    failure: SkillPushOutcome,
+  ): Promise<SkillPushOutcome> {
     const branchRef = `refs/heads/${promoteBranch(name)}`;
     const listing = await run(
       "git",
@@ -578,11 +678,14 @@ export class HarnessGitAdapter implements HarnessGitPort {
     if (listing === null) {
       // The same failure covers a ref that does not resolve and a ref carrying
       // no skills directory. Only the second is an empty set.
+      // `^{tree}`, not `^{commit}`: `workingSkillTrees` passes a bare tree
+      // hash, and deleting the last skill leaves nothing git tracks there —
+      // asked as a commit, an empty harness reads as unreadable (#580).
       const resolves = await this.readOutput(root, [
         "rev-parse",
         "--verify",
         "--quiet",
-        `${ref}^{commit}`,
+        `${ref}^{tree}`,
       ]);
       return resolves === null ? null : [];
     }

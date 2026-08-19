@@ -15,6 +15,8 @@ export const unreachableHarnessGit = () => ({
   readSkillManifests: unreachable,
   publishTag: unreachable,
   pushSkillPromotion: unreachable,
+  pushSkillDeletion: unreachable,
+  readWorktreeAmbiguity: unreachable,
 });
 
 export const unfetchedFreshness = () => ({

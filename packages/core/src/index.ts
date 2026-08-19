@@ -87,6 +87,11 @@ export {
   type ImportSourceBlocker,
 } from "./harness/import-skill";
 export {
+  type PromoteDeletionError,
+  type PromoteDeletionResult,
+  PromoteSkillDeletion,
+} from "./harness/promote-deletion";
+export {
   PromoteSkill,
   type PromoteSkillError,
   type PromoteSkillResult,
@@ -111,6 +116,7 @@ export {
   type ReleasePlan,
   type ReleasePlanError,
   type ReleasePlanResult,
+  type WorktreeAmbiguity,
 } from "./harness/read-harness-state";
 export type { ManifestAdvisory } from "./harness/skill-manifest";
 export type {

@@ -4,6 +4,7 @@ import { useBrowsePicker } from "../shell/use-browse-picker";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { SectionHeader } from "../ui/section-header";
+import { DeletionDialog } from "./deletion-dialog";
 import { HarnessStrip } from "./harness-strip";
 import {
   freshnessLabel,
@@ -21,6 +22,7 @@ import {
   useHarness,
   useImportCheck,
   useImportSkill,
+  usePromoteDeletion,
   usePromoteSkill,
   usePublishRelease,
   useRefreshHarness,
@@ -32,6 +34,7 @@ import {
 // a quiet day (ADR-0021, #516).
 export function HarnessView() {
   const harness = useHarness();
+  const state = harness.data;
   const refresh = useRefreshHarness();
   const { mutate: fetchRemote } = refresh;
   // Plan open/closed is UI-state; the plan itself is fetched only while the
@@ -86,17 +89,31 @@ export function HarnessView() {
   const promote = usePromoteSkill();
   const [pullRequests, setPullRequests] = useState<Record<string, string>>({});
   const promotedSkill = promote.variables?.name ?? null;
-  const promoteSkill = (name: string) =>
-    promote.mutate(
-      { name },
-      {
-        onSuccess: (outcome) =>
-          setPullRequests((links) => ({
-            ...links,
-            [name]: outcome.pullRequestUrl,
-          })),
-      },
-    );
+  const keepLink = (name: string) => (outcome: { pullRequestUrl: string }) =>
+    setPullRequests((links) => ({ ...links, [name]: outcome.pullRequestUrl }));
+
+  // A removal never publishes by the row's press alone: it opens a
+  // confirmation, which carries the origin/HEAD tree that row was painted
+  // from. The pending movement is UI-state; the push is the mutation (#580).
+  const removal = usePromoteDeletion();
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const pendingDeletion =
+    state?.movements.find((movement) => movement.skill === confirming) ?? null;
+  const closeConfirmation = () => {
+    setConfirming(null);
+    // A refusal must not haunt the next confirmation this dialog opens.
+    removal.reset();
+  };
+
+  const promoteSkill = (name: string) => {
+    const movement = state?.movements.find((each) => each.skill === name);
+    if (movement?.deletion === true) {
+      removal.reset();
+      setConfirming(name);
+      return;
+    }
+    promote.mutate({ name }, { onSuccess: keepLink(name) });
+  };
 
   // Opening the view fetches, the same act the Refresh button repeats. A
   // mutation, not a query: it reaches the network and writes git refs.
@@ -106,8 +123,6 @@ export function HarnessView() {
     const scheduled = setTimeout(fetchRemote);
     return () => clearTimeout(scheduled);
   }, [fetchRemote]);
-
-  const state = harness.data;
 
   return (
     <section>
@@ -232,6 +247,32 @@ export function HarnessView() {
               mode="import-source"
               onSelect={picker.selectBrowse}
               onClose={picker.closeBrowse}
+            />
+          ) : null}
+          {pendingDeletion !== null && pendingDeletion.remoteTree !== null ? (
+            <DeletionDialog
+              skill={pendingDeletion.skill}
+              origin={state.origin}
+              seenRemoteTree={pendingDeletion.remoteTree}
+              onClose={closeConfirmation}
+              // The dialog closes on success only: a refusal is stated in it,
+              // and the way forward is another confirmation (#580).
+              onConfirm={() =>
+                removal.mutate(
+                  {
+                    name: pendingDeletion.skill,
+                    seenRemoteTree: pendingDeletion.remoteTree as string,
+                  },
+                  {
+                    onSuccess: (outcome) => {
+                      keepLink(pendingDeletion.skill)(outcome);
+                      closeConfirmation();
+                    },
+                  },
+                )
+              }
+              removing={removal.isPending}
+              removeError={removal.isError ? removal.error.message : null}
             />
           ) : null}
           {planOpen ? (

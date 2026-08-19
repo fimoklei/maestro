@@ -112,6 +112,10 @@ function buildRead(overrides?: {
       pushSkillPromotion: async () => {
         throw new Error("git port's pushSkillPromotion was reached");
       },
+      pushSkillDeletion: async () => {
+        throw new Error("git port's pushSkillDeletion was reached");
+      },
+      readWorktreeAmbiguity: async () => null,
     },
     freshness: overrides?.freshness ?? stubFreshness(FETCHED),
   });
@@ -616,6 +620,10 @@ describe("ReadHarnessState refresh", () => {
         pushSkillPromotion: async () => {
           throw new Error("git port's pushSkillPromotion was reached");
         },
+        pushSkillDeletion: async () => {
+          throw new Error("git port's pushSkillDeletion was reached");
+        },
+        readWorktreeAmbiguity: async () => null,
       },
       freshness: stubFreshness(),
     });

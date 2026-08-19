@@ -16,6 +16,7 @@ import {
   InventoryReader,
   NodeFileSystem,
   PromoteSkill,
+  PromoteSkillDeletion,
   ReadHarnessState,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
@@ -109,6 +110,12 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
         freshness: new HarnessFreshnessStore({ store }),
         locks: new InFlightLocks(),
       }),
+      promoteDeletion: new PromoteSkillDeletion({
+        resolveRoot,
+        git: new HarnessGitAdapter(),
+        freshness: new HarnessFreshnessStore({ store }),
+        locks: new InFlightLocks(),
+      }),
       deployState: stubDeployState({ fs }),
       deploy: stubDeploy({ inventory, registry, locks }),
       remove: stubRemove({ registry, locks }),
@@ -185,6 +192,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
         state: "pending-review",
         deletion: false,
         concurrentChange: false,
+        remoteTree: expect.any(String),
       },
     ]);
 
@@ -224,6 +232,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
         state: "pending-review",
         deletion: false,
         concurrentChange: false,
+        remoteTree: expect.any(String),
       },
     ]);
   });
@@ -298,6 +307,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
         state: "pending-promotion",
         deletion: false,
         concurrentChange: true,
+        remoteTree: expect.any(String),
       },
     ]);
   });
@@ -316,6 +326,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
         state: "pending-promotion",
         deletion: false,
         concurrentChange: false,
+        remoteTree: expect.any(String),
       },
     ]);
   });
@@ -489,5 +500,129 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
 
     expect(response.status).toBe(409);
     expect(await response.json()).toMatchObject({ error: "no-answer" });
+  });
+
+  // Publishing a removal through the route the confirmation presses. The body
+  // carries the origin/HEAD tree the author was shown, and nothing else — the
+  // harness is still resolved server-side (#580).
+  describe("publishing a deletion", () => {
+    const publishDeletion = async (
+      app: ReturnType<typeof makeApp>,
+      body: unknown,
+    ) =>
+      app.request("/api/harness/promote/deletion", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+    // The tree the `deleted locally` row states, read the same way the view
+    // reads it: origin/HEAD's own copy of the skill.
+    const seenTree = async (app: ReturnType<typeof makeApp>) => {
+      await app.request("/api/harness/refresh", { method: "POST" });
+      return (await new HarnessGitAdapter().readMovementTrees(root))?.remote
+        .tdd as string;
+    };
+
+    const deleteOnDisk = async () =>
+      rm(join(root, ".apm", "skills", "tdd"), {
+        recursive: true,
+        force: true,
+      });
+
+    it("moves the row to Pending review, and to Pending release once it is merged", async () => {
+      const app = makeApp(root);
+      const seen = await seenTree(app);
+      await deleteOnDisk();
+
+      const response = await publishDeletion(app, {
+        name: "tdd",
+        seenRemoteTree: seen,
+      });
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        branch: "maestro/tdd",
+        pullRequestUrl:
+          "https://github.com/fimoklei/agent-harness/compare/main...maestro/tdd?expand=1",
+      });
+
+      const reviewed = (await (
+        await app.request("/api/harness/refresh", { method: "POST" })
+      ).json()) as HarnessState;
+      expect(reviewed.movements).toEqual([
+        {
+          skill: "tdd",
+          state: "pending-review",
+          deletion: true,
+          concurrentChange: false,
+          remoteTree: seen,
+        },
+      ]);
+
+      // Merged the way a reviewer would, in the fixture's own remote.
+      await git(
+        remote,
+        "update-ref",
+        "refs/heads/main",
+        "refs/heads/maestro/tdd",
+      );
+      const merged = (await (
+        await app.request("/api/harness/refresh", { method: "POST" })
+      ).json()) as HarnessState;
+      expect(merged.movements).toEqual([]);
+      expect(merged.releaseState).toBe("pending-release");
+      expect(merged.pendingRelease).toMatchObject([
+        { kind: "removed", name: "tdd" },
+      ]);
+    });
+
+    it("refuses a confirmation given against a tree the remote has moved past", async () => {
+      const app = makeApp(root);
+      await deleteOnDisk();
+
+      const response = await publishDeletion(app, {
+        name: "tdd",
+        seenRemoteTree: "0".repeat(40),
+      });
+
+      expect(response.status).toBe(409);
+      expect(await response.json()).toEqual({
+        error: "confirmation-stale",
+        message: expect.stringContaining("confirm again"),
+      });
+      expect(
+        (await git(remote, "branch", "--list", "maestro/tdd")).stdout,
+      ).toBe("");
+    });
+
+    it("states an ambiguous working tree in Maestro's words, leaking no git output or path", async () => {
+      const app = makeApp(root);
+      const seen = await seenTree(app);
+      await deleteOnDisk();
+      await git(root, "sparse-checkout", "init");
+
+      const response = await publishDeletion(app, {
+        name: "tdd",
+        seenRemoteTree: seen,
+      });
+      const body = await response.text();
+
+      expect(response.status).toBe(409);
+      expect(JSON.parse(body)).toEqual({
+        error: "sparse-checkout",
+        message: expect.stringContaining("sparse checkout"),
+      });
+      expect(body).not.toContain(root);
+      expect(
+        (await git(remote, "branch", "--list", "maestro/tdd")).stdout,
+      ).toBe("");
+    });
+
+    it("refuses a body that carries no confirmed tree", async () => {
+      const response = await publishDeletion(makeApp(root), { name: "tdd" });
+
+      expect(response.status).toBe(400);
+    });
   });
 });

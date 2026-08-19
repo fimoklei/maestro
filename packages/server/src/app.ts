@@ -32,7 +32,10 @@ import {
   isRepositoryRoot,
   NodeCopyTreeFs,
   NodeFileSystem,
+  type PromoteDeletionError,
+  type PromoteDeletionResult,
   PromoteSkill,
+  PromoteSkillDeletion,
   type PromoteSkillError,
   type PromoteSkillResult,
   PublishRelease,
@@ -135,7 +138,18 @@ const publishReleaseBodySchema = z.object({
 // server-side, so the browser cannot point a promotion at another repository.
 const promoteBodySchema = z.object({ name: z.string() });
 
+// The confirmation the author gave: the skill, and the origin/HEAD tree hash
+// the row stated it against. Compared against a freshly fetched remote, never
+// used as the thing to remove (#580).
+const deletionBodySchema = z.object({
+  name: z.string(),
+  seenRemoteTree: z.string(),
+});
+
 const PROMOTE_BODY_MESSAGE = "Expected a JSON body with a skill name.";
+
+const DELETION_BODY_MESSAGE =
+  "Expected a JSON body with a skill name and the origin/HEAD tree it was confirmed against.";
 
 const RELEASE_BODY_MESSAGE =
   'Expected a JSON body with a version step and the plan\'s previous tag, that tag\'s commit, and its revision ({ step: "major" | "minor" | "patch", previousTag: string | null, previousTagCommit: string | null, revision: string }).';
@@ -694,6 +708,68 @@ const promoteErrorResponses: Record<
   },
 };
 
+// Promotion's refusals plus the ones only a removal has: a confirmation the
+// remote moved past, a movement that is no longer a deletion, and four working
+// trees that cannot answer. Maestro's own words (#580, security.md).
+const deletionErrorResponses: Record<
+  PromoteDeletionError,
+  { status: 400 | 409 | 422 | 502; message: string }
+> = {
+  ...harnessErrorResponses,
+  "invalid-skill": promoteErrorResponses["invalid-skill"],
+  "no-answer": {
+    status: 409,
+    message:
+      "Maestro could not reach the remote to publish this removal. Refresh and try again.",
+  },
+  "confirmation-stale": {
+    status: 409,
+    message:
+      "The skill on the default branch is no longer the one you confirmed removing. Nothing was pushed — refresh and confirm again.",
+  },
+  "not-deleted": {
+    status: 422,
+    message:
+      "That skill is not deleted in the Harness working tree, so there is no removal to publish.",
+  },
+  "sparse-checkout": {
+    status: 409,
+    message:
+      "The Harness clone uses a sparse checkout, so a missing skill is not proof it was deleted. Maestro will not publish a removal from it.",
+  },
+  "merge-in-progress": {
+    status: 409,
+    message:
+      "A merge is in progress in the Harness clone. Finish or abort it, then confirm the removal again.",
+  },
+  "rebase-in-progress": {
+    status: 409,
+    message:
+      "A rebase is in progress in the Harness clone. Finish or abort it, then confirm the removal again.",
+  },
+  "unresolved-conflicts": {
+    status: 409,
+    message:
+      "The Harness clone has unresolved conflicts, so its working tree does not state your intent. Resolve them, then confirm the removal again.",
+  },
+  unreadable: {
+    status: 409,
+    message:
+      "Maestro could not read the state of the Harness working tree, so it will not publish a removal from it.",
+  },
+  "push-elsewhere": promoteErrorResponses["push-elsewhere"],
+  "source-changed": {
+    status: 409,
+    message:
+      "The skill came back on disk while Maestro was reading it. Nothing was pushed — try again.",
+  },
+  "promote-failed": {
+    status: 502,
+    message: "The removal could not be pushed. Check the remote and try again.",
+  },
+  "promote-in-progress": promoteErrorResponses["promote-in-progress"],
+};
+
 // Import states every refusal in Maestro's own words — never a filesystem
 // message, and never the path it read (#576, security.md). The copy's own
 // refusals come through unchanged from core's typed set.
@@ -819,6 +895,7 @@ export type AppDeps = {
   importSkill: ImportSkill;
   publish: PublishRelease;
   promote: PromoteSkill;
+  promoteDeletion: PromoteSkillDeletion;
   connect: ConnectInventory;
   scaffold: ScaffoldHarness;
   browse: BrowseFilesystem;
@@ -952,6 +1029,29 @@ export function createApp(deps: AppDeps) {
     );
     if (!result.ok) {
       const { status, message } = promoteErrorResponses[result.error];
+      return c.json({ error: result.error, message }, status);
+    }
+    return c.json({
+      branch: result.branch,
+      pullRequestUrl: result.pullRequestUrl,
+    });
+  });
+
+  // Publishing a skill's removal: the same POST one step stricter. The body
+  // carries the origin/HEAD tree the author confirmed against, so a remote
+  // that moved under it is refused rather than removed (#580).
+  app.post("/api/harness/promote/deletion", async (c) => {
+    const body = await parseBody(c, deletionBodySchema, DELETION_BODY_MESSAGE);
+    if (!body.ok) {
+      return body.response;
+    }
+    const result: PromoteDeletionResult = await deps.promoteDeletion.execute(
+      body.data.name,
+      body.data.seenRemoteTree,
+      new Date(),
+    );
+    if (!result.ok) {
+      const { status, message } = deletionErrorResponses[result.error];
       return c.json({ error: result.error, message }, status);
     }
     return c.json({
@@ -1349,6 +1449,9 @@ function realDeps(): AppDeps {
   };
   const harnessGit = new HarnessGitAdapter();
   const harnessFreshness = new HarnessFreshnessStore({ store });
+  // Shared by both ways a movement reaches review: two of them for the same
+  // harness must queue, not race each other's temporary index and push.
+  const harnessPromoteLocks = new InFlightLocks();
 
   // Shared instance: a global deploy's lockfile root and deploy tree differ
   // (~/.apm vs ~/.claude/skills, apm-driver.md #56/#61) — guard and cleanup agree by construction.
@@ -1464,9 +1567,16 @@ function realDeps(): AppDeps {
       resolveRoot: harnessRoot,
       git: harnessGit,
       freshness: harnessFreshness,
-      // Own lock: two promotions of the same harness must queue, not race each
-      // other's temporary index and push.
-      locks: new InFlightLocks(),
+      locks: harnessPromoteLocks,
+    }),
+    // Publishing a removal is the same branch lifecycle one movement the other
+    // way, so it shares the promotion's lock: an edit and a removal building
+    // commits from one fetched tip would each answer for the other's refs.
+    promoteDeletion: new PromoteSkillDeletion({
+      resolveRoot: harnessRoot,
+      git: harnessGit,
+      freshness: harnessFreshness,
+      locks: harnessPromoteLocks,
     }),
     // Checked offline against local git config, so the error lands before
     // the first deploy (#147).

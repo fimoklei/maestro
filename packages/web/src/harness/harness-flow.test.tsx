@@ -55,6 +55,15 @@ function stubHarnessServer(options: {
   // Every promotion's parsed body, in order, so a test can state which skill
   // the row action named.
   promotions?: Record<string, unknown>[];
+  // Publishing a removal, and every confirmation's parsed body in order — so a
+  // test can state what the confirmation carried without reading it back off
+  // the screen. `retry` answers every call after the first.
+  deletion?: {
+    body: unknown;
+    status?: number;
+    retry?: { body: unknown; status?: number };
+  };
+  deletions?: Record<string, unknown>[];
   // Every release confirmation's parsed body, in order, so a test can state
   // what the browser sent without reading it back off the screen.
   confirmations?: Record<string, unknown>[];
@@ -62,6 +71,7 @@ function stubHarnessServer(options: {
   const calls: string[] = [];
   let planCalls = 0;
   let publishCalls = 0;
+  let deletionCalls = 0;
   let published = false;
   let promoted = false;
   const answer = (route: {
@@ -86,6 +96,17 @@ function stubHarnessServer(options: {
         await ("holds" in plan ? plan.holds?.[planCalls] : undefined);
         planCalls += 1;
         return jsonResponse(plan.body, plan.status);
+      }
+      if (url === "/api/harness/promote/deletion") {
+        options.deletions?.push(JSON.parse(String(init?.body)));
+        const first = options.deletion ?? { body: {}, status: 500 };
+        const answered =
+          deletionCalls > 0 && first.retry !== undefined ? first.retry : first;
+        deletionCalls += 1;
+        if ((answered.status ?? 200) < 400) {
+          promoted = true;
+        }
+        return jsonResponse(answered.body, answered.status);
       }
       if (url === "/api/harness/promote") {
         options.promotions?.push(JSON.parse(String(init?.body)));
@@ -834,12 +855,14 @@ describe("Harness home base", () => {
         state: "pending-promotion",
         deletion: false,
         concurrentChange: false,
+        remoteTree: null,
       },
       {
         skill: "code-review",
         state: "pending-promotion",
         deletion: false,
         concurrentChange: false,
+        remoteTree: null,
       },
     ],
   };
@@ -852,12 +875,14 @@ describe("Harness home base", () => {
         state: "pending-review",
         deletion: false,
         concurrentChange: false,
+        remoteTree: null,
       },
       {
         skill: "code-review",
         state: "pending-promotion",
         deletion: false,
         concurrentChange: false,
+        remoteTree: null,
       },
     ],
   };
@@ -903,6 +928,7 @@ describe("Harness home base", () => {
               state: "pending-promotion",
               deletion: false,
               concurrentChange: true,
+              remoteTree: null,
             },
             ON_DISK.movements[1],
           ],
@@ -1012,9 +1038,7 @@ describe("Harness home base", () => {
     );
   });
 
-  it("offers no Promote on a row that is already pushed, or on a deletion", async () => {
-    // A deletion publishes by removal, which takes a confirmation of its own
-    // (#497) — this row action never promotes one by a single press.
+  it("offers no Promote on a row that is already pushed", async () => {
     stubHarnessServer({
       read: {
         body: {
@@ -1025,12 +1049,14 @@ describe("Harness home base", () => {
               state: "pending-review",
               deletion: false,
               concurrentChange: false,
+              remoteTree: null,
             },
             {
               skill: "old-skill",
-              state: "pending-promotion",
+              state: "pending-review",
               deletion: true,
               concurrentChange: false,
+              remoteTree: null,
             },
           ],
         },
@@ -1042,6 +1068,183 @@ describe("Harness home base", () => {
     expect(
       screen.queryByRole("button", { name: /^promote$/i }),
     ).not.toBeInTheDocument();
+  });
+
+  // A removal never publishes by a single press: the confirmation states what
+  // will be removed and carries the origin/HEAD tree the row was painted from,
+  // so a remote that moved under it refuses rather than removes (#580).
+  const DELETED: HarnessState = {
+    ...ON_DISK,
+    movements: [
+      {
+        skill: "old-skill",
+        state: "pending-promotion",
+        deletion: true,
+        concurrentChange: false,
+        remoteTree: "abc123",
+      },
+      ON_DISK.movements[1] as HarnessState["movements"][number],
+    ],
+  };
+
+  const REMOVED = {
+    branch: "maestro/old-skill",
+    pullRequestUrl:
+      "https://github.com/fimoklei/agent-harness/compare/main...maestro/old-skill?expand=1",
+  };
+
+  const openDeletionConfirmation = async () => {
+    await promoteRow("old-skill");
+    return screen.findByRole("dialog", { name: /remove old-skill/i });
+  };
+
+  it("asks for a confirmation on a deletion, and pushes nothing until it is given", async () => {
+    const deletions: Record<string, unknown>[] = [];
+    stubHarnessServer({
+      read: { body: DELETED },
+      deletion: { body: REMOVED },
+      deletions,
+    });
+    renderHarness();
+
+    const dialog = await openDeletionConfirmation();
+
+    expect(within(dialog).getAllByText("old-skill").length).toBeGreaterThan(0);
+    expect(deletions).toEqual([]);
+  });
+
+  it("carries the origin/HEAD tree the row was shown into the confirmation", async () => {
+    const deletions: Record<string, unknown>[] = [];
+    stubHarnessServer({
+      read: { body: DELETED },
+      deletion: { body: REMOVED },
+      deletions,
+    });
+    renderHarness();
+    const dialog = await openDeletionConfirmation();
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /^remove$/i }),
+    );
+
+    await waitFor(() =>
+      expect(deletions).toEqual([
+        { name: "old-skill", seenRemoteTree: "abc123" },
+      ]),
+    );
+  });
+
+  it("moves the confirmed row to Pending review and opens the pull-request flow", async () => {
+    stubHarnessServer({
+      read: {
+        body: DELETED,
+        afterPromote: {
+          ...DELETED,
+          movements: [
+            {
+              skill: "old-skill",
+              state: "pending-review",
+              deletion: true,
+              concurrentChange: false,
+              remoteTree: "abc123",
+            },
+          ],
+        },
+      },
+      deletion: { body: REMOVED },
+    });
+    renderHarness();
+    const dialog = await openDeletionConfirmation();
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /^remove$/i }),
+    );
+
+    const review = (
+      await screen.findByRole("heading", { level: 3, name: /pending review/i })
+    ).closest("section") as HTMLElement;
+    expect(
+      await within(review).findByRole("link", { name: /pull request/i }),
+    ).toHaveAttribute("href", REMOVED.pullRequestUrl);
+  });
+
+  it("states a refused confirmation in the dialog, and asks for a new one", async () => {
+    const deletions: Record<string, unknown>[] = [];
+    stubHarnessServer({
+      read: { body: DELETED },
+      deletion: {
+        body: {
+          error: "confirmation-stale",
+          message:
+            "The skill on the default branch is no longer the one you confirmed removing. Nothing was pushed — refresh and confirm again.",
+        },
+        status: 409,
+        retry: { body: REMOVED },
+      },
+      deletions,
+    });
+    renderHarness();
+    const dialog = await openDeletionConfirmation();
+    const confirm = within(dialog).getByRole("button", { name: /^remove$/i });
+
+    await userEvent.click(confirm);
+
+    expect(
+      await within(dialog).findByText(/confirm again/i),
+    ).toBeInTheDocument();
+    // The dialog stays open with the press still there: a refusal changed
+    // nothing, so the way forward is another confirmation.
+    expect(confirm).toBeEnabled();
+
+    await userEvent.click(confirm);
+
+    await waitFor(() => expect(deletions).toHaveLength(2));
+  });
+
+  it("states an ambiguous working tree in the dialog, without publishing anything", async () => {
+    stubHarnessServer({
+      read: { body: DELETED },
+      deletion: {
+        body: {
+          error: "merge-in-progress",
+          message:
+            "A merge is in progress in the Harness clone. Finish or abort it, then confirm the removal again.",
+        },
+        status: 409,
+      },
+    });
+    renderHarness();
+    const dialog = await openDeletionConfirmation();
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /^remove$/i }),
+    );
+
+    expect(
+      await within(dialog).findByText(/merge is in progress/i),
+    ).toBeInTheDocument();
+  });
+
+  it("closes the confirmation without publishing when it is dismissed", async () => {
+    const deletions: Record<string, unknown>[] = [];
+    stubHarnessServer({
+      read: { body: DELETED },
+      deletion: { body: REMOVED },
+      deletions,
+    });
+    renderHarness();
+    const dialog = await openDeletionConfirmation();
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /^cancel$/i }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: /remove old-skill/i }),
+      ).toBeNull(),
+    );
+    expect(deletions).toEqual([]);
   });
 
   it("reports a harness that is not connected instead of an empty screen", async () => {

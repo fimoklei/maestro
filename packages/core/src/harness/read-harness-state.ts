@@ -50,6 +50,21 @@ export type PromoteSkillOutcome =
   | "source-changed"
   | "push-failed";
 
+// What the push itself can answer. `skill-missing` is a guard read before any
+// object is written, and it is what a removal publishes rather than a way one
+// can fail — so no route driving a push has that branch to answer for (#580).
+export type SkillPushOutcome = Exclude<PromoteSkillOutcome, "skill-missing">;
+
+// A removal is published from what is absent on disk, so a checkout that is
+// incomplete by design, or mid-rewrite, reads as a deletion nobody made.
+// `unreadable` is fail-closed: an unasked question is not a clean answer.
+export type WorktreeAmbiguity =
+  | "sparse-checkout"
+  | "merge-in-progress"
+  | "rebase-in-progress"
+  | "unresolved-conflicts"
+  | "unreadable";
+
 // `outcome: null` means no fetch has been attempted yet; `lastFetchedAt: null`
 // means none has ever succeeded. The two are independent.
 export type HarnessFreshness = {
@@ -128,6 +143,17 @@ export interface HarnessGitPort {
     name: string,
     baseCommit: string,
   ): Promise<PromoteSkillOutcome>;
+  // The same commit and the same branch, one movement the other way:
+  // `baseCommit`'s tree with exactly `.apm/skills/<name>` removed. Never
+  // checks out, stages in the real index, moves HEAD, or force-pushes (#580).
+  pushSkillDeletion(
+    root: string,
+    name: string,
+    baseCommit: string,
+  ): Promise<SkillPushOutcome>;
+  // What makes the working tree stop answering for the author's whole intent,
+  // or null when nothing does. Never a path or git's own words (security.md).
+  readWorktreeAmbiguity(root: string): Promise<WorktreeAmbiguity | null>;
 }
 
 // Every call names the harness root: one record per harness, so connecting a
@@ -158,6 +184,10 @@ export type HarnessMovement = {
   // teammate's merged change. Promoting still replaces it; this is what
   // makes that visible before the press (#579).
   concurrentChange: boolean;
+  // origin/HEAD's own copy of this skill, or null where it carries none. The
+  // opaque token a deletion confirmation is given against: it travels back at
+  // the press, and a tree that moved since refuses it (#580).
+  remoteTree: string | null;
 };
 
 export type HarnessState = {
@@ -494,6 +524,7 @@ const movementsFromTrees = (
               hashes,
               atMergeBase === null ? undefined : (atMergeBase[skill] ?? null),
             ),
+            remoteTree: hashes.remote,
           },
         ];
   });

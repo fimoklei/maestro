@@ -13,6 +13,7 @@ describe("MovementTable", () => {
             state: "pending-promotion",
             deletion: true,
             concurrentChange: false,
+            remoteTree: null,
           },
         ]}
       />,
@@ -32,6 +33,7 @@ describe("MovementTable", () => {
             state: "pending-promotion",
             deletion: true,
             concurrentChange: false,
+            remoteTree: null,
           },
         ]}
       />,
@@ -50,6 +52,7 @@ describe("MovementTable", () => {
             state: "pending-promotion",
             deletion: false,
             concurrentChange: false,
+            remoteTree: null,
           },
         ]}
       />,
@@ -81,12 +84,14 @@ describe("MovementTable", () => {
             state: "pending-promotion",
             deletion: false,
             concurrentChange: false,
+            remoteTree: null,
           },
           {
             skill: "code-review",
             state: "pending-promotion",
             deletion: false,
             concurrentChange: false,
+            remoteTree: null,
           },
         ]}
         promote={{ ...promote, onPromote: (skill) => pressed.push(skill) }}
@@ -100,7 +105,7 @@ describe("MovementTable", () => {
     expect(pressed).toEqual(["code-review"]);
   });
 
-  it("offers no press on an already pushed row, nor on a deletion", () => {
+  it("offers no press on an already pushed row", () => {
     render(
       <MovementTable
         movements={[
@@ -109,12 +114,14 @@ describe("MovementTable", () => {
             state: "pending-review",
             deletion: false,
             concurrentChange: false,
+            remoteTree: null,
           },
           {
             skill: "old-skill",
-            state: "pending-promotion",
+            state: "pending-review",
             deletion: true,
             concurrentChange: false,
+            remoteTree: null,
           },
         ]}
         promote={promote}
@@ -135,12 +142,14 @@ describe("MovementTable", () => {
             state: "pending-promotion",
             deletion: false,
             concurrentChange: false,
+            remoteTree: null,
           },
           {
             skill: "code-review",
             state: "pending-promotion",
             deletion: false,
             concurrentChange: false,
+            remoteTree: null,
           },
         ]}
         promote={{ ...promote, pending: "lint-rules" }}
@@ -164,6 +173,7 @@ describe("MovementTable", () => {
             state: "pending-promotion",
             deletion: false,
             concurrentChange: false,
+            remoteTree: null,
           },
         ]}
         promote={{ ...promote, enabled: false }}
@@ -182,12 +192,14 @@ describe("MovementTable", () => {
             state: "pending-review",
             deletion: false,
             concurrentChange: false,
+            remoteTree: null,
           },
           {
             skill: "code-review",
             state: "pending-review",
             deletion: false,
             concurrentChange: false,
+            remoteTree: null,
           },
         ]}
         promote={{
@@ -222,6 +234,7 @@ describe("MovementTable", () => {
             state: "pending-promotion",
             deletion: false,
             concurrentChange: false,
+            remoteTree: null,
           },
         ]}
         promote={{
@@ -247,6 +260,7 @@ describe("MovementTable", () => {
             state: "pending-promotion",
             deletion: false,
             concurrentChange: false,
+            remoteTree: null,
           },
         ]}
         promote={{
@@ -271,6 +285,7 @@ describe("MovementTable", () => {
             state: "pending-promotion",
             deletion: false,
             concurrentChange: true,
+            remoteTree: null,
           },
         ]}
         promote={promote}
@@ -290,6 +305,7 @@ describe("MovementTable", () => {
             state: "pending-promotion",
             deletion: false,
             concurrentChange: false,
+            remoteTree: null,
           },
         ]}
         promote={promote}
@@ -299,7 +315,7 @@ describe("MovementTable", () => {
     expect(screen.queryByText(/pull their change/i)).not.toBeInTheDocument();
   });
 
-  it("never warns on a deletion, which has no press this table offers", () => {
+  it("warns on a deletion a teammate has changed, whose confirmation will be refused", () => {
     render(
       <MovementTable
         movements={[
@@ -308,12 +324,37 @@ describe("MovementTable", () => {
             state: "pending-promotion",
             deletion: true,
             concurrentChange: true,
+            remoteTree: "theirs",
           },
         ]}
         promote={promote}
       />,
     );
 
-    expect(screen.queryByText(/pull their change/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/pull their change/i)).toBeInTheDocument();
+  });
+
+  it("offers the press on a deletion, which the host takes to a confirmation", () => {
+    // The press is the same word: what differs is that a removal is never
+    // published by it alone — the host opens a confirmation first (#580).
+    const pressed: string[] = [];
+    render(
+      <MovementTable
+        movements={[
+          {
+            skill: "old-skill",
+            state: "pending-promotion",
+            deletion: true,
+            concurrentChange: false,
+            remoteTree: "abc123",
+          },
+        ]}
+        promote={{ ...promote, onPromote: (skill) => pressed.push(skill) }}
+      />,
+    );
+
+    screen.getByRole("button", { name: "promote" }).click();
+
+    expect(pressed).toEqual(["old-skill"]);
   });
 });
