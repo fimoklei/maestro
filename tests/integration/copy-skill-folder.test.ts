@@ -49,6 +49,15 @@ describe("CopySkillFolder", () => {
     return path;
   };
 
+  // Flat files at the root of an existing directory: no per-file mkdir, and
+  // written in one fan-out instead of a thousand awaits.
+  const writeFlat = (count: number) =>
+    Promise.all(
+      Array.from({ length: count }, (_, i) =>
+        writeFile(join(source, `f${i}.md`), "x", "utf8"),
+      ),
+    );
+
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), "maestro-copy-"));
     source = join(root, "source");
@@ -139,14 +148,8 @@ describe("CopySkillFolder", () => {
       ).toBe("asset\n");
     });
 
-    // 1000 real files: about a second on its own, past the default 5s when the
-    // whole suite runs its lanes in parallel.
-    it("counts a tree at the limits as acceptable", {
-      timeout: 30_000,
-    }, async () => {
-      for (let i = 0; i < 1000; i++) {
-        await write(`f${i}.md`, "x");
-      }
+    it("counts a tree at the limits as acceptable", async () => {
+      await writeFlat(1000);
 
       expect(await copy()).toMatchObject({ ok: true, path: destination() });
     });
@@ -225,9 +228,7 @@ describe("CopySkillFolder", () => {
 
   describe("limits", () => {
     it("refuses a tree over 1,000 regular files", async () => {
-      for (let i = 0; i < 1001; i++) {
-        await write(`f${i}.md`, "x");
-      }
+      await writeFlat(1001);
 
       expect(await copy()).toEqual({ ok: false, error: "too-many-files" });
       await expectNothingWritten();
