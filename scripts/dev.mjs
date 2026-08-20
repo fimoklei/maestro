@@ -177,22 +177,24 @@ if (smoke) {
   // Only this dev-tooling harness bridges credentials to apm — the product
   // never does (.claude/rules/security.md). gh's token is HOME-independent,
   // so it survives the redirect above and lets a real deploy clone succeed.
+  // apm reads it from the env; git needs it written into the sandbox HOME,
+  // which seedSandbox does.
+  const UNAUTHENTICATED =
+    "[smoke] gh not authenticated — connect/register/UI work, but the harness strip stays on 'Fetch failed' and a real deploy will fail";
+  let githubToken;
   try {
     const token = execFileSync("gh", ["auth", "token"], {
       encoding: "utf8",
     }).trim();
     if (token) {
+      githubToken = token;
       env.GITHUB_TOKEN = token;
       console.log("[smoke] bridged GITHUB_TOKEN from gh auth token");
     } else {
-      console.warn(
-        "[smoke] gh not authenticated — connect/register/UI work, but a real deploy will fail",
-      );
+      console.warn(UNAUTHENTICATED);
     }
   } catch {
-    console.warn(
-      "[smoke] gh not authenticated — connect/register/UI work, but a real deploy will fail",
-    );
+    console.warn(UNAUTHENTICATED);
   }
 
   // Everything the picker must reach is seeded under the redirected HOME —
@@ -202,6 +204,7 @@ if (smoke) {
   const seeded = seedSandbox({
     home: env.HOME,
     inventorySource: join(homedir(), "Projects", "agent-harness"),
+    githubToken,
   });
   for (const warning of seeded.warnings) {
     console.warn(`[smoke] ${warning}`);

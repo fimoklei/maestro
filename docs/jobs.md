@@ -51,6 +51,8 @@ Detail lives in tracker issues; elaboration happens in the grill.
 | Backfill a newly-detected global tool | B, A | *When* I install a second tool after already deploying globally, *I want to* have the cockpit offer to bring the new tool up to the same set, *so I can* keep my tools in sync instead of the new one starting empty. |
 | Update every behind target in one action | B, A | *When* several targets lag the central inventory, *I want to* bring them all current in one action, *so I can* stay up to date without going target by target. |
 | Connect & sync the inventory from git | A | *When* my central inventory lives in a remote repo I have not cloned, *I want to* point Maestro at its git URL as the inventory source, *so I can* set up the cockpit without cloning by hand first. |
+| Act on a failed Harness fetch | A, C | *When* the cockpit cannot reach the Harness remote, *I want to* learn which kind of failure it hit and keep a way forward, *so I can* fix the cause instead of facing a strip that only says it failed. |
+| Tell an unreleased skill from an unreleased Harness | B, C | *When* a deploy is refused because no published tag carries the skill, *I want to* hear which of the two situations I am in, *so I can* cut a release or publish the skill instead of guessing which. |
 
 ## DONE
 
