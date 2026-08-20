@@ -99,11 +99,18 @@ export function HarnessView() {
   const [confirming, setConfirming] = useState<string | null>(null);
   const pendingDeletion =
     state?.movements.find((movement) => movement.skill === confirming) ?? null;
-  const closeConfirmation = () => {
-    setConfirming(null);
-    // A refusal must not haunt the next confirmation this dialog opens.
-    removal.reset();
-  };
+  // Left unreset, so a landed removal still names the row that just moved after
+  // its dialog closes. The next press resets it, which is what keeps a refusal
+  // from haunting the confirmation after this one (#580, #581).
+  const closeConfirmation = () => setConfirming(null);
+  // The row that just moved sections, whichever press moved it: a deletion is
+  // confirmed in a dialog that unmounts with the row it was opened from, so the
+  // promote mutation alone would drop the keyboard on the document (#581).
+  const justMoved = promote.isSuccess
+    ? promotedSkill
+    : removal.isSuccess
+      ? (removal.variables?.name ?? null)
+      : null;
 
   const promoteSkill = (name: string) => {
     const movement = state?.movements.find((each) => each.skill === name);
@@ -209,7 +216,7 @@ export function HarnessView() {
                       !harness.isFetching,
                     pending: promote.isPending ? promotedSkill : null,
                     pullRequests,
-                    justPromoted: promote.isSuccess ? promotedSkill : null,
+                    justMoved,
                     failed:
                       promote.isError && promotedSkill !== null
                         ? {

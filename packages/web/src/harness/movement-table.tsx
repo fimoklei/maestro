@@ -24,7 +24,7 @@ export type PromoteRowState = {
   // Skill → the URL that opens GitHub's pull-request flow.
   pullRequests: Record<string, string>;
   // The one whose press just landed: the only row that takes focus.
-  justPromoted: string | null;
+  justMoved: string | null;
   failed: { skill: string; message: string } | null;
 };
 
@@ -147,7 +147,7 @@ function promoteCell(movement: HarnessMovement, promote: PromoteRowState) {
     return pullRequest === undefined ? null : (
       <PullRequestLink
         href={pullRequest}
-        focus={promote.justPromoted === movement.skill}
+        focus={promote.justMoved === movement.skill}
       />
     );
   }
