@@ -9,7 +9,6 @@ import {
   mkdtemp,
   readFile,
   realpath,
-  rm,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -33,6 +32,7 @@ import {
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { removeGitTempTree } from "../helpers/git-fixture";
 import { centralInventoryPath } from "../helpers/real-registry";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
@@ -105,7 +105,7 @@ describe("joining a Harness by its GitHub url", () => {
     delete process.env.GIT_CONFIG_VALUE_0;
     delete process.env.GIT_CONFIG_KEY_1;
     delete process.env.GIT_CONFIG_VALUE_1;
-    await rm(base, { recursive: true, force: true });
+    await removeGitTempTree(base);
   });
 
   function makeApp() {

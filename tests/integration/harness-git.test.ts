@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { HarnessGitAdapter } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { removeGitTempTree } from "../helpers/git-fixture";
 
 const run = promisify(execFile);
 
@@ -46,7 +47,7 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
   }, 30_000);
 
   afterEach(async () => {
-    await rm(base, { recursive: true, force: true });
+    await removeGitTempTree(base);
   });
 
   const adapter = () => new HarnessGitAdapter();
