@@ -2,7 +2,7 @@ import { useId } from "react";
 import { useModalDialog } from "../shell/use-modal-dialog";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
-import { FailureNote } from "../ui/failure-note";
+import { Notice } from "../ui/notice";
 import { panelBorderFor } from "../ui/panel-border";
 import { StatusDot } from "../ui/status-dot";
 import { TypeTag } from "../ui/type-tag";
@@ -334,10 +334,14 @@ export function BulkRemoveDialog({
             </>
           ) : failure !== null ? (
             <>
-              <FailureNote
+              <Notice
                 id={bodyId}
-                label={failure.label}
-                message={failure.message}
+                trigger="user-action"
+                notice={{
+                  level: "error",
+                  label: failure.label,
+                  message: failure.message,
+                }}
               />
               {/* Only where the attempt can be repeated: the body the confirm
                   beside it would act on comes back with it. */}
