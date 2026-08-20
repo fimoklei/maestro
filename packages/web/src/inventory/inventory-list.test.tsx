@@ -125,39 +125,6 @@ describe("InventoryList", () => {
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
-  it("names where repos are registered when the loaded registry has none", () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() => new Promise<Response>(() => {})),
-    );
-    renderList(
-      <InventoryList primitives={primitives} repos={[]} registryReady />,
-    );
-
-    // Once for the whole list, not once per row: a 36-skill inventory would
-    // otherwise print the same sentence 36 times.
-    expect(screen.getAllByText(/no repositories registered\./i)).toHaveLength(
-      1,
-    );
-  });
-
-  it("hides the hint while the registry is still unread", () => {
-    // An unread registry yields the same empty list as a genuinely empty one,
-    // so claiming "none registered" before it resolves would be a guess (#37).
-    vi.stubGlobal("fetch", vi.fn());
-    renderList(
-      <InventoryList
-        primitives={primitives}
-        repos={[]}
-        registryReady={false}
-      />,
-    );
-
-    expect(
-      screen.queryByText(/no repositories registered\./i),
-    ).not.toBeInTheDocument();
-  });
-
   it("shows a Deployed column with a per-skill target roll-up", () => {
     vi.stubGlobal(
       "fetch",
@@ -474,33 +441,6 @@ describe("InventoryList", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("sends the primary deploy control to the first skill when nothing is staged", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL) => {
-        const url = String(input);
-        const body = url.startsWith("/api/drift/global")
-          ? { behind: [] }
-          : { tools: [{ tool: "claude", primitives: [] }], skipped: [] };
-        return new Response(JSON.stringify(body), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        });
-      }),
-    );
-    renderList(
-      <InventoryList primitives={primitives} repos={[]} registryReady />,
-    );
-
-    const deploy = await screen.findByRole("button", { name: "deploy →" });
-    await vi.waitFor(() => expect(deploy).not.toBeDisabled());
-    await userEvent.click(deploy);
-
-    expect(
-      screen.getByRole("checkbox", { name: /stage tdd for bulk/i }),
-    ).toHaveFocus();
-  });
-
   it("closes the pane when its close control is activated", async () => {
     vi.stubGlobal(
       "fetch",
@@ -669,10 +609,10 @@ describe("InventoryList", () => {
       <InventoryList primitives={primitives} repos={[]} registryReady />,
     );
 
-    // The strip stands from the start and counts up from nothing (#473).
+    // Nothing staged, nothing to bulk-deploy: the strip stays out of the way.
     expect(
-      screen.getByRole("status", { name: /bulk selection/i }),
-    ).toHaveTextContent(/0 staged for bulk/i);
+      screen.queryByRole("status", { name: /bulk selection/i }),
+    ).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("checkbox", { name: /stage tdd/i }));
     await userEvent.click(
@@ -686,6 +626,38 @@ describe("InventoryList", () => {
     const bar = screen.getByRole("status", { name: /bulk selection/i });
     expect(bar).toHaveTextContent(/2 staged for bulk/i);
     expect(bar).toHaveTextContent(/1 hidden by the filter/i);
+  });
+
+  it("leaves the empty-registry hint to the deploy controls that need it", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderList(
+      <InventoryList primitives={primitives} repos={[]} registryReady />,
+    );
+
+    expect(screen.queryByText(/no repositories registered/i)).toBeNull();
+  });
+
+  it("retires the bulk strip once the last skill is unstaged", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderList(
+      <InventoryList primitives={primitives} repos={[]} registryReady />,
+    );
+
+    await userEvent.click(screen.getByRole("checkbox", { name: /stage tdd/i }));
+    expect(
+      screen.getByRole("status", { name: /bulk selection/i }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("checkbox", { name: /stage tdd/i }));
+    expect(
+      screen.queryByRole("status", { name: /bulk selection/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("sorts the narrowed subset, not the whole inventory", async () => {

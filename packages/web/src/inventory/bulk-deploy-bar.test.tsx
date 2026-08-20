@@ -42,77 +42,6 @@ function stubReads(bulkReport: unknown) {
 }
 
 describe("BulkDeployBar", () => {
-  it("states deploy as the view's primary action with nothing staged", async () => {
-    stubReads(null);
-    renderWithQuery(
-      <BulkDeployBar
-        stagedNames={[]}
-        hiddenCount={0}
-        repos={[]}
-        registryReady
-        onPickSkills={() => {}}
-      />,
-    );
-
-    // The one amber fill the view is allowed, spent on the act itself (#473).
-    const deploy = await screen.findByRole("button", { name: "deploy →" });
-    await vi.waitFor(() => expect(deploy).not.toBeDisabled());
-    expect(deploy).toHaveClass("bg-amber");
-  });
-
-  it("asks for a pick instead of deploying when nothing is staged", async () => {
-    stubReads(null);
-    const onPickSkills = vi.fn();
-    renderWithQuery(
-      <BulkDeployBar
-        stagedNames={[]}
-        hiddenCount={0}
-        repos={[]}
-        registryReady
-        onPickSkills={onPickSkills}
-      />,
-    );
-
-    const deploy = await screen.findByRole("button", { name: "deploy →" });
-    await vi.waitFor(() => expect(deploy).not.toBeDisabled());
-    await userEvent.click(deploy);
-
-    expect(onPickSkills).toHaveBeenCalled();
-    expect(
-      await screen.findByRole("status", { name: /bulk deploy hint/i }),
-    ).toHaveTextContent(/pick at least one skill/i);
-    const fetchMock = fetch as ReturnType<typeof vi.fn>;
-    expect(
-      fetchMock.mock.calls.some(([url]) => url === "/api/deploy/bulk"),
-    ).toBe(false);
-  });
-
-  it("retires the pick hint once a skill is staged", async () => {
-    stubReads(null);
-    const props = {
-      hiddenCount: 0,
-      repos: [],
-      registryReady: true,
-      onPickSkills: () => {},
-    };
-    const { rerender } = renderWithQuery(
-      <BulkDeployBar stagedNames={[]} {...props} />,
-    );
-
-    const deploy = await screen.findByRole("button", { name: "deploy →" });
-    await vi.waitFor(() => expect(deploy).not.toBeDisabled());
-    await userEvent.click(deploy);
-    await screen.findByRole("status", { name: /bulk deploy hint/i });
-
-    rerender(<BulkDeployBar stagedNames={["tdd"]} {...props} />);
-
-    await vi.waitFor(() =>
-      expect(
-        screen.getByRole("status", { name: /bulk deploy hint/i }),
-      ).toBeEmptyDOMElement(),
-    );
-  });
-
   it("deploys the staged skills to the chosen target and reports the result", async () => {
     stubReads({
       target: { kind: "global" },
@@ -129,7 +58,6 @@ describe("BulkDeployBar", () => {
         hiddenCount={0}
         repos={[]}
         registryReady
-        onPickSkills={() => {}}
       />,
     );
 
@@ -169,7 +97,6 @@ describe("BulkDeployBar", () => {
         hiddenCount={0}
         repos={[]}
         registryReady
-        onPickSkills={() => {}}
       />,
     );
 
@@ -220,7 +147,6 @@ describe("BulkDeployBar", () => {
         hiddenCount={0}
         repos={[{ path: "/repo" }]}
         registryReady
-        onPickSkills={() => {}}
       />,
     );
 
@@ -276,7 +202,6 @@ describe("BulkDeployBar", () => {
         hiddenCount={0}
         repos={[]}
         registryReady
-        onPickSkills={() => {}}
       />,
     );
 
@@ -325,7 +250,6 @@ describe("BulkDeployBar", () => {
         hiddenCount={0}
         repos={[]}
         registryReady
-        onPickSkills={() => {}}
       />,
     );
 

@@ -5,7 +5,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { RegisterRepoHint } from "../registry/register-repo-hint";
 import type { RegisteredRepo } from "../registry/use-registry";
 import { cn } from "../ui/cn";
 import { HOVER_TRANSITION } from "../ui/hover-transition";
@@ -75,8 +74,6 @@ export function InventoryList({
   // A ref map, not one ref: the pane instance persists across a row switch,
   // so the trigger is looked up fresh per selection (skill-detail-pane.tsx).
   const rowButtonRefs = useRef(new Map<string, HTMLButtonElement>());
-  // Where the standing deploy control sends an empty-handed run (#473).
-  const stageBoxRefs = useRef(new Map<string, HTMLInputElement>());
   const getTriggerElement = useCallback(
     (name: string) => rowButtonRefs.current.get(name) ?? null,
     [],
@@ -122,11 +119,6 @@ export function InventoryList({
 
   const table = (
     <>
-      {/* Gated on registryReady: an unread registry looks identical to an
-          empty one (#37). */}
-      {registryReady && repos.length === 0 ? (
-        <RegisterRepoHint className="block px-card-x pt-row-y" />
-      ) : null}
       <div className="flex flex-wrap items-center gap-3 px-card-x py-row-y">
         <div className="relative w-full max-w-[240px]">
           <label htmlFor="inventory-search" className="sr-only">
@@ -155,16 +147,16 @@ export function InventoryList({
           onChange={setFilter}
         />
       </div>
-      <BulkDeployBar
-        stagedNames={[...staged]}
-        hiddenCount={hiddenCount}
-        repos={repos}
-        registryReady={registryReady}
-        onPickSkills={() => {
-          const first = visible[0];
-          if (first) stageBoxRefs.current.get(first.name)?.focus();
-        }}
-      />
+      {/* Staging is what makes a bulk run possible, so the strip appears with
+          the first checkbox and retires with the last. */}
+      {staged.size > 0 ? (
+        <BulkDeployBar
+          stagedNames={[...staged]}
+          hiddenCount={hiddenCount}
+          repos={repos}
+          registryReady={registryReady}
+        />
+      ) : null}
       {/* Real scrollbar below the table's floor, never a silent clip. Named
           and focusable (WCAG 2.1.1). */}
       <section
@@ -236,10 +228,6 @@ export function InventoryList({
                       onClick={(event) => event.stopPropagation()}
                     >
                       <input
-                        ref={(el) => {
-                          if (el) stageBoxRefs.current.set(primitive.name, el);
-                          else stageBoxRefs.current.delete(primitive.name);
-                        }}
                         type="checkbox"
                         checked={staged.has(primitive.name)}
                         onChange={() => toggleStagedName(primitive.name)}

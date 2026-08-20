@@ -91,9 +91,30 @@ export function SkillDetailPane({
               {primitive.name}
             </h2>
           </div>
-          <p className="mt-2 max-w-[70ch] text-desc text-muted">
-            {primitive.description}
-          </p>
+          {/* Trigger-phrase descriptions run for paragraphs and would push the
+              deploy control off the pane. Three lines identify the skill; the
+              rest opens on ask. */}
+          <details className="group mt-2 max-w-[70ch]">
+            <summary
+              className={cn(
+                "cursor-pointer list-none text-desc text-muted [&::-webkit-details-marker]:hidden",
+                "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber",
+              )}
+            >
+              <span className="line-clamp-3 group-open:line-clamp-none">
+                {primitive.description}
+              </span>
+              <span
+                className={cn(
+                  "mt-1 inline-block text-dim text-tag hover:text-fg-2",
+                  HOVER_TRANSITION,
+                )}
+              >
+                <span className="group-open:hidden">more ›</span>
+                <span className="hidden group-open:inline">less ‹</span>
+              </span>
+            </summary>
+          </details>
         </div>
 
         <div className="border-line-faint border-b px-card-x py-row-y">

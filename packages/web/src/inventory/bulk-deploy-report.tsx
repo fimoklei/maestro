@@ -3,7 +3,10 @@ import { Button } from "../ui/button";
 import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
 import { HOVER_TRANSITION } from "../ui/hover-transition";
-import type { BulkDeployReportView } from "./bulk-deploy-report-view";
+import {
+  type BulkDeployReportView,
+  bulkDeploySummary,
+} from "./bulk-deploy-report-view";
 
 // One summary line + per-skill detail on expand (#292). Presentational —
 // colour, counts, rows already folded by bulkDeployReportView.
@@ -68,10 +71,12 @@ export function BulkDeployReport({
     );
   }
 
-  const { counts } = view;
   const summary = isDeploying
     ? "Deploying…"
-    : `Deployed to ${view.targetLabel} · ${counts.deployed} deployed · ${counts.skipped} skipped · ${counts.attention} attention · ${counts.failed} failed`;
+    : bulkDeploySummary({
+        targetLabel: view.targetLabel,
+        counts: view.counts,
+      });
 
   return (
     <div className="mx-card-x mb-row-y">
