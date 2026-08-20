@@ -1,0 +1,8 @@
+[*] Validating 1 package...
+[+] fimoklei/agent-harness/.apm/skills/47#v0.6.0 (already in apm.yml)
+[>] Installing 1 new package...
+[i] Targets: claude, codex  (source: --target flag)
+  [+] github.com/fimoklei/agent-harness/.apm/skills/47#v0.6.0 #v0.6.0 @f8208f12 (cached)
+  |-- (files unchanged)
+
+[i] No changes -- install state already up to date in 1.5s.

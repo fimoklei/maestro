@@ -58,6 +58,7 @@ Phrases a fixture comment must never contain: `is a symlink`,
 | Fixture | Command | Conditions | Exit | Streams |
 |---|---|---|---|---|
 | `apm-install-ok.txt` | `apm install <ref>#v0.5.0 -t claude` | fresh `git init` repo | 0 | out+err |
+| `apm-install-no-changes.txt` | `apm install <ref>#v0.6.0 -t claude,codex` | `COLUMNS=200`, same ref already installed and unchanged | 0 | out+err |
 | `apm-install-probes-failed.txt` | `apm install <ref>#v0.5.0 -t claude` | no credentials in env | 1 | out+err |
 | `apm-install-symlink-refused.txt` | `apm install <ref>#v0.5.1 -g -t claude` | sandbox `~/.claude/skills/tdd` pre-created as a symlink | 1 | out+err |
 | `apm-view-versions.txt` | `apm view fimoklei/agent-harness versions` | authed | 0 | out |

@@ -36,6 +36,21 @@ const installOkOutput = [
   INSTALL_OK_SUMMARY,
 ].join("\n");
 
+// Captured output of a same-ref re-install on apm 0.26.0 (2026-08-20; full
+// capture in tests/fixtures/apm-install-no-changes.txt). Nothing changed, so
+// apm prints its no-op summary and never the `Installed N APM dependenc`
+// marker — a success the marker check alone reads as a failure.
+const installNoChangesOutput = [
+  "[*] Validating 1 package...",
+  "[+] fimoklei/agent-harness/.apm/skills/47#v0.6.0 (already in apm.yml)",
+  "[>] Installing 1 new package...",
+  "[i] Targets: claude, codex  (source: --target flag)",
+  "  [+] github.com/fimoklei/agent-harness/.apm/skills/47#v0.6.0 #v0.6.0 @f8208f12 (cached)",
+  "  |-- (files unchanged)",
+  "",
+  "[i] No changes -- install state already up to date in 1.5s.",
+].join("\n");
+
 // Captured output of a failed `apm install` on apm 0.26.0 (2026-07-20; full
 // capture in tests/fixtures/apm-install-probes-failed.txt): every probe failed,
 // nothing written, exit 1. It carries no `Installed N APM dependency` marker and
@@ -342,6 +357,18 @@ describe("ApmCliDriver.deploySkill", () => {
 
   it("reports success when the positive success marker is present", async () => {
     const { run } = fakeRun(installOkOutput);
+    const driver = new ApmCliDriver({ run });
+
+    await expect(
+      driver.deploySkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
+    ).resolves.toEqual({ ok: true });
+  });
+
+  it("reports success when apm had nothing to change", async () => {
+    // Re-installing the same ref over an unchanged copy prints the no-op
+    // summary instead of the install marker, so fail-closed alone turned every
+    // re-deploy into "The deploy could not be completed".
+    const { run } = fakeRun(installNoChangesOutput);
     const driver = new ApmCliDriver({ run });
 
     await expect(

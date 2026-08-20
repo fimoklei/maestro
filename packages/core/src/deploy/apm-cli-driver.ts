@@ -32,7 +32,13 @@ const APM_AUTH_PHRASES = ["authentication failed", "no token available"];
 // Every phrase below is matched against `normalize`d output: Rich wraps
 // mid-sentence, so a phrase can straddle a line break (apm-driver.md).
 
-const INSTALL_SUCCESS_MARKER = /installed \d+ apm dependenc/;
+// Two shapes of success. apm prints the second one instead of the first when
+// the ref is already installed and its files are unchanged — a re-deploy that
+// did nothing, not a failure (apm-behavior.md § Install signals (2)).
+const INSTALL_SUCCESS_MARKERS = [
+  /installed \d+ apm dependenc/,
+  /no changes -- install state already up to date/,
+];
 
 // Dead on 0.26.0 — a failed install prints no marker at all (#183). Kept as
 // insurance against the 0.20.0 dialect, where a refusal printed the marker and
@@ -241,7 +247,7 @@ export class ApmCliDriver implements ApmDriverPort {
 function installSucceeded(output: string): boolean {
   const haystack = normalize(output);
   return (
-    INSTALL_SUCCESS_MARKER.test(haystack) &&
+    INSTALL_SUCCESS_MARKERS.some((marker) => marker.test(haystack)) &&
     !INSTALL_FAILURE_SIGNALS.some((signal) => signal.test(haystack))
   );
 }
