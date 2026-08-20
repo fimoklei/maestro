@@ -189,6 +189,49 @@ describe("seedCockpit", () => {
     expect(calls).toHaveLength(1);
   });
 
+  it("refuses an inventory that connects but holds no primitives", async () => {
+    // An empty cockpit is the same class of failure as an unanswered one: it
+    // passes as green and every UI check downstream reads nothing (issue #544).
+    const { request } = recorder((path) =>
+      path === "/api/inventory/connect"
+        ? {
+            status: 200,
+            body: {
+              inventoryPath: "/home/Projects/agent-harness",
+              primitiveCount: 0,
+            },
+          }
+        : { status: 201, body: { repos: [] } },
+    );
+
+    await expect(
+      seedCockpit({
+        request,
+        inventoryPath: "/home/Projects/agent-harness",
+        repoPath: "/home/Projects/checkout-service",
+      }),
+    ).rejects.toThrow(/agent-harness.*no primitives.*\.apm\/skills/s);
+  });
+
+  it("does not register the repo against an empty inventory", async () => {
+    const { calls, request } = recorder(() => ({
+      status: 200,
+      body: {
+        inventoryPath: "/home/Projects/agent-harness",
+        primitiveCount: 0,
+      },
+    }));
+
+    await expect(
+      seedCockpit({
+        request,
+        inventoryPath: "/home/Projects/agent-harness",
+        repoPath: "/home/Projects/checkout-service",
+      }),
+    ).rejects.toThrow();
+    expect(calls).toHaveLength(1);
+  });
+
   it("fails loudly when registration is refused", async () => {
     const { request } = recorder((path) =>
       path === "/api/inventory/connect"
