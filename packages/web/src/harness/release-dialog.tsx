@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useModalDialog } from "../shell/use-modal-dialog";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
-import { Notice } from "../ui/notice";
+import { Notice, type NoticeContent } from "../ui/notice";
 import { SegmentedControl } from "../ui/segmented-control";
 import { PendingRelease } from "./pending-release";
 import type { ReleasePlan, SemverStep, StructuralProblem } from "./use-harness";
@@ -11,7 +11,7 @@ import type { ReleasePlan, SemverStep, StructuralProblem } from "./use-harness";
 // trap that unmounts between states loses the author's place (remove dialog).
 export type ReleasePlanLoad =
   | { kind: "loading" }
-  | { kind: "error"; message: string }
+  | { kind: "error"; notice: NoticeContent }
   | { kind: "ready"; plan: ReleasePlan };
 
 const STEP_SEGMENTS: readonly { value: SemverStep; label: string }[] = [
@@ -45,7 +45,7 @@ export function ReleaseDialog({
   onClose: () => void;
   onPublish: (step: SemverStep, plan: ReleasePlan) => void;
   publishing: boolean;
-  publishError: string | null;
+  publishError: NoticeContent | null;
 }) {
   const { panelRef, requestClose } = useModalDialog({
     onClose,
@@ -103,15 +103,7 @@ export function ReleaseDialog({
               its failure is a user-action, not a panel that failed on load. */}
           <Notice
             trigger="user-action"
-            notice={
-              load.kind === "error"
-                ? {
-                    level: "error",
-                    label: "no plan to show",
-                    message: load.message,
-                  }
-                : null
-            }
+            notice={load.kind === "error" ? load.notice : null}
           />
           {load.kind === "loading" ? (
             <p className="font-ui text-desc text-muted">
@@ -124,18 +116,7 @@ export function ReleaseDialog({
               onStepChange={setChosenStep}
             />
           ) : null}
-          <Notice
-            trigger="user-action"
-            notice={
-              publishError === null
-                ? null
-                : {
-                    level: "error",
-                    label: "release not published",
-                    message: publishError,
-                  }
-            }
-          />
+          <Notice trigger="user-action" notice={publishError} />
         </div>
 
         <div className="flex items-center gap-2.5 border-line-row border-t px-3.5 py-3">

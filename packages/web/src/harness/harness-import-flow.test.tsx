@@ -143,7 +143,7 @@ describe("Harness import flow", () => {
 
     const field = await screen.findByLabelText(/name in the harness/i);
     expect(field).toHaveAccessibleDescription(
-      /already has a skill with that name/i,
+      /already holds a skill under it/i,
     );
     expect(screen.getByRole("button", { name: "import" })).toBeDisabled();
   });

@@ -171,8 +171,12 @@ export const PromoteRefused: Story = {
       ...promotable,
       failed: {
         skill: "lint-rules",
-        message:
-          "The skill could not be pushed. Check the remote and try again.",
+        notice: {
+          level: "error",
+          label: "the push did not land",
+          message:
+            "The Harness is as it was. Check the connection to GitHub, then promote again.",
+        },
       },
     },
   },

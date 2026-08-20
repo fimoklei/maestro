@@ -265,7 +265,14 @@ describe("MovementTable", () => {
         ]}
         promote={{
           ...promote,
-          failed: { skill: "lint-rules", message: "The remote refused it." },
+          failed: {
+            skill: "lint-rules",
+            notice: {
+              level: "error",
+              label: "the push did not land",
+              message: "The remote refused it.",
+            },
+          },
         }}
       />,
     );
@@ -292,7 +299,9 @@ describe("MovementTable", () => {
       />,
     );
 
-    expect(screen.getByText(/pull their change/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/pulled into the Harness clone/i),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "promote" })).toBeEnabled();
   });
 
@@ -312,7 +321,9 @@ describe("MovementTable", () => {
       />,
     );
 
-    expect(screen.queryByText(/pull their change/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/pulled into the Harness clone/i),
+    ).not.toBeInTheDocument();
   });
 
   it("warns on a deletion a teammate has changed, whose confirmation will be refused", () => {
@@ -331,7 +342,9 @@ describe("MovementTable", () => {
       />,
     );
 
-    expect(screen.getByText(/pull their change/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/pulled into the Harness clone/i),
+    ).toBeInTheDocument();
   });
 
   it("offers the press on a deletion, which the host takes to a confirmation", () => {

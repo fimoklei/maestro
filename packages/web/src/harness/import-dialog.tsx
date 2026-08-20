@@ -1,12 +1,12 @@
 import { targetLabel } from "../shell/target-label";
 import { useModalDialog } from "../shell/use-modal-dialog";
 import { Button } from "../ui/button";
-import { Notice } from "../ui/notice";
+import { Notice, type NoticeContent } from "../ui/notice";
 import {
   advisoryTexts,
   importEnabled,
-  nameBlockerText,
-  sourceBlockerText,
+  nameBlockerNotice,
+  sourceBlockerNotice,
 } from "./import-view-model";
 import type { ImportCheck } from "./use-harness";
 
@@ -15,7 +15,7 @@ import type { ImportCheck } from "./use-harness";
 export type ImportCheckLoad =
   | { kind: "idle" }
   | { kind: "loading" }
-  | { kind: "error"; message: string }
+  | { kind: "error"; notice: NoticeContent }
   | { kind: "ready"; check: ImportCheck };
 
 // Importing one external skill folder: the folder, the directory name it lands
@@ -41,7 +41,7 @@ export function ImportDialog({
   onClose: () => void;
   onImport: () => void;
   importing: boolean;
-  importError: string | null;
+  importError: NoticeContent | null;
   // Null until an import lands. It stays on screen after it does, so what the
   // copy left behind is readable rather than gone with the dialog (#576).
   imported: { name: string; skipped: number } | null;
@@ -53,9 +53,9 @@ export function ImportDialog({
   const check = load.kind === "ready" ? load.check : undefined;
   const sourceProblem =
     load.kind === "error"
-      ? load.message
-      : sourceBlockerText(check?.sourceBlocker ?? null);
-  const nameProblem = nameBlockerText(check?.nameBlocker ?? null);
+      ? load.notice
+      : sourceBlockerNotice(check?.sourceBlocker ?? null);
+  const nameProblem = nameBlockerNotice(check?.nameBlocker ?? null);
   const advisories = advisoryTexts(check?.advisories ?? []);
   const nameErrorId = "import-name-error";
 
@@ -105,11 +105,9 @@ export function ImportDialog({
                 {source === null ? "pick folder" : "change"}
               </Button>
             </div>
-            {sourceProblem === null ? null : (
-              <p role="alert" className="m-0 text-amber-ink text-tag">
-                {sourceProblem}
-              </p>
-            )}
+            {/* The answer to picking a folder, so it announces assertively —
+                the author is looking at the button they just pressed. */}
+            <Notice trigger="user-action" notice={sourceProblem} />
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -133,15 +131,11 @@ export function ImportDialog({
               This becomes the folder name, and the SKILL.md name is rewritten
               to match.
             </span>
-            {nameProblem === null ? null : (
-              <p
-                id={nameErrorId}
-                role="alert"
-                className="m-0 text-amber-ink text-tag"
-              >
-                {nameProblem}
-              </p>
-            )}
+            <Notice
+              id={nameErrorId}
+              trigger="user-action"
+              notice={nameProblem}
+            />
           </div>
 
           {advisories.length === 0 ? null : (
@@ -175,18 +169,7 @@ export function ImportDialog({
             </p>
           )}
 
-          <Notice
-            trigger="user-action"
-            notice={
-              importError === null
-                ? null
-                : {
-                    level: "error",
-                    label: "nothing imported",
-                    message: importError,
-                  }
-            }
-          />
+          <Notice trigger="user-action" notice={importError} />
         </div>
 
         <div className="flex items-center gap-2.5 border-line-row border-t px-3.5 py-3">

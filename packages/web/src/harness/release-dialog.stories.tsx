@@ -109,8 +109,12 @@ export const CouldNotPlan: Story = {
   args: {
     load: {
       kind: "error",
-      message:
-        "Maestro has not fetched the remote yet, so it cannot plan a release. Refresh the harness and try again.",
+      notice: {
+        level: "error",
+        label: "no answer from GitHub",
+        message:
+          "A release plan is measured against what GitHub holds, and Maestro has not read that yet. Press refresh, then open the release again.",
+      },
     },
   },
 };
@@ -121,7 +125,11 @@ export const Publishing: Story = {
 
 export const PublishFailed: Story = {
   args: {
-    publishError:
-      "Someone already published this version. Refresh to see the current release, then plan again.",
+    publishError: {
+      level: "error",
+      label: "someone published first",
+      message:
+        "That version number is taken. Maestro recomputed the plan against the newest tag — check it, then confirm.",
+    },
   },
 };
