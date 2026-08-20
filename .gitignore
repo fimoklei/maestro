@@ -6,6 +6,9 @@ storybook-static/
 *.tsbuildinfo
 *.log
 
+# Local pnpm content-addressable store (per-machine cache, not source).
+.pnpm-store/
+
 # Dev launcher runtime + isolated smoke-run data (scripts/dev.mjs)
 .maestro-dev.pid
 .maestro-sandbox/
