@@ -3,6 +3,7 @@
 // resolvable default branch (#553), so suites that build a connectable clone
 // need this — offline throughout: the remote URL is never fetched.
 import { execFile } from "node:child_process";
+import { rm } from "node:fs/promises";
 import { promisify } from "node:util";
 
 const run = promisify(execFile);
@@ -82,3 +83,10 @@ export async function initGitClone(
     );
   }
 }
+
+// Cleanup for a temp tree holding a real bare remote. A push leaves git's own
+// background maintenance writing into `objects/` after the push has returned,
+// so an `rm` racing it fails with ENOTEMPTY (CI run 32409739829, 2026-08-20).
+// `maxRetries` is Node's answer to exactly that race (fsPromises.rm docs).
+export const removeGitTempTree = (path: string) =>
+  rm(path, { recursive: true, force: true, maxRetries: 5 });

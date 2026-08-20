@@ -2,7 +2,7 @@
 // and a real bare remote. Mirrors server-harness.test.ts's setup so the plan
 // and the confirm are proven against the same journey (#520).
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -18,6 +18,7 @@ import {
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { removeGitTempTree } from "../helpers/git-fixture";
 import { realRegistry } from "../helpers/real-registry";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
@@ -65,7 +66,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
   }, 30_000);
 
   afterEach(async () => {
-    await rm(base, { recursive: true, force: true });
+    await removeGitTempTree(base);
   });
 
   function makeApp(harnessPath: string | undefined) {

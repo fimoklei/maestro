@@ -11,6 +11,7 @@ import { promisify } from "node:util";
 import type { HarnessFreshness, PendingSkillMovement } from "@maestro/core";
 import { HarnessGitAdapter, ReadHarnessState } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { removeGitTempTree } from "../helpers/git-fixture";
 
 const run = promisify(execFile);
 
@@ -117,7 +118,7 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
   });
 
   afterEach(async () => {
-    await rm(base, { recursive: true, force: true });
+    await removeGitTempTree(base);
   });
 
   // One delta, three ways of landing it: the strategies are separate tests so a

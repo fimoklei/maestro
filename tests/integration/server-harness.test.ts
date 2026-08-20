@@ -19,6 +19,7 @@ import {
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { removeGitTempTree } from "../helpers/git-fixture";
 import { realRegistry } from "../helpers/real-registry";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
@@ -80,7 +81,7 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
   }, 30_000);
 
   afterEach(async () => {
-    await rm(base, { recursive: true, force: true });
+    await removeGitTempTree(base);
   });
 
   // A second author's clone, so "merged by the team" is a real push and not a
