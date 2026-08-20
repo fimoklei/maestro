@@ -88,8 +88,12 @@ that fails the build on a hand-rolled `role="alert"` could land green.
 - A new server error code is a compile error in `web` until it is given a level
   and a heading. That is deliberate friction, and it is the only thing keeping
   the table exhaustive.
-- The instruction lives in `.claude/rules/frontend.md`; this ADR carries the
-  reasoning. An agent following the rule never has to read this file.
+- The instruction belongs in `.claude/rules/frontend.md`, which already fires on
+  this work; this ADR carries the reasoning, so an agent following the rule
+  never has to read it. That file is Michiel's: the section is quoted for his
+  yes on #616, together with one `PRODUCT.md` line adding "Harness" to the fixed
+  vocabulary. Until he takes them, the standard is enforced by the compiler and
+  the guard, not by a written rule.
 - Two shapes are named as deliberately *not* notices, so the type stays thin:
   **Report** (per-item outcomes with counts) and **Progress** ("Deploying…", a
   polite region with no level and no action). Neither becomes a `ui` primitive
@@ -116,10 +120,12 @@ all. The scale's authority is `tokens.css`, which separated `danger` from
 lean the decision on ground that is not there.
 
 Placement is the opposite case: both systems reached the same rule and neither
-offers a fixed region. Material 3 deleted the M2 banner and named no
-replacement, Apple ships no toast, snackbar or banner component, and both state
-proximity explicitly. Primary sources, each with the date it was read, are in
-`docs/research/465-notice-placement-apple-google.md`.
+offers a fixed region. Per
+`docs/research/465-notice-placement-apple-google.md`, which holds the primary
+sources with the date each was read, Material 3 deleted the M2 banner and named
+no replacement, Apple ships no toast, snackbar or banner component at all, and
+both state proximity explicitly — "inline or near the action that triggered it",
+"near the items it describes".
 
 ## Rejected alternatives
 
