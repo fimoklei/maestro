@@ -1,5 +1,5 @@
 import { ok } from "node:assert";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -101,6 +101,36 @@ describe("smoke sandbox seeding", () => {
     });
 
     expect(filled).toContain("password=smoke-token");
+  });
+
+  it("leaves the sandbox with no credential helper but its own", () => {
+    // Helpers accumulate, and a git install can configure one system-wide
+    // (macOS ships osxkeychain). Left in place it also gets asked to *store*
+    // the credential, and under a HOME with no keychain that prompts the user.
+    seedSandbox({ home, inventorySource, githubToken: "smoke-token" });
+
+    // Which helper *runs* is the question; `git config --get-all` still lists
+    // a reset one, because the reset is applied by the credential machinery.
+    const run = spawnSync("git", ["credential", "fill"], {
+      input: "protocol=https\nhost=github.com\n\n",
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        HOME: home,
+        XDG_CONFIG_HOME: join(home, ".config"),
+        GIT_TERMINAL_PROMPT: "0",
+        GIT_TRACE: "1",
+      },
+    });
+    const invoked = [
+      ...new Set(
+        [...run.stderr.matchAll(/credential-([a-z]+)/g)].map(
+          ([, helper]) => helper,
+        ),
+      ),
+    ];
+
+    expect(invoked).toEqual(["store"]);
   });
 
   it("writes no credential file when no token was bridged", () => {
