@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useModalDialog } from "../shell/use-modal-dialog";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
-import { FailureNote } from "../ui/failure-note";
+import { Notice } from "../ui/notice";
 import { SegmentedControl } from "../ui/segmented-control";
 import { PendingRelease } from "./pending-release";
 import type { ReleasePlan, SemverStep, StructuralProblem } from "./use-harness";
@@ -99,22 +99,43 @@ export function ReleaseDialog({
         </div>
 
         <div className="flex flex-col gap-3 overflow-y-auto px-3.5 py-3">
+          {/* The plan is the answer to the click that opened this dialog, so
+              its failure is a user-action, not a panel that failed on load. */}
+          <Notice
+            trigger="user-action"
+            notice={
+              load.kind === "error"
+                ? {
+                    level: "error",
+                    label: "no plan to show",
+                    message: load.message,
+                  }
+                : null
+            }
+          />
           {load.kind === "loading" ? (
             <p className="font-ui text-desc text-muted">
               Planning the release…
             </p>
-          ) : load.kind === "error" ? (
-            <FailureNote label="no plan to show" message={load.message} />
-          ) : (
+          ) : load.kind === "ready" ? (
             <PlanBody
               plan={load.plan}
               step={chosenStep ?? load.plan.proposedStep}
               onStepChange={setChosenStep}
             />
-          )}
-          {publishError === null ? null : (
-            <FailureNote label="release not published" message={publishError} />
-          )}
+          ) : null}
+          <Notice
+            trigger="user-action"
+            notice={
+              publishError === null
+                ? null
+                : {
+                    level: "error",
+                    label: "release not published",
+                    message: publishError,
+                  }
+            }
+          />
         </div>
 
         <div className="flex items-center gap-2.5 border-line-row border-t px-3.5 py-3">

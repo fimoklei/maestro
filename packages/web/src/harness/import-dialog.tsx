@@ -1,7 +1,7 @@
 import { targetLabel } from "../shell/target-label";
 import { useModalDialog } from "../shell/use-modal-dialog";
 import { Button } from "../ui/button";
-import { FailureNote } from "../ui/failure-note";
+import { Notice } from "../ui/notice";
 import {
   advisoryTexts,
   importEnabled,
@@ -175,9 +175,18 @@ export function ImportDialog({
             </p>
           )}
 
-          {importError === null ? null : (
-            <FailureNote label="nothing imported" message={importError} />
-          )}
+          <Notice
+            trigger="user-action"
+            notice={
+              importError === null
+                ? null
+                : {
+                    level: "error",
+                    label: "nothing imported",
+                    message: importError,
+                  }
+            }
+          />
         </div>
 
         <div className="flex items-center gap-2.5 border-line-row border-t px-3.5 py-3">

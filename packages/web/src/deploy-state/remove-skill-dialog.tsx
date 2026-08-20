@@ -3,7 +3,7 @@ import { useId } from "react";
 import { useModalDialog } from "../shell/use-modal-dialog";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
-import { FailureNote } from "../ui/failure-note";
+import { Notice } from "../ui/notice";
 import { panelBorderFor } from "../ui/panel-border";
 import { TypeTag } from "../ui/type-tag";
 import {
@@ -298,13 +298,19 @@ export function RemoveSkillDialog({
           <div className="flex flex-col gap-2">
             {/* The server's own refusal, in its own words — under a refusal
                 this is the panel's whole body, read first and read alone. */}
-            {preflight.kind === "refused" ? (
-              <FailureNote
-                id={refusalId}
-                label="can't be removed"
-                message={preflight.message}
-              />
-            ) : null}
+            <Notice
+              id={refusalId}
+              trigger="user-action"
+              notice={
+                preflight.kind === "refused"
+                  ? {
+                      level: "error",
+                      label: "can't be removed",
+                      message: preflight.message,
+                    }
+                  : null
+              }
+            />
             {/* Amber, not danger red: nothing failed and nothing was deleted —
                 the price went up, and the rows above already carry it. */}
             {restated ? (
@@ -331,16 +337,21 @@ export function RemoveSkillDialog({
                 </div>
               </div>
             ) : null}
-            {error ? (
-              <FailureNote label="the removal failed" message={error}>
-                {/* What the retry beside it will do, replacing a paragraph that
-                    sent the user to check the repo by hand (#415). Dim: a
-                    property of the control, not a second problem. */}
-                <span className="font-ui text-desc text-dim">
-                  retry removes only what is left
-                </span>
-              </FailureNote>
-            ) : null}
+            {/* The aside says what the retry beside it will do, replacing a
+                paragraph that sent the user to check the repo by hand (#415). */}
+            <Notice
+              trigger="user-action"
+              notice={
+                error
+                  ? {
+                      level: "error",
+                      label: "the removal failed",
+                      message: error,
+                      aside: "retry removes only what is left",
+                    }
+                  : null
+              }
+            />
           </div>
         </div>
 
