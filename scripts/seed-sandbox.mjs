@@ -39,7 +39,13 @@ function seedGitCredentials(home, githubToken) {
     join(home, ".git-credentials"),
     `https://x-access-token:${githubToken}@github.com\n`,
   );
-  writeFileSync(join(home, ".gitconfig"), "[credential]\n\thelper = store\n");
+  // The empty entry resets the helper list: helpers accumulate, and a
+  // system-configured one (macOS ships osxkeychain) would also be asked to
+  // store the credential, prompting for a keychain this HOME does not have.
+  writeFileSync(
+    join(home, ".gitconfig"),
+    "[credential]\n\thelper =\n\thelper = store\n",
+  );
 }
 
 // The launcher's record of the run that owns this sandbox. Named here because
