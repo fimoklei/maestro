@@ -1,10 +1,9 @@
 import { HttpError } from "../api/http";
 import type { NoticeAction, NoticeContent, NoticeLevel } from "./notice";
 
-// `web` owns the heading and the level for every code a server error table can
-// return; the server sends the sentence and nothing else (#465, decision 8).
-// A table typed `NoticeTable<TCode>` is exhaustive by compiler, so a new code
-// in `core` fails typecheck here until it has a heading.
+// `web` owns the heading and the level for every code a server error table
+// can return; the server sends the sentence and nothing else. A table is
+// exhaustive by compiler, so a new code in `core` fails typecheck without one.
 
 // No warning: a warning must carry the consequence it costs as a required
 // action, which a table cannot know. Those are written at the call site.

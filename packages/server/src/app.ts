@@ -429,10 +429,9 @@ const REPO_PATH_RESPONSES: ErrorTable<RepoPathError> = {
   },
 };
 
-// The same four failures for the tables web renders as a Notice: the heading
-// above already names the subject, so these sentences start at the recovery
-// (#465, decision 9). The register run's report has no heading, which is why
-// it keeps the standalone wording above.
+// The same four failures under a Notice heading, which already names the
+// subject, so these start at the recovery (#465, decision 9). The register
+// run's report has no heading and keeps the standalone wording above.
 const HEADED_REPO_PATH_RESPONSES: ErrorTable<RepoPathError> = {
   missing: {
     status: 400,

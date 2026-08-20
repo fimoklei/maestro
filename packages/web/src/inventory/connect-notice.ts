@@ -19,7 +19,7 @@ const connectHeadings: NoticeTable<ConnectInventoryError> = {
     level: "error",
     label: "URL carries credentials",
   },
-  "invalid-parent": { level: "error", label: "not a folder to clone into" },
+  "invalid-parent": { level: "error", label: "not a usable clone folder" },
   "destination-occupied": {
     level: "error",
     label: "destination folder is taken",

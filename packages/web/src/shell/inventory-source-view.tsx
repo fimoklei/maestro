@@ -39,6 +39,9 @@ export function InventorySourceView() {
     ? "reading…"
     : primitiveCountLabel(inventory.data?.primitives.length);
 
+  // A refetch in flight is not a failure yet: the last good count holds.
+  const failed = !inventory.isFetching && inventory.isError;
+
   const [isChanging, setIsChanging] = useState(false);
 
   if (config.isPending) {
@@ -70,14 +73,14 @@ export function InventorySourceView() {
           />
         ) : (
           <div className="flex flex-col gap-3">
-            {/* Status region stays mounted through a retry, even if the last
-                read errored — ceding to the notice would unmount it and the
-                recovered count would go unannounced (#230). A panel that
-                failed to read is always trigger="load": the same block covers
-                a first read, a retry and Query's refetch on focus (#465). */}
-            {!inventory.isFetching && inventory.isError ? (
-              <Notice trigger="load" notice={READ_FAILED} />
-            ) : (
+            {/* The notice region outlives its content (#465, decision 12), and
+                a panel that failed to read is always trigger="load" — one
+                block for a first read, a retry and a refetch on focus. */}
+            <Notice trigger="load" notice={failed ? READ_FAILED : null} />
+            {/* The count pill stays mounted through a retry, even if the last
+                read errored: unmounting it would leave the recovered count
+                unannounced (#230). */}
+            {failed ? null : (
               <p
                 role="status"
                 // Count only, not a second "connected" signal — the top bar

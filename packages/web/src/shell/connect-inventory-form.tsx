@@ -47,10 +47,9 @@ export function ConnectInventoryForm({
   // classifies the input again and remains the authority on both.
   const cloneChild = previewCloneChild(path);
 
-  // A rejected submit hands focus back to the field to fix (#214). The one
-  // place focus moves: everywhere else the notice appears and the caret stays.
-  // Keyed on the sentence, not the object: the host rebuilds the notice every
-  // render, and identity as the dependency would re-take focus each time.
+  // A rejected submit hands focus back to the field to fix (#214) — the one
+  // place focus moves. Keyed on the sentence because the host rebuilds the
+  // notice each render, and identity would re-take focus every time.
   const noticeMessage = notice?.message ?? null;
   useEffect(() => {
     if (noticeMessage !== null) {
