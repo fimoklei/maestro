@@ -89,7 +89,10 @@ export const Removing: Story = { args: { isRemoving: true } };
 // removal has already been confirmed once. Danger red with its own ✕, so a
 // failure never reads as one more amber warning.
 export const Failed: Story = {
-  args: { error: "apm did not confirm the removal. Check apm and try again." },
+  args: {
+    error:
+      "apm ran but proved nothing, so the copy may be gone or may still be there. Confirm the removal again to delete whatever is left.",
+  },
 };
 
 // A removal that came off one tool and not the other. apm reports one outcome
@@ -114,7 +117,8 @@ export const FailedPerTarget: Story = {
 // check that did not run proves nothing (J04).
 export const FailedOutcomeUnknown: Story = {
   args: {
-    error: "apm did not confirm the removal. Check apm and try again.",
+    error:
+      "apm ran but proved nothing, so the copy may be gone or may still be there. Confirm the removal again to delete whatever is left.",
     outcome: { scope: "repo", state: "unknown" },
   },
 };
@@ -124,7 +128,8 @@ export const FailedOutcomeUnknown: Story = {
 export const Retrying: Story = {
   args: {
     isRemoving: true,
-    error: "apm did not confirm the removal. Check apm and try again.",
+    error:
+      "apm ran but proved nothing, so the copy may be gone or may still be there. Confirm the removal again to delete whatever is left.",
   },
 };
 
@@ -156,7 +161,8 @@ export const FailedWithWarnings: Story = {
   args: {
     target: { kind: "global", tools: ["codex"] },
     preflight: toolChecks({ codex: "local-edits" }, LEFTOVER),
-    error: "apm did not confirm the removal. Check apm and try again.",
+    error:
+      "apm ran but proved nothing, so the copy may be gone or may still be there. Confirm the removal again to delete whatever is left.",
   },
 };
 

@@ -6,6 +6,7 @@ import { useDrift, useGlobalDrift } from "../drift/use-drift";
 import type { RegisteredRepo } from "../registry/use-registry";
 import { Button } from "../ui/button";
 import { Chip } from "../ui/chip";
+import { Notice } from "../ui/notice";
 import { DeployRefusalNotice } from "./deploy-refusal-notice";
 import { globalOptionLabel } from "./global-option-label";
 import { type DeployTarget, useDeploySkill } from "./use-deploy-skill";
@@ -129,9 +130,14 @@ export function DeploySkillAction({
         </Button>
       )}
       {deploy.isSuccess ? (
-        <span role="status" className="text-green-ink text-tag">
-          Deployed {deploy.data.deployed.name} {deploy.data.deployed.version}
-        </span>
+        <Notice
+          trigger="user-action"
+          notice={{
+            level: "success",
+            label: "deployed",
+            message: `${deploy.data.deployed.name} ${deploy.data.deployed.version} is installed on this target.`,
+          }}
+        />
       ) : null}
       {deploy.isError ? (
         // Offers an inline confirmed reinstall instead of dead-ending (ADR-0006, #66).

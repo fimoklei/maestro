@@ -204,147 +204,158 @@ const driftFailureBody = (result: { reason?: "unverified" }) =>
     : { ok: false as const };
 
 // Business rules live in core; this table only chooses status codes and
-// readable messages (none echo paths or raw apm output).
+// readable messages (none echo paths or raw apm output). Each message starts at
+// the consequence — the heading beside it, owned by web, names the subject.
 const deployErrorResponses: ErrorTable<DeploySkillError> = {
   "unsupported-primitive-type": {
     status: 422,
-    message: "Only skills can be deployed yet.",
+    message:
+      "Hooks and MCP servers stay in the harness until Maestro can deploy them. Deploy a skill instead.",
   },
   "invalid-name": {
     status: 400,
-    message: "Skill name must be a lowercase slug.",
+    message:
+      "Lowercase letters, digits and hyphens only. Rename the skill in the harness, then deploy again.",
   },
   "unknown-skill": {
     status: 404,
-    message: "That skill is not in the inventory.",
+    message:
+      "The inventory holds no skill by this name. Refresh the inventory, or pick the skill from the list again.",
   },
   "inventory-not-configured": {
     status: 409,
-    message: "No inventory is configured. Set the Harness source path.",
+    message:
+      "Nothing can be deployed until Maestro knows where the harness lives. Set the Harness source path, then deploy again.",
   },
   "repo-not-registered": {
     status: 403,
-    message: "That repo is not registered with Maestro.",
+    message:
+      "Only a repo registered with Maestro can receive a deploy. Register it, then deploy again.",
   },
   "inventory-origin-unavailable": {
     status: 502,
     message:
-      "The inventory clone's origin remote is missing, unreadable, or in a form apm cannot resolve. Maestro deploys from GitHub tags, so it needs a GitHub origin over https or ssh.",
+      "A deploy installs from GitHub tags, so the inventory clone needs a GitHub origin over https or ssh. Point the clone at the harness repository on GitHub, then deploy again.",
   },
   "no-published-tag": {
     status: 422,
     message:
-      "No published tag contains this skill. Tag and push the central harness first.",
+      "A deploy installs from a published tag, and no tag holds this skill. Publish a release from the Harness view, then deploy again.",
   },
   "local-diverged-from-tag": {
     status: 409,
     message:
-      "The local skill differs from its latest published tag. Tag and push the change first.",
+      "A deploy would install the published version, not what sits in the harness now. Publish a release from the Harness view, then deploy again.",
   },
   "deployed-diverged-from-lock": {
     status: 409,
     message:
-      "The deployed copy has local changes that never went through central. Updating discards them and reinstalls at the latest tag.",
+      "Those edits never went through the harness. Reinstalling replaces the copy with the latest published tag.",
   },
   "deployed-unverifiable": {
     status: 409,
     message:
-      "This copy predates content tracking, so local changes can't be checked. Updating reinstalls fresh at the latest tag; any local changes are discarded.",
+      "This copy predates content tracking, so anything changed in it is invisible. Reinstalling replaces it with the latest published tag.",
   },
   "deployed-unreadable": {
     status: 409,
     message:
-      "The deployed copy exists but could not be read. Check its permissions and that it is a directory, then try again.",
+      "Its permissions or its shape blocked the check, so nothing was installed. Make it a readable directory, then deploy again.",
   },
   "lockfile-malformed": {
     status: 409,
     message:
-      "The repo's lockfile (apm.lock.yaml) is present but could not be parsed. Fix or remove it, then try again.",
+      "apm.lock.yaml is present but unparsable, so the target's state is unknown. Repair or delete it, then deploy again.",
   },
   "deploy-in-progress": {
     status: 409,
-    message: "A deploy to this repo is already running. Wait for it to finish.",
+    message:
+      "This target takes one change at a time. The deploy can start once the running one finishes.",
   },
   "no-supported-tool": {
     // 409, not 502: nothing to install is a precondition the user resolves,
     // not an apm failure (ADR-0011, #131).
     status: 409,
     message:
-      "No supported tool (Claude Code or Codex) was found on this machine, so there is nothing to deploy to globally.",
+      "A global deploy installs into Claude Code or Codex, and neither is on this machine. Install one, then deploy again.",
   },
   "auth-required": {
     // 502, not 401: the failure is between apm and GitHub, not Maestro auth (#119).
     status: 502,
     message:
-      "GitHub authentication is missing or expired. Run 'gh auth login' (or set GITHUB_TOKEN) and try again.",
+      "GitHub refused the download, so nothing was installed. Restore the machine's GitHub access, then deploy again.",
   },
   "destination-symlinked": {
     // 409, not 502: apm refused on purpose — a conflict, not a failure (#180).
     status: 409,
     message:
-      "The skill's destination directory is a symlink, and apm refuses to deploy into one. Replace that per-skill link with a real directory, or move the link one level up so the whole skills directory is the symlink (for example .claude/skills -> .agents/skills), then try again.",
+      "apm refuses to install into a linked skill directory, so nothing was written. Replace that link with a real directory, or move the link one level up so the whole skills directory is the link, then deploy again.",
   },
   "deployed-unsupported-package-type": {
     // 409, not 502: apm installed something, and the package shape is the
     // user's to correct (#358).
     status: 409,
     message:
-      "apm installed this package but recorded it as a type Maestro cannot manage as a skill. Its files were left in place. Correct the package shape in the harness, release a corrected tag, and deploy again.",
+      "apm recorded a package type Maestro cannot manage as a skill, and left its files in place. Correct the package shape in the harness, publish a new release, then deploy again.",
   },
   "deploy-recorded-invalid": {
     status: 502,
     message:
-      "apm recorded this deployment as invalid and placed no files, even though it reported success. Fix the package shape in the harness (a skill needs a SKILL.md), release a corrected tag, and deploy again.",
+      "apm reported success but recorded the package as invalid, so no files arrived. A skill needs a SKILL.md — fix it in the harness, publish a new release, then deploy again.",
   },
   "deploy-unverified": {
     status: 502,
     message:
-      "apm reported the install as done, but Maestro could not confirm it from the lockfile (apm.lock.yaml), so the deploy is not treated as proven. Check the target's lockfile, then try again.",
+      "apm reported the install as done, but the target's lockfile does not show it, so it does not count as deployed. Deploy again to have Maestro re-check the target.",
   },
   "deploy-failed": {
     status: 502,
-    message: "The deploy could not be completed. Check apm and try again.",
+    message:
+      "apm stopped part-way, so the target may hold a partial install. Read the target's deploy-state below, then deploy again.",
   },
 };
 
 const removeErrorResponses: ErrorTable<RemoveDeployedSkillError> = {
   "unsupported-primitive-type": {
     status: 422,
-    message: "Only skills can be removed yet.",
+    message:
+      "Hooks and MCP servers stay where they are until Maestro can remove them. Remove a skill instead.",
   },
   "invalid-name": {
     status: 400,
-    message: "Skill name must be a lowercase slug.",
+    message:
+      "Lowercase letters, digits and hyphens only. Nothing was removed, because no deployed skill can carry this name.",
   },
   "repo-not-registered": {
     status: 403,
-    message: "That repo is not registered with Maestro.",
+    message:
+      "Only a repo registered with Maestro can be changed. Register it, then remove again.",
   },
   "no-supported-tool": {
     // 409, mirroring the deploy table (ADR-0011).
     status: 409,
     message:
-      "No supported tool (Claude Code or Codex) was found on this machine, so there is no global deployment to remove.",
+      "A global removal deletes from Claude Code or Codex, and neither is on this machine. There is nothing here to remove.",
   },
   "not-deployed": {
     status: 404,
     message:
-      "That skill is not deployed on this target, so there is nothing to remove.",
+      "This target holds no copy of the skill, so nothing was deleted. The list may be out of date — reload the page to read it again.",
   },
   "lockfile-malformed": {
     status: 409,
     message:
-      "The repo's lockfile (apm.lock.yaml) is present but could not be parsed, so Maestro cannot tell apm what to remove. Fix or remove it, then try again.",
+      "apm.lock.yaml is present but unparsable, so Maestro cannot name what to remove. Repair or delete it, then remove again.",
   },
   "ref-unresolvable": {
     status: 409,
     message:
-      "The lockfile entry for this skill does not name it the way a Maestro deploy would, so the package reference apm needs cannot be trusted to point at it. Remove it with apm directly.",
+      "Its reference does not point at this skill the way a Maestro deploy would, so a removal could delete the wrong package. Deploy the skill again to restore a reference Maestro can follow.",
   },
   "deployed-unreadable": {
     status: 409,
     message:
-      "The deployed copy exists but could not be read, so Maestro cannot tell whether removing it would delete local changes. Check its permissions and that it is a directory, then try again.",
+      "Its permissions or its shape blocked the check, so Maestro cannot say what a removal would delete. Make it a readable directory, then remove again.",
   },
   "cost-not-acknowledged": {
     // 409: the request is well-formed, but the copy on disk is not the one it
@@ -352,17 +363,18 @@ const removeErrorResponses: ErrorTable<RemoveDeployedSkillError> = {
     // What it costs now travels beside this message, never inside it (#364).
     status: 409,
     message:
-      "Maestro checked the deployed copy again, and this request has not agreed to what removing it would delete now. Nothing was removed — confirm what the check found to go ahead.",
+      "The copy on disk is no longer the one this removal was priced against, so nothing was deleted. The list beside this states what a removal would cost now — confirm it to go ahead.",
   },
   "remove-in-progress": {
     status: 409,
     message:
-      "Another change to this repo is already running. Wait for it to finish.",
+      "This target takes one change at a time. The removal can start once the running one finishes.",
   },
   "remove-failed": {
     // 502: apm ran and didn't prove removal, so the outcome is unknown.
     status: 502,
-    message: "apm did not confirm the removal. Check apm and try again.",
+    message:
+      "apm ran but proved nothing, so the copy may be gone or may still be there. Confirm the removal again to delete whatever is left.",
   },
 };
 
@@ -377,7 +389,7 @@ const removePreflightErrorResponses: ErrorTable<RemovePreflightError> = {
   "preflight-failed": {
     status: 502,
     message:
-      "Maestro could not check the deployed copy for local changes. Check the repo's permissions and try again.",
+      "Nothing can say yet what a removal would delete. Make the deployed copy readable, then open the removal again.",
   },
 };
 
@@ -409,12 +421,16 @@ const repoPathErrorMessages: Record<
   RepoPathError | "central-inventory",
   string
 > = {
-  missing: "Path is required.",
-  relative: "Path must be an absolute path.",
-  "not-found": "No directory exists at that path.",
-  "not-a-directory": "That path is not a directory.",
+  missing:
+    "Nothing can be registered without one. Name the repository's absolute path.",
+  relative:
+    "Start at the filesystem root, for example /Users/name/code/my-repo.",
+  "not-found":
+    "Nothing exists there to register. Check the spelling, or browse to the repository instead.",
+  "not-a-directory":
+    "It names a file, and only a repository folder can be registered. Choose the folder that holds it.",
   "central-inventory":
-    "The central inventory cannot be registered as a consuming repo.",
+    "The harness is where skills come from, not a target they are deployed to. Register a repository that consumes skills instead.",
 };
 
 // A malformed path is a 400 wherever it arrives, so every path-taking table

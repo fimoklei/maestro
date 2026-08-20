@@ -159,9 +159,12 @@ describe("GlobalTargets", () => {
   it("surfaces a visible error, never an empty list, when the read failed", () => {
     renderTargets({ isError: true });
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/could not read/i);
+    // A read that failed on load states itself without interrupting a reader
+    // mid-sentence, so it is a status, never an alert (#612).
+    const notice = screen.getByRole("status");
+    expect(notice).toHaveTextContent(/could not be read/i);
     // A read failure names a way out; a dead end leaves the user guessing.
-    expect(screen.getByRole("alert")).toHaveTextContent(/reload the page/i);
+    expect(notice).toHaveTextContent(/reload the page/i);
     // The error must not be mistaken for "no tools detected".
     expect(
       screen.queryByText(/install claude code or codex/i),

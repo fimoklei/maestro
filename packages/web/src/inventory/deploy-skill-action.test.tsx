@@ -151,7 +151,7 @@ describe("DeploySkillAction", () => {
     await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
 
     expect(
-      await screen.findByText(/deployed tdd v0\.5\.1/i),
+      await screen.findByText(/tdd v0\.5\.1 is installed/i),
     ).toBeInTheDocument();
     const [url, init] = fetchMock.mock.calls.find(
       ([url]) => url === "/api/deploy",
@@ -327,7 +327,7 @@ describe("DeploySkillAction", () => {
             JSON.stringify({
               error: "local-diverged-from-tag",
               message:
-                "The local skill differs from its latest published tag. Tag and push the change first.",
+                "A deploy would install the published version, not what sits in the harness now. Publish a release from the Harness view, then deploy again.",
             }),
             {
               status: 409,
@@ -343,7 +343,7 @@ describe("DeploySkillAction", () => {
     await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      /tag and push the change/i,
+      /publish a release/i,
     );
   });
 
@@ -439,7 +439,7 @@ describe("DeploySkillAction", () => {
           JSON.stringify({
             error: "deployed-diverged-from-lock",
             message:
-              "The deployed copy has local changes that never went through central. Updating discards them and reinstalls at the latest tag.",
+              "Those edits never went through the harness. Reinstalling replaces the copy with the latest published tag.",
           }),
           { status: 409, headers: { "content-type": "application/json" } },
         );

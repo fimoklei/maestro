@@ -60,8 +60,8 @@ describe("GlobalDeployStatePanel", () => {
     );
     renderPanel();
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      /could not read/i,
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      /could not be read/i,
     );
   });
 

@@ -6,6 +6,7 @@ import { cn } from "../ui/cn";
 import { Notice } from "../ui/notice";
 import { panelBorderFor } from "../ui/panel-border";
 import { TypeTag } from "../ui/type-tag";
+import { RESTATED_COST_HEADING } from "./notice-copy";
 import {
   type RemoveDialogTarget,
   type RemoveLedgerRow,
@@ -312,31 +313,27 @@ export function RemoveSkillDialog({
               }
             />
             {/* Amber, not danger red: nothing failed and nothing was deleted —
-                the price went up, and the rows above already carry it. */}
-            {restated ? (
-              <div
-                role="alert"
-                className="flex gap-1.5 rounded-control border border-line-drift bg-amber-bg px-2.5 py-2.5"
-              >
-                <span
-                  aria-hidden="true"
-                  className="font-mono text-amber-ink text-desc"
-                >
-                  ▲
-                </span>
-                <div className="flex min-w-0 flex-col gap-1">
-                  {/* States what happened, never why: the copy may have
-                      changed, or the request may have agreed to nothing at
-                      all, and only the server knows which (J04). */}
-                  <span className="font-semibold font-ui text-amber-ink text-desc">
-                    nothing was removed
-                  </span>
-                  <span className="font-ui text-desc text-fg-2">
-                    {restated}
-                  </span>
-                </div>
-              </div>
-            ) : null}
+                the price went up, and the rows above already carry it. The
+                heading states what happened, never why: only the server knows
+                whether the copy changed or nothing was ever agreed (J04). */}
+            <Notice
+              trigger="user-action"
+              notice={
+                restated
+                  ? {
+                      ...RESTATED_COST_HEADING,
+                      message: restated,
+                      // The way through sits in the block that restated the
+                      // price, so the footer does not offer a second one.
+                      action: {
+                        label: "remove →",
+                        onClick: onConfirm,
+                        disabled: isRemoving,
+                      },
+                    }
+                  : null
+              }
+            />
             {/* The aside says what the retry beside it will do, replacing a
                 paragraph that sent the user to check the repo by hand (#415). */}
             <Notice
@@ -382,8 +379,10 @@ export function RemoveSkillDialog({
             {failure ? "close" : "cancel"}
           </Button>
           {/* Absent, not disabled, once refused: disabled reads as shut for
-              now; this is shut for good. */}
-          {refused ? null : (
+              now; this is shut for good. Absent too while a restated price is
+              on screen — that block carries the same confirm, and two of them
+              would ask the same question twice. */}
+          {refused || restated !== null ? null : (
             <Button
               type="button"
               className="shrink-0"
