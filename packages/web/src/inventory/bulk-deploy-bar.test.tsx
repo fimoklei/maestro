@@ -214,6 +214,91 @@ describe("BulkDeployBar", () => {
     ).toHaveTextContent(/1 deployed/);
   });
 
+  it("names a repo target by its shortened label, never its absolute path", async () => {
+    // Same shortening as the sidebar and the removal rows (#211) — an absolute
+    // path pushes the outcome off the row it belongs to.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/deploy-state?repo=")) {
+          return jsonResponse({ primitives: [], skipped: [] });
+        }
+        if (url.startsWith("/api/drift?repo=")) {
+          return jsonResponse({ behind: [] });
+        }
+        if (url === "/api/deploy/bulk") {
+          return jsonResponse({
+            target: { kind: "repo", repoPath: "/Users/m/Projects/maestro" },
+            deployed: [{ name: "tdd", version: "v1.0.0" }],
+            attention: [],
+            failed: [],
+          });
+        }
+        throw new Error(`Unexpected request: ${url}`);
+      }),
+    );
+
+    renderWithQuery(
+      <BulkDeployBar
+        stagedNames={["tdd"]}
+        hiddenCount={0}
+        repos={[{ path: "/Users/m/Projects/maestro" }]}
+        registryReady
+      />,
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /deploy 1/i }),
+    );
+
+    const status = await screen.findByRole("status", {
+      name: /bulk deploy result/i,
+    });
+    expect(status).toHaveTextContent("…/Projects/maestro");
+    expect(status).not.toHaveTextContent("/Users/m/Projects/maestro");
+  });
+
+  it("lists repo options by their shortened label, never their absolute path", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/deploy-state?repo=")) {
+          return jsonResponse({ primitives: [], skipped: [] });
+        }
+        if (url.startsWith("/api/drift?repo=")) {
+          return jsonResponse({ behind: [] });
+        }
+        if (url.startsWith("/api/deploy-state/global")) {
+          return jsonResponse({ tools: [], skipped: [] });
+        }
+        if (url.startsWith("/api/drift/global")) {
+          return jsonResponse({ behind: [] });
+        }
+        throw new Error(`Unexpected request: ${url}`);
+      }),
+    );
+
+    renderWithQuery(
+      <BulkDeployBar
+        stagedNames={["tdd"]}
+        hiddenCount={0}
+        repos={[
+          { path: "/Users/m/Projects/maestro" },
+          { path: "/Users/m/Projects/agent-harness" },
+        ]}
+        registryReady
+      />,
+    );
+
+    const option = await screen.findByRole("option", {
+      name: "…/Projects/agent-harness",
+    });
+    // The value stays the absolute path — it is what the deploy request needs.
+    expect(option).toHaveValue("/Users/m/Projects/agent-harness");
+  });
+
   it("shows a distinct failure, never a green success, when the bulk request itself fails", async () => {
     vi.stubGlobal(
       "fetch",
