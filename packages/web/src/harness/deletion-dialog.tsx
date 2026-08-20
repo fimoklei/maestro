@@ -1,7 +1,7 @@
 import { useModalDialog } from "../shell/use-modal-dialog";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
-import { Notice } from "../ui/notice";
+import { Notice, type NoticeContent } from "../ui/notice";
 
 // The confirmation a removal takes before anything is pushed: consequences
 // first, then the exact origin/HEAD it is given against (#580).
@@ -21,7 +21,7 @@ export function DeletionDialog({
   onClose: () => void;
   onConfirm: () => void;
   removing: boolean;
-  removeError: string | null;
+  removeError: NoticeContent | null;
 }) {
   const { panelRef, requestClose } = useModalDialog({
     onClose,
@@ -69,18 +69,7 @@ export function DeletionDialog({
               <Fact label="Confirmed against" value={seenRemoteTree} />
             </dl>
           </Card>
-          <Notice
-            trigger="user-action"
-            notice={
-              removeError === null
-                ? null
-                : {
-                    level: "error",
-                    label: "removal not published",
-                    message: removeError,
-                  }
-            }
-          />
+          <Notice trigger="user-action" notice={removeError} />
         </div>
 
         <div className="flex items-center gap-2.5 border-line-row border-t px-3.5 py-3">

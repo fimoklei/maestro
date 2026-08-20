@@ -366,7 +366,9 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/refresh/i);
+    // Polite, not assertive: the fetch fires on open, so nothing the author
+    // did should interrupt them (#465).
+    expect(await screen.findByRole("status")).toHaveTextContent(/GitHub/i);
     // The state that is on screen is the last one that was read, so the
     // version still shows and the button is the way to try again.
     expect(screen.getByText("v0.5.0")).toBeInTheDocument();
@@ -942,12 +944,14 @@ describe("Harness home base", () => {
     const warned = (await screen.findByText("lint-rules")).closest(
       "tr",
     ) as HTMLElement;
-    expect(within(warned).getByText(/pull their change/i)).toBeInTheDocument();
+    expect(
+      within(warned).getByText(/pulled into the Harness clone/i),
+    ).toBeInTheDocument();
     const untouched = screen
       .getByText("code-review")
       .closest("tr") as HTMLElement;
     expect(
-      within(untouched).queryByText(/pull their change/i),
+      within(untouched).queryByText(/pulled into the Harness clone/i),
     ).not.toBeInTheDocument();
 
     await promoteRow("lint-rules");
@@ -1263,7 +1267,9 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
+    // A view that failed to load announces politely — nothing here followed
+    // a press (#465).
+    expect(await screen.findByRole("status")).toHaveTextContent(
       /no harness is connected/i,
     );
   });

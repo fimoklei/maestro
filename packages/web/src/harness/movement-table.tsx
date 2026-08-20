@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Button } from "../ui/button";
 import { Chip } from "../ui/chip";
+import { Notice, type NoticeContent } from "../ui/notice";
 import {
   Table,
   TableBody,
@@ -25,7 +26,16 @@ export type PromoteRowState = {
   pullRequests: Record<string, string>;
   // The one whose press just landed: the only row that takes focus.
   justMoved: string | null;
-  failed: { skill: string; message: string } | null;
+  failed: { skill: string; notice: NoticeContent } | null;
+};
+
+// Info, not warning: a warning is a way through at a cost (#465, decision 3),
+// and there is none here — promoting is refused until the pull lands (#579).
+const CONCURRENT_CHANGE: NoticeContent = {
+  level: "info",
+  label: "changed by a teammate",
+  message:
+    "Promoting is refused until their change is pulled into the Harness clone.",
 };
 
 // The rows of one state-named section. Type is a column even though every row
@@ -82,19 +92,19 @@ export function MovementTable({
                 {promote?.failed?.skill === movement.skill ? (
                   // On the row it failed on, not in a dialog: the press is
                   // still there, and a refusal changed nothing (#577).
-                  <p role="alert" className="mt-1 text-amber-ink text-tag">
-                    {promote.failed.message}
-                  </p>
+                  <div className="mt-1">
+                    <Notice
+                      trigger="user-action"
+                      notice={promote.failed.notice}
+                    />
+                  </div>
                 ) : null}
                 {promotable(movement) && movement.concurrentChange ? (
-                  // The press stays available — pressing it re-checks this
-                  // fact against the remote and, finding it still true,
-                  // refuses with the same explanation on this row rather
-                  // than silently replacing the teammate's version (#579).
-                  <p role="status" className="mt-1 text-amber-ink text-tag">
-                    Changed by a teammate. Promoting will be refused until you
-                    pull their change.
-                  </p>
+                  // Painted with the row, not in answer to a press, so it
+                  // stays polite.
+                  <div className="mt-1">
+                    <Notice trigger="load" notice={CONCURRENT_CHANGE} />
+                  </div>
                 ) : null}
               </TableCell>
               {actions && promote ? (

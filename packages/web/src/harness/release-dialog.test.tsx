@@ -2,6 +2,7 @@ import type { ReleasePlan } from "@maestro/core";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import type { NoticeContent } from "../ui/notice";
 import { ReleaseDialog } from "./release-dialog";
 
 const PLAN: ReleasePlan = {
@@ -25,7 +26,7 @@ const renderReady = (
     onClose?: () => void;
     onPublish?: (step: ReleasePlan["proposedStep"]) => void;
     publishing?: boolean;
-    publishError?: string | null;
+    publishError?: NoticeContent | null;
   } = {},
 ) =>
   render(
@@ -190,12 +191,17 @@ describe("ReleaseDialog", () => {
     renderReady(
       {},
       {
-        publishError:
-          "The tag could not be pushed. Check the remote and try again.",
+        publishError: {
+          level: "error",
+          label: "the tag was not pushed",
+          message: "The Harness is as it was.",
+        },
       },
     );
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/could not be pushed/i);
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /the tag was not pushed/i,
+    );
   });
 
   it("says it is working while the plan is still loading", () => {
@@ -217,7 +223,14 @@ describe("ReleaseDialog", () => {
     render(
       <ReleaseDialog
         origin="github.com/fimoklei/agent-harness"
-        load={{ kind: "error", message: "Refresh the harness and try again." }}
+        load={{
+          kind: "error",
+          notice: {
+            level: "error",
+            label: "no answer from GitHub",
+            message: "Press refresh, then open the release again.",
+          },
+        }}
         onClose={vi.fn()}
         onPublish={vi.fn()}
         publishing={false}
@@ -225,6 +238,6 @@ describe("ReleaseDialog", () => {
       />,
     );
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/refresh the harness/i);
+    expect(screen.getByRole("alert")).toHaveTextContent(/press refresh/i);
   });
 });

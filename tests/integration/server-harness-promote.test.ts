@@ -355,7 +355,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({
       error: "concurrent-change",
-      message: expect.stringContaining("teammate"),
+      message: expect.stringContaining("Pull it into the Harness clone"),
     });
     expect((await git(remote, "branch", "--list", "maestro/tdd")).stdout).toBe(
       "",
@@ -611,7 +611,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       expect(response.status).toBe(409);
       expect(JSON.parse(body)).toEqual({
         error: "sparse-checkout",
-        message: expect.stringContaining("sparse checkout"),
+        message: expect.stringContaining("partial clone"),
       });
       expect(body).not.toContain(root);
       expect(

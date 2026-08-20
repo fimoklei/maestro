@@ -90,6 +90,11 @@ export const Imported: Story = {
 // A refused import: Maestro's own sentence, never a filesystem message.
 export const ImportRefused: Story = {
   args: {
-    importError: "That folder holds over 1,000 files. Nothing was copied.",
+    importError: {
+      level: "error",
+      label: "over 1,000 files",
+      message:
+        "Nothing was copied. A skill is a handful of files — pick the skill folder itself, not the repository around it.",
+    },
   },
 };

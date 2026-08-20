@@ -1,6 +1,9 @@
 // One sentence per import refusal and per convention finding, and the one rule
 // that decides whether Import can be pressed. Pure, so the dialog only renders
 // what this decides (#576).
+
+import type { NoticeContent } from "../ui/notice";
+import { importBlockerNotice } from "./notice-copy";
 import type {
   ImportCheck,
   ImportNameBlocker,
@@ -8,22 +11,29 @@ import type {
   ManifestAdvisory,
 } from "./use-harness";
 
-// Beside the picked folder: what is wrong with the folder itself.
+// Beside the picked folder: what is wrong with the folder itself. Each sentence
+// starts where its heading in `notice-copy` stops.
 const SOURCE_BLOCKER_TEXT: Record<ImportSourceBlocker, string> = {
-  "source-unreadable": "Maestro could not read that folder.",
-  "outside-root": "That folder is outside the area Maestro can read.",
+  "source-unreadable":
+    "Check that it is still on disk and readable, then pick it again.",
+  "outside-root":
+    "Maestro reads inside the home folder only. Pick a folder under it.",
   "deployed-copy":
-    "That folder is a copy Maestro deployed. Import from where you author the skill.",
-  "missing-manifest": "That folder has no SKILL.md, so it is not a skill.",
-  "invalid-frontmatter": "The SKILL.md frontmatter does not parse.",
-  "empty-description": "The SKILL.md description is empty.",
+    "Importing it would copy Maestro's own output back into the Harness. Pick the folder the skill is authored in.",
+  "missing-manifest":
+    "Without one, the folder is not a skill Maestro can carry. Pick the folder that holds the skill's SKILL.md.",
+  "invalid-frontmatter":
+    "Maestro cannot read the skill's name or description. Fix the SKILL.md frontmatter, then pick the folder again.",
+  "empty-description":
+    "The description is what tells an agent when to reach for the skill. Fill it in in SKILL.md, then pick the folder again.",
 };
 
 // Beside the name input: what is wrong with the name, and nothing else.
 const NAME_BLOCKER_TEXT: Record<ImportNameBlocker, string> = {
   "invalid-name":
-    "Use lowercase letters, digits and single hyphens, like code-review.",
-  "name-taken": "The Harness already has a skill with that name.",
+    "A skill name is lowercase letters, digits and single hyphens, like code-review.",
+  "name-taken":
+    "The Harness already holds a skill under it. Pick another name.",
 };
 
 // Reported, never blocking: a convention exceeded costs readability, not
@@ -33,13 +43,19 @@ const ADVISORY_TEXT: Record<ManifestAdvisory, string> = {
   "long-description": "The description is over 1,024 characters.",
 };
 
-export const sourceBlockerText = (
+export const sourceBlockerNotice = (
   blocker: ImportSourceBlocker | null,
-): string | null => (blocker === null ? null : SOURCE_BLOCKER_TEXT[blocker]);
+): NoticeContent | null =>
+  blocker === null
+    ? null
+    : importBlockerNotice(blocker, SOURCE_BLOCKER_TEXT[blocker]);
 
-export const nameBlockerText = (
+export const nameBlockerNotice = (
   blocker: ImportNameBlocker | null,
-): string | null => (blocker === null ? null : NAME_BLOCKER_TEXT[blocker]);
+): NoticeContent | null =>
+  blocker === null
+    ? null
+    : importBlockerNotice(blocker, NAME_BLOCKER_TEXT[blocker]);
 
 export const advisoryTexts = (
   advisories: readonly ManifestAdvisory[],

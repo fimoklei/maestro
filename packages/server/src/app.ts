@@ -621,12 +621,13 @@ const scaffoldErrorResponses: ErrorTable<ScaffoldHarnessError> = {
 const harnessErrorResponses: ErrorTable<HarnessStateError> = {
   "not-configured": {
     status: 409,
-    message: "No Harness is connected. Set the Harness source path.",
+    message:
+      "Nothing can be shown here until Maestro knows where the Harness lives. Set the Harness source path.",
   },
   "no-usable-origin": {
     status: 422,
     message:
-      "The harness clone's origin remote is missing, unreadable, or in a form apm cannot resolve. Maestro releases to GitHub tags, so it needs a GitHub origin over https or ssh.",
+      "Releases are published as tags, so the clone must fetch from GitHub over https or ssh. Point its origin at the Harness repository.",
   },
 };
 
@@ -638,7 +639,7 @@ const releasePlanErrorResponses: ErrorTable<ReleasePlanError> = {
   "no-answer": {
     status: 409,
     message:
-      "Maestro has not fetched the remote yet, so it cannot plan a release. Refresh the harness and try again.",
+      "A release plan is measured against what GitHub holds, and Maestro has not read that yet. Press refresh, then open the release again.",
   },
 };
 
@@ -650,28 +651,29 @@ const publishReleaseErrorResponses: ErrorTable<PublishReleaseError> = {
   "no-answer": {
     status: 409,
     message:
-      "Maestro could not reach the remote to confirm this release. Refresh and try again.",
+      "Nothing was published. Press refresh to read GitHub again, then confirm the release.",
   },
   // Both are ordinary races, not dead ends: nothing was overwritten, and the
   // reply carries the recomputed plan the author confirms instead (#521).
   "already-released": {
     status: 409,
     message:
-      "Someone else took that version first. Check the recomputed plan and confirm again.",
+      "That version number is taken. Maestro recomputed the plan against the newest tag — check it, then confirm.",
   },
   "plan-changed": {
     status: 409,
     message:
-      "The remote moved while you were deciding, so this plan no longer stands. Check the recomputed plan and confirm again.",
+      "GitHub moved while this dialog was open, so nothing was published. Maestro recomputed the plan — check it, then confirm.",
   },
   "publish-failed": {
     status: 502,
-    message: "The tag could not be pushed. Check the remote and try again.",
+    message:
+      "The Harness is as it was. Check the connection to GitHub, then confirm the release again.",
   },
   "publish-in-progress": {
     status: 409,
     message:
-      "A release for this harness is already being confirmed. Wait for it to finish.",
+      "Only one release runs at a time. Wait for it to finish, then read the plan again.",
   },
 };
 
@@ -691,35 +693,37 @@ const promoteErrorResponses: ErrorTable<PromoteSkillError> = {
   "no-answer": {
     status: 409,
     message:
-      "Maestro could not reach the remote to promote this skill. Refresh and try again.",
+      "Nothing was pushed. Press refresh to read GitHub again, then promote.",
   },
   "skill-missing": {
     status: 422,
-    message: "That skill is no longer in the Harness working tree.",
+    message:
+      "The skill is no longer in the Harness working tree, so nothing was pushed. Press refresh to repaint the list.",
   },
   "push-elsewhere": {
     status: 422,
     message:
-      "The harness clone pushes somewhere other than the origin it fetches from, so Maestro will not publish this skill.",
+      "Maestro publishes only to the origin it fetches from, so nothing was pushed. Point the clone's push remote at that origin.",
   },
   "source-changed": {
     status: 409,
     message:
-      "The skill changed on disk while Maestro was reading it. Nothing was pushed — try again.",
+      "Nothing was pushed. Let the edit on disk finish, then promote again.",
   },
   "concurrent-change": {
     status: 409,
     message:
-      "A teammate's change landed on this skill. Nothing was pushed — pull it into the harness clone, then try promoting again.",
+      "Nothing was pushed, so their version still stands. Pull it into the Harness clone, then promote again.",
   },
   "promote-failed": {
     status: 502,
-    message: "The skill could not be pushed. Check the remote and try again.",
+    message:
+      "The Harness is as it was. Check the connection to GitHub, then promote again.",
   },
   "promote-in-progress": {
     status: 409,
     message:
-      "A promotion for this harness is already running. Wait for it to finish.",
+      "Only one promotion runs at a time. Wait for it to finish, then press promote.",
   },
 };
 
@@ -732,52 +736,53 @@ const deletionErrorResponses: ErrorTable<PromoteDeletionError> = {
   "no-answer": {
     status: 409,
     message:
-      "Maestro could not reach the remote to publish this removal. Refresh and try again.",
+      "Nothing was pushed. Press refresh to read GitHub again, then confirm the removal.",
   },
   "confirmation-stale": {
     status: 409,
     message:
-      "The skill on the default branch is no longer the one you confirmed removing. Nothing was pushed — refresh and confirm again.",
+      "The copy on the default branch moved after this confirmation was given, so nothing was pushed. Press refresh, then confirm again.",
   },
   "not-deleted": {
     status: 422,
     message:
-      "That skill is not deleted in the Harness working tree, so there is no removal to publish.",
+      "A removal publishes what the Harness working tree already says. Delete the skill folder there first.",
   },
   "sparse-checkout": {
     status: 409,
     message:
-      "The Harness clone uses a sparse checkout, so a missing skill is not proof it was deleted. Maestro will not publish a removal from it.",
+      "A missing folder in a partial clone is not proof of a deletion, so nothing was pushed. Maestro cannot publish a removal from this clone — connect a complete one to remove skills.",
   },
   "merge-in-progress": {
     status: 409,
     message:
-      "A merge is in progress in the Harness clone. Finish or abort it, then confirm the removal again.",
+      "Nothing was pushed — a half-merged working tree does not state what should go. Finish or abort the merge, then confirm again.",
   },
   "rebase-in-progress": {
     status: 409,
     message:
-      "A rebase is in progress in the Harness clone. Finish or abort it, then confirm the removal again.",
+      "Nothing was pushed — a half-rebased working tree does not state what should go. Finish or abort the rebase, then confirm again.",
   },
   "unresolved-conflicts": {
     status: 409,
     message:
-      "The Harness clone has unresolved conflicts, so its working tree does not state your intent. Resolve them, then confirm the removal again.",
+      "Nothing was pushed — a conflicted working tree does not state what should go. Resolve the conflicts, then confirm again.",
   },
   unreadable: {
     status: 409,
     message:
-      "Maestro could not read the state of the Harness working tree, so it will not publish a removal from it.",
+      "Nothing was pushed. Check that the Harness folder is still on disk and readable, then confirm again.",
   },
   "push-elsewhere": promoteErrorResponses["push-elsewhere"],
   "source-changed": {
     status: 409,
     message:
-      "The skill came back on disk while Maestro was reading it. Nothing was pushed — try again.",
+      "Nothing was pushed. Press refresh to repaint the list, then decide again.",
   },
   "promote-failed": {
     status: 502,
-    message: "The removal could not be pushed. Check the remote and try again.",
+    message:
+      "The Harness is as it was. Check the connection to GitHub, then confirm again.",
   },
   "promote-in-progress": promoteErrorResponses["promote-in-progress"],
 };
@@ -788,33 +793,39 @@ const deletionErrorResponses: ErrorTable<PromoteDeletionError> = {
 const importErrorResponses: ErrorTable<ImportSkillError> = {
   "not-configured": {
     status: 409,
-    message: "No Harness is connected. Set the Harness source path.",
+    message:
+      "Nothing can be imported until Maestro knows where the Harness lives. Set the Harness source path, then import again.",
   },
   "source-unreadable": {
     status: 422,
-    message: "Maestro could not read that folder.",
+    message:
+      "Nothing was copied. Check that the folder is still on disk and readable, then pick it again.",
   },
   // 403 like browse: the same ceiling, and the reply names no path.
   "outside-root": {
     status: 403,
-    message: "That folder is outside the area Maestro can read.",
+    message:
+      "Maestro reads inside the home folder only. Pick a folder under it.",
   },
   "deployed-copy": {
     status: 409,
     message:
-      "That folder is a copy Maestro deployed. Import the skill from where you author it, not from a deployed target.",
+      "Importing it would copy Maestro's own output back into the Harness. Pick the folder the skill is authored in.",
   },
   "missing-manifest": {
     status: 422,
-    message: "That folder has no SKILL.md, so it is not a skill.",
+    message:
+      "Without one, the folder is not a skill Maestro can carry. Pick the folder that holds the skill's SKILL.md.",
   },
   "invalid-frontmatter": {
     status: 422,
-    message: "The SKILL.md frontmatter does not parse. Fix it and try again.",
+    message:
+      "Maestro cannot read the skill's name or description. Fix the SKILL.md frontmatter, then import again.",
   },
   "empty-description": {
     status: 422,
-    message: "The SKILL.md description is empty. Fill it in and try again.",
+    message:
+      "The description is what tells an agent when to reach for the skill. Fill it in in SKILL.md, then import again.",
   },
   "invalid-name": {
     status: 400,
@@ -823,53 +834,59 @@ const importErrorResponses: ErrorTable<ImportSkillError> = {
   },
   "name-taken": {
     status: 409,
-    message: "The Harness already has a skill with that name.",
+    message: "The Harness already holds a skill under it. Pick another name.",
   },
   "not-found": {
     status: 422,
-    message: "That folder no longer exists.",
+    message: "Nothing was copied. Pick the folder again.",
   },
-  "not-a-directory": { status: 422, message: "That path is not a folder." },
+  "not-a-directory": {
+    status: 422,
+    message: "A skill is a folder with a SKILL.md in it. Pick one of those.",
+  },
   "destination-exists": {
     status: 409,
-    message: "The Harness already has a skill with that name.",
+    message: "The Harness already holds a folder under it. Pick another name.",
   },
   "unsafe-link": {
     status: 422,
     message:
-      "That folder holds a symbolic link Maestro will not follow. Nothing was copied.",
+      "Maestro will not follow one into somewhere else on disk, so nothing was copied. Replace the link with a real file, then import again.",
   },
   "hard-linked-file": {
     status: 422,
     message:
-      "That folder holds a file shared with somewhere else on disk. Nothing was copied.",
+      "Copying it would tie the Harness to a file it does not own, so nothing was copied. Replace it with a plain copy, then import again.",
   },
   "special-file": {
     status: 422,
     message:
-      "That folder holds something that is not a plain file or folder. Nothing was copied.",
+      "Maestro carries plain files and folders only, so nothing was copied. Take it out of the folder, then import again.",
   },
   "too-many-files": {
     status: 422,
-    message: "That folder holds over 1,000 files. Nothing was copied.",
+    message:
+      "Nothing was copied. A skill is a handful of files — pick the skill folder itself, not the repository around it.",
   },
   "too-large": {
     status: 422,
-    message: "That folder is over 50 MiB. Nothing was copied.",
+    message:
+      "Nothing was copied. A skill is text — pick the skill folder itself, not the repository around it.",
   },
   "source-changed": {
     status: 409,
     message:
-      "The folder changed while it was being copied. Nothing was copied.",
+      "Nothing was left in the Harness. Let the edit on disk finish, then import again.",
   },
   "copy-failed": {
     status: 500,
-    message: "The copy did not finish. Nothing was left in the Harness.",
+    message:
+      "Nothing was left in the Harness. Check that there is room on disk, then import again.",
   },
   "destination-unsafe": {
     status: 409,
     message:
-      "The Harness's skills folder does not sit inside the Harness. Nothing was copied.",
+      "Writing there would land outside the Harness, so nothing was copied. Check that the Harness clone's skills folder is a real folder inside it.",
   },
 };
 

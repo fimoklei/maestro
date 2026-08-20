@@ -3,6 +3,7 @@ import { BrowseDialog } from "../shell/browse-dialog";
 import { useBrowsePicker } from "../shell/use-browse-picker";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
+import { Notice } from "../ui/notice";
 import { SectionHeader } from "../ui/section-header";
 import { DeletionDialog } from "./deletion-dialog";
 import { HarnessStrip } from "./harness-strip";
@@ -14,6 +15,15 @@ import {
 } from "./harness-view-model";
 import { type ImportCheckLoad, ImportDialog } from "./import-dialog";
 import { MovementTable } from "./movement-table";
+import {
+  harnessStateNotice,
+  importNotice,
+  promoteNotice,
+  publishReleaseNotice,
+  refreshNotice,
+  releasePlanNotice,
+  removalNotice,
+} from "./notice-copy";
 import { PendingRelease } from "./pending-release";
 import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
 import type { ReleasePlan, SemverStep } from "./use-harness";
@@ -89,6 +99,7 @@ export function HarnessView() {
   const promote = usePromoteSkill();
   const [pullRequests, setPullRequests] = useState<Record<string, string>>({});
   const promotedSkill = promote.variables?.name ?? null;
+  const promoteFailure = promoteNotice(promote.error);
   const keepLink = (name: string) => (outcome: { pullRequestUrl: string }) =>
     setPullRequests((links) => ({ ...links, [name]: outcome.pullRequestUrl }));
 
@@ -134,21 +145,18 @@ export function HarnessView() {
   return (
     <section>
       <SectionHeader title="Harness" meta={state?.origin} />
-      {harness.isError ? (
-        <p role="alert" className="text-amber-ink text-tag">
-          {harness.error.message}
-        </p>
-      ) : state === undefined ? (
+      {/* Mounted before either failure is: the region outlives its content,
+          and a read that failed on open is trigger="load" (#465). Empty, both
+          children are out of flow and the block costs nothing. */}
+      <div className="mb-2 flex flex-col gap-2">
+        <Notice trigger="load" notice={harnessStateNotice(harness.error)} />
+        {/* A failed refresh is not a failed read: the state below stands. */}
+        <Notice trigger="load" notice={refreshNotice(refresh.error)} />
+      </div>
+      {harness.isError ? null : state === undefined ? (
         <p className="text-dim text-tag">Loading the harness…</p>
       ) : (
         <>
-          {refresh.isError ? (
-            // A failed refresh is not a failed read: the state below stands,
-            // and saying nothing would let it pass as freshly fetched.
-            <p role="alert" className="mb-2 text-amber-ink text-tag">
-              Refresh failed: {refresh.error.message}
-            </p>
-          ) : null}
           <HarnessStrip
             releasedVersion={state.releasedVersion}
             defaultBranch={state.defaultBranch}
@@ -218,12 +226,9 @@ export function HarnessView() {
                     pullRequests,
                     justMoved,
                     failed:
-                      promote.isError && promotedSkill !== null
-                        ? {
-                            skill: promotedSkill,
-                            message: promote.error.message,
-                          }
-                        : null,
+                      promoteFailure === null || promotedSkill === null
+                        ? null
+                        : { skill: promotedSkill, notice: promoteFailure },
                   }}
                 />
               </Card>
@@ -244,9 +249,7 @@ export function HarnessView() {
               }
               imported={importSkill.data ?? null}
               importing={importSkill.isPending}
-              importError={
-                importSkill.isError ? importSkill.error.message : null
-              }
+              importError={importNotice(importSkill.error)}
             />
           ) : null}
           {picker.open ? (
@@ -279,7 +282,7 @@ export function HarnessView() {
                 )
               }
               removing={removal.isPending}
-              removeError={removal.isError ? removal.error.message : null}
+              removeError={removalNotice(removal.error)}
             />
           ) : null}
           {planOpen ? (
@@ -289,7 +292,7 @@ export function HarnessView() {
               onClose={closePlan}
               onPublish={handlePublish}
               publishing={publish.isPending}
-              publishError={publish.isError ? publish.error.message : null}
+              publishError={publishReleaseNotice(publish.error)}
             />
           ) : null}
         </>
@@ -310,8 +313,9 @@ function importLoad(
   if (check.data !== undefined) {
     return { kind: "ready", check: check.data };
   }
-  if (check.isError) {
-    return { kind: "error", message: check.error.message };
+  const failed = importNotice(check.error);
+  if (failed !== null) {
+    return { kind: "error", notice: failed };
   }
   return { kind: "loading" };
 }
@@ -322,8 +326,9 @@ function planLoad(plan: ReturnType<typeof useReleasePlan>): ReleasePlanLoad {
   if (plan.data !== undefined) {
     return { kind: "ready", plan: plan.data };
   }
-  if (plan.isError) {
-    return { kind: "error", message: plan.error.message };
+  const failed = releasePlanNotice(plan.error);
+  if (failed !== null) {
+    return { kind: "error", notice: failed };
   }
   return { kind: "loading" };
 }

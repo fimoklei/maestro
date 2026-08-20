@@ -29,8 +29,12 @@ export const Removing: Story = {
 // asked for a new one — the dialog stays, the press stays.
 export const ConfirmationRefused: Story = {
   args: {
-    removeError:
-      "The skill on the default branch is no longer the one you confirmed removing. Nothing was pushed — refresh and confirm again.",
+    removeError: {
+      level: "error",
+      label: "the confirmation is out of date",
+      message:
+        "The copy on the default branch moved after this confirmation was given, so nothing was pushed. Press refresh, then confirm again.",
+    },
   },
 };
 
@@ -38,7 +42,11 @@ export const ConfirmationRefused: Story = {
 // refused before anything is pushed.
 export const WorkingTreeAmbiguous: Story = {
   args: {
-    removeError:
-      "A merge is in progress in the Harness clone. Finish or abort it, then confirm the removal again.",
+    removeError: {
+      level: "error",
+      label: "a merge is unfinished",
+      message:
+        "Nothing was pushed — a half-merged working tree does not state what should go. Finish or abort the merge, then confirm again.",
+    },
   },
 };

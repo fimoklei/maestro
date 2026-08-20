@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   advisoryTexts,
   importEnabled,
-  nameBlockerText,
-  sourceBlockerText,
+  nameBlockerNotice,
+  sourceBlockerNotice,
 } from "./import-view-model";
 import type { ImportCheck } from "./use-harness";
 
@@ -16,17 +16,22 @@ const clean: ImportCheck = {
 
 describe("import refusal text", () => {
   it("names the folder's problem, never the name's", () => {
-    expect(sourceBlockerText("missing-manifest")).toBe(
-      "That folder has no SKILL.md, so it is not a skill.",
-    );
-    expect(sourceBlockerText(null)).toBeNull();
+    expect(sourceBlockerNotice("missing-manifest")).toEqual({
+      level: "error",
+      label: "no SKILL.md in it",
+      message:
+        "Without one, the folder is not a skill Maestro can carry. Pick the folder that holds the skill's SKILL.md.",
+    });
+    expect(sourceBlockerNotice(null)).toBeNull();
   });
 
   it("names the name's problem", () => {
-    expect(nameBlockerText("name-taken")).toBe(
-      "The Harness already has a skill with that name.",
-    );
-    expect(nameBlockerText(null)).toBeNull();
+    expect(nameBlockerNotice("name-taken")).toEqual({
+      level: "error",
+      label: "that name is taken",
+      message: "The Harness already holds a skill under it. Pick another name.",
+    });
+    expect(nameBlockerNotice(null)).toBeNull();
   });
 
   it("states each convention finding in order", () => {
