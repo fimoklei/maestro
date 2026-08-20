@@ -32,8 +32,9 @@ targets = detected tools), 0013 (narrowed-install reconciliation), 0014
 
 ## Classifying output
 
-- Success = the `Installed \d+ APM dependenc` marker with no error phrases —
-  never the exit code. Absent marker = failure, fail-closed.
+- Success = the `Installed \d+ APM dependenc` marker or the
+  `No changes -- install state already up to date` no-op marker, with no
+  error phrases — never the exit code. Absent marker = failure, fail-closed.
 - Classify auth-required only at `apm view`, only on the phrases
   `Authentication failed` / `No token available` (case-insensitive). Never
   echo matched output (`security.md`).
