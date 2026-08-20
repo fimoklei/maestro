@@ -4,6 +4,7 @@ import { useGlobalDeployState } from "../deploy-state/use-global-deploy-state";
 import { driftViewModel } from "../drift/drift-view-model";
 import { useDrift, useGlobalDrift } from "../drift/use-drift";
 import type { RegisteredRepo } from "../registry/use-registry";
+import { targetLabel } from "../shell/target-label";
 import { Button } from "../ui/button";
 import { Chip } from "../ui/chip";
 import { Notice } from "../ui/notice";
@@ -68,6 +69,8 @@ export function DeploySkillAction({
   const globalUnavailable = isGlobal && globalDisabled;
 
   const selectId = `deploy-${skillName}-target`;
+  // Shortened like every other target name in the cockpit (#211).
+  const repoPaths = repos.map((repo) => repo.path);
 
   // Lowercase mono, like every other action label (DESIGN.md §6).
   const buttonLabel = !registryReady
@@ -92,14 +95,14 @@ export function DeploySkillAction({
           deploy.reset();
           setChosen(event.target.value);
         }}
-        className="max-w-40 truncate rounded-control border border-line-chip bg-transparent px-2 py-[3px] font-mono text-muted text-tag"
+        className="max-w-64 truncate rounded-control border border-line-chip bg-transparent px-2 py-[3px] font-mono text-muted text-tag"
       >
         <option value={GLOBAL_VALUE} disabled={globalDisabled}>
           {globalOptionLabel(globalTools)}
         </option>
         {repos.map((repo) => (
           <option key={repo.path} value={repo.path}>
-            {repo.path}
+            {targetLabel(repo.path, repoPaths)}
           </option>
         ))}
       </select>

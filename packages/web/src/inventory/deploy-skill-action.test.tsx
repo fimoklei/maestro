@@ -54,6 +54,33 @@ describe("DeploySkillAction", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("lists repo options by their shortened label, never their absolute path", async () => {
+    // Same shortening as the sidebar (#211); the select is 40 units wide and
+    // truncates the tail, which is the identifying half of the path.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse({ tools: [], primitives: [], skipped: [], behind: [] }),
+      ),
+    );
+    renderAction(
+      <DeploySkillAction
+        skillName="tdd"
+        repos={[
+          { path: "/Users/m/Projects/maestro" },
+          { path: "/Users/m/Projects/agent-harness" },
+        ]}
+        registryReady
+      />,
+    );
+
+    const option = await screen.findByRole("option", {
+      name: "…/Projects/agent-harness",
+    });
+    // The value stays the absolute path — it is what the deploy request needs.
+    expect(option).toHaveValue("/Users/m/Projects/agent-harness");
+  });
+
   it("names the tools the Global option will hit on a two-tool machine", async () => {
     // #134: the single Global option tells you where it lands before you click,
     // read from the global deploy-state's detected-tool set (no stored list).

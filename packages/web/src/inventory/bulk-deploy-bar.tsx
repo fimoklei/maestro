@@ -4,6 +4,7 @@ import { useGlobalDeployState } from "../deploy-state/use-global-deploy-state";
 import { driftViewModel } from "../drift/drift-view-model";
 import { useDrift, useGlobalDrift } from "../drift/use-drift";
 import type { RegisteredRepo } from "../registry/use-registry";
+import { targetLabel } from "../shell/target-label";
 import { Button } from "../ui/button";
 import { BulkDeployReport } from "./bulk-deploy-report";
 import { bulkDeployReportView } from "./bulk-deploy-report-view";
@@ -46,7 +47,10 @@ export function BulkDeployBar({
   const target: DeployTarget = isGlobal
     ? { kind: "global" }
     : { kind: "repo", repoPath: selected };
-  const targetLabel = isGlobal ? "Global" : selected;
+  // Shortened like every other target name in the cockpit (#211) — the
+  // absolute path pushes the outcome off its own row.
+  const repoPaths = repos.map((repo) => repo.path);
+  const chosenLabel = isGlobal ? "Global" : targetLabel(selected, repoPaths);
 
   const repoDeployState = useDeployState(
     isGlobal ? "" : selected,
@@ -73,7 +77,7 @@ export function BulkDeployBar({
 
   const chosenTargets = chosenBulkDeployTargets({
     isGlobal,
-    targetLabel,
+    targetLabel: chosenLabel,
     target,
     globalTools: globalDeployState.data?.tools,
     repoPrimitives: repoDeployState.data?.primitives,
@@ -114,7 +118,7 @@ export function BulkDeployBar({
         report,
         skippedClean: plan.skippedClean,
         updateToLatest: plan.updateToLatest,
-        targetLabel,
+        targetLabel: chosenLabel,
         requestFailed: bulk.isError,
         requestFailedMessage: bulk.error?.message,
       })
@@ -149,14 +153,14 @@ export function BulkDeployBar({
               setPlan(null);
               setChosen(event.target.value);
             }}
-            className="max-w-40 truncate rounded-control border border-line-chip bg-transparent px-2 py-[3px] font-mono text-muted text-tag"
+            className="max-w-64 truncate rounded-control border border-line-chip bg-transparent px-2 py-[3px] font-mono text-muted text-tag"
           >
             <option value={GLOBAL_VALUE} disabled={globalDisabled}>
               {globalOptionLabel(globalTools)}
             </option>
             {repos.map((repo) => (
               <option key={repo.path} value={repo.path}>
-                {repo.path}
+                {targetLabel(repo.path, repoPaths)}
               </option>
             ))}
           </select>
