@@ -1,3 +1,4 @@
+import { targetLabel } from "../shell/target-label";
 import { useModalDialog } from "../shell/use-modal-dialog";
 import { Button } from "../ui/button";
 import { FailureNote } from "../ui/failure-note";
@@ -85,8 +86,15 @@ export function ImportDialog({
           <div className="flex flex-col gap-1.5">
             <span className="m-label">Skill folder</span>
             <div className="flex items-center gap-2.5">
-              <span className="min-w-0 flex-1 truncate font-mono text-data text-fg">
-                {source ?? "No folder picked yet."}
+              {/* The tail names the folder; left-anchored truncation would cut
+                  exactly that away (#211). */}
+              <span
+                title={source ?? undefined}
+                className="min-w-0 flex-1 truncate font-mono text-data text-fg"
+              >
+                {source === null
+                  ? "No folder picked yet."
+                  : targetLabel(source)}
               </span>
               <Button
                 type="button"

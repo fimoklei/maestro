@@ -70,7 +70,7 @@ const promotable = {
   enabled: true,
   pending: null,
   pullRequests: {},
-  justPromoted: null,
+  justMoved: null,
   failed: null,
 };
 

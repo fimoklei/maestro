@@ -1163,9 +1163,13 @@ describe("Harness home base", () => {
     const review = (
       await screen.findByRole("heading", { level: 3, name: /pending review/i })
     ).closest("section") as HTMLElement;
-    expect(
-      await within(review).findByRole("link", { name: /pull request/i }),
-    ).toHaveAttribute("href", REMOVED.pullRequestUrl);
+    const link = await within(review).findByRole("link", {
+      name: /pull request/i,
+    });
+    expect(link).toHaveAttribute("href", REMOVED.pullRequestUrl);
+    // The confirmation and the row it was opened from both unmounted, so
+    // without this focus falls back to the document (#581).
+    expect(link).toHaveFocus();
   });
 
   it("states a refused confirmation in the dialog, and asks for a new one", async () => {

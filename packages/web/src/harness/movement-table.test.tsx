@@ -67,7 +67,7 @@ describe("MovementTable", () => {
     enabled: true,
     pending: null,
     pullRequests: {},
-    justPromoted: null,
+    justMoved: null,
     failed: null,
   };
 
@@ -208,7 +208,7 @@ describe("MovementTable", () => {
             "lint-rules": "https://github.com/o/r/compare/a...b",
             "code-review": "https://github.com/o/r/compare/a...c",
           },
-          justPromoted: "code-review",
+          justMoved: "code-review",
         }}
       />,
     );
@@ -242,7 +242,7 @@ describe("MovementTable", () => {
           pullRequests: {
             "lint-rules": "https://github.com/o/r/compare/a...b",
           },
-          justPromoted: "lint-rules",
+          justMoved: "lint-rules",
         }}
       />,
     );
