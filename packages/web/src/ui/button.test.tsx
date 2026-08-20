@@ -52,6 +52,24 @@ describe("Button", () => {
     );
   });
 
+  describe("wrapping", () => {
+    it("keeps its label on one line by default", () => {
+      render(<Button>deploy →</Button>);
+      expect(screen.getByRole("button", { name: "deploy →" })).toHaveClass(
+        "whitespace-nowrap",
+      );
+    });
+
+    it("drops that default when the caller names its own wrapping", () => {
+      // cn concatenates, so both would ship and the base one would win by
+      // stylesheet order — pushing a sentence-long label out of its column.
+      render(<Button className="whitespace-normal">a long sentence</Button>);
+      expect(
+        screen.getByRole("button", { name: "a long sentence" }),
+      ).not.toHaveClass("whitespace-nowrap");
+    });
+  });
+
   describe("disabled state", () => {
     const variants = [
       "primary",

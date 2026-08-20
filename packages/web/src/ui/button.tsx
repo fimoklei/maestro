@@ -45,7 +45,11 @@ export function Button({
     <button
       type={type}
       className={cn(
-        "cursor-pointer whitespace-nowrap border font-mono",
+        "cursor-pointer border font-mono",
+        // cn concatenates, so two whitespace utilities would leave the base one
+        // winning by stylesheet order. A caller that names its own wrapping
+        // (Notice's action, whose label is a sentence) takes precedence.
+        /\bwhitespace-/.test(className ?? "") ? "" : "whitespace-nowrap",
         HOVER_TRANSITION,
         // Never add outline-none: it sets --tw-outline-style to none, which
         // focus-visible:outline-2 reads, silently hiding the ring (#227).

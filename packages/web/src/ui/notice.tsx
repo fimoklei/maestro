@@ -101,7 +101,10 @@ export function Notice({ trigger, notice, id }: NoticeProps) {
           <Button
             variant="quiet"
             size="sm"
-            className="self-start"
+            // Button is whitespace-nowrap; a warning's action label states the
+            // cost in a sentence, and that pushed the notice 12px out of the
+            // 291px detail pane (#615).
+            className="self-start whitespace-normal text-left"
             disabled={action.disabled}
             onClick={action.onClick}
           >
