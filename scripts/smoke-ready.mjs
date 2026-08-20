@@ -67,7 +67,8 @@ async function post(request, path, body, what) {
 /**
  * Connects the inventory and registers the consuming repo, in that order — a
  * repo registered against no inventory shows deploy-state for nothing. Any
- * refusal stops the sequence: a half-seeded cockpit would look ready and lie.
+ * refusal stops the sequence — an inventory yielding nothing included (#544):
+ * a half-seeded cockpit would look ready and lie.
  */
 export async function seedCockpit({ request, inventoryPath, repoPath }) {
   const connected = await post(
@@ -76,6 +77,14 @@ export async function seedCockpit({ request, inventoryPath, repoPath }) {
     { path: inventoryPath },
     "Connecting the inventory",
   );
+  const primitiveCount = connected?.primitiveCount ?? 0;
+  if (primitiveCount === 0)
+    throw new Error(
+      `connected ${inventoryPath}, but it holds no primitives. ` +
+        "Maestro reads skills from `.apm/skills/<name>/SKILL.md`; " +
+        "check that layout in the source repo the sandbox was seeded from.",
+    );
+
   const registered = await post(
     request,
     "/api/registry/repos",
@@ -83,10 +92,7 @@ export async function seedCockpit({ request, inventoryPath, repoPath }) {
     "Registering the consuming repo",
   );
 
-  return {
-    primitiveCount: connected?.primitiveCount ?? 0,
-    repoCount: registered?.repos?.length ?? 0,
-  };
+  return { primitiveCount, repoCount: registered?.repos?.length ?? 0 };
 }
 
 /**
