@@ -83,6 +83,34 @@ describe("smoke sandbox seeding", () => {
     expect(candidates.some((path) => path.includes(" "))).toBe(true);
   });
 
+  // Redirecting HOME hides the real ~/.gitconfig, so git loses the credential
+  // helper it would normally use and every fetch of the seeded clone fails
+  // auth — read back as "Fetch failed" on the harness strip.
+  it("gives git a github credential under the sandbox home", () => {
+    seedSandbox({ home, inventorySource, githubToken: "smoke-token" });
+
+    const filled = execFileSync("git", ["credential", "fill"], {
+      input: "protocol=https\nhost=github.com\n\n",
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        HOME: home,
+        XDG_CONFIG_HOME: join(home, ".config"),
+        GIT_TERMINAL_PROMPT: "0",
+      },
+    });
+
+    expect(filled).toContain("password=smoke-token");
+  });
+
+  it("writes no credential file when no token was bridged", () => {
+    // Same posture as the rest of seeding: an unauthenticated gh degrades the
+    // rehearsal, it never fabricates a credential.
+    seedSandbox({ home, inventorySource });
+
+    expect(existsSync(join(home, ".git-credentials"))).toBe(false);
+  });
+
   // The readiness step (scripts/smoke-ready.mjs) needs the paths this seeding
   // creates. It asks for them here rather than restating the directory names,
   // so a rename cannot leave the two halves pointing at different places.

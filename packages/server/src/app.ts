@@ -65,6 +65,7 @@ import {
 } from "@maestro/core";
 import { type Context, Hono } from "hono";
 import { z } from "zod";
+import type { ErrorTable } from "./error-table";
 import { originHostGuard } from "./origin-host-guard";
 
 const registerBodySchema = z.object({ path: z.string() });
@@ -204,10 +205,7 @@ const driftFailureBody = (result: { reason?: "unverified" }) =>
 
 // Business rules live in core; this table only chooses status codes and
 // readable messages (none echo paths or raw apm output).
-const deployErrorResponses: Record<
-  DeploySkillError,
-  { status: 400 | 403 | 404 | 409 | 422 | 502; message: string }
-> = {
+const deployErrorResponses: ErrorTable<DeploySkillError> = {
   "unsupported-primitive-type": {
     status: 422,
     message: "Only skills can be deployed yet.",
@@ -309,10 +307,7 @@ const deployErrorResponses: Record<
   },
 };
 
-const removeErrorResponses: Record<
-  RemoveDeployedSkillError,
-  { status: 400 | 403 | 404 | 409 | 422 | 502; message: string }
-> = {
+const removeErrorResponses: ErrorTable<RemoveDeployedSkillError> = {
   "unsupported-primitive-type": {
     status: 422,
     message: "Only skills can be removed yet.",
@@ -373,10 +368,7 @@ const removeErrorResponses: Record<
 
 // A failed check is an error, never an empty warning — the cockpit must tell
 // "nothing to lose" apart from "we could not look".
-const removePreflightErrorResponses: Record<
-  RemovePreflightError,
-  { status: 400 | 403 | 404 | 409 | 422 | 502; message: string }
-> = {
+const removePreflightErrorResponses: ErrorTable<RemovePreflightError> = {
   "unsupported-primitive-type":
     removeErrorResponses["unsupported-primitive-type"],
   "invalid-name": removeErrorResponses["invalid-name"],
@@ -427,10 +419,7 @@ const repoPathErrorMessages: Record<
 
 // A malformed path is a 400 wherever it arrives, so every path-taking table
 // spreads this rather than re-spelling it.
-const REPO_PATH_RESPONSES: Record<
-  RepoPathError,
-  { status: 400; message: string }
-> = {
+const REPO_PATH_RESPONSES: ErrorTable<RepoPathError> = {
   missing: { status: 400, message: repoPathErrorMessages.missing },
   relative: { status: 400, message: repoPathErrorMessages.relative },
   "not-found": { status: 400, message: repoPathErrorMessages["not-found"] },
@@ -444,10 +433,7 @@ const REPO_PATH_RESPONSES: Record<
 // 422; a destination something else already holds is a 409 the user clears by
 // choosing elsewhere. No message echoes the path — it may be a misconfigured
 // secret.
-const connectErrorResponses: Record<
-  ConnectInventoryError,
-  { status: 400 | 409 | 422; message: string }
-> = {
+const connectErrorResponses: ErrorTable<ConnectInventoryError> = {
   ...REPO_PATH_RESPONSES,
   "not-a-github-url": {
     status: 400,
@@ -523,10 +509,7 @@ const connectErrorResponses: Record<
 // Accepting the offer the connect table hands out. A push the remote refused
 // is a 422 like any other precondition the user resolves — Maestro pre-checks
 // no permission, so it has nothing earlier to say (#556).
-const scaffoldErrorResponses: Record<
-  ScaffoldHarnessError,
-  { status: 400 | 409 | 422 | 502; message: string }
-> = {
+const scaffoldErrorResponses: ErrorTable<ScaffoldHarnessError> = {
   ...REPO_PATH_RESPONSES,
   "not-a-repository": {
     status: 422,
@@ -591,10 +574,7 @@ const scaffoldErrorResponses: Record<
 
 // Mirrors the connect table: nothing connected is a 409, a connected clone
 // whose origin apm could never resolve is a 422.
-const harnessErrorResponses: Record<
-  HarnessStateError,
-  { status: 409 | 422; message: string }
-> = {
+const harnessErrorResponses: ErrorTable<HarnessStateError> = {
   "not-configured": {
     status: 409,
     message: "No Harness is connected. Set the Harness source path.",
@@ -609,10 +589,7 @@ const harnessErrorResponses: Record<
 // A plan shares the state read's two refusals and adds one: `no-answer` is a
 // remote nothing has fetched, so there is no delta to plan against. A 409, like
 // nothing-connected — a precondition the author clears with Refresh.
-const releasePlanErrorResponses: Record<
-  ReleasePlanError,
-  { status: 409 | 422; message: string }
-> = {
+const releasePlanErrorResponses: ErrorTable<ReleasePlanError> = {
   ...harnessErrorResponses,
   "no-answer": {
     status: 409,
@@ -624,10 +601,7 @@ const releasePlanErrorResponses: Record<
 // Confirmation is its own remote read, so its `no-answer` covers both a
 // failed re-fetch and a push that could not reach the remote — either way,
 // nothing was published and a retry is the way forward (#520).
-const publishReleaseErrorResponses: Record<
-  PublishReleaseError,
-  { status: 409 | 422 | 502; message: string }
-> = {
+const publishReleaseErrorResponses: ErrorTable<PublishReleaseError> = {
   ...harnessErrorResponses,
   "no-answer": {
     status: 409,
@@ -661,10 +635,7 @@ const publishReleaseErrorResponses: Record<
 // Maestro's own words — never git's, and never the path it ran in
 // (security.md). Nothing here is a dead end: every refusal leaves the clone as
 // it was, so a retry is another press (#577).
-const promoteErrorResponses: Record<
-  PromoteSkillError,
-  { status: 400 | 409 | 422 | 502; message: string }
-> = {
+const promoteErrorResponses: ErrorTable<PromoteSkillError> = {
   ...harnessErrorResponses,
   "invalid-skill": {
     status: 400,
@@ -711,10 +682,7 @@ const promoteErrorResponses: Record<
 // Promotion's refusals plus the ones only a removal has: a confirmation the
 // remote moved past, a movement that is no longer a deletion, and four working
 // trees that cannot answer. Maestro's own words (#580, security.md).
-const deletionErrorResponses: Record<
-  PromoteDeletionError,
-  { status: 400 | 409 | 422 | 502; message: string }
-> = {
+const deletionErrorResponses: ErrorTable<PromoteDeletionError> = {
   ...harnessErrorResponses,
   "invalid-skill": promoteErrorResponses["invalid-skill"],
   "no-answer": {
@@ -773,10 +741,7 @@ const deletionErrorResponses: Record<
 // Import states every refusal in Maestro's own words — never a filesystem
 // message, and never the path it read (#576, security.md). The copy's own
 // refusals come through unchanged from core's typed set.
-const importErrorResponses: Record<
-  ImportSkillError,
-  { status: 400 | 403 | 409 | 422 | 500; message: string }
-> = {
+const importErrorResponses: ErrorTable<ImportSkillError> = {
   "not-configured": {
     status: 409,
     message: "No Harness is connected. Set the Harness source path.",
@@ -866,10 +831,7 @@ const importErrorResponses: Record<
 
 // outside-root is 403 (the info-disclosure boundary); no message echoes the
 // path (security.md).
-const browseErrorResponses: Record<
-  BrowseError,
-  { status: 400 | 403 | 404 | 422; message: string }
-> = {
+const browseErrorResponses: ErrorTable<BrowseError> = {
   "outside-root": {
     status: 403,
     message: "That path is outside the area Maestro can browse.",
