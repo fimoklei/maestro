@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   type BulkDeployReportView,
   bulkDeployReportView,
+  bulkDeploySummary,
 } from "./bulk-deploy-report-view";
 
 function report(overrides: Partial<BulkDeployReport>): BulkDeployReport {
@@ -136,5 +137,36 @@ describe("bulkDeployReportView", () => {
       attention: 1,
       failed: 2,
     });
+  });
+});
+
+describe("bulkDeploySummary", () => {
+  it("names only the outcomes that happened", () => {
+    expect(
+      bulkDeploySummary({
+        targetLabel: "Global",
+        counts: { deployed: 1, skipped: 0, attention: 0, failed: 0 },
+      }),
+    ).toBe("Deployed to Global · 1 deployed");
+  });
+
+  it("keeps every non-zero outcome, in severity order", () => {
+    expect(
+      bulkDeploySummary({
+        targetLabel: "global",
+        counts: { deployed: 2, skipped: 1, attention: 1, failed: 3 },
+      }),
+    ).toBe(
+      "Deployed to global · 3 failed · 1 attention · 2 deployed · 1 skipped",
+    );
+  });
+
+  it("says nothing changed rather than showing a row of zeros", () => {
+    expect(
+      bulkDeploySummary({
+        targetLabel: "Global",
+        counts: { deployed: 0, skipped: 0, attention: 0, failed: 0 },
+      }),
+    ).toBe("Deployed to Global · nothing to do");
   });
 });

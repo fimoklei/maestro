@@ -29,6 +29,27 @@ export type BulkDeployReportView =
       message: string;
     };
 
+// Zeroed outcomes are noise: four counts read as a form to decode, where the
+// one or two that happened read as a sentence. Severity order, so the half
+// that needs the user comes first.
+export function bulkDeploySummary(input: {
+  targetLabel: string;
+  counts: BulkReportCounts;
+}): string {
+  const { counts } = input;
+  const parts = [
+    [counts.failed, "failed"],
+    [counts.attention, "attention"],
+    [counts.deployed, "deployed"],
+    [counts.skipped, "skipped"],
+  ] as const;
+  const named = parts
+    .filter(([count]) => count > 0)
+    .map(([count, label]) => `${count} ${label}`);
+  const tail = named.length > 0 ? named.join(" · ") : "nothing to do";
+  return `Deployed to ${input.targetLabel} · ${tail}`;
+}
+
 export function bulkDeployReportView(input: {
   report: BulkDeployReport;
   skippedClean: string[];

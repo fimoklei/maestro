@@ -79,11 +79,15 @@ The deploy path must not trust the exit code:
    so the install stage cannot distinguish auth from a typo'd ref — which is
    why auth is classified at `view`, where the signal is clean. Fixture:
    `apm-view-auth-failed.txt`.
-2. **Success = the marker, not the exit code.** Success is `Installed \d+
-   APM dependenc` present AND no `with <n≥1> error(s)` AND no `Installation
-   failed`. Both observed failure modes (validation failure, symlink
-   refusal) exit 1 with no marker; an absent marker is failure, fail-closed,
-   regardless of exit code. Fixtures: `apm-install-ok.txt`,
+2. **Success = a marker, not the exit code.** Success is `Installed \d+ APM
+   dependenc` OR `No changes -- install state already up to date` present,
+   AND no `with <n≥1> error(s)` AND no `Installation failed`. The second
+   marker replaces the first when the ref is already installed and its files
+   are unchanged — a re-deploy that did nothing still prints `[+] … (cached)`
+   / `|-- (files unchanged)` and never the install marker. Both observed
+   failure modes (validation failure, symlink refusal) exit 1 with no marker;
+   an absent marker is failure, fail-closed, regardless of exit code.
+   Fixtures: `apm-install-ok.txt`, `apm-install-no-changes.txt`,
    `apm-install-probes-failed.txt`, `apm-install-symlink-refused.txt`.
 3. **`is a symlink` = destination refusal**, and only when the *leaf* skill
    dir is a symlink — a directory-level symlink installs fine (measured in

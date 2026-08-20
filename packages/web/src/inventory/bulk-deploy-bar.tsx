@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useDeployState } from "../deploy-state/use-deploy-state";
 import { useGlobalDeployState } from "../deploy-state/use-global-deploy-state";
 import { driftViewModel } from "../drift/drift-view-model";
@@ -15,8 +15,8 @@ import { type DeployTarget, useDeploySkill } from "./use-deploy-skill";
 
 // Bulk-deploy control (#291, #292): plans → executes → reports over the
 // staged set. Skips already-deployed-and-up-to-date skills; a diverged copy
-// comes back as an attention row with an inline force reinstall. Standing, not
-// conditional: it carries the view's one amber-filled primary (#473).
+// comes back as an attention row with an inline force reinstall. Mounted only
+// while something is staged, so it never stands empty.
 const GLOBAL_VALUE = "global";
 
 export function BulkDeployBar({
@@ -24,24 +24,14 @@ export function BulkDeployBar({
   hiddenCount,
   repos,
   registryReady,
-  onPickSkills,
 }: {
   stagedNames: string[];
   hiddenCount: number;
   repos: RegisteredRepo[];
   registryReady: boolean;
-  // Sends an empty-handed run back to the staging column instead of
-  // dead-ending on a disabled control.
-  onPickSkills: () => void;
 }) {
   const [chosen, setChosen] = useState<string | null>(null);
   const [plan, setPlan] = useState<BulkDeployPlan | null>(null);
-  const [needsPick, setNeedsPick] = useState(false);
-  // The hint answers one click, not a standing condition — staging anything
-  // retires it, so unstaging later never revives an unasked-for message.
-  useEffect(() => {
-    if (stagedNames.length > 0) setNeedsPick(false);
-  }, [stagedNames.length]);
   const bulk = useBulkDeploy();
   // Reuses the single-deploy path with force: true — one behaviour, both
   // entry points (ADR-0006, #66).
@@ -95,22 +85,12 @@ export function BulkDeployBar({
     ? "loading targets…"
     : bulk.isPending
       ? "deploying…"
-      : stagedNames.length === 0
-        ? "deploy →"
-        : `deploy ${stagedNames.length} →`;
+      : `deploy ${stagedNames.length} →`;
 
   const onDeploy = () => {
     if (targetLoading) {
       return;
     }
-    // Enabled with nothing staged, so the amber fill stands at rest — the
-    // click then names the missing half instead of firing an empty run.
-    if (stagedNames.length === 0) {
-      setNeedsPick(true);
-      onPickSkills();
-      return;
-    }
-    setNeedsPick(false);
     bulk.reset();
     const next = planBulkDeploy(stagedNames, chosenTargets);
     setPlan(next);
@@ -195,17 +175,6 @@ export function BulkDeployBar({
           </Button>
         </span>
       </div>
-
-      {/* Standing, not mounted by the click: assistive tech announces text
-          inserted into a live region that was already there. Empty, it leaves
-          the layout alone rather than holding an empty row open. */}
-      <p
-        role="status"
-        aria-label="Bulk deploy hint"
-        className={needsPick ? "text-muted text-tag" : "sr-only"}
-      >
-        {needsPick ? "Pick at least one skill, then deploy." : ""}
-      </p>
 
       {reportView ? (
         <BulkDeployReport
