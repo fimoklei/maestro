@@ -29,6 +29,19 @@ function seedToolPresence(home) {
   writeFileSync(join(home, ".codex", "config.toml"), "");
 }
 
+// Redirecting HOME hides the real ~/.gitconfig, so git loses its credential
+// helper and every fetch of the seeded clone fails auth — which the harness
+// strip reports as "Fetch failed", never as a setup problem. Only this
+// dev-tooling harness bridges credentials; the product never does
+// (.claude/rules/security.md). The token lands in a sandbox wiped on teardown.
+function seedGitCredentials(home, githubToken) {
+  writeFileSync(
+    join(home, ".git-credentials"),
+    `https://x-access-token:${githubToken}@github.com\n`,
+  );
+  writeFileSync(join(home, ".gitconfig"), "[credential]\n\thelper = store\n");
+}
+
 // The launcher's record of the run that owns this sandbox. Named here because
 // the sandbox layout is this file's job; `smoke-ready.mjs` reads it back.
 export const MARKER_FILE = "smoke.json";
@@ -54,11 +67,14 @@ export function seededPaths(home) {
   };
 }
 
-export function seedSandbox({ home, inventorySource }) {
+export function seedSandbox({ home, inventorySource, githubToken }) {
   const projects = join(home, PROJECTS_DIR);
   mkdirSync(projects, { recursive: true });
 
   seedToolPresence(home);
+  if (githubToken) {
+    seedGitCredentials(home, githubToken);
+  }
 
   // Copied whole, .git included: connect refuses a clone whose origin it cannot
   // parse (ADR-0014), and a fabricated tree would need a fabricated origin. So

@@ -3,6 +3,8 @@
 export interface SeedSandboxOptions {
   home: string;
   inventorySource: string;
+  /** Bridged gh token; absent leaves the sandbox without git credentials. */
+  githubToken?: string;
 }
 
 export interface SeededSandbox {
