@@ -1,9 +1,9 @@
 import { type ReactNode, useState } from "react";
 import {
   connectErrorCode,
-  connectErrorMessage,
   scaffoldOfferPath,
 } from "../inventory/connect-error-message";
+import { connectNotice, scaffoldNotice } from "../inventory/connect-notice";
 import {
   type ConnectResponse,
   useConnectInventory,
@@ -26,23 +26,18 @@ type ConnectInventoryPanelProps = {
 };
 
 // Every refusal the user clears by picking somewhere else, and the picker that
-// clears it. Anything not listed here is a plain field error (#555).
+// clears it. Anything not listed here is a plain field error (#555). The
+// heading comes from the notice table, so only the action lives here.
 const RECOVERABLE: Record<
   string,
-  { title: string; actionLabel: string; picker: "path" | "parent" }
+  { actionLabel: string; picker: "path" | "parent" }
 > = {
-  "no-usable-origin": {
-    title: "no usable git origin",
-    actionLabel: "browse again…",
-    picker: "path",
-  },
+  "no-usable-origin": { actionLabel: "browse again…", picker: "path" },
   "destination-occupied": {
-    title: "that folder is taken",
     actionLabel: "choose another folder…",
     picker: "parent",
   },
   "destination-partial-clone": {
-    title: "a half-finished clone is in the way",
     actionLabel: "choose another folder…",
     picker: "parent",
   },
@@ -82,6 +77,32 @@ export function ConnectInventoryPanel({
   const offerPath = scaffold.error ? null : scaffoldOfferPath(connect.error);
   const recoverable = RECOVERABLE[connectErrorCode(connect.error) ?? ""];
 
+  // A failed scaffold speaks for itself; otherwise the connect refusal does,
+  // carrying either its recovery picker or the scaffold offer as its action.
+  const notice =
+    scaffoldNotice(scaffold.error) ??
+    connectNotice(connect.error, {
+      aside: offerPath ?? undefined,
+      action: offerPath
+        ? {
+            label: scaffold.isPending ? "Scaffolding…" : "Scaffold the Harness",
+            disabled: scaffold.isPending,
+            onClick: () =>
+              scaffold.mutate(offerPath, {
+                onSuccess: (result) => onSuccess?.(result),
+              }),
+          }
+        : recoverable
+          ? {
+              label: recoverable.actionLabel,
+              onClick:
+                recoverable.picker === "parent"
+                  ? parentBrowse.openBrowse
+                  : browse.openBrowse,
+            }
+          : undefined,
+    });
+
   return (
     <>
       {succeeded && renderSuccess ? (
@@ -91,35 +112,9 @@ export function ConnectInventoryPanel({
           path={path}
           onPathChange={setPath}
           onSubmit={handleSubmit}
-          error={
-            connectErrorMessage(scaffold.error) ??
-            connectErrorMessage(connect.error)
-          }
-          recovery={
-            recoverable
-              ? {
-                  title: recoverable.title,
-                  actionLabel: recoverable.actionLabel,
-                  onAction:
-                    recoverable.picker === "parent"
-                      ? parentBrowse.openBrowse
-                      : browse.openBrowse,
-                }
-              : null
-          }
-          scaffoldOffer={
-            offerPath
-              ? {
-                  path: offerPath,
-                  isPending: scaffold.isPending,
-                  onAccept: () =>
-                    scaffold.mutate(offerPath, {
-                      onSuccess: (result) => onSuccess?.(result),
-                    }),
-                }
-              : undefined
-          }
+          notice={notice}
           isPending={connect.isPending}
+          submitDisabled={scaffold.isPending}
           onBrowse={browse.openBrowse}
           cloneParent={cloneParent}
           onChooseParent={parentBrowse.openBrowse}

@@ -143,8 +143,10 @@ describe("first-run gate", () => {
     stubServerConfigFailsOnce({ notConfigured: true });
     renderAt("/welcome");
 
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(/could not (be )?reach.*maestro/i);
+    // A gate that failed to load announces politely, never assertively (#465).
+    const notice = await screen.findByRole("status");
+    expect(notice).toHaveTextContent(/maestro server is unreachable/i);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     // The dead-end this replaces: it must not sit on the neutral "Loading…".
     expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
     expect(

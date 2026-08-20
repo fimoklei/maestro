@@ -128,11 +128,11 @@ describe("ConnectInventoryForm", () => {
         path="/home/me/skills-only-folder"
         onPathChange={vi.fn()}
         onSubmit={vi.fn()}
-        error="Server explanation of the refusal."
-        recovery={{
-          title: "no usable git origin",
-          actionLabel: "browse again…",
-          onAction,
+        notice={{
+          level: "error",
+          label: "no usable git origin",
+          message: "Server explanation of the refusal.",
+          action: { label: "browse again…", onClick: onAction },
         }}
         onBrowse={vi.fn()}
       />,
@@ -156,11 +156,11 @@ describe("ConnectInventoryForm", () => {
         path="https://github.com/fimoklei/agent-harness"
         onPathChange={vi.fn()}
         onSubmit={vi.fn()}
-        error="Something else already sits where that Harness would land."
-        recovery={{
-          title: "destination is taken",
-          actionLabel: "choose another folder…",
-          onAction,
+        notice={{
+          level: "error",
+          label: "destination folder is taken",
+          message: "Maestro never renames or deletes what it finds.",
+          action: { label: "choose another folder…", onClick: onAction },
         }}
       />,
     );
@@ -245,11 +245,12 @@ describe("ConnectInventoryForm", () => {
         path="https://github.com/fimoklei/team-harness"
         onPathChange={vi.fn()}
         onSubmit={vi.fn()}
-        error="That GitHub repository has no apm.yml."
-        scaffoldOffer={{
-          path: "/home/me/team-harness",
-          onAccept,
-          isPending: false,
+        notice={{
+          level: "info",
+          label: "not a Harness yet",
+          message: "That GitHub repository has no apm.yml.",
+          aside: "/home/me/team-harness",
+          action: { label: "Scaffold the Harness", onClick: onAccept },
         }}
       />,
     );
@@ -278,12 +279,18 @@ describe("ConnectInventoryForm", () => {
         path="https://github.com/fimoklei/team-harness"
         onPathChange={vi.fn()}
         onSubmit={vi.fn()}
-        error="That GitHub repository has no apm.yml."
-        scaffoldOffer={{
-          path: "/home/me/team-harness",
-          onAccept: vi.fn(),
-          isPending: true,
+        notice={{
+          level: "info",
+          label: "not a Harness yet",
+          message: "That GitHub repository has no apm.yml.",
+          aside: "/home/me/team-harness",
+          action: {
+            label: "Scaffolding…",
+            onClick: vi.fn(),
+            disabled: true,
+          },
         }}
+        submitDisabled
       />,
     );
 
@@ -304,7 +311,11 @@ describe("ConnectInventoryForm", () => {
         path="/home/me/empty"
         onPathChange={vi.fn()}
         onSubmit={vi.fn()}
-        error="The Harness is committed in your clone, but GitHub refused the push."
+        notice={{
+          level: "error",
+          label: "GitHub refused the push",
+          message: "The commit is safe in the clone.",
+        }}
       />,
     );
 
@@ -320,7 +331,11 @@ describe("ConnectInventoryForm", () => {
         path=""
         onPathChange={vi.fn()}
         onSubmit={vi.fn()}
-        error="That directory has no apm.yml, so it is not an inventory."
+        notice={{
+          level: "error",
+          label: "not a Harness",
+          message: "That folder has no apm.yml.",
+        }}
         onBrowse={vi.fn()}
       />,
     );
@@ -337,7 +352,11 @@ describe("ConnectInventoryForm", () => {
         path=""
         onPathChange={vi.fn()}
         onSubmit={vi.fn()}
-        error="No directory exists at that path."
+        notice={{
+          level: "error",
+          label: "no folder at that path",
+          message: "No directory exists at that path.",
+        }}
         onBrowse={vi.fn()}
       />,
     );
@@ -356,7 +375,11 @@ describe("ConnectInventoryForm", () => {
         path=""
         onPathChange={vi.fn()}
         onSubmit={vi.fn()}
-        error="No directory exists at that path."
+        notice={{
+          level: "error",
+          label: "no folder at that path",
+          message: "No directory exists at that path.",
+        }}
         onBrowse={vi.fn()}
       />,
     );
@@ -389,7 +412,11 @@ describe("ConnectInventoryForm", () => {
         path="/home/me/not-an-inventory"
         onPathChange={vi.fn()}
         onSubmit={vi.fn()}
-        error="That directory has no apm.yml, so it is not an inventory."
+        notice={{
+          level: "error",
+          label: "not a Harness",
+          message: "That folder has no apm.yml.",
+        }}
       />,
     );
     expect(input).toHaveFocus();
@@ -460,7 +487,11 @@ describe("ConnectInventoryForm", () => {
         path="/home/me/not-a-harness"
         onPathChange={vi.fn()}
         onSubmit={vi.fn()}
-        error="That directory has no apm.yml."
+        notice={{
+          level: "error",
+          label: "not a Harness",
+          message: "That folder has no apm.yml.",
+        }}
       />,
     );
 

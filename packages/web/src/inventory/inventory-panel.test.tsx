@@ -204,9 +204,12 @@ describe("InventoryPanel", () => {
     );
     renderPanel();
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      /no inventory is configured/i,
+    // A panel that failed to load announces politely: nothing here followed a
+    // click, so role="status", never the assertive region (#465, decision 11).
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      /no harness is connected/i,
     );
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("shows a generic load error for other failures", async () => {
@@ -216,8 +219,9 @@ describe("InventoryPanel", () => {
     );
     renderPanel();
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      /could not load/i,
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      /the inventory did not load/i,
     );
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });

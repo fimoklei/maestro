@@ -1,14 +1,7 @@
 import { type FormEvent, type ReactNode, useEffect, useRef } from "react";
 import { Button } from "../ui/button";
+import { Notice, type NoticeContent } from "../ui/notice";
 import { previewCloneChild } from "./clone-destination-preview";
-
-// A refusal the user clears by choosing somewhere else, rendered as a card
-// with the one action that clears it (#147, #555).
-type ConnectRecovery = {
-  title: string;
-  actionLabel: string;
-  onAction: () => void;
-};
 
 // Presentational form for the offline connect flow, shared by the connect
 // gate and Settings' re-point view (PRD #93). Path is a controlled prop, not
@@ -17,12 +10,14 @@ type ConnectInventoryFormProps = {
   path: string;
   onPathChange: (path: string) => void;
   onSubmit: (path: string) => void;
-  error?: string | null;
-  recovery?: ConnectRecovery | null;
-  // A GitHub repository with no apm.yml: the refusal carries one offer, shown
-  // in place of the plain error so the gate keeps its single field (#556).
-  scaffoldOffer?: { path: string; onAccept: () => void; isPending: boolean };
+  // What the last submit came back with, headed and levelled by the host. A
+  // refusal the user clears by choosing elsewhere, and the scaffold offer,
+  // both arrive as this one notice with an action on it (#147, #555, #556).
+  notice?: NoticeContent | null;
   isPending?: boolean;
+  // A scaffold running beside the form: submit goes down with it, but the
+  // clone progress sentence is not its (#556).
+  submitDisabled?: boolean;
   onBrowse?: () => void;
   // Where a cloned Harness lands. null means the home ceiling the server
   // falls back to; the child folder is always the repository's own name.
@@ -38,10 +33,9 @@ export function ConnectInventoryForm({
   path,
   onPathChange,
   onSubmit,
-  error,
-  recovery = null,
-  scaffoldOffer,
+  notice = null,
   isPending = false,
+  submitDisabled = false,
   onBrowse,
   cloneParent = null,
   onChooseParent,
@@ -53,12 +47,15 @@ export function ConnectInventoryForm({
   // classifies the input again and remains the authority on both.
   const cloneChild = previewCloneChild(path);
 
-  // A rejected submit hands focus back to the field to fix (#214).
+  // A rejected submit hands focus back to the field to fix (#214) — the one
+  // place focus moves. Keyed on the sentence because the host rebuilds the
+  // notice each render, and identity would re-take focus every time.
+  const noticeMessage = notice?.message ?? null;
   useEffect(() => {
-    if (error) {
+    if (noticeMessage !== null) {
       inputRef.current?.focus();
     }
-  }, [error]);
+  }, [noticeMessage]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -78,10 +75,10 @@ export function ConnectInventoryForm({
           value={path}
           onChange={(event) => onPathChange(event.target.value)}
           placeholder="/path/to/harness or https://github.com/owner/repo"
-          aria-describedby={error ? "inventory-path-error" : undefined}
+          aria-describedby="inventory-path-error"
           // An offer is not a malformed field: the path is fine, it just has no
-          // Harness in it yet.
-          aria-invalid={error && !scaffoldOffer ? true : undefined}
+          // Harness in it yet, so only an error marks the input invalid.
+          aria-invalid={notice?.level === "error" ? true : undefined}
           // No outline-none: it poisons --tw-outline-style and hides the ring (#227).
           className="flex-1 rounded-control border border-line bg-inset px-2 py-1.5 font-mono text-fg text-mono-sm placeholder:text-dim focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
         />
@@ -120,79 +117,19 @@ export function ConnectInventoryForm({
           minute — this stays open until it finishes.
         </p>
       ) : null}
-      {error && scaffoldOffer ? (
-        <div
-          id="inventory-path-error"
-          role="status"
-          className="flex flex-col gap-1.5 rounded-control border border-line bg-inset px-3 py-2.5"
-        >
-          <span className="font-semibold text-fg text-tag">
-            Not a Harness yet
-          </span>
-          <span className="text-fg-2 text-tag">{error}</span>
-          <span className="font-mono text-dim text-mono-sm">
-            {scaffoldOffer.path}
-          </span>
-          <div className="mt-1">
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              disabled={scaffoldOffer.isPending}
-              onClick={scaffoldOffer.onAccept}
-            >
-              {scaffoldOffer.isPending
-                ? "Scaffolding…"
-                : "Scaffold the Harness"}
-            </Button>
-          </div>
-        </div>
-      ) : error ? (
-        recovery ? (
-          // Submit stays available (steps down to quiet) so a hand-corrected
-          // path can still be resubmitted alongside the recovery action (#147).
-          <div
-            id="inventory-path-error"
-            role="alert"
-            className="flex flex-col gap-1.5 rounded-control border border-danger-border bg-danger-bg px-3 py-2.5"
-          >
-            <span className="font-semibold text-danger-ink text-tag">
-              <span aria-hidden="true">✕ </span>
-              {recovery.title}
-            </span>
-            <span className="text-fg-2 text-tag">{error}</span>
-            <div className="mt-1">
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                onClick={recovery.onAction}
-              >
-                {recovery.actionLabel}
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <p
-            id="inventory-path-error"
-            role="alert"
-            className="flex items-center gap-1.5 text-danger-ink text-tag"
-          >
-            <span aria-hidden="true">✕</span>
-            {error}
-          </p>
-        )
-      ) : null}
+      {/* The field's description: mounted before the failure is, and wired to
+          the input by id rather than by the primitive (#465, decision 10). */}
+      <Notice trigger="user-action" notice={notice} id="inventory-path-error" />
       <div className="flex gap-2">
         <Button
           type="submit"
-          // Steps down whenever the error region owns the primary action, so
-          // the two never compete for the same weight (#147, #556).
-          variant={recovery || scaffoldOffer ? "quiet" : "primary"}
+          // Steps down whenever the notice owns the primary action, so the two
+          // never compete for the same weight (#147, #556).
+          variant={notice?.action === undefined ? "primary" : "quiet"}
           size="sm"
           // A running scaffold takes submit down with it: both mutations end in
           // the one inventory path, so whichever finished last would win (#556).
-          disabled={isPending || scaffoldOffer?.isPending === true}
+          disabled={isPending || submitDisabled}
         >
           {submitLabel}
         </Button>

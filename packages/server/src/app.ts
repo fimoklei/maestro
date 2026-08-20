@@ -429,80 +429,107 @@ const REPO_PATH_RESPONSES: ErrorTable<RepoPathError> = {
   },
 };
 
+// The same four failures under a Notice heading, which already names the
+// subject, so these start at the recovery (#465, decision 9). The register
+// run's report has no heading and keeps the standalone wording above.
+const HEADED_REPO_PATH_RESPONSES: ErrorTable<RepoPathError> = {
+  missing: {
+    status: 400,
+    message:
+      "Type the path to a local Harness clone, or paste a GitHub repository URL.",
+  },
+  relative: {
+    status: 400,
+    message:
+      "Start it from the root, so it names the same folder wherever Maestro runs.",
+  },
+  "not-found": {
+    status: 400,
+    message: "Nothing is there now. Check the spelling, or browse to it.",
+  },
+  "not-a-directory": {
+    status: 400,
+    message: "That path points at a file. Choose the folder that holds it.",
+  },
+};
+
 // Path-shape failures are 400; a real directory that isn't an inventory is
 // 422; a destination something else already holds is a 409 the user clears by
 // choosing elsewhere. No message echoes the path — it may be a misconfigured
 // secret.
 const connectErrorResponses: ErrorTable<ConnectInventoryError> = {
-  ...REPO_PATH_RESPONSES,
+  ...HEADED_REPO_PATH_RESPONSES,
+  // Every sentence here starts where web's heading stopped and never repeats
+  // its subject (#465, decision 9).
   "not-a-github-url": {
     status: 400,
     message:
-      "That is not a GitHub repository URL. Maestro clones a Harness from a GitHub repository over https or ssh, or connects a local clone by its path.",
+      "Maestro clones a Harness from a GitHub repository over https or ssh, or connects a local clone by its path. Paste one of those.",
   },
   "url-carries-credentials": {
     status: 400,
     message:
-      "That URL carries a username or token. Maestro never stores credentials, and git would write them into the clone. Paste the plain repository URL and let your own git credentials do the rest.",
+      "Maestro never stores credentials, and git would write them into the clone. Paste the plain repository URL; the local git credentials do the rest.",
   },
   "invalid-parent": {
     status: 400,
     message:
-      "That is not a folder Maestro can clone into. Choose an existing folder inside your home area, and the Harness will land in it under its own name.",
+      "Choose an existing folder inside the home area. The Harness lands in it under its own name.",
   },
   "destination-occupied": {
     status: 409,
     message:
-      "Something else already sits where that Harness would land. Maestro never renames or deletes what it finds, so choose another folder to clone into.",
+      "Maestro never renames or deletes what it finds. Choose another folder to clone into.",
   },
   "destination-partial-clone": {
     status: 409,
     message:
-      "A half-finished clone is already there, left by an interrupted attempt. Maestro left it untouched: delete that folder yourself, or clone into another one.",
+      "An interrupted attempt left it behind, and Maestro will not touch it. Delete that folder, or clone into another one.",
   },
   "clone-in-progress": {
     status: 409,
     message:
-      "Maestro is already cloning that Harness into that folder. Wait for it to finish, then try again.",
+      "The first attempt is still running. Wait for it to finish before starting another.",
   },
   // GitHub answers a missing, a private and a mistyped repository the same
   // way, so those three share one class (#555).
   "clone-auth-failed": {
     status: 422,
     message:
-      "Git could not prove who you are to GitHub. Maestro uses your own git credentials and never stores any, so sign in with git (or add your SSH key) and try again.",
+      "Maestro uses the local git credentials and never stores any of its own. GitHub access has to be set up in git before this repository can be cloned.",
   },
   "clone-unavailable": {
     status: 422,
     message:
-      "That repository is not available to you. It may not exist, may be private, or the URL may be mistyped — GitHub answers all three the same way, so Maestro will not guess which.",
+      "It may not exist, may be private, or the URL may be mistyped — GitHub answers all three the same way, so Maestro will not guess which. Check the URL, then check access to it on GitHub.",
   },
   // Nothing about the repository was in question, so nothing here blames it.
   "clone-failed": {
     status: 422,
     message:
-      "Git could not finish the clone. That is usually local — no disk space, no write access to the folder, or a connection that dropped. Check those and try again.",
+      "The cause is usually local: no disk space, no write access to the destination folder, or a dropped connection. Check those three, then connect again.",
   },
   "not-an-inventory": {
     status: 422,
-    message: "That directory has no apm.yml, so it is not an inventory.",
+    message:
+      "That folder has no apm.yml. Choose a folder that holds a Harness, or paste the GitHub URL of one.",
   },
   // A refusal that carries an offer: the body adds the path the scaffold would
   // write to (#556).
   scaffoldable: {
     status: 422,
     message:
-      "That GitHub repository has no apm.yml, so it is not a Harness yet. Maestro can scaffold the canonical empty Harness into it and push that first commit to the repository's default branch.",
+      "Maestro can scaffold the canonical empty Harness into that repository and push the first commit to its default branch.",
   },
   "no-usable-origin": {
     status: 422,
     message:
-      "That folder has an apm.yml, but its git origin is missing, unreadable, or in a form apm cannot resolve. Deploys read versions from GitHub tags, so point Maestro at a clone whose origin is a GitHub repo over https or ssh.",
+      "The folder holds a Harness, but its git origin is missing, unreadable, or in a form apm cannot resolve. Deploys read versions from GitHub tags, so choose a clone whose origin is a GitHub repository over https or ssh.",
   },
   "no-default-branch": {
     status: 422,
     message:
-      "That folder is a Harness, but Maestro cannot tell which branch its origin treats as the default, and it will not guess one. Run `git fetch origin` and `git remote set-head origin --auto` in the clone, then connect again.",
+      "Maestro cannot tell which branch that Harness's origin treats as the default, and it will not guess one. Choose a clone whose origin has a default branch set.",
   },
 };
 
@@ -510,65 +537,66 @@ const connectErrorResponses: ErrorTable<ConnectInventoryError> = {
 // is a 422 like any other precondition the user resolves — Maestro pre-checks
 // no permission, so it has nothing earlier to say (#556).
 const scaffoldErrorResponses: ErrorTable<ScaffoldHarnessError> = {
-  ...REPO_PATH_RESPONSES,
+  ...HEADED_REPO_PATH_RESPONSES,
   "not-a-repository": {
     status: 422,
     message:
-      "That folder is not a GitHub repository clone, so there is nothing to scaffold a Harness into.",
+      "A Harness is scaffolded into a clone of a GitHub repository, and that folder is not one.",
   },
   "already-a-harness": {
     status: 409,
-    message: "That repository already has an apm.yml, so it is a Harness.",
+    message:
+      "It already holds an apm.yml, so there is nothing to scaffold. Connect it as it is.",
   },
   "path-occupied": {
     status: 409,
     message:
-      "The scaffold would overwrite something already in that repository, so it wrote nothing.",
+      "The scaffold would have overwritten files already in that repository, so it wrote nothing. Clear them, or scaffold into another repository.",
   },
   "no-default-branch": {
     status: 422,
     message:
-      "Maestro cannot tell which branch that repository's origin treats as the default, and it will not guess one. Run `git fetch origin` and `git remote set-head origin --auto` in the clone, then try again.",
+      "Maestro cannot tell which branch that repository's origin treats as the default, and it will not guess one. Choose a repository whose origin has a default branch set.",
   },
   "not-on-default-branch": {
     status: 409,
     message:
-      "That clone is checked out on a branch other than its default. Switch to the default branch and try again.",
+      "The scaffold's first commit belongs on the default branch. Switch that clone to it, then scaffold again.",
   },
   "not-offered": {
     status: 409,
     message:
-      "Maestro only scaffolds a repository it has just offered to scaffold. Connect that repository again to get the offer.",
+      "Maestro only scaffolds a repository it has just offered to scaffold. Connect that repository again to get the offer back.",
   },
   busy: {
     status: 409,
     message:
-      "That repository is already being scaffolded. Wait for the first attempt to finish.",
+      "The first attempt is still running. Wait for it to finish before starting another.",
   },
   "write-failed": {
     status: 422,
     message:
-      "Maestro could not write the Harness files into that repository, so it removed the ones it had written. Check that you can write to that folder, then try again.",
+      "Maestro removed the files it had already written, so the repository is as it was. That folder is most likely not writable — check its permissions, then scaffold again.",
   },
   "commit-failed": {
     status: 422,
     message:
-      "Maestro wrote the Harness files but git would not commit them. Check that git has an author identity configured in that repository, then try again.",
+      "The Harness files are in the clone, but git would not commit them. That happens when the repository has no author identity configured.",
   },
   "push-rejected": {
     status: 422,
     message:
-      "The Harness is committed in your clone, but GitHub refused the push. Check that you can push to that repository's default branch, then push the commit yourself.",
+      "The commit is safe in the clone. What is missing is push access to that repository's default branch.",
   },
   "push-offline": {
     status: 502,
     message:
-      "The Harness is committed in your clone, but GitHub could not be reached. Push the commit yourself once you are back online.",
+      "The commit is safe in the clone. It reaches GitHub as soon as the connection is back.",
   },
   "connect-failed": {
     status: 422,
     message:
-      "The Harness was scaffolded and pushed, but Maestro could not connect it. Connect it by its path.",
+      "The Harness is in the repository and pushed, but Maestro could not connect it. Connect it by its local path.",
   },
 };
 
@@ -834,17 +862,21 @@ const importErrorResponses: ErrorTable<ImportSkillError> = {
 const browseErrorResponses: ErrorTable<BrowseError> = {
   "outside-root": {
     status: 403,
-    message: "That path is outside the area Maestro can browse.",
+    message: "Maestro browses inside the home folder only. Pick one under it.",
   },
-  "not-found": { status: 404, message: "No directory exists at that path." },
+  "not-found": {
+    status: 404,
+    message:
+      "It may have been moved or deleted since the last look. Pick another folder.",
+  },
   "not-a-directory": {
     status: 400,
-    message: "That path is not a directory.",
+    message: "That path points at a file. Pick the folder that holds it.",
   },
   // In bounds and a directory, but unreadable — 422, not 403/404.
   unreadable: {
     status: 422,
-    message: "That directory could not be read.",
+    message: "Its permissions do not allow reading. Pick another folder.",
   },
 };
 
