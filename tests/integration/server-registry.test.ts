@@ -191,7 +191,7 @@ describe("registry HTTP routes", () => {
     expect(await res.json()).toEqual({
       error: "central-inventory",
       message:
-        "The central inventory cannot be registered as a consuming repo.",
+        "The harness is where skills come from, not a target they are deployed to. Register a repository that consumes skills instead.",
     });
   });
 });

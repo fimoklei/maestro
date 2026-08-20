@@ -183,9 +183,7 @@ describe("DeployStateView sections", () => {
     renderView();
 
     expect(
-      await screen.findByText(
-        "Could not load registered repos. Reload the page to try again.",
-      ),
+      await screen.findByText("the registered repos could not be loaded"),
     ).toBeInTheDocument();
     // A failed registry read must not masquerade as "no repos registered".
     expect(

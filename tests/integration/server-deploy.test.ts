@@ -311,7 +311,7 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(502);
     const body = (await res.json()) as { error: string; message: string };
     expect(body.error).toBe("deploy-recorded-invalid");
-    expect(body.message).toMatch(/placed no files/i);
+    expect(body.message).toMatch(/no files arrived/i);
   });
 
   it("deploys a skill globally, with no repo registered", async () => {
@@ -414,7 +414,7 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({
       error: "no-supported-tool",
-      message: expect.stringMatching(/no supported tool/i),
+      message: expect.stringMatching(/claude code or codex/i),
     });
     expect(deployCalls).toEqual([]);
   });
@@ -498,7 +498,7 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(422);
     expect(await res.json()).toEqual({
       error: "no-published-tag",
-      message: expect.stringMatching(/tag/i),
+      message: expect.stringMatching(/publish a release/i),
     });
     expect(deployCalls).toEqual([]);
   });
@@ -516,7 +516,7 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(409);
     const body = (await res.json()) as { error: string; message: string };
     expect(body.error).toBe("local-diverged-from-tag");
-    expect(body.message).toMatch(/tag and push the change first/i);
+    expect(body.message).toMatch(/publish a release/i);
     // The cockpit's voice never addresses the reader as "you" (PRODUCT.md).
     expect(body.message).not.toMatch(/\byou\b|\byour\b/i);
     expect(deployCalls).toEqual([]);
@@ -535,7 +535,7 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({
       error: "local-diverged-from-tag",
-      message: expect.stringMatching(/tag/i),
+      message: expect.stringMatching(/publish a release/i),
     });
     expect(deployCalls).toEqual([]);
   });
@@ -555,7 +555,7 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({
       error: "deployed-diverged-from-lock",
-      message: expect.stringMatching(/never went through central/i),
+      message: expect.stringMatching(/never went through the harness/i),
     });
     expect(deployCalls).toEqual([]);
   });
@@ -639,7 +639,7 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({
       error: "lockfile-malformed",
-      message: expect.stringMatching(/lockfile/i),
+      message: expect.stringMatching(/apm\.lock\.yaml/i),
     });
     expect(deployCalls).toEqual([]);
   });
@@ -763,7 +763,7 @@ describe("deploy HTTP route", () => {
     expect(await res.json()).toEqual({
       error: "auth-required",
       message:
-        "GitHub authentication is missing or expired. Run 'gh auth login' (or set GITHUB_TOKEN) and try again.",
+        "GitHub refused the download, so nothing was installed. Restore the machine's GitHub access, then deploy again.",
     });
   });
 
@@ -783,8 +783,8 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(409);
     const body = (await res.json()) as { error: string; message: string };
     expect(body.error).toBe("destination-symlinked");
-    expect(body.message).toContain("symlink");
-    expect(body.message).toContain("skills");
+    expect(body.message).toMatch(/replace that link/i);
+    expect(body.message).toContain("skills directory");
     // No raw apm output reaches the client; the message is hand-written.
     expect(JSON.stringify(body)).not.toContain("ghp_secret");
     expect(JSON.stringify(body)).not.toContain("refusing to deploy");

@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import type { DriftViewModel } from "../drift/drift-view-model";
 import { Card } from "../ui/card";
+import { Notice } from "../ui/notice";
 import { SectionHeader } from "../ui/section-header";
 import { DeployStateList } from "./deploy-state-list";
 import { toolDeployedView } from "./deployed-view";
@@ -45,13 +46,23 @@ export function GlobalTargets({
       {isLoading ? (
         <p className="text-dim text-tag">Loading…</p>
       ) : isError ? (
-        <p role="alert" className="text-amber-ink text-tag">
-          Could not read the global deploy-state. Reload the page to try again.
-        </p>
+        <Notice
+          trigger="load"
+          notice={{
+            level: "error",
+            label: "the global targets could not be read",
+            message: "Reload the page to run the read again.",
+          }}
+        />
       ) : tools.length === 0 ? (
-        <p role="status" className="text-dim text-tag">
-          Install Claude Code or Codex to deploy skills globally.
-        </p>
+        <Notice
+          trigger="load"
+          notice={{
+            level: "info",
+            label: "no supported tool detected",
+            message: "Install Claude Code or Codex to deploy skills globally.",
+          }}
+        />
       ) : (
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {tools.map((group) => (

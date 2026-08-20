@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router";
 import { RegisterRepoHint } from "../registry/register-repo-hint";
 import { useRegistry } from "../registry/use-registry";
+import { Notice } from "../ui/notice";
 import { SectionHeader } from "../ui/section-header";
 import { DeployStatePanel } from "./deploy-state-panel";
 import { GlobalDeployStatePanel } from "./global-deploy-state-panel";
@@ -84,9 +85,14 @@ function RepositoriesSection({ onStartDeploy }: { onStartDeploy: () => void }) {
       {isLoading ? (
         <p className="text-dim text-tag">Loading registered repos…</p>
       ) : isError ? (
-        <p role="alert" className="text-amber-ink text-tag">
-          Could not load registered repos. Reload the page to try again.
-        </p>
+        <Notice
+          trigger="load"
+          notice={{
+            level: "error",
+            label: "the registered repos could not be loaded",
+            message: "Reload the page to run the read again.",
+          }}
+        />
       ) : null}
     </section>
   );

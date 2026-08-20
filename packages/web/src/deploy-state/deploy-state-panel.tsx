@@ -3,6 +3,7 @@ import { driftViewModel } from "../drift/drift-view-model";
 import { useDrift } from "../drift/use-drift";
 import { targetLabel } from "../shell/target-label";
 import { Card } from "../ui/card";
+import { Notice } from "../ui/notice";
 import { DeployStateList } from "./deploy-state-list";
 import { toDeployedView } from "./deployed-view";
 import { TargetDeployAction } from "./target-deploy-action";
@@ -40,9 +41,16 @@ export function DeployStatePanel({
       {deployState.isLoading ? (
         <p className="px-card-x py-row-y text-dim text-tag">Loading…</p>
       ) : deployState.isError ? (
-        <p role="alert" className="px-card-x py-row-y text-amber-ink text-tag">
-          Could not read this repo's deploy-state. Reload the page to try again.
-        </p>
+        <div className="px-card-x py-row-y">
+          <Notice
+            trigger="load"
+            notice={{
+              level: "error",
+              label: "this repo's deploy-state could not be read",
+              message: "Reload the page to run the read again.",
+            }}
+          />
+        </div>
       ) : indicator === "empty" ? (
         <TargetDeployAction onStartDeploy={onStartDeploy} />
       ) : (

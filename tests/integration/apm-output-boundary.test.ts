@@ -38,7 +38,7 @@ import { stubScaffold } from "../helpers/stub-scaffold";
 // `removeErrorResponses` table. Spelled out here so a change to the wording has
 // to be a deliberate edit in two places, not a silent widening.
 const CURATED_SENTENCE =
-  "apm did not confirm the removal. Check apm and try again.";
+  "apm ran but proved nothing, so the copy may be gone or may still be there. Confirm the removal again to delete whatever is left.";
 
 // Each shape apm's real output can carry, named so a leak reports which kind of
 // secret escaped rather than "a string was found". Synthetic by design: these
