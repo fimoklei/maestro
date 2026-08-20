@@ -1,6 +1,7 @@
 import { HttpError } from "../api/http";
 import { useRegistry } from "../registry/use-registry";
 import { Card } from "../ui/card";
+import { Notice, type NoticeContent } from "../ui/notice";
 import { SectionHeader } from "../ui/section-header";
 import { InventoryList } from "./inventory-list";
 import { useDeploymentTargets } from "./use-deployment-targets";
@@ -8,6 +9,28 @@ import { useInventory } from "./use-inventory";
 
 // Container: wires the inventory server-state hook to the presentational list.
 // The 409 "not-configured" case gets its own actionable message.
+
+// The inventory read is web's own query, not one of the server's error tables,
+// so its two headings and sentences live with it.
+function readNotice(error: Error | null): NoticeContent | null {
+  if (error === null) {
+    return null;
+  }
+  return error instanceof HttpError && error.status === 409
+    ? {
+        level: "error",
+        label: "no Harness is connected",
+        message:
+          "Nothing is connected yet. Connect a Harness on the Inventory source screen to fill this list.",
+      }
+    : {
+        level: "error",
+        label: "the inventory did not load",
+        message:
+          "The connected Harness may have moved, or its apm.yml may no longer be readable. Check the source path on the Inventory source screen.",
+      };
+}
+
 export function InventoryPanel() {
   const inventory = useInventory();
   const registry = useRegistry();
@@ -33,16 +56,13 @@ export function InventoryPanel() {
             : undefined
         }
       />
+      {/* A section that failed to load is always trigger="load" — nothing here
+          followed a click, and Query refetches on window focus (#465). The
+          region outlives its content, so it is mounted before the failure is. */}
+      <Notice trigger="load" notice={readNotice(inventory.error)} />
       {inventory.isLoading ? (
         <p className="px-card-x py-row-y text-dim text-tag">Loading…</p>
-      ) : inventory.isError ? (
-        <p role="alert" className="text-amber-ink text-tag">
-          {inventory.error instanceof HttpError &&
-          inventory.error.status === 409
-            ? "No inventory is configured. Set the Harness source path."
-            : "Could not load the inventory."}
-        </p>
-      ) : (
+      ) : inventory.isError ? null : (
         <Card fill>
           <InventoryList
             primitives={inventory.data?.primitives ?? []}

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useInventory, useInventoryConfig } from "../inventory/use-inventory";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
+import { Notice, type NoticeContent } from "../ui/notice";
 import { SectionHeader } from "../ui/section-header";
 import { ConnectInventoryPanel } from "./connect-inventory-panel";
 import { primitiveCountLabel } from "./primitive-count-label";
@@ -16,6 +17,15 @@ import { useRereadInventory } from "./use-reread-inventory";
 const SOURCE_TITLE = "Inventory source";
 const SOURCE_META = "local path · read-only";
 const SOURCE_CARD_WIDTH = "max-w-lg";
+
+// The Re-read button sits directly below, so the notice carries no action of
+// its own — a second copy of the same control would compete with it.
+const READ_FAILED: NoticeContent = {
+  level: "error",
+  label: "the inventory did not load",
+  message:
+    "The folder below may have moved, or its apm.yml may no longer be readable. Check the path, then re-read.",
+};
 
 export function InventorySourceView() {
   const config = useInventoryConfig();
@@ -61,15 +71,12 @@ export function InventorySourceView() {
         ) : (
           <div className="flex flex-col gap-3">
             {/* Status region stays mounted through a retry, even if the last
-                read errored — ceding to the alert would unmount it and the
-                recovered count would go unannounced (#230). */}
+                read errored — ceding to the notice would unmount it and the
+                recovered count would go unannounced (#230). A panel that
+                failed to read is always trigger="load": the same block covers
+                a first read, a retry and Query's refetch on focus (#465). */}
             {!inventory.isFetching && inventory.isError ? (
-              <p
-                role="alert"
-                className="rounded-control border border-amber-border bg-amber-bg px-3 py-2 text-amber-ink text-tag"
-              >
-                ▲ could not read the inventory — re-read to retry
-              </p>
+              <Notice trigger="load" notice={READ_FAILED} />
             ) : (
               <p
                 role="status"

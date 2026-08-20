@@ -163,7 +163,7 @@ describe("inventory connect HTTP route", () => {
     expect(res.status).toBe(422);
     expect(await res.json()).toEqual({
       error: "scaffoldable",
-      message: expect.stringContaining("no apm.yml"),
+      message: expect.stringContaining("scaffold the canonical empty Harness"),
       // The offer carries the path so a cloned repository the user never typed
       // can still be scaffolded.
       path: await nodeRealpath(repo),

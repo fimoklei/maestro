@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { HttpError } from "../api/http";
 import type { RegistrationOutcome } from "../registry/use-register-repos";
 import { Button } from "../ui/button";
 import { HOVER_TRANSITION } from "../ui/hover-transition";
+import { Notice } from "../ui/notice";
 import { BrowseBreadcrumbs } from "./browse-breadcrumbs";
 import { BrowseEntryRow } from "./browse-entry-row";
 import { type BrowseDialogMode, browseModes } from "./browse-modes";
+import { browseNotice } from "./browse-notice";
 import { BrowseRunReport } from "./browse-run-report";
 import { useBrowseNavigation } from "./use-browse-navigation";
 import { useFolderFilter } from "./use-folder-filter";
@@ -62,12 +63,7 @@ export function BrowseDialog({
     hiddenFilteredEntries,
   );
 
-  const error =
-    browse.error instanceof HttpError
-      ? browse.error.message
-      : browse.error
-        ? "Could not browse that directory."
-        : null;
+  const notice = browseNotice(browse.error);
 
   const typedPath = pastedPath.trim();
   // Connect: a non-empty paste wins over the listing folder. Register: every
@@ -248,17 +244,11 @@ export function BrowseDialog({
             </div>
 
             {/* In-dialog error banner, never an empty listing (#145). */}
-            {error ? (
-              <div
-                role="alert"
-                className="mx-3.5 mb-3 flex items-center gap-2 rounded-control border border-amber-border bg-amber-bg px-2.5 py-2.5"
-              >
-                <span className="text-amber-ink text-data">▲</span>
-                <span className="font-mono text-fg-2 text-mono-sm">
-                  {error}
-                </span>
-              </div>
-            ) : null}
+            {/* The wrapper stays mounted with the region inside it; only its
+                spacing is conditional, so an empty region costs no gap. */}
+            <div className={notice === null ? undefined : "mx-3.5 mb-3"}>
+              <Notice trigger="user-action" notice={notice} />
+            </div>
           </>
         )}
 

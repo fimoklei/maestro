@@ -304,12 +304,12 @@ describe("InventorySourceView", () => {
     renderView();
 
     expect(
-      await screen.findByText(/could not read the inventory/i),
+      await screen.findByText(/the inventory did not load/i),
     ).toBeInTheDocument();
     expect(screen.queryByText(/reading…/i)).not.toBeInTheDocument();
-    // The count pill is a role="status"; a pure read failure cedes it to the
-    // role="alert" above, so no status region is on screen.
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    // A pure read failure takes the count pill's place — a stale count beside
+    // a failed read would read as two answers to one question.
+    expect(screen.queryByText(/primitive/i)).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /re-read/i }),
     ).toBeInTheDocument();
@@ -353,15 +353,15 @@ describe("InventorySourceView", () => {
     await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
 
     expect(
-      await screen.findByText(/could not read the inventory/i),
+      await screen.findByText(/the inventory did not load/i),
     ).toBeInTheDocument();
     expect(screen.queryByText(/2 primitives/i)).not.toBeInTheDocument();
   });
 
-  it("leads the healthy state with ● and the read-error with ▲ so shape, not just colour, tells them apart", async () => {
+  it("leads the healthy state with ● and the read-error with ✕ so shape, not just colour, tells them apart", async () => {
     // Never-Colour-Alone: the healthy and fault badges shared ● (issue #229),
-    // so a user who can't separate green from amber saw one shape for both.
-    // The codebase already owns ▲ for warnings; the fault badge takes it.
+    // so a user who can't separate green from danger saw one shape for both.
+    // An outright failure is danger, not amber, and carries Notice's ✕ (#465).
     stubApi({ primitives: () => [skill("tdd")] });
     const { unmount } = renderView();
     expect(await screen.findByText(/^● 1 primitive/i)).toBeInTheDocument();
@@ -389,13 +389,11 @@ describe("InventorySourceView", () => {
     );
     renderView();
 
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(/^▲ could not read the inventory/i);
-    expect(alert).toHaveClass(
-      "border-amber-border",
-      "bg-amber-bg",
-      "text-amber-ink",
-    );
+    // The loading skeleton is a role="status" too, so settle on the text first.
+    await screen.findByText(/the inventory did not load/i);
+    const notice = screen.getByRole("status");
+    expect(notice).toHaveTextContent(/^✕the inventory did not load/i);
+    expect(notice).toHaveClass("border-danger-border", "bg-danger-bg");
   });
 
   it("announces a successful retry after a failed read", async () => {
@@ -433,7 +431,7 @@ describe("InventorySourceView", () => {
     renderView();
 
     expect(
-      await screen.findByText(/could not read the inventory/i),
+      await screen.findByText(/the inventory did not load/i),
     ).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
@@ -491,7 +489,7 @@ describe("InventorySourceView", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
     expect(
-      await screen.findByText(/could not read the inventory/i),
+      await screen.findByText(/the inventory did not load/i),
     ).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
