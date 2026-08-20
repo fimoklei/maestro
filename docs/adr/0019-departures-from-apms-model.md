@@ -29,11 +29,24 @@ Six entries. Each names what APM says, what this route does, and the verdict:
 - **APM:** a package carries its version in `apm.yml`'s `version:`; a consumer
   installs the package at that version.
 - **This route:** the git tag is the only version number. `apm.yml`'s
-  `version:` is inert. A consumer pins one skill by subpath at a tag.
-- **Why:** the marketplace was ruled out 2026-07-27 and measured unreachable by
-  #354, so no package-install route exists to carry a manifest version.
-  Maestro's consumer side deploys skills selectively. Banked in #350;
-  ADR-0003, ADR-0014.
+  `version:` is inert, and the scaffold writes `0.0.0` so the manifest claims
+  nothing. A consumer pins one skill by subpath at a tag.
+- **Why:** the marketplace was ruled out 2026-07-27, so no package-install
+  route exists to carry a manifest version. Maestro's consumer side deploys
+  skills selectively. Banked in #350; ADR-0003, ADR-0014.
+- **`apm pack --check-versions` is not the gate it looks like**, measured on
+  0.26.0 by #354 and re-read on #635. It never reads a git tag
+  (`marketplace/version_check.py`: "No git, no network") — a manifest at
+  `7.7.7` on a repo tagged `v0.1.0`–`v0.4.0` passed, exit 0. Its precondition,
+  an `apm.yml` per skill, flips the installed entry to `package_type: hybrid`,
+  which Maestro's own lockfile reader drops. So the alignment it enforces is
+  not the alignment this route needs, and buying it would break the cockpit.
+- **`0.0.0`, not the scaffolded `1.0.0`** (#635, 2026-08-21). The value APM's
+  `apm init -y` writes reads as a claim — version 1, stable — while the first
+  Released harness is tagged `v0.1.0`. Maestro does not write the field on
+  release either: no reader consumes it, so maintaining it buys nothing.
+  Departing from a literal copy of apm's output is the cost, paid because that
+  copy is what made the number look load-bearing.
 
 ### 2. The producer ladder is not APM's ladder — deliberate
 
@@ -57,7 +70,7 @@ Six entries. Each names what APM says, what this route does, and the verdict:
     operation caused: compile emits a generated tree that `promote` would then
     carry into a commit.
 - **Why `pack` / `publish` are not run:** both lead to the marketplace, ruled
-  out 2026-07-27 and measured by #354.
+  out 2026-07-27. `pack`'s version gate is no reason to reconsider — §1.
 
 ### 3. A skill from outside is copied in, never depended on — deliberate
 
