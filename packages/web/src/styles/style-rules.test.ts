@@ -83,3 +83,18 @@ describe("type ramp", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+// #465: every warning, error and confirmation is stated through Notice, which
+// derives the role — so no allowlist, the literal occurs nowhere, not even in
+// the primitive. role="status" is unguarded on purpose (#615).
+describe("assertive live regions", () => {
+  it("no component writes a literal alert role", () => {
+    const offenders = files.flatMap(({ path, source }) =>
+      [...source.matchAll(/role=["']alert["']/g)].map(
+        (match) => `${path.slice(SRC_DIR.length)}: ${match[0]}`,
+      ),
+    );
+
+    expect(offenders).toEqual([]);
+  });
+});
