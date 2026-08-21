@@ -3,10 +3,11 @@ import { useDeployState } from "../deploy-state/use-deploy-state";
 import { useGlobalDeployState } from "../deploy-state/use-global-deploy-state";
 import { driftViewModel } from "../drift/drift-view-model";
 import { useDrift, useGlobalDrift } from "../drift/use-drift";
+import { versionColor } from "../drift/version-color";
 import type { RegisteredRepo } from "../registry/use-registry";
 import { targetLabel } from "../shell/target-label";
 import { Button } from "../ui/button";
-import { Chip } from "../ui/chip";
+import { cn } from "../ui/cn";
 import { Notice } from "../ui/notice";
 import { DeployRefusalNotice } from "./deploy-refusal-notice";
 import { globalOptionLabel } from "./global-option-label";
@@ -60,6 +61,9 @@ export function DeploySkillAction({
     deployState.data?.primitives,
     skillName,
   );
+  const deployedVersion = deployState.data?.primitives?.find(
+    (primitive) => primitive.name === skillName,
+  )?.version;
 
   // Undefined while loading/unreadable — never gate on a tool set we can't prove.
   const globalTools = globalDeployState.data?.detectedTools;
@@ -108,7 +112,6 @@ export function DeploySkillAction({
       </select>
       {syncedState === "synced" ? (
         <>
-          <Chip tone="ok">● already synced</Chip>
           <Button
             variant="quiet"
             size="sm"
@@ -119,6 +122,16 @@ export function DeploySkillAction({
           >
             {deploy.isPending ? "deploying…" : "re-deploy"}
           </Button>
+          {/* State, not an action, so it drops out of the control row onto its
+              own line and stays quiet — the chip read as a second button. */}
+          <span
+            className={cn(
+              "basis-full font-mono text-tag",
+              versionColor["up-to-date"],
+            )}
+          >
+            {deployedVersion ? `● in sync · ${deployedVersion}` : "● in sync"}
+          </span>
         </>
       ) : (
         <Button
