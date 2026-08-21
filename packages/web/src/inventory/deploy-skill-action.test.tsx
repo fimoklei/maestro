@@ -260,7 +260,7 @@ describe("DeploySkillAction", () => {
     });
   });
 
-  it("shows already synced and offers re-deploy for a proven current target", async () => {
+  it("names the deployed version in sync and offers re-deploy for a proven current target", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
@@ -286,7 +286,7 @@ describe("DeploySkillAction", () => {
       <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
     );
 
-    expect(await screen.findByText("● already synced")).toBeInTheDocument();
+    expect(await screen.findByText("● in sync · v0.5.1")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "re-deploy" }),
     ).toBeInTheDocument();
@@ -330,7 +330,7 @@ describe("DeploySkillAction", () => {
       <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
     );
 
-    expect(await screen.findByText("● already synced")).toBeInTheDocument();
+    expect(await screen.findByText("● in sync · v0.5.1")).toBeInTheDocument();
 
     await userEvent.selectOptions(
       screen.getByLabelText(/deploy tdd to/i),
@@ -340,7 +340,7 @@ describe("DeploySkillAction", () => {
     expect(
       await screen.findByRole("button", { name: "deploy →" }),
     ).toBeInTheDocument();
-    expect(screen.queryByText("● already synced")).not.toBeInTheDocument();
+    expect(screen.queryByText(/in sync/)).not.toBeInTheDocument();
   });
 
   it("shows the server's error message when a deploy is refused", async () => {
