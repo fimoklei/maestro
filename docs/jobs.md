@@ -39,6 +39,8 @@ Detail lives in tracker issues; elaboration happens in the grill.
 
 | Job | Main | Job story |
 |---|---|---|
+| Install Maestro from a clone in one command | C | *When* a teammate has been given access to Maestro, *I want to* have one bootstrap script check their Node and pnpm and start the cockpit, *so I can* hand them a repo instead of walking them through a toolchain. |
+| Cut a Maestro release a teammate can pull | C | *When* I fix or extend the cockpit, *I want to* publish a tagged release of Maestro itself, *so I can* have teammates pull a version that works instead of whatever `main` happens to be. |
 | Read the shared skills directory truthfully · [#172](https://github.com/fimoklei/maestro/issues/172) | A, B | *When* my tools read one shared skills directory, *I want to* have the cockpit show one source read by many tools, *so I can* trust deploy-state, drift, and cleanup on my real machine. |
 | Connect a registry as inventory source | A | *When* my central inventory is published to an apm registry, *I want to* point Maestro at it as the inventory source, *so I can* run the cockpit without a local clone. |
 | Disconnect an inventory source knowing its impact | A | *When* an inventory source is no longer the one I steer from, *I want to* see what disconnecting it does to the primitives already deployed to my targets before I confirm, *so I can* remove it without silently orphaning deploys I still rely on. |
