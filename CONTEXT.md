@@ -57,7 +57,7 @@ The single mandatory first-run moment — a welcome and the connect form — whe
 _Avoid_: wizard (the retired multi-step shape), onboarding flow, setup flow.
 
 **Curated / Production-ready**:
-The quality bar for anything in the **Released harness**: reviewed and deemed safe to deploy. The **Working harness** carries no such promise — a tag is where the promise is made (ADR-0021). In MVP1 the curator is one person (the owner). The path from contribution to curated is the future governed lifecycle.
+The quality bar for anything in the **Released harness**: structurally valid, not repo-specific, and admitted through the loop at the moment it was needed — one primitive per promote, checked by the curator at **promote** (#623). The **Working harness** carries no such promise — a tag is where the promise is made (ADR-0021). In MVP1 the curator is one person (the owner) and the bar is written in the harness's own `CONTRIBUTING.md`. The path from contribution to curated is the future governed lifecycle.
 _Avoid_: published, approved (those name the future lifecycle step, not the state).
 
 **Bundle**:
