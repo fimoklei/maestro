@@ -7,7 +7,7 @@ import type { NoticeAction, NoticeContent, NoticeLevel } from "./notice";
 
 // No warning: a warning must carry the consequence it costs as a required
 // action, which a table cannot know. Those are written at the call site.
-export type NoticeHeading = {
+type NoticeHeading = {
   level: Exclude<NoticeLevel, "warning">;
   label: string;
 };
