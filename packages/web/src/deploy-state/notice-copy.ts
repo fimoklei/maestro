@@ -31,7 +31,7 @@ export const RESTATED_COST_HEADING = {
 
 // Errors, except the two refusals the user can force through: proceeding there
 // costs local edits rather than failing, and the cost rides in the action label.
-export const deployStateNotice: Record<DeployStateCode, NoticeHeading> = {
+const deployStateNotice: Record<DeployStateCode, NoticeHeading> = {
   "unsupported-primitive-type": {
     level: "error",
     label: "only skills for now",
@@ -104,7 +104,7 @@ export const deployStateNotice: Record<DeployStateCode, NoticeHeading> = {
 };
 
 // A failure with no code — a network error, or a code this build predates.
-export const UNKNOWN_DEPLOY_FAILURE: NoticeHeading = {
+const UNKNOWN_DEPLOY_FAILURE: NoticeHeading = {
   level: "error",
   label: "the deploy did not run",
 };
