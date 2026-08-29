@@ -56,6 +56,9 @@ Detail lives in tracker issues; elaboration happens in the grill.
 | Connect & sync the inventory from git | A | *When* my central inventory lives in a remote repo I have not cloned, *I want to* point Maestro at its git URL as the inventory source, *so I can* set up the cockpit without cloning by hand first. |
 | Act on a failed Harness fetch | A, C | *When* the cockpit cannot reach the Harness remote, *I want to* learn which kind of failure it hit and keep a way forward, *so I can* fix the cause instead of facing a strip that only says it failed. |
 | Tell an unreleased skill from an unreleased Harness | B, C | *When* a deploy is refused because no published tag carries the skill, *I want to* hear which of the two situations I am in, *so I can* cut a release or publish the skill instead of guessing which. |
+| Deploy what I just promoted · [#666](https://github.com/fimoklei/maestro/issues/666) | B, C | *When* a promote of mine has been merged and released, *I want to* deploy that skill straight away, *so I can* finish the loop in the cockpit instead of pulling the Harness clone by hand in a terminal. |
+| Import a skill from where it was authored · [#667](https://github.com/fimoklei/maestro/issues/667) | B | *When* I have written a skill in the directory my tools read it from, *I want to* import it from there, *so I can* follow the Harness's own contributing guide instead of copying the folder elsewhere first. |
+| Scaffold a Harness clone that is ready to use · [#668](https://github.com/fimoklei/maestro/issues/668) | C | *When* Maestro has scaffolded my Harness, *I want to* have `git pull` work in that clone, *so I can* use ordinary git in it without setting an upstream first. |
 
 ## DONE
 
