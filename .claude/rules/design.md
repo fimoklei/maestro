@@ -7,6 +7,8 @@
 
 Never take design values (colour, size, spacing) from a flow screen; build from the tokens.
 
+- **Copy** — `.claude/rules/copy.md` (ADR-0025). Every user-facing word the cockpit shows is written and reviewed against it.
+
 ## Verify before "done"
 
 Mandatory for any change that alters what `packages/web` renders:
