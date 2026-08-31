@@ -124,6 +124,29 @@ _Avoid_: unofficial skill, rogue rule.
 A required primitive deploys to everyone in scope without opt-in; an optional one is opted into by repo, role, or context. A governance concept that activates when Maestro serves a team, not a solo user.
 _Avoid_: mandatory, default, extra.
 
+## Screen names
+
+The domain language above remains canonical in code and documentation. The
+cockpit uses the fixed screen names below; one concept never gains different
+names on different surfaces. Grammatical variants are allowed, and technical
+details may name the exact APM mechanism or file.
+
+| Domain term | Screen name | Rule |
+|---|---|---|
+| Harness | **Harness** | Use **Working Harness** or **Released Harness** when the state matters. |
+| Central inventory | **Inventory** | Reserve **Inventory** for the collection and its screen. |
+| Inventory source | **Harness location** | Do not use *source* for the configured Harness location. |
+| Drift | **Behind** | Use *an update is available* as explanation, not as a second status name. |
+| Target | **Target** | Prefer the concrete repository or tool name after the concept is established. |
+| Deploy | **Deploy** / **Deployed** | *Deploy* is the action and *deployed* is the state; *install* is APM's mechanism. |
+| Skill | **Skill** | Use `SKILL.md` only when the file itself matters. |
+| Primitive | — | Name **skills, hooks, and MCP servers**; use **items** only for a generic count. |
+| Source (generic) | — | Name the concrete thing: **Harness location**, **original folder**, or **latest release**. |
+| APM lockfile | **Deployment record** | Show `apm.lock.yaml` only in technical details. |
+| Pinned version | **Deployed version** | Do not introduce *pin* as a user action or state. |
+| Promote | **Propose change** | The resulting state is **Waiting for review**, not released or approved. |
+| Release | **Release** / **Released** | *Release* is the action, *released* is the state, and *latest release* is the result. |
+
 ## Relationships
 
 - The **central inventory** (the `agent-harness` repo) contains many **Primitives** (skills, hooks, MCP servers).
