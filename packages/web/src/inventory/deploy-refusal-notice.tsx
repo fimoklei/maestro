@@ -32,6 +32,8 @@ export function DeployRefusalNotice({
   // The type apm recorded, when the server sends one. Named here because the
   // recovery differs per type, and the message table cannot know it (#358).
   const packageType = recordedPackageType(error);
+  // A row that owns its sentence wins; the rest still read the server's.
+  const message = heading.message ?? error.message;
   const aside =
     packageType === null ? undefined : `Recorded type: ${packageType}.`;
 
@@ -43,7 +45,7 @@ export function DeployRefusalNotice({
           ? {
               level: "warning",
               label: heading.label,
-              message: error.message,
+              message,
               aside,
               action: {
                 label: "Reinstall fresh — local changes will be lost",
@@ -54,7 +56,7 @@ export function DeployRefusalNotice({
           : {
               level: heading.level,
               label: heading.label,
-              message: error.message,
+              message,
               aside,
             }
       }
