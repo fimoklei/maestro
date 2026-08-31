@@ -101,7 +101,7 @@ Valid jobs, deliberately not being done.
 | Job | Reason |
 |---|---|
 | Reimplement install / sync / pinning / lockfile | APM owns the engine. See ADR-0001. |
-| Governance lifecycle (review/approve/required) | Maestro drives git to the push and gates nothing ([#365](https://github.com/fimoklei/maestro/issues/365)); review and approval happen on GitHub. Roles, approval rules and required-vs-optional are future main job C. |
+| Governance lifecycle (review/approve/required) · [#678](https://github.com/fimoklei/maestro/issues/678) | Maestro drives git to the push and gates nothing ([#365](https://github.com/fimoklei/maestro/issues/365)); review and approval happen on GitHub. Roles, approval rules and required-vs-optional are future main job C. |
 | Compounding loop (corrections → primitives) | Needs adoption and a working manual loop first; future main job D. |
 | Adoption dashboards across teams | Measuring use means gathering from other people's machines; Maestro is local-only and collects nothing. |
 | Support every AI coding tool | Two tools (Claude Code, Codex) first; breadth later. |
