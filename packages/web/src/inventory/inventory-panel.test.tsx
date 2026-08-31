@@ -113,7 +113,9 @@ describe("InventoryPanel", () => {
 
     const pane = await openPane("tdd");
 
-    expect(await screen.findByLabelText(/deploy tdd to/i)).toBeInTheDocument();
+    expect(
+      await screen.findByLabelText(/deploy target for tdd/i),
+    ).toBeInTheDocument();
     expect(pane.getByRole("button", { name: /deploy/i })).toBeEnabled();
   });
 

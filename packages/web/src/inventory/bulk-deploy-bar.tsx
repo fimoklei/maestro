@@ -143,7 +143,7 @@ export function BulkDeployBar({
         </span>
         <span className="ml-auto flex items-center gap-2">
           <label htmlFor={selectId} className="sr-only">
-            Bulk-deploy target
+            Deploy target for the staged skills
           </label>
           <select
             id={selectId}

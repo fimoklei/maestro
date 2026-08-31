@@ -35,7 +35,9 @@ export function DeployRefusalNotice({
   // A row that owns its sentence wins; the rest still read the server's.
   const message = heading.message ?? error.message;
   const aside =
-    packageType === null ? undefined : `Recorded type: ${packageType}.`;
+    packageType === null
+      ? undefined
+      : `apm recorded this package as ${packageType}.`;
 
   return (
     <Notice

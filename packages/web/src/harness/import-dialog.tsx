@@ -92,9 +92,7 @@ export function ImportDialog({
                 title={source ?? undefined}
                 className="min-w-0 flex-1 truncate font-mono text-data text-fg"
               >
-                {source === null
-                  ? "No folder picked yet."
-                  : targetLabel(source)}
+                {source === null ? "No folder picked yet" : targetLabel(source)}
               </span>
               <Button
                 type="button"
@@ -128,8 +126,8 @@ export function ImportDialog({
             {/* The directory name is the skill's identity, so it is stated
                 before it is chosen, not explained after a failure. */}
             <span className="font-ui text-desc text-muted">
-              This becomes the folder name, and the SKILL.md name is rewritten
-              to match.
+              This becomes the folder name, and the name in SKILL.md is
+              rewritten to match
             </span>
             <Notice
               id={nameErrorId}
@@ -160,7 +158,7 @@ export function ImportDialog({
           {imported === null ? null : (
             <p role="status" className="m-0 font-ui text-desc text-fg-2">
               <span className="font-mono text-fg">{imported.name}</span> landed
-              in the Harness as a pending promotion.
+              in the Harness and is waiting for review.
               {imported.skipped === 0
                 ? null
                 : imported.skipped === 1

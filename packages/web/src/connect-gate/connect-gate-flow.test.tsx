@@ -329,7 +329,7 @@ describe("connect gate", () => {
 
     expect(
       await screen.findByText(
-        /a private harness works when each teammate has their own git and apm access/i,
+        /a private harness works only when every teammate has their own github and apm access/i,
       ),
     ).toBeInTheDocument();
   });
@@ -365,7 +365,7 @@ describe("connect gate", () => {
     );
 
     const status = await screen.findByRole("status");
-    expect(status).toHaveTextContent(/being cloned/i);
+    expect(status).toHaveTextContent(/is cloned first/i);
     expect(status).not.toHaveTextContent(/%/);
   });
 

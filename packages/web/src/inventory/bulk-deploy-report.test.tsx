@@ -52,7 +52,7 @@ describe("BulkDeployReport", () => {
 
     expect(screen.getByText(/\(hybrid\)/)).toBeInTheDocument();
     expect(
-      screen.getAllByText(/release a corrected tag, and deploy again/i),
+      screen.getAllByText(/release a new version, then deploy again/i),
     ).toHaveLength(2);
   });
 

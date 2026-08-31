@@ -270,7 +270,7 @@ export function BrowseDialog({
                 }}
               >
                 <label htmlFor="browse-paste-path" className="m-label shrink-0">
-                  or paste
+                  Paste a path
                 </label>
                 <input
                   id="browse-paste-path"

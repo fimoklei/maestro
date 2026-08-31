@@ -30,7 +30,7 @@ export const browseModes: Record<BrowseDialogMode, BrowseModeConfig> = {
     badges: ({ isRegistered }) =>
       isRegistered ? <Chip tone="ok">● registered</Chip> : null,
     writePromise:
-      "Registering writes nothing. Writes happen only on an explicit deploy.",
+      "Registering changes no files. Files change only when you deploy.",
   },
   connect: {
     title: "Select inventory folder",
@@ -48,7 +48,7 @@ export const browseModes: Record<BrowseDialogMode, BrowseModeConfig> = {
     badges: ({ entry }) =>
       entry.facts.hasApmManifest ? <Chip tone="drift">◆ inventory</Chip> : null,
     writePromise:
-      "Picking a folder writes nothing. Import copies it into the Working harness and changes nothing at the source.",
+      "Picking a folder changes no files. Import copies the folder into the Working Harness and leaves the original folder untouched.",
   },
   // Picks the folder a clone lands *in*, so the badge marks the one thing that
   // would block it: a Harness already sitting there (#555).

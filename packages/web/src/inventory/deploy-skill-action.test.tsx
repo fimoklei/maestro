@@ -105,7 +105,7 @@ describe("DeploySkillAction", () => {
     );
 
     const globalOption = await within(
-      screen.getByLabelText(/deploy tdd to/i),
+      screen.getByLabelText(/deploy target for tdd/i),
     ).findByRole("option", { name: /Global \(Claude Code \+ Codex\)/ });
     expect(globalOption).toBeEnabled();
   });
@@ -129,7 +129,7 @@ describe("DeploySkillAction", () => {
     );
 
     const globalOption = await within(
-      screen.getByLabelText(/deploy tdd to/i),
+      screen.getByLabelText(/deploy target for tdd/i),
     ).findByRole("option", { name: /Global \(Claude Code\)/ });
     expect(globalOption).toBeInTheDocument();
   });
@@ -153,7 +153,7 @@ describe("DeploySkillAction", () => {
     );
 
     const globalOption = await within(
-      screen.getByLabelText(/deploy tdd to/i),
+      screen.getByLabelText(/deploy target for tdd/i),
     ).findByRole("option", { name: /Global \(no tools detected\)/ });
     expect(globalOption).toBeDisabled();
     expect(screen.getByRole("button", { name: /deploy/i })).toBeDisabled();
@@ -172,7 +172,7 @@ describe("DeploySkillAction", () => {
     );
 
     await userEvent.selectOptions(
-      screen.getByLabelText(/deploy tdd to/i),
+      screen.getByLabelText(/deploy target for tdd/i),
       "/projects/beta",
     );
     await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
@@ -199,7 +199,7 @@ describe("DeploySkillAction", () => {
     );
 
     const options = within(
-      screen.getByLabelText(/deploy tdd to/i),
+      screen.getByLabelText(/deploy target for tdd/i),
     ).getAllByRole("option");
     expect(options[0]).toHaveTextContent("Global");
   });
@@ -245,7 +245,7 @@ describe("DeploySkillAction", () => {
     );
 
     await userEvent.selectOptions(
-      screen.getByLabelText(/deploy tdd to/i),
+      screen.getByLabelText(/deploy target for tdd/i),
       "Global",
     );
     await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
@@ -333,7 +333,7 @@ describe("DeploySkillAction", () => {
     expect(await screen.findByText("● in sync · v0.5.1")).toBeInTheDocument();
 
     await userEvent.selectOptions(
-      screen.getByLabelText(/deploy tdd to/i),
+      screen.getByLabelText(/deploy target for tdd/i),
       "/projects/beta",
     );
 
@@ -397,7 +397,7 @@ describe("DeploySkillAction", () => {
     await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      /recorded type: hybrid/i,
+      /apm recorded this package as hybrid/i,
     );
     expect(
       screen.queryByRole("button", { name: /reinstall fresh/i }),
@@ -479,7 +479,7 @@ describe("DeploySkillAction", () => {
     );
 
     await userEvent.selectOptions(
-      screen.getByLabelText(/deploy tdd to/i),
+      screen.getByLabelText(/deploy target for tdd/i),
       "/projects/alpha",
     );
     await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
@@ -489,7 +489,7 @@ describe("DeploySkillAction", () => {
     ).toBeInTheDocument();
 
     await userEvent.selectOptions(
-      screen.getByLabelText(/deploy tdd to/i),
+      screen.getByLabelText(/deploy target for tdd/i),
       "/projects/beta",
     );
 

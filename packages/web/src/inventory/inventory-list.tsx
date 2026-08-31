@@ -122,7 +122,7 @@ export function InventoryList({
       <div className="flex flex-wrap items-center gap-3 px-card-x py-row-y">
         <div className="relative w-full max-w-[240px]">
           <label htmlFor="inventory-search" className="sr-only">
-            Search skills
+            Search the Inventory
           </label>
           <span
             aria-hidden="true"
@@ -135,7 +135,7 @@ export function InventoryList({
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="search…"
+            placeholder="search by name…"
             className="w-full rounded-control border border-line bg-inset py-row-y pr-card-x pl-7 font-mono text-fg text-mono-sm placeholder:text-dim focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
           />
         </div>

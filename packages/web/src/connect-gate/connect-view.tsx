@@ -38,8 +38,8 @@ export function ConnectView() {
       />
       <Card padded className="max-w-lg">
         <p className="mb-3 text-dim text-tag">
-          A private Harness works when each teammate has their own Git and APM
-          access.
+          A private Harness works only when every teammate has their own GitHub
+          and APM access.
         </p>
         <ConnectInventoryPanel
           onSuccess={() => setHasConnected(true)}
