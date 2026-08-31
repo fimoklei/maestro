@@ -120,7 +120,9 @@ describe("Harness import flow", () => {
     // The dialog stays open and states what landed, including what the copy
     // left behind; the harness read is asked again for the new movement.
     expect(
-      await screen.findByText(/landed in the Harness as a pending promotion/i),
+      await screen.findByText(
+        /landed in the Harness and is waiting for review/i,
+      ),
     ).toBeInTheDocument();
     expect(
       await screen.findByText(/3 \.git entries were skipped/i),

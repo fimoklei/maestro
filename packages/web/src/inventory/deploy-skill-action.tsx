@@ -88,7 +88,7 @@ export function DeploySkillAction({
     // push the control out of reach.
     <span className="flex flex-wrap items-center gap-2">
       <label htmlFor={selectId} className="sr-only">
-        Deploy {skillName} to
+        Deploy target for {skillName}
       </label>
       <select
         id={selectId}

@@ -29,11 +29,11 @@ const errorLabels: Partial<Record<DeploySkillError, string>> = {
 // act on lives here — the same guidance the single-deploy message carries.
 const recoverySteps: Partial<Record<DeploySkillError, string>> = {
   "deployed-unsupported-package-type":
-    "Correct the package shape in the harness, release a corrected tag, and deploy again.",
+    "Fix the skill in the Harness, release a new version, then deploy again.",
   "deploy-recorded-invalid":
-    "Fix the package shape in the harness (a skill needs a SKILL.md), release a corrected tag, and deploy again.",
+    "Add a SKILL.md in the Harness, release a new version, then deploy again.",
   "deploy-unverified":
-    "Check the target's lockfile (apm.lock.yaml), then try again.",
+    "Check the deployment record (apm.lock.yaml) on the target, then deploy again.",
 };
 
 function errorLabel(error: DeploySkillError): string {

@@ -33,7 +33,9 @@ export function DeployRefusalNotice({
   // recovery differs per type, and the message table cannot know it (#358).
   const packageType = recordedPackageType(error);
   const aside =
-    packageType === null ? undefined : `Recorded type: ${packageType}.`;
+    packageType === null
+      ? undefined
+      : `apm recorded this package as ${packageType}.`;
 
   return (
     <Notice

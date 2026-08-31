@@ -41,12 +41,12 @@ const driftBadge: Record<
   behind: { tone: "drift", label: "behind" },
   "up-to-date": { tone: "ok", label: "up-to-date" },
   unknown: { tone: "dim", label: "unknown" },
-  // Distinct label + hint so a reachability failure reads as auth/network, not
-  // a generic unknown.
+  // Distinct label + hint so a reachability failure reads as unreached, not a
+  // generic unknown.
   unverified: {
     tone: "dim",
     label: "unverified",
-    hint: "Couldn't reach the source to check for updates — verify apm auth/network.",
+    hint: "Could not reach the Harness location to check for updates",
   },
 };
 

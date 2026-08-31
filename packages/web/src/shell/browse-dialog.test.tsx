@@ -282,7 +282,7 @@ describe("BrowseDialog", () => {
     );
     const { onSelect } = renderDialog();
 
-    const paste = await screen.findByRole("textbox", { name: /or paste/i });
+    const paste = await screen.findByRole("textbox", { name: /paste a path/i });
     await userEvent.type(paste, "/somewhere/else{Enter}");
 
     expect(onSelect).toHaveBeenCalledWith(["/somewhere/else"]);
@@ -297,7 +297,7 @@ describe("BrowseDialog", () => {
     );
     const { onSelect } = renderDialog();
 
-    const paste = await screen.findByRole("textbox", { name: /or paste/i });
+    const paste = await screen.findByRole("textbox", { name: /paste a path/i });
     await userEvent.type(paste, "/somewhere/else");
     await userEvent.click(
       screen.getByRole("button", { name: /use this folder/i }),
@@ -1123,7 +1123,7 @@ describe("BrowseDialog", () => {
         await screen.findByRole("checkbox", { name: /acme-web/i }),
       );
       await userEvent.type(
-        screen.getByRole("textbox", { name: /or paste/i }),
+        screen.getByRole("textbox", { name: /paste a path/i }),
         "/elsewhere/repo",
       );
 
@@ -1144,7 +1144,7 @@ describe("BrowseDialog", () => {
         await screen.findByRole("checkbox", { name: /acme-web/i }),
       );
       await userEvent.type(
-        screen.getByRole("textbox", { name: /or paste/i }),
+        screen.getByRole("textbox", { name: /paste a path/i }),
         "/home/me/acme-web",
       );
 
@@ -1240,10 +1240,10 @@ describe("BrowseDialog", () => {
         name: /register 0 selected/i,
       });
       expect(register).toHaveAccessibleDescription(
-        /registering writes nothing/i,
+        /registering changes no files/i,
       );
       expect(register).toHaveAccessibleDescription(
-        /only on an explicit deploy/i,
+        /files change only when you deploy/i,
       );
       // The deploy's own blast radius is that flow's promise, not this one's.
       expect(register).not.toHaveAccessibleDescription(/apm's bookkeeping/i);

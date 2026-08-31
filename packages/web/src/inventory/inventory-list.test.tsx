@@ -314,7 +314,7 @@ describe("InventoryList", () => {
       screen.getByRole("complementary", { name: /tdd detail/i }),
     ).toBeInTheDocument();
 
-    const search = screen.getByLabelText(/search skills/i);
+    const search = screen.getByLabelText(/search the inventory/i);
     await userEvent.type(search, "caveman");
     expect(
       screen.queryByRole("button", { name: "tdd" }),

@@ -113,8 +113,7 @@ export function ConnectInventoryForm({
         // mid-way, so the wait is stated in words. Worded for both routes: the
         // form is shared with Settings' re-point, which never clones (#554).
         <p role="status" className="text-dim text-tag">
-          Connecting. A GitHub URL is being cloned first, which can take a
-          minute — this stays open until it finishes.
+          Connecting. A GitHub URL is cloned first, which can take a minute.
         </p>
       ) : null}
       {/* The field's description: mounted before the failure is, and wired to
