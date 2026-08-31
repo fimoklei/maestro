@@ -49,6 +49,7 @@ a job on the board changes it.
 ### When shelling out to APM or reading external files/lockfiles → Read `.claude/rules/security.md`
 ### When writing a React component or client-side data access → Read `.claude/rules/frontend.md`
 ### When changing what `packages/web` renders → Read `.claude/rules/design.md`
+### When writing any word the cockpit shows → Read `.claude/rules/copy.md`
 ### When driving `apm` or parsing its lockfile/output → Read `.claude/rules/apm-driver.md`
 ### When starting a grill or picking the next job → Use the `jobs` skill; the board's Legend (`docs/jobs.md`) holds the transition rules
 ### When creating a spec issue, or shipping work that closes one → Use the `jobs` skill to record the board transition
@@ -68,8 +69,6 @@ a job on the board changes it.
 - **TDD is blocking for code changes.** Docs-only changes are exempt.
 - **UI work is not done without a browser check** (`.claude/rules/design.md` →
   "Verify before done").
-- **Never write to `AGENTS.md`, `CLAUDE.md`, or `.claude/rules/`.** Michiel owns
-  them. Quote the lines you would change and wait for his yes.
 - When editing docs: prefer condensing over expanding. Drift toward feature lists is the failure mode to watch for.
 - When touching code: keep behavior in `packages/core` unless it is genuinely
   transport or UI work. The server and web packages should not become product
