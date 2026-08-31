@@ -4,15 +4,7 @@ import type {
   RemovePreflightError,
   RepoPathError,
 } from "@maestro/core";
-import type { NoticeLevel } from "../ui/notice";
-
-// The heading half of every deploy-state notice. The server sends one sentence
-// per code (ADR-0018); web owns the short line above it, so a new code in core
-// fails typecheck here until it has one.
-//
-// A heading names what is wrong in the user's words — two to five words, never
-// the severity word, never the fix. The sentence beside it carries the recovery.
-export type NoticeHeading = { level: NoticeLevel; label: string };
+import type { NoticeHeading } from "../ui/notice-table";
 
 // One table over the four unions: a code shared by deploy and remove is the
 // same thing going wrong, so it reads the same in both.
@@ -29,8 +21,9 @@ export const RESTATED_COST_HEADING = {
   label: "nothing was removed",
 } as const satisfies NoticeHeading;
 
-// Errors, except the two refusals the user can force through: proceeding there
-// costs local edits rather than failing, and the cost rides in the action label.
+// Not a `NoticeTable`: these rows may carry `warning` for the two refusals the
+// user can force through — proceeding costs local edits rather than failing,
+// and the cost rides in the action label its call site supplies.
 const deployStateNotice: Record<DeployStateCode, NoticeHeading> = {
   "unsupported-primitive-type": {
     level: "error",
