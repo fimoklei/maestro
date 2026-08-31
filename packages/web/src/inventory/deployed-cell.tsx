@@ -21,8 +21,8 @@ export function DeployedCell({ rollup }: { rollup: DeployedRollup }) {
           unconfirmed ? " …" : ""
         }`
       : unconfirmed
-        ? "…"
-        : "not deployed";
+        ? "Loading deploy-state…"
+        : "Not deployed";
   const reachReason = unreadable
     ? "deploy state could not be read on every target"
     : "still reading deploy state";
@@ -69,7 +69,7 @@ export function DeployedCell({ rollup }: { rollup: DeployedRollup }) {
           <span className="sr-only">{unknownLabel}</span>
         </Chip>
       ) : null}
-      {checking ? <Chip tone="dim">checking…</Chip> : null}
+      {checking ? <Chip tone="dim">Loading updates…</Chip> : null}
     </span>
   );
 }

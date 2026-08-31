@@ -82,7 +82,9 @@ describe("InventorySourceView", () => {
     renderView();
 
     expect(
-      await screen.findByRole("status", { name: /loading source/i }),
+      await screen.findByRole("status", {
+        name: /loading the inventory source/i,
+      }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /inventory source/i }),
@@ -173,7 +175,7 @@ describe("InventorySourceView", () => {
 
   it("announces a re-read even when the count is unchanged", async () => {
     // A live region only announces on mutation, and Query keeps the previous
-    // count during refetch — passing through "reading…" makes the settle a
+    // count during refetch — passing through the loading line makes the settle a
     // genuine mutation a screen reader hears, even at the same N (#230).
     let resolveSecond: (r: Response) => void = () => {};
     let reads = 0;
@@ -216,7 +218,7 @@ describe("InventorySourceView", () => {
     expect(status).toHaveTextContent(/2 primitives/i);
 
     await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
-    await waitFor(() => expect(status).toHaveTextContent(/reading…/i));
+    await waitFor(() => expect(status).toHaveTextContent(/loading the count/i));
 
     resolveSecond(
       jsonResponse({ primitives: [skill("tdd"), skill("frontend")] }, 200),
@@ -248,7 +250,7 @@ describe("InventorySourceView", () => {
     expect(screen.queryByText(/synced/i)).not.toBeInTheDocument();
   });
 
-  it("shows 'reading…' rather than 'undefined' while the count is still loading", async () => {
+  it("names the loading count rather than 'undefined' while it is still loading", async () => {
     // Config resolves but the primitives read never lands this render, so the
     // count is not yet known — the badge must not leak a bare "undefined".
     vi.stubGlobal(
@@ -273,11 +275,11 @@ describe("InventorySourceView", () => {
     );
     renderView();
 
-    expect(await screen.findByText(/● reading/i)).toBeInTheDocument();
+    expect(await screen.findByText(/● loading the count/i)).toBeInTheDocument();
     expect(screen.queryByText(/undefined/i)).not.toBeInTheDocument();
   });
 
-  it("surfaces an inventory read failure instead of an endless 'reading…'", async () => {
+  it("surfaces an inventory read failure instead of an endless loading line", async () => {
     // A configured path whose inventory read fails (moved/unreadable on disk)
     // must not masquerade as a pending read forever — show a failure with the
     // re-read button as the retry.
@@ -306,7 +308,7 @@ describe("InventorySourceView", () => {
     expect(
       await screen.findByText(/the inventory did not load/i),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/reading…/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/loading the count/i)).not.toBeInTheDocument();
     // A pure read failure takes the count pill's place — a stale count beside
     // a failed read would read as two answers to one question.
     expect(screen.queryByText(/primitive/i)).not.toBeInTheDocument();
@@ -437,7 +439,7 @@ describe("InventorySourceView", () => {
     await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
 
     const status = await screen.findByRole("status");
-    expect(status).toHaveTextContent(/reading…/i);
+    expect(status).toHaveTextContent(/loading the count/i);
 
     resolveRetry(
       jsonResponse({ primitives: [skill("tdd"), skill("frontend")] }, 200),
@@ -494,7 +496,7 @@ describe("InventorySourceView", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
     const status = await screen.findByRole("status");
-    expect(status).toHaveTextContent(/reading…/i);
+    expect(status).toHaveTextContent(/loading the count/i);
 
     resolveRetry(
       jsonResponse(

@@ -88,7 +88,8 @@ export function InventoryList({
   if (primitives.length === 0) {
     return (
       <p className="px-card-x py-row-y text-dim text-tag">
-        No skills found in the inventory.
+        No skills in the Inventory. Add a skill to the Harness, then select
+        Re-read.
       </p>
     );
   }
@@ -207,7 +208,8 @@ export function InventoryList({
             {visible.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-dim text-tag">
-                  No skills match your search.
+                  No skills match the search. Clear the search box to see every
+                  skill.
                 </TableCell>
               </TableRow>
             ) : (

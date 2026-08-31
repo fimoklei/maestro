@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
+import { LOADING_INVENTORY_CONNECTION } from "../inventory/inventory-copy";
 import { useInventoryConfig } from "../inventory/use-inventory";
 import { ConnectInventoryPanel } from "../shell/connect-inventory-panel";
 import { Card } from "../ui/card";
@@ -25,7 +26,7 @@ export function ConnectView() {
   }, [blocked, config.isSuccess, navigate]);
 
   if (blocked) {
-    return <p className="text-dim text-tag">Loading…</p>;
+    return <p className="text-dim text-tag">{LOADING_INVENTORY_CONNECTION}</p>;
   }
 
   return (

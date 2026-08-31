@@ -61,7 +61,9 @@ export function InventoryPanel() {
           region outlives its content, so it is mounted before the failure is. */}
       <Notice trigger="load" notice={readNotice(inventory.error)} />
       {inventory.isLoading ? (
-        <p className="px-card-x py-row-y text-dim text-tag">Loading…</p>
+        <p className="px-card-x py-row-y text-dim text-tag">
+          Loading the Inventory…
+        </p>
       ) : inventory.isError ? null : (
         <Card fill>
           <InventoryList

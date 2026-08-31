@@ -39,7 +39,9 @@ export function DeployStatePanel({
       status={<TargetStatusChip indicator={indicator} />}
     >
       {deployState.isLoading ? (
-        <p className="px-card-x py-row-y text-dim text-tag">Loading…</p>
+        <p className="px-card-x py-row-y text-dim text-tag">
+          Loading the deploy-state…
+        </p>
       ) : deployState.isError ? (
         <div className="px-card-x py-row-y">
           <Notice

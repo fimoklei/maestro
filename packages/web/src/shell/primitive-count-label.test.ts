@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { primitiveCountLabel } from "./primitive-count-label";
 
 describe("primitiveCountLabel", () => {
-  it("reads 'reading…' while the count is not yet known", () => {
-    expect(primitiveCountLabel(undefined)).toBe("reading…");
+  it("names what it is loading while the count is not yet known", () => {
+    expect(primitiveCountLabel(undefined)).toBe("Loading the count…");
   });
 
   it("singularises a lone primitive", () => {

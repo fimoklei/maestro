@@ -130,15 +130,15 @@ export function SkillDetailPane({
               </ul>
               {/* Partial set — never lets it read as the full reach (J04). */}
               {unconfirmed ? (
-                <p className="mt-2 text-desc text-dim">
-                  more targets may still be loading…
-                </p>
+                <p className="mt-2 text-desc text-dim">Loading more targets…</p>
               ) : null}
             </>
           ) : unconfirmed ? (
-            <p className="text-desc text-dim">still reading deploy state…</p>
+            <p className="text-desc text-dim">Loading the deploy-state…</p>
           ) : (
-            <p className="text-desc text-dim">not deployed to any target yet</p>
+            <p className="text-desc text-dim">
+              Not deployed to any target. Choose a target under Deploy below.
+            </p>
           )}
         </div>
 

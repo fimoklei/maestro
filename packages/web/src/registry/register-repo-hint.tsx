@@ -8,8 +8,8 @@ type RegisterRepoHintProps = {
 export function RegisterRepoHint({ className }: RegisterRepoHintProps) {
   return (
     <span className={`text-dim text-tag ${className ?? ""}`}>
-      No repositories registered. Register one with{" "}
-      <span className="font-mono">+ repo</span> in the sidebar.
+      No repositories registered. Select{" "}
+      <span className="font-mono">+ repo</span> in the sidebar to register one.
     </span>
   );
 }

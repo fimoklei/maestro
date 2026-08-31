@@ -550,7 +550,9 @@ describe("Harness home base", () => {
 
     // A plan is a snapshot of one moment. The delta may have moved since, so
     // the old numbers must not stand in while the new ones are in flight.
-    expect(await screen.findByText(/planning/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/loading the release plan/i),
+    ).toBeInTheDocument();
     expect(screen.queryByText("v1.3.0")).not.toBeInTheDocument();
 
     answerSecond();

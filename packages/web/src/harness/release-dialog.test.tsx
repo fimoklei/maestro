@@ -216,7 +216,7 @@ describe("ReleaseDialog", () => {
       />,
     );
 
-    expect(screen.getByText(/planning/i)).toBeInTheDocument();
+    expect(screen.getByText(/loading the release plan/i)).toBeInTheDocument();
   });
 
   it("states a plan that could not be computed as a readable error", () => {

@@ -21,7 +21,9 @@ describe("GlobalDeployStatePanel", () => {
 
     // The section label is the baseline: it renders regardless of the read
     // state, so it is present even before any data arrives.
-    expect(screen.getByText(/global targets/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /global targets/i }),
+    ).toBeInTheDocument();
   });
 
   it("headlines a per-tool card and lists its deployed skill with the human tag version", async () => {

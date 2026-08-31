@@ -148,7 +148,7 @@ describe("InventoryPanel", () => {
 
   it("holds the deployed column unresolved while the registry is still loading", async () => {
     // The repo set is unknown until the registry resolves, so a skill's repo
-    // reach is unconfirmed — the column must not read a definite "not deployed"
+    // reach is unconfirmed — the column must not read a definite "Not deployed"
     // (J04), the same honesty the deploy button keeps.
     vi.stubGlobal(
       "fetch",
@@ -168,8 +168,8 @@ describe("InventoryPanel", () => {
     renderPanel();
 
     await screen.findByText("tdd");
-    expect(screen.queryByText("not deployed")).not.toBeInTheDocument();
-    expect(screen.getByText("…")).toBeInTheDocument();
+    expect(screen.queryByText("Not deployed")).not.toBeInTheDocument();
+    expect(screen.getByText("Loading deploy-state…")).toBeInTheDocument();
   });
 
   it("disables the deploy action when the registry failed to load", async () => {

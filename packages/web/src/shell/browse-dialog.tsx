@@ -186,7 +186,9 @@ export function BrowseDialog({
                     onNavigate={setCurrentRequest}
                   />
                 ) : (
-                  <span className="font-mono text-dim text-mono-sm">…</span>
+                  <span className="font-mono text-dim text-mono-sm">
+                    Loading the path…
+                  </span>
                 )}
               </div>
               <div className="flex items-center gap-2 rounded-control border border-line bg-inset px-2.5 py-[7px]">
@@ -208,7 +210,7 @@ export function BrowseDialog({
             <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-auto px-2.5 py-2">
               {browse.isPending ? (
                 <p className="px-2.5 py-1.5 font-mono text-dim text-tag">
-                  Loading…
+                  Loading this folder…
                 </p>
               ) : (
                 visibleEntries.map((entry) => (

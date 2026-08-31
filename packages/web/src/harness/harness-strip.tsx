@@ -20,8 +20,8 @@ export function HarnessStrip({
   return (
     <Card padded>
       <div className="flex flex-wrap items-end gap-x-10 gap-y-4">
-        <Fact label="Released" value={releasedVersion ?? "none yet"} />
-        <Fact label="Branch" value={defaultBranch ?? "unknown"} />
+        <Fact label="Released" value={releasedVersion ?? "None yet"} />
+        <Fact label="Branch" value={defaultBranch ?? "Unknown"} />
         <Fact label="Status" value={status} />
         <div className="ml-auto flex items-center gap-2">{children}</div>
       </div>

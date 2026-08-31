@@ -67,7 +67,9 @@ describe("GlobalTargets", () => {
 
   it("always labels the Global targets section, even while loading", () => {
     renderTargets({ isLoading: true });
-    expect(screen.getByText(/global targets/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /global targets/i }),
+    ).toBeInTheDocument();
   });
 
   it("counts the detected tools beside the section title", () => {

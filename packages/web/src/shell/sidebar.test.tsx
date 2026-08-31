@@ -70,19 +70,19 @@ describe("Sidebar grouping", () => {
     stubServer({ notConfigured: true });
     renderSidebar();
 
-    // "none yet" is the tell that the first-run read has landed; asserting
+    // The empty state is the tell that the first-run read has landed; asserting
     // before it would catch the nav in its pre-read, enabled state.
-    await screen.findByText(/none yet/i);
+    await screen.findByText(/no targets yet/i);
     expect(screen.getByRole("button", { name: "Harness" })).toBeDisabled();
   });
 });
 
 describe("Sidebar first-run rendering", () => {
-  it("dims the nav, hides register, and shows 'none yet' when unconfigured", async () => {
+  it("dims the nav, hides register, and shows the empty state when unconfigured", async () => {
     stubServer({ notConfigured: true });
     renderSidebar();
 
-    expect(await screen.findByText(/none yet/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no targets yet/i)).toBeInTheDocument();
     for (const name of ["Deploy-state", "Inventory"]) {
       expect(screen.getByRole("button", { name })).toBeDisabled();
     }
@@ -99,7 +99,7 @@ describe("Sidebar first-run rendering", () => {
     stubServer({ notConfigured: true });
     renderSidebar("/welcome/connect");
 
-    await screen.findByText(/none yet/i);
+    await screen.findByText(/no targets yet/i);
 
     expect(screen.getByRole("complementary", { name: /sidebar/i })).toHaveClass(
       "max-md:hidden",
@@ -119,7 +119,7 @@ describe("Sidebar first-run rendering", () => {
     expect(
       screen.queryByRole("button", { name: "Inventory source" }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText(/none yet/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/no targets yet/i)).not.toBeInTheDocument();
   });
 
   it("hides the register affordance on a gate route even when configured", async () => {
