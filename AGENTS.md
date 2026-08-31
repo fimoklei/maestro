@@ -69,8 +69,6 @@ a job on the board changes it.
 - **TDD is blocking for code changes.** Docs-only changes are exempt.
 - **UI work is not done without a browser check** (`.claude/rules/design.md` →
   "Verify before done").
-- **Never write to `AGENTS.md`, `CLAUDE.md`, or `.claude/rules/`.** Michiel owns
-  them. Quote the lines you would change and wait for his yes.
 - When editing docs: prefer condensing over expanding. Drift toward feature lists is the failure mode to watch for.
 - When touching code: keep behavior in `packages/core` unless it is genuinely
   transport or UI work. The server and web packages should not become product
