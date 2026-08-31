@@ -34,7 +34,7 @@ export function BrowseRunReport({
       <p role="status" className="mb-2 font-mono text-data">
         {isRegistering ? (
           <span className="text-fg-2">
-            Registering…
+            Registering repositories…
             {paths.length > 0 ? ` ${outcomes.length} of ${paths.length}` : ""}
           </span>
         ) : (

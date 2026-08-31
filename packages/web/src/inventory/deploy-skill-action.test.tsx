@@ -154,7 +154,7 @@ describe("DeploySkillAction", () => {
 
     const globalOption = await within(
       screen.getByLabelText(/deploy tdd to/i),
-    ).findByRole("option", { name: /Global \(no tools detected\)/ });
+    ).findByRole("option", { name: /Global \(no tool detected\)/ });
     expect(globalOption).toBeDisabled();
     expect(screen.getByRole("button", { name: /deploy/i })).toBeDisabled();
   });

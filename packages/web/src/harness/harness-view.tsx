@@ -154,7 +154,7 @@ export function HarnessView() {
         <Notice trigger="load" notice={refreshNotice(refresh.error)} />
       </div>
       {harness.isError ? null : state === undefined ? (
-        <p className="text-dim text-tag">Loading the harness…</p>
+        <p className="text-dim text-tag">Loading the Harness…</p>
       ) : (
         <>
           <HarnessStrip

@@ -146,6 +146,7 @@ details may name the exact APM mechanism or file.
 | Pinned version | **Deployed version** | Do not introduce *pin* as a user action or state. |
 | Promote | **Propose change** | The resulting state is **Waiting for review**, not released or approved. |
 | Release | **Release** / **Released** | *Release* is the action, *released* is the state, and *latest release* is the result. |
+| Consuming repo | **Repository** | Write it out in a sentence; *repo* stays only inside the `+ repo` control label. |
 
 ## Relationships
 

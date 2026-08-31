@@ -120,7 +120,7 @@ describe("InventoryList", () => {
     renderList(<InventoryList primitives={[]} repos={[]} registryReady />);
 
     expect(
-      screen.getByText("No skills found in the inventory."),
+      screen.getByText(/No skills in the Inventory\./i),
     ).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
@@ -152,7 +152,7 @@ describe("InventoryList", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("→ 2 targets")).toBeInTheDocument();
     expect(screen.getByText("▲1")).toBeInTheDocument();
-    expect(screen.getByText("not deployed")).toBeInTheDocument();
+    expect(screen.getByText("Not deployed")).toBeInTheDocument();
   });
 
   it("hides the hint once a repo is registered", () => {
@@ -786,7 +786,7 @@ describe("InventoryList — bulk remove entry point (#422)", () => {
     await openTdd();
 
     expect(
-      screen.getByText(/not deployed to any target yet/i),
+      screen.getByText(/Not deployed to any target\./i),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /remove from all/i }),

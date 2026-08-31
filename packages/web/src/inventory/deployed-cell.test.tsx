@@ -31,7 +31,7 @@ describe("DeployedCell", () => {
         rollup={{ targetCount: 0, behindCount: 0, unknownCount: 0 }}
       />,
     );
-    expect(screen.getByText("not deployed")).toBeInTheDocument();
+    expect(screen.getByText("Not deployed")).toBeInTheDocument();
     expect(screen.queryByText(/targets?/)).not.toBeInTheDocument();
   });
 
@@ -66,8 +66,8 @@ describe("DeployedCell", () => {
         }}
       />,
     );
-    expect(screen.queryByText("not deployed")).not.toBeInTheDocument();
-    expect(screen.getByText("…")).toBeInTheDocument();
+    expect(screen.queryByText("Not deployed")).not.toBeInTheDocument();
+    expect(screen.getByText("Loading deploy-state…")).toBeInTheDocument();
   });
 
   it("does not claim 'not deployed' when a deploy-state read failed", () => {
@@ -81,8 +81,8 @@ describe("DeployedCell", () => {
         }}
       />,
     );
-    expect(screen.queryByText("not deployed")).not.toBeInTheDocument();
-    expect(screen.getByText("…")).toBeInTheDocument();
+    expect(screen.queryByText("Not deployed")).not.toBeInTheDocument();
+    expect(screen.getByText("Loading deploy-state…")).toBeInTheDocument();
   });
 
   it("marks the count as incomplete when some reads are unresolved", () => {
@@ -114,7 +114,7 @@ describe("DeployedCell", () => {
     );
     // A deployed row with no chips reads as "up-to-date everywhere"; while a
     // check is still running it must say so instead (J04).
-    expect(screen.getByText("checking…")).toBeInTheDocument();
+    expect(screen.getByText("Loading updates…")).toBeInTheDocument();
   });
 
   it("keeps the known count in the readable label when the reach is incomplete", () => {

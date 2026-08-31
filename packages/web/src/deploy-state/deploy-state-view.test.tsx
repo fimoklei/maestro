@@ -67,7 +67,7 @@ describe("DeployStateView cold start", () => {
     stubColdStart();
     renderView();
 
-    expect(await screen.findByText("nothing deployed")).toBeInTheDocument();
+    expect(await screen.findByText(/nothing deployed/i)).toBeInTheDocument();
   });
 
   it("offers a deploy action in every confirmed-empty target", async () => {
@@ -169,7 +169,9 @@ describe("DeployStateView sections", () => {
     );
     renderView();
 
-    expect(screen.getByText(/loading registered repos/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/loading the registered repositories/i),
+    ).toBeInTheDocument();
     expect(
       screen.queryByText(/no repositories registered\./i),
     ).not.toBeInTheDocument();

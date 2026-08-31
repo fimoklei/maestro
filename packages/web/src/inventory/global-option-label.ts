@@ -9,7 +9,7 @@ export function globalOptionLabel(
     return "Global";
   }
   if (tools.length === 0) {
-    return "Global (no tools detected)";
+    return "Global (no tool detected)";
   }
   return `Global (${tools.map(toolDisplayName).join(" + ")})`;
 }

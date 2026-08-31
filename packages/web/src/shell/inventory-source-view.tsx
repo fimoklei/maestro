@@ -32,12 +32,12 @@ export function InventorySourceView() {
   const inventory = useInventory();
   const reread = useRereadInventory();
   const currentPath = config.data?.inventoryPath ?? null;
-  // "reading…" while in flight makes the live region announce on every
+  // An unknown count while in flight makes the live region announce on every
   // re-read, even a same-count refresh — a genuine mutation a screen reader
   // must hear (#230).
-  const countLabel = inventory.isFetching
-    ? "reading…"
-    : primitiveCountLabel(inventory.data?.primitives.length);
+  const countLabel = primitiveCountLabel(
+    inventory.isFetching ? undefined : inventory.data?.primitives.length,
+  );
 
   // A refetch in flight is not a failure yet: the last good count holds.
   const failed = !inventory.isFetching && inventory.isError;
@@ -130,7 +130,7 @@ function SourceSkeleton() {
       <Card padded className={SOURCE_CARD_WIDTH}>
         <div
           role="status"
-          aria-label="Loading source…"
+          aria-label="Loading the Inventory source…"
           aria-busy="true"
           className="flex flex-col gap-3"
         >
@@ -139,7 +139,7 @@ function SourceSkeleton() {
             aria-hidden="true"
             className="rounded-control border border-line-chip bg-dim-bg px-3 py-2 text-tag text-transparent"
           >
-            ● loading
+            ● Loading
           </div>
           {/* Same box as the "Source · local folder" label + path rows. */}
           <div aria-hidden="true" className="flex flex-col gap-1">

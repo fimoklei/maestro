@@ -107,7 +107,7 @@ export function ReleaseDialog({
           />
           {load.kind === "loading" ? (
             <p className="font-ui text-desc text-muted">
-              Planning the release…
+              Loading the release plan…
             </p>
           ) : load.kind === "ready" ? (
             <PlanBody
@@ -193,7 +193,7 @@ function PlanBody({
 
       <Card padded>
         <dl className="flex flex-wrap gap-x-10 gap-y-3">
-          <Fact label="Previous tag" value={plan.previousTag ?? "none yet"} />
+          <Fact label="Previous tag" value={plan.previousTag ?? "None yet"} />
           <Fact label="Branch" value={plan.defaultBranch} />
           {/* The whole commit: a short hash is not the exact revision, and
               need not be unique in a repository this size (#519). */}

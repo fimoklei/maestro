@@ -89,20 +89,20 @@ describe("SkillDetailPane", () => {
     renderPane({ deployments: [] });
 
     expect(
-      screen.getByText(/not deployed to any target yet/i),
+      screen.getByText(/Not deployed to any target\./i),
     ).toBeInTheDocument();
   });
 
-  it("holds off on 'not deployed' while the reach is still unconfirmed (J04)", () => {
+  it("holds off on 'Not deployed' while the reach is still unconfirmed (J04)", () => {
     // Every target's deploy-state read is still pending or unreadable, so an empty
     // list is "not known yet", never a confirmed "deployed nowhere" — the same
     // honesty the row's deployed cell keeps.
     renderPane({ deployments: [], unconfirmed: true });
 
     expect(
-      screen.queryByText(/not deployed to any target yet/i),
+      screen.queryByText(/Not deployed to any target\./i),
     ).not.toBeInTheDocument();
-    expect(screen.getByText(/still reading deploy state/i)).toBeInTheDocument();
+    expect(screen.getByText(/Loading the deploy-state…/i)).toBeInTheDocument();
   });
 
   it("warns the reach is incomplete when a target is still unconfirmed alongside known deployments", () => {
@@ -117,9 +117,7 @@ describe("SkillDetailPane", () => {
     });
 
     expect(screen.getByText("Claude Code")).toBeInTheDocument();
-    expect(
-      screen.getByText(/more targets may still be loading/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Loading more targets…/i)).toBeInTheDocument();
   });
 
   it("hosts the deploy action passed to it", () => {

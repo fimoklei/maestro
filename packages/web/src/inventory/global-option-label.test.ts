@@ -12,8 +12,8 @@ describe("globalOptionLabel", () => {
     expect(globalOptionLabel(["claude"])).toBe("Global (Claude Code)");
   });
 
-  it("says no tools detected for an empty set", () => {
-    expect(globalOptionLabel([])).toBe("Global (no tools detected)");
+  it("says no tool detected for an empty set", () => {
+    expect(globalOptionLabel([])).toBe("Global (no tool detected)");
   });
 
   it("falls back to plain Global while the tool set is unknown", () => {
