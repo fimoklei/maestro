@@ -49,6 +49,7 @@ a job on the board changes it.
 ### When shelling out to APM or reading external files/lockfiles → Read `.claude/rules/security.md`
 ### When writing a React component or client-side data access → Read `.claude/rules/frontend.md`
 ### When changing what `packages/web` renders → Read `.claude/rules/design.md`
+### When writing any word the cockpit shows → Read `.claude/rules/copy.md`
 ### When driving `apm` or parsing its lockfile/output → Read `.claude/rules/apm-driver.md`
 ### When starting a grill or picking the next job → Use the `jobs` skill; the board's Legend (`docs/jobs.md`) holds the transition rules
 ### When creating a spec issue, or shipping work that closes one → Use the `jobs` skill to record the board transition
