@@ -144,9 +144,21 @@ details may name the exact APM mechanism or file.
 | Source (generic) | — | Name the concrete thing: **Harness location**, **original folder**, or **latest release**. |
 | APM lockfile | **Deployment record** | Show `apm.lock.yaml` only in technical details. |
 | Pinned version | **Deployed version** | Do not introduce *pin* as a user action or state. |
-| Promote | **Propose change** | The resulting state is **Waiting for review**, not released or approved. |
+| Promote | **Propose change** / **proposed change** | *Propose change* is the action and the row button; the noun is a **proposed change**. The resulting state is **Waiting for review**, not released or approved. |
 | Release | **Release** / **Released** | *Release* is the action, *released* is the state, and *latest release* is the result. |
 | Consuming repo | **Repository** | Write it out in a sentence; *repo* stays only inside the `+ repo` control label. |
+
+### Jargon the screen keeps
+
+An inherited tooling term the reader already types stays in the sentence; a
+Maestro invention is explained on first use (`.claude/rules/copy.md` → Terms).
+Decided so far:
+
+| Word | Call |
+|---|---|
+| `frontmatter` · `working tree` · `default branch` · `origin` · `partial clone` · `symbolic link` · `hard link` · `MiB` | Kept. Git and packaging terms the reader reads in their own tools. |
+| `SKILL.md` · `apm.yml` · `apm.lock.yaml` | Kept where the instruction acts on the file; otherwise **deployment record**. |
+| `slug` | Dropped. Write the rule instead: *lowercase letters, digits and single hyphens, like code-review*. |
 
 ## Relationships
 

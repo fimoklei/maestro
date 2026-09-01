@@ -143,7 +143,7 @@ export function ImportDialog({
               className="flex flex-col gap-1.5 rounded-control border border-line-drift bg-amber-bg px-2.5 py-2.5"
             >
               <span className="font-semibold font-ui text-amber-ink text-desc">
-                Convention checks — advisory, does not block import
+                Convention checks — the import still runs
               </span>
               <ul className="m-0 flex list-none flex-col gap-1 p-0">
                 {advisories.map((advisory) => (
@@ -180,7 +180,7 @@ export function ImportDialog({
             onClick={onClose}
             disabled={importing}
           >
-            close
+            Close
           </Button>
           <Button
             type="button"
@@ -190,7 +190,7 @@ export function ImportDialog({
             disabled={!importEnabled(check) || importing || imported !== null}
             onClick={onImport}
           >
-            {importing ? "importing…" : "import"}
+            {importing ? "Importing…" : "Import skill"}
           </Button>
         </div>
       </div>

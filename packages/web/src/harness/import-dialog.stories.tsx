@@ -92,9 +92,9 @@ export const ImportRefused: Story = {
   args: {
     importError: {
       level: "error",
-      label: "over 1,000 files",
+      label: "Over 1,000 files",
       message:
-        "Nothing was copied. A skill is a handful of files — pick the skill folder itself, not the repository around it.",
+        "Nothing was copied. Pick the skill folder itself, not the repository around it.",
     },
   },
 };

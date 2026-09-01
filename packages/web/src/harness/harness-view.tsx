@@ -182,7 +182,7 @@ export function HarnessView() {
               disabled={refresh.isPending}
               onClick={() => fetchRemote()}
             >
-              refresh
+              Refresh
             </Button>
             {/* Import touches the working tree only, so no remote answer gates
                 it — what lands shows up under Pending promotion. */}

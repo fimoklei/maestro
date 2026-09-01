@@ -14,21 +14,25 @@ import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 // Every Harness notice, heading and sentence together (ADR-0025). The server
 // sends the code and the status alone, so a new code in core fails typecheck
 // here until it has a row.
+//
+// Screen names: the Harness clone's move to GitHub is a *proposed change*, and
+// the verb is *propose a change* (`CONTEXT.md` → Screen names). Every sentence
+// that names a control reproduces its label letter for letter (R-D): Refresh,
+// Propose change, Publish release, Remove skill, Import skill.
 
 // The state read's two refusals ride in every other table below: a plan, a
-// release and a promotion all read the same harness first.
+// release and a proposed change all read the same harness first.
 const harnessHeadings: NoticeTable<HarnessStateError> = {
   "not-configured": {
     level: "error",
-    label: "no Harness is connected",
-    message:
-      "Nothing can be shown here until Maestro knows where the Harness lives. Set the Harness source path.",
+    label: "No Harness connected",
+    message: "Set the Harness location on the Inventory source screen.",
   },
   "no-usable-origin": {
     level: "error",
-    label: "no GitHub origin",
-    message:
-      "Releases are published as tags, so the clone must fetch from GitHub over https or ssh. Point its origin at the Harness repository.",
+    label: "No GitHub origin",
+    message: "Point the clone's origin at the Harness repository on GitHub.",
+    detail: "Releases are published as tags, fetched over https or ssh.",
   },
 };
 
@@ -36,9 +40,9 @@ const releasePlanHeadings: NoticeTable<ReleasePlanError> = {
   ...harnessHeadings,
   "no-answer": {
     level: "error",
-    label: "no answer from GitHub",
-    message:
-      "A release plan is measured against what GitHub holds, and Maestro has not read that yet. Press refresh, then open the release again.",
+    label: "No answer from GitHub",
+    message: "Press Refresh, then open the release again.",
+    detail: "A release plan is measured against what GitHub holds.",
   },
 };
 
@@ -46,152 +50,159 @@ const publishReleaseHeadings: NoticeTable<PublishReleaseError> = {
   ...harnessHeadings,
   "no-answer": {
     level: "error",
-    label: "no answer from GitHub",
+    label: "No answer from GitHub",
     message:
-      "Nothing was published. Press refresh to read GitHub again, then confirm the release.",
+      "Nothing was published. Press Refresh, then Publish release again.",
   },
   "already-released": {
     level: "error",
-    label: "someone published first",
+    label: "Version number taken",
     message:
-      "That version number is taken. Maestro recomputed the plan against the newest tag — check it, then confirm.",
+      "Maestro rebuilt the plan against the newest release. Check it, then Publish release.",
   },
   "plan-changed": {
     level: "error",
-    label: "the plan is stale",
+    label: "Plan out of date",
     message:
-      "GitHub moved while this dialog was open, so nothing was published. Maestro recomputed the plan — check it, then confirm.",
+      "Nothing was published. Maestro rebuilt the plan, so check it, then Publish release.",
+    detail: "GitHub moved while this dialog was open.",
   },
   "publish-failed": {
     level: "error",
-    label: "the tag was not pushed",
+    label: "Tag not pushed",
     message:
-      "The Harness is as it was. Check the connection to GitHub, then confirm the release again.",
+      "The Harness is as it was. Publish release again once GitHub is reachable.",
   },
   "publish-in-progress": {
     level: "error",
-    label: "a release is already running",
-    message:
-      "Only one release runs at a time. Wait for it to finish, then read the plan again.",
+    label: "Release already running",
+    message: "Wait for that release to finish, then open the release again.",
+    detail: "Maestro publishes one release at a time.",
   },
 };
 
-// Promotion and removal share a heading wherever they share a code — the same
-// thing goes wrong — but each states its own way through, so the sentences
-// differ where the server's two tables differed (#686).
+// A proposed change and a removal share a heading wherever they share a code —
+// the same thing goes wrong — but each states its own way through, so the
+// sentences differ where the two ways through differ (#686).
 const promoteHeadings: NoticeTable<PromoteSkillError> = {
   ...harnessHeadings,
   "invalid-skill": {
     level: "error",
-    label: "the name is not a slug",
+    label: "Unusable skill name",
     message:
-      "A skill name is lowercase letters, digits and single hyphens, like code-review.",
+      "A skill name uses lowercase letters, digits and single hyphens, like code-review.",
   },
   "no-answer": {
     level: "error",
-    label: "no answer from GitHub",
-    message:
-      "Nothing was pushed. Press refresh to read GitHub again, then promote.",
+    label: "No answer from GitHub",
+    message: "Nothing was pushed. Press Refresh, then Propose change again.",
   },
   "skill-missing": {
     level: "error",
-    label: "nothing left to promote",
-    message:
-      "The skill is no longer in the Harness working tree, so nothing was pushed. Press refresh to repaint the list.",
+    label: "Skill no longer in the Harness",
+    message: "Nothing was pushed. Press Refresh to repaint the list.",
   },
   "push-elsewhere": {
     level: "error",
-    label: "the clone pushes elsewhere",
-    message:
-      "Maestro publishes only to the origin it fetches from, so nothing was pushed. Point the clone's push remote at that origin.",
+    label: "Different push remote",
+    message: "Nothing was pushed. Point the clone's push remote at its origin.",
+    detail: "Maestro publishes only to the origin it fetches from.",
   },
   "source-changed": {
     level: "error",
-    label: "the folder changed mid-read",
+    label: "Folder edit mid-read",
     message:
-      "Nothing was pushed. Let the edit on disk finish, then promote again.",
+      "Nothing was pushed. Let the edit on disk finish, then Propose change again.",
   },
   "concurrent-change": {
     level: "error",
-    label: "a teammate changed it",
+    label: "Newer change from a teammate",
     message:
-      "Nothing was pushed, so their version still stands. Pull it into the Harness clone, then promote again.",
+      "Their version still stands. Pull it into the Harness clone, then Propose change again.",
   },
   "promote-failed": {
     level: "error",
-    label: "the push did not land",
+    label: "Change not proposed",
     message:
-      "The Harness is as it was. Check the connection to GitHub, then promote again.",
+      "The Harness is as it was. Propose change again once GitHub is reachable.",
   },
   "promote-in-progress": {
     level: "error",
-    label: "a promotion is already running",
-    message:
-      "Only one promotion runs at a time. Wait for it to finish, then press promote.",
+    label: "Change already being proposed",
+    message: "Wait for that change to finish, then Propose change again.",
+    detail: "Maestro proposes one change at a time.",
   },
 };
 
+// Deliberately its own table, not a re-export: a code can refuse two surfaces
+// with different words. Where the label holds for both, the row is shared and
+// only the way through is rewritten.
 const deletionHeadings: NoticeTable<PromoteDeletionError> = {
   ...harnessHeadings,
   "invalid-skill": promoteHeadings["invalid-skill"],
   "push-elsewhere": promoteHeadings["push-elsewhere"],
-  "promote-in-progress": promoteHeadings["promote-in-progress"],
   "no-answer": {
     ...promoteHeadings["no-answer"],
-    message:
-      "Nothing was pushed. Press refresh to read GitHub again, then confirm the removal.",
+    message: "Nothing was pushed. Press Refresh, then Remove skill again.",
   },
   "source-changed": {
     ...promoteHeadings["source-changed"],
-    message:
-      "Nothing was pushed. Press refresh to repaint the list, then decide again.",
+    message: "Nothing was pushed. Press Refresh to repaint the list.",
+  },
+  "promote-in-progress": {
+    ...promoteHeadings["promote-in-progress"],
+    message: "Wait for that change to finish, then Remove skill again.",
   },
   "promote-failed": {
     ...promoteHeadings["promote-failed"],
+    label: "Removal not proposed",
     message:
-      "The Harness is as it was. Check the connection to GitHub, then confirm again.",
+      "The Harness is as it was. Remove skill again once GitHub is reachable.",
   },
   "confirmation-stale": {
     level: "error",
-    label: "the confirmation is stale",
-    message:
-      "The copy on the default branch moved after this confirmation was given, so nothing was pushed. Press refresh, then confirm again.",
+    label: "Confirmation out of date",
+    message: "Nothing was pushed. Press Refresh, then Remove skill again.",
+    detail: "The copy on the default branch moved after this confirmation.",
   },
   "not-deleted": {
     level: "error",
-    label: "the skill is still there",
-    message:
-      "A removal publishes what the Harness working tree already says. Delete the skill folder there first.",
+    label: "Skill still in the Harness",
+    message: "Delete the skill folder in the Harness clone first.",
+    detail: "A removal publishes what the Harness working tree already says.",
   },
   "sparse-checkout": {
     level: "error",
-    label: "the clone is partial",
-    message:
-      "A missing folder in a partial clone is not proof of a deletion, so nothing was pushed. Maestro cannot publish a removal from this clone — connect a complete one to remove skills.",
+    label: "Partial clone",
+    message: "Nothing was pushed. Connect a complete clone to remove skills.",
+    detail: "A missing folder in a partial clone is not proof of a deletion.",
   },
   "merge-in-progress": {
     level: "error",
-    label: "a merge is unfinished",
+    label: "Unfinished merge",
     message:
-      "Nothing was pushed — a half-merged working tree does not state what should go. Finish or abort the merge, then confirm again.",
+      "Nothing was pushed. Finish or abort the merge, then Remove skill again.",
+    detail: "A half-merged working tree does not state what should go.",
   },
   "rebase-in-progress": {
     level: "error",
-    label: "a rebase is unfinished",
+    label: "Unfinished rebase",
     message:
-      "Nothing was pushed — a half-rebased working tree does not state what should go. Finish or abort the rebase, then confirm again.",
+      "Nothing was pushed. Finish or abort the rebase, then Remove skill again.",
+    detail: "A half-rebased working tree does not state what should go.",
   },
   "unresolved-conflicts": {
     level: "error",
-    label: "conflicts are unresolved",
+    label: "Unresolved conflicts",
     message:
-      "Nothing was pushed — a conflicted working tree does not state what should go. Resolve the conflicts, then confirm again.",
+      "Nothing was pushed. Resolve the conflicts, then Remove skill again.",
+    detail: "A conflicted working tree does not state what should go.",
   },
   unreadable: {
     level: "error",
-    label: "the working tree is unreadable",
+    label: "Unreadable working tree",
     message:
-      "Nothing was pushed. Check that the Harness folder is still on disk and readable, then confirm again.",
+      "Nothing was pushed. Make the Harness folder readable, then Remove skill again.",
   },
 };
 
@@ -202,118 +213,129 @@ const importHeadings: NoticeTable<ImportSkillError> = {
   "not-configured": {
     ...harnessHeadings["not-configured"],
     message:
-      "Nothing can be imported until Maestro knows where the Harness lives. Set the Harness source path, then import again.",
+      "Set the Harness location on the Inventory source screen, then Import skill again.",
   },
   "source-unreadable": {
     level: "error",
-    label: "the folder cannot be read",
+    label: "Unreadable folder",
     message:
-      "Nothing was copied. Check that the folder is still on disk and readable, then pick it again.",
+      "Nothing was copied. Make the folder readable, then pick it again.",
   },
   "outside-root": {
     level: "error",
-    label: "folder out of reach",
-    message:
-      "Maestro reads inside the home folder only. Pick a folder under it.",
+    label: "Folder out of reach",
+    message: "Pick a folder inside your home folder.",
+    detail: "Maestro reads inside the home folder only.",
   },
   "deployed-copy": {
     level: "error",
-    label: "that is a deployed copy",
-    message:
-      "Importing it would copy Maestro's own output back into the Harness. Pick the folder the skill is authored in.",
+    label: "Deployed copy",
+    message: "Pick the folder the skill is authored in.",
+    detail:
+      "Importing it would copy Maestro's own output back into the Harness.",
   },
   "missing-manifest": {
     level: "error",
-    label: "no SKILL.md in it",
-    message:
-      "Without one, the folder is not a skill Maestro can carry. Pick the folder that holds the skill's SKILL.md.",
+    label: "No SKILL.md",
+    message: "Pick the folder that holds the skill's SKILL.md.",
   },
   "invalid-frontmatter": {
     level: "error",
-    label: "the frontmatter does not parse",
-    message:
-      "Maestro cannot read the skill's name or description. Fix the SKILL.md frontmatter, then import again.",
+    label: "Unreadable frontmatter",
+    message: "Fix the SKILL.md frontmatter, then Import skill again.",
+    detail: "Maestro cannot read the skill's name or description.",
   },
   "empty-description": {
     level: "error",
-    label: "the description is empty",
-    message:
-      "The description is what tells an agent when to reach for the skill. Fill it in in SKILL.md, then import again.",
+    label: "Empty description",
+    message: "Fill in the description in SKILL.md, then Import skill again.",
+    detail: "The description tells an agent when to reach for the skill.",
   },
   "invalid-name": {
     level: "error",
-    label: "the name is not a slug",
+    label: "Unusable skill name",
     message:
-      "A skill name is lowercase letters, digits and single hyphens, like code-review.",
+      "A skill name uses lowercase letters, digits and single hyphens, like code-review.",
   },
   "name-taken": {
     level: "error",
-    label: "that name is taken",
+    label: "Name taken",
     message: "The Harness already holds a skill under it. Pick another name.",
   },
   "not-found": {
     level: "error",
-    label: "the folder is gone",
+    label: "Folder gone",
     message: "Nothing was copied. Pick the folder again.",
   },
   "not-a-directory": {
     level: "error",
-    label: "not a folder",
+    label: "Not a folder",
     message: "A skill is a folder with a SKILL.md in it. Pick one of those.",
   },
   "destination-exists": {
     level: "error",
-    label: "that name is taken",
+    label: "Name taken",
     message: "The Harness already holds a folder under it. Pick another name.",
   },
   "unsafe-link": {
     level: "error",
-    label: "it holds a symbolic link",
+    label: "Symbolic link inside",
     message:
-      "Maestro will not follow one into somewhere else on disk, so nothing was copied. Replace the link with a real file, then import again.",
+      "Nothing was copied. Replace the link with a real file, then Import skill again.",
+    detail: "Maestro will not follow one into somewhere else on disk.",
   },
   "hard-linked-file": {
     level: "error",
-    label: "a file is shared elsewhere",
+    label: "Shared file inside",
     message:
-      "Copying it would tie the Harness to a file it does not own, so nothing was copied. Replace it with a plain copy, then import again.",
+      "Nothing was copied. Replace it with a plain copy, then Import skill again.",
+    detail: "Copying it would tie the Harness to a file it does not own.",
   },
   "special-file": {
     level: "error",
-    label: "it holds a special file",
+    label: "Special file inside",
     message:
-      "Maestro carries plain files and folders only, so nothing was copied. Take it out of the folder, then import again.",
+      "Nothing was copied. Take it out of the folder, then Import skill again.",
+    detail: "Maestro carries plain files and folders only.",
   },
   "too-many-files": {
     level: "error",
-    label: "over 1,000 files",
+    label: "Over 1,000 files",
     message:
-      "Nothing was copied. A skill is a handful of files — pick the skill folder itself, not the repository around it.",
+      "Nothing was copied. Pick the skill folder itself, not the repository around it.",
   },
   "too-large": {
     level: "error",
-    label: "over 50 MiB",
+    label: "Over 50 MiB",
     message:
-      "Nothing was copied. A skill is text — pick the skill folder itself, not the repository around it.",
+      "Nothing was copied. Pick the skill folder itself, not the repository around it.",
   },
   "source-changed": {
     level: "error",
-    label: "the folder changed mid-copy",
+    label: "Folder edit mid-copy",
     message:
-      "Nothing was left in the Harness. Let the edit on disk finish, then import again.",
+      "Nothing was left in the Harness. Let the edit on disk finish, then Import skill again.",
   },
   "copy-failed": {
     level: "error",
-    label: "the copy did not finish",
+    label: "Unfinished copy",
     message:
-      "Nothing was left in the Harness. Check that there is room on disk, then import again.",
+      "Nothing was left in the Harness. Free up disk space, then Import skill again.",
   },
   "destination-unsafe": {
     level: "error",
-    label: "the skills folder is outside",
+    label: "Skills folder outside the Harness",
     message:
-      "Writing there would land outside the Harness, so nothing was copied. Check that the Harness clone's skills folder is a real folder inside it.",
+      "Nothing was copied. Make the clone's skills folder a real folder inside it.",
   },
+};
+
+// The same words the promote table refuses a press with, painted on the row
+// before any press. Info, not warning: a warning is a way through at a cost
+// (#465, decision 3), and pulling the teammate's change is the only way here.
+export const CONCURRENT_CHANGE_NOTICE: NoticeContent = {
+  ...promoteHeadings["concurrent-change"],
+  level: "info",
 };
 
 // One fallback per surface: a failure no row covers still costs each of these
@@ -329,7 +351,7 @@ export const refreshNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(harnessHeadings, error, {
     label: "GitHub not read",
     message:
-      "The Maestro server did not answer, so the Harness is as it was. Press refresh again.",
+      "The Maestro server did not answer, so the Harness is as it was. Press Refresh again.",
   });
 
 export const releasePlanNotice = (error: unknown): NoticeContent | null =>
@@ -343,33 +365,37 @@ export const publishReleaseNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(publishReleaseHeadings, error, {
     label: "Release not published",
     message:
-      "The Maestro server did not answer, and no tag was pushed. Confirm the release again.",
+      "The Maestro server did not answer, and no tag was pushed. Publish release again.",
   });
 
 export const promoteNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(promoteHeadings, error, {
-    label: "Skill not promoted",
+    label: "Change not proposed",
     message:
-      "The Maestro server did not answer, and nothing was pushed. Press promote again.",
+      "The Maestro server did not answer, and nothing was pushed. Propose change again.",
   });
 
 export const removalNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(deletionHeadings, error, {
-    label: "Removal not published",
+    label: "Removal not proposed",
     message:
-      "The Maestro server did not answer, and nothing was pushed. Confirm the removal again.",
+      "The Maestro server did not answer, and nothing was pushed. Remove skill again.",
   });
 
 export const importNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(importHeadings, error, {
     label: "Nothing imported",
     message:
-      "The Maestro server did not answer, and nothing reached the Harness. Import the folder again.",
+      "The Maestro server did not answer, and nothing reached the Harness. Import skill again.",
   });
 
 // The check's refusals never travel as an HTTP failure — they come back in a
-// successful reply, with the sentence written in `import-view-model`.
+// successful reply. The table's own sentence stands unless the dialog's way
+// through differs, which `import-view-model` says where it does.
 export const importBlockerNotice = (
   blocker: ImportSourceBlocker | ImportNameBlocker,
-  message: string,
-): NoticeContent => ({ ...importHeadings[blocker], message });
+  message?: string,
+): NoticeContent =>
+  message === undefined
+    ? importHeadings[blocker]
+    : { ...importHeadings[blocker], message };

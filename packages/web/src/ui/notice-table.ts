@@ -18,6 +18,8 @@ type TableRow = {
   level: Exclude<NoticeLevel, "warning">;
   label: string;
   message: string;
+  /** Why this happened — one sentence, replaced by a caller's own `detail`. */
+  detail?: string;
 };
 
 export type NoticeTable<TCode extends string> = Record<TCode, TableRow>;
@@ -45,5 +47,11 @@ export function noticeFromTable<TCode extends string>(
   // reaches the screen, so neither does apm prose (ADR-0018).
   return row === undefined
     ? { level: "error", ...fallback, ...extras }
-    : { level: row.level, label: row.label, message: row.message, ...extras };
+    : {
+        level: row.level,
+        label: row.label,
+        message: row.message,
+        ...(row.detail === undefined ? {} : { detail: row.detail }),
+        ...extras,
+      };
 }

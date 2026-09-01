@@ -112,7 +112,7 @@ describe("Harness import flow", () => {
     expect(await screen.findByLabelText(/name in the harness/i)).toHaveValue(
       "code-review",
     );
-    await user.click(screen.getByRole("button", { name: "import" }));
+    await user.click(screen.getByRole("button", { name: "Import skill" }));
 
     await waitFor(() => {
       expect(imports).toEqual([{ source: SOURCE, name: "code-review" }]);
@@ -147,7 +147,7 @@ describe("Harness import flow", () => {
     expect(field).toHaveAccessibleDescription(
       /already holds a skill under it/i,
     );
-    expect(screen.getByRole("button", { name: "import" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Import skill" })).toBeDisabled();
   });
 
   it("reports the conventions without closing Import", async () => {
@@ -162,7 +162,7 @@ describe("Harness import flow", () => {
     expect(
       await screen.findByText("SKILL.md is over 500 lines."),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "import" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Import skill" })).toBeEnabled();
   });
 
   it("asks again with the typed name", async () => {
