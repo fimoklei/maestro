@@ -84,7 +84,7 @@ describe("registration reporting (issue #175)", () => {
     requestedPath: "/home/me/acme-api",
     path: "/home/me/acme-api",
     ok: false,
-    reason: "skipped · not a directory",
+    reason: "Skipped · not a directory",
   };
 
   it("drops the write promise once the run has started, there being nothing left to promise", async () => {
@@ -144,7 +144,7 @@ describe("registration reporting (issue #175)", () => {
 
     await screen.findByRole("list", { name: /result/i });
     expect(screen.getByText("registered")).toBeInTheDocument();
-    expect(screen.getByText("skipped · not a directory")).toBeInTheDocument();
+    expect(screen.getByText("Skipped · not a directory")).toBeInTheDocument();
   });
 
   it("renames itself for the run, so the heading never contradicts what is under it", async () => {

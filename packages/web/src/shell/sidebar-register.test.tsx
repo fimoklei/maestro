@@ -57,7 +57,7 @@ function stubServer({
         if (init?.method === "POST") {
           const { path } = JSON.parse(String(init.body)) as { path: string };
           if (rejecting.includes(path)) {
-            return jsonResponse({ message: "Path is not a directory." }, 400);
+            return jsonResponse({ error: "not-a-directory" }, 400);
           }
           repos = [...repos, { path }];
           return jsonResponse({ repos }, 201);
@@ -116,7 +116,7 @@ describe("sidebar register affordance", () => {
       name: "Registration results",
     });
     expect(
-      within(report).getByText(/skipped · Path is not a directory/i),
+      within(report).getByText(/Skipped · That path names a file/i),
     ).toBeInTheDocument();
     const targets = screen.getByRole("list", { name: "Targets" });
     expect(

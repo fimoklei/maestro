@@ -5,24 +5,26 @@ import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 const browseHeadings: NoticeTable<BrowseError> = {
   "outside-root": {
     level: "error",
-    label: "outside the browsable area",
-    message: "Maestro browses inside the home folder only. Pick one under it.",
+    label: "Out of reach",
+    message: "Pick a folder inside your home folder.",
+    detail: "Maestro browses inside the home folder only.",
   },
   "not-found": {
     level: "error",
-    label: "no folder at that path",
-    message:
-      "It may have been moved or deleted since the last look. Pick another folder.",
+    label: "No folder at that path",
+    message: "Pick another folder.",
+    detail: "It may have been moved or deleted since the last look.",
   },
   "not-a-directory": {
     level: "error",
-    label: "not a folder",
+    label: "Not a folder",
     message: "That path points at a file. Pick the folder that holds it.",
   },
   unreadable: {
     level: "error",
-    label: "folder could not be read",
-    message: "Its permissions do not allow reading. Pick another folder.",
+    label: "Folder unreadable",
+    message: "Pick another folder.",
+    detail: "Its permissions do not allow reading.",
   },
 };
 
@@ -30,8 +32,7 @@ const browseHeadings: NoticeTable<BrowseError> = {
 // last read, so the sentence sends the user back to the picker (#688).
 export function browseNotice(error: unknown): NoticeContent | null {
   return noticeFromTable(browseHeadings, error, {
-    label: "Folder not loaded",
-    message:
-      "The Maestro server did not answer, so this folder is still unread. Pick it again.",
+    label: "Folder not read",
+    message: "The Maestro server did not answer. Pick the folder again.",
   });
 }

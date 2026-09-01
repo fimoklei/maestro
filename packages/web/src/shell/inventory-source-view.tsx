@@ -20,11 +20,12 @@ const SOURCE_CARD_WIDTH = "max-w-lg";
 
 // The Re-read button sits directly below, so the notice carries no action of
 // its own — a second copy of the same control would compete with it.
-const READ_FAILED: NoticeContent = {
+export const READ_FAILED: NoticeContent = {
   level: "error",
-  label: "the inventory did not load",
-  message:
-    "The folder below may have moved, or its apm.yml may no longer be readable. Check the path, then re-read.",
+  label: "Inventory not read",
+  message: "Check the path below, then press Re-read.",
+  detail:
+    "The folder may have moved, or Maestro can no longer read its apm.yml.",
 };
 
 export function InventorySourceView() {

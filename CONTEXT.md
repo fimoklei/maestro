@@ -152,7 +152,8 @@ details may name the exact APM mechanism or file.
 | `apm.yml` | `apm.yml` | Name the file in a `detail`, never in the sentence — the reader meets it in their own editor. |
 | Bulk removal outcome | **Left alone** | A target the run did not remove, whether it refused or failed; never *skipped*. |
 | Remove | **Remove** / **Removal** | *Remove* is the action, *removal* is the noun for the attempt and its outcome. |
-| Deploy-state read failure | **Not read** | A read that failed says `{the thing} not read`; the way out is always *Reload the page*. |
+| Read failure | **Not read** | Any read that failed says `{the thing} not read` — never *not loaded*. On a deploy-state read the way out is always *Reload the page*. |
+| Registration outcome | **Registered** / **Skipped** | A repository the run did not register is **skipped**; *left alone* stays the bulk-removal word. |
 | Browser reload | **Page** | Say *Reload the page*; never *screen* or *reload the view* for the same act. |
 | Symbolic link | **Link** | A linked skill directory is a **linked skill folder**; *symlink* never reaches the screen. |
 | Directory | **Folder** | One word for the concept, on every surface. |
