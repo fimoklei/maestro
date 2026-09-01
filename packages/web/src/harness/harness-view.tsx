@@ -173,7 +173,7 @@ export function HarnessView() {
               disabled={!releaseEnabled(state.freshness) || refresh.isPending}
               onClick={() => setPlanOpen(true)}
             >
-              release
+              Plan release
             </Button>
             <Button
               variant="quiet"
@@ -191,7 +191,7 @@ export function HarnessView() {
               size="sm"
               onClick={() => setImportOpen(true)}
             >
-              import skill
+              Import skill…
             </Button>
           </HarnessStrip>
           <Card className="mt-3" padded>

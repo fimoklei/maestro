@@ -100,7 +100,7 @@ export function ImportDialog({
                 size="sm"
                 onClick={onPickSource}
               >
-                {source === null ? "pick folder" : "change"}
+                {source === null ? "Pick folder" : "Change folder"}
               </Button>
             </div>
             {/* The answer to picking a folder, so it announces assertively —

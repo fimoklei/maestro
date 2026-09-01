@@ -106,7 +106,7 @@ const suites: [
         {
           level: "error",
           label: "No answer from GitHub",
-          message: "Press Refresh, then open the release again.",
+          message: "Press Refresh, then Plan release again.",
           detail: "A release plan is measured against what GitHub holds.",
         },
       ],
@@ -166,8 +166,7 @@ const suites: [
         {
           level: "error",
           label: "Release already running",
-          message:
-            "Wait for that release to finish, then open the release again.",
+          message: "Wait for that release to finish, then Plan release again.",
           detail: "Maestro publishes one release at a time.",
         },
       ],

@@ -75,7 +75,7 @@ describe("first-run gate", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: /central inventory not connected/i,
+        name: /inventory not connected/i,
       }),
     ).toBeInTheDocument();
   });
@@ -109,7 +109,7 @@ describe("first-run gate", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: /central inventory not connected/i,
+        name: /inventory not connected/i,
       }),
     ).toBeInTheDocument();
     expect(
@@ -125,7 +125,7 @@ describe("first-run gate", () => {
     // even during the pending window (Codex review finding, mirrors connect-view.tsx).
     expect(
       screen.queryByRole("heading", {
-        name: /central inventory not connected/i,
+        name: /inventory not connected/i,
       }),
     ).not.toBeInTheDocument();
 
@@ -134,7 +134,7 @@ describe("first-run gate", () => {
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", {
-        name: /central inventory not connected/i,
+        name: /inventory not connected/i,
       }),
     ).not.toBeInTheDocument();
   });
@@ -164,7 +164,7 @@ describe("first-run gate", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: /central inventory not connected/i,
+        name: /inventory not connected/i,
       }),
     ).toBeInTheDocument();
   });

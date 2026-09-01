@@ -52,7 +52,7 @@ describe("connect gate", () => {
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: /central inventory not connected/i,
+        name: /inventory not connected/i,
       }),
     ).toBeInTheDocument();
 
@@ -63,7 +63,7 @@ describe("connect gate", () => {
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: /connect central inventory/i,
+        name: /inventory connection/i,
       }),
     ).toBeInTheDocument();
 
@@ -381,7 +381,7 @@ describe("connect gate", () => {
       expect(
         await screen.findByRole("heading", {
           level: 1,
-          name: /central inventory not connected/i,
+          name: /inventory not connected/i,
         }),
       ).toBeInTheDocument();
     },

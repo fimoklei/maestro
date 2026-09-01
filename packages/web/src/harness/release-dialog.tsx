@@ -15,9 +15,9 @@ export type ReleasePlanLoad =
   | { kind: "ready"; plan: ReleasePlan };
 
 const STEP_SEGMENTS: readonly { value: SemverStep; label: string }[] = [
-  { value: "patch", label: "patch" },
-  { value: "minor", label: "minor" },
-  { value: "major", label: "major" },
+  { value: "patch", label: "Patch" },
+  { value: "minor", label: "Minor" },
+  { value: "major", label: "Major" },
 ];
 
 // One advisory sentence per broken manifest. States the fact, never a verdict:

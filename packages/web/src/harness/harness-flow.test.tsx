@@ -397,7 +397,7 @@ describe("Harness home base", () => {
     const promotion = (
       await screen.findByRole("heading", {
         level: 3,
-        name: /pending promotion/i,
+        name: /pending proposal/i,
       })
     ).closest("section");
     expect(
@@ -424,7 +424,7 @@ describe("Harness home base", () => {
     expect(
       await screen.findByRole("heading", {
         level: 3,
-        name: /pending promotion/i,
+        name: /pending proposal/i,
       }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/pending review/i)).not.toBeInTheDocument();
@@ -451,7 +451,7 @@ describe("Harness home base", () => {
     expect(
       await screen.findByText("Merged changes are waiting for release."),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/pending promotion/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/pending proposal/i)).not.toBeInTheDocument();
   });
 
   const FETCHED: HarnessState = {
@@ -487,7 +487,9 @@ describe("Harness home base", () => {
     renderHarness();
 
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: /^release$/i })).toBeDisabled(),
+      expect(
+        screen.getByRole("button", { name: /^plan release$/i }),
+      ).toBeDisabled(),
     );
   });
 
@@ -495,7 +497,9 @@ describe("Harness home base", () => {
     stubHarnessServer({ read: { body: FETCHED }, plan: { body: PLAN } });
     renderHarness();
 
-    const release = await screen.findByRole("button", { name: /^release$/i });
+    const release = await screen.findByRole("button", {
+      name: /^plan release$/i,
+    });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
 
@@ -521,7 +525,9 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    const release = await screen.findByRole("button", { name: /^release$/i });
+    const release = await screen.findByRole("button", {
+      name: /^plan release$/i,
+    });
     await waitFor(() => expect(release).toBeDisabled());
 
     finishRefresh();
@@ -540,7 +546,9 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    const release = await screen.findByRole("button", { name: /^release$/i });
+    const release = await screen.findByRole("button", {
+      name: /^plan release$/i,
+    });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
     expect(await screen.findByText("v1.3.0")).toBeInTheDocument();
@@ -572,7 +580,9 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    const release = await screen.findByRole("button", { name: /^release$/i });
+    const release = await screen.findByRole("button", {
+      name: /^plan release$/i,
+    });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
     await screen.findByText("v1.3.0");
@@ -601,7 +611,9 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    const release = await screen.findByRole("button", { name: /^release$/i });
+    const release = await screen.findByRole("button", {
+      name: /^plan release$/i,
+    });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
     await screen.findByText("v1.3.0");
@@ -638,7 +650,9 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    const release = await screen.findByRole("button", { name: /^release$/i });
+    const release = await screen.findByRole("button", {
+      name: /^plan release$/i,
+    });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
     await screen.findByText("v1.3.0");
@@ -669,7 +683,9 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    const release = await screen.findByRole("button", { name: /^release$/i });
+    const release = await screen.findByRole("button", {
+      name: /^plan release$/i,
+    });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
     await screen.findByText("v1.3.0");
@@ -706,7 +722,9 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    const release = await screen.findByRole("button", { name: /^release$/i });
+    const release = await screen.findByRole("button", {
+      name: /^plan release$/i,
+    });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
     await screen.findByText("v1.3.0");
@@ -743,7 +761,9 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    const release = await screen.findByRole("button", { name: /^release$/i });
+    const release = await screen.findByRole("button", {
+      name: /^plan release$/i,
+    });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
     await screen.findByText("v1.3.0");
@@ -782,7 +802,9 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    const release = await screen.findByRole("button", { name: /^release$/i });
+    const release = await screen.findByRole("button", {
+      name: /^plan release$/i,
+    });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
     await screen.findByText("v1.3.0");
@@ -817,7 +839,9 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    const release = await screen.findByRole("button", { name: /^release$/i });
+    const release = await screen.findByRole("button", {
+      name: /^plan release$/i,
+    });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
     await screen.findByText("v1.3.0");
@@ -845,7 +869,9 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    const release = await screen.findByRole("button", { name: /^release$/i });
+    const release = await screen.findByRole("button", {
+      name: /^plan release$/i,
+    });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
     await screen.findByText("v1.3.0");
@@ -992,7 +1018,7 @@ describe("Harness home base", () => {
       await screen.findByRole("heading", { level: 3, name: /pending review/i })
     ).closest("section") as HTMLElement;
     const link = await within(review).findByRole("link", {
-      name: /pull request/i,
+      name: /Pull request/i,
     });
     expect(link).toHaveAttribute("href", PUSHED.pullRequestUrl);
     expect(within(review).getByText("lint-rules")).toBeVisible();
@@ -1189,7 +1215,7 @@ describe("Harness home base", () => {
       await screen.findByRole("heading", { level: 3, name: /pending review/i })
     ).closest("section") as HTMLElement;
     const link = await within(review).findByRole("link", {
-      name: /pull request/i,
+      name: /Pull request/i,
     });
     expect(link).toHaveAttribute("href", REMOVED.pullRequestUrl);
     // The confirmation and the row it was opened from both unmounted, so
