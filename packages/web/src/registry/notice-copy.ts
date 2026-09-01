@@ -1,5 +1,6 @@
 import type { RepoPathError } from "@maestro/core";
 import { HttpError } from "../api/http";
+import { requestShapeNotice } from "../ui/notice-table";
 
 // The register run's report has no heading above it, so each sentence names
 // its own subject — unlike the connect form's four, which start at the
@@ -30,11 +31,11 @@ export function registerMessage(error: unknown): string {
   if (!(error instanceof HttpError) || error.code === undefined) {
     return NOT_ANSWERED;
   }
-  // The one exception to "no sentence crosses the wire" (ADR-0025 §8): the
-  // request-shape messages are authored in `server` and say which field is
-  // wrong. Registration's route can answer no other code from `server` itself.
-  if (error.code === "invalid-body") {
-    return error.message;
+  // The report row is one line with nowhere to put a `detail`, so it takes the
+  // shared notice's sentence alone.
+  const requestShape = requestShapeNotice(error);
+  if (requestShape) {
+    return requestShape.message;
   }
   return (
     registerSentences[error.code as RepoPathError | "central-inventory"] ??

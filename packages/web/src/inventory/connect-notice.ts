@@ -9,10 +9,9 @@ import {
   noticeFromTable,
 } from "../ui/notice-table";
 
-// The four path-shape failures both surfaces share. Written once: a heading
+// The four path-shape failures both surfaces share, written once: a heading
 // already names the subject, so each sentence starts at the recovery (#465,
-// decision 9). The register run's report has no heading and keeps its own
-// standalone wording.
+// decision 9).
 const repoPathHeadings: NoticeTable<
   "missing" | "relative" | "not-found" | "not-a-directory"
 > = {

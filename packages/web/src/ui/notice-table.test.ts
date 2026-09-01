@@ -42,6 +42,27 @@ describe("noticeFromTable", () => {
     });
   });
 
+  // The one sentence the server writes (ADR-0025 §8). Every builder routes it
+  // through `requestShapeNotice`, so no table needs a row for it.
+  it("hands a request-shape refusal to the shared path", () => {
+    const notice = noticeFromTable(
+      headings,
+      new HttpError(400, "No path reached the server.", "invalid-body", {
+        error: "invalid-body",
+        message: "No path reached the server.",
+        detail: "The request carries a path: { path: string }.",
+      }),
+      fallback,
+    );
+
+    expect(notice).toEqual({
+      level: "error",
+      label: "Request not accepted",
+      message: "No path reached the server.",
+      detail: "The request carries a path: { path: string }.",
+    });
+  });
+
   it("rejects a row that carries no sentence", () => {
     const rows: NoticeTable<"web-owns-it"> = {
       // @ts-expect-error a copy table row must carry its own sentence

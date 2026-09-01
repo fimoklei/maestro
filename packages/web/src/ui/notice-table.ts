@@ -1,19 +1,9 @@
 import { HttpError } from "../api/http";
 import type { NoticeAction, NoticeContent, NoticeLevel } from "./notice";
 
-// `web` owns the heading and the level for every code a server error table can
-// return. A table is exhaustive by compiler, so a new code in `core` fails
-// typecheck without a row.
-export type NoticeHeading = {
-  level: NoticeLevel;
-  label: string;
-  message?: string;
-};
-
 // A row carries its own sentence: the server sends the code and the status
-// alone (ADR-0025). No warning in a table either — a warning must carry the
-// consequence it costs as a required action, which a table cannot know. Those
-// are written at the call site.
+// alone (ADR-0025). A warning is written at its call site instead — see
+// ADR-0025 for why a table cannot hold one.
 type TableRow = {
   level: Exclude<NoticeLevel, "warning">;
   label: string;
@@ -34,6 +24,25 @@ export type NoticeFallback = {
   detail?: string;
 };
 
+/**
+ * The one notice the server writes, not `web` (ADR-0025 §8): the request never
+ * matched the route's shape. Null for every other failure. Every builder that
+ * can meet `invalid-body` renders it through here, so the three read alike.
+ */
+export function requestShapeNotice(error: unknown): NoticeContent | null {
+  if (!(error instanceof HttpError) || error.code !== "invalid-body") {
+    return null;
+  }
+  const detail = (error.body as { detail?: unknown } | null | undefined)
+    ?.detail;
+  return {
+    level: "error",
+    label: "Request not accepted",
+    message: error.message,
+    ...(typeof detail === "string" ? { detail } : {}),
+  };
+}
+
 export function noticeFromTable<TCode extends string>(
   table: NoticeTable<TCode>,
   error: unknown,
@@ -42,6 +51,10 @@ export function noticeFromTable<TCode extends string>(
 ): NoticeContent | null {
   if (!error) {
     return null;
+  }
+  const requestShape = requestShapeNotice(error);
+  if (requestShape) {
+    return requestShape;
   }
   const row =
     error instanceof HttpError

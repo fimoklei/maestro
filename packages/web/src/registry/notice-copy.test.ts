@@ -38,9 +38,16 @@ describe("registerMessage", () => {
   it("keeps the server's own words for a request the server could not read", () => {
     expect(
       registerMessage(
-        new HttpError(400, "Expected a JSON body with a path.", "invalid-body"),
+        new HttpError(
+          400,
+          "No path reached the server. Reload the page, then name the folder again.",
+          "invalid-body",
+          { detail: "The request carries a path: { path: string }." },
+        ),
       ),
-    ).toBe("Expected a JSON body with a path.");
+    ).toBe(
+      "No path reached the server. Reload the page, then name the folder again.",
+    );
   });
 
   it("never renders the wrapper's own status line for an uncovered code", () => {

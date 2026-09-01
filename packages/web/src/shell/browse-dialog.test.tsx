@@ -359,7 +359,7 @@ describe("BrowseDialog", () => {
     });
 
     const row = await screen.findByRole("button", { name: "acme-web" });
-    // Being a git repo is the norm here; only the refusal ("Not a git repo")
+    // Being a git repo is the norm here; only the refusal ("Not a git repository")
     // is worth a chip.
     expect(row).not.toHaveTextContent("git");
     expect(row).toHaveTextContent("● Registered");
@@ -929,7 +929,7 @@ describe("BrowseDialog", () => {
         screen.getByRole("checkbox", { name: /payments-api/i }),
       ).toBeInTheDocument();
       expect(screen.getByRole("checkbox", { name: /scratch/i })).toBeDisabled();
-      expect(screen.getByText("Not a git repo")).toBeInTheDocument();
+      expect(screen.getByText("Not a git repository")).toBeInTheDocument();
     });
 
     it("shows the connected central inventory as unavailable", async () => {

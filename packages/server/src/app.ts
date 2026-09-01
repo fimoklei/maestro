@@ -147,24 +147,64 @@ const deletionBodySchema = z.object({
   seenRemoteTree: z.string(),
 });
 
-const PROMOTE_BODY_MESSAGE = "Expected a JSON body with a skill name.";
+// The eight request-shape refusals — the only prose the server writes
+// (ADR-0025 §8). The sentence states what did not happen and where to restart;
+// the shape rides in `detail`, which is where the reader meets it.
+type RequestShape = { message: string; detail: string };
 
-const DELETION_BODY_MESSAGE =
-  "Expected a JSON body with a skill name and the origin/HEAD tree it was confirmed against.";
+const PROMOTE_BODY: RequestShape = {
+  message:
+    "Nothing was proposed. Reload the page, then propose the change again.",
+  detail: "The request carries a skill name: { name: string }.",
+};
 
-const RELEASE_BODY_MESSAGE =
-  'Expected a JSON body with a version step and the plan\'s previous tag, that tag\'s commit, and its revision ({ step: "major" | "minor" | "patch", previousTag: string | null, previousTagCommit: string | null, revision: string }).';
+const DELETION_BODY: RequestShape = {
+  message:
+    "Nothing was proposed. Reload the page, then remove the skill again.",
+  detail:
+    "The request carries a skill name and the origin/HEAD tree it was confirmed against.",
+};
 
-const PATH_BODY_MESSAGE = "Expected a JSON body with a path.";
+const RELEASE_BODY: RequestShape = {
+  message:
+    "Nothing was released. Reload the page, then publish the release again.",
+  detail:
+    'The request carries a version step and the plan\'s previous tag, that tag\'s commit and its revision: { step: "major" | "minor" | "patch", previousTag, previousTagCommit, revision }.',
+};
 
-const IMPORT_BODY_MESSAGE =
-  "Expected a JSON body with a source folder and an optional name.";
+const PATH_BODY: RequestShape = {
+  message:
+    "No path reached the server. Reload the page, then name the folder again.",
+  detail: "The request carries a path: { path: string }.",
+};
 
-const TARGET_BODY_MESSAGE =
-  'Expected a JSON body with type, name, and target ({ kind: "repo", repoPath } or { kind: "global" }).';
+const IMPORT_BODY: RequestShape = {
+  message:
+    "Nothing was imported. Reload the page, then import the skill again.",
+  detail:
+    "The request carries a source folder and an optional name: { source: string, name?: string }.",
+};
 
-const BULK_BODY_MESSAGE =
-  'Expected a JSON body with a non-empty names array and a target ({ kind: "repo", repoPath } or { kind: "global" }).';
+const TARGET_BODY: RequestShape = {
+  message:
+    "Nothing reached the target. Reload the page, then start the change again.",
+  detail:
+    'The request carries a type, a name and a target: { kind: "repo", repoPath } or { kind: "global" }.',
+};
+
+const BULK_DEPLOY_BODY: RequestShape = {
+  message:
+    "Nothing was deployed. Reload the page, then stage the skills again.",
+  detail:
+    'The request carries a non-empty names array and a target: { kind: "repo", repoPath } or { kind: "global" }.',
+};
+
+const BULK_REMOVE_BODY: RequestShape = {
+  message:
+    "Nothing was removed. Reload the page, then start the removal again.",
+  detail:
+    "The request carries a skill name and a non-empty targets array, each entry carrying a target.",
+};
 
 // Read through the same InventoryReader the primitives route uses, so the two
 // cannot drift. Degrades to 0: a read failure must not turn an
@@ -183,14 +223,14 @@ async function countPrimitives(inventory: InventoryReader): Promise<number> {
 async function parseBody<T>(
   c: Context,
   schema: z.ZodType<T>,
-  message: string,
+  shape: RequestShape,
 ): Promise<{ ok: true; data: T } | { ok: false; response: Response }> {
   const body = await c.req.json().catch(() => null);
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
     return {
       ok: false,
-      response: c.json({ error: "invalid-body", message }, 400),
+      response: c.json({ error: "invalid-body", ...shape }, 400),
     };
   }
   return { ok: true, data: parsed.data };
@@ -546,11 +586,7 @@ export function createApp(deps: AppDeps) {
   // re-reads the remote and computes the exact commit to tag itself, rather
   // than trusting what the browser saw at plan time (#520).
   app.post("/api/harness/release", async (c) => {
-    const body = await parseBody(
-      c,
-      publishReleaseBodySchema,
-      RELEASE_BODY_MESSAGE,
-    );
+    const body = await parseBody(c, publishReleaseBodySchema, RELEASE_BODY);
     if (!body.ok) {
       return body.response;
     }
@@ -572,7 +608,7 @@ export function createApp(deps: AppDeps) {
   // resolved server-side, and the reply carries the branch and the link that
   // opens GitHub's own pull-request flow (#577).
   app.post("/api/harness/promote", async (c) => {
-    const body = await parseBody(c, promoteBodySchema, PROMOTE_BODY_MESSAGE);
+    const body = await parseBody(c, promoteBodySchema, PROMOTE_BODY);
     if (!body.ok) {
       return body.response;
     }
@@ -594,7 +630,7 @@ export function createApp(deps: AppDeps) {
   // carries the origin/HEAD tree the author confirmed against, so a remote
   // that moved under it is refused rather than removed (#580).
   app.post("/api/harness/promote/deletion", async (c) => {
-    const body = await parseBody(c, deletionBodySchema, DELETION_BODY_MESSAGE);
+    const body = await parseBody(c, deletionBodySchema, DELETION_BODY);
     if (!body.ok) {
       return body.response;
     }
@@ -618,7 +654,7 @@ export function createApp(deps: AppDeps) {
   // Origin/Host guard covers it. A refusal is data here, not a failure — only
   // an unconnected harness is a status.
   app.post("/api/harness/import/check", async (c) => {
-    const body = await parseBody(c, importBodySchema, IMPORT_BODY_MESSAGE);
+    const body = await parseBody(c, importBodySchema, IMPORT_BODY);
     if (!body.ok) {
       return body.response;
     }
@@ -634,7 +670,7 @@ export function createApp(deps: AppDeps) {
   // Importing itself. Re-judges everything the check judged, so a source or a
   // harness that moved since is refused rather than copied (security.md).
   app.post("/api/harness/import", async (c) => {
-    const body = await parseBody(c, importBodySchema, IMPORT_BODY_MESSAGE);
+    const body = await parseBody(c, importBodySchema, IMPORT_BODY);
     if (!body.ok) {
       return body.response;
     }
@@ -650,7 +686,7 @@ export function createApp(deps: AppDeps) {
   // Connect: a pasted path is persisted offline; a GitHub URL is cloned to a
   // new folder under the home ceiling first and then connected (#554).
   app.post("/api/inventory/connect", async (c) => {
-    const body = await parseBody(c, connectBodySchema, PATH_BODY_MESSAGE);
+    const body = await parseBody(c, connectBodySchema, PATH_BODY);
     if (!body.ok) {
       return body.response;
     }
@@ -680,7 +716,7 @@ export function createApp(deps: AppDeps) {
   // from scratch in core — this endpoint takes one from the client, and the
   // offer that carried it is not evidence (security.md, #556).
   app.post("/api/harness/scaffold", async (c) => {
-    const body = await parseBody(c, connectBodySchema, PATH_BODY_MESSAGE);
+    const body = await parseBody(c, connectBodySchema, PATH_BODY);
     if (!body.ok) {
       return body.response;
     }
@@ -705,7 +741,7 @@ export function createApp(deps: AppDeps) {
   // Read-only directory browser (ADR-0009). POST deliberately, so the guard
   // above covers this widest read surface — a GET would bypass it.
   app.post("/api/filesystem/children", async (c) => {
-    const body = await parseBody(c, browseBodySchema, PATH_BODY_MESSAGE);
+    const body = await parseBody(c, browseBodySchema, PATH_BODY);
     if (!body.ok) {
       return body.response;
     }
@@ -757,7 +793,7 @@ export function createApp(deps: AppDeps) {
 
   // Business rules live in core; this route validates shape and maps errors.
   app.post("/api/deploy", async (c) => {
-    const body = await parseBody(c, deployBodySchema, TARGET_BODY_MESSAGE);
+    const body = await parseBody(c, deployBodySchema, TARGET_BODY);
     if (!body.ok) {
       return body.response;
     }
@@ -779,7 +815,7 @@ export function createApp(deps: AppDeps) {
   });
 
   app.post("/api/deploy/remove", async (c) => {
-    const body = await parseBody(c, removeBodySchema, TARGET_BODY_MESSAGE);
+    const body = await parseBody(c, removeBodySchema, TARGET_BODY);
     if (!body.ok) {
       return body.response;
     }
@@ -811,7 +847,7 @@ export function createApp(deps: AppDeps) {
 
   // Never a silent "clean" on a failed check — it answers with its own error (#337).
   app.post("/api/deploy/remove/preflight", async (c) => {
-    const body = await parseBody(c, removeBodySchema, TARGET_BODY_MESSAGE);
+    const body = await parseBody(c, removeBodySchema, TARGET_BODY);
     if (!body.ok) {
       return body.response;
     }
@@ -832,7 +868,7 @@ export function createApp(deps: AppDeps) {
   // Shares the deploy use-case's per-target in-flight lock (#292).
   const bulkDeploy = new BulkDeploySkills({ deploy: deps.deploy });
   app.post("/api/deploy/bulk", async (c) => {
-    const body = await parseBody(c, bulkDeployBodySchema, BULK_BODY_MESSAGE);
+    const body = await parseBody(c, bulkDeployBodySchema, BULK_DEPLOY_BODY);
     if (!body.ok) {
       return body.response;
     }
@@ -846,20 +882,12 @@ export function createApp(deps: AppDeps) {
   // every guard, the per-target lock and the reclaim contract stay there (#421).
   const bulkRemove = new BulkRemoveDeployedSkill({ remove: deps.remove });
   app.post("/api/deploy/remove/bulk", async (c) => {
-    const body = await c.req.json().catch(() => null);
-    const parsed = bulkRemoveBodySchema.safeParse(body);
-    if (!parsed.success) {
-      return c.json(
-        {
-          error: "invalid-body",
-          message:
-            'Expected a JSON body with a name and a non-empty targets array, each entry carrying a target ({ kind: "repo", repoPath } or { kind: "global" }).',
-        },
-        400,
-      );
+    const body = await parseBody(c, bulkRemoveBodySchema, BULK_REMOVE_BODY);
+    if (!body.ok) {
+      return body.response;
     }
 
-    const report = await bulkRemove.execute(parsed.data);
+    const report = await bulkRemove.execute(body.data);
     return c.json(report);
   });
 
@@ -897,7 +925,7 @@ export function createApp(deps: AppDeps) {
   );
 
   app.post("/api/registry/repos", async (c) => {
-    const body = await parseBody(c, registerBodySchema, PATH_BODY_MESSAGE);
+    const body = await parseBody(c, registerBodySchema, PATH_BODY);
     if (!body.ok) {
       return body.response;
     }
