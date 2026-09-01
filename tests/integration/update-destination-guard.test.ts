@@ -117,6 +117,7 @@ describe("update journey against the real destination guard", () => {
         },
       },
       inventoryGit: {
+        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => false,
       },
