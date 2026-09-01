@@ -319,107 +319,39 @@ const REPO_PATH_RESPONSES: ErrorTable<RepoPathError> = {
 };
 
 // The same four failures under a Notice heading, which already names the
-// subject, so these start at the recovery (#465, decision 9). The register
-// run's report has no heading and keeps the standalone wording above.
+// subject. The sentences live in `inventory/connect-notice.ts`; the register
+// run's report has no heading and keeps its own standalone wording (#465,
+// decision 9).
 const HEADED_REPO_PATH_RESPONSES: ErrorTable<RepoPathError> = {
-  missing: {
-    status: 400,
-    message:
-      "Type the path to a local Harness clone, or paste a GitHub repository URL.",
-  },
-  relative: {
-    status: 400,
-    message:
-      "Start it from the root, so it names the same folder wherever Maestro runs.",
-  },
-  "not-found": {
-    status: 400,
-    message: "Nothing is there now. Check the spelling, or browse to it.",
-  },
-  "not-a-directory": {
-    status: 400,
-    message: "That path points at a file. Choose the folder that holds it.",
-  },
+  missing: { status: 400 },
+  relative: { status: 400 },
+  "not-found": { status: 400 },
+  "not-a-directory": { status: 400 },
 };
 
 // Path-shape failures are 400; a real directory that isn't an inventory is
 // 422; a destination something else already holds is a 409 the user clears by
-// choosing elsewhere. No message echoes the path — it may be a misconfigured
-// secret.
+// choosing elsewhere. The sentences live in `inventory/connect-notice.ts`.
 const connectErrorResponses: ErrorTable<ConnectInventoryError> = {
   ...HEADED_REPO_PATH_RESPONSES,
-  // Every sentence here starts where web's heading stopped and never repeats
-  // its subject (#465, decision 9).
-  "not-a-github-url": {
-    status: 400,
-    message:
-      "Maestro clones a Harness from a GitHub repository over https or ssh, or connects a local clone by its path. Paste one of those.",
-  },
-  "url-carries-credentials": {
-    status: 400,
-    message:
-      "Maestro never stores credentials, and git would write them into the clone. Paste the plain repository URL; the local git credentials do the rest.",
-  },
-  "invalid-parent": {
-    status: 400,
-    message:
-      "Choose an existing folder inside the home area. The Harness lands in it under its own name.",
-  },
-  "destination-occupied": {
-    status: 409,
-    message:
-      "Maestro never renames or deletes what it finds. Choose another folder to clone into.",
-  },
-  "destination-partial-clone": {
-    status: 409,
-    message:
-      "An interrupted attempt left it behind, and Maestro will not touch it. Delete that folder, or clone into another one.",
-  },
-  "clone-in-progress": {
-    status: 409,
-    message:
-      "The first attempt is still running. Wait for it to finish before starting another.",
-  },
+  "not-a-github-url": { status: 400 },
+  "url-carries-credentials": { status: 400 },
+  "invalid-parent": { status: 400 },
+  "destination-occupied": { status: 409 },
+  "destination-partial-clone": { status: 409 },
+  "clone-in-progress": { status: 409 },
   // GitHub answers a missing, a private and a mistyped repository the same
   // way, so those three share one class (#555).
-  "clone-auth-failed": {
-    status: 422,
-    message:
-      "Maestro uses the local git credentials and never stores any of its own. GitHub access has to be set up in git before this repository can be cloned.",
-  },
-  "clone-unavailable": {
-    status: 422,
-    message:
-      "It may not exist, may be private, or the URL may be mistyped — GitHub answers all three the same way, so Maestro will not guess which. Check the URL, then check access to it on GitHub.",
-  },
+  "clone-auth-failed": { status: 422 },
+  "clone-unavailable": { status: 422 },
   // Nothing about the repository was in question, so nothing here blames it.
-  "clone-failed": {
-    status: 422,
-    message:
-      "The cause is usually local: no disk space, no write access to the destination folder, or a dropped connection. Check those three, then connect again.",
-  },
-  "not-an-inventory": {
-    status: 422,
-    message:
-      "That folder has no apm.yml. Choose a folder that holds a Harness, or paste the GitHub URL of one.",
-  },
+  "clone-failed": { status: 422 },
+  "not-an-inventory": { status: 422 },
   // A refusal that carries an offer: the body adds the path the scaffold would
   // write to (#556).
-  scaffoldable: {
-    status: 422,
-    message:
-      "Maestro can scaffold the canonical empty Harness into that repository and push the first commit to its default branch.",
-  },
-  "no-usable-origin": {
-    status: 422,
-    message:
-      "The folder holds a Harness, but its git origin is missing, unreadable, or in a form apm cannot resolve. Deploys read versions from GitHub tags, so choose a clone whose origin is a GitHub repository over https or ssh.",
-  },
-  "no-default-branch": {
-    status: 422,
-    message:
-      "Maestro cannot tell which branch that Harness's origin treats as the default, and it will not guess one. Choose a clone whose origin has a default branch set.",
-  },
+  scaffoldable: { status: 422 },
+  "no-usable-origin": { status: 422 },
+  "no-default-branch": { status: 422 },
 };
 
 // Accepting the offer the connect table hands out. A push the remote refused
@@ -427,66 +359,18 @@ const connectErrorResponses: ErrorTable<ConnectInventoryError> = {
 // no permission, so it has nothing earlier to say (#556).
 const scaffoldErrorResponses: ErrorTable<ScaffoldHarnessError> = {
   ...HEADED_REPO_PATH_RESPONSES,
-  "not-a-repository": {
-    status: 422,
-    message:
-      "A Harness is scaffolded into a clone of a GitHub repository, and that folder is not one.",
-  },
-  "already-a-harness": {
-    status: 409,
-    message:
-      "It already holds an apm.yml, so there is nothing to scaffold. Connect it as it is.",
-  },
-  "path-occupied": {
-    status: 409,
-    message:
-      "The scaffold would have overwritten files already in that repository, so it wrote nothing. Clear them, or scaffold into another repository.",
-  },
-  "no-default-branch": {
-    status: 422,
-    message:
-      "Maestro cannot tell which branch that repository's origin treats as the default, and it will not guess one. Choose a repository whose origin has a default branch set.",
-  },
-  "not-on-default-branch": {
-    status: 409,
-    message:
-      "The scaffold's first commit belongs on the default branch. Switch that clone to it, then scaffold again.",
-  },
-  "not-offered": {
-    status: 409,
-    message:
-      "Maestro only scaffolds a repository it has just offered to scaffold. Connect that repository again to get the offer back.",
-  },
-  busy: {
-    status: 409,
-    message:
-      "The first attempt is still running. Wait for it to finish before starting another.",
-  },
-  "write-failed": {
-    status: 422,
-    message:
-      "Maestro removed the files it had already written, so the repository is as it was. That folder is most likely not writable — check its permissions, then scaffold again.",
-  },
-  "commit-failed": {
-    status: 422,
-    message:
-      "The Harness files are in the clone, but git would not commit them. That happens when the repository has no author identity configured.",
-  },
-  "push-rejected": {
-    status: 422,
-    message:
-      "The commit is safe in the clone. What is missing is push access to that repository's default branch.",
-  },
-  "push-offline": {
-    status: 502,
-    message:
-      "The commit is safe in the clone. It reaches GitHub as soon as the connection is back.",
-  },
-  "connect-failed": {
-    status: 422,
-    message:
-      "The Harness is in the repository and pushed, but Maestro could not connect it. Connect it by its local path.",
-  },
+  "not-a-repository": { status: 422 },
+  "already-a-harness": { status: 409 },
+  "path-occupied": { status: 409 },
+  "no-default-branch": { status: 422 },
+  "not-on-default-branch": { status: 409 },
+  "not-offered": { status: 409 },
+  busy: { status: 409 },
+  "write-failed": { status: 422 },
+  "commit-failed": { status: 422 },
+  "push-rejected": { status: 422 },
+  "push-offline": { status: 502 },
+  "connect-failed": { status: 422 },
 };
 
 // Mirrors the connect table: nothing connected is a 409, a connected clone
@@ -832,14 +716,9 @@ export function createApp(deps: AppDeps) {
   app.get("/api/inventory/primitives", async (c) => {
     const result = await deps.inventory.read();
     if (!result.ok) {
-      // 409: unset/missing/not-a-directory. Never echoes the path.
-      return c.json(
-        {
-          error: result.error,
-          message: "No inventory is configured. Set the Harness source path.",
-        },
-        409,
-      );
+      // 409: unset/missing/not-a-directory. Never echoes the path. The
+      // cockpit writes its own words for this read (`inventory-panel.tsx`).
+      return c.json({ error: result.error }, 409);
     }
     return c.json({ primitives: result.primitives });
   });
@@ -1006,14 +885,14 @@ export function createApp(deps: AppDeps) {
       parent: body.data.parent,
     });
     if (!result.ok) {
-      const { status, message } = connectErrorResponses[result.error];
+      const { status } = connectErrorResponses[result.error];
       if (result.error === "scaffoldable") {
         return c.json(
-          { error: result.error, message, path: result.scaffoldPath },
+          { error: result.error, path: result.scaffoldPath },
           status,
         );
       }
-      return c.json({ error: result.error, message }, status);
+      return c.json({ error: result.error }, status);
     }
 
     return c.json({
@@ -1034,15 +913,12 @@ export function createApp(deps: AppDeps) {
 
     const result = await deps.scaffold.scaffold(body.data.path);
     if (!result.ok) {
-      const { status, message } = scaffoldErrorResponses[result.error];
+      const { status } = scaffoldErrorResponses[result.error];
       if (result.error === "path-occupied") {
         // Repository-relative, and nothing else about the repository.
-        return c.json(
-          { error: result.error, message, path: result.path },
-          status,
-        );
+        return c.json({ error: result.error, path: result.path }, status);
       }
-      return c.json({ error: result.error, message }, status);
+      return c.json({ error: result.error }, status);
     }
 
     return c.json({
