@@ -45,7 +45,7 @@ describe("DeployStatePanel drift badge", () => {
     renderPanel("/Users/me/project");
 
     expect(await screen.findByText("tdd")).toBeInTheDocument();
-    expect(await screen.findByText(/behind/i)).toBeInTheDocument();
+    expect(await screen.findByText("Behind")).toBeInTheDocument();
   });
 
   it("shows the deployed -> latest version pair for a behind skill", async () => {
@@ -64,7 +64,7 @@ describe("DeployStatePanel drift badge", () => {
     renderPanel("/Users/me/project");
 
     expect(await screen.findByText("tdd")).toBeInTheDocument();
-    expect(await screen.findByText(/up-to-date/i)).toBeInTheDocument();
+    expect(await screen.findByText(/up to date/i)).toBeInTheDocument();
   });
 
   it("shows unknown, never up-to-date, when the check could not run", async () => {
@@ -73,7 +73,7 @@ describe("DeployStatePanel drift badge", () => {
 
     expect(await screen.findByText("tdd")).toBeInTheDocument();
     expect(await screen.findByText(/unknown/i)).toBeInTheDocument();
-    expect(screen.queryByText(/up-to-date/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/up to date/i)).not.toBeInTheDocument();
   });
 
   it("shows unverified, distinct from unknown and never up-to-date, when apm could not reach the source", async () => {
@@ -82,7 +82,7 @@ describe("DeployStatePanel drift badge", () => {
 
     expect(await screen.findByText("tdd")).toBeInTheDocument();
     expect(await screen.findByText(/unverified/i)).toBeInTheDocument();
-    expect(screen.queryByText(/up-to-date/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/up to date/i)).not.toBeInTheDocument();
     // A reachability failure reads as its own state, not the generic "unknown".
     expect(screen.queryByText(/^unknown$/i)).not.toBeInTheDocument();
   });
@@ -94,7 +94,7 @@ describe("DeployStatePanel drift badge", () => {
     renderPanel("/Users/me/project");
 
     expect(await screen.findByText(/in sync/i)).toBeInTheDocument();
-    expect(screen.queryByText(/▲ drift/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/▲ Behind/)).not.toBeInTheDocument();
   });
 
   it("surfaces a behind name that is not a deployed skill, instead of dropping it", async () => {
@@ -126,6 +126,6 @@ describe("DeployStatePanel drift badge", () => {
       await screen.findByText(/Deploy-state not read/i),
     ).toBeInTheDocument();
     expect(screen.queryByText(/in sync/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/▲ drift/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/▲ Behind/)).not.toBeInTheDocument();
   });
 });

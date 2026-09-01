@@ -260,7 +260,7 @@ describe("DeploySkillAction", () => {
     });
   });
 
-  it("names the deployed version in sync and offers re-deploy for a proven current target", async () => {
+  it("names the deployed version in sync and offers Deploy skill again for a proven current target", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
@@ -286,15 +286,17 @@ describe("DeploySkillAction", () => {
       <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
     );
 
-    expect(await screen.findByText("● in sync · v0.5.1")).toBeInTheDocument();
+    expect(await screen.findByText("● In sync · v0.5.1")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "re-deploy" }),
+      screen.getByRole("button", { name: "Deploy skill again" }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "deploy →" }),
+      screen.queryByRole("button", { name: "Deploy skill" }),
     ).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "re-deploy" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Deploy skill again" }),
+    );
 
     const deployCall = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
       ([url]) => url === "/api/deploy",
@@ -330,7 +332,7 @@ describe("DeploySkillAction", () => {
       <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
     );
 
-    expect(await screen.findByText("● in sync · v0.5.1")).toBeInTheDocument();
+    expect(await screen.findByText("● In sync · v0.5.1")).toBeInTheDocument();
 
     await userEvent.selectOptions(
       screen.getByLabelText(/deploy target for tdd/i),
@@ -338,7 +340,7 @@ describe("DeploySkillAction", () => {
     );
 
     expect(
-      await screen.findByRole("button", { name: "deploy →" }),
+      await screen.findByRole("button", { name: "Deploy skill" }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/in sync/)).not.toBeInTheDocument();
   });
@@ -537,7 +539,7 @@ describe("DeploySkillAction", () => {
     vi.stubGlobal("fetch", fetchMock);
     renderAction(
       <>
-        {/* Named, because the empty panel offers a `deploy →` of its own (#472). */}
+        {/* Named, because the empty panel offers a `Deploy a skill` of its own (#472). */}
         <section aria-label="Pane action">
           <DeploySkillAction
             skillName="tdd"
@@ -550,12 +552,12 @@ describe("DeploySkillAction", () => {
     );
 
     // The panel has loaded and reads empty before the deploy.
-    expect(await screen.findByText("● empty")).toBeInTheDocument();
+    expect(await screen.findByText("● Empty")).toBeInTheDocument();
 
     await userEvent.click(
       within(screen.getByRole("region", { name: "Pane action" })).getByRole(
         "button",
-        { name: "deploy →" },
+        { name: "Deploy skill" },
       ),
     );
 
@@ -604,7 +606,7 @@ describe("DeploySkillAction", () => {
     await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
 
     // The drift query refetched because the deploy invalidated it.
-    expect(await screen.findByText(/behind/i)).toBeInTheDocument();
+    expect(await screen.findByText("Behind")).toBeInTheDocument();
   });
 
   it("refreshes the global deploy-state panel after a global deploy", async () => {
@@ -639,7 +641,7 @@ describe("DeploySkillAction", () => {
     vi.stubGlobal("fetch", fetchMock);
     renderAction(
       <>
-        {/* Named, because the empty panel offers a `deploy →` of its own (#472). */}
+        {/* Named, because the empty panel offers a `Deploy a skill` of its own (#472). */}
         <section aria-label="Pane action">
           <DeploySkillAction skillName="tdd" repos={[]} registryReady />
         </section>
@@ -648,12 +650,12 @@ describe("DeploySkillAction", () => {
     );
 
     // The panel has loaded and reads empty before the deploy.
-    expect(await screen.findByText("● empty")).toBeInTheDocument();
+    expect(await screen.findByText("● Empty")).toBeInTheDocument();
 
     await userEvent.click(
       within(screen.getByRole("region", { name: "Pane action" })).getByRole(
         "button",
-        { name: "deploy →" },
+        { name: "Deploy skill" },
       ),
     );
 
@@ -701,6 +703,6 @@ describe("DeploySkillAction", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
 
-    expect(await screen.findByText(/behind/i)).toBeInTheDocument();
+    expect(await screen.findByText("Behind")).toBeInTheDocument();
   });
 });

@@ -150,7 +150,7 @@ describe("first-run gate", () => {
     // The dead-end this replaces: it must not sit on the neutral "Loading…".
     expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /try again/i }),
+      screen.getByRole("button", { name: /load the screen again/i }),
     ).toBeInTheDocument();
   });
 
@@ -159,7 +159,7 @@ describe("first-run gate", () => {
     renderAt("/welcome");
 
     await userEvent.click(
-      await screen.findByRole("button", { name: /try again/i }),
+      await screen.findByRole("button", { name: /load the screen again/i }),
     );
 
     expect(

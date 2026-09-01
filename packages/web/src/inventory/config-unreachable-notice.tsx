@@ -12,8 +12,8 @@ export function ConfigUnreachableNotice({ onRetry }: { onRetry: () => void }) {
         level: "error",
         label: "Maestro server unreachable",
         message:
-          "Nothing on this screen loads until the Maestro server answers. Check that it is running, then try again.",
-        action: { label: "Try again", onClick: onRetry },
+          "Nothing on this screen loads until the Maestro server answers. Check that it is running, then load the screen again.",
+        action: { label: "Load the screen again", onClick: onRetry },
       }}
     />
   );

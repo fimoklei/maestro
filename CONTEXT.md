@@ -152,6 +152,9 @@ details may name the exact APM mechanism or file.
 | `apm.yml` | `apm.yml` | Name the file in a `detail`, never in the sentence — the reader meets it in their own editor. |
 | Bulk removal outcome | **Left alone** | A target the run did not remove, whether it refused or failed; never *skipped*. |
 | Remove | **Remove** / **Removal** | *Remove* is the action, *removal* is the noun for the attempt and its outcome. |
+| Force reinstall | **Deploy again** | The one label for overwriting a deployed copy that has local edits; never *Reinstall fresh* or *Re-deploy*. |
+| Up-to-date | **Up to date** | One skill's drift status. Never hyphenated on screen. |
+| Target roll-up | **In sync** | A whole target's state, on its card header. A single skill is **Up to date**, never *in sync*. |
 | Read failure | **Not read** | Any read that failed says `{the thing} not read` — never *not loaded*. On a deploy-state read the way out is always *Reload the page*. |
 | Registration outcome | **Registered** / **Skipped** | A repository the run did not register is **skipped**; *left alone* stays the bulk-removal word. |
 | Browser reload | **Page** | Say *Reload the page*; never *screen* or *reload the view* for the same act. |

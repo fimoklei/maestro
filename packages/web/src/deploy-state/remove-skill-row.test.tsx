@@ -122,20 +122,20 @@ async function openRemoveDialog(skill = "tdd") {
     screen.getByRole("button", { name: `Actions for ${skill}` }),
   );
   await userEvent.click(
-    await screen.findByRole("menuitem", { name: "remove…" }),
+    await screen.findByRole("menuitem", { name: "Remove skill" }),
   );
   return screen.findByRole("dialog");
 }
 
 describe("removing a deployed skill from a row", () => {
-  it("carries remove… in the row's actions menu, reachable by keyboard", async () => {
+  it("carries Remove skill in the row's actions menu, reachable by keyboard", async () => {
     renderRow();
 
     await userEvent.tab();
     await userEvent.keyboard("{Enter}");
 
     expect(
-      await screen.findByRole("menuitem", { name: "remove…" }),
+      await screen.findByRole("menuitem", { name: "Remove skill" }),
     ).toBeInTheDocument();
   });
 
@@ -451,7 +451,7 @@ describe("removing a deployed skill from a row", () => {
     // No trace line: the server never named the version this removal ran
     // against, and the screen's own guess is not its answer (#383). The row
     // leaving the refetched card is the evidence.
-    expect(screen.queryByText(/removed tdd/)).toBeNull();
+    expect(screen.queryByText(/Removed tdd/)).toBeNull();
   });
 
   // The same answer on a first attempt means the skill was never deployed here.
@@ -481,7 +481,7 @@ describe("removing a deployed skill from a row", () => {
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       expect(
-        await screen.findByText(`removed tdd v0.5.0 from ${REPO}`),
+        await screen.findByText(`Removed tdd v0.5.0 from ${REPO}`),
       ).toBeInTheDocument();
     });
 
@@ -493,7 +493,7 @@ describe("removing a deployed skill from a row", () => {
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       const announcement = await screen.findByText(
-        `removed tdd v0.5.0 from ${REPO}`,
+        `Removed tdd v0.5.0 from ${REPO}`,
       );
       expect(announcement.closest("[role='status']")).not.toBeNull();
     });
@@ -514,10 +514,10 @@ describe("removing a deployed skill from a row", () => {
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       expect(
-        await screen.findByText(`removed tdd v0.9.0 from ${REPO}`),
+        await screen.findByText(`Removed tdd v0.9.0 from ${REPO}`),
       ).toBeInTheDocument();
       expect(
-        screen.queryByText(`removed tdd v0.5.0 from ${REPO}`),
+        screen.queryByText(`Removed tdd v0.5.0 from ${REPO}`),
       ).not.toBeInTheDocument();
     });
 
@@ -543,15 +543,15 @@ describe("removing a deployed skill from a row", () => {
 
       await openRemoveDialog();
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
-      await screen.findByText(`removed tdd v0.5.0 from ${REPO}`);
+      await screen.findByText(`Removed tdd v0.5.0 from ${REPO}`);
 
       await openRemoveDialog("jobs");
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
-      await screen.findByText(`removed jobs v1.2.0 from ${REPO}`);
+      await screen.findByText(`Removed jobs v1.2.0 from ${REPO}`);
 
       const live = screen.getByRole("status");
-      expect(live).toHaveTextContent(`removed jobs v1.2.0 from ${REPO}`);
-      expect(live).not.toHaveTextContent(`removed tdd v0.5.0 from ${REPO}`);
+      expect(live).toHaveTextContent(`Removed jobs v1.2.0 from ${REPO}`);
+      expect(live).not.toHaveTextContent(`Removed tdd v0.5.0 from ${REPO}`);
     });
 
     // The detected tool set is probed server-side when the removal runs, so a
@@ -578,7 +578,7 @@ describe("removing a deployed skill from a row", () => {
 
       expect(
         await screen.findByText(
-          "removed tdd v0.5.0 from Claude Code and Codex",
+          "Removed tdd v0.5.0 from Claude Code and Codex",
         ),
       ).toBeInTheDocument();
     });
@@ -595,7 +595,7 @@ describe("removing a deployed skill from a row", () => {
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       expect(
-        await screen.findByText(`removed tdd (version unknown) from ${REPO}`),
+        await screen.findByText(`Removed tdd (version unknown) from ${REPO}`),
       ).toBeInTheDocument();
     });
 
@@ -609,7 +609,7 @@ describe("removing a deployed skill from a row", () => {
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       await screen.findByRole("alert");
-      expect(screen.queryByText(/^removed tdd/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/^Removed tdd/)).not.toBeInTheDocument();
     });
 
     it("stays on the card after the last skill on it is gone", async () => {
@@ -618,11 +618,11 @@ describe("removing a deployed skill from a row", () => {
 
       await openRemoveDialog();
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
-      await screen.findByText(`removed tdd v0.5.0 from ${REPO}`);
+      await screen.findByText(`Removed tdd v0.5.0 from ${REPO}`);
       withoutTdd();
 
       expect(
-        screen.getByText(`removed tdd v0.5.0 from ${REPO}`),
+        screen.getByText(`Removed tdd v0.5.0 from ${REPO}`),
       ).toBeInTheDocument();
     });
   });
@@ -633,7 +633,7 @@ describe("removing a deployed skill from a row", () => {
     const renderGlobalRow = () =>
       renderRow({ target: { kind: "global", tools: ["claude", "codex"] } });
 
-    it("offers remove… just as a repo row does", async () => {
+    it("offers Remove skill just as a repo row does", async () => {
       stubFetch(null);
       renderGlobalRow();
 

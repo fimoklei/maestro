@@ -74,7 +74,7 @@ describe("cockpit navigation", () => {
     await userEvent.click(screen.getByRole("button", { name: "Inventory" }));
 
     expect(
-      await screen.findByRole("heading", { name: /central inventory/i }),
+      await screen.findByRole("heading", { name: /^inventory$/i }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: /deploy-state/i }),

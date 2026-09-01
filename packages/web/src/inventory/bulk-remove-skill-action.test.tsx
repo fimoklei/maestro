@@ -72,7 +72,7 @@ function renderAction(targets = TARGETS) {
 
 const openDialog = async () => {
   await userEvent.click(
-    screen.getByRole("button", { name: "remove from all 2 →" }),
+    screen.getByRole("button", { name: "Remove from all 2 targets" }),
   );
 };
 
@@ -260,7 +260,7 @@ describe("BulkRemoveSkillAction", () => {
 
     expect(await screen.findByText("v1.0.0")).toBeInTheDocument();
     await userEvent.click(
-      screen.getByRole("button", { name: "remove from all 1 →" }),
+      screen.getByRole("button", { name: "Remove from all 1 target" }),
     );
     const confirm = await screen.findByRole("button", {
       name: "Remove from 1 targets",
@@ -295,7 +295,7 @@ describe("BulkRemoveSkillAction", () => {
     renderAction([ACME_WEB]);
     const openIt = async () =>
       userEvent.click(
-        screen.getByRole("button", { name: "remove from all 1 →" }),
+        screen.getByRole("button", { name: "Remove from all 1 target" }),
       );
 
     await openIt();
@@ -349,7 +349,7 @@ describe("BulkRemoveSkillAction", () => {
 
     expect(await screen.findByText("v1.0.0")).toBeInTheDocument();
     await userEvent.click(
-      screen.getByRole("button", { name: "remove from all 1 →" }),
+      screen.getByRole("button", { name: "Remove from all 1 target" }),
     );
     const confirm = await screen.findByRole("button", {
       name: "Remove from 1 targets",
@@ -377,7 +377,7 @@ describe("BulkRemoveSkillAction", () => {
     });
     renderAction([ACME_WEB]);
     await userEvent.click(
-      screen.getByRole("button", { name: "remove from all 1 →" }),
+      screen.getByRole("button", { name: "Remove from all 1 target" }),
     );
     const confirm = await screen.findByRole("button", {
       name: "Remove from 1 targets",

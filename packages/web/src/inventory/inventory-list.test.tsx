@@ -89,11 +89,11 @@ describe("InventoryList", () => {
 
     const filter = screen.getByRole("group", { name: /filter by type/i });
     expect(filter).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "all" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "skills" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "All" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Skills" })).toBeInTheDocument();
     // Skills-only data yields exactly all + skills, never a hardcoded five.
     expect(
-      screen.queryByRole("button", { name: "hooks" }),
+      screen.queryByRole("button", { name: "Hooks" }),
     ).not.toBeInTheDocument();
   });
 
@@ -106,9 +106,9 @@ describe("InventoryList", () => {
       <InventoryList primitives={primitives} repos={[]} registryReady />,
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "skills" }));
+    await userEvent.click(screen.getByRole("button", { name: "Skills" }));
 
-    expect(screen.getByRole("button", { name: "skills" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Skills" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -624,7 +624,7 @@ describe("InventoryList", () => {
     );
 
     const bar = screen.getByRole("status", { name: /bulk selection/i });
-    expect(bar).toHaveTextContent(/2 staged for bulk/i);
+    expect(bar).toHaveTextContent(/2 staged for bulk deploy/i);
     expect(bar).toHaveTextContent(/1 hidden by the filter/i);
   });
 
@@ -766,7 +766,7 @@ describe("InventoryList — bulk remove entry point (#422)", () => {
     await openTdd();
 
     expect(
-      screen.getByRole("button", { name: "remove from all 2 \u2192" }),
+      screen.getByRole("button", { name: "Remove from all 2 targets" }),
     ).toBeInTheDocument();
   });
 
@@ -809,7 +809,7 @@ describe("InventoryList — bulk remove entry point (#422)", () => {
     await openTdd();
 
     expect(
-      screen.getByRole("button", { name: "remove from all 2 \u2192" }),
+      screen.getByRole("button", { name: "Remove from all 2 targets" }),
     ).toBeInTheDocument();
   });
 });

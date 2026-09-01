@@ -123,7 +123,7 @@ describe("BulkDeployReport", () => {
     );
 
     await userEvent.click(
-      screen.getByRole("button", { name: /reinstall fresh tdd/i }),
+      screen.getByRole("button", { name: /deploy tdd again/i }),
     );
     expect(onForce).toHaveBeenCalledWith("tdd");
   });

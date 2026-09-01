@@ -104,7 +104,7 @@ describe("BulkDeployBar", () => {
       await screen.findByRole("button", { name: /deploy 2/i }),
     );
     await userEvent.click(
-      await screen.findByRole("button", { name: /reinstall fresh review/i }),
+      await screen.findByRole("button", { name: /deploy review again/i }),
     );
 
     const fetchMock = fetch as ReturnType<typeof vi.fn>;

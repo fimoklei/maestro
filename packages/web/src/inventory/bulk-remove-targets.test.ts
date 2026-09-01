@@ -120,7 +120,7 @@ describe("bulkRemoveTargets", () => {
         ready({ kind: "global" }, ["tdd"], "Codex", "v1.0.0"),
       ]),
     ).toEqual([
-      { target: { kind: "global" }, label: "global", version: "v1.0.0" },
+      { target: { kind: "global" }, label: "Global", version: "v1.0.0" },
     ]);
   });
 });

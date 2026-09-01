@@ -49,7 +49,7 @@ describe("InventoryPanel", () => {
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: /central inventory/i,
+        name: /^inventory$/i,
       }),
     ).toBeInTheDocument();
   });

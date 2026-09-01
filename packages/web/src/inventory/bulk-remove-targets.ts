@@ -14,7 +14,7 @@ export type BulkRemoveCandidate = {
 };
 
 // No tool's own name describes a removal that covers every tool.
-const GLOBAL_LABEL = "global";
+const GLOBAL_LABEL = "Global";
 
 export function bulkRemoveTargets(
   skillName: string,
@@ -53,7 +53,7 @@ export function bulkRemoveTargets(
           : targetLabel(target.target.repoPath, repoPaths),
       // The names list said the skill is here, so a missing version is a
       // short read, not an absent copy — stated as unknown, never as clean.
-      version: deployed?.version ?? "unknown",
+      version: deployed?.version ?? "Unknown",
     });
   }
 

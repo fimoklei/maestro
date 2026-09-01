@@ -51,7 +51,7 @@ export function InventoryPanel() {
     <section className="flex flex-col min-[1200px]:h-[100cqh]">
       <SectionHeader
         level={1}
-        title="Central inventory"
+        title="Inventory"
         meta={
           inventory.isSuccess
             ? `${skillCount} ${skillCount === 1 ? "skill" : "skills"}`
