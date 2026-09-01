@@ -2,17 +2,17 @@ import type {
   DeploySkillError,
   RemoveDeployedSkillError,
   RemovePreflightError,
-  RepoPathError,
 } from "@maestro/core";
 import type { NoticeHeading } from "../ui/notice-table";
 
-// One table over the four unions: a code shared by deploy and remove is the
-// same thing going wrong, so it reads the same in both.
+// One table over the three unions: a code shared by deploy and remove is the
+// same thing going wrong, so it reads the same in both. The path-shape codes
+// are not among them — only connect and scaffold answer with those, and their
+// rows live in `inventory/connect-notice.ts`.
 type DeployStateCode =
   | DeploySkillError
   | RemoveDeployedSkillError
-  | RemovePreflightError
-  | RepoPathError;
+  | RemovePreflightError;
 
 // Read by the remove dialog as a literal level, so the warning it renders
 // carries its own way through (notice.tsx).
@@ -90,10 +90,6 @@ const deployStateNotice: Record<DeployStateCode, NoticeHeading> = {
   },
   "remove-failed": { level: "error", label: "the removal failed" },
   "preflight-failed": { level: "error", label: "the check could not run" },
-  missing: { level: "error", label: "no path given" },
-  relative: { level: "error", label: "the path is not absolute" },
-  "not-found": { level: "error", label: "no directory at that path" },
-  "not-a-directory": { level: "error", label: "the path is not a directory" },
 };
 
 // The sentence per code, kept apart from the headings above because six codes

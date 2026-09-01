@@ -14,8 +14,11 @@ export type NoticeAction = {
 type NoticeBase = {
   label: string;
   message: string;
-  /** A property of the control beside it, not a second problem. */
-  aside?: string;
+  /**
+   * Why this happened, or the alternative recovery — one sentence, never a
+   * second problem (`.claude/rules/copy.md`).
+   */
+  detail?: string;
 };
 
 // The union is the enforcement: a warning cannot compile without the
@@ -66,7 +69,7 @@ export function Notice({ trigger, notice, id }: NoticeProps) {
     return <div id={id} aria-live="polite" className="sr-only" />;
   }
 
-  const { level, label, message, aside, action } = notice;
+  const { level, label, message, detail, action } = notice;
   const assertive =
     (level === "warning" || level === "error") && trigger === "user-action";
   const glyph = glyphs[level];
@@ -94,8 +97,8 @@ export function Notice({ trigger, notice, id }: NoticeProps) {
           {label}
         </span>
         <span className="font-ui text-desc text-fg-2">{message}</span>
-        {aside === undefined ? null : (
-          <span className="font-ui text-desc text-dim">{aside}</span>
+        {detail === undefined ? null : (
+          <span className="font-ui text-desc text-dim">{detail}</span>
         )}
         {action === undefined ? null : (
           <Button

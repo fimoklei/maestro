@@ -249,7 +249,7 @@ describe("ConnectInventoryForm", () => {
           level: "info",
           label: "not a Harness yet",
           message: "That GitHub repository has no apm.yml.",
-          aside: "/home/me/team-harness",
+          detail: "/home/me/team-harness",
           action: { label: "Scaffold the Harness", onClick: onAccept },
         }}
       />,
@@ -283,7 +283,7 @@ describe("ConnectInventoryForm", () => {
           level: "info",
           label: "not a Harness yet",
           message: "That GitHub repository has no apm.yml.",
-          aside: "/home/me/team-harness",
+          detail: "/home/me/team-harness",
           action: {
             label: "Scaffolding…",
             onClick: vi.fn(),

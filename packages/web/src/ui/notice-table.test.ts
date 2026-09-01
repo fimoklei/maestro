@@ -2,13 +2,17 @@ import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
 import { type NoticeTable, noticeFromTable } from "./notice-table";
 
-const headings: NoticeTable<"web-owns-it" | "server-owns-it"> = {
+const headings: NoticeTable<"web-owns-it"> = {
   "web-owns-it": {
     level: "error",
-    label: "nothing was written",
+    label: "Nothing written",
     message: "Give the file a name, then save it again.",
   },
-  "server-owns-it": { level: "error", label: "nothing was read" },
+};
+
+const fallback = {
+  label: "Request not answered",
+  message: "The Maestro server did not answer. Try again.",
 };
 
 describe("noticeFromTable", () => {
@@ -16,19 +20,34 @@ describe("noticeFromTable", () => {
     const notice = noticeFromTable(
       headings,
       new HttpError(422, "The server sentence.", "web-owns-it"),
-      "the request failed",
+      fallback,
     );
 
     expect(notice?.message).toBe("Give the file a name, then save it again.");
   });
 
-  it("shows the server's sentence for a row without one", () => {
+  // The sentence is the row's or the caller's fallback — never the error's, so
+  // `Request failed with status 422.` cannot reach the screen (ADR-0025).
+  it("never reads the sentence off the error", () => {
     const notice = noticeFromTable(
       headings,
-      new HttpError(422, "The server sentence.", "server-owns-it"),
-      "the request failed",
+      new HttpError(422, "The server sentence.", "a-code-this-build-predates"),
+      fallback,
     );
 
-    expect(notice?.message).toBe("The server sentence.");
+    expect(notice).toEqual({
+      level: "error",
+      label: "Request not answered",
+      message: "The Maestro server did not answer. Try again.",
+    });
+  });
+
+  it("rejects a row that carries no sentence", () => {
+    const rows: NoticeTable<"web-owns-it"> = {
+      // @ts-expect-error a copy table row must carry its own sentence
+      "web-owns-it": { level: "error", label: "Nothing written" },
+    };
+
+    expect(rows["web-owns-it"].message).toBeUndefined();
   });
 });
