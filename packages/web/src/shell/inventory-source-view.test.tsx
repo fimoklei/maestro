@@ -3,10 +3,22 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse, renderWithQuery } from "../test-utils";
-import { InventorySourceView } from "./inventory-source-view";
+import { InventorySourceView, READ_FAILED } from "./inventory-source-view";
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+describe("the read-failure notice", () => {
+  it("names the Inventory, the control that retries it and what may have moved", () => {
+    expect(READ_FAILED).toEqual({
+      level: "error",
+      label: "Inventory not read",
+      message: "Check the path below, then press Re-read.",
+      detail:
+        "The folder may have moved, or Maestro can no longer read its apm.yml.",
+    });
+  });
 });
 
 // Routes by URL: current config path, inventory primitives (live "N
@@ -305,9 +317,7 @@ describe("InventorySourceView", () => {
     );
     renderView();
 
-    expect(
-      await screen.findByText(/the inventory did not load/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Inventory not read/i)).toBeInTheDocument();
     expect(screen.queryByText(/loading the count/i)).not.toBeInTheDocument();
     // A pure read failure takes the count pill's place — a stale count beside
     // a failed read would read as two answers to one question.
@@ -354,9 +364,7 @@ describe("InventorySourceView", () => {
     ok = false;
     await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
 
-    expect(
-      await screen.findByText(/the inventory did not load/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Inventory not read/i)).toBeInTheDocument();
     expect(screen.queryByText(/2 primitives/i)).not.toBeInTheDocument();
   });
 
@@ -392,9 +400,9 @@ describe("InventorySourceView", () => {
     renderView();
 
     // The loading skeleton is a role="status" too, so settle on the text first.
-    await screen.findByText(/the inventory did not load/i);
+    await screen.findByText(/Inventory not read/i);
     const notice = screen.getByRole("status");
-    expect(notice).toHaveTextContent(/^✕the inventory did not load/i);
+    expect(notice).toHaveTextContent(/^✕Inventory not read/i);
     expect(notice).toHaveClass("border-danger-border", "bg-danger-bg");
   });
 
@@ -432,9 +440,7 @@ describe("InventorySourceView", () => {
     );
     renderView();
 
-    expect(
-      await screen.findByText(/the inventory did not load/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Inventory not read/i)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
 
@@ -490,9 +496,7 @@ describe("InventorySourceView", () => {
     expect(await screen.findByText(/2 primitives/i)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
-    expect(
-      await screen.findByText(/the inventory did not load/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Inventory not read/i)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
     const status = await screen.findByRole("status");

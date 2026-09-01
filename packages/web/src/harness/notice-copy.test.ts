@@ -66,7 +66,7 @@ const suites: [
     harnessStateNotice,
     {
       level: "error",
-      label: "Harness not loaded",
+      label: "Harness not read",
       message:
         "The Maestro server did not answer. Reload the page to read the Harness again.",
     },
@@ -94,7 +94,7 @@ const suites: [
     releasePlanNotice,
     {
       level: "error",
-      label: "No release plan",
+      label: "Release plan not read",
       message:
         "The Maestro server did not answer, so no version was worked out. Open the release again.",
     },
@@ -361,7 +361,7 @@ const suites: [
     importNotice,
     {
       level: "error",
-      label: "Nothing imported",
+      label: "Skill not imported",
       message:
         "The Maestro server did not answer, and nothing reached the Harness. Import skill again.",
     },

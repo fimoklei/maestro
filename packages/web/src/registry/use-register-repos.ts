@@ -2,7 +2,6 @@
 // serializes registration anyway. One failure never stops the run.
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { HttpError } from "../api/http";
 import { registerMessage } from "./notice-copy";
 import {
   REGISTRY_KEY,
@@ -90,16 +89,14 @@ async function registerOne(
       registry: new Set(repos.map((repo) => repo.path)),
     };
   } catch (error) {
-    const message =
-      error instanceof HttpError
-        ? (registerMessage(error.code) ?? error.message)
-        : "could not reach Maestro to register it";
     return {
       outcome: {
         requestedPath: path,
         path,
         ok: false,
-        reason: `skipped · ${message}`,
+        // The glyph beside the row is aria-hidden, so this line carries the
+        // outcome word as well as the reason.
+        reason: `Skipped · ${registerMessage(error)}`,
       },
     };
   }

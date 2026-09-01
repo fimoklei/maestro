@@ -1,25 +1,43 @@
 import type { RepoPathError } from "@maestro/core";
+import { HttpError } from "../api/http";
 
 // The register run's report has no heading above it, so each sentence names
 // its own subject — unlike the connect form's four, which start at the
 // recovery (`inventory/connect-notice.ts`, #465 decision 9).
 const registerSentences: Record<RepoPathError | "central-inventory", string> = {
-  missing:
-    "Nothing can be registered without one. Name the repository's absolute path.",
+  missing: "No path was sent. Name the repository's absolute path.",
   relative:
-    "Start at the filesystem root, for example /Users/name/code/my-repo.",
+    "A repository is registered by its absolute path, like /Users/name/code/my-repo.",
   "not-found":
-    "Nothing exists there to register. Check the spelling, or browse to the repository instead.",
+    "Nothing exists there to register. Check the spelling, or pick another folder.",
   "not-a-directory":
-    "It names a file, and only a repository folder can be registered. Choose the folder that holds it.",
+    "That path names a file. Register the folder that holds it.",
   "central-inventory":
-    "The harness is where skills come from, not a target they are deployed to. Register a repository that consumes skills instead.",
+    "The Harness holds the skills to deploy, not a target. Register a repository that uses skills instead.",
 };
 
-// The registration's own sentence, or undefined for a code it does not refuse
-// with — a network failure, or one this build predates.
-export function registerMessage(code: string | undefined): string | undefined {
-  return code === undefined
-    ? undefined
-    : registerSentences[code as RepoPathError | "central-inventory"];
+// A failure the table does not cover: a dropped connection, a 500, or a code
+// this build predates.
+const NOT_ANSWERED =
+  "The Maestro server did not answer. Register the repository again.";
+
+/**
+ * The register run's own sentence for one refused repository. Required return,
+ * never `?? error.message`: an uncovered code would otherwise render the HTTP
+ * wrapper's own "Request failed with status 422." on screen (#690).
+ */
+export function registerMessage(error: unknown): string {
+  if (!(error instanceof HttpError) || error.code === undefined) {
+    return NOT_ANSWERED;
+  }
+  // The one exception to "no sentence crosses the wire" (ADR-0025 §8): the
+  // request-shape messages are authored in `server` and say which field is
+  // wrong. Registration's route can answer no other code from `server` itself.
+  if (error.code === "invalid-body") {
+    return error.message;
+  }
+  return (
+    registerSentences[error.code as RepoPathError | "central-inventory"] ??
+    NOT_ANSWERED
+  );
 }

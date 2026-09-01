@@ -18,7 +18,7 @@ const skipped = (path: string, reason: string): RegistrationOutcome => ({
   requestedPath: path,
   path,
   ok: false,
-  reason: `skipped · ${reason}`,
+  reason: `Skipped · ${reason}`,
 });
 
 function rows() {
@@ -119,7 +119,7 @@ describe("BrowseRunReport", () => {
       />,
     );
 
-    const reason = screen.getByText("skipped · not a directory");
+    const reason = screen.getByText("Skipped · not a directory");
     expect(reason).toHaveClass("text-danger-ink");
     expect(reason.className).not.toMatch(/amber/);
   });

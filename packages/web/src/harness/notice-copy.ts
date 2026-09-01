@@ -342,7 +342,7 @@ export const CONCURRENT_CHANGE_NOTICE: NoticeContent = {
 // something different, and the sentence says which (#688).
 export const harnessStateNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(harnessHeadings, error, {
-    label: "Harness not loaded",
+    label: "Harness not read",
     message:
       "The Maestro server did not answer. Reload the page to read the Harness again.",
   });
@@ -356,7 +356,7 @@ export const refreshNotice = (error: unknown): NoticeContent | null =>
 
 export const releasePlanNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(releasePlanHeadings, error, {
-    label: "No release plan",
+    label: "Release plan not read",
     message:
       "The Maestro server did not answer, so no version was worked out. Open the release again.",
   });
@@ -384,7 +384,7 @@ export const removalNotice = (error: unknown): NoticeContent | null =>
 
 export const importNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(importHeadings, error, {
-    label: "Nothing imported",
+    label: "Skill not imported",
     message:
       "The Maestro server did not answer, and nothing reached the Harness. Import skill again.",
   });
