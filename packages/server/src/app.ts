@@ -290,34 +290,6 @@ const bulkRemoveBodySchema = z.object({
     .min(1),
 });
 
-const repoPathErrorMessages: Record<
-  RepoPathError | "central-inventory",
-  string
-> = {
-  missing:
-    "Nothing can be registered without one. Name the repository's absolute path.",
-  relative:
-    "Start at the filesystem root, for example /Users/name/code/my-repo.",
-  "not-found":
-    "Nothing exists there to register. Check the spelling, or browse to the repository instead.",
-  "not-a-directory":
-    "It names a file, and only a repository folder can be registered. Choose the folder that holds it.",
-  "central-inventory":
-    "The harness is where skills come from, not a target they are deployed to. Register a repository that consumes skills instead.",
-};
-
-// A malformed path is a 400 wherever it arrives, so every path-taking table
-// spreads this rather than re-spelling it.
-const REPO_PATH_RESPONSES: ErrorTable<RepoPathError> = {
-  missing: { status: 400, message: repoPathErrorMessages.missing },
-  relative: { status: 400, message: repoPathErrorMessages.relative },
-  "not-found": { status: 400, message: repoPathErrorMessages["not-found"] },
-  "not-a-directory": {
-    status: 400,
-    message: repoPathErrorMessages["not-a-directory"],
-  },
-};
-
 // The same four failures under a Notice heading, which already names the
 // subject. The sentences live in `inventory/connect-notice.ts`; the register
 // run's report has no heading and keeps its own standalone wording (#465,
@@ -465,27 +437,14 @@ const importErrorResponses: ErrorTable<ImportSkillError> = {
   "destination-unsafe": { status: 409 },
 };
 
-// outside-root is 403 (the info-disclosure boundary); no message echoes the
-// path (security.md).
+// outside-root is 403 (the info-disclosure boundary); the reply names no path
+// (security.md). The sentences live in `shell/browse-notice.ts`.
 const browseErrorResponses: ErrorTable<BrowseError> = {
-  "outside-root": {
-    status: 403,
-    message: "Maestro browses inside the home folder only. Pick one under it.",
-  },
-  "not-found": {
-    status: 404,
-    message:
-      "It may have been moved or deleted since the last look. Pick another folder.",
-  },
-  "not-a-directory": {
-    status: 400,
-    message: "That path points at a file. Pick the folder that holds it.",
-  },
+  "outside-root": { status: 403 },
+  "not-found": { status: 404 },
+  "not-a-directory": { status: 400 },
   // In bounds and a directory, but unreadable — 422, not 403/404.
-  unreadable: {
-    status: 422,
-    message: "Its permissions do not allow reading. Pick another folder.",
-  },
+  unreadable: { status: 422 },
 };
 
 // Built from injected dependencies so routes are testable in isolation
@@ -753,8 +712,8 @@ export function createApp(deps: AppDeps) {
 
     const result = await deps.browse.browse(body.data.path);
     if (!result.ok) {
-      const { status, message } = browseErrorResponses[result.error];
-      return c.json({ error: result.error, message }, status);
+      const { status } = browseErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
     }
 
     // `parent` undefined at the home ceiling → JSON.stringify drops the key,
@@ -945,10 +904,7 @@ export function createApp(deps: AppDeps) {
 
     const result = await deps.registry.register(body.data.path);
     if (!result.ok) {
-      return c.json(
-        { error: result.error, message: repoPathErrorMessages[result.error] },
-        400,
-      );
+      return c.json({ error: result.error }, 400);
     }
 
     return c.json({ repos: result.repos }, 201);

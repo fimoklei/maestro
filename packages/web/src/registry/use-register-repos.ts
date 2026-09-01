@@ -3,6 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { HttpError } from "../api/http";
+import { registerMessage } from "./notice-copy";
 import {
   REGISTRY_KEY,
   type RegistryResponse,
@@ -91,7 +92,7 @@ async function registerOne(
   } catch (error) {
     const message =
       error instanceof HttpError
-        ? error.message
+        ? (registerMessage(error.code) ?? error.message)
         : "could not reach Maestro to register it";
     return {
       outcome: {

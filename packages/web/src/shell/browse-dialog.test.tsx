@@ -600,7 +600,6 @@ describe("BrowseDialog", () => {
         jsonResponse(
           {
             error: "outside-root",
-            message: "That path is outside the area Maestro can browse.",
           },
           403,
         ),
@@ -609,7 +608,7 @@ describe("BrowseDialog", () => {
     renderDialog();
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      /outside the area/i,
+      /inside the home folder only/i,
     );
   });
 
@@ -686,10 +685,7 @@ describe("BrowseDialog", () => {
             path: string;
           };
           if (body.path === "/home/me/gone") {
-            return jsonResponse(
-              { error: "not-found", message: "That folder no longer exists." },
-              404,
-            );
+            return jsonResponse({ error: "not-found" }, 404);
           }
           return jsonResponse(homeResponse, 200);
         },
@@ -715,7 +711,6 @@ describe("BrowseDialog", () => {
             return jsonResponse(
               {
                 error: "outside-root",
-                message: "That path is outside the area Maestro can browse.",
               },
               403,
             );
@@ -756,7 +751,6 @@ describe("BrowseDialog", () => {
             return jsonResponse(
               {
                 error: "outside-root",
-                message: "That path is outside the area Maestro can browse.",
               },
               403,
             );
@@ -783,7 +777,6 @@ describe("BrowseDialog", () => {
             return jsonResponse(
               {
                 error: "outside-root",
-                message: "That path is outside the area Maestro can browse.",
               },
               403,
             );
@@ -807,7 +800,7 @@ describe("BrowseDialog", () => {
       );
 
       expect(await screen.findByRole("alert")).toHaveTextContent(
-        /outside the area/i,
+        /inside the home folder only/i,
       );
     });
 
@@ -822,10 +815,7 @@ describe("BrowseDialog", () => {
             path: string;
           };
           if (body.path === "/home/me/locked") {
-            return jsonResponse(
-              { error: "unreadable", message: "Permission denied." },
-              403,
-            );
+            return jsonResponse({ error: "unreadable" }, 403);
           }
           return jsonResponse(homeResponse, 200);
         },
@@ -834,14 +824,16 @@ describe("BrowseDialog", () => {
       renderDialog({ mode: "connect" });
 
       expect(await screen.findByRole("alert")).toHaveTextContent(
-        /permission denied/i,
+        /permissions do not allow reading/i,
       );
       // Flush any pending effects/microtasks so a wrongful fallback (which
       // would fire asynchronously) has had its chance before asserting its
       // absence — avoids a race between this assertion and the effect.
       await act(async () => {});
 
-      expect(screen.getByRole("alert")).toHaveTextContent(/permission denied/i);
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        /permissions do not allow reading/i,
+      );
       expect(fetchMock).not.toHaveBeenCalledWith(
         "/api/filesystem/children",
         expect.objectContaining({ body: JSON.stringify({ path: "" }) }),
