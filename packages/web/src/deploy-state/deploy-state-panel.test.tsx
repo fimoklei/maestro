@@ -41,7 +41,7 @@ describe("DeployStatePanel", () => {
     );
     renderPanel("/Users/me/project");
 
-    expect(await screen.findByText("● empty")).toBeInTheDocument();
+    expect(await screen.findByText("● Empty")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -69,7 +69,7 @@ describe("DeployStatePanel", () => {
     expect(await screen.findByText(/hooks\/format/)).toBeInTheDocument();
     // Something IS deployed (just unsupported) — the cockpit must not say it is
     // empty, the lie J02 exists to prevent.
-    expect(screen.queryByText("● empty")).not.toBeInTheDocument();
+    expect(screen.queryByText("● Empty")).not.toBeInTheDocument();
   });
 
   it("reads a repo holding an invalid record as attention, never as in sync", async () => {
@@ -95,9 +95,9 @@ describe("DeployStatePanel", () => {
     );
     renderPanel("/Users/me/project");
 
-    expect(await screen.findByText("▲ attention")).toBeInTheDocument();
-    expect(screen.getByText(/placed no files/i)).toBeInTheDocument();
-    expect(screen.queryByText("● in sync")).not.toBeInTheDocument();
+    expect(await screen.findByText("▲ Attention")).toBeInTheDocument();
+    expect(screen.getByText(/landed no files/i)).toBeInTheDocument();
+    expect(screen.queryByText("● In sync")).not.toBeInTheDocument();
   });
 
   it("surfaces a visible error when the lockfile cannot be read", async () => {
@@ -112,7 +112,7 @@ describe("DeployStatePanel", () => {
     // The whole sentence, recovery included: a read failure with no way out
     // leaves the user guessing.
     expect(await screen.findByRole("status")).toHaveTextContent(
-      "this repo's deploy-state could not be readReload the page to run the read again.",
+      "Deploy-state not readReload the page to read this repository's deploy-state again.",
     );
   });
 
@@ -144,11 +144,11 @@ describe("DeployStatePanel", () => {
       await screen.findByRole("button", { name: "Actions for tdd" }),
     );
     await userEvent.click(
-      await screen.findByRole("menuitem", { name: "remove…" }),
+      await screen.findByRole("menuitem", { name: "Remove skill" }),
     );
     // Fixed label: the skill name left the confirm with #411, because the
     // dialog's title already carries it.
-    await userEvent.click(screen.getByRole("button", { name: "remove →" }));
+    await userEvent.click(screen.getByRole("button", { name: "Remove skill" }));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

@@ -77,14 +77,14 @@ describe("StatusBar", () => {
 
   it("reads as Setup required when the server is healthy but no inventory is configured", async () => {
     // A healthy server with inventoryPath null is first-run, not "Connected"
-    // — the old conflation was a live bug. Shows a "setup required" chip.
+    // — the old conflation was a live bug. Shows a "Setup required" chip.
     stubServer({ health: "ok", config: { inventoryPath: null } });
     renderStatusBar();
 
-    expect(await screen.findByText("setup required")).toBeInTheDocument();
-    expect(screen.getByText("no inventory connected")).toBeInTheDocument();
+    expect(await screen.findByText("Setup required")).toBeInTheDocument();
+    expect(screen.getByText("No inventory connected")).toBeInTheDocument();
     expect(screen.queryByText("not configured")).not.toBeInTheDocument();
-    expect(screen.queryByText("connected")).not.toBeInTheDocument();
+    expect(screen.queryByText("Connected")).not.toBeInTheDocument();
   });
 
   it("reads as Connected when the server is healthy and an inventory is configured", async () => {
@@ -94,7 +94,7 @@ describe("StatusBar", () => {
     });
     renderStatusBar();
 
-    expect(await screen.findByText("connected")).toBeInTheDocument();
+    expect(await screen.findByText("Connected")).toBeInTheDocument();
   });
 
   it("shows the connected source name and live count as header context", async () => {
@@ -110,7 +110,7 @@ describe("StatusBar", () => {
 
     // The count lands a tick after connect (the primitive read is gated on being
     // connected), so wait for the resolved label rather than the initial
-    // "reading…".
+    // "Re-reading Inventory…".
     await screen.findByText(/3 primitives/i);
     expect(screen.getByRole("banner")).toHaveTextContent(
       /agent-harness · 3 primitives/i,
@@ -129,7 +129,7 @@ describe("StatusBar", () => {
     renderStatusBar();
 
     const gear = await screen.findByRole("button", {
-      name: /inventory source/i,
+      name: /harness location/i,
     });
     expect(gear).toBeInTheDocument();
     // Not the active view yet — the header was rendered at the landing route.
@@ -147,7 +147,7 @@ describe("StatusBar", () => {
     renderStatusBar("/source");
 
     const gear = await screen.findByRole("button", {
-      name: /inventory source/i,
+      name: /harness location/i,
     });
     expect(gear).toHaveAttribute("aria-current", "page");
   });
@@ -158,9 +158,9 @@ describe("StatusBar", () => {
     stubServer({ health: "ok", config: { inventoryPath: null } });
     renderStatusBar();
 
-    expect(await screen.findByText("setup required")).toBeInTheDocument();
+    expect(await screen.findByText("Setup required")).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /inventory source/i }),
+      screen.queryByRole("button", { name: /harness location/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -204,7 +204,7 @@ describe("StatusBar", () => {
       </QueryClientProvider>,
     );
 
-    expect(await screen.findByText("setup required")).toBeInTheDocument();
+    expect(await screen.findByText("Setup required")).toBeInTheDocument();
     expect(
       fetchMock.mock.calls.some((c) =>
         String(c[0]).startsWith("/api/inventory/primitives"),

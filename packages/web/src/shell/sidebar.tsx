@@ -5,7 +5,8 @@ import { SidebarRegister } from "./sidebar-register";
 import { TargetsList } from "./targets-list";
 import { useFirstRun } from "./use-first-run";
 
-// On a first run the sidebar goes inert: nav dimmed, Targets reads "none yet",
+// On a first run the sidebar goes inert: nav dimmed, Targets reads its empty
+// state,
 // register affordance hidden — nothing to deploy yet. Also hidden on the gate
 // routes themselves: `+ repo` appearing mid-confirmation would compete with it.
 
@@ -34,7 +35,7 @@ export function Sidebar() {
 
   return (
     <aside
-      aria-label="Sidebar"
+      aria-label="Navigation and targets"
       className={cn(
         "flex w-64 shrink-0 flex-col gap-0.5 overflow-y-auto border-line border-r p-2.5",
         onGate && "max-md:hidden",
@@ -61,7 +62,9 @@ export function Sidebar() {
       ))}
       <div className="m-label mt-5 mb-1.5 px-3">Targets</div>
       {firstRun ? (
-        <p className="px-3 font-mono text-dim text-tag">none yet</p>
+        <p className="px-3 font-mono text-dim text-tag">
+          No targets yet. Select Connect Inventory to add one.
+        </p>
       ) : (
         <>
           <TargetsList />

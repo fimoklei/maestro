@@ -8,6 +8,7 @@ import type {
   RemoveWarning,
 } from "@maestro/core";
 import { HttpError } from "../api/http";
+import { type DeployStateNotice, removeNotice } from "./notice-copy";
 import type { RemovePreflight } from "./use-remove-preflight";
 
 // What the check says about one row's copy. "checking" is not among them: an
@@ -49,7 +50,7 @@ export type RemovePreflightView =
   // be a lie the user pays a round-trip to find out. The code rides along: a
   // bulk names the refusal in a slot the message does not fit, and its run is
   // told which refusal took the target out (#423).
-  | { kind: "refused"; code: RefusalCode; message: string };
+  | { kind: "refused"; code: RefusalCode; notice: DeployStateNotice };
 
 export type RefusalCode = RemovePreflightError | "invalid-body";
 
@@ -69,13 +70,13 @@ const REFUSES_THE_REMOVAL: Record<RefusalCode, boolean> = {
 // code-less response, or a code this build does not recognise.
 function refusal(
   error: unknown,
-): { code: RefusalCode; message: string } | null {
+): { code: RefusalCode; notice: DeployStateNotice } | null {
   if (!(error instanceof HttpError) || error.code === undefined) {
     return null;
   }
   const code = error.code as RefusalCode;
   return REFUSES_THE_REMOVAL[code] === true
-    ? { code, message: error.message }
+    ? { code, notice: removeNotice(error) }
     : null;
 }
 

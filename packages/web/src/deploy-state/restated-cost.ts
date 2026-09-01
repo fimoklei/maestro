@@ -19,15 +19,15 @@ const WARNINGS: Record<string, RemoveWarning> = {
   "check-did-not-run": "check-did-not-run",
 };
 
-// The whole question again, never part of it: the sentence, the cost it
-// explains, the receipt that confirms that cost, and the leftovers the removal
-// would delete beside it. Half of this pairs a fresh cost with an older
-// consent, which is the failure #364 exists to prevent.
+// The whole question again, never part of it: the cost, the receipt that
+// confirms that cost, and the leftovers the removal would delete beside it.
+// Half of this pairs a fresh cost with an older consent, which is the failure
+// #364 exists to prevent. No sentence here — the caller already holds the
+// error, and `removeNotice` states it once (`copy.md`).
 export type RestatedCost = {
   check: RemoveCheck;
   receipt: string;
   reclaim: ReclaimConsent | null;
-  message: string;
 };
 
 // Nothing validates this body. A restatement this build cannot read whole is
@@ -44,7 +44,7 @@ export function restatedCost(error: unknown): RestatedCost | null {
   return check !== null &&
     reclaim !== undefined &&
     typeof body?.receipt === "string"
-    ? { check, receipt: body.receipt, reclaim, message: error.message }
+    ? { check, receipt: body.receipt, reclaim }
     : null;
 }
 

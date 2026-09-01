@@ -67,7 +67,7 @@ describe("PendingRelease", () => {
     );
 
     expect(screen.getByRole("row", { name: /research/ })).toHaveTextContent(
-      "unknown",
+      "Unknown",
     );
   });
 });

@@ -154,7 +154,7 @@ export function HarnessView() {
         <Notice trigger="load" notice={refreshNotice(refresh.error)} />
       </div>
       {harness.isError ? null : state === undefined ? (
-        <p className="text-dim text-tag">Loading the harness…</p>
+        <p className="text-dim text-tag">Loading the Harness…</p>
       ) : (
         <>
           <HarnessStrip
@@ -173,7 +173,7 @@ export function HarnessView() {
               disabled={!releaseEnabled(state.freshness) || refresh.isPending}
               onClick={() => setPlanOpen(true)}
             >
-              release
+              Plan release
             </Button>
             <Button
               variant="quiet"
@@ -182,7 +182,7 @@ export function HarnessView() {
               disabled={refresh.isPending}
               onClick={() => fetchRemote()}
             >
-              refresh
+              Refresh
             </Button>
             {/* Import touches the working tree only, so no remote answer gates
                 it — what lands shows up under Pending promotion. */}
@@ -191,7 +191,7 @@ export function HarnessView() {
               size="sm"
               onClick={() => setImportOpen(true)}
             >
-              import skill
+              Import skill…
             </Button>
           </HarnessStrip>
           <Card className="mt-3" padded>

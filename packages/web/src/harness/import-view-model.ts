@@ -11,29 +11,14 @@ import type {
   ManifestAdvisory,
 } from "./use-harness";
 
-// Beside the picked folder: what is wrong with the folder itself. Each sentence
-// starts where its heading in `notice-copy` stops.
-const SOURCE_BLOCKER_TEXT: Record<ImportSourceBlocker, string> = {
-  "source-unreadable":
-    "Check that it is still on disk and readable, then pick it again.",
-  "outside-root":
-    "Maestro reads inside the home folder only. Pick a folder under it.",
-  "deployed-copy":
-    "Importing it would copy Maestro's own output back into the Harness. Pick the folder the skill is authored in.",
-  "missing-manifest":
-    "Without one, the folder is not a skill Maestro can carry. Pick the folder that holds the skill's SKILL.md.",
+// Beside the picked folder the way through is to pick again, not to import, so
+// only the two rows whose table sentence sends the author to Import skill are
+// written twice. The rest take `notice-copy`'s row as it stands.
+const SOURCE_BLOCKER_TEXT: Partial<Record<ImportSourceBlocker, string>> = {
   "invalid-frontmatter":
-    "Maestro cannot read the skill's name or description. Fix the SKILL.md frontmatter, then pick the folder again.",
+    "Fix the SKILL.md frontmatter, then pick the folder again.",
   "empty-description":
-    "The description is what tells an agent when to reach for the skill. Fill it in in SKILL.md, then pick the folder again.",
-};
-
-// Beside the name input: what is wrong with the name, and nothing else.
-const NAME_BLOCKER_TEXT: Record<ImportNameBlocker, string> = {
-  "invalid-name":
-    "A skill name is lowercase letters, digits and single hyphens, like code-review.",
-  "name-taken":
-    "The Harness already holds a skill under it. Pick another name.",
+    "Fill in the description in SKILL.md, then pick the folder again.",
 };
 
 // Reported, never blocking: a convention exceeded costs readability, not
@@ -50,12 +35,12 @@ export const sourceBlockerNotice = (
     ? null
     : importBlockerNotice(blocker, SOURCE_BLOCKER_TEXT[blocker]);
 
+// The name's two refusals already end on "Pick another name", which is what
+// the input beside them asks for, so the table's row needs no second wording.
 export const nameBlockerNotice = (
   blocker: ImportNameBlocker | null,
 ): NoticeContent | null =>
-  blocker === null
-    ? null
-    : importBlockerNotice(blocker, NAME_BLOCKER_TEXT[blocker]);
+  blocker === null ? null : importBlockerNotice(blocker);
 
 export const advisoryTexts = (
   advisories: readonly ManifestAdvisory[],

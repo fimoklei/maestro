@@ -57,7 +57,7 @@ function stubServer({
         if (init?.method === "POST") {
           const { path } = JSON.parse(String(init.body)) as { path: string };
           if (rejecting.includes(path)) {
-            return jsonResponse({ message: "Path is not a directory." }, 400);
+            return jsonResponse({ error: "not-a-directory" }, 400);
           }
           repos = [...repos, { path }];
           return jsonResponse({ repos }, 201);
@@ -86,7 +86,7 @@ async function pickBothRepos() {
     screen.getByRole("checkbox", { name: /payments-api/i }),
   );
   await userEvent.click(
-    screen.getByRole("button", { name: /register 2 selected/i }),
+    screen.getByRole("button", { name: /Register 2 repositories/ }),
   );
 }
 
@@ -116,7 +116,7 @@ describe("sidebar register affordance", () => {
       name: "Registration results",
     });
     expect(
-      within(report).getByText(/skipped · Path is not a directory/i),
+      within(report).getByText(/Skipped · That path names a file/i),
     ).toBeInTheDocument();
     const targets = screen.getByRole("list", { name: "Targets" });
     expect(
@@ -154,7 +154,7 @@ describe("sidebar register affordance", () => {
     expect(
       await screen.findByRole("checkbox", { name: /agent-harness/i }),
     ).toBeDisabled();
-    expect(screen.getByText("central inventory")).toBeInTheDocument();
+    expect(screen.getByText("Connected Inventory")).toBeInTheDocument();
   });
 
   it("has no path input of its own — the picker's paste field is the one", async () => {

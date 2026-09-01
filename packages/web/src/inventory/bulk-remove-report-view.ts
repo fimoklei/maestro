@@ -18,7 +18,7 @@ import { targetQueryKey } from "./use-deploy-skill";
 // ran, and the server removes one target at a time. The pane behind this is
 // re-read either way, so the honest instruction is to go and look.
 const OUTCOME_UNKNOWN =
-  "Maestro lost its server's answer and cannot say what was removed. Close this and check the targets before trying again.";
+  "The run's outcome is unrecorded. Check the targets before removing again.";
 
 // Which class left this target behind. Both words appear on the row: a reason
 // alone does not say whether the run refused to try or tried and failed.
@@ -39,27 +39,27 @@ export type BulkRemoveReportView =
     }
   // The server answered before the walk began, so nothing was removed and the
   // same attempt can simply be made again.
-  | { kind: "never-started"; label: string; message: string }
+  | { kind: "never-started"; label: string; message: string; detail: string }
   // No answer at all. What the run did is unobserved, so it is not stated.
-  | { kind: "outcome-unknown"; label: string; message: string };
+  | { kind: "outcome-unknown"; label: string; message: string; detail: string };
 
 // Terse where the server's own sentence is prose — a report row has one line
 // for the reason. Keyed by core's union, so a new error there is a type error
 // here rather than a blank row.
 const FAILURE_REASON: Record<RemoveDeployedSkillError, string> = {
-  "unsupported-primitive-type": "type cannot be removed",
-  "invalid-name": "not a valid skill name",
-  "repo-not-registered": "repo not registered",
-  "no-supported-tool": "no supported tool here",
-  "not-deployed": "nothing deployed here",
-  "lockfile-malformed": "lockfile could not be read",
-  "ref-unresolvable": "its version could not be resolved",
-  "deployed-unreadable": "deployed copy could not be read",
+  "unsupported-primitive-type": "Type cannot be removed",
+  "invalid-name": "Unusable skill name",
+  "repo-not-registered": "Repository not registered",
+  "no-supported-tool": "No supported tool here",
+  "not-deployed": "Nothing deployed here",
+  "lockfile-malformed": "Deployment record could not be read",
+  "ref-unresolvable": "Version could not be resolved",
+  "deployed-unreadable": "Deployed copy could not be read",
   // Never "its copy changed": the run may have agreed to nothing at all, and a
   // row has no ledger to state what the check found instead (J04, #364).
-  "cost-not-acknowledged": "what it would delete was never confirmed",
-  "remove-in-progress": "target is held by another operation",
-  "remove-failed": "apm did not complete the removal",
+  "cost-not-acknowledged": "What it would delete was never confirmed",
+  "remove-in-progress": "Target held by another operation",
+  "remove-failed": "Removal not completed by apm",
 };
 
 // The title comes in two halves because the dialog renders the skill's own
@@ -75,13 +75,15 @@ export function bulkRemoveReportView(input: {
     return input.error instanceof HttpError && input.error.status < 500
       ? {
           kind: "never-started",
-          label: "the run never started",
-          message: `${input.error.message} Nothing was removed anywhere. Try again.`,
+          label: "Run not started",
+          message: "Nothing was removed anywhere. Confirm the removal again.",
+          detail: "The Maestro server refused the request.",
         }
       : {
           kind: "outcome-unknown",
-          label: "the outcome is unknown",
+          label: "Outcome unknown",
           message: OUTCOME_UNKNOWN,
+          detail: "The Maestro server did not answer.",
         };
   }
   const report = input.report;
@@ -92,7 +94,7 @@ export function bulkRemoveReportView(input: {
   const leftAlone = orderedLeftAlone(report, input.targets);
   const total =
     report.removed.length + report.refused.length + report.failed.length;
-  const counts = `removed ${report.removed.length} · refused ${report.refused.length} · failed ${report.failed.length}`;
+  const counts = `Removed ${report.removed.length} · refused ${report.refused.length} · failed ${report.failed.length}`;
 
   if (leftAlone.length === 0) {
     return { kind: "clean", title: { before: "Removed ", after: "" }, counts };
@@ -101,7 +103,7 @@ export function bulkRemoveReportView(input: {
     kind: "partial",
     title: {
       before: "Removed ",
-      after: ` from ${report.removed.length} of ${total}`,
+      after: ` from ${report.removed.length} of ${total} targets`,
     },
     counts,
     leftAlone,

@@ -19,15 +19,17 @@ function readNotice(error: Error | null): NoticeContent | null {
   return error instanceof HttpError && error.status === 409
     ? {
         level: "error",
-        label: "no Harness is connected",
+        label: "No Harness connected",
         message:
-          "Nothing is connected yet. Connect a Harness on the Inventory source screen to fill this list.",
+          "Connect a Harness on the Harness location screen to fill this list.",
+        detail: "Nothing is connected yet.",
       }
     : {
         level: "error",
-        label: "the inventory did not load",
-        message:
-          "The connected Harness may have moved, or its apm.yml may no longer be readable. Check the source path on the Inventory source screen.",
+        label: "Inventory not loaded",
+        message: "Check the path on the Harness location screen.",
+        detail:
+          "The connected Harness may have moved, or its apm.yml may no longer be readable.",
       };
 }
 
@@ -49,7 +51,7 @@ export function InventoryPanel() {
     <section className="flex flex-col min-[1200px]:h-[100cqh]">
       <SectionHeader
         level={1}
-        title="Central inventory"
+        title="Inventory"
         meta={
           inventory.isSuccess
             ? `${skillCount} ${skillCount === 1 ? "skill" : "skills"}`
@@ -61,7 +63,9 @@ export function InventoryPanel() {
           region outlives its content, so it is mounted before the failure is. */}
       <Notice trigger="load" notice={readNotice(inventory.error)} />
       {inventory.isLoading ? (
-        <p className="px-card-x py-row-y text-dim text-tag">Loading…</p>
+        <p className="px-card-x py-row-y text-dim text-tag">
+          Loading the Inventory…
+        </p>
       ) : inventory.isError ? null : (
         <Card fill>
           <InventoryList

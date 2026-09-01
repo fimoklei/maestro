@@ -22,7 +22,7 @@ const meta = {
         requestedPath: "/Users/me/payments-api",
         path: "/Users/me/payments-api",
         ok: false,
-        reason: "skipped · No directory exists there.",
+        reason: "Skipped · Nothing exists there to register.",
       },
       {
         requestedPath: "/Users/me/design-system",

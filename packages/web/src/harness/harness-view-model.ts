@@ -69,8 +69,8 @@ const MOVEMENT_SECTIONS = [
   },
   {
     state: "pending-promotion",
-    title: "Pending promotion",
-    meta: "local on disk",
+    title: "Pending proposal",
+    meta: "Local on disk",
   },
 ] as const satisfies readonly {
   state: HarnessMovement["state"];

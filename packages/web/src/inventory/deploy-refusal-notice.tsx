@@ -1,5 +1,5 @@
 import { HttpError } from "../api/http";
-import { deployStateHeading } from "../deploy-state/notice-copy";
+import { deployNotice } from "../deploy-state/notice-copy";
 import { Notice } from "../ui/notice";
 
 // The server sends its own reading of the recorded type, never apm prose
@@ -26,37 +26,34 @@ export function DeployRefusalNotice({
   onReinstall: () => void;
   reinstalling: boolean;
 }) {
-  const heading = deployStateHeading(
-    error instanceof HttpError ? error.code : undefined,
-  );
+  const notice = deployNotice(error);
   // The type apm recorded, when the server sends one. Named here because the
-  // recovery differs per type, and the message table cannot know it (#358).
+  // recovery differs per type, and the copy table cannot know it (#358). It
+  // replaces the row's own detail rather than joining it (`copy.md`).
   const packageType = recordedPackageType(error);
-  const aside =
-    packageType === null ? undefined : `Recorded type: ${packageType}.`;
+  const detail =
+    packageType === null
+      ? notice.detail
+      : `apm recorded this package as ${packageType}.`;
 
   return (
     <Notice
       trigger="user-action"
       notice={
-        heading.level === "warning"
+        notice.level === "warning"
           ? {
+              ...notice,
               level: "warning",
-              label: heading.label,
-              message: error.message,
-              aside,
+              detail,
+              // Runs the sentence's last instruction, verb for verb; the cost
+              // it charges is stated in the sentence itself (F8).
               action: {
-                label: "Reinstall fresh — local changes will be lost",
+                label: "Deploy again",
                 onClick: onReinstall,
                 disabled: reinstalling,
               },
             }
-          : {
-              level: heading.level,
-              label: heading.label,
-              message: error.message,
-              aside,
-            }
+          : { ...notice, level: notice.level, detail }
       }
     />
   );

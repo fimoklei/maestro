@@ -89,11 +89,11 @@ describe("InventoryList", () => {
 
     const filter = screen.getByRole("group", { name: /filter by type/i });
     expect(filter).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "all" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "skills" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "All" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Skills" })).toBeInTheDocument();
     // Skills-only data yields exactly all + skills, never a hardcoded five.
     expect(
-      screen.queryByRole("button", { name: "hooks" }),
+      screen.queryByRole("button", { name: "Hooks" }),
     ).not.toBeInTheDocument();
   });
 
@@ -106,9 +106,9 @@ describe("InventoryList", () => {
       <InventoryList primitives={primitives} repos={[]} registryReady />,
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "skills" }));
+    await userEvent.click(screen.getByRole("button", { name: "Skills" }));
 
-    expect(screen.getByRole("button", { name: "skills" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Skills" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -120,7 +120,7 @@ describe("InventoryList", () => {
     renderList(<InventoryList primitives={[]} repos={[]} registryReady />);
 
     expect(
-      screen.getByText("No skills found in the inventory."),
+      screen.getByText(/No skills in the Inventory\./i),
     ).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
@@ -152,7 +152,7 @@ describe("InventoryList", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("→ 2 targets")).toBeInTheDocument();
     expect(screen.getByText("▲1")).toBeInTheDocument();
-    expect(screen.getByText("not deployed")).toBeInTheDocument();
+    expect(screen.getByText("Not deployed")).toBeInTheDocument();
   });
 
   it("hides the hint once a repo is registered", () => {
@@ -314,7 +314,7 @@ describe("InventoryList", () => {
       screen.getByRole("complementary", { name: /tdd detail/i }),
     ).toBeInTheDocument();
 
-    const search = screen.getByLabelText(/search skills/i);
+    const search = screen.getByLabelText(/search the inventory/i);
     await userEvent.type(search, "caveman");
     expect(
       screen.queryByRole("button", { name: "tdd" }),
@@ -403,14 +403,14 @@ describe("InventoryList", () => {
     await userEvent.click(
       within(tddPane).getByRole("button", { name: /deploy/i }),
     );
-    await screen.findByRole("button", { name: /reinstall fresh/i });
+    await screen.findByRole("button", { name: "Deploy again" });
 
     // Switch to another skill: the reinstall action must not carry over, or a
     // click would force-overwrite the new skill without its own refusal (#66).
     await userEvent.click(screen.getByRole("button", { name: "caveman" }));
 
     expect(
-      screen.queryByRole("button", { name: /reinstall fresh/i }),
+      screen.queryByRole("button", { name: "Deploy again" }),
     ).not.toBeInTheDocument();
   });
 
@@ -611,7 +611,7 @@ describe("InventoryList", () => {
 
     // Nothing staged, nothing to bulk-deploy: the strip stays out of the way.
     expect(
-      screen.queryByRole("status", { name: /bulk selection/i }),
+      screen.queryByRole("status", { name: /staged for bulk deploy/i }),
     ).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("checkbox", { name: /stage tdd/i }));
@@ -623,8 +623,8 @@ describe("InventoryList", () => {
       "cave",
     );
 
-    const bar = screen.getByRole("status", { name: /bulk selection/i });
-    expect(bar).toHaveTextContent(/2 staged for bulk/i);
+    const bar = screen.getByRole("status", { name: /staged for bulk deploy/i });
+    expect(bar).toHaveTextContent(/2 staged for bulk deploy/i);
     expect(bar).toHaveTextContent(/1 hidden by the filter/i);
   });
 
@@ -651,12 +651,12 @@ describe("InventoryList", () => {
 
     await userEvent.click(screen.getByRole("checkbox", { name: /stage tdd/i }));
     expect(
-      screen.getByRole("status", { name: /bulk selection/i }),
+      screen.getByRole("status", { name: /staged for bulk deploy/i }),
     ).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("checkbox", { name: /stage tdd/i }));
     expect(
-      screen.queryByRole("status", { name: /bulk selection/i }),
+      screen.queryByRole("status", { name: /staged for bulk deploy/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -766,7 +766,7 @@ describe("InventoryList — bulk remove entry point (#422)", () => {
     await openTdd();
 
     expect(
-      screen.getByRole("button", { name: "remove from all 2 \u2192" }),
+      screen.getByRole("button", { name: "Remove from all 2 targets" }),
     ).toBeInTheDocument();
   });
 
@@ -786,7 +786,7 @@ describe("InventoryList — bulk remove entry point (#422)", () => {
     await openTdd();
 
     expect(
-      screen.getByText(/not deployed to any target yet/i),
+      screen.getByText(/Not deployed to any target\./i),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /remove from all/i }),
@@ -809,7 +809,7 @@ describe("InventoryList — bulk remove entry point (#422)", () => {
     await openTdd();
 
     expect(
-      screen.getByRole("button", { name: "remove from all 2 \u2192" }),
+      screen.getByRole("button", { name: "Remove from all 2 targets" }),
     ).toBeInTheDocument();
   });
 });

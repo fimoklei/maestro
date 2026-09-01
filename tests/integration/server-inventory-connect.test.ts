@@ -163,7 +163,6 @@ describe("inventory connect HTTP route", () => {
     expect(res.status).toBe(422);
     expect(await res.json()).toEqual({
       error: "scaffoldable",
-      message: expect.stringContaining("scaffold the canonical empty Harness"),
       // The offer carries the path so a cloned repository the user never typed
       // can still be scaffolded.
       path: await nodeRealpath(repo),
@@ -297,10 +296,9 @@ describe("inventory connect HTTP route", () => {
     const res = await postConnect(makeApp(), { path: clone });
 
     expect(res.status).toBe(422);
-    const body = (await res.json()) as { error: string; message: string };
+    const body = (await res.json()) as { error: string };
     expect(body.error).toBe("no-default-branch");
-    expect(body.message).toMatch(/\S/);
-    expect(body.message).not.toContain(clone);
+    expect(JSON.stringify(body)).not.toContain(clone);
     expect(await readRemoteHead(clone)).toBeNull();
   });
 
@@ -373,10 +371,9 @@ describe("inventory connect HTTP route", () => {
     const res = await postConnect(makeApp(), { path: plain });
 
     expect(res.status).toBe(422);
-    const body = (await res.json()) as { error: string; message: string };
+    const body = (await res.json()) as { error: string };
     expect(body.error).toBe("not-an-inventory");
-    expect(body.message).toMatch(/\S/);
-    expect(body.message).not.toContain(plain);
+    expect(JSON.stringify(body)).not.toContain(plain);
   });
 
   // The picker refuses a symlinked manifest outright (#148), so connect has to
@@ -427,10 +424,9 @@ describe("inventory connect HTTP route", () => {
     const res = await postConnect(makeApp(), { path: clone });
 
     expect(res.status).toBe(422);
-    const body = (await res.json()) as { error: string; message: string };
+    const body = (await res.json()) as { error: string };
     expect(body.error).toBe("no-usable-origin");
-    expect(body.message).toMatch(/\S/);
-    expect(body.message).not.toContain(clone);
+    expect(JSON.stringify(body)).not.toContain(clone);
   });
 
   it("rejects a relative path with a 400", async () => {

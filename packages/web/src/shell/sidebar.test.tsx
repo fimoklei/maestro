@@ -42,7 +42,7 @@ describe("Sidebar", () => {
     renderSidebar();
 
     expect(
-      screen.getByRole("complementary", { name: /sidebar/i }),
+      screen.getByRole("complementary", { name: /navigation and targets/i }),
     ).toBeInTheDocument();
   });
 });
@@ -70,25 +70,25 @@ describe("Sidebar grouping", () => {
     stubServer({ notConfigured: true });
     renderSidebar();
 
-    // "none yet" is the tell that the first-run read has landed; asserting
+    // The empty state is the tell that the first-run read has landed; asserting
     // before it would catch the nav in its pre-read, enabled state.
-    await screen.findByText(/none yet/i);
+    await screen.findByText(/no targets yet/i);
     expect(screen.getByRole("button", { name: "Harness" })).toBeDisabled();
   });
 });
 
 describe("Sidebar first-run rendering", () => {
-  it("dims the nav, hides register, and shows 'none yet' when unconfigured", async () => {
+  it("dims the nav, hides register, and shows the empty state when unconfigured", async () => {
     stubServer({ notConfigured: true });
     renderSidebar();
 
-    expect(await screen.findByText(/none yet/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no targets yet/i)).toBeInTheDocument();
     for (const name of ["Deploy-state", "Inventory"]) {
       expect(screen.getByRole("button", { name })).toBeDisabled();
     }
-    // Inventory source lives in the header now (issue #109), not the sidebar.
+    // Harness location lives in the header now (issue #109), not the sidebar.
     expect(
-      screen.queryByRole("button", { name: "Inventory source" }),
+      screen.queryByRole("button", { name: "Harness location" }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "+ repo" }),
@@ -99,11 +99,11 @@ describe("Sidebar first-run rendering", () => {
     stubServer({ notConfigured: true });
     renderSidebar("/welcome/connect");
 
-    await screen.findByText(/none yet/i);
+    await screen.findByText(/no targets yet/i);
 
-    expect(screen.getByRole("complementary", { name: /sidebar/i })).toHaveClass(
-      "max-md:hidden",
-    );
+    expect(
+      screen.getByRole("complementary", { name: /navigation and targets/i }),
+    ).toHaveClass("max-md:hidden");
   });
 
   it("renders the interactive nav and register affordance when configured", async () => {
@@ -117,9 +117,9 @@ describe("Sidebar first-run rendering", () => {
       expect(screen.getByRole("button", { name })).toBeEnabled();
     }
     expect(
-      screen.queryByRole("button", { name: "Inventory source" }),
+      screen.queryByRole("button", { name: "Harness location" }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText(/none yet/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/no targets yet/i)).not.toBeInTheDocument();
   });
 
   it("hides the register affordance on a gate route even when configured", async () => {

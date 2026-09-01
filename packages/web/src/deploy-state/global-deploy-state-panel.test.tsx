@@ -21,7 +21,9 @@ describe("GlobalDeployStatePanel", () => {
 
     // The section label is the baseline: it renders regardless of the read
     // state, so it is present even before any data arrives.
-    expect(screen.getByText(/global targets/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /global targets/i }),
+    ).toBeInTheDocument();
   });
 
   it("headlines a per-tool card and lists its deployed skill with the human tag version", async () => {
@@ -61,7 +63,7 @@ describe("GlobalDeployStatePanel", () => {
     renderPanel();
 
     expect(await screen.findByRole("status")).toHaveTextContent(
-      /could not be read/i,
+      /Global targets not read/i,
     );
   });
 
@@ -93,7 +95,7 @@ describe("GlobalDeployStatePanel", () => {
     renderPanel();
 
     expect(await screen.findByText("tdd")).toBeInTheDocument();
-    expect(await screen.findByText(/behind/i)).toBeInTheDocument();
+    expect(await screen.findByText("Behind")).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledWith("/api/drift/global", expect.anything());
   });
 
@@ -123,6 +125,6 @@ describe("GlobalDeployStatePanel", () => {
 
     expect(await screen.findByText("tdd")).toBeInTheDocument();
     expect(await screen.findByText(/unknown/i)).toBeInTheDocument();
-    expect(screen.queryByText(/up-to-date/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/up to date/i)).not.toBeInTheDocument();
   });
 });

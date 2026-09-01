@@ -1,25 +1,23 @@
 // One sentence per skipped entry, written once so the repo panel and the global
 // panel cannot word the same state differently.
+import { FIX_AND_RELEASE } from "./notice-copy";
 import type { SkippedEntry } from "./use-deploy-state";
-
-const RELEASE_AGAIN =
-  "Fix the package shape in the harness, release a corrected tag, and deploy again.";
 
 export function skippedEntryText(entry: SkippedEntry): string {
   if (entry.reason === "unsupported-type") {
-    return `Skipped ${entry.virtualPath} — Maestro does not manage ${entry.packageType}. Its files are still in place.`;
+    return `${entry.virtualPath} is deployed as ${entry.packageType}, which Maestro does not manage. Its files are still there.`;
   }
   if (entry.reason === "unmanageable-skill") {
-    return `${entry.virtualPath} is deployed as ${entry.packageType}, which Maestro cannot manage as a skill. Its files are still in place. ${RELEASE_AGAIN}`;
+    return `${entry.virtualPath} is deployed as ${entry.packageType}, not as a skill. ${FIX_AND_RELEASE}`;
   }
   if (entry.reason === "invalid-package") {
-    return `apm recorded ${entry.virtualPath} as a failed deployment and placed no files. ${RELEASE_AGAIN}`;
+    return `The deploy of ${entry.virtualPath} landed no files. ${FIX_AND_RELEASE}`;
   }
-  // Deliberately about the one entry, never the file: the rest of the lockfile
-  // was read fine (#357).
+  // Deliberately about the one entry, never the file: the rest of the
+  // deployment record was read fine (#357).
   return entry.virtualPath === null
-    ? "Could not read one lockfile entry."
-    : `Could not read the lockfile entry for ${entry.virtualPath}.`;
+    ? "One entry in the deployment record could not be read."
+    : `The deployment record's entry for ${entry.virtualPath} could not be read.`;
 }
 
 export function skippedEntryKey(entry: SkippedEntry, index: number): string {

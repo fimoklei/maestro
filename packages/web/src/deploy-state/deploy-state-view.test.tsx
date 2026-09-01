@@ -67,7 +67,7 @@ describe("DeployStateView cold start", () => {
     stubColdStart();
     renderView();
 
-    expect(await screen.findByText("nothing deployed")).toBeInTheDocument();
+    expect(await screen.findByText(/nothing deployed/i)).toBeInTheDocument();
   });
 
   it("offers a deploy action in every confirmed-empty target", async () => {
@@ -75,9 +75,9 @@ describe("DeployStateView cold start", () => {
     renderView();
 
     await waitFor(() => {
-      expect(screen.getAllByRole("button", { name: "deploy →" })).toHaveLength(
-        3,
-      );
+      expect(
+        screen.getAllByRole("button", { name: "Deploy a skill" }),
+      ).toHaveLength(3);
     });
   });
 
@@ -86,7 +86,7 @@ describe("DeployStateView cold start", () => {
     renderView();
 
     const [action] = await screen.findAllByRole("button", {
-      name: "deploy →",
+      name: "Deploy a skill",
     });
     if (!action) {
       throw new Error("Expected an empty-target deploy action.");
@@ -125,7 +125,7 @@ describe("DeployStateView cold start", () => {
 
     // The global panel renders its deployed skill, so we know data has loaded.
     expect(await screen.findByText("tdd")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "deploy →" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Deploy a skill" })).toBeNull();
   });
 });
 
@@ -169,7 +169,9 @@ describe("DeployStateView sections", () => {
     );
     renderView();
 
-    expect(screen.getByText(/loading registered repos/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/loading the registered repositories/i),
+    ).toBeInTheDocument();
     expect(
       screen.queryByText(/no repositories registered\./i),
     ).not.toBeInTheDocument();
@@ -183,7 +185,7 @@ describe("DeployStateView sections", () => {
     renderView();
 
     expect(
-      await screen.findByText("the registered repos could not be loaded"),
+      await screen.findByText("Registered repositories not read"),
     ).toBeInTheDocument();
     // A failed registry read must not masquerade as "no repos registered".
     expect(

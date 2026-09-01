@@ -250,7 +250,7 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
     });
   });
 
-  it("refuses both routes with a readable error when no harness is connected", async () => {
+  it("refuses both routes with its own code when no harness is connected", async () => {
     const app = makeApp(undefined);
 
     for (const res of [
@@ -258,9 +258,8 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
       await app.request("/api/harness/refresh", { method: "POST" }),
     ]) {
       expect(res.status).toBe(409);
-      const body = (await res.json()) as { error: string; message: string };
+      const body = (await res.json()) as { error: string };
       expect(body.error).toBe("not-configured");
-      expect(body.message).toMatch(/\S/);
     }
   });
 
@@ -271,9 +270,10 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
     const res = await app.request("/api/harness");
 
     expect(res.status).toBe(422);
-    const body = (await res.json()) as { error: string; message: string };
+    const body = (await res.json()) as { error: string };
     expect(body.error).toBe("no-usable-origin");
-    expect(body.message).not.toContain(base);
+    // The whole reply, not just a sentence: nothing in it may name the path.
+    expect(JSON.stringify(body)).not.toContain(base);
   });
 
   type PlanBody = {
@@ -350,15 +350,14 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
     ]);
   });
 
-  it("refuses a plan with a readable error before any fetch has confirmed a remote", async () => {
+  it("refuses a plan with its own code before any fetch has confirmed a remote", async () => {
     const app = makeApp(root);
 
     const res = await app.request("/api/harness/release-plan");
 
     expect(res.status).toBe(409);
-    const body = (await res.json()) as { error: string; message: string };
+    const body = (await res.json()) as { error: string };
     expect(body.error).toBe("no-answer");
-    expect(body.message).toMatch(/\S/);
   });
 
   it("leaves the author's checkout untouched across a refresh", async () => {

@@ -57,7 +57,10 @@ export function DeletionDialog({
             You deleted <span className="font-mono text-fg">{skill}</span> from
             the Harness working tree. Confirming proposes that removal to{" "}
             <span className="font-mono text-fg">{origin}</span> on its own
-            branch — nobody loses it until the pull request is merged.
+            branch.
+          </p>
+          <p className="m-0 font-ui text-desc text-muted">
+            Nobody loses the skill until the pull request is merged.
           </p>
           <Card padded>
             <dl className="flex flex-wrap gap-x-10 gap-y-3">
@@ -82,7 +85,7 @@ export function DeletionDialog({
             disabled={removing}
             onClick={onClose}
           >
-            cancel
+            Cancel
           </Button>
           <Button
             type="button"
@@ -92,7 +95,7 @@ export function DeletionDialog({
             disabled={removing}
             onClick={onConfirm}
           >
-            {removing ? "removing…" : "remove"}
+            {removing ? "Removing…" : "Remove skill"}
           </Button>
         </div>
       </div>

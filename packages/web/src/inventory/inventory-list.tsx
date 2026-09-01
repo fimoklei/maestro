@@ -88,7 +88,8 @@ export function InventoryList({
   if (primitives.length === 0) {
     return (
       <p className="px-card-x py-row-y text-dim text-tag">
-        No skills found in the inventory.
+        No skills in the Inventory. Add a skill to the Harness, then select
+        Re-read.
       </p>
     );
   }
@@ -122,7 +123,7 @@ export function InventoryList({
       <div className="flex flex-wrap items-center gap-3 px-card-x py-row-y">
         <div className="relative w-full max-w-[240px]">
           <label htmlFor="inventory-search" className="sr-only">
-            Search skills
+            Search the Inventory
           </label>
           <span
             aria-hidden="true"
@@ -135,7 +136,7 @@ export function InventoryList({
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="search…"
+            placeholder="search by name…"
             className="w-full rounded-control border border-line bg-inset py-row-y pr-card-x pl-7 font-mono text-fg text-mono-sm placeholder:text-dim focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
           />
         </div>
@@ -160,7 +161,7 @@ export function InventoryList({
       {/* Real scrollbar below the table's floor, never a silent clip. Named
           and focusable (WCAG 2.1.1). */}
       <section
-        aria-label="Central inventory table"
+        aria-label="Inventory table"
         // biome-ignore lint/a11y/noNoninteractiveTabindex: a scroll container that cannot take focus is keyboard-unreachable (WCAG 2.1.1), and Safari does not focus scrollers on its own
         tabIndex={0}
         // Rows scroll here, not the page — this is what the sticky headers
@@ -174,7 +175,7 @@ export function InventoryList({
           <TableHeader className="sticky top-0 z-10 bg-card">
             <TableRow>
               <TableHead className="w-10">
-                <span className="sr-only">Stage for bulk</span>
+                <span className="sr-only">Stage for bulk deploy</span>
               </TableHead>
               <SortableHead
                 className="w-20"
@@ -199,7 +200,7 @@ export function InventoryList({
               {/* Not a primitive field, so not a sort key (out of #289 scope). */}
               <TableHead className="w-40">Deployed</TableHead>
               <TableHead className="w-8">
-                <span className="sr-only">Expand</span>
+                <span className="sr-only">Detail</span>
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -207,7 +208,8 @@ export function InventoryList({
             {visible.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-dim text-tag">
-                  No skills match your search.
+                  No skills match the search. Clear the search box to see every
+                  skill.
                 </TableCell>
               </TableRow>
             ) : (
@@ -231,7 +233,7 @@ export function InventoryList({
                         type="checkbox"
                         checked={staged.has(primitive.name)}
                         onChange={() => toggleStagedName(primitive.name)}
-                        aria-label={`Stage ${primitive.name} for bulk`}
+                        aria-label={`Stage ${primitive.name} for bulk deploy`}
                         className="size-4 accent-amber focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
                       />
                     </label>

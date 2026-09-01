@@ -18,7 +18,9 @@ describe("ConfigUnreachableNotice", () => {
     const onRetry = vi.fn();
     render(<ConfigUnreachableNotice onRetry={onRetry} />);
 
-    await userEvent.click(screen.getByRole("button", { name: /try again/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /load the screen again/i }),
+    );
 
     expect(onRetry).toHaveBeenCalledOnce();
   });

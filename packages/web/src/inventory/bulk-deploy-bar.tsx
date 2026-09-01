@@ -86,10 +86,10 @@ export function BulkDeployBar({
 
   const selectId = "bulk-deploy-target";
   const buttonLabel = !registryReady
-    ? "loading targets…"
+    ? "Loading targets…"
     : bulk.isPending
-      ? "deploying…"
-      : `deploy ${stagedNames.length} →`;
+      ? "Deploying skills…"
+      : `Deploy ${stagedNames.length} ${stagedNames.length === 1 ? "skill" : "skills"}`;
 
   const onDeploy = () => {
     if (targetLoading) {
@@ -120,7 +120,6 @@ export function BulkDeployBar({
         updateToLatest: plan.updateToLatest,
         targetLabel: chosenLabel,
         requestFailed: bulk.isError,
-        requestFailedMessage: bulk.error?.message,
       })
     : null;
 
@@ -131,10 +130,10 @@ export function BulkDeployBar({
       <div className="flex flex-wrap items-center gap-2">
         <span
           role="status"
-          aria-label="Bulk selection"
+          aria-label="Staged for bulk deploy"
           className="flex flex-wrap items-center gap-2 font-mono"
         >
-          {stagedNames.length} staged for bulk
+          {stagedNames.length} staged for bulk deploy
           {hiddenCount > 0 ? (
             <span className="text-muted text-tag">
               · {hiddenCount} hidden by the filter
@@ -143,7 +142,7 @@ export function BulkDeployBar({
         </span>
         <span className="ml-auto flex items-center gap-2">
           <label htmlFor={selectId} className="sr-only">
-            Bulk-deploy target
+            Deploy target for the staged skills
           </label>
           <select
             id={selectId}

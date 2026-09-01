@@ -60,7 +60,7 @@ export function SkillDetailPane({
         <span className="text-dim text-tag uppercase tracking-tag">Skill</span>
         <button
           type="button"
-          aria-label="Close detail pane"
+          aria-label={`Close ${primitive.name} detail`}
           onClick={onClose}
           // Pane is the inset surface, so a fill step would be invisible —
           // this control takes DESIGN.md §5's border half instead.
@@ -110,8 +110,8 @@ export function SkillDetailPane({
                   HOVER_TRANSITION,
                 )}
               >
-                <span className="group-open:hidden">more ›</span>
-                <span className="hidden group-open:inline">less ‹</span>
+                <span className="group-open:hidden">More ›</span>
+                <span className="hidden group-open:inline">Less ‹</span>
               </span>
             </summary>
           </details>
@@ -130,15 +130,15 @@ export function SkillDetailPane({
               </ul>
               {/* Partial set — never lets it read as the full reach (J04). */}
               {unconfirmed ? (
-                <p className="mt-2 text-desc text-dim">
-                  more targets may still be loading…
-                </p>
+                <p className="mt-2 text-desc text-dim">Loading more targets…</p>
               ) : null}
             </>
           ) : unconfirmed ? (
-            <p className="text-desc text-dim">still reading deploy state…</p>
+            <p className="text-desc text-dim">Loading the deploy-state…</p>
           ) : (
-            <p className="text-desc text-dim">not deployed to any target yet</p>
+            <p className="text-desc text-dim">
+              Not deployed to any target. Choose a target under Deploy below.
+            </p>
           )}
         </div>
 
@@ -176,9 +176,9 @@ function ActionSection({
 const driftChip: Partial<
   Record<DriftStatus, { tone: "drift" | "dim"; label: string }>
 > = {
-  behind: { tone: "drift", label: "behind" },
-  unknown: { tone: "dim", label: "unknown" },
-  unverified: { tone: "dim", label: "unverified" },
+  behind: { tone: "drift", label: "Behind" },
+  unknown: { tone: "dim", label: "Unknown" },
+  unverified: { tone: "dim", label: "Unverified" },
 };
 
 function DeployedRow({ deployment }: { deployment: SkillDeployment }) {
@@ -186,12 +186,13 @@ function DeployedRow({ deployment }: { deployment: SkillDeployment }) {
   const chip = driftChip[status];
   return (
     <li className="flex items-center gap-2 py-1 text-tag">
-      {/* In-sync has no chip, so it holds an sr-only word here instead. */}
+      {/* Up to date has no chip, so it holds an sr-only word here instead.
+          "In sync" is a whole target's state, never one skill's (CONTEXT.md). */}
       <span aria-hidden="true" className={versionColor[status]}>
         ●
       </span>
       {status === "up-to-date" ? (
-        <span className="sr-only">in sync</span>
+        <span className="sr-only">Up to date</span>
       ) : null}
       <span className="flex-1 truncate text-fg-2">{label}</span>
       <span className={cn("font-mono", versionColor[status])}>

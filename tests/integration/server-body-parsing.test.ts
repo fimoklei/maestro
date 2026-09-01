@@ -19,20 +19,32 @@ import { stubScaffold } from "../helpers/stub-scaffold";
 // route's status, error code or wording (#434). Everything behind the parse is
 // stubbed — no route is reached.
 describe("POST body parsing", () => {
-  const PATH_MESSAGE = "Expected a JSON body with a path.";
-  const TARGET_MESSAGE =
-    'Expected a JSON body with type, name, and target ({ kind: "repo", repoPath } or { kind: "global" }).';
-  const BULK_MESSAGE =
-    'Expected a JSON body with a non-empty names array and a target ({ kind: "repo", repoPath } or { kind: "global" }).';
+  const PATH_SHAPE = {
+    message:
+      "No path reached the server. Reload the page, then name the folder again.",
+    detail: "The request carries a path: { path: string }.",
+  };
+  const TARGET_SHAPE = {
+    message:
+      "Nothing reached the target. Reload the page, then start the change again.",
+    detail:
+      'The request carries a type, a name and a target: { kind: "repo", repoPath } or { kind: "global" }.',
+  };
+  const BULK_SHAPE = {
+    message:
+      "Nothing was deployed. Reload the page, then stage the skills again.",
+    detail:
+      'The request carries a non-empty names array and a target: { kind: "repo", repoPath } or { kind: "global" }.',
+  };
 
   const routes = [
-    { path: "/api/inventory/connect", message: PATH_MESSAGE },
-    { path: "/api/filesystem/children", message: PATH_MESSAGE },
-    { path: "/api/registry/repos", message: PATH_MESSAGE },
-    { path: "/api/deploy", message: TARGET_MESSAGE },
-    { path: "/api/deploy/remove", message: TARGET_MESSAGE },
-    { path: "/api/deploy/remove/preflight", message: TARGET_MESSAGE },
-    { path: "/api/deploy/bulk", message: BULK_MESSAGE },
+    { path: "/api/inventory/connect", shape: PATH_SHAPE },
+    { path: "/api/filesystem/children", shape: PATH_SHAPE },
+    { path: "/api/registry/repos", shape: PATH_SHAPE },
+    { path: "/api/deploy", shape: TARGET_SHAPE },
+    { path: "/api/deploy/remove", shape: TARGET_SHAPE },
+    { path: "/api/deploy/remove/preflight", shape: TARGET_SHAPE },
+    { path: "/api/deploy/bulk", shape: BULK_SHAPE },
   ];
 
   function makeApp() {
@@ -79,7 +91,7 @@ describe("POST body parsing", () => {
       expect(res.status).toBe(400);
       expect(await res.json()).toEqual({
         error: "invalid-body",
-        message: route.message,
+        ...route.shape,
       });
     });
 
@@ -89,8 +101,23 @@ describe("POST body parsing", () => {
       expect(res.status).toBe(400);
       expect(await res.json()).toEqual({
         error: "invalid-body",
-        message: route.message,
+        ...route.shape,
       });
     });
   }
+
+  // The sentence states what did not happen; the shape it expected rides in
+  // `detail`, which is where a reader meets it (ADR-0025 §8, #681).
+  it("keeps the expected shape out of every request-shape sentence", async () => {
+    for (const route of routes) {
+      const res = await makeApp().request(
+        route.path,
+        post(JSON.stringify({ unexpected: true })),
+      );
+      const body = (await res.json()) as { message: string; detail: string };
+
+      expect(body.message).not.toMatch(/[{}:]/);
+      expect(body.detail).toMatch(/\{/);
+    }
+  });
 });

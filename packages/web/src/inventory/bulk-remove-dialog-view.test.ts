@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { HttpError } from "../api/http";
+import { removeNotice } from "../deploy-state/notice-copy";
 import type { RemovePreflightView } from "../deploy-state/remove-preflight-view";
 import {
   type BulkRemoveCheckedTarget,
@@ -38,7 +40,7 @@ const refused = (
 ): RemovePreflightView => ({
   kind: "refused",
   code,
-  message: "The server's own long sentence about it.",
+  notice: removeNotice(new HttpError(422, "unused", code)),
 });
 
 const target = (
@@ -57,7 +59,7 @@ describe("bulkRemoveDialogView — while the checks run", () => {
 
     expect(view).toEqual({
       kind: "checking",
-      line: "checking 3 targets — 1 answered",
+      line: "Checking 3 targets — 1 answered",
     });
   });
 
@@ -82,11 +84,11 @@ describe("bulkRemoveDialogView — the clean summary", () => {
 
     expect(view).toEqual({
       kind: "grouped",
-      cleanLine: "2 clean copies — nothing but the deployed files goes",
+      cleanLine: "2 clean copies — only the deployed files go",
       cost: [],
       refused: [],
       removableCount: 2,
-      confirmLabel: "remove from 2 →",
+      confirmLabel: "Remove from 2 targets",
     });
   });
 
@@ -118,7 +120,7 @@ describe("bulkRemoveDialogView — what the removal costs", () => {
       {
         label: "/dev/acme-api",
         version: "v1.0.0",
-        reason: "local edits — deleted too",
+        reason: "Local edits — deleted too",
       },
     ]);
   });
@@ -135,12 +137,12 @@ describe("bulkRemoveDialogView — what the removal costs", () => {
       {
         label: "/dev/acme-web",
         version: "v1.0.0",
-        reason: "nothing recorded — may lose work",
+        reason: "Nothing recorded — may lose work",
       },
       {
         label: "/dev/acme-api",
         version: "v1.0.0",
-        reason: "check did not run",
+        reason: "Check did not run",
       },
     ]);
     expect(view.kind === "grouped" && view.cleanLine).toBeNull();
@@ -157,7 +159,7 @@ describe("bulkRemoveDialogView — what the removal costs", () => {
       {
         label: "global",
         version: "v1.0.0",
-        reason: "local edits — deleted too",
+        reason: "Local edits — deleted too",
       },
     ]);
   });
@@ -168,7 +170,7 @@ describe("bulkRemoveDialogView — what the removal costs", () => {
     const view = bulkRemoveDialogView([target("global", perTool({}))]);
 
     expect(view.kind === "grouped" && view.cost).toEqual([
-      { label: "global", version: "v1.0.0", reason: "check did not run" },
+      { label: "global", version: "v1.0.0", reason: "Check did not run" },
     ]);
   });
 
@@ -188,7 +190,7 @@ describe("bulkRemoveDialogView — what cannot be removed", () => {
     ]);
 
     expect(view.kind === "grouped" && view.refused).toEqual([
-      { label: "/dev/legacy-etl", reason: "repo not registered" },
+      { label: "/dev/legacy-etl", reason: "Repository not registered" },
     ]);
   });
 
@@ -203,7 +205,7 @@ describe("bulkRemoveDialogView — what cannot be removed", () => {
 
     expect(view.kind === "grouped" && view.removableCount).toBe(2);
     expect(view.kind === "grouped" && view.confirmLabel).toBe(
-      "remove from 2 →",
+      "Remove from 2 targets",
     );
   });
 
@@ -216,7 +218,7 @@ describe("bulkRemoveDialogView — what cannot be removed", () => {
     ]);
 
     expect(view.kind === "grouped" && view.confirmLabel).toBe(
-      "remove from 3 · 2 lose local edits →",
+      "Remove from 3 targets · 2 lose local edits",
     );
   });
 

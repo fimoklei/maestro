@@ -1,4 +1,10 @@
 import type { DeploySkillError } from "@maestro/core";
+import {
+  ADD_SKILL_MD,
+  deployStateHeading,
+  FIX_AND_RELEASE,
+  RECHECK_TARGET,
+} from "../deploy-state/notice-copy";
 import { Button } from "../ui/button";
 import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
@@ -11,34 +17,13 @@ import {
 // One summary line + per-skill detail on expand (#292). Presentational —
 // colour, counts, rows already folded by bulkDeployReportView.
 
-// Terse label per code — the server owns the full sentence.
-const errorLabels: Partial<Record<DeploySkillError, string>> = {
-  "deployed-diverged-from-lock": "deployed copy has local changes",
-  "deployed-unverifiable": "deployed copy predates content tracking",
-  "local-diverged-from-tag": "local copy diverged from its tag",
-  "no-published-tag": "no published tag contains it",
-  "auth-required": "GitHub authentication is missing or expired",
-  "deploy-failed": "the deploy could not be completed",
-  "deployed-unsupported-package-type":
-    "apm recorded a type Maestro cannot manage as a skill",
-  "deploy-recorded-invalid": "apm recorded the deployment as invalid",
-  "deploy-unverified": "apm's install could not be confirmed from the lockfile",
-};
-
-// The bulk route returns codes, not prose, so the one recovery step a row can
-// act on lives here — the same guidance the single-deploy message carries.
+// The row's words come from the deploy notice table, so a code reads the same
+// here and in a single deploy's notice, and no code can reach the screen raw.
 const recoverySteps: Partial<Record<DeploySkillError, string>> = {
-  "deployed-unsupported-package-type":
-    "Correct the package shape in the harness, release a corrected tag, and deploy again.",
-  "deploy-recorded-invalid":
-    "Fix the package shape in the harness (a skill needs a SKILL.md), release a corrected tag, and deploy again.",
-  "deploy-unverified":
-    "Check the target's lockfile (apm.lock.yaml), then try again.",
+  "deployed-unsupported-package-type": FIX_AND_RELEASE,
+  "deploy-recorded-invalid": ADD_SKILL_MD,
+  "deploy-unverified": RECHECK_TARGET,
 };
-
-function errorLabel(error: DeploySkillError): string {
-  return errorLabels[error] ?? error;
-}
 
 function RecoveryStep({ error }: { error: DeploySkillError }) {
   const step = recoverySteps[error];
@@ -65,14 +50,14 @@ export function BulkDeployReport({
           aria-label="Bulk deploy result"
           className="rounded-control border border-line bg-inset px-card-x py-row-y font-mono text-amber-ink text-mono-sm"
         >
-          Deploy to {view.targetLabel} failed: {view.message}
+          Deploy to {view.targetLabel} did not run. {view.message}
         </div>
       </div>
     );
   }
 
   const summary = isDeploying
-    ? "Deploying…"
+    ? "Deploying skills…"
     : bulkDeploySummary({
         targetLabel: view.targetLabel,
         counts: view.counts,
@@ -140,26 +125,26 @@ export function BulkDeployReport({
                     {row.name}
                   </span>
                   <span className="text-dim">{row.version}</span>
-                  <span className="text-muted">updated to latest</span>
+                  <span className="text-muted">Updated to latest</span>
                 </li>
               ))}
             </ul>
           ) : null}
 
           {view.attention.length > 0 ? (
-            <ul aria-label="Needs attention" className="flex flex-col gap-1">
+            <ul aria-label="Attention" className="flex flex-col gap-1">
               {view.attention.map((row) => (
                 <li
                   key={row.name}
                   className="flex items-baseline justify-between gap-2 text-tag"
                 >
                   <span className="flex min-w-0 items-baseline gap-2">
-                    <Chip tone="drift">▲ attention</Chip>
+                    <Chip tone="drift">▲ Attention</Chip>
                     <span className="font-mono text-fg text-mono-sm">
                       {row.name}
                     </span>
                     <span className="truncate text-amber-ink">
-                      {errorLabel(row.error)}
+                      {deployStateHeading(row.error)}
                       {row.packageType ? ` (${row.packageType})` : ""}
                     </span>
                     <RecoveryStep error={row.error} />
@@ -170,7 +155,7 @@ export function BulkDeployReport({
                       size="sm"
                       onClick={() => onForce(row.name)}
                     >
-                      Reinstall fresh {row.name}
+                      Deploy {row.name} again
                     </Button>
                   ) : null}
                 </li>
@@ -190,7 +175,7 @@ export function BulkDeployReport({
                     {row.names.join(", ")}
                   </span>
                   <span className="text-amber-ink">
-                    {errorLabel(row.error)}
+                    {deployStateHeading(row.error)}
                   </span>
                   <RecoveryStep error={row.error} />
                 </li>
@@ -199,17 +184,14 @@ export function BulkDeployReport({
           ) : null}
 
           {view.skipped.length > 0 ? (
-            <ul
-              aria-label="Skipped, already up to date"
-              className="flex flex-col gap-1"
-            >
+            <ul aria-label="Already up to date" className="flex flex-col gap-1">
               {view.skipped.map((name) => (
                 <li key={name} className="flex items-baseline gap-2 text-tag">
                   <span className="text-dim">–</span>
                   <span className="font-mono text-muted text-mono-sm">
                     {name}
                   </span>
-                  <span className="text-dim">already up to date</span>
+                  <span className="text-dim">Already up to date</span>
                 </li>
               ))}
             </ul>

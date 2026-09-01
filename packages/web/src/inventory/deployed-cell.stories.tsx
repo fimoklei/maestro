@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { DeployedCell } from "./deployed-cell";
 
 // The deployed column's meaningful states (#272): a plain reach count, the ▲N
-// drift chip, the separate ? unknown marker, and the explicit "not deployed".
+// drift chip, the separate ? unknown marker, and the explicit "Not deployed".
 const meta = {
   title: "Inventory/DeployedCell",
   component: DeployedCell,
@@ -20,7 +20,7 @@ export const NotDeployed: Story = {
 };
 
 // Reach unconfirmed while the local reads are in flight — holds off on the
-// definite "not deployed" (J04).
+// definite "Not deployed" (J04).
 export const Resolving: Story = {
   args: {
     rollup: { targetCount: 0, behindCount: 0, unknownCount: 0, pending: true },

@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from "react-router";
 import { ConfigUnreachableNotice } from "../inventory/config-unreachable-notice";
+import { LOADING_INVENTORY_CONNECTION } from "../inventory/inventory-copy";
 import { useInventoryConfig } from "../inventory/use-inventory";
 import { useFirstRun, useIsConfigured } from "./use-first-run";
 
@@ -27,11 +28,13 @@ export function FirstRunGate() {
       return <Navigate to="/" replace />;
     }
     if (config.isError) {
-      // Without this, a failed query sits on "Loading…" forever (#103).
+      // Without this, a failed query sits on the loading line forever (#103).
       return <ConfigUnreachableNotice onRetry={() => config.refetch()} />;
     }
     if (!firstRun) {
-      return <p className="text-dim text-tag">Loading…</p>;
+      return (
+        <p className="text-dim text-tag">{LOADING_INVENTORY_CONNECTION}</p>
+      );
     }
   }
 

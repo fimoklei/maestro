@@ -12,11 +12,11 @@ export function WelcomeView() {
       <div className="flex max-w-md flex-col items-center gap-2.5">
         <span aria-hidden="true" className="connect-gate-rule" />
         <h1 className="connect-gate-title m-0 font-semibold font-ui text-fg text-title">
-          Central inventory not connected
+          Inventory not connected
         </h1>
         <p className="connect-gate-body m-0 text-body text-muted">
-          Maestro reads primitives from a local Harness clone or a GitHub
-          repository. The cockpit stays empty until it has one.
+          Maestro reads skills, hooks and MCP servers from a Harness clone or
+          GitHub repository. The cockpit stays empty until one is connected.
         </p>
         <Button
           variant="primary"
@@ -24,7 +24,7 @@ export function WelcomeView() {
           className="connect-gate-cta mt-1"
           onClick={() => navigate("/welcome/connect")}
         >
-          Connect inventory →
+          Connect Inventory
         </Button>
       </div>
     </div>

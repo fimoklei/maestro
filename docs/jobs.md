@@ -39,8 +39,8 @@ Detail lives in tracker issues; elaboration happens in the grill.
 
 | Job | Main | Job story |
 |---|---|---|
-| Install Maestro from a clone in one command | C | *When* a teammate has been given access to Maestro, *I want to* have one bootstrap script check their Node and pnpm and start the cockpit, *so I can* hand them a repo instead of walking them through a toolchain. |
-| Cut a Maestro release a teammate can pull | C | *When* I fix or extend the cockpit, *I want to* publish a tagged release of Maestro itself, *so I can* have teammates pull a version that works instead of whatever `main` happens to be. |
+| Install Maestro from a clone in one command · [#621](https://github.com/fimoklei/maestro/issues/621) | C | *When* a teammate has been given access to Maestro, *I want to* have one bootstrap script check their Node and pnpm and start the cockpit, *so I can* hand them a repo instead of walking them through a toolchain. |
+| Cut a Maestro release a teammate can pull · [#621](https://github.com/fimoklei/maestro/issues/621) | C | *When* I fix or extend the cockpit, *I want to* publish a tagged release of Maestro itself, *so I can* have teammates pull a version that works instead of whatever `main` happens to be. |
 | Read the shared skills directory truthfully · [#172](https://github.com/fimoklei/maestro/issues/172) | A, B | *When* my tools read one shared skills directory, *I want to* have the cockpit show one source read by many tools, *so I can* trust deploy-state, drift, and cleanup on my real machine. |
 | Connect a registry as inventory source | A | *When* my central inventory is published to an apm registry, *I want to* point Maestro at it as the inventory source, *so I can* run the cockpit without a local clone. |
 | Disconnect an inventory source knowing its impact | A | *When* an inventory source is no longer the one I steer from, *I want to* see what disconnecting it does to the primitives already deployed to my targets before I confirm, *so I can* remove it without silently orphaning deploys I still rely on. |
@@ -56,9 +56,11 @@ Detail lives in tracker issues; elaboration happens in the grill.
 | Connect & sync the inventory from git | A | *When* my central inventory lives in a remote repo I have not cloned, *I want to* point Maestro at its git URL as the inventory source, *so I can* set up the cockpit without cloning by hand first. |
 | Act on a failed Harness fetch | A, C | *When* the cockpit cannot reach the Harness remote, *I want to* learn which kind of failure it hit and keep a way forward, *so I can* fix the cause instead of facing a strip that only says it failed. |
 | Tell an unreleased skill from an unreleased Harness | B, C | *When* a deploy is refused because no published tag carries the skill, *I want to* hear which of the two situations I am in, *so I can* cut a release or publish the skill instead of guessing which. |
-| Deploy what I just promoted · [#666](https://github.com/fimoklei/maestro/issues/666) | B, C | *When* a promote of mine has been merged and released, *I want to* deploy that skill straight away, *so I can* finish the loop in the cockpit instead of pulling the Harness clone by hand in a terminal. |
+| Deploy what I just promoted · [#666](https://github.com/fimoklei/maestro/issues/666), [#621](https://github.com/fimoklei/maestro/issues/621) | B, C | *When* a promote of mine has been merged and released, *I want to* deploy that skill straight away, *so I can* finish the loop in the cockpit instead of pulling the Harness clone by hand in a terminal. |
 | Import a skill from where it was authored · [#667](https://github.com/fimoklei/maestro/issues/667) | B | *When* I have written a skill in the directory my tools read it from, *I want to* import it from there, *so I can* follow the Harness's own contributing guide instead of copying the folder elsewhere first. |
 | Scaffold a Harness clone that is ready to use · [#668](https://github.com/fimoklei/maestro/issues/668) | C | *When* Maestro has scaffolded my Harness, *I want to* have `git pull` work in that clone, *so I can* use ordinary git in it without setting an upstream first. |
+| Reach an authored skill in the import picker · [#654](https://github.com/fimoklei/maestro/issues/654) | B | *When* I import a skill into the Harness, *I want to* reach the folder it is authored in without typing a path or revealing hidden items, *so I can* pick a skill instead of hunting for a dotfolder. |
+| Scaffold the Harness contribution policy · [#678](https://github.com/fimoklei/maestro/issues/678) | C | *When* Maestro scaffolds a new Harness, *I want to* have its `CONTRIBUTING.md` carry the settled review and release policy, *so I can* hand teammates a repo that already tells them who reviews, what bar applies and who releases. |
 
 ## DONE
 
@@ -101,7 +103,7 @@ Valid jobs, deliberately not being done.
 | Job | Reason |
 |---|---|
 | Reimplement install / sync / pinning / lockfile | APM owns the engine. See ADR-0001. |
-| Governance lifecycle (review/approve/required) · [#678](https://github.com/fimoklei/maestro/issues/678) | Maestro drives git to the push and gates nothing ([#365](https://github.com/fimoklei/maestro/issues/365)); review and approval happen on GitHub. Roles, approval rules and required-vs-optional are future main job C. |
+| Governance lifecycle (review/approve/required) | Maestro drives git to the push and gates nothing ([#365](https://github.com/fimoklei/maestro/issues/365)); review and approval happen on GitHub. Roles, approval rules and required-vs-optional are future main job C. |
 | Compounding loop (corrections → primitives) | Needs adoption and a working manual loop first; future main job D. |
 | Adoption dashboards across teams | Measuring use means gathering from other people's machines; Maestro is local-only and collects nothing. |
 | Support every AI coding tool | Two tools (Claude Code, Codex) first; breadth later. |

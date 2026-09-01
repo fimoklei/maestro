@@ -15,46 +15,47 @@ export function DeployedCell({ rollup }: { rollup: DeployedRollup }) {
 
   // A trailing … says more may be unread while loading/failed (J04).
   const unconfirmed = Boolean(pending || unreadable);
+  // The reason doubles as the count-less label, so a failed read never falls
+  // back to the loading wording the sr-only text would then contradict (R-A).
+  const reachReason = unreadable
+    ? "Deploy-state not read on every target"
+    : "Loading deploy-state…";
   const reach =
     targetCount > 0
       ? `→ ${targetCount} ${targetCount === 1 ? "target" : "targets"}${
           unconfirmed ? " …" : ""
         }`
       : unconfirmed
-        ? "…"
-        : "not deployed";
-  const reachReason = unreadable
-    ? "deploy state could not be read on every target"
-    : "still reading deploy state";
+        ? reachReason
+        : "Not deployed";
+  // Only the counted reach needs a second reading: with no count the visible
+  // text is already the whole fact, and repeating it would announce it twice.
   const reachLabel =
-    targetCount > 0
+    unconfirmed && targetCount > 0
       ? `${targetCount} ${
           targetCount === 1 ? "target" : "targets"
-        }; ${reachReason}`
-      : reachReason;
+        }. ${reachReason}`
+      : null;
 
   // Glyph is aria-hidden, sr-only label states the fact — same info a hover
   // tooltip gives a mouse (frontend.md).
   const behindLabel = `${behindCount} ${
-    behindCount === 1 ? "target is" : "targets are"
-  } behind the latest version`;
-  const unknownLabel = `Drift check could not run on ${unknownCount} ${
+    behindCount === 1 ? "target" : "targets"
+  } behind`;
+  const unknownLabel = `Update check did not run on ${unknownCount} ${
     unknownCount === 1 ? "target" : "targets"
   }`;
 
   return (
     <span className="flex items-center gap-2">
-      <span
-        className="text-dim text-tag"
-        title={unconfirmed ? reachLabel : undefined}
-      >
-        {unconfirmed ? (
+      <span className="text-dim text-tag" title={reachLabel ?? undefined}>
+        {reachLabel === null ? (
+          reach
+        ) : (
           <>
             <span aria-hidden="true">{reach}</span>
             <span className="sr-only">{reachLabel}</span>
           </>
-        ) : (
-          reach
         )}
       </span>
       {behindCount > 0 ? (
@@ -69,7 +70,7 @@ export function DeployedCell({ rollup }: { rollup: DeployedRollup }) {
           <span className="sr-only">{unknownLabel}</span>
         </Chip>
       ) : null}
-      {checking ? <Chip tone="dim">checking…</Chip> : null}
+      {checking ? <Chip tone="dim">Loading updates…</Chip> : null}
     </span>
   );
 }

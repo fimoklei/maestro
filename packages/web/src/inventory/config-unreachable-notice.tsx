@@ -10,10 +10,10 @@ export function ConfigUnreachableNotice({ onRetry }: { onRetry: () => void }) {
       trigger="load"
       notice={{
         level: "error",
-        label: "the Maestro server is unreachable",
+        label: "Maestro server unreachable",
         message:
-          "Nothing on this screen can load until it answers. Check that it is still running, then try again.",
-        action: { label: "Try again", onClick: onRetry },
+          "Nothing on this screen loads until the Maestro server answers. Check that it is running, then load the screen again.",
+        action: { label: "Load the screen again", onClick: onRetry },
       }}
     />
   );

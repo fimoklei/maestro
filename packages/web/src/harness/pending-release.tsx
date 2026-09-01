@@ -62,7 +62,7 @@ export function PendingRelease({
                         : `${movement.previousName} → ${movement.name}`}
                     </TableCell>
                     <TableCell className="text-desc text-muted">
-                      {movement.author ?? "unknown"}
+                      {movement.author ?? "Unknown"}
                     </TableCell>
                   </TableRow>
                 ))}

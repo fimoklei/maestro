@@ -31,9 +31,9 @@ export const ConfirmationRefused: Story = {
   args: {
     removeError: {
       level: "error",
-      label: "the confirmation is out of date",
-      message:
-        "The copy on the default branch moved after this confirmation was given, so nothing was pushed. Press refresh, then confirm again.",
+      label: "Confirmation out of date",
+      message: "Nothing was pushed. Press Refresh, then Remove skill again.",
+      detail: "The copy on the default branch moved after this confirmation.",
     },
   },
 };
@@ -44,9 +44,10 @@ export const WorkingTreeAmbiguous: Story = {
   args: {
     removeError: {
       level: "error",
-      label: "a merge is unfinished",
+      label: "Unfinished merge",
       message:
-        "Nothing was pushed — a half-merged working tree does not state what should go. Finish or abort the merge, then confirm again.",
+        "Nothing was pushed. Finish or abort the merge, then Remove skill again.",
+      detail: "A half-merged working tree does not state what should go.",
     },
   },
 };

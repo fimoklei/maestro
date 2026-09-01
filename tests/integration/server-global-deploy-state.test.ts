@@ -188,9 +188,8 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
     const res = await makeApp().request("/api/deploy-state/global");
 
     expect(res.status).toBe(422);
-    const body = (await res.json()) as { error: string; message: string };
+    const body = (await res.json()) as { error: string };
     expect(body.error).toBe("malformed");
-    expect(body.message).toMatch(/\S/);
   });
 
   it("takes no client-supplied path: a repo query cannot redirect the global read", async () => {

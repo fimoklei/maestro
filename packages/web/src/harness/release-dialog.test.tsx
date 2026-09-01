@@ -71,7 +71,7 @@ describe("ReleaseDialog", () => {
     // first section.
     const delta = screen.getAllByRole("table").at(-1) as HTMLElement;
     const advisory = screen.getByRole("status", { name: /structural/i });
-    const step = screen.getByRole("button", { name: "major" });
+    const step = screen.getByRole("button", { name: "Major" });
 
     expect(
       delta.compareDocumentPosition(step) & Node.DOCUMENT_POSITION_FOLLOWING,
@@ -84,7 +84,7 @@ describe("ReleaseDialog", () => {
   it("keeps Maestro's proposal readable after the author overrides it", async () => {
     renderReady();
 
-    await userEvent.click(screen.getByRole("button", { name: "major" }));
+    await userEvent.click(screen.getByRole("button", { name: "Major" }));
 
     expect(screen.getByText("v2.0.0")).toBeInTheDocument();
     // The proposal is a fact about the delta, not about the author's pick.
@@ -105,7 +105,7 @@ describe("ReleaseDialog", () => {
   it("lets the author pick a different step, and shows that version", async () => {
     renderReady();
 
-    await userEvent.click(screen.getByRole("button", { name: "major" }));
+    await userEvent.click(screen.getByRole("button", { name: "Major" }));
 
     expect(screen.getByText("v2.0.0")).toBeInTheDocument();
   });
@@ -135,7 +135,9 @@ describe("ReleaseDialog", () => {
     const onPublish = vi.fn();
     renderReady({}, { onPublish });
 
-    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
 
     expect(onPublish).toHaveBeenCalledWith("minor", PLAN);
   });
@@ -144,8 +146,10 @@ describe("ReleaseDialog", () => {
     const onPublish = vi.fn();
     renderReady({}, { onPublish });
 
-    await userEvent.click(screen.getByRole("button", { name: "major" }));
-    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+    await userEvent.click(screen.getByRole("button", { name: "Major" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
 
     expect(onPublish).toHaveBeenCalledWith("major", PLAN);
   });
@@ -155,7 +159,7 @@ describe("ReleaseDialog", () => {
     // the next. The recomputed plan's own proposal takes over (#521).
     const onPublish = vi.fn();
     const { rerender } = renderReady({}, { onPublish });
-    await userEvent.click(screen.getByRole("button", { name: "major" }));
+    await userEvent.click(screen.getByRole("button", { name: "Major" }));
     expect(screen.getByText("v2.0.0")).toBeInTheDocument();
 
     const recomputed: ReleasePlan = {
@@ -177,7 +181,9 @@ describe("ReleaseDialog", () => {
       />,
     );
 
-    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
     expect(onPublish).toHaveBeenCalledWith("patch", recomputed);
   });
 
@@ -216,7 +222,7 @@ describe("ReleaseDialog", () => {
       />,
     );
 
-    expect(screen.getByText(/planning/i)).toBeInTheDocument();
+    expect(screen.getByText(/loading the release plan/i)).toBeInTheDocument();
   });
 
   it("states a plan that could not be computed as a readable error", () => {

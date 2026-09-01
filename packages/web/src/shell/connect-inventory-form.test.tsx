@@ -130,7 +130,7 @@ describe("ConnectInventoryForm", () => {
         onSubmit={vi.fn()}
         notice={{
           level: "error",
-          label: "no usable git origin",
+          label: "No GitHub origin",
           message: "Server explanation of the refusal.",
           action: { label: "browse again…", onClick: onAction },
         }}
@@ -139,7 +139,7 @@ describe("ConnectInventoryForm", () => {
     );
 
     const alert = screen.getByRole("alert");
-    expect(alert).toHaveTextContent(/no usable git origin/i);
+    expect(alert).toHaveTextContent(/No GitHub origin/i);
     expect(alert).toHaveTextContent("Server explanation of the refusal.");
     await userEvent.click(
       screen.getByRole("button", { name: /browse again/i }),
@@ -249,7 +249,7 @@ describe("ConnectInventoryForm", () => {
           level: "info",
           label: "not a Harness yet",
           message: "That GitHub repository has no apm.yml.",
-          aside: "/home/me/team-harness",
+          detail: "/home/me/team-harness",
           action: { label: "Scaffold the Harness", onClick: onAccept },
         }}
       />,
@@ -283,7 +283,7 @@ describe("ConnectInventoryForm", () => {
           level: "info",
           label: "not a Harness yet",
           message: "That GitHub repository has no apm.yml.",
-          aside: "/home/me/team-harness",
+          detail: "/home/me/team-harness",
           action: {
             label: "Scaffolding…",
             onClick: vi.fn(),
@@ -441,11 +441,11 @@ describe("ConnectInventoryForm", () => {
         path=""
         onPathChange={vi.fn()}
         onSubmit={vi.fn()}
-        submitLabel="Re-point source"
+        submitLabel="Set Harness location"
       />,
     );
     expect(
-      screen.getByRole("button", { name: /^re-point source$/i }),
+      screen.getByRole("button", { name: /^set harness location$/i }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /^connect inventory$/i }),

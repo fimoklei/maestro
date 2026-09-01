@@ -367,7 +367,6 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({
       error: "path-occupied",
-      message: expect.any(String),
       path: ".github",
     });
     // Nothing written, nothing committed, nothing pushed.

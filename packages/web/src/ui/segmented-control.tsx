@@ -39,7 +39,7 @@ export function SegmentedControl<V extends string>({
             aria-pressed={active}
             onClick={() => onChange(segment.value)}
             className={cn(
-              "cursor-pointer rounded-control border px-3 py-1 font-mono text-tag lowercase tracking-tag",
+              "cursor-pointer rounded-control border px-3 py-1 font-mono text-tag tracking-tag",
               HOVER_TRANSITION,
               // Hover stays a step below the active surface (DESIGN.md §5).
               active

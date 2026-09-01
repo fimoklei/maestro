@@ -72,7 +72,7 @@ function renderAction(targets = TARGETS) {
 
 const openDialog = async () => {
   await userEvent.click(
-    screen.getByRole("button", { name: "remove from all 2 →" }),
+    screen.getByRole("button", { name: "Remove from all 2 targets" }),
   );
 };
 
@@ -111,15 +111,15 @@ describe("BulkRemoveSkillAction", () => {
     await openDialog();
 
     const confirm = await screen.findByRole("button", {
-      name: "remove from 2 →",
+      name: "Remove from 2 targets",
     });
     await waitFor(() => expect(confirm).toBeEnabled());
     await userEvent.click(confirm);
 
     // The run's outcome replaces the question rather than vanishing with it.
     const dialog = await screen.findByRole("dialog", { name: "Removed tdd" });
-    expect(dialog).toHaveTextContent("removed 2 · refused 0 · failed 0");
-    await userEvent.click(screen.getByRole("button", { name: "done" }));
+    expect(dialog).toHaveTextContent("Removed 2 · refused 0 · failed 0");
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(screen.queryByRole("dialog")).toBeNull();
 
     const runs = calls.filter((call) => call.url.endsWith("/remove/bulk"));
@@ -157,7 +157,7 @@ describe("BulkRemoveSkillAction", () => {
     await openDialog();
 
     const confirm = await screen.findByRole("button", {
-      name: "remove from 1 →",
+      name: "Remove from 1 targets",
     });
     await waitFor(() => expect(confirm).toBeEnabled());
     await userEvent.click(confirm);
@@ -193,10 +193,10 @@ describe("BulkRemoveSkillAction", () => {
     await openDialog();
 
     const group = await screen.findByRole("group", {
-      name: "✕ CAN'T BE REMOVED · 1",
+      name: "✕ Cannot be removed · 1",
     });
     expect(group).toHaveTextContent("/dev/acme-web");
-    expect(group).toHaveTextContent("repo not registered");
+    expect(group).toHaveTextContent("Repository not registered");
   });
 
   it("weighs a copy with local edits as a cost, naming the version it destroys", async () => {
@@ -215,14 +215,14 @@ describe("BulkRemoveSkillAction", () => {
     await openDialog();
 
     const group = await screen.findByRole("group", {
-      name: "▲ LOSES WORK · 1",
+      name: "▲ Loses work · 1",
     });
     expect(group).toHaveTextContent("/dev/acme-web");
     expect(group).toHaveTextContent("v1.0.0");
-    expect(group).toHaveTextContent("local edits — deleted too");
+    expect(group).toHaveTextContent("Local edits — deleted too");
     expect(
       screen.getByRole("button", {
-        name: "remove from 2 · 1 lose local edits →",
+        name: "Remove from 2 targets · 1 lose local edits",
       }),
     ).toBeEnabled();
   });
@@ -260,16 +260,16 @@ describe("BulkRemoveSkillAction", () => {
 
     expect(await screen.findByText("v1.0.0")).toBeInTheDocument();
     await userEvent.click(
-      screen.getByRole("button", { name: "remove from all 1 →" }),
+      screen.getByRole("button", { name: "Remove from all 1 target" }),
     );
     const confirm = await screen.findByRole("button", {
-      name: "remove from 1 →",
+      name: "Remove from 1 targets",
     });
     await waitFor(() => expect(confirm).toBeEnabled());
     await userEvent.click(confirm);
     // The pane behind the report is re-read on the way out, so what it lists
     // afterwards is exactly what still holds the skill.
-    await userEvent.click(await screen.findByRole("button", { name: "done" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Done" }));
 
     expect(await screen.findByText(/empty/i)).toBeInTheDocument();
   });
@@ -295,27 +295,27 @@ describe("BulkRemoveSkillAction", () => {
     renderAction([ACME_WEB]);
     const openIt = async () =>
       userEvent.click(
-        screen.getByRole("button", { name: "remove from all 1 →" }),
+        screen.getByRole("button", { name: "Remove from all 1 target" }),
       );
 
     await openIt();
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: "remove from 1 →" }),
+        screen.getByRole("button", { name: "Remove from 1 targets" }),
       ).toBeEnabled(),
     );
-    await userEvent.click(screen.getByRole("button", { name: "cancel" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     await openIt();
 
     expect(
-      screen.getByRole("button", { name: "remove from 1 →" }),
+      screen.getByRole("button", { name: "Remove from 1 targets" }),
     ).toBeDisabled();
     expect(screen.getByRole("dialog")).toHaveTextContent(
-      "checking 1 targets — 0 answered",
+      "Checking 1 targets — 0 answered",
     );
   });
 
-  it("says the outcome is unknown when the run's answer is lost, and re-reads the targets", async () => {
+  it("says Outcome unknown when the run's answer is lost, and re-reads the targets", async () => {
     // A lost response does not prove the server never ran: the walk may have
     // finished. Claiming nothing was removed would send the user into a retry
     // instead of a look.
@@ -349,23 +349,23 @@ describe("BulkRemoveSkillAction", () => {
 
     expect(await screen.findByText("v1.0.0")).toBeInTheDocument();
     await userEvent.click(
-      screen.getByRole("button", { name: "remove from all 1 →" }),
+      screen.getByRole("button", { name: "Remove from all 1 target" }),
     );
     const confirm = await screen.findByRole("button", {
-      name: "remove from 1 →",
+      name: "Remove from 1 targets",
     });
     await waitFor(() => expect(confirm).toBeEnabled());
     await userEvent.click(confirm);
 
     // Never "nothing was removed": the panel behind it already says otherwise.
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      /cannot say what was removed/i,
+      /outcome is unrecorded/i,
     );
-    await userEvent.click(screen.getByRole("button", { name: "close" }));
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(await screen.findByText(/empty/i)).toBeInTheDocument();
   });
 
-  it("says the run never started when the server refuses the request", async () => {
+  it("says Run not started when the server refuses the request", async () => {
     // The server answered, so nothing was walked. The same attempt is still on
     // offer, against the body it would act on.
     stubServer({
@@ -377,20 +377,20 @@ describe("BulkRemoveSkillAction", () => {
     });
     renderAction([ACME_WEB]);
     await userEvent.click(
-      screen.getByRole("button", { name: "remove from all 1 →" }),
+      screen.getByRole("button", { name: "Remove from all 1 target" }),
     );
     const confirm = await screen.findByRole("button", {
-      name: "remove from 1 →",
+      name: "Remove from 1 targets",
     });
     await waitFor(() => expect(confirm).toBeEnabled());
     await userEvent.click(confirm);
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "the run never started",
+      "Run not started",
     );
     expect(screen.getByRole("dialog")).not.toHaveTextContent(/refused 0/);
     expect(
-      screen.getByRole("button", { name: "remove from 1 →" }),
+      screen.getByRole("button", { name: "Remove from 1 targets" }),
     ).toBeEnabled();
   });
 
@@ -408,19 +408,21 @@ describe("BulkRemoveSkillAction", () => {
     await openDialog();
 
     const confirm = await screen.findByRole("button", {
-      name: "remove from 2 →",
+      name: "Remove from 2 targets",
     });
     await waitFor(() => expect(confirm).toBeEnabled());
     await userEvent.click(confirm);
 
     expect(
-      await screen.findByRole("dialog", { name: "Removed tdd from 1 of 2" }),
+      await screen.findByRole("dialog", {
+        name: "Removed tdd from 1 of 2 targets",
+      }),
     ).toBeInTheDocument();
-    const group = screen.getByRole("group", { name: "✕ LEFT ALONE · 1" });
+    const group = screen.getByRole("group", { name: "✕ Left alone · 1" });
     expect(group).toHaveTextContent("/dev/acme-web");
     expect(group).toHaveTextContent("refused");
-    expect(group).toHaveTextContent("repo not registered");
+    expect(group).toHaveTextContent("Repository not registered");
     const controls = within(screen.getByRole("dialog")).getAllByRole("button");
-    expect(controls.map((control) => control.textContent)).toEqual(["close"]);
+    expect(controls.map((control) => control.textContent)).toEqual(["Close"]);
   });
 });

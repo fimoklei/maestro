@@ -27,20 +27,20 @@ function completionCopy(
       return {
         title: `✓ ${count} found`,
         detail: "Deploys never write back to this Harness.",
-        continueLabel: "Continue to inventory →",
+        continueLabel: "Continue to Inventory",
       };
     case "joined":
       return {
         title: `✓ Harness joined · ${count} found`,
         detail: "The cloned Harness is ready in Inventory.",
-        continueLabel: "Continue to inventory →",
+        continueLabel: "Continue to Inventory",
       };
     case "scaffolded":
       return {
-        title: "✓ Harness scaffolded · the Harness is empty",
+        title: "✓ Harness scaffolded · The Harness is empty",
         detail:
           "The skill-check workflow is advisory. It only becomes a gate if the team makes it a required check.",
-        continueLabel: "Continue to Harness →",
+        continueLabel: "Continue to Harness",
       };
   }
 }
