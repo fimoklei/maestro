@@ -2,7 +2,6 @@
 // nothing after it: no branch, no commit, no push. What lands shows up as a
 // pending promotion, the same route as any other edit (#576).
 import { basename, join } from "node:path";
-import { DEPLOY_TOOLS } from "../deploy/deploy-tools";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import { isWithinRoot } from "../filesystem/browse-path";
 import type {
@@ -11,6 +10,7 @@ import type {
   CopySkillFolderResult,
 } from "../filesystem/copy-skill-folder";
 import { HARNESS_SKILLS_DIR } from "../inventory/harness-layout";
+import { parseLockfile } from "../lockfile/lockfile";
 import type { FileSystemPort } from "../registry/file-system";
 import {
   type ManifestAdvisory,
@@ -62,6 +62,12 @@ export type ImportSkillResult =
 
 export type ImportSkillInput = { source: string; name?: string };
 
+// One place apm could have deployed into: its lockfile is the provenance
+// record, and its tree root is what deployed_files entries are relative to
+// (#667). Global splits the two — apm writes the lockfile under ~/.apm but
+// keys paths HOME-relative (DeployedLocation).
+export type DeployedTarget = { treeRoot: string; lockfilePath: string };
+
 type ImportFs = Pick<
   FileSystemPort,
   "realpath" | "isDirectory" | "exists" | "readFile" | "writeFile" | "ensureDir"
@@ -75,9 +81,9 @@ export class ImportSkill {
     // the browser, so it is allowlisted like every other one (security.md).
     homeRoot: () => string;
     copy: { copy(input: CopyRequest): Promise<CopySkillFolderResult> };
-    // Every root a deploy can have written into: the home for global installs
-    // and each registered repository (ADR-0011).
-    deployedRoots: () => Promise<string[]>;
+    // Every lockfile a deploy can have written: the global install and each
+    // registered repository (ADR-0011).
+    deployedTargets: () => Promise<DeployedTarget[]>;
   };
 
   constructor(deps: ImportSkill["deps"]) {
@@ -198,15 +204,46 @@ export class ImportSkill {
     if (!(await this.withinHome(source))) {
       return "outside-root";
     }
-    // Before the manifest is judged: a deployed copy is refused for what it is,
-    // whatever it happens to contain. The roots are canonicalized against the
-    // canonical source, or a symlinked prefix (/var -> /private/var) would let
-    // one through.
-    const roots = await this.canonicalRoots();
-    if (isDeployedCopy(source, roots)) {
+    // Before the manifest is judged: a deployed copy is refused for what it
+    // is, whatever it happens to contain.
+    if (await this.isDeployedCopy(source)) {
       return "deployed-copy";
     }
     return validateSkillStructure(raw);
+  }
+
+  // True where some lockfile actually records this folder as deployed —
+  // provenance, not a guess from where the folder sits. A hand-authored skill
+  // that merely lives in the same directory a deploy writes into (the
+  // documented place to author one, #667) is not refused; apm never wrote it.
+  private async isDeployedCopy(source: string): Promise<boolean> {
+    for (const target of await this.deps.deployedTargets()) {
+      const files = await this.readDeployedFiles(target.lockfilePath);
+      for (const file of files) {
+        const real = await this.deps.fs
+          .realpath(join(target.treeRoot, file))
+          .catch(() => null);
+        if (real === source) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // Every deployed_files entry across every entry in one lockfile. A missing
+  // or unparseable lockfile records no deploys — it blocks nothing, it never
+  // widens the refusal.
+  private async readDeployedFiles(lockfilePath: string): Promise<string[]> {
+    const raw = await this.deps.fs.readFile(lockfilePath).catch(() => null);
+    if (raw === null) {
+      return [];
+    }
+    const parsed = parseLockfile(raw);
+    if (!parsed.ok) {
+      return [];
+    }
+    return parsed.entries.flatMap((entry) => entry.deployed_files ?? []);
   }
 
   // Canonical on both sides, so a symlinked home (/var -> /private/var) is the
@@ -220,15 +257,6 @@ export class ImportSkill {
     } catch {
       return false;
     }
-  }
-
-  // A root that cannot be resolved is kept as it was written: it names a place
-  // that is not there, which can hold no copy either way.
-  private async canonicalRoots(): Promise<string[]> {
-    const roots = await this.deps.deployedRoots();
-    return Promise.all(
-      roots.map((root) => this.deps.fs.realpath(root).catch(() => root)),
-    );
   }
 
   private async judgeName(
@@ -273,14 +301,3 @@ type CopyRequest = Pick<
   CopySkillFolderInput,
   "source" | "destinationParent" | "name" | "finalize"
 >;
-
-// True where the folder sits in or under any tool's deployed skills directory,
-// under the home or a registered repository. Importing one back would copy a
-// deploy's output into the harness it was deployed from.
-function isDeployedCopy(source: string, roots: readonly string[]): boolean {
-  return roots.some((root) =>
-    DEPLOY_TOOLS.some((tool) =>
-      isWithinRoot(source, join(root, tool.skillsDirPrefix, "skills")),
-    ),
-  );
-}

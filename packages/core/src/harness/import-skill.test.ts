@@ -12,7 +12,7 @@ function harness(
   overrides: {
     files?: Record<string, string>;
     directories?: string[];
-    deployedRoots?: string[];
+    deployedTargets?: { treeRoot: string; lockfilePath: string }[];
     copy?: () => Promise<CopySkillFolderResult>;
   } = {},
 ) {
@@ -69,7 +69,7 @@ function harness(
         return { ok: true, path, skipped: 0 };
       },
     },
-    deployedRoots: async () => overrides.deployedRoots ?? [],
+    deployedTargets: async () => overrides.deployedTargets ?? [],
   });
 
   return { importSkill, files, directories, copied, fs };
@@ -141,7 +141,7 @@ describe("ImportSkill.check", () => {
         ensureDir: async () => {},
       },
       copy: { copy: async () => ({ ok: false, error: "copy-failed" }) },
-      deployedRoots: async () => [],
+      deployedTargets: async () => [],
     });
 
     await expect(outside.check({ source: SOURCE })).resolves.toMatchObject({
@@ -149,17 +149,49 @@ describe("ImportSkill.check", () => {
     });
   });
 
-  it("refuses a copy Maestro deployed to a registered target", async () => {
+  it("refuses a copy the registered target's lockfile records as deployed", async () => {
     const deployed = "/repo/.claude/skills/code-review";
+    const lockfile = [
+      "dependencies:",
+      "- virtual_path: skills/code-review",
+      "  resolved_ref: v1.0.0",
+      "  package_type: claude_skill",
+      "  deployed_files:",
+      "  - .claude/skills/code-review",
+      "  - .claude/skills/code-review/SKILL.md",
+    ].join("\n");
     const { importSkill } = harness({
-      files: { [`${deployed}/SKILL.md`]: MANIFEST },
+      files: {
+        [`${deployed}/SKILL.md`]: MANIFEST,
+        "/repo/apm.lock.yaml": lockfile,
+      },
       directories: [deployed],
-      deployedRoots: ["/repo"],
+      deployedTargets: [
+        { treeRoot: "/repo", lockfilePath: "/repo/apm.lock.yaml" },
+      ],
     });
 
     await expect(
       importSkill.check({ source: deployed }),
     ).resolves.toMatchObject({ check: { sourceBlocker: "deployed-copy" } });
+  });
+
+  it("lets a hand-authored skill through even though it sits where a deploy would write (#667)", async () => {
+    const authored = "/repo/.claude/skills/code-review";
+    const { importSkill } = harness({
+      files: {
+        [`${authored}/SKILL.md`]: MANIFEST,
+        "/repo/apm.lock.yaml": "dependencies: []",
+      },
+      directories: [authored],
+      deployedTargets: [
+        { treeRoot: "/repo", lockfilePath: "/repo/apm.lock.yaml" },
+      ],
+    });
+
+    await expect(
+      importSkill.check({ source: authored }),
+    ).resolves.toMatchObject({ check: { sourceBlocker: null } });
   });
 
   it("reports a name the harness already holds on the name, not the source", async () => {
@@ -208,7 +240,7 @@ describe("ImportSkill.check", () => {
         ensureDir: async () => {},
       },
       copy: { copy: async () => ({ ok: false, error: "copy-failed" }) },
-      deployedRoots: async () => [],
+      deployedTargets: async () => [],
     });
 
     await expect(unconnected.check({ source: SOURCE })).resolves.toEqual({
