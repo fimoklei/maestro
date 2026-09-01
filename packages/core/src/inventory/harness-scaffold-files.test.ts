@@ -28,6 +28,7 @@ describe("canonicalHarnessFiles", () => {
       byPath("fimoklei/agent-harness")?.get("apm.yml")?.contents as string,
     );
     expect(manifest.name).toBe("agent-harness");
+    expect(manifest.version).toBe("0.0.0");
     expect(manifest.dependencies).toEqual({ apm: [], mcp: [] });
   });
 
