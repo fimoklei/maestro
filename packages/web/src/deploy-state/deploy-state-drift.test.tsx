@@ -123,7 +123,7 @@ describe("DeployStatePanel drift badge", () => {
     renderPanel("/Users/me/project");
 
     expect(
-      await screen.findByText(/this repo's deploy-state could not be read/i),
+      await screen.findByText(/Deploy-state not read/i),
     ).toBeInTheDocument();
     expect(screen.queryByText(/in sync/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/▲ drift/)).not.toBeInTheDocument();

@@ -400,7 +400,7 @@ describe("DeploySkillAction", () => {
       /apm recorded this package as hybrid/i,
     );
     expect(
-      screen.queryByRole("button", { name: /reinstall fresh/i }),
+      screen.queryByRole("button", { name: "Deploy again" }),
     ).not.toBeInTheDocument();
   });
 
@@ -442,7 +442,7 @@ describe("DeploySkillAction", () => {
       /predates content tracking/i,
     );
     await userEvent.click(
-      await screen.findByRole("button", { name: /reinstall fresh/i }),
+      await screen.findByRole("button", { name: "Deploy again" }),
     );
 
     const deployBodies = fetchMock.mock.calls
@@ -485,7 +485,7 @@ describe("DeploySkillAction", () => {
     await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
 
     expect(
-      await screen.findByRole("button", { name: /reinstall fresh/i }),
+      await screen.findByRole("button", { name: "Deploy again" }),
     ).toBeInTheDocument();
 
     await userEvent.selectOptions(
@@ -494,7 +494,7 @@ describe("DeploySkillAction", () => {
     );
 
     expect(
-      screen.queryByRole("button", { name: /reinstall fresh/i }),
+      screen.queryByRole("button", { name: "Deploy again" }),
     ).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });

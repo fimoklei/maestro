@@ -63,7 +63,7 @@ describe("GlobalDeployStatePanel", () => {
     renderPanel();
 
     expect(await screen.findByRole("status")).toHaveTextContent(
-      /could not be read/i,
+      /Global targets not read/i,
     );
   });
 

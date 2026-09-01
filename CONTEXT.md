@@ -147,6 +147,14 @@ details may name the exact APM mechanism or file.
 | Promote | **Propose change** | The resulting state is **Waiting for review**, not released or approved. |
 | Release | **Release** / **Released** | *Release* is the action, *released* is the state, and *latest release* is the result. |
 | Consuming repo | **Repository** | Write it out in a sentence; *repo* stays only inside the `+ repo` control label. |
+| Remove | **Remove** / **Removal** | *Remove* is the action, *removal* is the noun for the attempt and its outcome. |
+| Deploy-state read failure | **Not read** | A read that failed says `{the thing} not read`; the way out is always *Reload the page*. |
+| Browser reload | **Page** | Say *Reload the page*; never *screen* or *reload the view* for the same act. |
+| Slug | — | Never write *slug*. State the constraint: lowercase letters, digits and single hyphens. |
+| Symbolic link | **Link** | A linked skill directory is a **linked skill folder**; *symlink* never reaches the screen. |
+| Directory | **Folder** | One word for the concept, on every surface. |
+| Git tag | **Tag** | An inherited git term; keep it, but only inside `detail`. |
+| `apm.lock.yaml` | **Deployment record** | The filename stays in the sentence only where the instruction acts on the file (`copy.md`). |
 
 ## Relationships
 

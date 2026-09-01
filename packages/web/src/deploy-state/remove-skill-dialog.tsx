@@ -6,7 +6,7 @@ import { cn } from "../ui/cn";
 import { Notice } from "../ui/notice";
 import { panelBorderFor } from "../ui/panel-border";
 import { TypeTag } from "../ui/type-tag";
-import { RESTATED_COST_HEADING } from "./notice-copy";
+import type { DeployStateNotice } from "./notice-copy";
 import {
   type RemoveDialogTarget,
   type RemoveLedgerRow,
@@ -25,9 +25,9 @@ type LedgerRowPlacement = { id: string; last: boolean };
 // must survive without colour perception (Never-Colour-Alone). "unknown" says
 // the probe could not answer, which is not the same as still being there.
 const OUTCOME_TEXT: Record<RemoveTargetState, string> = {
-  removed: "removed",
-  "not-removed": "not removed",
-  unknown: "outcome unknown",
+  removed: "Removed",
+  "not-removed": "Not removed",
+  unknown: "Outcome unknown",
 };
 
 const OUTCOME_GLYPH: Record<RemoveTargetState, string> = {
@@ -148,13 +148,13 @@ export function RemoveSkillDialog({
   // A warning informs and never blocks (#337); a refusal means there's nothing
   // to consent to (#385). One prop, so the screen can't state both at once.
   preflight: RemovePreflightView;
-  // The server's reason for a refused/failed removal, not the same as a
-  // refused `preflight` (which happens before there's anything to confirm).
-  error: string | null;
-  // The server's reason for stopping a removal it took no action on, because
-  // nothing showed the request agreed to what the copy costs now. Apart from
-  // `error`: the ledger states that cost, and the removal is still on offer.
-  restated: string | null;
+  // The notice for a refused/failed removal, not the same as a refused
+  // `preflight` (which happens before there's anything to confirm).
+  error: DeployStateNotice | null;
+  // The notice for a removal the server took no action on, because nothing
+  // showed the request agreed to what the copy costs now. Apart from `error`:
+  // the ledger states that cost, and the removal is still on offer.
+  restated: DeployStateNotice | null;
   // What the server's own probe proved about each target after that failure.
   // Null where it proved nothing: an outcome nobody observed is never drawn.
   outcome: RemoveOutcome | null;
@@ -168,7 +168,9 @@ export function RemoveSkillDialog({
     closeEnabled: !isRemoving,
   });
   const named = version === null ? skillName : `${skillName} ${version}`;
-  const heading = `Remove ${named}?`;
+  // No question mark: the standard bans a question as a heading, and the
+  // accessible name states the same words as the visible one (R-A).
+  const heading = `Remove ${named}`;
   // Only skills reach this dialog today — DeployedPrimitive.type is the literal
   // "skill" — so the type is stated once here, never guessed twice below.
   const type = "skill" as const;
@@ -250,7 +252,7 @@ export function RemoveSkillDialog({
       >
         <div className="flex items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
           <h2 className="font-semibold font-ui text-fg text-subtitle">
-            Remove <span className="font-mono">{named}</span>?
+            Remove <span className="font-mono">{named}</span>
           </h2>
           <TypeTag type={type} className="shrink-0" />
         </div>
@@ -297,18 +299,14 @@ export function RemoveSkillDialog({
           )}
 
           <div className="flex flex-col gap-2">
-            {/* The server's own refusal, in its own words — under a refusal
-                this is the panel's whole body, read first and read alone. */}
+            {/* The refusal for the code the server sent — under a refusal this
+                is the panel's whole body, read first and read alone. */}
             <Notice
               id={refusalId}
               trigger="user-action"
               notice={
                 preflight.kind === "refused"
-                  ? {
-                      level: "error",
-                      label: "can't be removed",
-                      message: preflight.message,
-                    }
+                  ? { ...preflight.notice, level: "error" }
                   : null
               }
             />
@@ -321,12 +319,13 @@ export function RemoveSkillDialog({
               notice={
                 restated
                   ? {
-                      ...RESTATED_COST_HEADING,
-                      message: restated,
+                      ...restated,
+                      level: "warning",
                       // The way through sits in the block that restated the
-                      // price, so the footer does not offer a second one.
+                      // price, so the footer does not offer a second one. Same
+                      // verb and object as the sentence's last instruction (F8).
                       action: {
-                        label: "remove →",
+                        label: "Remove skill",
                         onClick: onConfirm,
                         disabled: isRemoving,
                       },
@@ -334,20 +333,11 @@ export function RemoveSkillDialog({
                   : null
               }
             />
-            {/* The detail says what the retry beside it will do, replacing a
-                paragraph that sent the user to check the repo by hand (#415). */}
+            {/* Heading, sentence and detail all come off the code the server
+                sent, so the three never disagree about what happened. */}
             <Notice
               trigger="user-action"
-              notice={
-                error
-                  ? {
-                      level: "error",
-                      label: "the removal failed",
-                      message: error,
-                      detail: "retry removes only what is left",
-                    }
-                  : null
-              }
+              notice={error ? { ...error, level: "error" } : null}
             />
           </div>
         </div>
@@ -376,7 +366,7 @@ export function RemoveSkillDialog({
             disabled={isRemoving}
             onClick={onCancel}
           >
-            {failure ? "close" : "cancel"}
+            {failure ? "Close" : "Cancel"}
           </Button>
           {/* Absent, not disabled, once refused: disabled reads as shut for
               now; this is shut for good. Absent too while a restated price is
@@ -392,7 +382,13 @@ export function RemoveSkillDialog({
               aria-describedby={blockedId}
               onClick={onConfirm}
             >
-              {isRemoving ? "removing…" : failed ? "retry →" : "remove →"}
+              {/* After a failure the label runs the notice's last instruction,
+                  verb for verb: "Confirm the removal again…" (F8). */}
+              {isRemoving
+                ? "Removing…"
+                : failed
+                  ? "Confirm removal"
+                  : "Remove skill"}
             </Button>
           )}
         </div>

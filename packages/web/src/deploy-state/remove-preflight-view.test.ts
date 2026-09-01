@@ -1,6 +1,7 @@
 import type { RemoveToolCheck, RemoveWarning } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
+import { removeNotice } from "./notice-copy";
 import { removePreflightView } from "./remove-preflight-view";
 import type { RemovePreflight } from "./use-remove-preflight";
 
@@ -237,8 +238,9 @@ describe("removePreflightView", () => {
       ).toEqual({
         kind: "refused",
         code: "repo-not-registered",
-        message:
-          "Only a repo registered with Maestro can be changed. Register it, then remove again.",
+        notice: removeNotice(
+          new HttpError(403, "unused", "repo-not-registered"),
+        ),
       });
     });
 
@@ -310,32 +312,23 @@ describe("removePreflightView", () => {
     // spend a round-trip to be told the same thing, so the dialog says it now,
     // in the copy module's words (#684).
     const refusals = [
-      [
-        "repo-not-registered",
-        "Only a repo registered with Maestro can be changed. Register it, then remove again.",
-      ],
-      [
-        "no-supported-tool",
-        "A global removal deletes from Claude Code or Codex, and neither is on this machine. There is nothing here to remove.",
-      ],
-      [
-        "invalid-name",
-        "Lowercase letters, digits and hyphens only. Nothing was removed, because no deployed skill can carry this name.",
-      ],
-      [
-        "unsupported-primitive-type",
-        "Hooks and MCP servers stay where they are until Maestro can remove them. Remove a skill instead.",
-      ],
+      "repo-not-registered",
+      "no-supported-tool",
+      "invalid-name",
+      "unsupported-primitive-type",
     ] as const;
 
-    for (const [code, message] of refusals) {
-      // The code travels beside the wording: the bulk dialog names a refusal
+    for (const code of refusals) {
+      // The code travels beside the notice: the bulk dialog names a refusal
       // in a right-aligned slot a full sentence does not fit, and the run is
       // told which refusal it was (#423).
-      it(`carries the copy module's wording and the code for ${code}`, () => {
-        expect(
-          failedView(new HttpError(403, "sent by the server", code)),
-        ).toEqual({ kind: "refused", code, message });
+      it(`carries the copy module's notice and the code for ${code}`, () => {
+        const error = new HttpError(403, "sent by the server", code);
+        expect(failedView(error)).toEqual({
+          kind: "refused",
+          code,
+          notice: removeNotice(error),
+        });
       });
     }
 
@@ -346,7 +339,7 @@ describe("removePreflightView", () => {
       expect(failedView(new HttpError(400, message, "invalid-body"))).toEqual({
         kind: "refused",
         code: "invalid-body",
-        message,
+        notice: { level: "error", label: "Request not accepted", message },
       });
     });
   });

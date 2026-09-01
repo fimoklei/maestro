@@ -5,10 +5,6 @@ import { restatedCost } from "./restated-cost";
 const refusal = (body: unknown) =>
   new HttpError(409, "sent by the server", "cost-not-acknowledged", body);
 
-// Written in `notice-copy.ts`, never in the reply the server sends (#684).
-const RESTATED =
-  "The copy on disk is no longer the one this removal was priced against, so nothing was deleted. The list beside this states what a removal would cost now — confirm it to go ahead.";
-
 const RECEIPT = "a".repeat(64);
 
 describe("restatedCost", () => {
@@ -23,9 +19,7 @@ describe("restatedCost", () => {
     ).toEqual({
       check: { scope: "repo", warning: "local-edits-will-be-lost" },
       receipt: RECEIPT,
-      // The copy module's sentence travels with the cost it explains.
       reclaim: null,
-      message: RESTATED,
     });
   });
 
@@ -53,7 +47,6 @@ describe("restatedCost", () => {
       },
       receipt: RECEIPT,
       reclaim: null,
-      message: RESTATED,
     });
   });
 
