@@ -119,17 +119,16 @@ describe("inventory HTTP route", () => {
     });
   });
 
-  it("returns 409 with a readable error when no inventory is configured", async () => {
+  it("returns 409 with its own code when no inventory is configured", async () => {
     const app = makeApp(undefined);
 
     const res = await app.request("/api/inventory/primitives");
 
     expect(res.status).toBe(409);
-    const body = (await res.json()) as { error: string; message: string };
+    const body = (await res.json()) as { error: string };
     expect(body.error).toBe("not-configured");
-    expect(body.message).toMatch(/\S/);
     // The path is never echoed back — it may be a misconfigured secret.
-    expect(body.message).not.toContain(dir);
+    expect(JSON.stringify(body)).not.toContain(dir);
   });
 
   it("GET /api/inventory/config returns the canonical configured path", async () => {

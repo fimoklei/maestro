@@ -227,8 +227,6 @@ describe("removing a deployed skill from a row", () => {
         ? jsonResponse(
             {
               error: "cost-not-acknowledged",
-              message:
-                "That copy is not the one this request agreed to remove.",
               check: { scope: "repo", warning: "local-edits-will-be-lost" },
               receipt: RESTATED,
             },
@@ -246,7 +244,7 @@ describe("removing a deployed skill from a row", () => {
 
     expect(
       await within(dialog).findByText(
-        "That copy is not the one this request agreed to remove.",
+        /no longer the one this removal was priced against/,
       ),
     ).toBeInTheDocument();
     expect(
@@ -281,10 +279,10 @@ describe("removing a deployed skill from a row", () => {
   // The server can also refuse the check outright and say why — folding that
   // into "couldn't check" would hide the reason (#385).
   describe("when the check comes back refused", () => {
-    const refuseWith = (code: string, message: string, status: number) => {
+    const refuseWith = (code: string, status: number) => {
       const fetchMock = vi.fn(async (path: string) =>
         path === "/api/deploy/remove/preflight"
-          ? jsonResponse({ error: code, message }, status)
+          ? jsonResponse({ error: code }, status)
           : jsonResponse({ removed: { type: "skill", name: "tdd" } }, 200),
       );
       vi.stubGlobal("fetch", fetchMock);
@@ -292,17 +290,13 @@ describe("removing a deployed skill from a row", () => {
     };
 
     it("states the server's own reason instead of a failed check", async () => {
-      refuseWith(
-        "repo-not-registered",
-        "That repo is not registered with Maestro.",
-        403,
-      );
+      refuseWith("repo-not-registered", 403);
       renderRow();
 
       const dialog = await openRemoveDialog();
 
       expect(await within(dialog).findByRole("alert")).toHaveTextContent(
-        "That repo is not registered with Maestro.",
+        /Register it, then remove again/,
       );
       expect(dialog).not.toHaveTextContent(/may lose work/i);
     });
@@ -310,11 +304,7 @@ describe("removing a deployed skill from a row", () => {
     it("offers no confirm for a removal that cannot succeed", async () => {
       // Not a disabled one either: the server has settled it, so a control that
       // can never fire would state a way through that does not exist (#412).
-      const fetchMock = refuseWith(
-        "no-supported-tool",
-        "No supported tool is installed, so there is no global deployment to remove.",
-        409,
-      );
+      const fetchMock = refuseWith("no-supported-tool", 409);
       renderRow({ target: { kind: "global", tools: ["claude"] } });
 
       const dialog = await openRemoveDialog();
@@ -327,11 +317,7 @@ describe("removing a deployed skill from a row", () => {
     it("still lets the user through when the check merely could not run", async () => {
       // The server was reachable and tried; it just has no answer. That settles
       // nothing about the removal, so the confirm stays where it was.
-      refuseWith(
-        "preflight-failed",
-        "Maestro could not check the deployed copy for local changes.",
-        502,
-      );
+      refuseWith("preflight-failed", 502);
       renderRow();
 
       const dialog = await openRemoveDialog();
@@ -362,15 +348,9 @@ describe("removing a deployed skill from a row", () => {
     });
   });
 
-  it("keeps the dialog open on failure, with apm's own reason", async () => {
+  it("keeps the dialog open on failure, with the removal's own reason", async () => {
     vi.stubGlobal("fetch", async () =>
-      jsonResponse(
-        {
-          error: "remove-failed",
-          message: "apm did not confirm the removal.",
-        },
-        502,
-      ),
+      jsonResponse({ error: "remove-failed" }, 502),
     );
     const { onRemoved } = renderRow();
 
@@ -378,7 +358,7 @@ describe("removing a deployed skill from a row", () => {
     await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "apm did not confirm the removal.",
+      /apm ran but proved nothing/,
     );
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(onRemoved).not.toHaveBeenCalled();
@@ -392,13 +372,7 @@ describe("removing a deployed skill from a row", () => {
     const fetchMock = stubFetch(null, () => {
       attempts += 1;
       return attempts === 1
-        ? jsonResponse(
-            {
-              error: "remove-failed",
-              message: "apm did not confirm the removal.",
-            },
-            502,
-          )
+        ? jsonResponse({ error: "remove-failed" }, 502)
         : jsonResponse(
             { removed: { type: "skill", name: "tdd", version: "v0.5.0" } },
             200,
@@ -435,13 +409,7 @@ describe("removing a deployed skill from a row", () => {
     stubFetch(null, () => {
       attempts += 1;
       return attempts === 1
-        ? jsonResponse(
-            {
-              error: "remove-failed",
-              message: "apm did not confirm the removal.",
-            },
-            502,
-          )
+        ? jsonResponse({ error: "remove-failed" }, 502)
         : // A retry that never answers, so the in-flight panel can be read.
           new Promise<Response>(() => undefined);
     });
@@ -455,7 +423,7 @@ describe("removing a deployed skill from a row", () => {
       await screen.findByRole("button", { name: /removing/i }),
     ).toBeDisabled();
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "apm did not confirm the removal.",
+      /apm ran but proved nothing/,
     );
     expect(screen.getByRole("button", { name: "close" })).toBeDisabled();
   });
@@ -469,21 +437,8 @@ describe("removing a deployed skill from a row", () => {
     stubFetch(null, () => {
       attempts += 1;
       return attempts === 1
-        ? jsonResponse(
-            {
-              error: "remove-failed",
-              message: "apm did not confirm the removal.",
-            },
-            502,
-          )
-        : jsonResponse(
-            {
-              error: "not-deployed",
-              message:
-                "That skill is not deployed on this target, so there is nothing to remove.",
-            },
-            404,
-          );
+        ? jsonResponse({ error: "remove-failed" }, 502)
+        : jsonResponse({ error: "not-deployed" }, 404);
     });
     const { onRemoved } = renderRow();
 
@@ -504,23 +459,14 @@ describe("removing a deployed skill from a row", () => {
   // The same answer on a first attempt means the skill was never deployed here.
   // Nothing landed, so there is nothing to settle.
   it("keeps a first attempt open when the skill is not deployed", async () => {
-    stubFetch(null, () =>
-      jsonResponse(
-        {
-          error: "not-deployed",
-          message:
-            "That skill is not deployed on this target, so there is nothing to remove.",
-        },
-        404,
-      ),
-    );
+    stubFetch(null, () => jsonResponse({ error: "not-deployed" }, 404));
     const { onRemoved } = renderRow();
 
     await openRemoveDialog();
     await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "there is nothing to remove",
+      /holds no copy of the skill/,
     );
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(onRemoved).not.toHaveBeenCalled();
@@ -657,10 +603,7 @@ describe("removing a deployed skill from a row", () => {
 
     it("says nothing when the removal failed", async () => {
       vi.stubGlobal("fetch", async () =>
-        jsonResponse(
-          { error: "remove-failed", message: "apm did not confirm it." },
-          502,
-        ),
+        jsonResponse({ error: "remove-failed" }, 502),
       );
       renderRow();
 
@@ -765,7 +708,6 @@ describe("removing a deployed skill from a row", () => {
           ? jsonResponse(
               {
                 error: "cost-not-acknowledged",
-                message: "That copy is not the one this request agreed to.",
                 check: {
                   scope: "global",
                   tools: [

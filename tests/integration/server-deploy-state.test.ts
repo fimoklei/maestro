@@ -147,9 +147,8 @@ describe("deploy-state HTTP route", () => {
     );
 
     expect(res.status).toBe(422);
-    const body = (await res.json()) as { error: string; message: string };
+    const body = (await res.json()) as { error: string };
     expect(body.error).toBe("malformed");
-    expect(body.message).toMatch(/\S/);
     await rm(repo, { recursive: true, force: true });
   });
 });

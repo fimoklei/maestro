@@ -9,6 +9,7 @@ import type {
   RemoveWarning,
 } from "@maestro/core";
 import { HttpError } from "../api/http";
+import { removeMessage } from "./notice-copy";
 
 // Allowlisted, because a warning this build does not know would land on a row
 // as silence, which reads as nothing to lose (J04). The tool it sits on is the
@@ -44,7 +45,12 @@ export function restatedCost(error: unknown): RestatedCost | null {
   return check !== null &&
     reclaim !== undefined &&
     typeof body?.receipt === "string"
-    ? { check, receipt: body.receipt, reclaim, message: error.message }
+    ? {
+        check,
+        receipt: body.receipt,
+        reclaim,
+        message: removeMessage(error.code) ?? error.message,
+      }
     : null;
 }
 

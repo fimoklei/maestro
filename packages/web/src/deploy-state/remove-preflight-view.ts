@@ -8,6 +8,7 @@ import type {
   RemoveWarning,
 } from "@maestro/core";
 import { HttpError } from "../api/http";
+import { removeMessage } from "./notice-copy";
 import type { RemovePreflight } from "./use-remove-preflight";
 
 // What the check says about one row's copy. "checking" is not among them: an
@@ -75,7 +76,7 @@ function refusal(
   }
   const code = error.code as RefusalCode;
   return REFUSES_THE_REMOVAL[code] === true
-    ? { code, message: error.message }
+    ? { code, message: removeMessage(code) ?? error.message }
     : null;
 }
 

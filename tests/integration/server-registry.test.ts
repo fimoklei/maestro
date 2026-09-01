@@ -148,13 +148,12 @@ describe("registry HTTP routes", () => {
     expect(await listedPaths(makeApp())).toEqual([await nodeRealpath(dir)]);
   });
 
-  it("rejects a relative path with a readable 400", async () => {
+  it("rejects a relative path with its own 400 code", async () => {
     const res = await postPath(makeApp(), "./relative");
 
     expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: string; message: string };
+    const body = (await res.json()) as { error: string };
     expect(body.error).toBe("relative");
-    expect(body.message).toMatch(/\S/);
   });
 
   it("rejects a non-existent path with a readable 400", async () => {
@@ -188,10 +187,6 @@ describe("registry HTTP routes", () => {
     const res = await postPath(makeApp(), inventoryPath);
 
     expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({
-      error: "central-inventory",
-      message:
-        "The harness is where skills come from, not a target they are deployed to. Register a repository that consumes skills instead.",
-    });
+    expect(await res.json()).toEqual({ error: "central-inventory" });
   });
 });

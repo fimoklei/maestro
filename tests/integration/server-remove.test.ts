@@ -352,7 +352,6 @@ describe("remove HTTP route", () => {
     // was found without asking again (#364).
     expect(await response.json()).toEqual({
       error: "cost-not-acknowledged",
-      message: expect.stringMatching(/\S/),
       check: { scope: "repo", warning: "local-edits-will-be-lost" },
       receipt: expect.stringMatching(/^[0-9a-f]{64}$/),
       // Null on a repo, whose targets are its own apm.yml — but present, so the
@@ -493,7 +492,6 @@ describe("remove HTTP route", () => {
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({
       error: "cost-not-acknowledged",
-      message: expect.stringMatching(/\S/),
       check: { scope: "repo", warning: "local-edits-will-be-lost" },
       receipt: expect.stringMatching(/^[0-9a-f]{64}$/),
       reclaim: null,
@@ -573,8 +571,8 @@ describe("remove HTTP route", () => {
     const response = await removeTdd(app, repo);
 
     expect(response.status).toBe(502);
-    const body = (await response.json()) as { message: string };
-    expect(body.message).toMatch(/\S/);
+    const body = (await response.json()) as { error: string };
+    expect(body.error).toBe("remove-failed");
   });
 
   // apm reports one outcome for every tool at once, so a failed removal's
@@ -1032,8 +1030,8 @@ describe("remove HTTP route", () => {
 
       expect(response.status).toBe(409);
       expect(removeCalls).toEqual([]);
-      const body = (await response.json()) as { message: string };
-      expect(body.message).toMatch(/\S/);
+      const body = (await response.json()) as { error: string };
+      expect(body.error).toBe("no-supported-tool");
     });
 
     it("reports a skill the global scope does not carry as not found", async () => {

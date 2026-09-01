@@ -243,7 +243,6 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
       error: "invalid-skill",
-      message: expect.stringContaining("lowercase letters"),
     });
   });
 
@@ -273,7 +272,6 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     expect(response.status).toBe(502);
     expect(JSON.parse(body)).toEqual({
       error: "promote-failed",
-      message: expect.any(String),
     });
     expect(body).not.toContain(root);
     expect(body).not.toContain("git");
@@ -355,7 +353,6 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({
       error: "concurrent-change",
-      message: expect.stringContaining("Pull it into the Harness clone"),
     });
     expect((await git(remote, "branch", "--list", "maestro/tdd")).stdout).toBe(
       "",
@@ -463,7 +460,6 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     expect(response.status).toBe(502);
     expect(JSON.parse(body)).toEqual({
       error: "promote-failed",
-      message: expect.any(String),
     });
     expect(body).not.toContain(root);
     expect(body).not.toContain("git");
@@ -589,7 +585,6 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       expect(response.status).toBe(409);
       expect(await response.json()).toEqual({
         error: "confirmation-stale",
-        message: expect.stringContaining("confirm again"),
       });
       expect(
         (await git(remote, "branch", "--list", "maestro/tdd")).stdout,
@@ -611,7 +606,6 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       expect(response.status).toBe(409);
       expect(JSON.parse(body)).toEqual({
         error: "sparse-checkout",
-        message: expect.stringContaining("partial clone"),
       });
       expect(body).not.toContain(root);
       expect(

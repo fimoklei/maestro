@@ -363,11 +363,10 @@ describe("filesystem browse HTTP route", () => {
     const res = await postBrowse(makeApp(), { path: outside });
 
     expect(res.status).toBe(403);
-    const body = (await res.json()) as { error: string; message: string };
+    const body = (await res.json()) as { error: string };
     expect(body.error).toBe("outside-root");
-    expect(body.message).toMatch(/\S/);
     // The path is never echoed back — it may be a misconfigured secret.
-    expect(body.message).not.toContain(outside);
+    expect(JSON.stringify(body)).not.toContain(outside);
   });
 
   it("rejects a symlink that escapes the home root with 403", async () => {

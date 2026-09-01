@@ -262,7 +262,6 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(409);
     const body = (await res.json()) as {
       error: string;
-      message: string;
       packageType: string;
     };
     expect(body.error).toBe("deployed-unsupported-package-type");
@@ -309,9 +308,8 @@ describe("deploy HTTP route", () => {
     });
 
     expect(res.status).toBe(502);
-    const body = (await res.json()) as { error: string; message: string };
+    const body = (await res.json()) as { error: string };
     expect(body.error).toBe("deploy-recorded-invalid");
-    expect(body.message).toMatch(/no files arrived/i);
   });
 
   it("deploys a skill globally, with no repo registered", async () => {
@@ -401,7 +399,7 @@ describe("deploy HTTP route", () => {
   });
 
   it("refuses a global deploy when no supported tool is detected", async () => {
-    // No Claude, no Codex → 409 with a clear message and no apm invocation
+    // No Claude, no Codex → 409 with its own code and no apm invocation
     // (ADR-0011, #131).
     const { app, deployCalls } = makeApp({ globalTools: [] });
 
@@ -414,7 +412,6 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({
       error: "no-supported-tool",
-      message: expect.stringMatching(/claude code or codex/i),
     });
     expect(deployCalls).toEqual([]);
   });
@@ -445,7 +442,7 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(404);
   });
 
-  it("returns 422 with an honest message for a non-skill type", async () => {
+  it("returns 422 with its own code for a non-skill type", async () => {
     const { app, registry, deployCalls } = makeApp();
     await registry.register(repo);
 
@@ -458,7 +455,6 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(422);
     expect(await res.json()).toEqual({
       error: "unsupported-primitive-type",
-      message: expect.stringMatching(/skill/i),
     });
     expect(deployCalls).toEqual([]);
   });
@@ -498,7 +494,6 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(422);
     expect(await res.json()).toEqual({
       error: "no-published-tag",
-      message: expect.stringMatching(/publish a release/i),
     });
     expect(deployCalls).toEqual([]);
   });
@@ -514,11 +509,10 @@ describe("deploy HTTP route", () => {
     });
 
     expect(res.status).toBe(409);
-    const body = (await res.json()) as { error: string; message: string };
+    const body = (await res.json()) as { error: string };
     expect(body.error).toBe("local-diverged-from-tag");
-    expect(body.message).toMatch(/publish a release/i);
-    // The cockpit's voice never addresses the reader as "you" (PRODUCT.md).
-    expect(body.message).not.toMatch(/\byou\b|\byour\b/i);
+    // The sentence — and the voice rule it carries — now lives in
+    // `deploy-state/notice-copy.ts`, asserted in its sibling test (#684).
     expect(deployCalls).toEqual([]);
   });
 
@@ -535,7 +529,6 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({
       error: "local-diverged-from-tag",
-      message: expect.stringMatching(/publish a release/i),
     });
     expect(deployCalls).toEqual([]);
   });
@@ -555,14 +548,13 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({
       error: "deployed-diverged-from-lock",
-      message: expect.stringMatching(/never went through the harness/i),
     });
     expect(deployCalls).toEqual([]);
   });
 
-  it("surfaces a distinct message for an unverifiable deployed copy", async () => {
+  it("surfaces a distinct code for an unverifiable deployed copy", async () => {
     // diverged and unverifiable share the confirm-and-proceed action but carry
-    // distinct messages: one knows there is drift, the other cannot tell. The
+    // distinct codes: one knows there is drift, the other cannot tell. The
     // user must be able to tell the two apart (ADR-0006, #66).
     const { app, registry } = makeApp({ destUnverifiable: true });
     await registry.register(repo);
@@ -576,7 +568,6 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({
       error: "deployed-unverifiable",
-      message: expect.stringMatching(/predates content tracking/i),
     });
   });
 
@@ -616,7 +607,6 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({
       error: "deployed-unreadable",
-      message: expect.stringMatching(/read/i),
     });
     expect(deployCalls).toEqual([]);
   });
@@ -639,7 +629,6 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({
       error: "lockfile-malformed",
-      message: expect.stringMatching(/apm\.lock\.yaml/i),
     });
     expect(deployCalls).toEqual([]);
   });
@@ -668,7 +657,6 @@ describe("deploy HTTP route", () => {
     expect(second.status).toBe(409);
     expect(await second.json()).toEqual({
       error: "deploy-in-progress",
-      message: expect.stringMatching(/\S/),
     });
 
     release();
@@ -700,7 +688,6 @@ describe("deploy HTTP route", () => {
     expect(second.status).toBe(409);
     expect(await second.json()).toEqual({
       error: "deploy-in-progress",
-      message: expect.stringMatching(/\S/),
     });
 
     release();
@@ -722,7 +709,6 @@ describe("deploy HTTP route", () => {
     const body = await res.json();
     expect(body).toEqual({
       error: "deploy-failed",
-      message: expect.stringMatching(/\S/),
     });
     // The raw apm error (which may carry a token) never reaches the client.
     expect(JSON.stringify(body)).not.toContain("token in stderr");
@@ -741,15 +727,14 @@ describe("deploy HTTP route", () => {
     const body = await res.json();
     expect(body).toEqual({
       error: "deploy-failed",
-      message: expect.stringMatching(/\S/),
     });
     expect(JSON.stringify(body)).not.toContain("token in stderr");
   });
 
-  it("surfaces missing GitHub auth as a distinct 502 with a re-auth message", async () => {
-    // Auth failure is classified in the driver (at apm view) and mapped to a
-    // 502 whose message names the fix — distinct from the generic deploy-failed
-    // so the cockpit points at auth, not a vague apm error (#119).
+  it("surfaces missing GitHub auth as a distinct 502", async () => {
+    // Auth failure is classified in the driver (at apm view) and mapped to its
+    // own 502 code — distinct from the generic deploy-failed so the cockpit
+    // points at auth, not a vague apm error (#119).
     const { app, registry } = makeApp({ authRequired: true });
     await registry.register(repo);
 
@@ -762,15 +747,13 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(502);
     expect(await res.json()).toEqual({
       error: "auth-required",
-      message:
-        "GitHub refused the download, so nothing was installed. Restore the machine's GitHub access, then deploy again.",
     });
   });
 
-  it("surfaces a symlinked destination as its own status with a message naming the fix", async () => {
+  it("surfaces a symlinked destination as its own status", async () => {
     // apm refuses to deploy into a skill directory that is a symlink. The
-    // cockpit says exactly that and points at the supported pattern — a
-    // directory-level symlink one level up — instead of "check apm" (#180).
+    // cockpit names that case from its own code; the sentence that points at
+    // the supported pattern lives in `deploy-state/notice-copy.ts` (#180).
     const { app, registry } = makeApp({ symlinkRefused: true });
     await registry.register(repo);
 
@@ -781,11 +764,9 @@ describe("deploy HTTP route", () => {
     });
 
     expect(res.status).toBe(409);
-    const body = (await res.json()) as { error: string; message: string };
+    const body = (await res.json()) as { error: string };
     expect(body.error).toBe("destination-symlinked");
-    expect(body.message).toMatch(/replace that link/i);
-    expect(body.message).toContain("skills directory");
-    // No raw apm output reaches the client; the message is hand-written.
+    // No raw apm output reaches the client; the reply is a code and a status.
     expect(JSON.stringify(body)).not.toContain("ghp_secret");
     expect(JSON.stringify(body)).not.toContain("refusing to deploy");
   });

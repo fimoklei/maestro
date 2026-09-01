@@ -237,7 +237,8 @@ describe("removePreflightView", () => {
       ).toEqual({
         kind: "refused",
         code: "repo-not-registered",
-        message: "That repo is not registered with Maestro.",
+        message:
+          "Only a repo registered with Maestro can be changed. Register it, then remove again.",
       });
     });
 
@@ -307,26 +308,46 @@ describe("removePreflightView", () => {
   describe("when the server refused the request", () => {
     // Each of these means the removal itself cannot succeed. Confirming would
     // spend a round-trip to be told the same thing, so the dialog says it now,
-    // in the server's own words.
+    // in the copy module's words (#684).
     const refusals = [
-      ["repo-not-registered", "That repo is not registered with Maestro."],
-      ["no-supported-tool", "There is no global deployment to remove."],
-      ["invalid-name", "That skill name is not a valid slug."],
-      ["unsupported-primitive-type", "Only skills can be removed for now."],
-      ["invalid-body", "Expected a JSON body with type, name, and target."],
+      [
+        "repo-not-registered",
+        "Only a repo registered with Maestro can be changed. Register it, then remove again.",
+      ],
+      [
+        "no-supported-tool",
+        "A global removal deletes from Claude Code or Codex, and neither is on this machine. There is nothing here to remove.",
+      ],
+      [
+        "invalid-name",
+        "Lowercase letters, digits and hyphens only. Nothing was removed, because no deployed skill can carry this name.",
+      ],
+      [
+        "unsupported-primitive-type",
+        "Hooks and MCP servers stay where they are until Maestro can remove them. Remove a skill instead.",
+      ],
     ] as const;
 
     for (const [code, message] of refusals) {
       // The code travels beside the wording: the bulk dialog names a refusal
       // in a right-aligned slot a full sentence does not fit, and the run is
       // told which refusal it was (#423).
-      it(`carries the server's own wording and code for ${code}`, () => {
-        expect(failedView(new HttpError(403, message, code))).toEqual({
-          kind: "refused",
-          code,
-          message,
-        });
+      it(`carries the copy module's wording and the code for ${code}`, () => {
+        expect(
+          failedView(new HttpError(403, "sent by the server", code)),
+        ).toEqual({ kind: "refused", code, message });
       });
     }
+
+    // The one refusal with no copy-module row: a request-shape message is the
+    // server's to write (copy.md, "Where copy lives").
+    it("passes the request-shape message through for invalid-body", () => {
+      const message = "Expected a JSON body with type, name, and target.";
+      expect(failedView(new HttpError(400, message, "invalid-body"))).toEqual({
+        kind: "refused",
+        code: "invalid-body",
+        message,
+      });
+    });
   });
 });
