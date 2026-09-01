@@ -34,8 +34,8 @@ export function ConnectView() {
       <SectionHeader
         level={1}
         className="flex-wrap"
-        title="Connect central inventory"
-        meta="a local Harness clone or GitHub URL"
+        title="Inventory connection"
+        meta="A local Harness clone or GitHub URL"
       />
       <Card padded className="max-w-lg">
         <p className="mb-3 text-dim text-tag">

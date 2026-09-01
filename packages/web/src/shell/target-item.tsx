@@ -3,7 +3,7 @@ import { cn } from "../ui/cn";
 import { StatusDot } from "../ui/status-dot";
 
 // One row in the sidebar Targets list. StatusDot is decorative (aria-hidden);
-// state is carried in text, never colour alone. "empty"/"unknown"/"checking"
+// state is carried in text, never colour alone. "Empty"/"Unknown"/"Checking"
 // never render as in-sync (J04, see deploy-state/deployed-view.ts).
 type TargetItemProps = {
   label: string;
@@ -25,17 +25,17 @@ function targetReading(
     case "drift":
       return { visible: `▲${driftCount}`, sr: `${driftCount} behind` };
     case "unknown":
-      return { visible: "?", sr: "unknown" };
+      return { visible: "?", sr: "Unknown" };
     case "ok":
-      return { visible: "in sync" };
+      return { visible: "In sync" };
     case "empty":
-      return { visible: "empty" };
+      return { visible: "Empty" };
     case "attention":
-      return { visible: "attention" };
+      return { visible: "Attention" };
     case "unverified":
-      return { visible: "unverified" };
+      return { visible: "Unverified" };
     case "pending":
-      return { visible: "checking…" };
+      return { visible: "Checking…" };
   }
 }
 

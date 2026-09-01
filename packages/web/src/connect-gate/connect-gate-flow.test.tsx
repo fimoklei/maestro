@@ -52,7 +52,7 @@ describe("connect gate", () => {
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: /central inventory not connected/i,
+        name: /inventory not connected/i,
       }),
     ).toBeInTheDocument();
 
@@ -63,7 +63,7 @@ describe("connect gate", () => {
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: /connect central inventory/i,
+        name: /inventory connection/i,
       }),
     ).toBeInTheDocument();
 
@@ -83,12 +83,12 @@ describe("connect gate", () => {
     // The beat holds until the continue action is taken — it does not
     // auto-navigate the instant the mutation resolves (ADR-0015).
     expect(
-      screen.queryByRole("heading", { name: /^central inventory$/i }),
+      screen.queryByRole("heading", { name: /^inventory$/i }),
     ).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /continue/i }));
     expect(
-      await screen.findByRole("heading", { name: /^central inventory$/i }),
+      await screen.findByRole("heading", { name: /^inventory$/i }),
     ).toBeInTheDocument();
   });
 
@@ -142,7 +142,7 @@ describe("connect gate", () => {
     ).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /continue/i }));
     expect(
-      await screen.findByRole("heading", { name: /^central inventory$/i }),
+      await screen.findByRole("heading", { name: /^inventory$/i }),
     ).toBeInTheDocument();
   });
 
@@ -381,7 +381,7 @@ describe("connect gate", () => {
       expect(
         await screen.findByRole("heading", {
           level: 1,
-          name: /central inventory not connected/i,
+          name: /inventory not connected/i,
         }),
       ).toBeInTheDocument();
     },
@@ -467,13 +467,13 @@ describe("connect gate", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { name: /^central inventory$/i }),
+      await screen.findByRole("heading", { name: /^inventory$/i }),
     ).toBeInTheDocument();
     // Inventory carries its own <h1> now (heading navigation needs a starting
     // point on that route) — the invariant this guards is that it's the only
     // one, so no stray gate heading rode along.
     const h1s = screen.getAllByRole("heading", { level: 1 });
     expect(h1s).toHaveLength(1);
-    expect(h1s[0]).toHaveTextContent(/^central inventory$/i);
+    expect(h1s[0]).toHaveTextContent(/^inventory$/i);
   });
 });

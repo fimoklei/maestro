@@ -110,8 +110,8 @@ export function SkillDetailPane({
                   HOVER_TRANSITION,
                 )}
               >
-                <span className="group-open:hidden">more ›</span>
-                <span className="hidden group-open:inline">less ‹</span>
+                <span className="group-open:hidden">More ›</span>
+                <span className="hidden group-open:inline">Less ‹</span>
               </span>
             </summary>
           </details>
@@ -176,9 +176,9 @@ function ActionSection({
 const driftChip: Partial<
   Record<DriftStatus, { tone: "drift" | "dim"; label: string }>
 > = {
-  behind: { tone: "drift", label: "behind" },
-  unknown: { tone: "dim", label: "unknown" },
-  unverified: { tone: "dim", label: "unverified" },
+  behind: { tone: "drift", label: "Behind" },
+  unknown: { tone: "dim", label: "Unknown" },
+  unverified: { tone: "dim", label: "Unverified" },
 };
 
 function DeployedRow({ deployment }: { deployment: SkillDeployment }) {
@@ -191,7 +191,7 @@ function DeployedRow({ deployment }: { deployment: SkillDeployment }) {
         ●
       </span>
       {status === "up-to-date" ? (
-        <span className="sr-only">in sync</span>
+        <span className="sr-only">In sync</span>
       ) : null}
       <span className="flex-1 truncate text-fg-2">{label}</span>
       <span className={cn("font-mono", versionColor[status])}>

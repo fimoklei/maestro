@@ -86,7 +86,7 @@ async function pickBothRepos() {
     screen.getByRole("checkbox", { name: /payments-api/i }),
   );
   await userEvent.click(
-    screen.getByRole("button", { name: /register 2 selected/i }),
+    screen.getByRole("button", { name: /Register 2 repositories/ }),
   );
 }
 
@@ -154,7 +154,7 @@ describe("sidebar register affordance", () => {
     expect(
       await screen.findByRole("checkbox", { name: /agent-harness/i }),
     ).toBeDisabled();
-    expect(screen.getByText("central inventory")).toBeInTheDocument();
+    expect(screen.getByText("Connected Inventory")).toBeInTheDocument();
   });
 
   it("has no path input of its own — the picker's paste field is the one", async () => {

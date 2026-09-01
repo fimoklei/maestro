@@ -75,7 +75,7 @@ describe("first-run gate", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: /central inventory not connected/i,
+        name: /inventory not connected/i,
       }),
     ).toBeInTheDocument();
   });
@@ -109,7 +109,7 @@ describe("first-run gate", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: /central inventory not connected/i,
+        name: /inventory not connected/i,
       }),
     ).toBeInTheDocument();
     expect(
@@ -125,7 +125,7 @@ describe("first-run gate", () => {
     // even during the pending window (Codex review finding, mirrors connect-view.tsx).
     expect(
       screen.queryByRole("heading", {
-        name: /central inventory not connected/i,
+        name: /inventory not connected/i,
       }),
     ).not.toBeInTheDocument();
 
@@ -134,7 +134,7 @@ describe("first-run gate", () => {
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", {
-        name: /central inventory not connected/i,
+        name: /inventory not connected/i,
       }),
     ).not.toBeInTheDocument();
   });
@@ -150,7 +150,7 @@ describe("first-run gate", () => {
     // The dead-end this replaces: it must not sit on the neutral "Loading…".
     expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /try again/i }),
+      screen.getByRole("button", { name: /load the screen again/i }),
     ).toBeInTheDocument();
   });
 
@@ -159,12 +159,12 @@ describe("first-run gate", () => {
     renderAt("/welcome");
 
     await userEvent.click(
-      await screen.findByRole("button", { name: /try again/i }),
+      await screen.findByRole("button", { name: /load the screen again/i }),
     );
 
     expect(
       await screen.findByRole("heading", {
-        name: /central inventory not connected/i,
+        name: /inventory not connected/i,
       }),
     ).toBeInTheDocument();
   });

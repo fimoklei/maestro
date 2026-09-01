@@ -39,14 +39,14 @@ const driftBadge: Record<
   Exclude<DriftStatus, "pending">,
   { tone: "ok" | "drift" | "dim"; label: string; hint?: string }
 > = {
-  behind: { tone: "drift", label: "behind" },
-  "up-to-date": { tone: "ok", label: "up-to-date" },
-  unknown: { tone: "dim", label: "unknown" },
+  behind: { tone: "drift", label: "Behind" },
+  "up-to-date": { tone: "ok", label: "Up to date" },
+  unknown: { tone: "dim", label: "Unknown" },
   // Distinct label + hint so a reachability failure reads as unreached, not a
   // generic unknown.
   unverified: {
     tone: "dim",
-    label: "unverified",
+    label: "Unverified",
     hint: "Could not reach the Harness location to check for updates",
   },
 };
@@ -171,7 +171,7 @@ export function DeployStateList({
               label={`Actions for ${primitive.name}`}
               items={[
                 {
-                  label: "remove…",
+                  label: "Remove skill",
                   onSelect: () => {
                     remove.reset();
                     setNews(null);

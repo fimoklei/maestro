@@ -76,12 +76,11 @@ export function DeploySkillAction({
   // Shortened like every other target name in the cockpit (#211).
   const repoPaths = repos.map((repo) => repo.path);
 
-  // Lowercase mono, like every other action label (DESIGN.md §6).
   const buttonLabel = !registryReady
-    ? "loading targets…"
+    ? "Loading targets…"
     : deploy.isPending
-      ? "deploying…"
-      : "deploy →";
+      ? "Deploying skill…"
+      : "Deploy skill";
 
   return (
     // Wraps: the 320px pane clips overflow, and wider states would otherwise
@@ -120,7 +119,7 @@ export function DeploySkillAction({
               deploy.mutate({ type: "skill", name: skillName, target })
             }
           >
-            {deploy.isPending ? "deploying…" : "re-deploy"}
+            {deploy.isPending ? "Deploying skill…" : "Deploy skill again"}
           </Button>
           {/* State, not an action, so it drops out of the control row onto its
               own line and stays quiet — the chip read as a second button. */}
@@ -130,7 +129,7 @@ export function DeploySkillAction({
               versionColor["up-to-date"],
             )}
           >
-            {deployedVersion ? `● in sync · ${deployedVersion}` : "● in sync"}
+            {deployedVersion ? `● In sync · ${deployedVersion}` : "● In sync"}
           </span>
         </>
       ) : (

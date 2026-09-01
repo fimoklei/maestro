@@ -62,7 +62,7 @@ describe("Update action on a behind skill", () => {
     renderPanel("/Users/me/project");
 
     const update = await screen.findByRole("button", { name: /update tdd/i });
-    expect(update).toHaveTextContent("update →");
+    expect(update).toHaveTextContent("Update skill");
     expect(update.textContent).not.toMatch(/tdd/);
   });
 
@@ -90,7 +90,7 @@ describe("Update action on a behind skill", () => {
     const pending = await screen.findByRole("button", {
       name: /updating tdd/i,
     });
-    expect(pending).toHaveTextContent("updating…");
+    expect(pending).toHaveTextContent("Updating skill…");
     expect(pending.textContent).not.toMatch(/tdd/);
   });
 
@@ -98,7 +98,7 @@ describe("Update action on a behind skill", () => {
     stubReads(tddDeployed, { behind: [] });
     renderPanel("/Users/me/project");
 
-    expect(await screen.findByText(/up-to-date/i)).toBeInTheDocument();
+    expect(await screen.findByText(/up to date/i)).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /update tdd/i }),
     ).not.toBeInTheDocument();
@@ -395,7 +395,7 @@ describe("Update action on a behind skill", () => {
       await screen.findByRole("button", { name: /update tdd/i }),
     );
 
-    expect(await screen.findByText(/up-to-date/i)).toBeInTheDocument();
+    expect(await screen.findByText(/up to date/i)).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /update tdd/i }),
     ).not.toBeInTheDocument();

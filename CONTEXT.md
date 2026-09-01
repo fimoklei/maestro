@@ -135,7 +135,7 @@ details may name the exact APM mechanism or file.
 |---|---|---|
 | Harness | **Harness** | Use **Working Harness** or **Released Harness** when the state matters. |
 | Central inventory | **Inventory** | Reserve **Inventory** for the collection and its screen. |
-| Inventory source | **Harness location** | Do not use *source* for the configured Harness location. |
+| Inventory source | **Harness location** | Do not use *source* for the configured Harness location. The controls on that screen are **Re-read Inventory**, **Change Harness location** and **Set Harness location**. |
 | Drift | **Behind** | Use *an update is available* as explanation, not as a second status name. |
 | Target | **Target** | Prefer the concrete repository or tool name after the concept is established. |
 | Deploy | **Deploy** / **Deployed** | *Deploy* is the action and *deployed* is the state; *install* is APM's mechanism. |
@@ -144,14 +144,20 @@ details may name the exact APM mechanism or file.
 | Source (generic) | — | Name the concrete thing: **Harness location**, **original folder**, or **latest release**. |
 | APM lockfile | **Deployment record** | Show `apm.lock.yaml` only in technical details. |
 | Pinned version | **Deployed version** | Do not introduce *pin* as a user action or state. |
-| Promote | **Propose change** / **proposed change** | *Propose change* is the action and the row button; the noun is a **proposed change**. The resulting state is **Waiting for review**, not released or approved. |
+| Promote | **Propose change** / **proposed change** | *Propose change* is the action and the row button; the noun is a **proposed change**. A change not yet proposed sits under **Pending proposal**; once pushed the state is **Waiting for review**, not released or approved. |
 | Release | **Release** / **Released** | *Release* is the action, *released* is the state, and *latest release* is the result. |
+| Release dialog | **Plan release** / **Publish release** | *Plan release* opens the dialog on the Harness strip; *Publish release* is its confirm. Never a bare *Release* on a button. |
+| Import dialog | **Import skill…** / **Import skill** | The trailing ellipsis marks the control that opens the dialog; the dialog's confirm carries no ellipsis. |
 | Consuming repo | **Repository** | Write it out in a sentence; *repo* stays only inside the `+ repo` control label. |
 | Scaffold | **Scaffold** / **Harness scaffold** | *Scaffold* is the action and *Harness scaffold* is the thing on offer; never *generate* or *initialise*. |
 | Clone folder | **Clone** | The local copy of the Harness repository. Say **folder** for any other directory on disk. |
 | `apm.yml` | `apm.yml` | Name the file in a `detail`, never in the sentence — the reader meets it in their own editor. |
 | Bulk removal outcome | **Left alone** | A target the run did not remove, whether it refused or failed; never *skipped*. |
 | Remove | **Remove** / **Removal** | *Remove* is the action, *removal* is the noun for the attempt and its outcome. |
+| Force reinstall | **Deploy again** | The one label for overwriting a deployed copy that has local edits; never *Reinstall fresh* or *Re-deploy*. |
+| Up-to-date | **Up to date** | One skill's drift status. Never hyphenated on screen. |
+| Target roll-up | **In sync** | A whole target's state, on its card header. A single skill is **Up to date**, never *in sync*. |
+| Browse dialog title | a noun phrase | Name what the dialog picks — **Inventory folder**, **Skill folder**, **Folder to clone into**, **Repositories to register** — never an imperative. |
 | Read failure | **Not read** | Any read that failed says `{the thing} not read` — never *not loaded*. On a deploy-state read the way out is always *Reload the page*. |
 | Registration outcome | **Registered** / **Skipped** | A repository the run did not register is **skipped**; *left alone* stays the bulk-removal word. |
 | Browser reload | **Page** | Say *Reload the page*; never *screen* or *reload the view* for the same act. |

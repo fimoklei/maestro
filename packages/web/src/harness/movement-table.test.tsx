@@ -20,7 +20,7 @@ describe("MovementTable", () => {
     );
 
     expect(screen.getByText("tdd")).toBeInTheDocument();
-    expect(screen.getByText("deleted locally")).toBeInTheDocument();
+    expect(screen.getByText("Deleted locally")).toBeInTheDocument();
   });
 
   it("lets a long skill name shrink so the deletion chip stays in the cell", () => {
@@ -40,7 +40,7 @@ describe("MovementTable", () => {
     );
 
     expect(screen.getByText(longName)).toHaveClass("min-w-0", "truncate");
-    expect(screen.getByText("deleted locally")).toBeInTheDocument();
+    expect(screen.getByText("Deleted locally")).toBeInTheDocument();
   });
 
   it("leaves a movement that is not a deletion unlabelled", () => {
@@ -59,7 +59,7 @@ describe("MovementTable", () => {
     );
 
     expect(screen.getByText("lint-rules")).toBeInTheDocument();
-    expect(screen.queryByText("deleted locally")).not.toBeInTheDocument();
+    expect(screen.queryByText("Deleted locally")).not.toBeInTheDocument();
   });
 
   const promote = {
@@ -222,11 +222,11 @@ describe("MovementTable", () => {
     );
 
     expect(
-      within(rowOf("lint-rules")).getByRole("link", { name: /pull request/ }),
+      within(rowOf("lint-rules")).getByRole("link", { name: /Pull request/ }),
     ).toHaveAttribute("href", "https://github.com/o/r/compare/a...b");
     // Only the row whose press just landed takes the focus its button had.
     expect(
-      within(rowOf("code-review")).getByRole("link", { name: /pull request/ }),
+      within(rowOf("code-review")).getByRole("link", { name: /Pull request/ }),
     ).toHaveFocus();
   });
 
@@ -258,7 +258,7 @@ describe("MovementTable", () => {
     expect(
       screen.getByRole("button", { name: "Propose change" }),
     ).toBeEnabled();
-    expect(screen.queryByRole("link", { name: /pull request/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Pull request/ })).toBeNull();
   });
 
   it("states a refusal on the row it belongs to", () => {

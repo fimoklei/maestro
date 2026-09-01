@@ -43,8 +43,8 @@ describe("GlobalTargets", () => {
       ],
     });
 
-    expect(screen.getByText("▲ attention")).toBeInTheDocument();
-    expect(screen.queryByText("● empty")).not.toBeInTheDocument();
+    expect(screen.getByText("▲ Attention")).toBeInTheDocument();
+    expect(screen.queryByText("● Empty")).not.toBeInTheDocument();
   });
 
   it("names the recorded type of an unsupported deployment and how to recover", () => {
@@ -120,7 +120,7 @@ describe("GlobalTargets", () => {
     expect(screen.getByText("Codex")).toBeInTheDocument();
     // Emptiness is a header status, not a body sentence, and it uses the same
     // word the sidebar uses for the same target.
-    expect(screen.getByText("● empty")).toBeInTheDocument();
+    expect(screen.getByText("● Empty")).toBeInTheDocument();
     expect(
       screen.queryByText(/nothing deployed here/i),
     ).not.toBeInTheDocument();
@@ -186,7 +186,7 @@ describe("GlobalTargets", () => {
       drift: ranDrift([{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }]),
     });
 
-    expect(screen.getByText(/behind/i)).toBeInTheDocument();
+    expect(screen.getByText("Behind")).toBeInTheDocument();
     expect(screen.getByText(/v0\.5\.0\s*→\s*v0\.5\.1/)).toBeInTheDocument();
   });
 
@@ -205,7 +205,7 @@ describe("GlobalTargets", () => {
     });
 
     // The codex card reads as a clean empty card, not a drift warning.
-    expect(screen.getByText("● empty")).toBeInTheDocument();
+    expect(screen.getByText("● Empty")).toBeInTheDocument();
     expect(screen.queryByText(/not deployed here/i)).not.toBeInTheDocument();
   });
 });

@@ -86,10 +86,10 @@ export function BulkDeployBar({
 
   const selectId = "bulk-deploy-target";
   const buttonLabel = !registryReady
-    ? "loading targets…"
+    ? "Loading targets…"
     : bulk.isPending
-      ? "deploying…"
-      : `deploy ${stagedNames.length} →`;
+      ? "Deploying skills…"
+      : `Deploy ${stagedNames.length} ${stagedNames.length === 1 ? "skill" : "skills"}`;
 
   const onDeploy = () => {
     if (targetLoading) {
@@ -133,7 +133,7 @@ export function BulkDeployBar({
           aria-label="Bulk selection"
           className="flex flex-wrap items-center gap-2 font-mono"
         >
-          {stagedNames.length} staged for bulk
+          {stagedNames.length} staged for bulk deploy
           {hiddenCount > 0 ? (
             <span className="text-muted text-tag">
               · {hiddenCount} hidden by the filter

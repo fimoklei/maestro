@@ -14,7 +14,7 @@ describe("the read-failure notice", () => {
     expect(READ_FAILED).toEqual({
       level: "error",
       label: "Inventory not read",
-      message: "Check the path below, then press Re-read.",
+      message: "Check the path below, then press Re-read Inventory.",
       detail:
         "The folder may have moved, or Maestro can no longer read its apm.yml.",
     });
@@ -143,14 +143,16 @@ describe("InventorySourceView", () => {
 
     expect(await screen.findByText(/2 primitives/i)).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /re-read inventory/i }),
+    );
 
     expect(await screen.findByText(/5 primitives/i)).toBeInTheDocument();
   });
 
   it("labels the Re-read button 'reading…' while fetching, then 'Re-read' when idle", async () => {
-    // Held pending to observe mid-fetch ("reading…", disabled) then settled
-    // ("Re-read") — the most-repeated action's in-progress feedback (#230).
+    // Held pending to observe mid-fetch ("Re-reading Inventory…", disabled) then settled
+    // ("Re-read Inventory") — the most-repeated action's in-progress feedback (#230).
     let resolvePrimitives: (r: Response) => void = () => {};
     vi.stubGlobal(
       "fetch",
@@ -176,12 +178,16 @@ describe("InventorySourceView", () => {
     );
     renderView();
 
-    const reading = await screen.findByRole("button", { name: /reading…/i });
+    const reading = await screen.findByRole("button", {
+      name: /re-reading inventory…/i,
+    });
     expect(reading).toBeDisabled();
 
     resolvePrimitives(jsonResponse({ primitives: [skill("tdd")] }, 200));
 
-    const reread = await screen.findByRole("button", { name: /^re-read$/i });
+    const reread = await screen.findByRole("button", {
+      name: /^re-read inventory$/i,
+    });
     expect(reread).toBeEnabled();
   });
 
@@ -229,7 +235,9 @@ describe("InventorySourceView", () => {
     const status = screen.getByRole("status");
     expect(status).toHaveTextContent(/2 primitives/i);
 
-    await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /re-read inventory/i }),
+    );
     await waitFor(() => expect(status).toHaveTextContent(/loading the count/i));
 
     resolveSecond(
@@ -323,7 +331,7 @@ describe("InventorySourceView", () => {
     // a failed read would read as two answers to one question.
     expect(screen.queryByText(/primitive/i)).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /re-read/i }),
+      screen.getByRole("button", { name: /re-read inventory/i }),
     ).toBeInTheDocument();
   });
 
@@ -362,7 +370,9 @@ describe("InventorySourceView", () => {
     expect(await screen.findByText(/2 primitives/i)).toBeInTheDocument();
 
     ok = false;
-    await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /re-read inventory/i }),
+    );
 
     expect(await screen.findByText(/Inventory not read/i)).toBeInTheDocument();
     expect(screen.queryByText(/2 primitives/i)).not.toBeInTheDocument();
@@ -442,7 +452,9 @@ describe("InventorySourceView", () => {
 
     expect(await screen.findByText(/Inventory not read/i)).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /re-read inventory/i }),
+    );
 
     const status = await screen.findByRole("status");
     expect(status).toHaveTextContent(/loading the count/i);
@@ -495,10 +507,14 @@ describe("InventorySourceView", () => {
 
     expect(await screen.findByText(/2 primitives/i)).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /re-read inventory/i }),
+    );
     expect(await screen.findByText(/Inventory not read/i)).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: /re-read/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /re-read inventory/i }),
+    );
     const status = await screen.findByRole("status");
     expect(status).toHaveTextContent(/loading the count/i);
 
@@ -554,14 +570,14 @@ describe("InventorySourceView", () => {
     expect(await screen.findByText("…/me/agent-harness")).toBeInTheDocument();
 
     await userEvent.click(
-      screen.getByRole("button", { name: /change source/i }),
+      screen.getByRole("button", { name: /change harness location/i }),
     );
 
     const field = await screen.findByLabelText(/inventory path/i);
     await userEvent.clear(field);
     await userEvent.type(field, "/home/me/other-harness");
     await userEvent.click(
-      screen.getByRole("button", { name: /re-point source/i }),
+      screen.getByRole("button", { name: /set harness location/i }),
     );
 
     expect(await screen.findByText("…/me/other-harness")).toBeInTheDocument();
@@ -581,7 +597,7 @@ describe("InventorySourceView", () => {
     renderView();
 
     await userEvent.click(
-      await screen.findByRole("button", { name: /change source/i }),
+      await screen.findByRole("button", { name: /change harness location/i }),
     );
     expect(await screen.findByLabelText(/inventory path/i)).toBeInTheDocument();
 

@@ -94,8 +94,10 @@ afterEach(() => {
 // Picks the one folder the stubbed listing offers and lands back on the import
 // dialog with the proposal filled in.
 async function openImportWithSource(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByRole("button", { name: "import skill" }));
-  await user.click(await screen.findByRole("button", { name: "pick folder" }));
+  await user.click(
+    await screen.findByRole("button", { name: "Import skill…" }),
+  );
+  await user.click(await screen.findByRole("button", { name: "Pick folder" }));
   await user.click(await screen.findByRole("button", { name: "Code Review" }));
   await user.click(
     await screen.findByRole("button", { name: /import this folder/i }),

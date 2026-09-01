@@ -72,7 +72,7 @@ describe("ConnectView", () => {
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: /connect central inventory/i,
+        name: /inventory connection/i,
       }),
     ).toBeInTheDocument();
   });

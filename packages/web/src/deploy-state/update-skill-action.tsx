@@ -31,7 +31,7 @@ export function UpdateSkillAction({
           deploy.mutate({ type: "skill", name: skillName, target })
         }
       >
-        {deploy.isPending ? "updating…" : "update →"}
+        {deploy.isPending ? "Updating skill…" : "Update skill"}
       </Button>
       {deploy.isError ? (
         // Offers an inline confirmed reinstall instead of dead-ending (ADR-0006, #66).

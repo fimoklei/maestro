@@ -24,5 +24,5 @@ export function removalAnnouncement({
       : // The set is detected, so it can be empty (ADR-0011) — fall back rather
         // than trail off.
         toolNameList(target.tools) || "every detected tool";
-  return `removed ${name} ${version ?? "(version unknown)"} from ${scope}`;
+  return `Removed ${name} ${version ?? "(version unknown)"} from ${scope}`;
 }

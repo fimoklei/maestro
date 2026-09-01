@@ -441,11 +441,11 @@ describe("ConnectInventoryForm", () => {
         path=""
         onPathChange={vi.fn()}
         onSubmit={vi.fn()}
-        submitLabel="Re-point source"
+        submitLabel="Set Harness location"
       />,
     );
     expect(
-      screen.getByRole("button", { name: /^re-point source$/i }),
+      screen.getByRole("button", { name: /^set harness location$/i }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /^connect inventory$/i }),

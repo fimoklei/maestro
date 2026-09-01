@@ -10,18 +10,18 @@ export function TargetStatusChip({
   indicator: TargetDriftIndicator;
 }) {
   if (indicator === "ok") {
-    return <Chip tone="ok">● in sync</Chip>;
+    return <Chip tone="ok">● In sync</Chip>;
   }
   if (indicator === "attention") {
-    return <Chip tone="drift">▲ attention</Chip>;
+    return <Chip tone="drift">▲ Attention</Chip>;
   }
   if (indicator === "drift") {
-    return <Chip tone="drift">▲ drift</Chip>;
+    return <Chip tone="drift">▲ Behind</Chip>;
   }
   // Neutral tone: empty is a fact, not a signal to act on. Word matches the
-  // sidebar's ("empty", never a synonym) so both readings agree.
+  // sidebar's ("Empty", never a synonym) so both readings agree.
   if (indicator === "empty") {
-    return <Chip tone="dim">● empty</Chip>;
+    return <Chip tone="dim">● Empty</Chip>;
   }
   return null;
 }

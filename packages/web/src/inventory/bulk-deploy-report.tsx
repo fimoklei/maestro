@@ -72,7 +72,7 @@ export function BulkDeployReport({
   }
 
   const summary = isDeploying
-    ? "Deploying…"
+    ? "Deploying skills…"
     : bulkDeploySummary({
         targetLabel: view.targetLabel,
         counts: view.counts,
@@ -140,7 +140,7 @@ export function BulkDeployReport({
                     {row.name}
                   </span>
                   <span className="text-dim">{row.version}</span>
-                  <span className="text-muted">updated to latest</span>
+                  <span className="text-muted">Updated to latest</span>
                 </li>
               ))}
             </ul>
@@ -154,7 +154,7 @@ export function BulkDeployReport({
                   className="flex items-baseline justify-between gap-2 text-tag"
                 >
                   <span className="flex min-w-0 items-baseline gap-2">
-                    <Chip tone="drift">▲ attention</Chip>
+                    <Chip tone="drift">▲ Attention</Chip>
                     <span className="font-mono text-fg text-mono-sm">
                       {row.name}
                     </span>
@@ -170,7 +170,7 @@ export function BulkDeployReport({
                       size="sm"
                       onClick={() => onForce(row.name)}
                     >
-                      Reinstall fresh {row.name}
+                      Deploy {row.name} again
                     </Button>
                   ) : null}
                 </li>
@@ -209,7 +209,7 @@ export function BulkDeployReport({
                   <span className="font-mono text-muted text-mono-sm">
                     {name}
                   </span>
-                  <span className="text-dim">already up to date</span>
+                  <span className="text-dim">Already up to date</span>
                 </li>
               ))}
             </ul>

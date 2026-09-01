@@ -95,7 +95,7 @@ describe("GlobalDeployStatePanel", () => {
     renderPanel();
 
     expect(await screen.findByText("tdd")).toBeInTheDocument();
-    expect(await screen.findByText(/behind/i)).toBeInTheDocument();
+    expect(await screen.findByText("Behind")).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledWith("/api/drift/global", expect.anything());
   });
 
@@ -125,6 +125,6 @@ describe("GlobalDeployStatePanel", () => {
 
     expect(await screen.findByText("tdd")).toBeInTheDocument();
     expect(await screen.findByText(/unknown/i)).toBeInTheDocument();
-    expect(screen.queryByText(/up-to-date/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/up to date/i)).not.toBeInTheDocument();
   });
 });

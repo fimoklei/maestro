@@ -77,7 +77,7 @@ export function MovementTable({
                   </span>
                   {movement.deletion ? (
                     <Chip tone="drift" className="shrink-0">
-                      deleted locally
+                      Deleted locally
                     </Chip>
                   ) : null}
                 </div>
@@ -128,7 +128,7 @@ function PullRequestLink({ href, focus }: { href: string; focus: boolean }) {
       rel="noreferrer"
       className="whitespace-nowrap font-mono text-amber-ink text-tag underline"
     >
-      pull request →
+      Pull request →
     </a>
   );
 }

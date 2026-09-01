@@ -75,9 +75,9 @@ describe("DeployStateView cold start", () => {
     renderView();
 
     await waitFor(() => {
-      expect(screen.getAllByRole("button", { name: "deploy →" })).toHaveLength(
-        3,
-      );
+      expect(
+        screen.getAllByRole("button", { name: "Deploy a skill" }),
+      ).toHaveLength(3);
     });
   });
 
@@ -86,7 +86,7 @@ describe("DeployStateView cold start", () => {
     renderView();
 
     const [action] = await screen.findAllByRole("button", {
-      name: "deploy →",
+      name: "Deploy a skill",
     });
     if (!action) {
       throw new Error("Expected an empty-target deploy action.");
@@ -125,7 +125,7 @@ describe("DeployStateView cold start", () => {
 
     // The global panel renders its deployed skill, so we know data has loaded.
     expect(await screen.findByText("tdd")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "deploy →" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Deploy a skill" })).toBeNull();
   });
 });
 
