@@ -459,6 +459,25 @@ describe("deploy HTTP route", () => {
     expect(deployCalls).toEqual([]);
   });
 
+  // Pins ADR-0025 §8 at the wire: a refusal is a code and a status, and the
+  // sentence for it lives in `packages/web`. Asserted by absence, not by a
+  // whole-body match that would pass for the wrong reason.
+  it("answers a refusal with a code and a status, and no sentence", async () => {
+    const { app, registry } = makeApp();
+    await registry.register(repo);
+
+    const res = await post(app, {
+      type: "hook",
+      name: "tdd",
+      target: repoTarget(repo),
+    });
+
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body.error).toBe("unsupported-primitive-type");
+    expect(Object.hasOwn(body, "message")).toBe(false);
+  });
+
   it("returns 400 for an invalid body", async () => {
     const { app } = makeApp();
 

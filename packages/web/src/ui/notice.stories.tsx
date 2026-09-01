@@ -49,7 +49,7 @@ export const ErrorLevel: Story = {
   args: {
     notice: {
       level: "error",
-      label: "Run not started",
+      label: "the run never started",
       message: "Malformed request. Nothing was removed anywhere.",
     },
   },

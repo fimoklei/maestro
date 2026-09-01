@@ -5,11 +5,11 @@ import type {
 } from "@maestro/core";
 import { HttpError } from "../api/http";
 import type { NoticeLevel } from "../ui/notice";
+import { requestShapeNotice } from "../ui/notice-table";
 
 // One table over the three unions: a code shared by deploy and remove is the
 // same thing going wrong, so it reads the same in both. The path-shape codes
-// are not among them — only connect and scaffold answer with those, and their
-// rows live in `inventory/connect-notice.ts`.
+// live in `inventory/connect-notice.ts` instead.
 type DeployStateCode =
   | DeploySkillError
   | RemoveDeployedSkillError
@@ -23,10 +23,15 @@ export type DeployStateNotice = {
   detail?: string;
 };
 
-// One string, two surfaces: the deploy refusal and the skipped-entry line both
-// send the reader down the same three steps.
+// One string, two surfaces: the deploy refusal and the bulk report's row both
+// send the reader down the same steps.
 export const FIX_AND_RELEASE =
   "Fix the skill in the Harness, publish a release, then deploy again.";
+
+export const ADD_SKILL_MD =
+  "Add a SKILL.md in the Harness, publish a release, then deploy again.";
+
+export const RECHECK_TARGET = "Deploy again to re-check the target.";
 
 type Heading = { level: NoticeLevel; label: string };
 type Body = { message: string; detail?: string };
@@ -160,12 +165,10 @@ const DEPLOY: Record<DeploySkillError, Body> = {
     message: `Its files are still there. ${FIX_AND_RELEASE}`,
   },
   "deploy-recorded-invalid": {
-    message:
-      "A skill needs a SKILL.md. Add one in the Harness, publish a release, then deploy again.",
+    message: ADD_SKILL_MD,
   },
   "deploy-unverified": {
-    message:
-      "The target's deployment record does not show it. Deploy again to re-check the target.",
+    message: `The target's deployment record does not show it. ${RECHECK_TARGET}`,
   },
   "deploy-failed": {
     message:
@@ -234,7 +237,7 @@ const UNKNOWN_DETAIL =
 const UNKNOWN_DEPLOY: DeployStateNotice = {
   level: "error",
   label: "Deploy outcome unknown",
-  message: "Nothing confirmed the deploy. Deploy again to re-check the target.",
+  message: `Nothing confirmed the deploy. ${RECHECK_TARGET}`,
   detail: UNKNOWN_DETAIL,
 };
 
@@ -246,10 +249,6 @@ const UNKNOWN_REMOVE: DeployStateNotice = {
   detail: UNKNOWN_DETAIL,
 };
 
-// The one exception to "no sentence crosses the wire" (ADR-0025 §8): the eight
-// request-shape messages are authored in `server` and say which field is wrong.
-const REQUEST_SHAPE_LABEL = "Request not accepted";
-
 // Required return, never `?? error.message`: an uncovered code would otherwise
 // render the wrapper's own "Request failed with status 422." on screen.
 function noticeFor(
@@ -260,18 +259,23 @@ function noticeFor(
   if (!(error instanceof HttpError) || error.code === undefined) {
     return fallback;
   }
-  if (error.code === "invalid-body") {
-    return {
-      level: "error",
-      label: REQUEST_SHAPE_LABEL,
-      message: error.message,
-    };
+  const requestShape = requestShapeNotice(error);
+  if (requestShape) {
+    return requestShape;
   }
   const heading = HEADINGS[error.code as DeployStateCode];
   const body = bodies[error.code];
   return heading === undefined || body === undefined
     ? fallback
     : { ...heading, ...body };
+}
+
+/**
+ * The heading for one deploy or remove code — terse enough to also stand as a
+ * row label, so a code reads the same in a notice and in a bulk report.
+ */
+export function deployStateHeading(code: DeployStateCode): string {
+  return HEADINGS[code].label;
 }
 
 /** The whole notice for a refused or failed deploy. */

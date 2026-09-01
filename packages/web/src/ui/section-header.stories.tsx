@@ -20,7 +20,7 @@ export const Default: Story = {};
 export const AsPageTitle: Story = {
   args: {
     level: 1,
-    title: "Inventory connection",
+    title: "Connect central inventory",
     meta: "a local Harness clone or GitHub URL",
   },
 };

@@ -239,7 +239,7 @@ export function BrowseDialog({
                     {showHidden ? "shown" : "not shown"}
                   </span>
                   <span className="font-mono text-amber-ink text-tag">
-                    · {showHidden ? "Hide" : "Show"}
+                    · {showHidden ? "Hide hidden items" : "Show hidden items"}
                   </span>
                 </button>
               ) : null}

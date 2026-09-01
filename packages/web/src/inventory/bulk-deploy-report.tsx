@@ -1,4 +1,10 @@
 import type { DeploySkillError } from "@maestro/core";
+import {
+  ADD_SKILL_MD,
+  deployStateHeading,
+  FIX_AND_RELEASE,
+  RECHECK_TARGET,
+} from "../deploy-state/notice-copy";
 import { Button } from "../ui/button";
 import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
@@ -11,34 +17,13 @@ import {
 // One summary line + per-skill detail on expand (#292). Presentational —
 // colour, counts, rows already folded by bulkDeployReportView.
 
-// Terse label per code — the server owns the full sentence.
-const errorLabels: Partial<Record<DeploySkillError, string>> = {
-  "deployed-diverged-from-lock": "Deployed copy has local edits",
-  "deployed-unverifiable": "Deployed copy predates content tracking",
-  "local-diverged-from-tag": "Local copy diverged from its tag",
-  "no-published-tag": "No published tag contains it",
-  "auth-required": "GitHub access is missing or expired",
-  "deploy-failed": "The deploy did not finish",
-  "deployed-unsupported-package-type":
-    "Recorded by apm as a type Maestro cannot manage as a skill",
-  "deploy-recorded-invalid": "Recorded by apm as an unusable deployment",
-  "deploy-unverified": "The deployment record does not confirm apm's install",
-};
-
-// The bulk route returns codes, not prose, so the one recovery step a row can
-// act on lives here — the same guidance the single-deploy message carries.
+// The row's words come from the deploy notice table, so a code reads the same
+// here and in a single deploy's notice, and no code can reach the screen raw.
 const recoverySteps: Partial<Record<DeploySkillError, string>> = {
-  "deployed-unsupported-package-type":
-    "Fix the skill in the Harness, release a new version, then deploy again.",
-  "deploy-recorded-invalid":
-    "Add a SKILL.md in the Harness, release a new version, then deploy again.",
-  "deploy-unverified":
-    "Check the deployment record (apm.lock.yaml) on the target, then deploy again.",
+  "deployed-unsupported-package-type": FIX_AND_RELEASE,
+  "deploy-recorded-invalid": ADD_SKILL_MD,
+  "deploy-unverified": RECHECK_TARGET,
 };
-
-function errorLabel(error: DeploySkillError): string {
-  return errorLabels[error] ?? error;
-}
 
 function RecoveryStep({ error }: { error: DeploySkillError }) {
   const step = recoverySteps[error];
@@ -159,7 +144,7 @@ export function BulkDeployReport({
                       {row.name}
                     </span>
                     <span className="truncate text-amber-ink">
-                      {errorLabel(row.error)}
+                      {deployStateHeading(row.error)}
                       {row.packageType ? ` (${row.packageType})` : ""}
                     </span>
                     <RecoveryStep error={row.error} />
@@ -190,7 +175,7 @@ export function BulkDeployReport({
                     {row.names.join(", ")}
                   </span>
                   <span className="text-amber-ink">
-                    {errorLabel(row.error)}
+                    {deployStateHeading(row.error)}
                   </span>
                   <RecoveryStep error={row.error} />
                 </li>

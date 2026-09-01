@@ -180,7 +180,7 @@ describe("deploy notices", () => {
         level: "error",
         label: "No files deployed",
         message:
-          "A skill needs a SKILL.md. Add one in the Harness, publish a release, then deploy again.",
+          "Add a SKILL.md in the Harness, publish a release, then deploy again.",
       },
     ],
     [
@@ -219,11 +219,18 @@ describe("deploy notices", () => {
   });
 
   it("keeps the server's request-shape sentence for a malformed request", () => {
-    const error = new HttpError(400, "name is required.", "invalid-body");
+    const error = new HttpError(
+      400,
+      "Nothing reached the target. Reload the page, then start the change again.",
+      "invalid-body",
+      { detail: "The request carries a type, a name and a target." },
+    );
     expect(deployNotice(error)).toEqual({
       level: "error",
       label: "Request not accepted",
-      message: "name is required.",
+      message:
+        "Nothing reached the target. Reload the page, then start the change again.",
+      detail: "The request carries a type, a name and a target.",
     });
   });
 
@@ -377,11 +384,18 @@ describe("remove notices", () => {
   });
 
   it("keeps the server's request-shape sentence for a malformed request", () => {
-    const error = new HttpError(400, "target is required.", "invalid-body");
+    const error = new HttpError(
+      400,
+      "Nothing reached the target. Reload the page, then start the change again.",
+      "invalid-body",
+      { detail: "The request carries a type, a name and a target." },
+    );
     expect(removeNotice(error)).toEqual({
       level: "error",
       label: "Request not accepted",
-      message: "target is required.",
+      message:
+        "Nothing reached the target. Reload the page, then start the change again.",
+      detail: "The request carries a type, a name and a target.",
     });
   });
 });

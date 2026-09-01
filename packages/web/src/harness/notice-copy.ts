@@ -11,14 +11,9 @@ import type {
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 
-// Every Harness notice, heading and sentence together (ADR-0025). The server
-// sends the code and the status alone, so a new code in core fails typecheck
-// here until it has a row.
-//
-// Screen names: the Harness clone's move to GitHub is a *proposed change*, and
-// the verb is *propose a change* (`CONTEXT.md` → Screen names). Every sentence
-// that names a control reproduces its label letter for letter (R-D): Refresh,
-// Propose change, Publish release, Remove skill, Import skill.
+// Every Harness notice, heading and sentence together (ADR-0025) — a new code
+// in core fails typecheck here until it has a row. Screen names and control
+// labels: `CONTEXT.md` → Screen names, `.claude/rules/copy.md` → R-D.
 
 // The state read's two refusals ride in every other table below: a plan, a
 // release and a proposed change all read the same harness first.

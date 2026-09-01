@@ -52,8 +52,23 @@ describe("BulkDeployReport", () => {
 
     expect(screen.getByText(/\(hybrid\)/)).toBeInTheDocument();
     expect(
-      screen.getAllByText(/release a new version, then deploy again/i),
+      screen.getAllByText(/publish a release, then deploy again/i),
     ).toHaveLength(2);
+  });
+
+  it("names a failure the report carries no recovery step for", () => {
+    render(
+      <BulkDeployReport
+        view={view({
+          tone: "attention",
+          failed: [{ error: "no-supported-tool", names: ["tdd"] }],
+          counts: { deployed: 0, skipped: 0, attention: 0, failed: 1 },
+        })}
+      />,
+    );
+
+    expect(screen.getByText("No supported tool")).toBeInTheDocument();
+    expect(screen.queryByText("no-supported-tool")).not.toBeInTheDocument();
   });
 
   it("summarises the run and names the target", () => {
