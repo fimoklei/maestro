@@ -18,9 +18,8 @@ describe("import refusal text", () => {
   it("names the folder's problem, never the name's", () => {
     expect(sourceBlockerNotice("missing-manifest")).toEqual({
       level: "error",
-      label: "no SKILL.md in it",
-      message:
-        "Without one, the folder is not a skill Maestro can carry. Pick the folder that holds the skill's SKILL.md.",
+      label: "No SKILL.md",
+      message: "Pick the folder that holds the skill's SKILL.md.",
     });
     expect(sourceBlockerNotice(null)).toBeNull();
   });
@@ -28,7 +27,7 @@ describe("import refusal text", () => {
   it("names the name's problem", () => {
     expect(nameBlockerNotice("name-taken")).toEqual({
       level: "error",
-      label: "that name is taken",
+      label: "Name taken",
       message: "The Harness already holds a skill under it. Pick another name.",
     });
     expect(nameBlockerNotice(null)).toBeNull();

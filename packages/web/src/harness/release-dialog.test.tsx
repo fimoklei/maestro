@@ -135,7 +135,9 @@ describe("ReleaseDialog", () => {
     const onPublish = vi.fn();
     renderReady({}, { onPublish });
 
-    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
 
     expect(onPublish).toHaveBeenCalledWith("minor", PLAN);
   });
@@ -145,7 +147,9 @@ describe("ReleaseDialog", () => {
     renderReady({}, { onPublish });
 
     await userEvent.click(screen.getByRole("button", { name: "major" }));
-    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
 
     expect(onPublish).toHaveBeenCalledWith("major", PLAN);
   });
@@ -177,7 +181,9 @@ describe("ReleaseDialog", () => {
       />,
     );
 
-    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
     expect(onPublish).toHaveBeenCalledWith("patch", recomputed);
   });
 

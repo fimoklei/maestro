@@ -11,6 +11,7 @@ import {
   TableRow,
 } from "../ui/table";
 import { TypeTag } from "../ui/type-tag";
+import { CONCURRENT_CHANGE_NOTICE } from "./notice-copy";
 import type { HarnessMovement } from "./use-harness";
 
 // Promotion as the row sees it: what a press does, which row is waiting on the
@@ -27,15 +28,6 @@ export type PromoteRowState = {
   // The one whose press just landed: the only row that takes focus.
   justMoved: string | null;
   failed: { skill: string; notice: NoticeContent } | null;
-};
-
-// Info, not warning: a warning is a way through at a cost (#465, decision 3),
-// and there is none here — promoting is refused until the pull lands (#579).
-const CONCURRENT_CHANGE: NoticeContent = {
-  level: "info",
-  label: "changed by a teammate",
-  message:
-    "Promoting is refused until their change is pulled into the Harness clone.",
 };
 
 // The rows of one state-named section. Type is a column even though every row
@@ -103,7 +95,7 @@ export function MovementTable({
                   // Painted with the row, not in answer to a press, so it
                   // stays polite.
                   <div className="mt-1">
-                    <Notice trigger="load" notice={CONCURRENT_CHANGE} />
+                    <Notice trigger="load" notice={CONCURRENT_CHANGE_NOTICE} />
                   </div>
                 ) : null}
               </TableCell>
@@ -169,7 +161,7 @@ function promoteCell(movement: HarnessMovement, promote: PromoteRowState) {
       disabled={!promote.enabled || promote.pending !== null}
       onClick={() => promote.onPromote(movement.skill)}
     >
-      {waiting ? "promoting…" : "promote"}
+      {waiting ? "Proposing change…" : "Propose change"}
     </Button>
   );
 }

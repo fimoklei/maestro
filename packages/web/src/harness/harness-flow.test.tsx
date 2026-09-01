@@ -577,7 +577,9 @@ describe("Harness home base", () => {
     await userEvent.click(release);
     await screen.findByText("v1.3.0");
 
-    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
 
     await waitFor(() =>
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
@@ -604,7 +606,9 @@ describe("Harness home base", () => {
     await userEvent.click(release);
     await screen.findByText("v1.3.0");
 
-    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
 
     await waitFor(() =>
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
@@ -638,7 +642,9 @@ describe("Harness home base", () => {
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
     await screen.findByText("v1.3.0");
-    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
 
     await waitFor(() => expect(confirmations).toHaveLength(1));
     expect(confirmations[0]).toEqual({
@@ -667,7 +673,9 @@ describe("Harness home base", () => {
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
     await screen.findByText("v1.3.0");
-    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
 
     const dialog = await screen.findByRole("dialog");
     expect(
@@ -705,7 +713,9 @@ describe("Harness home base", () => {
     await userEvent.click(screen.getByRole("button", { name: /^major$/i }));
     expect(await screen.findByText("v2.0.0")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
 
     // Back on the recomputed plan's own proposal, not the old choice's v2.0.0.
     expect(await screen.findByText("v1.3.1")).toBeInTheDocument();
@@ -737,10 +747,14 @@ describe("Harness home base", () => {
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
     await screen.findByText("v1.3.0");
-    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
     await screen.findByText("v1.3.1");
 
-    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
 
     await waitFor(() =>
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
@@ -772,7 +786,9 @@ describe("Harness home base", () => {
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
     await screen.findByText("v1.3.0");
-    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
 
     await waitFor(() =>
       expect(
@@ -805,7 +821,9 @@ describe("Harness home base", () => {
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
     await screen.findByText("v1.3.0");
-    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
 
     await waitFor(() =>
       expect(
@@ -832,11 +850,15 @@ describe("Harness home base", () => {
     await userEvent.click(release);
     await screen.findByText("v1.3.0");
 
-    await userEvent.click(screen.getByRole("button", { name: /^publish$/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
 
     const dialog = await screen.findByRole("dialog");
     expect(
-      within(dialog).getByText(/That version number is taken/i),
+      within(dialog).getByText(
+        /Maestro rebuilt the plan against the newest release/i,
+      ),
     ).toBeInTheDocument();
   });
 
@@ -896,7 +918,7 @@ describe("Harness home base", () => {
   const promoteRow = async (skill: string) => {
     const row = (await screen.findByText(skill)).closest("tr") as HTMLElement;
     await userEvent.click(
-      within(row).getByRole("button", { name: /^promote$/i }),
+      within(row).getByRole("button", { name: /^propose change$/i }),
     );
   };
 
@@ -943,13 +965,13 @@ describe("Harness home base", () => {
       "tr",
     ) as HTMLElement;
     expect(
-      within(warned).getByText(/pulled into the Harness clone/i),
+      within(warned).getByText(/Pull it into the Harness clone/i),
     ).toBeInTheDocument();
     const untouched = screen
       .getByText("code-review")
       .closest("tr") as HTMLElement;
     expect(
-      within(untouched).queryByText(/pulled into the Harness clone/i),
+      within(untouched).queryByText(/Pull it into the Harness clone/i),
     ).not.toBeInTheDocument();
 
     await promoteRow("lint-rules");
@@ -1016,7 +1038,7 @@ describe("Harness home base", () => {
     ).toBeInTheDocument();
     const row = screen.getByText("lint-rules").closest("tr") as HTMLElement;
     expect(
-      within(row).getByRole("button", { name: /^promote$/i }),
+      within(row).getByRole("button", { name: /^propose change$/i }),
     ).toBeEnabled();
   });
 
@@ -1036,7 +1058,7 @@ describe("Harness home base", () => {
     ) as HTMLElement;
     await waitFor(() =>
       expect(
-        within(row).getByRole("button", { name: /^promote$/i }),
+        within(row).getByRole("button", { name: /^propose change$/i }),
       ).toBeDisabled(),
     );
   });
@@ -1069,7 +1091,7 @@ describe("Harness home base", () => {
 
     await screen.findByText("lint-rules");
     expect(
-      screen.queryByRole("button", { name: /^promote$/i }),
+      screen.queryByRole("button", { name: /^propose change$/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -1127,7 +1149,7 @@ describe("Harness home base", () => {
     const dialog = await openDeletionConfirmation();
 
     await userEvent.click(
-      within(dialog).getByRole("button", { name: /^remove$/i }),
+      within(dialog).getByRole("button", { name: /^remove skill$/i }),
     );
 
     await waitFor(() =>
@@ -1160,7 +1182,7 @@ describe("Harness home base", () => {
     const dialog = await openDeletionConfirmation();
 
     await userEvent.click(
-      within(dialog).getByRole("button", { name: /^remove$/i }),
+      within(dialog).getByRole("button", { name: /^remove skill$/i }),
     );
 
     const review = (
@@ -1192,12 +1214,14 @@ describe("Harness home base", () => {
     });
     renderHarness();
     const dialog = await openDeletionConfirmation();
-    const confirm = within(dialog).getByRole("button", { name: /^remove$/i });
+    const confirm = within(dialog).getByRole("button", {
+      name: /^remove skill$/i,
+    });
 
     await userEvent.click(confirm);
 
     expect(
-      await within(dialog).findByText(/confirm again/i),
+      await within(dialog).findByText(/Remove skill again/i),
     ).toBeInTheDocument();
     // The dialog stays open with the press still there: a refusal changed
     // nothing, so the way forward is another confirmation.
@@ -1222,7 +1246,7 @@ describe("Harness home base", () => {
     const dialog = await openDeletionConfirmation();
 
     await userEvent.click(
-      within(dialog).getByRole("button", { name: /^remove$/i }),
+      within(dialog).getByRole("button", { name: /^remove skill$/i }),
     );
 
     expect(
@@ -1267,7 +1291,7 @@ describe("Harness home base", () => {
     // A view that failed to load announces politely — nothing here followed
     // a press (#465).
     expect(await screen.findByRole("status")).toHaveTextContent(
-      /no harness is connected/i,
+      /No Harness connected/i,
     );
   });
 });
