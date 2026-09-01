@@ -61,7 +61,9 @@ describe("harness import HTTP route", () => {
     await rm(base, { recursive: true, force: true });
   });
 
-  function makeApp(deployedRoots: string[] = []) {
+  function makeApp(
+    deployedTargets: { treeRoot: string; lockfilePath: string }[] = [],
+  ) {
     const fs = new NodeFileSystem();
     const registry = realRegistry(fs, join(base, "config.json"));
     const inventory = new InventoryReader({
@@ -77,7 +79,7 @@ describe("harness import HTTP route", () => {
         fs,
         homeRoot: () => base,
         copy: new CopySkillFolder({ fs: new NodeCopyTreeFs() }),
-        deployedRoots: async () => deployedRoots,
+        deployedTargets: async () => deployedTargets,
       }),
       harness: stubHarness(),
       publish: stubPublish(),
@@ -177,17 +179,46 @@ describe("harness import HTTP route", () => {
     ).rejects.toThrow();
   });
 
-  it("refuses a copy Maestro deployed to a registered target", async () => {
+  it("refuses a copy the registered target's lockfile records as deployed", async () => {
     const repo = join(base, "repo");
     const deployed = join(repo, ".claude", "skills", "code-review");
     await mkdir(deployed, { recursive: true });
     await writeFile(join(deployed, "SKILL.md"), manifest(), "utf8");
-    const app = makeApp([repo]);
+    const lockfilePath = join(repo, "apm.lock.yaml");
+    await writeFile(
+      lockfilePath,
+      [
+        "dependencies:",
+        "- virtual_path: skills/code-review",
+        "  resolved_ref: v1.0.0",
+        "  package_type: claude_skill",
+        "  deployed_files:",
+        "  - .claude/skills/code-review",
+        "  - .claude/skills/code-review/SKILL.md",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const app = makeApp([{ treeRoot: repo, lockfilePath }]);
 
     const response = await importSkill(app, { source: deployed });
 
     expect(response.status).toBe(409);
     expect(await response.json()).toMatchObject({ error: "deployed-copy" });
+  });
+
+  it("lets a hand-authored skill through the same folder a deploy would use (#667)", async () => {
+    const repo = join(base, "repo");
+    const authored = join(repo, ".claude", "skills", "code-review");
+    await mkdir(authored, { recursive: true });
+    await writeFile(join(authored, "SKILL.md"), manifest(), "utf8");
+    const lockfilePath = join(repo, "apm.lock.yaml");
+    await writeFile(lockfilePath, "dependencies: []\n", "utf8");
+    const app = makeApp([{ treeRoot: repo, lockfilePath }]);
+
+    const response = await importSkill(app, { source: authored });
+
+    expect(response.status).toBe(200);
   });
 
   it("reports the .git entries the copy left behind", async () => {
