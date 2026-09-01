@@ -34,7 +34,7 @@ export function DeployRefusalNotice({
   const packageType = recordedPackageType(error);
   // A row that owns its sentence wins; the rest still read the server's.
   const message = heading.message ?? error.message;
-  const aside =
+  const detail =
     packageType === null
       ? undefined
       : `apm recorded this package as ${packageType}.`;
@@ -48,7 +48,7 @@ export function DeployRefusalNotice({
               level: "warning",
               label: heading.label,
               message,
-              aside,
+              detail,
               action: {
                 label: "Reinstall fresh — local changes will be lost",
                 onClick: onReinstall,
@@ -59,7 +59,7 @@ export function DeployRefusalNotice({
               level: heading.level,
               label: heading.label,
               message,
-              aside,
+              detail,
             }
       }
     />

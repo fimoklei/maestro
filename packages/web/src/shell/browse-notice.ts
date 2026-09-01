@@ -26,6 +26,12 @@ const browseHeadings: NoticeTable<BrowseError> = {
   },
 };
 
+// The fallback for a failure no row covers: the browser stays on the folder it
+// last read, so the sentence sends the user back to the picker (#688).
 export function browseNotice(error: unknown): NoticeContent | null {
-  return noticeFromTable(browseHeadings, error, "the folder did not load");
+  return noticeFromTable(browseHeadings, error, {
+    label: "Folder not loaded",
+    message:
+      "The Maestro server did not answer, so this folder is still unread. Pick it again.",
+  });
 }

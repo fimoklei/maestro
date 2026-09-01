@@ -199,13 +199,28 @@ const scaffoldHeadings: NoticeTable<ScaffoldHarnessError> = {
   },
 };
 
+// One fallback per surface: a failure no row covers still costs each of these
+// something different, and the sentence says which (#688).
 export function connectNotice(
   error: unknown,
   extras: NoticeExtras = {},
 ): NoticeContent | null {
-  return noticeFromTable(connectHeadings, error, "the connect failed", extras);
+  return noticeFromTable(
+    connectHeadings,
+    error,
+    {
+      label: "Harness not connected",
+      message:
+        "The Maestro server did not answer, so nothing was connected. Connect it again.",
+    },
+    extras,
+  );
 }
 
 export function scaffoldNotice(error: unknown): NoticeContent | null {
-  return noticeFromTable(scaffoldHeadings, error, "the scaffold failed");
+  return noticeFromTable(scaffoldHeadings, error, {
+    label: "Nothing scaffolded",
+    message:
+      "The Maestro server did not answer, and no files were written. Scaffold it again.",
+  });
 }

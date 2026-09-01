@@ -316,26 +316,56 @@ const importHeadings: NoticeTable<ImportSkillError> = {
   },
 };
 
+// One fallback per surface: a failure no row covers still costs each of these
+// something different, and the sentence says which (#688).
 export const harnessStateNotice = (error: unknown): NoticeContent | null =>
-  noticeFromTable(harnessHeadings, error, "the Harness did not load");
+  noticeFromTable(harnessHeadings, error, {
+    label: "Harness not loaded",
+    message:
+      "The Maestro server did not answer. Reload the page to read the Harness again.",
+  });
 
 export const refreshNotice = (error: unknown): NoticeContent | null =>
-  noticeFromTable(harnessHeadings, error, "GitHub was not read");
+  noticeFromTable(harnessHeadings, error, {
+    label: "GitHub not read",
+    message:
+      "The Maestro server did not answer, so the Harness is as it was. Press refresh again.",
+  });
 
 export const releasePlanNotice = (error: unknown): NoticeContent | null =>
-  noticeFromTable(releasePlanHeadings, error, "no plan to show");
+  noticeFromTable(releasePlanHeadings, error, {
+    label: "No release plan",
+    message:
+      "The Maestro server did not answer, so no version was worked out. Open the release again.",
+  });
 
 export const publishReleaseNotice = (error: unknown): NoticeContent | null =>
-  noticeFromTable(publishReleaseHeadings, error, "release not published");
+  noticeFromTable(publishReleaseHeadings, error, {
+    label: "Release not published",
+    message:
+      "The Maestro server did not answer, and no tag was pushed. Confirm the release again.",
+  });
 
 export const promoteNotice = (error: unknown): NoticeContent | null =>
-  noticeFromTable(promoteHeadings, error, "the skill was not promoted");
+  noticeFromTable(promoteHeadings, error, {
+    label: "Skill not promoted",
+    message:
+      "The Maestro server did not answer, and nothing was pushed. Press promote again.",
+  });
 
 export const removalNotice = (error: unknown): NoticeContent | null =>
-  noticeFromTable(deletionHeadings, error, "removal not published");
+  noticeFromTable(deletionHeadings, error, {
+    label: "Removal not published",
+    message:
+      "The Maestro server did not answer, and nothing was pushed. Confirm the removal again.",
+  });
 
 export const importNotice = (error: unknown): NoticeContent | null =>
-  noticeFromTable(importHeadings, error, "nothing imported");
+  noticeFromTable(importHeadings, error, {
+    label: "Nothing imported",
+    message:
+      "The Maestro server did not answer, and nothing reached the Harness. Import the folder again.",
+  });
 
 // The check's refusals never travel as an HTTP failure — they come back in a
 // successful reply, with the sentence written in `import-view-model`.

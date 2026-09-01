@@ -334,7 +334,7 @@ export function RemoveSkillDialog({
                   : null
               }
             />
-            {/* The aside says what the retry beside it will do, replacing a
+            {/* The detail says what the retry beside it will do, replacing a
                 paragraph that sent the user to check the repo by hand (#415). */}
             <Notice
               trigger="user-action"
@@ -344,7 +344,7 @@ export function RemoveSkillDialog({
                       level: "error",
                       label: "the removal failed",
                       message: error,
-                      aside: "retry removes only what is left",
+                      detail: "retry removes only what is left",
                     }
                   : null
               }

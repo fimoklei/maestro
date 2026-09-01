@@ -82,7 +82,7 @@ export function ConnectInventoryPanel({
   const notice =
     scaffoldNotice(scaffold.error) ??
     connectNotice(connect.error, {
-      aside: offerPath ?? undefined,
+      detail: offerPath ?? undefined,
       action: offerPath
         ? {
             label: scaffold.isPending ? "Scaffolding…" : "Scaffold the Harness",
