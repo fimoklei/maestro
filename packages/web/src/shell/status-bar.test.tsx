@@ -129,7 +129,7 @@ describe("StatusBar", () => {
     renderStatusBar();
 
     const gear = await screen.findByRole("button", {
-      name: /inventory source/i,
+      name: /harness location/i,
     });
     expect(gear).toBeInTheDocument();
     // Not the active view yet — the header was rendered at the landing route.
@@ -147,7 +147,7 @@ describe("StatusBar", () => {
     renderStatusBar("/source");
 
     const gear = await screen.findByRole("button", {
-      name: /inventory source/i,
+      name: /harness location/i,
     });
     expect(gear).toHaveAttribute("aria-current", "page");
   });
@@ -160,7 +160,7 @@ describe("StatusBar", () => {
 
     expect(await screen.findByText("setup required")).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /inventory source/i }),
+      screen.queryByRole("button", { name: /harness location/i }),
     ).not.toBeInTheDocument();
   });
 

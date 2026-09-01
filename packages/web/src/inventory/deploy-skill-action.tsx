@@ -150,8 +150,8 @@ export function DeploySkillAction({
           trigger="user-action"
           notice={{
             level: "success",
-            label: "deployed",
-            message: `${deploy.data.deployed.name} ${deploy.data.deployed.version} is installed on this target.`,
+            label: "Deployed",
+            message: `${deploy.data.deployed.name} ${deploy.data.deployed.version} is deployed on this target.`,
           }}
         />
       ) : null}

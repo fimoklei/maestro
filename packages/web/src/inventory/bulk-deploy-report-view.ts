@@ -58,15 +58,18 @@ export function bulkDeployReportView(input: {
   targetLabel: string;
   // `report` carries no real data when true — must never be read.
   requestFailed?: boolean;
-  requestFailedMessage?: string;
 }): BulkDeployReportView {
   const { report, skippedClean, targetLabel } = input;
 
   if (input.requestFailed) {
+    // Never the error's own text: the bulk route answers 200 with a report, so
+    // a thrown error is a dropped connection or a request this build got
+    // wrong, and neither has a sentence worth showing (ADR-0018).
     return {
       tone: "error",
       targetLabel,
-      message: input.requestFailedMessage ?? "The deploy request failed.",
+      message:
+        "The Maestro server did not answer. Deploy to this target again.",
     };
   }
 

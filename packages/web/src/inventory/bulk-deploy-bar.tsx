@@ -120,7 +120,6 @@ export function BulkDeployBar({
         updateToLatest: plan.updateToLatest,
         targetLabel: chosenLabel,
         requestFailed: bulk.isError,
-        requestFailedMessage: bulk.error?.message,
       })
     : null;
 

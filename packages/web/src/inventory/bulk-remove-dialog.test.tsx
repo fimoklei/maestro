@@ -21,17 +21,17 @@ const withCost: BulkRemoveDialogView = {
     {
       label: "/dev/acme-api",
       version: "v1.0.0",
-      reason: "local edits — deleted too",
+      reason: "Local edits — deleted too",
     },
     {
       label: "/dev/design-tokens",
       version: "v1.2.0",
-      reason: "check did not run",
+      reason: "Check did not run",
     },
   ],
-  refused: [{ label: "/dev/legacy-etl", reason: "repo not registered" }],
+  refused: [{ label: "/dev/legacy-etl", reason: "Repository not registered" }],
   removableCount: 3,
-  confirmLabel: "remove from 3 · 2 lose local edits →",
+  confirmLabel: "Remove from 3 targets · 2 lose local edits",
 };
 
 function renderDialog(
@@ -66,7 +66,7 @@ function renderDialog(
 describe("BulkRemoveDialog — while the checks run", () => {
   const checking: BulkRemoveDialogView = {
     kind: "checking",
-    line: "checking 3 targets — 1 answered",
+    line: "Checking 3 targets — 1 answered",
   };
 
   it("holds the confirm until every check has answered", async () => {
@@ -82,14 +82,14 @@ describe("BulkRemoveDialog — while the checks run", () => {
     renderDialog({ view: checking });
 
     expect(screen.getByRole("dialog")).toHaveTextContent(
-      "checking 3 targets — 1 answered",
+      "Checking 3 targets — 1 answered",
     );
   });
 
   it("cancels while the checks are still running, removing nothing", async () => {
     const { onCancel, onConfirm } = renderDialog({ view: checking });
 
-    const cancel = screen.getByRole("button", { name: "cancel" });
+    const cancel = screen.getByRole("button", { name: "Cancel" });
     expect(cancel).toBeEnabled();
     await userEvent.click(cancel);
 
@@ -106,7 +106,7 @@ describe("BulkRemoveDialog — once the checks answer", () => {
     expect(dialog).toHaveTextContent(
       "3 clean copies — nothing but the deployed files goes",
     );
-    expect(screen.queryByText(/LOSES WORK/)).toBeNull();
+    expect(screen.queryByText(/Loses work/)).toBeNull();
     expect(screen.queryByText(/CAN'T BE REMOVED/)).toBeNull();
     expect(
       screen.getByRole("button", { name: "remove from 3 →" }),
@@ -116,12 +116,12 @@ describe("BulkRemoveDialog — once the checks answer", () => {
   it("groups what the removal costs, with each target's version and reason", () => {
     renderDialog({ view: withCost });
 
-    expect(screen.getByText("▲ LOSES WORK · 2")).toBeInTheDocument();
-    const cost = screen.getByRole("group", { name: "▲ LOSES WORK · 2" });
+    expect(screen.getByText("▲ Loses work · 2")).toBeInTheDocument();
+    const cost = screen.getByRole("group", { name: "▲ Loses work · 2" });
     expect(cost).toHaveTextContent("/dev/acme-api");
     expect(cost).toHaveTextContent("v1.0.0");
-    expect(cost).toHaveTextContent("local edits — deleted too");
-    expect(cost).toHaveTextContent("check did not run");
+    expect(cost).toHaveTextContent("Local edits — deleted too");
+    expect(cost).toHaveTextContent("Check did not run");
   });
 
   // A target that cannot be touched costs nothing and loses nothing — putting
@@ -130,10 +130,10 @@ describe("BulkRemoveDialog — once the checks answer", () => {
     renderDialog({ view: withCost });
 
     const refused = screen.getByRole("group", {
-      name: "✕ CAN'T BE REMOVED · 1",
+      name: "✕ Cannot be removed · 1",
     });
     expect(refused).toHaveTextContent("/dev/legacy-etl");
-    expect(refused).toHaveTextContent("repo not registered");
+    expect(refused).toHaveTextContent("Repository not registered");
     expect(within(refused).queryByText(/^v\d/)).toBeNull();
   });
 
@@ -142,7 +142,7 @@ describe("BulkRemoveDialog — once the checks answer", () => {
 
     expect(
       screen.getByRole("button", {
-        name: "remove from 3 · 2 lose local edits →",
+        name: "Remove from 3 targets · 2 lose local edits",
       }),
     ).toBeEnabled();
   });
@@ -153,7 +153,9 @@ describe("BulkRemoveDialog — once the checks answer", () => {
         kind: "grouped",
         cleanLine: null,
         cost: [],
-        refused: [{ label: "/dev/legacy-etl", reason: "repo not registered" }],
+        refused: [
+          { label: "/dev/legacy-etl", reason: "Repository not registered" },
+        ],
         removableCount: 0,
         confirmLabel: "remove from 0 →",
       },
@@ -178,7 +180,7 @@ describe("BulkRemoveDialog — once the checks answer", () => {
 
     expect(
       screen.getAllByRole("button").map((control) => control.textContent),
-    ).toEqual(["cancel", "remove from 3 · 2 lose local edits →"]);
+    ).toEqual(["Cancel", "Remove from 3 targets · 2 lose local edits"]);
     expect(screen.queryByRole("link")).toBeNull();
   });
 
@@ -214,8 +216,8 @@ describe("BulkRemoveDialog — during the run", () => {
     renderDialog(running);
 
     const dialog = screen.getByRole("dialog");
-    expect(dialog).toHaveTextContent("walking 3 targets, one at a time");
-    expect(screen.queryByText(/LOSES WORK/)).toBeNull();
+    expect(dialog).toHaveTextContent("Removing from 3 targets, one at a time");
+    expect(screen.queryByText(/Loses work/)).toBeNull();
     expect(screen.queryByText(/clean copies/)).toBeNull();
   });
 
@@ -223,7 +225,7 @@ describe("BulkRemoveDialog — during the run", () => {
     renderDialog(running);
 
     expect(screen.getByRole("button", { name: /removing/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "cancel" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
   });
 
   it("ignores Escape, so the user cannot walk away into a partial state", async () => {
@@ -244,43 +246,42 @@ describe("BulkRemoveDialog — during the run", () => {
     expect(onCancel).not.toHaveBeenCalled();
   });
 
-  it("offers no confirm once the outcome is unknown — looking comes before another run", async () => {
+  it("offers no confirm once Outcome unknown — looking comes before another run", async () => {
     // The body tells the user to close and check. A live confirm beside it
     // would repeat a destructive run whose result nobody has seen.
     const { onCancel, onConfirm } = renderDialog({
       report: {
         kind: "outcome-unknown",
-        label: "the outcome is unknown",
-        message:
-          "Maestro lost its server's answer and cannot say what was removed.",
+        label: "Outcome unknown",
+        message: "The run's outcome is unrecorded.",
+        detail: "The Maestro server did not answer.",
       },
     });
 
     expect(screen.queryByRole("button", { name: /^remove from/i })).toBeNull();
     const controls = screen.getAllByRole("button");
-    expect(controls.map((control) => control.textContent)).toEqual(["close"]);
+    expect(controls.map((control) => control.textContent)).toEqual(["Close"]);
 
-    await userEvent.click(screen.getByRole("button", { name: "close" }));
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onCancel).toHaveBeenCalledTimes(1);
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
   // The server answered before the walk began, so the same attempt can simply
   // be made again — and the body it would act on is still on screen.
-  it("keeps the confirm live when the run never started", async () => {
+  it("keeps the confirm live when Run not started", async () => {
     const { onConfirm } = renderDialog({
       view: withCost,
       report: {
         kind: "never-started",
-        label: "the run never started",
-        message: "Malformed request. Nothing was removed anywhere. Try again.",
+        label: "Run not started",
+        message: "Nothing was removed anywhere. Confirm the removal again.",
+        detail: "The Maestro server refused the request.",
       },
     });
 
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "the run never started",
-    );
-    expect(screen.getByText("▲ LOSES WORK · 2")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Run not started");
+    expect(screen.getByText("▲ Loses work · 2")).toBeInTheDocument();
     await userEvent.click(
       screen.getByRole("button", { name: /^remove from/i }),
     );
@@ -292,23 +293,23 @@ describe("BulkRemoveDialog — once the run reports", () => {
   const clean: BulkRemoveReportView = {
     kind: "clean",
     title: { before: "Removed ", after: "" },
-    counts: "removed 3 · refused 0 · failed 0",
+    counts: "Removed 3 · refused 0 · failed 0",
   };
 
   const partial: BulkRemoveReportView = {
     kind: "partial",
-    title: { before: "Removed ", after: " from 1 of 3" },
-    counts: "removed 1 · refused 1 · failed 1",
+    title: { before: "Removed ", after: " from 1 of 3 targets" },
+    counts: "Removed 1 · refused 1 · failed 1",
     leftAlone: [
       {
         label: "/dev/acme-api",
         outcome: "failed",
-        reason: "target is held by another operation",
+        reason: "Target held by another operation",
       },
       {
         label: "/dev/legacy-etl",
         outcome: "refused",
-        reason: "repo not registered",
+        reason: "Repository not registered",
       },
     ],
   };
@@ -318,7 +319,7 @@ describe("BulkRemoveDialog — once the run reports", () => {
 
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveAccessibleName("Removed tdd");
-    expect(dialog).toHaveTextContent("removed 3 · refused 0 · failed 0");
+    expect(dialog).toHaveTextContent("Removed 3 · refused 0 · failed 0");
     expect(screen.queryByText(/LEFT ALONE/)).toBeNull();
     expect(screen.queryByText(/clean copies/)).toBeNull();
   });
@@ -327,23 +328,23 @@ describe("BulkRemoveDialog — once the run reports", () => {
     renderDialog({ report: partial });
 
     expect(screen.getByRole("dialog")).toHaveAccessibleName(
-      "Removed tdd from 1 of 3",
+      "Removed tdd from 1 of 3 targets",
     );
     expect(screen.getByRole("dialog")).toHaveTextContent(
-      "removed 1 · refused 1 · failed 1",
+      "Removed 1 · refused 1 · failed 1",
     );
   });
 
   it("gives every left-alone target its class and its own reason", () => {
     renderDialog({ report: partial });
 
-    const group = screen.getByRole("group", { name: "✕ LEFT ALONE · 2" });
+    const group = screen.getByRole("group", { name: "✕ Left alone · 2" });
     expect(group).toHaveTextContent("/dev/acme-api");
     expect(group).toHaveTextContent("failed");
-    expect(group).toHaveTextContent("target is held by another operation");
+    expect(group).toHaveTextContent("Target held by another operation");
     expect(group).toHaveTextContent("/dev/legacy-etl");
     expect(group).toHaveTextContent("refused");
-    expect(group).toHaveTextContent("repo not registered");
+    expect(group).toHaveTextContent("Repository not registered");
   });
 
   it("takes the danger outline once a target was left behind", () => {
@@ -357,9 +358,9 @@ describe("BulkRemoveDialog — once the run reports", () => {
     const { onCancel } = renderDialog({ report: clean });
     expect(
       screen.getAllByRole("button").map((control) => control.textContent),
-    ).toEqual(["done"]);
+    ).toEqual(["Done"]);
 
-    await userEvent.click(screen.getByRole("button", { name: "done" }));
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
@@ -367,7 +368,7 @@ describe("BulkRemoveDialog — once the run reports", () => {
     renderDialog({ report: partial });
     expect(
       screen.getAllByRole("button").map((control) => control.textContent),
-    ).toEqual(["close"]);
+    ).toEqual(["Close"]);
   });
 
   it("announces the outcome in a live region mounted before it", () => {
@@ -377,7 +378,7 @@ describe("BulkRemoveDialog — once the run reports", () => {
 
     rerender({ report: partial });
     expect(screen.getByLabelText("Bulk remove result")).toHaveTextContent(
-      "Removed tdd from 1 of 3 · removed 1 · refused 1 · failed 1",
+      "Removed tdd from 1 of 3 targets · Removed 1 · refused 1 · failed 1",
     );
   });
 });

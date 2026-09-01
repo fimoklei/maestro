@@ -178,7 +178,7 @@ describe("DeploySkillAction", () => {
     await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
 
     expect(
-      await screen.findByText(/tdd v0\.5\.1 is installed/i),
+      await screen.findByText(/tdd v0.5.1 is deployed/i),
     ).toBeInTheDocument();
     const [url, init] = fetchMock.mock.calls.find(
       ([url]) => url === "/api/deploy",

@@ -18,25 +18,27 @@ const repoPathHeadings: NoticeTable<
 > = {
   missing: {
     level: "error",
-    label: "no path given",
+    label: "No path given",
     message:
       "Type the path to a local Harness clone, or paste a GitHub repository URL.",
   },
   relative: {
     level: "error",
-    label: "path is not absolute",
+    label: "Path not absolute",
     message:
-      "Start it from the root, so it names the same folder wherever Maestro runs.",
+      "Start the path from the root, so it names one folder wherever Maestro runs.",
   },
   "not-found": {
     level: "error",
-    label: "no folder at that path",
-    message: "Nothing is there now. Check the spelling, or browse to it.",
+    label: "No folder at that path",
+    message: "Check the spelling, or select browse… to pick the folder.",
+    detail: "Nothing is at that path now.",
   },
   "not-a-directory": {
     level: "error",
-    label: "not a folder",
-    message: "That path points at a file. Choose the folder that holds it.",
+    label: "Not a folder",
+    message: "Choose the folder that holds it.",
+    detail: "That path points at a file.",
   },
 };
 
@@ -44,82 +46,90 @@ const connectHeadings: NoticeTable<ConnectInventoryError> = {
   ...repoPathHeadings,
   "not-a-github-url": {
     level: "error",
-    label: "not a GitHub URL",
+    label: "Not a GitHub URL",
     message:
-      "Maestro clones a Harness from a GitHub repository over https or ssh, or connects a local clone by its path. Paste one of those.",
+      "Paste a GitHub repository URL, or type the path to a local Harness clone.",
+    detail: "Maestro clones over https or ssh.",
   },
   "url-carries-credentials": {
     level: "error",
-    label: "URL carries credentials",
+    label: "Credentials in the URL",
     message:
-      "Maestro never stores credentials, and git would write them into the clone. Paste the plain repository URL; the local git credentials do the rest.",
+      "Paste the plain repository URL. Maestro uses the local git credentials.",
+    detail: "git would write the credentials from the URL into the clone.",
   },
   "invalid-parent": {
     level: "error",
-    label: "not a usable clone folder",
-    message:
-      "Choose an existing folder inside the home area. The Harness lands in it under its own name.",
+    label: "Unusable clone folder",
+    message: "Choose an existing folder inside your home folder.",
+    detail: "The Harness lands in it under its own name.",
   },
   "destination-occupied": {
     level: "error",
-    label: "destination folder is taken",
-    message:
-      "Maestro never renames or deletes what it finds. Choose another folder to clone into.",
+    label: "Destination folder taken",
+    message: "Choose another folder to clone into.",
+    detail: "Maestro never renames or deletes what it finds.",
   },
   "destination-partial-clone": {
     level: "error",
-    label: "half-finished clone in the way",
-    message:
-      "An interrupted attempt left it behind, and Maestro will not touch it. Delete that folder, or clone into another one.",
+    label: "Half-finished clone in the way",
+    message: "Delete that folder, or choose another folder to clone into.",
+    detail: "An interrupted attempt left the folder behind.",
   },
   "clone-in-progress": {
     level: "error",
-    label: "that clone is already running",
-    message:
-      "The first attempt is still running. Wait for it to finish before starting another.",
+    label: "Clone already running",
+    message: "Wait for the first attempt to finish.",
   },
   "clone-auth-failed": {
     level: "error",
-    label: "GitHub sign-in failed",
-    message:
-      "Maestro uses the local git credentials and never stores any of its own. GitHub access has to be set up in git before this repository can be cloned.",
+    label: "No GitHub access",
+    message: "Set up GitHub access in git, then connect again.",
+    detail:
+      "Maestro uses the local git credentials and stores none of its own.",
   },
   "clone-unavailable": {
     level: "error",
-    label: "repository not available",
-    message:
-      "It may not exist, may be private, or the URL may be mistyped — GitHub answers all three the same way, so Maestro will not guess which. Check the URL, then check access to it on GitHub.",
+    label: "Repository not available",
+    message: "Check the URL, then check your access to it on GitHub.",
+    detail:
+      "GitHub answers a missing, a private and a mistyped repository the same way.",
   },
   "clone-failed": {
     level: "error",
-    label: "the clone did not finish",
+    label: "Clone did not finish",
     message:
-      "The cause is usually local: no disk space, no write access to the destination folder, or a dropped connection. Check those three, then connect again.",
+      "Check disk space and write access to the destination folder, then connect again.",
+    detail: "A dropped connection causes this too.",
   },
   "not-an-inventory": {
     level: "error",
-    label: "not a Harness",
+    label: "Not a Harness",
     message:
-      "That folder has no apm.yml. Choose a folder that holds a Harness, or paste the GitHub URL of one.",
+      "Choose a folder that holds a Harness, or paste the GitHub URL of one.",
+    detail: "The folder has no apm.yml.",
   },
-  // An offer, not a fault: the path is fine, it just has no Harness in it yet.
+  // An offer, not a fault: the heading names what is on offer, and the caller
+  // replaces the detail with the folder it would scaffold into.
   scaffoldable: {
     level: "info",
-    label: "not a Harness yet",
+    label: "Harness scaffold available",
     message:
-      "Maestro can scaffold the canonical empty Harness into that repository and push the first commit to its default branch.",
+      "Scaffold the Harness, and Maestro pushes the first commit to the default branch.",
+    detail: "The folder is a git repository with no Harness in it.",
   },
   "no-usable-origin": {
     level: "error",
-    label: "no usable git origin",
-    message:
-      "The folder holds a Harness, but its git origin is missing, unreadable, or in a form apm cannot resolve. Deploys read versions from GitHub tags, so choose a clone whose origin is a GitHub repository over https or ssh.",
+    label: "No GitHub origin",
+    message: "Point the clone's origin at GitHub, or choose another clone.",
+    detail:
+      "Deploys read versions from GitHub tags, so the origin must be https or ssh.",
   },
   "no-default-branch": {
     level: "error",
-    label: "no default branch",
-    message:
-      "Maestro cannot tell which branch that Harness's origin treats as the default, and it will not guess one. Choose a clone whose origin has a default branch set.",
+    label: "No default branch",
+    message: "Set a default branch on the origin, or choose another clone.",
+    detail: "The origin does not say which branch is the default.",
   },
 };
 
@@ -127,75 +137,76 @@ const scaffoldHeadings: NoticeTable<ScaffoldHarnessError> = {
   ...repoPathHeadings,
   "not-offered": {
     level: "error",
-    label: "the offer has expired",
-    message:
-      "Maestro only scaffolds a repository it has just offered to scaffold. Connect that repository again to get the offer back.",
+    label: "Offer expired",
+    message: "Connect that repository again to get the offer back.",
   },
   "not-a-repository": {
     level: "error",
-    label: "not a git repository",
-    message:
-      "A Harness is scaffolded into a clone of a GitHub repository, and that folder is not one.",
+    label: "Not a git repository",
+    message: "Choose a clone of a GitHub repository.",
+    detail: "A Harness is scaffolded into one.",
   },
   "already-a-harness": {
     level: "error",
-    label: "already a Harness",
-    message:
-      "It already holds an apm.yml, so there is nothing to scaffold. Connect it as it is.",
+    label: "Already a Harness",
+    message: "Connect it as it is.",
+    detail: "The folder already holds an apm.yml.",
   },
   "path-occupied": {
     level: "error",
-    label: "files already in the way",
+    label: "Files in the way",
     message:
-      "The scaffold would have overwritten files already in that repository, so it wrote nothing. Clear them, or scaffold into another repository.",
+      "Nothing was written. Clear the files, or scaffold into another repository.",
   },
   "no-default-branch": {
     level: "error",
-    label: "no default branch",
+    label: "No default branch",
     message:
-      "Maestro cannot tell which branch that repository's origin treats as the default, and it will not guess one. Choose a repository whose origin has a default branch set.",
+      "Set a default branch on the origin, or choose another repository.",
+    detail: "The origin does not say which branch is the default.",
   },
   "not-on-default-branch": {
     level: "error",
-    label: "not on the default branch",
-    message:
-      "The scaffold's first commit belongs on the default branch. Switch that clone to it, then scaffold again.",
+    label: "Not on the default branch",
+    message: "Switch the clone to it, then scaffold again.",
+    detail: "The scaffold's first commit belongs on the default branch.",
   },
   busy: {
     level: "error",
-    label: "a scaffold is already running",
-    message:
-      "The first attempt is still running. Wait for it to finish before starting another.",
+    label: "Scaffold already running",
+    message: "Wait for the first attempt to finish.",
   },
   "write-failed": {
     level: "error",
-    label: "nothing was written",
+    label: "Nothing written",
     message:
-      "Maestro removed the files it had already written, so the repository is as it was. That folder is most likely not writable — check its permissions, then scaffold again.",
+      "The repository is as it was. Check the folder's permissions, then scaffold again.",
+    detail: "Maestro removed the files it had already written.",
   },
   "commit-failed": {
     level: "error",
-    label: "the commit failed",
+    label: "Nothing committed",
     message:
-      "The Harness files are in the clone, but git would not commit them. That happens when the repository has no author identity configured.",
+      "The Harness files are in the clone. Set a git author identity, then scaffold again.",
+    detail: "The repository has no author identity configured.",
   },
   "push-rejected": {
     level: "error",
-    label: "GitHub refused the push",
+    label: "Push refused",
     message:
-      "The commit is safe in the clone. What is missing is push access to that repository's default branch.",
+      "The commit is safe in the clone. Get push access to the default branch.",
+    detail: "GitHub refused a push to that branch.",
   },
   "push-offline": {
     level: "error",
-    label: "GitHub could not be reached",
+    label: "GitHub unreachable",
     message:
-      "The commit is safe in the clone. It reaches GitHub as soon as the connection is back.",
+      "The commit is safe in the clone. Scaffold again once the connection is back.",
   },
   "connect-failed": {
     level: "error",
-    label: "scaffolded but not connected",
-    message:
-      "The Harness is in the repository and pushed, but Maestro could not connect it. Connect it by its local path.",
+    label: "Scaffolded, not connected",
+    message: "The Harness is pushed. Connect it by its local path.",
   },
 };
 
@@ -210,8 +221,8 @@ export function connectNotice(
     error,
     {
       label: "Harness not connected",
-      message:
-        "The Maestro server did not answer, so nothing was connected. Connect it again.",
+      message: "Nothing was connected. Connect it again.",
+      detail: "The Maestro server did not answer.",
     },
     extras,
   );
@@ -219,8 +230,8 @@ export function connectNotice(
 
 export function scaffoldNotice(error: unknown): NoticeContent | null {
   return noticeFromTable(scaffoldHeadings, error, {
-    label: "Nothing scaffolded",
-    message:
-      "The Maestro server did not answer, and no files were written. Scaffold it again.",
+    label: "Harness not scaffolded",
+    message: "No files were written. Scaffold it again.",
+    detail: "The Maestro server did not answer.",
   });
 }

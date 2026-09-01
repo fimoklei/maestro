@@ -209,7 +209,7 @@ describe("InventoryPanel", () => {
     // A panel that failed to load announces politely: nothing here followed a
     // click, so role="status", never the assertive region (#465, decision 11).
     expect(await screen.findByRole("status")).toHaveTextContent(
-      /no harness is connected/i,
+      /No Harness connected/i,
     );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -222,7 +222,7 @@ describe("InventoryPanel", () => {
     renderPanel();
 
     expect(await screen.findByRole("status")).toHaveTextContent(
-      /the inventory did not load/i,
+      /Inventory not loaded/i,
     );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });

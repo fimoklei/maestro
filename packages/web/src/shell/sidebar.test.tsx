@@ -86,9 +86,9 @@ describe("Sidebar first-run rendering", () => {
     for (const name of ["Deploy-state", "Inventory"]) {
       expect(screen.getByRole("button", { name })).toBeDisabled();
     }
-    // Inventory source lives in the header now (issue #109), not the sidebar.
+    // Harness location lives in the header now (issue #109), not the sidebar.
     expect(
-      screen.queryByRole("button", { name: "Inventory source" }),
+      screen.queryByRole("button", { name: "Harness location" }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "+ repo" }),
@@ -117,7 +117,7 @@ describe("Sidebar first-run rendering", () => {
       expect(screen.getByRole("button", { name })).toBeEnabled();
     }
     expect(
-      screen.queryByRole("button", { name: "Inventory source" }),
+      screen.queryByRole("button", { name: "Harness location" }),
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/no targets yet/i)).not.toBeInTheDocument();
   });

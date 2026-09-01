@@ -14,7 +14,7 @@ import { useRereadInventory } from "./use-reread-inventory";
 
 // Shared by skeleton and settled view so the loading frame can't drift and
 // reintroduce the layout jump this view exists to prevent (#231).
-const SOURCE_TITLE = "Inventory source";
+const SOURCE_TITLE = "Harness location";
 const SOURCE_META = "local path · read-only";
 const SOURCE_CARD_WIDTH = "max-w-lg";
 
@@ -130,7 +130,7 @@ function SourceSkeleton() {
       <Card padded className={SOURCE_CARD_WIDTH}>
         <div
           role="status"
-          aria-label="Loading the Inventory source…"
+          aria-label="Loading the Harness location…"
           aria-busy="true"
           className="flex flex-col gap-3"
         >
