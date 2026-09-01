@@ -121,7 +121,8 @@ export class ScaffoldHarness {
     }
 
     const files = canonicalHarnessFiles(origin.ownerRepo);
-    const written = await this.writeFiles(root, files);
+    const createdSkippable: string[] = [];
+    const written = await this.writeFiles(root, files, createdSkippable);
     if (written !== null) {
       return written;
     }
@@ -131,7 +132,7 @@ export class ScaffoldHarness {
       // Without this the retry the message asks for meets the apm.yml this
       // attempt left behind, and is refused as already-a-harness (#556).
       await this.git.unstage(root, paths);
-      await this.rollback(root);
+      await this.rollback(root, createdSkippable);
       return { ok: false, error: "commit-failed" };
     }
 
@@ -166,10 +167,13 @@ export class ScaffoldHarness {
   }
 
   // Null when every file was created. Anything else is the typed refusal, with
-  // the partial tree already removed.
+  // the partial tree already removed. `createdSkippable` collects the
+  // skipIfExists paths this call actually created, so a later rollback
+  // removes only what it wrote — never a caller's own CONTRIBUTING.md (#678).
   private async writeFiles(
     root: string,
     files: ScaffoldFile[],
+    createdSkippable: string[],
   ): Promise<ScaffoldHarnessResult | null> {
     for (const file of files) {
       let created: boolean;
@@ -179,21 +183,32 @@ export class ScaffoldHarness {
           file.contents,
         );
       } catch {
-        await this.rollback(root);
+        await this.rollback(root, createdSkippable);
         return { ok: false, error: "write-failed" };
       }
       if (!created) {
+        // A skipIfExists file (CONTRIBUTING.md) keeps whatever is already
+        // there — that is the point, not a race (#678).
+        if (file.skipIfExists) {
+          continue;
+        }
         // occupiedEntry saw nothing here, so this path arrived since — from
         // another process, which the in-process lock cannot serialize.
-        await this.rollback(root);
+        await this.rollback(root, createdSkippable);
         return { ok: false, error: "path-occupied", path: file.path };
+      }
+      if (file.skipIfExists) {
+        createdSkippable.push(file.path);
       }
     }
     return null;
   }
 
-  private async rollback(root: string): Promise<void> {
-    for (const entry of SCAFFOLD_ROOTS) {
+  private async rollback(
+    root: string,
+    createdSkippable: string[] = [],
+  ): Promise<void> {
+    for (const entry of [...SCAFFOLD_ROOTS, ...createdSkippable]) {
       await this.fs.remove(join(root, entry));
     }
   }

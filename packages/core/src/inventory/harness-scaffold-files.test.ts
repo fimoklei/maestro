@@ -9,10 +9,11 @@ const byPath = (ownerRepo = "fimoklei/agent-harness") =>
   new Map(canonicalHarnessFiles(ownerRepo).map((file) => [file.path, file]));
 
 describe("canonicalHarnessFiles", () => {
-  it("writes exactly the four canonical entries and nothing else", () => {
+  it("writes exactly the five canonical entries and nothing else", () => {
     expect([...byPath().keys()].sort()).toEqual([
       ".apm/skills/.gitkeep",
       ".github/workflows/skill-check.yml",
+      "CONTRIBUTING.md",
       "README.md",
       "apm.yml",
     ]);
@@ -74,6 +75,35 @@ describe("canonicalHarnessFiles", () => {
     expect(byPath().get("README.md")?.contents).toContain(
       "github.com/fimoklei/agent-harness/.apm/skills/",
     );
+  });
+});
+
+describe("CONTRIBUTING.md", () => {
+  const contributing = () => byPath().get("CONTRIBUTING.md");
+
+  it("never overwrites a Harness's own CONTRIBUTING.md", () => {
+    expect(contributing()?.skipIfExists).toBe(true);
+  });
+
+  it("tells the reader who reviews", () => {
+    const text = contributing()?.contents as string;
+    expect(text).toMatch(/curator/i);
+    expect(text).toMatch(/never merges their own pull request/i);
+  });
+
+  it("tells the reader who releases", () => {
+    const text = contributing()?.contents as string;
+    expect(text).toMatch(/tag-authorized teammate may substitute/i);
+  });
+
+  it("tells the reader what to do with Pending release", () => {
+    expect(contributing()?.contents).toContain("`Pending release`");
+  });
+
+  it("states the admission bar", () => {
+    const text = contributing()?.contents as string;
+    expect(text).toMatch(/structurally valid/i);
+    expect(text).toMatch(/reusable outside one repository/i);
   });
 });
 
