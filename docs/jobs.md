@@ -25,9 +25,7 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 ## NOW
 
-| Job | Main | Job story |
-|---|---|---|
-| Remove a primitive from a target · [#158](https://github.com/fimoklei/maestro/issues/158) | B | *When* a deployed primitive is no longer needed, *I want to* remove it from its target, *so I can* keep that target clean. |
+Empty — no loop is running. Pick the next job.
 
 ## NEXT
 
@@ -48,7 +46,6 @@ Detail lives in tracker issues; elaboration happens in the grill.
 | Add or edit a primitive in central (J09) | B | *When* I create or improve a primitive, *I want to* have it enter the central inventory, *so I can* make it reusable and deployable to any target. |
 | Deploy hooks and MCP servers | B, A | *When* my setup needs more than skills, *I want to* deploy hook and MCP server primitives too, *so I can* provision every primitive type, not just skills. |
 | See local divergence from central | A | *When* I have edited a deployed primitive in a consuming repo, *I want to* see that it has content-drifted from central, *so I can* tell which copies are modified before I reset or update them. |
-| Tell an empty target from a foreign one · [#655](https://github.com/fimoklei/maestro/issues/655) | A | *When* a target holds primitives deployed from an inventory I am not connected to, *I want to* have the cockpit name that origin instead of calling the target empty, *so I can* migrate between harnesses without the screen telling me my machine is bare. |
 | See global↔local duplication | A | *When* a skill is deployed both globally and in a consuming repo, *I want to* have the cockpit flag that overlap in both views, *so I can* remove the redundant copy instead of running two unaware. |
 | Guard against duplicate deploy | B | *When* I deploy a skill already deployed on the other scope, *I want to* have the cockpit warn me before it proceeds, *so I can* avoid an accidental duplicate while still keeping a deliberate one. |
 | Backfill a newly-detected global tool | B, A | *When* I install a second tool after already deploying globally, *I want to* have the cockpit offer to bring the new tool up to the same set, *so I can* keep my tools in sync instead of the new one starting empty. |
@@ -56,11 +53,6 @@ Detail lives in tracker issues; elaboration happens in the grill.
 | Connect & sync the inventory from git | A | *When* my central inventory lives in a remote repo I have not cloned, *I want to* point Maestro at its git URL as the inventory source, *so I can* set up the cockpit without cloning by hand first. |
 | Act on a failed Harness fetch | A, C | *When* the cockpit cannot reach the Harness remote, *I want to* learn which kind of failure it hit and keep a way forward, *so I can* fix the cause instead of facing a strip that only says it failed. |
 | Tell an unreleased skill from an unreleased Harness | B, C | *When* a deploy is refused because no published tag carries the skill, *I want to* hear which of the two situations I am in, *so I can* cut a release or publish the skill instead of guessing which. |
-| Deploy what I just promoted · [#666](https://github.com/fimoklei/maestro/issues/666), [#621](https://github.com/fimoklei/maestro/issues/621) | B, C | *When* a promote of mine has been merged and released, *I want to* deploy that skill straight away, *so I can* finish the loop in the cockpit instead of pulling the Harness clone by hand in a terminal. |
-| Import a skill from where it was authored · [#667](https://github.com/fimoklei/maestro/issues/667) | B | *When* I have written a skill in the directory my tools read it from, *I want to* import it from there, *so I can* follow the Harness's own contributing guide instead of copying the folder elsewhere first. |
-| Scaffold a Harness clone that is ready to use · [#668](https://github.com/fimoklei/maestro/issues/668) | C | *When* Maestro has scaffolded my Harness, *I want to* have `git pull` work in that clone, *so I can* use ordinary git in it without setting an upstream first. |
-| Reach an authored skill in the import picker · [#654](https://github.com/fimoklei/maestro/issues/654) | B | *When* I import a skill into the Harness, *I want to* reach the folder it is authored in without typing a path or revealing hidden items, *so I can* pick a skill instead of hunting for a dotfolder. |
-| Scaffold the Harness contribution policy · [#678](https://github.com/fimoklei/maestro/issues/678) | C | *When* Maestro scaffolds a new Harness, *I want to* have its `CONTRIBUTING.md` carry the settled review and release policy, *so I can* hand teammates a repo that already tells them who reviews, what bar applies and who releases. |
 
 ## DONE
 
@@ -87,6 +79,13 @@ All shipped **skills-only**, solo, local-first.
 | Release merged Harness changes · [#496](https://github.com/fimoklei/maestro/issues/496) → [#515](https://github.com/fimoklei/maestro/issues/515)–[#521](https://github.com/fimoklei/maestro/issues/521) | C | *When* reviewed Harness changes are merged, *I want to* see what is still unreleased and publish a version from the cockpit, *so I can* make approved skills available without inspecting refs or tagging by hand. |
 | Establish the team Harness · [#498](https://github.com/fimoklei/maestro/issues/498) → [#552](https://github.com/fimoklei/maestro/issues/552)–[#557](https://github.com/fimoklei/maestro/issues/557) | A, C | *When* the team has no Harness yet or I am joining one I have not cloned, *I want to* connect from one gate that accepts a path or a GitHub URL and clones or scaffolds what is missing, *so I can* start from a real Harness without doing setup in the terminal. |
 | Move a skill change into review · [#497](https://github.com/fimoklei/maestro/issues/497) → [#573](https://github.com/fimoklei/maestro/issues/573)–[#581](https://github.com/fimoklei/maestro/issues/581) | C | *When* I have changed, imported or deleted a skill locally, *I want to* promote that one skill from its Harness row, *so I can* put it in front of the team without building branches and commits by hand. |
+| Remove a primitive from a target · [#158](https://github.com/fimoklei/maestro/issues/158) | B | *When* a deployed primitive is no longer needed, *I want to* remove it from its target, *so I can* keep that target clean. |
+| Tell an empty target from a foreign one · [#655](https://github.com/fimoklei/maestro/issues/655) | A | *When* a target holds primitives deployed from an inventory I am not connected to, *I want to* have the cockpit name that origin instead of calling the target empty, *so I can* migrate between harnesses without the screen telling me my machine is bare. |
+| Deploy what I just promoted · [#666](https://github.com/fimoklei/maestro/issues/666), [#621](https://github.com/fimoklei/maestro/issues/621) | B, C | *When* a promote of mine has been merged and released, *I want to* deploy that skill straight away, *so I can* finish the loop in the cockpit instead of pulling the Harness clone by hand in a terminal. |
+| Import a skill from where it was authored · [#667](https://github.com/fimoklei/maestro/issues/667) | B | *When* I have written a skill in the directory my tools read it from, *I want to* import it from there, *so I can* follow the Harness's own contributing guide instead of copying the folder elsewhere first. |
+| Scaffold a Harness clone that is ready to use · [#668](https://github.com/fimoklei/maestro/issues/668) | C | *When* Maestro has scaffolded my Harness, *I want to* have `git pull` work in that clone, *so I can* use ordinary git in it without setting an upstream first. |
+| Reach an authored skill in the import picker · [#654](https://github.com/fimoklei/maestro/issues/654) | B | *When* I import a skill into the Harness, *I want to* reach the folder it is authored in without typing a path or revealing hidden items, *so I can* pick a skill instead of hunting for a dotfolder. |
+| Scaffold the Harness contribution policy · [#678](https://github.com/fimoklei/maestro/issues/678) | C | *When* Maestro scaffolds a new Harness, *I want to* have its `CONTRIBUTING.md` carry the settled review and release policy, *so I can* hand teammates a repo that already tells them who reviews, what bar applies and who releases. |
 
 Three of these jobs carry intent the job story above does not:
 
