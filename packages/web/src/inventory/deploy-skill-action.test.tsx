@@ -355,8 +355,6 @@ describe("DeploySkillAction", () => {
           new Response(
             JSON.stringify({
               error: "local-diverged-from-tag",
-              message:
-                "A deploy would install the published version, not what sits in the harness now. Publish a release from the Harness view, then deploy again.",
             }),
             {
               status: 409,
@@ -372,7 +370,7 @@ describe("DeploySkillAction", () => {
     await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      /publish a release/i,
+      /Publish a release, then deploy again/i,
     );
   });
 

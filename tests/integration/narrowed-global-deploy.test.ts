@@ -57,6 +57,7 @@ describe("narrowed global deploy — which copies survive on disk", () => {
       inventoryOriginUrl: async () =>
         "git@github.com:fimoklei/agent-harness.git",
       inventoryGit: {
+        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => false,
       },

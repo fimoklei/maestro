@@ -61,6 +61,7 @@ const buildDeps = (
     },
     inventoryOriginUrl: async () => "git@github.com:fimoklei/agent-harness.git",
     inventoryGit: {
+      syncBeforeDeploy: async () => {},
       skillExistsAtTag: async (_tag: string, _name: string) => true,
       skillDivergesFromTag: async (_tag: string, _name: string) => false,
     },
@@ -759,6 +760,7 @@ describe("DeploySkill", () => {
     // "tag and push central" error, not deploy something else (issue #15).
     const { deps, deployed } = buildDeps({
       inventoryGit: {
+        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => false,
         skillDivergesFromTag: async () => false,
       },
@@ -779,6 +781,7 @@ describe("DeploySkill", () => {
     // push instead (ADR-0003: surface the gap, never hide it).
     const { deps, deployed } = buildDeps({
       inventoryGit: {
+        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => true,
       },
@@ -801,6 +804,7 @@ describe("DeploySkill", () => {
     // globally is as wrong as shipping it to a repo (J07).
     const { deps, deployed } = buildDeps({
       inventoryGit: {
+        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => true,
       },
@@ -994,6 +998,7 @@ describe("DeploySkill", () => {
     // guard still bites even under force (#66).
     const { deps, deployed } = buildDeps({
       inventoryGit: {
+        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => true,
       },

@@ -249,8 +249,6 @@ describe("Update action on a behind skill", () => {
         return new Response(
           JSON.stringify({
             error: "local-diverged-from-tag",
-            message:
-              "A deploy would install the published version, not what sits in the harness now. Publish a release from the Harness view, then deploy again.",
           }),
           { status: 409, headers: { "content-type": "application/json" } },
         );
@@ -270,7 +268,7 @@ describe("Update action on a behind skill", () => {
     );
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      /publish a release/i,
+      /Publish a release, then deploy again/i,
     );
   });
 
@@ -412,8 +410,6 @@ describe("Update action on a behind skill", () => {
         return new Response(
           JSON.stringify({
             error: "local-diverged-from-tag",
-            message:
-              "A deploy would install the published version, not what sits in the harness now. Publish a release from the Harness view, then deploy again.",
           }),
           { status: 409, headers: { "content-type": "application/json" } },
         );

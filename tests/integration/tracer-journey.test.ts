@@ -93,6 +93,7 @@ describe("the tracer journey through one cockpit", () => {
         },
       },
       inventoryGit: {
+        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => false,
       },

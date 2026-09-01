@@ -160,6 +160,7 @@ describe("deploy HTTP route", () => {
         },
       },
       inventoryGit: {
+        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => options?.skillAtTag ?? true,
         skillDivergesFromTag: async () => options?.diverged ?? false,
       },

@@ -57,6 +57,10 @@ export type ApmDriverPort = {
 // The git questions apm cannot answer — `apm view` is repo-level, not
 // skill-level (apm-driver.md). Answered against the local inventory clone.
 export type InventoryGitPort = {
+  // Best-effort fast-forward of the clone before either check below reads
+  // it; never throws (#666, see InventoryGitAdapter for what "best-effort"
+  // covers).
+  syncBeforeDeploy(): Promise<void>;
   skillExistsAtTag(tag: string, name: string): Promise<boolean>;
   // Tree-diff, never apm's opaque content_hash (apm-driver.md § Lockfile).
   skillDivergesFromTag(tag: string, name: string): Promise<boolean>;
@@ -250,6 +254,7 @@ export class DeploySkill {
         return { ok: false, error: "deploy-failed" };
       }
       const tag = tagResult.tag;
+      await this.deps.inventoryGit.syncBeforeDeploy();
       if (!(await this.deps.inventoryGit.skillExistsAtTag(tag, input.name))) {
         return { ok: false, error: "no-published-tag" };
       }
