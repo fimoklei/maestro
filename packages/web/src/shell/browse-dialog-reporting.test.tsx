@@ -143,7 +143,7 @@ describe("registration reporting (issue #175)", () => {
     });
 
     await screen.findByRole("list", { name: /result/i });
-    expect(screen.getByText("registered")).toBeInTheDocument();
+    expect(screen.getByText("Registered")).toBeInTheDocument();
     expect(screen.getByText("Skipped · not a directory")).toBeInTheDocument();
   });
 

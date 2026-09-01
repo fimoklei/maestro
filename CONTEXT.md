@@ -136,7 +136,7 @@ details may name the exact APM mechanism or file.
 | Harness | **Harness** | Use **Working Harness** or **Released Harness** when the state matters. |
 | Central inventory | **Inventory** | Reserve **Inventory** for the collection and its screen. |
 | Inventory source | **Harness location** | Do not use *source* for the configured Harness location. The controls on that screen are **Re-read Inventory**, **Change Harness location** and **Set Harness location**. |
-| Drift | **Behind** | Use *an update is available* as explanation, not as a second status name. |
+| Drift | **Behind** | Use *an update is available* as explanation, not as a second status name. The `?` marker reads **Update check did not run**; *drift* never reaches the screen. |
 | Target | **Target** | Prefer the concrete repository or tool name after the concept is established. |
 | Deploy | **Deploy** / **Deployed** | *Deploy* is the action and *deployed* is the state; *install* is APM's mechanism. |
 | Skill | **Skill** | Use `SKILL.md` only when the file itself matters. |
@@ -163,6 +163,8 @@ details may name the exact APM mechanism or file.
 | Browser reload | **Page** | Say *Reload the page*; never *screen* or *reload the view* for the same act. |
 | Symbolic link | **Link** | A linked skill directory is a **linked skill folder**; *symlink* never reaches the screen. |
 | Directory | **Folder** | One word for the concept, on every surface. |
+| Skill detail pane | **{name} detail** | The pane is named after the skill it shows; its close control is **Close {name} detail**. |
+| Bulk staging | **Bulk deploy** | The checkbox stages a skill **for bulk deploy**; the strip above the table is **Staged for bulk deploy**. |
 
 ### Jargon the screen keeps
 

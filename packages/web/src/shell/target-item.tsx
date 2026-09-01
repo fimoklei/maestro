@@ -23,7 +23,10 @@ function targetReading(
 ): { visible: string; sr?: string } {
   switch (indicator) {
     case "drift":
-      return { visible: `▲${driftCount}`, sr: `${driftCount} behind` };
+      return {
+        visible: `▲${driftCount}`,
+        sr: `${driftCount} ${driftCount === 1 ? "skill" : "skills"} behind`,
+      };
     case "unknown":
       return { visible: "?", sr: "Unknown" };
     case "ok":

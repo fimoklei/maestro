@@ -25,7 +25,9 @@ export function UpdateSkillAction({
         size="sm"
         disabled={deploy.isPending}
         aria-label={
-          deploy.isPending ? `Updating ${skillName}…` : `Update ${skillName}`
+          deploy.isPending
+            ? `Updating skill ${skillName}…`
+            : `Update skill ${skillName}`
         }
         onClick={() =>
           deploy.mutate({ type: "skill", name: skillName, target })

@@ -307,7 +307,7 @@ export function BulkRemoveDialog({
           <span
             role="status"
             aria-live="polite"
-            aria-label="Bulk remove result"
+            aria-label="Bulk removal result"
             className="sr-only"
           >
             {done === null ? "" : `${heading} · ${done.counts}`}

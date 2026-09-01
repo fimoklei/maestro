@@ -82,7 +82,9 @@ describe("DeployedCell", () => {
       />,
     );
     expect(screen.queryByText("Not deployed")).not.toBeInTheDocument();
-    expect(screen.getByText("Loading deploy-state…")).toBeInTheDocument();
+    expect(
+      screen.getByText("Deploy-state not read on every target"),
+    ).toBeInTheDocument();
   });
 
   it("marks the count as incomplete when some reads are unresolved", () => {
@@ -131,7 +133,7 @@ describe("DeployedCell", () => {
       />,
     );
     expect(
-      screen.getByText(/2 targets.*could not be read/i),
+      screen.getByText(/2 targets. Deploy-state not read/i),
     ).toBeInTheDocument();
   });
 
@@ -154,9 +156,7 @@ describe("DeployedCell", () => {
         rollup={{ targetCount: 4, behindCount: 2, unknownCount: 0 }}
       />,
     );
-    expect(
-      screen.getByText(/2 targets are behind the latest version/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/2 targets behind/i)).toBeInTheDocument();
   });
 
   it("explains the ? marker in text, not a hover-only title", () => {
@@ -166,7 +166,7 @@ describe("DeployedCell", () => {
       />,
     );
     expect(
-      screen.getByText(/drift check could not run on 1 target/i),
+      screen.getByText(/update check did not run on 1 target/i),
     ).toBeInTheDocument();
   });
 

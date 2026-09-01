@@ -147,7 +147,7 @@ export function BulkDeployReport({
           ) : null}
 
           {view.attention.length > 0 ? (
-            <ul aria-label="Needs attention" className="flex flex-col gap-1">
+            <ul aria-label="Attention" className="flex flex-col gap-1">
               {view.attention.map((row) => (
                 <li
                   key={row.name}
@@ -199,10 +199,7 @@ export function BulkDeployReport({
           ) : null}
 
           {view.skipped.length > 0 ? (
-            <ul
-              aria-label="Skipped, already up to date"
-              className="flex flex-col gap-1"
-            >
+            <ul aria-label="Already up to date" className="flex flex-col gap-1">
               {view.skipped.map((name) => (
                 <li key={name} className="flex items-baseline gap-2 text-tag">
                   <span className="text-dim">–</span>
