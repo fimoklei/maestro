@@ -130,7 +130,7 @@ export function BulkDeployBar({
       <div className="flex flex-wrap items-center gap-2">
         <span
           role="status"
-          aria-label="Bulk selection"
+          aria-label="Staged for bulk deploy"
           className="flex flex-wrap items-center gap-2 font-mono"
         >
           {stagedNames.length} staged for bulk deploy

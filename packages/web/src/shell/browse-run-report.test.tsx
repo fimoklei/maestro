@@ -52,8 +52,8 @@ describe("BrowseRunReport", () => {
       />,
     );
 
-    expect(rows()[1]).toHaveTextContent("waiting");
-    expect(rows()[1]).not.toHaveTextContent("registered");
+    expect(rows()[1]).toHaveTextContent("Waiting");
+    expect(rows()[1]).not.toHaveTextContent("Registered");
   });
 
   it("states how far a run in flight has got", () => {
@@ -136,8 +136,8 @@ describe("BrowseRunReport", () => {
     );
 
     const [row] = rows();
-    expect(row).toHaveTextContent("registered");
-    expect(screen.getByText("registered")).toHaveClass("sr-only");
+    expect(row).toHaveTextContent("Registered");
+    expect(screen.getByText("Registered")).toHaveClass("sr-only");
   });
 
   it("names a repo the way the rest of the cockpit does, keeping the full path reachable", () => {

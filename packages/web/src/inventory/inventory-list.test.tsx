@@ -611,7 +611,7 @@ describe("InventoryList", () => {
 
     // Nothing staged, nothing to bulk-deploy: the strip stays out of the way.
     expect(
-      screen.queryByRole("status", { name: /bulk selection/i }),
+      screen.queryByRole("status", { name: /staged for bulk deploy/i }),
     ).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("checkbox", { name: /stage tdd/i }));
@@ -623,7 +623,7 @@ describe("InventoryList", () => {
       "cave",
     );
 
-    const bar = screen.getByRole("status", { name: /bulk selection/i });
+    const bar = screen.getByRole("status", { name: /staged for bulk deploy/i });
     expect(bar).toHaveTextContent(/2 staged for bulk deploy/i);
     expect(bar).toHaveTextContent(/1 hidden by the filter/i);
   });
@@ -651,12 +651,12 @@ describe("InventoryList", () => {
 
     await userEvent.click(screen.getByRole("checkbox", { name: /stage tdd/i }));
     expect(
-      screen.getByRole("status", { name: /bulk selection/i }),
+      screen.getByRole("status", { name: /staged for bulk deploy/i }),
     ).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("checkbox", { name: /stage tdd/i }));
     expect(
-      screen.queryByRole("status", { name: /bulk selection/i }),
+      screen.queryByRole("status", { name: /staged for bulk deploy/i }),
     ).not.toBeInTheDocument();
   });
 

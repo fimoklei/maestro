@@ -530,7 +530,7 @@ describe("RemoveSkillDialog", () => {
 
       expect(screen.getByRole("alert")).toHaveTextContent(FAILED.message);
       expect(screen.queryAllByRole("listitem")).toEqual([]);
-      expect(screen.queryByText(/removed from/i)).toBeNull();
+      expect(screen.queryByText(/removal targets/i)).toBeNull();
     });
 
     // The reclaim runs only after apm confirms, so a failure never reached
@@ -567,9 +567,9 @@ describe("RemoveSkillDialog", () => {
       renderPartialFailure();
 
       expect(
-        within(screen.getByRole("status", { name: "Removed from" })).getByText(
-          /Not removed/,
-        ),
+        within(
+          screen.getByRole("status", { name: "Removal targets" }),
+        ).getByText(/Not removed/),
       ).toBeInTheDocument();
     });
   });
@@ -751,7 +751,7 @@ describe("RemoveSkillDialog", () => {
       renderDialog({ preflight: CHECKING });
 
       expect(
-        screen.getByRole("status", { name: /local-edits check/i }),
+        screen.getByRole("status", { name: /local edits check/i }),
       ).toHaveTextContent(/checking/i);
     });
 
@@ -764,7 +764,7 @@ describe("RemoveSkillDialog", () => {
       const confirm = screen.getByRole("button", { name: /^remove/i });
       expect(confirm).toBeDisabled();
       expect(confirm.getAttribute("aria-describedby")).toBe(
-        screen.getByRole("status", { name: /local-edits check/i }).id,
+        screen.getByRole("status", { name: /local edits check/i }).id,
       );
     });
 
@@ -772,7 +772,7 @@ describe("RemoveSkillDialog", () => {
       renderDialog({ preflight: repoCheck("none") });
 
       expect(
-        screen.queryByRole("status", { name: /local-edits check/i }),
+        screen.queryByRole("status", { name: /local edits check/i }),
       ).toBeNull();
     });
   });
@@ -1275,7 +1275,7 @@ describe("RemoveSkillDialog", () => {
         renderDialog({ target: oneToolTarget, preflight: CHECKING });
 
         expect(
-          screen.getByRole("status", { name: /also deleted/i }),
+          screen.getByRole("status", { name: /other copies/i }),
         ).toBeEmptyDOMElement();
       });
 
@@ -1284,7 +1284,7 @@ describe("RemoveSkillDialog", () => {
       it("announces the leftover rows as their own named region", () => {
         renderWithLeftover();
 
-        const region = screen.getByRole("status", { name: /also deleted/i });
+        const region = screen.getByRole("status", { name: /other copies/i });
         expect(region).toHaveTextContent("/Users/me/.agents/skills/tdd");
         expect(region).not.toHaveTextContent("Claude Code");
       });
@@ -1301,11 +1301,13 @@ describe("RemoveSkillDialog", () => {
           ),
         });
 
-        const targeted = screen.getByRole("status", { name: /removed from/i });
+        const targeted = screen.getByRole("status", {
+          name: /removal targets/i,
+        });
         expect(targeted).toHaveTextContent("Local edits — deleted too");
         expect(targeted).not.toHaveTextContent(/deleted in full/i);
         expect(
-          screen.getByRole("status", { name: /also deleted/i }),
+          screen.getByRole("status", { name: /other copies/i }),
         ).not.toHaveTextContent(/local edits/i);
       });
 

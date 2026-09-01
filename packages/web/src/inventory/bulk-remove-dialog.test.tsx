@@ -373,11 +373,11 @@ describe("BulkRemoveDialog — once the run reports", () => {
 
   it("announces the outcome in a live region mounted before it", () => {
     const { rerender } = renderDialog({});
-    const live = screen.getByLabelText("Bulk remove result");
+    const live = screen.getByLabelText("Bulk removal result");
     expect(live).toHaveTextContent("");
 
     rerender({ report: partial });
-    expect(screen.getByLabelText("Bulk remove result")).toHaveTextContent(
+    expect(screen.getByLabelText("Bulk removal result")).toHaveTextContent(
       "Removed tdd from 1 of 3 targets · Removed 1 · refused 1 · failed 1",
     );
   });

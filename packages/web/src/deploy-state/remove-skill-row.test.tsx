@@ -678,7 +678,7 @@ describe("removing a deployed skill from a row", () => {
       const dialog = await openRemoveDialog();
 
       const region = await within(dialog).findByRole("status", {
-        name: /removed from/i,
+        name: /removal targets/i,
       });
       expect(
         within(region).getAllByText("Local edits — deleted too"),
@@ -816,7 +816,7 @@ describe("removing a deployed skill from a row", () => {
 
       await openRemoveDialog();
       expect(
-        screen.getByRole("status", { name: "Local-edits check" }),
+        screen.getByRole("status", { name: "Local edits check" }),
       ).toBeInTheDocument();
       expect(screen.getByRole("button", { name: CONFIRM })).toBeDisabled();
 

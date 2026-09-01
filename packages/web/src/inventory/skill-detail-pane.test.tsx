@@ -66,7 +66,7 @@ describe("SkillDetailPane", () => {
       ],
     });
 
-    expect(screen.getByText(/in sync/i)).toBeInTheDocument();
+    expect(screen.getByText(/up to date/i)).toBeInTheDocument();
   });
 
   it("shows the deployed -> latest pair and a behind marker for a behind target", () => {

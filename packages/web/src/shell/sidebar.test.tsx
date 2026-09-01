@@ -42,7 +42,7 @@ describe("Sidebar", () => {
     renderSidebar();
 
     expect(
-      screen.getByRole("complementary", { name: /sidebar/i }),
+      screen.getByRole("complementary", { name: /navigation and targets/i }),
     ).toBeInTheDocument();
   });
 });
@@ -101,9 +101,9 @@ describe("Sidebar first-run rendering", () => {
 
     await screen.findByText(/no targets yet/i);
 
-    expect(screen.getByRole("complementary", { name: /sidebar/i })).toHaveClass(
-      "max-md:hidden",
-    );
+    expect(
+      screen.getByRole("complementary", { name: /navigation and targets/i }),
+    ).toHaveClass("max-md:hidden");
   });
 
   it("renders the interactive nav and register affordance when configured", async () => {

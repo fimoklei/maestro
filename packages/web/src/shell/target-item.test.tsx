@@ -31,7 +31,7 @@ describe("TargetItem", () => {
     });
     // The ▲N glyph alone is not announced meaningfully; a text reading must be
     // present so a screen-reader user hears the state, not just sees colour/shape.
-    expect(screen.getByText(/2 behind/i)).toBeInTheDocument();
+    expect(screen.getByText(/2 skills behind/i)).toBeInTheDocument();
   });
 
   it("renders an unknown target as the ? marker with a readable 'unknown' reading", () => {

@@ -273,7 +273,7 @@ export function RemoveSkillDialog({
                 {/* Announced: a row's cost can answer late, and a status
                     nobody hears is seen only by those who can see it. Named
                     apart, or a reader hears three identical regions. */}
-                <div role="status" aria-label="Removed from">
+                <div role="status" aria-label="Removal targets">
                   <ul className="flex flex-col">
                     {detectedRows.map((row) => (
                       <LedgerRow key={row.key} row={row} />
@@ -284,7 +284,7 @@ export function RemoveSkillDialog({
                     with its first message announces unreliably
                     (removal-trace.tsx). Global only, repo reclaims nothing. */}
                 {target.kind === "global" ? (
-                  <div role="status" aria-label="Also deleted">
+                  <div role="status" aria-label="Other copies">
                     {leftoverRows.length > 0 ? (
                       <ul className="flex flex-col">
                         {leftoverRows.map((row) => (
@@ -349,7 +349,7 @@ export function RemoveSkillDialog({
             <p
               id={blockedId}
               role="status"
-              aria-label="Local-edits check"
+              aria-label="Local edits check"
               className="min-w-0 truncate font-ui text-desc text-dim"
             >
               {CHECKING_TEXT}

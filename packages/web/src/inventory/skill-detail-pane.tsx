@@ -60,7 +60,7 @@ export function SkillDetailPane({
         <span className="text-dim text-tag uppercase tracking-tag">Skill</span>
         <button
           type="button"
-          aria-label="Close detail pane"
+          aria-label={`Close ${primitive.name} detail`}
           onClick={onClose}
           // Pane is the inset surface, so a fill step would be invisible —
           // this control takes DESIGN.md §5's border half instead.
@@ -186,12 +186,13 @@ function DeployedRow({ deployment }: { deployment: SkillDeployment }) {
   const chip = driftChip[status];
   return (
     <li className="flex items-center gap-2 py-1 text-tag">
-      {/* In-sync has no chip, so it holds an sr-only word here instead. */}
+      {/* Up to date has no chip, so it holds an sr-only word here instead.
+          "In sync" is a whole target's state, never one skill's (CONTEXT.md). */}
       <span aria-hidden="true" className={versionColor[status]}>
         ●
       </span>
       {status === "up-to-date" ? (
-        <span className="sr-only">In sync</span>
+        <span className="sr-only">Up to date</span>
       ) : null}
       <span className="flex-1 truncate text-fg-2">{label}</span>
       <span className={cn("font-mono", versionColor[status])}>
