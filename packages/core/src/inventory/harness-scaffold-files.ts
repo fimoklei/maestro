@@ -53,8 +53,10 @@ const scalar = (value: string) => stringify(value).trimEnd();
 
 // `apm init -y`'s own output, reproduced rather than shelled out to: the
 // command writes this one file and nothing else (#552 S1).
+// The git tag is the real version (#642); this field exists only because
+// APM's schema requires it — never repair it back to 1.0.0.
 const manifest = (repo: string) => `name: ${scalar(repo)}
-version: 1.0.0
+version: 0.0.0
 description: ${scalar(`APM project for ${repo}`)}
 author: Developer
 # Which agent platforms to deploy to (uncomment to pin):
