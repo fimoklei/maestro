@@ -114,8 +114,11 @@ export class GitHarnessScaffoldAdapter implements HarnessScaffoldGitPort {
       // The refspec is spelled out so a local tag or a same-named remote ref
       // can never be what travels. No lease and no force: this branch tip is
       // either where the clone left it or someone else's to keep.
+      // `--set-upstream`: a clone's tracking config is not guaranteed (#668),
+      // and a scaffold that pushed the branch is what leaves it pullable.
       await this.git(root, [
         "push",
+        "--set-upstream",
         "origin",
         `refs/heads/${branch}:refs/heads/${branch}`,
       ]);

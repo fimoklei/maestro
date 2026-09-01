@@ -248,6 +248,21 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
     await expect(git(remote, "rev-parse", "refs/heads/main")).rejects.toThrow();
   });
 
+  it("sets upstream tracking on the pushed branch, so a later pull needs no flag", async () => {
+    const app = makeApp();
+
+    await post(app, "/api/harness/scaffold", { path: await offerFor(app) });
+
+    expect(
+      await read(
+        clone,
+        "rev-parse",
+        "--abbrev-ref",
+        `${DEFAULT_BRANCH}@{upstream}`,
+      ),
+    ).toBe(`origin/${DEFAULT_BRANCH}`);
+  });
+
   it("creates no tag, locally or on the remote", async () => {
     const app = makeApp();
 
