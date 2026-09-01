@@ -403,14 +403,14 @@ describe("InventoryList", () => {
     await userEvent.click(
       within(tddPane).getByRole("button", { name: /deploy/i }),
     );
-    await screen.findByRole("button", { name: /reinstall fresh/i });
+    await screen.findByRole("button", { name: "Deploy again" });
 
     // Switch to another skill: the reinstall action must not carry over, or a
     // click would force-overwrite the new skill without its own refusal (#66).
     await userEvent.click(screen.getByRole("button", { name: "caveman" }));
 
     expect(
-      screen.queryByRole("button", { name: /reinstall fresh/i }),
+      screen.queryByRole("button", { name: "Deploy again" }),
     ).not.toBeInTheDocument();
   });
 

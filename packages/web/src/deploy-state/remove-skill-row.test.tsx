@@ -15,11 +15,11 @@ const REPO = "/Users/me/project";
 // The confirmation's own control. Fixed text: the skill name left the label
 // with #411, because the dialog's title already carries it. Only one dialog is
 // ever open, so the label alone identifies the control.
-const CONFIRM = "remove →";
+const CONFIRM = "Remove skill";
 
 // The same control after a failure: the removal was already confirmed once, so
 // it offers the attempt again rather than a first one (#415).
-const RETRY = "retry →";
+const RETRY = "Confirm removal";
 
 // Opening the confirmation asks the server one read-only question — what would
 // this removal destroy — so a test that cares about the removal itself has to
@@ -157,7 +157,7 @@ describe("removing a deployed skill from a row", () => {
 
     expect(
       within(screen.getByRole("dialog")).getByRole("heading", { level: 2 }),
-    ).toHaveTextContent("Remove tdd v0.5.0?");
+    ).toHaveTextContent("Remove tdd v0.5.0");
   });
 
   it("removes nothing when the confirmation is cancelled", async () => {
@@ -165,7 +165,7 @@ describe("removing a deployed skill from a row", () => {
     renderRow();
 
     await openRemoveDialog();
-    await userEvent.click(screen.getByRole("button", { name: "cancel" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -243,12 +243,10 @@ describe("removing a deployed skill from a row", () => {
     await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
     expect(
-      await within(dialog).findByText(
-        /no longer the one this removal was priced against/,
-      ),
+      await within(dialog).findByText(/changed since this removal was priced/),
     ).toBeInTheDocument();
     expect(
-      within(dialog).getByText("local edits — deleted too"),
+      within(dialog).getByText("Local edits — deleted too"),
     ).toBeInTheDocument();
 
     // Still the first offer, not a retry: nothing was removed.
@@ -272,7 +270,7 @@ describe("removing a deployed skill from a row", () => {
     const dialog = await openRemoveDialog();
 
     expect(
-      await within(dialog).findByText("nothing recorded — may lose work"),
+      await within(dialog).findByText("Nothing recorded — may lose work"),
     ).toBeInTheDocument();
   });
 
@@ -296,7 +294,7 @@ describe("removing a deployed skill from a row", () => {
       const dialog = await openRemoveDialog();
 
       expect(await within(dialog).findByRole("alert")).toHaveTextContent(
-        /Register it, then remove again/,
+        /Register this repository in Maestro/,
       );
       expect(dialog).not.toHaveTextContent(/may lose work/i);
     });
@@ -323,7 +321,7 @@ describe("removing a deployed skill from a row", () => {
       const dialog = await openRemoveDialog();
 
       expect(
-        await within(dialog).findByText("check didn't run — may lose work"),
+        await within(dialog).findByText("Check did not run — may lose work"),
       ).toBeInTheDocument();
       expect(screen.getByRole("button", { name: CONFIRM })).toBeEnabled();
     });
@@ -358,7 +356,7 @@ describe("removing a deployed skill from a row", () => {
     await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      /apm ran but proved nothing/,
+      /The removal ran but proved nothing/,
     );
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(onRemoved).not.toHaveBeenCalled();
@@ -423,9 +421,9 @@ describe("removing a deployed skill from a row", () => {
       await screen.findByRole("button", { name: /removing/i }),
     ).toBeDisabled();
     expect(screen.getByRole("alert")).toHaveTextContent(
-      /apm ran but proved nothing/,
+      /The removal ran but proved nothing/,
     );
-    expect(screen.getByRole("button", { name: "close" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Close" })).toBeDisabled();
   });
 
   // apm can remove a skill and still fail to prove it, which leaves the entry
@@ -466,7 +464,7 @@ describe("removing a deployed skill from a row", () => {
     await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      /holds no copy of the skill/,
+      /Nothing was deleted/,
     );
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(onRemoved).not.toHaveBeenCalled();
@@ -683,7 +681,7 @@ describe("removing a deployed skill from a row", () => {
         name: /removed from/i,
       });
       expect(
-        within(region).getAllByText("local edits — deleted too"),
+        within(region).getAllByText("Local edits — deleted too"),
       ).toHaveLength(2);
       const [, init] = preflightCalls(fetchMock)[0] as [string, RequestInit];
       expect(JSON.parse(String(init.body))).toEqual({
@@ -814,7 +812,7 @@ describe("removing a deployed skill from a row", () => {
       await waitFor(() => {
         expect(screen.getByRole("button", { name: CONFIRM })).toBeEnabled();
       });
-      await userEvent.click(screen.getByRole("button", { name: "cancel" }));
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
       await openRemoveDialog();
       expect(

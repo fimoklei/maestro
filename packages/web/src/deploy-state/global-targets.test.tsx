@@ -62,7 +62,7 @@ describe("GlobalTargets", () => {
     expect(
       screen.getByText(/skills\/tdd is deployed as hybrid/i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/release a corrected tag/i)).toBeInTheDocument();
+    expect(screen.getByText(/publish a release/i)).toBeInTheDocument();
   });
 
   it("always labels the Global targets section, even while loading", () => {
@@ -155,7 +155,9 @@ describe("GlobalTargets", () => {
     expect(
       screen.getByText(/install claude code or codex/i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/skipped hooks\/pre-commit/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/hooks\/pre-commit is deployed as/i),
+    ).toBeInTheDocument();
   });
 
   it("surfaces a visible error, never an empty list, when the read failed", () => {
@@ -164,7 +166,7 @@ describe("GlobalTargets", () => {
     // A read that failed on load states itself without interrupting a reader
     // mid-sentence, so it is a status, never an alert (#612).
     const notice = screen.getByRole("status");
-    expect(notice).toHaveTextContent(/could not be read/i);
+    expect(notice).toHaveTextContent(/Global targets not read/i);
     // A read failure names a way out; a dead end leaves the user guessing.
     expect(notice).toHaveTextContent(/reload the page/i);
     // The error must not be mistaken for "no tools detected".

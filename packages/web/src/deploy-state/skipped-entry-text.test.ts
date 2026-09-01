@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { FIX_AND_RELEASE } from "./notice-copy";
 import {
   skippedEntryKey,
   skippedEntryText,
@@ -14,7 +15,7 @@ describe("skippedEntryText", () => {
         packageType: "claude_hook",
       }),
     ).toBe(
-      "Skipped hooks/format — Maestro does not manage claude_hook. Its files are still in place.",
+      "hooks/format is deployed as claude_hook, which Maestro does not manage. Its files are still there.",
     );
   });
 
@@ -26,28 +27,29 @@ describe("skippedEntryText", () => {
     });
 
     expect(text).toContain("hybrid");
-    expect(text).toMatch(/still in place/i);
+    // One string, one place: the deploy refusal for the same state says this.
+    expect(text).toContain(FIX_AND_RELEASE);
   });
 
-  it("states that an invalid record placed nothing at all", () => {
+  it("states that a failed deployment landed nothing at all", () => {
     expect(
       skippedEntryText({
         reason: "invalid-package",
         virtualPath: "skills/tdd",
         packageType: "invalid",
       }),
-    ).toMatch(/placed no files/i);
+    ).toBe(`The deploy of skills/tdd landed no files. ${FIX_AND_RELEASE}`);
   });
 
-  it("says one entry could not be read, not that the lockfile is broken", () => {
+  it("says one entry could not be read, not that the record is broken", () => {
     expect(
       skippedEntryText({ reason: "unreadable", virtualPath: "skills/local" }),
-    ).toBe("Could not read the lockfile entry for skills/local.");
+    ).toBe("The deployment record's entry for skills/local could not be read.");
   });
 
   it("falls back to an unnamed entry when it has no virtual path", () => {
     expect(skippedEntryText({ reason: "unreadable", virtualPath: null })).toBe(
-      "Could not read one lockfile entry.",
+      "One entry in the deployment record could not be read.",
     );
   });
 });

@@ -48,18 +48,18 @@ export type RemoveLedgerRow = {
 // What the check found completes the "not installed" sentence — deleting a
 // reproducible copy vs. deleting work nothing else holds are different prices (#414).
 const LEFTOVER_STATUS: Record<RemoveRowWarning, string> = {
-  none: "not installed — copy deleted in full",
-  "local-edits": "not installed — local edits deleted too",
-  "cannot-verify": "not installed — nothing recorded to check",
-  "check-failed": "not installed — check didn't run",
+  none: "Not installed — copy deleted in full",
+  "local-edits": "Not installed — local edits deleted too",
+  "cannot-verify": "Not installed — nothing recorded to check",
+  "check-failed": "Not installed — check did not run",
 };
 
 // Cause — consequence, sized for a right-aligned slot. The last two share
 // their consequence but differ in cause: ran-and-found-nothing vs. never-ran (J04).
 const WARNING_STATUS: Record<Exclude<RemoveRowWarning, "none">, string> = {
-  "local-edits": "local edits — deleted too",
-  "cannot-verify": "nothing recorded — may lose work",
-  "check-failed": "check didn't run — may lose work",
+  "local-edits": "Local edits — deleted too",
+  "cannot-verify": "Nothing recorded — may lose work",
+  "check-failed": "Check did not run — may lose work",
 };
 
 // A tool the answer never mentioned is unchecked, never clean (J04) — a row

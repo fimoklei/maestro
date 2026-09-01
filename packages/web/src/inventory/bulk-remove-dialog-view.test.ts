@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { HttpError } from "../api/http";
+import { removeNotice } from "../deploy-state/notice-copy";
 import type { RemovePreflightView } from "../deploy-state/remove-preflight-view";
 import {
   type BulkRemoveCheckedTarget,
@@ -38,7 +40,7 @@ const refused = (
 ): RemovePreflightView => ({
   kind: "refused",
   code,
-  message: "The server's own long sentence about it.",
+  notice: removeNotice(new HttpError(422, "unused", code)),
 });
 
 const target = (

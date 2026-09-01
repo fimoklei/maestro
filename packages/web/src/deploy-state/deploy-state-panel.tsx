@@ -48,8 +48,9 @@ export function DeployStatePanel({
             trigger="load"
             notice={{
               level: "error",
-              label: "this repo's deploy-state could not be read",
-              message: "Reload the page to run the read again.",
+              label: "Deploy-state not read",
+              message:
+                "Reload the page to read this repository's deploy-state again.",
             }}
           />
         </div>

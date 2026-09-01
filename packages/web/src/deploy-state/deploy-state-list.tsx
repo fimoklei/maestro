@@ -12,7 +12,7 @@ import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { ActionsMenu } from "../ui/actions-menu";
 import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
-import { removeMessage } from "./notice-copy";
+import { type DeployStateNotice, removeNotice } from "./notice-copy";
 import { removalOutcome } from "./removal-outcome";
 import { RemovalTrace, type TracedRemoval } from "./removal-trace";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
@@ -61,19 +61,15 @@ const alreadyGone = (error: unknown) =>
 // an attempt has one outcome: a removal that ran and failed, or one that ran
 // nothing because its cost was never agreed to (#364).
 type RemovalNews =
-  // apm's own words, and what the server proved about each target afterwards.
-  | { kind: "failed"; message: string; outcome: RemoveOutcome | null }
-  // The server's words for a removal it did not start.
-  | { kind: "restated"; message: string };
+  // The removal's own notice for the code the server sent, and what the server
+  // proved about each target afterwards.
+  | { kind: "failed"; notice: DeployStateNotice; outcome: RemoveOutcome | null }
+  // The notice for a removal the server did not start.
+  | { kind: "restated"; notice: DeployStateNotice };
 
-// The removal's own sentence for the code the server sent, a plain sentence
-// otherwise.
 const removalFailure = (error: unknown): RemovalNews => ({
   kind: "failed",
-  message:
-    error instanceof HttpError
-      ? (removeMessage(error.code) ?? error.message)
-      : "The removal could not be completed.",
+  notice: removeNotice(error),
   outcome: removalOutcome(error),
 });
 
@@ -198,8 +194,8 @@ export function DeployStateList({
           target={target}
           isRemoving={remove.isPending}
           preflight={removePreflightView(preflight)}
-          error={news?.kind === "failed" ? news.message : null}
-          restated={news?.kind === "restated" ? news.message : null}
+          error={news?.kind === "failed" ? news.notice : null}
+          restated={news?.kind === "restated" ? news.notice : null}
           outcome={news?.kind === "failed" ? news.outcome : null}
           onCancel={() => setRemoving(null)}
           onConfirm={() =>
@@ -238,7 +234,7 @@ export function DeployStateList({
                         reclaim: cost.reclaim,
                       }),
                     );
-                    setNews({ kind: "restated", message: cost.message });
+                    setNews({ kind: "restated", notice: removeNotice(error) });
                     return;
                   }
                   setNews(removalFailure(error));

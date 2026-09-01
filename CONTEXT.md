@@ -151,6 +151,11 @@ details may name the exact APM mechanism or file.
 | Clone folder | **Clone** | The local copy of the Harness repository. Say **folder** for any other directory on disk. |
 | `apm.yml` | `apm.yml` | Name the file in a `detail`, never in the sentence — the reader meets it in their own editor. |
 | Bulk removal outcome | **Left alone** | A target the run did not remove, whether it refused or failed; never *skipped*. |
+| Remove | **Remove** / **Removal** | *Remove* is the action, *removal* is the noun for the attempt and its outcome. |
+| Deploy-state read failure | **Not read** | A read that failed says `{the thing} not read`; the way out is always *Reload the page*. |
+| Browser reload | **Page** | Say *Reload the page*; never *screen* or *reload the view* for the same act. |
+| Symbolic link | **Link** | A linked skill directory is a **linked skill folder**; *symlink* never reaches the screen. |
+| Directory | **Folder** | One word for the concept, on every surface. |
 
 ### Jargon the screen keeps
 
@@ -163,6 +168,7 @@ Decided so far:
 | `frontmatter` · `working tree` · `default branch` · `origin` · `partial clone` · `symbolic link` · `hard link` · `MiB` | Kept. Git and packaging terms the reader reads in their own tools. |
 | `SKILL.md` · `apm.yml` · `apm.lock.yaml` | Kept where the instruction acts on the file; otherwise **deployment record**. |
 | `slug` | Dropped. Write the rule instead: *lowercase letters, digits and single hyphens, like code-review*. |
+| `tag` | Kept, but only inside a `detail`. |
 
 ## Relationships
 

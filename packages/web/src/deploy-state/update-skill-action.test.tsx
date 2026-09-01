@@ -306,7 +306,7 @@ describe("Update action on a behind skill", () => {
       /never went through the harness/i,
     );
     expect(
-      await screen.findByRole("button", { name: /reinstall fresh/i }),
+      await screen.findByRole("button", { name: "Deploy again" }),
     ).toBeInTheDocument();
   });
 
@@ -348,7 +348,7 @@ describe("Update action on a behind skill", () => {
       await screen.findByRole("button", { name: /update tdd/i }),
     );
     await userEvent.click(
-      await screen.findByRole("button", { name: /reinstall fresh/i }),
+      await screen.findByRole("button", { name: "Deploy again" }),
     );
 
     const deployBodies = fetchMock.mock.calls
@@ -432,7 +432,7 @@ describe("Update action on a behind skill", () => {
 
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /reinstall fresh/i }),
+      screen.queryByRole("button", { name: "Deploy again" }),
     ).not.toBeInTheDocument();
   });
 });

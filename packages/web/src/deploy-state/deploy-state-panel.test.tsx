@@ -96,7 +96,7 @@ describe("DeployStatePanel", () => {
     renderPanel("/Users/me/project");
 
     expect(await screen.findByText("▲ attention")).toBeInTheDocument();
-    expect(screen.getByText(/placed no files/i)).toBeInTheDocument();
+    expect(screen.getByText(/landed no files/i)).toBeInTheDocument();
     expect(screen.queryByText("● in sync")).not.toBeInTheDocument();
   });
 
@@ -112,7 +112,7 @@ describe("DeployStatePanel", () => {
     // The whole sentence, recovery included: a read failure with no way out
     // leaves the user guessing.
     expect(await screen.findByRole("status")).toHaveTextContent(
-      "this repo's deploy-state could not be readReload the page to run the read again.",
+      "Deploy-state not readReload the page to read this repository's deploy-state again.",
     );
   });
 
@@ -148,7 +148,7 @@ describe("DeployStatePanel", () => {
     );
     // Fixed label: the skill name left the confirm with #411, because the
     // dialog's title already carries it.
-    await userEvent.click(screen.getByRole("button", { name: "remove →" }));
+    await userEvent.click(screen.getByRole("button", { name: "Remove skill" }));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

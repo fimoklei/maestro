@@ -50,8 +50,8 @@ export function GlobalTargets({
           trigger="load"
           notice={{
             level: "error",
-            label: "the global targets could not be read",
-            message: "Reload the page to run the read again.",
+            label: "Global targets not read",
+            message: "Reload the page to read the global targets again.",
           }}
         />
       ) : tools.length === 0 ? (
