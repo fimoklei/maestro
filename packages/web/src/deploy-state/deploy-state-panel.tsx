@@ -39,15 +39,18 @@ export function DeployStatePanel({
       status={<TargetStatusChip indicator={indicator} />}
     >
       {deployState.isLoading ? (
-        <p className="px-card-x py-row-y text-dim text-tag">Loading…</p>
+        <p className="px-card-x py-row-y text-dim text-tag">
+          Loading the deploy-state…
+        </p>
       ) : deployState.isError ? (
         <div className="px-card-x py-row-y">
           <Notice
             trigger="load"
             notice={{
               level: "error",
-              label: "this repo's deploy-state could not be read",
-              message: "Reload the page to run the read again.",
+              label: "Deploy-state not read",
+              message:
+                "Reload the page to read this repository's deploy-state again.",
             }}
           />
         </div>

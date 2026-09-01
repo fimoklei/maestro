@@ -9,7 +9,7 @@ describe("announcing a removal that landed", () => {
         version: "v0.5.0",
         target: { kind: "repo", repoPath: "/Users/me/project" },
       }),
-    ).toBe("removed tdd v0.5.0 from /Users/me/project");
+    ).toBe("Removed tdd v0.5.0 from /Users/me/project");
   });
 
   it("names the whole detected set on a global removal", () => {
@@ -19,7 +19,7 @@ describe("announcing a removal that landed", () => {
         version: "v0.5.0",
         target: { kind: "global", tools: ["claude", "codex"] },
       }),
-    ).toBe("removed tdd v0.5.0 from Claude Code and Codex");
+    ).toBe("Removed tdd v0.5.0 from Claude Code and Codex");
   });
 
   // The server owns both the version and the scope. A response without a
@@ -32,7 +32,7 @@ describe("announcing a removal that landed", () => {
         version: undefined,
         target: { kind: "repo", repoPath: "/Users/me/project" },
       }),
-    ).toBe("removed tdd (version unknown) from /Users/me/project");
+    ).toBe("Removed tdd (version unknown) from /Users/me/project");
   });
 
   // The tool set is read server-side and can be empty by the time the removal
@@ -44,6 +44,6 @@ describe("announcing a removal that landed", () => {
         version: "v0.5.0",
         target: { kind: "global", tools: [] },
       }),
-    ).toBe("removed tdd v0.5.0 from every detected tool");
+    ).toBe("Removed tdd v0.5.0 from every detected tool");
   });
 });

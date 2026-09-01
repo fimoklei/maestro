@@ -104,7 +104,7 @@ describe("BulkDeployBar", () => {
       await screen.findByRole("button", { name: /deploy 2/i }),
     );
     await userEvent.click(
-      await screen.findByRole("button", { name: /reinstall fresh review/i }),
+      await screen.findByRole("button", { name: /deploy review again/i }),
     );
 
     const fetchMock = fetch as ReturnType<typeof vi.fn>;
@@ -345,7 +345,7 @@ describe("BulkDeployBar", () => {
     const status = await screen.findByRole("status", {
       name: /bulk deploy result/i,
     });
-    expect(status).toHaveTextContent(/failed/i);
+    expect(status).toHaveTextContent(/did not run/i);
     expect(status).not.toHaveTextContent(/deployed/i);
     expect(status).not.toHaveTextContent(/0 skipped/i);
   });

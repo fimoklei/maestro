@@ -25,9 +25,9 @@ export function BrowseEntryRow({
   const isRegistered = registeredPaths?.has(entry.path) ?? false;
   const unavailableReason =
     mode === "register" && entry.path === inventoryPath
-      ? "central inventory"
+      ? "Connected Inventory"
       : mode === "register" && !entry.facts.isGitRepo
-        ? "not a git repo"
+        ? "Not a git repository"
         : undefined;
   const disabled = isRegistered || unavailableReason !== undefined;
 
@@ -67,7 +67,7 @@ export function BrowseEntryRow({
           </span>
           {entry.isSymlink ? (
             <span className="shrink-0 font-mono text-dim text-tag">
-              ↳ symlink
+              ↳ Symlink
             </span>
           ) : null}
         </span>

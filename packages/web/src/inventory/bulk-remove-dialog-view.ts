@@ -45,9 +45,9 @@ export type BulkRemoveDialogView =
 // Cause — consequence, sized for a right-aligned slot. The last two differ in
 // cause, not in price: nothing recorded to check against vs. never checked.
 const COST_REASON: Record<Exclude<RemoveRowWarning, "none">, string> = {
-  "local-edits": "local edits — deleted too",
-  "cannot-verify": "nothing recorded — may lose work",
-  "check-failed": "check did not run",
+  "local-edits": "Local edits — deleted too",
+  "cannot-verify": "Nothing recorded — may lose work",
+  "check-failed": "Check did not run",
 };
 
 // Most certain loss first. A target carrying real edits is priced on those,
@@ -62,11 +62,11 @@ const COST_ORDER: Exclude<RemoveRowWarning, "none">[] = [
 // the message is the wrong length for it. An unrecognised code falls back to
 // itself rather than to silence.
 export const REFUSAL_REASON: Record<RefusalCode, string> = {
-  "repo-not-registered": "repo not registered",
-  "no-supported-tool": "no supported tool here",
-  "invalid-name": "not a valid skill name",
-  "unsupported-primitive-type": "type cannot be removed",
-  "invalid-body": "malformed request",
+  "repo-not-registered": "Repository not registered",
+  "no-supported-tool": "No supported tool here",
+  "invalid-name": "Unusable skill name",
+  "unsupported-primitive-type": "Type cannot be removed",
+  "invalid-body": "Malformed request",
   // Never a refusal — a check that could not run leaves the removal on offer,
   // and its target is priced under cost instead. Listed so a new code in
   // core's union is a type error here rather than a blank row.
@@ -114,7 +114,7 @@ export function bulkRemoveDialogView(
   if (answeredCount < targets.length) {
     return {
       kind: "checking",
-      line: `checking ${targets.length} targets — ${answeredCount} answered`,
+      line: `Checking ${targets.length} targets — ${answeredCount} answered`,
     };
   }
 
@@ -149,14 +149,14 @@ export function bulkRemoveDialogView(
       cleanCount === 0
         ? null
         : nothingElse
-          ? `${cleanCount} clean copies — nothing but the deployed files goes`
+          ? `${cleanCount} clean copies — only the deployed files go`
           : `${cleanCount} clean copies`,
     cost,
     refused,
     removableCount,
     confirmLabel:
       cost.length === 0
-        ? `remove from ${removableCount} →`
-        : `remove from ${removableCount} · ${cost.length} lose local edits →`,
+        ? `Remove from ${removableCount} targets`
+        : `Remove from ${removableCount} targets · ${cost.length} lose local edits`,
   };
 }

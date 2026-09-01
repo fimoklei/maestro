@@ -32,7 +32,7 @@ export function DeployStateView() {
         title="Deploy-state"
         meta={
           isColdStart
-            ? "nothing deployed"
+            ? "Nothing deployed — deploy a skill from Inventory"
             : isRead
               ? `${targetCount} ${targetCount === 1 ? "target" : "targets"}`
               : ""
@@ -83,14 +83,17 @@ function RepositoriesSection({ onStartDeploy }: { onStartDeploy: () => void }) {
         <RegisterRepoHint className="block" />
       ) : null}
       {isLoading ? (
-        <p className="text-dim text-tag">Loading registered repos…</p>
+        <p className="text-dim text-tag">
+          Loading the registered repositories…
+        </p>
       ) : isError ? (
         <Notice
           trigger="load"
           notice={{
             level: "error",
-            label: "the registered repos could not be loaded",
-            message: "Reload the page to run the read again.",
+            label: "Registered repositories not read",
+            message:
+              "Reload the page to read the registered repositories again.",
           }}
         />
       ) : null}

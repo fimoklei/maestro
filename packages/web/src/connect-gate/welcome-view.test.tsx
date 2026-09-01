@@ -22,7 +22,7 @@ describe("WelcomeView", () => {
     expect(
       screen.getByRole("heading", {
         level: 1,
-        name: /central inventory not connected/i,
+        name: /inventory not connected/i,
       }),
     ).toBeInTheDocument();
     expect(

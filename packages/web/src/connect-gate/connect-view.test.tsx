@@ -72,7 +72,7 @@ describe("ConnectView", () => {
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: /connect central inventory/i,
+        name: /inventory connection/i,
       }),
     ).toBeInTheDocument();
   });
@@ -181,10 +181,10 @@ describe("ConnectView", () => {
     );
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      /no usable git origin/i,
+      /No GitHub origin/i,
     );
     await userEvent.click(
-      screen.getByRole("button", { name: /browse again/i }),
+      screen.getByRole("button", { name: /Choose another clone/i }),
     );
     expect(
       await screen.findByRole("button", { name: /use this folder/i }),

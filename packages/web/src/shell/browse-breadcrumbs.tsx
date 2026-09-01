@@ -14,7 +14,7 @@ export function BrowseBreadcrumbs({
 }: BrowseBreadcrumbsProps) {
   return (
     <nav
-      aria-label="Breadcrumbs"
+      aria-label="Folder path"
       className="flex min-w-0 flex-wrap items-center gap-1 font-mono text-mono-sm"
     >
       {crumbs.map((crumb, index) => {

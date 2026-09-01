@@ -44,14 +44,14 @@ export function GlobalTargets({
         meta={isLoading || isError ? undefined : `${tools.length} detected`}
       />
       {isLoading ? (
-        <p className="text-dim text-tag">Loading…</p>
+        <p className="text-dim text-tag">Loading the global targets…</p>
       ) : isError ? (
         <Notice
           trigger="load"
           notice={{
             level: "error",
-            label: "the global targets could not be read",
-            message: "Reload the page to run the read again.",
+            label: "Global targets not read",
+            message: "Reload the page to read the global targets again.",
           }}
         />
       ) : tools.length === 0 ? (
@@ -59,7 +59,7 @@ export function GlobalTargets({
           trigger="load"
           notice={{
             level: "info",
-            label: "no supported tool detected",
+            label: "No supported tool detected",
             message: "Install Claude Code or Codex to deploy skills globally.",
           }}
         />

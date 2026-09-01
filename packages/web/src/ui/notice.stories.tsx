@@ -61,7 +61,7 @@ export const WithAction: Story = {
       level: "error",
       label: "the removal failed",
       message: "apm did not confirm the removal.",
-      aside: "retry removes only what is left",
+      detail: "retry removes only what is left",
       action: { label: "retry →", onClick: () => {} },
     },
   },

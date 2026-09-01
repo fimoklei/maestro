@@ -34,7 +34,7 @@ export function BrowseRunReport({
       <p role="status" className="mb-2 font-mono text-data">
         {isRegistering ? (
           <span className="text-fg-2">
-            Registering…
+            Registering repositories…
             {paths.length > 0 ? ` ${outcomes.length} of ${paths.length}` : ""}
           </span>
         ) : (
@@ -91,10 +91,12 @@ export function BrowseRunReport({
                 {/* The glyph carries the outcome on screen; this carries it to
                     a screen reader, which cannot see the colour or the mark. */}
                 {outcome === undefined ? (
-                  <span className="sr-only">waiting</span>
+                  <span className="sr-only">Waiting</span>
                 ) : outcome.ok ? (
-                  <span className="sr-only">registered</span>
-                ) : null}
+                  <span className="sr-only">Registered</span>
+                ) : (
+                  <span className="sr-only">Skipped</span>
+                )}
               </span>
               {outcome !== undefined && !outcome.ok ? (
                 // Under the path it refused, not beside it: a long refusal must

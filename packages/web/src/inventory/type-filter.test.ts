@@ -6,8 +6,8 @@ describe("deriveTypeSegments", () => {
     const segments = deriveTypeSegments([{ type: "skill" }, { type: "skill" }]);
 
     expect(segments).toEqual([
-      { value: "all", label: "all" },
-      { value: "skill", label: "skills" },
+      { value: "all", label: "All" },
+      { value: "skill", label: "Skills" },
     ]);
   });
 
@@ -45,11 +45,11 @@ describe("deriveTypeSegments", () => {
     ]);
 
     expect(segments.map((s) => s.label)).toEqual([
-      "all",
-      "skills",
-      "hooks",
-      "mcp servers",
-      "bundles",
+      "All",
+      "Skills",
+      "Hooks",
+      "MCP servers",
+      "Bundles",
     ]);
   });
 

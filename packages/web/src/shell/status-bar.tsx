@@ -28,18 +28,18 @@ interface ConnectionView {
 }
 
 // One label for the source gear, reused as its accessible name and hover title.
-const SOURCE_ENTRY_LABEL = "Inventory source";
+const SOURCE_ENTRY_LABEL = "Harness location";
 
 const CONNECTION_VIEW: Record<Connection, ConnectionView> = {
-  checking: { label: "connecting…", tone: "dim", dot: "muted" },
+  checking: { label: "Connecting…", tone: "dim", dot: "muted" },
   "setup-required": {
-    label: "setup required",
+    label: "Setup required",
     tone: "dim",
     dot: "muted",
-    context: "no inventory connected",
+    context: "No inventory connected",
   },
-  connected: { label: "connected", tone: "ok", dot: "ok" },
-  disconnected: { label: "disconnected", tone: "drift", dot: "drift" },
+  connected: { label: "Connected", tone: "ok", dot: "ok" },
+  disconnected: { label: "Disconnected", tone: "drift", dot: "drift" },
 };
 
 // Fixed precedence (#110): error before waiting, waiting before content, so

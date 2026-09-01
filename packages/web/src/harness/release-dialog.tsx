@@ -15,17 +15,17 @@ export type ReleasePlanLoad =
   | { kind: "ready"; plan: ReleasePlan };
 
 const STEP_SEGMENTS: readonly { value: SemverStep; label: string }[] = [
-  { value: "patch", label: "patch" },
-  { value: "minor", label: "minor" },
-  { value: "major", label: "major" },
+  { value: "patch", label: "Patch" },
+  { value: "minor", label: "Minor" },
+  { value: "major", label: "Major" },
 ];
 
 // One advisory sentence per broken manifest. States the fact, never a verdict:
 // the skill still ships, the author just knows what they are shipping (#519).
 const FINDING_TEXT: Record<StructuralProblem, string> = {
-  "missing-manifest": "has no SKILL.md",
-  "invalid-frontmatter": "has frontmatter that does not parse",
-  "empty-description": "has an empty description",
+  "missing-manifest": "has no SKILL.md.",
+  "invalid-frontmatter": "has frontmatter Maestro cannot read.",
+  "empty-description": "has an empty description.",
 };
 
 // The consequences-first release plan: what the tag would carry, the proposed
@@ -107,7 +107,7 @@ export function ReleaseDialog({
           />
           {load.kind === "loading" ? (
             <p className="font-ui text-desc text-muted">
-              Planning the release…
+              Loading the release plan…
             </p>
           ) : load.kind === "ready" ? (
             <PlanBody
@@ -128,7 +128,7 @@ export function ReleaseDialog({
             size="sm"
             onClick={onClose}
           >
-            close
+            Close
           </Button>
           <Button
             type="button"
@@ -140,7 +140,7 @@ export function ReleaseDialog({
               step !== null && plan !== null && onPublish(step, plan)
             }
           >
-            {publishing ? "publishing…" : "publish"}
+            {publishing ? "Publishing…" : "Publish release"}
           </Button>
         </div>
       </div>
@@ -178,7 +178,7 @@ function PlanBody({
           className="flex flex-col gap-1.5 rounded-control border border-line-drift bg-amber-bg px-2.5 py-2.5"
         >
           <span className="font-semibold font-ui text-amber-ink text-desc">
-            Structural checks — advisory, does not block release
+            Structural checks — the release still runs
           </span>
           <ul className="m-0 flex list-none flex-col gap-1 p-0">
             {plan.findings.map((finding) => (
@@ -193,7 +193,7 @@ function PlanBody({
 
       <Card padded>
         <dl className="flex flex-wrap gap-x-10 gap-y-3">
-          <Fact label="Previous tag" value={plan.previousTag ?? "none yet"} />
+          <Fact label="Previous tag" value={plan.previousTag ?? "None yet"} />
           <Fact label="Branch" value={plan.defaultBranch} />
           {/* The whole commit: a short hash is not the exact revision, and
               need not be unique in a repository this size (#519). */}

@@ -10,10 +10,10 @@ export type TypeFilter = "all" | PrimitiveType;
 const TYPE_ORDER: readonly PrimitiveType[] = ["skill", "hook", "mcp", "bundle"];
 
 const TYPE_LABEL: Record<PrimitiveType, string> = {
-  skill: "skills",
-  hook: "hooks",
-  mcp: "mcp servers",
-  bundle: "bundles",
+  skill: "Skills",
+  hook: "Hooks",
+  mcp: "MCP servers",
+  bundle: "Bundles",
 };
 
 // Empty in, empty out: no primitives means no control at all, never a lone
@@ -26,7 +26,7 @@ export function deriveTypeSegments(
     return [];
   }
   return [
-    { value: "all", label: "all" },
+    { value: "all", label: "All" },
     ...TYPE_ORDER.filter((type) => present.has(type)).map((type) => ({
       value: type,
       label: TYPE_LABEL[type],

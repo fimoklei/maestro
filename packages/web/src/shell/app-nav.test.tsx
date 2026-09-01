@@ -74,7 +74,7 @@ describe("cockpit navigation", () => {
     await userEvent.click(screen.getByRole("button", { name: "Inventory" }));
 
     expect(
-      await screen.findByRole("heading", { name: /central inventory/i }),
+      await screen.findByRole("heading", { name: /^inventory$/i }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: /deploy-state/i }),
@@ -97,16 +97,16 @@ describe("cockpit navigation", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("opens the Inventory source view from the header entry point", async () => {
+  it("opens the Harness location view from the header entry point", async () => {
     stubConfiguredServer();
     renderApp();
 
     await userEvent.click(
-      await screen.findByRole("button", { name: /inventory source/i }),
+      await screen.findByRole("button", { name: /harness location/i }),
     );
 
     expect(
-      await screen.findByRole("heading", { name: /inventory source/i }),
+      await screen.findByRole("heading", { name: /harness location/i }),
     ).toBeInTheDocument();
   });
 });

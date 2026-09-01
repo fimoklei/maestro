@@ -44,7 +44,8 @@ export function BulkRemoveSkillAction({
         className="w-full"
         onClick={() => setOpen(true)}
       >
-        remove from all {targets.length} →
+        Remove from all {targets.length}{" "}
+        {targets.length === 1 ? "target" : "targets"}
       </Button>
       {open ? (
         <BulkRemoveRun

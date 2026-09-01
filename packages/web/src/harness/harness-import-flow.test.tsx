@@ -94,8 +94,10 @@ afterEach(() => {
 // Picks the one folder the stubbed listing offers and lands back on the import
 // dialog with the proposal filled in.
 async function openImportWithSource(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByRole("button", { name: "import skill" }));
-  await user.click(await screen.findByRole("button", { name: "pick folder" }));
+  await user.click(
+    await screen.findByRole("button", { name: "Import skill…" }),
+  );
+  await user.click(await screen.findByRole("button", { name: "Pick folder" }));
   await user.click(await screen.findByRole("button", { name: "Code Review" }));
   await user.click(
     await screen.findByRole("button", { name: /import this folder/i }),
@@ -112,7 +114,7 @@ describe("Harness import flow", () => {
     expect(await screen.findByLabelText(/name in the harness/i)).toHaveValue(
       "code-review",
     );
-    await user.click(screen.getByRole("button", { name: "import" }));
+    await user.click(screen.getByRole("button", { name: "Import skill" }));
 
     await waitFor(() => {
       expect(imports).toEqual([{ source: SOURCE, name: "code-review" }]);
@@ -120,7 +122,9 @@ describe("Harness import flow", () => {
     // The dialog stays open and states what landed, including what the copy
     // left behind; the harness read is asked again for the new movement.
     expect(
-      await screen.findByText(/landed in the Harness as a pending promotion/i),
+      await screen.findByText(
+        /landed in the Harness and is waiting for review/i,
+      ),
     ).toBeInTheDocument();
     expect(
       await screen.findByText(/3 \.git entries were skipped/i),
@@ -145,7 +149,7 @@ describe("Harness import flow", () => {
     expect(field).toHaveAccessibleDescription(
       /already holds a skill under it/i,
     );
-    expect(screen.getByRole("button", { name: "import" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Import skill" })).toBeDisabled();
   });
 
   it("reports the conventions without closing Import", async () => {
@@ -160,7 +164,7 @@ describe("Harness import flow", () => {
     expect(
       await screen.findByText("SKILL.md is over 500 lines."),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "import" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Import skill" })).toBeEnabled();
   });
 
   it("asks again with the typed name", async () => {

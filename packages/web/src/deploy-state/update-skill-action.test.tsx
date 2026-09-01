@@ -48,7 +48,7 @@ describe("Update action on a behind skill", () => {
     renderPanel("/Users/me/project");
 
     expect(
-      await screen.findByRole("button", { name: /update tdd/i }),
+      await screen.findByRole("button", { name: /update skill tdd/i }),
     ).toBeInTheDocument();
   });
 
@@ -61,8 +61,10 @@ describe("Update action on a behind skill", () => {
     });
     renderPanel("/Users/me/project");
 
-    const update = await screen.findByRole("button", { name: /update tdd/i });
-    expect(update).toHaveTextContent("update →");
+    const update = await screen.findByRole("button", {
+      name: /update skill tdd/i,
+    });
+    expect(update).toHaveTextContent("Update skill");
     expect(update.textContent).not.toMatch(/tdd/);
   });
 
@@ -84,13 +86,13 @@ describe("Update action on a behind skill", () => {
     renderPanel("/Users/me/project");
 
     await userEvent.click(
-      await screen.findByRole("button", { name: /update tdd/i }),
+      await screen.findByRole("button", { name: /update skill tdd/i }),
     );
 
     const pending = await screen.findByRole("button", {
-      name: /updating tdd/i,
+      name: /updating skill tdd/i,
     });
-    expect(pending).toHaveTextContent("updating…");
+    expect(pending).toHaveTextContent("Updating skill…");
     expect(pending.textContent).not.toMatch(/tdd/);
   });
 
@@ -98,9 +100,9 @@ describe("Update action on a behind skill", () => {
     stubReads(tddDeployed, { behind: [] });
     renderPanel("/Users/me/project");
 
-    expect(await screen.findByText(/up-to-date/i)).toBeInTheDocument();
+    expect(await screen.findByText(/up to date/i)).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /update tdd/i }),
+      screen.queryByRole("button", { name: /update skill tdd/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -111,7 +113,7 @@ describe("Update action on a behind skill", () => {
 
     expect(await screen.findByText(/unknown/i)).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /update tdd/i }),
+      screen.queryByRole("button", { name: /update skill tdd/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -132,7 +134,7 @@ describe("Update action on a behind skill", () => {
 
     expect(await screen.findByText("tdd")).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /update tdd/i }),
+      screen.queryByRole("button", { name: /update skill tdd/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -155,7 +157,7 @@ describe("Update action on a behind skill", () => {
     renderPanel("/Users/me/project");
 
     await userEvent.click(
-      await screen.findByRole("button", { name: /update tdd/i }),
+      await screen.findByRole("button", { name: /update skill tdd/i }),
     );
 
     const deployCall = fetchMock.mock.calls.find(
@@ -197,7 +199,7 @@ describe("Update action on a behind skill", () => {
     renderGlobalPanel();
 
     await userEvent.click(
-      await screen.findByRole("button", { name: /update tdd/i }),
+      await screen.findByRole("button", { name: /update skill tdd/i }),
     );
 
     const deployCall = fetchMock.mock.calls.find(
@@ -230,11 +232,11 @@ describe("Update action on a behind skill", () => {
     renderPanel("/Users/me/project");
 
     await userEvent.click(
-      await screen.findByRole("button", { name: /update tdd/i }),
+      await screen.findByRole("button", { name: /update skill tdd/i }),
     );
 
     expect(
-      await screen.findByRole("button", { name: /updating tdd/i }),
+      await screen.findByRole("button", { name: /updating skill tdd/i }),
     ).toBeDisabled();
   });
 
@@ -247,8 +249,6 @@ describe("Update action on a behind skill", () => {
         return new Response(
           JSON.stringify({
             error: "local-diverged-from-tag",
-            message:
-              "This skill's harness copy doesn't match the published tag. Open the Harness view to see why, then deploy again.",
           }),
           { status: 409, headers: { "content-type": "application/json" } },
         );
@@ -264,11 +264,11 @@ describe("Update action on a behind skill", () => {
     renderPanel("/Users/me/project");
 
     await userEvent.click(
-      await screen.findByRole("button", { name: /update tdd/i }),
+      await screen.findByRole("button", { name: /update skill tdd/i }),
     );
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      /doesn't match the published tag/i,
+      /Publish a release, then deploy again/i,
     );
   });
 
@@ -299,14 +299,14 @@ describe("Update action on a behind skill", () => {
     renderPanel("/Users/me/project");
 
     await userEvent.click(
-      await screen.findByRole("button", { name: /update tdd/i }),
+      await screen.findByRole("button", { name: /update skill tdd/i }),
     );
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       /never went through the harness/i,
     );
     expect(
-      await screen.findByRole("button", { name: /reinstall fresh/i }),
+      await screen.findByRole("button", { name: "Deploy again" }),
     ).toBeInTheDocument();
   });
 
@@ -345,10 +345,10 @@ describe("Update action on a behind skill", () => {
     renderPanel("/Users/me/project");
 
     await userEvent.click(
-      await screen.findByRole("button", { name: /update tdd/i }),
+      await screen.findByRole("button", { name: /update skill tdd/i }),
     );
     await userEvent.click(
-      await screen.findByRole("button", { name: /reinstall fresh/i }),
+      await screen.findByRole("button", { name: "Deploy again" }),
     );
 
     const deployBodies = fetchMock.mock.calls
@@ -392,12 +392,12 @@ describe("Update action on a behind skill", () => {
     renderPanel("/Users/me/project");
 
     await userEvent.click(
-      await screen.findByRole("button", { name: /update tdd/i }),
+      await screen.findByRole("button", { name: /update skill tdd/i }),
     );
 
-    expect(await screen.findByText(/up-to-date/i)).toBeInTheDocument();
+    expect(await screen.findByText(/up to date/i)).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /update tdd/i }),
+      screen.queryByRole("button", { name: /update skill tdd/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -410,8 +410,6 @@ describe("Update action on a behind skill", () => {
         return new Response(
           JSON.stringify({
             error: "local-diverged-from-tag",
-            message:
-              "This skill's harness copy doesn't match the published tag. Open the Harness view to see why, then deploy again.",
           }),
           { status: 409, headers: { "content-type": "application/json" } },
         );
@@ -427,12 +425,12 @@ describe("Update action on a behind skill", () => {
     renderPanel("/Users/me/project");
 
     await userEvent.click(
-      await screen.findByRole("button", { name: /update tdd/i }),
+      await screen.findByRole("button", { name: /update skill tdd/i }),
     );
 
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /reinstall fresh/i }),
+      screen.queryByRole("button", { name: "Deploy again" }),
     ).not.toBeInTheDocument();
   });
 });

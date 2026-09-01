@@ -169,21 +169,27 @@ describe("Notice", () => {
     });
   });
 
-  it("states an aside as a property of the control, not a second problem", () => {
-    render(
-      <Notice
-        trigger="user-action"
-        notice={{
-          level: "error",
-          label: "the removal failed",
-          message: "apm did not confirm the removal.",
-          aside: "retry removes only what is left",
-        }}
-      />,
-    );
+  // Why this happened, below the sentence and never collapsed — at every
+  // level, so no level hides its cause behind a disclosure.
+  it.each(["info", "success", "warning", "error"] as const)(
+    "renders the detail of a %s notice below its sentence",
+    (level) => {
+      render(
+        <Notice
+          trigger="load"
+          notice={{
+            level,
+            label: "a heading",
+            message: "a sentence.",
+            detail: "The cause, in one sentence.",
+            action: { label: "act", onClick: vi.fn() },
+          }}
+        />,
+      );
 
-    expect(screen.getByRole("alert")).toContainElement(
-      screen.getByText("retry removes only what is left"),
-    );
-  });
+      const detail = screen.getByText("The cause, in one sentence.");
+      expect(screen.getByRole("status")).toContainElement(detail);
+      expect(detail.previousElementSibling).toHaveTextContent("a sentence.");
+    },
+  );
 });

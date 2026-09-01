@@ -15,7 +15,7 @@ describe("SourceLabel", () => {
   it("names the source with its 'local folder' label", () => {
     render(<SourceLabel path="/home/me/agent-harness" />);
 
-    expect(screen.getByText(/source · local folder/i)).toBeInTheDocument();
+    expect(screen.getByText(/local folder/i)).toBeInTheDocument();
   });
 
   it("leaves a short path unshortened", () => {

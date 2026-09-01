@@ -1,7 +1,14 @@
 import type { ReclaimPreview } from "@maestro/core";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { HttpError } from "../api/http";
+import { type DeployStateNotice, removeNotice } from "./notice-copy";
 import type { RemoveRowWarning } from "./remove-preflight-view";
 import { RemoveSkillDialog } from "./remove-skill-dialog";
+
+// Every notice a story shows is the shipped one for that code, not a retyped
+// copy of it.
+const noticeFor = (code: string): DeployStateNotice =>
+  removeNotice(new HttpError(500, "unused", code));
 
 // The repo scope answered: one verdict for its one row, and any leftover copies
 // it named travel with that answer.
@@ -85,13 +92,12 @@ export const LongRepoPath: Story = {
 export const Removing: Story = { args: { isRemoving: true } };
 
 // A removal apm did not confirm. The dialog stays put with apm's own reason,
-// and the footer offers the attempt again — `close` and `retry →`, because the
+// and the footer offers the attempt again — `Close` and `Confirm removal`, because the
 // removal has already been confirmed once. Danger red with its own ✕, so a
 // failure never reads as one more amber warning.
 export const Failed: Story = {
   args: {
-    error:
-      "apm ran but proved nothing, so the copy may be gone or may still be there. Confirm the removal again to delete whatever is left.",
+    error: noticeFor("remove-failed"),
   },
 };
 
@@ -102,7 +108,7 @@ export const FailedPerTarget: Story = {
   args: {
     target: { kind: "global", tools: ["claude", "codex"] },
     preflight: toolChecks({ claude: "none", codex: "none" }),
-    error: "apm exited 1: permission denied: ~/.codex/skills/tdd/",
+    error: noticeFor("remove-failed"),
     outcome: {
       scope: "global",
       tools: [
@@ -117,8 +123,7 @@ export const FailedPerTarget: Story = {
 // check that did not run proves nothing (J04).
 export const FailedOutcomeUnknown: Story = {
   args: {
-    error:
-      "apm ran but proved nothing, so the copy may be gone or may still be there. Confirm the removal again to delete whatever is left.",
+    error: noticeFor("remove-failed"),
     outcome: { scope: "repo", state: "unknown" },
   },
 };
@@ -128,8 +133,7 @@ export const FailedOutcomeUnknown: Story = {
 export const Retrying: Story = {
   args: {
     isRemoving: true,
-    error:
-      "apm ran but proved nothing, so the copy may be gone or may still be there. Confirm the removal again to delete whatever is left.",
+    error: noticeFor("remove-failed"),
   },
 };
 
@@ -139,8 +143,7 @@ export const Retrying: Story = {
 export const CostRestated: Story = {
   args: {
     preflight: repoCheck("local-edits"),
-    restated:
-      "Maestro checked the deployed copy again and it is not the one this request agreed to remove, so nothing was removed. Confirm what it found now to go ahead.",
+    restated: noticeFor("cost-not-acknowledged"),
   },
 };
 
@@ -149,8 +152,7 @@ export const CostRestated: Story = {
 // nothing else.
 export const RemovalRefused: Story = {
   args: {
-    error:
-      "The deployed copy exists but could not be read, so Maestro cannot tell whether removing it would delete local changes.",
+    error: noticeFor("deployed-unreadable"),
   },
 };
 
@@ -161,8 +163,7 @@ export const FailedWithWarnings: Story = {
   args: {
     target: { kind: "global", tools: ["codex"] },
     preflight: toolChecks({ codex: "local-edits" }, LEFTOVER),
-    error:
-      "apm ran but proved nothing, so the copy may be gone or may still be there. Confirm the removal again to delete whatever is left.",
+    error: noticeFor("remove-failed"),
   },
 };
 
@@ -197,7 +198,7 @@ export const CheckRefused: Story = {
     preflight: {
       kind: "refused" as const,
       code: "repo-not-registered" as const,
-      message: "That repo is not registered with Maestro.",
+      notice: noticeFor("repo-not-registered"),
     },
   },
 };

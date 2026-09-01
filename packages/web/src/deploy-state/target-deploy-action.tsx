@@ -9,7 +9,7 @@ export function TargetDeployAction({
   return (
     <div className="px-card-x py-row-y">
       <Button variant="ghost" size="sm" onClick={onStartDeploy}>
-        deploy →
+        Deploy a skill
       </Button>
     </div>
   );

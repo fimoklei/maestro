@@ -1,6 +1,7 @@
 import type { RemoveToolCheck, RemoveWarning } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
+import { removeNotice } from "./notice-copy";
 import { removePreflightView } from "./remove-preflight-view";
 import type { RemovePreflight } from "./use-remove-preflight";
 
@@ -237,7 +238,9 @@ describe("removePreflightView", () => {
       ).toEqual({
         kind: "refused",
         code: "repo-not-registered",
-        message: "That repo is not registered with Maestro.",
+        notice: removeNotice(
+          new HttpError(403, "unused", "repo-not-registered"),
+        ),
       });
     });
 
@@ -307,26 +310,37 @@ describe("removePreflightView", () => {
   describe("when the server refused the request", () => {
     // Each of these means the removal itself cannot succeed. Confirming would
     // spend a round-trip to be told the same thing, so the dialog says it now,
-    // in the server's own words.
+    // in the copy module's words (#684).
     const refusals = [
-      ["repo-not-registered", "That repo is not registered with Maestro."],
-      ["no-supported-tool", "There is no global deployment to remove."],
-      ["invalid-name", "That skill name is not a valid slug."],
-      ["unsupported-primitive-type", "Only skills can be removed for now."],
-      ["invalid-body", "Expected a JSON body with type, name, and target."],
+      "repo-not-registered",
+      "no-supported-tool",
+      "invalid-name",
+      "unsupported-primitive-type",
     ] as const;
 
-    for (const [code, message] of refusals) {
-      // The code travels beside the wording: the bulk dialog names a refusal
+    for (const code of refusals) {
+      // The code travels beside the notice: the bulk dialog names a refusal
       // in a right-aligned slot a full sentence does not fit, and the run is
       // told which refusal it was (#423).
-      it(`carries the server's own wording and code for ${code}`, () => {
-        expect(failedView(new HttpError(403, message, code))).toEqual({
+      it(`carries the copy module's notice and the code for ${code}`, () => {
+        const error = new HttpError(403, "sent by the server", code);
+        expect(failedView(error)).toEqual({
           kind: "refused",
           code,
-          message,
+          notice: removeNotice(error),
         });
       });
     }
+
+    // The one refusal with no copy-module row: a request-shape message is the
+    // server's to write (copy.md, "Where copy lives").
+    it("passes the request-shape message through for invalid-body", () => {
+      const message = "Expected a JSON body with type, name, and target.";
+      expect(failedView(new HttpError(400, message, "invalid-body"))).toEqual({
+        kind: "refused",
+        code: "invalid-body",
+        notice: { level: "error", label: "Request not accepted", message },
+      });
+    });
   });
 });

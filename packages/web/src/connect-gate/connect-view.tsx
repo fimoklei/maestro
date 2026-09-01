@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
+import { LOADING_INVENTORY_CONNECTION } from "../inventory/inventory-copy";
 import { useInventoryConfig } from "../inventory/use-inventory";
 import { ConnectInventoryPanel } from "../shell/connect-inventory-panel";
 import { Card } from "../ui/card";
@@ -25,7 +26,7 @@ export function ConnectView() {
   }, [blocked, config.isSuccess, navigate]);
 
   if (blocked) {
-    return <p className="text-dim text-tag">Loading…</p>;
+    return <p className="text-dim text-tag">{LOADING_INVENTORY_CONNECTION}</p>;
   }
 
   return (
@@ -33,13 +34,13 @@ export function ConnectView() {
       <SectionHeader
         level={1}
         className="flex-wrap"
-        title="Connect central inventory"
-        meta="a local Harness clone or GitHub URL"
+        title="Inventory connection"
+        meta="A local Harness clone or GitHub URL"
       />
       <Card padded className="max-w-lg">
         <p className="mb-3 text-dim text-tag">
-          A private Harness works when each teammate has their own Git and APM
-          access.
+          A private Harness works only when every teammate has their own GitHub
+          and APM access.
         </p>
         <ConnectInventoryPanel
           onSuccess={() => setHasConnected(true)}

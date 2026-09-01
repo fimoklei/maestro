@@ -43,7 +43,7 @@ describe("DeployStateList row actions", () => {
     // Update is readable and clickable with the menu still closed: it is this
     // view's primary steering action, never a two-click detour.
     expect(
-      screen.getByRole("button", { name: /update tdd/i }),
+      screen.getByRole("button", { name: /update skill tdd/i }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("menuitem")).not.toBeInTheDocument();
   });

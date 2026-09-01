@@ -2,6 +2,8 @@ import type { ReclaimPreview, RemoveOutcome } from "@maestro/core";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { HttpError } from "../api/http";
+import { type DeployStateNotice, removeNotice } from "./notice-copy";
 import type {
   RemoveCheckState,
   RemovePreflightView,
@@ -13,6 +15,13 @@ const REPO_TARGET = {
   kind: "repo" as const,
   repoPath: "/Users/me/project",
 };
+
+// The notice for a removal apm ran but proved nothing about — read off the copy
+// module, so the dialog's tests and the screen cannot drift apart.
+const noticeFor = (code: string): DeployStateNotice =>
+  removeNotice(new HttpError(500, "unused", code));
+const FAILURE = noticeFor("remove-failed");
+const REFUSAL = noticeFor("repo-not-registered");
 
 // The cockpit's type scale, largest first (styles/theme.css @theme). Assertions
 // name a step's position rather than the token it lands on: what the tests are
@@ -64,8 +73,8 @@ const CHECK_FAILED = offers({ kind: "unanswered", warning: "check-failed" });
 function renderDialog({
   target = REPO_TARGET as Parameters<typeof RemoveSkillDialog>[0]["target"],
   isRemoving = false,
-  error = null as string | null,
-  restated = null as string | null,
+  error = null as DeployStateNotice | null,
+  restated = null as DeployStateNotice | null,
   outcome = null as RemoveOutcome | null,
   version = "v0.5.0" as string | null,
   preflight = repoCheck("none") as RemovePreflightView,
@@ -105,7 +114,7 @@ describe("RemoveSkillDialog", () => {
     renderDialog({ version: "v0.5.0" });
 
     expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
-      "Remove tdd v0.5.0?",
+      "Remove tdd v0.5.0",
     );
   });
 
@@ -114,7 +123,7 @@ describe("RemoveSkillDialog", () => {
     renderDialog({ version: null });
 
     expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
-      "Remove tdd?",
+      "Remove tdd",
     );
   });
 
@@ -215,7 +224,7 @@ describe("RemoveSkillDialog", () => {
       renderDialog();
 
       const confirm = screen.getByRole("button", { name: /^remove/i });
-      expect(confirm).toHaveTextContent("remove →");
+      expect(confirm).toHaveTextContent("Remove skill");
       expect(confirm).not.toHaveTextContent("tdd");
     });
 
@@ -230,8 +239,8 @@ describe("RemoveSkillDialog", () => {
     it("cancels with the same fixed label", () => {
       renderDialog();
 
-      expect(screen.getByRole("button", { name: "cancel" })).toHaveTextContent(
-        "cancel",
+      expect(screen.getByRole("button", { name: "Cancel" })).toHaveTextContent(
+        "Cancel",
       );
     });
   });
@@ -250,7 +259,7 @@ describe("RemoveSkillDialog", () => {
   it("cancels without confirming", async () => {
     const { onCancel, onConfirm } = renderDialog();
 
-    await userEvent.click(screen.getByRole("button", { name: "cancel" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(onCancel).toHaveBeenCalledTimes(1);
     expect(onConfirm).not.toHaveBeenCalled();
@@ -260,7 +269,7 @@ describe("RemoveSkillDialog", () => {
     renderDialog({ isRemoving: true });
 
     expect(screen.getByRole("button", { name: /removing/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "cancel" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
   });
 
   it("cannot be dismissed with Escape while the removal is in flight", async () => {
@@ -272,61 +281,63 @@ describe("RemoveSkillDialog", () => {
   });
 
   it("stays open on failure, stating apm's reason", () => {
-    renderDialog({ error: "apm did not confirm the removal." });
+    renderDialog({ error: FAILURE });
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "apm did not confirm the removal.",
-    );
+    expect(screen.getByRole("alert")).toHaveTextContent(FAILURE.message);
   });
 
   // What the user needs before pressing retry, in the block that just told them
   // the removal failed. It used to be a paragraph sending them to check the repo
   // by hand (#415).
   it("says a retry picks up only what the failure left behind", () => {
-    renderDialog({ error: "apm did not confirm the removal." });
+    renderDialog({ error: FAILURE });
 
     const alert = screen.getByRole("alert");
-    expect(alert).toHaveTextContent("retry removes only what is left");
+    expect(alert).toHaveTextContent(FAILURE.detail ?? "");
     expect(alert).not.toHaveTextContent(/mixed state/i);
   });
 
   // The removal has already been confirmed once, so a footer offering "cancel"
   // and a confirm would be describing a dialog where nothing has happened yet.
   it("offers close and retry once a removal has failed", () => {
-    renderDialog({ error: "apm did not confirm the removal." });
+    renderDialog({ error: FAILURE });
 
-    expect(screen.getByRole("button", { name: "close" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "retry →" })).toBeEnabled();
-    expect(screen.queryByRole("button", { name: "cancel" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "remove →" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Close" })).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "Confirm removal" }),
+    ).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Remove skill" })).toBeNull();
   });
 
   it("re-fires the same removal from retry", async () => {
     const { onConfirm } = renderDialog({
-      error: "apm did not confirm the removal.",
+      error: FAILURE,
     });
 
-    await userEvent.click(screen.getByRole("button", { name: "retry →" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Confirm removal" }),
+    );
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
   it("states the retry is in flight and blocks closing while it runs", () => {
     renderDialog({
-      error: "apm did not confirm the removal.",
+      error: FAILURE,
       isRemoving: true,
     });
 
     expect(screen.getByRole("button", { name: /removing/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "close" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Close" })).toBeDisabled();
   });
 
   // The removal stopped because the copy is no longer the one this panel
   // priced, and it deleted nothing on the way (#364). Everything below keeps
   // that apart from a failure: nothing ran, so nothing is being retried.
   describe("when the copy changed since the check", () => {
-    const RESTATED = "That copy is not the one this request agreed to remove.";
+    const RESTATED = noticeFor("cost-not-acknowledged");
 
     it("states the server's reason in the panel", () => {
       renderDialog({
@@ -334,7 +345,7 @@ describe("RemoveSkillDialog", () => {
         preflight: repoCheck("local-edits"),
       });
 
-      expect(screen.getByRole("alert")).toHaveTextContent(RESTATED);
+      expect(screen.getByRole("alert")).toHaveTextContent(RESTATED.message);
     });
 
     it("wears the amber of a cost, never the danger of a failure", () => {
@@ -348,7 +359,7 @@ describe("RemoveSkillDialog", () => {
       expect(alert.className).not.toContain("danger");
       // Never-Colour-Alone: the glyph and the words carry it without colour.
       expect(alert).toHaveTextContent("▲");
-      expect(alert).toHaveTextContent(/nothing was removed/i);
+      expect(alert).toHaveTextContent(/Nothing removed/);
     });
 
     // The whole point of restating: the ledger states what the removal would
@@ -359,7 +370,7 @@ describe("RemoveSkillDialog", () => {
         preflight: repoCheck("local-edits"),
       });
 
-      expect(screen.getByText("local edits — deleted too")).toBeInTheDocument();
+      expect(screen.getByText("Local edits — deleted too")).toBeInTheDocument();
     });
 
     it("still offers the first removal, because nothing has happened yet", () => {
@@ -368,9 +379,13 @@ describe("RemoveSkillDialog", () => {
         preflight: repoCheck("local-edits"),
       });
 
-      expect(screen.getByRole("button", { name: "remove →" })).toBeEnabled();
-      expect(screen.getByRole("button", { name: "cancel" })).toBeEnabled();
-      expect(screen.queryByRole("button", { name: "retry →" })).toBeNull();
+      expect(
+        screen.getByRole("button", { name: "Remove skill" }),
+      ).toBeEnabled();
+      expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
+      expect(
+        screen.queryByRole("button", { name: "Confirm removal" }),
+      ).toBeNull();
     });
 
     it("confirms the restated cost from that same control", async () => {
@@ -379,7 +394,9 @@ describe("RemoveSkillDialog", () => {
         preflight: repoCheck("local-edits"),
       });
 
-      await userEvent.click(screen.getByRole("button", { name: "remove →" }));
+      await userEvent.click(
+        screen.getByRole("button", { name: "Remove skill" }),
+      );
 
       expect(onConfirm).toHaveBeenCalledTimes(1);
     });
@@ -387,9 +404,9 @@ describe("RemoveSkillDialog", () => {
 
   // A warning and a failure used to render as the same object: same fill, same
   // border, same padding, told apart only by a glyph one of them lacked. "This
-  // may cost work" and "the removal failed" mean opposite things.
+  // may cost work" and "Removal unproven" mean opposite things.
   it("wears danger with a glyph when the removal failed, not the amber of a warning", () => {
-    renderDialog({ error: "apm did not confirm the removal." });
+    renderDialog({ error: FAILURE });
 
     const alert = screen.getByRole("alert");
     expect(alert.className).toContain("danger");
@@ -400,9 +417,9 @@ describe("RemoveSkillDialog", () => {
   it("says in words that the removal failed, so the colour is not the signal", () => {
     // The Never-Colour-Alone rule: every colour signal carries a glyph and a
     // word, so it survives without colour perception.
-    renderDialog({ error: "apm did not confirm the removal." });
+    renderDialog({ error: FAILURE });
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/removal failed/i);
+    expect(screen.getByRole("alert")).toHaveTextContent(/Removal unproven/);
   });
 
   // The design handoff labels this block in apm's terms (`apm exited 1`, state
@@ -410,22 +427,22 @@ describe("RemoveSkillDialog", () => {
   // label is Maestro's own and cannot move with whatever the server sent.
   it("keeps its own label whatever the server's sentence says", () => {
     renderDialog({
-      error: "apm exited 1: permission denied: /Users/someone/.codex/skills/",
+      error: FAILURE,
     });
 
     const alert = screen.getByRole("alert");
-    expect(within(alert).getByText("the removal failed")).toBeInTheDocument();
+    expect(within(alert).getByText("Removal unproven")).toBeInTheDocument();
     // The label is the panel's, not a mono echo of the reason beside it.
-    expect(
-      within(alert).getByText("the removal failed").className,
-    ).not.toContain("font-mono");
+    expect(within(alert).getByText("Removal unproven").className).not.toContain(
+      "font-mono",
+    );
   });
 
   // apm's uninstall reports one outcome for every tool at once, so after a
   // failure the server probes each target itself. The panel reports what it
   // proved, target by target, instead of warning about a mixed state (#416).
   describe("what the failed removal came off, target by target", () => {
-    const FAILED = "apm did not confirm the removal.";
+    const FAILED = FAILURE;
     const globalTarget = {
       kind: "global" as const,
       tools: ["claude", "codex"],
@@ -463,7 +480,7 @@ describe("RemoveSkillDialog", () => {
       renderPartialFailure();
 
       const claude = rowFor("Claude Code");
-      expect(claude).toHaveTextContent("removed");
+      expect(claude).toHaveTextContent("Removed");
       expect(claude.className).not.toContain("bg-danger-bg");
     });
 
@@ -471,7 +488,7 @@ describe("RemoveSkillDialog", () => {
       renderPartialFailure();
 
       const codex = rowFor("Codex");
-      expect(codex).toHaveTextContent("not removed");
+      expect(codex).toHaveTextContent("Not removed");
       expect(codex.className).toContain("bg-danger-bg");
     });
 
@@ -492,7 +509,7 @@ describe("RemoveSkillDialog", () => {
 
       expect(
         screen.getAllByRole("listitem").map((row) => row.textContent),
-      ).toEqual(["Codex✕ not removed", "Claude Code✓ removed"]);
+      ).toEqual(["Codex✕ Not removed", "Claude Code✓ Removed"]);
     });
 
     it("never reads a target the probe could not answer for as removed", () => {
@@ -503,7 +520,7 @@ describe("RemoveSkillDialog", () => {
 
       const row = rowFor(REPO_TARGET.repoPath);
       expect(row).not.toHaveTextContent(/✓/);
-      expect(row).toHaveTextContent("outcome unknown");
+      expect(row).toHaveTextContent("Outcome unknown");
     });
 
     // A ledger under a failure that proved nothing would name targets nobody
@@ -511,9 +528,9 @@ describe("RemoveSkillDialog", () => {
     it("renders the error block alone when the failure proved nothing", () => {
       renderDialog({ error: FAILED, outcome: null });
 
-      expect(screen.getByRole("alert")).toHaveTextContent(FAILED);
+      expect(screen.getByRole("alert")).toHaveTextContent(FAILED.message);
       expect(screen.queryAllByRole("listitem")).toEqual([]);
-      expect(screen.queryByText(/removed from/i)).toBeNull();
+      expect(screen.queryByText(/removal targets/i)).toBeNull();
     });
 
     // The reclaim runs only after apm confirms, so a failure never reached
@@ -530,7 +547,7 @@ describe("RemoveSkillDialog", () => {
 
       expect(
         screen.getAllByRole("listitem").map((row) => row.textContent),
-      ).toEqual(["Claude Code✓ removed", "Codex✕ not removed"]);
+      ).toEqual(["Claude Code✓ Removed", "Codex✕ Not removed"]);
     });
 
     // The pre-confirm status priced a removal that then did not happen; leaving
@@ -550,9 +567,9 @@ describe("RemoveSkillDialog", () => {
       renderPartialFailure();
 
       expect(
-        within(screen.getByRole("status", { name: "Removed from" })).getByText(
-          /not removed/,
-        ),
+        within(
+          screen.getByRole("status", { name: "Removal targets" }),
+        ).getByText(/Not removed/),
       ).toBeInTheDocument();
     });
   });
@@ -580,7 +597,7 @@ describe("RemoveSkillDialog", () => {
         preflight: toolChecks({ claude: "none", codex: "local-edits" }),
       });
 
-      expect(rowFor("Codex")).toHaveTextContent("local edits — deleted too");
+      expect(rowFor("Codex")).toHaveTextContent("Local edits — deleted too");
       expect(rowFor("Claude Code")).not.toHaveTextContent(/local edits/i);
     });
 
@@ -606,7 +623,7 @@ describe("RemoveSkillDialog", () => {
       });
 
       const row = rowFor("Claude Code");
-      expect(row).toHaveTextContent("nothing recorded — may lose work");
+      expect(row).toHaveTextContent("Nothing recorded — may lose work");
       // Claiming edits nothing saw would be a fact the check cannot state.
       expect(row).not.toHaveTextContent(/local edits/i);
     });
@@ -618,7 +635,7 @@ describe("RemoveSkillDialog", () => {
       });
 
       const row = rowFor("Claude Code");
-      expect(row).toHaveTextContent("check didn't run — may lose work");
+      expect(row).toHaveTextContent("Check did not run — may lose work");
       expect(row).not.toHaveTextContent(/nothing recorded/i);
     });
 
@@ -630,15 +647,15 @@ describe("RemoveSkillDialog", () => {
         preflight: toolChecks({ claude: "none" }),
       });
 
-      expect(rowFor("Codex")).toHaveTextContent("check didn't run");
-      expect(rowFor("Claude Code")).not.toHaveTextContent("check didn't run");
+      expect(rowFor("Codex")).toHaveTextContent("Check did not run");
+      expect(rowFor("Claude Code")).not.toHaveTextContent("Check did not run");
     });
 
     it("states a failed request on every row, because it answered for none", () => {
       renderDialog({ target: globalTarget, preflight: CHECK_FAILED });
 
       for (const row of screen.getAllByRole("listitem")) {
-        expect(row).toHaveTextContent("check didn't run — may lose work");
+        expect(row).toHaveTextContent("Check did not run — may lose work");
       }
     });
 
@@ -649,7 +666,7 @@ describe("RemoveSkillDialog", () => {
 
       const rows = screen.getAllByRole("listitem");
       expect(rows).toHaveLength(1);
-      expect(rows[0]).toHaveTextContent("local edits — deleted too");
+      expect(rows[0]).toHaveTextContent("Local edits — deleted too");
     });
 
     it("leaves no separate block saying which copy was edited", () => {
@@ -725,7 +742,7 @@ describe("RemoveSkillDialog", () => {
     it("leaves cancel usable, so waiting never traps the user", () => {
       renderDialog({ preflight: CHECKING });
 
-      expect(screen.getByRole("button", { name: "cancel" })).toBeEnabled();
+      expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
     });
 
     it("says it is still running instead of staying silent", () => {
@@ -734,7 +751,7 @@ describe("RemoveSkillDialog", () => {
       renderDialog({ preflight: CHECKING });
 
       expect(
-        screen.getByRole("status", { name: /local-edits check/i }),
+        screen.getByRole("status", { name: /local edits check/i }),
       ).toHaveTextContent(/checking/i);
     });
 
@@ -747,7 +764,7 @@ describe("RemoveSkillDialog", () => {
       const confirm = screen.getByRole("button", { name: /^remove/i });
       expect(confirm).toBeDisabled();
       expect(confirm.getAttribute("aria-describedby")).toBe(
-        screen.getByRole("status", { name: /local-edits check/i }).id,
+        screen.getByRole("status", { name: /local edits check/i }).id,
       );
     });
 
@@ -755,7 +772,7 @@ describe("RemoveSkillDialog", () => {
       renderDialog({ preflight: repoCheck("none") });
 
       expect(
-        screen.queryByRole("status", { name: /local-edits check/i }),
+        screen.queryByRole("status", { name: /local edits check/i }),
       ).toBeNull();
     });
   });
@@ -787,7 +804,7 @@ describe("RemoveSkillDialog", () => {
         {
           kind: "refused" as const,
           code: "repo-not-registered" as const,
-          message: "no global deployment to remove.",
+          notice: REFUSAL,
         },
       ];
 
@@ -865,7 +882,7 @@ describe("RemoveSkillDialog", () => {
     it("sets a row's status as prose, because it is a sentence about the data", () => {
       renderDialog({ preflight: repoCheck("local-edits") });
 
-      expect(screen.getByText("local edits — deleted too").className).toContain(
+      expect(screen.getByText("Local edits — deleted too").className).toContain(
         "font-ui",
       );
     });
@@ -892,10 +909,10 @@ describe("RemoveSkillDialog", () => {
     // and then explain it in the panel's largest, so the box shouted the detail
     // and whispered the headline.
     it("never names a failure more quietly than it explains it", () => {
-      renderDialog({ error: "apm did not confirm the removal." });
+      renderDialog({ error: FAILURE });
 
-      const label = screen.getByText("the removal failed");
-      const message = screen.getByText("apm did not confirm the removal.");
+      const label = screen.getByText("Removal unproven");
+      const message = screen.getByText(FAILURE.message);
       expect(stepOf(label)).toBeGreaterThanOrEqual(0);
       expect(stepOf(label)).toBeLessThanOrEqual(stepOf(message));
       // Weight carries the label instead, so the two lines can share a size.
@@ -960,21 +977,19 @@ describe("RemoveSkillDialog", () => {
     const refused = {
       kind: "refused" as const,
       code: "repo-not-registered" as const,
-      message: "That repo is not registered with Maestro.",
+      notice: REFUSAL,
     };
 
-    it("states the server's own reason, word for word", () => {
+    it("states the refusal for the code the server sent", () => {
       renderDialog({ preflight: refused });
 
-      expect(
-        screen.getByText("That repo is not registered with Maestro."),
-      ).toBeInTheDocument();
+      expect(screen.getByText(REFUSAL.message)).toBeInTheDocument();
     });
 
     it("labels the block as the thing that cannot happen", () => {
       renderDialog({ preflight: refused });
 
-      expect(screen.getByText("can't be removed")).toBeInTheDocument();
+      expect(screen.getByText(REFUSAL.label)).toBeInTheDocument();
     });
 
     it("never says work may be lost", () => {
@@ -1020,13 +1035,13 @@ describe("RemoveSkillDialog", () => {
       // The backdrop's dismiss button is hidden from the a11y tree, so this is
       // every control the panel offers.
       const controls = screen.getAllByRole("button");
-      expect(controls.map((control) => control.textContent)).toEqual(["close"]);
+      expect(controls.map((control) => control.textContent)).toEqual(["Close"]);
     });
 
     it("closes through the one control it leaves", async () => {
       const { onCancel } = renderDialog({ preflight: refused });
 
-      await userEvent.click(screen.getByRole("button", { name: "close" }));
+      await userEvent.click(screen.getByRole("button", { name: "Close" }));
 
       expect(onCancel).toHaveBeenCalledTimes(1);
     });
@@ -1052,9 +1067,9 @@ describe("RemoveSkillDialog", () => {
       expect(alert.querySelector("[aria-hidden='true']")).toHaveTextContent(
         "✕",
       );
-      expect(within(alert).getByText("can't be removed")).not.toHaveAttribute(
-        "aria-hidden",
-      );
+      expect(
+        within(alert).getByText("Repository not registered"),
+      ).not.toHaveAttribute("aria-hidden");
     });
 
     it("carries the refusal in the panel's own outline", () => {
@@ -1100,7 +1115,7 @@ describe("RemoveSkillDialog", () => {
   it("carries a failed removal in the panel's own outline", () => {
     // The same rule the refusal follows: a red block on a neutral panel states
     // the failure more quietly than the panel states its question.
-    renderDialog({ error: "apm did not confirm the removal." });
+    renderDialog({ error: FAILURE });
 
     expect(screen.getByRole("dialog").className).toContain(
       "border-danger-border",
@@ -1163,7 +1178,7 @@ describe("RemoveSkillDialog", () => {
       });
 
       for (const row of screen.getAllByRole("listitem")) {
-        expect(row).toHaveTextContent("local edits — deleted too");
+        expect(row).toHaveTextContent("Local edits — deleted too");
       }
     });
 
@@ -1196,7 +1211,7 @@ describe("RemoveSkillDialog", () => {
         const row = screen.getAllByRole("listitem")[1] as HTMLElement;
         expect(row).toHaveTextContent("Codex");
         expect(row).toHaveTextContent("/Users/me/.agents/skills/tdd");
-        expect(row).toHaveTextContent("not installed — copy deleted in full");
+        expect(row).toHaveTextContent("Not installed — copy deleted in full");
         // The glyph pairs the amber with a shape, so the row still reads as a
         // cost without colour.
         expect(row).toHaveTextContent("▲");
@@ -1260,7 +1275,7 @@ describe("RemoveSkillDialog", () => {
         renderDialog({ target: oneToolTarget, preflight: CHECKING });
 
         expect(
-          screen.getByRole("status", { name: /also deleted/i }),
+          screen.getByRole("status", { name: /other copies/i }),
         ).toBeEmptyDOMElement();
       });
 
@@ -1269,7 +1284,7 @@ describe("RemoveSkillDialog", () => {
       it("announces the leftover rows as their own named region", () => {
         renderWithLeftover();
 
-        const region = screen.getByRole("status", { name: /also deleted/i });
+        const region = screen.getByRole("status", { name: /other copies/i });
         expect(region).toHaveTextContent("/Users/me/.agents/skills/tdd");
         expect(region).not.toHaveTextContent("Claude Code");
       });
@@ -1286,11 +1301,13 @@ describe("RemoveSkillDialog", () => {
           ),
         });
 
-        const targeted = screen.getByRole("status", { name: /removed from/i });
-        expect(targeted).toHaveTextContent("local edits — deleted too");
+        const targeted = screen.getByRole("status", {
+          name: /removal targets/i,
+        });
+        expect(targeted).toHaveTextContent("Local edits — deleted too");
         expect(targeted).not.toHaveTextContent(/deleted in full/i);
         expect(
-          screen.getByRole("status", { name: /also deleted/i }),
+          screen.getByRole("status", { name: /other copies/i }),
         ).not.toHaveTextContent(/local edits/i);
       });
 

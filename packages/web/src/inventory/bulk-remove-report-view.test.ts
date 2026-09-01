@@ -61,7 +61,7 @@ describe("bulkRemoveReportView — a clean run", () => {
   });
 
   it("counts every class, so zero refused and zero failed are stated rather than implied", () => {
-    expect(clean).toMatchObject({ counts: "removed 3 · refused 0 · failed 0" });
+    expect(clean).toMatchObject({ counts: "Removed 3 · refused 0 · failed 0" });
   });
 });
 
@@ -89,8 +89,8 @@ describe("bulkRemoveReportView — a partial run", () => {
   it("puts the split in the title, so the outcome lands before any detail", () => {
     expect(partial).toMatchObject({
       kind: "partial",
-      title: { before: "Removed ", after: " from 1 of 3" },
-      counts: "removed 1 · refused 1 · failed 1",
+      title: { before: "Removed ", after: " from 1 of 3 targets" },
+      counts: "Removed 1 · refused 1 · failed 1",
     });
   });
 
@@ -102,12 +102,12 @@ describe("bulkRemoveReportView — a partial run", () => {
         {
           label: "/dev/acme-web",
           outcome: "failed",
-          reason: "target is held by another operation",
+          reason: "Target held by another operation",
         },
         {
           label: "/dev/legacy-etl",
           outcome: "refused",
-          reason: "repo not registered",
+          reason: "Repository not registered",
         },
       ],
     });
@@ -133,14 +133,14 @@ describe("bulkRemoveReportView — a partial run", () => {
 
     expect(
       probed({ scope: "repo", state: "removed" }).leftAlone[0]?.reason,
-    ).toBe("apm did not complete the removal — gone anyway");
+    ).toBe("Removal not completed by apm — gone anyway");
     expect(
       probed({ scope: "repo", state: "not-removed" }).leftAlone[0]?.reason,
-    ).toBe("apm did not complete the removal — still there");
+    ).toBe("Removal not completed by apm — still there");
     // A probe that could not answer proves nothing, so it says nothing (J04).
     expect(
       probed({ scope: "repo", state: "unknown" }).leftAlone[0]?.reason,
-    ).toBe("apm did not complete the removal");
+    ).toBe("Removal not completed by apm");
   });
 
   // apm removes for every tool at once, so one tool still holding a copy means
@@ -165,7 +165,7 @@ describe("bulkRemoveReportView — a partial run", () => {
     }) as { leftAlone: { reason: string }[] };
 
     expect(mixed.leftAlone[0]?.reason).toBe(
-      "apm did not complete the removal — still there",
+      "Removal not completed by apm — still there",
     );
   });
 
@@ -221,36 +221,37 @@ describe("bulkRemoveReportView — a partial run", () => {
 
     expect(stray).toMatchObject({
       kind: "partial",
-      leftAlone: [{ label: "/dev/gone", reason: "nothing deployed here" }],
+      leftAlone: [{ label: "/dev/gone", reason: "Nothing deployed here" }],
     });
   });
 });
 
 describe("bulkRemoveReportView — the request itself failed", () => {
   // The server answered, so the walk never began: retrying repeats nothing.
-  it("says the run never started when the server refused the request", () => {
+  it("says Run not started when the server refused the request", () => {
     expect(
       view({ error: new HttpError(400, "Malformed request.", "invalid-body") }),
     ).toEqual({
       kind: "never-started",
-      label: "the run never started",
-      message: "Malformed request. Nothing was removed anywhere. Try again.",
+      label: "Run not started",
+      message: "Nothing was removed anywhere. Confirm the removal again.",
+      detail: "The Maestro server refused the request.",
     });
   });
 
   // No answer at all proves nothing about the walk — it may have finished.
-  it("says the outcome is unknown when the answer was lost", () => {
+  it("says Outcome unknown when the answer was lost", () => {
     const lost = view({ error: new TypeError("Failed to fetch") });
 
     expect(lost).toMatchObject({ kind: "outcome-unknown" });
     expect((lost as { message: string }).message).toMatch(
-      /cannot say what was removed/i,
+      /outcome is unrecorded/i,
     );
   });
 
   // A server that broke may have broken part-way through its own walk. Only a
   // refusal it made before starting proves nothing was touched.
-  it("says the outcome is unknown when the server broke rather than refused", () => {
+  it("says Outcome unknown when the server broke rather than refused", () => {
     expect(view({ error: new HttpError(500, "Boom.") })).toMatchObject({
       kind: "outcome-unknown",
     });

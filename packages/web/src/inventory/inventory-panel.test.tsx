@@ -49,7 +49,7 @@ describe("InventoryPanel", () => {
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: /central inventory/i,
+        name: /^inventory$/i,
       }),
     ).toBeInTheDocument();
   });
@@ -113,7 +113,9 @@ describe("InventoryPanel", () => {
 
     const pane = await openPane("tdd");
 
-    expect(await screen.findByLabelText(/deploy tdd to/i)).toBeInTheDocument();
+    expect(
+      await screen.findByLabelText(/deploy target for tdd/i),
+    ).toBeInTheDocument();
     expect(pane.getByRole("button", { name: /deploy/i })).toBeEnabled();
   });
 
@@ -146,7 +148,7 @@ describe("InventoryPanel", () => {
 
   it("holds the deployed column unresolved while the registry is still loading", async () => {
     // The repo set is unknown until the registry resolves, so a skill's repo
-    // reach is unconfirmed — the column must not read a definite "not deployed"
+    // reach is unconfirmed — the column must not read a definite "Not deployed"
     // (J04), the same honesty the deploy button keeps.
     vi.stubGlobal(
       "fetch",
@@ -166,8 +168,8 @@ describe("InventoryPanel", () => {
     renderPanel();
 
     await screen.findByText("tdd");
-    expect(screen.queryByText("not deployed")).not.toBeInTheDocument();
-    expect(screen.getByText("…")).toBeInTheDocument();
+    expect(screen.queryByText("Not deployed")).not.toBeInTheDocument();
+    expect(screen.getByText("Loading deploy-state…")).toBeInTheDocument();
   });
 
   it("disables the deploy action when the registry failed to load", async () => {
@@ -207,7 +209,7 @@ describe("InventoryPanel", () => {
     // A panel that failed to load announces politely: nothing here followed a
     // click, so role="status", never the assertive region (#465, decision 11).
     expect(await screen.findByRole("status")).toHaveTextContent(
-      /no harness is connected/i,
+      /No Harness connected/i,
     );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -220,7 +222,7 @@ describe("InventoryPanel", () => {
     renderPanel();
 
     expect(await screen.findByRole("status")).toHaveTextContent(
-      /the inventory did not load/i,
+      /Inventory not loaded/i,
     );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });

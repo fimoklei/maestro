@@ -104,7 +104,7 @@ function ReasonGroup({
     <fieldset id={id} className="flex min-w-0 flex-col gap-1.5">
       <legend
         className={cn(
-          "font-mono font-semibold text-tag uppercase tracking-[0.12em]",
+          "font-mono font-semibold text-tag tracking-[0.12em]",
           colours.ink,
         )}
       >
@@ -196,12 +196,12 @@ export function BulkRemoveDialog({
     done?.title ??
     (isRemoving
       ? { before: "Removing ", after: "" }
-      : { before: "Remove ", after: ` from ${targetCount} targets?` });
+      : { before: "Remove ", after: ` from ${targetCount} targets` });
   const heading = `${title.before}${skillName}${title.after}`;
   // "done" only where nothing was left behind: a run that left targets alone
   // is closed, not finished.
   const closeLabel =
-    done?.kind === "clean" ? "done" : report === null ? "cancel" : "close";
+    done?.kind === "clean" ? "Done" : report === null ? "Cancel" : "Close";
   // Only skills reach this dialog today, same as the single one.
   const type = "skill" as const;
 
@@ -246,7 +246,7 @@ export function BulkRemoveDialog({
           <ReasonGroup
             id={costId}
             tone="cost"
-            heading={`▲ LOSES WORK · ${grouped.cost.length}`}
+            heading={`▲ Loses work · ${grouped.cost.length}`}
             rows={grouped.cost}
           />
         )}
@@ -254,7 +254,7 @@ export function BulkRemoveDialog({
           <ReasonGroup
             id={refusedId}
             tone="refusal"
-            heading={`✕ CAN'T BE REMOVED · ${grouped.refused.length}`}
+            heading={`✕ Cannot be removed · ${grouped.refused.length}`}
             rows={grouped.refused}
           />
         )}
@@ -307,7 +307,7 @@ export function BulkRemoveDialog({
           <span
             role="status"
             aria-live="polite"
-            aria-label="Bulk remove result"
+            aria-label="Bulk removal result"
             className="sr-only"
           >
             {done === null ? "" : `${heading} · ${done.counts}`}
@@ -321,7 +321,7 @@ export function BulkRemoveDialog({
                 <ReasonGroup
                   id={leftAloneId}
                   tone="refusal"
-                  heading={`✕ LEFT ALONE · ${done.leftAlone.length}`}
+                  heading={`✕ Left alone · ${done.leftAlone.length}`}
                   // The class in the right-hand slot, the reason under it: one
                   // without the other says nothing to act on.
                   rows={done.leftAlone.map((row) => ({
@@ -341,6 +341,7 @@ export function BulkRemoveDialog({
                   level: "error",
                   label: failure.label,
                   message: failure.message,
+                  detail: failure.detail,
                 }}
               />
               {/* Only where the attempt can be repeated: the body the confirm
@@ -351,8 +352,8 @@ export function BulkRemoveDialog({
             // The wait explained rather than blank. No per-target progress and
             // no abort: there is no partial-state exit to offer.
             <SummaryRow id={bodyId} tone="running">
-              walking {grouped?.removableCount ?? targetCount} targets, one at a
-              time
+              Removing from {grouped?.removableCount ?? targetCount} targets,
+              one at a time
             </SummaryRow>
           ) : grouped === null ? (
             // Announced: the answered count climbs while the panel stands
@@ -393,8 +394,9 @@ export function BulkRemoveDialog({
               onClick={onConfirm}
             >
               {isRemoving
-                ? "removing…"
-                : (grouped?.confirmLabel ?? `remove from ${targetCount} →`)}
+                ? "Removing…"
+                : (grouped?.confirmLabel ??
+                  `Remove from ${targetCount} targets`)}
             </Button>
           ) : null}
         </div>

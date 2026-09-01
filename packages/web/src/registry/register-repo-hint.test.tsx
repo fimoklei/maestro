@@ -7,7 +7,7 @@ describe("RegisterRepoHint", () => {
     const { container } = render(<RegisterRepoHint />);
 
     expect(container.textContent).toBe(
-      "No repositories registered. Register one with + repo in the sidebar.",
+      "No repositories registered. Select + repo in the sidebar to register one.",
     );
   });
 

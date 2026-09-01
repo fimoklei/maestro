@@ -15,11 +15,11 @@ const REPO = "/Users/me/project";
 // The confirmation's own control. Fixed text: the skill name left the label
 // with #411, because the dialog's title already carries it. Only one dialog is
 // ever open, so the label alone identifies the control.
-const CONFIRM = "remove →";
+const CONFIRM = "Remove skill";
 
 // The same control after a failure: the removal was already confirmed once, so
 // it offers the attempt again rather than a first one (#415).
-const RETRY = "retry →";
+const RETRY = "Confirm removal";
 
 // Opening the confirmation asks the server one read-only question — what would
 // this removal destroy — so a test that cares about the removal itself has to
@@ -122,20 +122,20 @@ async function openRemoveDialog(skill = "tdd") {
     screen.getByRole("button", { name: `Actions for ${skill}` }),
   );
   await userEvent.click(
-    await screen.findByRole("menuitem", { name: "remove…" }),
+    await screen.findByRole("menuitem", { name: "Remove skill" }),
   );
   return screen.findByRole("dialog");
 }
 
 describe("removing a deployed skill from a row", () => {
-  it("carries remove… in the row's actions menu, reachable by keyboard", async () => {
+  it("carries Remove skill in the row's actions menu, reachable by keyboard", async () => {
     renderRow();
 
     await userEvent.tab();
     await userEvent.keyboard("{Enter}");
 
     expect(
-      await screen.findByRole("menuitem", { name: "remove…" }),
+      await screen.findByRole("menuitem", { name: "Remove skill" }),
     ).toBeInTheDocument();
   });
 
@@ -157,7 +157,7 @@ describe("removing a deployed skill from a row", () => {
 
     expect(
       within(screen.getByRole("dialog")).getByRole("heading", { level: 2 }),
-    ).toHaveTextContent("Remove tdd v0.5.0?");
+    ).toHaveTextContent("Remove tdd v0.5.0");
   });
 
   it("removes nothing when the confirmation is cancelled", async () => {
@@ -165,7 +165,7 @@ describe("removing a deployed skill from a row", () => {
     renderRow();
 
     await openRemoveDialog();
-    await userEvent.click(screen.getByRole("button", { name: "cancel" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -227,8 +227,6 @@ describe("removing a deployed skill from a row", () => {
         ? jsonResponse(
             {
               error: "cost-not-acknowledged",
-              message:
-                "That copy is not the one this request agreed to remove.",
               check: { scope: "repo", warning: "local-edits-will-be-lost" },
               receipt: RESTATED,
             },
@@ -245,12 +243,10 @@ describe("removing a deployed skill from a row", () => {
     await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
     expect(
-      await within(dialog).findByText(
-        "That copy is not the one this request agreed to remove.",
-      ),
+      await within(dialog).findByText(/changed since this removal was priced/),
     ).toBeInTheDocument();
     expect(
-      within(dialog).getByText("local edits — deleted too"),
+      within(dialog).getByText("Local edits — deleted too"),
     ).toBeInTheDocument();
 
     // Still the first offer, not a retry: nothing was removed.
@@ -274,17 +270,17 @@ describe("removing a deployed skill from a row", () => {
     const dialog = await openRemoveDialog();
 
     expect(
-      await within(dialog).findByText("nothing recorded — may lose work"),
+      await within(dialog).findByText("Nothing recorded — may lose work"),
     ).toBeInTheDocument();
   });
 
   // The server can also refuse the check outright and say why — folding that
   // into "couldn't check" would hide the reason (#385).
   describe("when the check comes back refused", () => {
-    const refuseWith = (code: string, message: string, status: number) => {
+    const refuseWith = (code: string, status: number) => {
       const fetchMock = vi.fn(async (path: string) =>
         path === "/api/deploy/remove/preflight"
-          ? jsonResponse({ error: code, message }, status)
+          ? jsonResponse({ error: code }, status)
           : jsonResponse({ removed: { type: "skill", name: "tdd" } }, 200),
       );
       vi.stubGlobal("fetch", fetchMock);
@@ -292,17 +288,13 @@ describe("removing a deployed skill from a row", () => {
     };
 
     it("states the server's own reason instead of a failed check", async () => {
-      refuseWith(
-        "repo-not-registered",
-        "That repo is not registered with Maestro.",
-        403,
-      );
+      refuseWith("repo-not-registered", 403);
       renderRow();
 
       const dialog = await openRemoveDialog();
 
       expect(await within(dialog).findByRole("alert")).toHaveTextContent(
-        "That repo is not registered with Maestro.",
+        /Register this repository in Maestro/,
       );
       expect(dialog).not.toHaveTextContent(/may lose work/i);
     });
@@ -310,11 +302,7 @@ describe("removing a deployed skill from a row", () => {
     it("offers no confirm for a removal that cannot succeed", async () => {
       // Not a disabled one either: the server has settled it, so a control that
       // can never fire would state a way through that does not exist (#412).
-      const fetchMock = refuseWith(
-        "no-supported-tool",
-        "No supported tool is installed, so there is no global deployment to remove.",
-        409,
-      );
+      const fetchMock = refuseWith("no-supported-tool", 409);
       renderRow({ target: { kind: "global", tools: ["claude"] } });
 
       const dialog = await openRemoveDialog();
@@ -327,17 +315,13 @@ describe("removing a deployed skill from a row", () => {
     it("still lets the user through when the check merely could not run", async () => {
       // The server was reachable and tried; it just has no answer. That settles
       // nothing about the removal, so the confirm stays where it was.
-      refuseWith(
-        "preflight-failed",
-        "Maestro could not check the deployed copy for local changes.",
-        502,
-      );
+      refuseWith("preflight-failed", 502);
       renderRow();
 
       const dialog = await openRemoveDialog();
 
       expect(
-        await within(dialog).findByText("check didn't run — may lose work"),
+        await within(dialog).findByText("Check did not run — may lose work"),
       ).toBeInTheDocument();
       expect(screen.getByRole("button", { name: CONFIRM })).toBeEnabled();
     });
@@ -362,15 +346,9 @@ describe("removing a deployed skill from a row", () => {
     });
   });
 
-  it("keeps the dialog open on failure, with apm's own reason", async () => {
+  it("keeps the dialog open on failure, with the removal's own reason", async () => {
     vi.stubGlobal("fetch", async () =>
-      jsonResponse(
-        {
-          error: "remove-failed",
-          message: "apm did not confirm the removal.",
-        },
-        502,
-      ),
+      jsonResponse({ error: "remove-failed" }, 502),
     );
     const { onRemoved } = renderRow();
 
@@ -378,7 +356,7 @@ describe("removing a deployed skill from a row", () => {
     await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "apm did not confirm the removal.",
+      /The removal ran but proved nothing/,
     );
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(onRemoved).not.toHaveBeenCalled();
@@ -392,13 +370,7 @@ describe("removing a deployed skill from a row", () => {
     const fetchMock = stubFetch(null, () => {
       attempts += 1;
       return attempts === 1
-        ? jsonResponse(
-            {
-              error: "remove-failed",
-              message: "apm did not confirm the removal.",
-            },
-            502,
-          )
+        ? jsonResponse({ error: "remove-failed" }, 502)
         : jsonResponse(
             { removed: { type: "skill", name: "tdd", version: "v0.5.0" } },
             200,
@@ -435,13 +407,7 @@ describe("removing a deployed skill from a row", () => {
     stubFetch(null, () => {
       attempts += 1;
       return attempts === 1
-        ? jsonResponse(
-            {
-              error: "remove-failed",
-              message: "apm did not confirm the removal.",
-            },
-            502,
-          )
+        ? jsonResponse({ error: "remove-failed" }, 502)
         : // A retry that never answers, so the in-flight panel can be read.
           new Promise<Response>(() => undefined);
     });
@@ -455,9 +421,9 @@ describe("removing a deployed skill from a row", () => {
       await screen.findByRole("button", { name: /removing/i }),
     ).toBeDisabled();
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "apm did not confirm the removal.",
+      /The removal ran but proved nothing/,
     );
-    expect(screen.getByRole("button", { name: "close" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Close" })).toBeDisabled();
   });
 
   // apm can remove a skill and still fail to prove it, which leaves the entry
@@ -469,21 +435,8 @@ describe("removing a deployed skill from a row", () => {
     stubFetch(null, () => {
       attempts += 1;
       return attempts === 1
-        ? jsonResponse(
-            {
-              error: "remove-failed",
-              message: "apm did not confirm the removal.",
-            },
-            502,
-          )
-        : jsonResponse(
-            {
-              error: "not-deployed",
-              message:
-                "That skill is not deployed on this target, so there is nothing to remove.",
-            },
-            404,
-          );
+        ? jsonResponse({ error: "remove-failed" }, 502)
+        : jsonResponse({ error: "not-deployed" }, 404);
     });
     const { onRemoved } = renderRow();
 
@@ -498,29 +451,20 @@ describe("removing a deployed skill from a row", () => {
     // No trace line: the server never named the version this removal ran
     // against, and the screen's own guess is not its answer (#383). The row
     // leaving the refetched card is the evidence.
-    expect(screen.queryByText(/removed tdd/)).toBeNull();
+    expect(screen.queryByText(/Removed tdd/)).toBeNull();
   });
 
   // The same answer on a first attempt means the skill was never deployed here.
   // Nothing landed, so there is nothing to settle.
   it("keeps a first attempt open when the skill is not deployed", async () => {
-    stubFetch(null, () =>
-      jsonResponse(
-        {
-          error: "not-deployed",
-          message:
-            "That skill is not deployed on this target, so there is nothing to remove.",
-        },
-        404,
-      ),
-    );
+    stubFetch(null, () => jsonResponse({ error: "not-deployed" }, 404));
     const { onRemoved } = renderRow();
 
     await openRemoveDialog();
     await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "there is nothing to remove",
+      /Nothing was deleted/,
     );
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(onRemoved).not.toHaveBeenCalled();
@@ -537,7 +481,7 @@ describe("removing a deployed skill from a row", () => {
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       expect(
-        await screen.findByText(`removed tdd v0.5.0 from ${REPO}`),
+        await screen.findByText(`Removed tdd v0.5.0 from ${REPO}`),
       ).toBeInTheDocument();
     });
 
@@ -549,7 +493,7 @@ describe("removing a deployed skill from a row", () => {
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       const announcement = await screen.findByText(
-        `removed tdd v0.5.0 from ${REPO}`,
+        `Removed tdd v0.5.0 from ${REPO}`,
       );
       expect(announcement.closest("[role='status']")).not.toBeNull();
     });
@@ -570,10 +514,10 @@ describe("removing a deployed skill from a row", () => {
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       expect(
-        await screen.findByText(`removed tdd v0.9.0 from ${REPO}`),
+        await screen.findByText(`Removed tdd v0.9.0 from ${REPO}`),
       ).toBeInTheDocument();
       expect(
-        screen.queryByText(`removed tdd v0.5.0 from ${REPO}`),
+        screen.queryByText(`Removed tdd v0.5.0 from ${REPO}`),
       ).not.toBeInTheDocument();
     });
 
@@ -599,15 +543,15 @@ describe("removing a deployed skill from a row", () => {
 
       await openRemoveDialog();
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
-      await screen.findByText(`removed tdd v0.5.0 from ${REPO}`);
+      await screen.findByText(`Removed tdd v0.5.0 from ${REPO}`);
 
       await openRemoveDialog("jobs");
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
-      await screen.findByText(`removed jobs v1.2.0 from ${REPO}`);
+      await screen.findByText(`Removed jobs v1.2.0 from ${REPO}`);
 
       const live = screen.getByRole("status");
-      expect(live).toHaveTextContent(`removed jobs v1.2.0 from ${REPO}`);
-      expect(live).not.toHaveTextContent(`removed tdd v0.5.0 from ${REPO}`);
+      expect(live).toHaveTextContent(`Removed jobs v1.2.0 from ${REPO}`);
+      expect(live).not.toHaveTextContent(`Removed tdd v0.5.0 from ${REPO}`);
     });
 
     // The detected tool set is probed server-side when the removal runs, so a
@@ -634,7 +578,7 @@ describe("removing a deployed skill from a row", () => {
 
       expect(
         await screen.findByText(
-          "removed tdd v0.5.0 from Claude Code and Codex",
+          "Removed tdd v0.5.0 from Claude Code and Codex",
         ),
       ).toBeInTheDocument();
     });
@@ -651,16 +595,13 @@ describe("removing a deployed skill from a row", () => {
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       expect(
-        await screen.findByText(`removed tdd (version unknown) from ${REPO}`),
+        await screen.findByText(`Removed tdd (version unknown) from ${REPO}`),
       ).toBeInTheDocument();
     });
 
     it("says nothing when the removal failed", async () => {
       vi.stubGlobal("fetch", async () =>
-        jsonResponse(
-          { error: "remove-failed", message: "apm did not confirm it." },
-          502,
-        ),
+        jsonResponse({ error: "remove-failed" }, 502),
       );
       renderRow();
 
@@ -668,7 +609,7 @@ describe("removing a deployed skill from a row", () => {
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       await screen.findByRole("alert");
-      expect(screen.queryByText(/^removed tdd/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/^Removed tdd/)).not.toBeInTheDocument();
     });
 
     it("stays on the card after the last skill on it is gone", async () => {
@@ -677,11 +618,11 @@ describe("removing a deployed skill from a row", () => {
 
       await openRemoveDialog();
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
-      await screen.findByText(`removed tdd v0.5.0 from ${REPO}`);
+      await screen.findByText(`Removed tdd v0.5.0 from ${REPO}`);
       withoutTdd();
 
       expect(
-        screen.getByText(`removed tdd v0.5.0 from ${REPO}`),
+        screen.getByText(`Removed tdd v0.5.0 from ${REPO}`),
       ).toBeInTheDocument();
     });
   });
@@ -692,7 +633,7 @@ describe("removing a deployed skill from a row", () => {
     const renderGlobalRow = () =>
       renderRow({ target: { kind: "global", tools: ["claude", "codex"] } });
 
-    it("offers remove… just as a repo row does", async () => {
+    it("offers Remove skill just as a repo row does", async () => {
       stubFetch(null);
       renderGlobalRow();
 
@@ -737,10 +678,10 @@ describe("removing a deployed skill from a row", () => {
       const dialog = await openRemoveDialog();
 
       const region = await within(dialog).findByRole("status", {
-        name: /removed from/i,
+        name: /removal targets/i,
       });
       expect(
-        within(region).getAllByText("local edits — deleted too"),
+        within(region).getAllByText("Local edits — deleted too"),
       ).toHaveLength(2);
       const [, init] = preflightCalls(fetchMock)[0] as [string, RequestInit];
       expect(JSON.parse(String(init.body))).toEqual({
@@ -765,7 +706,6 @@ describe("removing a deployed skill from a row", () => {
           ? jsonResponse(
               {
                 error: "cost-not-acknowledged",
-                message: "That copy is not the one this request agreed to.",
                 check: {
                   scope: "global",
                   tools: [
@@ -872,11 +812,11 @@ describe("removing a deployed skill from a row", () => {
       await waitFor(() => {
         expect(screen.getByRole("button", { name: CONFIRM })).toBeEnabled();
       });
-      await userEvent.click(screen.getByRole("button", { name: "cancel" }));
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
       await openRemoveDialog();
       expect(
-        screen.getByRole("status", { name: "Local-edits check" }),
+        screen.getByRole("status", { name: "Local edits check" }),
       ).toBeInTheDocument();
       expect(screen.getByRole("button", { name: CONFIRM })).toBeDisabled();
 

@@ -20,7 +20,7 @@ describe("MovementTable", () => {
     );
 
     expect(screen.getByText("tdd")).toBeInTheDocument();
-    expect(screen.getByText("deleted locally")).toBeInTheDocument();
+    expect(screen.getByText("Deleted locally")).toBeInTheDocument();
   });
 
   it("lets a long skill name shrink so the deletion chip stays in the cell", () => {
@@ -40,7 +40,7 @@ describe("MovementTable", () => {
     );
 
     expect(screen.getByText(longName)).toHaveClass("min-w-0", "truncate");
-    expect(screen.getByText("deleted locally")).toBeInTheDocument();
+    expect(screen.getByText("Deleted locally")).toBeInTheDocument();
   });
 
   it("leaves a movement that is not a deletion unlabelled", () => {
@@ -59,7 +59,7 @@ describe("MovementTable", () => {
     );
 
     expect(screen.getByText("lint-rules")).toBeInTheDocument();
-    expect(screen.queryByText("deleted locally")).not.toBeInTheDocument();
+    expect(screen.queryByText("Deleted locally")).not.toBeInTheDocument();
   });
 
   const promote = {
@@ -99,7 +99,9 @@ describe("MovementTable", () => {
     );
 
     await userEvent.click(
-      within(rowOf("code-review")).getByRole("button", { name: "promote" }),
+      within(rowOf("code-review")).getByRole("button", {
+        name: "Propose change",
+      }),
     );
 
     expect(pressed).toEqual(["code-review"]);
@@ -128,7 +130,7 @@ describe("MovementTable", () => {
       />,
     );
 
-    expect(screen.queryByRole("button", { name: "promote" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Propose change" })).toBeNull();
     // No press anywhere means no column claiming one.
     expect(screen.queryByText("Action")).toBeNull();
   });
@@ -157,10 +159,14 @@ describe("MovementTable", () => {
     );
 
     expect(
-      within(rowOf("lint-rules")).getByRole("button", { name: /promoting/ }),
+      within(rowOf("lint-rules")).getByRole("button", {
+        name: /proposing change/i,
+      }),
     ).toBeDisabled();
     expect(
-      within(rowOf("code-review")).getByRole("button", { name: "promote" }),
+      within(rowOf("code-review")).getByRole("button", {
+        name: "Propose change",
+      }),
     ).toBeDisabled();
   });
 
@@ -180,7 +186,9 @@ describe("MovementTable", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: "promote" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Propose change" }),
+    ).toBeDisabled();
   });
 
   it("keeps every promoted skill's link, not only the last one", () => {
@@ -214,11 +222,11 @@ describe("MovementTable", () => {
     );
 
     expect(
-      within(rowOf("lint-rules")).getByRole("link", { name: /pull request/ }),
+      within(rowOf("lint-rules")).getByRole("link", { name: /Pull request/ }),
     ).toHaveAttribute("href", "https://github.com/o/r/compare/a...b");
     // Only the row whose press just landed takes the focus its button had.
     expect(
-      within(rowOf("code-review")).getByRole("link", { name: /pull request/ }),
+      within(rowOf("code-review")).getByRole("link", { name: /Pull request/ }),
     ).toHaveFocus();
   });
 
@@ -247,8 +255,10 @@ describe("MovementTable", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: "promote" })).toBeEnabled();
-    expect(screen.queryByRole("link", { name: /pull request/ })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Propose change" }),
+    ).toBeEnabled();
+    expect(screen.queryByRole("link", { name: /Pull request/ })).toBeNull();
   });
 
   it("states a refusal on the row it belongs to", () => {
@@ -280,7 +290,9 @@ describe("MovementTable", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "The remote refused it.",
     );
-    expect(screen.getByRole("button", { name: "promote" })).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "Propose change" }),
+    ).toBeEnabled();
   });
 
   it("warns that promoting a teammate's change will be refused, and keeps the press available", () => {
@@ -300,9 +312,11 @@ describe("MovementTable", () => {
     );
 
     expect(
-      screen.getByText(/pulled into the Harness clone/i),
+      screen.getByText(/Pull it into the Harness clone/i),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "promote" })).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "Propose change" }),
+    ).toBeEnabled();
   });
 
   it("shows no concurrent-change warning when nobody else touched the skill", () => {
@@ -322,7 +336,7 @@ describe("MovementTable", () => {
     );
 
     expect(
-      screen.queryByText(/pulled into the Harness clone/i),
+      screen.queryByText(/Pull it into the Harness clone/i),
     ).not.toBeInTheDocument();
   });
 
@@ -343,7 +357,7 @@ describe("MovementTable", () => {
     );
 
     expect(
-      screen.getByText(/pulled into the Harness clone/i),
+      screen.getByText(/Pull it into the Harness clone/i),
     ).toBeInTheDocument();
   });
 
@@ -366,7 +380,7 @@ describe("MovementTable", () => {
       />,
     );
 
-    screen.getByRole("button", { name: "promote" }).click();
+    screen.getByRole("button", { name: "Propose change" }).click();
 
     expect(pressed).toEqual(["old-skill"]);
   });

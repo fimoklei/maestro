@@ -173,9 +173,9 @@ export const PromoteRefused: Story = {
         skill: "lint-rules",
         notice: {
           level: "error",
-          label: "the push did not land",
+          label: "Change not proposed",
           message:
-            "The Harness is as it was. Check the connection to GitHub, then promote again.",
+            "The Harness is as it was. Propose change again once GitHub is reachable.",
         },
       },
     },

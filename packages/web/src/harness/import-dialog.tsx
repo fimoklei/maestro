@@ -92,9 +92,7 @@ export function ImportDialog({
                 title={source ?? undefined}
                 className="min-w-0 flex-1 truncate font-mono text-data text-fg"
               >
-                {source === null
-                  ? "No folder picked yet."
-                  : targetLabel(source)}
+                {source === null ? "No folder picked yet" : targetLabel(source)}
               </span>
               <Button
                 type="button"
@@ -102,7 +100,7 @@ export function ImportDialog({
                 size="sm"
                 onClick={onPickSource}
               >
-                {source === null ? "pick folder" : "change"}
+                {source === null ? "Pick folder" : "Change folder"}
               </Button>
             </div>
             {/* The answer to picking a folder, so it announces assertively —
@@ -128,8 +126,8 @@ export function ImportDialog({
             {/* The directory name is the skill's identity, so it is stated
                 before it is chosen, not explained after a failure. */}
             <span className="font-ui text-desc text-muted">
-              This becomes the folder name, and the SKILL.md name is rewritten
-              to match.
+              This becomes the folder name, and the name in SKILL.md is
+              rewritten to match
             </span>
             <Notice
               id={nameErrorId}
@@ -145,7 +143,7 @@ export function ImportDialog({
               className="flex flex-col gap-1.5 rounded-control border border-line-drift bg-amber-bg px-2.5 py-2.5"
             >
               <span className="font-semibold font-ui text-amber-ink text-desc">
-                Convention checks — advisory, does not block import
+                Convention checks — the import still runs
               </span>
               <ul className="m-0 flex list-none flex-col gap-1 p-0">
                 {advisories.map((advisory) => (
@@ -160,7 +158,7 @@ export function ImportDialog({
           {imported === null ? null : (
             <p role="status" className="m-0 font-ui text-desc text-fg-2">
               <span className="font-mono text-fg">{imported.name}</span> landed
-              in the Harness as a pending promotion.
+              in the Harness and is waiting for review.
               {imported.skipped === 0
                 ? null
                 : imported.skipped === 1
@@ -182,7 +180,7 @@ export function ImportDialog({
             onClick={onClose}
             disabled={importing}
           >
-            close
+            Close
           </Button>
           <Button
             type="button"
@@ -192,7 +190,7 @@ export function ImportDialog({
             disabled={!importEnabled(check) || importing || imported !== null}
             onClick={onImport}
           >
-            {importing ? "importing…" : "import"}
+            {importing ? "Importing…" : "Import skill"}
           </Button>
         </div>
       </div>

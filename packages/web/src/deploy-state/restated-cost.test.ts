@@ -3,12 +3,7 @@ import { HttpError } from "../api/http";
 import { restatedCost } from "./restated-cost";
 
 const refusal = (body: unknown) =>
-  new HttpError(
-    409,
-    "not the copy you agreed to",
-    "cost-not-acknowledged",
-    body,
-  );
+  new HttpError(409, "sent by the server", "cost-not-acknowledged", body);
 
 const RECEIPT = "a".repeat(64);
 
@@ -24,9 +19,7 @@ describe("restatedCost", () => {
     ).toEqual({
       check: { scope: "repo", warning: "local-edits-will-be-lost" },
       receipt: RECEIPT,
-      // The server's sentence travels with the cost it explains.
       reclaim: null,
-      message: "not the copy you agreed to",
     });
   });
 
@@ -54,7 +47,6 @@ describe("restatedCost", () => {
       },
       receipt: RECEIPT,
       reclaim: null,
-      message: "not the copy you agreed to",
     });
   });
 

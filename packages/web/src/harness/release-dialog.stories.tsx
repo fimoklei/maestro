@@ -111,9 +111,9 @@ export const CouldNotPlan: Story = {
       kind: "error",
       notice: {
         level: "error",
-        label: "no answer from GitHub",
-        message:
-          "A release plan is measured against what GitHub holds, and Maestro has not read that yet. Press refresh, then open the release again.",
+        label: "No answer from GitHub",
+        message: "Press Refresh, then Plan release again.",
+        detail: "A release plan is measured against what GitHub holds.",
       },
     },
   },
@@ -127,9 +127,9 @@ export const PublishFailed: Story = {
   args: {
     publishError: {
       level: "error",
-      label: "someone published first",
+      label: "Version number taken",
       message:
-        "That version number is taken. Maestro recomputed the plan against the newest tag — check it, then confirm.",
+        "Maestro rebuilt the plan against the newest release. Check it, then Publish release.",
     },
   },
 };

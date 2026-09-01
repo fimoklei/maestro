@@ -225,25 +225,26 @@ describe("joining a Harness by its GitHub url", () => {
     });
 
     expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: string; message: string };
+    const body = (await res.json()) as { error: string };
     expect(body.error).toBe("url-carries-credentials");
-    expect(body.message).not.toContain("t0ken");
+    // The whole reply, not just a sentence: nothing in it may carry the token.
+    expect(JSON.stringify(body)).not.toContain("t0ken");
     await expect(
       readFile(join(home, "agent-harness", ".git", "config")),
     ).rejects.toThrow();
   });
 
   // Missing, private and mistyped are indistinguishable from the outside, so
-  // they share one message rather than being guessed apart (#555).
+  // they share one code rather than being guessed apart (#555).
   it("reports a GitHub url that cannot be cloned without exposing git's output", async () => {
     const res = await postConnect(makeApp(), {
       path: MISSING_URL,
     });
 
     expect(res.status).toBe(422);
-    const body = (await res.json()) as { error: string; message: string };
+    const body = (await res.json()) as { error: string };
     expect(body.error).toBe("clone-unavailable");
-    expect(body.message).not.toContain(base);
+    expect(JSON.stringify(body)).not.toContain(base);
   });
 
   describe("choosing where the clone lands", () => {
@@ -300,9 +301,9 @@ describe("joining a Harness by its GitHub url", () => {
       const res = await postConnect(makeApp(), { path: GITHUB_URL });
 
       expect(res.status).toBe(409);
-      const body = (await res.json()) as { error: string; message: string };
+      const body = (await res.json()) as { error: string };
       expect(body.error).toBe("destination-occupied");
-      expect(body.message).not.toContain(base);
+      expect(JSON.stringify(body)).not.toContain(base);
       expect(await readFile(join(occupied, "notes.txt"), "utf8")).toBe(
         "mine\n",
       );
@@ -318,9 +319,9 @@ describe("joining a Harness by its GitHub url", () => {
       const res = await postConnect(makeApp(), { path: GITHUB_URL });
 
       expect(res.status).toBe(409);
-      const body = (await res.json()) as { error: string; message: string };
+      const body = (await res.json()) as { error: string };
       expect(body.error).toBe("destination-partial-clone");
-      expect(body.message).not.toContain(base);
+      expect(JSON.stringify(body)).not.toContain(base);
       await expect(
         readFile(join(partial, ".git", "config"), "utf8"),
       ).resolves.toContain("origin");

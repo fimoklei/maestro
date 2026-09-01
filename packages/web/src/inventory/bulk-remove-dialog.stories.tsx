@@ -51,12 +51,12 @@ export const LosesWork: Story = {
         {
           label: "/dev/acme-api",
           version: "v1.0.0",
-          reason: "local edits — deleted too",
+          reason: "Local edits — deleted too",
         },
         {
           label: "/dev/design-tokens",
           version: "v1.2.0",
-          reason: "check did not run",
+          reason: "Check did not run",
         },
       ],
       refused: [],
@@ -74,7 +74,9 @@ export const CannotBeRemoved: Story = {
       kind: "grouped",
       cleanLine: "3 clean copies",
       cost: [],
-      refused: [{ label: "/dev/legacy-etl", reason: "repo not registered" }],
+      refused: [
+        { label: "/dev/legacy-etl", reason: "Repository not registered" },
+      ],
       removableCount: 3,
       confirmLabel: "remove from 3 →",
     },
@@ -92,9 +94,10 @@ export const OutcomeUnknown: Story = {
   args: {
     report: {
       kind: "outcome-unknown",
-      label: "the outcome is unknown",
+      label: "Outcome unknown",
       message:
-        "Maestro lost its server's answer and cannot say what was removed. Close this and check the targets before trying again.",
+        "The run's outcome is unrecorded. Check the targets before removing again.",
+      detail: "The Maestro server did not answer.",
     },
   },
 };
@@ -122,12 +125,12 @@ export const ReportPartial: Story = {
         {
           label: "/dev/acme-api",
           outcome: "failed",
-          reason: "target is held by another operation — still there",
+          reason: "Target held by another operation — still there",
         },
         {
           label: "/dev/legacy-etl",
           outcome: "refused",
-          reason: "repo not registered",
+          reason: "Repository not registered",
         },
       ],
     },
@@ -140,8 +143,9 @@ export const ReportNeverStarted: Story = {
   args: {
     report: {
       kind: "never-started",
-      label: "the run never started",
-      message: "Malformed request. Nothing was removed anywhere. Try again.",
+      label: "Run not started",
+      message: "Nothing was removed anywhere. Confirm the removal again.",
+      detail: "The Maestro server refused the request.",
     },
   },
 };

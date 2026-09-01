@@ -66,7 +66,7 @@ describe("removeLedgerRows", () => {
       key: "leftover:codex",
       name: "Codex",
       path: "/Users/me/.agents/skills/tdd",
-      status: "not installed — copy deleted in full",
+      status: "Not installed — copy deleted in full",
       drift: true,
       leftover: true,
       outcome: null,
@@ -104,7 +104,7 @@ describe("removeLedgerRows", () => {
 
       expect(claude?.status).toBeNull();
       expect(claude?.drift).toBe(false);
-      expect(codex?.status).toBe("local edits — deleted too");
+      expect(codex?.status).toBe("Local edits — deleted too");
       expect(codex?.drift).toBe(true);
     });
 
@@ -113,7 +113,7 @@ describe("removeLedgerRows", () => {
         perTool({ claude: "cannot-verify", codex: "none" }),
       );
 
-      expect(claude?.status).toBe("nothing recorded — may lose work");
+      expect(claude?.status).toBe("Nothing recorded — may lose work");
       expect(claude?.drift).toBe(true);
       expect(codex?.status).toBeNull();
     });
@@ -123,7 +123,7 @@ describe("removeLedgerRows", () => {
       // nobody answered for is unchecked, which is not the same as clean (J04).
       const [, codex] = rowsFor(perTool({ claude: "none" }));
 
-      expect(codex?.status).toBe("check didn't run — may lose work");
+      expect(codex?.status).toBe("Check did not run — may lose work");
       expect(codex?.drift).toBe(true);
     });
 
@@ -132,7 +132,7 @@ describe("removeLedgerRows", () => {
         kind: "unanswered",
         warning: "check-failed",
       })) {
-        expect(row.status).toBe("check didn't run — may lose work");
+        expect(row.status).toBe("Check did not run — may lose work");
         expect(row.drift).toBe(true);
       }
     });
@@ -152,26 +152,26 @@ describe("removeLedgerRows", () => {
     it("names the edits it would delete with the copy", () => {
       expect(
         leftoverRow(perTool({ claude: "none", codex: "local-edits" }))?.status,
-      ).toBe("not installed — local edits deleted too");
+      ).toBe("Not installed — local edits deleted too");
     });
 
     it("keeps a copy with no baseline apart from a checked one", () => {
       expect(
         leftoverRow(perTool({ claude: "none", codex: "cannot-verify" }))
           ?.status,
-      ).toBe("not installed — nothing recorded to check");
+      ).toBe("Not installed — nothing recorded to check");
     });
 
     it("never reads a leftover the answer left out as a checked copy", () => {
       expect(leftoverRow(perTool({ claude: "none" }))?.status).toBe(
-        "not installed — check didn't run",
+        "Not installed — check did not run",
       );
     });
 
     it("states the plain reclaim when the copy came back clean", () => {
       expect(
         leftoverRow(perTool({ claude: "none", codex: "none" }))?.status,
-      ).toBe("not installed — copy deleted in full");
+      ).toBe("Not installed — copy deleted in full");
     });
 
     it("stays a cost whatever the check found", () => {
@@ -345,7 +345,7 @@ describe("removeLedgerRows", () => {
       { kind: "repo", warning: "local-edits" },
     );
 
-    expect(repo?.status).toBe("local edits — deleted too");
+    expect(repo?.status).toBe("Local edits — deleted too");
     expect(repo?.drift).toBe(true);
   });
 });
