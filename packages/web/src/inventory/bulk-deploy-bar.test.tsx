@@ -345,7 +345,7 @@ describe("BulkDeployBar", () => {
     const status = await screen.findByRole("status", {
       name: /bulk deploy result/i,
     });
-    expect(status).toHaveTextContent(/failed/i);
+    expect(status).toHaveTextContent(/did not run/i);
     expect(status).not.toHaveTextContent(/deployed/i);
     expect(status).not.toHaveTextContent(/0 skipped/i);
   });

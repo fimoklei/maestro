@@ -32,13 +32,15 @@ const RECOVERABLE: Record<
   string,
   { actionLabel: string; picker: "path" | "parent" }
 > = {
-  "no-usable-origin": { actionLabel: "browse again…", picker: "path" },
+  // Each label runs the last instruction of its row's sentence, with the same
+  // verb and the same object (`.claude/rules/copy.md`, F8).
+  "no-usable-origin": { actionLabel: "Choose another clone", picker: "path" },
   "destination-occupied": {
-    actionLabel: "choose another folder…",
+    actionLabel: "Choose another folder",
     picker: "parent",
   },
   "destination-partial-clone": {
-    actionLabel: "choose another folder…",
+    actionLabel: "Choose another folder",
     picker: "parent",
   },
 };
@@ -82,7 +84,11 @@ export function ConnectInventoryPanel({
   const notice =
     scaffoldNotice(scaffold.error) ??
     connectNotice(connect.error, {
-      detail: offerPath ?? undefined,
+      // The offer's own detail, replacing the row's: a bare path is not a
+      // sentence, and the folder is what the offer is about.
+      detail: offerPath
+        ? `Maestro would scaffold it into ${offerPath}.`
+        : undefined,
       action: offerPath
         ? {
             label: scaffold.isPending ? "Scaffolding…" : "Scaffold the Harness",

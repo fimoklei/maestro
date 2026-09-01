@@ -147,6 +147,10 @@ details may name the exact APM mechanism or file.
 | Promote | **Propose change** / **proposed change** | *Propose change* is the action and the row button; the noun is a **proposed change**. The resulting state is **Waiting for review**, not released or approved. |
 | Release | **Release** / **Released** | *Release* is the action, *released* is the state, and *latest release* is the result. |
 | Consuming repo | **Repository** | Write it out in a sentence; *repo* stays only inside the `+ repo` control label. |
+| Scaffold | **Scaffold** / **Harness scaffold** | *Scaffold* is the action and *Harness scaffold* is the thing on offer; never *generate* or *initialise*. |
+| Clone folder | **Clone** | The local copy of the Harness repository. Say **folder** for any other directory on disk. |
+| `apm.yml` | `apm.yml` | Name the file in a `detail`, never in the sentence — the reader meets it in their own editor. |
+| Bulk removal outcome | **Left alone** | A target the run did not remove, whether it refused or failed; never *skipped*. |
 
 ### Jargon the screen keeps
 

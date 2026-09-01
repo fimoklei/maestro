@@ -130,7 +130,7 @@ describe("ConnectInventoryForm", () => {
         onSubmit={vi.fn()}
         notice={{
           level: "error",
-          label: "no usable git origin",
+          label: "No GitHub origin",
           message: "Server explanation of the refusal.",
           action: { label: "browse again…", onClick: onAction },
         }}
@@ -139,7 +139,7 @@ describe("ConnectInventoryForm", () => {
     );
 
     const alert = screen.getByRole("alert");
-    expect(alert).toHaveTextContent(/no usable git origin/i);
+    expect(alert).toHaveTextContent(/No GitHub origin/i);
     expect(alert).toHaveTextContent("Server explanation of the refusal.");
     await userEvent.click(
       screen.getByRole("button", { name: /browse again/i }),

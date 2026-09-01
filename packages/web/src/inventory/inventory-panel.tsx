@@ -19,15 +19,17 @@ function readNotice(error: Error | null): NoticeContent | null {
   return error instanceof HttpError && error.status === 409
     ? {
         level: "error",
-        label: "no Harness is connected",
+        label: "No Harness connected",
         message:
-          "Nothing is connected yet. Connect a Harness on the Inventory source screen to fill this list.",
+          "Connect a Harness on the Harness location screen to fill this list.",
+        detail: "Nothing is connected yet.",
       }
     : {
         level: "error",
-        label: "the inventory did not load",
-        message:
-          "The connected Harness may have moved, or its apm.yml may no longer be readable. Check the source path on the Inventory source screen.",
+        label: "Inventory not loaded",
+        message: "Check the path on the Harness location screen.",
+        detail:
+          "The connected Harness may have moved, or its apm.yml may no longer be readable.",
       };
 }
 

@@ -83,11 +83,11 @@ describe("InventorySourceView", () => {
 
     expect(
       await screen.findByRole("status", {
-        name: /loading the inventory source/i,
+        name: /loading the harness location/i,
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /inventory source/i }),
+      screen.getByRole("heading", { name: /harness location/i }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/^Loading…$/)).not.toBeInTheDocument();
   });
