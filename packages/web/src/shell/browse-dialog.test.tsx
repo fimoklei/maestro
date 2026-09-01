@@ -439,6 +439,44 @@ describe("BrowseDialog", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows hidden entries by default in import-source mode, since skills live in dotfolders", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse(
+          {
+            ...homeResponse,
+            entries: [
+              {
+                name: ".claude",
+                path: "/home/me/.claude",
+                isHidden: true,
+                isSymlink: false,
+                facts: noFacts,
+              },
+              {
+                name: "projects",
+                path: "/home/me/projects",
+                isHidden: false,
+                isSymlink: false,
+                facts: noFacts,
+              },
+            ],
+          },
+          200,
+        ),
+      ),
+    );
+    renderDialog({ mode: "import-source" });
+
+    expect(
+      await screen.findByRole("button", { name: ".claude" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /1 hidden item.*shown/i }),
+    ).toBeInTheDocument();
+  });
+
   it("omits the hidden-items hint when nothing is hidden", async () => {
     vi.stubGlobal(
       "fetch",
