@@ -1,4 +1,5 @@
 import type { UseQueryResult } from "@tanstack/react-query";
+import type { TargetDriftIndicator } from "../drift/drift-view-model";
 import { skippedNeedsAttention } from "./skipped-entry-text";
 import type { DeployedPrimitive, SkippedEntry } from "./use-deploy-state";
 
@@ -34,6 +35,18 @@ export function toolDeployedView(
     return { status: "pending" };
   }
   return { status: "ready", names, skippedCount: 0, attentionCount };
+}
+
+// The sidebar row and the global card both compute their own indicator, so
+// this is the one place that upgrades a confirmed "empty" to "foreign" —
+// otherwise the two readings of the same target could disagree (#655).
+export function withOtherOrigins(
+  indicator: TargetDriftIndicator,
+  otherOrigins: string[],
+): TargetDriftIndicator {
+  return indicator === "empty" && otherOrigins.length > 0
+    ? "foreign"
+    : indicator;
 }
 
 export function toDeployedView(

@@ -9,12 +9,14 @@ function skillEntry(
   name: string,
   ref: string,
   deployedFiles: string[],
+  repoUrl?: string,
 ): LockfileEntry {
   return {
     resolved_ref: ref,
     virtual_path: `skills/${name}`,
     package_type: "claude_skill",
     deployed_files: deployedFiles,
+    repo_url: repoUrl,
   };
 }
 
@@ -108,6 +110,52 @@ describe("groupPrimitivesByTool", () => {
         packageType: "claude_hook",
       },
     ]);
+  });
+
+  it("names the origin of a skill entry no detected tool's prefix covers", () => {
+    const entry = skillEntry(
+      "tdd",
+      "v0.5.1",
+      ["skills/tdd"],
+      "fimoklei/agent-harness",
+    );
+
+    const result = groupPrimitivesByTool([entry], ["claude", "codex"]);
+
+    expect(result.tools).toEqual([
+      { tool: "claude", primitives: [] },
+      { tool: "codex", primitives: [] },
+    ]);
+    expect(result.otherOrigins).toEqual(["fimoklei/agent-harness"]);
+  });
+
+  it("dedupes the same unattributed origin across multiple entries", () => {
+    const entries = [
+      skillEntry("tdd", "v0.5.1", ["skills/tdd"], "fimoklei/agent-harness"),
+      skillEntry(
+        "diagnose",
+        "v0.5.1",
+        ["skills/diagnose"],
+        "fimoklei/agent-harness",
+      ),
+    ];
+
+    const result = groupPrimitivesByTool(entries, ["claude"]);
+
+    expect(result.otherOrigins).toEqual(["fimoklei/agent-harness"]);
+  });
+
+  it("never names an origin for an entry a tool prefix already claims", () => {
+    const entry = skillEntry(
+      "tdd",
+      "v0.5.1",
+      [".claude/skills/tdd"],
+      "fimoklei/agent-harness",
+    );
+
+    const result = groupPrimitivesByTool([entry], ["claude"]);
+
+    expect(result.otherOrigins).toEqual([]);
   });
 
   it("keeps a hybrid skill apart from a genuinely different primitive", () => {

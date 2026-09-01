@@ -33,6 +33,8 @@ function targetReading(
       return { visible: "In sync" };
     case "empty":
       return { visible: "Empty" };
+    case "foreign":
+      return { visible: "Other origin" };
     case "attention":
       return { visible: "Attention" };
     case "unverified":

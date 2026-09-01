@@ -115,6 +115,7 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
         },
       ],
       skipped: [],
+      otherOrigins: [],
     });
   });
 
@@ -161,6 +162,7 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
         { tool: "codex", primitives: [] },
       ],
       skipped: [],
+      otherOrigins: [],
     });
   });
 
@@ -174,6 +176,39 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
     expect(await res.json()).toEqual({
       tools: [{ tool: "claude", primitives: [] }],
       skipped: [],
+      otherOrigins: [],
+    });
+  });
+
+  it("names the origin of a foreign lockfile entry instead of calling the target empty (#655)", async () => {
+    // The exact shape a pre-deployed_files-attribution install left behind:
+    // a real repo_url, but deployed_files no detected tool's prefix covers.
+    await installClaude();
+    await writeFile(
+      join(apmRoot, "apm.lock.yaml"),
+      [
+        "lockfile_version: '1'",
+        "apm_version: 0.16.0",
+        "dependencies:",
+        "- repo_url: fimoklei/agent-harness",
+        "  host: github.com",
+        "  resolved_ref: v0.5.1",
+        "  virtual_path: skills/tdd",
+        "  package_type: claude_skill",
+        "  deployed_files:",
+        "  - skills/tdd",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const res = await makeApp().request("/api/deploy-state/global");
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      tools: [{ tool: "claude", primitives: [] }],
+      skipped: [],
+      otherOrigins: ["fimoklei/agent-harness"],
     });
   });
 
@@ -213,6 +248,7 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
         },
       ],
       skipped: [],
+      otherOrigins: [],
     });
   });
 });

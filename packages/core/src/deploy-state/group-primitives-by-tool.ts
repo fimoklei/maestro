@@ -21,13 +21,21 @@ const SKILLS_DIR_PREFIX = new Map<SupportedTool, string>(
 export function groupPrimitivesByTool(
   entries: LockfileEntry[],
   detectedTools: readonly SupportedTool[],
-): { tools: ToolDeployState[]; skipped: SkippedEntry[] } {
+): {
+  tools: ToolDeployState[];
+  skipped: SkippedEntry[];
+  otherOrigins: string[];
+} {
   // An empty group is the honest "detected but nothing deployed" state.
   const tools: ToolDeployState[] = detectedTools.map((tool) => ({
     tool,
     primitives: [],
   }));
   const skipped: SkippedEntry[] = [];
+  // A skill entry no detected tool's prefix claims is not "nothing deployed" —
+  // it is deployed by a repo this read cannot attribute, so its origin is
+  // named instead of the entry vanishing (#655).
+  const otherOrigins = new Set<string>();
 
   for (const entry of entries) {
     const reading = readPackage(entry);
@@ -35,9 +43,11 @@ export function groupPrimitivesByTool(
       skipped.push(skippedFromReading(reading, entry.virtual_path));
       continue;
     }
+    let claimed = false;
     for (const group of tools) {
       const prefix = SKILLS_DIR_PREFIX.get(group.tool);
       if (prefix !== undefined && entryTargetsPrefix(entry, prefix)) {
+        claimed = true;
         group.primitives.push({
           type: "skill",
           name: reading.name,
@@ -45,8 +55,11 @@ export function groupPrimitivesByTool(
         });
       }
     }
+    if (!claimed && entry.repo_url !== undefined) {
+      otherOrigins.add(entry.repo_url);
+    }
   }
-  return { tools, skipped };
+  return { tools, skipped, otherOrigins: [...otherOrigins] };
 }
 
 // The trailing slash keeps `.claude` from matching a `.claudex` sibling.

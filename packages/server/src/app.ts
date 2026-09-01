@@ -788,7 +788,11 @@ export function createApp(deps: AppDeps) {
     if (!result.ok) {
       return c.json({ error: result.error }, 422);
     }
-    return c.json({ tools: result.tools, skipped: result.skipped });
+    return c.json({
+      tools: result.tools,
+      skipped: result.skipped,
+      otherOrigins: result.otherOrigins,
+    });
   });
 
   // Business rules live in core; this route validates shape and maps errors.
