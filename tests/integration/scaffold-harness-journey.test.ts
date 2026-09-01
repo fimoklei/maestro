@@ -54,6 +54,7 @@ const DEFAULT_BRANCH = "trunk";
 const CANONICAL_FILES = [
   ".apm/skills/.gitkeep",
   ".github/workflows/skill-check.yml",
+  "CONTRIBUTING.md",
   "README.md",
   "apm.yml",
 ];

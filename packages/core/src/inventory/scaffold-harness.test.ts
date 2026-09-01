@@ -112,6 +112,7 @@ describe("ScaffoldHarness", () => {
     expect(
       await fs.readFile(`${REPO}/.github/workflows/skill-check.yml`),
     ).toContain("ubuntu-latest");
+    expect(await fs.readFile(`${REPO}/CONTRIBUTING.md`)).toMatch(/curator/i);
   });
 
   it("commits only the paths it wrote, so unrelated staged work survives", async () => {
@@ -123,9 +124,27 @@ describe("ScaffoldHarness", () => {
     expect(git.commits[0]?.paths.sort()).toEqual([
       ".apm/skills/.gitkeep",
       ".github/workflows/skill-check.yml",
+      "CONTRIBUTING.md",
       "README.md",
       "apm.yml",
     ]);
+  });
+
+  it("never overwrites an existing CONTRIBUTING.md", async () => {
+    const fs = new InMemoryFileSystem({
+      directories: { [REPO]: REPO },
+      files: { [`${REPO}/CONTRIBUTING.md`]: "our own policy\n" },
+    });
+
+    const result = await make(fs).scaffold(REPO);
+
+    expect(result.ok).toBe(true);
+    expect(await fs.readFile(`${REPO}/CONTRIBUTING.md`)).toBe(
+      "our own policy\n",
+    );
+    expect(await fs.readFile(`${REPO}/apm.yml`)).toContain(
+      "name: agent-harness",
+    );
   });
 
   it("pushes the branch git reports as the default, then repairs origin/HEAD", async () => {
@@ -322,6 +341,7 @@ describe("ScaffoldHarness", () => {
     expect(git.unstaged.sort()).toEqual([
       ".apm/skills/.gitkeep",
       ".github/workflows/skill-check.yml",
+      "CONTRIBUTING.md",
       "README.md",
       "apm.yml",
     ]);
