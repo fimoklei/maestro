@@ -245,7 +245,7 @@ const deployErrorResponses: ErrorTable<DeploySkillError> = {
   "local-diverged-from-tag": {
     status: 409,
     message:
-      "A deploy would install the published version, not what sits in the harness now. Publish a release from the Harness view, then deploy again.",
+      "This skill's harness copy doesn't match the published tag. Open the Harness view to see why, then deploy again.",
   },
   "deployed-diverged-from-lock": {
     status: 409,

@@ -160,6 +160,7 @@ describe("deploy HTTP route", () => {
         },
       },
       inventoryGit: {
+        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => options?.skillAtTag ?? true,
         skillDivergesFromTag: async () => options?.diverged ?? false,
       },
@@ -516,7 +517,7 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(409);
     const body = (await res.json()) as { error: string; message: string };
     expect(body.error).toBe("local-diverged-from-tag");
-    expect(body.message).toMatch(/publish a release/i);
+    expect(body.message).toMatch(/doesn't match the published tag/i);
     // The cockpit's voice never addresses the reader as "you" (PRODUCT.md).
     expect(body.message).not.toMatch(/\byou\b|\byour\b/i);
     expect(deployCalls).toEqual([]);
@@ -535,7 +536,7 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({
       error: "local-diverged-from-tag",
-      message: expect.stringMatching(/publish a release/i),
+      message: expect.stringMatching(/doesn't match the published tag/i),
     });
     expect(deployCalls).toEqual([]);
   });

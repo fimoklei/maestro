@@ -29,6 +29,7 @@ export const stubDeploy = (deps: {
       }),
     },
     inventoryGit: {
+      syncBeforeDeploy: async () => {},
       skillExistsAtTag: async () => false,
       skillDivergesFromTag: async () => false,
     },

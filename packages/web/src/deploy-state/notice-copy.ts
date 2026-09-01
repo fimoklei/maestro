@@ -50,7 +50,7 @@ const deployStateNotice: Record<DeployStateCode, NoticeHeading> = {
   "no-published-tag": { level: "error", label: "no published tag has it" },
   "local-diverged-from-tag": {
     level: "error",
-    label: "the harness copy is unpublished",
+    label: "harness copy out of sync",
   },
   "deployed-diverged-from-lock": {
     level: "warning",

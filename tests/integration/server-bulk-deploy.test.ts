@@ -119,6 +119,7 @@ describe("bulk deploy HTTP route", () => {
         },
       },
       inventoryGit: {
+        syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => false,
       },

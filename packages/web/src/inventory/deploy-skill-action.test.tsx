@@ -354,7 +354,7 @@ describe("DeploySkillAction", () => {
             JSON.stringify({
               error: "local-diverged-from-tag",
               message:
-                "A deploy would install the published version, not what sits in the harness now. Publish a release from the Harness view, then deploy again.",
+                "This skill's harness copy doesn't match the published tag. Open the Harness view to see why, then deploy again.",
             }),
             {
               status: 409,
@@ -370,7 +370,7 @@ describe("DeploySkillAction", () => {
     await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      /publish a release/i,
+      /doesn't match the published tag/i,
     );
   });
 

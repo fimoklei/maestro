@@ -2,10 +2,18 @@
 // separator keeps tag and name data, never command text (security.md).
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { NON_INTERACTIVE } from "../git/non-interactive";
 import { harnessSkillSubpath } from "../inventory/harness-layout";
 import type { InventoryGitPort } from "./deploy-skill";
 
 const run = promisify(execFile);
+
+// A deploy that hangs on a stalled fetch must still end.
+const GIT_TIMEOUT_MS = 60_000;
+const gitOptions = () => ({
+  env: { ...process.env, ...NON_INTERACTIVE },
+  timeout: GIT_TIMEOUT_MS,
+});
 
 export class InventoryGitAdapter implements InventoryGitPort {
   private readonly deps: {
@@ -15,6 +23,23 @@ export class InventoryGitAdapter implements InventoryGitPort {
 
   constructor(deps: InventoryGitAdapter["deps"]) {
     this.deps = deps;
+  }
+
+  // Catches the clone up with what a merged promotion actually released
+  // (#666). Best-effort: an offline fetch, a missing upstream, or real local
+  // edits all leave the clone exactly as it was.
+  async syncBeforeDeploy(): Promise<void> {
+    const root = await this.root();
+    try {
+      await run("git", ["-C", root, "fetch", "origin", "--tags"], gitOptions());
+      await run(
+        "git",
+        ["-C", root, "merge", "--ff-only", "@{u}"],
+        gitOptions(),
+      );
+    } catch {
+      // Best-effort, per the comment above.
+    }
   }
 
   async skillExistsAtTag(tag: string, name: string): Promise<boolean> {
