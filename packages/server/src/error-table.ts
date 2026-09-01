@@ -3,7 +3,10 @@
 /** The statuses the server answers refusals with. */
 type ErrorStatus = 400 | 403 | 404 | 409 | 422 | 500 | 502;
 
+// `message` is on its way out: every sentence moves to its feature copy module
+// in `packages/web` (ADR-0025, #681). A table that has been swept keeps the
+// status alone.
 export type ErrorTable<TCode extends string> = Record<
   TCode,
-  { status: ErrorStatus; message: string }
+  { status: ErrorStatus; message?: string }
 >;

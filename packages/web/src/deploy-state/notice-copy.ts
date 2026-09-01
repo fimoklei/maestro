@@ -96,6 +96,82 @@ const deployStateNotice: Record<DeployStateCode, NoticeHeading> = {
   "not-a-directory": { level: "error", label: "the path is not a directory" },
 };
 
+// The sentence per code, kept apart from the headings above because six codes
+// refuse both a deploy and a removal, and each states its own way through
+// (#684). Keyed by core's unions, so a new code fails typecheck here.
+const deploySentences: Record<DeploySkillError, string> = {
+  "unsupported-primitive-type":
+    "Hooks and MCP servers stay in the harness until Maestro can deploy them. Deploy a skill instead.",
+  "invalid-name":
+    "Lowercase letters, digits and hyphens only. Rename the skill in the harness, then deploy again.",
+  "unknown-skill":
+    "The inventory holds no skill by this name. Refresh the inventory, or pick the skill from the list again.",
+  "inventory-not-configured":
+    "Nothing can be deployed until Maestro knows where the harness lives. Set the Harness source path, then deploy again.",
+  "repo-not-registered":
+    "Only a repo registered with Maestro can receive a deploy. Register it, then deploy again.",
+  "inventory-origin-unavailable":
+    "A deploy installs from GitHub tags, so the inventory clone needs a GitHub origin over https or ssh. Point the clone at the harness repository on GitHub, then deploy again.",
+  "no-published-tag":
+    "A deploy installs from a published tag, and no tag holds this skill. Publish a release from the Harness view, then deploy again.",
+  "local-diverged-from-tag":
+    "A deploy would install the published version, not what sits in the harness now. Publish a release from the Harness view, then deploy again.",
+  "deployed-diverged-from-lock":
+    "Those edits never went through the harness. Reinstalling replaces the copy with the latest published tag.",
+  "deployed-unverifiable":
+    "This copy predates content tracking, so anything changed in it is invisible. Reinstalling replaces it with the latest published tag.",
+  "deployed-unreadable":
+    "Its permissions or its shape blocked the check, so nothing was installed. Make it a readable directory, then deploy again.",
+  "lockfile-malformed":
+    "apm.lock.yaml is present but unparsable, so the target's state is unknown. Repair or delete it, then deploy again.",
+  "deploy-in-progress":
+    "This target takes one change at a time. The deploy can start once the running one finishes.",
+  "no-supported-tool":
+    "A global deploy installs into Claude Code or Codex, and neither is on this machine. Install one, then deploy again.",
+  "auth-required":
+    "GitHub refused the download, so nothing was installed. Restore the machine's GitHub access, then deploy again.",
+  "destination-symlinked":
+    "apm refuses to install into a linked skill directory, so nothing was written. Replace that link with a real directory, or move the link one level up so the whole skills directory is the link, then deploy again.",
+  "deployed-unsupported-package-type":
+    "apm recorded a package type Maestro cannot manage as a skill, and left its files in place. Correct the package shape in the harness, publish a new release, then deploy again.",
+  "deploy-recorded-invalid":
+    "apm reported success but recorded the package as invalid, so no files arrived. A skill needs a SKILL.md — fix it in the harness, publish a new release, then deploy again.",
+  "deploy-unverified":
+    "apm reported the install as done, but the target's lockfile does not show it, so it does not count as deployed. Deploy again to have Maestro re-check the target.",
+  "deploy-failed":
+    "apm stopped part-way, so the target may hold a partial install. Read the target's deploy-state below, then deploy again.",
+};
+
+const removeSentences: Record<
+  RemoveDeployedSkillError | RemovePreflightError,
+  string
+> = {
+  "unsupported-primitive-type":
+    "Hooks and MCP servers stay where they are until Maestro can remove them. Remove a skill instead.",
+  "invalid-name":
+    "Lowercase letters, digits and hyphens only. Nothing was removed, because no deployed skill can carry this name.",
+  "repo-not-registered":
+    "Only a repo registered with Maestro can be changed. Register it, then remove again.",
+  "no-supported-tool":
+    "A global removal deletes from Claude Code or Codex, and neither is on this machine. There is nothing here to remove.",
+  "not-deployed":
+    "This target holds no copy of the skill, so nothing was deleted. The list may be out of date — reload the page to read it again.",
+  "lockfile-malformed":
+    "apm.lock.yaml is present but unparsable, so Maestro cannot name what to remove. Repair or delete it, then remove again.",
+  "ref-unresolvable":
+    "Its reference does not point at this skill the way a Maestro deploy would, so a removal could delete the wrong package. Deploy the skill again to restore a reference Maestro can follow.",
+  "deployed-unreadable":
+    "Its permissions or its shape blocked the check, so Maestro cannot say what a removal would delete. Make it a readable directory, then remove again.",
+  "cost-not-acknowledged":
+    "The copy on disk is no longer the one this removal was priced against, so nothing was deleted. The list beside this states what a removal would cost now — confirm it to go ahead.",
+  "remove-in-progress":
+    "This target takes one change at a time. The removal can start once the running one finishes.",
+  "remove-failed":
+    "apm ran but proved nothing, so the copy may be gone or may still be there. Confirm the removal again to delete whatever is left.",
+  "preflight-failed":
+    "Nothing can say yet what a removal would delete. Make the deployed copy readable, then open the removal again.",
+};
+
 // A failure with no code — a network error, or a code this build predates.
 const UNKNOWN_DEPLOY_FAILURE: NoticeHeading = {
   level: "error",
@@ -106,5 +182,18 @@ export function deployStateHeading(code: string | undefined): NoticeHeading {
   if (code === undefined) {
     return UNKNOWN_DEPLOY_FAILURE;
   }
-  return deployStateNotice[code as DeployStateCode] ?? UNKNOWN_DEPLOY_FAILURE;
+  const heading = deployStateNotice[code as DeployStateCode];
+  if (heading === undefined) {
+    return UNKNOWN_DEPLOY_FAILURE;
+  }
+  const message = deploySentences[code as DeploySkillError];
+  return message === undefined ? heading : { ...heading, message };
+}
+
+// The removal's own sentence, or undefined for a code it does not refuse
+// with — a network failure, or one this build predates.
+export function removeMessage(code: string | undefined): string | undefined {
+  return code === undefined
+    ? undefined
+    : removeSentences[code as RemoveDeployedSkillError | RemovePreflightError];
 }

@@ -34,12 +34,6 @@ import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
 
-// The curated sentence the failure is allowed to say, from the server's
-// `removeErrorResponses` table. Spelled out here so a change to the wording has
-// to be a deliberate edit in two places, not a silent widening.
-const CURATED_SENTENCE =
-  "apm ran but proved nothing, so the copy may be gone or may still be there. Confirm the removal again to delete whatever is left.";
-
 // Each shape apm's real output can carry, named so a leak reports which kind of
 // secret escaped rather than "a string was found". Synthetic by design: these
 // must never be real captures, and the test asserts absence, so nothing here
@@ -185,13 +179,14 @@ describe("apm output never reaches the client", () => {
     return { status: response.status, body: await response.text() };
   }
 
-  it("answers a failed removal with the curated sentence and nothing else", async () => {
+  it("answers a failed removal with its code and nothing else", async () => {
+    // The sentence lives in `deploy-state/notice-copy.ts` (#684), so a reply
+    // that carries apm's own words has nowhere to hide them.
     const { status, body } = await removeFailingWith("resolves");
 
     expect(status).toBe(502);
     expect(JSON.parse(body)).toEqual({
       error: "remove-failed",
-      message: CURATED_SENTENCE,
       // The per-target probe reads the disk, never apm's output (#416).
       outcome: { scope: "repo", state: "removed" },
     });

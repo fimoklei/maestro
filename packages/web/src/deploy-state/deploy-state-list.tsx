@@ -12,6 +12,7 @@ import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { ActionsMenu } from "../ui/actions-menu";
 import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
+import { removeMessage } from "./notice-copy";
 import { removalOutcome } from "./removal-outcome";
 import { RemovalTrace, type TracedRemoval } from "./removal-trace";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
@@ -65,12 +66,13 @@ type RemovalNews =
   // The server's words for a removal it did not start.
   | { kind: "restated"; message: string };
 
-// apm's own words when the server sent them, a plain sentence otherwise.
+// The removal's own sentence for the code the server sent, a plain sentence
+// otherwise.
 const removalFailure = (error: unknown): RemovalNews => ({
   kind: "failed",
   message:
     error instanceof HttpError
-      ? error.message
+      ? (removeMessage(error.code) ?? error.message)
       : "The removal could not be completed.",
   outcome: removalOutcome(error),
 });

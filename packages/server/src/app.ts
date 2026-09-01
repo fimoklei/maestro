@@ -203,179 +203,56 @@ const driftFailureBody = (result: { reason?: "unverified" }) =>
     ? { ok: false as const, reason: result.reason }
     : { ok: false as const };
 
-// Business rules live in core; this table only chooses status codes and
-// readable messages (none echo paths or raw apm output). Each message starts at
-// the consequence — the heading beside it, owned by web, names the subject.
+// Business rules live in core; this table only chooses status codes. The
+// sentence for every code lives in `deploy-state/notice-copy.ts` (ADR-0025).
 const deployErrorResponses: ErrorTable<DeploySkillError> = {
-  "unsupported-primitive-type": {
-    status: 422,
-    message:
-      "Hooks and MCP servers stay in the harness until Maestro can deploy them. Deploy a skill instead.",
-  },
-  "invalid-name": {
-    status: 400,
-    message:
-      "Lowercase letters, digits and hyphens only. Rename the skill in the harness, then deploy again.",
-  },
-  "unknown-skill": {
-    status: 404,
-    message:
-      "The inventory holds no skill by this name. Refresh the inventory, or pick the skill from the list again.",
-  },
-  "inventory-not-configured": {
-    status: 409,
-    message:
-      "Nothing can be deployed until Maestro knows where the harness lives. Set the Harness source path, then deploy again.",
-  },
-  "repo-not-registered": {
-    status: 403,
-    message:
-      "Only a repo registered with Maestro can receive a deploy. Register it, then deploy again.",
-  },
-  "inventory-origin-unavailable": {
-    status: 502,
-    message:
-      "A deploy installs from GitHub tags, so the inventory clone needs a GitHub origin over https or ssh. Point the clone at the harness repository on GitHub, then deploy again.",
-  },
-  "no-published-tag": {
-    status: 422,
-    message:
-      "A deploy installs from a published tag, and no tag holds this skill. Publish a release from the Harness view, then deploy again.",
-  },
-  "local-diverged-from-tag": {
-    status: 409,
-    message:
-      "A deploy would install the published version, not what sits in the harness now. Publish a release from the Harness view, then deploy again.",
-  },
-  "deployed-diverged-from-lock": {
-    status: 409,
-    message:
-      "Those edits never went through the harness. Reinstalling replaces the copy with the latest published tag.",
-  },
-  "deployed-unverifiable": {
-    status: 409,
-    message:
-      "This copy predates content tracking, so anything changed in it is invisible. Reinstalling replaces it with the latest published tag.",
-  },
-  "deployed-unreadable": {
-    status: 409,
-    message:
-      "Its permissions or its shape blocked the check, so nothing was installed. Make it a readable directory, then deploy again.",
-  },
-  "lockfile-malformed": {
-    status: 409,
-    message:
-      "apm.lock.yaml is present but unparsable, so the target's state is unknown. Repair or delete it, then deploy again.",
-  },
-  "deploy-in-progress": {
-    status: 409,
-    message:
-      "This target takes one change at a time. The deploy can start once the running one finishes.",
-  },
-  "no-supported-tool": {
-    // 409, not 502: nothing to install is a precondition the user resolves,
-    // not an apm failure (ADR-0011, #131).
-    status: 409,
-    message:
-      "A global deploy installs into Claude Code or Codex, and neither is on this machine. Install one, then deploy again.",
-  },
-  "auth-required": {
-    // 502, not 401: the failure is between apm and GitHub, not Maestro auth (#119).
-    status: 502,
-    message:
-      "GitHub refused the download, so nothing was installed. Restore the machine's GitHub access, then deploy again.",
-  },
-  "destination-symlinked": {
-    // 409, not 502: apm refused on purpose — a conflict, not a failure (#180).
-    status: 409,
-    message:
-      "apm refuses to install into a linked skill directory, so nothing was written. Replace that link with a real directory, or move the link one level up so the whole skills directory is the link, then deploy again.",
-  },
-  "deployed-unsupported-package-type": {
-    // 409, not 502: apm installed something, and the package shape is the
-    // user's to correct (#358).
-    status: 409,
-    message:
-      "apm recorded a package type Maestro cannot manage as a skill, and left its files in place. Correct the package shape in the harness, publish a new release, then deploy again.",
-  },
-  "deploy-recorded-invalid": {
-    status: 502,
-    message:
-      "apm reported success but recorded the package as invalid, so no files arrived. A skill needs a SKILL.md — fix it in the harness, publish a new release, then deploy again.",
-  },
-  "deploy-unverified": {
-    status: 502,
-    message:
-      "apm reported the install as done, but the target's lockfile does not show it, so it does not count as deployed. Deploy again to have Maestro re-check the target.",
-  },
-  "deploy-failed": {
-    status: 502,
-    message:
-      "apm stopped part-way, so the target may hold a partial install. Read the target's deploy-state below, then deploy again.",
-  },
+  "unsupported-primitive-type": { status: 422 },
+  "invalid-name": { status: 400 },
+  "unknown-skill": { status: 404 },
+  "inventory-not-configured": { status: 409 },
+  "repo-not-registered": { status: 403 },
+  "inventory-origin-unavailable": { status: 502 },
+  "no-published-tag": { status: 422 },
+  "local-diverged-from-tag": { status: 409 },
+  "deployed-diverged-from-lock": { status: 409 },
+  "deployed-unverifiable": { status: 409 },
+  "deployed-unreadable": { status: 409 },
+  "lockfile-malformed": { status: 409 },
+  "deploy-in-progress": { status: 409 },
+  // 409, not 502: nothing to install is a precondition the user resolves,
+  // not an apm failure (ADR-0011, #131).
+  "no-supported-tool": { status: 409 },
+  // 502, not 401: the failure is between apm and GitHub, not Maestro auth (#119).
+  "auth-required": { status: 502 },
+  // 409, not 502: apm refused on purpose — a conflict, not a failure (#180).
+  "destination-symlinked": { status: 409 },
+  // 409, not 502: apm installed something, and the package shape is the
+  // user's to correct (#358).
+  "deployed-unsupported-package-type": { status: 409 },
+  "deploy-recorded-invalid": { status: 502 },
+  "deploy-unverified": { status: 502 },
+  "deploy-failed": { status: 502 },
 };
 
+// The sentences live beside the deploy ones in `deploy-state/notice-copy.ts`:
+// six codes refuse both, and each states its own way through.
 const removeErrorResponses: ErrorTable<RemoveDeployedSkillError> = {
-  "unsupported-primitive-type": {
-    status: 422,
-    message:
-      "Hooks and MCP servers stay where they are until Maestro can remove them. Remove a skill instead.",
-  },
-  "invalid-name": {
-    status: 400,
-    message:
-      "Lowercase letters, digits and hyphens only. Nothing was removed, because no deployed skill can carry this name.",
-  },
-  "repo-not-registered": {
-    status: 403,
-    message:
-      "Only a repo registered with Maestro can be changed. Register it, then remove again.",
-  },
-  "no-supported-tool": {
-    // 409, mirroring the deploy table (ADR-0011).
-    status: 409,
-    message:
-      "A global removal deletes from Claude Code or Codex, and neither is on this machine. There is nothing here to remove.",
-  },
-  "not-deployed": {
-    status: 404,
-    message:
-      "This target holds no copy of the skill, so nothing was deleted. The list may be out of date — reload the page to read it again.",
-  },
-  "lockfile-malformed": {
-    status: 409,
-    message:
-      "apm.lock.yaml is present but unparsable, so Maestro cannot name what to remove. Repair or delete it, then remove again.",
-  },
-  "ref-unresolvable": {
-    status: 409,
-    message:
-      "Its reference does not point at this skill the way a Maestro deploy would, so a removal could delete the wrong package. Deploy the skill again to restore a reference Maestro can follow.",
-  },
-  "deployed-unreadable": {
-    status: 409,
-    message:
-      "Its permissions or its shape blocked the check, so Maestro cannot say what a removal would delete. Make it a readable directory, then remove again.",
-  },
-  "cost-not-acknowledged": {
-    // 409: the request is well-formed, but the copy on disk is not the one it
-    // agreed to lose — either it changed since, or nothing was agreed at all.
-    // What it costs now travels beside this message, never inside it (#364).
-    status: 409,
-    message:
-      "The copy on disk is no longer the one this removal was priced against, so nothing was deleted. The list beside this states what a removal would cost now — confirm it to go ahead.",
-  },
-  "remove-in-progress": {
-    status: 409,
-    message:
-      "This target takes one change at a time. The removal can start once the running one finishes.",
-  },
-  "remove-failed": {
-    // 502: apm ran and didn't prove removal, so the outcome is unknown.
-    status: 502,
-    message:
-      "apm ran but proved nothing, so the copy may be gone or may still be there. Confirm the removal again to delete whatever is left.",
-  },
+  "unsupported-primitive-type": { status: 422 },
+  "invalid-name": { status: 400 },
+  "repo-not-registered": { status: 403 },
+  // 409, mirroring the deploy table (ADR-0011).
+  "no-supported-tool": { status: 409 },
+  "not-deployed": { status: 404 },
+  "lockfile-malformed": { status: 409 },
+  "ref-unresolvable": { status: 409 },
+  "deployed-unreadable": { status: 409 },
+  // 409: the request is well-formed, but the copy on disk is not the one it
+  // agreed to lose — either it changed since, or nothing was agreed at all.
+  // What it costs now travels beside this refusal, never inside it (#364).
+  "cost-not-acknowledged": { status: 409 },
+  "remove-in-progress": { status: 409 },
+  // 502: apm ran and didn't prove removal, so the outcome is unknown.
+  "remove-failed": { status: 502 },
 };
 
 // A failed check is an error, never an empty warning — the cockpit must tell
@@ -386,11 +263,7 @@ const removePreflightErrorResponses: ErrorTable<RemovePreflightError> = {
   "invalid-name": removeErrorResponses["invalid-name"],
   "repo-not-registered": removeErrorResponses["repo-not-registered"],
   "no-supported-tool": removeErrorResponses["no-supported-tool"],
-  "preflight-failed": {
-    status: 502,
-    message:
-      "Nothing can say yet what a removal would delete. Make the deployed copy readable, then open the removal again.",
-  },
+  "preflight-failed": { status: 502 },
 };
 
 // Exhaustive by construction: the table above is keyed by the error union
@@ -1209,30 +1082,15 @@ export function createApp(deps: AppDeps) {
   app.get("/api/deploy-state", async (c) => {
     const repo = c.req.query("repo");
     if (repo === undefined || repo.trim() === "") {
-      return c.json(
-        { error: "missing-repo", message: "A repo path is required." },
-        400,
-      );
+      return c.json({ error: "missing-repo" }, 400);
     }
     if (!(await deps.registry.isRegistered(repo))) {
-      return c.json(
-        {
-          error: "not-registered",
-          message: "That repo is not registered with Maestro.",
-        },
-        403,
-      );
+      return c.json({ error: "not-registered" }, 403);
     }
     const result = await deps.deployState.read(repo);
     if (!result.ok) {
       // 422: lockfile exists but couldn't be read — never a silent empty list.
-      return c.json(
-        {
-          error: result.error,
-          message: "The repo's lockfile could not be read.",
-        },
-        422,
-      );
+      return c.json({ error: result.error }, 422);
     }
     return c.json({ primitives: result.primitives, skipped: result.skipped });
   });
@@ -1242,13 +1100,7 @@ export function createApp(deps: AppDeps) {
   app.get("/api/deploy-state/global", async (c) => {
     const result = await deps.deployState.readGlobal(deps.resolveGlobalRoot());
     if (!result.ok) {
-      return c.json(
-        {
-          error: result.error,
-          message: "The global lockfile could not be read.",
-        },
-        422,
-      );
+      return c.json({ error: result.error }, 422);
     }
     return c.json({ tools: result.tools, skipped: result.skipped });
   });
@@ -1262,13 +1114,12 @@ export function createApp(deps: AppDeps) {
 
     const result = await deps.deploy.execute(body.data);
     if (!result.ok) {
-      const { status, message } = deployErrorResponses[result.error];
+      const { status } = deployErrorResponses[result.error];
       // The recorded type is one of our own readings of apm's lockfile field,
       // never a line of apm prose (ADR-0018, security.md).
       return c.json(
         {
           error: result.error,
-          message,
           ...(result.packageType ? { packageType: result.packageType } : {}),
         },
         status,
@@ -1285,7 +1136,7 @@ export function createApp(deps: AppDeps) {
 
     const result = await deps.remove.execute(body.data);
     if (!result.ok) {
-      const { status, message } = removeErrorResponses[result.error];
+      const { status } = removeErrorResponses[result.error];
       // Omitted, never null: a failure that never reached apm has no outcome,
       // and an absent key cannot be mistaken for one the server proved (#416).
       // The restated cost and its receipt travel the same way — together, or
@@ -1293,7 +1144,6 @@ export function createApp(deps: AppDeps) {
       return c.json(
         {
           error: result.error,
-          message,
           ...(result.outcome ? { outcome: result.outcome } : {}),
           ...(result.check && result.receipt
             ? {
@@ -1318,8 +1168,8 @@ export function createApp(deps: AppDeps) {
 
     const result = await deps.remove.preflight(body.data);
     if (!result.ok) {
-      const { status, message } = removePreflightErrorResponses[result.error];
-      return c.json({ error: result.error, message }, status);
+      const { status } = removePreflightErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
     }
     return c.json({
       check: result.check,
@@ -1367,19 +1217,10 @@ export function createApp(deps: AppDeps) {
   app.get("/api/drift", async (c) => {
     const repo = c.req.query("repo");
     if (repo === undefined || repo.trim() === "") {
-      return c.json(
-        { error: "missing-repo", message: "A repo path is required." },
-        400,
-      );
+      return c.json({ error: "missing-repo" }, 400);
     }
     if (!(await deps.registry.isRegistered(repo))) {
-      return c.json(
-        {
-          error: "not-registered",
-          message: "That repo is not registered with Maestro.",
-        },
-        403,
-      );
+      return c.json({ error: "not-registered" }, 403);
     }
     const result = await deps.drift.execute({
       target: { kind: "repo", repoPath: repo },
