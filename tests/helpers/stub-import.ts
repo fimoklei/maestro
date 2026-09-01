@@ -18,6 +18,6 @@ export function stubImport(): ImportSkill {
       ensureDir: unreachable,
     },
     copy: { copy: unreachable },
-    deployedRoots: async () => [],
+    deployedTargets: async () => [],
   });
 }

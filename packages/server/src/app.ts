@@ -1570,9 +1570,18 @@ function realDeps(): AppDeps {
       // The picker's ceiling, so what can be imported is what can be browsed.
       homeRoot: () => homedir(),
       copy: new CopySkillFolder({ fs: new NodeCopyTreeFs() }),
-      deployedRoots: async () => [
-        deployedLocation.treeRoot({ kind: "global" }),
-        ...(await registry.list()).map((repo) => repo.path),
+      deployedTargets: async () => [
+        {
+          treeRoot: deployedLocation.treeRoot({ kind: "global" }),
+          lockfilePath: deployedLocation.lockfilePath({ kind: "global" }),
+        },
+        ...(await registry.list()).map((repo) => ({
+          treeRoot: repo.path,
+          lockfilePath: deployedLocation.lockfilePath({
+            kind: "repo",
+            repoPath: repo.path,
+          }),
+        })),
       ],
     }),
     // Confirmation's own remote read, never the plan's cached one — the same
