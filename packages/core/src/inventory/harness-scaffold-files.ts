@@ -4,7 +4,13 @@
 import { stringify } from "yaml";
 import { HARNESS_MANIFEST, HARNESS_SKILLS_DIR } from "./harness-layout";
 
-export type ScaffoldFile = { path: string; contents: string };
+// skipIfExists marks a file the scaffold offers but never overwrites: a
+// caller's own CONTRIBUTING.md wins over the canonical default (#678).
+export type ScaffoldFile = {
+  path: string;
+  contents: string;
+  skipIfExists?: boolean;
+};
 
 const WORKFLOW = ".github/workflows/skill-check.yml";
 
@@ -37,6 +43,7 @@ export const canonicalHarnessFiles = (ownerRepo: string): ScaffoldFile[] => {
     { path: "README.md", contents: readme(ownerRepo, repo) },
     { path: `${HARNESS_SKILLS_DIR}/.gitkeep`, contents: "" },
     { path: WORKFLOW, contents: SKILL_CHECK_WORKFLOW },
+    { path: "CONTRIBUTING.md", contents: CONTRIBUTING, skipIfExists: true },
   ];
 };
 
@@ -76,6 +83,53 @@ Install one skill by its tag-pinned ref:
 
 Nothing is tagged yet. \`v0.1.0\` is the first release of real skill content,
 not of this scaffold.
+`;
+
+// The settled review/release policy (fimoklei/maestro#629), restated here
+// because scaffold is the only place a fresh Harness gets it in writing.
+const CONTRIBUTING = `# Contributing
+
+\`README.md\` says what this Harness is. This file says what may enter it and
+how a change gets there.
+
+## The bar
+
+A skill enters when it is:
+
+1. **Structurally valid.** The directory name matches the \`name\` in
+   \`SKILL.md\`'s frontmatter, and \`description\` is non-empty.
+2. **Reusable outside one repository.** No paths, commands, or assumptions
+   only one machine has.
+3. **Prompted by a concrete need.** Existing somewhere already is not a
+   reason; the occasion is the evidence.
+
+One skill moves per promote, always — no batch import from an older
+collection.
+
+## Review
+
+- The author edits outside this Harness and promotes one skill.
+- A named curator reviews and merges the pull request. The Harness owner is
+  the curator until the team names another.
+- The author never merges their own pull request.
+
+## Release
+
+- After the curator merges, the author refreshes the Harness view and
+  releases the change.
+- A tag-authorized teammate may substitute when the author is unavailable or
+  lacks tag rights.
+- \`Pending release\` is an open action, not a queue for scheduled batches. If
+  several changes land there before anyone acts, the first authorized author
+  releases the complete visible delta; the others refresh and do not cut
+  empty follow-up versions.
+
+## Why this is a human agreement
+
+A private repository cannot enable branch protection without GitHub Pro, so
+a contributor with tag-push rights may be technically able to merge their own
+work. The policy above says they do not. Independent review holds because the
+team agreed to it, not because GitHub enforces it.
 `;
 
 // The same three rules core applies at a ref (`validate-skill-structure.ts`),
