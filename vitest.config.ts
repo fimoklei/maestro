@@ -9,6 +9,9 @@ import { defineConfig } from "vitest/config";
 const testTimeout = 20_000;
 export default defineConfig({
   test: {
+    // Runs once per run, before any lane: a killed run never reaches its
+    // `afterEach`, so its temp trees are swept here instead.
+    globalSetup: ["./tests/helpers/sweep-temp-trees.ts"],
     projects: [
       "./packages/web/vitest.config.ts",
       {
