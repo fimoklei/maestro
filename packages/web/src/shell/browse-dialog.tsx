@@ -170,14 +170,14 @@ export function BrowseDialog({
                   aria-describedby={atCeiling ? "browse-up-reason" : undefined}
                   className={`shrink-0 rounded-control border px-2.5 py-[5px] font-mono text-mono-sm ${HOVER_TRANSITION} enabled:cursor-pointer enabled:border-line enabled:bg-inset enabled:text-fg-2 enabled:hover:border-line-chip enabled:hover:text-fg disabled:cursor-not-allowed disabled:border-line-chip disabled:text-dim`}
                 >
-                  ↑ up
+                  ↑ Up
                 </button>
                 {atCeiling ? (
                   <span
                     id="browse-up-reason"
                     className="whitespace-nowrap font-mono text-dim text-tag"
                   >
-                    already at home
+                    Already at home
                   </span>
                 ) : null}
                 {browse.data ? (
@@ -239,7 +239,7 @@ export function BrowseDialog({
                     {showHidden ? "shown" : "not shown"}
                   </span>
                   <span className="font-mono text-amber-ink text-tag">
-                    · {showHidden ? "hide" : "show"}
+                    · {showHidden ? "Hide" : "Show"}
                   </span>
                 </button>
               ) : null}
@@ -286,7 +286,7 @@ export function BrowseDialog({
             )}
             {!reporting ? (
               <Button type="button" variant="quiet" size="sm" onClick={onClose}>
-                cancel
+                Cancel
               </Button>
             ) : null}
             <Button
@@ -297,7 +297,7 @@ export function BrowseDialog({
               disabled={reporting ? isRegistering : confirmedPaths.length === 0}
               onClick={reporting ? onClose : confirm}
             >
-              {reporting ? "close" : confirmLabel(confirmedPaths.length)}
+              {reporting ? "Close" : confirmLabel(confirmedPaths.length)}
             </Button>
           </div>
         </div>

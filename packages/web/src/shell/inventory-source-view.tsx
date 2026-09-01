@@ -10,20 +10,20 @@ import { SourceLabel } from "./source-label";
 import { useRereadInventory } from "./use-reread-inventory";
 
 // Steady-state ⚙ view (#98). Offline read-on-demand: no sync job. "Change
-// source" flips the same card to ConnectInventoryPanel (PRD #93).
+// Harness location" flips the same card to ConnectInventoryPanel (PRD #93).
 
 // Shared by skeleton and settled view so the loading frame can't drift and
 // reintroduce the layout jump this view exists to prevent (#231).
 const SOURCE_TITLE = "Harness location";
-const SOURCE_META = "local path · read-only";
+const SOURCE_META = "Local path · read-only";
 const SOURCE_CARD_WIDTH = "max-w-lg";
 
-// The Re-read button sits directly below, so the notice carries no action of
+// The Re-read Inventory button sits directly below, so the notice carries no action of
 // its own — a second copy of the same control would compete with it.
 export const READ_FAILED: NoticeContent = {
   level: "error",
   label: "Inventory not read",
-  message: "Check the path below, then press Re-read.",
+  message: "Check the path below, then press Re-read Inventory.",
   detail:
     "The folder may have moved, or Maestro can no longer read its apm.yml.",
 };
@@ -52,15 +52,15 @@ export function InventorySourceView() {
   return (
     <section>
       <SectionHeader
-        title={isChanging ? "Change inventory source" : SOURCE_TITLE}
-        meta={isChanging ? "re-point at another local folder" : SOURCE_META}
+        title={isChanging ? "Change Harness location" : SOURCE_TITLE}
+        meta={isChanging ? "Re-point at another local folder" : SOURCE_META}
       />
       <Card padded className={SOURCE_CARD_WIDTH}>
         {isChanging ? (
           <ConnectInventoryPanel
             initialPath={currentPath ?? ""}
             onSuccess={() => setIsChanging(false)}
-            submitLabel="Re-point source"
+            submitLabel="Set Harness location"
             secondaryAction={
               <Button
                 type="button"
@@ -104,14 +104,16 @@ export function InventorySourceView() {
                 onClick={reread}
                 disabled={inventory.isFetching}
               >
-                {inventory.isFetching ? "reading…" : "Re-read"}
+                {inventory.isFetching
+                  ? "Re-reading Inventory…"
+                  : "Re-read Inventory"}
               </Button>
               <Button
                 variant="quiet"
                 size="sm"
                 onClick={() => setIsChanging(true)}
               >
-                Change source
+                Change Harness location
               </Button>
             </div>
           </div>
@@ -154,10 +156,10 @@ function SourceSkeleton() {
           {/* Same box as the two sm buttons: border + px-2 py-[3px] + text-tag. */}
           <div aria-hidden="true" className="flex gap-2">
             <span className="rounded-control border border-line-chip bg-dim-bg px-2 py-[3px] text-tag text-transparent">
-              Re-read
+              Re-read Inventory
             </span>
             <span className="rounded-control border border-line-chip bg-dim-bg px-2 py-[3px] text-tag text-transparent">
-              Change source
+              Change Harness location
             </span>
           </div>
         </div>

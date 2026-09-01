@@ -135,7 +135,7 @@ details may name the exact APM mechanism or file.
 |---|---|---|
 | Harness | **Harness** | Use **Working Harness** or **Released Harness** when the state matters. |
 | Central inventory | **Inventory** | Reserve **Inventory** for the collection and its screen. |
-| Inventory source | **Harness location** | Do not use *source* for the configured Harness location. |
+| Inventory source | **Harness location** | Do not use *source* for the configured Harness location. The controls on that screen are **Re-read Inventory**, **Change Harness location** and **Set Harness location**. |
 | Drift | **Behind** | Use *an update is available* as explanation, not as a second status name. |
 | Target | **Target** | Prefer the concrete repository or tool name after the concept is established. |
 | Deploy | **Deploy** / **Deployed** | *Deploy* is the action and *deployed* is the state; *install* is APM's mechanism. |
@@ -157,6 +157,7 @@ details may name the exact APM mechanism or file.
 | Force reinstall | **Deploy again** | The one label for overwriting a deployed copy that has local edits; never *Reinstall fresh* or *Re-deploy*. |
 | Up-to-date | **Up to date** | One skill's drift status. Never hyphenated on screen. |
 | Target roll-up | **In sync** | A whole target's state, on its card header. A single skill is **Up to date**, never *in sync*. |
+| Browse dialog title | a noun phrase | Name what the dialog picks — **Inventory folder**, **Skill folder**, **Folder to clone into**, **Repositories to register** — never an imperative. |
 | Read failure | **Not read** | Any read that failed says `{the thing} not read` — never *not loaded*. On a deploy-state read the way out is always *Reload the page*. |
 | Registration outcome | **Registered** / **Skipped** | A repository the run did not register is **skipped**; *left alone* stays the bulk-removal word. |
 | Browser reload | **Page** | Say *Reload the page*; never *screen* or *reload the view* for the same act. |

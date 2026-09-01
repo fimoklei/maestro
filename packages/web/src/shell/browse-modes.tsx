@@ -23,40 +23,41 @@ type BrowseModeConfig = {
 
 export const browseModes: Record<BrowseDialogMode, BrowseModeConfig> = {
   register: {
-    title: "Select repos to register",
-    confirmLabel: (count) => `register ${count} selected →`,
+    title: "Repositories to register",
+    confirmLabel: (count) =>
+      `Register ${count} ${count === 1 ? "repository" : "repositories"}`,
     // A git repo is what this listing is for; only the refusal earns a chip,
     // and browse-entry-row.tsx already writes that one.
     badges: ({ isRegistered }) =>
-      isRegistered ? <Chip tone="ok">● registered</Chip> : null,
+      isRegistered ? <Chip tone="ok">● Registered</Chip> : null,
     writePromise:
       "Registering changes no files. Files change only when you deploy.",
   },
   connect: {
-    title: "Select inventory folder",
-    confirmLabel: () => "use this folder →",
+    title: "Inventory folder",
+    confirmLabel: () => "Use this folder",
     badges: ({ entry }) =>
-      entry.facts.hasApmManifest ? <Chip tone="drift">◆ inventory</Chip> : null,
+      entry.facts.hasApmManifest ? <Chip tone="drift">◆ Inventory</Chip> : null,
     // Read-only promise is made on the connect gate itself (ADR-0015).
     writePromise: null,
   },
   // Picks the skill folder itself, so the badge marks a folder that already
   // looks like a harness — a skill never is one (#576).
   "import-source": {
-    title: "Select a skill folder",
-    confirmLabel: () => "import this folder →",
+    title: "Skill folder",
+    confirmLabel: () => "Import this folder",
     badges: ({ entry }) =>
-      entry.facts.hasApmManifest ? <Chip tone="drift">◆ inventory</Chip> : null,
+      entry.facts.hasApmManifest ? <Chip tone="drift">◆ Inventory</Chip> : null,
     writePromise:
       "Picking a folder changes no files. Import copies the folder into the Working Harness and leaves the original folder untouched.",
   },
   // Picks the folder a clone lands *in*, so the badge marks the one thing that
   // would block it: a Harness already sitting there (#555).
   "clone-parent": {
-    title: "Select a folder to clone into",
-    confirmLabel: () => "clone into this folder →",
+    title: "Folder to clone into",
+    confirmLabel: () => "Clone into this folder",
     badges: ({ entry }) =>
-      entry.facts.hasApmManifest ? <Chip tone="drift">◆ inventory</Chip> : null,
+      entry.facts.hasApmManifest ? <Chip tone="drift">◆ Inventory</Chip> : null,
     writePromise:
       "The Harness is cloned into a new folder here, named after the repository. Nothing already in this folder is renamed, moved or deleted.",
   },

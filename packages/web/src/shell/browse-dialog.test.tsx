@@ -271,7 +271,7 @@ describe("BrowseDialog", () => {
     );
     renderDialog();
 
-    expect(await screen.findByText("already at home")).toBeInTheDocument();
+    expect(await screen.findByText("Already at home")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /up/i })).toBeDisabled();
   });
 
@@ -315,7 +315,7 @@ describe("BrowseDialog", () => {
     const { onClose } = renderDialog();
 
     expect(
-      screen.getByRole("heading", { name: "Select inventory folder" }),
+      screen.getByRole("heading", { name: "Inventory folder" }),
     ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /close/i }));
     expect(onClose).toHaveBeenCalledOnce();
@@ -329,7 +329,7 @@ describe("BrowseDialog", () => {
     renderDialog({ mode: "register" });
 
     expect(
-      await screen.findByRole("heading", { name: "Select repos to register" }),
+      await screen.findByRole("heading", { name: "Repositories to register" }),
     ).toBeInTheDocument();
   });
 
@@ -359,13 +359,13 @@ describe("BrowseDialog", () => {
     });
 
     const row = await screen.findByRole("button", { name: "acme-web" });
-    // Being a git repo is the norm here; only the refusal ("not a git repo")
+    // Being a git repo is the norm here; only the refusal ("Not a git repo")
     // is worth a chip.
     expect(row).not.toHaveTextContent("git");
-    expect(row).toHaveTextContent("● registered");
-    expect(row).not.toHaveTextContent("◆ inventory");
+    expect(row).toHaveTextContent("● Registered");
+    expect(row).not.toHaveTextContent("◆ Inventory");
     const other = await screen.findByRole("button", { name: "notes" });
-    expect(other).not.toHaveTextContent("● registered");
+    expect(other).not.toHaveTextContent("● Registered");
   });
 
   it("badges an inventory-looking folder in connect mode, never git or registered badges", async () => {
@@ -393,9 +393,9 @@ describe("BrowseDialog", () => {
     });
 
     const row = await screen.findByRole("button", { name: "agent-harness" });
-    expect(row).toHaveTextContent("◆ inventory");
+    expect(row).toHaveTextContent("◆ Inventory");
     expect(row).not.toHaveTextContent("git");
-    expect(row).not.toHaveTextContent("● registered");
+    expect(row).not.toHaveTextContent("● Registered");
   });
 
   it("filters hidden entries out of the listing by default and shows a hint", async () => {
@@ -575,9 +575,9 @@ describe("BrowseDialog", () => {
     renderDialog();
 
     const linked = await screen.findByRole("button", { name: "linked-repo" });
-    expect(linked).toHaveTextContent("↳ symlink");
+    expect(linked).toHaveTextContent("↳ Symlink");
     const plain = await screen.findByRole("button", { name: "plain-repo" });
-    expect(plain).not.toHaveTextContent("↳ symlink");
+    expect(plain).not.toHaveTextContent("↳ Symlink");
   });
 
   it("calls onClose when cancel is activated", async () => {
@@ -693,7 +693,7 @@ describe("BrowseDialog", () => {
       vi.stubGlobal("fetch", fetchMock);
       renderDialog({ mode: "connect" });
 
-      expect(await screen.findByText("already at home")).toBeInTheDocument();
+      expect(await screen.findByText("Already at home")).toBeInTheDocument();
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
@@ -728,7 +728,7 @@ describe("BrowseDialog", () => {
         </QueryClientProvider>,
       );
 
-      expect(await screen.findByText("already at home")).toBeInTheDocument();
+      expect(await screen.findByText("Already at home")).toBeInTheDocument();
       expect(
         fetchMock.mock.calls.filter(
           ([, init]) =>
@@ -761,7 +761,7 @@ describe("BrowseDialog", () => {
       vi.stubGlobal("fetch", fetchMock);
       renderDialog({ mode: "connect" });
 
-      expect(await screen.findByText("already at home")).toBeInTheDocument();
+      expect(await screen.findByText("Already at home")).toBeInTheDocument();
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
@@ -929,7 +929,7 @@ describe("BrowseDialog", () => {
         screen.getByRole("checkbox", { name: /payments-api/i }),
       ).toBeInTheDocument();
       expect(screen.getByRole("checkbox", { name: /scratch/i })).toBeDisabled();
-      expect(screen.getByText("not a git repo")).toBeInTheDocument();
+      expect(screen.getByText("Not a git repo")).toBeInTheDocument();
     });
 
     it("shows the connected central inventory as unavailable", async () => {
@@ -942,7 +942,7 @@ describe("BrowseDialog", () => {
       expect(
         await screen.findByRole("checkbox", { name: /acme-web/i }),
       ).toBeDisabled();
-      expect(screen.getByText("central inventory")).toBeInTheDocument();
+      expect(screen.getByText("Connected Inventory")).toBeInTheDocument();
     });
 
     it("never offers checkboxes in connect mode", async () => {
@@ -974,7 +974,7 @@ describe("BrowseDialog", () => {
 
       const first = await screen.findByRole("checkbox", { name: /acme-web/i });
       expect(
-        screen.getByRole("button", { name: "register 0 selected →" }),
+        screen.getByRole("button", { name: "Register 0 repositories" }),
       ).toBeDisabled();
 
       await userEvent.click(first);
@@ -983,7 +983,7 @@ describe("BrowseDialog", () => {
       );
 
       expect(
-        screen.getByRole("button", { name: "register 2 selected →" }),
+        screen.getByRole("button", { name: "Register 2 repositories" }),
       ).toBeEnabled();
     });
 
@@ -1001,7 +1001,7 @@ describe("BrowseDialog", () => {
         screen.getByRole("checkbox", { name: /payments-api/i }),
       );
       await userEvent.click(
-        screen.getByRole("button", { name: /register 2 selected/i }),
+        screen.getByRole("button", { name: /Register 2 repositories/ }),
       );
 
       expect(onSelect).toHaveBeenCalledWith([
@@ -1073,7 +1073,7 @@ describe("BrowseDialog", () => {
 
       // The count covers what was checked in both folders…
       expect(
-        screen.getByRole("button", { name: /register 2 selected/i }),
+        screen.getByRole("button", { name: /Register 2 repositories/ }),
       ).toBeEnabled();
 
       // …and stepping back leaves the earlier tick in place.
@@ -1083,7 +1083,7 @@ describe("BrowseDialog", () => {
       ).toBeChecked();
 
       await userEvent.click(
-        screen.getByRole("button", { name: /register 2 selected/i }),
+        screen.getByRole("button", { name: /Register 2 repositories/ }),
       );
       expect(onSelect).toHaveBeenCalledWith([
         "/home/me/acme-web",
@@ -1103,7 +1103,7 @@ describe("BrowseDialog", () => {
 
       expect(checkbox).not.toBeChecked();
       expect(
-        screen.getByRole("button", { name: "register 0 selected →" }),
+        screen.getByRole("button", { name: "Register 0 repositories" }),
       ).toBeDisabled();
     });
 
@@ -1120,7 +1120,7 @@ describe("BrowseDialog", () => {
       );
 
       await userEvent.click(
-        screen.getByRole("button", { name: /register 2 selected/i }),
+        screen.getByRole("button", { name: /Register 2 repositories/ }),
       );
       expect(onSelect).toHaveBeenCalledWith([
         "/home/me/acme-web",
@@ -1141,7 +1141,7 @@ describe("BrowseDialog", () => {
       );
 
       await userEvent.click(
-        screen.getByRole("button", { name: /register 1 selected/i }),
+        screen.getByRole("button", { name: /Register 1 repository/ }),
       );
       expect(onSelect).toHaveBeenCalledWith(["/home/me/acme-web"]);
     });
@@ -1229,7 +1229,7 @@ describe("BrowseDialog", () => {
       renderDialog({ mode: "register" });
 
       const register = await screen.findByRole("button", {
-        name: /register 0 selected/i,
+        name: /Register 0 repositories/,
       });
       expect(register).toHaveAccessibleDescription(
         /registering changes no files/i,
@@ -1272,7 +1272,7 @@ describe("BrowseDialog", () => {
       );
       expect(confirm).toHaveAccessibleDescription(/renamed, moved or deleted/i);
       expect(
-        screen.getByRole("heading", { name: /select a folder to clone into/i }),
+        screen.getByRole("heading", { name: /folder to clone into/i }),
       ).toBeInTheDocument();
     });
   });
@@ -1282,7 +1282,7 @@ describe("BrowseDialog", () => {
   // Tab never escapes to the page behind.
   describe("keyboard accessibility (issue #214)", () => {
     // A trigger button that mounts the dialog, so focus-restore-on-close has a
-    // real element to return to — the picker's "browse…" button in the app.
+    // real element to return to — the picker's "Browse folders…" button in the app.
     function TriggerHarness({
       isRegistering = false,
     }: {

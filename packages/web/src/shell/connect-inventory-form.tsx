@@ -39,7 +39,7 @@ export function ConnectInventoryForm({
   onBrowse,
   cloneParent = null,
   onChooseParent,
-  submitLabel = "Connect inventory",
+  submitLabel = "Connect Inventory",
   secondaryAction,
 }: ConnectInventoryFormProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -84,7 +84,7 @@ export function ConnectInventoryForm({
         />
         {onBrowse ? (
           <Button type="button" variant="quiet" size="sm" onClick={onBrowse}>
-            browse…
+            Browse folders…
           </Button>
         ) : null}
       </div>
@@ -103,7 +103,7 @@ export function ConnectInventoryForm({
               size="sm"
               onClick={onChooseParent}
             >
-              change folder…
+              Change folder…
             </Button>
           ) : null}
         </div>
