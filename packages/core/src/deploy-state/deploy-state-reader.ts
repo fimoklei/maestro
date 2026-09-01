@@ -25,8 +25,15 @@ type DeployStateResult =
   | { ok: false; error: "malformed" };
 
 // Grouped per detected tool, which also carries the detected set (ADR-0011).
+// `otherOrigins`: a skill entry no detected tool's prefix claims, named by its
+// repo rather than silently dropped (#655).
 type GlobalDeployStateResult =
-  | { ok: true; tools: ToolDeployState[]; skipped: SkippedEntry[] }
+  | {
+      ok: true;
+      tools: ToolDeployState[];
+      skipped: SkippedEntry[];
+      otherOrigins: string[];
+    }
   | { ok: false; error: "malformed" };
 
 export class DeployStateReader {
@@ -96,6 +103,7 @@ export class GlobalDeployStateReader extends DeployStateReader {
         ok: true,
         tools: detected.map((tool) => ({ tool, primitives: [] })),
         skipped: [],
+        otherOrigins: [],
       };
     }
 
@@ -108,6 +116,7 @@ export class GlobalDeployStateReader extends DeployStateReader {
       ok: true,
       tools: grouped.tools,
       skipped: [...unreadableAsSkipped(parsed.unreadable), ...grouped.skipped],
+      otherOrigins: grouped.otherOrigins,
     };
   }
 }

@@ -128,6 +128,28 @@ describe("GlobalTargets", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("names the origin instead of calling a target empty when it holds foreign primitives (#655)", () => {
+    renderTargets({
+      tools: [{ tool: "claude", primitives: [] }],
+      otherOrigins: ["fimoklei/agent-harness"],
+    });
+
+    expect(screen.getByText("● Other origin")).toBeInTheDocument();
+    expect(screen.queryByText("● Empty")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /holds primitives deployed from fimoklei\/agent-harness/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("still reads as empty when nothing on the lockfile names another origin", () => {
+    renderTargets({ tools: [{ tool: "claude", primitives: [] }] });
+
+    expect(screen.getByText("● Empty")).toBeInTheDocument();
+    expect(screen.queryByText("● Other origin")).not.toBeInTheDocument();
+  });
+
   it("shows an install hint and no cards when no supported tool is detected", () => {
     renderTargets({ tools: [] });
 

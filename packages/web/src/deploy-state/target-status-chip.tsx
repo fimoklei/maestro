@@ -23,5 +23,10 @@ export function TargetStatusChip({
   if (indicator === "empty") {
     return <Chip tone="dim">● Empty</Chip>;
   }
+  // A target holding another inventory's primitives is not empty — word
+  // matches the sidebar's ("Other origin") so both readings agree (#655).
+  if (indicator === "foreign") {
+    return <Chip tone="dim">● Other origin</Chip>;
+  }
   return null;
 }

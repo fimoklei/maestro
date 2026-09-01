@@ -4,7 +4,7 @@ import { Card } from "../ui/card";
 import { Notice } from "../ui/notice";
 import { SectionHeader } from "../ui/section-header";
 import { DeployStateList } from "./deploy-state-list";
-import { toolDeployedView } from "./deployed-view";
+import { toolDeployedView, withOtherOrigins } from "./deployed-view";
 import {
   skippedEntryKey,
   skippedEntryText,
@@ -16,6 +16,14 @@ import { toolPresentation } from "./tool-presentation";
 import type { SkippedEntry } from "./use-deploy-state";
 import type { ToolDeployState } from "./use-global-deploy-state";
 
+// Joins repo names into one readable clause: "a", "a and b", "a, b and c".
+function joinOrigins(origins: string[]): string {
+  if (origins.length === 1) {
+    return origins[0] as string;
+  }
+  return `${origins.slice(0, -1).join(", ")} and ${origins[origins.length - 1]}`;
+}
+
 // Presentational "GLOBAL TARGETS" section: one Card per detected tool
 // (ADR-0011). An empty tools list is the honest zero-detected state (an
 // install hint), never conflated with a read failure (J03).
@@ -24,6 +32,7 @@ export function GlobalTargets({
   isError,
   tools,
   skipped,
+  otherOrigins = [],
   drift,
   onStartDeploy,
 }: {
@@ -31,6 +40,8 @@ export function GlobalTargets({
   isError: boolean;
   tools: ToolDeployState[];
   skipped: SkippedEntry[];
+  // Repos named on a lockfile entry no detected tool's prefix covers (#655).
+  otherOrigins?: string[];
   drift: DriftViewModel;
   onStartDeploy: () => void;
 }) {
@@ -72,6 +83,8 @@ export function GlobalTargets({
               drift={drift}
               // Section-wide, since a skipped entry names no tool (#358).
               attentionCount={skipped.filter(skippedNeedsAttention).length}
+              // Section-wide too: an unattributed entry names no tool either (#655).
+              otherOrigins={otherOrigins}
               // A removal triggered from one card covers every detected tool (#338).
               detectedTools={tools.map((detected) => detected.tool)}
               onStartDeploy={onStartDeploy}
@@ -92,12 +105,14 @@ function ToolTargetCard({
   drift,
   detectedTools,
   attentionCount,
+  otherOrigins,
   onStartDeploy,
 }: {
   group: ToolDeployState;
   drift: DriftViewModel;
   detectedTools: string[];
   attentionCount: number;
+  otherOrigins: string[];
   onStartDeploy: () => void;
 }) {
   const { label, destination } = toolPresentation(group.tool);
@@ -106,8 +121,13 @@ function ToolTargetCard({
   const names = group.primitives.map((primitive) => primitive.name);
   // Narrowed to this tool's skills, so a skill behind elsewhere doesn't leak in.
   const toolDrift = drift.forTool(names);
-  const indicator = toolDrift.targetIndicator(
-    toolDeployedView(names, undefined, attentionCount),
+  // Nothing this card can attribute — but the lockfile still names a repo, so
+  // this reads as "holds a foreign origin", never as "empty" (#655).
+  const indicator = withOtherOrigins(
+    toolDrift.targetIndicator(
+      toolDeployedView(names, undefined, attentionCount),
+    ),
+    otherOrigins,
   );
 
   return (
@@ -127,7 +147,11 @@ function ToolTargetCard({
       drift={indicator === "drift"}
       status={<TargetStatusChip indicator={indicator} />}
     >
-      {indicator === "empty" ? (
+      {indicator === "foreign" ? (
+        <p className="px-card-x py-row-y text-dim text-tag">
+          Holds primitives deployed from {joinOrigins(otherOrigins)}.
+        </p>
+      ) : indicator === "empty" ? (
         <TargetDeployAction onStartDeploy={onStartDeploy} />
       ) : (
         <DeployStateList

@@ -1,6 +1,7 @@
 import {
   toDeployedView,
   toolDeployedView,
+  withOtherOrigins,
 } from "../deploy-state/deployed-view";
 import { skippedNeedsAttention } from "../deploy-state/skipped-entry-text";
 import { toolPresentation } from "../deploy-state/tool-presentation";
@@ -62,6 +63,8 @@ export function TargetsList() {
             // Section-wide: a global entry apm could not manage names no tool,
             // so no row may read as empty while it stands (#358).
             attentionCount={globalAttention}
+            // Section-wide too: an unattributed entry names no tool either (#655).
+            otherOrigins={globalDeploy.data?.otherOrigins ?? []}
           />
         ))
       )}
@@ -77,11 +80,13 @@ function ToolTargetItem({
   drift,
   read,
   attentionCount,
+  otherOrigins,
 }: {
   group: ToolDeployState;
   drift: DriftViewModel;
   read: { data: unknown; isError: boolean };
   attentionCount: number;
+  otherOrigins: string[];
 }) {
   const names = group.primitives.map((primitive) => primitive.name);
   const toolDrift = drift.forTool(names);
@@ -90,7 +95,10 @@ function ToolTargetItem({
     <TargetItem
       label={toolPresentation(group.tool).label}
       kind="global"
-      indicator={toolDrift.targetIndicator(deployed)}
+      indicator={withOtherOrigins(
+        toolDrift.targetIndicator(deployed),
+        otherOrigins,
+      )}
       driftCount={toolDrift.driftCount(deployed)}
     />
   );

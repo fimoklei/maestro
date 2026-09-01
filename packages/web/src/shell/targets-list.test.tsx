@@ -32,6 +32,7 @@ function stubFetch(options: {
   repos?: unknown;
   repoDeployState?: unknown;
   repoDrift?: unknown;
+  otherOrigins?: unknown;
 }) {
   vi.stubGlobal(
     "fetch",
@@ -41,7 +42,14 @@ function stubFetch(options: {
         return jsonResponse({ repos: options.repos ?? [] }, 200);
       }
       if (target.includes("/api/deploy-state/global")) {
-        return jsonResponse({ tools: options.tools, skipped: [] }, 200);
+        return jsonResponse(
+          {
+            tools: options.tools,
+            skipped: [],
+            otherOrigins: options.otherOrigins ?? [],
+          },
+          200,
+        );
       }
       if (target.includes("/api/deploy-state")) {
         return jsonResponse(
@@ -200,6 +208,23 @@ describe("TargetsList", () => {
     ).toBeInTheDocument();
     expect(
       within(rowFor("Claude Code")).queryByText(/in sync/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("reads a detected tool holding a foreign origin as 'Other origin', not empty (#655)", async () => {
+    stubFetch({
+      tools: [{ tool: "claude", primitives: [] }],
+      globalBehind: { behind: [] },
+      otherOrigins: ["fimoklei/agent-harness"],
+    });
+    renderTargets();
+
+    await screen.findByText("Claude Code");
+    expect(
+      within(rowFor("Claude Code")).getByText(/other origin/i),
+    ).toBeInTheDocument();
+    expect(
+      within(rowFor("Claude Code")).queryByText(/^empty$/i),
     ).not.toBeInTheDocument();
   });
 

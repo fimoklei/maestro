@@ -18,6 +18,9 @@ export type DriftStatus =
 
 // A whole target's roll-up. "empty" is a confirmed-empty deployment; "drift"
 // needs a deployed skill behind; the un-run states never read as "ok".
+// "foreign" is never produced by rollUp below — a global-only reading a
+// caller derives from `empty` plus the lockfile's unattributed origins, so a
+// target holding another inventory's primitives never reads as bare (#655).
 export type TargetDriftIndicator =
   | "ok"
   // An entry on disk the user has to fix — outranks every drift reading, since
@@ -25,6 +28,7 @@ export type TargetDriftIndicator =
   | "attention"
   | "drift"
   | "empty"
+  | "foreign"
   | "unknown"
   | "unverified"
   | "pending";

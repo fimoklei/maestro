@@ -16,6 +16,8 @@ export type ToolDeployState = {
 type GlobalDeployStateResponse = {
   tools?: ToolDeployState[];
   skipped: SkippedEntry[];
+  // Repos named on a lockfile entry no detected tool's prefix covers (#655).
+  otherOrigins?: string[];
 };
 
 export type GlobalDeployStateView = {
@@ -25,6 +27,7 @@ export type GlobalDeployStateView = {
   detectedTools: string[] | undefined;
   primitives: DeployedPrimitive[];
   skipped: SkippedEntry[];
+  otherOrigins: string[];
 };
 
 export function useGlobalDeployState(enabled = true) {
@@ -39,6 +42,7 @@ export function useGlobalDeployState(enabled = true) {
         detectedTools: data.tools?.map((group) => group.tool),
         skipped: data.skipped,
         primitives: flattenPrimitives(tools),
+        otherOrigins: data.otherOrigins ?? [],
       };
     },
     enabled,

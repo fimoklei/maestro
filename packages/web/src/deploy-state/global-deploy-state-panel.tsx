@@ -20,6 +20,7 @@ export function GlobalDeployStatePanel({
       isError={deployState.isError}
       tools={deployState.data?.tools ?? []}
       skipped={deployState.data?.skipped ?? []}
+      otherOrigins={deployState.data?.otherOrigins ?? []}
       drift={driftViewModel(drift)}
       onStartDeploy={onStartDeploy}
     />

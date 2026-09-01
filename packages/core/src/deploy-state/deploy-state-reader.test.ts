@@ -259,6 +259,29 @@ describe("GlobalDeployStateReader.readGlobal", () => {
         },
       ],
       skipped: [],
+      otherOrigins: [],
+    });
+  });
+
+  it("names the origin of a global skill no detected tool's prefix covers (#655)", async () => {
+    const entry =
+      "- repo_url: fimoklei/agent-harness\n  host: github.com\n  resolved_commit: ec491f154c9d5c9a6c5db56d1946c4c34f3899bb\n  resolved_ref: v0.5.1\n  virtual_path: skills/tdd\n  is_virtual: true\n  package_type: claude_skill\n  deployed_files:\n  - skills/tdd\n  content_hash: sha256:abc\n";
+    const fs = new InMemoryFileSystem({
+      files: { [GLOBAL_LOCKFILE]: lockfile(entry) },
+    });
+    const reader = new GlobalDeployStateReader({
+      fs,
+      toolPresence: fakePresence(["claude", "codex"]),
+    });
+
+    await expect(reader.readGlobal(GLOBAL_ROOT)).resolves.toEqual({
+      ok: true,
+      tools: [
+        { tool: "claude", primitives: [] },
+        { tool: "codex", primitives: [] },
+      ],
+      skipped: [],
+      otherOrigins: ["fimoklei/agent-harness"],
     });
   });
 
@@ -283,6 +306,7 @@ describe("GlobalDeployStateReader.readGlobal", () => {
         { tool: "codex", primitives: [] },
       ],
       skipped: [],
+      otherOrigins: [],
     });
   });
 
@@ -300,6 +324,7 @@ describe("GlobalDeployStateReader.readGlobal", () => {
         { tool: "codex", primitives: [] },
       ],
       skipped: [],
+      otherOrigins: [],
     });
   });
 
