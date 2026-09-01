@@ -654,7 +654,6 @@ describe("Harness home base", () => {
       publish: {
         body: {
           error: "plan-changed",
-          message: "The remote moved while you were deciding.",
           plan: RECOMPUTED,
         },
         status: 409,
@@ -670,7 +669,9 @@ describe("Harness home base", () => {
 
     const dialog = await screen.findByRole("dialog");
     expect(
-      await within(dialog).findByText(/the remote moved while you were/i),
+      await within(dialog).findByText(
+        /GitHub moved while this dialog was open/i,
+      ),
     ).toBeInTheDocument();
     // The numbers the refusal replaced them with, and none of the old ones.
     expect(within(dialog).getByText("v1.3.1")).toBeInTheDocument();
@@ -688,7 +689,6 @@ describe("Harness home base", () => {
       publish: {
         body: {
           error: "plan-changed",
-          message: "The remote moved while you were deciding.",
           plan: RECOMPUTED,
         },
         status: 409,
@@ -722,7 +722,6 @@ describe("Harness home base", () => {
       publish: {
         body: {
           error: "plan-changed",
-          message: "The remote moved while you were deciding.",
           plan: RECOMPUTED,
         },
         status: 409,
@@ -761,7 +760,6 @@ describe("Harness home base", () => {
       publish: {
         body: {
           error: "plan-changed",
-          message: "The remote moved while you were deciding.",
         },
         status: 409,
       },
@@ -794,7 +792,6 @@ describe("Harness home base", () => {
       publish: {
         body: {
           error: "plan-changed",
-          message: "The remote moved while you were deciding.",
           plan: { ...RECOMPUTED, ...broken },
         },
         status: 409,
@@ -822,7 +819,6 @@ describe("Harness home base", () => {
       publish: {
         body: {
           error: "already-released",
-          message: "Someone already published this version.",
         },
         status: 409,
       },
@@ -838,7 +834,7 @@ describe("Harness home base", () => {
 
     const dialog = await screen.findByRole("dialog");
     expect(
-      within(dialog).getByText(/already published this version/i),
+      within(dialog).getByText(/That version number is taken/i),
     ).toBeInTheDocument();
   });
 
@@ -1005,7 +1001,6 @@ describe("Harness home base", () => {
       promote: {
         body: {
           error: "promote-failed",
-          message: "The skill could not be pushed. Check the remote.",
         },
         status: 502,
       },
@@ -1014,7 +1009,9 @@ describe("Harness home base", () => {
 
     await promoteRow("lint-rules");
 
-    expect(await screen.findByText(/could not be pushed/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/The Harness is as it was/i),
+    ).toBeInTheDocument();
     const row = screen.getByText("lint-rules").closest("tr") as HTMLElement;
     expect(
       within(row).getByRole("button", { name: /^promote$/i }),
@@ -1215,8 +1212,6 @@ describe("Harness home base", () => {
       deletion: {
         body: {
           error: "merge-in-progress",
-          message:
-            "A merge is in progress in the Harness clone. Finish or abort it, then confirm the removal again.",
         },
         status: 409,
       },
@@ -1229,7 +1224,7 @@ describe("Harness home base", () => {
     );
 
     expect(
-      await within(dialog).findByText(/merge is in progress/i),
+      await within(dialog).findByText(/a half-merged working tree/i),
     ).toBeInTheDocument();
   });
 

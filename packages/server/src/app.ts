@@ -374,18 +374,11 @@ const scaffoldErrorResponses: ErrorTable<ScaffoldHarnessError> = {
 };
 
 // Mirrors the connect table: nothing connected is a 409, a connected clone
-// whose origin apm could never resolve is a 422.
+// whose origin apm could never resolve is a 422. The sentences live in
+// `harness/notice-copy.ts`.
 const harnessErrorResponses: ErrorTable<HarnessStateError> = {
-  "not-configured": {
-    status: 409,
-    message:
-      "Nothing can be shown here until Maestro knows where the Harness lives. Set the Harness source path.",
-  },
-  "no-usable-origin": {
-    status: 422,
-    message:
-      "Releases are published as tags, so the clone must fetch from GitHub over https or ssh. Point its origin at the Harness repository.",
-  },
+  "not-configured": { status: 409 },
+  "no-usable-origin": { status: 422 },
 };
 
 // A plan shares the state read's two refusals and adds one: `no-answer` is a
@@ -393,11 +386,7 @@ const harnessErrorResponses: ErrorTable<HarnessStateError> = {
 // nothing-connected — a precondition the author clears with Refresh.
 const releasePlanErrorResponses: ErrorTable<ReleasePlanError> = {
   ...harnessErrorResponses,
-  "no-answer": {
-    status: 409,
-    message:
-      "A release plan is measured against what GitHub holds, and Maestro has not read that yet. Press refresh, then open the release again.",
-  },
+  "no-answer": { status: 409 },
 };
 
 // Confirmation is its own remote read, so its `no-answer` covers both a
@@ -405,246 +394,75 @@ const releasePlanErrorResponses: ErrorTable<ReleasePlanError> = {
 // nothing was published and a retry is the way forward (#520).
 const publishReleaseErrorResponses: ErrorTable<PublishReleaseError> = {
   ...harnessErrorResponses,
-  "no-answer": {
-    status: 409,
-    message:
-      "Nothing was published. Press refresh to read GitHub again, then confirm the release.",
-  },
+  "no-answer": { status: 409 },
   // Both are ordinary races, not dead ends: nothing was overwritten, and the
   // reply carries the recomputed plan the author confirms instead (#521).
-  "already-released": {
-    status: 409,
-    message:
-      "That version number is taken. Maestro recomputed the plan against the newest tag — check it, then confirm.",
-  },
-  "plan-changed": {
-    status: 409,
-    message:
-      "GitHub moved while this dialog was open, so nothing was published. Maestro recomputed the plan — check it, then confirm.",
-  },
-  "publish-failed": {
-    status: 502,
-    message:
-      "The Harness is as it was. Check the connection to GitHub, then confirm the release again.",
-  },
-  "publish-in-progress": {
-    status: 409,
-    message:
-      "Only one release runs at a time. Wait for it to finish, then read the plan again.",
-  },
+  "already-released": { status: 409 },
+  "plan-changed": { status: 409 },
+  "publish-failed": { status: 502 },
+  "publish-in-progress": { status: 409 },
 };
 
-// Promotion shares the state read's two refusals and states the rest in
-// Maestro's own words — never git's, and never the path it ran in
-// (security.md). Nothing here is a dead end: every refusal leaves the clone as
-// it was, so a retry is another press (#577).
+// Promotion shares the state read's two refusals. Nothing here is a dead end:
+// every refusal leaves the clone as it was, so a retry is another press (#577).
 const promoteErrorResponses: ErrorTable<PromoteSkillError> = {
   ...harnessErrorResponses,
-  "invalid-skill": {
-    status: 400,
-    message:
-      "A skill name is lowercase letters, digits and single hyphens, like code-review.",
-  },
+  "invalid-skill": { status: 400 },
   // The rule that closes Release: with no answer from the remote, the tip this
   // commit would be built on is unknown.
-  "no-answer": {
-    status: 409,
-    message:
-      "Nothing was pushed. Press refresh to read GitHub again, then promote.",
-  },
-  "skill-missing": {
-    status: 422,
-    message:
-      "The skill is no longer in the Harness working tree, so nothing was pushed. Press refresh to repaint the list.",
-  },
-  "push-elsewhere": {
-    status: 422,
-    message:
-      "Maestro publishes only to the origin it fetches from, so nothing was pushed. Point the clone's push remote at that origin.",
-  },
-  "source-changed": {
-    status: 409,
-    message:
-      "Nothing was pushed. Let the edit on disk finish, then promote again.",
-  },
-  "concurrent-change": {
-    status: 409,
-    message:
-      "Nothing was pushed, so their version still stands. Pull it into the Harness clone, then promote again.",
-  },
-  "promote-failed": {
-    status: 502,
-    message:
-      "The Harness is as it was. Check the connection to GitHub, then promote again.",
-  },
-  "promote-in-progress": {
-    status: 409,
-    message:
-      "Only one promotion runs at a time. Wait for it to finish, then press promote.",
-  },
+  "no-answer": { status: 409 },
+  "skill-missing": { status: 422 },
+  "push-elsewhere": { status: 422 },
+  "source-changed": { status: 409 },
+  "concurrent-change": { status: 409 },
+  "promote-failed": { status: 502 },
+  "promote-in-progress": { status: 409 },
 };
 
 // Promotion's refusals plus the ones only a removal has: a confirmation the
 // remote moved past, a movement that is no longer a deletion, and four working
-// trees that cannot answer. Maestro's own words (#580, security.md).
+// trees that cannot answer (#580).
 const deletionErrorResponses: ErrorTable<PromoteDeletionError> = {
   ...harnessErrorResponses,
   "invalid-skill": promoteErrorResponses["invalid-skill"],
-  "no-answer": {
-    status: 409,
-    message:
-      "Nothing was pushed. Press refresh to read GitHub again, then confirm the removal.",
-  },
-  "confirmation-stale": {
-    status: 409,
-    message:
-      "The copy on the default branch moved after this confirmation was given, so nothing was pushed. Press refresh, then confirm again.",
-  },
-  "not-deleted": {
-    status: 422,
-    message:
-      "A removal publishes what the Harness working tree already says. Delete the skill folder there first.",
-  },
-  "sparse-checkout": {
-    status: 409,
-    message:
-      "A missing folder in a partial clone is not proof of a deletion, so nothing was pushed. Maestro cannot publish a removal from this clone — connect a complete one to remove skills.",
-  },
-  "merge-in-progress": {
-    status: 409,
-    message:
-      "Nothing was pushed — a half-merged working tree does not state what should go. Finish or abort the merge, then confirm again.",
-  },
-  "rebase-in-progress": {
-    status: 409,
-    message:
-      "Nothing was pushed — a half-rebased working tree does not state what should go. Finish or abort the rebase, then confirm again.",
-  },
-  "unresolved-conflicts": {
-    status: 409,
-    message:
-      "Nothing was pushed — a conflicted working tree does not state what should go. Resolve the conflicts, then confirm again.",
-  },
-  unreadable: {
-    status: 409,
-    message:
-      "Nothing was pushed. Check that the Harness folder is still on disk and readable, then confirm again.",
-  },
+  "no-answer": { status: 409 },
+  "confirmation-stale": { status: 409 },
+  "not-deleted": { status: 422 },
+  "sparse-checkout": { status: 409 },
+  "merge-in-progress": { status: 409 },
+  "rebase-in-progress": { status: 409 },
+  "unresolved-conflicts": { status: 409 },
+  unreadable: { status: 409 },
   "push-elsewhere": promoteErrorResponses["push-elsewhere"],
-  "source-changed": {
-    status: 409,
-    message:
-      "Nothing was pushed. Press refresh to repaint the list, then decide again.",
-  },
-  "promote-failed": {
-    status: 502,
-    message:
-      "The Harness is as it was. Check the connection to GitHub, then confirm again.",
-  },
+  "source-changed": { status: 409 },
+  "promote-failed": { status: 502 },
   "promote-in-progress": promoteErrorResponses["promote-in-progress"],
 };
 
-// Import states every refusal in Maestro's own words — never a filesystem
-// message, and never the path it read (#576, security.md). The copy's own
-// refusals come through unchanged from core's typed set.
+// The sentences live in `harness/notice-copy.ts` — never a filesystem message,
+// and never the path it read (#576, security.md).
 const importErrorResponses: ErrorTable<ImportSkillError> = {
-  "not-configured": {
-    status: 409,
-    message:
-      "Nothing can be imported until Maestro knows where the Harness lives. Set the Harness source path, then import again.",
-  },
-  "source-unreadable": {
-    status: 422,
-    message:
-      "Nothing was copied. Check that the folder is still on disk and readable, then pick it again.",
-  },
+  "not-configured": { status: 409 },
+  "source-unreadable": { status: 422 },
   // 403 like browse: the same ceiling, and the reply names no path.
-  "outside-root": {
-    status: 403,
-    message:
-      "Maestro reads inside the home folder only. Pick a folder under it.",
-  },
-  "deployed-copy": {
-    status: 409,
-    message:
-      "Importing it would copy Maestro's own output back into the Harness. Pick the folder the skill is authored in.",
-  },
-  "missing-manifest": {
-    status: 422,
-    message:
-      "Without one, the folder is not a skill Maestro can carry. Pick the folder that holds the skill's SKILL.md.",
-  },
-  "invalid-frontmatter": {
-    status: 422,
-    message:
-      "Maestro cannot read the skill's name or description. Fix the SKILL.md frontmatter, then import again.",
-  },
-  "empty-description": {
-    status: 422,
-    message:
-      "The description is what tells an agent when to reach for the skill. Fill it in in SKILL.md, then import again.",
-  },
-  "invalid-name": {
-    status: 400,
-    message:
-      "A skill name is lowercase letters, digits and single hyphens, like code-review.",
-  },
-  "name-taken": {
-    status: 409,
-    message: "The Harness already holds a skill under it. Pick another name.",
-  },
-  "not-found": {
-    status: 422,
-    message: "Nothing was copied. Pick the folder again.",
-  },
-  "not-a-directory": {
-    status: 422,
-    message: "A skill is a folder with a SKILL.md in it. Pick one of those.",
-  },
-  "destination-exists": {
-    status: 409,
-    message: "The Harness already holds a folder under it. Pick another name.",
-  },
-  "unsafe-link": {
-    status: 422,
-    message:
-      "Maestro will not follow one into somewhere else on disk, so nothing was copied. Replace the link with a real file, then import again.",
-  },
-  "hard-linked-file": {
-    status: 422,
-    message:
-      "Copying it would tie the Harness to a file it does not own, so nothing was copied. Replace it with a plain copy, then import again.",
-  },
-  "special-file": {
-    status: 422,
-    message:
-      "Maestro carries plain files and folders only, so nothing was copied. Take it out of the folder, then import again.",
-  },
-  "too-many-files": {
-    status: 422,
-    message:
-      "Nothing was copied. A skill is a handful of files — pick the skill folder itself, not the repository around it.",
-  },
-  "too-large": {
-    status: 422,
-    message:
-      "Nothing was copied. A skill is text — pick the skill folder itself, not the repository around it.",
-  },
-  "source-changed": {
-    status: 409,
-    message:
-      "Nothing was left in the Harness. Let the edit on disk finish, then import again.",
-  },
-  "copy-failed": {
-    status: 500,
-    message:
-      "Nothing was left in the Harness. Check that there is room on disk, then import again.",
-  },
-  "destination-unsafe": {
-    status: 409,
-    message:
-      "Writing there would land outside the Harness, so nothing was copied. Check that the Harness clone's skills folder is a real folder inside it.",
-  },
+  "outside-root": { status: 403 },
+  "deployed-copy": { status: 409 },
+  "missing-manifest": { status: 422 },
+  "invalid-frontmatter": { status: 422 },
+  "empty-description": { status: 422 },
+  "invalid-name": { status: 400 },
+  "name-taken": { status: 409 },
+  "not-found": { status: 422 },
+  "not-a-directory": { status: 422 },
+  "destination-exists": { status: 409 },
+  "unsafe-link": { status: 422 },
+  "hard-linked-file": { status: 422 },
+  "special-file": { status: 422 },
+  "too-many-files": { status: 422 },
+  "too-large": { status: 422 },
+  "source-changed": { status: 409 },
+  "copy-failed": { status: 500 },
+  "destination-unsafe": { status: 409 },
 };
 
 // outside-root is 403 (the info-disclosure boundary); no message echoes the
@@ -734,8 +552,8 @@ export function createApp(deps: AppDeps) {
   // can point git at a directory of its choosing (security.md).
   const harnessResponse = (c: Context, result: HarnessStateResult) => {
     if (!result.ok) {
-      const { status, message } = harnessErrorResponses[result.error];
-      return c.json({ error: result.error, message }, status);
+      const { status } = harnessErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
     }
     return c.json(result.state);
   };
@@ -757,8 +575,8 @@ export function createApp(deps: AppDeps) {
   app.get("/api/harness/release-plan", async (c) => {
     const result: ReleasePlanResult = await deps.harness.planRelease();
     if (!result.ok) {
-      const { status, message } = releasePlanErrorResponses[result.error];
-      return c.json({ error: result.error, message }, status);
+      const { status } = releasePlanErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
     }
     return c.json(result.plan);
   });
@@ -782,13 +600,10 @@ export function createApp(deps: AppDeps) {
       new Date(),
     );
     if (!result.ok) {
-      const { status, message } = publishReleaseErrorResponses[result.error];
+      const { status } = publishReleaseErrorResponses[result.error];
       // The refusal carries the plan that replaces it, so the dialog can take
       // a new confirmation without the author leaving it (#521).
-      return c.json(
-        { error: result.error, message, plan: result.recomputed },
-        status,
-      );
+      return c.json({ error: result.error, plan: result.recomputed }, status);
     }
     return c.json({ tag: result.tag, revision: result.revision });
   });
@@ -807,8 +622,8 @@ export function createApp(deps: AppDeps) {
       new Date(),
     );
     if (!result.ok) {
-      const { status, message } = promoteErrorResponses[result.error];
-      return c.json({ error: result.error, message }, status);
+      const { status } = promoteErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
     }
     return c.json({
       branch: result.branch,
@@ -830,8 +645,8 @@ export function createApp(deps: AppDeps) {
       new Date(),
     );
     if (!result.ok) {
-      const { status, message } = deletionErrorResponses[result.error];
-      return c.json({ error: result.error, message }, status);
+      const { status } = deletionErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
     }
     return c.json({
       branch: result.branch,
@@ -851,8 +666,8 @@ export function createApp(deps: AppDeps) {
 
     const result = await deps.importSkill.check(body.data);
     if (!result.ok) {
-      const { status, message } = importErrorResponses[result.error];
-      return c.json({ error: result.error, message }, status);
+      const { status } = importErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
     }
     return c.json(result.check);
   });
@@ -867,8 +682,8 @@ export function createApp(deps: AppDeps) {
 
     const result = await deps.importSkill.execute(body.data);
     if (!result.ok) {
-      const { status, message } = importErrorResponses[result.error];
-      return c.json({ error: result.error, message }, status);
+      const { status } = importErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
     }
     return c.json({ name: result.name, skipped: result.skipped });
   });
