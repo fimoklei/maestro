@@ -40,6 +40,6 @@ A story is documentation, not a test (behaviour → `.test.tsx`, see `testing.md
 - CSF3 (`satisfies Meta<typeof X>`, `StoryObj`); no legacy `storiesOf`.
 - Title is `Group/Component`; reuse existing groups.
 
-## Not in this step
+## Out of scope
 
-- No global client-state library (Redux/Zustand). A client-side router arrives with the multi-view structure (ADR-0004).
+- No global client-state library (Redux/Zustand). Routing is `react-router`; add no second router.
