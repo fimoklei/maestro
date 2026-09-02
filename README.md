@@ -48,11 +48,23 @@ other options are in the [APM docs](https://microsoft.github.io/apm/).
 ```sh
 git clone https://github.com/fimoklei/maestro.git
 cd maestro
+node scripts/bootstrap.mjs
+```
+
+That checks Node, pnpm and apm; if anything is missing it prints the exact
+command to fix it and stops, without installing anything itself. Otherwise it
+installs Maestro's dependencies (first run only) and prints the cockpit's
+address. Open it in your browser. `node scripts/bootstrap.mjs --check` runs
+just the checks.
+
+Prefer to do it by hand, or the fast path found a gap and you fixed it?
+
+```sh
 pnpm install
 pnpm dev
 ```
 
-`pnpm dev` prints the cockpit's address. Open it in your browser.
+`pnpm dev` prints the cockpit's address the same way.
 
 ## Your first harness
 
