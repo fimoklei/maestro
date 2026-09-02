@@ -1,7 +1,7 @@
 // Dev launcher: keeps one Maestro running per worktree — each on its own pair
 // of ports (scripts/cockpit-ports.mjs), so a sibling checkout can serve at the
 // same time — and with --smoke, an ephemeral, isolated rehearsal environment
-// (ADR-0010).
+// (ADR-0010). What each platform allows: scripts/launch-policy.mjs.
 import { execFileSync, spawn } from "node:child_process";
 import {
   existsSync,
@@ -15,6 +15,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cockpitPorts, cockpitUrls } from "./cockpit-ports.mjs";
+import { launchPolicy } from "./launch-policy.mjs";
 import {
   describeForeignHolders,
   describeHeldPorts,
@@ -30,6 +31,7 @@ const pidFile = join(repoRoot, ".maestro-dev.pid");
 const ports = cockpitPorts();
 const cockpitPortList = [ports.server, ports.web];
 const smoke = process.argv.includes("--smoke");
+const policy = launchPolicy(process.platform);
 
 // A shell that never loaded nvm hands us the system node, and the failure lands
 // far downstream (corepack, vite) as something that looks unrelated.
@@ -55,9 +57,12 @@ function isAlive(pid) {
   }
 }
 
-function killGroup(pid, signal) {
+// The whole tree where the children lead their own group; the launcher's own
+// child otherwise, because a negative pid is a process group and Windows has no
+// such thing.
+function killRun(pid, signal) {
   try {
-    process.kill(-pid, signal);
+    process.kill(policy.detached ? -pid : pid, signal);
   } catch {
     // group already gone, or pid was never a group leader
   }
@@ -67,71 +72,76 @@ function sleep(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
-// Resolved, or a symlinked checkout reads its own previous run as a sibling's
-// and this launcher refuses to start for good.
-const attribution = {
-  self: realpathSync(repoRoot),
-  worktrees: listWorktrees(repoRoot),
-};
+// Steps 1-4 read `lsof` and `ps` and signal a process group, so they run only
+// where the policy allows them (scripts/launch-policy.mjs).
+if (policy.singleInstance) {
+  // Resolved, or a symlinked checkout reads its own previous run as a sibling's
+  // and this launcher refuses to start for good.
+  const attribution = {
+    self: realpathSync(repoRoot),
+    worktrees: listWorktrees(repoRoot),
+  };
 
-// 1. Kill the previous dev launcher's process group (pidfile = "the note"),
-// but only once the process proves it is ours: a pidfile left by a run that
-// died without cleanup can name a pid the OS has since handed to someone else.
-if (existsSync(pidFile)) {
-  const previous = Number(readFileSync(pidFile, "utf8").trim());
-  if (Number.isInteger(previous) && previous > 0 && isAlive(previous)) {
-    if (processWorktree(previous, attribution) === attribution.self) {
-      console.log(`[dev] evicting previous dev run (pid ${previous})`);
-      killGroup(previous, "SIGTERM");
-    } else {
-      console.warn(
-        `[dev] stale pidfile: pid ${previous} is not this worktree's dev run — leaving it alone`,
-      );
+  // 1. Kill the previous dev launcher's process group (pidfile = "the note"),
+  // but only once the process proves it is ours: a pidfile left by a run that
+  // died without cleanup can name a pid the OS has since handed to someone else.
+  if (existsSync(pidFile)) {
+    const previous = Number(readFileSync(pidFile, "utf8").trim());
+    if (Number.isInteger(previous) && previous > 0 && isAlive(previous)) {
+      if (processWorktree(previous, attribution) === attribution.self) {
+        console.log(`[dev] evicting previous dev run (pid ${previous})`);
+        killRun(previous, "SIGTERM");
+      } else {
+        console.warn(
+          `[dev] stale pidfile: pid ${previous} is not this worktree's dev run — leaving it alone`,
+        );
+      }
+    }
+    rmSync(pidFile, { force: true });
+  }
+
+  // 2. Refuse every holder but this worktree's own: the pair is derived from
+  // this path, so anything else on it is work this launcher did not start.
+  const { foreign, evictable } = partitionHolders(
+    findPortHolders(cockpitPortList),
+    attribution,
+  );
+  const foreignRefusal = describeForeignHolders(foreign);
+  if (foreignRefusal !== null) {
+    console.error(foreignRefusal);
+    process.exit(1);
+  }
+
+  // 3. Fallback: free this worktree's own previous instance, when the pidfile
+  // above did not already catch it.
+  let freedSomething = false;
+  for (const { port, pid } of evictable) {
+    // A lookup that could not answer names no pid here; step 4 refuses on it.
+    if (pid === null) continue;
+    try {
+      process.kill(pid, "SIGKILL");
+      console.log(`[dev] freeing port ${port} (pid ${pid})`);
+      freedSomething = true;
+    } catch {
+      // already gone
     }
   }
-  rmSync(pidFile, { force: true });
-}
+  if (freedSomething) {
+    sleep(300); // let the OS release the sockets before we rebind
+  }
 
-// 2. Refuse every holder but this worktree's own: the pair is derived from
-// this path, so anything else on it is work this launcher did not start.
-const { foreign, evictable } = partitionHolders(
-  findPortHolders(cockpitPortList),
-  attribution,
-);
-const foreignRefusal = describeForeignHolders(foreign);
-if (foreignRefusal !== null) {
-  console.error(foreignRefusal);
-  process.exit(1);
-}
-
-// 3. Fallback: free this worktree's own previous instance, when the pidfile
-// above did not already catch it.
-let freedSomething = false;
-for (const { port, pid } of evictable) {
-  // A lookup that could not answer names no pid here; step 4 refuses on it.
-  if (pid === null) continue;
-  try {
-    process.kill(pid, "SIGKILL");
-    console.log(`[dev] freeing port ${port} (pid ${pid})`);
-    freedSomething = true;
-  } catch {
-    // already gone
+  // 4. Refuse when a holder survived the kill above — another user's process, or
+  // one that restarted itself. Starting anyway hands the cockpit's URL to it, so
+  // every later screenshot would prove that process rather than this worktree.
+  const stillHeld = describeHeldPorts(findPortHolders(cockpitPortList));
+  if (stillHeld !== null) {
+    console.error(stillHeld);
+    process.exit(1);
   }
 }
-if (freedSomething) {
-  sleep(300); // let the OS release the sockets before we rebind
-}
 
-// 4. Refuse when a holder survived the kill above — another user's process, or
-// one that restarted itself. Starting anyway hands the cockpit's URL to it, so
-// every later screenshot would prove that process rather than this worktree.
-const stillHeld = describeHeldPorts(findPortHolders(cockpitPortList));
-if (stillHeld !== null) {
-  console.error(stillHeld);
-  process.exit(1);
-}
-
-// 5. Start server + web as one detached group so we can kill the whole tree.
+// 5. Start server + web — as one detached group where the policy allows it, so
+// we can kill the whole tree; in the foreground otherwise.
 const env = { ...process.env };
 const sandbox = join(repoRoot, ".maestro-sandbox");
 
@@ -231,18 +241,19 @@ const child = spawn(
     "run",
     "dev",
   ],
-  { cwd: repoRoot, stdio: "inherit", detached: true, env },
+  { cwd: repoRoot, stdio: "inherit", detached: policy.detached, env },
 );
 
-writeFileSync(pidFile, String(child.pid));
+// The pidfile is the note step 1 reads; nothing reads it where step 1 is off.
+if (policy.singleInstance) writeFileSync(pidFile, String(child.pid));
 
 const urls = cockpitUrls(ports);
 console.log(
   `[dev] this worktree's cockpit: ${urls.web} (api ${urls.api}) — \`pnpm cockpit:url\` prints it again`,
 );
 
-// Detached, so this pid leads the process group every server below it belongs
-// to. `pnpm smoke:ready` compares against it before writing anything, because
+// Where the run is detached, this pid leads the process group every server
+// below it belongs to. `pnpm smoke:ready` compares against it, because
 // answering on the cockpit's ports is not proof of being this run.
 if (smoke) writeSmokeMarker(sandbox, { launcherPid: child.pid });
 
@@ -255,7 +266,7 @@ function teardownSandbox() {
 }
 
 function shutdown() {
-  killGroup(child.pid, "SIGTERM");
+  killRun(child.pid, "SIGTERM");
   rmSync(pidFile, { force: true });
   teardownSandbox();
   process.exit(0);

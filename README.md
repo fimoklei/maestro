@@ -27,13 +27,22 @@ Maestro needs APM. Install APM first.
 
 **1. Install APM**
 
+macOS and Linux, in a terminal:
+
 ```sh
 curl -sSL https://aka.ms/apm-unix | sh
 apm --version
 ```
 
-If the second line prints no version, stop and fix that first. Windows and
-other options are in the [APM docs](https://microsoft.github.io/apm/).
+Windows, in PowerShell:
+
+```powershell
+irm https://aka.ms/apm-windows | iex
+apm --version
+```
+
+If `apm --version` prints no version, stop and fix that first. Other options
+are in the [APM docs](https://microsoft.github.io/apm/).
 
 **2. Have these ready**
 
