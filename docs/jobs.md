@@ -25,7 +25,9 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 ## NOW
 
-Empty — no loop is running. Pick the next job.
+| Job | Main | Job story |
+|---|---|---|
+| Install Maestro from a clone in one command · [#717](https://github.com/fimoklei/maestro/issues/717), [#621](https://github.com/fimoklei/maestro/issues/621) | C | *When* a teammate has been given access to Maestro, *I want to* have one bootstrap script check their Node and pnpm and start the cockpit, *so I can* hand them a repo instead of walking them through a toolchain. |
 
 ## NEXT
 
@@ -37,7 +39,6 @@ Detail lives in tracker issues; elaboration happens in the grill.
 
 | Job | Main | Job story |
 |---|---|---|
-| Install Maestro from a clone in one command · [#621](https://github.com/fimoklei/maestro/issues/621) | C | *When* a teammate has been given access to Maestro, *I want to* have one bootstrap script check their Node and pnpm and start the cockpit, *so I can* hand them a repo instead of walking them through a toolchain. |
 | Cut a Maestro release a teammate can pull · [#621](https://github.com/fimoklei/maestro/issues/621) | C | *When* I fix or extend the cockpit, *I want to* publish a tagged release of Maestro itself, *so I can* have teammates pull a version that works instead of whatever `main` happens to be. |
 | Read the shared skills directory truthfully · [#172](https://github.com/fimoklei/maestro/issues/172) | A, B | *When* my tools read one shared skills directory, *I want to* have the cockpit show one source read by many tools, *so I can* trust deploy-state, drift, and cleanup on my real machine. |
 | Connect a registry as inventory source | A | *When* my central inventory is published to an apm registry, *I want to* point Maestro at it as the inventory source, *so I can* run the cockpit without a local clone. |
@@ -46,6 +47,7 @@ Detail lives in tracker issues; elaboration happens in the grill.
 | Add or edit a primitive in central (J09) | B | *When* I create or improve a primitive, *I want to* have it enter the central inventory, *so I can* make it reusable and deployable to any target. |
 | Deploy hooks and MCP servers | B, A | *When* my setup needs more than skills, *I want to* deploy hook and MCP server primitives too, *so I can* provision every primitive type, not just skills. |
 | See local divergence from central | A | *When* I have edited a deployed primitive in a consuming repo, *I want to* see that it has content-drifted from central, *so I can* tell which copies are modified before I reset or update them. |
+| Bring an edited deployed copy back into central · [#716](https://github.com/fimoklei/maestro/issues/716) | C | *When* I edit a skill Maestro has already deployed, *I want to* carry that edit into the harness instead of hand-retyping it, *so I can* contribute a fix without import silently refusing my only copy of it. |
 | See global↔local duplication | A | *When* a skill is deployed both globally and in a consuming repo, *I want to* have the cockpit flag that overlap in both views, *so I can* remove the redundant copy instead of running two unaware. |
 | Guard against duplicate deploy | B | *When* I deploy a skill already deployed on the other scope, *I want to* have the cockpit warn me before it proceeds, *so I can* avoid an accidental duplicate while still keeping a deliberate one. |
 | Backfill a newly-detected global tool | B, A | *When* I install a second tool after already deploying globally, *I want to* have the cockpit offer to bring the new tool up to the same set, *so I can* keep my tools in sync instead of the new one starting empty. |
