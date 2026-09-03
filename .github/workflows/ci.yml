@@ -54,3 +54,45 @@ jobs:
       # browser lane (story-as-test).
       - name: Build Storybook
         run: pnpm --filter @maestro/web build-storybook
+
+  # Proves the one bootstrap command on Windows (#720). Only the steps a
+  # teammate runs after `git clone`: check, install, build. Lint, typecheck,
+  # test and Storybook stay on the Ubuntu job — they are platform-independent.
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable corepack
+        run: corepack enable
+
+      # No apm on the runner, and the job does not install one: that would make
+      # every pull request depend on an external download. What Windows has to
+      # prove is that bootstrap itself runs and reports correctly there, so the
+      # job asserts apm is the only gap it finds — a second gap fails the job.
+      - name: Bootstrap check reports apm as the only gap
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $output = node scripts/bootstrap.mjs --check 2>&1 | Out-String
+          $exitCode = $LASTEXITCODE
+          Write-Host $output
+          if ($exitCode -eq 0) {
+            throw "bootstrap --check passed; expected it to refuse over the missing apm"
+          }
+          $gaps = @($output -split '\r?\n' | Where-Object { $_ -match '^\s+- ' })
+          if ($gaps.Count -ne 1 -or $gaps[0] -notmatch '- apm:') {
+            throw "expected apm to be the only gap"
+          }
+          # The step's own success is the assertion above, not node's exit code.
+          exit 0
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build

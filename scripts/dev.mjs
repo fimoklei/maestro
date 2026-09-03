@@ -229,6 +229,7 @@ if (smoke) {
 
 // append-only, or pnpm's dynamic reporter collapses two never-ending dev
 // servers into a redrawn summary instead of streaming their prefixed lines.
+// pnpm is a .cmd shim on Windows; spawn can't launch that without a shell.
 const child = spawn(
   "pnpm",
   [
@@ -241,7 +242,13 @@ const child = spawn(
     "run",
     "dev",
   ],
-  { cwd: repoRoot, stdio: "inherit", detached: policy.detached, env },
+  {
+    cwd: repoRoot,
+    stdio: "inherit",
+    detached: policy.detached,
+    env,
+    shell: process.platform === "win32",
+  },
 );
 
 // The pidfile is the note step 1 reads; nothing reads it where step 1 is off.
