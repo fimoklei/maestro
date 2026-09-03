@@ -41,10 +41,12 @@ const runStep = (step) =>
     log?.write(`command: ${step.command} ${step.args.join(" ")}\n`);
     log?.write(`started: ${new Date().toISOString()}\n---\n`);
 
+    // pnpm is a .cmd shim on Windows; spawn can't launch that without a shell.
     const child = spawn(step.command, step.args, {
       cwd: repoRoot,
       env: { ...process.env, FORCE_COLOR: "1" },
       stdio: ["inherit", "pipe", "pipe"],
+      shell: process.platform === "win32",
     });
 
     const tee = (source, sink) => {

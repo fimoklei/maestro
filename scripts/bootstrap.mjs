@@ -76,8 +76,15 @@ export function formatGaps(gaps) {
   ].join("\n");
 }
 
+// pnpm (and apm's own shim, where installed via npm) are .cmd files on
+// Windows; execFileSync/spawn can't launch those without a shell.
+const NEEDS_SHELL_ON_WINDOWS = process.platform === "win32";
+
 function realRun(cmd, args) {
-  return execFileSync(cmd, args, { encoding: "utf8" });
+  return execFileSync(cmd, args, {
+    encoding: "utf8",
+    shell: NEEDS_SHELL_ON_WINDOWS,
+  });
 }
 
 async function main() {
@@ -109,10 +116,18 @@ async function main() {
   }
 
   if (!existsSync(join(repoRoot, "node_modules"))) {
-    execFileSync("pnpm", ["install"], { cwd: repoRoot, stdio: "inherit" });
+    execFileSync("pnpm", ["install"], {
+      cwd: repoRoot,
+      stdio: "inherit",
+      shell: NEEDS_SHELL_ON_WINDOWS,
+    });
   }
 
-  execFileSync("pnpm", ["dev"], { cwd: repoRoot, stdio: "inherit" });
+  execFileSync("pnpm", ["dev"], {
+    cwd: repoRoot,
+    stdio: "inherit",
+    shell: NEEDS_SHELL_ON_WINDOWS,
+  });
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) await main();
