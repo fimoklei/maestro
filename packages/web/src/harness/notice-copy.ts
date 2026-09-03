@@ -224,10 +224,17 @@ const importHeadings: NoticeTable<ImportSkillError> = {
   },
   "deployed-copy": {
     level: "error",
-    label: "Deployed copy",
-    message: "Pick the folder the skill is authored in.",
+    label: "Copy from another Harness",
+    message: "Press Change folder, then pick a folder you wrote yourself.",
     detail:
-      "Importing it would copy Maestro's own output back into the Harness.",
+      "Only a copy the connected Harness deployed can be carried back into it.",
+  },
+  "harness-copy-uncommitted": {
+    level: "error",
+    label: "Uncommitted changes in the Harness",
+    message:
+      "Commit or undo the Harness's own changes to this skill, then Update skill again.",
+    detail: "Replacing the folder now would take work git has no record of.",
   },
   "missing-manifest": {
     level: "error",

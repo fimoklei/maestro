@@ -8,6 +8,7 @@ import type {
   HarnessReleaseState,
   HarnessState,
   ImportCheck,
+  ImportMode,
   ImportNameBlocker,
   ImportSourceBlocker,
   ManifestAdvisory,
@@ -28,6 +29,7 @@ export type {
   HarnessReleaseState,
   HarnessState,
   ImportCheck,
+  ImportMode,
   ImportNameBlocker,
   ImportSourceBlocker,
   ManifestAdvisory,
@@ -196,7 +198,11 @@ export function useImportCheck(source: string | null, name: string | null) {
 
 // What an import landed, and what it left behind: `skipped` counts the `.git`
 // entries the copy did not carry.
-export type ImportOutcome = { name: string; skipped: number };
+export type ImportOutcome = {
+  mode: ImportMode;
+  name: string;
+  skipped: number;
+};
 
 // Importing itself. The harness read is invalidated rather than written: what
 // landed shows up as a pending promotion, which only the read can say (#576).

@@ -5,6 +5,7 @@ import { Notice, type NoticeContent } from "../ui/notice";
 import {
   advisoryTexts,
   importEnabled,
+  importLabels,
   nameBlockerNotice,
   sourceBlockerNotice,
 } from "./import-view-model";
@@ -44,13 +45,17 @@ export function ImportDialog({
   importError: NoticeContent | null;
   // Null until an import lands. It stays on screen after it does, so what the
   // copy left behind is readable rather than gone with the dialog (#576).
-  imported: { name: string; skipped: number } | null;
+  imported: { mode: "add" | "update"; name: string; skipped: number } | null;
 }) {
   const { panelRef, requestClose } = useModalDialog({
     onClose,
     closeEnabled: !importing,
   });
   const check = load.kind === "ready" ? load.check : undefined;
+  const labels = importLabels(check);
+  // Provenance decides the name of an update, so the field states it rather
+  // than taking one.
+  const locked = check?.mode === "update";
   const sourceProblem =
     load.kind === "error"
       ? load.notice
@@ -72,13 +77,13 @@ export function ImportDialog({
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Import a skill"
+        aria-label={labels.title}
         tabIndex={-1}
         className="relative flex max-h-[90vh] w-full max-w-[560px] flex-col overflow-hidden rounded-card border border-line-row bg-chrome outline-none"
       >
         <div className="flex items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
           <h2 className="font-semibold font-ui text-fg text-subtitle">
-            Import a skill
+            {labels.title}
           </h2>
         </div>
 
@@ -116,7 +121,7 @@ export function ImportDialog({
               id="import-name"
               value={name}
               onChange={(event) => onNameChange(event.target.value)}
-              disabled={source === null}
+              disabled={source === null || locked}
               aria-invalid={nameProblem !== null}
               aria-describedby={nameProblem === null ? undefined : nameErrorId}
               // No outline-none: it poisons --tw-outline-style and hides the
@@ -125,10 +130,7 @@ export function ImportDialog({
             />
             {/* The directory name is the skill's identity, so it is stated
                 before it is chosen, not explained after a failure. */}
-            <span className="font-ui text-desc text-muted">
-              This becomes the folder name, and the name in SKILL.md is
-              rewritten to match
-            </span>
+            <span className="font-ui text-desc text-muted">{labels.hint}</span>
             <Notice
               id={nameErrorId}
               trigger="user-action"
@@ -157,8 +159,10 @@ export function ImportDialog({
 
           {imported === null ? null : (
             <p role="status" className="m-0 font-ui text-desc text-fg-2">
-              <span className="font-mono text-fg">{imported.name}</span> landed
-              in the Harness and is waiting for review.
+              <span className="font-mono text-fg">{imported.name}</span>{" "}
+              {imported.mode === "update"
+                ? "was replaced in the Harness and is waiting for review. The deployed copy is not up to date until you deploy it again."
+                : "landed in the Harness and is waiting for review."}
               {imported.skipped === 0
                 ? null
                 : imported.skipped === 1
@@ -190,7 +194,7 @@ export function ImportDialog({
             disabled={!importEnabled(check) || importing || imported !== null}
             onClick={onImport}
           >
-            {importing ? "Importing…" : "Import skill"}
+            {importing ? labels.busy : labels.confirm}
           </Button>
         </div>
       </div>

@@ -85,7 +85,12 @@ export function HarnessView() {
     setEditedName(null);
     importSkill.reset();
   });
-  const name = editedName ?? importCheck.data?.name ?? "";
+  // An update's name is the recorded skill's own: provenance decides it, so a
+  // name typed before the check came back never travels with it (#732).
+  const name =
+    importCheck.data?.mode === "update"
+      ? importCheck.data.name
+      : (editedName ?? importCheck.data?.name ?? "");
   const closeImport = () => {
     setImportOpen(false);
     setSource(null);

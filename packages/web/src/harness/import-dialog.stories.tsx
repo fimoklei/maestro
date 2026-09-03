@@ -10,6 +10,7 @@ const meta = {
     load: {
       kind: "ready",
       check: {
+        mode: "add",
         name: "code-review",
         sourceBlocker: null,
         nameBlocker: null,
@@ -43,6 +44,7 @@ export const NameTaken: Story = {
     load: {
       kind: "ready",
       check: {
+        mode: "add",
         name: "code-review",
         sourceBlocker: null,
         nameBlocker: "name-taken",
@@ -58,6 +60,7 @@ export const SourceRefused: Story = {
     load: {
       kind: "ready",
       check: {
+        mode: "add",
         name: "code-review",
         sourceBlocker: "missing-manifest",
         nameBlocker: null,
@@ -73,6 +76,7 @@ export const WithAdvisories: Story = {
     load: {
       kind: "ready",
       check: {
+        mode: "add",
         name: "code-review",
         sourceBlocker: null,
         nameBlocker: null,
@@ -84,7 +88,7 @@ export const WithAdvisories: Story = {
 
 // After the import: what landed, and what the copy left behind.
 export const Imported: Story = {
-  args: { imported: { name: "code-review", skipped: 12 } },
+  args: { imported: { mode: "add", name: "code-review", skipped: 12 } },
 };
 
 // A refused import: Maestro's own sentence, never a filesystem message.
@@ -95,6 +99,24 @@ export const ImportRefused: Story = {
       label: "Over 1,000 files",
       message:
         "Nothing was copied. Pick the skill folder itself, not the repository around it.",
+    },
+  },
+};
+
+// Replacing this Harness's own skill with the copy the author edited where it
+// was deployed: one control, the other outcome (#732).
+export const Updating: Story = {
+  args: {
+    source: "/Users/me/work/api-service/.claude/skills/code-review",
+    load: {
+      kind: "ready",
+      check: {
+        mode: "update",
+        name: "code-review",
+        sourceBlocker: null,
+        nameBlocker: null,
+        advisories: [],
+      },
     },
   },
 };

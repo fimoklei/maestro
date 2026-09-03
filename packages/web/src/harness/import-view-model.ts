@@ -42,6 +42,26 @@ export const nameBlockerNotice = (
 ): NoticeContent | null =>
   blocker === null ? null : importBlockerNotice(blocker);
 
+// The dialog's own words for the two outcomes one control has: adding a skill
+// the Harness does not hold, or replacing one it does (CONTEXT.md → Screen
+// names). No check in hand reads as adding, which is what the dialog opens on.
+export const importLabels = (
+  check: ImportCheck | undefined,
+): { title: string; confirm: string; busy: string; hint: string } =>
+  check?.mode === "update"
+    ? {
+        title: "Update a skill",
+        confirm: "Update skill",
+        busy: "Updating…",
+        hint: "The Harness's own folder for this skill is replaced, whole",
+      }
+    : {
+        title: "Import a skill",
+        confirm: "Import skill",
+        busy: "Importing…",
+        hint: "This becomes the folder name, and the name in SKILL.md is rewritten to match",
+      };
+
 export const advisoryTexts = (
   advisories: readonly ManifestAdvisory[],
 ): string[] => advisories.map((advisory) => ADVISORY_TEXT[advisory]);

@@ -1,3 +1,4 @@
+import { execFile } from "node:child_process";
 import {
   link,
   mkdir,
@@ -11,8 +12,10 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import {
   CopySkillFolder,
+  HarnessGitAdapter,
   ImportSkill,
   InFlightLocks,
   InventoryReader,
@@ -21,6 +24,7 @@ import {
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { initGitClone } from "../helpers/git-fixture";
 import { realRegistry } from "../helpers/real-registry";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
@@ -79,6 +83,7 @@ describe("harness import HTTP route", () => {
         fs,
         homeRoot: () => base,
         copy: new CopySkillFolder({ fs: new NodeCopyTreeFs() }),
+        git: new HarnessGitAdapter(),
         deployedTargets: async () => deployedTargets,
       }),
       harness: stubHarness(),
@@ -115,7 +120,11 @@ describe("harness import HTTP route", () => {
     const response = await importSkill(app, { source });
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ name: "code-review", skipped: 1 });
+    expect(await response.json()).toEqual({
+      mode: "add",
+      name: "code-review",
+      skipped: 1,
+    });
     const landed = join(harnessRoot, ".apm", "skills", "code-review");
     expect(await readFile(join(landed, "references", "notes.md"), "utf8")).toBe(
       "notes\n",
@@ -145,6 +154,7 @@ describe("harness import HTTP route", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
+      mode: "add",
       name: "code-review",
       sourceBlocker: null,
       nameBlocker: null,
@@ -226,7 +236,11 @@ describe("harness import HTTP route", () => {
 
     const response = await importSkill(app, { source });
 
-    expect(await response.json()).toEqual({ name: "code-review", skipped: 1 });
+    expect(await response.json()).toEqual({
+      mode: "add",
+      name: "code-review",
+      skipped: 1,
+    });
   });
 
   it("refuses a harness whose skills folder points outside the harness", async () => {
@@ -271,6 +285,82 @@ describe("harness import HTTP route", () => {
     expect(response.status).toBe(403);
     expect(await response.json()).toMatchObject({ error: "outside-root" });
   });
+
+  // The whole chain in one case: a skill deployed into a repository, edited
+  // there, carried back through the route, and waiting in the Working harness
+  // as a pending change (#732). The seams are the value, not the steps.
+  it("carries an edited deployed copy back into the Harness as a pending change", async () => {
+    const run = promisify(execFile);
+    const git = (...args: string[]) =>
+      run(
+        "git",
+        ["-c", "user.email=t@example.invalid", "-c", "user.name=T", ...args],
+        {
+          cwd: harnessRoot,
+        },
+      );
+    // A real clone: a committed skill, a GitHub origin, and the remote head
+    // ref the movement read needs. Offline — the origin URL is never fetched.
+    await initGitClone(harnessRoot);
+    const held = join(harnessRoot, ".apm", "skills", "code-review");
+    await mkdir(held, { recursive: true });
+    await writeFile(join(held, "SKILL.md"), manifest("As released."), "utf8");
+    await writeFile(join(held, "old-note.md"), "dropped\n", "utf8");
+    await git("add", "-A");
+    await git("commit", "-m", "first skill");
+
+    // What apm deployed, and what the author then fixed in place.
+    const repo = join(base, "repo");
+    const deployed = join(repo, ".claude", "skills", "code-review");
+    await mkdir(deployed, { recursive: true });
+    await writeFile(
+      join(deployed, "SKILL.md"),
+      manifest("Fixed in place."),
+      "utf8",
+    );
+    const lockfilePath = join(repo, "apm.lock.yaml");
+    await writeFile(
+      lockfilePath,
+      [
+        "dependencies:",
+        "- virtual_path: .apm/skills/code-review",
+        "  resolved_ref: v1.0.0",
+        "  package_type: claude_skill",
+        "  host: github.com",
+        "  repo_url: fimoklei/agent-harness",
+        "  deployed_files:",
+        "  - .claude/skills/code-review",
+        "  - .claude/skills/code-review/SKILL.md",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    const app = makeApp([{ treeRoot: repo, lockfilePath }]);
+
+    const offered = await check(app, { source: deployed });
+    expect(await offered.json()).toMatchObject({
+      mode: "update",
+      name: "code-review",
+      sourceBlocker: null,
+      nameBlocker: null,
+    });
+
+    const response = await importSkill(app, { source: deployed });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      mode: "update",
+      name: "code-review",
+    });
+    // The whole folder, not a merge: the harness's own file is gone with it.
+    expect(await readFile(join(held, "SKILL.md"), "utf8")).toContain(
+      "Fixed in place.",
+    );
+    expect(await readdir(held)).toEqual(["SKILL.md"]);
+    // The same signal the Harness screen reads as a pending proposal.
+    const trees = await new HarnessGitAdapter().readMovementTrees(harnessRoot);
+    expect(trees?.working["code-review"]).not.toBe(trees?.local["code-review"]);
+  }, 30_000);
 
   it("leaves nothing behind when the copy is refused mid-tree", async () => {
     // A hard-linked file is refused, and it sits beside files the walk already

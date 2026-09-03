@@ -18,6 +18,7 @@ export function stubImport(): ImportSkill {
       ensureDir: unreachable,
     },
     copy: { copy: unreachable },
+    git: { readFacts: unreachable, readMovementTrees: unreachable },
     deployedTargets: async () => [],
   });
 }
