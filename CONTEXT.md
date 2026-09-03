@@ -65,7 +65,7 @@ A named set of primitives composed from the central inventory for scoped deploym
 _Avoid_: skill group, category, tag, profile.
 
 **Deploy**:
-The act of reproducing a primitive or bundle from the central inventory into a target, via APM. The deployed copy is generated, never hand-edited.
+The act of reproducing a primitive or bundle from the central inventory into a target, via APM. A deployed copy is also where an improvement may start: an edited copy of a skill this Harness deployed travels back through **Import skill…** → **Update skill** → **Pending proposal** → **Propose change** → **Release** (ADR-0026).
 _Avoid_: install (that is APM's verb for the mechanism), copy, sync.
 
 **Unsupported deployment**:
@@ -148,6 +148,7 @@ details may name the exact APM mechanism or file.
 | Release | **Release** / **Released** | *Release* is the action, *released* is the state, and *latest release* is the result. |
 | Release dialog | **Plan release** / **Publish release** | *Plan release* opens the dialog on the Harness strip; *Publish release* is its confirm. Never a bare *Release* on a button. |
 | Import dialog | **Import skill…** / **Import skill** | The trailing ellipsis marks the control that opens the dialog; the dialog's confirm carries no ellipsis. |
+| Import dialog, replacing | **Update skill** | The dialog reads *Update a skill* and confirms with *Update skill* when it replaces a skill the Harness holds; it reads *Import a skill* and *Import skill* when it adds one. The control that opens it keeps its ellipsis either way. What an update lands sits under **Pending proposal**. The deploy-state row's button carries the same label for the other direction — deploying the latest release into a target that reads **Behind**. The two never share a screen; change one and check the other. |
 | Consuming repo | **Repository** | Write it out in a sentence; *repo* stays only inside the `+ repo` control label. |
 | Scaffold | **Scaffold** / **Harness scaffold** | *Scaffold* is the action and *Harness scaffold* is the thing on offer; never *generate* or *initialise*. |
 | Clone folder | **Clone** | The local copy of the Harness repository. Say **folder** for any other directory on disk. |

@@ -80,6 +80,7 @@ export { HarnessGitAdapter } from "./harness/harness-git";
 export {
   type ImportCheck,
   type ImportCheckResult,
+  type ImportMode,
   type ImportNameBlocker,
   ImportSkill,
   type ImportSkillError,

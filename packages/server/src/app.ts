@@ -475,6 +475,11 @@ const importErrorResponses: ErrorTable<ImportSkillError> = {
   "source-changed": { status: 409 },
   "copy-failed": { status: 500 },
   "destination-unsafe": { status: 409 },
+  // The harness moved under the author, like name-taken and source-changed.
+  "harness-copy-uncommitted": { status: 409 },
+  // In bounds and connected, but unreadable — 422, like a browse that fails.
+  "harness-unreadable": { status: 422 },
+  "nothing-to-carry-back": { status: 409 },
 };
 
 // outside-root is 403 (the info-disclosure boundary); the reply names no path
@@ -680,7 +685,11 @@ export function createApp(deps: AppDeps) {
       const { status } = importErrorResponses[result.error];
       return c.json({ error: result.error }, status);
     }
-    return c.json({ name: result.name, skipped: result.skipped });
+    return c.json({
+      mode: result.mode,
+      name: result.name,
+      skipped: result.skipped,
+    });
   });
 
   // Connect: a pasted path is persisted offline; a GitHub URL is cloned to a
@@ -1061,6 +1070,7 @@ function realDeps(): AppDeps {
   // One register for both use cases: connect writes the offers the scaffold
   // will only act on (#556).
   const scaffoldOffers = new ScaffoldOffers();
+  const copyTreeFs = new NodeCopyTreeFs();
   const connect = new ConnectInventory({
     fs,
     store,
@@ -1089,7 +1099,13 @@ function realDeps(): AppDeps {
       fs,
       // The picker's ceiling, so what can be imported is what can be browsed.
       homeRoot: () => homedir(),
-      copy: new CopySkillFolder({ fs: new NodeCopyTreeFs() }),
+      copy: new CopySkillFolder({ fs: copyTreeFs }),
+      // The same reader the copy walks with, for the one mode bit git tracks.
+      facts: copyTreeFs,
+      // The same harness git the read and the promotions use: an update is
+      // proved against the clone's own origin, and refused while its copy of
+      // the skill holds uncommitted work (#732).
+      git: harnessGit,
       deployedTargets: async () => [
         {
           treeRoot: deployedLocation.treeRoot({ kind: "global" }),

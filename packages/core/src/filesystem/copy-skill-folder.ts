@@ -8,8 +8,10 @@ const MAX_FILES = 1000;
 const MAX_BYTES = 50 * 1024 * 1024;
 
 // Skipped at any depth, so a cloned skill repository copies without its
-// repository internals — and without counting toward the limits.
-const SKIPPED_ENTRY = ".git";
+// repository internals — and without counting toward the limits. Exported
+// because a comparison of what the copy would land has to skip the same entry
+// (`same-tree.ts`); one owner, not two spellings.
+export const SKIPPED_ENTRY = ".git";
 
 export type CopySkillFolderError =
   | "invalid-name"
@@ -37,6 +39,9 @@ export type CopySkillFolderInput = {
   source: string;
   destinationParent: string;
   name: string;
+  // Opts into writing over a destination folder that already exists. Never
+  // inferred: without it an existing destination is refused as before (#731).
+  replaceExisting?: boolean;
   // Runs on the staged copy, before the rename that publishes it. False
   // refuses the whole operation, so anything the caller must still write to
   // the tree happens while nothing is visible (#576).
@@ -95,7 +100,10 @@ export class CopySkillFolder {
     if (rootFacts.kind !== "directory") {
       return { ok: false, error: "not-a-directory" };
     }
-    if ((await this.fs.describe(destination)) !== null) {
+    if (
+      input.replaceExisting !== true &&
+      (await this.fs.describe(destination)) !== null
+    ) {
       return { ok: false, error: "destination-exists" };
     }
 
@@ -110,13 +118,7 @@ export class CopySkillFolder {
       return { ok: false, error: refusal };
     }
 
-    return this.materialize(
-      input.destinationParent,
-      destination,
-      root,
-      plan,
-      input.finalize,
-    );
+    return this.materialize(input, destination, root, plan);
   }
 
   // Walks one directory and everything under it, deciding but never writing.
@@ -237,15 +239,15 @@ export class CopySkillFolder {
   // one rename. Every exit that is not that rename removes the staging tree, so
   // a refusal leaves the destination parent as it found it.
   private async materialize(
-    destinationParent: string,
+    input: CopySkillFolderInput,
     destination: string,
     root: string,
     plan: Plan,
-    finalize: CopySkillFolderInput["finalize"],
   ): Promise<CopySkillFolderResult> {
+    const { finalize } = input;
     let staging: string;
     try {
-      staging = await this.fs.createStagingDir(destinationParent);
+      staging = await this.fs.createStagingDir(input.destinationParent);
     } catch {
       return { ok: false, error: "copy-failed" };
     }
@@ -280,10 +282,15 @@ export class CopySkillFolder {
       }
       // Re-read at the point of use: the destination was free when the plan was
       // made, and this is the last moment before it is claimed.
-      if ((await this.fs.describe(destination)) !== null) {
+      const existing = await this.fs.describe(destination);
+      if (existing !== null && input.replaceExisting !== true) {
         return { ok: false, error: "destination-exists" };
       }
-      await this.fs.movePath(payload, destination);
+      await this.publish(
+        payload,
+        destination,
+        existing === null ? null : join(staging, "replaced"),
+      );
       return { ok: true, path: destination, skipped: plan.skipped };
     } catch {
       return { ok: false, error: "copy-failed" };
@@ -291,6 +298,26 @@ export class CopySkillFolder {
       // After a successful move this removes an empty directory; after anything
       // else it removes the half-built copy.
       await this.fs.removePath(staging).catch(() => {});
+    }
+  }
+
+  // Exposes the staged copy as a rename; a replaced folder is moved aside
+  // first and moved back if the swap fails (#731). see ADR-0026
+  private async publish(
+    payload: string,
+    destination: string,
+    aside: string | null,
+  ): Promise<void> {
+    if (aside === null) {
+      await this.fs.movePath(payload, destination);
+      return;
+    }
+    await this.fs.movePath(destination, aside);
+    try {
+      await this.fs.movePath(payload, destination);
+    } catch (error) {
+      await this.fs.movePath(aside, destination);
+      throw error;
     }
   }
 

@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   advisoryTexts,
   importEnabled,
+  importLabels,
   nameBlockerNotice,
   sourceBlockerNotice,
 } from "./import-view-model";
 import type { ImportCheck } from "./use-harness";
 
 const clean: ImportCheck = {
+  mode: "add",
   name: "code-review",
   sourceBlocker: null,
   nameBlocker: null,
@@ -41,6 +43,22 @@ describe("import refusal text", () => {
   });
 });
 
+describe("importLabels", () => {
+  it("names the dialog after replacing when the check is an update", () => {
+    expect(importLabels({ ...clean, mode: "update" })).toEqual({
+      title: "Update a skill",
+      confirm: "Update skill",
+      busy: "Updating…",
+      hint: "The Harness's own folder for this skill is replaced, whole",
+    });
+  });
+
+  it("names it after adding otherwise, including before a check comes back", () => {
+    expect(importLabels(clean).confirm).toBe("Import skill");
+    expect(importLabels(undefined).confirm).toBe("Import skill");
+  });
+});
+
 describe("importEnabled", () => {
   it("opens on a check that refuses nothing", () => {
     expect(importEnabled(clean)).toBe(true);
@@ -56,6 +74,16 @@ describe("importEnabled", () => {
     expect(importEnabled({ ...clean, sourceBlocker: "deployed-copy" })).toBe(
       false,
     );
+  });
+
+  it("closes on a refusal the update mode raises", () => {
+    expect(
+      importEnabled({
+        ...clean,
+        mode: "update",
+        sourceBlocker: "harness-copy-uncommitted",
+      }),
+    ).toBe(false);
   });
 
   it("closes on a name refusal", () => {

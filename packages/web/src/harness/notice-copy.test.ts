@@ -393,16 +393,6 @@ const suites: [
         },
       ],
       [
-        "deployed-copy",
-        {
-          level: "error",
-          label: "Deployed copy",
-          message: "Pick the folder the skill is authored in.",
-          detail:
-            "Importing it would copy Maestro's own output back into the Harness.",
-        },
-      ],
-      [
         "missing-manifest",
         {
           level: "error",
@@ -538,6 +528,49 @@ const suites: [
           label: "Skills folder outside the Harness",
           message:
             "Nothing was copied. Make the clone's skills folder a real folder inside it.",
+        },
+      ],
+      [
+        "deployed-copy",
+        {
+          level: "error",
+          label: "Copy from another Harness",
+          message:
+            "Press Change folder, then pick a folder you wrote yourself.",
+          detail:
+            "Only a copy the connected Harness deployed can be carried back into it.",
+        },
+      ],
+      [
+        "harness-copy-uncommitted",
+        {
+          level: "error",
+          label: "Uncommitted changes in the Harness",
+          message:
+            "Commit or undo the Harness's own changes to this skill, then Update skill again.",
+          detail:
+            "Replacing the folder now would take work git has no record of.",
+        },
+      ],
+      [
+        "harness-unreadable",
+        {
+          level: "error",
+          label: "Unreadable Harness clone",
+          message:
+            "Nothing was copied. Make the Harness clone readable, then Update skill again.",
+          detail:
+            "Maestro reads the clone's committed state before replacing a skill.",
+        },
+      ],
+      [
+        "nothing-to-carry-back",
+        {
+          level: "info",
+          label: "Nothing to carry back",
+          message:
+            "This folder matches the skill the Harness holds. Press Close.",
+          detail: "Only a changed file can be carried back.",
         },
       ],
     ],

@@ -16,8 +16,11 @@ export function stubImport(): ImportSkill {
       readFile: unreachable,
       writeFile: unreachable,
       ensureDir: unreachable,
+      listRawEntries: unreachable,
     },
+    facts: { describe: unreachable },
     copy: { copy: unreachable },
+    git: { readFacts: unreachable, readMovementTrees: unreachable },
     deployedTargets: async () => [],
   });
 }
