@@ -25,9 +25,7 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 ## NOW
 
-| Job | Main | Job story |
-|---|---|---|
-| Install Maestro from a clone in one command · [#717](https://github.com/fimoklei/maestro/issues/717), [#621](https://github.com/fimoklei/maestro/issues/621) | C | *When* a teammate has been given access to Maestro, *I want to* have one bootstrap script check their Node and pnpm and start the cockpit, *so I can* hand them a repo instead of walking them through a toolchain. |
+Empty — no loop running.
 
 ## NEXT
 
@@ -62,6 +60,7 @@ All shipped **skills-only**, solo, local-first.
 
 | Job | Main | Job story |
 |---|---|---|
+| Install Maestro from a clone in one command · [#717](https://github.com/fimoklei/maestro/issues/717), [#621](https://github.com/fimoklei/maestro/issues/621) | C | *When* a teammate has been given access to Maestro, *I want to* have one bootstrap script check their Node and pnpm and start the cockpit, *so I can* hand them a repo instead of walking them through a toolchain. |
 | Register a consuming repo (J10) | A, B | *When* I want Maestro to see and steer a project, *I want to* make that consuming repo known to the cockpit, *so I can* see its deploy-state and deploy to it. |
 | See the central inventory (J01) | A | *When* I start or plan work, *I want to* see every primitive available in the central inventory, *so I can* reuse what exists instead of guessing. |
 | Deploy a skill to a repo (J06) | B, A | *When* I start or extend a project, *I want to* deploy a skill into that consuming repo, *so I can* give the assistant the right context there. |
