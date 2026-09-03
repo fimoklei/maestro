@@ -14,3 +14,7 @@ overrides:
   "brace-expansion@>=3.0.0 <5.0.8": "^5.0.8"
   "shell-quote@<=1.8.4": "^1.8.5"
   "nanoid@<3.3.17": "^3.3.18"
+  # nwsapi is jsdom's selector engine. 2.2.26 rewrote it and every Testing
+  # Library query against an open Radix menu hangs until the test times out;
+  # 2.2.25 is the last release that passes. Drop this once a later release does.
+  "nwsapi@>2.2.25": "2.2.25"
