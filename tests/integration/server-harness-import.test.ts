@@ -69,6 +69,7 @@ describe("harness import HTTP route", () => {
     deployedTargets: { treeRoot: string; lockfilePath: string }[] = [],
   ) {
     const fs = new NodeFileSystem();
+    const copyTreeFs = new NodeCopyTreeFs();
     const registry = realRegistry(fs, join(base, "config.json"));
     const inventory = new InventoryReader({
       fs,
@@ -82,7 +83,8 @@ describe("harness import HTTP route", () => {
         resolveRoot: async () => fs.realpath(harnessRoot),
         fs,
         homeRoot: () => base,
-        copy: new CopySkillFolder({ fs: new NodeCopyTreeFs() }),
+        copy: new CopySkillFolder({ fs: copyTreeFs }),
+        facts: copyTreeFs,
         git: new HarnessGitAdapter(),
         deployedTargets: async () => deployedTargets,
       }),

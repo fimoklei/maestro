@@ -10,13 +10,15 @@ import type {
   CopySkillFolderInput,
   CopySkillFolderResult,
 } from "../filesystem/copy-skill-folder";
+import type { CopyTreeFsPort } from "../filesystem/copy-tree-fs";
+import { type SameTreeFs, sameTree } from "../filesystem/same-tree";
 import { HARNESS_SKILLS_DIR } from "../inventory/harness-layout";
 import {
   claudeSkillName,
   type LockfileEntry,
   parseLockfile,
 } from "../lockfile/lockfile";
-import type { FileSystemPort, RawDirEntry } from "../registry/file-system";
+import type { FileSystemPort } from "../registry/file-system";
 import type { HarnessGitPort } from "./read-harness-state";
 import {
   type ManifestAdvisory,
@@ -37,6 +39,9 @@ export type ImportSourceBlocker =
   // Only in update mode: the harness's own copy of that skill differs from the
   // commit it sits on, and replacing it would destroy work git cannot give back.
   | "harness-copy-uncommitted"
+  // Only in update mode: the clone's committed state could not be read at all,
+  // so the guard above could not be run. Its own code because its own way out.
+  | "harness-unreadable"
   // Only in update mode: the copy holds what the harness holds already, so the
   // replacement would leave no pending proposal and nothing to review.
   | "nothing-to-carry-back";
@@ -98,15 +103,18 @@ type ImportFs = Pick<
   | "listRawEntries"
 >;
 
-// Left out of the comparison at the level they sit on: `.git` at every depth,
-// the same entry the copy itself skips, and the manifest, compared apart.
-const GIT_ONLY = new Set([".git"]);
-const MANIFEST_AND_GIT = new Set([".git", "SKILL.md"]);
+// The manifest is compared apart, name stamped in. `.git` is skipped by
+// `sameTree` itself, under the copy port's own policy.
+const MANIFEST_ONLY = new Set(["SKILL.md"]);
 
 export class ImportSkill {
+  private readonly tree: SameTreeFs;
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
     fs: ImportFs;
+    // Mode bits, which FileSystemPort does not carry: an executable bit is a
+    // change git records, so a comparison blind to it would refuse a real one.
+    facts: Pick<CopyTreeFsPort, "describe">;
     // The same ceiling the picker browses under: an import takes a path from
     // the browser, so it is allowlisted like every other one (security.md).
     homeRoot: () => string;
@@ -122,6 +130,11 @@ export class ImportSkill {
 
   constructor(deps: ImportSkill["deps"]) {
     this.deps = deps;
+    this.tree = {
+      listRawEntries: (path) => deps.fs.listRawEntries(path),
+      readFile: (path) => deps.fs.readFile(path),
+      describe: (path) => deps.facts.describe(path),
+    };
   }
 
   // Judges the source and the name without writing anything, so the cockpit can
@@ -291,9 +304,9 @@ export class ImportSkill {
     source: string,
     name: string,
   ): Promise<ImportSourceBlocker | null> {
-    const uncommitted = await this.judgeHarnessCopy(root, name);
-    if (uncommitted !== null) {
-      return uncommitted;
+    const unsafe = await this.judgeHarnessCopy(root, name);
+    if (unsafe !== null) {
+      return unsafe;
     }
     return (await this.carriesNoChange(root, source, name))
       ? "nothing-to-carry-back"
@@ -319,20 +332,17 @@ export class ImportSkill {
     ) {
       return false;
     }
-    return await sameTree(this.deps.fs, source, held, MANIFEST_AND_GIT);
+    return await sameTree(this.tree, source, held, MANIFEST_ONLY);
   }
 
-  // The guard on the write. A working copy that differs from the commit it
-  // sits on holds work git has no record of, and the replacement would take it
-  // with no way back. Unreadable counts as differing: an uncheckable guard
-  // fails closed (#732).
+  // The guard on the write; an uncheckable guard fails closed. see ADR-0026
   private async judgeHarnessCopy(
     root: string,
     name: string,
   ): Promise<ImportSourceBlocker | null> {
     const trees = await this.deps.git.readMovementTrees(root).catch(() => null);
     if (trees === null) {
-      return "harness-copy-uncommitted";
+      return "harness-unreadable";
     }
     const working = trees.working[name];
     return working !== undefined && working === trees.local[name]
@@ -340,10 +350,8 @@ export class ImportSkill {
       : "harness-copy-uncommitted";
   }
 
-  // What some lockfile records about this folder — provenance, not a guess
-  // from where the folder sits. A hand-authored skill that merely lives in the
-  // same directory a deploy writes into (the documented place to author one,
-  // #667) is claimed by no entry and stays an ordinary import.
+  // What some lockfile records about this folder — provenance, never a guess
+  // from where the folder sits (#667). see ADR-0026
   private async readProvenance(
     root: string,
     source: string,
@@ -366,9 +374,7 @@ export class ImportSkill {
   }
 
   // The skill this harness would be updating, or null where the entry cannot
-  // prove both halves: the origin it was deployed from, and a skill name the
-  // working harness holds. An entry that omits either proves nothing, so it is
-  // refused like any unreadable record (#732, ADR-0026).
+  // prove both origin and name. see ADR-0026
   private async ownSkillName(
     root: string,
     entry: LockfileEntry,
@@ -459,71 +465,6 @@ export class ImportSkill {
       return false;
     }
   }
-}
-
-// True where both folders hold the same names with the same file text. Text
-// only: a permission bit or a symbolic link reads as a difference, which lets
-// the update through rather than refusing one that carries something.
-async function sameTree(
-  fs: ImportFs,
-  left: string,
-  right: string,
-  exclude: Set<string>,
-): Promise<boolean> {
-  const [here, there] = await Promise.all([
-    listing(fs, left, exclude),
-    listing(fs, right, exclude),
-  ]);
-  if (here === null || there === null || here.length !== there.length) {
-    return false;
-  }
-  for (const [index, entry] of here.entries()) {
-    const twin = there[index];
-    if (
-      twin === undefined ||
-      twin.name !== entry.name ||
-      twin.isDirectory !== entry.isDirectory ||
-      entry.isSymlink ||
-      twin.isSymlink
-    ) {
-      return false;
-    }
-    const [inLeft, inRight] = [join(left, entry.name), join(right, entry.name)];
-    const same = entry.isDirectory
-      ? await sameTree(fs, inLeft, inRight, GIT_ONLY)
-      : await sameFile(fs, inLeft, inRight);
-    if (!same) {
-      return false;
-    }
-  }
-  return true;
-}
-
-// Sorted, so the two sides are compared in one order whatever the filesystem
-// hands back. Null where the directory cannot be read.
-async function listing(
-  fs: ImportFs,
-  path: string,
-  exclude: Set<string>,
-): Promise<RawDirEntry[] | null> {
-  const entries = await fs.listRawEntries(path).catch(() => null);
-  return entries === null
-    ? null
-    : entries
-        .filter((entry) => !exclude.has(entry.name))
-        .sort((one, other) => one.name.localeCompare(other.name));
-}
-
-async function sameFile(
-  fs: ImportFs,
-  left: string,
-  right: string,
-): Promise<boolean> {
-  const [here, there] = await Promise.all([
-    fs.readFile(left).catch(() => null),
-    fs.readFile(right).catch(() => null),
-  ]);
-  return here !== null && here === there;
 }
 
 // The copy's own input shape, minus the fields this use-case never sends.

@@ -236,6 +236,14 @@ const importHeadings: NoticeTable<ImportSkillError> = {
       "Commit or undo the Harness's own changes to this skill, then Update skill again.",
     detail: "Replacing the folder now would take work git has no record of.",
   },
+  "harness-unreadable": {
+    level: "error",
+    label: "Unreadable Harness clone",
+    message:
+      "Nothing was copied. Make the Harness clone readable, then Update skill again.",
+    detail:
+      "Maestro reads the clone's committed state before replacing a skill.",
+  },
   // Info, not error: the folder is the right one and nothing is wrong with it,
   // there is simply nothing in it to carry back (#733).
   "nothing-to-carry-back": {

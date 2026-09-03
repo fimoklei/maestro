@@ -35,6 +35,13 @@ const FROM_THIS_HARNESS = [
   "  repo_url: fimoklei/agent-harness",
 ];
 
+// The cases refused before any two folders are compared.
+const unreachableFacts = {
+  describe: async () => {
+    throw new Error("facts port was reached");
+  },
+};
+
 // The cases that never reach a lockfile never reach git either.
 const unreachableGit = {
   readFacts: async () => {
@@ -50,6 +57,11 @@ function harness(
   overrides: {
     files?: Record<string, string>;
     directories?: string[];
+    // Files carrying the one mode bit git tracks.
+    executable?: string[];
+    // Paths whose read fails outright, as a lockfile with no read permission
+    // does — apart from one that is missing or does not parse.
+    unreadable?: string[];
     deployedTargets?: { treeRoot: string; lockfilePath: string }[];
     copy?: () => Promise<CopySkillFolderResult>;
     originUrl?: string | null;
@@ -79,7 +91,12 @@ function harness(
     isDirectory: async (path: string) => directories.has(path),
     exists: async (path: string) =>
       directories.has(path) || files[path] !== undefined,
-    readFile: async (path: string) => files[path] ?? null,
+    readFile: async (path: string) => {
+      if (overrides.unreadable?.includes(path) === true) {
+        throw new Error("EACCES");
+      }
+      return files[path] ?? null;
+    },
     listRawEntries: async (path: string) => {
       const prefix = `${path}/`;
       const names = new Set<string>();
@@ -100,6 +117,20 @@ function harness(
     ensureDir: vi.fn(async (path: string) => {
       directories.add(path);
     }),
+  };
+
+  const executable = new Set(overrides.executable ?? []);
+  const facts = {
+    describe: async (path: string) =>
+      files[path] === undefined
+        ? null
+        : {
+            kind: "file" as const,
+            size: (files[path] as string).length,
+            hardLinks: 1,
+            executable: executable.has(path),
+            identity: path,
+          },
   };
 
   // The harness's own git: where it was cloned from, and whether its copy of a
@@ -128,6 +159,7 @@ function harness(
     resolveRoot: async () => ROOT,
     homeRoot: () => "/",
     fs,
+    facts,
     git,
     copy: {
       copy: async (input) => {
@@ -223,6 +255,7 @@ describe("ImportSkill.check", () => {
         ensureDir: async () => {},
         listRawEntries: async () => [],
       },
+      facts: unreachableFacts,
       copy: { copy: async () => ({ ok: false, error: "copy-failed" }) },
       git: unreachableGit,
       deployedTargets: async () => [],
@@ -393,7 +426,7 @@ describe("ImportSkill.check", () => {
     });
   });
 
-  it("refuses an update it cannot read the Harness's committed state for", async () => {
+  it("names the unreadable clone apart from work it can see is uncommitted", async () => {
     const { importSkill, deployed } = deployedInRepo(FROM_THIS_HARNESS, {
       trees: null,
     });
@@ -401,7 +434,7 @@ describe("ImportSkill.check", () => {
     await expect(
       importSkill.check({ source: deployed }),
     ).resolves.toMatchObject({
-      check: { mode: "update", sourceBlocker: "harness-copy-uncommitted" },
+      check: { mode: "update", sourceBlocker: "harness-unreadable" },
     });
   });
 
@@ -410,6 +443,7 @@ describe("ImportSkill.check", () => {
   const update = (
     copy: Record<string, string>,
     held: Record<string, string>,
+    executableInCopy: string[] = [],
   ) => {
     const prefix = (root: string, files: Record<string, string>) =>
       Object.fromEntries(
@@ -420,6 +454,9 @@ describe("ImportSkill.check", () => {
         ...prefix("/repo/.claude/skills/code-review", copy),
         ...prefix(`${ROOT}/.apm/skills/code-review`, held),
       },
+      executable: executableInCopy.map(
+        (name) => `/repo/.claude/skills/code-review/${name}`,
+      ),
     });
   };
 
@@ -462,6 +499,20 @@ describe("ImportSkill.check", () => {
     });
   });
 
+  it("carries an update through where only a file's executable bit differs", async () => {
+    const { importSkill, deployed } = update(
+      { "SKILL.md": HELD_MANIFEST, "run.sh": "One.\n" },
+      { "SKILL.md": HELD_MANIFEST, "run.sh": "One.\n" },
+      ["run.sh"],
+    );
+
+    await expect(
+      importSkill.check({ source: deployed }),
+    ).resolves.toMatchObject({
+      check: { mode: "update", sourceBlocker: null },
+    });
+  });
+
   it("carries an update through where the Harness holds a file the copy does not", async () => {
     const { importSkill, deployed } = update(
       { "SKILL.md": HELD_MANIFEST },
@@ -485,6 +536,26 @@ describe("ImportSkill.check", () => {
     ).resolves.toMatchObject({
       check: { mode: "add", sourceBlocker: "deployed-copy" },
     });
+  });
+
+  it("lets a folder through that an unreadable record claims nothing about", async () => {
+    const authored = "/repo/.claude/skills/code-review";
+    const { importSkill } = harness({
+      files: {
+        [`${authored}/SKILL.md`]: MANIFEST,
+        // Readable, this entry would claim the folder and open update mode.
+        "/repo/apm.lock.yaml": lockfile(FROM_THIS_HARNESS),
+      },
+      directories: [authored, `${ROOT}/.apm/skills/code-review`],
+      unreadable: ["/repo/apm.lock.yaml"],
+      deployedTargets: [
+        { treeRoot: "/repo", lockfilePath: "/repo/apm.lock.yaml" },
+      ],
+    });
+
+    await expect(
+      importSkill.check({ source: authored }),
+    ).resolves.toMatchObject({ check: { mode: "add", sourceBlocker: null } });
   });
 
   it("lets a folder through that an unparseable record claims nothing about", async () => {
@@ -569,6 +640,7 @@ describe("ImportSkill.check", () => {
         ensureDir: async () => {},
         listRawEntries: async () => [],
       },
+      facts: unreachableFacts,
       copy: { copy: async () => ({ ok: false, error: "copy-failed" }) },
       git: unreachableGit,
       deployedTargets: async () => [],

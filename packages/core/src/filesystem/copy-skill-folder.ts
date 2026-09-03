@@ -8,8 +8,10 @@ const MAX_FILES = 1000;
 const MAX_BYTES = 50 * 1024 * 1024;
 
 // Skipped at any depth, so a cloned skill repository copies without its
-// repository internals — and without counting toward the limits.
-const SKIPPED_ENTRY = ".git";
+// repository internals — and without counting toward the limits. Exported
+// because a comparison of what the copy would land has to skip the same entry
+// (`same-tree.ts`); one owner, not two spellings.
+export const SKIPPED_ENTRY = ".git";
 
 export type CopySkillFolderError =
   | "invalid-name"
@@ -299,10 +301,8 @@ export class CopySkillFolder {
     }
   }
 
-  // Exposes the staged copy as a rename. Where a folder is being replaced it is
-  // moved aside first and moved back if the swap fails, so the destination is
-  // never absent and never half a skill (#731). The staging tree carries the
-  // replaced folder away.
+  // Exposes the staged copy as a rename; a replaced folder is moved aside
+  // first and moved back if the swap fails (#731). see ADR-0026
   private async publish(
     payload: string,
     destination: string,

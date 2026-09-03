@@ -553,6 +553,17 @@ const suites: [
         },
       ],
       [
+        "harness-unreadable",
+        {
+          level: "error",
+          label: "Unreadable Harness clone",
+          message:
+            "Nothing was copied. Make the Harness clone readable, then Update skill again.",
+          detail:
+            "Maestro reads the clone's committed state before replacing a skill.",
+        },
+      ],
+      [
         "nothing-to-carry-back",
         {
           level: "info",
