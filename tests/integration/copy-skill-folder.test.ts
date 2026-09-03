@@ -32,12 +32,17 @@ describe("CopySkillFolder", () => {
   let destinationParent: string;
 
   const copy = (
-    overrides: { name?: string; source?: string } = {},
+    overrides: {
+      name?: string;
+      source?: string;
+      replaceExisting?: boolean;
+    } = {},
   ): Promise<CopySkillFolderResult> =>
     new CopySkillFolder({ fs: new NodeCopyTreeFs() }).copy({
       source: overrides.source ?? source,
       destinationParent,
       name: overrides.name ?? "imported",
+      replaceExisting: overrides.replaceExisting,
     });
 
   const destination = () => join(destinationParent, "imported");
@@ -365,6 +370,82 @@ describe("CopySkillFolder", () => {
         error: "destination-exists",
       });
       expect(await readdir(destination())).toEqual([]);
+    });
+  });
+
+  describe("replacing an existing destination", () => {
+    // The folder the replacement writes over, holding one file the source has
+    // and one it does not.
+    const seedDestination = async () => {
+      await mkdir(join(destination(), "stale"), { recursive: true });
+      await writeFile(join(destination(), "SKILL.md"), "# old\n", "utf8");
+      await writeFile(join(destination(), "stale/gone.md"), "old\n", "utf8");
+    };
+
+    beforeEach(async () => {
+      await write("SKILL.md", "# new\n");
+      await write("nested/kept.md", "kept\n");
+      await write(".git/config", "[core]\n");
+      await seedDestination();
+    });
+
+    it("leaves the destination holding exactly the source's files", async () => {
+      const result = await copy({ replaceExisting: true });
+
+      expect(result).toEqual({ ok: true, path: destination(), skipped: 1 });
+      expect(await readdir(destination())).toEqual(["SKILL.md", "nested"]);
+      expect(await readFile(join(destination(), "SKILL.md"), "utf8")).toBe(
+        "# new\n",
+      );
+      // Nothing of the staging tree survives beside the replaced folder.
+      expect(await readdir(destinationParent)).toEqual(["imported"]);
+    });
+
+    it("keeps the original folder when finalize refuses the staged copy", async () => {
+      const result = await new CopySkillFolder({
+        fs: new NodeCopyTreeFs(),
+      }).copy({
+        source,
+        destinationParent,
+        name: "imported",
+        replaceExisting: true,
+        finalize: async () => false,
+      });
+
+      expect(result).toEqual({ ok: false, error: "copy-failed" });
+      expect(await readFile(join(destination(), "SKILL.md"), "utf8")).toBe(
+        "# old\n",
+      );
+      expect(await readdir(destinationParent)).toEqual(["imported"]);
+    });
+
+    it("keeps the original folder when the publishing move fails", async () => {
+      // The window the rule is about: the original has been moved aside and the
+      // replacement is going in. Only the second move can fail here.
+      const fs = new NodeCopyTreeFs();
+      const original = fs.movePath.bind(fs);
+      let refused = false;
+      fs.movePath = async (from, to) => {
+        if (to === destination() && !refused) {
+          refused = true;
+          throw new Error("rename refused");
+        }
+        return original(from, to);
+      };
+
+      const result = await new CopySkillFolder({ fs }).copy({
+        source,
+        destinationParent,
+        name: "imported",
+        replaceExisting: true,
+      });
+
+      expect(result).toEqual({ ok: false, error: "copy-failed" });
+      expect(await readFile(join(destination(), "SKILL.md"), "utf8")).toBe(
+        "# old\n",
+      );
+      expect(await readdir(join(destination(), "stale"))).toEqual(["gone.md"]);
+      expect(await readdir(destinationParent)).toEqual(["imported"]);
     });
   });
 });
