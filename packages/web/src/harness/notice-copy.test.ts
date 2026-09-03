@@ -552,6 +552,16 @@ const suites: [
             "Replacing the folder now would take work git has no record of.",
         },
       ],
+      [
+        "nothing-to-carry-back",
+        {
+          level: "info",
+          label: "Nothing to carry back",
+          message:
+            "This folder matches the skill the Harness holds. Press Close.",
+          detail: "Only a changed file can be carried back.",
+        },
+      ],
     ],
   ],
 ];

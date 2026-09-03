@@ -477,6 +477,7 @@ const importErrorResponses: ErrorTable<ImportSkillError> = {
   "destination-unsafe": { status: 409 },
   // The harness moved under the author, like name-taken and source-changed.
   "harness-copy-uncommitted": { status: 409 },
+  "nothing-to-carry-back": { status: 409 },
 };
 
 // outside-root is 403 (the info-disclosure boundary); the reply names no path

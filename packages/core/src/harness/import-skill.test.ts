@@ -7,6 +7,10 @@ const ROOT = "/harness";
 const SOURCE = "/work/Code Review";
 const MANIFEST =
   "---\nname: whatever\ndescription: Reviews code.\n---\n\nBody.\n";
+// The same manifest as the import stamps it into the harness: the directory
+// name is the skill's identity, so a copy that came from there names itself
+// code-review.
+const HELD_MANIFEST = MANIFEST.replace("whatever", "code-review");
 const ORIGIN = "git@github.com:fimoklei/agent-harness.git";
 
 // A lockfile recording one deployed skill folder, with whatever provenance the
@@ -76,6 +80,20 @@ function harness(
     exists: async (path: string) =>
       directories.has(path) || files[path] !== undefined,
     readFile: async (path: string) => files[path] ?? null,
+    listRawEntries: async (path: string) => {
+      const prefix = `${path}/`;
+      const names = new Set<string>();
+      for (const key of [...Object.keys(files), ...directories]) {
+        if (key.startsWith(prefix)) {
+          names.add(key.slice(prefix.length).split("/")[0] as string);
+        }
+      }
+      return [...names].map((name) => ({
+        name,
+        isDirectory: directories.has(prefix + name),
+        isSymlink: false,
+      }));
+    },
     writeFile: async (path: string, contents: string) => {
       files[path] = contents;
     },
@@ -203,6 +221,7 @@ describe("ImportSkill.check", () => {
         readFile: async () => MANIFEST,
         writeFile: async () => {},
         ensureDir: async () => {},
+        listRawEntries: async () => [],
       },
       copy: { copy: async () => ({ ok: false, error: "copy-failed" }) },
       git: unreachableGit,
@@ -251,15 +270,20 @@ describe("ImportSkill.check", () => {
     return {
       deployed,
       ...harness({
+        ...overrides,
         files: {
           [`${deployed}/SKILL.md`]: MANIFEST,
           "/repo/apm.lock.yaml": lockfile(provenance),
+          ...overrides.files,
         },
-        directories: [deployed, `${ROOT}/.apm/skills/code-review`],
-        deployedTargets: [
+        directories: [
+          deployed,
+          `${ROOT}/.apm/skills/code-review`,
+          ...(overrides.directories ?? []),
+        ],
+        deployedTargets: overrides.deployedTargets ?? [
           { treeRoot: "/repo", lockfilePath: "/repo/apm.lock.yaml" },
         ],
-        ...overrides,
       }),
     };
   };
@@ -381,6 +405,76 @@ describe("ImportSkill.check", () => {
     });
   });
 
+  // A deployed copy of code-review beside the Harness's own folder for it, each
+  // holding the files the case is about.
+  const update = (
+    copy: Record<string, string>,
+    held: Record<string, string>,
+  ) => {
+    const prefix = (root: string, files: Record<string, string>) =>
+      Object.fromEntries(
+        Object.entries(files).map(([name, text]) => [`${root}/${name}`, text]),
+      );
+    return deployedInRepo(FROM_THIS_HARNESS, {
+      files: {
+        ...prefix("/repo/.claude/skills/code-review", copy),
+        ...prefix(`${ROOT}/.apm/skills/code-review`, held),
+      },
+    });
+  };
+
+  it("refuses an update that holds what the Harness holds already", async () => {
+    const { importSkill, deployed } = update(
+      { "SKILL.md": HELD_MANIFEST },
+      { "SKILL.md": HELD_MANIFEST },
+    );
+
+    await expect(
+      importSkill.check({ source: deployed }),
+    ).resolves.toMatchObject({
+      check: { mode: "update", sourceBlocker: "nothing-to-carry-back" },
+    });
+  });
+
+  it("refuses an update whose only edit is the name the copy stamps back", async () => {
+    const { importSkill, deployed } = update(
+      { "SKILL.md": MANIFEST },
+      { "SKILL.md": HELD_MANIFEST },
+    );
+
+    await expect(
+      importSkill.check({ source: deployed }),
+    ).resolves.toMatchObject({
+      check: { mode: "update", sourceBlocker: "nothing-to-carry-back" },
+    });
+  });
+
+  it("carries an update through where one file differs", async () => {
+    const { importSkill, deployed } = update(
+      { "SKILL.md": HELD_MANIFEST, "steps.md": "One.\n" },
+      { "SKILL.md": HELD_MANIFEST, "steps.md": "Two.\n" },
+    );
+
+    await expect(
+      importSkill.check({ source: deployed }),
+    ).resolves.toMatchObject({
+      check: { mode: "update", sourceBlocker: null },
+    });
+  });
+
+  it("carries an update through where the Harness holds a file the copy does not", async () => {
+    const { importSkill, deployed } = update(
+      { "SKILL.md": HELD_MANIFEST },
+      { "SKILL.md": HELD_MANIFEST, "steps.md": "One.\n" },
+    );
+
+    await expect(
+      importSkill.check({ source: deployed }),
+    ).resolves.toMatchObject({
+      check: { mode: "update", sourceBlocker: null },
+    });
+  });
+
   it("keeps refusing a copy nothing can be compared against", async () => {
     const { importSkill, deployed } = deployedInRepo(FROM_THIS_HARNESS, {
       originUrl: null,
@@ -473,6 +567,7 @@ describe("ImportSkill.check", () => {
         readFile: async () => MANIFEST,
         writeFile: async () => {},
         ensureDir: async () => {},
+        listRawEntries: async () => [],
       },
       copy: { copy: async () => ({ ok: false, error: "copy-failed" }) },
       git: unreachableGit,
@@ -564,6 +659,26 @@ describe("ImportSkill.execute", () => {
         },
       },
     ]);
+  });
+
+  it("copies nothing for an update that carries no change", async () => {
+    const deployed = "/repo/.claude/skills/code-review";
+    const update = harness({
+      files: {
+        [`${deployed}/SKILL.md`]: HELD_MANIFEST,
+        [`${ROOT}/.apm/skills/code-review/SKILL.md`]: HELD_MANIFEST,
+        "/repo/apm.lock.yaml": lockfile(FROM_THIS_HARNESS),
+      },
+      directories: [deployed, `${ROOT}/.apm/skills/code-review`],
+      deployedTargets: [
+        { treeRoot: "/repo", lockfilePath: "/repo/apm.lock.yaml" },
+      ],
+    });
+
+    await expect(
+      update.importSkill.execute({ source: deployed }),
+    ).resolves.toEqual({ ok: false, error: "nothing-to-carry-back" });
+    expect(update.copied).toEqual([]);
   });
 
   it("refuses at confirm a Harness that gained uncommitted changes since the check", async () => {

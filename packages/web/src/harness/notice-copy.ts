@@ -236,6 +236,14 @@ const importHeadings: NoticeTable<ImportSkillError> = {
       "Commit or undo the Harness's own changes to this skill, then Update skill again.",
     detail: "Replacing the folder now would take work git has no record of.",
   },
+  // Info, not error: the folder is the right one and nothing is wrong with it,
+  // there is simply nothing in it to carry back (#733).
+  "nothing-to-carry-back": {
+    level: "info",
+    label: "Nothing to carry back",
+    message: "This folder matches the skill the Harness holds. Press Close.",
+    detail: "Only a changed file can be carried back.",
+  },
   "missing-manifest": {
     level: "error",
     label: "No SKILL.md",

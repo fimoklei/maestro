@@ -16,7 +16,7 @@ import {
   type LockfileEntry,
   parseLockfile,
 } from "../lockfile/lockfile";
-import type { FileSystemPort } from "../registry/file-system";
+import type { FileSystemPort, RawDirEntry } from "../registry/file-system";
 import type { HarnessGitPort } from "./read-harness-state";
 import {
   type ManifestAdvisory,
@@ -36,7 +36,10 @@ export type ImportSourceBlocker =
   | "empty-description"
   // Only in update mode: the harness's own copy of that skill differs from the
   // commit it sits on, and replacing it would destroy work git cannot give back.
-  | "harness-copy-uncommitted";
+  | "harness-copy-uncommitted"
+  // Only in update mode: the copy holds what the harness holds already, so the
+  // replacement would leave no pending proposal and nothing to review.
+  | "nothing-to-carry-back";
 
 // What the chosen destination name is refused for. Kept apart from the source
 // blockers so the cockpit can state a clash on the name field itself.
@@ -86,8 +89,19 @@ export type DeployedTarget = { treeRoot: string; lockfilePath: string };
 
 type ImportFs = Pick<
   FileSystemPort,
-  "realpath" | "isDirectory" | "exists" | "readFile" | "writeFile" | "ensureDir"
+  | "realpath"
+  | "isDirectory"
+  | "exists"
+  | "readFile"
+  | "writeFile"
+  | "ensureDir"
+  | "listRawEntries"
 >;
+
+// Left out of the comparison at the level they sit on: `.git` at every depth,
+// the same entry the copy itself skips, and the manifest, compared apart.
+const GIT_ONLY = new Set([".git"]);
+const MANIFEST_AND_GIT = new Set([".git", "SKILL.md"]);
 
 export class ImportSkill {
   private readonly deps: {
@@ -266,8 +280,46 @@ export class ImportSkill {
       return structure;
     }
     return provenance.kind === "own"
-      ? await this.judgeHarnessCopy(root, provenance.name)
+      ? await this.judgeUpdate(root, source, provenance.name)
       : null;
+  }
+
+  // What refuses a replacement: work the harness holds that git cannot give
+  // back, and a copy that would change nothing. The data-loss guard runs first.
+  private async judgeUpdate(
+    root: string,
+    source: string,
+    name: string,
+  ): Promise<ImportSourceBlocker | null> {
+    const uncommitted = await this.judgeHarnessCopy(root, name);
+    if (uncommitted !== null) {
+      return uncommitted;
+    }
+    return (await this.carriesNoChange(root, source, name))
+      ? "nothing-to-carry-back"
+      : null;
+  }
+
+  // True where the replacement would write back exactly what is there: git
+  // would see no change, so no pending proposal would appear (#733). Anything
+  // unreadable counts as a difference, and the review is where it is read.
+  private async carriesNoChange(
+    root: string,
+    source: string,
+    name: string,
+  ): Promise<boolean> {
+    const held = join(root, HARNESS_SKILLS_DIR, name);
+    // The manifest is compared as the copy would write it, name stamped in:
+    // an edit to the name alone is stamped back out, and is no change at all.
+    const raw = await this.readManifest(join(source, "SKILL.md"));
+    const stamped = raw === null ? null : rewriteFrontmatterName(raw, name);
+    if (
+      stamped === null ||
+      stamped !== (await this.readManifest(join(held, "SKILL.md")))
+    ) {
+      return false;
+    }
+    return await sameTree(this.deps.fs, source, held, MANIFEST_AND_GIT);
   }
 
   // The guard on the write. A working copy that differs from the commit it
@@ -407,6 +459,71 @@ export class ImportSkill {
       return false;
     }
   }
+}
+
+// True where both folders hold the same names with the same file text. Text
+// only: a permission bit or a symbolic link reads as a difference, which lets
+// the update through rather than refusing one that carries something.
+async function sameTree(
+  fs: ImportFs,
+  left: string,
+  right: string,
+  exclude: Set<string>,
+): Promise<boolean> {
+  const [here, there] = await Promise.all([
+    listing(fs, left, exclude),
+    listing(fs, right, exclude),
+  ]);
+  if (here === null || there === null || here.length !== there.length) {
+    return false;
+  }
+  for (const [index, entry] of here.entries()) {
+    const twin = there[index];
+    if (
+      twin === undefined ||
+      twin.name !== entry.name ||
+      twin.isDirectory !== entry.isDirectory ||
+      entry.isSymlink ||
+      twin.isSymlink
+    ) {
+      return false;
+    }
+    const [inLeft, inRight] = [join(left, entry.name), join(right, entry.name)];
+    const same = entry.isDirectory
+      ? await sameTree(fs, inLeft, inRight, GIT_ONLY)
+      : await sameFile(fs, inLeft, inRight);
+    if (!same) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Sorted, so the two sides are compared in one order whatever the filesystem
+// hands back. Null where the directory cannot be read.
+async function listing(
+  fs: ImportFs,
+  path: string,
+  exclude: Set<string>,
+): Promise<RawDirEntry[] | null> {
+  const entries = await fs.listRawEntries(path).catch(() => null);
+  return entries === null
+    ? null
+    : entries
+        .filter((entry) => !exclude.has(entry.name))
+        .sort((one, other) => one.name.localeCompare(other.name));
+}
+
+async function sameFile(
+  fs: ImportFs,
+  left: string,
+  right: string,
+): Promise<boolean> {
+  const [here, there] = await Promise.all([
+    fs.readFile(left).catch(() => null),
+    fs.readFile(right).catch(() => null),
+  ]);
+  return here !== null && here === there;
 }
 
 // The copy's own input shape, minus the fields this use-case never sends.
