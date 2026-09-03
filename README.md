@@ -98,6 +98,8 @@ target's page shows what it holds and which copies are behind.
   **propose the change**. That opens a pull request on the Harness. The
   curator merges it; you **publish a release**, which cuts a new tag. The
   Harness's `CONTRIBUTING.md` says what may enter it.
+- **Deploy that skill** once it is released. A release puts the skill in the
+  Harness, not on your machine — deploying it is what your tools read.
 
 ## For contributors to Maestro itself
 
