@@ -12,6 +12,15 @@ export default defineConfig({
     // Runs once per run, before any lane: a killed run never reaches its
     // `afterEach`, so its temp trees are swept here instead.
     globalSetup: ["./tests/helpers/sweep-temp-trees.ts"],
+    // On-demand map of which files never run (`pnpm test:coverage`), no
+    // threshold. Without `include` a run reports only the files a test
+    // imported, which answers the wrong question (vitest 4.1 coverage docs).
+    // `--project` narrows the coverage root to that lane, so these repo-root
+    // globs match nothing: measure a single lane with its own config file.
+    coverage: {
+      include: ["packages/*/src/**/*.{ts,tsx}"],
+      exclude: ["**/*.test.*", "**/*.stories.tsx", "**/main.tsx"],
+    },
     projects: [
       "./packages/web/vitest.config.ts",
       {
