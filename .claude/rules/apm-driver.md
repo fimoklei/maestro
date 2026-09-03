@@ -82,9 +82,7 @@ targets = detected tools), 0013 (narrowed-install reconciliation), 0014
 
 ## Danger
 
-- Never run a bare `apm uninstall -g`. On 0.26.0 the parser rejects it, but
-  it is the command that wiped 19 dirs beyond its lockfile on the version
-  behind the 2026-07-17 incident. Always name the package.
+- Never run a bare `apm uninstall -g`; always name the package (ADR-0013).
 - Never point a spike `-g` command at the real home; sandbox `HOME` always
   (`LEARNINGS.md` · spike-isolation).
 

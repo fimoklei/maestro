@@ -27,13 +27,22 @@ Maestro needs APM. Install APM first.
 
 **1. Install APM**
 
+macOS and Linux, in a terminal:
+
 ```sh
 curl -sSL https://aka.ms/apm-unix | sh
 apm --version
 ```
 
-If the second line prints no version, stop and fix that first. Windows and
-other options are in the [APM docs](https://microsoft.github.io/apm/).
+Windows, in PowerShell:
+
+```powershell
+irm https://aka.ms/apm-windows | iex
+apm --version
+```
+
+If `apm --version` prints no version, stop and fix that first. Other options
+are in the [APM docs](https://microsoft.github.io/apm/).
 
 **2. Have these ready**
 
@@ -48,11 +57,23 @@ other options are in the [APM docs](https://microsoft.github.io/apm/).
 ```sh
 git clone https://github.com/fimoklei/maestro.git
 cd maestro
+node scripts/bootstrap.mjs
+```
+
+That checks Node, pnpm and apm; if anything is missing it prints the exact
+command to fix it and stops, without installing anything itself. Otherwise it
+installs Maestro's dependencies (first run only) and prints the cockpit's
+address. Open it in your browser. `node scripts/bootstrap.mjs --check` runs
+just the checks.
+
+Prefer to do it by hand, or the fast path found a gap and you fixed it?
+
+```sh
 pnpm install
 pnpm dev
 ```
 
-`pnpm dev` prints the cockpit's address. Open it in your browser.
+`pnpm dev` prints the cockpit's address the same way.
 
 ## Your first harness
 
