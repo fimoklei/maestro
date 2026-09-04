@@ -19,7 +19,10 @@ export function useInventory({ enabled = true }: { enabled?: boolean } = {}) {
   });
 }
 
-type InventoryConfigResponse = { inventoryPath: string | null };
+type InventoryConfigResponse = {
+  inventoryPath: string | null;
+  githubRepository: string | null;
+};
 
 // Exported so the connect mutation invalidates it after a re-point.
 export const INVENTORY_CONFIG_KEY = ["inventory", "config"] as const;

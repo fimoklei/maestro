@@ -21,3 +21,12 @@ export const DeepPath: Story = {};
 
 // A short path has no prefix worth dropping, so it shows in full.
 export const ShortPath: Story = { args: { path: "/tmp/x" } };
+
+// GitHub names stay readable in full, including unusually long repositories.
+export const GitHubRepository: Story = {
+  args: {
+    label: "GitHub repository",
+    path: "maestro-product/agent-harness-with-a-long-descriptive-name",
+    compact: false,
+  },
+};

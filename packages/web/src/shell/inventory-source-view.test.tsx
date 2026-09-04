@@ -26,11 +26,13 @@ describe("the read-failure notice", () => {
 // observes a changed count.
 function stubApi({
   configPath = "/home/me/agent-harness",
+  githubRepository = "fimoklei/agent-harness",
   primitives = () => [] as unknown[],
   connect,
   browse,
 }: {
   configPath?: string | null;
+  githubRepository?: string | null;
   primitives?: () => unknown[];
   connect?: () => Response;
   browse?: () => Response;
@@ -39,7 +41,10 @@ function stubApi({
     async (input: RequestInfo | URL, _init?: RequestInit) => {
       const url = String(input);
       if (url.startsWith("/api/inventory/config")) {
-        return jsonResponse({ inventoryPath: configPath }, 200);
+        return jsonResponse(
+          { inventoryPath: configPath, githubRepository },
+          200,
+        );
       }
       if (url.startsWith("/api/inventory/primitives")) {
         return jsonResponse({ primitives: primitives() }, 200);
@@ -104,7 +109,7 @@ describe("InventorySourceView", () => {
     expect(screen.queryByText(/^Loading…$/)).not.toBeInTheDocument();
   });
 
-  it("shows the connected source path and its live primitive count", async () => {
+  it("shows the local clone, GitHub repository and live primitive count", async () => {
     stubApi({
       configPath: "/home/me/agent-harness",
       primitives: () => [skill("tdd"), skill("frontend"), skill("review")],
@@ -119,6 +124,34 @@ describe("InventorySourceView", () => {
       "title",
       "/home/me/agent-harness",
     );
+    expect(screen.getByText("Local clone")).toBeInTheDocument();
+    expect(screen.getByText("GitHub repository")).toBeInTheDocument();
+    expect(screen.getByText("fimoklei/agent-harness")).toHaveAttribute(
+      "title",
+      "fimoklei/agent-harness",
+    );
+    expect(screen.queryByText(/read-only/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps full long clone and repository values available", async () => {
+    const clone = "/home/me/workspaces/very-long-team-name/agent-harness";
+    const repository = "very-long-organization-name/very-long-harness-name";
+    stubApi({ configPath: clone, githubRepository: repository });
+    renderView();
+
+    expect(await screen.findByText(repository)).toHaveAttribute(
+      "title",
+      repository,
+    );
+    expect(screen.getByTitle(clone)).toBeInTheDocument();
+  });
+
+  it("keeps the local clone and says when the GitHub repository was not read", async () => {
+    stubApi({ githubRepository: null });
+    renderView();
+
+    expect(await screen.findByText("…/me/agent-harness")).toBeInTheDocument();
+    expect(screen.getByText("GitHub repository not read")).toBeInTheDocument();
   });
 
   it("re-reads the inventory on demand, refreshing the count", async () => {

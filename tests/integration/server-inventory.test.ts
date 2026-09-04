@@ -47,12 +47,16 @@ describe("inventory HTTP route", () => {
     );
   }
 
-  function makeApp(inventoryPath: string | undefined) {
+  function makeApp(
+    inventoryPath: string | undefined,
+    originUrl: string | null = null,
+  ) {
     const fs = new NodeFileSystem();
     const registry = realRegistry(fs, join(dir, "config.json"));
     const inventory = new InventoryReader({
       fs,
       resolvePath: () => inventoryPath,
+      originUrl: () => originUrl,
     });
     const deployState = stubDeployState({ fs });
     const locks = new InFlightLocks();
@@ -131,7 +135,19 @@ describe("inventory HTTP route", () => {
     expect(JSON.stringify(body)).not.toContain(dir);
   });
 
-  it("GET /api/inventory/config returns the canonical configured path", async () => {
+  it("GET /api/inventory/config returns the local clone and GitHub repository", async () => {
+    const app = makeApp(dir, "git@github.com:fimoklei/agent-harness.git");
+
+    const res = await app.request("/api/inventory/config");
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      inventoryPath: await nodeRealpath(dir),
+      githubRepository: "fimoklei/agent-harness",
+    });
+  });
+
+  it("GET /api/inventory/config keeps the local clone when its GitHub repository is not read", async () => {
     const app = makeApp(dir);
 
     const res = await app.request("/api/inventory/config");
@@ -139,6 +155,7 @@ describe("inventory HTTP route", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       inventoryPath: await nodeRealpath(dir),
+      githubRepository: null,
     });
   });
 
@@ -148,6 +165,9 @@ describe("inventory HTTP route", () => {
     const res = await app.request("/api/inventory/config");
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ inventoryPath: null });
+    expect(await res.json()).toEqual({
+      inventoryPath: null,
+      githubRepository: null,
+    });
   });
 });
