@@ -138,6 +138,7 @@ details may name the exact APM mechanism or file.
 | Inventory source | **Harness location** | Do not use *source* for the configured Harness location. The controls on that screen are **Re-read Inventory**, **Change Harness location** and **Set Harness location**. |
 | Drift | **Behind** | Use *an update is available* as explanation, not as a second status name. The `?` marker reads **Update check did not run**; *drift* never reaches the screen. **Behind** claims a newer release exists and nothing more — a skill whose content did not move reads **Older tag** (ADR-0027). |
 | Version drift, content unmoved | **Older tag** | The reading for a deployed skill identical at the pinned tag and the latest release. Explain it as *identical at the pinned tag and the latest release*; never *same content*, which is **Content drift**'s territory. Where the content question cannot be answered, the row reads **Behind**. |
+| Version drift, skill absent | **No longer released** | The reading for a deployed skill whose name is absent from the latest release. Never use *Deprecated*, which claims an intent the Harness does not record. |
 | Target | **Target** | Prefer the concrete repository or tool name after the concept is established. |
 | Deploy | **Deploy** / **Deployed** | *Deploy* is the action and *deployed* is the state; *install* is APM's mechanism. |
 | Skill | **Skill** | Use `SKILL.md` only when the file itself matters. |
