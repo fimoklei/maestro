@@ -12,7 +12,7 @@
   "automerge": false,
   "prBodyNotes": [
     "**Operator guidance.** This is an automated dependency pull request.",
-    "Required checks: the full CI sequence must pass (install, audit, lint, typecheck, test, build, build-storybook).",
+    "Required checks: the full CI sequence must pass (install, lint, typecheck, test, build, build-storybook).",
     "Merge policy: a human reviews and squash-merges. Auto-merge is off. Renovate never merges to `main`.",
     "Browser verification is not required for this change unless a note below says otherwise."
   ],
