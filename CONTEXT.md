@@ -113,7 +113,7 @@ A deployed primitive whose pinned version lags the latest tag on the **Released 
 _Avoid_: outdated (that is APM's word for the mechanism).
 
 **Content drift**:
-A deployed primitive whose materialized files have diverged from the pinned tag's tree (edited or added locally). `apm outdated` does **not** detect it; deploy-time refusal does (tree-diff, ADR-0003). Not surfaced by the deploy-state view yet (see "See local divergence from central" on the board, `docs/jobs.md`).
+A deployed primitive whose materialized files have diverged from the pinned tag's tree (edited or added locally). `apm outdated` does **not** detect it; deploy-time and remove-time refusal do (tree-diff, ADR-0003; a removal refuses it because apm 0.29.0 aborts part-way on such a copy, #775). Not surfaced by the deploy-state view yet (see "See local divergence from central" on the board, `docs/jobs.md`).
 _Avoid_: local edit, dirty.
 
 **Shadow skill** _(future-relevance)_:

@@ -27,6 +27,8 @@ Issue #185 later found the port observations partly stale (apm PRs
 #2210/#2211 reworked port handling). That does not move this decision: it
 rests on ADR-0003's model — Maestro deploys from the central inventory's
 GitHub remote — not on what apm's parser happens to accept in any version.
+Re-read against the 0.29.0 parser in #774: the host gate is unchanged
+(`docs/apm-behavior.md` → "Reference grammar").
 
 ## Decision
 

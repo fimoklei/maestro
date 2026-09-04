@@ -11,9 +11,11 @@ already ran the old always-`claude,codex` global install is left with two
 leftovers that apm does not clean, because a narrowing `-t` never prunes —
 `apm install -g -t claude` over a two-tool lockfile keeps the `.agents`
 (codex) `deployed_file_hashes` and leaves the `.agents/skills/<name>` files
-on disk. Verified against the apm 0.26.0 source in issue #191; the mechanics
-are in `docs/apm-behavior.md` → "Ghost entries". Both leftovers are
-global-path only; per-repo deploys are unaffected.
+on disk. Verified against the apm 0.26.0 source in issue #191 and re-measured
+on 0.29.0 in #774 (narrowing `-g -t claude` still left every `.agents` file
+and hash in place; the uninstall cleanup added upstream prunes nothing on
+install); the mechanics are in `docs/apm-behavior.md` → "Ghost entries". Both
+leftovers are global-path only; per-repo deploys are unaffected.
 
 The consequences without a fix:
 
