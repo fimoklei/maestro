@@ -29,7 +29,6 @@ export type {
   HarnessReleaseState,
   HarnessState,
   ImportCheck,
-  ImportMode,
   ImportNameBlocker,
   ImportSourceBlocker,
   ManifestAdvisory,
