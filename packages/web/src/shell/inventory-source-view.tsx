@@ -15,7 +15,7 @@ import { useRereadInventory } from "./use-reread-inventory";
 // Shared by skeleton and settled view so the loading frame can't drift and
 // reintroduce the layout jump this view exists to prevent (#231).
 const SOURCE_TITLE = "Harness location";
-const SOURCE_META = "Local path · read-only";
+const SOURCE_META = "Local clone · GitHub connected";
 const SOURCE_CARD_WIDTH = "max-w-lg";
 
 // The Re-read Inventory button sits directly below, so the notice carries no action of
@@ -33,6 +33,7 @@ export function InventorySourceView() {
   const inventory = useInventory();
   const reread = useRereadInventory();
   const currentPath = config.data?.inventoryPath ?? null;
+  const githubRepository = config.data?.githubRepository ?? null;
   // An unknown count while in flight makes the live region announce on every
   // re-read, even a same-count refresh — a genuine mutation a screen reader
   // must hear (#230).
@@ -53,7 +54,13 @@ export function InventorySourceView() {
     <section>
       <SectionHeader
         title={isChanging ? "Change Harness location" : SOURCE_TITLE}
-        meta={isChanging ? "Re-point at another local folder" : SOURCE_META}
+        meta={
+          isChanging
+            ? "Re-point at another local folder"
+            : githubRepository === null
+              ? "Local clone · GitHub repository not read"
+              : SOURCE_META
+        }
       />
       <Card padded className={SOURCE_CARD_WIDTH}>
         {isChanging ? (
@@ -96,8 +103,13 @@ export function InventorySourceView() {
                 ● {countLabel}
               </p>
             )}
-            <SourceLabel path={currentPath ?? ""} />
-            <div className="flex gap-2">
+            <SourceLabel label="Local clone" path={currentPath ?? ""} />
+            <SourceLabel
+              label="GitHub repository"
+              path={githubRepository ?? "GitHub repository not read"}
+              compact={false}
+            />
+            <div className="flex flex-wrap gap-2">
               <Button
                 variant="primary"
                 size="sm"
@@ -129,7 +141,7 @@ export function InventorySourceView() {
 function SourceSkeleton() {
   return (
     <section>
-      <SectionHeader title={SOURCE_TITLE} meta={SOURCE_META} />
+      <SectionHeader title={SOURCE_TITLE} meta="Loading Harness location…" />
       <Card padded className={SOURCE_CARD_WIDTH}>
         <div
           role="status"
@@ -144,7 +156,7 @@ function SourceSkeleton() {
           >
             ● Loading
           </div>
-          {/* Same box as the "Source · local folder" label + path rows. */}
+          {/* Same boxes as the location fact rows. */}
           <div aria-hidden="true" className="flex flex-col gap-1">
             <span className="m-label w-28 rounded bg-dim-bg text-transparent">
               label
@@ -153,8 +165,16 @@ function SourceSkeleton() {
               /loading/source/path
             </span>
           </div>
+          <div aria-hidden="true" className="flex flex-col gap-1">
+            <span className="m-label w-28 rounded bg-dim-bg text-transparent">
+              label
+            </span>
+            <span className="w-64 max-w-full truncate rounded bg-dim-bg font-mono text-mono-sm text-transparent">
+              owner/repository
+            </span>
+          </div>
           {/* Same box as the two sm buttons: border + px-2 py-[3px] + text-tag. */}
-          <div aria-hidden="true" className="flex gap-2">
+          <div aria-hidden="true" className="flex flex-wrap gap-2">
             <span className="rounded-control border border-line-chip bg-dim-bg px-2 py-[3px] text-tag text-transparent">
               Re-read Inventory
             </span>

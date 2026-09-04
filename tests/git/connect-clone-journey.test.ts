@@ -122,6 +122,7 @@ describe("joining a Harness by its GitHub url", () => {
     const inventory = new InventoryReader({
       fs,
       resolvePath: async () => resolveInventoryPath(await store.read(), {}),
+      originUrl: readConfiguredGitOriginUrl,
     });
     const locks = new InFlightLocks();
     return createApp({
@@ -192,7 +193,7 @@ describe("joining a Harness by its GitHub url", () => {
     expect(stdout.trim()).toBe("refs/remotes/origin/main");
   });
 
-  it("keeps the connected path pointing at the clone", async () => {
+  it("keeps the local clone and GitHub repository after joining", async () => {
     const app = makeApp();
 
     await postConnect(app, { path: GITHUB_URL });
@@ -200,6 +201,7 @@ describe("joining a Harness by its GitHub url", () => {
     const res = await app.request("/api/inventory/config");
     expect(await res.json()).toEqual({
       inventoryPath: join(home, "agent-harness"),
+      githubRepository: "fimoklei/agent-harness",
     });
   });
 

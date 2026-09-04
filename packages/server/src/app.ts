@@ -554,7 +554,7 @@ export function createApp(deps: AppDeps) {
   // A GET, so it bypasses the Origin/Host guard — returning the user's own
   // configured path is intentional, not an attacker probe.
   app.get("/api/inventory/config", async (c) => {
-    return c.json({ inventoryPath: await deps.inventory.configuredPath() });
+    return c.json(await deps.inventory.configuredLocation());
   });
 
   // The Harness home base's two operations. Neither takes a path: both resolve
@@ -979,6 +979,7 @@ function realDeps(): AppDeps {
     fs,
     resolvePath: async () =>
       resolveInventoryPath(await store.read(), process.env),
+    originUrl: readConfiguredGitOriginUrl,
   });
   const deployState = new GlobalDeployStateReader({
     fs,

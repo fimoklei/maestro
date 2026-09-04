@@ -3,6 +3,7 @@
 import { join } from "node:path";
 import { parse } from "yaml";
 import { z } from "zod";
+import { parseGitOrigin } from "../deploy/git-origin";
 import type { FileSystemPort } from "../registry/file-system";
 import { HARNESS_SKILLS_DIR } from "./harness-layout";
 
@@ -42,13 +43,18 @@ export class InventoryReader {
   private readonly resolvePath: () =>
     | Promise<string | undefined>
     | (string | undefined);
+  private readonly originUrl: (
+    path: string,
+  ) => Promise<string | null> | string | null;
 
   constructor(deps: {
     fs: FileSystemPort;
     resolvePath: () => Promise<string | undefined> | (string | undefined);
+    originUrl?: (path: string) => Promise<string | null> | string | null;
   }) {
     this.fs = deps.fs;
     this.resolvePath = deps.resolvePath;
+    this.originUrl = deps.originUrl ?? (() => null);
   }
 
   // Canonicalised where possible, so the browser's path comparisons line up
@@ -59,6 +65,27 @@ export class InventoryReader {
       return null;
     }
     return this.fs.realpath(path).catch(() => path);
+  }
+
+  // The configured URL names the durable GitHub repository; a transport
+  // rewrite is local plumbing and must not replace that fact on the screen.
+  async configuredLocation(): Promise<{
+    inventoryPath: string | null;
+    githubRepository: string | null;
+  }> {
+    const inventoryPath = await this.configuredPath();
+    if (inventoryPath === null) {
+      return { inventoryPath, githubRepository: null };
+    }
+
+    const originUrl = await Promise.resolve(
+      this.originUrl(inventoryPath),
+    ).catch(() => null);
+    const githubRepository =
+      originUrl === null
+        ? null
+        : (parseGitOrigin(originUrl)?.ownerRepo ?? null);
+    return { inventoryPath, githubRepository };
   }
 
   async read(): Promise<InventoryResult> {

@@ -124,11 +124,14 @@ describe("production wiring", () => {
     expect(await res.json()).toEqual({ error: "central-inventory" });
   });
 
-  it("reports the configured inventory path", async () => {
+  it("reports the configured local clone when its GitHub repository is not read", async () => {
     const res = await app.request("/api/inventory/config");
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ inventoryPath: inventory });
+    expect(await res.json()).toEqual({
+      inventoryPath: inventory,
+      githubRepository: null,
+    });
   });
 
   it("reads the inventory's skills off the configured path", async () => {
