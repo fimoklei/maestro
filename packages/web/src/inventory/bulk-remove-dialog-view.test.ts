@@ -20,7 +20,7 @@ const checkFailed: RemovePreflightView = {
 };
 
 const repoCheck = (
-  warning: "none" | "local-edits" | "cannot-verify" | "check-failed",
+  warning: "none" | "cannot-verify" | "cannot-verify" | "check-failed",
 ): RemovePreflightView => ({
   kind: "offered",
   check: { kind: "repo", warning },
@@ -28,7 +28,7 @@ const repoCheck = (
 });
 
 const perTool = (
-  warnings: Record<string, "none" | "local-edits" | "check-failed">,
+  warnings: Record<string, "none" | "cannot-verify" | "check-failed">,
 ): RemovePreflightView => ({
   kind: "offered",
   check: { kind: "per-tool", warnings },
@@ -95,7 +95,7 @@ describe("bulkRemoveDialogView — the clean summary", () => {
   it("counts the clean copies plainly once a group sits beside them", () => {
     const view = bulkRemoveDialogView([
       target("global", repoCheck("none")),
-      target("/dev/acme-web", repoCheck("local-edits")),
+      target("/dev/acme-web", repoCheck("cannot-verify")),
     ]);
 
     expect(view.kind === "grouped" && view.cleanLine).toBe("1 clean copies");
@@ -103,7 +103,7 @@ describe("bulkRemoveDialogView — the clean summary", () => {
 
   it("renders no clean line at all when nothing is clean", () => {
     const view = bulkRemoveDialogView([
-      target("/dev/acme-web", repoCheck("local-edits")),
+      target("/dev/acme-web", repoCheck("cannot-verify")),
     ]);
 
     expect(view.kind === "grouped" && view.cleanLine).toBeNull();
@@ -113,14 +113,14 @@ describe("bulkRemoveDialogView — the clean summary", () => {
 describe("bulkRemoveDialogView — what the removal costs", () => {
   it("names the target, its deployed version and the reason", () => {
     const view = bulkRemoveDialogView([
-      target("/dev/acme-api", repoCheck("local-edits"), "v1.0.0"),
+      target("/dev/acme-api", repoCheck("cannot-verify"), "v1.0.0"),
     ]);
 
     expect(view.kind === "grouped" && view.cost).toEqual([
       {
         label: "/dev/acme-api",
         version: "v1.0.0",
-        reason: "Local edits — deleted too",
+        reason: "Nothing recorded — may lose work",
       },
     ]);
   });
@@ -152,14 +152,14 @@ describe("bulkRemoveDialogView — what the removal costs", () => {
   // among them rather than one tool's answer.
   it("prices a global target on the worst answer any tool gave", () => {
     const view = bulkRemoveDialogView([
-      target("global", perTool({ claude: "none", codex: "local-edits" })),
+      target("global", perTool({ claude: "none", codex: "cannot-verify" })),
     ]);
 
     expect(view.kind === "grouped" && view.cost).toEqual([
       {
         label: "global",
         version: "v1.0.0",
-        reason: "Local edits — deleted too",
+        reason: "Nothing recorded — may lose work",
       },
     ]);
   });
@@ -212,7 +212,7 @@ describe("bulkRemoveDialogView — what cannot be removed", () => {
   it("carries the cost on the confirm when a cost group exists", () => {
     const view = bulkRemoveDialogView([
       target("global", repoCheck("none")),
-      target("/dev/acme-web", repoCheck("local-edits")),
+      target("/dev/acme-web", repoCheck("cannot-verify")),
       target("/dev/acme-api", checkFailed),
       target("/dev/legacy-etl", refused("repo-not-registered")),
     ]);

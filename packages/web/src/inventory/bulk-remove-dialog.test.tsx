@@ -21,7 +21,7 @@ const withCost: BulkRemoveDialogView = {
     {
       label: "/dev/acme-api",
       version: "v1.0.0",
-      reason: "Local edits — deleted too",
+      reason: "Nothing recorded — may lose work",
     },
     {
       label: "/dev/design-tokens",
@@ -120,7 +120,7 @@ describe("BulkRemoveDialog — once the checks answer", () => {
     const cost = screen.getByRole("group", { name: "▲ Loses work · 2" });
     expect(cost).toHaveTextContent("/dev/acme-api");
     expect(cost).toHaveTextContent("v1.0.0");
-    expect(cost).toHaveTextContent("Local edits — deleted too");
+    expect(cost).toHaveTextContent("Nothing recorded — may lose work");
     expect(cost).toHaveTextContent("Check did not run");
   });
 

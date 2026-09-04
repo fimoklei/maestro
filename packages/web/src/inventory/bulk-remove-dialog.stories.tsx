@@ -51,7 +51,7 @@ export const LosesWork: Story = {
         {
           label: "/dev/acme-api",
           version: "v1.0.0",
-          reason: "Local edits — deleted too",
+          reason: "Nothing recorded — may lose work",
         },
         {
           label: "/dev/design-tokens",

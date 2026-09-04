@@ -122,9 +122,7 @@ describe("releaseEnabled", () => {
 
 describe("RELEASE_SUMMARIES", () => {
   it("reads a quiet harness as nothing waiting", () => {
-    expect(RELEASE_SUMMARIES["released"]).toBe(
-      "Everything merged is released.",
-    );
+    expect(RELEASE_SUMMARIES.released).toBe("Everything merged is released.");
   });
 
   it("names merged work the released harness does not carry yet", () => {
@@ -138,7 +136,7 @@ describe("RELEASE_SUMMARIES", () => {
   });
 
   it("admits it cannot tell before the first fetch", () => {
-    expect(RELEASE_SUMMARIES["unknown"]).toBe(
+    expect(RELEASE_SUMMARIES.unknown).toBe(
       "Not fetched yet, so what is waiting is unknown.",
     );
   });

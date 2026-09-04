@@ -68,8 +68,11 @@ describe("bulk remove HTTP route", () => {
     // Repo paths where apm ran and did not confirm — the case that leaves a
     // disk probe to report.
     unprovenRepos?: string[];
-    // Repo paths whose deployed copy carries local edits, so the guard has a
-    // cost to price and a receipt to require (#458).
+    // Repo paths whose deployed copy has no baseline to check against, so the
+    // guard has a cost to price and a receipt to require (#458).
+    unverifiableRepos?: string[];
+    // Repo paths whose deployed copy carries local edits: refused, never
+    // priced (#775).
     divergedRepos?: string[];
   }) {
     const fs = new NodeFileSystem();
@@ -78,6 +81,7 @@ describe("bulk remove HTTP route", () => {
     const removeCalls: Array<{ target: DeployTarget; ref: string }> = [];
     const fails = new Set(options?.failRepos ?? []);
     const unproven = new Set(options?.unprovenRepos ?? []);
+    const unverifiable = new Set(options?.unverifiableRepos ?? []);
     const diverged = new Set(options?.divergedRepos ?? []);
     const location = new DeployedLocation({ HOME: home });
     const locks = new InFlightLocks();
@@ -86,10 +90,15 @@ describe("bulk remove HTTP route", () => {
       locks,
       deployedRef: new DeployedRefAdapter({ fs, location }),
       deployedContent: {
-        classify: async ({ target }) =>
-          target.kind === "repo" && diverged.has(target.repoPath)
-            ? "diverged"
-            : "clean",
+        classify: async ({ target }) => {
+          if (target.kind !== "repo") {
+            return "clean";
+          }
+          if (diverged.has(target.repoPath)) {
+            return "diverged";
+          }
+          return unverifiable.has(target.repoPath) ? "unverifiable" : "clean";
+        },
       },
       apm: {
         removeSkill: async (input) => {
@@ -301,7 +310,9 @@ describe("bulk remove HTTP route", () => {
   // Per target, both ways: the batch is the place where one target's answer
   // could quietly speak for the next one, so it must not (#458).
   it("keeps an unproven target out of apm and still finishes the batch", async () => {
-    const { app, registry, removeCalls } = makeApp({ divergedRepos: [repoA] });
+    const { app, registry, removeCalls } = makeApp({
+      unverifiableRepos: [repoA],
+    });
     await writeRepoLockfile(repoA);
     await writeRepoLockfile(repoB);
     await registry.register(repoA);
@@ -326,7 +337,9 @@ describe("bulk remove HTTP route", () => {
   });
 
   it("removes that same target once its own preflight receipt rides along", async () => {
-    const { app, registry, removeCalls } = makeApp({ divergedRepos: [repoA] });
+    const { app, registry, removeCalls } = makeApp({
+      unverifiableRepos: [repoA],
+    });
     await writeRepoLockfile(repoA);
     await registry.register(repoA);
 
@@ -354,8 +367,37 @@ describe("bulk remove HTTP route", () => {
     expect(removeCalls).toHaveLength(1);
   });
 
-  it("rejects a receipt that is not even token-shaped, at the edge", async () => {
+  // No receipt lets an edited copy through: apm 0.29.0 would abort on it after
+  // deleting the rest, so the target is left alone and the batch goes on (#775).
+  it("leaves a target with local edits alone and still finishes the batch", async () => {
     const { app, registry, removeCalls } = makeApp({ divergedRepos: [repoA] });
+    await writeRepoLockfile(repoA);
+    await writeRepoLockfile(repoB);
+    await registry.register(repoA);
+    await registry.register(repoB);
+
+    const response = await post(app, {
+      name: "tdd",
+      targets: [
+        { target: repoTarget(repoA), confirmedRemovalReceipt: "a".repeat(64) },
+        ...(await entriesFor(app, [repoTarget(repoB)])),
+      ],
+    });
+
+    const report = (await response.json()) as BulkRemoveReport;
+    expect(report.failed).toEqual([
+      { target: repoTarget(repoA), reason: "deployed-diverged-from-lock" },
+    ]);
+    expect(report.removed).toEqual([
+      { target: repoTarget(repoB), version: "v0.5.1" },
+    ]);
+    expect(removeCalls.map((call) => call.target)).toEqual([repoTarget(repoB)]);
+  });
+
+  it("rejects a receipt that is not even token-shaped, at the edge", async () => {
+    const { app, registry, removeCalls } = makeApp({
+      unverifiableRepos: [repoA],
+    });
     await writeRepoLockfile(repoA);
     await registry.register(repoA);
 

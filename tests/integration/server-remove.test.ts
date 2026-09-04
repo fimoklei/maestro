@@ -310,7 +310,7 @@ describe("remove HTTP route", () => {
     // below, and this request carries that answer's own receipt — so it is the
     // user's informed word rather than a caller's claim (#337, #458).
     const { app, registry, removeCalls } = makeApp({
-      deployedState: "diverged",
+      deployedState: "unverifiable",
     });
     await writeFile(
       join(repo, "apm.lock.yaml"),
@@ -332,7 +332,7 @@ describe("remove HTTP route", () => {
 
   it("refuses that same copy when nothing proves the cost was stated", async () => {
     const { app, registry, removeCalls } = makeApp({
-      deployedState: "diverged",
+      deployedState: "unverifiable",
     });
     await writeFile(
       join(repo, "apm.lock.yaml"),
@@ -352,7 +352,7 @@ describe("remove HTTP route", () => {
     // was found without asking again (#364).
     expect(await response.json()).toEqual({
       error: "cost-not-acknowledged",
-      check: { scope: "repo", warning: "local-edits-will-be-lost" },
+      check: { scope: "repo", warning: "cannot-verify-local-edits" },
       receipt: expect.stringMatching(/^[0-9a-f]{64}$/),
       // Null on a repo, whose targets are its own apm.yml — but present, so the
       // confirmation replaces the whole consent rather than half of it (#364).
@@ -411,7 +411,7 @@ describe("remove HTTP route", () => {
 
   it("refuses a receipt the caller minted for a different skill", async () => {
     const { app, registry, removeCalls } = makeApp({
-      deployedState: "diverged",
+      deployedState: "unverifiable",
     });
     await writeFile(
       join(repo, "apm.lock.yaml"),
@@ -443,7 +443,7 @@ describe("remove HTTP route", () => {
 
   it("rejects a receipt that is not even token-shaped, at the edge", async () => {
     const { app, registry, removeCalls } = makeApp({
-      deployedState: "diverged",
+      deployedState: "unverifiable",
     });
     await registry.register(repo);
 
@@ -480,7 +480,12 @@ describe("remove HTTP route", () => {
     await writeFile(deployed, SKILL_FILE_CONTENT, "utf8");
     await registry.register(repo);
     const stale = await receiptFromPreflight(app, repo);
-    await writeFile(deployed, "# tdd, edited since\n", "utf8");
+    // The baseline goes, not the file: nothing rules out local work any more.
+    await writeFile(
+      join(repo, "apm.lock.yaml"),
+      lockfileWith([skillEntry("tdd")]),
+      "utf8",
+    );
 
     const response = await removeRequest(app, {
       type: "skill",
@@ -492,9 +497,48 @@ describe("remove HTTP route", () => {
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({
       error: "cost-not-acknowledged",
-      check: { scope: "repo", warning: "local-edits-will-be-lost" },
+      check: { scope: "repo", warning: "cannot-verify-local-edits" },
       receipt: expect.stringMatching(/^[0-9a-f]{64}$/),
       reclaim: null,
+    });
+    expect(removeCalls).toEqual([]);
+  });
+
+  // An edit landing between the check and the click is not a restated price:
+  // apm 0.29.0 would keep the edited file and abort after deleting the rest,
+  // so the copy is refused until it is deployed again (#775).
+  it("refuses outright when the copy gained local edits after the check", async () => {
+    const { app, registry, removeCalls } = makeApp({
+      realDeployedContent: true,
+    });
+    const deployed = join(repo, ".claude", "skills", "tdd", "SKILL.md");
+    await writeFile(
+      join(repo, "apm.lock.yaml"),
+      lockfileWith([
+        [
+          skillEntry("tdd"),
+          "  deployed_file_hashes:",
+          `    .claude/skills/tdd/SKILL.md: sha256:${TDD_SKILL_SHA256}`,
+        ].join("\n"),
+      ]),
+      "utf8",
+    );
+    await mkdir(dirname(deployed), { recursive: true });
+    await writeFile(deployed, SKILL_FILE_CONTENT, "utf8");
+    await registry.register(repo);
+    const stale = await receiptFromPreflight(app, repo);
+    await writeFile(deployed, "# tdd, edited since\n", "utf8");
+
+    const response = await removeRequest(app, {
+      type: "skill",
+      name: "tdd",
+      target: { kind: "repo", repoPath: repo },
+      confirmedRemovalReceipt: stale,
+    });
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: "deployed-diverged-from-lock",
     });
     expect(removeCalls).toEqual([]);
   });
@@ -521,7 +565,11 @@ describe("remove HTTP route", () => {
     await writeFile(deployed, SKILL_FILE_CONTENT, "utf8");
     await registry.register(repo);
     const stale = await receiptFromPreflight(app, repo);
-    await writeFile(deployed, "# tdd, edited since\n", "utf8");
+    await writeFile(
+      join(repo, "apm.lock.yaml"),
+      lockfileWith([skillEntry("tdd")]),
+      "utf8",
+    );
     const refused = (await (
       await removeRequest(app, {
         type: "skill",
@@ -540,6 +588,31 @@ describe("remove HTTP route", () => {
 
     expect(response.status).toBe(200);
     expect(removeCalls).toHaveLength(1);
+  });
+
+  it("refuses a copy with local edits before apm runs, receipt or not", async () => {
+    const { app, registry, removeCalls } = makeApp({
+      deployedState: "diverged",
+    });
+    await writeFile(
+      join(repo, "apm.lock.yaml"),
+      lockfileWith([skillEntry("tdd")]),
+      "utf8",
+    );
+    await registry.register(repo);
+
+    const response = await removeRequest(app, {
+      type: "skill",
+      name: "tdd",
+      target: { kind: "repo", repoPath: repo },
+      confirmedRemovalReceipt: "a".repeat(64),
+    });
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: "deployed-diverged-from-lock",
+    });
+    expect(removeCalls).toEqual([]);
   });
 
   it("still refuses a copy it cannot read, confirmed or not", async () => {
@@ -848,11 +921,11 @@ describe("remove HTTP route", () => {
       });
     });
 
-    it("names the edits inside the leftover copy it is about to reclaim", async () => {
+    it("refuses the check when the leftover copy it would reclaim carries edits", async () => {
       // Claude Code has dropped off this machine, so its .claude tree is the
-      // reclaim — and it carries edits the lockfile never recorded. Naming the
-      // path while calling that copy an ordinary one would be consent for a
-      // deletion whose real cost was never stated (#390, #414).
+      // reclaim — and it carries edits against the recorded hash. apm's own
+      // lockfile still lists that copy, so its uninstall would retain the
+      // edited file and abort; the refusal comes before any consent (#775).
       const { app } = makeApp({
         realDeployedContent: true,
         detectedTools: ["codex"],
@@ -868,22 +941,9 @@ describe("remove HTTP route", () => {
 
       const response = await preflightGlobally(app);
 
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(409);
       expect(await response.json()).toEqual({
-        check: {
-          scope: "global",
-          tools: [
-            { tool: "codex", warning: null },
-            { tool: "claude", warning: "local-edits-will-be-lost" },
-          ],
-        },
-        reclaim: {
-          previews: [
-            { tool: "claude", path: join(home, ".claude/skills/tdd") },
-          ],
-          token: expect.stringMatching(/^[0-9a-f]{64}$/),
-        },
-        receipt: expect.any(String),
+        error: "deployed-diverged-from-lock",
       });
     });
 
@@ -1043,7 +1103,7 @@ describe("remove HTTP route", () => {
     });
 
     it("names what the removal would destroy before it runs", async () => {
-      const { app, removeCalls } = makeApp({ deployedState: "diverged" });
+      const { app, removeCalls } = makeApp({ deployedState: "unverifiable" });
 
       const response = await app.request("/api/deploy/remove/preflight", {
         method: "POST",
@@ -1059,7 +1119,7 @@ describe("remove HTTP route", () => {
       expect(await response.json()).toEqual({
         check: {
           scope: "global",
-          tools: [{ tool: "claude", warning: "local-edits-will-be-lost" }],
+          tools: [{ tool: "claude", warning: "cannot-verify-local-edits" }],
         },
         reclaim: null,
         receipt: expect.any(String),
@@ -1087,7 +1147,7 @@ describe("remove HTTP route", () => {
 
     it("names local edits as the thing a removal would destroy", async () => {
       const { app, registry, removeCalls } = makeApp({
-        deployedState: "diverged",
+        deployedState: "unverifiable",
       });
       await registry.register(repo);
 
@@ -1097,7 +1157,7 @@ describe("remove HTTP route", () => {
       expect(await response.json()).toEqual({
         // A repo has one row, and its deployed copy spans several tool
         // subtrees, so one aggregate answer is the honest thing to state.
-        check: { scope: "repo", warning: "local-edits-will-be-lost" },
+        check: { scope: "repo", warning: "cannot-verify-local-edits" },
         reclaim: null,
         receipt: expect.any(String),
       });
@@ -1115,6 +1175,23 @@ describe("remove HTTP route", () => {
       });
     });
 
+    // Refused, never priced: the confirmation would otherwise offer a removal
+    // apm 0.29.0 aborts part-way through (#775).
+    it("refuses a copy with local edits, offering nothing to confirm", async () => {
+      const { app, registry, removeCalls } = makeApp({
+        deployedState: "diverged",
+      });
+      await registry.register(repo);
+
+      const response = await preflightTdd(app, repo);
+
+      expect(response.status).toBe(409);
+      expect(await response.json()).toEqual({
+        error: "deployed-diverged-from-lock",
+      });
+      expect(removeCalls).toEqual([]);
+    });
+
     it("warns about nothing when the copy still matches its lockfile", async () => {
       const { app, registry } = makeApp({ deployedState: "clean" });
       await registry.register(repo);
@@ -1127,7 +1204,7 @@ describe("remove HTTP route", () => {
     });
 
     it("refuses an unregistered repo, so it cannot probe a lockfile", async () => {
-      const { app } = makeApp({ deployedState: "diverged" });
+      const { app } = makeApp({ deployedState: "unverifiable" });
 
       expect((await preflightTdd(app, repo)).status).toBe(403);
     });

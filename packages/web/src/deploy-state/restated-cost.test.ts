@@ -12,12 +12,12 @@ describe("restatedCost", () => {
     expect(
       restatedCost(
         refusal({
-          check: { scope: "repo", warning: "local-edits-will-be-lost" },
+          check: { scope: "repo", warning: "cannot-verify-local-edits" },
           receipt: RECEIPT,
         }),
       ),
     ).toEqual({
-      check: { scope: "repo", warning: "local-edits-will-be-lost" },
+      check: { scope: "repo", warning: "cannot-verify-local-edits" },
       receipt: RECEIPT,
       reclaim: null,
     });

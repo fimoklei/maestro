@@ -13,5 +13,4 @@ may not support filter v2.
   |-- Skill integrated -> .claude/skills/
 [i] Added apm_modules/ to .gitignore
 
-[*] Installed 1 APM dependency in 3.8s.
-
+[*] Installed 1 APM dependency in 4.9s.

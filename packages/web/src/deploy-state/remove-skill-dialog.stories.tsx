@@ -142,7 +142,7 @@ export const Retrying: Story = {
 // now, and the footer still offers the first removal rather than a retry.
 export const CostRestated: Story = {
   args: {
-    preflight: repoCheck("local-edits"),
+    preflight: repoCheck("cannot-verify"),
     restated: noticeFor("cost-not-acknowledged"),
   },
 };
@@ -162,7 +162,7 @@ export const RemovalRefused: Story = {
 export const FailedWithWarnings: Story = {
   args: {
     target: { kind: "global", tools: ["codex"] },
-    preflight: toolChecks({ codex: "local-edits" }, LEFTOVER),
+    preflight: toolChecks({ codex: "cannot-verify" }, LEFTOVER),
     error: noticeFor("remove-failed"),
   },
 };
@@ -175,8 +175,8 @@ export const Checking: Story = { args: { preflight: CHECKING } };
 // The deployed copy carries edits apm would delete without a word. Amber, not
 // danger red — and the confirm control stays usable, because destroying the
 // copy is what the user came here to do.
-export const WithLocalEdits: Story = {
-  args: { preflight: repoCheck("local-edits") },
+export const WithUnverifiableCopy: Story = {
+  args: { preflight: repoCheck("cannot-verify") },
 };
 
 // No baseline to check against. A distinct wording: calling this copy "edited"
@@ -203,6 +203,19 @@ export const CheckRefused: Story = {
   },
 };
 
+// The copy carries local edits: apm 0.29.0 would keep the edited file and
+// abort after deleting the rest, so the check refuses and names Deploy again
+// as the way through (#775).
+export const CheckRefusedLocalEdits: Story = {
+  args: {
+    preflight: {
+      kind: "refused" as const,
+      code: "deployed-diverged-from-lock" as const,
+      notice: noticeFor("deployed-diverged-from-lock"),
+    },
+  },
+};
+
 // Global scope: ledger lists every detected tool the removal reaches.
 // No row carries a control — there is no per-tool remove to offer.
 export const GlobalScope: Story = {
@@ -224,9 +237,9 @@ export const GlobalScopeWithReclaim: Story = {
 // A leftover copy that also carries local edits — the two loudest things this
 // dialog can say, stacked, which is the state worth looking at before shipping
 // a wording change to either.
-export const GlobalScopeWithReclaimAndLocalEdits: Story = {
+export const GlobalScopeWithReclaimAndUnverifiableCopy: Story = {
   args: {
     target: { kind: "global", tools: ["codex"] },
-    preflight: toolChecks({ codex: "local-edits" }, LEFTOVER),
+    preflight: toolChecks({ codex: "cannot-verify" }, LEFTOVER),
   },
 };

@@ -342,7 +342,7 @@ describe("RemoveSkillDialog", () => {
     it("states the server's reason in the panel", () => {
       renderDialog({
         restated: RESTATED,
-        preflight: repoCheck("local-edits"),
+        preflight: repoCheck("cannot-verify"),
       });
 
       expect(screen.getByRole("alert")).toHaveTextContent(RESTATED.message);
@@ -351,7 +351,7 @@ describe("RemoveSkillDialog", () => {
     it("wears the amber of a cost, never the danger of a failure", () => {
       renderDialog({
         restated: RESTATED,
-        preflight: repoCheck("local-edits"),
+        preflight: repoCheck("cannot-verify"),
       });
 
       const alert = screen.getByRole("alert");
@@ -367,16 +367,18 @@ describe("RemoveSkillDialog", () => {
     it("keeps the ledger, stating the cost it found this time", () => {
       renderDialog({
         restated: RESTATED,
-        preflight: repoCheck("local-edits"),
+        preflight: repoCheck("cannot-verify"),
       });
 
-      expect(screen.getByText("Local edits — deleted too")).toBeInTheDocument();
+      expect(
+        screen.getByText("Nothing recorded — may lose work"),
+      ).toBeInTheDocument();
     });
 
     it("still offers the first removal, because nothing has happened yet", () => {
       renderDialog({
         restated: RESTATED,
-        preflight: repoCheck("local-edits"),
+        preflight: repoCheck("cannot-verify"),
       });
 
       expect(
@@ -391,7 +393,7 @@ describe("RemoveSkillDialog", () => {
     it("confirms the restated cost from that same control", async () => {
       const { onConfirm } = renderDialog({
         restated: RESTATED,
-        preflight: repoCheck("local-edits"),
+        preflight: repoCheck("cannot-verify"),
       });
 
       await userEvent.click(
@@ -555,7 +557,7 @@ describe("RemoveSkillDialog", () => {
     it("drops the cost it named before the attempt", () => {
       renderDialog({
         target: globalTarget,
-        preflight: toolChecks({ claude: "none", codex: "local-edits" }),
+        preflight: toolChecks({ claude: "none", codex: "cannot-verify" }),
         error: FAILED,
         outcome: partial,
       });
@@ -591,13 +593,15 @@ describe("RemoveSkillDialog", () => {
         .getAllByRole("listitem")
         .find((row) => row.textContent?.includes(name)) as HTMLElement;
 
-    it("marks only the tool whose copy carries edits", () => {
+    it("marks only the tool whose copy carries a cost", () => {
       renderDialog({
         target: globalTarget,
-        preflight: toolChecks({ claude: "none", codex: "local-edits" }),
+        preflight: toolChecks({ claude: "none", codex: "cannot-verify" }),
       });
 
-      expect(rowFor("Codex")).toHaveTextContent("Local edits — deleted too");
+      expect(rowFor("Codex")).toHaveTextContent(
+        "Nothing recorded — may lose work",
+      );
       expect(rowFor("Claude Code")).not.toHaveTextContent(/local edits/i);
     });
 
@@ -607,7 +611,7 @@ describe("RemoveSkillDialog", () => {
       // (Never-Colour-Alone).
       renderDialog({
         target: globalTarget,
-        preflight: toolChecks({ claude: "none", codex: "local-edits" }),
+        preflight: toolChecks({ claude: "none", codex: "cannot-verify" }),
       });
 
       expect(rowFor("Codex").className).toContain("amber");
@@ -662,15 +666,15 @@ describe("RemoveSkillDialog", () => {
     // A repo's deployed copy spans several tool subtrees and the panel gives it
     // one row, so one aggregate answer is the honest thing to state there.
     it("puts the repo scope's aggregate answer on its single row", () => {
-      renderDialog({ preflight: repoCheck("local-edits") });
+      renderDialog({ preflight: repoCheck("cannot-verify") });
 
       const rows = screen.getAllByRole("listitem");
       expect(rows).toHaveLength(1);
-      expect(rows[0]).toHaveTextContent("Local edits — deleted too");
+      expect(rows[0]).toHaveTextContent("Nothing recorded — may lose work");
     });
 
     it("leaves no separate block saying which copy was edited", () => {
-      renderDialog({ preflight: repoCheck("local-edits") });
+      renderDialog({ preflight: repoCheck("cannot-verify") });
 
       // The sentence the ledger replaced. Its absence is the point of #414.
       expect(screen.getByRole("dialog")).not.toHaveTextContent(
@@ -679,7 +683,7 @@ describe("RemoveSkillDialog", () => {
     });
 
     it("warms the panel outline while a row states a cost", () => {
-      renderDialog({ preflight: repoCheck("local-edits") });
+      renderDialog({ preflight: repoCheck("cannot-verify") });
 
       expect(screen.getByRole("dialog").className).toContain(
         "border-line-drift",
@@ -694,7 +698,7 @@ describe("RemoveSkillDialog", () => {
 
     it("leaves the confirm control usable under any answered warning", () => {
       for (const warning of [
-        "local-edits",
+        "cannot-verify",
         "cannot-verify",
         "check-failed",
       ] as const) {
@@ -796,9 +800,7 @@ describe("RemoveSkillDialog", () => {
       const states: RemovePreflightView[] = [
         CHECKING,
         CHECK_FAILED,
-        ...(
-          ["none", "local-edits", "cannot-verify", "check-failed"] as const
-        ).map((warning) =>
+        ...(["none", "cannot-verify", "check-failed"] as const).map((warning) =>
           toolChecks({ claude: warning, codex: warning }, leftover),
         ),
         {
@@ -822,7 +824,7 @@ describe("RemoveSkillDialog", () => {
     it("names the state of the copy, never an internal route", () => {
       // "never went through central" describes a pipeline, not something the
       // reader can act on before agreeing to lose the edits.
-      renderDialog({ preflight: repoCheck("local-edits") });
+      renderDialog({ preflight: repoCheck("cannot-verify") });
 
       expect(screen.getByRole("dialog")).not.toHaveTextContent(/central/i);
     });
@@ -831,7 +833,7 @@ describe("RemoveSkillDialog", () => {
       // The check compares the deployed files against the recorded hashes. It
       // never looks anywhere else, so whether these edits survive elsewhere is
       // outside what it saw — and a consent surface states only what it knows.
-      renderDialog({ preflight: repoCheck("local-edits") });
+      renderDialog({ preflight: repoCheck("cannot-verify") });
 
       expect(screen.getByRole("dialog")).not.toHaveTextContent(
         /nowhere else|for good|only copy/i,
@@ -880,11 +882,11 @@ describe("RemoveSkillDialog", () => {
     });
 
     it("sets a row's status as prose, because it is a sentence about the data", () => {
-      renderDialog({ preflight: repoCheck("local-edits") });
+      renderDialog({ preflight: repoCheck("cannot-verify") });
 
-      expect(screen.getByText("Local edits — deleted too").className).toContain(
-        "font-ui",
-      );
+      expect(
+        screen.getByText("Nothing recorded — may lose work").className,
+      ).toContain("font-ui");
     });
 
     // The ledger is the answer, the lead-in only introduces it, so the ledger
@@ -1171,14 +1173,17 @@ describe("RemoveSkillDialog", () => {
       expect(dialog).not.toHaveTextContent("Codex");
     });
 
-    it("still carries the divergence warning, now on each affected row", () => {
+    it("still carries the cost warning, now on each affected row", () => {
       renderDialog({
         target: globalTarget,
-        preflight: toolChecks({ claude: "local-edits", codex: "local-edits" }),
+        preflight: toolChecks({
+          claude: "cannot-verify",
+          codex: "cannot-verify",
+        }),
       });
 
       for (const row of screen.getAllByRole("listitem")) {
-        expect(row).toHaveTextContent("Local edits — deleted too");
+        expect(row).toHaveTextContent("Nothing recorded — may lose work");
       }
     });
 
@@ -1296,7 +1301,7 @@ describe("RemoveSkillDialog", () => {
         renderDialog({
           target: oneToolTarget,
           preflight: toolChecks(
-            { claude: "local-edits", codex: "none" },
+            { claude: "cannot-verify", codex: "none" },
             leftover,
           ),
         });
@@ -1304,7 +1309,7 @@ describe("RemoveSkillDialog", () => {
         const targeted = screen.getByRole("status", {
           name: /removal targets/i,
         });
-        expect(targeted).toHaveTextContent("Local edits — deleted too");
+        expect(targeted).toHaveTextContent("Nothing recorded — may lose work");
         expect(targeted).not.toHaveTextContent(/deleted in full/i);
         expect(
           screen.getByRole("status", { name: /other copies/i }),

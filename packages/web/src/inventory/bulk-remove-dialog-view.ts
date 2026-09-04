@@ -42,18 +42,16 @@ export type BulkRemoveDialogView =
       confirmLabel: string;
     };
 
-// Cause — consequence, sized for a right-aligned slot. The last two differ in
+// Cause — consequence, sized for a right-aligned slot. The two differ in
 // cause, not in price: nothing recorded to check against vs. never checked.
 const COST_REASON: Record<Exclude<RemoveRowWarning, "none">, string> = {
-  "local-edits": "Local edits — deleted too",
   "cannot-verify": "Nothing recorded — may lose work",
   "check-failed": "Check did not run",
 };
 
-// Most certain loss first. A target carrying real edits is priced on those,
-// not on a sibling tool nobody could check.
+// Most certain loss first: a copy the check looked at outranks a sibling tool
+// nobody could check.
 const COST_ORDER: Exclude<RemoveRowWarning, "none">[] = [
-  "local-edits",
   "cannot-verify",
   "check-failed",
 ];
@@ -66,6 +64,7 @@ export const REFUSAL_REASON: Record<RefusalCode, string> = {
   "no-supported-tool": "No supported tool here",
   "invalid-name": "Unusable skill name",
   "unsupported-primitive-type": "Type cannot be removed",
+  "deployed-diverged-from-lock": "Local edits in the deployed copy",
   "invalid-body": "Malformed request",
   // Never a refusal — a check that could not run leaves the removal on offer,
   // and its target is priced under cost instead. Listed so a new code in

@@ -16,9 +16,8 @@ import type { RemovePreflight } from "./use-remove-preflight";
 export type RemoveRowWarning =
   // The check ran and found the copy still matching its lockfile.
   | "none"
-  // The copy carries edits the removal would destroy.
-  | "local-edits"
-  // The check ran and found nothing recorded to verify the copy against.
+  // The check ran and found nothing recorded to verify the copy against. A
+  // copy with recorded edits never reaches a row: the server refuses it (#775).
   | "cannot-verify"
   // The check never ran for this copy. Apart from the state above on purpose:
   // borrowing its wording would state a cause nothing observed.
@@ -63,6 +62,7 @@ const REFUSES_THE_REMOVAL: Record<RefusalCode, boolean> = {
   "invalid-name": true,
   "repo-not-registered": true,
   "no-supported-tool": true,
+  "deployed-diverged-from-lock": true,
   "preflight-failed": false,
 };
 
@@ -163,8 +163,6 @@ function readCheck(data: RemovePreflight | undefined): RemoveCheckState | null {
 
 function rowWarningFor(warning: RemoveWarning | null): RemoveRowWarning {
   switch (warning) {
-    case "local-edits-will-be-lost":
-      return "local-edits";
     case "cannot-verify-local-edits":
       return "cannot-verify";
     case "check-did-not-run":
