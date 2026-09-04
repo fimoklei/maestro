@@ -2,6 +2,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
+import type { ReadDriftEntry } from "../drift/use-drift";
 import { renderWithQuery } from "../test-utils";
 import type { DeploymentTarget } from "./deployed-rollup";
 import { InventoryList } from "./inventory-list";
@@ -15,13 +16,12 @@ function dataRowNames(): (string | null)[] {
   );
 }
 
-const ranDrift = (
-  behind: { name: string; current: string; latest: string }[],
-) => driftViewModel({ data: { behind }, isError: false });
+const ranDrift = (behind: ReadDriftEntry[]) =>
+  driftViewModel({ data: { behind }, isError: false });
 
 const deployedTo = (
   names: string[],
-  behind: { name: string; current: string; latest: string }[] = [],
+  behind: ReadDriftEntry[] = [],
 ): DeploymentTarget => ({
   label: "",
   target: { kind: "global" },
@@ -135,7 +135,14 @@ describe("InventoryList", () => {
       deployedTo(["tdd"], []),
       deployedTo(
         ["tdd"],
-        [{ name: "tdd", current: "v1.0.0", latest: "v1.1.0" }],
+        [
+          {
+            name: "tdd",
+            current: "v1.0.0",
+            latest: "v1.1.0",
+            reading: "behind",
+          },
+        ],
       ),
     ];
     renderList(

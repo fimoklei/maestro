@@ -1,19 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
-import type { DriftResponse } from "../drift/use-drift";
+import type { DriftResponse, ReadDriftEntry } from "../drift/use-drift";
 import { type DeploymentTarget, rollUpDeployment } from "./deployed-rollup";
 
 // The deployed column is a client-side pivot: per-target deploy-state + drift
 // folded onto one row per skill (#272), one target per tool-install/repo.
 
-const ranDrift = (
-  behind: { name: string; current: string; latest: string }[],
-) => driftViewModel({ data: { behind }, isError: false });
+const ranDrift = (behind: ReadDriftEntry[]) =>
+  driftViewModel({ data: { behind }, isError: false });
 
 const drift = (state: { data?: DriftResponse; isError?: boolean }) =>
   driftViewModel({ data: state.data, isError: state.isError ?? false });
 
-const pair = (name: string) => ({ name, current: "v1.0.0", latest: "v1.1.0" });
+const pair = (name: string): ReadDriftEntry => ({
+  name,
+  current: "v1.0.0",
+  latest: "v1.1.0",
+  reading: "behind",
+});
 
 // The count roll-up ignores the pane-only fields (label, primitives); spread this
 // so the targets here stay focused on what the count reads.
@@ -29,7 +33,7 @@ const paneFields: Pick<DeploymentTarget, "label" | "target"> & {
 // whose drift check produced the given behind set.
 const deployedTarget = (
   names: string[],
-  behind: { name: string; current: string; latest: string }[] = [],
+  behind: ReadDriftEntry[] = [],
 ): DeploymentTarget => ({
   ...paneFields,
   deployed: { status: "ready", names, skippedCount: 0, attentionCount: 0 },
@@ -109,6 +113,19 @@ describe("rollUpDeployment — behind count (▲N)", () => {
       deployedTarget(["tdd"], []),
     ];
     expect(rollUpDeployment("tdd", targets).behindCount).toBe(2);
+  });
+
+  // ADR-0027 §2: the count is moved skills only, and it must not fall into the
+  // unknown bucket either — the check ran and answered.
+  it("counts a skill that only lags a tag as neither behind nor unknown", () => {
+    const lagging: ReadDriftEntry = { ...pair("tdd"), reading: "older-tag" };
+    const rollup = rollUpDeployment("tdd", [
+      deployedTarget(["tdd"], [lagging]),
+    ]);
+
+    expect(rollup.behindCount).toBe(0);
+    expect(rollup.unknownCount).toBe(0);
+    expect(rollup.targetCount).toBe(1);
   });
 
   it("does not count a behind name that is not deployed at that target", () => {

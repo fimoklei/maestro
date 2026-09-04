@@ -74,7 +74,16 @@ describe("GlobalDeployStatePanel", () => {
         const url = String(input);
         if (url === "/api/drift/global") {
           return jsonResponse(
-            { behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }] },
+            {
+              behind: [
+                {
+                  name: "tdd",
+                  current: "v0.5.0",
+                  latest: "v0.5.1",
+                  reading: "behind",
+                },
+              ],
+            },
             200,
           );
         }

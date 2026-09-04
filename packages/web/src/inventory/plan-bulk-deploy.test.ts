@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
-import type { VersionDrift } from "../drift/use-drift";
+import type { ReadDriftEntry } from "../drift/use-drift";
 import type { DeploymentTarget } from "./deployed-rollup";
 import { planBulkDeploy } from "./plan-bulk-deploy";
 
@@ -10,7 +10,7 @@ import { planBulkDeploy } from "./plan-bulk-deploy";
 function target(
   label: string,
   names: string[],
-  behind: VersionDrift[],
+  behind: ReadDriftEntry[],
 ): DeploymentTarget {
   return {
     label,
@@ -22,6 +22,31 @@ function target(
 }
 
 describe("planBulkDeploy", () => {
+  // ADR-0027 §6: the pin still lags, so the skill is not clean; but a bulk run
+  // calls an update only for a skill that moved.
+  it("deploys a skill that only lags a tag without calling it an update", () => {
+    const targets = [
+      target(
+        "Claude Code",
+        ["tdd"],
+        [
+          {
+            name: "tdd",
+            current: "v1.0.0",
+            latest: "v1.2.0",
+            reading: "older-tag",
+          },
+        ],
+      ),
+    ];
+
+    expect(planBulkDeploy(["tdd"], targets)).toEqual({
+      toDeploy: ["tdd"],
+      skippedClean: [],
+      updateToLatest: [],
+    });
+  });
+
   it("skips a skill already deployed and up-to-date", () => {
     const plan = planBulkDeploy(["tdd"], [target("global", ["tdd"], [])]);
 
@@ -43,7 +68,14 @@ describe("planBulkDeploy", () => {
         target(
           "global",
           ["tdd"],
-          [{ name: "tdd", current: "v1.0.0", latest: "v1.2.0" }],
+          [
+            {
+              name: "tdd",
+              current: "v1.0.0",
+              latest: "v1.2.0",
+              reading: "behind",
+            },
+          ],
         ),
       ],
     );
@@ -69,7 +101,14 @@ describe("planBulkDeploy", () => {
         target(
           "global",
           ["tdd", "review"],
-          [{ name: "review", current: "v0.1.0", latest: "v0.2.0" }],
+          [
+            {
+              name: "review",
+              current: "v0.1.0",
+              latest: "v0.2.0",
+              reading: "behind",
+            },
+          ],
         ),
       ],
     );
@@ -107,7 +146,14 @@ describe("planBulkDeploy", () => {
         target(
           "Claude Code",
           ["tdd"],
-          [{ name: "tdd", current: "v1.0.0", latest: "v1.2.0" }],
+          [
+            {
+              name: "tdd",
+              current: "v1.0.0",
+              latest: "v1.2.0",
+              reading: "behind",
+            },
+          ],
         ),
         target("Codex", [], []),
       ],

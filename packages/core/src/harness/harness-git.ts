@@ -6,6 +6,7 @@ import { access, mkdtemp, rm } from "node:fs/promises";
 import { devNull, tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import { type GitOrigin, parseGitOrigin } from "../deploy/git-origin";
 import {
   readConfiguredGitOriginUrl,
   readGitOriginUrl,
@@ -658,6 +659,22 @@ export class HarnessGitAdapter implements HarnessGitPort {
     } finally {
       await rm(indexDir, { recursive: true, force: true });
     }
+  }
+
+  // The repository the connected clone releases from, in the terms apm's ref
+  // names it. Null where it cannot be read or cannot carry a deploy (ADR-0014).
+  async readOrigin(root: string): Promise<GitOrigin | null> {
+    const url = await readConfiguredGitOriginUrl(root);
+    return url === null ? null : parseGitOrigin(url);
+  }
+
+  // Skill trees at a published tag. Read from the namespace `fetch` brings
+  // remote tags into, so an unpushed local `refs/tags/<name>` never answers.
+  async readSkillTreesAtTag(
+    root: string,
+    tag: string,
+  ): Promise<HarnessSkillTree[] | null> {
+    return this.readSkillTrees(root, `${MAESTRO_TAGS}/${tag}`);
   }
 
   // Reads the skills directory as it stands *inside* `ref`, so a ref that is

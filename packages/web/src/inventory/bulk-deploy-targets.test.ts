@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
-import type { VersionDrift } from "../drift/use-drift";
+import type { ReadDriftEntry } from "../drift/use-drift";
 import { chosenBulkDeployTargets } from "./bulk-deploy-targets";
 
-function drift(behind: VersionDrift[] = []) {
+function drift(behind: ReadDriftEntry[] = []) {
   return driftViewModel({ data: { behind }, isError: false });
 }
 
@@ -78,7 +78,9 @@ describe("chosenBulkDeployTargets", () => {
         },
       ],
       repoPrimitives: undefined,
-      drift: drift([{ name: "tdd", current: "v1.0.0", latest: "v1.2.0" }]),
+      drift: drift([
+        { name: "tdd", current: "v1.0.0", latest: "v1.2.0", reading: "behind" },
+      ]),
     });
 
     const [target] = targets;

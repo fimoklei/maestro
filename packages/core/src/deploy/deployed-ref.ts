@@ -1,6 +1,9 @@
 // Reads the ref a remove must reuse from the target's own lockfile, never from
 // what the inventory points at today (apm-driver.md § Remove).
 
+// Every deploy pins a vX.Y.Z tag (ADR-0003) — one pattern, so the release
+// search and every guard reading a pin cannot disagree.
+import { RELEASE_TAG_PATTERN } from "../harness/release-tag";
 import { harnessSkillSubpath } from "../inventory/harness-layout";
 import {
   claudeSkillName,
@@ -28,9 +31,6 @@ const SUPPORTED_HOST = "github.com";
 // the ref.
 const OWNER_REPO = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
 
-// Every deploy pins a vX.Y.Z tag (ADR-0003).
-const VERSION_TAG = /^v\d+\.\d+\.\d+$/;
-
 // The lockfile lives in the user's repo and alone decides which package apm
 // removes, so every field is checked against the shape our own deploy writes:
 // an args array stops injection, only this stops substitution.
@@ -57,7 +57,7 @@ export function refForDeployedSkill(
     // The row names one skill; the ref must name that same skill. basename()
     // alone would accept `vendor/other/tdd` for a row reading "tdd".
     entry.virtual_path === harnessSkillSubpath(name) &&
-    VERSION_TAG.test(entry.resolved_ref);
+    RELEASE_TAG_PATTERN.test(entry.resolved_ref);
   if (!trustworthy) {
     return { ok: false, reason: "ref-unresolvable" };
   }

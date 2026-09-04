@@ -1,7 +1,7 @@
 // The skill detail pane's "deployed to" lens (#290, ADR-0016): a per-primitive
 // slice of the same targets the deployed column rolls up, so the two can't diverge.
 
-import type { DriftStatus } from "../drift/drift-view-model";
+import { type DriftStatus, lagsPin } from "../drift/drift-view-model";
 import type { DeploymentTarget } from "./deployed-rollup";
 
 export type SkillDeployment = {
@@ -36,7 +36,7 @@ export function skillDeployments(
       label: target.label,
       version: deployed.version,
       status,
-      ...(status === "behind" && latest ? { latest } : {}),
+      ...(lagsPin(status) && latest ? { latest } : {}),
     });
   }
 

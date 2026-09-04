@@ -66,7 +66,9 @@ function stubFetch(options: {
 }
 
 const tddBehind = {
-  behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+  behind: [
+    { name: "tdd", current: "v0.5.0", latest: "v0.5.1", reading: "behind" },
+  ],
 };
 const claudeWithTdd = {
   tool: "claude",
@@ -181,7 +183,14 @@ describe("TargetsList", () => {
     stubFetch({
       tools: [claudeWithTdd],
       globalBehind: {
-        behind: [{ name: "foo", current: "v1.0.0", latest: "v1.1.0" }],
+        behind: [
+          {
+            name: "foo",
+            current: "v1.0.0",
+            latest: "v1.1.0",
+            reading: "behind",
+          },
+        ],
       },
     });
     renderTargets();
@@ -257,7 +266,14 @@ describe("TargetsList", () => {
         skipped: [],
       },
       repoDrift: {
-        behind: [{ name: "foo", current: "v1.0.0", latest: "v1.1.0" }],
+        behind: [
+          {
+            name: "foo",
+            current: "v1.0.0",
+            latest: "v1.1.0",
+            reading: "behind",
+          },
+        ],
       },
     });
     renderTargets();
