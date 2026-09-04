@@ -9,6 +9,4 @@ Run with --verbose for detailed auth diagnostics. Last error: Cmd('git') failed
 due to: exit code(128)
   cmdline: git ls-remote --tags --heads 
 https://github.com/fimoklei/agent-harness.git
-  stderr: 'fatal: could not read Username for 'https://github.com': terminal 
-prompts disabled'
-
+  stderr: 'fatal: unable to get password from user'

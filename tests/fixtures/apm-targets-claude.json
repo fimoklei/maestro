@@ -35,6 +35,13 @@
     "needs": "GEMINI.md"
   },
   {
+    "target": "grok-build",
+    "status": "inactive",
+    "source": null,
+    "deploy_dir": ".grok/",
+    "needs": ".grok/"
+  },
+  {
     "target": "opencode",
     "status": "inactive",
     "source": null,

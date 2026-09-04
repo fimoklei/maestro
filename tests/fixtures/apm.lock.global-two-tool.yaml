@@ -1,6 +1,6 @@
 lockfile_version: '1'
-generated_at: '2026-07-20T09:04:47.743503+00:00'
-apm_version: 0.26.0
+generated_at: '2026-09-04T16:27:11.323327+00:00'
+apm_version: 0.29.0
 dependencies:
 - repo_url: fimoklei/agent-harness
   name: tdd
@@ -41,6 +41,69 @@ dependencies:
     .claude/skills/tdd/tests.md: sha256:e12182f5c4c6a844b7c6ab4b8d2623b642aaaae5460fe58ed087efd4f3d5fb8a
   content_hash: sha256:e63cb1d7d5f6d90ad03f811299d40cc8e52c3d4bdaafd058ce2585ca249c234c
 deployments:
+- kind: project-relative
+  target: agents
+  value: .agents/skills/tdd
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/agent-harness/skills/tdd
+  active_owner: fimoklei/agent-harness/skills/tdd
+  content_hash: null
+- kind: project-relative
+  target: agents
+  value: .agents/skills/tdd/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/agent-harness/skills/tdd
+  active_owner: fimoklei/agent-harness/skills/tdd
+  content_hash: sha256:af059705061156fd4845ddbb736fe92b564118ac5f03551e09ef9e8f6d970638
+- kind: project-relative
+  target: agents
+  value: .agents/skills/tdd/deep-modules.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/agent-harness/skills/tdd
+  active_owner: fimoklei/agent-harness/skills/tdd
+  content_hash: sha256:f2123700bf953db1740625686c75bdd145efd486357c47c6818c869fee657a32
+- kind: project-relative
+  target: agents
+  value: .agents/skills/tdd/interface-design.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/agent-harness/skills/tdd
+  active_owner: fimoklei/agent-harness/skills/tdd
+  content_hash: sha256:764c5ff0e3fa6b4ab7095eb65ccc7201e090baf19fa16051dfdb72c06d27417d
+- kind: project-relative
+  target: agents
+  value: .agents/skills/tdd/mocking.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/agent-harness/skills/tdd
+  active_owner: fimoklei/agent-harness/skills/tdd
+  content_hash: sha256:3ceb807fdf4a47d6a93d4d9a891e5ba6d362a6247bd08adc451feebfc17361ef
+- kind: project-relative
+  target: agents
+  value: .agents/skills/tdd/refactoring.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/agent-harness/skills/tdd
+  active_owner: fimoklei/agent-harness/skills/tdd
+  content_hash: sha256:54fced22dd1911b7094c3fe7979b7c1a40d40be307482c4adf7dc0588f27d6cc
+- kind: project-relative
+  target: agents
+  value: .agents/skills/tdd/tests.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/agent-harness/skills/tdd
+  active_owner: fimoklei/agent-harness/skills/tdd
+  content_hash: sha256:e12182f5c4c6a844b7c6ab4b8d2623b642aaaae5460fe58ed087efd4f3d5fb8a
 - kind: project-relative
   target: claude
   value: .claude/skills/tdd
@@ -98,69 +161,6 @@ deployments:
 - kind: project-relative
   target: claude
   value: .claude/skills/tdd/tests.md
-  runtime: null
-  scope: project
-  owners:
-  - fimoklei/agent-harness/skills/tdd
-  active_owner: fimoklei/agent-harness/skills/tdd
-  content_hash: sha256:e12182f5c4c6a844b7c6ab4b8d2623b642aaaae5460fe58ed087efd4f3d5fb8a
-- kind: project-relative
-  target: codex
-  value: .agents/skills/tdd
-  runtime: null
-  scope: project
-  owners:
-  - fimoklei/agent-harness/skills/tdd
-  active_owner: fimoklei/agent-harness/skills/tdd
-  content_hash: null
-- kind: project-relative
-  target: codex
-  value: .agents/skills/tdd/SKILL.md
-  runtime: null
-  scope: project
-  owners:
-  - fimoklei/agent-harness/skills/tdd
-  active_owner: fimoklei/agent-harness/skills/tdd
-  content_hash: sha256:af059705061156fd4845ddbb736fe92b564118ac5f03551e09ef9e8f6d970638
-- kind: project-relative
-  target: codex
-  value: .agents/skills/tdd/deep-modules.md
-  runtime: null
-  scope: project
-  owners:
-  - fimoklei/agent-harness/skills/tdd
-  active_owner: fimoklei/agent-harness/skills/tdd
-  content_hash: sha256:f2123700bf953db1740625686c75bdd145efd486357c47c6818c869fee657a32
-- kind: project-relative
-  target: codex
-  value: .agents/skills/tdd/interface-design.md
-  runtime: null
-  scope: project
-  owners:
-  - fimoklei/agent-harness/skills/tdd
-  active_owner: fimoklei/agent-harness/skills/tdd
-  content_hash: sha256:764c5ff0e3fa6b4ab7095eb65ccc7201e090baf19fa16051dfdb72c06d27417d
-- kind: project-relative
-  target: codex
-  value: .agents/skills/tdd/mocking.md
-  runtime: null
-  scope: project
-  owners:
-  - fimoklei/agent-harness/skills/tdd
-  active_owner: fimoklei/agent-harness/skills/tdd
-  content_hash: sha256:3ceb807fdf4a47d6a93d4d9a891e5ba6d362a6247bd08adc451feebfc17361ef
-- kind: project-relative
-  target: codex
-  value: .agents/skills/tdd/refactoring.md
-  runtime: null
-  scope: project
-  owners:
-  - fimoklei/agent-harness/skills/tdd
-  active_owner: fimoklei/agent-harness/skills/tdd
-  content_hash: sha256:54fced22dd1911b7094c3fe7979b7c1a40d40be307482c4adf7dc0588f27d6cc
-- kind: project-relative
-  target: codex
-  value: .agents/skills/tdd/tests.md
   runtime: null
   scope: project
   owners:

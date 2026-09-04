@@ -1,7 +1,6 @@
-# apm 0.26.0 — 'apm update' is a no-op on an exact tag pin (#v0.5.0 with v0.5.1 available)
-# Captured 2026-07-20, COLUMNS=120. Shows why Maestro updates via re-install, not 'apm update'.
-# 0.26.0 replaced 0.20.0's update-plan table and its closing "No dependency
-# changes were applied." with the single line below. The verdict is unchanged.
+# apm 0.29.0 — 'apm update' is a no-op on an exact tag pin (#v0.5.0 with v0.5.1 and v0.6.0 available)
+# Captured 2026-09-04, COLUMNS=120. Shows why Maestro updates via re-install, not 'apm update'.
+# Same two lines as on 0.26.0 (re-captured, verdict unchanged).
 $ apm update -y -t claude,codex
 [>] Checking upstream for revision-pin freshness...
 [+] All dependencies already at their latest matching refs.

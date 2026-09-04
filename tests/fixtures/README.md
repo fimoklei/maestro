@@ -1,30 +1,21 @@
 # apm fixture provenance
 
 What produced each captured file, so a future reader can re-run it instead of
-trusting it. Every fixture below reflects `apm` **0.26.0** — the install, view,
-outdated, update and targets captures as of **2026-07-20** (issues #183 / #184),
-the four `apm-uninstall-*` ones as of **2026-07-27** (issue #334). The older
-group was taken in one of two ways — the difference matters when you
-audit one:
+trusting it. Every fixture below reflects `apm` **0.29.0**, re-run on
+**2026-09-04** (issue #772) from the 0.26.0 set of 2026-07-20 (#183/#184) and
+2026-07-27 (#334). Each fixture is in one of two states — the difference matters
+when you audit one:
 
-- **Re-captured** — the command was re-run on 0.26.0 and its output overwrote
-  the older file. Git shows the file changing on 2026-07-20.
-- **Verified unchanged** — the command was re-run on 0.26.0 and printed exactly
+- **Re-captured** — the command was re-run on 0.29.0 and its output overwrote
+  the older file. Git shows the file changing on 2026-09-04. Every lockfile was
+  overwritten even where only `generated_at` / `apm_version` moved, so its
+  header names the version it came from.
+- **Verified unchanged** — the command was re-run on 0.29.0 and printed exactly
   what the existing file already held, so nothing was written. Git still shows
-  the original 0.16.0/0.20.0 capture date. Three fixtures are in this state,
-  marked ✓= in the tables below. Their 0.26.0 grounding rests on the re-run
-  recorded in `docs/apm-behavior.md`, not on anything visible in this repo —
-  re-run the command yourself if you need to confirm it.
+  the older capture date. Two fixtures are in this state, marked ✓= below.
 
 What the outputs *mean* lives in `docs/apm-behavior.md`; this file only
 records how they were taken.
-
-Every capture below was re-run on apm 0.29.0 on 2026-09-04, with the per-fixture
-verdict recorded in `docs/research/772-apm-0.29.0-findings.md` § Fixture
-re-capture. Nothing was overwritten: that findings doc suspends the
-"overwrite the file" half of `docs/agents/apm-upgrade.md` step 2, because 0.29.0
-is not adopted and these files must keep grounding the driver on the version the
-repo runs (issue #772).
 
 ## Why provenance lives here and not in the files
 
@@ -48,48 +39,57 @@ Phrases a fixture comment must never contain: `is a symlink`,
 ## Capture conditions common to all
 
 - Non-TTY (redirected to a file), so Rich renders without colour.
-- `HOME` redirected to a throwaway sandbox for every run. No `-g` command ever
-  ran against the real home (`LEARNINGS.md`).
+- `HOME` redirected to a throwaway sandbox for every run, **`realpath`ed**: a
+  symlink component in `HOME` makes a 0.29.0 `-g` install deploy nothing
+  (`docs/apm-behavior.md` § Global scope). No `-g` command ever ran against the
+  real home (`LEARNINGS.md`).
 - Auth, where needed, via `GITHUB_APM_PAT` + `GITHUB_TOKEN` from `gh auth token`
-  — the `HOME` redirect strips the gh credential helper.
-- Skill under test: `github.com/fimoklei/agent-harness/skills/tdd` — the retired
-  demo Harness at a historic tag, so these captures carry the old root `skills/`
-  subpath. The canonical shape is `.apm/skills/<name>` (ADR-0021).
+  — the `HOME` redirect strips the gh credential helper. "No credentials" means
+  both unset, plus `GH_TOKEN`.
+- The install pre-flight probe runs **anonymously** for a public repo. When the
+  machine's unauthenticated GitHub quota is spent, every install prints an
+  `[i] GitHub API rate limit hit …` line and continues. Capture install fixtures
+  only when that line is absent — it is an artefact of the capturing machine,
+  not of apm's install path.
+- Skill under test: `github.com/fimoklei/agent-harness/skills/tdd` at v0.5.0 /
+  v0.5.1 — the retired demo Harness at historic tags, so these captures carry
+  the old root `skills/` subpath. The canonical shape is `.apm/skills/<name>`
+  (ADR-0021) and is what the v0.6.0 captures name.
 
 "Streams" records what the file holds, because the driver classifies
-`stdout + "\n" + stderr` for `install`, but reads stdout alone for `view` and
-`outdated`.
+`stdout + "\n" + stderr` for `install` and `uninstall`, but reads stdout alone
+for `view` and `outdated`.
 
 ## Command output
 
 | Fixture | Command | Conditions | Exit | Streams |
 |---|---|---|---|---|
 | `apm-install-ok.txt` | `apm install <ref>#v0.5.0 -t claude` | fresh `git init` repo | 0 | out+err |
-| `apm-install-no-changes.txt` | `apm install <ref>#v0.6.0 -t claude,codex` | `COLUMNS=200`, same ref already installed and unchanged | 0 | out+err |
+| `apm-install-no-changes.txt` | `apm install github.com/fimoklei/agent-harness/.apm/skills/47#v0.6.0 -t claude,codex` | `COLUMNS=200`, same ref already installed and unchanged | 0 | out+err |
 | `apm-install-probes-failed.txt` | `apm install <ref>#v0.5.0 -t claude` | no credentials in env | 1 | out+err |
 | `apm-install-symlink-refused.txt` | `apm install <ref>#v0.5.1 -g -t claude` | sandbox `~/.claude/skills/tdd` pre-created as a symlink | 1 | out+err |
 | `apm-view-versions.txt` | `apm view fimoklei/agent-harness versions` | authed | 0 | out |
 | `apm-view-auth-failed.txt` | `apm view fimoklei/agent-harness versions` | no credentials, `GIT_TERMINAL_PROMPT=0` | 1 | out+err |
-| `apm-outdated-could-not-check.txt` | `apm outdated` | `COLUMNS=200`, repo pinned at v0.5.0, no credentials | 0 | out |
-| `apm-outdated-global.txt` ✓= | `apm outdated -g` | `COLUMNS=200`, global install pinned at v0.5.0, authed | 0 | out |
-| `apm-outdated-global-uptodate.txt` ✓= | `apm outdated -g` | `COLUMNS=200`, global install at the latest tag, authed | 0 | out |
+| `apm-outdated-could-not-check.txt` ✓= | `apm outdated` | `COLUMNS=200`, repo pinned at v0.5.0, no credentials | 0 | out |
+| `apm-outdated-global.txt` | `apm outdated -g` | `COLUMNS=200`, global install pinned at v0.5.0, authed | 0 | out |
+| `apm-outdated-global-uptodate.txt` ✓= | `apm outdated -g` | `COLUMNS=200`, global install of `.apm/skills/tdd` at the latest tag (v0.6.0), authed | 0 | out |
 | `apm-update-noop.txt` | `apm update -y -t claude,codex` | `COLUMNS=120`, repo pinned at v0.5.0 while v0.5.1 exists | 0 | out+err |
-| `apm-targets-claude.json` ✓= | `apm targets --json` | repo containing `.claude/` only | 0 | out |
+| `apm-targets-claude.json` | `apm targets --json` | repo containing `.claude/` only | 0 | out |
 | `apm-uninstall-dry-run.txt` | `apm uninstall --dry-run -v <ref>#v0.5.1` | repo holding two deps at `-t claude,codex` | 0 | out+err |
 | `apm-uninstall-ok.txt` | `apm uninstall -v <ref>#v0.5.1` | same repo, removes one of the two deps | 0 | out+err |
-| `apm-uninstall-not-found.txt` | `apm uninstall <ref>#v0.5.1` | same repo, package already gone | 0 | out+err |
-| `apm-uninstall-global-ok.txt` | `apm uninstall -g -v <ref>#v0.5.1` | neutral cwd, global install at `-t claude,codex` | 0 | out+err |
+| `apm-uninstall-not-found.txt` | `apm uninstall <ref>#v0.5.1` | same repo, package already gone | 1 | out+err |
+| `apm-uninstall-retained.txt` | `apm uninstall -v <ref>#v0.5.1` | same repo, `.claude/skills/tdd/SKILL.md` edited before the call | 1 | out+err |
+| `apm-uninstall-global-ok.txt` | `apm uninstall -g -v <ref>#v0.5.1` | neutral cwd, global install at `-t claude,codex` beside an unrelated skill | 0 | out+err |
 
-The four uninstall fixtures (#334) came from one scripted run against a
-throwaway sandbox, `COLUMNS=200`, no token in the environment — uninstall needs
-neither network nor credentials. Two lines in them are **not** stable across a
+The five uninstall fixtures came from one scripted run against a throwaway
+sandbox, `COLUMNS=200`, no token in the environment — uninstall needs neither
+network nor credentials. Two lines in them are **not** stable across a
 re-capture and nothing may key on them: `[*] Updated <path>/apm.yml` carries the
-capture sandbox's absolute path, and `Cleaned up <n> integrated skills` reported
-a different `<n>` for the same package on two runs (`docs/apm-behavior.md`
-§ Remove).
+capture sandbox's absolute path, and `[i] Cleaned <n> stale files` counts what
+that run deleted (`docs/apm-behavior.md` § Remove).
 
 ✓= marks a **verified unchanged** fixture (see the top of this file): re-run on
-0.26.0, output identical, file untouched since its 2026-06-11 / 2026-07-13
+0.29.0, output identical, file untouched since its 2026-06-11 / 2026-07-20
 capture.
 
 `COLUMNS=200` matches `WIDE_COLUMNS` in `apm-cli-driver.ts` — the width
@@ -113,10 +113,12 @@ which drops comments, not by the raw-text greps the section above is about.
 | `apm.lock.global-two-tool.yaml` | `apm install <ref>#v0.5.1 -g -t claude,codex` |
 | `apm.lock.global-single-tool.yaml` | `apm install <ref>#v0.5.1 -g -t claude` |
 
-Two 0.26.0 facts worth knowing before reading them, both written up in
-`docs/apm-behavior.md` (#185): the `deployments:` rows record
+Three facts worth knowing before reading them, all written up in
+`docs/apm-behavior.md` § Lockfile: the `deployments:` rows record
 `scope: project` even for a `-g` install, so `scope` does not distinguish global
-from per-repo; and `apm.lock.global-single-tool.yaml` now carries the same
-payload as `apm.lock.tag-pinned-v0.5.1.yaml` — identical apart from
-`generated_at` and the comment header noted above — because a single-tool global
-install and a single-tool per-repo install produce the same relative paths.
+from per-repo; `apm.lock.global-single-tool.yaml` carries the same payload as
+`apm.lock.tag-pinned-v0.5.1.yaml` — identical apart from `generated_at` and the
+comment header noted above — because a single-tool global install and a
+single-tool per-repo install produce the same relative paths; and on 0.29.0 the
+`.agents/…` rows carry `target: agents`, the deploy root, where 0.26.0 wrote the
+tool name `codex`.

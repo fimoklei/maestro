@@ -1,14 +1,14 @@
 # Global lockfile after `apm install <ref> -g -t claude` (claude ONLY).
-# Captured against apm 0.26.0 (2026-07-20, issues #183/#184) from a sandbox
+# Captured against apm 0.29.0 (2026-09-04, issue #772) from a sandbox
 # HOME. Contrast with apm.lock.global-two-tool.yaml (`-t claude,codex`): every
 # deployed_files entry here carries the `.claude/` prefix and there is NO
 # `.agents/` copy. See .claude/rules/apm-driver.md (#127 section) for what this
 # proves and how the deploy-state read consumes the per-tool prefix.
-# NOTE (0.26.0): the `deployments:` rows record `scope: project` even for this
+# NOTE (0.29.0): the `deployments:` rows record `scope: project` even for this
 # `-g` install, so `scope` is NOT a global/per-repo discriminator.
 lockfile_version: '1'
-generated_at: '2026-07-20T09:04:51.876066+00:00'
-apm_version: 0.26.0
+generated_at: '2026-09-04T16:27:22.866329+00:00'
+apm_version: 0.29.0
 dependencies:
 - repo_url: fimoklei/agent-harness
   name: tdd

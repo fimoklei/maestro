@@ -1,11 +1,16 @@
 [i] Installing to user scope (~/.apm/)
 [!] User-scope primitives are fully supported by claude, kiro, gemini, 
-agent-skills, openclaw, hermes, copilot-cowork, copilot-app. Partially 
-supported: copilot, cursor, opencode, antigravity, codex, windsurf.
+grok-build, grok-cloud, agent-skills, openclaw, hermes, copilot-cowork, 
+copilot-app. Partially supported: copilot, cursor, opencode, antigravity, codex,
+windsurf.
 Some primitives are not supported: cursor (instructions); opencode (hooks); 
 antigravity (instructions, hooks); windsurf (instructions)
-[*] Created /tmp/apm-fx-symlink/.apm/apm.yml
-[i] Targets set: claude (persisted to /tmp/apm-fx-symlink/.apm/apm.yml)
+[*] Created 
+/private/tmp/claude-501/-Users-michielmerks-orca-workspaces-maestro-finback/7138
+170a-ec42-4bae-8afb-80b5ae09959f/scratchpad/sb2/home-symlink/.apm/apm.yml
+[i] Targets set: claude (persisted to 
+/private/tmp/claude-501/-Users-michielmerks-orca-workspaces-maestro-finback/7138
+170a-ec42-4bae-8afb-80b5ae09959f/scratchpad/sb2/home-symlink/.apm/apm.yml)
 [*] Validating 1 package...
 [+] fimoklei/agent-harness/skills/tdd#v0.5.1
 [*] Updated apm.yml with 1 new package(s)
@@ -20,8 +25,9 @@ may not support filter v2.
 [i] Removed apm.yml created by the failed install.
   [x] 1 package failed:
     +- fimoklei/agent-harness/skills/tdd -- Failed to integrate primitives from 
-cached package: Skill destination /tmp/apm-fx-symlink/.claude/skills/tdd is a 
-symlink -- refusing to deploy
-[x] Installation failed with 1 error(s) in 3.4s. No install transaction changes 
+cached package: Skill destination 
+/private/tmp/claude-501/-Users-michielmerks-orca-workspaces-maestro-finback/7138
+170a-ec42-4bae-8afb-80b5ae09959f/scratchpad/sb2/home-symlink/.claude/skills/tdd 
+is a symlink -- refusing to deploy
+[x] Installation failed with 1 error(s) in 4.8s. No install transaction changes 
 were committed.
-
