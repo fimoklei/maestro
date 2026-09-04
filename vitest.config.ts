@@ -1,7 +1,9 @@
 import { defineConfig } from "vitest/config";
 
-// One runner, three lanes (see .claude/rules/testing.md): pure/unit, integration,
-// and the web component lane (jsdom, its own config for the React plugin).
+// One runner, four lanes (see .claude/rules/testing.md): pure/unit, integration,
+// the web component lane (jsdom, its own config for the React plugin), and git.
+// The first three encode an architectural boundary; `git` encodes cost — a file
+// that spawns a real repository lands there and stays out of the coding loop.
 
 // The lanes' worker pools oversubscribe the machine, stretching one test's wall
 // time ~10x; the default 5s times that contention, not the code. A project does
@@ -19,7 +21,14 @@ export default defineConfig({
     // globs match nothing: measure a single lane with its own config file.
     coverage: {
       include: ["packages/*/src/**/*.{ts,tsx}"],
-      exclude: ["**/*.test.*", "**/*.stories.tsx", "**/main.tsx"],
+      // `main.tsx` and `server.ts` are composition roots: no test imports them
+      // (see .claude/rules/testing.md).
+      exclude: [
+        "**/*.test.*",
+        "**/*.stories.tsx",
+        "**/main.tsx",
+        "packages/server/src/server.ts",
+      ],
     },
     projects: [
       "./packages/web/vitest.config.ts",
@@ -36,6 +45,15 @@ export default defineConfig({
         test: {
           name: "integration",
           root: "./tests/integration",
+          environment: "node",
+          include: ["**/*.test.ts"],
+          testTimeout,
+        },
+      },
+      {
+        test: {
+          name: "git",
+          root: "./tests/git",
           environment: "node",
           include: ["**/*.test.ts"],
           testTimeout,

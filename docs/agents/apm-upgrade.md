@@ -24,10 +24,11 @@ treat them as hypotheses, not facts.
    conditions, exit code, and streams). For each fixture: output changed →
    overwrite the file (re-captured); output identical → leave it and record
    the re-run (verified unchanged), per that README's bookkeeping. Then run
-   the real-apm lanes: the canary tests
-   (`tests/integration/apm-canary.test.ts`, `apm-outdated-canary.test.ts`,
-   `apm-global-install-canary.test.ts`) and the integration suite. A failing
-   lane is the finding, not an obstacle — it marks a behavior change.
+   the real-apm lanes: the four canary tests, via
+   `scripts/run-apm-canary.sh`, and the integration suite. A failing lane is
+   the finding, not an obstacle — it marks a behavior change. The canaries are
+   a gate: the upgrade is not done until they are green against the new
+   version.
 3. **Re-verify the source-read claims.** Some claims in
    `docs/apm-behavior.md` are marked "(source)" — no command proves them.
    Re-read the named functions in the installed apm source (currently:
@@ -39,7 +40,8 @@ treat them as hypotheses, not facts.
    section's content with what the new version does; bump the version and
    date in the header. Never append version deltas — `git log` on the file
    is the changelog. A claim that no longer holds is rewritten, not
-   annotated.
+   annotated. Bump the apm pin in `.github/workflows/apm-canary.yml` to the
+   same version, so the weekly run keeps testing what the header describes.
 5. **Sweep the dependents.**
    - ADR-0013: does apm now prune ghost entries? If so the `rm` becomes more
      necessary, not less — see the "both halves" clause before touching

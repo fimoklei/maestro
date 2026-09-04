@@ -166,5 +166,6 @@ export type { FileSystemPort } from "./registry/file-system";
 export { NodeFileSystem } from "./registry/node-file-system";
 export { Registry } from "./registry/registry";
 export type { RepoPathError } from "./registry/repo-path";
+export { bindConfig } from "./server/bind-config";
 export { ToolPresenceAdapter } from "./tools/tool-presence";
 export type { ToolPresencePort } from "./tools/tool-presence-port";

@@ -65,6 +65,18 @@ describe("parseGitOrigin", () => {
     ).toBeNull();
   });
 
+  it("returns null for a GitHub origin on a non-default port", () => {
+    // The port rejection has to bite on the one host deploys resolve against:
+    // on any other host the origin is already refused for the host alone, so
+    // the branch would go unproven (#152, ADR-0014).
+    expect(
+      parseGitOrigin("https://github.com:8443/fimoklei/agent-harness.git"),
+    ).toBeNull();
+    expect(
+      parseGitOrigin("ssh://git@github.com:2222/fimoklei/agent-harness"),
+    ).toBeNull();
+  });
+
   it("parses an origin that spells out its scheme's default port", () => {
     // Such a remote reaches the same host apm's default transport would, so
     // it is representable. `URL` normalises the port away for https but not

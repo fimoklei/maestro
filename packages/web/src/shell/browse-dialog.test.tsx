@@ -45,38 +45,83 @@ function renderDialog({
 
 const noFacts = { isGitRepo: false, hasApmManifest: false };
 
-// The home-ceiling response shape: no parent key, a single "~" breadcrumb.
-const homeResponse = {
-  path: "/home/me",
-  breadcrumbs: [{ name: "~", path: "/home/me" }],
-  entries: [] as {
-    name: string;
-    path: string;
-    facts: typeof noFacts;
-  }[],
+const HOME = "/home/me";
+
+type Entry = {
+  name: string;
+  path: string;
+  isHidden?: boolean;
+  isSymlink?: boolean;
+  facts: typeof noFacts;
 };
+
+type Refusal = { error: string; status: number };
+type Answer = readonly Entry[] | Refusal;
+
+// The endpoint's listing for one folder under the home ceiling: parent and
+// breadcrumbs follow from the path, and home has neither a parent nor a
+// segment beyond "~".
+function listing(path: string, entries: readonly Entry[]) {
+  const segments = path.slice(HOME.length).split("/").filter(Boolean);
+  return {
+    path,
+    ...(segments.length > 0
+      ? { parent: path.slice(0, path.lastIndexOf("/")) }
+      : {}),
+    breadcrumbs: [
+      { name: "~", path: HOME },
+      ...segments.map((name, index) => ({
+        name,
+        path: [HOME, ...segments.slice(0, index + 1)].join("/"),
+      })),
+    ],
+    entries,
+  };
+}
+
+// One stub for the one route the dialog calls, so a test states which folder
+// answers with what and nothing else. `paths` names the folders a test steps
+// into or refuses; every other request is answered from `at` with `answer`.
+function stubFilesystemServer({
+  at = HOME,
+  answer = [] as Answer,
+  paths = {} as Record<string, Answer>,
+} = {}) {
+  const respond = (given: Answer, path: string) =>
+    "error" in given
+      ? jsonResponse({ error: given.error }, given.status)
+      : jsonResponse(listing(path, given), 200);
+
+  const fetchMock = vi.fn(
+    async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const { path } = JSON.parse(String(init?.body ?? "{}")) as {
+        path?: string;
+      };
+      if (path !== undefined) {
+        const named = paths[path];
+        if (named !== undefined) {
+          return respond(named, path);
+        }
+      }
+      return respond(answer, at);
+    },
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
 
 describe("BrowseDialog", () => {
   it("lists the directory entries returned by the browse endpoint", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        jsonResponse(
-          {
-            ...homeResponse,
-            entries: [
-              {
-                name: "agent-harness",
-                path: "/home/me/agent-harness",
-                facts: noFacts,
-              },
-              { name: "projects", path: "/home/me/projects", facts: noFacts },
-            ],
-          },
-          200,
-        ),
-      ),
-    );
+    stubFilesystemServer({
+      answer: [
+        {
+          name: "agent-harness",
+          path: "/home/me/agent-harness",
+          facts: noFacts,
+        },
+        { name: "projects", path: "/home/me/projects", facts: noFacts },
+      ],
+    });
     renderDialog();
 
     expect(
@@ -88,10 +133,7 @@ describe("BrowseDialog", () => {
   });
 
   it("calls onSelect with the directory currently being viewed", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => jsonResponse(homeResponse, 200)),
-    );
+    stubFilesystemServer();
     const { onSelect } = renderDialog();
 
     await userEvent.click(
@@ -101,41 +143,18 @@ describe("BrowseDialog", () => {
   });
 
   it("navigates into a directory when its entry is clicked", async () => {
-    const fetchMock = vi.fn(
-      async (_input: RequestInfo | URL, init?: RequestInit) => {
-        const body = JSON.parse(String(init?.body ?? "{}")) as { path: string };
-        if (body.path === "/home/me/projects") {
-          return jsonResponse(
-            {
-              path: "/home/me/projects",
-              parent: "/home/me",
-              breadcrumbs: [
-                { name: "~", path: "/home/me" },
-                { name: "projects", path: "/home/me/projects" },
-              ],
-              entries: [
-                {
-                  name: "maestro",
-                  path: "/home/me/projects/maestro",
-                  facts: noFacts,
-                },
-              ],
-            },
-            200,
-          );
-        }
-        return jsonResponse(
+    stubFilesystemServer({
+      answer: [{ name: "projects", path: "/home/me/projects", facts: noFacts }],
+      paths: {
+        "/home/me/projects": [
           {
-            ...homeResponse,
-            entries: [
-              { name: "projects", path: "/home/me/projects", facts: noFacts },
-            ],
+            name: "maestro",
+            path: "/home/me/projects/maestro",
+            facts: noFacts,
           },
-          200,
-        );
+        ],
       },
-    );
-    vi.stubGlobal("fetch", fetchMock);
+    });
     renderDialog();
 
     await userEvent.click(
@@ -150,35 +169,14 @@ describe("BrowseDialog", () => {
   it("steps to the server-reported parent when up is clicked", async () => {
     // The dialog lands on a nested folder; up must be usable immediately and
     // ask the server for the reported parent — not retrace a descent history.
-    const fetchMock = vi.fn(
-      async (_input: RequestInfo | URL, init?: RequestInit) => {
-        const body = JSON.parse(String(init?.body ?? "{}")) as { path: string };
-        if (body.path === "/home/me") {
-          return jsonResponse(
-            {
-              ...homeResponse,
-              entries: [
-                { name: "projects", path: "/home/me/projects", facts: noFacts },
-              ],
-            },
-            200,
-          );
-        }
-        return jsonResponse(
-          {
-            path: "/home/me/projects",
-            parent: "/home/me",
-            breadcrumbs: [
-              { name: "~", path: "/home/me" },
-              { name: "projects", path: "/home/me/projects" },
-            ],
-            entries: [],
-          },
-          200,
-        );
+    stubFilesystemServer({
+      at: "/home/me/projects",
+      paths: {
+        "/home/me": [
+          { name: "projects", path: "/home/me/projects", facts: noFacts },
+        ],
       },
-    );
-    vi.stubGlobal("fetch", fetchMock);
+    });
     renderDialog();
 
     const up = await screen.findByRole("button", { name: /up/i });
@@ -191,41 +189,14 @@ describe("BrowseDialog", () => {
   });
 
   it("jumps to an ancestor when its breadcrumb segment is clicked", async () => {
-    const fetchMock = vi.fn(
-      async (_input: RequestInfo | URL, init?: RequestInit) => {
-        const body = JSON.parse(String(init?.body ?? "{}")) as { path: string };
-        if (body.path === "/home/me/dev") {
-          return jsonResponse(
-            {
-              path: "/home/me/dev",
-              parent: "/home/me",
-              breadcrumbs: [
-                { name: "~", path: "/home/me" },
-                { name: "dev", path: "/home/me/dev" },
-              ],
-              entries: [
-                { name: "repos", path: "/home/me/dev/repos", facts: noFacts },
-              ],
-            },
-            200,
-          );
-        }
-        return jsonResponse(
-          {
-            path: "/home/me/dev/repos",
-            parent: "/home/me/dev",
-            breadcrumbs: [
-              { name: "~", path: "/home/me" },
-              { name: "dev", path: "/home/me/dev" },
-              { name: "repos", path: "/home/me/dev/repos" },
-            ],
-            entries: [],
-          },
-          200,
-        );
+    stubFilesystemServer({
+      at: "/home/me/dev/repos",
+      paths: {
+        "/home/me/dev": [
+          { name: "repos", path: "/home/me/dev/repos", facts: noFacts },
+        ],
       },
-    );
-    vi.stubGlobal("fetch", fetchMock);
+    });
     renderDialog();
 
     await userEvent.click(await screen.findByRole("button", { name: "dev" }));
@@ -236,23 +207,7 @@ describe("BrowseDialog", () => {
   });
 
   it("marks the current breadcrumb segment and keeps it unclickable", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        jsonResponse(
-          {
-            path: "/home/me/dev",
-            parent: "/home/me",
-            breadcrumbs: [
-              { name: "~", path: "/home/me" },
-              { name: "dev", path: "/home/me/dev" },
-            ],
-            entries: [],
-          },
-          200,
-        ),
-      ),
-    );
+    stubFilesystemServer({ at: "/home/me/dev" });
     renderDialog();
 
     const current = await screen.findByText("dev");
@@ -265,10 +220,7 @@ describe("BrowseDialog", () => {
   });
 
   it("disables up at the home ceiling and explains it beside the control", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => jsonResponse(homeResponse, 200)),
-    );
+    stubFilesystemServer();
     renderDialog();
 
     expect(await screen.findByText("Already at home")).toBeInTheDocument();
@@ -276,10 +228,7 @@ describe("BrowseDialog", () => {
   });
 
   it("confirms a pasted path, bypassing the listing", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => jsonResponse(homeResponse, 200)),
-    );
+    stubFilesystemServer();
     const { onSelect } = renderDialog();
 
     const paste = await screen.findByRole("textbox", { name: /paste a path/i });
@@ -291,10 +240,7 @@ describe("BrowseDialog", () => {
   it("confirms the pasted path via the primary button, not the listing folder", async () => {
     // The prominent confirm must honour a non-empty paste field — otherwise a
     // user who pastes then clicks confirm silently gets the listing folder.
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => jsonResponse(homeResponse, 200)),
-    );
+    stubFilesystemServer();
     const { onSelect } = renderDialog();
 
     const paste = await screen.findByRole("textbox", { name: /paste a path/i });
@@ -308,10 +254,7 @@ describe("BrowseDialog", () => {
   });
 
   it("shows the mode title in the header and closes via the close affordance", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => jsonResponse(homeResponse, 200)),
-    );
+    stubFilesystemServer();
     const { onClose } = renderDialog();
 
     expect(
@@ -322,10 +265,7 @@ describe("BrowseDialog", () => {
   });
 
   it("shows the register-mode title", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => jsonResponse(homeResponse, 200)),
-    );
+    stubFilesystemServer();
     renderDialog({ mode: "register" });
 
     expect(
@@ -334,25 +274,16 @@ describe("BrowseDialog", () => {
   });
 
   it("badges an already-registered repo in register mode, never git or the inventory badge", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        jsonResponse(
-          {
-            ...homeResponse,
-            entries: [
-              {
-                name: "acme-web",
-                path: "/home/me/acme-web",
-                facts: { isGitRepo: true, hasApmManifest: true },
-              },
-              { name: "notes", path: "/home/me/notes", facts: noFacts },
-            ],
-          },
-          200,
-        ),
-      ),
-    );
+    stubFilesystemServer({
+      answer: [
+        {
+          name: "acme-web",
+          path: "/home/me/acme-web",
+          facts: { isGitRepo: true, hasApmManifest: true },
+        },
+        { name: "notes", path: "/home/me/notes", facts: noFacts },
+      ],
+    });
     renderDialog({
       mode: "register",
       registeredPaths: new Set(["/home/me/acme-web"]),
@@ -369,24 +300,15 @@ describe("BrowseDialog", () => {
   });
 
   it("badges an inventory-looking folder in connect mode, never git or registered badges", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        jsonResponse(
-          {
-            ...homeResponse,
-            entries: [
-              {
-                name: "agent-harness",
-                path: "/home/me/agent-harness",
-                facts: { isGitRepo: true, hasApmManifest: true },
-              },
-            ],
-          },
-          200,
-        ),
-      ),
-    );
+    stubFilesystemServer({
+      answer: [
+        {
+          name: "agent-harness",
+          path: "/home/me/agent-harness",
+          facts: { isGitRepo: true, hasApmManifest: true },
+        },
+      ],
+    });
     renderDialog({
       mode: "connect",
       registeredPaths: new Set(["/home/me/agent-harness"]),
@@ -399,33 +321,24 @@ describe("BrowseDialog", () => {
   });
 
   it("filters hidden entries out of the listing by default and shows a hint", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        jsonResponse(
-          {
-            ...homeResponse,
-            entries: [
-              {
-                name: ".config",
-                path: "/home/me/.config",
-                isHidden: true,
-                isSymlink: false,
-                facts: noFacts,
-              },
-              {
-                name: "projects",
-                path: "/home/me/projects",
-                isHidden: false,
-                isSymlink: false,
-                facts: noFacts,
-              },
-            ],
-          },
-          200,
-        ),
-      ),
-    );
+    stubFilesystemServer({
+      answer: [
+        {
+          name: ".config",
+          path: "/home/me/.config",
+          isHidden: true,
+          isSymlink: false,
+          facts: noFacts,
+        },
+        {
+          name: "projects",
+          path: "/home/me/projects",
+          isHidden: false,
+          isSymlink: false,
+          facts: noFacts,
+        },
+      ],
+    });
     renderDialog();
 
     expect(
@@ -440,33 +353,24 @@ describe("BrowseDialog", () => {
   });
 
   it("shows hidden entries by default in import-source mode, since skills live in dotfolders", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        jsonResponse(
-          {
-            ...homeResponse,
-            entries: [
-              {
-                name: ".claude",
-                path: "/home/me/.claude",
-                isHidden: true,
-                isSymlink: false,
-                facts: noFacts,
-              },
-              {
-                name: "projects",
-                path: "/home/me/projects",
-                isHidden: false,
-                isSymlink: false,
-                facts: noFacts,
-              },
-            ],
-          },
-          200,
-        ),
-      ),
-    );
+    stubFilesystemServer({
+      answer: [
+        {
+          name: ".claude",
+          path: "/home/me/.claude",
+          isHidden: true,
+          isSymlink: false,
+          facts: noFacts,
+        },
+        {
+          name: "projects",
+          path: "/home/me/projects",
+          isHidden: false,
+          isSymlink: false,
+          facts: noFacts,
+        },
+      ],
+    });
     renderDialog({ mode: "import-source" });
 
     expect(
@@ -478,26 +382,17 @@ describe("BrowseDialog", () => {
   });
 
   it("omits the hidden-items hint when nothing is hidden", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        jsonResponse(
-          {
-            ...homeResponse,
-            entries: [
-              {
-                name: "projects",
-                path: "/home/me/projects",
-                isHidden: false,
-                isSymlink: false,
-                facts: noFacts,
-              },
-            ],
-          },
-          200,
-        ),
-      ),
-    );
+    stubFilesystemServer({
+      answer: [
+        {
+          name: "projects",
+          path: "/home/me/projects",
+          isHidden: false,
+          isSymlink: false,
+          facts: noFacts,
+        },
+      ],
+    });
     renderDialog();
 
     await screen.findByRole("button", { name: "projects" });
@@ -507,33 +402,24 @@ describe("BrowseDialog", () => {
   });
 
   it("reveals hidden entries, dimmed, and offers the same hint to hide them again", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        jsonResponse(
-          {
-            ...homeResponse,
-            entries: [
-              {
-                name: ".config",
-                path: "/home/me/.config",
-                isHidden: true,
-                isSymlink: false,
-                facts: noFacts,
-              },
-              {
-                name: "projects",
-                path: "/home/me/projects",
-                isHidden: false,
-                isSymlink: false,
-                facts: noFacts,
-              },
-            ],
-          },
-          200,
-        ),
-      ),
-    );
+    stubFilesystemServer({
+      answer: [
+        {
+          name: ".config",
+          path: "/home/me/.config",
+          isHidden: true,
+          isSymlink: false,
+          facts: noFacts,
+        },
+        {
+          name: "projects",
+          path: "/home/me/projects",
+          isHidden: false,
+          isSymlink: false,
+          facts: noFacts,
+        },
+      ],
+    });
     renderDialog();
 
     await userEvent.click(
@@ -554,26 +440,17 @@ describe("BrowseDialog", () => {
   });
 
   it("keeps the hidden-items control out of the toolbar", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        jsonResponse(
-          {
-            ...homeResponse,
-            entries: [
-              {
-                name: "projects",
-                path: "/home/me/projects",
-                isHidden: false,
-                isSymlink: false,
-                facts: noFacts,
-              },
-            ],
-          },
-          200,
-        ),
-      ),
-    );
+    stubFilesystemServer({
+      answer: [
+        {
+          name: "projects",
+          path: "/home/me/projects",
+          isHidden: false,
+          isSymlink: false,
+          facts: noFacts,
+        },
+      ],
+    });
     renderDialog();
 
     await screen.findByRole("button", { name: "projects" });
@@ -583,33 +460,24 @@ describe("BrowseDialog", () => {
   });
 
   it("shows the symlink tag on a symlinked entry", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        jsonResponse(
-          {
-            ...homeResponse,
-            entries: [
-              {
-                name: "linked-repo",
-                path: "/home/me/linked-repo",
-                isHidden: false,
-                isSymlink: true,
-                facts: noFacts,
-              },
-              {
-                name: "plain-repo",
-                path: "/home/me/plain-repo",
-                isHidden: false,
-                isSymlink: false,
-                facts: noFacts,
-              },
-            ],
-          },
-          200,
-        ),
-      ),
-    );
+    stubFilesystemServer({
+      answer: [
+        {
+          name: "linked-repo",
+          path: "/home/me/linked-repo",
+          isHidden: false,
+          isSymlink: true,
+          facts: noFacts,
+        },
+        {
+          name: "plain-repo",
+          path: "/home/me/plain-repo",
+          isHidden: false,
+          isSymlink: false,
+          facts: noFacts,
+        },
+      ],
+    });
     renderDialog();
 
     const linked = await screen.findByRole("button", { name: "linked-repo" });
@@ -619,10 +487,7 @@ describe("BrowseDialog", () => {
   });
 
   it("calls onClose when cancel is activated", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => jsonResponse(homeResponse, 200)),
-    );
+    stubFilesystemServer();
     const { onClose } = renderDialog();
 
     await userEvent.click(
@@ -632,17 +497,7 @@ describe("BrowseDialog", () => {
   });
 
   it("shows a readable error when the directory cannot be browsed", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        jsonResponse(
-          {
-            error: "outside-root",
-          },
-          403,
-        ),
-      ),
-    );
+    stubFilesystemServer({ answer: { error: "outside-root", status: 403 } });
     renderDialog();
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -653,31 +508,13 @@ describe("BrowseDialog", () => {
   describe("last-used folder (issue #149)", () => {
     it("opens at the folder remembered for this mode", async () => {
       writeLastFolder("connect", "/home/me/dev");
-      const fetchMock = vi.fn(
-        async (_input: RequestInfo | URL, init?: RequestInit) => {
-          const body = JSON.parse(String(init?.body ?? "{}")) as {
-            path: string;
-          };
-          if (body.path === "/home/me/dev") {
-            return jsonResponse(
-              {
-                path: "/home/me/dev",
-                parent: "/home/me",
-                breadcrumbs: [
-                  { name: "~", path: "/home/me" },
-                  { name: "dev", path: "/home/me/dev" },
-                ],
-                entries: [
-                  { name: "repos", path: "/home/me/dev/repos", facts: noFacts },
-                ],
-              },
-              200,
-            );
-          }
-          return jsonResponse(homeResponse, 200);
+      const fetchMock = stubFilesystemServer({
+        paths: {
+          "/home/me/dev": [
+            { name: "repos", path: "/home/me/dev/repos", facts: noFacts },
+          ],
         },
-      );
-      vi.stubGlobal("fetch", fetchMock);
+      });
       renderDialog({ mode: "connect" });
 
       expect(
@@ -694,8 +531,7 @@ describe("BrowseDialog", () => {
     it("remembers connect and register folders independently", async () => {
       writeLastFolder("connect", "/home/me/connect-folder");
       writeLastFolder("register", "/home/me/register-folder");
-      const fetchMock = vi.fn(async () => jsonResponse(homeResponse, 200));
-      vi.stubGlobal("fetch", fetchMock);
+      const fetchMock = stubFilesystemServer();
 
       renderDialog({ mode: "register" });
 
@@ -717,18 +553,9 @@ describe("BrowseDialog", () => {
 
     it("falls back to home when the remembered folder no longer exists", async () => {
       writeLastFolder("connect", "/home/me/gone");
-      const fetchMock = vi.fn(
-        async (_input: RequestInfo | URL, init?: RequestInit) => {
-          const body = JSON.parse(String(init?.body ?? "{}")) as {
-            path: string;
-          };
-          if (body.path === "/home/me/gone") {
-            return jsonResponse({ error: "not-found" }, 404);
-          }
-          return jsonResponse(homeResponse, 200);
-        },
-      );
-      vi.stubGlobal("fetch", fetchMock);
+      stubFilesystemServer({
+        paths: { "/home/me/gone": { error: "not-found", status: 404 } },
+      });
       renderDialog({ mode: "connect" });
 
       expect(await screen.findByText("Already at home")).toBeInTheDocument();
@@ -740,23 +567,9 @@ describe("BrowseDialog", () => {
       // backoff would stall the fallback and re-send an unchanging refusal.
       // Rendered with a bare QueryClient so that default is under test.
       writeLastFolder("connect", "/elsewhere/repos");
-      const fetchMock = vi.fn(
-        async (_input: RequestInfo | URL, init?: RequestInit) => {
-          const body = JSON.parse(String(init?.body ?? "{}")) as {
-            path: string;
-          };
-          if (body.path === "/elsewhere/repos") {
-            return jsonResponse(
-              {
-                error: "outside-root",
-              },
-              403,
-            );
-          }
-          return jsonResponse(homeResponse, 200);
-        },
-      );
-      vi.stubGlobal("fetch", fetchMock);
+      const fetchMock = stubFilesystemServer({
+        paths: { "/elsewhere/repos": { error: "outside-root", status: 403 } },
+      });
       // Production defaults on purpose — retries stay on, which is what makes
       // the one-request count below prove the hook's own guard rather than the
       // test client's. Never renderWithQuery here.
@@ -780,23 +593,9 @@ describe("BrowseDialog", () => {
       // so a remembered path can end up beyond the ceiling — same silent
       // fallback as a folder that no longer exists.
       writeLastFolder("connect", "/elsewhere/repos");
-      const fetchMock = vi.fn(
-        async (_input: RequestInfo | URL, init?: RequestInit) => {
-          const body = JSON.parse(String(init?.body ?? "{}")) as {
-            path: string;
-          };
-          if (body.path === "/elsewhere/repos") {
-            return jsonResponse(
-              {
-                error: "outside-root",
-              },
-              403,
-            );
-          }
-          return jsonResponse(homeResponse, 200);
-        },
-      );
-      vi.stubGlobal("fetch", fetchMock);
+      stubFilesystemServer({
+        paths: { "/elsewhere/repos": { error: "outside-root", status: 403 } },
+      });
       renderDialog({ mode: "connect" });
 
       expect(await screen.findByText("Already at home")).toBeInTheDocument();
@@ -806,31 +605,10 @@ describe("BrowseDialog", () => {
     it("shows the error banner when a folder reached by navigating sits outside the browse ceiling", async () => {
       // The fallback is scoped to the initial remembered request. A folder the
       // user clicked into still reports the refusal (story 22 of #145).
-      const fetchMock = vi.fn(
-        async (_input: RequestInfo | URL, init?: RequestInit) => {
-          const body = JSON.parse(String(init?.body ?? "{}")) as {
-            path: string;
-          };
-          if (body.path === "/home/me/linked") {
-            return jsonResponse(
-              {
-                error: "outside-root",
-              },
-              403,
-            );
-          }
-          return jsonResponse(
-            {
-              ...homeResponse,
-              entries: [
-                { name: "linked", path: "/home/me/linked", facts: noFacts },
-              ],
-            },
-            200,
-          );
-        },
-      );
-      vi.stubGlobal("fetch", fetchMock);
+      stubFilesystemServer({
+        answer: [{ name: "linked", path: "/home/me/linked", facts: noFacts }],
+        paths: { "/home/me/linked": { error: "outside-root", status: 403 } },
+      });
       renderDialog({ mode: "connect" });
 
       await userEvent.click(
@@ -847,18 +625,9 @@ describe("BrowseDialog", () => {
       // error" — an unreadable folder is a real problem the user should see
       // (story 22), not one silently swapped for home behind their back.
       writeLastFolder("connect", "/home/me/locked");
-      const fetchMock = vi.fn(
-        async (_input: RequestInfo | URL, init?: RequestInit) => {
-          const body = JSON.parse(String(init?.body ?? "{}")) as {
-            path: string;
-          };
-          if (body.path === "/home/me/locked") {
-            return jsonResponse({ error: "unreadable" }, 403);
-          }
-          return jsonResponse(homeResponse, 200);
-        },
-      );
-      vi.stubGlobal("fetch", fetchMock);
+      const fetchMock = stubFilesystemServer({
+        paths: { "/home/me/locked": { error: "unreadable", status: 403 } },
+      });
       renderDialog({ mode: "connect" });
 
       expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -879,37 +648,12 @@ describe("BrowseDialog", () => {
     });
 
     it("remembers the folder navigated into, for next time", async () => {
-      const fetchMock = vi.fn(
-        async (_input: RequestInfo | URL, init?: RequestInit) => {
-          const body = JSON.parse(String(init?.body ?? "{}")) as {
-            path: string;
-          };
-          if (body.path === "/home/me/projects") {
-            return jsonResponse(
-              {
-                path: "/home/me/projects",
-                parent: "/home/me",
-                breadcrumbs: [
-                  { name: "~", path: "/home/me" },
-                  { name: "projects", path: "/home/me/projects" },
-                ],
-                entries: [],
-              },
-              200,
-            );
-          }
-          return jsonResponse(
-            {
-              ...homeResponse,
-              entries: [
-                { name: "projects", path: "/home/me/projects", facts: noFacts },
-              ],
-            },
-            200,
-          );
-        },
-      );
-      vi.stubGlobal("fetch", fetchMock);
+      stubFilesystemServer({
+        answer: [
+          { name: "projects", path: "/home/me/projects", facts: noFacts },
+        ],
+        paths: { "/home/me/projects": [] },
+      });
       renderDialog({ mode: "connect" });
 
       await userEvent.click(
@@ -947,14 +691,7 @@ describe("BrowseDialog", () => {
       },
     ];
 
-    function stubRepoListing() {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () =>
-          jsonResponse({ ...homeResponse, entries: repoEntries }, 200),
-        ),
-      );
-    }
+    const stubRepoListing = () => stubFilesystemServer({ answer: repoEntries });
 
     it("shows a disabled checkbox and reason for a folder that is not a git repo", async () => {
       stubRepoListing();
@@ -1026,10 +763,7 @@ describe("BrowseDialog", () => {
     });
 
     it("returns every checked path on confirm, and registers nothing itself", async () => {
-      const fetchMock = vi.fn(async (_input: RequestInfo | URL) =>
-        jsonResponse({ ...homeResponse, entries: repoEntries }, 200),
-      );
-      vi.stubGlobal("fetch", fetchMock);
+      const fetchMock = stubRepoListing();
       const { onSelect } = renderDialog({ mode: "register" });
 
       await userEvent.click(
@@ -1055,50 +789,29 @@ describe("BrowseDialog", () => {
     });
 
     it("keeps a repo checked while the user navigates to another folder and back", async () => {
-      const nested = {
-        path: "/home/me/nested",
-        parent: "/home/me",
-        breadcrumbs: [
-          { name: "~", path: "/home/me" },
-          { name: "nested", path: "/home/me/nested" },
-        ],
-        entries: [
+      stubFilesystemServer({
+        answer: [
+          ...repoEntries,
           {
-            name: "billing-svc",
-            path: "/home/me/nested/billing-svc",
+            name: "nested",
+            path: "/home/me/nested",
             isHidden: false,
             isSymlink: false,
-            facts: { isGitRepo: true, hasApmManifest: false },
+            facts: noFacts,
           },
         ],
-      };
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
-          const body = JSON.parse(String(init?.body ?? "{}")) as {
-            path: string;
-          };
-          if (body.path === "/home/me/nested") {
-            return jsonResponse(nested, 200);
-          }
-          return jsonResponse(
+        paths: {
+          "/home/me/nested": [
             {
-              ...homeResponse,
-              entries: [
-                ...repoEntries,
-                {
-                  name: "nested",
-                  path: "/home/me/nested",
-                  isHidden: false,
-                  isSymlink: false,
-                  facts: noFacts,
-                },
-              ],
+              name: "billing-svc",
+              path: "/home/me/nested/billing-svc",
+              isHidden: false,
+              isSymlink: false,
+              facts: { isGitRepo: true, hasApmManifest: false },
             },
-            200,
-          );
-        }),
-      );
+          ],
+        },
+      });
       const { onSelect } = renderDialog({ mode: "register" });
 
       await userEvent.click(
@@ -1201,10 +914,9 @@ describe("BrowseDialog", () => {
   });
 
   describe("filter (issue #149)", () => {
-    function entriesResponse() {
-      return {
-        ...homeResponse,
-        entries: [
+    const stubEntries = () =>
+      stubFilesystemServer({
+        answer: [
           {
             name: "agent-harness",
             path: "/home/me/agent-harness",
@@ -1212,14 +924,10 @@ describe("BrowseDialog", () => {
           },
           { name: "projects", path: "/home/me/projects", facts: noFacts },
         ],
-      };
-    }
+      });
 
     it("narrows the current folder's entries as the user types", async () => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () => jsonResponse(entriesResponse(), 200)),
-      );
+      stubEntries();
       renderDialog();
 
       await screen.findByRole("button", { name: "agent-harness" });
@@ -1235,10 +943,7 @@ describe("BrowseDialog", () => {
     });
 
     it("restores the full listing when the filter is cleared", async () => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () => jsonResponse(entriesResponse(), 200)),
-      );
+      stubEntries();
       renderDialog();
 
       await screen.findByRole("button", { name: "agent-harness" });
@@ -1260,10 +965,7 @@ describe("BrowseDialog", () => {
   // in the dialog" — and a screen reader announces it with the action.
   describe("write promise (issue #218)", () => {
     it("describes the register action with both parts of the write promise", async () => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () => jsonResponse(homeResponse, 200)),
-      );
+      stubFilesystemServer();
       renderDialog({ mode: "register" });
 
       const register = await screen.findByRole("button", {
@@ -1280,10 +982,7 @@ describe("BrowseDialog", () => {
     });
 
     it("omits the write promise in connect mode, which registers nothing", async () => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () => jsonResponse(homeResponse, 200)),
-      );
+      stubFilesystemServer();
       renderDialog({ mode: "connect" });
 
       const confirm = await screen.findByRole("button", {
@@ -1296,10 +995,7 @@ describe("BrowseDialog", () => {
     // Picking a clone parent does write — a new folder appears in it — so the
     // promise here is about what stays untouched (#555).
     it("promises in clone-parent mode that nothing already there is disturbed", async () => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () => jsonResponse(homeResponse, 200)),
-      );
+      stubFilesystemServer();
       renderDialog({ mode: "clone-parent" });
 
       const confirm = await screen.findByRole("button", {
@@ -1345,10 +1041,7 @@ describe("BrowseDialog", () => {
     }
 
     it("moves focus into the dialog when it opens", async () => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () => jsonResponse(homeResponse, 200)),
-      );
+      stubFilesystemServer();
       renderDialog();
 
       const dialog = await screen.findByRole("dialog");
@@ -1359,10 +1052,7 @@ describe("BrowseDialog", () => {
     });
 
     it("restores focus to the trigger when it closes", async () => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () => jsonResponse(homeResponse, 200)),
-      );
+      stubFilesystemServer();
       renderWithQuery(<TriggerHarness />);
 
       const trigger = screen.getByRole("button", { name: /browse/i });
@@ -1375,10 +1065,7 @@ describe("BrowseDialog", () => {
     });
 
     it("closes on Escape", async () => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () => jsonResponse(homeResponse, 200)),
-      );
+      stubFilesystemServer();
       const { onClose } = renderDialog();
 
       await screen.findByRole("dialog");
@@ -1388,10 +1075,7 @@ describe("BrowseDialog", () => {
     });
 
     it("ignores Escape while a registration is in flight", async () => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () => jsonResponse(homeResponse, 200)),
-      );
+      stubFilesystemServer();
       const { onClose } = renderDialog({
         mode: "register",
         isRegistering: true,
@@ -1404,10 +1088,7 @@ describe("BrowseDialog", () => {
     });
 
     it("traps Tab within the dialog", async () => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () => jsonResponse(homeResponse, 200)),
-      );
+      stubFilesystemServer();
       renderDialog();
 
       const dialog = await screen.findByRole("dialog");
@@ -1433,10 +1114,7 @@ describe("BrowseDialog", () => {
       // Navigating into a folder unmounts the focused row, dropping focus to
       // <body> outside the panel. Escape must still close and Tab must still
       // pull focus back in, never to a control behind the dialog.
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () => jsonResponse(homeResponse, 200)),
-      );
+      stubFilesystemServer();
       const { onClose } = renderDialog();
 
       const dialog = await screen.findByRole("dialog");
@@ -1460,10 +1138,7 @@ describe("BrowseDialog", () => {
     });
 
     it("closes when the backdrop is clicked", async () => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () => jsonResponse(homeResponse, 200)),
-      );
+      stubFilesystemServer();
       const { onClose } = renderDialog();
 
       const dialog = await screen.findByRole("dialog");
@@ -1477,10 +1152,7 @@ describe("BrowseDialog", () => {
     });
 
     it("keeps the backdrop inert while a registration is in flight", async () => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () => jsonResponse(homeResponse, 200)),
-      );
+      stubFilesystemServer();
       const { onClose } = renderDialog({
         mode: "register",
         isRegistering: true,
@@ -1496,10 +1168,7 @@ describe("BrowseDialog", () => {
     });
 
     it("puts the modal semantics on the panel, not the overlay", async () => {
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async () => jsonResponse(homeResponse, 200)),
-      );
+      stubFilesystemServer();
       renderDialog();
 
       const dialog = await screen.findByRole("dialog");

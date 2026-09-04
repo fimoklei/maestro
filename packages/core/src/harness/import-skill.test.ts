@@ -66,6 +66,8 @@ function harness(
     copy?: () => Promise<CopySkillFolderResult>;
     originUrl?: string | null;
     trees?: HarnessSkillTrees | null;
+    // The ceiling the picker browses under; "/" holds every seeded path.
+    homeRoot?: string;
   } = {},
 ) {
   const files: Record<string, string> = {
@@ -157,7 +159,7 @@ function harness(
 
   const importSkill = new ImportSkill({
     resolveRoot: async () => ROOT,
-    homeRoot: () => "/",
+    homeRoot: () => overrides.homeRoot ?? "/",
     fs,
     facts,
     git,
@@ -406,6 +408,52 @@ describe("ImportSkill.check", () => {
       importSkill.check({ source: deployed }),
     ).resolves.toMatchObject({
       check: { mode: "add", sourceBlocker: "deployed-copy" },
+    });
+  });
+
+  it("refuses a copy whose record names something that is not a skill slug", async () => {
+    // A record naming `Code Review` cannot be this Harness's own skill: the
+    // Harness holds skills under slugs, and a name that is not one would reach
+    // a path and a package ref it can never resolve (security.md).
+    const deployed = "/repo/.claude/skills/code-review";
+    const { importSkill } = harness({
+      files: {
+        [`${deployed}/SKILL.md`]: MANIFEST,
+        "/repo/apm.lock.yaml": lockfile(
+          FROM_THIS_HARNESS,
+          ".apm/skills/Code Review",
+        ),
+      },
+      directories: [deployed, `${ROOT}/.apm/skills/Code Review`],
+      deployedTargets: [
+        { treeRoot: "/repo", lockfilePath: "/repo/apm.lock.yaml" },
+      ],
+    });
+
+    await expect(
+      importSkill.check({ source: deployed }),
+    ).resolves.toMatchObject({
+      check: { mode: "add", sourceBlocker: "deployed-copy" },
+    });
+  });
+
+  it("keeps a copy outside the ceiling out of update mode, record or no record", async () => {
+    // Outside the ceiling the deployment records are never consulted, so an
+    // unreachable folder cannot become an update — it is refused for where it
+    // sits, and the name it proposes is judged like any other addition.
+    const { importSkill, deployed } = deployedInRepo(FROM_THIS_HARNESS, {
+      homeRoot: "/elsewhere",
+    });
+
+    await expect(
+      importSkill.check({ source: deployed }),
+    ).resolves.toMatchObject({
+      check: {
+        mode: "add",
+        name: "code-review",
+        sourceBlocker: "outside-root",
+        nameBlocker: "name-taken",
+      },
     });
   });
 
