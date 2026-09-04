@@ -12,7 +12,9 @@ const checked = (data: DriftResponse) =>
   driftViewModel({ data, isError: false });
 
 const behindTdd = checked({
-  behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+  behind: [
+    { name: "tdd", current: "v0.5.0", latest: "v0.5.1", reading: "behind" },
+  ],
 });
 
 const upToDate = checked({ behind: [] });

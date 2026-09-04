@@ -56,6 +56,11 @@ export { resolveApmGlobalRoot } from "./deploy-state/resolve-apm-global-root";
 export { CheckVersionDrift } from "./drift/check-version-drift";
 export type { VersionDrift } from "./drift/parse-outdated";
 export {
+  type DriftReading,
+  ReadDrift,
+  type ReadDriftEntry,
+} from "./drift/read-drift";
+export {
   type BrowseCrumb,
   type BrowseEntry,
   type BrowseEntryFacts,

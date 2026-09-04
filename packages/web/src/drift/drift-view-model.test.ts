@@ -14,10 +14,26 @@ const query = (state: {
   isError: state.isError ?? false,
 });
 
-const ran = (behind: { name: string; current: string; latest: string }[]) =>
+const ran = (behind: BehindEntry[]) =>
   driftViewModel(query({ data: { behind } }));
 
-const pair = (name: string) => ({ name, current: "v1.0.0", latest: "v1.1.0" });
+type BehindEntry = Extract<
+  DriftResponse,
+  { behind: unknown }
+>["behind"][number];
+
+const pair = (name: string): BehindEntry => ({
+  name,
+  current: "v1.0.0",
+  latest: "v1.1.0",
+  reading: "behind",
+});
+
+// Same release, content unchanged between the two tags (ADR-0027 §1).
+const laggingPin = (name: string): BehindEntry => ({
+  ...pair(name),
+  reading: "older-tag",
+});
 
 const deployedNames = (names: string[]) =>
   ({ status: "ready", names, skippedCount: 0, attentionCount: 0 }) as const;
@@ -28,6 +44,10 @@ const deployedPrimitives = (names: string[]): DeployedPrimitive[] =>
 describe("driftViewModel — query mapping", () => {
   it("maps a ran check so a behind skill reads behind", () => {
     expect(ran([pair("tdd")]).skillStatus("tdd")).toBe("behind");
+  });
+
+  it("maps a skill that only lags a tag to its own reading", () => {
+    expect(ran([laggingPin("tdd")]).skillStatus("tdd")).toBe("older-tag");
   });
 
   it("maps an empty behind set to a ran check, not unknown", () => {
@@ -84,7 +104,9 @@ describe("driftViewModel — skillStatus", () => {
 describe("driftViewModel — latest", () => {
   it("returns the latest tag for a behind skill", () => {
     expect(
-      ran([{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }]).latest("tdd"),
+      ran([
+        { name: "tdd", current: "v0.5.0", latest: "v0.5.1", reading: "behind" },
+      ]).latest("tdd"),
     ).toBe("v0.5.1");
   });
 
@@ -188,6 +210,16 @@ describe("driftViewModel — targetIndicator", () => {
   });
 });
 
+describe("driftViewModel — orphanBehind", () => {
+  // The lagging pin is stated on the row and nowhere else (ADR-0027 §2), so a
+  // skill that only lags a tag never reappears in this list worded as Behind.
+  it("leaves out a name that only lags a tag", () => {
+    expect(ran([laggingPin("foo"), pair("bar")]).orphanBehind([])).toEqual([
+      "bar",
+    ]);
+  });
+});
+
 describe("driftViewModel — driftCount", () => {
   it("counts the deployed skills that are behind", () => {
     expect(
@@ -207,8 +239,24 @@ describe("driftViewModel — driftCount", () => {
     expect(ran([]).driftCount(deployedNames(["tdd"]))).toBe(0);
   });
 
+  // The roll-up counts moved skills only, so a release cannot mark a whole
+  // target Behind on a lagging pin alone (ADR-0027 §2).
+  it("excludes a skill that only lags a tag from the count", () => {
+    expect(
+      ran([pair("tdd"), laggingPin("diagnose")]).driftCount(
+        deployedNames(["tdd", "diagnose"]),
+      ),
+    ).toBe(1);
+  });
+
   it("is zero for a confirmed-empty target", () => {
     expect(ran([pair("tdd")]).driftCount(deployedNames([]))).toBe(0);
+  });
+
+  it("reads a target holding nothing but lagging pins as ok", () => {
+    expect(
+      ran([laggingPin("tdd")]).targetIndicator(deployedNames(["tdd"])),
+    ).toBe("ok");
   });
 
   it.each(["unknown", "unverified"] as const)(
@@ -291,10 +339,9 @@ describe("driftViewModel — syncedState", () => {
 
   it("reports not-synced when the deployed skill is behind", () => {
     expect(
-      ran([{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }]).syncedState(
-        deployedPrimitives(["tdd"]),
-        "tdd",
-      ),
+      ran([
+        { name: "tdd", current: "v0.5.0", latest: "v0.5.1", reading: "behind" },
+      ]).syncedState(deployedPrimitives(["tdd"]), "tdd"),
     ).toBe("not-synced");
   });
 
@@ -327,14 +374,18 @@ describe("driftViewModel — syncedState", () => {
 
 describe("driftViewModel — forTool (per-tool slice of the global check)", () => {
   it("keeps a behind skill deployed on this tool", () => {
-    const global = ran([{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }]);
+    const global = ran([
+      { name: "tdd", current: "v0.5.0", latest: "v0.5.1", reading: "behind" },
+    ]);
     expect(
       global.forTool(["tdd"]).targetIndicator(deployedNames(["tdd"])),
     ).toBe("drift");
   });
 
   it("drops a behind skill that belongs to another tool", () => {
-    const global = ran([{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }]);
+    const global = ran([
+      { name: "tdd", current: "v0.5.0", latest: "v0.5.1", reading: "behind" },
+    ]);
     // codex's card has no tdd; the global behind must not spill onto it.
     expect(global.forTool([]).targetIndicator(deployedNames([]))).toBe("empty");
     // and tdd no longer reads as behind through the narrowed model.

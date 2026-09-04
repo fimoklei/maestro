@@ -40,7 +40,9 @@ const tddDeployed = {
 describe("DeployStatePanel drift badge", () => {
   it("shows a behind badge for a skill the check reports behind", async () => {
     stubFetch(tddDeployed, {
-      behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+      behind: [
+        { name: "tdd", current: "v0.5.0", latest: "v0.5.1", reading: "behind" },
+      ],
     });
     renderPanel("/Users/me/project");
 
@@ -50,13 +52,38 @@ describe("DeployStatePanel drift badge", () => {
 
   it("shows the deployed -> latest version pair for a behind skill", async () => {
     stubFetch(tddDeployed, {
-      behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+      behind: [
+        { name: "tdd", current: "v0.5.0", latest: "v0.5.1", reading: "behind" },
+      ],
     });
     renderPanel("/Users/me/project");
 
     expect(
       await screen.findByText(/v0\.5\.0\s*→\s*v0\.5\.1/),
     ).toBeInTheDocument();
+  });
+
+  // ADR-0027: the release moved, this skill did not. The row still states the
+  // lagging pin and keeps its Update action; the target does not read Behind.
+  it("shows an older-tag badge for a skill whose content did not move", async () => {
+    stubFetch(tddDeployed, {
+      behind: [
+        {
+          name: "tdd",
+          current: "v0.5.0",
+          latest: "v0.5.1",
+          reading: "older-tag",
+        },
+      ],
+    });
+    renderPanel("/Users/me/project");
+
+    expect(await screen.findByText("Older tag")).toBeInTheDocument();
+    expect(
+      await screen.findByText(/v0\.5\.0\s*→\s*v0\.5\.1/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /update/i })).toBeInTheDocument();
+    expect(await screen.findByText(/in sync/i)).toBeInTheDocument();
   });
 
   it("shows up-to-date for a skill the check does not report behind", async () => {
@@ -89,7 +116,9 @@ describe("DeployStatePanel drift badge", () => {
 
   it("does not mark the target as drift when the only behind primitive is not deployed here", async () => {
     stubFetch(tddDeployed, {
-      behind: [{ name: "foo", current: "v1.0.0", latest: "v1.1.0" }],
+      behind: [
+        { name: "foo", current: "v1.0.0", latest: "v1.1.0", reading: "behind" },
+      ],
     });
     renderPanel("/Users/me/project");
 
@@ -100,8 +129,8 @@ describe("DeployStatePanel drift badge", () => {
   it("surfaces a behind name that is not a deployed skill, instead of dropping it", async () => {
     stubFetch(tddDeployed, {
       behind: [
-        { name: "tdd", current: "v0.5.0", latest: "v0.5.1" },
-        { name: "foo", current: "v1.0.0", latest: "v1.1.0" },
+        { name: "tdd", current: "v0.5.0", latest: "v0.5.1", reading: "behind" },
+        { name: "foo", current: "v1.0.0", latest: "v1.1.0", reading: "behind" },
       ],
     });
     renderPanel("/Users/me/project");
@@ -117,7 +146,16 @@ describe("DeployStatePanel drift badge", () => {
     // The header must not silently read "in sync" / hide the update (J04).
     stubFetch(
       tddDeployed,
-      { behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }] },
+      {
+        behind: [
+          {
+            name: "tdd",
+            current: "v0.5.0",
+            latest: "v0.5.1",
+            reading: "behind",
+          },
+        ],
+      },
       { deployStateStatus: 500 },
     );
     renderPanel("/Users/me/project");

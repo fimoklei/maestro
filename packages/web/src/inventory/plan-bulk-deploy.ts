@@ -27,6 +27,9 @@ function targetStatus(
     return "other";
   }
   const status = target.drift.skillStatus(name);
+  // "older-tag" falls to "other": the skill is still deployed at a lagging
+  // pin, so it is not clean, but a bulk run does not call it an update
+  // either — that acts on moved skills only (ADR-0027 §6).
   return status === "up-to-date" || status === "behind" ? status : "other";
 }
 

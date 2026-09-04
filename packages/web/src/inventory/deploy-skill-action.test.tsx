@@ -574,7 +574,14 @@ describe("DeploySkillAction", () => {
         ).length <= 1
           ? jsonResponse({ ok: false })
           : jsonResponse({
-              behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+              behind: [
+                {
+                  name: "tdd",
+                  current: "v0.5.0",
+                  latest: "v0.5.1",
+                  reading: "behind",
+                },
+              ],
             });
       }
       if (url.startsWith("/api/deploy-state")) {
@@ -671,7 +678,14 @@ describe("DeploySkillAction", () => {
         ).length <= 1
           ? jsonResponse({ ok: false })
           : jsonResponse({
-              behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+              behind: [
+                {
+                  name: "tdd",
+                  current: "v0.5.0",
+                  latest: "v0.5.1",
+                  reading: "behind",
+                },
+              ],
             });
       }
       if (url.startsWith("/api/deploy-state/global")) {

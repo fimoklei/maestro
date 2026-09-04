@@ -1,17 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
+import type { ReadDriftEntry } from "../drift/use-drift";
 import type { DeploymentTarget } from "./deployed-rollup";
 import { skillDeployments } from "./skill-deployments";
 
-const ranDrift = (
-  behind: { name: string; current: string; latest: string }[] = [],
-) => driftViewModel({ data: { behind }, isError: false });
+const ranDrift = (behind: ReadDriftEntry[] = []) =>
+  driftViewModel({ data: { behind }, isError: false });
 
 // A ready target with the given label and versioned primitives.
 const target = (
   label: string,
   primitives: { name: string; version: string }[],
-  behind: { name: string; current: string; latest: string }[] = [],
+  behind: ReadDriftEntry[] = [],
 ): DeploymentTarget => ({
   label,
   target: label.startsWith("/")
@@ -59,7 +59,14 @@ describe("skillDeployments", () => {
       target(
         "Claude Code",
         [{ name: "tdd", version: "v1.0.0" }],
-        [{ name: "tdd", current: "v1.0.0", latest: "v1.2.0" }],
+        [
+          {
+            name: "tdd",
+            current: "v1.0.0",
+            latest: "v1.2.0",
+            reading: "behind",
+          },
+        ],
       ),
     ];
 

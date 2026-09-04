@@ -42,6 +42,7 @@ import {
   type PublishReleaseError,
   type PublishReleaseResult,
   probeHead,
+  ReadDrift,
   ReadHarnessState,
   RecordedPackageAdapter,
   Registry,
@@ -510,7 +511,7 @@ export type AppDeps = {
   deployState: GlobalDeployStateReader;
   deploy: DeploySkill;
   remove: RemoveDeployedSkill;
-  drift: CheckVersionDrift;
+  drift: ReadDrift;
   // Tests inject a sandbox so the real ~/.apm is never touched (apm-driver.md).
   resolveGlobalRoot: () => string;
   // Production always enables the guard; tests construct it disabled. No
@@ -987,11 +988,6 @@ function realDeps(): AppDeps {
       return cwd;
     },
   });
-  const drift = new CheckVersionDrift({
-    registry,
-    apm,
-    canonicalPath: (path) => fs.realpath(path),
-  });
   // Shared by the harness read and the release confirm below, so both name
   // the same connected clone.
   const harnessRoot = async () => {
@@ -1012,6 +1008,19 @@ function realDeps(): AppDeps {
   // Shared instance: a global deploy's lockfile root and deploy tree differ
   // (~/.apm vs ~/.claude/skills, apm-driver.md #56/#61) — guard and cleanup agree by construction.
   const deployedLocation = new DeployedLocation(process.env);
+  // apm owns Behind; the content reading beside it is a git-tree read of the
+  // connected Harness, joined before the row renders (ADR-0027).
+  const drift = new ReadDrift({
+    drift: new CheckVersionDrift({
+      registry,
+      apm,
+      canonicalPath: (path) => fs.realpath(path),
+    }),
+    fs,
+    location: deployedLocation,
+    resolveRoot: harnessRoot,
+    git: harnessGit,
+  });
   // Shared by deploy and remove: both rewrite the same apm.lock.yaml, and a
   // deploy racing a remove would corrupt it.
   const apmWriteLocks = new InFlightLocks();

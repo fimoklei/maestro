@@ -14,6 +14,7 @@ import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
+import { withoutContentCheck } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubImport } from "../helpers/stub-import";
 import { stubPromotes } from "../helpers/stub-promote";
@@ -37,6 +38,9 @@ describe("drift HTTP route", () => {
   });
 
   const tddBehind = { name: "tdd", current: "v0.5.0", latest: "v0.5.1" };
+  // No harness clone to read trees from, so the content question is unanswered
+  // and every row falls back to Behind (ADR-0027 §4).
+  const tddRow = { ...tddBehind, reading: "behind" };
 
   function makeApp(
     outcome:
@@ -70,7 +74,7 @@ describe("drift HTTP route", () => {
       deployState: stubDeployState({ fs }),
       deploy: stubDeploy({ inventory, registry, locks }),
       remove: stubRemove({ registry, locks }),
-      drift,
+      drift: withoutContentCheck(drift),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
       harness: stubHarness(),
       publish: stubPublish(),
@@ -93,7 +97,7 @@ describe("drift HTTP route", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ behind: [tddBehind] });
+    expect(await res.json()).toEqual({ behind: [tddRow] });
     await rm(repo, { recursive: true, force: true });
   });
 
@@ -169,7 +173,7 @@ describe("drift HTTP route", () => {
     const res = await app.request("/api/drift/global?repo=/tmp/not-used");
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ behind: [tddBehind] });
+    expect(await res.json()).toEqual({ behind: [tddRow] });
     expect(calls).toEqual([{ kind: "global" }]);
   });
 

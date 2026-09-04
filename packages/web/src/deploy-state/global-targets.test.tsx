@@ -2,7 +2,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
-import type { VersionDrift } from "../drift/use-drift";
+import type { ReadDriftEntry } from "../drift/use-drift";
 import { renderWithQuery } from "../test-utils";
 import { GlobalTargets } from "./global-targets";
 
@@ -11,7 +11,7 @@ import { GlobalTargets } from "./global-targets";
 
 // The container feeds GlobalTargets a drift view-model built from the global
 // drift query; these helpers build the same model from raw behind pairs.
-const ranDrift = (behind: VersionDrift[]) =>
+const ranDrift = (behind: ReadDriftEntry[]) =>
   driftViewModel({ data: { behind }, isError: false });
 
 const READY_NO_DRIFT = ranDrift([]);
@@ -205,7 +205,9 @@ describe("GlobalTargets", () => {
           primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
         },
       ],
-      drift: ranDrift([{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }]),
+      drift: ranDrift([
+        { name: "tdd", current: "v0.5.0", latest: "v0.5.1", reading: "behind" },
+      ]),
     });
 
     expect(screen.getByText("Behind")).toBeInTheDocument();
@@ -223,7 +225,9 @@ describe("GlobalTargets", () => {
         },
         { tool: "codex", primitives: [] },
       ],
-      drift: ranDrift([{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }]),
+      drift: ranDrift([
+        { name: "tdd", current: "v0.5.0", latest: "v0.5.1", reading: "behind" },
+      ]),
     });
 
     // The codex card reads as a clean empty card, not a drift warning.

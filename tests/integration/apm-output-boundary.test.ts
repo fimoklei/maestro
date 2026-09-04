@@ -26,7 +26,7 @@ import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
-import { stubDrift } from "../helpers/stub-drift";
+import { stubDrift, withoutContentCheck } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubImport } from "../helpers/stub-import";
 import { stubPromotes } from "../helpers/stub-promote";
@@ -234,14 +234,16 @@ describe("apm output never reaches the client", () => {
         deployState: stubDeployState({ fs }),
         deploy: stubDeploy({ inventory, registry, locks }),
         remove: stubRemove({ registry, locks }),
-        drift: new CheckVersionDrift({
-          registry,
-          apm: new ApmCliDriver({
-            run: async () => poisoned,
-            prepareGlobalCwd: async () => home,
+        drift: withoutContentCheck(
+          new CheckVersionDrift({
+            registry,
+            apm: new ApmCliDriver({
+              run: async () => poisoned,
+              prepareGlobalCwd: async () => home,
+            }),
+            canonicalPath: (path) => fs.realpath(path),
           }),
-          canonicalPath: (path) => fs.realpath(path),
-        }),
+        ),
         resolveGlobalRoot: () => join(home, "apm"),
         harness: stubHarness(),
         publish: stubPublish(),
@@ -288,7 +290,16 @@ describe("apm output never reaches the client", () => {
       });
 
       expect(JSON.parse(perRepo)).toEqual({
-        behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+        behind: [
+          {
+            name: "tdd",
+            current: "v0.5.0",
+            latest: "v0.5.1",
+            // No clone to read trees from, so the content question stays
+            // unanswered and the row falls back to Behind (ADR-0027 §4).
+            reading: "behind",
+          },
+        ],
       });
     });
   });

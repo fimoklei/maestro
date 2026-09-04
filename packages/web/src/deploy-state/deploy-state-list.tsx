@@ -6,6 +6,7 @@ import {
   type DriftStatus,
   type DriftViewModel,
   driftViewModel,
+  lagsPin,
 } from "../drift/drift-view-model";
 import { versionColor } from "../drift/version-color";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
@@ -40,6 +41,13 @@ const driftBadge: Record<
   { tone: "ok" | "drift" | "dim"; label: string; hint?: string }
 > = {
   behind: { tone: "drift", label: "Behind" },
+  // Behind claims a newer release exists; this one adds that the skill itself
+  // did not move in it (ADR-0027).
+  "older-tag": {
+    tone: "dim",
+    label: "Older tag",
+    hint: "This skill is identical at the pinned tag and the latest release",
+  },
   "up-to-date": { tone: "ok", label: "Up to date" },
   unknown: { tone: "dim", label: "Unknown" },
   // Distinct label + hint so a reachability failure reads as unreached, not a
@@ -156,12 +164,12 @@ export function DeployStateList({
               {primitive.name}
             </span>
             <span className={cn("font-mono text-tag", versionColor[status])}>
-              {status === "behind" && latest
+              {lagsPin(status) && latest
                 ? `${primitive.version} → ${latest}`
                 : primitive.version}
             </span>
             <DriftBadge status={status} />
-            {status === "behind" ? (
+            {lagsPin(status) ? (
               <UpdateSkillAction
                 skillName={primitive.name}
                 target={wireTarget}

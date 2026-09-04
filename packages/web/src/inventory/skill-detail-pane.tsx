@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { DriftStatus } from "../drift/drift-view-model";
+import { type DriftStatus, lagsPin } from "../drift/drift-view-model";
 import { versionColor } from "../drift/version-color";
 import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
@@ -177,6 +177,7 @@ const driftChip: Partial<
   Record<DriftStatus, { tone: "drift" | "dim"; label: string }>
 > = {
   behind: { tone: "drift", label: "Behind" },
+  "older-tag": { tone: "dim", label: "Older tag" },
   unknown: { tone: "dim", label: "Unknown" },
   unverified: { tone: "dim", label: "Unverified" },
 };
@@ -196,7 +197,7 @@ function DeployedRow({ deployment }: { deployment: SkillDeployment }) {
       ) : null}
       <span className="flex-1 truncate text-fg-2">{label}</span>
       <span className={cn("font-mono", versionColor[status])}>
-        {status === "behind" && latest ? `${version} → ${latest}` : version}
+        {lagsPin(status) && latest ? `${version} → ${latest}` : version}
       </span>
       {chip ? <Chip tone={chip.tone}>{chip.label}</Chip> : null}
     </li>

@@ -5,12 +5,15 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { DeployedView } from "../deploy-state/deployed-view";
 import type { DeployedPrimitive } from "../deploy-state/use-deploy-state";
-import type { DriftResponse, VersionDrift } from "./use-drift";
+import type { DriftResponse, ReadDriftEntry } from "./use-drift";
 
 // A per-skill badge state. "up-to-date" is only ever derived from a check that
 // ran; every un-run state (pending/unknown/unverified) stays honest (J04).
 export type DriftStatus =
   | "behind"
+  // A newer release exists, but this skill's content did not move in it
+  // (ADR-0027). It is not counted as drift on the target.
+  | "older-tag"
   | "up-to-date"
   | "unknown"
   | "unverified"
@@ -42,7 +45,12 @@ type DriftView =
   | { status: "pending" }
   | { status: "unknown" }
   | { status: "unverified" }
-  | { status: "ready"; behind: VersionDrift[] };
+  | { status: "ready"; behind: ReadDriftEntry[] };
+
+// Both readings pin an older tag, and moving it rewrites apm.yml either way —
+// so the version pair and the update action stand on both (ADR-0027 §6).
+export const lagsPin = (status: DriftStatus): boolean =>
+  status === "behind" || status === "older-tag";
 
 export interface DriftViewModel {
   skillStatus(name: string): DriftStatus;
@@ -94,9 +102,10 @@ function fromDriftView(view: DriftView): DriftViewModel {
       case "unverified":
         return "unverified";
       case "ready":
-        return view.behind.some((entry) => entry.name === name)
-          ? "behind"
-          : "up-to-date";
+        return (
+          view.behind.find((entry) => entry.name === name)?.reading ??
+          "up-to-date"
+        );
     }
   };
 
@@ -137,8 +146,10 @@ function fromDriftView(view: DriftView): DriftViewModel {
           case "ready": {
             // Orphan-behind can't be updated here, so it must not flip "drift".
             const names = new Set(deployed.names);
-            const behindCount = view.behind.filter((entry) =>
-              names.has(entry.name),
+            // Moved skills only: a lagging pin is stated on the row and
+            // nowhere else (ADR-0027 §2).
+            const behindCount = view.behind.filter(
+              (entry) => entry.reading === "behind" && names.has(entry.name),
             ).length;
             return {
               state: behindCount > 0 ? "drift" : "ok",
@@ -161,6 +172,7 @@ function fromDriftView(view: DriftView): DriftViewModel {
     }
     const deployed = new Set(deployedNames);
     return view.behind
+      .filter((entry) => entry.reading === "behind")
       .map((entry) => entry.name)
       .filter((name) => !deployed.has(name));
   };
