@@ -88,22 +88,22 @@ function stubFilesystemServer({
   paths = {} as Record<string, Answer>,
 } = {}) {
   const respond = (given: Answer, path: string) =>
-    Array.isArray(given)
-      ? jsonResponse(listing(path, given), 200)
-      : jsonResponse(
-          { error: (given as Refusal).error },
-          (given as Refusal).status,
-        );
+    "error" in given
+      ? jsonResponse({ error: given.error }, given.status)
+      : jsonResponse(listing(path, given), 200);
 
   const fetchMock = vi.fn(
     async (_input: RequestInfo | URL, init?: RequestInit) => {
       const { path } = JSON.parse(String(init?.body ?? "{}")) as {
         path?: string;
       };
-      const named = path === undefined ? undefined : paths[path];
-      return named === undefined
-        ? respond(answer, at)
-        : respond(named, path as string);
+      if (path !== undefined) {
+        const named = paths[path];
+        if (named !== undefined) {
+          return respond(named, path);
+        }
+      }
+      return respond(answer, at);
     },
   );
   vi.stubGlobal("fetch", fetchMock);

@@ -65,7 +65,7 @@ labels and `.catch(() => null)` fallbacks. Per file, the concentrations:
 The ten that change a guard the product relies on:
 
 1. `deploy/remove-consent.ts:164` — `a.length === b.length && timingSafeEqual(a, b)` → `true`. The consent-token comparison can be replaced by "always matches" and nothing fails.
-2. `deploy/remove-consent.ts:98` — `receipt !== undefined && this.matches(...)` → `true`. A missing receipt is accepted.
+2. `deploy/remove-consent.ts:98` — `receipt !== undefined && this.matches(...)` → `true`. A missing receipt is accepted. **Equivalent, no test possible**: without the presence check `matches` reaches `Buffer.from(undefined, "hex")`, which throws, and its `catch` returns `false` — `accepts` answers `false` either way, so no behavioural test can tell the two apart. The check stays as the readable guard.
 3. `filesystem/browse-filesystem.ts:91` — `if (!isWithinRoot(real, realRoot))` → `false`. The realpath-escapes-root guard can be deleted (`security.md`).
 4. `filesystem/browse-filesystem.ts:75` — `!isWithinRoot(normalized, realRoot) && …` → `||`. The containment check is untested on the boundary.
 5. `deploy/apm-cli-driver.ts:287` — `APM_AUTH_PHRASES.some(...)` → `.every(...)`. Auth-required detection fires only when every phrase matches; no test has a single-phrase output.

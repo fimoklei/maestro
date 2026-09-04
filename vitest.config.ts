@@ -27,7 +27,7 @@ export default defineConfig({
         "**/*.test.*",
         "**/*.stories.tsx",
         "**/main.tsx",
-        "**/server/src/server.ts",
+        "packages/server/src/server.ts",
       ],
     },
     projects: [
