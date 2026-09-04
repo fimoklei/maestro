@@ -43,7 +43,11 @@ export const canonicalHarnessFiles = (ownerRepo: string): ScaffoldFile[] => {
     { path: "README.md", contents: readme(ownerRepo, repo) },
     { path: `${HARNESS_SKILLS_DIR}/.gitkeep`, contents: "" },
     { path: WORKFLOW, contents: SKILL_CHECK_WORKFLOW },
-    { path: "CONTRIBUTING.md", contents: CONTRIBUTING, skipIfExists: true },
+    {
+      path: "CONTRIBUTING.md",
+      contents: contributing(ownerRepo),
+      skipIfExists: true,
+    },
   ];
 };
 
@@ -87,50 +91,78 @@ Nothing is tagged yet. \`v0.1.0\` is the first release of real skill content,
 not of this scaffold.
 `;
 
-// The settled review/release policy (fimoklei/maestro#629), restated here
+// The settled review/release policy (fimoklei/maestro#629), written as the
+// three situations a contributor is actually in (#715, after fimoklei/harness#6)
 // because scaffold is the only place a fresh Harness gets it in writing.
-const CONTRIBUTING = `# Contributing
+const contributing = (ownerRepo: string) => `# Contributing
 
-\`README.md\` says what this Harness is. This file says what may enter it and
-how a change gets there.
+\`README.md\` says what this Harness is. This file says what to do, step by step.
 
-## The bar
+## I want to add a new skill
 
-A skill enters when it is:
+1. Write it and try it out in \`~/.claude/skills/\` on your own machine — this
+   is your personal, ungated set of skills; nothing here is shared yet.
+2. Once it works, press **Import skill…** in Maestro's Harness view. That puts
+   it in the **Working harness**: this repository's checked-out copy, ahead of
+   what anyone has installed.
+3. Press **Propose change** on its row. Maestro pushes the skill to a branch of
+   its own and leaves a **Pull request →** link; follow it and open the pull
+   request on GitHub.
+4. Three rules check it before anyone merges it:
+   - **Structurally valid** — the directory name matches the \`name\` in
+     \`SKILL.md\`'s frontmatter, and \`description\` is filled in. The
+     \`skill-check\` workflow reports this on the pull request; read it, it
+     never blocks the merge by itself.
+   - **Not repo-specific** — no paths, commands, or assumptions that only
+     hold on one machine or in one repository. A skill that only works in one
+     repository belongs in that repository's own \`.claude/skills/\`, not here.
+   - **Admitted at the moment it was needed** — you added it because you
+     needed it just now, not because it already existed somewhere else.
+5. **One skill per pull request, always.** No batch imports.
 
-1. **Structurally valid.** The directory name matches the \`name\` in
-   \`SKILL.md\`'s frontmatter, and \`description\` is non-empty.
-2. **Reusable outside one repository.** No paths, commands, or assumptions
-   only one machine has.
-3. **Prompted by a concrete need.** Existing somewhere already is not a
-   reason; the occasion is the evidence.
+**Example:** you write a \`grilling\` skill in \`~/.claude/skills/grilling\`, use
+it a few times, then import it here and open a pull request for it alone.
 
-One skill moves per promote, always — no batch import from an older
-collection.
+## I want to change an existing skill
 
-## Review
+1. Open this repository (\`${ownerRepo}\`) itself and edit the skill in place
+   under \`${HARNESS_SKILLS_DIR}/\`.
+2. **Never edit a skill copy that Maestro deployed into another repository or
+   globally.** That copy lives on a path Maestro's tooling owns, and it
+   deletes local edits there without warning. Always edit the copy inside
+   \`${ownerRepo}\`.
+3. Press **Propose change** on its row in Maestro's Harness view and open the
+   pull request from the **Pull request →** link, checked against the same
+   three rules as a new skill (see above).
 
-- The author edits outside this Harness and promotes one skill.
-- A named curator reviews and merges the pull request. The Harness owner is
-  the curator until the team names another.
-- The author never merges their own pull request.
+**Example:** \`grilling\` already exists in this Harness. To sharpen its
+wording, you edit \`${HARNESS_SKILLS_DIR}/grilling/SKILL.md\` in this
+repository, then open a pull request with just that change.
 
-## Release
+## My skill is ready — what now?
 
-- After the curator merges, the author refreshes the Harness view and
-  releases the change.
-- A tag-authorized teammate may substitute when the author is unavailable or
-  lacks tag rights.
-- \`Pending release\` is an open action, not a queue for scheduled batches. If
-  several changes land there before anyone acts, the first authorized author
-  releases the complete visible delta; the others refresh and do not cut
-  empty follow-up versions.
+1. Open the pull request, if you have not already: **Propose change** in
+   Maestro's Harness view pushes the branch, and the **Pull request →** link it
+   leaves takes you to GitHub's form.
+2. Someone other than you — the curator — reviews it and merges it. You never
+   merge your own change. The Harness owner is the curator until the team
+   names another.
+3. Press **Refresh** in the Harness view. Your merged change now sits under
+   **Pending release**: in this repository, but on no tag, so nobody else's
+   Maestro installs it yet.
+4. Press **Plan release**, read the plan, then press **Publish release** to cut
+   the tag. That is what moves your skill into the **Released harness** — the
+   tagged version teams actually install. Do this promptly after the merge; an
+   unreleased change is invisible to the rest of the team.
+
+Because trying a skill costs no tag, a tag stays a real promise: only cut one
+when the content is ready, never just to test it.
 
 ## Why this is a human agreement
 
 A private repository cannot enable branch protection without GitHub Pro, so
 a contributor with tag-push rights may be technically able to merge their own
-work. The policy above says they do not. Independent review holds because the
+work. The steps above say they do not. Independent review holds because the
 team agreed to it, not because GitHub enforces it.
 `;
 
