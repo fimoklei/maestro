@@ -632,6 +632,25 @@ describe("ApmCliDriver.resolveLatestTag", () => {
     });
   });
 
+  it("classifies auth-required from either auth phrase on its own", async () => {
+    // The captured failure carries both phrases at once, but each stands alone:
+    // one phrase present is the whole condition, never half of it (#119).
+    const alone = [
+      "[x] Authentication failed for list refs on github.com.",
+      "[x] No token available.",
+    ];
+
+    for (const output of alone) {
+      const { run } = rejectingRun({ stderr: output });
+      const driver = new ApmCliDriver({ run });
+
+      expect(await driver.resolveLatestTag("fimoklei/agent-harness")).toEqual({
+        ok: false,
+        reason: "auth-required",
+      });
+    }
+  });
+
   it("returns failed for a non-auth apm error, never auth-required", async () => {
     // Network down, host unreachable, CLI missing — anything that is not one of
     // apm's two auth phrases stays the generic failure (issue #119: auth-only

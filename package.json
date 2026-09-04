@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "pnpm@11.24.0",
   "engines": {
-    "node": ">=24"
+    "node": ">=24.15.0"
   },
   "scripts": {
     "dev": "node scripts/dev.mjs",
@@ -18,8 +18,10 @@
     "test:core": "node scripts/run-tests.mjs --project core",
     "test:web": "node scripts/run-tests.mjs --project web",
     "test:integration": "node scripts/run-tests.mjs --project integration",
+    "test:git": "node scripts/run-tests.mjs --project git",
+    "test:loop": "node scripts/run-tests.mjs --project core --project web --project integration",
     "test:coverage": "node scripts/run-tests.mjs --coverage",
-    "test:watch": "vitest",
+    "test:watch": "vitest --project core --project web --project integration",
     "typecheck": "pnpm -r typecheck && tsc -p tsconfig.json --noEmit",
     "knip": "knip",
     "lint": "biome check .",

@@ -1,6 +1,6 @@
 # ADR-0027 — Behind separates a moved skill from a lagging pin
 
-- **Status:** Accepted — extends the reading of version drift set by ADR-0007
+- **Status:** Accepted — extends ADR-0007; narrowed by ADR-0028 for an absent skill name
 - **Date:** 2026-09-04 (issue #747, found by walking the cockpit, #711)
 
 ## Context
@@ -28,9 +28,10 @@ carries the content fact.
 
 1. **Two readings.** A deployed skill whose tree differs between the pinned tag
    and the latest tag reads **Behind**. One whose tree is identical at both tags
-   reads **Older tag**. A rename counts as moved. Where the pinned name is
-   absent at the latest tag the row reads **Behind**, whether it was renamed or
-   removed — until #770 separates those two.
+   reads **Older tag**. This ADR originally counted a rename as moved and read
+   every pinned name absent at the latest tag as **Behind**. ADR-0028 supersedes
+   that rule for the old, absent name: it reads **No longer released** when the
+   two release trees prove the absence.
 2. **Only a moved skill counts.** The per-target roll-up counts moved skills
    only, and a target holding nothing but **Older tag** skills does not raise
    the drift indicator. One number, not two. The lagging pin is stated on the
@@ -64,5 +65,5 @@ carries the content fact.
   fetch, where it previously depended on `apm outdated` alone. One `ls-tree` per
   ref answers for every skill of a target, so the cost is two reads, not two per
   skill.
-- A deployed skill *removed* at the latest tag is not covered here: it has
-  nothing to update to, which is a different fact. That is #770.
+- ADR-0028 covers a deployed skill name absent at the latest tag. It has
+  nothing to update to, which is a different fact from **Behind**.

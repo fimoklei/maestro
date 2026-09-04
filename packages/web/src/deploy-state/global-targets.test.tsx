@@ -213,6 +213,30 @@ describe("GlobalTargets", () => {
     expect(screen.getByText(/v0\.5\.0\s*→\s*v0\.5\.1/)).toBeInTheDocument();
   });
 
+  it("reads a global target with a no-longer-released skill as attention", () => {
+    renderTargets({
+      tools: [
+        {
+          tool: "claude",
+          primitives: [{ type: "skill", name: "tdd", version: "v0.5.0" }],
+        },
+      ],
+      drift: ranDrift([
+        {
+          name: "tdd",
+          current: "v0.5.0",
+          latest: "v0.5.1",
+          reading: "no-longer-released",
+        },
+      ]),
+    });
+
+    expect(screen.getByText("▲ Attention")).toBeInTheDocument();
+    expect(screen.getByText("No longer released")).toBeInTheDocument();
+    expect(screen.queryByText(/→/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /update skill/i })).toBeNull();
+  });
+
   it("does not spill one tool's drift onto another tool's empty card", () => {
     // A skill behind on claude must not surface as an orphan "also behind" on a
     // detected-but-empty codex card — that card just doesn't have the skill.

@@ -1,4 +1,5 @@
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import { DeployStatePanel } from "./deploy-state-panel";
@@ -84,6 +85,33 @@ describe("DeployStatePanel drift badge", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /update/i })).toBeInTheDocument();
     expect(await screen.findByText(/in sync/i)).toBeInTheDocument();
+  });
+
+  it("states a skill no longer released without offering an impossible update", async () => {
+    stubFetch(tddDeployed, {
+      behind: [
+        {
+          name: "tdd",
+          current: "v0.5.0",
+          latest: "v0.5.1",
+          reading: "no-longer-released",
+        },
+      ],
+    });
+    renderPanel("/Users/me/project");
+
+    expect(await screen.findByText("No longer released")).toBeInTheDocument();
+    expect(screen.getByText("v0.5.0")).toBeInTheDocument();
+    expect(screen.queryByText(/→/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /update skill/i })).toBeNull();
+    expect(screen.getByText("▲ Attention")).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /actions for tdd/i }),
+    );
+    expect(
+      await screen.findByRole("menuitem", { name: "Remove skill" }),
+    ).toBeInTheDocument();
   });
 
   it("shows up-to-date for a skill the check does not report behind", async () => {

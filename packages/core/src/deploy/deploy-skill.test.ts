@@ -583,6 +583,38 @@ describe("DeploySkill", () => {
     expect(deployed).toEqual([]);
   });
 
+  it("deploys one named skill out of an inventory that holds several", async () => {
+    // The inventory check asks whether the name is among the primitives, not
+    // whether every primitive carries it: a real inventory holds many.
+    const { deps, deployed } = buildDeps({
+      inventory: {
+        read: async () => ({
+          ok: true as const,
+          primitives: [
+            { type: "skill" as const, name: "jobs", description: "The board" },
+            {
+              type: "skill" as const,
+              name: "tdd",
+              description: "Test-driven development",
+            },
+          ],
+        }),
+      },
+    });
+
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+    });
+    expect(deployed).toHaveLength(1);
+  });
+
   it("reports an unconfigured inventory instead of guessing", async () => {
     const { deps } = buildDeps({
       inventory: {

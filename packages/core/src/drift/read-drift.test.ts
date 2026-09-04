@@ -106,13 +106,71 @@ describe("ReadDrift", () => {
     });
   });
 
-  it("reads a skill absent at the latest tag as behind", async () => {
+  it("reads a skill proven absent from the latest release as no longer released", async () => {
     const result = await run({
       outdated: behindOne(),
       lock: lockfile([{ name: "workflow-commit", ref: "v0.2.0" }]),
       refs: {
         "v0.2.0": trees({ "workflow-commit": "t1" }),
         "v0.3.0": trees({ tdd: "t9" }),
+      },
+    });
+
+    expect(result).toMatchObject({
+      behind: [{ reading: "no-longer-released" }],
+    });
+  });
+
+  it("reads the old name as no longer released after a clean rename", async () => {
+    const result = await run({
+      outdated: behindOne(),
+      lock: lockfile([{ name: "workflow-commit", ref: "v0.2.0" }]),
+      refs: {
+        "v0.2.0": trees({ "workflow-commit": "t1" }),
+        "v0.3.0": trees({ "workflow-commit-renamed": "t1" }),
+      },
+    });
+
+    expect(result).toMatchObject({
+      behind: [{ reading: "no-longer-released" }],
+    });
+  });
+
+  it("does not guess intent when a renamed skill's content also changed", async () => {
+    const result = await run({
+      outdated: behindOne(),
+      lock: lockfile([{ name: "workflow-commit", ref: "v0.2.0" }]),
+      refs: {
+        "v0.2.0": trees({ "workflow-commit": "t1" }),
+        "v0.3.0": trees({ "workflow-commit-renamed": "t2" }),
+      },
+    });
+
+    expect(result).toMatchObject({
+      behind: [{ reading: "no-longer-released" }],
+    });
+  });
+
+  it("falls back to behind when the deployed name cannot be proven at its pin", async () => {
+    const result = await run({
+      outdated: behindOne(),
+      lock: lockfile([{ name: "workflow-commit", ref: "v0.2.0" }]),
+      refs: {
+        "v0.2.0": trees({ tdd: "t1" }),
+        "v0.3.0": trees({}),
+      },
+    });
+
+    expect(result).toMatchObject({ behind: [{ reading: "behind" }] });
+  });
+
+  it("falls back to behind when the latest release tree is unreadable", async () => {
+    const result = await run({
+      outdated: behindOne(),
+      lock: lockfile([{ name: "workflow-commit", ref: "v0.2.0" }]),
+      refs: {
+        "v0.2.0": trees({ "workflow-commit": "t1" }),
+        "v0.3.0": null,
       },
     });
 

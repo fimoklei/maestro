@@ -88,6 +88,15 @@ describe("RemoveConsentIssuer.grants", () => {
     expect(issuer().grants(scope, "not-hex")).toBeNull();
   });
 
+  it("refuses a token-shaped prefix of the token it issued", () => {
+    // Hex that parses cleanly but is shorter than a token: the comparison must
+    // refuse it on length, never on the bytes the two happen to share.
+    const consent = issuer();
+    const offer = consent.offer(scope);
+
+    expect(consent.grants(scope, offer?.token.slice(0, 8) ?? "")).toBeNull();
+  });
+
   it("refuses a token issued for a different machine state", () => {
     const consent = issuer();
     const offer = consent.offer({ ...scope, detected: ["claude"] });
@@ -160,6 +169,14 @@ describe("RemoveConsentIssuer receipts", () => {
 
   it("refuses a receipt that is not even token-shaped", () => {
     expect(issuer().accepts(scope, CLEAN, "not-hex")).toBe(false);
+  });
+
+  it("refuses a token-shaped prefix of the receipt it minted", () => {
+    const consent = issuer();
+
+    expect(
+      consent.accepts(scope, CLEAN, consent.receipt(scope, CLEAN).slice(0, 8)),
+    ).toBe(false);
   });
 
   it("refuses a receipt minted for a different skill", () => {

@@ -530,6 +530,52 @@ describe("BrowseFilesystem", () => {
     expect(result).toEqual({ ok: false, error: "outside-root" });
   });
 
+  it("rejects a path inside the root whose realpath lands outside it", async () => {
+    // The lexical check passes — the requested path spells out as a child of
+    // home — so only the post-realpath ceiling check can catch this symlink
+    // out of the home root (security.md, ADR-0009).
+    const browse = makeBrowse({
+      directories: {
+        "/home/user": "/home/user",
+        "/home/user/link": "/etc/secret",
+        "/etc/secret": "/etc/secret",
+      },
+      listings: { "/etc/secret": ["passwd.d"] },
+    });
+
+    const result = await browse.browse("/home/user/link");
+
+    expect(result).toEqual({ ok: false, error: "outside-root" });
+  });
+
+  it("browses under a home root that is itself a symlink, by either spelling", async () => {
+    // Raw and resolved home differ under a symlinked prefix (macOS
+    // /var -> /private/var). A path inside the raw spelling only is still
+    // inside the ceiling, so both checks have to fail before it is refused.
+    const browse = makeBrowse({
+      directories: {
+        "/home/user": "/real/home",
+        "/home/user/dev": "/real/home/dev",
+        "/real/home": "/real/home",
+        "/real/home/dev": "/real/home/dev",
+      },
+      listings: { "/real/home/dev": [] },
+    });
+
+    const result = await browse.browse("/home/user/dev");
+
+    expect(result).toEqual({
+      ok: true,
+      path: "/real/home/dev",
+      parent: "/real/home",
+      breadcrumbs: [
+        { name: "~", path: "/real/home" },
+        { name: "dev", path: "/real/home/dev" },
+      ],
+      entries: [],
+    });
+  });
+
   it("rejects a non-existent path outside the root without leaking its absence", async () => {
     // The ceiling must bound disclosure: a missing path outside home must look
     // identical to an existing one (both outside-root), or callers could probe
