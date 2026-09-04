@@ -19,7 +19,14 @@ export default defineConfig({
     // globs match nothing: measure a single lane with its own config file.
     coverage: {
       include: ["packages/*/src/**/*.{ts,tsx}"],
-      exclude: ["**/*.test.*", "**/*.stories.tsx", "**/main.tsx"],
+      // `main.tsx` and `server.ts` are composition roots: no test imports them
+      // (see .claude/rules/testing.md).
+      exclude: [
+        "**/*.test.*",
+        "**/*.stories.tsx",
+        "**/main.tsx",
+        "**/server/src/server.ts",
+      ],
     },
     projects: [
       "./packages/web/vitest.config.ts",
