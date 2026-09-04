@@ -28,17 +28,28 @@ carries the content fact.
 
 1. **Two readings.** A deployed skill whose tree differs between the pinned tag
    and the latest tag reads **Behind**. One whose tree is identical at both tags
-   reads **Older tag**. A rename counts as moved.
+   reads **Older tag**. A rename counts as moved. Where the pinned name is
+   absent at the latest tag the row reads **Behind**, whether it was renamed or
+   removed — until #770 separates those two.
 2. **Only a moved skill counts.** The per-target roll-up counts moved skills
    only, and a target holding nothing but **Older tag** skills does not raise
-   the drift indicator. One number, not two.
+   the drift indicator. One number, not two. The lagging pin is stated on the
+   row and nowhere else; a second, quieter count on the target is rejected, not
+   forgotten.
 3. **One read, one answer.** The two facts join before the row renders. A status
    that changes under the reader's eyes is worse than a slower first paint.
-4. **Behind is the fallback.** Where the content question cannot be answered —
-   the pinned tag unreadable, no clone to read trees from — the row reads
-   **Behind**. That is the honest statement of what is known, so no third status
-   exists for an unanswered content check.
-5. **The action stays on both.** The pin genuinely lags either way, and moving
+4. **Behind is the fallback.** Where the content question cannot be answered the
+   row reads **Behind**. That is the honest statement of what is known, so no
+   third status exists for an unanswered content check. It covers four cases:
+   no clone to read trees from, the pinned tag unreadable in that clone, the
+   latest tag unreadable in it, and a pin naming a repository other than the
+   connected Harness.
+5. **The trees answer for the same repository, or not at all.** The latest tag
+   is a remote fact (`apm view`) and the trees are read locally, so the join
+   fetches tags before it reads and compares the lockfile's `repo_url` with the
+   clone's origin. A skill pinned to another repository never gets a content
+   answer; its name matching one here proves nothing.
+6. **The action stays on both.** The pin genuinely lags either way, and moving
    it rewrites `apm.yml`. Maestro stops urging it, it does not withdraw it. A
    future bulk update acts on moved skills only.
 
@@ -49,7 +60,9 @@ carries the content fact.
 - The join lives in its own use-case in `core`. The version-drift use-case keeps
   one owner — `apm outdated` — and web keeps no product logic
   (`architecture.md`).
-- Drift now depends on reading the **Released harness**'s git trees, where it
-  previously depended on `apm outdated` alone.
+- Drift now depends on reading the **Released harness**'s git trees and on a tag
+  fetch, where it previously depended on `apm outdated` alone. One `ls-tree` per
+  ref answers for every skill of a target, so the cost is two reads, not two per
+  skill.
 - A deployed skill *removed* at the latest tag is not covered here: it has
   nothing to update to, which is a different fact. That is #770.
