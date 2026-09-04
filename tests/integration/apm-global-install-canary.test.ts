@@ -23,6 +23,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  realpath,
   rm,
   writeFile,
 } from "node:fs/promises";
@@ -47,7 +48,10 @@ describe.runIf(enabled)("real apm global install canary", () => {
   let home: string;
 
   beforeEach(async () => {
-    home = await mkdtemp(join(tmpdir(), "maestro-global-canary-"));
+    // A symlinked HOME makes apm ≥0.29.0 deploy nothing (docs/research/772-apm-0.29.0-findings.md § F1).
+    home = await realpath(
+      await mkdtemp(join(tmpdir(), "maestro-global-canary-")),
+    );
   });
 
   afterEach(async () => {
