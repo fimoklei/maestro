@@ -14,7 +14,14 @@
 // always names its package — a bare `apm uninstall -g` is never run
 // (.claude/rules/apm-driver.md § Danger).
 import { execFile } from "node:child_process";
-import { access, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import {
+  access,
+  mkdir,
+  mkdtemp,
+  readFile,
+  realpath,
+  rm,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -134,7 +141,10 @@ describe.runIf(enabled)("real apm global uninstall canary", () => {
   let home: string;
 
   beforeEach(async () => {
-    home = await mkdtemp(join(tmpdir(), "maestro-uninstall-global-home-"));
+    // A symlinked HOME makes apm ≥0.29.0 deploy nothing (docs/research/772-apm-0.29.0-findings.md § F1).
+    home = await realpath(
+      await mkdtemp(join(tmpdir(), "maestro-uninstall-global-home-")),
+    );
   });
 
   afterEach(async () => {
