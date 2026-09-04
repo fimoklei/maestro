@@ -109,7 +109,7 @@ The umbrella term for a deployed primitive that no longer matches the **Released
 _Avoid_: staleness, out-of-sync.
 
 **Version drift**:
-A deployed primitive whose pinned version lags the latest tag on the **Released harness**. Detectable via `apm outdated`; the cockpit shows it as the **deployed → latest version pair** (e.g. `2.1.0 → 2.3.1`), read straight from `apm outdated`'s output — not a binary flag, and not a "versions behind" distance (ADR-0007). This is the facet MVP1 surfaces.
+A deployed primitive whose pinned version lags the latest tag on the **Released harness**. Detectable via `apm outdated`; the cockpit shows it as the **deployed → latest version pair** (e.g. `2.1.0 → 2.3.1`), read straight from `apm outdated`'s output — not a binary flag, and not a "versions behind" distance (ADR-0007). This is the facet MVP1 surfaces. It has two readings, because the tag names the whole Harness and not one skill (ADR-0019 §1): a primitive whose tree moved between the two tags, and one whose tree is identical at both and only lags the tag. Only the first counts toward a target's drift (ADR-0027).
 _Avoid_: outdated (that is APM's word for the mechanism).
 
 **Content drift**:
@@ -136,7 +136,8 @@ details may name the exact APM mechanism or file.
 | Harness | **Harness** | Use **Working Harness** or **Released Harness** when the state matters. |
 | Central inventory | **Inventory** | Reserve **Inventory** for the collection and its screen. |
 | Inventory source | **Harness location** | Do not use *source* for the configured Harness location. The controls on that screen are **Re-read Inventory**, **Change Harness location** and **Set Harness location**. |
-| Drift | **Behind** | Use *an update is available* as explanation, not as a second status name. The `?` marker reads **Update check did not run**; *drift* never reaches the screen. |
+| Drift | **Behind** | Use *an update is available* as explanation, not as a second status name. The `?` marker reads **Update check did not run**; *drift* never reaches the screen. **Behind** claims a newer release exists and nothing more — a skill whose content did not move reads **Older tag** (ADR-0027). |
+| Version drift, content unmoved | **Older tag** | The reading for a deployed skill identical at the pinned tag and the latest release. Explain it as *identical at the pinned tag and the latest release*; never *same content*, which is **Content drift**'s territory. Where the content question cannot be answered, the row reads **Behind**. |
 | Target | **Target** | Prefer the concrete repository or tool name after the concept is established. |
 | Deploy | **Deploy** / **Deployed** | *Deploy* is the action and *deployed* is the state; *install* is APM's mechanism. |
 | Skill | **Skill** | Use `SKILL.md` only when the file itself matters. |
