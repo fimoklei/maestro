@@ -25,7 +25,9 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 ## NOW
 
-Empty — no loop running.
+| Job | Main | Job story |
+|---|---|---|
+| Adopt apm 0.29 · [#772](https://github.com/fimoklei/maestro/issues/772)–[#775](https://github.com/fimoklei/maestro/issues/775) | B | *When* the engine moves ahead of Maestro's observed knowledge, *I want to* have the driver re-verified against the installed apm, *so I can* trust that cockpit behavior matches what the engine really does. |
 
 ## NEXT
 
@@ -57,6 +59,8 @@ Detail lives in tracker issues; elaboration happens in the grill.
 | Act on a deploy refused by a linked destination · [#748](https://github.com/fimoklei/maestro/issues/748) | B | *When* a deploy is refused because the destination is a link, *I want to* read which path to remove and what removing it costs, *so I can* clear it in one command instead of choosing between two fixes I cannot judge. |
 | Deploy into a target still holding a retired Harness · [#749](https://github.com/fimoklei/maestro/issues/749) | B, A | *When* a global target still holds copies from a Harness I have left, *I want to* keep the deploy action on its card, *so I can* replace those copies one at a time instead of facing a card that only states a fact. |
 | Deploy what I just promoted, for real · [#750](https://github.com/fimoklei/maestro/issues/750) | B, C | *When* my promote has been merged and released, *I want to* have the clone catch up even though promote left an untracked copy behind, *so I can* deploy the skill instead of being told my published copy is unreleased. |
+| Decide on the executables a deploy brings | B, A | *When* what I am deploying carries executables that land on my PATH, *I want to* see that before it runs and choose whether to allow them, *so I can* accept the ones I trust instead of finding out afterwards. |
+| Steer a plugin as one unit | A, B | *When* a capability arrives as one plugin holding its own skills and MCP servers, *I want to* see and deploy it as that one thing, *so I can* keep it whole instead of reading it as loose skills that lost their origin. |
 
 ## DONE
 
