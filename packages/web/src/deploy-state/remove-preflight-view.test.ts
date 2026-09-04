@@ -32,10 +32,10 @@ describe("removePreflightView", () => {
         data: { check: { scope: "repo", warning }, reclaim: null },
       });
 
-    it("says local edits will be lost when the copy diverged", () => {
-      expect(repoAnswer("local-edits-will-be-lost")).toEqual({
+    it("says the copy cannot be verified when it has no baseline", () => {
+      expect(repoAnswer("cannot-verify-local-edits")).toEqual({
         kind: "offered",
-        check: { kind: "repo", warning: "local-edits" },
+        check: { kind: "repo", warning: "cannot-verify" },
         reclaim: [],
       });
     });
@@ -81,13 +81,13 @@ describe("removePreflightView", () => {
       expect(
         globalAnswer([
           { tool: "claude", warning: null },
-          { tool: "codex", warning: "local-edits-will-be-lost" },
+          { tool: "codex", warning: "cannot-verify-local-edits" },
         ]),
       ).toEqual({
         kind: "offered",
         check: {
           kind: "per-tool",
-          warnings: { claude: "none", codex: "local-edits" },
+          warnings: { claude: "none", codex: "cannot-verify" },
         },
         reclaim: [],
       });

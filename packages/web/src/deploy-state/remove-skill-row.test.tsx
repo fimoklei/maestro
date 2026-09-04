@@ -92,14 +92,14 @@ describe("removing a deployed skill from a row", () => {
     });
   });
 
-  it("warns about local edits before the user confirms, and still lets them", async () => {
-    const fetchMock = stubFetch("local-edits-will-be-lost");
+  it("warns about an unverifiable copy before the user confirms, and still lets them", async () => {
+    const fetchMock = stubFetch("cannot-verify-local-edits");
     renderRow();
 
     const dialog = await openRemoveDialog();
 
     expect(await within(dialog).findByRole("status")).toHaveTextContent(
-      /local edits/i,
+      /may lose work/i,
     );
     const confirm = screen.getByRole("button", { name: CONFIRM });
     expect(confirm).toBeEnabled();
@@ -123,7 +123,7 @@ describe("removing a deployed skill from a row", () => {
         ? jsonResponse(
             {
               error: "cost-not-acknowledged",
-              check: { scope: "repo", warning: "local-edits-will-be-lost" },
+              check: { scope: "repo", warning: "cannot-verify-local-edits" },
               receipt: RESTATED,
             },
             409,
@@ -142,7 +142,7 @@ describe("removing a deployed skill from a row", () => {
       await within(dialog).findByText(/changed since this removal was priced/),
     ).toBeInTheDocument();
     expect(
-      within(dialog).getByText("Local edits — deleted too"),
+      within(dialog).getByText("Nothing recorded — may lose work"),
     ).toBeInTheDocument();
 
     // Still the first offer, not a retry: nothing was removed.
@@ -204,6 +204,22 @@ describe("removing a deployed skill from a row", () => {
       const dialog = await openRemoveDialog();
       await within(dialog).findByRole("alert");
 
+      expect(screen.queryByRole("button", { name: CONFIRM })).toBeNull();
+      expect(removeCalls(fetchMock)).toEqual([]);
+    });
+
+    // apm 0.29.0 keeps an edited file and aborts after deleting the rest, so
+    // the server refuses in front of it and the way through is the deploy
+    // row's own control, named letter for letter (#775, copy.md R-D).
+    it("refuses a copy with local edits and names Deploy again as the way through", async () => {
+      const fetchMock = refuseWith("deployed-diverged-from-lock", 409);
+      renderRow();
+
+      const dialog = await openRemoveDialog();
+
+      expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+        /Deploy again to replace the local edits, then remove the skill/,
+      );
       expect(screen.queryByRole("button", { name: CONFIRM })).toBeNull();
       expect(removeCalls(fetchMock)).toEqual([]);
     });

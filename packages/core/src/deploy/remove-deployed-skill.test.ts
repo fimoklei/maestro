@@ -296,22 +296,17 @@ describe("RemoveDeployedSkill", () => {
   // `preflight` and then lets a confirmed removal through — the asymmetry with
   // deploy and update, which refuse (#337).
 
-  it("removes a copy with local edits once the user has confirmed", async () => {
+  // apm 0.29.0 keeps an edited or added file and aborts — after deleting the
+  // rest of the copy (apm-behavior.md § Remove). So the guard refuses in front
+  // of apm, as deploy and update already do (#775).
+  it("refuses a copy with local edits before apm runs", async () => {
     const { useCase, calls } = buildUseCase({ deployedState: "diverged" });
-    const confirmedRemovalReceipt = await receiptFor(useCase, removeTdd);
 
-    await expect(
-      useCase.execute({ ...removeTdd, confirmedRemovalReceipt }),
-    ).resolves.toEqual({
-      ok: true,
-      removed: {
-        type: "skill",
-        name: "tdd",
-        version: VERSION,
-        scope: REPO_SCOPE,
-      },
+    await expect(useCase.execute(removeTdd)).resolves.toEqual({
+      ok: false,
+      error: "deployed-diverged-from-lock",
     });
-    expect(calls.removes).toEqual([{ target: removeTdd.target, ref: REF }]);
+    expect(calls.removes).toEqual([]);
   });
 
   it("removes a copy whose edits cannot be checked once the user has confirmed", async () => {
@@ -332,26 +327,11 @@ describe("RemoveDeployedSkill", () => {
     expect(calls.removes).toEqual([{ target: removeTdd.target, ref: REF }]);
   });
 
-  // Consent is proven, not taken on the caller's word: apm deletes an edited
-  // copy silently, so a request that carries no receipt from this server's own
-  // preflight is one nobody can show the warning for (#458).
-
-  it("refuses a copy with local edits when nothing proves the cost was stated", async () => {
-    const { useCase, calls } = buildUseCase({ deployedState: "diverged" });
-
-    await expect(useCase.execute(removeTdd)).resolves.toEqual({
-      ok: false,
-      error: "cost-not-acknowledged",
-      check: { scope: "repo", warning: "local-edits-will-be-lost" },
-      receipt: expect.any(String),
-      reclaim: null,
-    });
-    expect(calls.removes).toEqual([]);
-  });
-
-  // A copy with no baseline to compare against is not a clean one: nothing
-  // rules out local work, so it is priced and proven like an edited copy —
-  // under its own wording, which never claims edits we did not see (J04).
+  // Consent is proven, not taken on the caller's word: a request that carries
+  // no receipt from this server's own preflight is one nobody can show the
+  // warning for (#458). A copy with no baseline to compare against is not a
+  // clean one: nothing rules out local work, so it is priced and proven under
+  // its own wording, which never claims edits we did not see (J04).
   it("refuses a copy whose edits cannot be ruled out when nothing proves the cost was stated", async () => {
     const { useCase, calls } = buildUseCase({ deployedState: "unverifiable" });
 
@@ -366,7 +346,7 @@ describe("RemoveDeployedSkill", () => {
   });
 
   it("refuses a receipt a caller merely guessed", async () => {
-    const { useCase, calls } = buildUseCase({ deployedState: "diverged" });
+    const { useCase, calls } = buildUseCase({ deployedState: "unverifiable" });
 
     await expect(
       useCase.execute({
@@ -378,7 +358,7 @@ describe("RemoveDeployedSkill", () => {
   });
 
   it("refuses a receipt priced for a different skill", async () => {
-    const { useCase, calls } = buildUseCase({ deployedState: "diverged" });
+    const { useCase, calls } = buildUseCase({ deployedState: "unverifiable" });
     const otherSkill = await receiptFor(useCase, {
       ...removeTdd,
       name: "jobs",
@@ -391,7 +371,7 @@ describe("RemoveDeployedSkill", () => {
   });
 
   it("refuses a receipt priced for a different target", async () => {
-    const { useCase, calls } = buildUseCase({ deployedState: "diverged" });
+    const { useCase, calls } = buildUseCase({ deployedState: "unverifiable" });
     const otherTarget = await receiptFor(useCase, removeTddGlobally);
 
     await expect(
@@ -403,9 +383,9 @@ describe("RemoveDeployedSkill", () => {
   it("refuses the global copy's local edits on the same terms", async () => {
     const { useCase, calls } = buildUseCase({ deployedState: "diverged" });
 
-    await expect(useCase.execute(removeTddGlobally)).resolves.toMatchObject({
+    await expect(useCase.execute(removeTddGlobally)).resolves.toEqual({
       ok: false,
-      error: "cost-not-acknowledged",
+      error: "deployed-diverged-from-lock",
     });
     expect(calls.removes).toEqual([]);
   });
@@ -522,39 +502,57 @@ describe("RemoveDeployedSkill", () => {
 // compares what the confirmation showed against what it now finds, and a
 // difference stops it (#364). The cost of #337's warn-don't-block stance.
 describe("RemoveDeployedSkill when the copy changed since it was priced", () => {
-  // Clean when the confirmation priced it, edited by the time the user clicked.
+  // Clean when the confirmation priced it, changed by the time the user
+  // clicked: its baseline gone, so nothing rules out local work any more.
   function racingUseCase(overrides: Overrides = {}) {
     let state: DeployedContentState = "clean";
     const built = buildUseCase({
       ...overrides,
       deployedStateForScope: () => state,
     });
-    return { ...built, edit: () => (state = "diverged") };
+    return {
+      ...built,
+      loseBaseline: () => (state = "unverifiable"),
+      edit: () => (state = "diverged"),
+    };
   }
 
   it("removes nothing and states the cost it found instead", async () => {
-    const { useCase, calls, edit } = racingUseCase();
+    const { useCase, calls, loseBaseline } = racingUseCase();
     const confirmedRemovalReceipt = await receiptFor(useCase, removeTdd);
-    edit();
+    loseBaseline();
 
     await expect(
       useCase.execute({ ...removeTdd, confirmedRemovalReceipt }),
     ).resolves.toEqual({
       ok: false,
       error: "cost-not-acknowledged",
-      check: { scope: "repo", warning: "local-edits-will-be-lost" },
+      check: { scope: "repo", warning: "cannot-verify-local-edits" },
       receipt: expect.any(String),
       reclaim: null,
     });
     expect(calls.removes).toEqual([]);
   });
 
+  // An editor autosave between the check and the click is a refusal, not a
+  // restated price: there is no consent that lets apm at an edited copy (#775).
+  it("refuses outright when the copy gained local edits since it was priced", async () => {
+    const { useCase, calls, edit } = racingUseCase();
+    const confirmedRemovalReceipt = await receiptFor(useCase, removeTdd);
+    edit();
+
+    await expect(
+      useCase.execute({ ...removeTdd, confirmedRemovalReceipt }),
+    ).resolves.toEqual({ ok: false, error: "deployed-diverged-from-lock" });
+    expect(calls.removes).toEqual([]);
+  });
+
   // Not a lock: the answer carries the proof for the state it just found, so
   // confirming again goes through without pricing the removal a second time.
   it("hands back a receipt the same removal can be confirmed with", async () => {
-    const { useCase, calls, edit } = racingUseCase();
+    const { useCase, calls, loseBaseline } = racingUseCase();
     const stale = await receiptFor(useCase, removeTdd);
-    edit();
+    loseBaseline();
     const refused = await useCase.execute({
       ...removeTdd,
       confirmedRemovalReceipt: stale,
@@ -580,17 +578,17 @@ describe("RemoveDeployedSkill when the copy changed since it was priced", () => 
   // One tool's copy changing is enough: the confirmation states a cost per row,
   // so a row that no longer reads the way it did was never agreed to (#414).
   it("refuses when one tool's global copy changed and the others did not", async () => {
-    let edited: SupportedTool | null = null;
+    let changed: SupportedTool | null = null;
     const { useCase, calls } = buildUseCase({
       detectedTools: ["claude", "codex"],
       deployedStateForScope: (tools) =>
-        tools?.[0] === edited ? "diverged" : "clean",
+        tools?.[0] === changed ? "unverifiable" : "clean",
     });
     const confirmedRemovalReceipt = await receiptFor(
       useCase,
       removeTddGlobally,
     );
-    edited = "codex";
+    changed = "codex";
 
     await expect(
       useCase.execute({ ...removeTddGlobally, confirmedRemovalReceipt }),
@@ -601,7 +599,7 @@ describe("RemoveDeployedSkill when the copy changed since it was priced", () => 
         scope: "global",
         tools: [
           { tool: "claude", warning: null },
-          { tool: "codex", warning: "local-edits-will-be-lost" },
+          { tool: "codex", warning: "cannot-verify-local-edits" },
         ],
       },
       receipt: expect.any(String),
@@ -616,18 +614,18 @@ describe("RemoveDeployedSkill when the copy changed since it was priced", () => 
   // token minted for a tool set that no longer exists (#390).
   it("hands back the leftover consent it found, not the one the dialog holds", async () => {
     let detected: SupportedTool[] = ["claude", "codex"];
-    let edited = false;
+    let changed = false;
     const { useCase, calls } = buildUseCase({
       detectTools: async () => detected,
       deployedStateForScope: (tools) =>
-        edited && tools?.[0] === "codex" ? "diverged" : "clean",
+        changed && tools?.[0] === "codex" ? "unverifiable" : "clean",
     });
     const stale = await receiptFor(useCase, removeTddGlobally);
     // Claude Code has dropped off the machine, so its copy is now a leftover
-    // apm's own uninstall will not reach — and the copy that is left carries
-    // edits, so the cost differs and the removal stops.
+    // apm's own uninstall will not reach — and the copy that is left has lost
+    // its baseline, so the cost differs and the removal stops.
     detected = ["codex"];
-    edited = true;
+    changed = true;
     const refused = await useCase.execute({
       ...removeTddGlobally,
       confirmedRemovalReceipt: stale,
@@ -639,7 +637,7 @@ describe("RemoveDeployedSkill when the copy changed since it was priced", () => 
       check: {
         scope: "global",
         tools: [
-          { tool: "codex", warning: "local-edits-will-be-lost" },
+          { tool: "codex", warning: "cannot-verify-local-edits" },
           { tool: "claude", warning: null },
         ],
       },
@@ -681,7 +679,7 @@ describe("RemoveDeployedSkill when the copy changed since it was priced", () => 
   // The copy is the one the user was warned about, so the removal runs exactly
   // as it did before this guard existed.
   it("goes ahead when the copy still reads the way it was priced", async () => {
-    const { useCase, calls } = buildUseCase({ deployedState: "diverged" });
+    const { useCase, calls } = buildUseCase({ deployedState: "unverifiable" });
 
     await expect(confirmedExecute(useCase, removeTdd)).resolves.toMatchObject({
       ok: true,
@@ -787,15 +785,28 @@ describe("RemoveDeployedSkill on the global target", () => {
     expect(calls.removes).toEqual([]);
   });
 
-  it("warns about local edits on the global copy just as it does per repo", async () => {
+  it("refuses the check on a global copy with local edits just as it does per repo", async () => {
     const { useCase } = buildUseCase({ deployedState: "diverged" });
 
-    await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual(
-      globalPreflightOk([
-        { tool: "claude", warning: "local-edits-will-be-lost" },
-        { tool: "codex", warning: "local-edits-will-be-lost" },
-      ]),
-    );
+    await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
+      ok: false,
+      error: "deployed-diverged-from-lock",
+    });
+  });
+
+  // One tool's edited copy refuses the whole removal: apm's uninstall has no -t,
+  // so it would abort on that copy after deleting the others (#775).
+  it("refuses the check when only one tool's copy carries local edits", async () => {
+    const { useCase } = buildUseCase({
+      detectedTools: ["claude", "codex"],
+      deployedStateForScope: (tools) =>
+        tools?.[0] === "codex" ? "diverged" : "clean",
+    });
+
+    await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
+      ok: false,
+      error: "deployed-diverged-from-lock",
+    });
   });
 
   it("asks the check once per detected tool, scoped to that tool's copy", async () => {
@@ -817,13 +828,13 @@ describe("RemoveDeployedSkill on the global target", () => {
     const { useCase } = buildUseCase({
       detectedTools: ["claude", "codex"],
       deployedStateForScope: (tools) =>
-        tools?.[0] === "codex" ? "diverged" : "clean",
+        tools?.[0] === "codex" ? "unverifiable" : "clean",
     });
 
     await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual(
       globalPreflightOk([
         { tool: "claude", warning: null },
-        { tool: "codex", warning: "local-edits-will-be-lost" },
+        { tool: "codex", warning: "cannot-verify-local-edits" },
       ]),
     );
   });
@@ -1109,11 +1120,11 @@ describe("RemoveDeployedSkill.preflight naming the reclaim", () => {
     ]);
   });
 
-  it("names the edits inside a leftover copy the reclaim would delete", async () => {
+  it("names the cost inside a leftover copy the reclaim would delete", async () => {
     const { useCase } = buildUseCase({
       detectedTools: ["codex"],
       deployedStateForScope: (tools) =>
-        tools?.[0] === "claude" ? "diverged" : "clean",
+        tools?.[0] === "claude" ? "unverifiable" : "clean",
     });
 
     await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
@@ -1122,7 +1133,7 @@ describe("RemoveDeployedSkill.preflight naming the reclaim", () => {
         scope: "global",
         tools: [
           { tool: "codex", warning: null },
-          { tool: "claude", warning: "local-edits-will-be-lost" },
+          { tool: "claude", warning: "cannot-verify-local-edits" },
         ],
       },
       reclaim: {
@@ -1132,18 +1143,34 @@ describe("RemoveDeployedSkill.preflight naming the reclaim", () => {
       receipt: expect.any(String),
     });
   });
+
+  // apm's lockfile still lists the leftover copy, so its uninstall would retain
+  // the edited file there too and abort (#775).
+  it("refuses the check when the leftover copy carries local edits", async () => {
+    const { useCase } = buildUseCase({
+      detectedTools: ["codex"],
+      deployedStateForScope: (tools) =>
+        tools?.[0] === "claude" ? "diverged" : "clean",
+    });
+
+    await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
+      ok: false,
+      error: "deployed-diverged-from-lock",
+    });
+  });
 });
 
-// What the confirmation must say before the user destroys a deployed copy. The
-// two cases stay apart on purpose: an unverifiable copy is not a diverged one,
-// and calling it "edited" would be a claim we cannot make (#337).
+// What the confirmation must say before the user destroys a deployed copy. An
+// unverifiable copy is not a diverged one, and calling it "edited" would be a
+// claim we cannot make (#337); a diverged copy is refused, never priced (#775).
 describe("RemoveDeployedSkill.preflight", () => {
-  it("warns that local edits will be lost when the copy diverged", async () => {
+  it("refuses a copy with local edits, offering nothing to confirm", async () => {
     const { useCase, calls } = buildUseCase({ deployedState: "diverged" });
 
-    await expect(useCase.preflight(removeTdd)).resolves.toEqual(
-      preflightOk("local-edits-will-be-lost"),
-    );
+    await expect(useCase.preflight(removeTdd)).resolves.toEqual({
+      ok: false,
+      error: "deployed-diverged-from-lock",
+    });
     // A check, not the action: nothing is removed by asking.
     expect(calls.removes).toEqual([]);
   });
