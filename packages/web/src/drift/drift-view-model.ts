@@ -14,6 +14,9 @@ export type DriftStatus =
   // A newer release exists, but this skill's content did not move in it
   // (ADR-0027). It is not counted as drift on the target.
   | "older-tag"
+  // The deployed name existed at its pin but not in the latest release
+  // (ADR-0028). It needs attention but has no update destination.
+  | "no-longer-released"
   | "up-to-date"
   | "unknown"
   | "unverified"
@@ -47,8 +50,8 @@ type DriftView =
   | { status: "unverified" }
   | { status: "ready"; behind: ReadDriftEntry[] };
 
-// Both readings pin an older tag, and moving it rewrites apm.yml either way —
-// so the version pair and the update action stand on both (ADR-0027 §6).
+// These readings have a newer version of the same deployed name, so a row can
+// show the version pair and offer an update (ADR-0027 §6).
 export const lagsPin = (status: DriftStatus): boolean =>
   status === "behind" || status === "older-tag";
 
@@ -144,8 +147,15 @@ function fromDriftView(view: DriftView): DriftViewModel {
           case "unknown":
             return { state: "unknown", behindCount: 0 };
           case "ready": {
-            // Orphan-behind can't be updated here, so it must not flip "drift".
             const names = new Set(deployed.names);
+            const hasNoLongerReleased = view.behind.some(
+              (entry) =>
+                entry.reading === "no-longer-released" && names.has(entry.name),
+            );
+            if (hasNoLongerReleased) {
+              return { state: "attention", behindCount: 0 };
+            }
+            // Orphan-behind can't be updated here, so it must not flip "drift".
             // Moved skills only: a lagging pin is stated on the row and
             // nowhere else (ADR-0027 §2).
             const behindCount = view.behind.filter(

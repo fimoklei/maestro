@@ -35,6 +35,11 @@ const laggingPin = (name: string): BehindEntry => ({
   reading: "older-tag",
 });
 
+const noLongerReleased = (name: string): BehindEntry => ({
+  ...pair(name),
+  reading: "no-longer-released",
+});
+
 const deployedNames = (names: string[]) =>
   ({ status: "ready", names, skippedCount: 0, attentionCount: 0 }) as const;
 
@@ -126,6 +131,14 @@ describe("driftViewModel — targetIndicator", () => {
     expect(ran([pair("tdd")]).targetIndicator(deployedNames(["tdd"]))).toBe(
       "drift",
     );
+  });
+
+  it("reads a target with a no-longer-released skill as attention ahead of behind", () => {
+    const drift = ran([pair("tdd"), noLongerReleased("workflow-commit")]);
+    const deployed = deployedNames(["tdd", "workflow-commit"]);
+
+    expect(drift.targetIndicator(deployed)).toBe("attention");
+    expect(drift.driftCount(deployed)).toBe(0);
   });
 
   it("does not report drift for an orphan-behind primitive", () => {

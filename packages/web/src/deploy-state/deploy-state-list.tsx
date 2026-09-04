@@ -48,6 +48,11 @@ const driftBadge: Record<
     label: "Older tag",
     hint: "This skill is identical at the pinned tag and the latest release",
   },
+  "no-longer-released": {
+    tone: "drift",
+    label: "No longer released",
+    hint: "This deployed skill is absent from the latest release",
+  },
   "up-to-date": { tone: "ok", label: "Up to date" },
   unknown: { tone: "dim", label: "Unknown" },
   // Distinct label + hint so a reachability failure reads as unreached, not a
