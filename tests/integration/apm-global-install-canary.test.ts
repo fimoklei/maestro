@@ -36,10 +36,11 @@ const run = promisify(execFile);
 
 const enabled = process.env.MAESTRO_REAL_APM === "1";
 
-// The retired demo Harness, pinned at a historic tag: its trees still carry the
-// old root `skills/` subpath, which is what this canary must ask apm for. The
-// canonical shape Maestro writes today is `.apm/skills/<name>` (ADR-0003).
+// The demo Harness at its latest tag. Its skills live under the canonical
+// `.apm/skills/<name>` subpath (ADR-0021); the old root `skills/` tree was
+// dropped at v0.6.0, so asking apm for it fails validation.
 const HARNESS = "fimoklei/agent-harness";
+const SUBPATH = ".apm/skills";
 const SKILL = "tdd";
 
 describe.runIf(enabled)("real apm global install canary", () => {
@@ -100,7 +101,7 @@ describe.runIf(enabled)("real apm global install canary", () => {
     const tag = resolved.tag;
     expect(tag).toMatch(/^v\d+\.\d+\.\d+$/);
 
-    const ref = `github.com/${HARNESS}/skills/${SKILL}#${tag}`;
+    const ref = `github.com/${HARNESS}/${SUBPATH}/${SKILL}#${tag}`;
     // A global install targets exactly the detected tools (ADR-0011), so the
     // deploy is fed live detection rather than a literal set that could drift
     // away from what the machine has.
@@ -116,22 +117,24 @@ describe.runIf(enabled)("real apm global install canary", () => {
     expect(installed).toEqual({ ok: true });
 
     // Both deployed targets land under the sandbox home: the claude skills dir
-    // and the cross-client agents dir (-t claude,codex writes one lockfile
-    // entry with both deployed_files).
-    await expect(
-      access(join(home, ".claude", "skills", SKILL)),
-    ).resolves.toBeUndefined();
-    await expect(
-      access(join(home, ".agents", "skills", SKILL)),
-    ).resolves.toBeUndefined();
+    // and the cross-client agents dir. Assert the file, not the directory — apm
+    // can create one and deploy nothing into it (research/772 § F1).
+    for (const toolDir of [".claude", ".agents"]) {
+      await expect(
+        access(join(home, toolDir, "skills", SKILL, "SKILL.md")),
+      ).resolves.toBeUndefined();
+    }
 
     // apm pinned the tag we resolved, recorded in its own global lockfile.
     // Reading the raw text keeps this canary on what only real apm proves;
     // parsing that lockfile and shaping it into a response is the fast lane's
     // job (tests/integration/server-global-deploy-state.test.ts).
     const lock = await readFile(join(home, ".apm", "apm.lock.yaml"), "utf8");
-    expect(lock).toContain(`virtual_path: skills/${SKILL}`);
+    expect(lock).toContain(`virtual_path: ${SUBPATH}/${SKILL}`);
     expect(lock).toContain(`resolved_ref: ${tag}`);
+    // The per-file hashes are Maestro's drift baseline (apm-driver.md
+    // § Lockfile), so a global install that omits them leaves drift unmeasurable.
+    expect(lock).toContain("deployed_file_hashes:");
   });
 });
 

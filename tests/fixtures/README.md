@@ -19,6 +19,13 @@ audit one:
 What the outputs *mean* lives in `docs/apm-behavior.md`; this file only
 records how they were taken.
 
+Every capture below was re-run on apm 0.29.0 on 2026-09-04, with the per-fixture
+verdict recorded in `docs/research/772-apm-0.29.0-findings.md` § Fixture
+re-capture. Nothing was overwritten: that findings doc suspends the
+"overwrite the file" half of `docs/agents/apm-upgrade.md` step 2, because 0.29.0
+is not adopted and these files must keep grounding the driver on the version the
+repo runs (issue #772).
+
 ## Why provenance lives here and not in the files
 
 `ApmCliDriver` greps this text after whitespace-normalizing and lowercasing it,

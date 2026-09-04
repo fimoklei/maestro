@@ -26,6 +26,9 @@ const run = promisify(execFile);
 const enabled = process.env.MAESTRO_REAL_APM === "1";
 
 const HARNESS = "fimoklei/agent-harness";
+// The canonical skill subpath (ADR-0021); the harness dropped its old root
+// `skills/` tree at v0.6.0, so asking apm for that fails validation.
+const SUBPATH = ".apm/skills";
 const REMOVED = "tdd";
 // A second skill that exists in the harness alongside tdd, so the canary can
 // prove a removal is scoped to its own package.
@@ -67,7 +70,7 @@ describe.runIf(enabled)("real apm uninstall canary", () => {
     }
     const tag = resolved.tag;
     const refFor = (skill: string) =>
-      `github.com/${HARNESS}/skills/${skill}#${tag}`;
+      `github.com/${HARNESS}/${SUBPATH}/${skill}#${tag}`;
 
     for (const skill of [REMOVED, KEPT]) {
       const installed = await driver.deploySkill({
@@ -97,15 +100,15 @@ describe.runIf(enabled)("real apm uninstall canary", () => {
     // entry left behind would keep the row on screen for a skill that is no
     // longer there.
     const lock = await readFile(join(repo, "apm.lock.yaml"), "utf8");
-    expect(lock).not.toContain(`virtual_path: skills/${REMOVED}`);
-    expect(lock).toContain(`virtual_path: skills/${KEPT}`);
+    expect(lock).not.toContain(`virtual_path: ${SUBPATH}/${REMOVED}`);
+    expect(lock).toContain(`virtual_path: ${SUBPATH}/${KEPT}`);
   });
 
   it("does not claim a removal for a package that was never installed", {
     timeout: 60_000,
   }, async () => {
-    // Every uninstall outcome exits 0, so a package apm never had must still
-    // come back as a failure rather than a clean removal.
+    // The driver classifies on apm's markers, not its exit code, so a package
+    // apm never had must come back as a failure rather than a clean removal.
     const driver = new ApmCliDriver({
       run: (file, args, options) =>
         run(file, args, { ...options, env: { ...process.env, HOME: home } }),
@@ -113,7 +116,7 @@ describe.runIf(enabled)("real apm uninstall canary", () => {
 
     const removed = await driver.removeSkill({
       target: { kind: "repo", repoPath: repo },
-      ref: `github.com/${HARNESS}/skills/${REMOVED}#v0.5.1`,
+      ref: `github.com/${HARNESS}/${SUBPATH}/${REMOVED}#v0.6.0`,
     });
 
     expect(removed).toEqual({ ok: false });
@@ -165,7 +168,7 @@ describe.runIf(enabled)("real apm global uninstall canary", () => {
       throw new Error(`expected a resolved tag, got ${resolved.reason}`);
     }
     const refFor = (skill: string) =>
-      `github.com/${HARNESS}/skills/${skill}#${resolved.tag}`;
+      `github.com/${HARNESS}/${SUBPATH}/${skill}#${resolved.tag}`;
 
     for (const skill of [REMOVED, KEPT]) {
       const installed = await driver.deploySkill({
@@ -184,19 +187,20 @@ describe.runIf(enabled)("real apm global uninstall canary", () => {
     expect(removed).toEqual({ ok: true });
 
     // One action, every tool: the copy is gone under both directories apm
-    // deployed to, and the unrelated skill is untouched in both.
+    // deployed to, and the unrelated skill still holds its file — asserting the
+    // file, not the directory, because apm can leave an empty directory behind.
     for (const toolDir of [".claude", ".agents"]) {
       await expect(
         access(join(home, toolDir, "skills", REMOVED)),
       ).rejects.toThrow();
       await expect(
-        access(join(home, toolDir, "skills", KEPT)),
+        access(join(home, toolDir, "skills", KEPT, "SKILL.md")),
       ).resolves.toBeUndefined();
     }
 
     const lock = await readFile(join(home, ".apm", "apm.lock.yaml"), "utf8");
-    expect(lock).not.toContain(`virtual_path: skills/${REMOVED}`);
-    expect(lock).toContain(`virtual_path: skills/${KEPT}`);
+    expect(lock).not.toContain(`virtual_path: ${SUBPATH}/${REMOVED}`);
+    expect(lock).toContain(`virtual_path: ${SUBPATH}/${KEPT}`);
   });
 });
 

@@ -23,10 +23,11 @@ const run = promisify(execFile);
 
 const enabled = process.env.MAESTRO_REAL_APM === "1";
 
-// The retired demo Harness, pinned at a historic tag: its trees still carry
-// the old root `skills/` subpath, which is what this canary must ask apm for.
-// The canonical shape Maestro writes today is `.apm/skills/<name>` (ADR-0021).
+// The demo Harness at its latest tag. Its skills live under the canonical
+// `.apm/skills/<name>` subpath (ADR-0021); the old root `skills/` tree was
+// dropped at v0.6.0, so asking apm for it fails validation.
 const HARNESS = "fimoklei/agent-harness";
+const SUBPATH = ".apm/skills";
 const SKILL = "tdd";
 
 describe.runIf(enabled)("real apm outdated canary", () => {
@@ -73,7 +74,7 @@ describe.runIf(enabled)("real apm outdated canary", () => {
     const tag = resolved.tag;
     expect(tag).toMatch(/^v\d+\.\d+\.\d+$/);
 
-    const ref = `github.com/${HARNESS}/skills/${SKILL}#${tag}`;
+    const ref = `github.com/${HARNESS}/${SUBPATH}/${SKILL}#${tag}`;
     // Assert the driver's own verdict, not just the side effects: the install
     // now resolves with a result instead of throwing (#180), so an unasserted
     // call would let a changed apm output shape pass this canary silently.
