@@ -35,6 +35,7 @@ jobs:
       # deps (reads the pnpm lockfile). Moderate/low do not fail here — they are
       # handled out of band.
       - name: Audit dependencies
+        timeout-minutes: 3
         run: pnpm audit --audit-level=high
 
       - name: Lint
