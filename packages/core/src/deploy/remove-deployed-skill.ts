@@ -50,32 +50,31 @@ export type RemoveDeployedSkillError =
   | "lockfile-malformed"
   | "ref-unresolvable"
   | "deployed-unreadable"
+  | "deployed-diverged-from-lock"
   | "cost-not-acknowledged"
   | "remove-in-progress"
   | "remove-failed";
 
 // Named for the consequence the user consents to, not the classifier state.
-// The last two stay apart: "checked, nothing to compare against" and "could not
+// The two stay apart: "checked, nothing to compare against" and "could not
 // check" must not share a wording (J04).
-export type RemoveWarning =
-  | "local-edits-will-be-lost"
-  | "cannot-verify-local-edits"
-  | "check-did-not-run";
+export type RemoveWarning = "cannot-verify-local-edits" | "check-did-not-run";
 
-// Only a state that makes the removal unsafe to run refuses; local edits are
-// warned about and then removed on the user's word (#337).
+// A diverged copy refuses like deploy and update do: apm 0.29.0 keeps the
+// edited file and aborts after deleting the rest of the copy (apm-behavior.md
+// § Remove), so no consent can make that removal whole (#775).
 const GUARD_REFUSALS: Partial<
   Record<DeployedContentState, RemoveDeployedSkillError>
 > = {
+  diverged: "deployed-diverged-from-lock",
   unreadable: "deployed-unreadable",
   "lockfile-malformed": "lockfile-malformed",
 };
 
 // Absent means nothing to lose ("clean", "not-deployed") — silence in a
 // confirmation reads that way, so every other state must appear here (J04).
-// A state the removal refuses still warns.
+// A state the removal refuses still warns, except the one `preflight` refuses.
 const GUARD_WARNINGS: Partial<Record<DeployedContentState, RemoveWarning>> = {
-  diverged: "local-edits-will-be-lost",
   unverifiable: "cannot-verify-local-edits",
   unreadable: "check-did-not-run",
   "lockfile-malformed": "check-did-not-run",
@@ -136,7 +135,14 @@ export type RemovePreflightError =
   | "invalid-name"
   | "repo-not-registered"
   | "no-supported-tool"
+  | "deployed-diverged-from-lock"
   | "preflight-failed";
+
+// The check's answer: a price the confirmation can state, or the one state
+// that has no price because apm would leave the copy half-deleted.
+type Priced =
+  | { ok: true; check: RemoveCheck; reclaim: ReclaimConsent | null }
+  | { ok: false; error: "deployed-diverged-from-lock" };
 
 // `detected` is not what the guard reads — apm deletes by its own recorded
 // targets. It feeds the cleanup after a successful removal (#339); required on
@@ -244,12 +250,15 @@ export class RemoveDeployedSkill {
     }
 
     try {
-      const { check, reclaim } = await this.price(input, scope);
+      const priced = await this.price(input, scope);
+      if (!priced.ok) {
+        return priced;
+      }
       return {
         ok: true,
-        check,
-        reclaim,
-        receipt: this.consent.receipt(input, check),
+        check: priced.check,
+        reclaim: priced.reclaim,
+        receipt: this.consent.receipt(input, priced.check),
       };
     } catch {
       return { ok: false, error: "preflight-failed" };
@@ -264,32 +273,37 @@ export class RemoveDeployedSkill {
   private async price(
     input: RemoveDeployedSkillInput,
     scope: ResolvedScope & { ok: true },
-  ): Promise<{ check: RemoveCheck; reclaim: ReclaimConsent | null }> {
+  ): Promise<Priced> {
     const reclaim = this.consent.offer({
       target: input.target,
       name: input.name,
       detected: scope.scope === "global" ? scope.detected : undefined,
     });
-    return { check: await this.runCheck(input, scope, reclaim), reclaim };
+    const check = await this.runCheck(input, scope, reclaim);
+    return check === "deployed-diverged-from-lock"
+      ? { ok: false, error: check }
+      : { ok: true, check, reclaim };
   }
 
   // The global scope asks per tool, because that is the grain the confirmation
   // states costs at: one entry per detected tool, then one per leftover copy
   // the reclaim would delete. Deleting a copy in full and deleting work
   // nothing else holds are different prices, and only the check tells them
-  // apart (#414).
+  // apart (#414). One diverged copy refuses the whole set: apm's uninstall
+  // has no -t, so it would abort on that copy after deleting the others.
   private async runCheck(
     input: RemoveDeployedSkillInput,
     scope: ResolvedScope & { ok: true },
     reclaim: ReclaimConsent | null,
-  ): Promise<RemoveCheck> {
+  ): Promise<RemoveCheck | "deployed-diverged-from-lock"> {
     if (scope.scope === "repo") {
-      return repoCheck(
-        await this.deps.deployedContent.classify({
-          target: input.target,
-          name: input.name,
-        }),
-      );
+      const state = await this.deps.deployedContent.classify({
+        target: input.target,
+        name: input.name,
+      });
+      return state === "diverged"
+        ? "deployed-diverged-from-lock"
+        : repoCheck(state);
     }
     const priced = [
       ...scope.detected,
@@ -297,7 +311,11 @@ export class RemoveDeployedSkill {
     ];
     const tools: RemoveToolCheck[] = [];
     for (const tool of priced) {
-      tools.push({ tool, warning: await this.checkTool(input, tool) });
+      const warning = await this.checkTool(input, tool);
+      if (warning === "deployed-diverged-from-lock") {
+        return warning;
+      }
+      tools.push({ tool, warning });
     }
     return { scope: "global", tools };
   }
@@ -308,14 +326,16 @@ export class RemoveDeployedSkill {
   private async checkTool(
     input: RemoveDeployedSkillInput,
     tool: SupportedTool,
-  ): Promise<RemoveWarning | null> {
+  ): Promise<RemoveWarning | null | "deployed-diverged-from-lock"> {
     try {
       const state = await this.deps.deployedContent.classify({
         target: input.target,
         name: input.name,
         tools: [tool],
       });
-      return GUARD_WARNINGS[state] ?? null;
+      return state === "diverged"
+        ? "deployed-diverged-from-lock"
+        : (GUARD_WARNINGS[state] ?? null);
     } catch {
       return "check-did-not-run";
     }
@@ -412,8 +432,9 @@ export class RemoveDeployedSkill {
         return { ok: false, error: lookup.reason };
       }
 
-      // An edited copy goes once the consequence `preflight` stated was priced
-      // for this very request; an unreadable one refuses outright (#337, #458).
+      // An unverifiable copy goes once the consequence `preflight` stated was
+      // priced for this very request; an edited or unreadable one refuses
+      // outright (#458, #775).
       const deployedState = await this.deps.deployedContent.classify({
         target,
         name: input.name,
@@ -424,15 +445,18 @@ export class RemoveDeployedSkill {
       }
 
       // Priced again, and only a receipt minted for what is found now lets the
-      // removal through. An editor autosave between the check and the click
+      // removal through. A baseline lost between the check and the click
       // therefore stops it, and so does a request that acknowledged nothing
       // (#364). The repo scope reuses the state the guard just read and has no
       // leftovers by definition; the global scope prices per tool, the grain
       // the confirmation states costs at.
-      const priced =
+      const priced: Priced =
         scope.scope === "repo"
-          ? { check: repoCheck(deployedState), reclaim: null }
+          ? { ok: true, check: repoCheck(deployedState), reclaim: null }
           : await this.price(input, scope);
+      if (!priced.ok) {
+        return priced;
+      }
       const consentScope = { target, name: input.name };
       if (
         !this.consent.accepts(

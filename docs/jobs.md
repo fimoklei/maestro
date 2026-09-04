@@ -25,9 +25,7 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 ## NOW
 
-| Job | Main | Job story |
-|---|---|---|
-| Adopt apm 0.29 · [#772](https://github.com/fimoklei/maestro/issues/772)–[#775](https://github.com/fimoklei/maestro/issues/775) | B | *When* the engine moves ahead of Maestro's observed knowledge, *I want to* have the driver re-verified against the installed apm, *so I can* trust that cockpit behavior matches what the engine really does. |
+Empty — pick the next job.
 
 ## NEXT
 
@@ -68,6 +66,7 @@ All shipped **skills-only**, solo, local-first.
 
 | Job | Main | Job story |
 |---|---|---|
+| Adopt apm 0.29 · [#772](https://github.com/fimoklei/maestro/issues/772)–[#775](https://github.com/fimoklei/maestro/issues/775) | B | *When* the engine moves ahead of Maestro's observed knowledge, *I want to* have the driver re-verified against the installed apm, *so I can* trust that cockpit behavior matches what the engine really does. |
 | Tell a skill that changed from one that only lags a tag · [#747](https://github.com/fimoklei/maestro/issues/747) | A | *When* one skill in the Harness is released, *I want to* tell the deployed skills that actually changed from the ones that only lag a tag, *so I can* keep Behind worth reading instead of learning to ignore it. |
 | Install Maestro from a clone in one command · [#717](https://github.com/fimoklei/maestro/issues/717), [#621](https://github.com/fimoklei/maestro/issues/621) | C | *When* a teammate has been given access to Maestro, *I want to* have one bootstrap script check their Node and pnpm and start the cockpit, *so I can* hand them a repo instead of walking them through a toolchain. |
 | Register a consuming repo (J10) | A, B | *When* I want Maestro to see and steer a project, *I want to* make that consuming repo known to the cockpit, *so I can* see its deploy-state and deploy to it. |

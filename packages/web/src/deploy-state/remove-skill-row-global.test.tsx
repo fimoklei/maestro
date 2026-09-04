@@ -66,7 +66,7 @@ describe("removing a deployed skill from a row", () => {
     });
 
     it("checks what the global removal would cost before it runs", async () => {
-      const fetchMock = stubFetch("local-edits-will-be-lost");
+      const fetchMock = stubFetch("cannot-verify-local-edits");
       renderGlobalRow();
 
       const dialog = await openRemoveDialog();
@@ -75,7 +75,7 @@ describe("removing a deployed skill from a row", () => {
         name: /removal targets/i,
       });
       expect(
-        within(region).getAllByText("Local edits — deleted too"),
+        within(region).getAllByText("Nothing recorded — may lose work"),
       ).toHaveLength(2);
       const [, init] = preflightCalls(fetchMock)[0] as [string, RequestInit];
       expect(JSON.parse(String(init.body))).toEqual({
@@ -103,7 +103,7 @@ describe("removing a deployed skill from a row", () => {
                 check: {
                   scope: "global",
                   tools: [
-                    { tool: "codex", warning: "local-edits-will-be-lost" },
+                    { tool: "codex", warning: "cannot-verify-local-edits" },
                     { tool: "claude", warning: null },
                   ],
                 },

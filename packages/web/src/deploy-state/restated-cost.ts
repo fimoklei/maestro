@@ -14,7 +14,6 @@ import { HttpError } from "../api/http";
 // as silence, which reads as nothing to lose (J04). The tool it sits on is the
 // server's own token, and an unknown one is read as unchecked, never as clean.
 const WARNINGS: Record<string, RemoveWarning> = {
-  "local-edits-will-be-lost": "local-edits-will-be-lost",
   "cannot-verify-local-edits": "cannot-verify-local-edits",
   "check-did-not-run": "check-did-not-run",
 };

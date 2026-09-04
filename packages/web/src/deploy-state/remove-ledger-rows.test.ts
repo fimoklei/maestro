@@ -1,7 +1,10 @@
 import type { RemoveOutcome } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { removeLedgerLeadIn, removeLedgerRows } from "./remove-ledger-rows";
-import type { RemoveCheckState } from "./remove-preflight-view";
+import type {
+  RemoveCheckState,
+  RemoveRowWarning,
+} from "./remove-preflight-view";
 
 const leftoverCodex = [
   { tool: "codex" as const, path: "/Users/me/.agents/skills/tdd" },
@@ -11,7 +14,7 @@ const leftoverCodex = [
 const RUNNING: RemoveCheckState = { kind: "unanswered", warning: "checking" };
 
 const perTool = (
-  warnings: Record<string, "none" | "local-edits" | "cannot-verify">,
+  warnings: Record<string, RemoveRowWarning>,
 ): RemoveCheckState => ({ kind: "per-tool", warnings });
 
 describe("removeLedgerRows", () => {
@@ -97,14 +100,14 @@ describe("removeLedgerRows", () => {
       expect(claude?.drift).toBe(false);
     });
 
-    it("marks only the tool whose copy carries edits", () => {
+    it("marks only the tool whose copy carries a cost", () => {
       const [claude, codex] = rowsFor(
-        perTool({ claude: "none", codex: "local-edits" }),
+        perTool({ claude: "none", codex: "cannot-verify" }),
       );
 
       expect(claude?.status).toBeNull();
       expect(claude?.drift).toBe(false);
-      expect(codex?.status).toBe("Local edits — deleted too");
+      expect(codex?.status).toBe("Nothing recorded — may lose work");
       expect(codex?.drift).toBe(true);
     });
 
@@ -149,10 +152,11 @@ describe("removeLedgerRows", () => {
         check,
       )[1];
 
-    it("names the edits it would delete with the copy", () => {
+    it("names the cost it would delete with the copy", () => {
       expect(
-        leftoverRow(perTool({ claude: "none", codex: "local-edits" }))?.status,
-      ).toBe("Not installed — local edits deleted too");
+        leftoverRow(perTool({ claude: "none", codex: "cannot-verify" }))
+          ?.status,
+      ).toBe("Not installed — nothing recorded to check");
     });
 
     it("keeps a copy with no baseline apart from a checked one", () => {
@@ -175,7 +179,11 @@ describe("removeLedgerRows", () => {
     });
 
     it("stays a cost whatever the check found", () => {
-      for (const warning of ["none", "local-edits", "cannot-verify"] as const) {
+      for (const warning of [
+        "none",
+        "cannot-verify",
+        "check-failed",
+      ] as const) {
         expect(leftoverRow(perTool({ codex: warning }))?.drift).toBe(true);
       }
     });
@@ -225,7 +233,7 @@ describe("removeLedgerRows", () => {
       const [claude] = removeLedgerRows(
         { kind: "global", tools: ["claude", "codex"] },
         [],
-        perTool({ claude: "local-edits", codex: "local-edits" }),
+        perTool({ claude: "cannot-verify", codex: "cannot-verify" }),
         globalOutcome,
       );
 
@@ -278,7 +286,7 @@ describe("removeLedgerRows", () => {
       const [repo] = removeLedgerRows(
         { kind: "repo", repoPath: "/Users/me/project" },
         [],
-        { kind: "repo", warning: "local-edits" },
+        { kind: "repo", warning: "cannot-verify" },
         { scope: "repo", state: "unknown" },
       );
 
@@ -342,10 +350,10 @@ describe("removeLedgerRows", () => {
     const [repo] = removeLedgerRows(
       { kind: "repo", repoPath: "/Users/me/project" },
       [],
-      { kind: "repo", warning: "local-edits" },
+      { kind: "repo", warning: "cannot-verify" },
     );
 
-    expect(repo?.status).toBe("Local edits — deleted too");
+    expect(repo?.status).toBe("Nothing recorded — may lose work");
     expect(repo?.drift).toBe(true);
   });
 });

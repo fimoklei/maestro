@@ -143,10 +143,10 @@ describe("RemoveConsentIssuer receipts", () => {
       { tool: "codex", warning: null },
     ],
   } as const satisfies RemoveCheck;
-  const EDITED = {
+  const UNVERIFIABLE = {
     scope: "global",
     tools: [
-      { tool: "claude", warning: "local-edits-will-be-lost" },
+      { tool: "claude", warning: "cannot-verify-local-edits" },
       { tool: "codex", warning: null },
     ],
   } as const satisfies RemoveCheck;
@@ -204,14 +204,14 @@ describe("RemoveConsentIssuer receipts", () => {
   });
 
   // The window #364 closes: the copy was clean when the user was warned and
-  // carries edits by the time the removal runs, so the consent no longer
-  // describes what would be destroyed.
+  // has lost its baseline by the time the removal runs, so the consent no
+  // longer describes what would be destroyed.
   it("refuses a receipt minted for a cost the copy no longer carries", () => {
     const consent = issuer();
 
-    expect(consent.accepts(scope, EDITED, consent.receipt(scope, CLEAN))).toBe(
-      false,
-    );
+    expect(
+      consent.accepts(scope, UNVERIFIABLE, consent.receipt(scope, CLEAN)),
+    ).toBe(false);
   });
 
   // The tool probe orders its own answer, and the same set of answers in

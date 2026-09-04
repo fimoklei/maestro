@@ -199,14 +199,14 @@ describe("BulkRemoveSkillAction", () => {
     expect(group).toHaveTextContent("Repository not registered");
   });
 
-  it("weighs a copy with local edits as a cost, naming the version it destroys", async () => {
+  it("weighs an unverifiable copy as a cost, naming the version it destroys", async () => {
     // The check answered: this copy carries work the removal deletes. It is a
     // row with its price on it, never part of the clean count (#423).
     stubServer({
       preflight: (body) =>
         (body as { target: { kind: string } }).target.kind === "repo"
           ? jsonResponse({
-              check: { scope: "repo", warning: "local-edits-will-be-lost" },
+              check: { scope: "repo", warning: "cannot-verify-local-edits" },
               reclaim: null,
             })
           : jsonResponse(preflightAnswer),
@@ -219,7 +219,7 @@ describe("BulkRemoveSkillAction", () => {
     });
     expect(group).toHaveTextContent("/dev/acme-web");
     expect(group).toHaveTextContent("v1.0.0");
-    expect(group).toHaveTextContent("Local edits — deleted too");
+    expect(group).toHaveTextContent("Nothing recorded — may lose work");
     expect(
       screen.getByRole("button", {
         name: "Remove from 2 targets · 1 lose local edits",

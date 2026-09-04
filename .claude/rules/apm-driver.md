@@ -13,7 +13,9 @@ targets = detected tools), 0013 (narrowed-install reconciliation), 0014
   record it there. If the installed apm version differs from that doc's
   header, run `docs/agents/apm-upgrade.md` before relying on either.
 - Build fixtures from real captures, never retyped; every capture command is
-  recorded in `tests/fixtures/README.md`.
+  recorded in `tests/fixtures/README.md`. Capture an install fixture only
+  when no `GitHub API rate limit hit` line appears — that line belongs to
+  the capturing machine's spent anonymous quota, not to apm.
 - Before departing from APM's model, read ADR-0019 — the accepted departures.
   A new departure is amended into it, never given its own ADR.
 
@@ -27,6 +29,9 @@ targets = detected tools), 0013 (narrowed-install reconciliation), 0014
   ADR-0014).
 - Run global (`-g`) installs from a neutral cwd — apm edits the cwd's
   `.gitignore`.
+- Hand every `-g` command a `realpath`ed `HOME`; a symlink component makes
+  the install deploy nothing while reporting success (`LEARNINGS.md` ·
+  symlinked-home-deploys-nothing).
 - Keep real apm out of the fast test loop (`testing.md`); network + auth
   belong to the canary/integration lanes.
 
@@ -37,7 +42,9 @@ targets = detected tools), 0013 (narrowed-install reconciliation), 0014
   error phrases — never the exit code. Absent marker = failure, fail-closed.
 - Classify auth-required only at `apm view`, only on the phrases
   `Authentication failed` / `No token available` (case-insensitive). Never
-  echo matched output (`security.md`).
+  echo matched output (`security.md`). The same phrases can appear in
+  `install` output when the anonymous probe was throttled and no token is
+  set; never classify them there.
 - Whitespace-normalize and lowercase before matching any apm phrase — Rich
   wraps mid-sentence (`LEARNINGS.md` · rich-wraps-phrases-mid-sentence).
 - `apm outdated` / `apm view` have no `--json`: parse behind the driver
@@ -51,32 +58,38 @@ targets = detected tools), 0013 (narrowed-install reconciliation), 0014
   content baseline.
 - Scope (global vs per-repo) is known only from *which* lockfile you read,
   never from a field inside it.
+- Never read `deployments[].target` as a tool name — it names the deploy
+  root (`agents` for the shared `.agents/` copy).
 
 ## Update
 
 - Never use `apm update` to move an exact tag pin — it is a no-op. Update =
   resolve the latest tag + re-install at that tag.
 - Never same-ref install over a dirty subtree — apm silently resets local
-  edits. The deploy use-case's guards stay in front of every install.
+  edits and drops untracked files, printing `(files unchanged)`. The deploy
+  use-case's guards stay in front of every install.
 
 ## Remove
 
 - Success = the `Uninstall complete: Removed \d+ package(s) from apm.yml`
-  marker, never the exit code — every outcome exits 0, including a package
-  that was never installed. Absent marker = failure, fail-closed.
-- Read every marker, not the first: the success marker can be followed by
-  `Note: \d+ package(s) were not found in apm.yml`.
-- Never parse the `Cleaned up \d+ integrated skills` count — it is unstable.
+  marker, never the exit code. Absent marker = failure, fail-closed. Keep
+  the not-found signals beside it: they cost nothing and close 0.26.0's
+  partial-success shape.
+- Never parse the `Cleaned \d+ stale files` count — it counts what that run
+  deleted.
 - Name the package with the same tag-pinned ref the install used; a bare
-  skill name is rejected and still exits 0.
+  skill name is rejected.
 - Never treat `--dry-run` as a blast-radius preview — it omits the deployed
   files it is about to delete.
-- A dirty deployed subtree warns, never blocks: apm deletes local edits with
-  no warning, so classify the copy and state the consequence in the
-  confirmation before the uninstall call. Install and update still refuse.
-- Never narrow `targets:` in `apm.yml` to scope a removal — it orphans the
-  other tools' files while dropping the lockfile entry. Per-tool cleanup is
-  the scoped `rm` behind `DeployedCleanupPort` (ADR-0013).
+- **Refuse a diverged deployed copy before the uninstall call**, as install
+  and update do: apm keeps an edited or added file, aborts with exit 1, and
+  has already deleted the rest of the copy by then. The recovery the notice
+  names is `Deploy again`, which resets the copy, then remove. An
+  unverifiable copy (no recorded hashes) still warns and goes on consent.
+- Never narrow `targets:` in `apm.yml` to scope a removal — it scopes
+  nothing: the cleanup deletes every tracked file whatever `targets:` says.
+  Per-tool cleanup is the scoped `rm` behind `DeployedCleanupPort`
+  (ADR-0013).
 - Expect the lockfile to be deleted, not emptied, when the last dependency
   goes; an absent lockfile means nothing deployed, never an error.
 

@@ -287,6 +287,9 @@ const removeErrorResponses: ErrorTable<RemoveDeployedSkillError> = {
   "lockfile-malformed": { status: 409 },
   "ref-unresolvable": { status: 409 },
   "deployed-unreadable": { status: 409 },
+  // 409, as on the deploy table: apm would abort on the edited file after
+  // deleting the rest, so the copy is the user's to reset first (#775).
+  "deployed-diverged-from-lock": { status: 409 },
   // 409: the request is well-formed, but the copy on disk is not the one it
   // agreed to lose — either it changed since, or nothing was agreed at all.
   // What it costs now travels beside this refusal, never inside it (#364).
@@ -304,6 +307,8 @@ const removePreflightErrorResponses: ErrorTable<RemovePreflightError> = {
   "invalid-name": removeErrorResponses["invalid-name"],
   "repo-not-registered": removeErrorResponses["repo-not-registered"],
   "no-supported-tool": removeErrorResponses["no-supported-tool"],
+  "deployed-diverged-from-lock":
+    removeErrorResponses["deployed-diverged-from-lock"],
   "preflight-failed": { status: 502 },
 };
 

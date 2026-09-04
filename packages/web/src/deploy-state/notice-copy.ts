@@ -212,6 +212,15 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
     message:
       "Nothing can say what a removal would delete. Make the deployed copy readable, then remove again.",
   },
+  // "Deploy again" is the control's own label (R-D, CONTEXT.md): the one way
+  // to reset an edited copy inside the cockpit. Global copies under Other
+  // copies have no such control, hence the detail.
+  "deployed-diverged-from-lock": {
+    message:
+      "Nothing was removed. Deploy again to replace the local edits, then remove the skill.",
+    detail:
+      "apm keeps an edited or added file and stops part-way; a copy nothing deploys to is reset by hand.",
+  },
   "cost-not-acknowledged": {
     message:
       "The copy on disk changed since this removal was priced. Check the new cost above, then remove the skill.",

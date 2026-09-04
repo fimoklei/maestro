@@ -139,27 +139,45 @@ const installRefusedWithoutMarkerOutput = [
 const UNINSTALL_OK_SUMMARY =
   "[*] Uninstall complete: Removed 1 package(s) from apm.yml, Removed 1 package(s) from apm_modules/";
 
-// Captured `apm uninstall -v <ref>` on apm 0.26.0 (2026-07-27, issue #334; full
+// Captured `apm uninstall -v <ref>` on apm 0.29.0 (2026-09-04, issue #772; full
 // capture in tests/fixtures/apm-uninstall-ok.txt, whose sandbox-absolute
-// `Updated .../apm.yml` line is dropped here). The `Cleaned up N integrated
-// skills` count is deliberately kept in shape but nothing keys on it — the same
-// command reported 7 and 11 for the same package.
+// `Updated .../apm.yml` line is dropped here). The `Cleaned N stale files`
+// count is kept in shape but nothing keys on it — it counts what that run
+// deleted (apm-behavior.md § Remove).
 const uninstallOkOutput = [
   "[>] Uninstalling 1 package(s)...",
-  "[+] github.com/fimoklei/agent-harness/skills/tdd#v0.5.1 - found in apm.yml",
-  "[i] Removed fimoklei/agent-harness/skills/tdd#v0.5.1 from dependencies.apm in apm.yml",
-  "[i] Removed fimoklei/agent-harness/skills/tdd#v0.5.1 from apm_modules/",
-  "[+] Cleaned up 8 integrated skills",
+  "[+] fimoklei/agent-harness/skills/tdd - found in apm.yml",
+  "[i] Cleaned 14 stale files from fimoklei/agent-harness/skills/tdd",
+  "[i] Removed fimoklei/agent-harness/skills/tdd from dependencies.apm in apm.yml",
+  "[i] Removed fimoklei/agent-harness/skills/tdd from apm_modules/",
+  "    Path: fimoklei/agent-harness/skills/tdd",
+  "  |-- (files unchanged)",
   UNINSTALL_OK_SUMMARY,
 ].join("\n");
 
 // Captured `apm uninstall <ref>` against a repo the package is not in (apm
-// 0.26.0, 2026-07-27; full capture in tests/fixtures/apm-uninstall-not-found.txt).
-// Exit 0, no success marker — the shape that must never read as a removal.
+// 0.29.0, 2026-09-04; full capture in tests/fixtures/apm-uninstall-not-found.txt).
+// Exit 1, no success marker — the shape that must never read as a removal.
 const uninstallNotFoundOutput = [
   "[>] Uninstalling 1 package(s)...",
-  "[!] github.com/fimoklei/agent-harness/skills/tdd#v0.5.1 - not found in apm.yml",
-  "[!] No packages found in apm.yml to remove",
+  "[x] github.com/fimoklei/agent-harness/skills/tdd#v0.5.1 was not found in apm.yml. Run 'apm deps list' and retry with an installed package identifier.",
+  "[x] Uninstall aborted: 1 requested package(s) could not be selected. Resolve the errors above and retry; no changes were made.",
+].join("\n");
+
+// Captured `apm uninstall -v <ref>` over a copy with one deployed file edited
+// (apm 0.29.0, 2026-09-04; full capture in
+// tests/fixtures/apm-uninstall-retained.txt). Exit 1, no success marker: apm
+// kept the edited file, deleted the other twelve, and left the package in
+// apm.yml and the lockfile (apm-behavior.md § Remove).
+const uninstallRetainedOutput = [
+  "[>] Uninstalling 1 package(s)...",
+  "[+] fimoklei/agent-harness/skills/tdd - found in apm.yml",
+  "Retained user-edited file .claude/skills/tdd/SKILL.md from fimoklei/agent-harness/skills/tdd; resolve it and retry.",
+  "[i] Cleaned 12 stale files from fimoklei/agent-harness/skills/tdd",
+  "[x] Uninstall could not remove tracked target files; package state was preserved.",
+  "[x]   - .claude/skills/tdd",
+  "[x]   - .claude/skills/tdd/SKILL.md",
+  "[x] Resolve or remove the listed files, then retry uninstall.",
 ].join("\n");
 
 // Rows from a captured `apm view ... versions` table with a deployable tag (apm
@@ -506,10 +524,22 @@ describe("ApmCliDriver.removeSkill", () => {
     ).resolves.toEqual({ ok: false });
   });
 
+  it("fails closed when apm kept an edited file and aborted part-way", async () => {
+    // The abort prints no success marker, and the lockfile still carries the
+    // package — so nothing here may read as a removal, whatever was deleted.
+    const { run } = fakeRun(uninstallRetainedOutput);
+    const driver = new ApmCliDriver({ run });
+
+    await expect(
+      driver.removeSkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
+    ).resolves.toEqual({ ok: false });
+  });
+
   it("fails closed when the marker rides along with a not-found note", async () => {
-    // Partial success prints the success marker AND a trailing not-found note.
-    // Both markers must be read, not just the first — otherwise a package that
-    // was never there reads as removed.
+    // apm 0.26.0's partial success printed the success marker AND a trailing
+    // not-found note; 0.29.0 aborts the whole run instead, and the guard stays
+    // fail-closed for both dialects. Both markers must be read, not just the
+    // first — otherwise a package that was never there reads as removed.
     const partial = [
       uninstallOkOutput,
       "[!] Note: 1 package(s) were not found in apm.yml",

@@ -49,15 +49,13 @@ export type RemoveLedgerRow = {
 // reproducible copy vs. deleting work nothing else holds are different prices (#414).
 const LEFTOVER_STATUS: Record<RemoveRowWarning, string> = {
   none: "Not installed — copy deleted in full",
-  "local-edits": "Not installed — local edits deleted too",
   "cannot-verify": "Not installed — nothing recorded to check",
   "check-failed": "Not installed — check did not run",
 };
 
-// Cause — consequence, sized for a right-aligned slot. The last two share
-// their consequence but differ in cause: ran-and-found-nothing vs. never-ran (J04).
+// Cause — consequence, sized for a right-aligned slot. The two share their
+// consequence but differ in cause: ran-and-found-nothing vs. never-ran (J04).
 const WARNING_STATUS: Record<Exclude<RemoveRowWarning, "none">, string> = {
-  "local-edits": "Local edits — deleted too",
   "cannot-verify": "Nothing recorded — may lose work",
   "check-failed": "Check did not run — may lose work",
 };

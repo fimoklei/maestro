@@ -1,0 +1,8 @@
+[>] Uninstalling 1 package(s)...
+[+] fimoklei/agent-harness/skills/tdd - found in apm.yml
+Retained user-edited file .claude/skills/tdd/SKILL.md from fimoklei/agent-harness/skills/tdd; resolve it and retry.
+[i] Cleaned 12 stale files from fimoklei/agent-harness/skills/tdd
+[x] Uninstall could not remove tracked target files; package state was preserved.
+[x]   - .claude/skills/tdd
+[x]   - .claude/skills/tdd/SKILL.md
+[x] Resolve or remove the listed files, then retry uninstall.

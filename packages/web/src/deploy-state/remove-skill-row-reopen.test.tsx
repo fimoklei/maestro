@@ -40,7 +40,7 @@ describe("removing a deployed skill from a row", () => {
             // A different answer each time, so a stale one on screen shows up
             // as the first open's verdict rather than as no verdict at all.
             check: checkFor(
-              checks === 1 ? null : "local-edits-will-be-lost",
+              checks === 1 ? null : "cannot-verify-local-edits",
               init,
             ),
             reclaim: null,
@@ -71,7 +71,7 @@ describe("removing a deployed skill from a row", () => {
       });
       // The second check's answer, not the clean one the first open reported.
       expect(await screen.findByRole("dialog")).toHaveTextContent(
-        /local (edits|changes)/i,
+        /may lose work/i,
       );
     });
   });
