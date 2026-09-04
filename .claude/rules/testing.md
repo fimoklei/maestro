@@ -5,6 +5,14 @@ Runner: **Vitest**, all lanes (ADR-0002).
 ## Hard rules
 
 - TDD via the `/tdd` skill. No Edit/Write to code without RED first.
+- **Preserve behavioural claims.** When an existing test fails during a change,
+  restore green without reducing the behaviour it proves. Refactor the test if
+  the claim stays intact. Remove or weaken the claim only when the user approves
+  a requirement change, the issue or spec records that change, or another test
+  already proves it. Before calling the work done, name that requirement or
+  replacement test in the handoff. Deleting tests or assertions, loosening
+  matchers, and adding `.skip` or conditional exclusion are never fixes for
+  production code.
 - **Layout is proven in a browser, not jsdom.** jsdom measures nothing — verify a CSS/layout change with an `agent-browser` measurement.
 - Never chain `lint && typecheck && test` — run `pnpm verify`. The full output of the last run is on disk in `.logs/`; read it instead of re-running with a different filter.
 
