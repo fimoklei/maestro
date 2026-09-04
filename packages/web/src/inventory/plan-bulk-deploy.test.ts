@@ -47,6 +47,32 @@ describe("planBulkDeploy", () => {
     });
   });
 
+  it("keeps a no-longer-released deployment out of the bulk update list", () => {
+    const plan = planBulkDeploy(
+      ["tdd"],
+      [
+        target(
+          "Claude Code",
+          ["tdd"],
+          [
+            {
+              name: "tdd",
+              current: "v1.0.0",
+              latest: "v1.2.0",
+              reading: "no-longer-released",
+            },
+          ],
+        ),
+      ],
+    );
+
+    expect(plan).toEqual({
+      toDeploy: ["tdd"],
+      skippedClean: [],
+      updateToLatest: [],
+    });
+  });
+
   it("skips a skill already deployed and up-to-date", () => {
     const plan = planBulkDeploy(["tdd"], [target("global", ["tdd"], [])]);
 

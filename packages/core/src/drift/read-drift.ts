@@ -1,6 +1,5 @@
-// Joins apm's Behind judgment with the content question ADR-0027 separates from
-// it: a deployed skill whose tree is identical at the pinned and the latest tag
-// only lags a pin. Behind is the fallback wherever that question is unanswered.
+// Joins apm's Behind judgment with the release-tree facts ADR-0027 and ADR-0028
+// separate from it. Behind is the fallback wherever those facts are unanswered.
 
 import type { DeployTarget } from "../deploy/deploy-skill";
 import type { DeployedLocation } from "../deploy/deployed-location";
@@ -13,8 +12,9 @@ import type { FileSystemPort } from "../registry/file-system";
 import type { OutdatedResult, VersionDrift } from "./parse-outdated";
 
 // "behind" claims a newer release exists and this skill moved in it;
-// "older-tag" claims the same release with the skill's content unchanged.
-export type DriftReading = "behind" | "older-tag";
+// "older-tag" claims the same release with the skill's content unchanged;
+// "no-longer-released" proves this deployed name vanished from the release.
+export type DriftReading = "behind" | "older-tag" | "no-longer-released";
 
 export type ReadDriftEntry = VersionDrift & { reading: DriftReading };
 
@@ -59,26 +59,32 @@ export class ReadDrift {
       return { ok: true, behind: [] };
     }
 
-    const unmoved = await this.unmovedNames(input.target, outdated.behind);
+    const readings = await this.contentReadings(input.target, outdated.behind);
     return {
       ok: true,
       behind: outdated.behind.map((entry) => ({
         ...entry,
-        reading: unmoved.has(entry.name) ? "older-tag" : "behind",
+        reading: readings.noLongerReleased.has(entry.name)
+          ? "no-longer-released"
+          : readings.unmoved.has(entry.name)
+            ? "older-tag"
+            : "behind",
       })),
     };
   }
 
-  // Names proven identical at both tags. Every other name falls back to Behind,
-  // so an unreadable clone, ref or pin never invents a content answer.
-  private async unmovedNames(
+  // Names proven identical at both tags, and names proven absent from the
+  // latest release. Every other name falls back to Behind, so an unreadable
+  // clone, ref or pin never invents a content answer.
+  private async contentReadings(
     target: DeployTarget,
     behind: readonly VersionDrift[],
-  ): Promise<Set<string>> {
+  ): Promise<{ unmoved: Set<string>; noLongerReleased: Set<string> }> {
     const unmoved = new Set<string>();
+    const noLongerReleased = new Set<string>();
     const root = await this.deps.resolveRoot();
     if (root === undefined) {
-      return unmoved;
+      return { unmoved, noLongerReleased };
     }
     // The latest tag is a remote fact and the trees are read locally, so the
     // tags must be current before any ref resolves (ADR-0027 §5). A fetch that
@@ -86,7 +92,7 @@ export class ReadDrift {
     await this.deps.git.fetch(root).catch(() => undefined);
     const origin = await this.deps.git.readOrigin(root);
     if (origin === null) {
-      return unmoved;
+      return { unmoved, noLongerReleased };
     }
 
     const pins = await this.readPins(target);
@@ -129,15 +135,19 @@ export class ReadDrift {
         treesAt(entry.current),
         treesAt(entry.latest),
       ]);
-      const before = pinned?.get(entry.name);
-      const after = latest?.get(entry.name);
-      // Absent at either tag is a rename or a removal, which is a move (#770).
-      if (before !== undefined && before === after) {
+      if (pinned === null || latest === null) {
+        continue;
+      }
+      const before = pinned.get(entry.name);
+      const after = latest.get(entry.name);
+      if (before !== undefined && after === undefined) {
+        noLongerReleased.add(entry.name);
+      } else if (before !== undefined && before === after) {
         unmoved.add(entry.name);
       }
     }
 
-    return unmoved;
+    return { unmoved, noLongerReleased };
   }
 
   // Which repository each deployed skill is pinned to, read from the target's
