@@ -80,31 +80,86 @@ describe("canonicalHarnessFiles", () => {
 });
 
 describe("CONTRIBUTING.md", () => {
-  const contributing = () => byPath().get("CONTRIBUTING.md");
+  const contributing = (ownerRepo?: string) =>
+    byPath(ownerRepo).get("CONTRIBUTING.md");
+  const text = (ownerRepo?: string) => contributing(ownerRepo)?.contents ?? "";
+  // A sentence in an 80-column markdown file wraps wherever it happens to
+  // reach the margin, so assert sentences against one flat line.
+  const flat = (ownerRepo?: string) => text(ownerRepo).replace(/\s+/g, " ");
+  const sections = () => text().split(/^## /m).slice(1);
+  const situations = () => sections().slice(0, 3);
 
   it("never overwrites a Harness's own CONTRIBUTING.md", () => {
     expect(contributing()?.skipIfExists).toBe(true);
   });
 
+  it("names each section after a situation the contributor is in", () => {
+    expect(sections().map((section) => section.split("\n")[0])).toEqual([
+      "I want to add a new skill",
+      "I want to change an existing skill",
+      "My skill is ready — what now?",
+      "Why this is a human agreement",
+    ]);
+  });
+
+  it("walks each situation as numbered steps", () => {
+    for (const situation of situations()) {
+      expect(situation).toMatch(/^1\. /m);
+    }
+  });
+
   it("tells the reader who reviews", () => {
-    const text = contributing()?.contents as string;
-    expect(text).toMatch(/curator/i);
-    expect(text).toMatch(/never merges their own pull request/i);
+    expect(flat()).toMatch(/curator/i);
+    expect(flat()).toMatch(/You never merge your own change/i);
   });
 
-  it("tells the reader who releases", () => {
-    const text = contributing()?.contents as string;
-    expect(text).toMatch(/tag-authorized teammate may substitute/i);
+  it("names every cockpit control the reader has to press, verbatim", () => {
+    for (const label of [
+      "**Import skill…**",
+      "**Propose change**",
+      "**Pull request →**",
+      "**Refresh**",
+      "**Plan release**",
+      "**Publish release**",
+    ]) {
+      expect(text()).toContain(label);
+    }
   });
 
-  it("tells the reader what to do with Pending release", () => {
-    expect(contributing()?.contents).toContain("`Pending release`");
+  it("opens the pull request with Propose change, before the curator merges", () => {
+    // Propose change renders only while a movement is pending-promotion, so a
+    // text that puts it after the merge names a control that is gone (#715).
+    const ready = (situations().at(-1) as string).replace(/\s+/g, " ");
+    expect(ready).toMatch(
+      /\*\*Propose change\*\*.*the curator.*\*\*Publish release\*\*/,
+    );
+  });
+
+  it("sends the reader to the Harness itself to edit an existing skill", () => {
+    expect(flat()).toMatch(/edit the skill in place under `\.apm\/skills\//i);
+    // The scaffold creates no `.claude/skills` symlink, so the text may not
+    // promise one (#715).
+    expect(flat()).not.toMatch(/symlink/i);
+  });
+
+  it("warns that Maestro deletes local edits to a deployed skill copy", () => {
+    expect(flat()).toMatch(/Never edit a skill copy that Maestro deployed/i);
+    expect(flat()).toMatch(/deletes local edits there without warning/i);
   });
 
   it("states the admission bar", () => {
-    const text = contributing()?.contents as string;
-    expect(text).toMatch(/structurally valid/i);
-    expect(text).toMatch(/reusable outside one repository/i);
+    expect(flat()).toMatch(/structurally valid/i);
+    expect(flat()).toMatch(/not repo-specific/i);
+  });
+
+  it("closes on why independent review holds without branch protection", () => {
+    expect(sections().at(-1)).toMatch(/^Why this is a human agreement\n/);
+    expect(flat()).toMatch(/branch protection/i);
+  });
+
+  it("names the repository it is scaffolded into and no other", () => {
+    expect(flat("acme/toolbelt")).toContain("acme/toolbelt");
+    expect(flat("acme/toolbelt")).not.toMatch(/fimoklei/i);
   });
 });
 
