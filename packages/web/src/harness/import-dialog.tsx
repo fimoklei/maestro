@@ -1,6 +1,6 @@
 import { targetLabel } from "../shell/target-label";
-import { useModalDialog } from "../shell/use-modal-dialog";
 import { Button } from "../ui/button";
+import { DialogShell } from "../ui/dialog-shell";
 import { Notice, type NoticeContent } from "../ui/notice";
 import {
   advisoryTexts,
@@ -47,10 +47,6 @@ export function ImportDialog({
   // copy left behind is readable rather than gone with the dialog (#576).
   imported: { mode: "add" | "update"; name: string; skipped: number } | null;
 }) {
-  const { panelRef, requestClose } = useModalDialog({
-    onClose,
-    closeEnabled: !importing,
-  });
   const check = load.kind === "ready" ? load.check : undefined;
   const labels = importLabels(check);
   // Provenance decides the name of an update, so the field states it rather
@@ -65,139 +61,127 @@ export function ImportDialog({
   const nameErrorId = "import-name-error";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 p-6">
-      <button
-        type="button"
-        aria-hidden="true"
-        tabIndex={-1}
-        onClick={requestClose}
-        className="absolute inset-0 cursor-default"
-      />
-      <div
-        ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label={labels.title}
-        tabIndex={-1}
-        className="relative flex max-h-[90vh] w-full max-w-[560px] flex-col overflow-hidden rounded-card border border-line-row bg-chrome outline-none"
-      >
-        <div className="flex items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
-          <h2 className="font-semibold font-ui text-fg text-subtitle">
-            {labels.title}
-          </h2>
-        </div>
-
-        <div className="flex flex-col gap-3 overflow-y-auto px-3.5 py-3">
-          <div className="flex flex-col gap-1.5">
-            <span className="m-label">Skill folder</span>
-            <div className="flex items-center gap-2.5">
-              {/* The tail names the folder; left-anchored truncation would cut
-                  exactly that away (#211). */}
-              <span
-                title={source ?? undefined}
-                className="min-w-0 flex-1 truncate font-mono text-data text-fg"
-              >
-                {source === null ? "No folder picked yet" : targetLabel(source)}
-              </span>
-              <Button
-                type="button"
-                variant="quiet"
-                size="sm"
-                onClick={onPickSource}
-              >
-                {source === null ? "Pick folder" : "Change folder"}
-              </Button>
-            </div>
-            {/* The answer to picking a folder, so it announces assertively —
-                the author is looking at the button they just pressed. */}
-            <Notice trigger="user-action" notice={sourceProblem} />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="m-label" htmlFor="import-name">
-              Name in the Harness
-            </label>
-            <input
-              id="import-name"
-              value={name}
-              onChange={(event) => onNameChange(event.target.value)}
-              disabled={source === null || locked}
-              aria-invalid={nameProblem !== null}
-              aria-describedby={nameProblem === null ? undefined : nameErrorId}
-              // No outline-none: it poisons --tw-outline-style and hides the
-              // ring (#227).
-              className="rounded-control border border-line bg-inset px-2 py-1.5 font-mono text-fg text-mono-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
-            />
-            {/* The directory name is the skill's identity, so it is stated
-                before it is chosen, not explained after a failure. */}
-            <span className="font-ui text-desc text-muted">{labels.hint}</span>
-            <Notice
-              id={nameErrorId}
-              trigger="user-action"
-              notice={nameProblem}
-            />
-          </div>
-
-          {advisories.length === 0 ? null : (
-            <div
-              role="status"
-              aria-label="Convention checks"
-              className="flex flex-col gap-1.5 rounded-control border border-line-drift bg-amber-bg px-2.5 py-2.5"
-            >
-              <span className="font-semibold font-ui text-amber-ink text-desc">
-                Convention checks — the import still runs
-              </span>
-              <ul className="m-0 flex list-none flex-col gap-1 p-0">
-                {advisories.map((advisory) => (
-                  <li key={advisory} className="font-ui text-desc text-fg-2">
-                    {advisory}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {imported === null ? null : (
-            <p role="status" className="m-0 font-ui text-desc text-fg-2">
-              <span className="font-mono text-fg">{imported.name}</span>{" "}
-              {imported.mode === "update"
-                ? "was replaced in the Harness and is waiting for review. The deployed copy is not up to date until you deploy it again."
-                : "landed in the Harness and is waiting for review."}
-              {imported.skipped === 0
-                ? null
-                : imported.skipped === 1
-                  ? " 1 .git entry was skipped."
-                  : ` ${imported.skipped} .git entries were skipped.`}
-            </p>
-          )}
-
-          <Notice trigger="user-action" notice={importError} />
-        </div>
-
-        <div className="flex items-center gap-2.5 border-line-row border-t px-3.5 py-3">
-          <span className="flex-1" />
-          <Button
-            type="button"
-            className="shrink-0"
-            variant="quiet"
-            size="sm"
-            onClick={onClose}
-            disabled={importing}
-          >
-            Close
-          </Button>
-          <Button
-            type="button"
-            className="shrink-0"
-            variant="primary"
-            size="sm"
-            disabled={!importEnabled(check) || importing || imported !== null}
-            onClick={onImport}
-          >
-            {importing ? labels.busy : labels.confirm}
-          </Button>
-        </div>
+    <DialogShell
+      label={labels.title}
+      // Every field states its own hint and its own refusal beside it.
+      describedBy={null}
+      width={560}
+      height="tall"
+      onClose={onClose}
+      closeEnabled={!importing}
+    >
+      <div className="flex shrink-0 items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
+        <h2 className="font-semibold font-ui text-fg text-subtitle">
+          {labels.title}
+        </h2>
       </div>
-    </div>
+
+      <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-3.5 py-3">
+        <div className="flex flex-col gap-1.5">
+          <span className="m-label">Skill folder</span>
+          <div className="flex items-center gap-2.5">
+            {/* The tail names the folder; left-anchored truncation would cut
+                  exactly that away (#211). */}
+            <span
+              title={source ?? undefined}
+              className="min-w-0 flex-1 truncate font-mono text-data text-fg"
+            >
+              {source === null ? "No folder picked yet" : targetLabel(source)}
+            </span>
+            <Button
+              type="button"
+              variant="quiet"
+              size="sm"
+              onClick={onPickSource}
+            >
+              {source === null ? "Pick folder" : "Change folder"}
+            </Button>
+          </div>
+          {/* The answer to picking a folder, so it announces assertively —
+                the author is looking at the button they just pressed. */}
+          <Notice trigger="user-action" notice={sourceProblem} />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="m-label" htmlFor="import-name">
+            Name in the Harness
+          </label>
+          <input
+            id="import-name"
+            value={name}
+            onChange={(event) => onNameChange(event.target.value)}
+            disabled={source === null || locked}
+            aria-invalid={nameProblem !== null}
+            aria-describedby={nameProblem === null ? undefined : nameErrorId}
+            // No outline-none: it poisons --tw-outline-style and hides the
+            // ring (#227).
+            className="rounded-control border border-line bg-inset px-2 py-1.5 font-mono text-fg text-mono-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+          />
+          {/* The directory name is the skill's identity, so it is stated
+                before it is chosen, not explained after a failure. */}
+          <span className="font-ui text-desc text-muted">{labels.hint}</span>
+          <Notice id={nameErrorId} trigger="user-action" notice={nameProblem} />
+        </div>
+
+        {advisories.length === 0 ? null : (
+          <div
+            role="status"
+            aria-label="Convention checks"
+            className="flex flex-col gap-1.5 rounded-control border border-line-drift bg-amber-bg px-2.5 py-2.5"
+          >
+            <span className="font-semibold font-ui text-amber-ink text-desc">
+              Convention checks — the import still runs
+            </span>
+            <ul className="m-0 flex list-none flex-col gap-1 p-0">
+              {advisories.map((advisory) => (
+                <li key={advisory} className="font-ui text-desc text-fg-2">
+                  {advisory}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {imported === null ? null : (
+          <p role="status" className="m-0 font-ui text-desc text-fg-2">
+            <span className="font-mono text-fg">{imported.name}</span>{" "}
+            {imported.mode === "update"
+              ? "was replaced in the Harness and is waiting for review. The deployed copy is not up to date until you deploy it again."
+              : "landed in the Harness and is waiting for review."}
+            {imported.skipped === 0
+              ? null
+              : imported.skipped === 1
+                ? " 1 .git entry was skipped."
+                : ` ${imported.skipped} .git entries were skipped.`}
+          </p>
+        )}
+
+        <Notice trigger="user-action" notice={importError} />
+      </div>
+
+      <div className="flex shrink-0 items-center gap-2.5 border-line-row border-t px-3.5 py-3">
+        <span className="flex-1" />
+        <Button
+          type="button"
+          className="shrink-0"
+          variant="quiet"
+          size="sm"
+          onClick={onClose}
+          disabled={importing}
+        >
+          Close
+        </Button>
+        <Button
+          type="button"
+          className="shrink-0"
+          variant="primary"
+          size="sm"
+          disabled={!importEnabled(check) || importing || imported !== null}
+          onClick={onImport}
+        >
+          {importing ? labels.busy : labels.confirm}
+        </Button>
+      </div>
+    </DialogShell>
   );
 }

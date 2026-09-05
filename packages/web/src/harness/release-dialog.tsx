@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { useModalDialog } from "../shell/use-modal-dialog";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
+import { DialogShell } from "../ui/dialog-shell";
+import { Fact } from "../ui/fact";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { SegmentedControl } from "../ui/segmented-control";
 import { PendingRelease } from "./pending-release";
@@ -47,10 +48,6 @@ export function ReleaseDialog({
   publishing: boolean;
   publishError: NoticeContent | null;
 }) {
-  const { panelRef, requestClose } = useModalDialog({
-    onClose,
-    closeEnabled: true,
-  });
   const heading = `Release ${origin}`;
   // `null` until the author overrides it; the proposal fills in until then, so
   // one state serves both the display and what Publish sends.
@@ -76,75 +73,66 @@ export function ReleaseDialog({
   const plan = load.kind === "ready" ? load.plan : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 p-6">
-      <button
-        type="button"
-        aria-hidden="true"
-        tabIndex={-1}
-        onClick={requestClose}
-        className="absolute inset-0 cursor-default"
-      />
-      <div
-        ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label={heading}
-        tabIndex={-1}
-        className="relative flex max-h-[90vh] w-full max-w-[560px] flex-col overflow-hidden rounded-card border border-line-row bg-chrome outline-none"
-      >
-        <div className="flex items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
-          <h2 className="font-semibold font-ui text-fg text-subtitle">
-            Release <span className="font-mono">{origin}</span>
-          </h2>
-        </div>
-
-        <div className="flex flex-col gap-3 overflow-y-auto px-3.5 py-3">
-          {/* The plan is the answer to the click that opened this dialog, so
-              its failure is a user-action, not a panel that failed on load. */}
-          <Notice
-            trigger="user-action"
-            notice={load.kind === "error" ? load.notice : null}
-          />
-          {load.kind === "loading" ? (
-            <p className="font-ui text-desc text-muted">
-              Loading the release plan…
-            </p>
-          ) : load.kind === "ready" ? (
-            <PlanBody
-              plan={load.plan}
-              step={chosenStep ?? load.plan.proposedStep}
-              onStepChange={setChosenStep}
-            />
-          ) : null}
-          <Notice trigger="user-action" notice={publishError} />
-        </div>
-
-        <div className="flex items-center gap-2.5 border-line-row border-t px-3.5 py-3">
-          <span className="flex-1" />
-          <Button
-            type="button"
-            className="shrink-0"
-            variant="quiet"
-            size="sm"
-            onClick={onClose}
-          >
-            Close
-          </Button>
-          <Button
-            type="button"
-            className="shrink-0"
-            variant="primary"
-            size="sm"
-            disabled={step === null || plan === null || publishing}
-            onClick={() =>
-              step !== null && plan !== null && onPublish(step, plan)
-            }
-          >
-            {publishing ? "Publishing…" : "Publish release"}
-          </Button>
-        </div>
+    <DialogShell
+      label={heading}
+      // The plan is the body, and it arrives after the panel is announced.
+      describedBy={null}
+      width={560}
+      height="tall"
+      onClose={onClose}
+    >
+      <div className="flex shrink-0 items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
+        <h2 className="font-semibold font-ui text-fg text-subtitle">
+          Release <span className="font-mono">{origin}</span>
+        </h2>
       </div>
-    </div>
+
+      <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-3.5 py-3">
+        {/* The plan is the answer to the click that opened this dialog, so
+              its failure is a user-action, not a panel that failed on load. */}
+        <Notice
+          trigger="user-action"
+          notice={load.kind === "error" ? load.notice : null}
+        />
+        {load.kind === "loading" ? (
+          <p className="font-ui text-desc text-muted">
+            Loading the release plan…
+          </p>
+        ) : load.kind === "ready" ? (
+          <PlanBody
+            plan={load.plan}
+            step={chosenStep ?? load.plan.proposedStep}
+            onStepChange={setChosenStep}
+          />
+        ) : null}
+        <Notice trigger="user-action" notice={publishError} />
+      </div>
+
+      <div className="flex shrink-0 items-center gap-2.5 border-line-row border-t px-3.5 py-3">
+        <span className="flex-1" />
+        <Button
+          type="button"
+          className="shrink-0"
+          variant="quiet"
+          size="sm"
+          onClick={onClose}
+        >
+          Close
+        </Button>
+        <Button
+          type="button"
+          className="shrink-0"
+          variant="primary"
+          size="sm"
+          disabled={step === null || plan === null || publishing}
+          onClick={() =>
+            step !== null && plan !== null && onPublish(step, plan)
+          }
+        >
+          {publishing ? "Publishing…" : "Publish release"}
+        </Button>
+      </div>
+    </DialogShell>
   );
 }
 
@@ -197,7 +185,7 @@ function PlanBody({
           <Fact label="Branch" value={plan.defaultBranch} />
           {/* The whole commit: a short hash is not the exact revision, and
               need not be unique in a repository this size (#519). */}
-          <Fact label="Revision" value={plan.revision} />
+          <Fact label="Revision" value={plan.revision} wrap />
         </dl>
         <div className="mt-4 flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
           <div className="flex flex-col gap-1.5">
@@ -220,14 +208,5 @@ function PlanBody({
         </div>
       </Card>
     </>
-  );
-}
-
-function Fact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="m-0 flex flex-col">
-      <dt className="m-label mb-1.5">{label}</dt>
-      <dd className="m-0 font-mono text-data text-fg">{value}</dd>
-    </div>
   );
 }
