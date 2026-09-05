@@ -7,7 +7,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ToolPresenceAdapter } from "@maestro/core";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("ToolPresenceAdapter", () => {
   let home: string;
@@ -26,7 +26,21 @@ describe("ToolPresenceAdapter", () => {
   });
 
   afterEach(async () => {
+    vi.unstubAllEnvs();
     await rm(home, { recursive: true, force: true });
+  });
+
+  it("reads the current HOME on every detection call", async () => {
+    await addClaude();
+    const otherHome = join(home, "other-home");
+    await mkdir(join(otherHome, ".codex"), { recursive: true });
+    await writeFile(join(otherHome, ".codex", "config.toml"), "", "utf8");
+    vi.stubEnv("HOME", home);
+    const liveAdapter = new ToolPresenceAdapter();
+    await expect(liveAdapter.detectGlobalTools()).resolves.toEqual(["claude"]);
+
+    vi.stubEnv("HOME", otherHome);
+    await expect(liveAdapter.detectGlobalTools()).resolves.toEqual(["codex"]);
   });
 
   it("detects both tools when both config files exist", async () => {

@@ -11,7 +11,8 @@ import {
   readConfiguredGitOriginUrl,
   readGitOriginUrl,
 } from "../deploy/git-origin-url";
-import { NON_INTERACTIVE } from "../git/non-interactive";
+import { gitOptions } from "../git/non-interactive";
+import { runGitText } from "../git/run-git-text";
 import { readRemoteDefaultBranch } from "../inventory/default-branch";
 import {
   HARNESS_SKILLS_DIR,
@@ -35,10 +36,6 @@ import type {
 import type { HarnessSkillTree } from "./skill-movements";
 
 const run = promisify(execFile);
-
-// A cockpit read or a confirm must end. Without this a hung connection holds
-// the request open for as long as git is willing to wait, which is forever.
-const GIT_TIMEOUT_MS = 60_000;
 
 const REMOTE_HEAD = "refs/remotes/origin/HEAD";
 
@@ -787,14 +784,8 @@ export class HarnessGitAdapter implements HarnessGitPort {
 
   // Null on any failure, so an unset `origin/HEAD` reads as "not known"
   // rather than failing the whole screen. Output is trimmed, never parsed here.
-  private async read(root: string, args: string[]): Promise<string | null> {
-    try {
-      const { stdout } = await run("git", ["-C", root, ...args]);
-      const line = stdout.trim();
-      return line.length > 0 ? line : null;
-    } catch {
-      return null;
-    }
+  private read(root: string, args: string[]): Promise<string | null> {
+    return runGitText(root, args);
   }
 
   // `readOutput`, not `read`: an empty listing is a namespace with no tags,
@@ -821,11 +812,6 @@ export class HarnessGitAdapter implements HarnessGitPort {
       });
   }
 }
-
-const gitOptions = () => ({
-  env: { ...process.env, ...NON_INTERACTIVE },
-  timeout: GIT_TIMEOUT_MS,
-});
 
 // The author's hooks are theirs, and these commands promise to leave the
 // checkout alone: a `pre-push` hook is free to write in the working tree, or to

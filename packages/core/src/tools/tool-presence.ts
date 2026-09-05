@@ -2,9 +2,9 @@
 // back as an installed tool (ADR-0011, #127). HOME is injected, so a test or
 // smoke run never probes the real home (ADR-0010).
 import { stat } from "node:fs/promises";
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { DEPLOY_TOOLS, type SupportedTool } from "../deploy/deploy-tools";
+import { resolveHomeDirectory } from "../home-directory";
 import type { ToolPresencePort } from "./tool-presence-port";
 
 export class ToolPresenceAdapter implements ToolPresencePort {
@@ -13,7 +13,7 @@ export class ToolPresenceAdapter implements ToolPresencePort {
   private readonly homeRoot: () => string;
 
   constructor(deps?: { homeRoot?: () => string }) {
-    this.homeRoot = deps?.homeRoot ?? (() => process.env.HOME ?? homedir());
+    this.homeRoot = deps?.homeRoot ?? resolveHomeDirectory;
   }
 
   async detectGlobalTools(): Promise<SupportedTool[]> {

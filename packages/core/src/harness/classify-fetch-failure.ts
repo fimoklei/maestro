@@ -1,3 +1,5 @@
+import { normalizeCommandOutput } from "../normalize-command-output";
+
 // Turns git's failure text into one of Maestro's two no-answer classes. The
 // text is read here and thrown away: nothing derived from it but the class
 // crosses into a response (security.md).
@@ -19,7 +21,7 @@ const OFFLINE_PHRASES = [
 export const classifyFetchFailure = (
   stderr: string,
 ): "offline" | "fetch-failed" => {
-  const normalized = stderr.toLowerCase().replace(/\s+/g, " ");
+  const normalized = normalizeCommandOutput(stderr);
   return OFFLINE_PHRASES.some((phrase) => normalized.includes(phrase))
     ? "offline"
     : "fetch-failed";

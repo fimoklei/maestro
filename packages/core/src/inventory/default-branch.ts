@@ -1,9 +1,6 @@
 // The connected Harness's default branch, read offline and never guessed
 // (#553).
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-
-const run = promisify(execFile);
+import { runGitText } from "../git/run-git-text";
 
 const REMOTE_HEAD = "refs/remotes/origin/HEAD";
 const REMOTE_BRANCHES = "refs/remotes/origin";
@@ -27,7 +24,7 @@ export const resolveDefaultBranch = async (
   }
   // Read back rather than trusted: the write prints nothing, so its own
   // result says nothing about what the repo now holds.
-  await git(repoPath, [
+  await runGitText(repoPath, [
     "symbolic-ref",
     REMOTE_HEAD,
     `${REMOTE_BRANCHES}/${only}`,
@@ -41,7 +38,7 @@ export const resolveDefaultBranch = async (
 export const readRemoteDefaultBranch = async (
   repoPath: string,
 ): Promise<string | null> => {
-  const target = await git(repoPath, ["symbolic-ref", REMOTE_HEAD]);
+  const target = await runGitText(repoPath, ["symbolic-ref", REMOTE_HEAD]);
   if (target === null || !target.startsWith(`${REMOTE_BRANCHES}/`)) {
     return null;
   }
@@ -60,7 +57,7 @@ const provenSoleBranch = async (repoPath: string): Promise<string | null> => {
   }
   // lstrip drops `refs/remotes/origin/`, so a branch named `release/2` keeps
   // its slash. `origin/HEAD` is listed here too and is not a branch.
-  const listing = await git(repoPath, [
+  const listing = await runGitText(repoPath, [
     "for-each-ref",
     "--format=%(refname:lstrip=3)",
     REMOTE_BRANCHES,
@@ -79,7 +76,7 @@ const provenSoleBranch = async (repoPath: string): Promise<string | null> => {
 const fetchesEveryBranch = async (repoPath: string): Promise<boolean> => {
   const refspecs =
     (
-      await git(repoPath, ["config", "--get-all", "remote.origin.fetch"])
+      await runGitText(repoPath, ["config", "--get-all", "remote.origin.fetch"])
     )?.split("\n") ?? [];
   // A `^` refspec excludes what the wildcard would otherwise have brought in,
   // so one of them anywhere leaves the namespace incomplete.
@@ -96,24 +93,9 @@ const resolvesToCommit = async (
   repoPath: string,
   ref: string,
 ): Promise<boolean> =>
-  (await git(repoPath, [
+  (await runGitText(repoPath, [
     "rev-parse",
     "--verify",
     "--quiet",
     `${ref}^{commit}`,
   ])) !== null;
-
-// Null on any failure, so an unset `origin/HEAD` reads as "not known" rather
-// than throwing. Output is trimmed, never parsed here.
-const git = async (
-  repoPath: string,
-  args: string[],
-): Promise<string | null> => {
-  try {
-    const { stdout } = await run("git", ["-C", repoPath, ...args]);
-    const output = stdout.trim();
-    return output.length > 0 ? output : null;
-  } catch {
-    return null;
-  }
-};

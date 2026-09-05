@@ -1,3 +1,5 @@
+import { normalizeCommandOutput } from "../normalize-command-output";
+
 // Turns a failed `git clone` into one of Maestro's three classes. The text is
 // read here and thrown away: nothing derived from it but the class crosses
 // into a response (security.md). Git runs under a fixed locale, so the phrases
@@ -29,7 +31,7 @@ export type CloneFailure =
   | "clone-failed";
 
 export const classifyCloneFailure = (stderr: string): CloneFailure => {
-  const normalized = stderr.toLowerCase().replace(/\s+/g, " ");
+  const normalized = normalizeCommandOutput(stderr);
   if (AUTH_PHRASES.some((phrase) => normalized.includes(phrase))) {
     return "clone-auth-failed";
   }
