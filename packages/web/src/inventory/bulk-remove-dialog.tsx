@@ -1,7 +1,7 @@
 import { useId } from "react";
-import { useModalDialog } from "../shell/use-modal-dialog";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
+import { DialogShell } from "../ui/dialog-shell";
 import { Notice } from "../ui/notice";
 import { panelBorderFor } from "../ui/panel-border";
 import { StatusDot } from "../ui/status-dot";
@@ -169,12 +169,6 @@ export function BulkRemoveDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  // Closing is blocked while the run is in flight — walking away mid-run is
-  // how a partial state gets made with nobody watching.
-  const { panelRef, requestClose } = useModalDialog({
-    onClose: onCancel,
-    closeEnabled: !isRemoving,
-  });
   const grouped = view.kind === "grouped" ? view : null;
   const checkingLine = view.kind === "checking" ? view.line : null;
   // Nothing to walk is not a run: a refusal never blocks the others, but with
@@ -262,145 +256,127 @@ export function BulkRemoveDialog({
     );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 p-6">
-      {/* Real button, hidden from a11y tree and tab order: backdrop dismiss
-          without making a static div interactive. */}
-      <button
-        type="button"
-        aria-hidden="true"
-        tabIndex={-1}
-        onClick={requestClose}
-        className="absolute inset-0 cursor-default"
-      />
-      <div
-        ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label={heading}
-        aria-describedby={described === "" ? undefined : described}
-        tabIndex={-1}
-        className={cn(
-          // Capped at the viewport, with only the body scrolling: a bulk can
-          // carry a row per target, and a panel that grew past the screen
-          // would push its own cancel out of reach.
-          "relative flex max-h-[calc(100vh-3rem)] w-full max-w-[460px] flex-col overflow-hidden rounded-card border bg-chrome outline-none",
-          panelBorderFor({
-            failure: failure !== null || done?.kind === "partial",
-            cost:
-              done === null && !isRemoving && (grouped?.cost.length ?? 0) > 0,
-          }),
-        )}
-      >
-        <div className="flex shrink-0 items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
-          <h2 className="font-semibold font-ui text-fg text-subtitle">
-            {title.before}
-            <span className="font-mono">{skillName}</span>
-            {title.after}
-          </h2>
-          <TypeTag type={type} className="shrink-0" />
-        </div>
+    // Closing is blocked while the run is in flight — walking away mid-run is
+    // how a partial state gets made with nobody watching.
+    <DialogShell
+      label={heading}
+      describedBy={described === "" ? null : described}
+      width={460}
+      border={panelBorderFor({
+        failure: failure !== null || done?.kind === "partial",
+        cost: done === null && !isRemoving && (grouped?.cost.length ?? 0) > 0,
+      })}
+      onClose={onCancel}
+      closeEnabled={!isRemoving}
+    >
+      <div className="flex shrink-0 items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
+        <h2 className="font-semibold font-ui text-fg text-subtitle">
+          {title.before}
+          <span className="font-mono">{skillName}</span>
+          {title.after}
+        </h2>
+        <TypeTag type={type} className="shrink-0" />
+      </div>
 
-        <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-3.5 py-3">
-          {/* Mounted empty from first render — a live region created with its
+      <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-3.5 py-3">
+        {/* Mounted empty from first render — a live region created with its
               first message announces unreliably (remove-skill-dialog.tsx). The
               report itself is ordinary content, read where it is. */}
-          <span
-            role="status"
-            aria-live="polite"
-            aria-label="Bulk removal result"
-            className="sr-only"
-          >
-            {done === null ? "" : `${heading} · ${done.counts}`}
-          </span>
-          {done !== null ? (
-            <>
-              <SummaryRow id={countsId} tone="done">
-                {done.counts}
-              </SummaryRow>
-              {done.kind === "partial" ? (
-                <ReasonGroup
-                  id={leftAloneId}
-                  tone="refusal"
-                  heading={`✕ Left alone · ${done.leftAlone.length}`}
-                  // The class in the right-hand slot, the reason under it: one
-                  // without the other says nothing to act on.
-                  rows={done.leftAlone.map((row) => ({
-                    label: row.label,
-                    reason: row.outcome,
-                    detail: row.reason,
-                  }))}
-                />
-              ) : null}
-            </>
-          ) : failure !== null ? (
-            <>
-              <Notice
-                id={bodyId}
-                trigger="user-action"
-                notice={{
-                  level: "error",
-                  label: failure.label,
-                  message: failure.message,
-                  detail: failure.detail,
-                }}
-              />
-              {/* Only where the attempt can be repeated: the body the confirm
-                  beside it would act on comes back with it. */}
-              {failure.kind === "never-started" ? weighing : null}
-            </>
-          ) : isRemoving ? (
-            // The wait explained rather than blank. No per-target progress and
-            // no abort: there is no partial-state exit to offer.
-            <SummaryRow id={bodyId} tone="running">
-              Removing from {grouped?.removableCount ?? targetCount} targets,
-              one at a time
+        <span
+          role="status"
+          aria-live="polite"
+          aria-label="Bulk removal result"
+          className="sr-only"
+        >
+          {done === null ? "" : `${heading} · ${done.counts}`}
+        </span>
+        {done !== null ? (
+          <>
+            <SummaryRow id={countsId} tone="done">
+              {done.counts}
             </SummaryRow>
-          ) : grouped === null ? (
-            // Announced: the answered count climbs while the panel stands
-            // still, and the weighed body replaces it in place.
-            <div role="status">
-              <SummaryRow id={bodyId} tone="waiting">
-                {checkingLine}
-              </SummaryRow>
-            </div>
-          ) : (
-            weighing
-          )}
-        </div>
+            {done.kind === "partial" ? (
+              <ReasonGroup
+                id={leftAloneId}
+                tone="refusal"
+                heading={`✕ Left alone · ${done.leftAlone.length}`}
+                // The class in the right-hand slot, the reason under it: one
+                // without the other says nothing to act on.
+                rows={done.leftAlone.map((row) => ({
+                  label: row.label,
+                  reason: row.outcome,
+                  detail: row.reason,
+                }))}
+              />
+            ) : null}
+          </>
+        ) : failure !== null ? (
+          <>
+            <Notice
+              id={bodyId}
+              trigger="user-action"
+              notice={{
+                level: "error",
+                label: failure.label,
+                message: failure.message,
+                detail: failure.detail,
+              }}
+            />
+            {/* Only where the attempt can be repeated: the body the confirm
+                  beside it would act on comes back with it. */}
+            {failure.kind === "never-started" ? weighing : null}
+          </>
+        ) : isRemoving ? (
+          // The wait explained rather than blank. No per-target progress and
+          // no abort: there is no partial-state exit to offer.
+          <SummaryRow id={bodyId} tone="running">
+            Removing from {grouped?.removableCount ?? targetCount} targets, one
+            at a time
+          </SummaryRow>
+        ) : grouped === null ? (
+          // Announced: the answered count climbs while the panel stands
+          // still, and the weighed body replaces it in place.
+          <div role="status">
+            <SummaryRow id={bodyId} tone="waiting">
+              {checkingLine}
+            </SummaryRow>
+          </div>
+        ) : (
+          weighing
+        )}
+      </div>
 
-        <div className="flex shrink-0 items-center justify-end gap-2.5 border-line-row border-t px-3.5 py-3">
+      <div className="flex shrink-0 items-center justify-end gap-2.5 border-line-row border-t px-3.5 py-3">
+        <Button
+          type="button"
+          className="shrink-0"
+          // Success only where the run finished clean: it is then the one
+          // control on the panel, and a quiet button would read as a dismiss.
+          variant={done?.kind === "clean" ? "success" : "quiet"}
+          size="sm"
+          disabled={isRemoving}
+          onClick={onCancel}
+        >
+          {closeLabel}
+        </Button>
+        {/* Absent, not disabled, once the run is over or its outcome is
+              unknown: there is nothing left to confirm, and a control beside
+              either would rerun a removal already made or unseen. */}
+        {report === null || report.kind === "never-started" ? (
           <Button
             type="button"
             className="shrink-0"
-            // Success only where the run finished clean: it is then the one
-            // control on the panel, and a quiet button would read as a dismiss.
-            variant={done?.kind === "clean" ? "success" : "quiet"}
+            variant="primary"
             size="sm"
-            disabled={isRemoving}
-            onClick={onCancel}
+            disabled={isRemoving || !confirmable}
+            onClick={onConfirm}
           >
-            {closeLabel}
+            {isRemoving
+              ? "Removing…"
+              : (grouped?.confirmLabel ?? `Remove from ${targetCount} targets`)}
           </Button>
-          {/* Absent, not disabled, once the run is over or its outcome is
-              unknown: there is nothing left to confirm, and a control beside
-              either would rerun a removal already made or unseen. */}
-          {report === null || report.kind === "never-started" ? (
-            <Button
-              type="button"
-              className="shrink-0"
-              variant="primary"
-              size="sm"
-              disabled={isRemoving || !confirmable}
-              onClick={onConfirm}
-            >
-              {isRemoving
-                ? "Removing…"
-                : (grouped?.confirmLabel ??
-                  `Remove from ${targetCount} targets`)}
-            </Button>
-          ) : null}
-        </div>
+        ) : null}
       </div>
-    </div>
+    </DialogShell>
   );
 }

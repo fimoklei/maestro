@@ -1,8 +1,8 @@
 import type { RemoveOutcome, RemoveTargetState } from "@maestro/core";
 import { useId } from "react";
-import { useModalDialog } from "../shell/use-modal-dialog";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
+import { DialogShell } from "../ui/dialog-shell";
 import { Notice } from "../ui/notice";
 import { panelBorderFor } from "../ui/panel-border";
 import { TypeTag } from "../ui/type-tag";
@@ -161,12 +161,6 @@ export function RemoveSkillDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  // Closing is blocked while the removal is in flight — the outcome is
-  // readable nowhere else.
-  const { panelRef, requestClose } = useModalDialog({
-    onClose: onCancel,
-    closeEnabled: !isRemoving,
-  });
   const named = version === null ? skillName : `${skillName} ${version}`;
   // No question mark: the standard bans a question as a heading, and the
   // accessible name states the same words as the visible one (R-A).
@@ -215,7 +209,7 @@ export function RemoveSkillDialog({
   const describedBy = refused
     ? refusalId
     : unledgered
-      ? undefined
+      ? null
       : [leadInId, ...detectedRows.map((row) => row.id)].join(" ");
   // Ties the disabled reason to the control (same wiring as browse dialog's
   // `↑ up`). Only for the running check — a refusal removes the control instead.
@@ -228,171 +222,158 @@ export function RemoveSkillDialog({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 p-6">
-      {/* Real button, hidden from a11y tree and tab order: backdrop dismiss
-          without making a static div interactive. */}
-      <button
-        type="button"
-        aria-hidden="true"
-        tabIndex={-1}
-        onClick={requestClose}
-        className="absolute inset-0 cursor-default"
-      />
-      <div
-        ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label={heading}
-        aria-describedby={describedBy}
-        tabIndex={-1}
-        className={cn(
-          "relative flex w-full max-w-[480px] flex-col overflow-hidden rounded-card border bg-chrome outline-none",
-          panelBorder,
-        )}
-      >
-        <div className="flex items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
-          <h2 className="font-semibold font-ui text-fg text-subtitle">
-            Remove <span className="font-mono">{named}</span>
-          </h2>
-          <TypeTag type={type} className="shrink-0" />
-        </div>
+    // Closing is blocked while the removal is in flight — the outcome is
+    // readable nowhere else.
+    <DialogShell
+      label={heading}
+      describedBy={describedBy}
+      width={480}
+      border={panelBorder}
+      onClose={onCancel}
+      closeEnabled={!isRemoving}
+    >
+      <div className="flex shrink-0 items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
+        <h2 className="font-semibold font-ui text-fg text-subtitle">
+          Remove <span className="font-mono">{named}</span>
+        </h2>
+        <TypeTag type={type} className="shrink-0" />
+      </div>
 
-        {/* Two groups: what the removal targets, then what it costs. A
-            refusal renders only the second — the first answers a question
-            the server already closed. */}
-        <div className="flex flex-col gap-3 px-3.5 py-3">
-          {unledgered ? null : (
-            <div className="flex flex-col gap-2">
-              {/* Not a second live region: the rows below already announce the
+      {/* Two groups: what the removal targets, then what it costs. A refusal
+          renders only the second — the first answers a question the server
+          already closed. A long ledger scrolls rather than push the footer off. */}
+      <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-3.5 py-3">
+        {unledgered ? null : (
+          <div className="flex flex-col gap-2">
+            {/* Not a second live region: the rows below already announce the
                   outcome this line only counts, and two would talk over each
                   other. */}
-              <span id={leadInId} className="font-ui text-desc text-muted">
-                {removeLedgerLeadIn(outcome, type)}
-              </span>
-              <div className="flex flex-col overflow-hidden rounded-item border border-line-row">
-                {/* Announced: a row's cost can answer late, and a status
+            <span id={leadInId} className="font-ui text-desc text-muted">
+              {removeLedgerLeadIn(outcome, type)}
+            </span>
+            <div className="flex flex-col overflow-hidden rounded-item border border-line-row">
+              {/* Announced: a row's cost can answer late, and a status
                     nobody hears is seen only by those who can see it. Named
                     apart, or a reader hears three identical regions. */}
-                <div role="status" aria-label="Removal targets">
-                  <ul className="flex flex-col">
-                    {detectedRows.map((row) => (
-                      <LedgerRow key={row.key} row={row} />
-                    ))}
-                  </ul>
-                </div>
-                {/* Mounted empty from first render — a live region created
+              <div role="status" aria-label="Removal targets">
+                <ul className="flex flex-col">
+                  {detectedRows.map((row) => (
+                    <LedgerRow key={row.key} row={row} />
+                  ))}
+                </ul>
+              </div>
+              {/* Mounted empty from first render — a live region created
                     with its first message announces unreliably
                     (removal-trace.tsx). Global only, repo reclaims nothing. */}
-                {target.kind === "global" ? (
-                  <div role="status" aria-label="Other copies">
-                    {leftoverRows.length > 0 ? (
-                      <ul className="flex flex-col">
-                        {leftoverRows.map((row) => (
-                          <LedgerRow key={row.key} row={row} />
-                        ))}
-                      </ul>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
+              {target.kind === "global" ? (
+                <div role="status" aria-label="Other copies">
+                  {leftoverRows.length > 0 ? (
+                    <ul className="flex flex-col">
+                      {leftoverRows.map((row) => (
+                        <LedgerRow key={row.key} row={row} />
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
-          )}
+          </div>
+        )}
 
-          <div className="flex flex-col gap-2">
-            {/* The refusal for the code the server sent — under a refusal this
+        <div className="flex flex-col gap-2">
+          {/* The refusal for the code the server sent — under a refusal this
                 is the panel's whole body, read first and read alone. */}
-            <Notice
-              id={refusalId}
-              trigger="user-action"
-              notice={
-                preflight.kind === "refused"
-                  ? { ...preflight.notice, level: "error" }
-                  : null
-              }
-            />
-            {/* Amber, not danger red: nothing failed and nothing was deleted —
+          <Notice
+            id={refusalId}
+            trigger="user-action"
+            notice={
+              preflight.kind === "refused"
+                ? { ...preflight.notice, level: "error" }
+                : null
+            }
+          />
+          {/* Amber, not danger red: nothing failed and nothing was deleted —
                 the price went up, and the rows above already carry it. The
                 heading states what happened, never why: only the server knows
                 whether the copy changed or nothing was ever agreed (J04). */}
-            <Notice
-              trigger="user-action"
-              notice={
-                restated
-                  ? {
-                      ...restated,
-                      level: "warning",
-                      // The way through sits in the block that restated the
-                      // price, so the footer does not offer a second one. Same
-                      // verb and object as the sentence's last instruction (F8).
-                      action: {
-                        label: "Remove skill",
-                        onClick: onConfirm,
-                        disabled: isRemoving,
-                      },
-                    }
-                  : null
-              }
-            />
-            {/* Heading, sentence and detail all come off the code the server
+          <Notice
+            trigger="user-action"
+            notice={
+              restated
+                ? {
+                    ...restated,
+                    level: "warning",
+                    // The way through sits in the block that restated the
+                    // price, so the footer does not offer a second one. Same
+                    // verb and object as the sentence's last instruction (F8).
+                    action: {
+                      label: "Remove skill",
+                      onClick: onConfirm,
+                      disabled: isRemoving,
+                    },
+                  }
+                : null
+            }
+          />
+          {/* Heading, sentence and detail all come off the code the server
                 sent, so the three never disagree about what happened. */}
-            <Notice
-              trigger="user-action"
-              notice={error ? { ...error, level: "error" } : null}
-            />
-          </div>
+          <Notice
+            trigger="user-action"
+            notice={error ? { ...error, level: "error" } : null}
+          />
         </div>
+      </div>
 
-        <div className="flex items-center gap-2.5 border-line-row border-t px-3.5 py-3">
-          {/* Beside the control it holds, not in the body: keeps panel height
+      <div className="flex shrink-0 items-center gap-2.5 border-line-row border-t px-3.5 py-3">
+        {/* Beside the control it holds, not in the body: keeps panel height
               steady between "checking" and the answer, so confirm doesn't jump. */}
-          {awaitingCheck ? (
-            <p
-              id={blockedId}
-              role="status"
-              aria-label="Local edits check"
-              className="min-w-0 truncate font-ui text-desc text-dim"
-            >
-              {CHECKING_TEXT}
-            </p>
-          ) : null}
-          <span className="flex-1" />
-          {/* "close" once refused or failed — no pending action left to
-              cancel, only a panel to leave. */}
-          <Button
-            type="button"
-            className="shrink-0"
-            variant="quiet"
-            size="sm"
-            disabled={isRemoving}
-            onClick={onCancel}
+        {awaitingCheck ? (
+          <p
+            id={blockedId}
+            role="status"
+            aria-label="Local edits check"
+            className="min-w-0 truncate font-ui text-desc text-dim"
           >
-            {failure ? "Close" : "Cancel"}
-          </Button>
-          {/* Absent, not disabled, once refused: disabled reads as shut for
+            {CHECKING_TEXT}
+          </p>
+        ) : null}
+        <span className="flex-1" />
+        {/* "close" once refused or failed — no pending action left to
+              cancel, only a panel to leave. */}
+        <Button
+          type="button"
+          className="shrink-0"
+          variant="quiet"
+          size="sm"
+          disabled={isRemoving}
+          onClick={onCancel}
+        >
+          {failure ? "Close" : "Cancel"}
+        </Button>
+        {/* Absent, not disabled, once refused: disabled reads as shut for
               now; this is shut for good. Absent too while a restated price is
               on screen — that block carries the same confirm, and two of them
               would ask the same question twice. */}
-          {refused || restated !== null ? null : (
-            <Button
-              type="button"
-              className="shrink-0"
-              variant="primary"
-              size="sm"
-              disabled={isRemoving || awaitingCheck}
-              aria-describedby={blockedId}
-              onClick={onConfirm}
-            >
-              {/* After a failure the label runs the notice's last instruction,
+        {refused || restated !== null ? null : (
+          <Button
+            type="button"
+            className="shrink-0"
+            variant="primary"
+            size="sm"
+            disabled={isRemoving || awaitingCheck}
+            aria-describedby={blockedId}
+            onClick={onConfirm}
+          >
+            {/* After a failure the label runs the notice's last instruction,
                   verb for verb: "Confirm the removal again…" (F8). */}
-              {isRemoving
-                ? "Removing…"
-                : failed
-                  ? "Confirm removal"
-                  : "Remove skill"}
-            </Button>
-          )}
-        </div>
+            {isRemoving
+              ? "Removing…"
+              : failed
+                ? "Confirm removal"
+                : "Remove skill"}
+          </Button>
+        )}
       </div>
-    </div>
+    </DialogShell>
   );
 }
