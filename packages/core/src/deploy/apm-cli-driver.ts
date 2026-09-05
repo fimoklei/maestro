@@ -5,6 +5,7 @@ import { execFile } from "node:child_process";
 import { basename } from "node:path";
 import { promisify } from "node:util";
 import { type OutdatedResult, parseOutdated } from "../drift/parse-outdated";
+import { normalizeCommandOutput } from "../normalize-command-output";
 import type {
   ApmDriverPort,
   DeploySkillDriverResult,
@@ -29,7 +30,7 @@ const WIDE_COLUMNS = "200";
 // passthrough line, and never echoed (#119).
 const APM_AUTH_PHRASES = ["authentication failed", "no token available"];
 
-// Every phrase below is matched against `normalize`d output: Rich wraps
+// Every phrase below is matched against normalized output: Rich wraps
 // mid-sentence, so a phrase can straddle a line break (apm-driver.md).
 
 // Two shapes of success. apm prints the second one instead of the first when
@@ -245,7 +246,7 @@ export class ApmCliDriver implements ApmDriverPort {
 }
 
 function installSucceeded(output: string): boolean {
-  const haystack = normalize(output);
+  const haystack = normalizeCommandOutput(output);
   return (
     INSTALL_SUCCESS_MARKERS.some((marker) => marker.test(haystack)) &&
     !INSTALL_FAILURE_SIGNALS.some((signal) => signal.test(haystack))
@@ -253,7 +254,7 @@ function installSucceeded(output: string): boolean {
 }
 
 function removeSucceeded(output: string): boolean {
-  const haystack = normalize(output);
+  const haystack = normalizeCommandOutput(output);
   return (
     UNINSTALL_SUCCESS_MARKER.test(haystack) &&
     !UNINSTALL_NOT_FOUND_SIGNALS.some((signal) => signal.test(haystack))
@@ -265,14 +266,9 @@ function removeSucceeded(output: string): boolean {
 function classifyInstallFailure(
   output: string,
 ): "destination-symlinked" | "failed" {
-  return normalize(output).includes(INSTALL_SYMLINK_PHRASE)
+  return normalizeCommandOutput(output).includes(INSTALL_SYMLINK_PHRASE)
     ? "destination-symlinked"
     : "failed";
-}
-
-// Collapses whitespace so a phrase Rich wrapped across a line break matches.
-function normalize(text: string): string {
-  return text.toLowerCase().replace(/\s+/g, " ");
 }
 
 // promisify(execFile) rejects with an error carrying both streams.
@@ -283,6 +279,6 @@ function outputOf(error: unknown): string {
 
 // The raw text is inspected here and never leaves this scope (security.md).
 function hasAuthPhrase(error: unknown): boolean {
-  const haystack = normalize(outputOf(error));
+  const haystack = normalizeCommandOutput(outputOf(error));
   return APM_AUTH_PHRASES.some((phrase) => haystack.includes(phrase));
 }

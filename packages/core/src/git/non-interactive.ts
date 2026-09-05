@@ -8,3 +8,9 @@ export const NON_INTERACTIVE = {
   GIT_SSH_COMMAND: "ssh -oBatchMode=yes",
   LC_ALL: "C",
 };
+
+// Resolve ambient env per invocation. A stalled Git operation must end.
+export const gitOptions = () => ({
+  env: { ...process.env, ...NON_INTERACTIVE },
+  timeout: 60_000,
+});
