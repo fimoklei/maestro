@@ -3,14 +3,13 @@
 // never configured. An outcome is a class, never git's output (ADR-0018).
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { NON_INTERACTIVE } from "../git/non-interactive";
+import { gitOptions } from "../git/non-interactive";
+import { runGitText } from "../git/run-git-text";
 import { classifyFetchFailure } from "../harness/classify-fetch-failure";
 import { resolveDefaultBranch } from "./default-branch";
 import { isRepositoryRoot } from "./repository-root";
 
 const run = promisify(execFile);
-
-const GIT_TIMEOUT_MS = 60_000;
 
 const REMOTE_HEAD = "refs/remotes/origin/HEAD";
 const REMOTE_BRANCHES = "refs/remotes/origin";
@@ -152,19 +151,10 @@ export class GitHarnessScaffoldAdapter implements HarnessScaffoldGitPort {
   }
 
   private git(root: string, args: string[]) {
-    return run("git", ["-C", root, ...args], {
-      env: { ...process.env, ...NON_INTERACTIVE },
-      timeout: GIT_TIMEOUT_MS,
-    });
+    return run("git", ["-C", root, ...args], gitOptions());
   }
 
-  private async read(root: string, args: string[]): Promise<string | null> {
-    try {
-      const { stdout } = await this.git(root, args);
-      const line = stdout.trim();
-      return line.length > 0 ? line : null;
-    } catch {
-      return null;
-    }
+  private read(root: string, args: string[]): Promise<string | null> {
+    return runGitText(root, args, gitOptions());
   }
 }

@@ -2,18 +2,11 @@
 // separator keeps tag and name data, never command text (security.md).
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { NON_INTERACTIVE } from "../git/non-interactive";
+import { gitOptions } from "../git/non-interactive";
 import { harnessSkillSubpath } from "../inventory/harness-layout";
 import type { InventoryGitPort } from "./deploy-skill";
 
 const run = promisify(execFile);
-
-// A deploy that hangs on a stalled fetch must still end.
-const GIT_TIMEOUT_MS = 60_000;
-const gitOptions = () => ({
-  env: { ...process.env, ...NON_INTERACTIVE },
-  timeout: GIT_TIMEOUT_MS,
-});
 
 export class InventoryGitAdapter implements InventoryGitPort {
   private readonly deps: {

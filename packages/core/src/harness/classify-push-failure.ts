@@ -1,3 +1,5 @@
+import { normalizeCommandOutput } from "../normalize-command-output";
+
 // Turns a rejected `git push` of a tag into one of Maestro's three classes.
 // The text is read here and thrown away: nothing derived from it but the
 // class crosses into a response (security.md).
@@ -9,7 +11,7 @@ export const classifyPushFailure = (
   if (classifyFetchFailure(stderr) === "offline") {
     return "offline";
   }
-  const normalized = stderr.toLowerCase().replace(/\s+/g, " ");
+  const normalized = normalizeCommandOutput(stderr);
   if (normalized.includes("already exists")) {
     return "already-exists";
   }

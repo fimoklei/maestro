@@ -1,6 +1,6 @@
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { resolveApmGlobalRoot } from "../deploy-state/resolve-apm-global-root";
+import { resolveHomeDirectory } from "../home-directory";
 import type { DeployTarget } from "./deploy-skill";
 
 // A global install splits lockfile from tree: apm writes the lockfile under
@@ -18,7 +18,7 @@ export class DeployedLocation {
   treeRoot(target: DeployTarget): string {
     return target.kind === "repo"
       ? target.repoPath
-      : (this.env.HOME ?? homedir());
+      : resolveHomeDirectory(this.env);
   }
 
   lockfilePath(target: DeployTarget): string {
