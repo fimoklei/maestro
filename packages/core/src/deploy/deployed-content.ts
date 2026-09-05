@@ -1,10 +1,11 @@
-// Classifies the deployed copy against the lockfile's deployed_file_hashes.
+// Classifies the deployed copy against the lockfile's deployed_file_hashes, and
+// names a destination apm refuses because it is a symlink.
 // Touches node:fs directly rather than through a port — no port models walking
 // and hashing a tree. See #56.
 
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
-import { access, readdir, readFile } from "node:fs/promises";
+import { access, lstat, readdir, readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { parseLockfile, unreadableCovers } from "../lockfile/lockfile";
 import type {
@@ -85,6 +86,26 @@ export class DeployedContentAdapter implements DeployedContentPort {
       return "unverifiable";
     }
     return classifyDeployedDrift(baseline.hashes, scan.hashes);
+  }
+
+  // apm refuses the install when the *leaf* skill dir is a symlink, and names
+  // the path only in prose Maestro never forwards (apm-behavior.md § Install
+  // signals (3), ADR-0018). lstat, not stat: following the link would report a
+  // real directory (#748).
+  async linkedSkillPath(input: {
+    target: DeployTarget;
+    name: string;
+    tools?: readonly SupportedTool[];
+  }): Promise<string | null> {
+    const root = this.deps.location.treeRoot(input.target);
+    for (const subtree of deployTargetSubtrees(input.name, input.tools)) {
+      const abs = join(root, subtree);
+      const stats = await lstat(abs).catch(() => null);
+      if (stats?.isSymbolicLink()) {
+        return abs;
+      }
+    }
+    return null;
   }
 
   // "none" covers no lockfile, no entry, and a pre-0.20.0 entry alike: all three

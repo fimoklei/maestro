@@ -133,6 +133,7 @@ describe("bulk deploy HTTP route", () => {
       deployedContent: {
         classify: async ({ name }) =>
           diverged.has(name) ? "diverged" : "not-deployed",
+        linkedSkillPath: async () => null,
       },
       deployedCleanup: { removeSkillTargets: async () => undefined },
       toolPresence: { detectGlobalTools: async () => ["claude", "codex"] },

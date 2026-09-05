@@ -1,8 +1,16 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   ApmCliDriver,
+  DeployedContentAdapter,
   DeploySkill,
   type DeployTarget,
   InFlightLocks,
@@ -171,6 +179,16 @@ describe("deploy HTTP route", () => {
           if (options?.destUnverifiable) return "unverifiable";
           return options?.destDiverged ? "diverged" : "not-deployed";
         },
+        // Real, over this run's temp roots: the path the notice spells out is
+        // read off disk, so the route can never forward a guessed one (#748).
+        linkedSkillPath: (input) =>
+          new DeployedContentAdapter({
+            location: {
+              treeRoot: (target) =>
+                target.kind === "repo" ? target.repoPath : globalRoot,
+              lockfilePath: () => join(globalRoot, "apm.lock.yaml"),
+            },
+          }).linkedSkillPath(input),
       },
       deployedCleanup: {
         removeSkillTargets: async (input) => {
@@ -776,6 +794,11 @@ describe("deploy HTTP route", () => {
     // the supported pattern lives in `deploy-state/notice-copy.ts` (#180).
     const { app, registry } = makeApp({ symlinkRefused: true });
     await registry.register(repo);
+    await mkdir(join(repo, ".claude/skills"), { recursive: true });
+    await symlink(
+      join(harness, ".apm/skills/tdd"),
+      join(repo, ".claude/skills/tdd"),
+    );
 
     const res = await post(app, {
       type: "skill",
@@ -784,8 +807,11 @@ describe("deploy HTTP route", () => {
     });
 
     expect(res.status).toBe(409);
-    const body = (await res.json()) as { error: string };
+    const body = (await res.json()) as { error: string; linkedPath?: string };
     expect(body.error).toBe("destination-symlinked");
+    // The path is Maestro's own, recomputed from the deploy's subtrees, so the
+    // notice can spell out one `rm` without forwarding apm's prose (#748).
+    expect(body.linkedPath).toBe(join(repo, ".claude/skills/tdd"));
     // No raw apm output reaches the client; the reply is a code and a status.
     expect(JSON.stringify(body)).not.toContain("ghp_secret");
     expect(JSON.stringify(body)).not.toContain("refusing to deploy");

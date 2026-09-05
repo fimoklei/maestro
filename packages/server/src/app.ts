@@ -821,11 +821,13 @@ export function createApp(deps: AppDeps) {
     if (!result.ok) {
       const { status } = deployErrorResponses[result.error];
       // The recorded type is one of our own readings of apm's lockfile field,
+      // and the linked path one core built from the deploy's own subtrees —
       // never a line of apm prose (ADR-0018, security.md).
       return c.json(
         {
           error: result.error,
           ...(result.packageType ? { packageType: result.packageType } : {}),
+          ...(result.linkedPath ? { linkedPath: result.linkedPath } : {}),
         },
         status,
       );

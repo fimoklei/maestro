@@ -33,6 +33,22 @@ export const ADD_SKILL_MD =
 
 export const RECHECK_TARGET = "Deploy again to re-check the target.";
 
+// The symlink refusal, in two spellings of one recovery: the exact `rm` when the
+// server names the link, the folder-shaped fallback when it cannot (#748). Both
+// live here so neither drifts from the other.
+const DEPLOY_AGAIN = "then deploy again.";
+
+const LINK_TARGET_SURVIVES =
+  "Deleting the link leaves the folder it points at untouched.";
+
+export function linkedFolderNotice(path: string): Body {
+  return {
+    // No comma after the path: a reader copying the command would paste it.
+    message: `Nothing was written. Run rm ${path} and ${DEPLOY_AGAIN}`,
+    detail: LINK_TARGET_SURVIVES,
+  };
+}
+
 type Heading = { level: NoticeLevel; label: string };
 type Body = { message: string; detail?: string };
 
@@ -156,10 +172,8 @@ const DEPLOY: Record<DeploySkillError, Body> = {
     detail: "GitHub refused the download.",
   },
   "destination-symlinked": {
-    message:
-      "Nothing was written. Replace the link with a real folder, then deploy again.",
-    detail:
-      "Moving the link up, so the whole skills folder is the link, also works.",
+    message: `Nothing was written. Delete the linked skill folder in the target, ${DEPLOY_AGAIN}`,
+    detail: LINK_TARGET_SURVIVES,
   },
   "deployed-unsupported-package-type": {
     message: `Its files are still there. ${FIX_AND_RELEASE}`,

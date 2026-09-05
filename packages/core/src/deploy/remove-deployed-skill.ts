@@ -203,7 +203,9 @@ export class RemoveDeployedSkill {
     deployedRef: DeployedRefPort;
     // apm deletes an edited copy silently, so this guard is what stands between
     // a tidy-up and lost work (.claude/rules/apm-driver.md).
-    deployedContent: DeployedContentPort;
+    // Only the classification: the linked-destination probe is the deploy's,
+    // and a removal never installs (#748).
+    deployedContent: Pick<DeployedContentPort, "classify">;
     apm: Pick<ApmDriverPort, "removeSkill">;
     // The only mechanism allowed to clear a copy apm left behind: a bare
     // `apm uninstall -g` deletes beyond its own lockfile (apm-driver.md

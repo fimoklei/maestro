@@ -4,6 +4,7 @@ import {
   type DeployStateNotice,
   deployNotice,
   FIX_AND_RELEASE,
+  linkedFolderNotice,
   removeNotice,
 } from "./notice-copy";
 
@@ -161,9 +162,8 @@ describe("deploy notices", () => {
         level: "error",
         label: "Linked skill folder",
         message:
-          "Nothing was written. Replace the link with a real folder, then deploy again.",
-        detail:
-          "Moving the link up, so the whole skills folder is the link, also works.",
+          "Nothing was written. Delete the linked skill folder in the target, then deploy again.",
+        detail: "Deleting the link leaves the folder it points at untouched.",
       },
     ],
     [
@@ -430,10 +430,15 @@ describe("every deploy and remove notice", () => {
     "preflight-failed",
   ];
 
-  const notices = codes.flatMap((code) => [
-    deployNotice(refusal(code)),
-    removeNotice(refusal(code)),
-  ]);
+  const notices = [
+    ...codes.flatMap((code) => [
+      deployNotice(refusal(code)),
+      removeNotice(refusal(code)),
+    ]),
+    // The one body built at a call site rather than read off the table, so the
+    // same rules run over it (#748).
+    { label: "Linked skill folder", ...linkedFolderNotice("/home/.claude") },
+  ];
 
   it("never addresses the reader as you", () => {
     for (const notice of notices) {

@@ -104,7 +104,10 @@ describe("the tracer journey through one cockpit", () => {
           reading: { kind: "skill" as const, name: "tdd" },
         }),
       },
-      deployedContent: { classify: async () => "not-deployed" as const },
+      deployedContent: {
+        classify: async () => "not-deployed" as const,
+        linkedSkillPath: async () => null,
+      },
       deployedCleanup: { removeSkillTargets: async () => undefined },
       toolPresence: { detectGlobalTools: async () => ["claude"] },
       canonicalPath: (path) => fs.realpath(path),
