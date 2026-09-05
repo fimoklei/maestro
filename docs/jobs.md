@@ -39,6 +39,7 @@ Detail lives in tracker issues; elaboration happens in the grill.
 |---|---|---|
 | Cut a Maestro release a teammate can pull · [#621](https://github.com/fimoklei/maestro/issues/621) | C | *When* I fix or extend the cockpit, *I want to* publish a tagged release of Maestro itself, *so I can* have teammates pull a version that works instead of whatever `main` happens to be. |
 | Read the shared skills directory truthfully · [#172](https://github.com/fimoklei/maestro/issues/172) | A, B | *When* my tools read one shared skills directory, *I want to* have the cockpit show one source read by many tools, *so I can* trust deploy-state, drift, and cleanup on my real machine. |
+| View a skill in its local folder | A | *When* I inspect a skill in the cockpit, *I want to* open the local folder that holds it, *so I can* read or edit its files without hunting for the path. |
 | Connect a registry as inventory source | A | *When* my central inventory is published to an apm registry, *I want to* point Maestro at it as the inventory source, *so I can* run the cockpit without a local clone. |
 | Disconnect an inventory source knowing its impact | A | *When* an inventory source is no longer the one I steer from, *I want to* see what disconnecting it does to the primitives already deployed to my targets before I confirm, *so I can* remove it without silently orphaning deploys I still rely on. |
 | Compose a bundle (J05) | B | *When* I have recurring sets of primitives, *I want to* compose them into a bundle from the central inventory, *so I can* deploy them together. |
