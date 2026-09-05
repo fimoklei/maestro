@@ -404,6 +404,35 @@ describe("DeploySkillAction", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("spells out the one rm for the link apm refused", async () => {
+    // "Replace the link with a real folder" named no path and no command, so a
+    // reader with 47 linked skills could not act on it (#748).
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              error: "destination-symlinked",
+              linkedPath: "/Users/dev/.claude/skills/tdd",
+            }),
+            { status: 409, headers: { "content-type": "application/json" } },
+          ),
+      ),
+    );
+    renderAction(
+      <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("rm /Users/dev/.claude/skills/tdd");
+    expect(alert).toHaveTextContent(
+      /leaves the folder it points at untouched/i,
+    );
+  });
+
   it("offers an inline Reinstall-fresh confirm that re-deploys with force", async () => {
     // ADR-0006: a not-proven-clean copy is confirm-and-proceed at the Deploy
     // entry point too, not a refusal. The inline button re-runs the same deploy

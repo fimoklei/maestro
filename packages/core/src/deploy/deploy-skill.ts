@@ -85,6 +85,14 @@ export type DeployedContentPort = {
     name: string;
     tools?: readonly SupportedTool[];
   }): Promise<DeployedContentState>;
+  // The leaf skill directory apm refuses to write into, when one of this
+  // deploy's destinations is a symlink; null when none is. Recomputed from the
+  // same subtrees rather than read out of apm's prose (ADR-0018, #748).
+  linkedSkillPath(input: {
+    target: DeployTarget;
+    name: string;
+    tools?: readonly SupportedTool[];
+  }): Promise<string | null>;
 };
 
 // What apm recorded for the package this deploy just installed. Anything short
@@ -155,9 +163,14 @@ export type DeploySkillError =
 
 type DeploySkillResult =
   | { ok: true; deployed: { type: "skill"; name: string; version: string } }
-  // `packageType` is one of our own readings of apm's recorded type, never apm
-  // prose (ADR-0018).
-  | { ok: false; error: DeploySkillError; packageType?: string };
+  // `packageType` is one of our own readings of apm's recorded type, and
+  // `linkedPath` a path Maestro built itself — never apm prose (ADR-0018).
+  | {
+      ok: false;
+      error: DeploySkillError;
+      packageType?: string;
+      linkedPath?: string;
+    };
 
 export class DeploySkill {
   private readonly deps: {
@@ -304,12 +317,20 @@ export class DeploySkill {
         tools: globalTools,
       });
       if (!installed.ok) {
+        if (installed.reason !== "destination-symlinked") {
+          return { ok: false, error: "deploy-failed" };
+        }
+        // The exact link, so the notice can spell out one `rm`; omitted rather
+        // than guessed when nothing on disk is one (#748).
+        const linkedPath = await this.deps.deployedContent.linkedSkillPath({
+          target: input.target,
+          name: input.name,
+          tools: globalTools,
+        });
         return {
           ok: false,
-          error:
-            installed.reason === "destination-symlinked"
-              ? "destination-symlinked"
-              : "deploy-failed",
+          error: "destination-symlinked",
+          ...(linkedPath === null ? {} : { linkedPath }),
         };
       }
 

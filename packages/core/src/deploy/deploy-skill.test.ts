@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  type DeployedContentPort,
+  type DeployedContentState,
   DeploySkill,
   type DeployTarget,
   type RecordedPackageResult,
@@ -9,6 +11,13 @@ import { InFlightLocks } from "./in-flight-locks";
 
 const repo = (repoPath: string): DeployTarget => ({ kind: "repo", repoPath });
 const globalTarget: DeployTarget = { kind: "global" };
+
+// A destination in one state with no symlinked copy — what every guard test
+// but the symlink one needs.
+const contentState = (state: DeployedContentState): DeployedContentPort => ({
+  classify: async () => state,
+  linkedSkillPath: async () => null,
+});
 
 // In-memory fakes: real objects honoring the ports, no I/O.
 const buildDeps = (
@@ -74,6 +83,7 @@ const buildDeps = (
         classified.push(input);
         return "not-deployed" as const;
       },
+      linkedSkillPath: async () => null,
     },
     deployedCleanup: {
       removeSkillTargets: async (input: {
@@ -193,6 +203,7 @@ describe("DeploySkill", () => {
           installs === 0
             ? ("not-deployed" as const)
             : ("unverifiable" as const),
+        linkedSkillPath: async () => null,
       },
       recordedPackage: {
         read: async () => {
@@ -722,10 +733,12 @@ describe("DeploySkill", () => {
     expect(deployed).toEqual([]);
   });
 
-  it("reports destination-symlinked when apm refuses a symlinked destination", async () => {
+  it("reports destination-symlinked, with no path when no destination is a link", async () => {
     // apm refuses to deploy into a skill directory that is a symlink. Surface
     // that classification instead of the generic deploy-failed, so the cockpit
     // can name the destination and the directory-level symlink fix (#180).
+    // Fail-closed on the path: a link that vanished between apm's refusal and
+    // the probe leaves the generic sentence, never a guessed path (#748).
     const { deps } = buildDeps({
       apm: {
         resolveLatestTag: async () => ({ ok: true as const, tag: "v0.5.1" }),
@@ -742,6 +755,35 @@ describe("DeploySkill", () => {
     });
 
     expect(result).toEqual({ ok: false, error: "destination-symlinked" });
+  });
+
+  it("names the link apm refused, so the notice can spell out one rm", async () => {
+    // The refusal is only actionable with the exact path: "the link" is the
+    // leaf skill dir, and the reader has no other way to learn which one (#748).
+    const { deps } = buildDeps({
+      apm: {
+        resolveLatestTag: async () => ({ ok: true as const, tag: "v0.5.1" }),
+        deploySkill: async () => ({
+          ok: false as const,
+          reason: "destination-symlinked" as const,
+        }),
+      },
+      deployedContent: {
+        classify: async () => "not-deployed" as const,
+        linkedSkillPath: async () => "/registered/repo/.claude/skills/tdd",
+      },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "destination-symlinked",
+      linkedPath: "/registered/repo/.claude/skills/tdd",
+    });
   });
 
   it("reports deploy-failed for an unclassified install failure", async () => {
@@ -857,9 +899,7 @@ describe("DeploySkill", () => {
     // to the tag (apm-driver.md). Refuse so those edits are never dropped
     // unannounced — refuse-only, the user reconciles before re-deploying (#56).
     const { deps, deployed } = buildDeps({
-      deployedContent: {
-        classify: async () => "diverged" as const,
-      },
+      deployedContent: contentState("diverged"),
     });
     const result = await new DeploySkill(deps).execute({
       type: "skill",
@@ -880,7 +920,7 @@ describe("DeploySkill", () => {
     // same-ref install silently reset possible local edits — the user reconciles
     // (e.g. removes the deployed copy) so a clean re-install can proceed (#56).
     const { deps, deployed } = buildDeps({
-      deployedContent: { classify: async () => "unverifiable" as const },
+      deployedContent: contentState("unverifiable"),
     });
     const result = await new DeploySkill(deps).execute({
       type: "skill",
@@ -901,7 +941,7 @@ describe("DeploySkill", () => {
     // overwrite, so refuse with a distinct error rather than proceed or
     // miscategorise it as a generic apm execution failure (#59).
     const { deps, deployed } = buildDeps({
-      deployedContent: { classify: async () => "unreadable" as const },
+      deployedContent: contentState("unreadable"),
     });
     const result = await new DeploySkill(deps).execute({
       type: "skill",
@@ -919,7 +959,7 @@ describe("DeploySkill", () => {
     // recorded state — a malformed lockfile is a visible error, not "nothing
     // deployed" (#58).
     const { deps, deployed } = buildDeps({
-      deployedContent: { classify: async () => "lockfile-malformed" as const },
+      deployedContent: contentState("lockfile-malformed"),
     });
     const result = await new DeploySkill(deps).execute({
       type: "skill",
@@ -936,7 +976,7 @@ describe("DeploySkill", () => {
     // A malformed lockfile is not non-precious drift: we cannot read the baseline
     // at all, so a forced overwrite would be blind. Refuse even under force (#58).
     const { deps, deployed } = buildDeps({
-      deployedContent: { classify: async () => "lockfile-malformed" as const },
+      deployedContent: contentState("lockfile-malformed"),
     });
     const result = await new DeploySkill(deps).execute({
       type: "skill",
@@ -953,7 +993,7 @@ describe("DeploySkill", () => {
     // A clean deployed copy has nothing to lose to a same-ref install, so an
     // update/re-deploy proceeds — the guard bites only on local edits (#56).
     const { deps, deployed } = buildDeps({
-      deployedContent: { classify: async () => "clean" as const },
+      deployedContent: contentState("clean"),
     });
     const result = await new DeploySkill(deps).execute({
       type: "skill",
@@ -969,7 +1009,7 @@ describe("DeploySkill", () => {
     // The destination guard is target-agnostic: a locally-edited global subtree
     // (~/.claude/skills/<name>) must not be silently reset either (J07, #56).
     const { deps, deployed } = buildDeps({
-      deployedContent: { classify: async () => "diverged" as const },
+      deployedContent: contentState("diverged"),
     });
     const result = await new DeploySkill(deps).execute({
       type: "skill",
@@ -990,7 +1030,7 @@ describe("DeploySkill", () => {
     // destination guard is skipped and the skill reinstalls at the latest tag,
     // discarding the local edits — never the default, always opt-in (#66).
     const { deps, deployed } = buildDeps({
-      deployedContent: { classify: async () => "diverged" as const },
+      deployedContent: contentState("diverged"),
     });
     const result = await new DeploySkill(deps).execute({
       type: "skill",
@@ -1011,7 +1051,7 @@ describe("DeploySkill", () => {
     // fresh, after which apm writes deployed_file_hashes and the copy becomes
     // verifiable on the next pass — no bulk update-all (ADR-0006, #66).
     const { deps, deployed } = buildDeps({
-      deployedContent: { classify: async () => "unverifiable" as const },
+      deployedContent: contentState("unverifiable"),
     });
     const result = await new DeploySkill(deps).execute({
       type: "skill",
@@ -1034,7 +1074,7 @@ describe("DeploySkill", () => {
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => true,
       },
-      deployedContent: { classify: async () => "diverged" as const },
+      deployedContent: contentState("diverged"),
     });
     const result = await new DeploySkill(deps).execute({
       type: "skill",
@@ -1052,7 +1092,7 @@ describe("DeploySkill", () => {
     // so a forced overwrite would be a blind one, not an informed choice. The
     // confirm-and-proceed path covers diverged/unverifiable only (ADR-0006, #66).
     const { deps, deployed } = buildDeps({
-      deployedContent: { classify: async () => "unreadable" as const },
+      deployedContent: contentState("unreadable"),
     });
     const result = await new DeploySkill(deps).execute({
       type: "skill",

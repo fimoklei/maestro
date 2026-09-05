@@ -4,7 +4,14 @@
 // .claude and .agents copies are overwritten — the guard must check both.
 // (Mechanism spiked in .claude/rules/apm-driver.md; refuse-only in DeploySkill.)
 import { createHash } from "node:crypto";
-import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  mkdir,
+  mkdtemp,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DeployedContentAdapter } from "@maestro/core";
@@ -425,5 +432,56 @@ describe("DeployedContentAdapter", () => {
         name: "tdd",
       }),
     ).resolves.toBe("clean");
+  });
+
+  // apm refuses the install and names the path in prose Maestro never forwards
+  // (ADR-0018). The path is recomputed here from the same subtrees the deploy
+  // targets, so the notice can spell out one `rm` (#748).
+  describe("linkedSkillPath", () => {
+    it("names the leaf skill directory that is a symlink", async () => {
+      await mkdir(join(root, "elsewhere/tdd"), { recursive: true });
+      await mkdir(join(root, ".claude/skills"), { recursive: true });
+      await symlink(
+        join(root, "elsewhere/tdd"),
+        join(root, ".claude/skills/tdd"),
+      );
+
+      await expect(
+        adapter().linkedSkillPath({
+          target: { kind: "repo", repoPath: root },
+          name: "tdd",
+        }),
+      ).resolves.toBe(join(root, ".claude/skills/tdd"));
+    });
+
+    it("returns null when every destination is a real directory or absent", async () => {
+      await mkdir(join(root, ".claude/skills/tdd"), { recursive: true });
+
+      await expect(
+        adapter().linkedSkillPath({
+          target: { kind: "repo", repoPath: root },
+          name: "tdd",
+        }),
+      ).resolves.toBeNull();
+    });
+
+    it("checks only the tools this deploy targeted", async () => {
+      // A narrowed global deploy writes one subtree; a link under the other
+      // tool's directory is not what apm refused (ADR-0011, #136).
+      await mkdir(join(root, "elsewhere/tdd"), { recursive: true });
+      await mkdir(join(root, ".agents/skills"), { recursive: true });
+      await symlink(
+        join(root, "elsewhere/tdd"),
+        join(root, ".agents/skills/tdd"),
+      );
+
+      await expect(
+        adapter().linkedSkillPath({
+          target: { kind: "repo", repoPath: root },
+          name: "tdd",
+          tools: ["claude"],
+        }),
+      ).resolves.toBeNull();
+    });
   });
 });

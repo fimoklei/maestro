@@ -68,7 +68,10 @@ describe("narrowed global deploy — which copies survive on disk", () => {
           reading: { kind: "skill" as const, name: "tdd" },
         }),
       },
-      deployedContent: { classify: async () => "not-deployed" as const },
+      deployedContent: {
+        classify: async () => "not-deployed" as const,
+        linkedSkillPath: async () => null,
+      },
       deployedCleanup: new DeployedCleanupAdapter({
         location: new DeployedLocation(env),
       }),

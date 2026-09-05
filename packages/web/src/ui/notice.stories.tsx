@@ -55,6 +55,27 @@ export const ErrorLevel: Story = {
   },
 };
 
+// A sentence carrying an absolute path: the longest unbreakable run of text a
+// notice ever holds, inside the 320px detail pane it renders in (#748).
+export const WithPath: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: 320 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  args: {
+    notice: {
+      level: "error",
+      label: "Linked skill folder",
+      message:
+        "Nothing was written. Run rm /Users/developer/.claude/skills/workflow-commit and then deploy again.",
+      detail: "Deleting the link leaves the folder it points at untouched.",
+    },
+  },
+};
+
 export const WithAction: Story = {
   args: {
     notice: {
