@@ -1,6 +1,7 @@
 import { Button } from "../ui/button";
 
-// The next step belongs in a target confirmed empty, not in page-level chrome.
+// The next step belongs in a target holding nothing of ours, not in page-level
+// chrome — a confirmed-empty one, or one holding copies from another origin.
 export function TargetDeployAction({
   onStartDeploy,
 }: {

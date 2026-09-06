@@ -148,9 +148,14 @@ function ToolTargetCard({
       status={<TargetStatusChip indicator={indicator} />}
     >
       {indicator === "foreign" ? (
-        <p className="px-card-x py-row-y text-dim text-tag">
-          Holds primitives deployed from {joinOrigins(otherOrigins)}.
-        </p>
+        // Foreign is empty plus a fact, so the fact stands above the same
+        // action an empty target offers, never instead of it (#749).
+        <>
+          <p className="px-card-x pt-row-y text-dim text-tag">
+            Holds primitives deployed from {joinOrigins(otherOrigins)}.
+          </p>
+          <TargetDeployAction onStartDeploy={onStartDeploy} />
+        </>
       ) : indicator === "empty" ? (
         <TargetDeployAction onStartDeploy={onStartDeploy} />
       ) : (

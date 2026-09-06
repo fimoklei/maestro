@@ -142,6 +142,22 @@ describe("GlobalTargets", () => {
     ).toBeInTheDocument();
   });
 
+  it("keeps the deploy action on a target holding foreign primitives (#749)", () => {
+    renderTargets({
+      tools: [{ tool: "claude", primitives: [] }],
+      otherOrigins: ["fimoklei/agent-harness"],
+    });
+
+    expect(
+      screen.getByText(
+        /holds primitives deployed from fimoklei\/agent-harness/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /deploy a skill/i }),
+    ).toBeInTheDocument();
+  });
+
   it("still reads as empty when nothing on the lockfile names another origin", () => {
     renderTargets({ tools: [{ tool: "claude", primitives: [] }] });
 
