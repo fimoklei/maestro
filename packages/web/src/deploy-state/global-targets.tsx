@@ -5,6 +5,7 @@ import { Notice } from "../ui/notice";
 import { SectionHeader } from "../ui/section-header";
 import { DeployStateList } from "./deploy-state-list";
 import { toolDeployedView, withOtherOrigins } from "./deployed-view";
+import { joinNames } from "./join-names";
 import {
   skippedEntryKey,
   skippedEntryText,
@@ -15,14 +16,6 @@ import { TargetStatusChip } from "./target-status-chip";
 import { toolPresentation } from "./tool-presentation";
 import type { SkippedEntry } from "./use-deploy-state";
 import type { ToolDeployState } from "./use-global-deploy-state";
-
-// Joins repo names into one readable clause: "a", "a and b", "a, b and c".
-function joinOrigins(origins: string[]): string {
-  if (origins.length === 1) {
-    return origins[0] as string;
-  }
-  return `${origins.slice(0, -1).join(", ")} and ${origins[origins.length - 1]}`;
-}
 
 // Presentational "GLOBAL TARGETS" section: one Card per detected tool
 // (ADR-0011). An empty tools list is the honest zero-detected state (an
@@ -152,7 +145,7 @@ function ToolTargetCard({
         // action an empty target offers, never instead of it (#749).
         <>
           <p className="px-card-x pt-row-y text-dim text-tag">
-            Holds primitives deployed from {joinOrigins(otherOrigins)}.
+            Holds primitives deployed from {joinNames(otherOrigins)}.
           </p>
           <TargetDeployAction onStartDeploy={onStartDeploy} />
         </>

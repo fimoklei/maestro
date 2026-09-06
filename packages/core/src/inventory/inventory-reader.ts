@@ -1,9 +1,9 @@
 // Reads the central inventory from the local clone, never the network. A
 // malformed SKILL.md is skipped, so one bad skill cannot hide the rest.
 import { join } from "node:path";
-import { parse } from "yaml";
 import { z } from "zod";
 import { parseGitOrigin } from "../deploy/git-origin";
+import { readFrontmatter } from "../harness/validate-skill-structure";
 import type { FileSystemPort } from "../registry/file-system";
 import { HARNESS_SKILLS_DIR } from "./harness-layout";
 
@@ -20,20 +20,14 @@ const frontmatterSchema = z.object({
   description: z.string(),
 });
 
-// Null on anything malformed, so the caller can skip the skill.
+// Null on anything malformed, so the caller can skip the skill. Extraction is
+// the release validator's, so one manifest never reads two ways.
 function parseSkillFrontmatter(raw: string): { description: string } | null {
-  const match = /^---\n([\s\S]*?)\n---/.exec(raw);
-  const block = match?.[1];
-  if (block === undefined) {
+  const frontmatter = readFrontmatter(raw);
+  if (frontmatter === null) {
     return null;
   }
-  let data: unknown;
-  try {
-    data = parse(block);
-  } catch {
-    return null;
-  }
-  const result = frontmatterSchema.safeParse(data);
+  const result = frontmatterSchema.safeParse(frontmatter.data);
   return result.success ? result.data : null;
 }
 
