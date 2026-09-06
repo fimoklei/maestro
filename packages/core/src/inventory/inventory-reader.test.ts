@@ -140,6 +140,28 @@ describe("InventoryReader", () => {
     });
   });
 
+  // The same input, rejected the same way, in validate-skill-structure.test.ts.
+  // Reading one manifest two ways would make it two manifests.
+  it("skips a skill whose closing delimiter carries trailing text", async () => {
+    const fs = new InMemoryFileSystem({
+      directories: { [INVENTORY]: INVENTORY, ...skillDirs("bad", "tdd") },
+      listings: { [`${INVENTORY}/.apm/skills`]: ["bad", "tdd"] },
+      files: {
+        [`${INVENTORY}/.apm/skills/bad/SKILL.md`]:
+          "---\ndescription: Looks fine\n---junk\n\n# bad\n",
+        [`${INVENTORY}/.apm/skills/tdd/SKILL.md`]: skillFile("tdd", "TDD loop"),
+      },
+    });
+    const reader = new InventoryReader({ fs, resolvePath: () => INVENTORY });
+
+    const result = await reader.read();
+
+    expect(result).toEqual({
+      ok: true,
+      primitives: [{ type: "skill", name: "tdd", description: "TDD loop" }],
+    });
+  });
+
   it("reports not-configured when no inventory path resolves", async () => {
     const fs = new InMemoryFileSystem();
     const reader = new InventoryReader({ fs, resolvePath: () => undefined });
