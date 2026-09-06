@@ -2,6 +2,8 @@
 
 - **Status:** Accepted
 - **Date:** 2026-08-31
+- **Amended:** 2026-09-06, at the owner's request: remove assumed technical
+  knowledge and grammatical restrictions that obstruct comprehension.
 - **Amends** ADR-0018 (apm output crosses only as shape-checked fields) — one
   clause, stated under "Amendment to ADR-0018".
 - **Resolves** the wayfinder map [what the cockpit says to the person reading
@@ -18,7 +20,7 @@ Nothing on this screen can load until it answers. Check that it is still running
 [ Try again ]
 ```
 
-A lowercase heading restating the state as a full sentence; "until it answers"
+A lowercase heading repeating the state; "until it answers"
 giving the server a mind; "Check that it is still running" naming nothing the
 reader can do; and a button promising something the sentence never offered.
 
@@ -37,11 +39,12 @@ the rules a writer and a reviewer apply.
 **Maestro writes to a copy standard anchored in GOV.UK and Polaris, enforced at
 review, with every user-facing word owned by `packages/web`.**
 
-1. **The reader is the developer teammate** — git and a terminal, no APM
-   knowledge (the reader named by the production-harness map,
-   [#621](https://github.com/fimoklei/maestro/issues/621)). The test is whether
-   the sentence can be read aloud without spelling anything out. Writing for a
-   non-technical reader is a later phase, not a second rewrite of this one.
+1. **Copy assumes no technical training.** Write for someone managing their
+   AI tools without assumed programming, git, terminal or APM knowledge.
+   Explain necessary terms and manual steps where the reader needs them.
+   This replaces the original developer-only writing baseline; it does not
+   add product capabilities. Review whether the visible text explains the
+   state, its effect on the task and the available next step.
 
 2. **Two anchors, with a fixed tie-breaker.**
    [GOV.UK's writing guidelines](https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/writing-guidelines/)
@@ -57,20 +60,18 @@ review, with every user-facing word owned by `packages/web`.**
    written. Every rule in `.claude/rules/copy.md` carries the link the research
    file resolved.
 
-4. **Only a reviewer-decidable rule becomes a rule.** The test: a reviewer
-   reading only the string, without the code and without the author, applies the
-   rule and reaches the same verdict. Two of the thirteen faults — anthropomorphism
-   and "the button matches the sentence" — are Maestro's own; neither anchor
-   states them. The reviewer's unit is not one string: it is the whole notice
-   (heading, sentence, `detail`, action label), and for screen-reader text the
-   pair of accessible name plus the visible label it names.
+4. **Review meaning in context.** Review the whole notice and the screen it
+   refers to, including heading, body, `detail` and action. For accessible
+   names, compare the name with its visible label. Check factual claims
+   against behavior before review. Source guidance and Maestro conventions
+   are identified separately in `copy.md`. Notice headings may be phrases or
+   full sentences; questions are appropriate when asking for a choice.
+   Comprehension takes priority over grammatical form and word-count targets.
 
-5. **Tone stays out of the rules file.** Reading level, "brisk but not terse",
-   glyph choice, whether a badge names its state with an adjective or a verb,
-   and Polaris' empty-state guidance to sell the feature's benefit — all fail
-   the test in §4. They are recorded here and nowhere else: aim at a reader who
-   scans, do not sell, do not apologise, and do not make the reader feel they
-   are behind.
+5. **Keep the comprehension test in the rules file.** Writers must check for
+   unexplained terms and missing steps, not infer understanding from a reading
+   score or sentence length. Tone remains restrained: do not sell, apologise
+   or make the reader feel they are behind.
 
 6. **A Notice carries one always-visible `detail` slot, one action, and no
    progressive disclosure.** Rewriting all 122 notices produced 38 details, of
