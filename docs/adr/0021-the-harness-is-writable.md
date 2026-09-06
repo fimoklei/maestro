@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-08-01 (issue #352, closing write-up of the authoring-side map #343)
+- **Amended:** 2026-09-06, [What Inventory says in each of its three states, now that it carries released skills only](https://github.com/fimoklei/maestro/issues/812).
 
 ## Context
 
@@ -56,6 +57,18 @@ consumers deploy only from the released state.**
    meaning. This resolves ADR-0019 §4 from drift to a decision.
 6. **`Harness` and `Central inventory` both stand.** They are the same repo seen
    from two sides — the author's and the consumer's. Neither is renamed.
+7. **Inventory reads the latest published release**, including skill names and
+   descriptions. A never-released skill is absent. Local edits do not change
+   its released description; a local deletion does not hide it until released.
+8. **Empty and unreadable are different outcomes.** A confirmed empty Inventory
+   shows the approved empty state with **Open Harness**. A failed read shows
+   **Inventory not read**, "Re-read Inventory to try again." and
+   **Re-read Inventory**. It shows no skill list, deploy actions or zero count,
+   including when an earlier read is cached. A read failure never means the
+   Harness is not configured.
+9. **A successful release refreshes Inventory automatically.** If that read
+   fails, the unreadable state applies. Zero skills is a valid result for
+   connection checks and tests; it must be established by a successful read.
 
 ## Consequences
 
@@ -69,7 +82,9 @@ consumers deploy only from the released state.**
   which apm resolves. A target that is current with the released harness is not
   drifted, however far the working harness has moved on. That gap is the
   *Pending release* table (#347), not a third drift facet.
-- **ADR-0016 is untouched.** It governs Inventory, and nothing here does (#347).
+- **ADR-0016 still governs Inventory's presentation.** This amendment defines
+  which Harness state supplies its collection and how empty and failed reads
+  differ; it does not redesign the existing list or detail pane.
 - Issue #557 makes the connect gate's success copy outcome-specific: found keeps
   the deploy no-write promise, while joined and scaffolded describe their
   writes and landings honestly.

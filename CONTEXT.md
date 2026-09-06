@@ -33,7 +33,7 @@ A Model Context Protocol server declared as a primitive so it can be deployed in
 _Avoid_: integration, connector.
 
 **Central inventory**:
-The single curated, production-ready collection of primitives, held in the **Harness** Git repository. The source you deploy *from*. "Central" means curated and ready to deploy — not a draft scratchpad, because a consumer only ever sees the **Released harness**.
+The collection of primitives in the latest published release of the connected **Harness**.
 _Avoid_: skills repo, library, catalog (a catalog is passive; the inventory is the governed source).
 
 **Harness**:
@@ -150,7 +150,7 @@ details may name the exact APM mechanism or file.
 | Local work awaiting proposal | **Pending proposal** | Local skill content differs from the current open or prepared proposal, otherwise from the Harness default branch. |
 | Open proposal | **Pending review** | A matching open pull request into the Harness default branch exists. Its status is **Draft**, **Waiting for review**, or **Approved, awaiting merge**, according to the verified facts. |
 | Unreleased skill change | **Pending release** | This skill differs between the Harness default branch and the latest release. Explain as *Merged, not yet released*; approval alone is not a merge. |
-| Proposed skill deletion | **Deletion** | A deletion follows the same three stages; name it explicitly on each relevant row. |
+| Harness skill deletion | **Delete** / **Deletion** / **Deleted** | *Delete* is the verb, *deletion* is the noun, and *deleted* is the state. Use these forms throughout the Harness journey, including proposed deletions; never *remove* for this concept. |
 | Proposal without a pull request | **Pull request missing** | A prepared proposal has no matching pull request, confirmed by a complete check. It is not Pending review. |
 | Closed unmerged proposal | **Proposal closed** | A closed proposal still holds work not incorporated into the default branch. Keep it visible outside Pending review. |
 | Ambiguous open proposal | **Multiple pull requests** | Several matching open pull requests remain; show their links without choosing one. |
@@ -158,7 +158,7 @@ details may name the exact APM mechanism or file.
 | Unknown Harness status | **Status unknown** / **Review status unknown** | No verified status is available; use the review-specific name when only review status is unknown. Unknown is not empty. |
 | Unavailable review status | **Review status unavailable** | The pull-request check is unavailable; do not infer whether a proposal exists. |
 | Release | **Release** / **Released** | *Release* is the action, *released* is the state, and *latest release* is the result. |
-| Release dialog | **Plan release** / **Publish release** | *Plan release* opens the dialog on the Harness strip; *Publish release* is its confirm. Never a bare *Release* on a button. |
+| Release dialog | **Create a release** / **Publish release** | *Create a release* opens the dialog on the Harness strip; *Publish release* confirms publication. References to either control use its exact label; *Plan release* is retired. Never a bare *Release* on a button. |
 | Import dialog | **Import skill…** / **Import skill** | The trailing ellipsis marks the control that opens the dialog; the dialog's confirm carries no ellipsis. |
 | Import dialog, replacing | **Update skill** | The dialog reads *Update a skill* and confirms with *Update skill* when it replaces a skill the Harness holds; it reads *Import a skill* and *Import skill* when it adds one. The control that opens it keeps its ellipsis either way. What an update lands sits under **Pending proposal**. The deploy-state row's button carries the same label for the other direction — deploying the latest release into a target that reads **Behind**. The two never share a screen; change one and check the other. |
 | Consuming repo | **Repository** | Write it out in a sentence; *repo* stays only inside the `+ repo` control label. |
@@ -166,7 +166,7 @@ details may name the exact APM mechanism or file.
 | Clone folder | **Clone** | The local copy of the Harness repository. Say **folder** for any other directory on disk. |
 | `apm.yml` | `apm.yml` | Name the file in a `detail`, never in the sentence — the reader meets it in their own editor. |
 | Bulk removal outcome | **Left alone** | A target the run did not remove, whether it refused or failed; never *skipped*. |
-| Remove | **Remove** / **Removal** | *Remove* is the action, *removal* is the noun for the attempt and its outcome. |
+| Remove | **Remove** / **Removal** | *Remove* is the action, *removal* is the noun for the attempt and its outcome. These terms apply to deployed copies in targets; the Harness skill remains. Never call this *delete*. |
 | Force reinstall | **Deploy again** | The one label for overwriting a deployed copy that has local edits; never *Reinstall fresh* or *Re-deploy*. |
 | Up-to-date | **Up to date** | One skill's drift status. Never hyphenated on screen. |
 | Target roll-up | **In sync** | A whole target's state, on its card header. A single skill is **Up to date**, never *in sync*. |
