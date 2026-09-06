@@ -51,6 +51,15 @@ export const DetectedButEmpty: Story = {
   },
 };
 
+// A target holding copies from a Harness Maestro is no longer connected to:
+// the origin is named and the deploy action stays (#749).
+export const HoldsForeignOrigin: Story = {
+  args: {
+    tools: [{ tool: "claude", primitives: [] }],
+    otherOrigins: ["fimoklei/agent-harness"],
+  },
+};
+
 // No supported tool on the machine: an install hint, never empty cards.
 export const NoToolDetected: Story = {
   args: { tools: [] },
