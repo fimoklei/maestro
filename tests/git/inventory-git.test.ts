@@ -97,6 +97,17 @@ describe("InventoryGitAdapter", () => {
     );
   });
 
+  it("detects a skill deleted from disk but still tracked", async () => {
+    await rm(join(root, ".apm", "skills", "tdd"), {
+      recursive: true,
+      force: true,
+    });
+
+    await expect(adapter().skillDivergesFromTag("v0.1.0", "tdd")).resolves.toBe(
+      true,
+    );
+  });
+
   it("ignores changes outside the skill's own directory", async () => {
     await addSkill("other");
     await git("add", ".");
@@ -184,6 +195,41 @@ describe("InventoryGitAdapter.syncBeforeDeploy", () => {
     await expect(
       adapter().skillDivergesFromTag("v0.2.0", "fresh"),
     ).resolves.toBe(false);
+  });
+
+  it("reads promote's untracked copy of a released skill as the release it is", async () => {
+    // #750: promote commits on a branch, so this clone's `main` lacks the path
+    // while a byte-identical copy sits there untracked — which the tracked tree
+    // alone reads as the release having been deleted.
+    await addSkill(author, "fresh");
+    await git(author, "add", ".");
+    await git(author, "commit", "-m", "add fresh skill");
+    await git(author, "tag", "v0.2.0");
+    await git(author, "push", "origin", "main", "v0.2.0");
+    await addSkill(root, "fresh");
+
+    await adapter().syncBeforeDeploy();
+
+    await expect(adapter().skillExistsAtTag("v0.2.0", "fresh")).resolves.toBe(
+      true,
+    );
+    await expect(
+      adapter().skillDivergesFromTag("v0.2.0", "fresh"),
+    ).resolves.toBe(false);
+  });
+
+  it("still reports a released skill this clone has neither tracked nor on disk", async () => {
+    await addSkill(author, "fresh");
+    await git(author, "add", ".");
+    await git(author, "commit", "-m", "add fresh skill");
+    await git(author, "tag", "v0.2.0");
+    await git(author, "push", "origin", "main", "v0.2.0");
+
+    await run("git", ["-C", root, "fetch", "origin", "--tags"]);
+
+    await expect(
+      adapter().skillDivergesFromTag("v0.2.0", "fresh"),
+    ).resolves.toBe(true);
   });
 
   it("leaves a clone with real local edits standing, never overwriting them", async () => {
