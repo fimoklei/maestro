@@ -14,3 +14,10 @@ export const gitOptions = () => ({
   env: { ...process.env, ...NON_INTERACTIVE },
   timeout: 60_000,
 });
+
+// The same options pointed at a throwaway index, so a command that stages
+// anything writes there and never in the author's own (#574).
+export const indexOptions = (indexFile: string) => {
+  const options = gitOptions();
+  return { ...options, env: { ...options.env, GIT_INDEX_FILE: indexFile } };
+};

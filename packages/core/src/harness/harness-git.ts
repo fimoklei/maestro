@@ -11,7 +11,7 @@ import {
   readConfiguredGitOriginUrl,
   readGitOriginUrl,
 } from "../deploy/git-origin-url";
-import { gitOptions } from "../git/non-interactive";
+import { gitOptions, indexOptions } from "../git/non-interactive";
 import { runGitText } from "../git/run-git-text";
 import { readRemoteDefaultBranch } from "../inventory/default-branch";
 import {
@@ -640,18 +640,20 @@ export class HarnessGitAdapter implements HarnessGitPort {
     }
 
     const indexDir = await mkdtemp(join(tmpdir(), "maestro-harness-index-"));
-    const env = { ...process.env, GIT_INDEX_FILE: join(indexDir, "index") };
+    const options = indexOptions(join(indexDir, "index"));
     try {
       // Seeded from HEAD, because git exempts only already-tracked files from
       // the ignore rules — from an empty index a tracked-but-ignored skill
       // file would silently drop out of the hash. An unborn HEAD has none.
-      await run("git", ["-C", root, "read-tree", "HEAD"], { env }).catch(
+      await run("git", ["-C", root, "read-tree", "HEAD"], options).catch(
         () => {},
       );
-      await run("git", ["-C", root, "add", "-A", "--", HARNESS_SKILLS_DIR], {
-        env,
-      });
-      const { stdout } = await run("git", ["-C", root, "write-tree"], { env });
+      await run(
+        "git",
+        ["-C", root, "add", "-A", "--", HARNESS_SKILLS_DIR],
+        options,
+      );
+      const { stdout } = await run("git", ["-C", root, "write-tree"], options);
       return await this.readSkillTrees(root, stdout.trim());
     } finally {
       await rm(indexDir, { recursive: true, force: true });
@@ -820,13 +822,6 @@ export class HarnessGitAdapter implements HarnessGitPort {
 // `GIT_CONFIG_*`, which would silently drop config the caller's env already
 // carries (#574).
 const NO_HOOKS = ["-c", `core.hooksPath=${devNull}`];
-
-// The same options pointed at a throwaway index, so a command that stages
-// anything writes there and never in the author's own (#574).
-const indexOptions = (indexFile: string) => {
-  const options = gitOptions();
-  return { ...options, env: { ...options.env, GIT_INDEX_FILE: indexFile } };
-};
 
 // A run we cut off got no answer at all, which is the offline class —
 // reading it as a reply would put words in the remote's mouth. Anything else

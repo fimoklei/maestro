@@ -1,8 +1,11 @@
 // Asks the local inventory clone the git questions apm cannot answer. The `--`
 // separator keeps tag and name data, never command text (security.md).
 import { execFile } from "node:child_process";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { promisify } from "node:util";
-import { gitOptions } from "../git/non-interactive";
+import { gitOptions, indexOptions } from "../git/non-interactive";
 import { harnessSkillSubpath } from "../inventory/harness-layout";
 import type { InventoryGitPort } from "./deploy-skill";
 
@@ -51,33 +54,41 @@ export class InventoryGitAdapter implements InventoryGitPort {
     return stdout.trim().length > 0;
   }
 
+  // What is on disk under the skill, tracked or not, against the tag's own
+  // tree: reading only the tracked tree called promote's untracked but
+  // byte-identical copy a divergence (#750).
   async skillDivergesFromTag(tag: string, name: string): Promise<boolean> {
     const root = await this.root();
     const subtree = harnessSkillSubpath(name);
+    const indexDir = await mkdtemp(join(tmpdir(), "maestro-inventory-index-"));
+    const options = indexOptions(join(indexDir, "index"));
 
-    // `diff --quiet` exits 1 on a difference; any other non-zero is a real git
-    // failure and must propagate.
     try {
-      await run("git", ["-C", root, "diff", "--quiet", tag, "--", subtree]);
-    } catch (error) {
-      if ((error as { code?: number }).code === 1) {
-        return true;
-      }
-      throw error;
+      // Seeded from HEAD, because git exempts only already-tracked files from
+      // the ignore rules.
+      await run("git", ["-C", root, "read-tree", "HEAD"], options);
+      // No pathspec: one naming the skill is fatal where neither HEAD nor the
+      // disk has it, which is the state that must read as diverged.
+      await run("git", ["-C", root, "add", "-A"], options);
+      // Exit 1 is a difference and only here; any other non-zero, and every
+      // failure of the two commands above, is a real git failure that must
+      // propagate rather than read as one answer or the other.
+      return await run(
+        "git",
+        ["-C", root, "diff-index", "--quiet", "--cached", tag, "--", subtree],
+        options,
+      ).then(
+        () => false,
+        (error: { code?: number }) => {
+          if (error.code === 1) {
+            return true;
+          }
+          throw error;
+        },
+      );
+    } finally {
+      await rm(indexDir, { recursive: true, force: true });
     }
-
-    // Untracked files are invisible to `git diff`, but still drift the deploy
-    // would silently drop.
-    const { stdout } = await run("git", [
-      "-C",
-      root,
-      "ls-files",
-      "--others",
-      "--exclude-standard",
-      "--",
-      subtree,
-    ]);
-    return stdout.trim().length > 0;
   }
 
   private async root(): Promise<string> {
