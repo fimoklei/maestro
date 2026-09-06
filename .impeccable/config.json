@@ -1,0 +1,22 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-color",
+        "value": "rgba(0,0,0,.5)",
+        "files": ["packages/web/prototype-harness-journey.html"],
+        "createdAt": "2026-09-06T17:22:06.282Z",
+        "reason": "prototype switcher bar, deliberately off-palette so it reads as not-the-design (prototype skill UI.md)"
+      },
+      {
+        "rule": "design-system-radius",
+        "value": "999px",
+        "files": ["packages/web/prototype-harness-journey.html"],
+        "createdAt": "2026-09-06T17:22:06.346Z",
+        "reason": "prototype switcher bar pill, deliberately off-palette so it reads as not-the-design (prototype skill UI.md)"
+      }
+    ]
+  }
+}

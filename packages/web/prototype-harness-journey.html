@@ -1,0 +1,475 @@
+<!doctype html>
+<!--
+  PROTOTYPE — throwaway. Issue #810 (map #805): what the author's journey looks
+  like on the Harness view once a skill may sit in all three stages at once.
+
+  Three structurally different variants of one screen, switchable via
+  ?variant=A|B|C, arrow keys, or the floating bar:
+    A  Journey board   — three columns, left to right, one card per stage a skill is in
+    B  One row per skill — a single table, the three stages as columns
+    C  Stages in order   — three stacked sections, forward order, one shared strip
+
+  Four scenarios via ?scenario=busy|empty|stale|unknown (or the bar's picker).
+  ?screen=inventory shows the Inventory list for the same scenario (released only).
+  ?imported=<skill> highlights the row an import just landed on (#809).
+
+  Tokens copied from packages/web/src/styles/tokens.css and theme.css, so
+  density and colour are judged for real. Not production code: no build, no
+  tests, no state beyond URL params.
+-->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<title>PROTOTYPE · Harness journey (#810)</title>
+<style>
+:root {
+  --bg-0:#0b0d10; --bg-1:#0d1014; --surface-card:#0f1318; --surface-inset:#11161c; --surface-active:#171d24;
+  --border-faint:#13181e; --border-row:#161b22; --border-strong:#1d232b; --border-chip:#232a33;
+  --border-dashed:#2a313a; --border-drift:#4a3a1c; --border-amber-dim:#3a3327;
+  --text-1:#e6e9ed; --text-2:#c3cad2; --text-3:#aeb6bf; --text-muted:#8a94a0; --text-dim:#7d8794;
+  --amber:#e8a33d; --amber-bg:rgba(232,163,61,.1); --amber-border:rgba(232,163,61,.3); --amber-hover:#f2c982;
+  --green:#62c47e; --green-bg:rgba(98,196,126,.1); --green-border:rgba(98,196,126,.25);
+  --danger:#ec5c6a; --danger-bg:rgba(236,92,106,.1); --danger-border:rgba(236,92,106,.3);
+  --dim-bg:rgba(138,148,160,.08); --on-accent:#0b0d10; --type-skill:#7aa5d8;
+  --font-ui:"Space Grotesk","Helvetica Neue",Helvetica,sans-serif;
+  --font-mono:"JetBrains Mono","SFMono-Regular",Menlo,monospace;
+  --text-title:16px; --text-subtitle:14px; --text-body:13.5px; --text-data:13px; --text-desc:12.5px;
+  --text-chip:11px; --text-tag:10px; --tracking-label:.12em;
+  --radius-tag:3px; --radius-control:4px; --radius-item:5px; --radius-card:6px;
+  --card-x:14px; --row-y:9px; --section:24px;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html { overflow:hidden; }
+body { background:var(--bg-0); color:var(--text-1); font-family:var(--font-ui); font-size:var(--text-body); height:100vh; }
+a { color:var(--amber); }
+.app { display:flex; height:100vh; }
+.sidebar { width:220px; flex-shrink:0; border-right:1px solid var(--border-strong); padding:12px 10px; display:flex; flex-direction:column; gap:2px; }
+.brand { font-family:var(--font-mono); font-size:var(--text-tag); letter-spacing:var(--tracking-label); text-transform:uppercase; color:var(--text-dim); padding:4px 12px 14px; }
+.nav { display:block; padding:7px 12px; border-radius:var(--radius-card); color:var(--text-muted); font-size:var(--text-desc); text-decoration:none; }
+.nav.active { background:var(--surface-active); color:var(--text-1); }
+.nav .n { float:right; font-family:var(--font-mono); font-size:var(--text-tag); color:var(--text-dim); }
+.main { flex:1; overflow-y:auto; padding:22px 26px 90px; }
+
+/* ── primitives (ported from ui/*) ────────────────────────── */
+.h2 { font-size:var(--text-title); font-weight:600; }
+.h3 { font-size:var(--text-subtitle); font-weight:500; }
+.hdr { display:flex; align-items:baseline; gap:12px; margin-bottom:10px; }
+.hdr .meta { font-variant-numeric:tabular-nums; font-family:var(--font-mono); font-size:var(--text-tag); color:var(--text-dim); }
+.hdr .sp { flex:1; }
+.card { background:var(--surface-card); border:1px solid var(--border-strong); border-radius:var(--radius-card); }
+.card.pad { padding:12px var(--card-x); }
+.m-label { font-family:var(--font-mono); font-size:var(--text-tag); letter-spacing:var(--tracking-label); text-transform:uppercase; color:var(--text-dim); }
+.fact { display:inline-flex; flex-direction:column; gap:3px; margin-right:40px; }
+.fact .v { font-family:var(--font-mono); font-size:var(--text-data); color:var(--text-1); }
+.strip { display:flex; flex-wrap:wrap; align-items:flex-end; gap:16px; }
+.strip .acts { margin-left:auto; display:flex; gap:8px; }
+.btn { font-family:var(--font-mono); font-size:var(--text-tag); padding:3px 8px; min-height:24px; border-radius:var(--radius-control); border:1px solid; cursor:pointer; white-space:nowrap; background:transparent; }
+.btn.primary { background:var(--amber); border-color:var(--amber); color:var(--on-accent); font-weight:700; }
+.btn.ghost { color:var(--amber); border-color:var(--border-amber-dim); }
+.btn.quiet { color:var(--text-muted); border-color:var(--border-chip); }
+.btn.primary:not(:disabled):hover { background:var(--amber-hover); border-color:var(--amber-hover); }
+.btn.ghost:not(:disabled):hover { background:var(--amber-bg); border-color:var(--amber-border); }
+.btn.quiet:not(:disabled):hover { background:var(--surface-inset); border-color:var(--border-dashed); color:var(--text-2); }
+.btn, .menu summary, .nav { transition:background-color 140ms ease-out, border-color 140ms ease-out, color 140ms ease-out; }
+tbody tr:hover td { background:var(--surface-inset); }
+:focus-visible { outline:2px solid var(--amber); outline-offset:2px; }
+::selection { background:var(--amber-bg); color:var(--text-1); }
+.main { scrollbar-color:var(--border-chip) transparent; scrollbar-width:thin; }
+.btn:disabled { cursor:not-allowed; border-color:var(--border-chip); background:var(--dim-bg); color:var(--text-dim); }
+.chip { display:inline-block; white-space:nowrap; border-radius:var(--radius-control); border:1px solid; padding:2px 7px; font-family:var(--font-mono); font-size:var(--text-chip); }
+.chip.ok { color:var(--green); background:var(--green-bg); border-color:var(--green-border); }
+.chip.drift { color:var(--amber); background:var(--amber-bg); border-color:var(--amber-border); }
+.chip.dim { color:var(--text-muted); background:var(--dim-bg); border-color:var(--border-chip); }
+.chip[data-tip] { position:relative; cursor:help; }
+.chip[data-tip]:hover::after { content:attr(data-tip); position:absolute; left:0; top:calc(100% + 6px); z-index:6; width:max-content; max-width:320px; white-space:normal;
+  background:var(--surface-card); color:var(--text-2); border:1px solid var(--border-chip); border-radius:var(--radius-item); padding:6px 10px; font-family:var(--font-ui); font-size:var(--text-desc); box-shadow:0 4px 16px var(--bg-0); }
+.chip.danger { color:var(--danger); background:var(--danger-bg); border-color:var(--danger-border); }
+.type { font-family:var(--font-mono); font-size:var(--text-tag); color:var(--type-skill); border:1px solid var(--type-skill); border-radius:var(--radius-tag); padding:1px 5px; opacity:.85; }
+.name { font-family:var(--font-mono); font-size:var(--text-data); color:var(--text-1); }
+.who { font-size:var(--text-desc); color:var(--text-muted); }
+table { width:100%; min-width:760px; border-collapse:collapse; }
+.card.scroll { overflow-x:auto; }
+.name, td .chip { white-space:nowrap; }
+th { text-align:left; font-family:var(--font-mono); font-size:var(--text-tag); letter-spacing:var(--tracking-label); text-transform:uppercase; color:var(--text-dim); font-weight:500; padding:8px var(--card-x); border-bottom:1px solid var(--border-strong); }
+td { padding:var(--row-y) var(--card-x); border-bottom:1px solid var(--border-row); vertical-align:top; font-size:var(--text-data); }
+tr:last-child td { border-bottom:0; }
+.cell-acts { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.lnk { font-family:var(--font-mono); font-size:var(--text-tag); color:var(--amber); text-decoration:underline; white-space:nowrap; }
+.sub { font-size:var(--text-desc); color:var(--text-muted); margin-top:3px; }
+.notice { border:1px solid var(--border-chip); background:var(--surface-inset); border-radius:var(--radius-item); padding:10px var(--card-x); margin-bottom:10px; }
+.notice.warn { border-color:var(--amber-border); background:var(--amber-bg); }
+.notice.err { border-color:var(--danger-border); background:var(--danger-bg); }
+.notice.info { border-color:var(--green-border); background:var(--green-bg); }
+.notice .t { font-weight:600; font-size:var(--text-body); margin-bottom:2px; }
+.notice .d { font-size:var(--text-desc); color:var(--text-2); }
+.notice .x { font-size:var(--text-desc); color:var(--text-muted); margin-top:3px; }
+.notice .a { margin-top:8px; }
+.empty { padding:26px var(--card-x); text-align:center; }
+.empty .t { font-weight:600; margin-bottom:4px; }
+.empty .d { color:var(--text-muted); font-size:var(--text-desc); margin-bottom:10px; }
+.imported { outline:2px solid var(--amber); outline-offset:-2px; animation:fade 3s ease-out forwards; }
+@keyframes fade { from { background:var(--amber-bg); } to { background:transparent; } }
+.hidden { display:none; }
+
+/* ── A: journey board ─────────────────────────────────────── */
+.board { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin-top:var(--section); align-items:start; }
+.col { display:flex; flex-direction:column; gap:8px; }
+.col .hdr { margin-bottom:2px; }
+.arrow { color:var(--text-dim); font-family:var(--font-mono); }
+.kard { padding:10px var(--card-x); }
+.kard .top { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.kard .top .name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+.kard.also { border-left:3px solid var(--border-drift); }
+.col-rel .kard { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.col-empty { border:1px dashed var(--border-dashed); border-radius:var(--radius-card); padding:18px var(--card-x); color:var(--text-dim); font-size:var(--text-desc); text-align:center; }
+
+/* ── B: one row per skill ─────────────────────────────────── */
+.grid th.stage { width:27%; }
+.grid td.stage { border-left:1px solid var(--border-row); }
+.grid td.none { color:var(--text-dim); font-family:var(--font-mono); font-size:var(--text-tag); }
+.grid tfoot td { background:var(--surface-inset); border-top:1px solid var(--border-strong); }
+.stage-state { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+
+/* ── C: stacked sections ──────────────────────────────────── */
+.sect { margin-top:var(--section); }
+.trail { font-size:var(--text-desc); color:var(--text-dim); margin-top:2px; }
+
+/* ── row actions menu (mirrors ui/actions-menu.tsx) ─────── */
+.menu { position:relative; display:inline-block; }
+.menu summary { list-style:none; cursor:pointer; font-family:var(--font-mono); font-size:14px; line-height:1; color:var(--text-muted); padding:2px 6px; border-radius:var(--radius-control); border:1px solid transparent; }
+.menu summary::-webkit-details-marker { display:none; }
+.menu summary:hover, .menu[open] summary { border-color:var(--border-chip); background:var(--surface-inset); color:var(--text-2); }
+.menu.off summary { color:var(--text-dim); cursor:not-allowed; }
+.menu .items { position:absolute; right:0; top:100%; margin-top:4px; min-width:190px; background:var(--surface-card); border:1px solid var(--border-chip); border-radius:var(--radius-item); padding:4px 0; z-index:5; }
+.menu .it { display:block; padding:4px var(--card-x); font-family:var(--font-mono); font-size:var(--text-desc); color:var(--text-2); text-decoration:none; white-space:nowrap; cursor:pointer; }
+.menu .it:hover { background:var(--surface-inset); color:var(--text-1); }
+.menu .it.dis { color:var(--text-dim); cursor:not-allowed; }
+td.acts { width:48px; text-align:right; }
+
+/* ── switcher bar (not part of the design) ────────────────── */
+.bar { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:10px; background:#fff; color:#111; border-radius:999px; padding:8px 14px; box-shadow:0 6px 24px rgba(0,0,0,.5); font:12px system-ui; z-index:9; }
+.bar button, .bar select { font:12px system-ui; cursor:pointer; }
+.bar b { min-width:220px; text-align:center; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">Maestro · prototype</div>
+    <a class="nav" id="nav-harness" href="#">Harness <span class="n" id="nav-harness-n"></span></a>
+    <a class="nav" id="nav-inventory" href="#">Inventory <span class="n" id="nav-inventory-n"></span></a>
+    <a class="nav" href="#">Repositories</a>
+  </aside>
+  <main class="main" id="main"></main>
+</div>
+<div class="bar">
+  <button id="prev">←</button>
+  <b id="label"></b>
+  <button id="next">→</button>
+  <select id="scenario"></select>
+  <select id="screen"><option value="harness">Harness</option><option value="inventory">Inventory (empty state only)</option></select>
+</div>
+
+<script>
+// ── fixture ───────────────────────────────────────────────────
+// One skill per reading the stage decision (#808) and the action decision (#809)
+// name. `app-creator` sits in all three stages at once with three different
+// pieces of work (A merged, B proposed, C local).
+const RELEASED = ["app-creator", "tdd", "workflow-ship", "grill-me", "legacy-hooks", "docs-writer"];
+const SKILLS = [
+  { name:"app-creator",
+    proposal:{ kind:"edit", target:"open" },
+    review:{ status:"waiting", pr:"#42" },
+    release:{ kind:"changed", author:"you" } },
+  { name:"tdd",
+    proposal:{ kind:"edit", target:"new" } },
+  { name:"workflow-ship",
+    release:{ kind:"changed", author:"fimoklei", pr:"#37" } },
+  { name:"agent-native-cli",
+    release:{ kind:"added", author:"fimoklei" } },
+  { name:"grill-me",
+    review:{ status:"approved", pr:"#39" } },
+  { name:"legacy-hooks", deletion:true,
+    proposal:{ kind:"deletion", target:"new" },
+    review:{ status:"draft", pr:"#40" } },
+  { name:"docs-writer", deletion:true,
+    release:{ kind:"removed", author:"you" } },
+  { name:"release-notes",
+    review:{ status:"missing" } },
+  { name:"api-mock",
+    proposal:{ kind:"edit", target:"closed" },
+    review:{ status:"closed", pr:"#31" } },
+  { name:"code-review",
+    review:{ status:"multiple", prs:["#41","#44"] } },
+];
+const SCENARIOS = {
+  busy:    { label:"Busy — fetched 4 min ago", freshness:"fetched", since:"4 min ago", reviewCap:"ok", skills:SKILLS, released:RELEASED, version:"v0.3.0" },
+  empty:   { label:"Empty — fresh scaffold, nothing yet", freshness:"fetched", since:"just now", reviewCap:"ok", skills:[], released:[], version:null },
+  stale:   { label:"Stale — fetch failed, last fetched 2 h ago", freshness:"failed", since:"2 h ago", reviewCap:"ok", skills:SKILLS, released:RELEASED, version:"v0.3.0" },
+  unknown: { label:"Unknown — never fetched, review unavailable", freshness:"never", since:null, reviewCap:"unavailable", skills:SKILLS.filter(s=>!s.review||s.proposal), released:RELEASED, version:"v0.3.0" },
+};
+const VARIANTS = { A:"Journey board (three columns)", B:"One row per skill", C:"Stages in order (stacked)" };
+
+// ── readings (#808) ───────────────────────────────────────────
+const REVIEW = {
+  waiting:  { chip:"Waiting for review", tone:"dim" },
+  draft:    { chip:"Draft", tone:"drift" },
+  approved: { chip:"Approved, awaiting merge", tone:"drift" },
+  missing:  { chip:"Pull request missing", tone:"drift" },
+  closed:   { chip:"Proposal closed", tone:"drift" },
+  multiple: { chip:"Multiple pull requests", tone:"drift" },
+};
+const inReview = s => s.review && ["waiting","draft","approved"].includes(s.review.status);
+const isException = s => s.review && !inReview(s);
+const url = new URL(location.href);
+const P = k => url.searchParams.get(k);
+// Mutable per render: the switcher rewrites these in place, no navigation.
+let variant, scenarioKey, S, screen, imported, live, dis;
+function readParams() {
+  variant = VARIANTS[P("variant")] ? P("variant") : "C";
+  scenarioKey = SCENARIOS[P("scenario")] ? P("scenario") : "busy";
+  S = SCENARIOS[scenarioKey];
+  screen = P("screen") === "inventory" ? "inventory" : "harness";
+  imported = P("imported");
+  // Mutations need current remote facts; a link and local files never do (#809).
+  live = S.freshness === "fetched";
+  dis = live ? "" : "disabled";
+}
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const chip = (t, tone="dim") => `<span class="chip ${tone}">${esc(t)}</span>`;
+const btn = (t, v="ghost", extra="") => `<button class="btn ${v}" ${extra}>${esc(t)}</button>`;
+const link = (t, href="#") => `<a class="lnk" href="${href}">${esc(t)} →</a>`;
+const deletionChip = s => s.deletion ? chip("Deletion","drift") : "";
+
+// ── stage cells: what a row says and can do in each stage (#809) ──
+function proposalCell(s) {
+  if (!s.proposal) return null;
+  const t = s.proposal.target;
+  const state = t==="new" ? "Local change, not yet proposed" : t==="open" ? "New local work since proposal "+esc(s.review.pr) : "Local work after closed proposal";
+  const action = t==="new" ? btn("Propose change","ghost",dis) : btn("Update proposal","ghost",dis);
+  return { state, action, chips: deletionChip(s) };
+}
+function reviewCell(s) {
+  if (!s.review) return null;
+  if (S.reviewCap === "unavailable") return { state:chip("Review status unavailable"), action:"", sub:"The pull-request check needs a github.com Harness." };
+  const r = s.review, R = REVIEW[r.status];
+  let action = "", sub = "";
+  switch (r.status) {
+    case "waiting": case "approved":
+      action = link("Open pull request "+r.pr) + btn("Withdraw proposal","quiet",dis); break;
+    case "draft":
+      action = link("Open pull request "+r.pr) + btn("Withdraw proposal","quiet",dis); sub = "Mark it ready for review on GitHub."; break;
+    case "missing":
+      action = btn("Create pull request","ghost",dis); sub = "The proposal branch is pushed and has no pull request."; break;
+    case "closed":
+      action = btn("Reopen proposal","ghost",dis) + link("Open pull request "+r.pr); sub = "Closed without merging; its work is not on the default branch."; break;
+    case "multiple":
+      action = r.prs.map(p => link("Pull request "+p)).join(" "); sub = "Close the extra pull requests on GitHub, then one proposal remains."; break;
+  }
+  return { state:chip(R.chip,R.tone), action, sub, chips: deletionChip(s), exception:isException(s) };
+}
+function releaseCell(s) {
+  if (!s.release) return null;
+  const k = s.release.kind;
+  const state = k==="added" ? "Added" : k==="removed" ? "Removed" : "Changed";
+  return { state:`${state} · <span class="who">${esc(s.release.author)}</span>`, chips: deletionChip(s), action:"" };
+}
+
+// ── shared pieces ─────────────────────────────────────────────
+function status() {
+  if (S.freshness==="fetched") return `Fetched ${S.since}`;
+  if (S.freshness==="failed") return `Status out of date — last fetched ${S.since}`;
+  return "Status unknown — not fetched yet";
+}
+function staleNotice() {
+  if (S.freshness==="fetched") return "";
+  const t = S.freshness==="failed" ? "Status out of date" : "Status unknown";
+  const x = S.freshness==="failed" ? "The rows show the last successful read." : "Only local files are shown.";
+  const d = S.freshness==="failed"
+    ? "Maestro could not reach GitHub. Retry check will read it again."
+    : "Maestro has not read the Harness yet. Retry check will read it now.";
+  return `<div class="notice warn"><div class="t">${t}</div><div class="d">${d}</div><div class="x">${x}</div><div class="a">${btn("Retry check","primary")}</div></div>`;
+}
+function importedNotice() {
+  if (!imported) return "";
+  return `<div class="notice info"><div class="t">Skill imported</div><div class="d">${esc(imported)} is in the Working Harness, under Pending proposal.</div></div>`;
+}
+function stripHtml(withRelease) {
+  const rel = withRelease ? btn("Release Harness","primary",dis + (S.skills.some(s=>s.release)?"":" disabled")) : "";
+  return `<div class="card pad"><div class="strip">
+    <div><span class="fact"><span class="m-label">Released</span><span class="v">${S.version ?? "None yet"}</span></span>
+    <span class="fact"><span class="m-label">Branch</span><span class="v">main</span></span>
+    <span class="fact"><span class="m-label">Status</span><span class="v">${status()}</span></span></div>
+    <div class="acts">${rel}${btn("Refresh","quiet")}${btn("Import skill…","quiet")}</div></div></div>`;
+}
+const counts = () => ({
+  proposal: S.skills.filter(s=>s.proposal).length,
+  review: S.skills.filter(inReview).length,
+  exceptions: S.skills.filter(isException).length,
+  release: S.skills.filter(s=>s.release).length,
+});
+function emptyJourney() {
+  return `<div class="card empty"><div class="t">No changes yet</div>
+    <div class="d">Skills you import or edit in your clone will appear here.</div>
+    </div>`;
+}
+const rowCls = s => s.name===imported ? "imported" : "";
+const head = (title, meta) => `<div class="hdr"><span class="h3">${title}</span><span class="meta">${meta}</span><span class="sp"></span></div>`;
+
+// ── Variant A: journey board ──────────────────────────────────
+function variantA() {
+  const c = counts();
+  if (!S.skills.length) return stripHtml(false) + `<div class="sect">${emptyJourney()}</div>`;
+  const card = (s, cell, cls="") => `<div class="card kard ${cls} ${rowCls(s)}"><div class="top"><span class="type">skill</span><span class="name">${esc(s.name)}</span>${cell.chips||""}</div>
+    <div class="sub">${cell.state}</div>${cell.sub?`<div class="sub">${cell.sub}</div>`:""}<div class="cell-acts">${cell.action}</div></div>`;
+  const colP = S.skills.filter(s=>s.proposal).map(s => card(s, proposalCell(s), s.review||s.release ? "also":"")).join("");
+  const colR = S.skills.filter(s=>s.review).sort((a,b)=>(isException(a)?1:0)-(isException(b)?1:0)).map(s => card(s, reviewCell(s), s.proposal||s.release ? "also":"")).join("");
+  const colRel = S.skills.filter(s=>s.release).map(s => `<div class="card kard ${rowCls(s)}"><span><span class="type">skill</span> <span class="name">${esc(s.name)}</span> ${deletionChip(s)}</span><span class="sub" style="margin:0">${releaseCell(s).state}</span></div>`).join("");
+  const none = t => `<div class="col-empty">${t}</div>`;
+  return stripHtml(false) + `<div class="board">
+    <div class="col">${head("Pending proposal", c.proposal+" · local on disk")}${colP || none("Nothing to propose")}</div>
+    <div class="col">${head("Pending review", c.review+" open"+(c.exceptions?` · ${c.exceptions} need attention`:""))}${colR || none("No open pull requests")}</div>
+    <div class="col col-rel">${head("Pending release", c.release+" · merged, not yet released")}${colRel || none("Everything merged is released")}
+      ${c.release ? `<div style="margin-top:6px">${btn("Release Harness","primary",dis)}</div>` : ""}</div>
+  </div>`;
+}
+
+// ── Variant B: one row per skill ──────────────────────────────
+function variantB() {
+  const c = counts();
+  if (!S.skills.length) return stripHtml(false) + `<div class="sect">${emptyJourney()}</div>`;
+  const cell = (x) => x ? `<div class="stage-state">${x.chips||""}<span class="sub" style="margin:0">${x.state}</span></div>${x.sub?`<div class="sub">${x.sub}</div>`:""}<div class="cell-acts">${x.action}</div>` : `<span class="none">—</span>`;
+  const rows = S.skills.map(s => `<tr class="${rowCls(s)}"><td><span class="type">skill</span> <span class="name">${esc(s.name)}</span></td>
+    <td class="stage">${cell(proposalCell(s))}</td><td class="stage">${cell(reviewCell(s))}</td><td class="stage">${cell(releaseCell(s))}</td></tr>`).join("");
+  return stripHtml(false) + `<div class="sect">${head("Your changes", S.skills.length+" skills on the way")}
+    <div class="card"><table class="grid"><thead><tr><th>Skill</th>
+      <th class="stage">Pending proposal <span style="color:var(--text-dim)">· ${c.proposal}</span></th>
+      <th class="stage">Pending review <span style="color:var(--text-dim)">· ${c.review}${c.exceptions?` (+${c.exceptions})`:""}</span></th>
+      <th class="stage">Pending release <span style="color:var(--text-dim)">· ${c.release}</span></th></tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr><td colspan="3"><span class="sub" style="margin:0">A release covers every merged change on the right, for the whole Harness.</span></td>
+      <td>${btn("Release Harness","primary",dis + (c.release?"":" disabled"))}</td></tr></tfoot></table></div></div>`;
+}
+
+// ── Variant C: stacked sections in journey order ──────────────
+// Feedback round 1 (Michiel): every table's third column is Status, the
+// reason lives in the status chip's hover, actions sit in a ⋯ menu per row
+// like Inventory's, Import skill… moves to the Pending proposal header, and
+// the release button reads "Create a release".
+function menu(items) {
+  const usable = items.filter(Boolean);
+  if (!usable.length) return `<details class="menu off"><summary title="No actions">⋯</summary></details>`;
+  return `<details class="menu"><summary aria-label="Actions">⋯</summary><div class="items">${
+    usable.map(i => i.href ? `<a class="it" href="${i.href}">${esc(i.label)} →</a>`
+      : `<span class="it ${i.disabled?"dis":""}">${esc(i.label)}</span>`).join("")}</div></details>`;
+}
+const act = (label, disabled=!live) => ({ label, disabled });
+const openPr = pr => ({ label:"Open pull request "+pr, href:"#" });
+function cProposal(s) {
+  const t = s.proposal.target;
+  if (s.deletion) return { status: chip("Deleted locally","dim"), detail:"Propose change will propose deleting this skill from the Harness too.", items:[act(t==="new"?"Propose change":"Update proposal")] };
+  const status = t==="new" ? ["Not yet proposed", "Propose change will send this edit for review."]
+    : t==="open" ? ["New local work", "Update proposal will add the edits you made since pull request "+s.review.pr+"."]
+    : ["New local work", "You edited this skill after pull request "+s.review.pr+" was closed without merging."];
+  return { status: chip(status[0],"dim"), detail: status[1], items:[act(t==="new"?"Propose change":"Update proposal")] };
+}
+function cReview(s) {
+  if (S.reviewCap === "unavailable") return { status:chip("Review status unavailable","dim"), detail:"Maestro can only check pull requests on github.com.", items:[] };
+  const r = s.review, R = REVIEW[r.status];
+  const why = { waiting:"Pull request "+r.pr+" is open and waiting for a reviewer.", draft:"Pull request "+r.pr+" is a draft until you mark it ready for review on GitHub.",
+    approved:"Pull request "+r.pr+" is approved and can be merged on GitHub.", missing:"Create pull request will open one for the branch that is already on GitHub.",
+    closed:"Reopen proposal will reopen pull request "+r.pr+", which was closed without merging.",
+    multiple:"Pull requests "+(r.prs||[]).join(" and ")+" both match this branch, so close one of them on GitHub." }[r.status];
+  const items = { waiting:[openPr(r.pr), act("Withdraw proposal")], draft:[openPr(r.pr), act("Withdraw proposal")],
+    approved:[openPr(r.pr), act("Withdraw proposal")], missing:[act("Create pull request")],
+    closed:[act("Reopen proposal"), openPr(r.pr)], multiple:(r.prs||[]).map(openPr) }[r.status];
+  if (s.deletion && ["waiting","draft","approved"].includes(r.status)) {
+    const label = { waiting:"Deletion waiting for review", draft:"Deletion in draft", approved:"Deletion approved, awaiting merge" }[r.status];
+    return { status: chip(label, R.tone), detail: (r.status==="draft"?"Pull request "+r.pr+" proposes deleting this skill and is still a draft on GitHub.":"Pull request "+r.pr+" proposes deleting this skill from the Harness."), items };
+  }
+  return { status: chip(R.chip, R.tone), detail: why, items };
+}
+function cRelease(s) {
+  const k = s.release.kind, label = k==="added" ? "Added" : k==="removed" ? "Deleted" : "Changed";
+  const detail = k==="removed"
+    ? "Creating a release will remove this deleted skill from Inventory."
+    : "Creating a release will include this change merged by "+s.release.author+".";
+  return { status: chip(label, "ok"), detail, items: s.release.pr ? [openPr(s.release.pr)] : [] };
+}
+function variantC() {
+  const c = counts();
+  const trail = (s, here) => {
+    if (S.freshness==="never") return "";
+    const others = [s.proposal&&here!=="p"&&"Pending proposal", inReview(s)&&here!=="r"&&"Pending review", s.release&&here!=="l"&&"Pending release"].filter(Boolean);
+    return others.length ? `<div class="trail">Also in ${others.join(" and ")}.</div>` : "";
+  };
+  const table = (skills, here, cellFn) => `<div class="card scroll"><table><thead><tr><th style="width:80px">Type</th><th style="width:18%">Name</th><th style="width:24%">Status</th><th>Detail</th><th class="acts"></th></tr></thead><tbody>${
+    skills.map(s => { const x = cellFn(s); return `<tr class="${rowCls(s)}"><td><span class="type">skill</span></td>
+      <td><span class="name">${esc(s.name)}</span></td>
+      <td>${x.status}</td><td class="who">${esc(x.detail||"")} ${trail(s,here)}</td><td class="acts">${menu(x.items)}</td></tr>`; }).join("")}</tbody></table></div>`;
+  const emptyCard = t => `<div class="card empty"><div class="d" style="margin:0">${t}</div></div>`;
+  const P_ = S.skills.filter(s=>s.proposal), R_ = S.skills.filter(s=>s.review).sort((a,b)=>(isException(a)?1:0)-(isException(b)?1:0)), L_ = S.skills.filter(s=>s.release);
+  const sec = (title, meta, body, actions="") => `<div class="sect"><div class="hdr"><span class="h3">${title}</span><span class="meta">${meta}</span><span class="sp"></span>${actions}</div>${body}</div>`;
+  const strip = `<div class="card pad"><div class="strip">
+    <div><span class="fact"><span class="m-label">Released</span><span class="v">${S.version ?? "None yet"}</span></span>
+    <span class="fact"><span class="m-label">Branch</span><span class="v">main</span></span>
+    <span class="fact"><span class="m-label">Status</span><span class="v">${status()}</span></span></div>
+    <div class="acts">${btn("Create a release","primary",dis + (c.release?"":" disabled"))}${btn("Refresh","quiet")}</div></div></div>`;
+  if (!S.skills.length) return strip + sec("Pending proposal", "0 · local on disk", emptyJourney(), btn("Import skill…","quiet"));
+  return strip
+    + sec("Pending proposal", c.proposal+" · local on disk", P_.length ? table(P_,"p",cProposal) : emptyCard("Nothing to propose. Edit or import a skill in the clone."), btn("Import skill…","quiet"))
+    + (S.freshness==="never"
+        ? sec("Pending review", "Status unknown", emptyCard("Retry check will read which proposals are open."))
+          + sec("Pending release", "Status unknown", emptyCard("Retry check will read what is merged and not yet released."))
+        : sec("Pending review", S.reviewCap==="unavailable" ? "Review status unavailable" : c.review+" open"+(c.exceptions?` · ${c.exceptions} need attention`:""), R_.length ? table(R_,"r",cReview) : emptyCard("Proposing a change above will open the first pull request."))
+          + sec("Pending release", c.release+" · merged, not yet released", L_.length ? table(L_,"l",cRelease) : emptyCard("Everything merged is released.")));
+}
+
+// ── Inventory: only the new empty state (#807). The existing Inventory
+// screens stay as they are; this map adds the released-only empty state only.
+function inventory() {
+  return `<div class="hdr"><span class="h2">Inventory</span><span class="meta">fimoklei/agent-harness</span></div>
+    <div class="notice"><div class="d">Prototype note: only the empty state below is on the map. The existing Inventory screens are unchanged.</div></div>
+    <div class="card empty"><div class="t">No released skills</div>
+    <div class="d">Inventory shows released skills only. Creating a release on the Harness view will fill it.</div>${btn("Open Harness","primary")}</div>`;
+}
+
+// ── render ────────────────────────────────────────────────────
+const main = document.getElementById("main");
+const sel = document.getElementById("scenario");
+const scr = document.getElementById("screen");
+for (const [k,v] of Object.entries(SCENARIOS)) sel.add(new Option(v.label, k));
+function render() {
+  readParams();
+  if (screen === "inventory") {
+    main.innerHTML = inventory();
+  } else {
+    main.innerHTML = `<div class="hdr"><span class="h2">Harness</span><span class="meta">fimoklei/agent-harness</span></div>`
+      + importedNotice() + staleNotice() + ({A:variantA,B:variantB,C:variantC})[variant]();
+  }
+  const c = counts();
+  document.getElementById("nav-harness").className = "nav"+(screen==="harness"?" active":"");
+  document.getElementById("nav-inventory").className = "nav"+(screen==="inventory"?" active":"");
+  document.getElementById("nav-harness-n").textContent = c.proposal+c.review+c.exceptions+c.release || "";
+  document.getElementById("nav-inventory-n").textContent = "";
+  document.getElementById("label").textContent = `${variant} · ${VARIANTS[variant]}`;
+  sel.value = scenarioKey;
+  scr.value = screen;
+  main.scrollTop = 0;
+}
+const go = (k, v) => { url.searchParams.set(k, v); try { history.replaceState(null, "", url); } catch {} render(); };
+const keys = Object.keys(VARIANTS);
+const step = d => go("variant", keys[(keys.indexOf(variant)+d+keys.length)%keys.length]);
+document.getElementById("nav-harness").onclick = e => { e.preventDefault(); go("screen","harness"); };
+document.getElementById("nav-inventory").onclick = e => { e.preventDefault(); go("screen","inventory"); };
+document.getElementById("prev").onclick = () => step(-1);
+document.getElementById("next").onclick = () => step(1);
+document.addEventListener("keydown", e => { if (e.key==="ArrowLeft") step(-1); if (e.key==="ArrowRight") step(1); });
+sel.onchange = () => go("scenario", sel.value);
+scr.onchange = () => go("screen", scr.value);
+render();
+document.addEventListener("click", e => { for (const d of document.querySelectorAll("details.menu[open]")) if (!d.contains(e.target)) d.open = false; });
+</script>
+</body>
+</html>
