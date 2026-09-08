@@ -2,6 +2,7 @@ import type { HarnessState } from "@maestro/core";
 import { useEffect, useState } from "react";
 import { BrowseDialog } from "../shell/browse-dialog";
 import { useBrowsePicker } from "../shell/use-browse-picker";
+import { useRereadInventory } from "../shell/use-reread-inventory";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { Notice } from "../ui/notice";
@@ -24,6 +25,7 @@ import {
   publishReleaseNotice,
   refreshNotice,
   releasePlanNotice,
+  releasePublishedNotice,
   removalNotice,
   staleStatusNotice,
 } from "./notice-copy";
@@ -59,6 +61,7 @@ export function HarnessView() {
   const plan = useReleasePlan(planOpen);
   const discardPlan = useDiscardReleasePlan();
   const publish = usePublishRelease();
+  const rereadInventory = useRereadInventory();
   const closePlan = () => {
     setPlanOpen(false);
     discardPlan();
@@ -73,7 +76,15 @@ export function HarnessView() {
         previousTagCommit: plan.previousTagCommit,
         revision: plan.revision,
       },
-      { onSuccess: closePlan },
+      // The dialog closes on success and keeps no result of its own: what was
+      // published is stated above the strip, which is where the Inventory the
+      // release changed is read from (#849).
+      {
+        onSuccess: () => {
+          setPlanOpen(false);
+          discardPlan();
+        },
+      },
     );
   };
 
@@ -208,6 +219,21 @@ export function HarnessView() {
               ? null
               : staleStatusNotice(state.freshness, () => fetchRemote())) ??
             refreshNotice(refresh.error)
+          }
+        />
+        {/* What the last publication landed. The tag is atomic, so the only
+            half that can fail is the Inventory re-read, and the notice says
+            which of the two happened (#849). */}
+        <Notice
+          trigger="user-action"
+          notice={
+            publish.data === undefined
+              ? null
+              : releasePublishedNotice(
+                  publish.data.tag,
+                  publish.data.inventoryRefreshed,
+                  rereadInventory,
+                )
           }
         />
       </div>

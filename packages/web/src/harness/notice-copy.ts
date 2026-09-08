@@ -463,6 +463,30 @@ export const staleStatusNotice = (
   };
 };
 
+// What a publication landed, and the one place the cockpit states that a
+// release is final (#827). The tag is atomic, so the Inventory re-read is the
+// only half that can fail on its own: both outcomes keep the heading, the
+// subject and the detail, and the way back is written into the sentence (#849).
+export const releasePublishedNotice = (
+  tag: string,
+  inventoryRefreshed: boolean,
+  onReread: () => void,
+): NoticeContent =>
+  inventoryRefreshed
+    ? {
+        level: "success",
+        label: "Release published",
+        message: `Maestro tagged ${tag} and refreshed Inventory.`,
+        detail: "A release cannot change after publication.",
+      }
+    : {
+        level: "warning",
+        label: "Release published",
+        message: `Maestro tagged ${tag} but could not refresh Inventory. Re-read Inventory to see the published skills.`,
+        detail: "A release cannot change after publication.",
+        action: { label: "Re-read Inventory", onClick: onReread },
+      };
+
 export const releasePlanNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(releasePlanHeadings, error, {
     label: "Release plan not read",
