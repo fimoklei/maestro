@@ -148,7 +148,8 @@ details may name the exact APM mechanism or file.
 | Pinned version | **Deployed version** | Do not introduce *pin* as a user action or state. |
 | Promote | **Propose change** / **proposed change** | *Propose change* is the action and the row button; the noun is a **proposed change**. Pushing alone does not mean a pull request exists or review has started. |
 | Local work awaiting proposal | **Pending proposal** | Local skill content differs from the current open or prepared proposal, otherwise from the Harness default branch. |
-| Open proposal | **Pending review** | A matching open pull request into the Harness default branch exists. Its status is **Draft**, **Waiting for review**, or **Approved, awaiting merge**, according to the verified facts. |
+| Open proposal | **Pending review** | A matching open pull request into the Harness default branch exists. Its status is **Draft**, **Waiting for review**, **Changes requested**, or **Approved, awaiting merge**, according to the verified facts. |
+| Reviewer asked for changes | **Changes requested** | GitHub's review verdict on an open proposal. It survives an update to the proposal; only GitHub clears it. **Draft** outranks it when both apply. |
 | Unreleased skill change | **Pending release** | This skill differs between the Harness default branch and the latest release. Explain as *Merged, not yet released*; approval alone is not a merge. |
 | Harness skill deletion | **Delete** / **Deletion** / **Deleted** | *Delete* is the verb, *deletion* is the noun, and *deleted* is the state. Use these forms throughout the Harness journey, including proposed deletions; never *remove* for this concept. |
 | Proposal without a pull request | **Pull request missing** | A prepared proposal has no matching pull request, confirmed by a complete check. It is not Pending review. |
@@ -157,6 +158,7 @@ details may name the exact APM mechanism or file.
 | Stale Harness status | **Status out of date** | Previously verified information whose refresh failed; never present it as current. |
 | Unknown Harness status | **Status unknown** / **Review status unknown** | No verified status is available; use the review-specific name when only review status is unknown. Unknown is not empty. |
 | Unavailable review status | **Review status unavailable** | The pull-request check is unavailable; do not infer whether a proposal exists. |
+| Harness re-read | **Retry check** | The one re-read control on the Harness view: the strip's control and the single action in every failed-read notice. *Refresh* is retired — never on a control, never in a sentence. **Re-read Inventory** stays Inventory's own control. |
 | Release | **Release** / **Released** | *Release* is the action, *released* is the state, and *latest release* is the result. |
 | Release dialog | **Create a release** / **Publish release** | *Create a release* opens the dialog on the Harness strip; *Publish release* confirms publication. References to either control use its exact label; *Plan release* is retired. Never a bare *Release* on a button. |
 | Import dialog | **Import skill…** / **Import skill** | The trailing ellipsis marks the control that opens the dialog; the dialog's confirm carries no ellipsis. |
@@ -181,7 +183,9 @@ details may name the exact APM mechanism or file.
 
 The three Harness stages have no additional group name. One skill may appear in
 all three when each row represents different work; ordinary explanation may say
-*your changes*. Stage meanings follow the [three-stage decision](https://github.com/fimoklei/maestro/issues/808); implementation belongs to the author journey spec.
+*your changes*. Independent stage memberships are ADR-0021 point 10; the review
+facts behind them are read through `gh` (ADR-0029). Implementation belongs to
+the author journey spec.
 
 ### Jargon the screen keeps
 
