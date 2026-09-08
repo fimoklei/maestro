@@ -21,7 +21,7 @@ const dayAndMonth = new Intl.DateTimeFormat("en-GB", {
 });
 
 // Null when the string is not a moment, so a hand-edited config reads as
-// "never fetched" instead of throwing inside the date formatter (#516).
+// "never read" instead of throwing inside the date formatter (#516).
 const ago = (iso: string, now: Date): string | null => {
   const at = Date.parse(iso);
   if (Number.isNaN(at)) {
@@ -41,7 +41,7 @@ const ago = (iso: string, now: Date): string | null => {
 };
 
 // `on 20 Jul` reads as a date, `4 min ago` as a distance — both follow
-// "Fetched", so the prefix is not repeated.
+// "Read", so the prefix is not repeated.
 export const freshnessLabel = (
   freshness: HarnessFreshness,
   now: Date,
@@ -49,17 +49,17 @@ export const freshnessLabel = (
   const since =
     freshness.lastFetchedAt === null ? null : ago(freshness.lastFetchedAt, now);
   if (freshness.outcome === null) {
-    return "Not fetched yet";
+    return "Not read yet";
   }
   if (freshness.outcome === "fetched") {
-    return since === null ? "Not fetched yet" : `Fetched ${since}`;
+    return since === null ? "Not read yet" : `Read ${since}`;
   }
   // A failure never claims a verdict GitHub has not given: no permission gate,
   // no expired-token guess (ADR-0021, #516).
-  const cause = freshness.outcome === "offline" ? "Offline" : "Fetch failed";
+  const cause = freshness.outcome === "offline" ? "Offline" : "Read failed";
   return since === null
-    ? `${cause} — never fetched`
-    : `${cause} — last fetched ${since}`;
+    ? `${cause} — never read`
+    : `${cause} — last read ${since}`;
 };
 
 // The stage header's meta slot carries exactly one reading, never two: either
@@ -190,5 +190,5 @@ export const RELEASE_SUMMARIES: Record<HarnessReleaseState, string> = {
   released: "Everything merged is released.",
   "pending-release": "Merged changes are waiting for release.",
   "never-released": "No release yet.",
-  unknown: "Not fetched yet, so what is waiting is unknown.",
+  unknown: "Not read yet, so what is waiting is unknown.",
 };

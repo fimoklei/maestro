@@ -29,7 +29,7 @@ const harnessHeadings: NoticeTable<HarnessStateError> = {
     level: "error",
     label: "No GitHub origin",
     message: "Point the clone's origin at the Harness repository on GitHub.",
-    detail: "Releases are published as tags, fetched over https or ssh.",
+    detail: "Releases are published as tags, read over https or ssh.",
   },
 };
 
@@ -104,7 +104,7 @@ const promoteHeadings: NoticeTable<PromoteSkillError> = {
     level: "error",
     label: "Different push remote",
     message: "Nothing was pushed. Point the clone's push remote at its origin.",
-    detail: "Maestro publishes only to the origin it fetches from.",
+    detail: "Maestro publishes only to the origin it reads from.",
   },
   "source-changed": {
     level: "error",

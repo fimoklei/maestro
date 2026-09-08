@@ -269,6 +269,11 @@ describe("Harness home base", () => {
     expect(await screen.findByText("main")).toBeInTheDocument();
   });
 
+  // The strip's own facts. A stage meta slot dates the same read in the same
+  // words, so the text alone no longer picks out the strip (#850).
+  const stripFacts = async () =>
+    (await screen.findByText("Released")).closest("dl") as HTMLElement;
+
   it("fetches when it opens, so the state is the team's and not yesterday's", async () => {
     const calls = stubHarnessServer({
       read: { body: RELEASED },
@@ -284,7 +289,11 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    expect(await screen.findByText("Fetched 4 min ago")).toBeInTheDocument();
+    await waitFor(async () =>
+      expect(
+        within(await stripFacts()).getByText("Read 4 min ago"),
+      ).toBeInTheDocument(),
+    );
     await waitFor(() =>
       expect(
         calls.filter((call) => call === "POST /api/harness/refresh"),
@@ -363,7 +372,7 @@ describe("Harness home base", () => {
     );
   });
 
-  it("holds offline apart from a fetch that failed, and dates both", async () => {
+  it("holds offline apart from a read that failed, and dates both", async () => {
     stubHarnessServer({
       read: { body: RELEASED },
       refresh: {
@@ -379,12 +388,12 @@ describe("Harness home base", () => {
     renderHarness();
 
     expect(
-      await screen.findByText("Offline — last fetched 1 h ago"),
+      await screen.findByText("Offline — last read 1 h ago"),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/fetch failed/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/read failed/i)).not.toBeInTheDocument();
   });
 
-  it("never turns a failed fetch into a permission gate", async () => {
+  it("never turns a failed read into a permission gate", async () => {
     stubHarnessServer({
       read: { body: RELEASED },
       refresh: {
@@ -397,7 +406,7 @@ describe("Harness home base", () => {
     renderHarness();
 
     expect(
-      await screen.findByText("Fetch failed — never fetched"),
+      await screen.findByText("Read failed — never read"),
     ).toBeInTheDocument();
     expect(
       screen.queryByText(/permission|not allowed|access denied/i),
@@ -446,10 +455,16 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    expect(await screen.findByText("Fetched 4 min ago")).toBeInTheDocument();
+    await waitFor(async () =>
+      expect(
+        within(await stripFacts()).getByText("Read 4 min ago"),
+      ).toBeInTheDocument(),
+    );
     releaseRead();
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
-    expect(screen.getByText("Fetched 4 min ago")).toBeInTheDocument();
+    expect(
+      within(await stripFacts()).getByText("Read 4 min ago"),
+    ).toBeInTheDocument();
   });
 
   it("says when a refresh could not reach the server, and stays usable", async () => {
@@ -1678,7 +1693,7 @@ describe("Harness home base", () => {
         body: {
           error: "confirmation-stale",
           message:
-            "The skill on the default branch is no longer the one you confirmed removing. Nothing was pushed — refresh and confirm again.",
+            "The copy on the default branch moved after this confirmation. Nothing was pushed — press Retry check, then Delete skill again.",
         },
         status: 409,
         retry: { body: REMOVED },
