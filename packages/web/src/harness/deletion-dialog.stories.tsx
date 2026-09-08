@@ -32,7 +32,8 @@ export const ConfirmationRefused: Story = {
     removeError: {
       level: "error",
       label: "Confirmation out of date",
-      message: "Nothing was pushed. Press Refresh, then Remove skill again.",
+      message:
+        "Nothing was pushed. Press Retry check, then Remove skill again.",
       detail: "The copy on the default branch moved after this confirmation.",
     },
   },

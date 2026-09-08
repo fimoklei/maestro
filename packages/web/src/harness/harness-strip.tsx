@@ -8,7 +8,7 @@ export interface HarnessStripProps {
   releasedVersion: string | null;
   defaultBranch: string | null;
   status: string;
-  /** Right-hand actions — Refresh here, Release once that job lands. */
+  /** Right-hand actions — Create a release and Retry check, and no others. */
   children?: ReactNode;
 }
 

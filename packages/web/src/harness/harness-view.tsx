@@ -25,6 +25,7 @@ import {
   refreshNotice,
   releasePlanNotice,
   removalNotice,
+  staleStatusNotice,
 } from "./notice-copy";
 import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
 import { rowItems } from "./row-actions";
@@ -180,7 +181,7 @@ export function HarnessView() {
     promote.mutate({ name });
   };
 
-  // Opening the view fetches, the same act the Refresh button repeats. A
+  // Opening the view fetches, the same act Retry check repeats. A
   // mutation, not a query: it reaches the network and writes git refs.
   // Scheduled rather than called, so StrictMode's replayed first mount cancels
   // its own request in cleanup: one open, one fetch of the author's git refs.
@@ -197,8 +198,18 @@ export function HarnessView() {
           children are out of flow and the block costs nothing. */}
       <div className="mb-2 flex flex-col gap-2">
         <Notice trigger="load" notice={harnessStateNotice(harness.error)} />
-        {/* A failed refresh is not a failed read: the state below stands. */}
-        <Notice trigger="load" notice={refreshNotice(refresh.error)} />
+        {/* A failed refresh is not a failed read: the state below stands. One
+            notice either way — a stale status is what a refused press left
+            behind, so the two never stack (#848). */}
+        <Notice
+          trigger="load"
+          notice={
+            (state === undefined
+              ? null
+              : staleStatusNotice(state.freshness, () => fetchRemote())) ??
+            refreshNotice(refresh.error)
+          }
+        />
       </div>
       {harness.isError ? null : state === undefined ? (
         <p className="text-dim text-tag">Loading the Harness…</p>
@@ -229,7 +240,7 @@ export function HarnessView() {
               disabled={refresh.isPending}
               onClick={() => fetchRemote()}
             >
-              Refresh
+              Retry check
             </Button>
           </HarnessStrip>
           <Card className="mt-3" padded>
@@ -243,10 +254,19 @@ export function HarnessView() {
             const rows =
               section.read.outcome === "read" ? section.read.rows : [];
             const proposal = section.stage === "pending-proposal";
-            // A confirmed empty stage is absent altogether; a stage nobody
-            // could read keeps its label and shows no card, because a zero
-            // must never read as an unknown. Pending proposal is the one
-            // exception: it always renders, since it hosts Import skill….
+            // Import touches the working tree only, so no remote answer gates
+            // it — and an unread stage still has a way to put work in it.
+            const importAction = proposal ? (
+              <Button
+                variant="quiet"
+                size="sm"
+                onClick={() => setImportOpen(true)}
+              >
+                Import skill…
+              </Button>
+            ) : null;
+            // A confirmed empty stage is absent altogether, except Pending
+            // proposal, which always renders because it hosts Import skill….
             if (
               !proposal &&
               section.read.outcome === "read" &&
@@ -254,14 +274,18 @@ export function HarnessView() {
             ) {
               return null;
             }
-            if (!proposal && section.read.outcome !== "read") {
+            // A stage nobody could read keeps its label and draws no card, no
+            // count and no rows: a zero must never read as an unknown (#848).
+            if (section.read.outcome !== "read") {
               return (
                 <section key={section.stage} className="mt-4">
                   <SectionHeader
                     level={3}
                     title={section.title}
                     meta={section.meta}
-                  />
+                  >
+                    {importAction}
+                  </SectionHeader>
                 </section>
               );
             }
@@ -272,17 +296,7 @@ export function HarnessView() {
                   title={section.title}
                   meta={section.meta}
                 >
-                  {proposal ? (
-                    /* Import touches the working tree only, so no remote
-                       answer gates it — what lands shows up right below. */
-                    <Button
-                      variant="quiet"
-                      size="sm"
-                      onClick={() => setImportOpen(true)}
-                    >
-                      Import skill…
-                    </Button>
-                  ) : null}
+                  {importAction}
                 </SectionHeader>
                 <Card>
                   {rows.length === 0 ? (

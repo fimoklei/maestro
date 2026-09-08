@@ -274,13 +274,15 @@ describe("Harness home base", () => {
     );
   });
 
-  it("fetches again on Refresh", async () => {
+  it("fetches again on Retry check", async () => {
     const calls = stubHarnessServer({ read: { body: RELEASED } });
     renderHarness();
 
     // The open-time refresh disables the button while it runs; clicking into
     // that window would land on nothing.
-    const button = await screen.findByRole("button", { name: /refresh/i });
+    const button = await screen.findByRole("button", {
+      name: /^retry check$/i,
+    });
     await waitFor(() => expect(button).toBeEnabled());
     await userEvent.click(button);
 
@@ -382,9 +384,11 @@ describe("Harness home base", () => {
     expect(
       screen.queryByText(/permission|not allowed|access denied/i),
     ).not.toBeInTheDocument();
-    // Refresh is the one way back, so a failure must never disable it.
+    // Retry check is the one way back, so a failure must never disable it.
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: /refresh/i })).toBeEnabled(),
+      expect(
+        screen.getByRole("button", { name: /^retry check$/i }),
+      ).toBeEnabled(),
     );
   });
 
@@ -444,7 +448,9 @@ describe("Harness home base", () => {
     // version still shows and the button is the way to try again.
     expect(screen.getByText("v0.5.0")).toBeInTheDocument();
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: /refresh/i })).toBeEnabled(),
+      expect(
+        screen.getByRole("button", { name: /^retry check$/i }),
+      ).toBeEnabled(),
     );
   });
 
@@ -1903,5 +1909,195 @@ describe("proposal actions", () => {
         { action: "withdraw", body: { name: "tdd", number: 45 } },
       ]),
     );
+  });
+});
+
+// A read that failed leaves the cockpit readable and honest: never silently
+// current, never blank (#848).
+describe("Harness freshness and failed reads", () => {
+  const STALE: HarnessState = {
+    ...RELEASED,
+    freshness: {
+      outcome: "fetch-failed",
+      lastFetchedAt: "2026-08-03T11:56:00.000Z",
+    },
+    stages: {
+      proposal: {
+        outcome: "read",
+        bound: null,
+        rows: [
+          row("pending-proposal", "tdd", "not-yet-proposed", {
+            requests: [
+              {
+                number: 45,
+                url: "https://github.com/fimoklei/agent-harness/pull/45",
+              },
+            ],
+          }),
+        ],
+      },
+      review: { outcome: "unknown" },
+      release: { outcome: "read", rows: [], bound: null },
+    },
+  };
+
+  it("offers Retry check as the one way back, and never Refresh", async () => {
+    const calls = stubHarnessServer({ read: { body: RELEASED } });
+    renderHarness();
+
+    const retry = await screen.findByRole("button", {
+      name: /^retry check$/i,
+    });
+    await waitFor(() => expect(retry).toBeEnabled());
+    await userEvent.click(retry);
+
+    await waitFor(() =>
+      expect(
+        calls.filter((call) => call === "POST /api/harness/refresh"),
+      ).toHaveLength(2),
+    );
+    expect(
+      screen.queryByRole("button", { name: /refresh/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("fills only Create a release, so the strip states one next step", async () => {
+    stubHarnessServer({ read: { body: RELEASED } });
+    renderHarness();
+
+    await screen.findByRole("button", { name: /^create a release$/i });
+    const filled = [...document.querySelectorAll("button.bg-amber")];
+    expect(filled.map((button) => button.textContent)).toEqual([
+      "Create a release",
+    ]);
+  });
+
+  it("states one Status out of date notice over a previous read", async () => {
+    stubHarnessServer({ read: { body: STALE } });
+    renderHarness();
+
+    expect(await screen.findAllByText("Status out of date")).toHaveLength(1);
+    expect(
+      screen.getByText(
+        "GitHub gave no answer, so these rows are from the last read.",
+      ),
+    ).toBeInTheDocument();
+    // The rows stay: what was read last still reads, dated as such.
+    expect(screen.getByText("tdd")).toBeInTheDocument();
+  });
+
+  it("closes Create a release and every row-menu press while the read is stale", async () => {
+    stubHarnessServer({ read: { body: STALE } });
+    renderHarness();
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /^create a release$/i }),
+      ).toBeDisabled(),
+    );
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "Actions for tdd in Pending proposal",
+      }),
+    );
+    const menu = await screen.findByRole("menu");
+    expect(
+      within(menu).getByRole("menuitem", { name: /^propose change$/i }),
+    ).toHaveAttribute("aria-disabled", "true");
+    // The link is not a mutation: it reaches GitHub, which is exactly what a
+    // stale picture leaves the author to do.
+    const link = within(menu).getByRole("menuitem", {
+      name: /^open pull request$/i,
+    });
+    expect(link).not.toHaveAttribute("aria-disabled", "true");
+    expect(link).toHaveAttribute(
+      "href",
+      "https://github.com/fimoklei/agent-harness/pull/45",
+    );
+  });
+
+  it("draws no card, no zero and no rows for a stage nobody could read", async () => {
+    stubHarnessServer({
+      read: {
+        body: {
+          ...RELEASED,
+          stages: {
+            proposal: { outcome: "unknown" },
+            review: { outcome: "unavailable" },
+            release: { outcome: "read", rows: [], bound: null },
+          },
+        },
+      },
+    });
+    renderHarness();
+
+    expect(await screen.findByText("Status unknown")).toBeInTheDocument();
+    expect(screen.getByText("Review status unavailable")).toBeInTheDocument();
+    // A confirmed-empty stage's words must never stand in for an unread one.
+    expect(screen.queryByText("No changes yet")).not.toBeInTheDocument();
+    expect(screen.queryByText("Nothing to propose")).not.toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    // Import touches the working tree only, so it survives an unread stage.
+    expect(
+      screen.getByRole("button", { name: /^import skill…$/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("leaves release facts readable when the review read failed, and the reverse", async () => {
+    stubHarnessServer({
+      read: {
+        body: {
+          ...RELEASED,
+          releaseState: "pending-release",
+          stages: {
+            proposal: { outcome: "read", rows: [], bound: null },
+            review: { outcome: "unavailable" },
+            release: {
+              outcome: "read",
+              bound: null,
+              rows: [row("pending-release", "research", "added")],
+            },
+          },
+        },
+      },
+    });
+    renderHarness();
+
+    expect(
+      await screen.findByText("Review status unavailable"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("row", { name: /research/ })).toHaveTextContent(
+      "Added",
+    );
+  });
+
+  it("names the bound a review read filled, beside its age", async () => {
+    stubHarnessServer({
+      read: {
+        body: {
+          ...RELEASED,
+          freshness: {
+            outcome: "fetched",
+            lastFetchedAt: "2026-08-03T11:56:00.000Z",
+          },
+          stages: {
+            proposal: { outcome: "read", rows: [], bound: null },
+            review: {
+              outcome: "read",
+              bound: 50,
+              rows: [row("pending-review", "tdd", "waiting-for-review")],
+            },
+            release: { outcome: "read", rows: [], bound: null },
+          },
+        },
+      },
+    });
+    renderHarness();
+
+    expect(
+      await screen.findByText(
+        "Read the 50 most recent pull requests, 4 min ago",
+      ),
+    ).toBeInTheDocument();
   });
 });
