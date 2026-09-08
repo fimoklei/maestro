@@ -25,7 +25,9 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 ## NOW
 
-Empty — pick the next job.
+| Job | Main | Job story |
+|---|---|---|
+| Follow a skill change from local work to release · [#827](https://github.com/fimoklei/maestro/issues/827) | C | *When* I import, edit or delete a skill, *I want to* follow its proposal, review and release with a clear next action and a way back, *so I can* make it available in Inventory without losing work or mistaking an unknown status for completion. |
 
 ## NEXT
 
@@ -53,8 +55,6 @@ Detail lives in tracker issues; elaboration happens in the grill.
 | Update every behind target in one action | B, A | *When* several targets lag the central inventory, *I want to* bring them all current in one action, *so I can* stay up to date without going target by target. |
 | Replace a renamed deployed skill | B | *When* a deployed skill has a new name in the latest release, *I want to* replace the old copy with the renamed skill, *so I can* follow the Harness change without removing and deploying it by hand. |
 | Connect & sync the inventory from git | A | *When* my central inventory lives in a remote repo I have not cloned, *I want to* point Maestro at its git URL as the inventory source, *so I can* set up the cockpit without cloning by hand first. |
-| Act on a failed Harness fetch | A, C | *When* the cockpit cannot reach the Harness remote, *I want to* learn which kind of failure it hit and keep a way forward, *so I can* fix the cause instead of facing a strip that only says it failed. |
-| Tell an unreleased skill from an unreleased Harness | B, C | *When* a deploy is refused because no published tag carries the skill, *I want to* hear which of the two situations I am in, *so I can* cut a release or publish the skill instead of guessing which. |
 | Act on a deploy refused by a linked destination · [#748](https://github.com/fimoklei/maestro/issues/748) | B | *When* a deploy is refused because the destination is a link, *I want to* read which path to remove and what removing it costs, *so I can* clear it in one command instead of choosing between two fixes I cannot judge. |
 | Deploy into a target still holding a retired Harness · [#749](https://github.com/fimoklei/maestro/issues/749) | B, A | *When* a global target still holds copies from a Harness I have left, *I want to* keep the deploy action on its card, *so I can* replace those copies one at a time instead of facing a card that only states a fact. |
 | Deploy what I just promoted, for real · [#750](https://github.com/fimoklei/maestro/issues/750) | B, C | *When* my promote has been merged and released, *I want to* have the clone catch up even though promote left an untracked copy behind, *so I can* deploy the skill instead of being told my published copy is unreleased. |
