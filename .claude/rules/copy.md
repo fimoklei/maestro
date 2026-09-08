@@ -26,6 +26,9 @@ Apply a rule only where a reviewer reading the unit, without the code and
 without the author, reaches the same verdict. Anything softer than that is not
 in this file.
 
+Check every claim against the implemented behaviour first. State a cause, a
+recovery, a duration or an outcome only where the code establishes it.
+
 ## The faults
 
 Never ship any of these.
@@ -46,11 +49,12 @@ Never ship any of these.
 | F12 | Two words for one concept | Use one word per concept, on every surface | [Polaris][dev] |
 | F13 | "valid" / "invalid" | Never write either, in a sentence or in a heading | [GOV.UK][gerr] · [Polaris][err] |
 | F14 | Instruction that is not an imperative | Write `Select {control} to {result}` | [ASD-STE100][ste] |
-| F15 | `-ing` form as a verb | Write the imperative or the simple present. Exempt: `Loading {the thing}…` per R-C | [ASD-STE100][ste] |
+| F15 | `-ing` form as a verb | Write the imperative or the simple present. Exempt: a progress label per R-C | [ASD-STE100][ste] |
 
 Also never: an apology, `please`, `sorry`, an error code, a question-mark
-heading, `click here`, or apm's own prose ([GOV.UK][gerr], [GOV.UK][struct],
-[Polaris][gram]; `security.md`, ADR-0018).
+heading, or apm's own prose ([GOV.UK][gerr], [GOV.UK][struct], [Polaris][gram];
+`security.md`, ADR-0018). Name the destination in the link text itself, never
+`click here` ([GOV.UK][links]).
 
 ## The shape of a notice
 
@@ -83,20 +87,45 @@ Write toward these.
 - **Empty state** — "Inventory shows released skills only. Create a release on
   the Harness view to fill it."
 
+Where a form tempts you toward the wrong word, these pairs settle it. They
+illustrate wording; take one only where the behaviour and the control match.
+
+| Situation | Never | Write |
+|---|---|---|
+| A read failed and a retry exists | `Something went wrong. Try again.` | `Skills not read` · "Select {the re-read control} to read the skills again." |
+| A search returned nothing | `No skills yet` | `No matching skills` · "Change your search terms." |
+| A save is still running | `Saved` | `Saving changes…` |
+| A field needs a repository URL | `Invalid input` | "Enter a repository URL." |
+| A button opens the release dialog | `Publish release` | `Create a release` |
+| A save failed and the cause is unknown | `Change persistence failure` | `Changes not saved` · "Select Save changes to try again." |
+| The reader must run a command | "Run the command." | Name the folder and the exact command, and say what it does. ([Microsoft][steps]) |
+
 ## Rules per surface
 
-- **R-A — accessible name.** State the same fact as the visible label beside it,
-  in the same words. Add what a glyph carries; never contradict it.
+- **R-A — accessible name.** Carry the visible label's words in the same order,
+  the label first. Add what a glyph carries; never contradict it. Name an
+  icon-only control by its action and a landmark by its content. ([W3C][a11y])
 - **R-B — empty state.** Name what would be here and the one step that puts it
-  there.
-- **R-C — loading state.** Write `Loading {the thing}…`, capitalised. Never a
-  bare `Loading…`, and never a second verb for waiting.
+  there. First use, no search matches and no filter matches are three states,
+  each with its own sentence. A failed or unknown read is not an empty state
+  (`CONTEXT.md`).
+- **R-C — progress label.** Write `Loading {the thing}…` for a retrieval and
+  `{verb}ing {the thing}…` for other work, capitalised. Never a bare
+  `Loading…`, and never a second verb for waiting. State a duration or a
+  progress figure only where it is known.
 - **R-D — control name.** Where a sentence names a control, use that control's
   label, letter for letter.
 - **Field label** — short, sentence case, no colon. Hint text is one short
   sentence with no full stop, and never replaces the label. ([GOV.UK][input])
 - **Status text** — sentence case, never carrying its meaning in colour alone.
+  Started, pending, completed and partly completed are four states, not one.
   ([GOV.UK][tag])
+- **Field error** — name the field's unmet requirement and the correction. A
+  service failure takes a notice instead; never ask the reader to correct input
+  that is already right. ([GOV.UK][gerr])
+- **Confirmation** — name the object, the scope and the consequence before the
+  action. Claim recovery only where Maestro can perform it. Label the button
+  with the specific action beside `Cancel`. ([GOV.UK][btn])
 
 ## Terms
 
@@ -117,7 +146,11 @@ Write toward these.
   module, one row per error code carrying heading, sentence and `detail`.
 - The server sends the error code and the HTTP status, never a sentence. The
   eight request-shape messages are the only exception.
-- Never write one string in two places. A duplicate drifts on its own.
+- Never write one string in two places. A duplicate drifts on its own. Matching
+  words alone do not make two messages one string; the meaning and the
+  behaviour have to match too.
+- Write a dynamic sentence whole, and check it at zero, one and many, and with
+  a long name. Joining fragments produces a sentence nobody reviewed.
 
 ## Reviewer's checklist
 
@@ -130,6 +163,9 @@ Run this over every new or changed user-facing string, on the unit above.
    by its exact label.
 5. The button runs that instruction, with the same verb and the same object.
 6. Every concept uses its screen name from `CONTEXT.md`.
+7. Empty, unknown, failed, pending and completed each read as themselves.
+8. On a UI change, read the string in the browser at a narrow width and at 200%
+   zoom, as part of `design.md`'s check.
 
 [cl]: https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/writing-guidelines/clear-language/
 [az]: https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/style-guides/a-to-z-style-guide/
@@ -145,3 +181,6 @@ Run this over every new or changed user-facing string, on the unit above.
 [act]: https://github.com/Shopify/polaris-react-archive/blob/16421c4cd798cdfaf20b72f3cdfc84a767db901f/polaris.shopify.com/content/content/actionable-language.mdx
 [dev]: https://shopify.dev/docs/apps/design/content
 [ste]: https://www.asd-ste100.org/
+[links]: https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/writing-guidelines/add-links/
+[a11y]: https://www.w3.org/WAI/WCAG22/Understanding/label-in-name.html
+[steps]: https://learn.microsoft.com/en-us/style-guide/procedures-instructions/writing-step-by-step-instructions
