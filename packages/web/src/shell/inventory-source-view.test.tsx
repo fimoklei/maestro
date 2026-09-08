@@ -2,6 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { INVENTORY_NOT_READ } from "../inventory/inventory-copy";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import { InventorySourceView, READ_FAILED } from "./inventory-source-view";
 
@@ -10,13 +11,15 @@ afterEach(() => {
 });
 
 describe("the read-failure notice", () => {
-  it("names the Inventory, the control that retries it and what may have moved", () => {
+  // One string across every surface that shows it (copy.md → "Where copy
+  // lives"); the Re-read Inventory button sits directly below, so the notice
+  // carries no action of its own here.
+  it("names the Inventory and the control that retries it", () => {
+    expect(READ_FAILED).toEqual(INVENTORY_NOT_READ);
     expect(READ_FAILED).toEqual({
       level: "error",
       label: "Inventory not read",
-      message: "Check the path below, then press Re-read Inventory.",
-      detail:
-        "The folder may have moved, or Maestro can no longer read its apm.yml.",
+      message: "Re-read Inventory to try again.",
     });
   });
 });

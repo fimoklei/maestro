@@ -139,7 +139,11 @@ describe("retiring a skill from every target it is deployed to", () => {
       location,
     });
 
-    const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
+    const inventory = new InventoryReader({
+      fs,
+      resolvePath: () => undefined,
+      readReleasedSkills: async () => [],
+    });
     const app = createApp({
       importSkill: stubImport(),
       registry,

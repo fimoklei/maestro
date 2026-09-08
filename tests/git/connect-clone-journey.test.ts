@@ -19,6 +19,7 @@ import {
   ConfigStore,
   ConnectInventory,
   GitCloneAdapter,
+  HarnessGitAdapter,
   InFlightLocks,
   InventoryReader,
   isRepositoryRoot,
@@ -26,6 +27,7 @@ import {
   probeHead,
   Registry,
   readConfiguredGitOriginUrl,
+  releasedSkillsFromGit,
   resolveDefaultBranch,
   resolveInventoryPath,
   ScaffoldOffers,
@@ -123,6 +125,9 @@ describe("joining a Harness by its GitHub url", () => {
       fs,
       resolvePath: async () => resolveInventoryPath(await store.read(), {}),
       originUrl: readConfiguredGitOriginUrl,
+      // The real released read: these suites build real repositories,
+      // so Inventory answers from `refs/maestro/tags` as it does live (#841).
+      readReleasedSkills: releasedSkillsFromGit(new HarnessGitAdapter()),
     });
     const locks = new InFlightLocks();
     return createApp({
@@ -168,10 +173,13 @@ describe("joining a Harness by its GitHub url", () => {
     const res = await postConnect(makeApp(), { path: GITHUB_URL });
 
     expect(res.status).toBe(200);
+    // Zero, and confirmed: a fresh clone has no `refs/maestro/tags` until the
+    // Harness view fetches, and Inventory answers from the release (#841). The
+    // empty Inventory sends the reader to the Harness view, where that happens.
     expect(await res.json()).toEqual({
       outcome: "joined",
       inventoryPath: join(home, "agent-harness"),
-      primitiveCount: 1,
+      primitiveCount: 0,
     });
   });
 
@@ -290,7 +298,7 @@ describe("joining a Harness by its GitHub url", () => {
       expect(await res.json()).toEqual({
         outcome: "found",
         inventoryPath: clone,
-        primitiveCount: 1,
+        primitiveCount: 0,
       });
       expect(await readFile(join(clone, "MARKER"), "utf8")).toBe("mine\n");
     });

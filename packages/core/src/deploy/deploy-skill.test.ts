@@ -644,6 +644,26 @@ describe("DeploySkill", () => {
     expect(result).toEqual({ ok: false, error: "inventory-not-configured" });
   });
 
+  // A release Maestro could not read says nothing about the connection; calling
+  // it "not configured" would send the author to re-connect a live harness.
+  it("reports an unreadable inventory apart from an unconfigured one", async () => {
+    const { deps } = buildDeps({
+      inventory: {
+        read: async () => ({
+          ok: false as const,
+          error: "unreadable" as const,
+        }),
+      },
+    });
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+
+    expect(result).toEqual({ ok: false, error: "inventory-unreadable" });
+  });
+
   it("rejects a repo that is not in the registry", async () => {
     const { deps, deployed } = buildDeps();
     const result = await new DeploySkill(deps).execute({

@@ -54,6 +54,7 @@ import {
   type RepoPathError,
   readConfiguredGitOriginUrl,
   readGitOriginUrl,
+  releasedSkillsFromGit,
   resolveApmGlobalRoot,
   resolveApmScratchCwd,
   resolveDefaultBranch,
@@ -208,14 +209,17 @@ const BULK_REMOVE_BODY: RequestShape = {
 };
 
 // Read through the same InventoryReader the primitives route uses, so the two
-// cannot drift. Degrades to 0: a read failure must not turn an
-// already-successful connect or scaffold into a 500.
-async function countPrimitives(inventory: InventoryReader): Promise<number> {
+// cannot drift. Null is a count that could not be read; it never degrades to 0,
+// which is a confirmed empty release (ADR-0021 §8). A read failure still leaves
+// an already-successful connect or scaffold successful.
+async function countPrimitives(
+  inventory: InventoryReader,
+): Promise<number | null> {
   try {
     const read = await inventory.read();
-    return read.ok ? read.primitives.length : 0;
+    return read.ok ? read.primitives.length : null;
   } catch {
-    return 0;
+    return null;
   }
 }
 
@@ -251,6 +255,7 @@ const deployErrorResponses: ErrorTable<DeploySkillError> = {
   "invalid-name": { status: 400 },
   "unknown-skill": { status: 404 },
   "inventory-not-configured": { status: 409 },
+  "inventory-unreadable": { status: 503 },
   "repo-not-registered": { status: 403 },
   "inventory-origin-unavailable": { status: 502 },
   "no-published-tag": { status: 422 },
@@ -544,9 +549,14 @@ export function createApp(deps: AppDeps) {
   app.get("/api/inventory/primitives", async (c) => {
     const result = await deps.inventory.read();
     if (!result.ok) {
-      // 409: unset/missing/not-a-directory. Never echoes the path. The
-      // cockpit writes its own words for this read (`inventory-panel.tsx`).
-      return c.json({ error: result.error }, 409);
+      // 409: unset/missing/not-a-directory. 503: connected, but its release
+      // could not be read — never the same answer, or the cockpit would send
+      // the author to re-connect a live harness (#841). Never echoes the path;
+      // the cockpit writes its own words (`inventory-panel.tsx`).
+      return c.json(
+        { error: result.error },
+        result.error === "unreadable" ? 503 : 409,
+      );
     }
     return c.json({ primitives: result.primitives });
   });
@@ -977,11 +987,15 @@ function realDeps(): AppDeps {
       resolveInventoryPath(config, process.env),
   });
   // Resolved per read, so a path saved after startup is picked up without a restart.
+  // Shared by the harness read, the release confirm and the Inventory read
+  // below, so all three name the same connected clone.
+  const harnessGit = new HarnessGitAdapter();
   const inventory = new InventoryReader({
     fs,
     resolvePath: async () =>
       resolveInventoryPath(await store.read(), process.env),
     originUrl: readConfiguredGitOriginUrl,
+    readReleasedSkills: releasedSkillsFromGit(harnessGit),
   });
   const deployState = new GlobalDeployStateReader({
     fs,
@@ -996,8 +1010,6 @@ function realDeps(): AppDeps {
       return cwd;
     },
   });
-  // Shared by the harness read and the release confirm below, so both name
-  // the same connected clone.
   const harnessRoot = async () => {
     const path = resolveInventoryPath(await store.read(), process.env);
     if (path === undefined) {
@@ -1007,7 +1019,6 @@ function realDeps(): AppDeps {
     // never the raw path, which would run git against something unresolved.
     return await fs.realpath(path).catch(() => undefined);
   };
-  const harnessGit = new HarnessGitAdapter();
   const harnessFreshness = new HarnessFreshnessStore({ store });
   // Shared by both ways a movement reaches review: two of them for the same
   // harness must queue, not race each other's temporary index and push.

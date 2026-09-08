@@ -20,6 +20,7 @@ import type {
 } from "@maestro/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { HttpError, requestJson } from "../api/http";
+import { INVENTORY_KEY } from "../inventory/use-inventory";
 
 // Re-exported rather than copied, so the browser's shape cannot drift from the
 // one core defines (architecture.md).
@@ -95,6 +96,10 @@ export function usePublishRelease() {
         (state) => queryClient.setQueryData(HARNESS_KEY, state),
         () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
       );
+      // Inventory answers from the latest release, so publishing one is the
+      // only act that changes it (ADR-0021 §9). A failed re-read lands on the
+      // Inventory's own unreadable state.
+      void queryClient.invalidateQueries({ queryKey: INVENTORY_KEY });
     },
     // A refused plan comes back with the one that replaces it. Without a
     // replacement the old plan is asked for again, never left standing (#521).

@@ -18,6 +18,7 @@ import {
   ConnectInventory,
   GitCloneAdapter,
   GitHarnessScaffoldAdapter,
+  HarnessGitAdapter,
   InFlightLocks,
   InventoryReader,
   isRepositoryRoot,
@@ -25,6 +26,7 @@ import {
   probeHead,
   Registry,
   readConfiguredGitOriginUrl,
+  releasedSkillsFromGit,
   resolveDefaultBranch,
   resolveInventoryPath,
   ScaffoldHarness,
@@ -121,6 +123,9 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
     const inventory = new InventoryReader({
       fs,
       resolvePath: async () => resolveInventoryPath(await store.read(), {}),
+      // The real released read: these suites build real repositories,
+      // so Inventory answers from `refs/maestro/tags` as it does live (#841).
+      readReleasedSkills: releasedSkillsFromGit(new HarnessGitAdapter()),
     });
     // One register, as production wires it: connect's offer is the scaffold's
     // authority to write into the repository (#556).

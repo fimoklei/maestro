@@ -10,7 +10,8 @@ import { INVENTORY_CONFIG_KEY, INVENTORY_KEY } from "./use-inventory";
 export type ConnectResponse = {
   outcome: ConnectOutcome;
   inventoryPath: string;
-  primitiveCount: number;
+  // Null where the released count could not be read (#841).
+  primitiveCount: number | null;
 };
 
 export function useConnectInventory() {

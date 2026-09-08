@@ -60,7 +60,9 @@ export interface SourceEntry {
   name: string;
   // Full path shown on hover, beyond the shortened label (#211).
   title: string;
-  countLabel: string;
+  // Null where the read failed: an unread Inventory has no count, and the last
+  // one would state a number nothing confirmed (#841).
+  countLabel: string | null;
   active: boolean;
   onOpen: () => void;
 }
@@ -82,7 +84,9 @@ export function StatusBar() {
       ? {
           name: targetLabel(path),
           title: path,
-          countLabel: primitiveCountLabel(inventory.data?.primitives.length),
+          countLabel: inventory.isError
+            ? null
+            : primitiveCountLabel(inventory.data?.primitives.length),
           active: pathname === "/source",
           onOpen: () => navigate("/source"),
         }
@@ -152,7 +156,7 @@ function SourceContext({
 }: {
   name: string;
   title: string;
-  countLabel: string;
+  countLabel: string | null;
 }) {
   return (
     <span className="inline-flex min-w-0 max-w-xs items-center">
@@ -160,7 +164,9 @@ function SourceContext({
         {name}
       </span>
       {/* whitespace-pre: the adjacent truncated span would collapse the leading space. */}
-      <span className="shrink-0 whitespace-pre"> · {countLabel}</span>
+      {countLabel === null ? null : (
+        <span className="shrink-0 whitespace-pre"> · {countLabel}</span>
+      )}
     </span>
   );
 }

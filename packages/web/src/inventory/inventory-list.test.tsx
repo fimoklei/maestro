@@ -116,13 +116,27 @@ describe("InventoryList", () => {
     expect(screen.getByRole("cell", { name: "caveman" })).toBeInTheDocument();
   });
 
-  it("shows the explicit empty state instead of a blank table", () => {
-    renderList(<InventoryList primitives={[]} repos={[]} registryReady />);
+  it("shows the explicit empty state instead of a blank table", async () => {
+    const onOpenHarness = vi.fn();
+    renderList(
+      <InventoryList
+        primitives={[]}
+        repos={[]}
+        registryReady
+        onOpenHarness={onOpenHarness}
+      />,
+    );
 
+    expect(screen.getByText("No released skills")).toBeInTheDocument();
     expect(
-      screen.getByText(/No skills in the Inventory\./i),
+      screen.getByText(
+        "Inventory shows released skills only. Creating a release on the Harness view will fill it.",
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Open Harness" }));
+    expect(onOpenHarness).toHaveBeenCalledOnce();
   });
 
   it("shows a Deployed column with a per-skill target roll-up", () => {

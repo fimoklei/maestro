@@ -7,7 +7,12 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { InFlightLocks, InventoryReader, NodeFileSystem } from "@maestro/core";
+import {
+  InFlightLocks,
+  InventoryReader,
+  NodeFileSystem,
+  type ReleasedSkill,
+} from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { realRegistry } from "../helpers/real-registry";
@@ -37,6 +42,9 @@ describe("inventory HTTP route", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  const skillManifest = (name: string, description: string) =>
+    `---\nname: ${name}\ndescription: ${description}\n---\n\n# ${name}\n`;
+
   async function writeSkill(name: string, description: string) {
     const skillDir = join(dir, ".apm", "skills", name);
     await mkdir(skillDir, { recursive: true });
@@ -47,9 +55,14 @@ describe("inventory HTTP route", () => {
     );
   }
 
+  // The release the route answers from. Null is a release that could not be
+  // read; the skills written to disk above are deliberately never its source.
   function makeApp(
     inventoryPath: string | undefined,
-    originUrl: string | null = null,
+    {
+      originUrl = null,
+      released = [],
+    }: { originUrl?: string | null; released?: ReleasedSkill[] | null } = {},
   ) {
     const fs = new NodeFileSystem();
     const registry = realRegistry(fs, join(dir, "config.json"));
@@ -57,6 +70,7 @@ describe("inventory HTTP route", () => {
       fs,
       resolvePath: () => inventoryPath,
       originUrl: () => originUrl,
+      readReleasedSkills: async () => released,
     });
     const deployState = stubDeployState({ fs });
     const locks = new InFlightLocks();
@@ -79,9 +93,15 @@ describe("inventory HTTP route", () => {
     });
   }
 
-  it("GET /api/inventory/primitives lists the central skills", async () => {
-    await writeSkill("tdd", "Test-driven development loop");
-    const app = makeApp(dir);
+  it("GET /api/inventory/primitives lists the released skills", async () => {
+    const app = makeApp(dir, {
+      released: [
+        {
+          name: "tdd",
+          manifest: skillManifest("tdd", "Test-driven development loop"),
+        },
+      ],
+    });
 
     const res = await app.request("/api/inventory/primitives");
 
@@ -100,14 +120,15 @@ describe("inventory HTTP route", () => {
   it("skips a skill with no frontmatter without hiding the valid ones", async () => {
     // A SKILL.md the parser cannot read is dropped from the listing, never
     // turned into an error that blanks the whole inventory.
-    await mkdir(join(dir, ".apm", "skills", "broken"), { recursive: true });
-    await writeFile(
-      join(dir, ".apm", "skills", "broken", "SKILL.md"),
-      "# broken\nno frontmatter\n",
-      "utf8",
-    );
-    await writeSkill("tdd", "Test-driven development loop");
-    const app = makeApp(dir);
+    const app = makeApp(dir, {
+      released: [
+        { name: "broken", manifest: "# broken\nno frontmatter\n" },
+        {
+          name: "tdd",
+          manifest: skillManifest("tdd", "Test-driven development loop"),
+        },
+      ],
+    });
 
     const res = await app.request("/api/inventory/primitives");
 
@@ -135,8 +156,33 @@ describe("inventory HTTP route", () => {
     expect(JSON.stringify(body)).not.toContain(dir);
   });
 
+  it("returns 503 with its own code when the release cannot be read", async () => {
+    const app = makeApp(dir, { released: null });
+
+    const res = await app.request("/api/inventory/primitives");
+
+    expect(res.status).toBe(503);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe("unreadable");
+    // The path is never echoed back — it may be a misconfigured secret.
+    expect(JSON.stringify(body)).not.toContain(dir);
+  });
+
+  // Local disk content alone no longer justifies a positive count (#841).
+  it("lists nothing when a skill is only in the working tree", async () => {
+    await writeSkill("tdd", "Test-driven development loop");
+    const app = makeApp(dir, { released: [] });
+
+    const res = await app.request("/api/inventory/primitives");
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ primitives: [] });
+  });
+
   it("GET /api/inventory/config returns the local clone and GitHub repository", async () => {
-    const app = makeApp(dir, "git@github.com:fimoklei/agent-harness.git");
+    const app = makeApp(dir, {
+      originUrl: "git@github.com:fimoklei/agent-harness.git",
+    });
 
     const res = await app.request("/api/inventory/config");
 

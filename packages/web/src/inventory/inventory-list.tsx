@@ -8,6 +8,7 @@ import {
 import type { RegisteredRepo } from "../registry/use-registry";
 import { cn } from "../ui/cn";
 import { HOVER_TRANSITION } from "../ui/hover-transition";
+import { Notice } from "../ui/notice";
 import { SegmentedControl } from "../ui/segmented-control";
 import {
   Table,
@@ -25,6 +26,7 @@ import { hiddenStagedCount, toggleStaged } from "./bulk-selection";
 import { DeploySkillAction } from "./deploy-skill-action";
 import { DeployedCell } from "./deployed-cell";
 import { type DeploymentTarget, rollUpDeployment } from "./deployed-rollup";
+import { NO_RELEASED_SKILLS } from "./inventory-copy";
 import {
   filterByName,
   nextSort,
@@ -49,10 +51,14 @@ export function InventoryList({
   repos,
   registryReady,
   targets = [],
+  onOpenHarness,
 }: {
   primitives: Primitive[];
   repos: RegisteredRepo[];
   registryReady: boolean;
+  // The one step that fills an empty Inventory. Supplied by the container, so
+  // this component stays routerless and storyable.
+  onOpenHarness?: () => void;
   // Every deploy target, for the per-row reach + drift roll-up (#272). Empty
   // until reads resolve — the roll-up treats that as unconfirmed, not "not deployed".
   targets?: DeploymentTarget[];
@@ -87,10 +93,19 @@ export function InventoryList({
 
   if (primitives.length === 0) {
     return (
-      <p className="px-card-x py-row-y text-dim text-tag">
-        No skills in the Inventory. Add a skill to the Harness, then select
-        Re-read.
-      </p>
+      <div className="p-card-x">
+        <Notice
+          trigger="load"
+          notice={
+            onOpenHarness === undefined
+              ? NO_RELEASED_SKILLS
+              : {
+                  ...NO_RELEASED_SKILLS,
+                  action: { label: "Open Harness", onClick: onOpenHarness },
+                }
+          }
+        />
+      </div>
     );
   }
 

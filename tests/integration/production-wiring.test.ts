@@ -134,19 +134,15 @@ describe("production wiring", () => {
     });
   });
 
-  it("reads the inventory's skills off the configured path", async () => {
+  // realDeps wires Inventory to the latest release, so a skill sitting only in
+  // the working tree is never listed and the unread release is never a count of
+  // zero (#841). The configured path itself is proved by the config route above;
+  // the positive listing over a real release is proved in the git lane.
+  it("never lists a skill the configured path holds outside a release", async () => {
     const res = await app.request("/api/inventory/primitives");
 
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({
-      primitives: [
-        {
-          type: "skill",
-          name: "tdd",
-          description: "Test-driven development loop",
-        },
-      ],
-    });
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: "unreadable" });
   });
 
   it("browses the home directory as the picker's ceiling", async () => {

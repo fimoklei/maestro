@@ -1,6 +1,5 @@
 import { execFile } from "node:child_process";
 import {
-  chmod,
   mkdir,
   mkdtemp,
   realpath as nodeRealpath,
@@ -15,6 +14,7 @@ import {
   BrowseFilesystem,
   ConfigStore,
   ConnectInventory,
+  HarnessGitAdapter,
   InFlightLocks,
   InventoryReader,
   isRepositoryRoot,
@@ -22,6 +22,7 @@ import {
   probeHead,
   Registry,
   readConfiguredGitOriginUrl,
+  releasedSkillsFromGit,
   resolveDefaultBranch,
   resolveInventoryPath,
   ScaffoldOffers,
@@ -57,6 +58,8 @@ describe("inventory connect HTTP route", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
+  // Released by default: Inventory answers from the latest release, so a clone
+  // that only holds the skill on disk lists nothing (#841).
   async function makeClone(options?: GitCloneOptions): Promise<string> {
     const clone = join(dir, "agent-harness");
     await mkdir(join(clone, ".apm", "skills", "tdd"), { recursive: true });
@@ -66,7 +69,7 @@ describe("inventory connect HTTP route", () => {
       "utf8",
     );
     await writeFile(join(clone, "apm.yml"), "dependencies: []\n", "utf8");
-    await initGitClone(clone, options);
+    await initGitClone(clone, { release: "v0.1.0", ...options });
     return clone;
   }
 
@@ -86,6 +89,9 @@ describe("inventory connect HTTP route", () => {
     const inventory = new InventoryReader({
       fs,
       resolvePath: async () => resolveInventoryPath(await store.read(), {}),
+      // The real released read: these suites build real repositories,
+      // so Inventory answers from `refs/maestro/tags` as it does live (#841).
+      readReleasedSkills: releasedSkillsFromGit(new HarnessGitAdapter()),
     });
     const deployState = stubDeployState({ fs });
     const locks = new InFlightLocks();
@@ -321,6 +327,23 @@ describe("inventory connect HTTP route", () => {
     });
   });
 
+  // A confirmed zero is a valid connection, not a refusal (#841).
+  it("connects a clone whose skills are not released yet and counts none", async () => {
+    const clone = await makeClone({ release: undefined });
+    const app = makeApp();
+
+    const res = await postConnect(app, { path: clone });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      outcome: "found",
+      inventoryPath: await nodeRealpath(clone),
+      primitiveCount: 0,
+    });
+    const primitives = await app.request("/api/inventory/primitives");
+    expect(await primitives.json()).toEqual({ primitives: [] });
+  });
+
   it("connects a clone picked out of a browse listing", async () => {
     // The picker journey: browse the parent, take the path the listing hands
     // back, connect with exactly that. The two routes are covered apart
@@ -436,29 +459,33 @@ describe("inventory connect HTTP route", () => {
     expect(((await res.json()) as { error: string }).error).toBe("relative");
   });
 
-  it("still reports success when the persisted path connects but its .apm/skills/ becomes unreadable before the count re-read", async () => {
-    // connect only probes apm.yml, so a 0o000 .apm/skills/ dir still passes
-    // its is-an-inventory check; readdir (what the count re-read needs) requires
-    // +r on the directory itself and fails. The path is already persisted by
-    // the time that second read runs — the response must not turn into a 500
-    // for a state change that already succeeded (Codex review finding).
+  it("still reports success when the persisted path connects but its release cannot be read", async () => {
+    // connect only probes apm.yml, so a release ref pointing at an object the
+    // clone does not have still passes its is-an-inventory check; the count
+    // re-read is where it fails. The path is already persisted by the time that
+    // second read runs — the response must not turn into a 500 for a state
+    // change that already succeeded (Codex review finding). The count comes
+    // back null, never 0: an unread release is not an empty one (#841).
     const clone = await makeClone();
-    const skillsDir = join(clone, ".apm", "skills");
-    await chmod(skillsDir, 0o000);
+    await writeFile(
+      join(clone, ".git", "refs", "maestro", "tags", "v0.1.0"),
+      `${"0".repeat(39)}1\n`,
+      "utf8",
+    );
     const app = makeApp();
 
-    try {
-      const res = await postConnect(app, { path: clone });
+    const res = await postConnect(app, { path: clone });
 
-      expect(res.status).toBe(200);
-      const body = (await res.json()) as {
-        inventoryPath: string;
-        primitiveCount: number;
-      };
-      expect(body.inventoryPath).toBe(await nodeRealpath(clone));
-      expect(body.primitiveCount).toBe(0);
-    } finally {
-      await chmod(skillsDir, 0o700);
-    }
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      inventoryPath: string;
+      primitiveCount: number | null;
+    };
+    expect(body.inventoryPath).toBe(await nodeRealpath(clone));
+    expect(body.primitiveCount).toBeNull();
+
+    const primitives = await app.request("/api/inventory/primitives");
+    expect(primitives.status).toBe(503);
+    expect(await primitives.json()).toEqual({ error: "unreadable" });
   });
 });
