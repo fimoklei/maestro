@@ -428,9 +428,7 @@ describe("DeploySkillAction", () => {
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("rm /Users/dev/.claude/skills/tdd");
-    expect(alert).toHaveTextContent(
-      /leaves the folder it points at untouched/i,
-    );
+    expect(alert).toHaveTextContent(/the folder it points at remains on disk/i);
   });
 
   it("offers an inline Reinstall-fresh confirm that re-deploys with force", async () => {
