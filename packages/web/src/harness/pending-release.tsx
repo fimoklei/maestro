@@ -16,7 +16,7 @@ const SECTIONS: { kind: SkillMovementKind; label: string }[] = [
   { kind: "added", label: "Added" },
   { kind: "changed", label: "Changed" },
   { kind: "renamed", label: "Renamed" },
-  { kind: "removed", label: "Removed" },
+  { kind: "removed", label: "Deleted" },
 ];
 
 export function PendingRelease({

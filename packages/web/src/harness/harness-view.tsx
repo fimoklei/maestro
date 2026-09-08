@@ -177,7 +177,7 @@ export function HarnessView() {
               disabled={!releaseEnabled(state.freshness) || refresh.isPending}
               onClick={() => setPlanOpen(true)}
             >
-              Plan release
+              Create a release
             </Button>
             <Button
               variant="quiet"
