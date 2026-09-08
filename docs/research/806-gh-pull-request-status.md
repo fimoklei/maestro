@@ -148,6 +148,29 @@ Other fields measured on `gh pr view 8 --repo fimoklei/harness --json …`:
 - Passing an unknown field makes `gh` exit 1 and **print the full list of valid
   fields**. Useful for pinning a field set against a `gh` upgrade.
 
+### The head identity and reviewer fields (measured 2026-09-08, `gh` 2.86.0)
+
+Added for the `HarnessReviewPort` field set (#842). Captured verbatim from
+`gh pr list --state all --json …headRepository,headRepositoryOwner,reviewRequests`
+against `fimoklei/harness` and `cli/cli`:
+
+```json
+{"headRepository":{"id":"R_kgDOUSrCEg","name":"cli","nameWithOwner":""},
+ "headRepositoryOwner":{"id":"MDQ6VXNlcjMwMDI1OA==","name":"Tim Mattison","login":"timmattison"},
+ "reviewDecision":"REVIEW_REQUIRED","reviewRequests":[{"__typename":"User","login":"sergiou87"}]}
+```
+
+- **`headRepository.nameWithOwner` is empty in a list read.** The head owner
+  arrives only in `headRepositoryOwner.login`, so a fork is recognised from the
+  two fields together. `headRepositoryOwner.name` is absent for an organisation.
+- `reviewRequests` elements are `{"__typename":"User","login":…}` or
+  `{"__typename":"Team","name":…,"slug":…}`, where a team's `slug` is gh's
+  `LoginOrSlug()`, i.e. `org/team`
+  ([`api/export_pr.go`](https://github.com/cli/cli/blob/trunk/api/export_pr.go),
+  read 2026-09-08; no live team request was found to capture).
+- `reviewDecision` values seen live: `""`, `REVIEW_REQUIRED`, `APPROVED`,
+  `CHANGES_REQUESTED`.
+
 ### Does Maestro still need its own tree-hash reading?
 
 **Yes, for three separate answers `gh` cannot give.**
@@ -340,6 +363,8 @@ gh auth status
 gh pr list --repo fimoklei/harness --head maestro/app-creator --state all --json number,state,url,mergedAt,closedAt,headRefName
 gh pr list --repo fimoklei/harness --state all --limit 100 --json number,state,url,isDraft,headRefName,updatedAt
 gh pr view 8 --repo fimoklei/harness --json number,state,mergedAt,mergeCommit,headRefOid,url,reviewDecision,statusCheckRollup,isDraft,closedAt,baseRefName,mergeStateStatus,mergedBy
+gh pr list --repo fimoklei/harness --state all --limit 3 --json number,url,state,isDraft,reviewDecision,reviewRequests,headRefName,baseRefName,headRepository,headRepositoryOwner
+gh pr list --repo cli/cli --state all --limit 8 --json number,url,state,isDraft,reviewDecision,reviewRequests,headRefName,baseRefName,headRepository,headRepositoryOwner
 gh api "repos/fimoklei/harness/pulls?head=fimoklei:maestro/agent-native-cli&state=all"
 gh api repos/fimoklei/harness/compare/main...maestro/app-creator --jq '{status,ahead_by,behind_by}'
 gh api "repos/fimoklei/harness/contents/.apm/skills?ref=main"
