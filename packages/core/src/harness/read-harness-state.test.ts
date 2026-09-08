@@ -228,13 +228,41 @@ describe("ReadHarnessState", () => {
   });
 
   it("reads merged work the released harness does not carry as pending release", async () => {
-    const read = buildRead({ facts: { defaultBranchCommit: "bbb" } });
+    const read = buildRead({
+      facts: { defaultBranchCommit: "bbb" },
+      trees: {
+        aaa: [{ name: "tdd", treeHash: "t1" }],
+        bbb: [{ name: "tdd", treeHash: "t2" }],
+      },
+    });
 
     const result = await read.execute();
 
     expect(result).toMatchObject({
       ok: true,
       state: { releasedVersion: "v0.5.0", releaseState: "pending-release" },
+    });
+  });
+
+  it("reads a default branch that moved without touching a skill as released", async () => {
+    // A commit after the tag can move the branch and change no skill. Claiming
+    // merged work is waiting while Pending release shows none states a fact
+    // the content comparison contradicts (#845).
+    const read = buildRead({
+      facts: { defaultBranchCommit: "bbb" },
+      trees: {
+        aaa: [{ name: "tdd", treeHash: "t1" }],
+        bbb: [{ name: "tdd", treeHash: "t1" }],
+      },
+    });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: {
+        releasedVersion: "v0.5.0",
+        releaseState: "released",
+        stages: { release: { outcome: "read", rows: [] } },
+      },
     });
   });
 

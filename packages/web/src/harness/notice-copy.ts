@@ -36,7 +36,7 @@ const releasePlanHeadings: NoticeTable<ReleasePlanError> = {
   "no-answer": {
     level: "error",
     label: "No answer from GitHub",
-    message: "Press Refresh, then Plan release again.",
+    message: "Press Refresh, then Create a release again.",
     detail: "A release plan is measured against what GitHub holds.",
   },
 };
@@ -71,7 +71,7 @@ const publishReleaseHeadings: NoticeTable<PublishReleaseError> = {
   "publish-in-progress": {
     level: "error",
     label: "Release already running",
-    message: "Wait for that release to finish, then Plan release again.",
+    message: "Wait for that release to finish, then Create a release again.",
     detail: "Maestro publishes one release at a time.",
   },
 };

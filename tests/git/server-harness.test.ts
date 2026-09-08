@@ -94,7 +94,14 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
     await run("git", ["clone", remote, other]);
     await git(other, "config", "user.email", "mate@example.com");
     await git(other, "config", "user.name", "Mate");
-    await writeFile(join(other, `${message}.md`), `${message}\n`, "utf8");
+    // A skill, not a loose file: only skill content moves the Harness between
+    // released and pending release, so the teammate's push has to be one (#845).
+    await mkdir(join(other, ".apm", "skills", message), { recursive: true });
+    await writeFile(
+      join(other, ".apm", "skills", message, "SKILL.md"),
+      `---\ndescription: ${message}\n---\n`,
+      "utf8",
+    );
     await git(other, "add", ".");
     await git(other, "commit", "-m", message);
     if (tag !== undefined) {

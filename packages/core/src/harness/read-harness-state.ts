@@ -407,7 +407,7 @@ export class ReadHarnessState {
         defaultBranch: facts.defaultBranch,
         releaseState:
           tags !== null && movements !== null && trees !== null
-            ? releaseState(released, head)
+            ? releaseState(released, head, movements)
             : "unknown",
         freshness,
         stages: buildStages({
@@ -487,9 +487,14 @@ export class ReadHarnessState {
   }
 }
 
+// The same comparison Pending release makes: skill content and presence on the
+// default branch against the latest release. A commit that moved the branch
+// without touching a skill releases nothing, so the summary above the stages
+// can never claim work is waiting that the stage does not list (#845).
 const releaseState = (
   released: HarnessTag | null,
   defaultBranchCommit: string | null,
+  movements: SkillMovement[],
 ): HarnessReleaseState => {
   if (defaultBranchCommit === null) {
     return "unknown";
@@ -497,7 +502,5 @@ const releaseState = (
   if (released === null) {
     return "never-released";
   }
-  return released.commit === defaultBranchCommit
-    ? "released"
-    : "pending-release";
+  return movements.length === 0 ? "released" : "pending-release";
 };

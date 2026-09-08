@@ -655,7 +655,7 @@ describe("Harness home base", () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: /^plan release$/i }),
+        screen.getByRole("button", { name: /^create a release$/i }),
       ).toBeDisabled(),
     );
   });
@@ -665,7 +665,7 @@ describe("Harness home base", () => {
     renderHarness();
 
     const release = await screen.findByRole("button", {
-      name: /^plan release$/i,
+      name: /^create a release$/i,
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
@@ -693,7 +693,7 @@ describe("Harness home base", () => {
     renderHarness();
 
     const release = await screen.findByRole("button", {
-      name: /^plan release$/i,
+      name: /^create a release$/i,
     });
     await waitFor(() => expect(release).toBeDisabled());
 
@@ -714,7 +714,7 @@ describe("Harness home base", () => {
     renderHarness();
 
     const release = await screen.findByRole("button", {
-      name: /^plan release$/i,
+      name: /^create a release$/i,
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
@@ -748,7 +748,7 @@ describe("Harness home base", () => {
     renderHarness();
 
     const release = await screen.findByRole("button", {
-      name: /^plan release$/i,
+      name: /^create a release$/i,
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
@@ -789,7 +789,7 @@ describe("Harness home base", () => {
     );
 
     const release = await screen.findByRole("button", {
-      name: /^plan release$/i,
+      name: /^create a release$/i,
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
@@ -820,7 +820,7 @@ describe("Harness home base", () => {
     renderHarness();
 
     const release = await screen.findByRole("button", {
-      name: /^plan release$/i,
+      name: /^create a release$/i,
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
@@ -859,7 +859,7 @@ describe("Harness home base", () => {
     renderHarness();
 
     const release = await screen.findByRole("button", {
-      name: /^plan release$/i,
+      name: /^create a release$/i,
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
@@ -892,7 +892,7 @@ describe("Harness home base", () => {
     renderHarness();
 
     const release = await screen.findByRole("button", {
-      name: /^plan release$/i,
+      name: /^create a release$/i,
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
@@ -931,7 +931,7 @@ describe("Harness home base", () => {
     renderHarness();
 
     const release = await screen.findByRole("button", {
-      name: /^plan release$/i,
+      name: /^create a release$/i,
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
@@ -970,7 +970,7 @@ describe("Harness home base", () => {
     renderHarness();
 
     const release = await screen.findByRole("button", {
-      name: /^plan release$/i,
+      name: /^create a release$/i,
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
@@ -1011,7 +1011,7 @@ describe("Harness home base", () => {
     renderHarness();
 
     const release = await screen.findByRole("button", {
-      name: /^plan release$/i,
+      name: /^create a release$/i,
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
@@ -1048,7 +1048,7 @@ describe("Harness home base", () => {
     renderHarness();
 
     const release = await screen.findByRole("button", {
-      name: /^plan release$/i,
+      name: /^create a release$/i,
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);
@@ -1078,7 +1078,7 @@ describe("Harness home base", () => {
     renderHarness();
 
     const release = await screen.findByRole("button", {
-      name: /^plan release$/i,
+      name: /^create a release$/i,
     });
     await waitFor(() => expect(release).toBeEnabled());
     await userEvent.click(release);

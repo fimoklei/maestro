@@ -150,7 +150,7 @@ repository, then open a pull request with just that change.
 3. Press **Refresh** in the Harness view. Your merged change now sits under
    **Pending release**: in this repository, but on no tag, so nobody else's
    Maestro installs it yet.
-4. Press **Plan release**, read the plan, then press **Publish release** to cut
+4. Press **Create a release**, read the plan, then press **Publish release** to cut
    the tag. That is what moves your skill into the **Released harness** — the
    tagged version teams actually install. Do this promptly after the merge; an
    unreleased change is invisible to the rest of the team.

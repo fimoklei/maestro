@@ -17,7 +17,7 @@ const PLAN: ReleasePlan = {
   previousTag: "v1.2.3",
   previousTagCommit: "fedcba9876543210fedcba9876543210fedcba98",
   proposedStep: "major",
-  reason: "A skill was removed or renamed.",
+  reason: "A skill was deleted or renamed.",
   versions: { major: "v2.0.0", minor: "v1.3.0", patch: "v1.2.4" },
   revision: "0123456789abcdef0123456789abcdef01234567",
   defaultBranch: "main",
@@ -112,7 +112,7 @@ export const CouldNotPlan: Story = {
       notice: {
         level: "error",
         label: "No answer from GitHub",
-        message: "Press Refresh, then Plan release again.",
+        message: "Press Refresh, then Create a release again.",
         detail: "A release plan is measured against what GitHub holds.",
       },
     },

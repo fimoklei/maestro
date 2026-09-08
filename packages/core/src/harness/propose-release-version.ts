@@ -43,7 +43,7 @@ const bump = (parts: SemverParts, step: SemverStep): string => {
 };
 
 const REASONS: Record<SemverStep, string> = {
-  major: "A skill was removed or renamed.",
+  major: "A skill was deleted or renamed.",
   minor: "A skill was added.",
   patch: "Only existing skills changed.",
 };

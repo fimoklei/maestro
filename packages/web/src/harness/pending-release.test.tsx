@@ -47,7 +47,10 @@ describe("PendingRelease", () => {
       />,
     );
 
-    expect(screen.getByText("Removed")).toBeInTheDocument();
+    // "Deleted", never "Removed": remove belongs to deployed copies alone
+    // (CONTEXT.md → Harness skill deletion).
+    expect(screen.getByText("Deleted")).toBeInTheDocument();
+    expect(screen.queryByText("Removed")).not.toBeInTheDocument();
     expect(screen.queryByText("Added")).not.toBeInTheDocument();
     expect(screen.queryByText("Changed")).not.toBeInTheDocument();
     expect(screen.queryByText("Renamed")).not.toBeInTheDocument();

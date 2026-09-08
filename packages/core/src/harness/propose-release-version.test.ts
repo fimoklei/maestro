@@ -28,6 +28,9 @@ describe("proposeReleaseVersion", () => {
     const proposal = proposeReleaseVersion("v1.2.3", [changed, removed]);
     expect(proposal.proposedStep).toBe("major");
     expect(proposal.versions.major).toBe("v2.0.0");
+    // "Deleted", never "removed": remove names a deployed copy alone
+    // (CONTEXT.md → Harness skill deletion).
+    expect(proposal.reason).toBe("A skill was deleted or renamed.");
   });
 
   it("proposes major when a skill was renamed", () => {
