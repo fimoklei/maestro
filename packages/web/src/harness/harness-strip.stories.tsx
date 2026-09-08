@@ -8,10 +8,10 @@ const meta = {
   args: {
     releasedVersion: "v0.5.0",
     defaultBranch: "main",
-    status: "Fetched just now",
+    status: "Read just now",
     children: (
       <Button variant="quiet" size="sm">
-        refresh
+        Retry check
       </Button>
     ),
   },
@@ -21,19 +21,19 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Fetched: Story = {};
+export const Read: Story = {};
 
 // No network reached the remote, so the picture has an age and says so.
 export const Offline: Story = {
-  args: { status: "Offline — last fetched 1 h ago" },
+  args: { status: "Offline — last read 1 h ago" },
 };
 
 // A reply that said no. Held apart from Offline, and never worded as a
 // permission gate Maestro would be inventing (#516).
-export const FetchFailed: Story = {
-  args: { status: "Fetch failed — never fetched" },
+export const ReadFailed: Story = {
+  args: { status: "Read failed — never read" },
 };
 
 export const NeverReleased: Story = {
-  args: { releasedVersion: null, status: "Fetched just now" },
+  args: { releasedVersion: null, status: "Read just now" },
 };

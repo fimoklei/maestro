@@ -31,7 +31,7 @@ function seedToolPresence(home) {
 
 // Redirecting HOME hides the real ~/.gitconfig, so git loses its credential
 // helper and every fetch of the seeded clone fails auth — which the harness
-// strip reports as "Fetch failed", never as a setup problem. Only this
+// strip reports as "Read failed", never as a setup problem. Only this
 // dev-tooling harness bridges credentials; the product never does
 // (.claude/rules/security.md). The token lands in a sandbox wiped on teardown.
 function seedGitCredentials(home, githubToken) {

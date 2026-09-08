@@ -159,6 +159,7 @@ details may name the exact APM mechanism or file.
 | Stale Harness status | **Status out of date** | Previously verified information whose refresh failed; never present it as current. |
 | Unknown Harness status | **Status unknown** / **Review status unknown** | No verified status is available; use the review-specific name when only review status is unknown. Unknown is not empty. |
 | Unavailable review status | **Review status unavailable** | The pull-request check is unavailable; do not infer whether a proposal exists. |
+| Harness freshness reading | **Read** | The one word for reading the Harness, on every surface: *Read 4 min ago*, *Read from GitHub 4 min ago*, *Not read yet*, *Read failed — never read*. *Fetch* and *fetched* are retired from user-facing copy; they survive only as the wire field `lastFetchedAt` and the `fetched` / `fetch-failed` outcome values. |
 | Harness re-read | **Retry check** | The one re-read control on the Harness view: the strip's control and the single action in every failed-read notice. *Refresh* is retired — never on a control, never in a sentence. **Re-read Inventory** stays Inventory's own control. |
 | Release | **Release** / **Released** | *Release* is the action, *released* is the state, and *latest release* is the result. |
 | Release dialog | **Create a release** / **Publish release** | *Create a release* opens the dialog on the Harness strip; *Publish release* confirms publication. References to either control use its exact label; *Plan release* is retired. Never a bare *Release* on a button. |
