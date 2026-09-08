@@ -80,8 +80,17 @@ export {
   type CopyTreeFsPort,
   NodeCopyTreeFs,
 } from "./filesystem/copy-tree-fs";
+export { GhCliAdapter, REVIEW_READ_LIMIT } from "./harness/gh-cli-adapter";
 export { HarnessFreshnessStore } from "./harness/harness-freshness-store";
 export { HarnessGitAdapter } from "./harness/harness-git";
+export type {
+  HarnessReviewPort,
+  HarnessReviewRead,
+  RequestedReviewer,
+  ReviewDecision,
+  ReviewRequest,
+  ReviewRequestState,
+} from "./harness/harness-review-port";
 export {
   type ImportCheck,
   type ImportCheckResult,
