@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type {
+  HarnessReviewPort,
+  HarnessReviewRead,
+} from "./harness-review-port";
+import type {
   HarnessFacts,
   HarnessFetchOutcome,
   HarnessFreshness,
@@ -72,6 +76,12 @@ function buildRead(overrides?: {
   // The ref `mergeBaseCommit` answers with; its skills come from `trees` like
   // any other ref. `null` is an unreadable merge base.
   mergeBase?: string | null;
+  // What GitHub answered. Defaults to a complete read that found no request,
+  // so a pushed branch reads as one whose request is missing.
+  review?: HarnessReviewRead;
+  // The whole port, when a case is about how it is called rather than what it
+  // answered.
+  readReviews?: HarnessReviewPort["readReviews"];
 }) {
   const head =
     overrides?.facts?.defaultBranchCommit ?? FACTS.defaultBranchCommit;
@@ -118,6 +128,17 @@ function buildRead(overrides?: {
       readWorktreeAmbiguity: async () => null,
     },
     freshness: overrides?.freshness ?? stubFreshness(FETCHED),
+    review: {
+      readReviews:
+        overrides?.readReviews ??
+        (async () =>
+          overrides?.review ?? {
+            outcome: "read",
+            requests: [],
+            complete: true,
+            limit: 100,
+          }),
+    },
   });
 }
 
@@ -132,14 +153,17 @@ describe("ReadHarnessState", () => {
         releasedVersion: "v0.5.0",
         defaultBranch: "main",
         releaseState: "released",
-        pendingRelease: [],
         freshness: FETCHED,
-        movements: [],
+        stages: {
+          proposal: { outcome: "read", rows: [], bound: null },
+          review: { outcome: "read", rows: [], bound: null },
+          release: { outcome: "read", rows: [], bound: null },
+        },
       },
     });
   });
 
-  it("names each movement's author alongside what merged since the release", async () => {
+  it("lists what merged since the release as green Pending release rows", async () => {
     const read = buildRead({
       facts: { defaultBranchCommit: "bbb" },
       trees: {
@@ -160,11 +184,16 @@ describe("ReadHarnessState", () => {
     expect(result).toMatchObject({
       ok: true,
       state: {
-        pendingRelease: [
-          { kind: "removed", name: "grilling", author: "Linus" },
-          { kind: "added", name: "research", author: "Grace" },
-          { kind: "changed", name: "tdd", author: "Ada" },
-        ],
+        stages: {
+          release: {
+            outcome: "read",
+            rows: [
+              { skill: "grilling", status: "deleted", deletion: true },
+              { skill: "research", status: "added" },
+              { skill: "tdd", status: "changed" },
+            ],
+          },
+        },
       },
     });
   });
@@ -179,25 +208,10 @@ describe("ReadHarnessState", () => {
 
     await expect(read.execute()).resolves.toMatchObject({
       ok: true,
-      state: { releaseState: "unknown", pendingRelease: [] },
-    });
-  });
-
-  it("names a removal's author from the release when the branch never had it", async () => {
-    // A tag on another history carries a skill the default branch never saw,
-    // so a log of that path at the branch answers nothing.
-    const read = buildRead({
-      facts: { defaultBranchCommit: "bbb" },
-      trees: { aaa: [{ name: "grilling", treeHash: "g1" }], bbb: [] },
-      authorsAtRelease: { grilling: "Linus" },
-    });
-
-    await expect(read.execute()).resolves.toMatchObject({
-      ok: true,
       state: {
-        pendingRelease: [
-          { kind: "removed", name: "grilling", author: "Linus" },
-        ],
+        releaseState: "unknown",
+        // Unknown, never an empty stage: an unreadable ref says nothing.
+        stages: { release: { outcome: "unknown" } },
       },
     });
   });
@@ -239,7 +253,7 @@ describe("ReadHarnessState", () => {
         releasedVersion: "v0.5.0",
         releaseState: "unknown",
         // Nothing to compare against is not "nothing merged".
-        pendingRelease: [],
+        stages: { release: { outcome: "unknown" } },
       },
     });
   });
@@ -291,8 +305,8 @@ describe("ReadHarnessState", () => {
   });
 });
 
-describe("ReadHarnessState movements", () => {
-  it("lists every skill that has moved, one state each, in name order", async () => {
+describe("ReadHarnessState stages", () => {
+  it("gives each skill a row in every stage it belongs to, in name order", async () => {
     const read = buildRead({
       movementTrees: {
         remote: { docs: "same", tdd: "same" },
@@ -305,10 +319,15 @@ describe("ReadHarnessState movements", () => {
     await expect(read.execute()).resolves.toMatchObject({
       ok: true,
       state: {
-        movements: [
-          { skill: "docs", state: "pending-promotion" },
-          { skill: "tdd", state: "pending-review" },
-        ],
+        stages: {
+          proposal: {
+            rows: [
+              { skill: "docs", status: "not-yet-proposed" },
+              { skill: "tdd", status: "new-local-work" },
+            ],
+          },
+          review: { rows: [{ skill: "tdd", status: "pull-request-missing" }] },
+        },
       },
     });
   });
@@ -327,7 +346,13 @@ describe("ReadHarnessState movements", () => {
 
     await expect(read.execute()).resolves.toMatchObject({
       ok: true,
-      state: { movements: [{ skill: "fresh", state: "pending-review" }] },
+      state: {
+        stages: {
+          review: {
+            rows: [{ skill: "fresh", status: "pull-request-missing" }],
+          },
+        },
+      },
     });
   });
 
@@ -345,7 +370,15 @@ describe("ReadHarnessState movements", () => {
 
     await expect(read.execute()).resolves.toMatchObject({
       ok: true,
-      state: { movements: [{ skill: "tdd", state: "pending-review" }] },
+      state: {
+        stages: {
+          review: {
+            rows: [
+              { skill: "tdd", status: "pull-request-missing", deletion: true },
+            ],
+          },
+        },
+      },
     });
   });
 
@@ -362,9 +395,11 @@ describe("ReadHarnessState movements", () => {
     await expect(read.execute()).resolves.toMatchObject({
       ok: true,
       state: {
-        movements: [
-          { skill: "tdd", state: "pending-promotion", deletion: true },
-        ],
+        stages: {
+          proposal: {
+            rows: [{ skill: "tdd", status: "deleted-locally", deletion: true }],
+          },
+        },
       },
     });
   });
@@ -384,10 +419,18 @@ describe("ReadHarnessState movements", () => {
     await expect(read.execute()).resolves.toMatchObject({
       ok: true,
       state: {
-        movements: [
-          { skill: "new-name", state: "pending-promotion", deletion: false },
-          { skill: "old-name", state: "pending-promotion", deletion: true },
-        ],
+        stages: {
+          proposal: {
+            rows: [
+              {
+                skill: "new-name",
+                status: "not-yet-proposed",
+                deletion: false,
+              },
+              { skill: "old-name", status: "deleted-locally", deletion: true },
+            ],
+          },
+        },
       },
     });
   });
@@ -404,18 +447,24 @@ describe("ReadHarnessState movements", () => {
 
     await expect(read.execute()).resolves.toMatchObject({
       ok: true,
-      state: { movements: [] },
+      state: { stages: { proposal: { rows: [] }, review: { rows: [] } } },
     });
   });
 
-  it("calls the whole picture unknown when a local ref could not be read", async () => {
+  it("calls the local stages unknown when a local ref could not be read", async () => {
     // An empty table would say nothing is waiting, which is a claim this read
     // cannot back (LEARNINGS.md · J04).
     const read = buildRead({ movementTrees: null });
 
     await expect(read.execute()).resolves.toMatchObject({
       ok: true,
-      state: { movements: [], releaseState: "unknown" },
+      state: {
+        releaseState: "unknown",
+        stages: {
+          proposal: { outcome: "unknown" },
+          review: { outcome: "unknown" },
+        },
+      },
     });
   });
 
@@ -435,13 +484,17 @@ describe("ReadHarnessState movements", () => {
     await expect(read.execute()).resolves.toMatchObject({
       ok: true,
       state: {
-        movements: [
-          {
-            skill: "tdd",
-            state: "pending-promotion",
-            concurrentChange: true,
+        stages: {
+          proposal: {
+            rows: [
+              {
+                skill: "tdd",
+                status: "not-yet-proposed",
+                concurrentChange: true,
+              },
+            ],
           },
-        ],
+        },
       },
     });
   });
@@ -459,13 +512,17 @@ describe("ReadHarnessState movements", () => {
     await expect(read.execute()).resolves.toMatchObject({
       ok: true,
       state: {
-        movements: [
-          {
-            skill: "tdd",
-            state: "pending-promotion",
-            concurrentChange: false,
+        stages: {
+          proposal: {
+            rows: [
+              {
+                skill: "tdd",
+                status: "not-yet-proposed",
+                concurrentChange: false,
+              },
+            ],
           },
-        ],
+        },
       },
     });
   });
@@ -488,12 +545,9 @@ describe("ReadHarnessState movements", () => {
     await expect(read.execute()).resolves.toMatchObject({
       ok: true,
       state: {
-        movements: [
-          {
-            skill: "tdd",
-            concurrentChange: false,
-          },
-        ],
+        stages: {
+          proposal: { rows: [{ skill: "tdd", concurrentChange: false }] },
+        },
       },
     });
   });
@@ -521,12 +575,46 @@ describe("ReadHarnessState movements", () => {
     await expect(read.execute()).resolves.toMatchObject({
       ok: true,
       state: {
-        movements: [
-          {
-            skill: "tdd",
-            concurrentChange: false,
-          },
-        ],
+        stages: {
+          proposal: { rows: [{ skill: "tdd", concurrentChange: false }] },
+        },
+      },
+    });
+  });
+
+  it("reads GitHub once for the whole Harness, naming the origin it read", async () => {
+    const seen: string[] = [];
+    const read = buildRead({
+      readReviews: async (origin) => {
+        seen.push(origin.ownerRepo);
+        return { outcome: "read", requests: [], complete: true, limit: 100 };
+      },
+    });
+
+    await read.execute();
+
+    expect(seen).toEqual(["fimoklei/agent-harness"]);
+  });
+
+  it("leaves the local stages readable when the review check is unavailable", async () => {
+    const read = buildRead({
+      review: { outcome: "unavailable" },
+      movementTrees: {
+        remote: { tdd: "same" },
+        promote: {},
+        local: { tdd: "same" },
+        working: { tdd: "edited" },
+      },
+    });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: {
+        stages: {
+          proposal: { rows: [{ skill: "tdd", status: "not-yet-proposed" }] },
+          review: { outcome: "unavailable" },
+          release: { outcome: "read" },
+        },
       },
     });
   });
@@ -626,6 +714,14 @@ describe("ReadHarnessState refresh", () => {
         readWorktreeAmbiguity: async () => null,
       },
       freshness: stubFreshness(),
+      review: {
+        readReviews: async () => ({
+          outcome: "read",
+          requests: [],
+          complete: true,
+          limit: 100,
+        }),
+      },
     });
 
     await read.refresh(AT);

@@ -91,6 +91,17 @@ export type {
   ReviewRequest,
   ReviewRequestState,
 } from "./harness/harness-review-port";
+export type {
+  HarnessStage,
+  HarnessStageRead,
+  HarnessStageRow,
+  HarnessStages,
+  ProposalComparison,
+  ReleaseStatus,
+  ReviewRequestLink,
+  ReviewStatus,
+  StageStatus,
+} from "./harness/harness-stages";
 export {
   type ImportCheck,
   type ImportCheckResult,
@@ -119,7 +130,6 @@ export {
 } from "./harness/publish-release";
 export {
   type HarnessFreshness,
-  type HarnessMovement,
   type HarnessReleaseState,
   type HarnessState,
   type HarnessStateError,

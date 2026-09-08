@@ -10,9 +10,12 @@ const HARNESS: HarnessState = {
   releasedVersion: "v0.5.0",
   defaultBranch: "main",
   releaseState: "released",
-  pendingRelease: [],
   freshness: { outcome: "fetched", lastFetchedAt: "2026-08-03T11:56:00.000Z" },
-  movements: [],
+  stages: {
+    proposal: { outcome: "read", rows: [], bound: null },
+    review: { outcome: "read", rows: [], bound: null },
+    release: { outcome: "read", rows: [], bound: null },
+  },
 };
 
 const SOURCE = "/home/me/Code Review";

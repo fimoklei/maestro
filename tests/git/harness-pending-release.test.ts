@@ -12,6 +12,7 @@ import type { HarnessFreshness, PendingSkillMovement } from "@maestro/core";
 import { HarnessGitAdapter, ReadHarnessState } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
+import { stubReview } from "../helpers/stub-review";
 
 const run = promisify(execFile);
 
@@ -77,12 +78,16 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
         read: async () => FETCHED,
         record: async () => {},
       },
+      review: stubReview(),
     });
-    const result = await read.refresh(new Date("2026-08-03T08:00:00.000Z"));
+    await read.refresh(new Date("2026-08-03T08:00:00.000Z"));
+    // The delta with its authors, which is what the release dialog reads. The
+    // Pending release stage carries the same movements without the author.
+    const result = await read.planRelease();
     if (!result.ok) {
       throw new Error(`unexpected refusal: ${result.error}`);
     }
-    return result.state.pendingRelease;
+    return result.plan.delta;
   };
 
   // One teammate's work — change tdd, add research — landed on main the way the
@@ -224,12 +229,16 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
       resolveRoot: async () => root,
       git: new HarnessGitAdapter(),
       freshness: { read: async () => FETCHED, record: async () => {} },
+      review: stubReview(),
     });
     const result = await read.refresh(new Date("2026-08-03T08:00:00.000Z"));
 
     expect(result).toMatchObject({
       ok: true,
-      state: { releaseState: "never-released", pendingRelease: [] },
+      state: {
+        releaseState: "never-released",
+        stages: { release: { outcome: "read", rows: [] } },
+      },
     });
   });
 

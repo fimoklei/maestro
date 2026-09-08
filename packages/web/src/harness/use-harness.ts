@@ -4,8 +4,10 @@
 
 import type {
   HarnessFreshness,
-  HarnessMovement,
   HarnessReleaseState,
+  HarnessStage,
+  HarnessStageRead,
+  HarnessStageRow,
   HarnessState,
   ImportCheck,
   ImportMode,
@@ -14,8 +16,10 @@ import type {
   ManifestAdvisory,
   PendingSkillMovement,
   ReleasePlan,
+  RequestedReviewer,
   SemverStep,
   SkillMovementKind,
+  StageStatus,
   StructuralProblem,
 } from "@maestro/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -26,8 +30,10 @@ import { INVENTORY_KEY } from "../inventory/use-inventory";
 // one core defines (architecture.md).
 export type {
   HarnessFreshness,
-  HarnessMovement,
   HarnessReleaseState,
+  HarnessStage,
+  HarnessStageRead,
+  HarnessStageRow,
   HarnessState,
   ImportCheck,
   ImportNameBlocker,
@@ -35,8 +41,10 @@ export type {
   ManifestAdvisory,
   PendingSkillMovement,
   ReleasePlan,
+  RequestedReviewer,
   SemverStep,
   SkillMovementKind,
+  StageStatus,
   StructuralProblem,
 };
 

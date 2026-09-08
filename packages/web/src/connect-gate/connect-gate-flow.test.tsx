@@ -180,9 +180,12 @@ describe("connect gate", () => {
               releasedVersion: null,
               defaultBranch: "trunk",
               releaseState: "never-released",
-              pendingRelease: [],
               freshness: { outcome: null, lastFetchedAt: null },
-              movements: [],
+              stages: {
+                proposal: { outcome: "read", rows: [], bound: null },
+                review: { outcome: "read", rows: [], bound: null },
+                release: { outcome: "read", rows: [], bound: null },
+              },
             },
             200,
           );

@@ -19,6 +19,12 @@ export const unreachableHarnessGit = () => ({
   readWorktreeAmbiguity: unreachable,
 });
 
+// The review port a "nothing connected" stub gets: no capability at all, so a
+// stage degrades instead of a stub throwing on a read nobody asked for.
+export const unavailableHarnessReview = () => ({
+  readReviews: async () => ({ outcome: "unavailable" }) as const,
+});
+
 export const unfetchedFreshness = () => ({
   read: async () => ({ outcome: null, lastFetchedAt: null }) as const,
   record: async () => {},
