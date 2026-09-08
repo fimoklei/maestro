@@ -99,6 +99,17 @@ export function HarnessView() {
     setEditedName(null);
     importSkill.reset();
   };
+  // The skill the import confirmation sent the author to. It holds the row on
+  // the active surface for about three seconds, long enough to find among the
+  // others and short enough not to read as a state of its own (#846).
+  const [landedOn, setLandedOn] = useState<string | null>(null);
+  useEffect(() => {
+    if (landedOn === null) {
+      return;
+    }
+    const done = setTimeout(() => setLandedOn(null), 3000);
+    return () => clearTimeout(done);
+  }, [landedOn]);
 
   // Promote: which row is waiting and what the last press refused are read off
   // the mutation. The links are kept beside it, one per skill — a second
@@ -280,7 +291,10 @@ export function HarnessView() {
                           promoteFailure === null || promotedSkill === null
                             ? null
                             : { skill: promotedSkill, notice: promoteFailure },
-                        focus: justMoved,
+                        // Focusing the row's menu is what scrolls it into
+                        // view: the platform already does that for focus().
+                        focus: landedOn ?? justMoved,
+                        highlight: landedOn,
                       }}
                     />
                   )}
@@ -301,6 +315,10 @@ export function HarnessView() {
               onImport={() =>
                 source !== null && importSkill.mutate({ source, name })
               }
+              onView={(name) => {
+                closeImport();
+                setLandedOn(name);
+              }}
               imported={importSkill.data ?? null}
               importing={importSkill.isPending}
               importError={importNotice(importSkill.error)}
