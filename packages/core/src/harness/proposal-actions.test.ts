@@ -157,6 +157,22 @@ describe("ProposalActions · reopen", () => {
     expect(calls.reopened).toEqual([]);
   });
 
+  it("refuses while more than one open request matches the branch", async () => {
+    const { actions, calls } = build({
+      review: readOf([
+        request({ number: 41 }),
+        request({ number: 44 }),
+        request({ number: 45, state: "closed" }),
+      ]),
+    });
+
+    expect(await actions.reopen("tdd", 45)).toEqual({
+      ok: false,
+      error: "extra-requests",
+    });
+    expect(calls.reopened).toEqual([]);
+  });
+
   it("reports GitHub's refusal as a failed action", async () => {
     const { actions } = build({
       review: readOf([request({ state: "closed" })]),
