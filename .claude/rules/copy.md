@@ -11,6 +11,9 @@ have a different reader.
 Write for a developer teammate with git and a terminal and no APM knowledge.
 The sentence must be readable aloud without spelling anything out.
 
+Write sentences in the ASD-STE100 (Simplified Technical English) form the
+faults below carry. The standard's approved-word dictionary is out of scope.
+
 ## The reviewer's unit
 
 Review the **whole notice** — heading, sentence, `detail` and action label
@@ -42,6 +45,8 @@ Never ship any of these.
 | F11 | Passive voice | Write active where the actor is the reader or a third party. The agentless passive stands where the actor is Maestro and naming it adds nothing | [GOV.UK][cl] |
 | F12 | Two words for one concept | Use one word per concept, on every surface | [Polaris][dev] |
 | F13 | "valid" / "invalid" | Never write either, in a sentence or in a heading | [GOV.UK][gerr] · [Polaris][err] |
+| F14 | Instruction that is not an imperative | Write `Select {control} to {result}` | [ASD-STE100][ste] |
+| F15 | `-ing` form as a verb | Write the imperative or the simple present. Exempt: `Loading {the thing}…` per R-C | [ASD-STE100][ste] |
 
 Also never: an apology, `please`, `sorry`, an error code, a question-mark
 heading, `click here`, or apm's own prose ([GOV.UK][gerr], [GOV.UK][struct],
@@ -64,6 +69,19 @@ Where no action exists, end on the cause. That notice is complete.
 
 Where the notice is an offer (`level: "info"`), the heading names what is on
 offer, not what is wrong.
+
+## The forms
+
+Write toward these.
+
+- **Cause, then instruction** — "A reviewer asked for changes on pull request
+  #45. Select Update proposal to send your changes."
+- **Fact, then instruction** — "Pull requests #41 and #44 match this branch.
+  Close one on GitHub."
+- **Outcome only**, where no action exists — "Maestro tagged v1.5.0 and
+  refreshed Inventory."
+- **Empty state** — "Inventory shows released skills only. Create a release on
+  the Harness view to fill it."
 
 ## Rules per surface
 
@@ -108,7 +126,8 @@ Run this over every new or changed user-facing string, on the unit above.
 1. Read it aloud. Anything you had to spell out belongs in `detail`.
 2. Capitalised, active, under 15 words, at most two sentences.
 3. The heading is a noun phrase and does not repeat the sentence.
-4. The instruction names a place, a command, or a control by its exact label.
+4. The instruction is an imperative and names a place, a command, or a control
+   by its exact label.
 5. The button runs that instruction, with the same verb and the same object.
 6. Every concept uses its screen name from `CONTEXT.md`.
 
@@ -125,3 +144,4 @@ Run this over every new or changed user-facing string, on the unit above.
 [err]: https://github.com/Shopify/polaris-react-archive/blob/main/polaris.shopify.com/content/content/error-messages.mdx
 [act]: https://github.com/Shopify/polaris-react-archive/blob/16421c4cd798cdfaf20b72f3cdfc84a767db901f/polaris.shopify.com/content/content/actionable-language.mdx
 [dev]: https://shopify.dev/docs/apps/design/content
+[ste]: https://www.asd-ste100.org/
