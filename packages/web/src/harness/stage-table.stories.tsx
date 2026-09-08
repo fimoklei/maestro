@@ -55,6 +55,17 @@ export const PendingProposal: Story = {
   },
 };
 
+// The row an import confirmation just sent the author to (#846).
+export const JustLandedRow: Story = {
+  args: {
+    rows: [
+      row("pending-proposal", "grilling", "not-yet-proposed"),
+      row("pending-proposal", "code-review", "not-yet-proposed"),
+    ],
+    actions: { items: () => [], failed: null, highlight: "code-review" },
+  },
+};
+
 export const PendingReview: Story = {
   args: {
     rows: [

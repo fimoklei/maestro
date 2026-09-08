@@ -30,6 +30,7 @@ export function ImportDialog({
   onNameChange,
   onClose,
   onImport,
+  onView,
   importing,
   importError,
   imported,
@@ -41,6 +42,8 @@ export function ImportDialog({
   onNameChange: (name: string) => void;
   onClose: () => void;
   onImport: () => void;
+  /** Leave the dialog for the row this import landed as (#846). */
+  onView: (name: string) => void;
   importing: boolean;
   importError: NoticeContent | null;
   // Null until an import lands. It stays on screen after it does, so what the
@@ -143,17 +146,31 @@ export function ImportDialog({
         )}
 
         {imported === null ? null : (
-          <p role="status" className="m-0 font-ui text-desc text-fg-2">
-            <span className="font-mono text-fg">{imported.name}</span>{" "}
-            {imported.mode === "update"
-              ? "was replaced in the Harness and is waiting for review. The deployed copy is not up to date until you deploy it again."
-              : "landed in the Harness and is waiting for review."}
-            {imported.skipped === 0
-              ? null
-              : imported.skipped === 1
-                ? " 1 .git entry was skipped."
-                : ` ${imported.skipped} .git entries were skipped.`}
-          </p>
+          <>
+            <Notice
+              trigger="user-action"
+              notice={{
+                level: "success",
+                label: "Skill imported",
+                message: "View your imported skill in Harness.",
+                detail:
+                  imported.mode === "update"
+                    ? "The deployed copy is not up to date until you deploy it again."
+                    : undefined,
+                action: {
+                  label: "View in Harness",
+                  onClick: () => onView(imported.name),
+                },
+              }}
+            />
+            {imported.skipped === 0 ? null : (
+              <p className="m-0 font-ui text-desc text-dim">
+                {imported.skipped === 1
+                  ? "1 .git entry was skipped."
+                  : `${imported.skipped} .git entries were skipped.`}
+              </p>
+            )}
+          </>
         )}
 
         <Notice trigger="user-action" notice={importError} />

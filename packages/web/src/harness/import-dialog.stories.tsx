@@ -21,6 +21,7 @@ const meta = {
     onNameChange: () => {},
     onClose: () => {},
     onImport: () => {},
+    onView: () => {},
     importing: false,
     importError: null,
     imported: null,

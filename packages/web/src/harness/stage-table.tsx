@@ -32,6 +32,10 @@ export type StageRowActions = {
   // was pressed from with it, so focus follows to the row that replaced it
   // rather than falling back to the document (#581).
   focus?: string | null;
+  // The skill a confirmation just sent the author to. Its row sits on the
+  // active surface until the host drops it — a step of the surface ramp, not a
+  // transition, so reduced motion is honoured by construction (#846).
+  highlight?: string | null;
 };
 
 // One stage's rows. Type is a column even though every row is a skill today:
@@ -66,7 +70,12 @@ export function StageTable({
             const reviewers = reviewerLine(row);
             const crossStage = crossStageLine(row);
             return (
-              <TableRow key={`${row.stage}:${row.skill}`}>
+              <TableRow
+                key={`${row.stage}:${row.skill}`}
+                className={
+                  actions.highlight === row.skill ? "bg-active" : undefined
+                }
+              >
                 <TableCell className="align-top">
                   <TypeTag />
                 </TableCell>
