@@ -3,6 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-08-01 (issue #352, closing write-up of the authoring-side map #343)
 - **Amended:** 2026-09-06, [What Inventory says in each of its three states, now that it carries released skills only](https://github.com/fimoklei/maestro/issues/812).
+- **Amended:** 2026-09-08, [What the three stages mean](https://github.com/fimoklei/maestro/issues/808) — point 10.
 
 ## Context
 
@@ -69,6 +70,14 @@ consumers deploy only from the released state.**
 9. **A successful release refreshes Inventory automatically.** If that read
    fails, the unreadable state applies. Zero skills is a valid result for
    connection checks and tests; it must be established by a successful read.
+10. **Stage memberships are independent.** Each of *Pending proposal*, *Pending
+    review* and *Pending release* answers its own question about a different
+    piece of work, so one skill may sit in several stages at once, with one row
+    per stage. This replaces #518's rule that a skill appears in at most one
+    table — a rule no ADR ever recorded, held only by `classify-movement.ts`.
+    Membership is per stage, and so is a deletion fact: deleting locally never
+    relabels an earlier change in another stage. Where a stage's read failed,
+    its membership is unknown, never empty.
 
 ## Consequences
 
@@ -85,6 +94,10 @@ consumers deploy only from the released state.**
 - **ADR-0016 still governs Inventory's presentation.** This amendment defines
   which Harness state supplies its collection and how empty and failed reads
   differ; it does not redesign the existing list or detail pane.
+- **Point 10 costs the exclusive classifier.** `classifyMovement` returns one
+  state per skill; the read model has to return a membership per stage instead.
+  Whether a request exists for a proposal is read through `gh` (ADR-0029), while
+  content comparisons stay on tree hashes.
 - Issue #557 makes the connect gate's success copy outcome-specific: found keeps
   the deploy no-write promise, while joined and scaffolded describe their
   writes and landings honestly.
