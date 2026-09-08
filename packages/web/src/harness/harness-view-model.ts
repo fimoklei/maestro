@@ -1,9 +1,13 @@
 // Turns the Harness state the server sends into the two sentences the home
 // base shows. Pure and clock-injected, so the age is testable.
+
+import { STAGE_NAMES } from "./stage-copy";
 import type {
   HarnessFreshness,
-  HarnessMovement,
   HarnessReleaseState,
+  HarnessStage,
+  HarnessStageRead,
+  HarnessState,
 } from "./use-harness";
 
 const MINUTE = 60_000;
@@ -58,33 +62,121 @@ export const freshnessLabel = (
     : `${cause} — last fetched ${since}`;
 };
 
-// One section per state, in the order the route runs backwards: what is waiting
-// on the team, then what has not left this disk. The section names the state,
-// so no row has to repeat it (#347).
-const MOVEMENT_SECTIONS = [
-  {
-    state: "pending-review",
-    title: "Pending review",
-    meta: "Pushed, waiting for input",
-  },
-  {
-    state: "pending-promotion",
-    title: "Pending proposal",
-    meta: "Local on disk",
-  },
-] as const satisfies readonly {
-  state: HarnessMovement["state"];
+// The stage header's meta slot carries exactly one reading, never two: either
+// what was compared and when, or the label that replaces the whole slot when
+// the stage was not read (#827 — Screen design; decision #838).
+export type StageSection = {
+  stage: HarnessStage;
   title: string;
   meta: string;
-}[];
+  read: HarnessStageRead;
+};
 
-// An empty section is absent rather than shown empty, so a quiet harness reads
-// as an answer instead of a form with nothing in it.
-export const movementSections = (movements: HarnessMovement[]) =>
-  MOVEMENT_SECTIONS.map((section) => ({
-    ...section,
-    movements: movements.filter((movement) => movement.state === section.state),
-  })).filter((section) => section.movements.length > 0);
+// "4 min ago", or null when no read has ever succeeded — then the slot names
+// what was compared and stops, rather than dating a read that never happened.
+const readAge = (freshness: HarnessFreshness, now: Date): string | null =>
+  freshness.lastFetchedAt === null ? null : ago(freshness.lastFetchedAt, now);
+
+const withAge = (what: string, since: string | null): string =>
+  since === null ? what : `${what}, read ${since}`;
+
+// Which ref each row was compared against. More than one distinct answer, or a
+// prepared proposal nobody opened a request for, and the slot names both
+// possibilities instead of asserting a comparison that did not happen (#838).
+const proposalMeta = (
+  read: HarnessStageRead,
+  state: HarnessState,
+  since: string | null,
+): string => {
+  if (read.outcome !== "read") {
+    return "Status unknown";
+  }
+  if (read.rows.length === 0) {
+    return since === null ? "Not read yet" : `Read ${since}`;
+  }
+  const branch = state.defaultBranch ?? "the default branch";
+  // Null for a prepared proposal with no request to name: it has no reading of
+  // its own, so it falls to the mixed one below rather than inventing a ref.
+  const refs = new Set(
+    read.rows.map((row) =>
+      row.comparison?.kind === "proposal"
+        ? row.comparison.number === null
+          ? null
+          : `pull request #${row.comparison.number}`
+        : branch,
+    ),
+  );
+  const [only] = [...refs];
+  return refs.size === 1 && typeof only === "string"
+    ? withAge(`Compared with ${only}`, since)
+    : withAge(`Compared with each skill's proposal or ${branch}`, since);
+};
+
+const reviewMeta = (read: HarnessStageRead, since: string | null): string => {
+  if (read.outcome === "unavailable") {
+    return "Review status unavailable";
+  }
+  if (read.outcome === "unknown") {
+    return "Review status unknown";
+  }
+  // A read that filled its bound names it: it saw that much and no more.
+  if (read.bound !== null) {
+    return withAge(
+      `Read the ${read.bound} most recent pull requests`,
+      since,
+    ).replace(", read ", ", ");
+  }
+  return since === null ? "Not read yet" : `Read from GitHub ${since}`;
+};
+
+const releaseMeta = (
+  read: HarnessStageRead,
+  state: HarnessState,
+  since: string | null,
+): string => {
+  if (read.outcome !== "read") {
+    return "Status unknown";
+  }
+  return withAge(
+    state.releasedVersion === null
+      ? "Nothing released yet"
+      : `Compared with ${state.releasedVersion}`,
+    since,
+  );
+};
+
+// The three stages in journey order. A confirmed empty stage still comes back:
+// the view drops it, except Pending proposal, which hosts Import skill…
+export const stageSections = (
+  state: HarnessState,
+  now: Date,
+): StageSection[] => {
+  const since = readAge(state.freshness, now);
+  return [
+    {
+      stage: "pending-proposal" as const,
+      read: state.stages.proposal,
+      meta: proposalMeta(state.stages.proposal, state, since),
+    },
+    {
+      stage: "pending-review" as const,
+      read: state.stages.review,
+      meta: reviewMeta(state.stages.review, since),
+    },
+    {
+      stage: "pending-release" as const,
+      read: state.stages.release,
+      meta: releaseMeta(state.stages.release, state, since),
+    },
+  ].map((section) => ({ ...section, title: STAGE_NAMES[section.stage] }));
+};
+
+// Nothing anywhere, and every stage answered for itself. Only then is "No
+// changes yet" a fact rather than a picture nobody could read.
+export const journeyConfirmedEmpty = (state: HarnessState): boolean =>
+  [state.stages.proposal, state.stages.review, state.stages.release].every(
+    (stage) => stage.outcome === "read" && stage.rows.length === 0,
+  );
 
 // `offline` and `fetch-failed` are the two no-answer classes, and only they
 // close Release: a plan off a picture the remote never answered for could

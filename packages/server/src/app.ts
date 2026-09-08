@@ -17,6 +17,7 @@ import {
   DeployedRefAdapter,
   DeploySkill,
   type DeploySkillError,
+  GhCliAdapter,
   GitCloneAdapter,
   GitHarnessScaffoldAdapter,
   GlobalDeployStateReader,
@@ -1008,6 +1009,10 @@ function realDeps(): AppDeps {
     return await fs.realpath(path).catch(() => undefined);
   };
   const harnessGit = new HarnessGitAdapter();
+  // GitHub's side of the journey, through the author's own gh sign-in. Optional
+  // by design: absent or unauthenticated, the review stage degrades and every
+  // git fact stays readable (ADR-0029).
+  const harnessReview = new GhCliAdapter();
   const harnessFreshness = new HarnessFreshnessStore({ store });
   // Shared by both ways a movement reaches review: two of them for the same
   // harness must queue, not race each other's temporary index and push.
@@ -1083,6 +1088,7 @@ function realDeps(): AppDeps {
     resolveRoot: harnessRoot,
     git: harnessGit,
     freshness: harnessFreshness,
+    review: harnessReview,
   });
   // One register for both use cases: connect writes the offers the scaffold
   // will only act on (#556).

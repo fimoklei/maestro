@@ -37,6 +37,9 @@ function buildRead(overrides?: {
   freshness?: HarnessFreshness;
   trees?: TreesByRef;
   authors?: Record<string, string>;
+  // Who the released ref's own history names, where the default branch's
+  // history names nobody.
+  authorsAtRelease?: Record<string, string>;
   manifests?: Record<string, string | null>;
   onReadSkillTrees?: (ref: string) => void;
 }) {
@@ -52,10 +55,13 @@ function buildRead(overrides?: {
           ? []
           : overrides.trees[ref];
       },
-      readSkillAuthors: async (_root: string, _ref: string, names: string[]) =>
-        Object.fromEntries(
-          names.map((name) => [name, overrides?.authors?.[name] ?? null]),
-        ),
+      readSkillAuthors: async (_root: string, ref: string, names: string[]) => {
+        const known =
+          ref === "head" ? overrides?.authors : overrides?.authorsAtRelease;
+        return Object.fromEntries(
+          names.map((name) => [name, known?.[name] ?? null]),
+        );
+      },
       readMovementTrees: async () => SETTLED_TREES,
       mergeBaseCommit: async () => null,
       readSkillManifests: async (
@@ -82,6 +88,15 @@ function buildRead(overrides?: {
         throw new Error("git port's pushSkillDeletion was reached");
       },
       readWorktreeAmbiguity: async () => null,
+    },
+    review: {
+      readReviews: async () =>
+        ({
+          outcome: "read",
+          requests: [],
+          complete: true,
+          limit: 100,
+        }) as const,
     },
     freshness: {
       read: async () => overrides?.freshness ?? FETCHED,
@@ -119,6 +134,20 @@ describe("ReadHarnessState.planRelease", () => {
         ],
         findings: [],
       },
+    });
+  });
+
+  it("names a removal's author from the release when the branch never had it", async () => {
+    // A tag on another history carries a skill the default branch never saw,
+    // so a log of that path at the branch answers nothing.
+    const read = buildRead({
+      trees: { old: [{ name: "grilling", treeHash: "g1" }], head: [] },
+      authorsAtRelease: { grilling: "Linus" },
+    });
+
+    await expect(read.planRelease()).resolves.toMatchObject({
+      ok: true,
+      plan: { delta: [{ kind: "removed", name: "grilling", author: "Linus" }] },
     });
   });
 

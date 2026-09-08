@@ -5,9 +5,12 @@ import { HOVER_TRANSITION } from "./hover-transition";
 // Per-row actions menu on Radix Dropdown Menu (ADR-0004), restyled to tokens.
 // Presentational — the caller owns what each item does.
 
+// An item either runs something here or leaves for somewhere else. A link is a
+// real anchor, so the browser's own open-in-new-tab and focus behaviour apply.
 interface ActionsMenuItem {
   label: string;
-  onSelect: () => void;
+  onSelect?: () => void;
+  href?: string;
   disabled?: boolean;
 }
 
@@ -46,8 +49,9 @@ export function ActionsMenu({ label, items }: ActionsMenuProps) {
               key={item.label}
               disabled={item.disabled}
               onSelect={item.onSelect}
+              asChild={item.href !== undefined}
               className={cn(
-                "cursor-pointer px-card-x py-1 font-mono text-desc text-fg-2 outline-none",
+                "block cursor-pointer px-card-x py-1 font-mono text-desc text-fg-2 no-underline outline-none",
                 HOVER_TRANSITION,
                 // data-[highlighted]: Radix's combined hover + roving-focus
                 // state. bg-inset, not bg-active — a menu item is never a
@@ -56,7 +60,13 @@ export function ActionsMenu({ label, items }: ActionsMenuProps) {
                 "data-[disabled]:cursor-not-allowed data-[disabled]:text-dim",
               )}
             >
-              {item.label}
+              {item.href === undefined ? (
+                item.label
+              ) : (
+                <a href={item.href} target="_blank" rel="noreferrer">
+                  {item.label}
+                </a>
+              )}
             </DropdownMenu.Item>
           ))}
         </DropdownMenu.Content>

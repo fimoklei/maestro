@@ -1,4 +1,9 @@
-import type { HarnessState } from "@maestro/core";
+import type {
+  HarnessStage,
+  HarnessStageRow,
+  HarnessState,
+  StageStatus,
+} from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode } from "react";
@@ -11,10 +16,47 @@ const RELEASED: HarnessState = {
   releasedVersion: "v0.5.0",
   defaultBranch: "main",
   releaseState: "released",
-  pendingRelease: [],
   freshness: { outcome: null, lastFetchedAt: null },
-  movements: [],
+  stages: {
+    proposal: { outcome: "read", rows: [], bound: null },
+    review: { outcome: "read", rows: [], bound: null },
+    release: { outcome: "read", rows: [], bound: null },
+  },
 };
+
+// One stage row with every field a test does not care about already settled.
+const row = (
+  stage: HarnessStage,
+  skill: string,
+  status: StageStatus,
+  over: Partial<HarnessStageRow> = {},
+): HarnessStageRow => ({
+  stage,
+  skill,
+  status,
+  deletion: false,
+  requests: [],
+  reviewers: [],
+  comparison: stage === "pending-proposal" ? { kind: "default-branch" } : null,
+  alsoIn: [],
+  concurrentChange: false,
+  remoteTree: null,
+  previousName: null,
+  ...over,
+});
+
+// The state a stage's rows make, leaving the other two confirmed empty.
+const withStages = (
+  state: HarnessState,
+  rows: Partial<Record<"proposal" | "review" | "release", HarnessStageRow[]>>,
+): HarnessState => ({
+  ...state,
+  stages: {
+    proposal: { outcome: "read", rows: rows.proposal ?? [], bound: null },
+    review: { outcome: "read", rows: rows.review ?? [], bound: null },
+    release: { outcome: "read", rows: rows.release ?? [], bound: null },
+  },
+});
 
 // One stub for both routes, so a test states what the read says and what the
 // refresh finds, and nothing else.
@@ -246,17 +288,20 @@ describe("Harness home base", () => {
     ).toBeInTheDocument();
   });
 
-  it("lists the merged skills that are waiting, with their authors", async () => {
+  it("lists the merged skills that are waiting, with their green readings", async () => {
+    // The author column is gone: #827 states no author identity line on the
+    // Harness view. The plan dialog still names authors (release-dialog).
     stubHarnessServer({
       read: {
-        body: {
-          ...RELEASED,
-          releaseState: "pending-release",
-          pendingRelease: [
-            { kind: "added", name: "research", author: "Grace" },
-            { kind: "changed", name: "tdd", author: "Ada" },
-          ],
-        },
+        body: withStages(
+          { ...RELEASED, releaseState: "pending-release" },
+          {
+            release: [
+              row("pending-release", "research", "added"),
+              row("pending-release", "tdd", "changed"),
+            ],
+          },
+        ),
       },
     });
     renderHarness();
@@ -268,7 +313,10 @@ describe("Harness home base", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByRole("row", { name: /research/ })).toHaveTextContent(
-      "Grace",
+      "Added",
+    );
+    expect(screen.getByRole("row", { name: /tdd/ })).toHaveTextContent(
+      "Changed",
     );
   });
 
@@ -380,13 +428,10 @@ describe("Harness home base", () => {
   it("groups what was pushed apart from what is still on disk", async () => {
     stubHarnessServer({
       read: {
-        body: {
-          ...RELEASED,
-          movements: [
-            { skill: "code-review", state: "pending-review" },
-            { skill: "lint-rules", state: "pending-promotion" },
-          ],
-        },
+        body: withStages(RELEASED, {
+          review: [row("pending-review", "code-review", "waiting-for-review")],
+          proposal: [row("pending-proposal", "lint-rules", "not-yet-proposed")],
+        }),
       },
     });
     renderHarness();
@@ -406,17 +451,16 @@ describe("Harness home base", () => {
     expect(
       within(promotion as HTMLElement).getByText("lint-rules"),
     ).toBeVisible();
-    // One skill, one table: a row never repeats its own state elsewhere.
+    // A skill in one stage keeps one row: the other stages hold none of it.
     expect(screen.getAllByText("code-review")).toHaveLength(1);
   });
 
-  it("leaves out a section that holds nothing", async () => {
+  it("leaves out a confirmed empty stage", async () => {
     stubHarnessServer({
       read: {
-        body: {
-          ...RELEASED,
-          movements: [{ skill: "lint-rules", state: "pending-promotion" }],
-        },
+        body: withStages(RELEASED, {
+          proposal: [row("pending-proposal", "lint-rules", "not-yet-proposed")],
+        }),
       },
     });
     renderHarness();
@@ -427,17 +471,130 @@ describe("Harness home base", () => {
         name: /pending proposal/i,
       }),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/pending review/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { level: 3, name: /pending review/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { level: 3, name: /pending release/i }),
+    ).not.toBeInTheDocument();
   });
 
-  it("shows no movement tables on a quiet day", async () => {
+  it("shows No changes yet on a confirmed empty journey", async () => {
+    // Pending proposal always renders — it hosts Import skill… — so the empty
+    // journey is stated there rather than leaving a page with nothing on it.
     stubHarnessServer({ read: { body: RELEASED } });
     renderHarness();
 
+    expect(await screen.findByText("No changes yet")).toBeInTheDocument();
     expect(
-      await screen.findByText("Everything merged is released."),
+      screen.getByText(
+        "Skills you import or edit in your clone will appear here.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /import skill/i }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  it("gives one skill a row in every stage it belongs to", async () => {
+    stubHarnessServer({
+      read: {
+        body: withStages(RELEASED, {
+          proposal: [
+            row("pending-proposal", "tdd", "new-local-work", {
+              comparison: { kind: "proposal", number: 45 },
+              alsoIn: ["pending-review", "pending-release"],
+            }),
+          ],
+          review: [
+            row("pending-review", "tdd", "waiting-for-review", {
+              requests: [
+                {
+                  number: 45,
+                  url: "https://github.com/fimoklei/agent-harness/pull/45",
+                },
+              ],
+              alsoIn: ["pending-proposal", "pending-release"],
+            }),
+          ],
+          release: [
+            row("pending-release", "tdd", "changed", {
+              alsoIn: ["pending-proposal", "pending-review"],
+            }),
+          ],
+        }),
+      },
+    });
+    renderHarness();
+
+    expect(await screen.findAllByText("tdd")).toHaveLength(3);
+    expect(screen.getByText("New local work")).toBeInTheDocument();
+    expect(screen.getByText("Waiting for review")).toBeInTheDocument();
+    expect(screen.getByText("Changed")).toBeInTheDocument();
+    expect(
+      screen.getByText("Also in Pending review and Pending release."),
+    ).toBeInTheDocument();
+  });
+
+  it("names the requested reviewers, uncapped", async () => {
+    stubHarnessServer({
+      read: {
+        body: withStages(RELEASED, {
+          review: [
+            row("pending-review", "tdd", "waiting-for-review", {
+              requests: [
+                {
+                  number: 45,
+                  url: "https://github.com/fimoklei/agent-harness/pull/45",
+                },
+              ],
+              reviewers: [
+                { kind: "user", login: "ada" },
+                { kind: "user", login: "bo" },
+                { kind: "team", slug: "fimoklei/reviewers" },
+              ],
+            }),
+          ],
+        }),
+      },
+    });
+    renderHarness();
+
+    expect(
+      await screen.findByText(
+        "Review requested from @ada, @bo, @fimoklei/reviewers",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("suppresses the cross-stage line where membership is unknown", async () => {
+    stubHarnessServer({
+      read: {
+        body: {
+          ...RELEASED,
+          stages: {
+            proposal: {
+              outcome: "read",
+              bound: null,
+              rows: [
+                row("pending-proposal", "tdd", "not-yet-proposed", {
+                  alsoIn: null,
+                }),
+              ],
+            },
+            review: { outcome: "unavailable" },
+            release: { outcome: "read", rows: [], bound: null },
+          },
+        },
+      },
+    });
+    renderHarness();
+
+    expect(await screen.findByText("tdd")).toBeInTheDocument();
+    expect(screen.queryByText(/^Also in /)).not.toBeInTheDocument();
+    // The unread stage replaces its whole meta slot and draws no card.
+    expect(screen.getByText("Review status unavailable")).toBeInTheDocument();
   });
 
   it("never turns a clone that is only behind into work of your own", async () => {
@@ -451,7 +608,9 @@ describe("Harness home base", () => {
     expect(
       await screen.findByText("Merged changes are waiting for release."),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/pending proposal/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("cell", { name: /not yet proposed/i }),
+    ).not.toBeInTheDocument();
   });
 
   const FETCHED: HarnessState = {
@@ -897,43 +1056,26 @@ describe("Harness home base", () => {
       outcome: "fetched",
       lastFetchedAt: "2026-08-03T11:56:00.000Z",
     },
-    movements: [
-      {
-        skill: "lint-rules",
-        state: "pending-promotion",
-        deletion: false,
-        concurrentChange: false,
-        remoteTree: null,
+    stages: {
+      proposal: {
+        outcome: "read",
+        bound: null,
+        rows: [
+          row("pending-proposal", "lint-rules", "not-yet-proposed"),
+          row("pending-proposal", "code-review", "not-yet-proposed"),
+        ],
       },
-      {
-        skill: "code-review",
-        state: "pending-promotion",
-        deletion: false,
-        concurrentChange: false,
-        remoteTree: null,
-      },
-    ],
+      review: { outcome: "read", rows: [], bound: null },
+      release: { outcome: "read", rows: [], bound: null },
+    },
   };
 
-  const REVIEWED: HarnessState = {
-    ...ON_DISK,
-    movements: [
-      {
-        skill: "lint-rules",
-        state: "pending-review",
-        deletion: false,
-        concurrentChange: false,
-        remoteTree: null,
-      },
-      {
-        skill: "code-review",
-        state: "pending-promotion",
-        deletion: false,
-        concurrentChange: false,
-        remoteTree: null,
-      },
-    ],
-  };
+  // What the read says once lint-rules has been pushed: a prepared branch with
+  // no request is Pull request missing, never an open review (user story 11).
+  const REVIEWED: HarnessState = withStages(ON_DISK, {
+    proposal: [row("pending-proposal", "code-review", "not-yet-proposed")],
+    review: [row("pending-review", "lint-rules", "pull-request-missing")],
+  });
 
   const PUSHED = {
     branch: "maestro/lint-rules",
@@ -941,10 +1083,18 @@ describe("Harness home base", () => {
       "https://github.com/fimoklei/agent-harness/compare/main...maestro/lint-rules?expand=1",
   };
 
-  const promoteRow = async (skill: string) => {
-    const row = (await screen.findByText(skill)).closest("tr") as HTMLElement;
+  // Every action lives in the row menu now, so a press opens it first.
+  const openRowMenu = async (skill: string) => {
     await userEvent.click(
-      within(row).getByRole("button", { name: /^propose change$/i }),
+      await screen.findByRole("button", { name: `Actions for ${skill}` }),
+    );
+    return screen.findByRole("menu");
+  };
+
+  const promoteRow = async (skill: string) => {
+    const menu = await openRowMenu(skill);
+    await userEvent.click(
+      within(menu).getByRole("menuitem", { name: /^propose change$/i }),
     );
   };
 
@@ -968,19 +1118,14 @@ describe("Harness home base", () => {
     const promotions: Record<string, unknown>[] = [];
     stubHarnessServer({
       read: {
-        body: {
-          ...ON_DISK,
-          movements: [
-            {
-              skill: "lint-rules",
-              state: "pending-promotion",
-              deletion: false,
+        body: withStages(ON_DISK, {
+          proposal: [
+            row("pending-proposal", "lint-rules", "not-yet-proposed", {
               concurrentChange: true,
-              remoteTree: null,
-            },
-            ON_DISK.movements[1],
+            }),
+            row("pending-proposal", "code-review", "not-yet-proposed"),
           ],
-        },
+        }),
       },
       promote: { body: PUSHED },
       promotions,
@@ -1005,7 +1150,9 @@ describe("Harness home base", () => {
     await waitFor(() => expect(promotions).toEqual([{ name: "lint-rules" }]));
   });
 
-  it("moves the promoted row to Pending review and opens the pull-request flow", async () => {
+  it("moves the promoted row to Pending review, with no request yet claimed", async () => {
+    // A pushed branch is not an open review: it reads as Pull request missing
+    // until GitHub says a request exists (user story 11).
     stubHarnessServer({
       read: { body: ON_DISK, afterPromote: REVIEWED },
       promote: { body: PUSHED },
@@ -1017,14 +1164,8 @@ describe("Harness home base", () => {
     const review = (
       await screen.findByRole("heading", { level: 3, name: /pending review/i })
     ).closest("section") as HTMLElement;
-    const link = await within(review).findByRole("link", {
-      name: /Pull request/i,
-    });
-    expect(link).toHaveAttribute("href", PUSHED.pullRequestUrl);
     expect(within(review).getByText("lint-rules")).toBeVisible();
-    // The pressed button moved out from under the keyboard; focus follows what
-    // replaced it rather than falling back to the document.
-    expect(link).toHaveFocus();
+    expect(within(review).getByText("Pull request missing")).toBeVisible();
   });
 
   it("re-reads the harness after a promotion, rather than moving the row itself", async () => {
@@ -1062,10 +1203,10 @@ describe("Harness home base", () => {
     expect(
       await screen.findByText(/The Harness is as it was/i),
     ).toBeInTheDocument();
-    const row = screen.getByText("lint-rules").closest("tr") as HTMLElement;
+    const menu = await openRowMenu("lint-rules");
     expect(
-      within(row).getByRole("button", { name: /^propose change$/i }),
-    ).toBeEnabled();
+      within(menu).getByRole("menuitem", { name: /^propose change$/i }),
+    ).not.toHaveAttribute("data-disabled");
   });
 
   it("keeps Promote out of reach until a fetch has answered", async () => {
@@ -1079,64 +1220,123 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    const row = (await screen.findByText("lint-rules")).closest(
-      "tr",
-    ) as HTMLElement;
+    const menu = await openRowMenu("lint-rules");
     await waitFor(() =>
       expect(
-        within(row).getByRole("button", { name: /^propose change$/i }),
-      ).toBeDisabled(),
+        within(menu).getByRole("menuitem", { name: /^propose change$/i }),
+      ).toHaveAttribute("data-disabled"),
     );
   });
 
-  it("offers no Promote on a row that is already pushed", async () => {
+  it("offers no Propose change on a row that is already pushed", async () => {
     stubHarnessServer({
       read: {
-        body: {
-          ...ON_DISK,
-          movements: [
-            {
-              skill: "lint-rules",
-              state: "pending-review",
-              deletion: false,
-              concurrentChange: false,
-              remoteTree: null,
-            },
-            {
-              skill: "old-skill",
-              state: "pending-review",
+        body: withStages(ON_DISK, {
+          review: [
+            row("pending-review", "lint-rules", "pull-request-missing"),
+            row("pending-review", "old-skill", "pull-request-missing", {
               deletion: true,
-              concurrentChange: false,
-              remoteTree: null,
-            },
+            }),
           ],
-        },
+        }),
       },
     });
     renderHarness();
 
+    // Nothing to press yet on a pushed row: its menu holds no item at all
+    // until #844 adds Create pull request.
     await screen.findByText("lint-rules");
     expect(
-      screen.queryByRole("button", { name: /^propose change$/i }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: "Actions for lint-rules" }),
+    ).toBeDisabled();
+  });
+
+  it("keeps the pull-request link through a refresh and a remount", async () => {
+    // The link is read from the state, never kept in the component: rebuilding
+    // the client and remounting the view must not lose it (user story 12).
+    const OPEN_REQUEST = withStages(ON_DISK, {
+      review: [
+        row("pending-review", "lint-rules", "waiting-for-review", {
+          requests: [
+            {
+              number: 45,
+              url: "https://github.com/fimoklei/agent-harness/pull/45",
+            },
+          ],
+        }),
+      ],
+    });
+    stubHarnessServer({ read: { body: OPEN_REQUEST } });
+    const first = renderWithQuery(<HarnessView />);
+    const before = await openRowMenu("lint-rules");
+    expect(
+      within(before).getByRole("menuitem", { name: /open pull request/i }),
+    ).toHaveAttribute(
+      "href",
+      "https://github.com/fimoklei/agent-harness/pull/45",
+    );
+
+    first.unmount();
+    renderWithQuery(<HarnessView />);
+
+    const after = await openRowMenu("lint-rules");
+    expect(
+      within(after).getByRole("menuitem", { name: /open pull request/i }),
+    ).toHaveAttribute(
+      "href",
+      "https://github.com/fimoklei/agent-harness/pull/45",
+    );
+  });
+
+  it("lists one link per request when more than one matches", async () => {
+    stubHarnessServer({
+      read: {
+        body: withStages(ON_DISK, {
+          review: [
+            row("pending-review", "lint-rules", "multiple-pull-requests", {
+              requests: [
+                {
+                  number: 41,
+                  url: "https://github.com/fimoklei/agent-harness/pull/41",
+                },
+                {
+                  number: 44,
+                  url: "https://github.com/fimoklei/agent-harness/pull/44",
+                },
+              ],
+            }),
+          ],
+        }),
+      },
+    });
+    renderHarness();
+
+    expect(
+      await screen.findByText(
+        "Pull requests #41 and #44 both match this branch, so close one on GitHub.",
+      ),
+    ).toBeInTheDocument();
+    const menu = await openRowMenu("lint-rules");
+    expect(
+      within(menu).getByRole("menuitem", { name: "Open pull request #41" }),
+    ).toBeInTheDocument();
+    expect(
+      within(menu).getByRole("menuitem", { name: "Open pull request #44" }),
+    ).toBeInTheDocument();
   });
 
   // A removal never publishes by a single press: the confirmation states what
   // will be removed and carries the origin/HEAD tree the row was painted from,
   // so a remote that moved under it refuses rather than removes (#580).
-  const DELETED: HarnessState = {
-    ...ON_DISK,
-    movements: [
-      {
-        skill: "old-skill",
-        state: "pending-promotion",
+  const DELETED: HarnessState = withStages(ON_DISK, {
+    proposal: [
+      row("pending-proposal", "old-skill", "deleted-locally", {
         deletion: true,
-        concurrentChange: false,
         remoteTree: "abc123",
-      },
-      ON_DISK.movements[1] as HarnessState["movements"][number],
+      }),
+      row("pending-proposal", "code-review", "not-yet-proposed"),
     ],
-  };
+  });
 
   const REMOVED = {
     branch: "maestro/old-skill",
@@ -1185,22 +1385,17 @@ describe("Harness home base", () => {
     );
   });
 
-  it("moves the confirmed row to Pending review and opens the pull-request flow", async () => {
+  it("moves the confirmed row to Pending review as a deletion", async () => {
     stubHarnessServer({
       read: {
         body: DELETED,
-        afterPromote: {
-          ...DELETED,
-          movements: [
-            {
-              skill: "old-skill",
-              state: "pending-review",
+        afterPromote: withStages(DELETED, {
+          review: [
+            row("pending-review", "old-skill", "pull-request-missing", {
               deletion: true,
-              concurrentChange: false,
-              remoteTree: "abc123",
-            },
+            }),
           ],
-        },
+        }),
       },
       deletion: { body: REMOVED },
     });
@@ -1214,13 +1409,8 @@ describe("Harness home base", () => {
     const review = (
       await screen.findByRole("heading", { level: 3, name: /pending review/i })
     ).closest("section") as HTMLElement;
-    const link = await within(review).findByRole("link", {
-      name: /Pull request/i,
-    });
-    expect(link).toHaveAttribute("href", REMOVED.pullRequestUrl);
-    // The confirmation and the row it was opened from both unmounted, so
-    // without this focus falls back to the document (#581).
-    expect(link).toHaveFocus();
+    expect(within(review).getByText("old-skill")).toBeVisible();
+    expect(within(review).getByText("Pull request missing")).toBeVisible();
   });
 
   it("states a refused confirmation in the dialog, and asks for a new one", async () => {

@@ -30,6 +30,7 @@ import { stubImport } from "../helpers/stub-import";
 import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
+import { stubReview } from "../helpers/stub-review";
 import { stubScaffold } from "../helpers/stub-scaffold";
 
 const run = promisify(execFile);
@@ -123,6 +124,7 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
             : await fs.realpath(harnessPath),
         git: new HarnessGitAdapter(),
         freshness: new HarnessFreshnessStore({ store }),
+        review: stubReview(),
       }),
       publish: stubPublish(),
       ...stubPromotes(),

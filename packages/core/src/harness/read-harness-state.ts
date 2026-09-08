@@ -2,12 +2,8 @@
 // Git details stay behind the port — no stdout, stderr, or remote text reaches
 // this use-case, so none can reach a response (ADR-0021, security.md).
 import { parseGitOrigin } from "../deploy/git-origin";
-import {
-  classifyMovement,
-  isConcurrentlyChanged,
-  isLocalDeletion,
-  type MovementState,
-} from "./classify-movement";
+import type { HarnessReviewPort } from "./harness-review-port";
+import { buildStages, type HarnessStages } from "./harness-stages";
 import {
   proposeReleaseVersion,
   type SemverStep,
@@ -174,30 +170,15 @@ export type HarnessReleaseState =
 
 export type PendingSkillMovement = SkillMovement & { author: string | null };
 
-export type HarnessMovement = {
-  skill: string;
-  state: MovementState;
-  // True when the skill was tracked at local HEAD and is gone from disk — a
-  // deletion the view labels `deleted locally` (#575).
-  deletion: boolean;
-  // True when origin/HEAD's content already differs from local HEAD — a
-  // teammate's merged change. Promoting still replaces it; this is what
-  // makes that visible before the press (#579).
-  concurrentChange: boolean;
-  // origin/HEAD's own copy of this skill, or null where it carries none. The
-  // opaque token a deletion confirmation is given against: it travels back at
-  // the press, and a tree that moved since refuses it (#580).
-  remoteTree: string | null;
-};
-
 export type HarnessState = {
   origin: string;
   releasedVersion: string | null;
   defaultBranch: string | null;
   releaseState: HarnessReleaseState;
-  pendingRelease: PendingSkillMovement[];
   freshness: HarnessFreshness;
-  movements: HarnessMovement[];
+  // The three stages of the journey, each with its own membership and its own
+  // outcome: a stage nobody could read is unknown, never empty (ADR-0021 · 10).
+  stages: HarnessStages;
 };
 
 export type HarnessStateError = "not-configured" | "no-usable-origin";
@@ -239,6 +220,10 @@ export class ReadHarnessState {
     resolveRoot: () => Promise<string | undefined>;
     git: HarnessGitPort;
     freshness: HarnessFreshnessPort;
+    // GitHub's own facts about the proposals. An optional capability: a read
+    // that fails or is unavailable degrades one stage, never the others
+    // (ADR-0029).
+    review: HarnessReviewPort;
   };
 
   // One fetch per harness at a time: the view opens under StrictMode and a
@@ -412,6 +397,8 @@ export class ReadHarnessState {
     const trees = await this.deps.git.readMovementTrees(root);
     const atMergeBase =
       head === null ? null : await this.skillTreesAtMergeBase(root, head);
+    // One batched read for the whole Harness, never one per skill (ADR-0029).
+    const review = await this.deps.review.readReviews(origin);
     return {
       ok: true,
       state: {
@@ -422,9 +409,15 @@ export class ReadHarnessState {
           tags !== null && movements !== null && trees !== null
             ? releaseState(released, head)
             : "unknown",
-        pendingRelease: movements ?? [],
         freshness,
-        movements: trees === null ? [] : movementsFromTrees(trees, atMergeBase),
+        stages: buildStages({
+          origin,
+          defaultBranch: facts.defaultBranch,
+          trees,
+          atMergeBase,
+          review,
+          release: movements,
+        }),
       },
     };
   }
@@ -493,42 +486,6 @@ export class ReadHarnessState {
     }));
   }
 }
-
-// Every name any of the four refs knows, so a skill that exists only on a
-// promote branch or only on disk is still asked about. Sorted, so the tables
-// do not reshuffle between reads.
-const movementsFromTrees = (
-  trees: HarnessSkillTrees,
-  atMergeBase: Record<string, string> | null,
-): HarnessMovement[] => {
-  const names = new Set(Object.values(trees).flatMap(Object.keys));
-  return [...names].sort().flatMap((skill) => {
-    const hashes = {
-      remote: trees.remote[skill] ?? null,
-      // Presence of the key, not of a hash: the branch may be deleting it.
-      promote: Object.hasOwn(trees.promote, skill)
-        ? { tree: trees.promote[skill] ?? null }
-        : null,
-      local: trees.local[skill] ?? null,
-      working: trees.working[skill] ?? null,
-    };
-    const state = classifyMovement(hashes);
-    return state === null
-      ? []
-      : [
-          {
-            skill,
-            state,
-            deletion: isLocalDeletion(hashes),
-            concurrentChange: isConcurrentlyChanged(
-              hashes,
-              atMergeBase === null ? undefined : (atMergeBase[skill] ?? null),
-            ),
-            remoteTree: hashes.remote,
-          },
-        ];
-  });
-};
 
 const releaseState = (
   released: HarnessTag | null,
