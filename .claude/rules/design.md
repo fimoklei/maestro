@@ -9,6 +9,14 @@ Never take design values (colour, size, spacing) from a flow screen; build from 
 
 - **Copy** — `.claude/rules/copy.md` (ADR-0025). Every user-facing word the cockpit shows is written and reviewed against it.
 
+## Accessible labels
+
+- Include the visible label's words in the accessible name, in the same order
+  and at the start. Name icon-only controls by their action and landmarks by
+  their content. Review the name with the control or region it describes.
+- Give fields visible labels; hints supplement them. Show status meaning in
+  text as well as colour. Name link destinations in the link text.
+
 ## Verify before "done"
 
 Mandatory for any change that alters what `packages/web` renders:
@@ -19,7 +27,8 @@ Mandatory for any change that alters what `packages/web` renders:
    - Verifying anything the cockpit shows once connected → run `pnpm smoke:ready`,
      which waits for the cockpit, connects the inventory and registers one repo.
 2. Screenshot the changed UI with `agent-browser`.
-3. Compare against the design source; on mismatch, fix before claiming done.
-4. Run the `verify-in-smoke` checks before treating the screenshot as proof.
+3. Read changed copy at a narrow width and at 200% zoom.
+4. Compare against the design source; on mismatch, fix before claiming done.
+5. Run the `verify-in-smoke` checks before treating the screenshot as proof.
 
 Only a screenshot proves visual fidelity — the vitest/jsdom suite renders without CSS.

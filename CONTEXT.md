@@ -186,7 +186,7 @@ all three when each row represents different work; ordinary explanation may say
 ### Jargon the screen keeps
 
 An inherited tooling term the reader already types stays in the sentence; a
-Maestro invention is explained on first use (`.claude/rules/copy.md` → Terms).
+Maestro invention is explained on first use.
 Decided so far:
 
 | Word | Call |
