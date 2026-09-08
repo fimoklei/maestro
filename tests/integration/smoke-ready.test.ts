@@ -189,8 +189,34 @@ describe("seedCockpit", () => {
     expect(calls).toHaveLength(1);
   });
 
-  it("refuses an inventory that connects but holds no primitives", async () => {
-    // An empty cockpit is the same class of failure as an unanswered one: it
+  // #841 replaced the requirement this used to state. A confirmed zero is now a
+  // valid Inventory — a Harness with no release yet — so the gate refuses only
+  // a count nothing confirmed.
+  it("accepts an inventory that connects with no released skills", async () => {
+    const { calls, request } = recorder((path) =>
+      path === "/api/inventory/connect"
+        ? {
+            status: 200,
+            body: {
+              inventoryPath: "/home/Projects/agent-harness",
+              primitiveCount: 0,
+            },
+          }
+        : { status: 201, body: { repos: [{ path: "/x" }] } },
+    );
+
+    const report = await seedCockpit({
+      request,
+      inventoryPath: "/home/Projects/agent-harness",
+      repoPath: "/home/Projects/checkout-service",
+    });
+
+    expect(report).toEqual({ primitiveCount: 0, repoCount: 1 });
+    expect(calls).toHaveLength(2);
+  });
+
+  it("refuses an inventory whose released skills could not be read", async () => {
+    // An unread cockpit is the same class of failure as an unanswered one: it
     // passes as green and every UI check downstream reads nothing (issue #544).
     const { request } = recorder((path) =>
       path === "/api/inventory/connect"
@@ -198,7 +224,7 @@ describe("seedCockpit", () => {
             status: 200,
             body: {
               inventoryPath: "/home/Projects/agent-harness",
-              primitiveCount: 0,
+              primitiveCount: null,
             },
           }
         : { status: 201, body: { repos: [] } },
@@ -210,15 +236,15 @@ describe("seedCockpit", () => {
         inventoryPath: "/home/Projects/agent-harness",
         repoPath: "/home/Projects/checkout-service",
       }),
-    ).rejects.toThrow(/agent-harness.*no primitives.*\.apm\/skills/s);
+    ).rejects.toThrow(/agent-harness.*could not be read/s);
   });
 
-  it("does not register the repo against an empty inventory", async () => {
+  it("does not register the repo against an unread inventory", async () => {
     const { calls, request } = recorder(() => ({
       status: 200,
       body: {
         inventoryPath: "/home/Projects/agent-harness",
-        primitiveCount: 0,
+        primitiveCount: null,
       },
     }));
 

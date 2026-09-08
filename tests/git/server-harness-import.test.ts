@@ -21,6 +21,7 @@ import {
   InventoryReader,
   NodeCopyTreeFs,
   NodeFileSystem,
+  releasedSkillsFromGit,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -74,6 +75,9 @@ describe("harness import HTTP route", () => {
     const inventory = new InventoryReader({
       fs,
       resolvePath: () => harnessRoot,
+      // The real released read: these suites build real repositories,
+      // so Inventory answers from `refs/maestro/tags` as it does live (#841).
+      readReleasedSkills: releasedSkillsFromGit(new HarnessGitAdapter()),
     });
     const locks = new InFlightLocks();
     return createApp({

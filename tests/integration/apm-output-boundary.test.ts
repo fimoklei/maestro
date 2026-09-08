@@ -101,7 +101,11 @@ describe("apm output never reaches the client", () => {
     const fs = new NodeFileSystem();
     const location = new DeployedLocation({ HOME: home });
     const registry = realRegistry(fs, join(home, "config.json"));
-    const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
+    const inventory = new InventoryReader({
+      fs,
+      resolvePath: () => undefined,
+      readReleasedSkills: async () => [],
+    });
     const apm = new ApmCliDriver({
       run: async () => {
         if (mode === "rejects") {
@@ -225,6 +229,7 @@ describe("apm output never reaches the client", () => {
       const inventory = new InventoryReader({
         fs,
         resolvePath: () => undefined,
+        readReleasedSkills: async () => [],
       });
       const locks = new InFlightLocks();
       const app = createApp({

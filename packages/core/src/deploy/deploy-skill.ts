@@ -139,6 +139,8 @@ export type DeploySkillError =
   | "invalid-name"
   | "unknown-skill"
   | "inventory-not-configured"
+  // The harness is connected; its latest release could not be read (#841).
+  | "inventory-unreadable"
   | "repo-not-registered"
   | "inventory-origin-unavailable"
   | "no-published-tag"
@@ -230,7 +232,13 @@ export class DeploySkill {
   private async deploy(input: DeploySkillInput): Promise<DeploySkillResult> {
     const inventory = await this.deps.inventory.read();
     if (!inventory.ok) {
-      return { ok: false, error: "inventory-not-configured" };
+      return {
+        ok: false,
+        error:
+          inventory.error === "unreadable"
+            ? "inventory-unreadable"
+            : "inventory-not-configured",
+      };
     }
     if (!inventory.primitives.some((p) => p.name === input.name)) {
       return { ok: false, error: "unknown-skill" };

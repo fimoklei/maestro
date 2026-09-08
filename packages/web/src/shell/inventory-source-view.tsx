@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { INVENTORY_NOT_READ } from "../inventory/inventory-copy";
 import { useInventory, useInventoryConfig } from "../inventory/use-inventory";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
@@ -18,15 +19,9 @@ const SOURCE_TITLE = "Harness location";
 const SOURCE_META = "Local clone · GitHub connected";
 const SOURCE_CARD_WIDTH = "max-w-lg";
 
-// The Re-read Inventory button sits directly below, so the notice carries no action of
-// its own — a second copy of the same control would compete with it.
-export const READ_FAILED: NoticeContent = {
-  level: "error",
-  label: "Inventory not read",
-  message: "Check the path below, then press Re-read Inventory.",
-  detail:
-    "The folder may have moved, or Maestro can no longer read its apm.yml.",
-};
+// The Re-read Inventory button sits directly below, so the notice carries no
+// action of its own — a second copy of the same control would compete with it.
+export const READ_FAILED: NoticeContent = INVENTORY_NOT_READ;
 
 export function InventorySourceView() {
   const config = useInventoryConfig();

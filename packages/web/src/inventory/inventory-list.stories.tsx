@@ -55,6 +55,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
+// No released skills: the offer that fills the list, not a failure (#841).
 export const Empty: Story = {
-  args: { primitives: [] },
+  args: { primitives: [], onOpenHarness: () => {} },
 };

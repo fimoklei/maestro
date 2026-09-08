@@ -5,7 +5,8 @@ import { Button } from "../ui/button";
 
 export type ConnectSuccessViewProps = {
   outcome: ConnectOutcome;
-  primitiveCount: number;
+  // Null where the released count could not be read (#841).
+  primitiveCount: number | null;
   inventoryPath: string;
   onContinue: () => void;
 };
@@ -18,20 +19,24 @@ type CompletionCopy = {
 
 function completionCopy(
   outcome: ConnectOutcome,
-  primitiveCount: number,
+  primitiveCount: number | null,
 ): CompletionCopy {
-  const count = primitiveCountLabel(primitiveCount);
+  // An unread count is left out of the sentence rather than shown as zero.
+  const found =
+    primitiveCount === null
+      ? "Harness found"
+      : `${primitiveCountLabel(primitiveCount)} found`;
 
   switch (outcome) {
     case "found":
       return {
-        title: `✓ ${count} found`,
+        title: `✓ ${found}`,
         detail: "Deploys never write back to this Harness.",
         continueLabel: "Continue to Inventory",
       };
     case "joined":
       return {
-        title: `✓ Harness joined · ${count} found`,
+        title: `✓ Harness joined · ${found}`,
         detail: "The cloned Harness is ready in Inventory.",
         continueLabel: "Continue to Inventory",
       };

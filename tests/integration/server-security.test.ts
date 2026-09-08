@@ -37,7 +37,11 @@ describe("write-route Origin/Host guard", () => {
   function makeApp() {
     const fs = new NodeFileSystem();
     const registry = realRegistry(fs, join(dir, "config.json"));
-    const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
+    const inventory = new InventoryReader({
+      fs,
+      resolvePath: () => undefined,
+      readReleasedSkills: async () => [],
+    });
     const deployState = stubDeployState({ fs });
     const locks = new InFlightLocks();
     return createApp({

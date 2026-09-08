@@ -71,7 +71,11 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
   function makeApp() {
     const fs = new NodeFileSystem();
     const registry = realRegistry(fs, join(home, "config.json"));
-    const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
+    const inventory = new InventoryReader({
+      fs,
+      resolvePath: () => undefined,
+      readReleasedSkills: async () => [],
+    });
     const deployState = new GlobalDeployStateReader({
       fs,
       toolPresence: new ToolPresenceAdapter({ homeRoot: () => home }),

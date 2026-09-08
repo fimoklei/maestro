@@ -3,8 +3,16 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useInventory } from "../inventory/use-inventory";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import { HarnessView } from "./harness-view";
+
+// Holds the Inventory query open beside the Harness view, so a test can state
+// whether publishing a release made it read again.
+function InventoryProbe() {
+  useInventory();
+  return null;
+}
 
 const RELEASED: HarnessState = {
   origin: "github.com/fimoklei/agent-harness",
@@ -595,6 +603,47 @@ describe("Harness home base", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
     );
     expect(await screen.findByText("v1.3.0")).toBeInTheDocument();
+  });
+
+  // Inventory answers from the latest release, so publishing one is the only
+  // act that changes it — nothing else refetches it (#841, ADR-0021 §9).
+  it("re-reads the Inventory once the release is published", async () => {
+    const calls = stubHarnessServer({
+      read: { body: FETCHED },
+      refresh: {
+        body: FETCHED,
+        afterPublish: { ...RELEASED, releasedVersion: "v1.3.0" },
+      },
+      plan: { body: PLAN },
+      publish: { body: { tag: "v1.3.0", revision: PLAN.revision } },
+    });
+    renderWithQuery(
+      <StrictMode>
+        <HarnessView />
+        <InventoryProbe />
+      </StrictMode>,
+    );
+    await waitFor(() =>
+      expect(
+        calls.filter((call) => call.includes("/api/inventory/primitives")),
+      ).toHaveLength(1),
+    );
+
+    const release = await screen.findByRole("button", {
+      name: /^plan release$/i,
+    });
+    await waitFor(() => expect(release).toBeEnabled());
+    await userEvent.click(release);
+    await screen.findByText("v1.3.0");
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
+
+    await waitFor(() =>
+      expect(
+        calls.filter((call) => call.includes("/api/inventory/primitives")),
+      ).toHaveLength(2),
+    );
   });
 
   it("falls back to a plain read when the post-publish fetch cannot reach the remote", async () => {

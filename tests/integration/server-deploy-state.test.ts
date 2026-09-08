@@ -35,7 +35,11 @@ describe("deploy-state HTTP route", () => {
   function makeApp() {
     const fs = new NodeFileSystem();
     const registry = realRegistry(fs, join(home, "config.json"));
-    const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
+    const inventory = new InventoryReader({
+      fs,
+      resolvePath: () => undefined,
+      readReleasedSkills: async () => [],
+    });
     const deployState = stubDeployState({ fs });
     const locks = new InFlightLocks();
     const app = createApp({

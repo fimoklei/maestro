@@ -18,6 +18,7 @@ import {
   PromoteSkill,
   PromoteSkillDeletion,
   ReadHarnessState,
+  releasedSkillsFromGit,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -89,6 +90,9 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     const inventory = new InventoryReader({
       fs,
       resolvePath: () => harnessPath,
+      // The real released read: these suites build real repositories,
+      // so Inventory answers from `refs/maestro/tags` as it does live (#841).
+      readReleasedSkills: releasedSkillsFromGit(new HarnessGitAdapter()),
     });
     const locks = new InFlightLocks();
     const resolveRoot = async () =>

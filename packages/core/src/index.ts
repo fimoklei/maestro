@@ -153,6 +153,11 @@ export {
   InventoryReader,
   type InventoryResult,
 } from "./inventory/inventory-reader";
+export {
+  type ReadReleasedSkills,
+  type ReleasedSkill,
+  releasedSkillsFromGit,
+} from "./inventory/released-skills";
 export { isRepositoryRoot } from "./inventory/repository-root";
 export { resolveInventoryPath } from "./inventory/resolve-inventory-path";
 export {

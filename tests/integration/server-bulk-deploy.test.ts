@@ -80,7 +80,16 @@ describe("bulk deploy HTTP route", () => {
   }) {
     const fs = new NodeFileSystem();
     const registry = realRegistry(fs, join(home, "config.json"));
-    const inventory = new InventoryReader({ fs, resolvePath: () => harness });
+    const inventory = new InventoryReader({
+      fs,
+      resolvePath: () => harness,
+      // Released, not merely on disk: Inventory answers from the release (#841).
+      readReleasedSkills: async () =>
+        ["tdd", "review", "docs"].map((name) => ({
+          name,
+          manifest: `---\nname: ${name}\ndescription: ${name} skill\n---\n`,
+        })),
+    });
     const diverged = new Set(options?.divergedNames ?? []);
     const fails = new Set(options?.failNames ?? []);
     // What apm leaves behind: the user-scope lockfile grows one entry per

@@ -67,8 +67,9 @@ async function post(request, path, body, what) {
 /**
  * Connects the inventory and registers the consuming repo, in that order — a
  * repo registered against no inventory shows deploy-state for nothing. Any
- * refusal stops the sequence — an inventory yielding nothing included (#544):
- * a half-seeded cockpit would look ready and lie.
+ * refusal stops the sequence — an inventory whose count could not be read
+ * included (#544): a half-seeded cockpit would look ready and lie. A confirmed
+ * zero is a Harness with no release yet, which is a valid state (#841).
  */
 export async function seedCockpit({ request, inventoryPath, repoPath }) {
   const connected = await post(
@@ -77,12 +78,13 @@ export async function seedCockpit({ request, inventoryPath, repoPath }) {
     { path: inventoryPath },
     "Connecting the inventory",
   );
-  const primitiveCount = connected?.primitiveCount ?? 0;
-  if (primitiveCount === 0)
+  const primitiveCount = connected?.primitiveCount ?? null;
+  if (primitiveCount === null)
     throw new Error(
-      `connected ${inventoryPath}, but it holds no primitives. ` +
-        "Maestro reads skills from `.apm/skills/<name>/SKILL.md`; " +
-        "check that layout in the source repo the sandbox was seeded from.",
+      `connected ${inventoryPath}, but its released skills could not be read. ` +
+        "Maestro reads Inventory from the latest release under " +
+        "`refs/maestro/tags`; check that the sandbox's clone is a readable " +
+        "git repository.",
     );
 
   const registered = await post(

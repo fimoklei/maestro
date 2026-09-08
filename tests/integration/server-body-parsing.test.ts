@@ -53,6 +53,7 @@ describe("POST body parsing", () => {
     const inventory = new InventoryReader({
       fs,
       resolvePath: async () => undefined,
+      readReleasedSkills: async () => [],
     });
     const locks = new InFlightLocks();
     return createApp({
