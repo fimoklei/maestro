@@ -141,6 +141,25 @@ describe("Detail sentences", () => {
     );
   });
 
+  // The numbers grow without bound, so listing them past two would grow the
+  // sentence past the length #840 settled. Every link stays in the row menu.
+  it("keeps the sentence one length for three matching requests or more", () => {
+    expect(
+      detailSentence(
+        row("pending-review", "multiple-pull-requests", {
+          requests: [
+            { number: 41, url: "https://github.com/o/r/pull/41" },
+            { number: 44, url: "https://github.com/o/r/pull/44" },
+            { number: 47, url: "https://github.com/o/r/pull/47" },
+          ],
+        }),
+        CONTEXT,
+      ),
+    ).toBe(
+      "Several pull requests match this branch, so close all but one on GitHub.",
+    );
+  });
+
   it("names the branch it compared against when no proposal exists", () => {
     expect(
       detailSentence(row("pending-proposal", "not-yet-proposed"), CONTEXT),
