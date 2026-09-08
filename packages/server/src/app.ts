@@ -68,6 +68,7 @@ import { type Context, Hono } from "hono";
 import { z } from "zod";
 import type { ErrorTable } from "./error-table";
 import { originHostGuard } from "./origin-host-guard";
+import { requireRegisteredRepo } from "./registered-repo-route";
 
 const registerBodySchema = z.object({ path: z.string() });
 
@@ -526,6 +527,12 @@ export type AppDeps = {
 
 export function createApp(deps: AppDeps) {
   const app = new Hono();
+  const requireRegisteredRepoAccess = (c: Context) =>
+    requireRegisteredRepo(c, {
+      registry: deps.registry,
+      deployState: deps.deployState,
+      drift: deps.drift,
+    });
 
   // Reachability only: that the route answers at all is the signal.
   app.get("/api/health", (c) => c.json({ ok: true, component: "server" }));
@@ -781,14 +788,11 @@ export function createApp(deps: AppDeps) {
   // Registry-gated: an unregistered repo is refused before any filesystem
   // access, so a request can never read an arbitrary <path>/apm.lock.yaml.
   app.get("/api/deploy-state", async (c) => {
-    const repo = c.req.query("repo");
-    if (repo === undefined || repo.trim() === "") {
-      return c.json({ error: "missing-repo" }, 400);
+    const gate = await requireRegisteredRepoAccess(c);
+    if (!gate.ok) {
+      return gate.response;
     }
-    if (!(await deps.registry.isRegistered(repo))) {
-      return c.json({ error: "not-registered" }, 403);
-    }
-    const result = await deps.deployState.read(repo);
+    const result = await gate.repo.readDeployState();
     if (!result.ok) {
       // 422: lockfile exists but couldn't be read — never a silent empty list.
       return c.json({ error: result.error }, 422);
@@ -914,16 +918,11 @@ export function createApp(deps: AppDeps) {
 
   // Registry-gated like deploy-state. Delegated to `apm outdated` (ADR-0001).
   app.get("/api/drift", async (c) => {
-    const repo = c.req.query("repo");
-    if (repo === undefined || repo.trim() === "") {
-      return c.json({ error: "missing-repo" }, 400);
+    const gate = await requireRegisteredRepoAccess(c);
+    if (!gate.ok) {
+      return gate.response;
     }
-    if (!(await deps.registry.isRegistered(repo))) {
-      return c.json({ error: "not-registered" }, 403);
-    }
-    const result = await deps.drift.execute({
-      target: { kind: "repo", repoPath: repo },
-    });
+    const result = await gate.repo.readDrift();
     if (!result.ok) {
       return c.json(driftFailureBody(result));
     }
