@@ -1,4 +1,5 @@
 import type {
+  HarnessFreshness,
   HarnessStateError,
   ImportNameBlocker,
   ImportSkillError,
@@ -37,7 +38,7 @@ const releasePlanHeadings: NoticeTable<ReleasePlanError> = {
   "no-answer": {
     level: "error",
     label: "No answer from GitHub",
-    message: "Press Refresh, then Create a release again.",
+    message: "Press Retry check, then Create a release again.",
     detail: "A release plan is measured against what GitHub holds.",
   },
 };
@@ -48,7 +49,7 @@ const publishReleaseHeadings: NoticeTable<PublishReleaseError> = {
     level: "error",
     label: "No answer from GitHub",
     message:
-      "Nothing was published. Press Refresh, then Publish release again.",
+      "Nothing was published. Press Retry check, then Publish release again.",
   },
   "already-released": {
     level: "error",
@@ -91,12 +92,13 @@ const promoteHeadings: NoticeTable<PromoteSkillError> = {
   "no-answer": {
     level: "error",
     label: "No answer from GitHub",
-    message: "Nothing was pushed. Press Refresh, then Propose change again.",
+    message:
+      "Nothing was pushed. Press Retry check, then Propose change again.",
   },
   "skill-missing": {
     level: "error",
     label: "Skill no longer in the Harness",
-    message: "Nothing was pushed. Press Refresh to repaint the list.",
+    message: "Nothing was pushed. Press Retry check to repaint the list.",
   },
   "push-elsewhere": {
     level: "error",
@@ -146,11 +148,11 @@ const deletionHeadings: NoticeTable<PromoteDeletionError> = {
   "push-elsewhere": promoteHeadings["push-elsewhere"],
   "no-answer": {
     ...promoteHeadings["no-answer"],
-    message: "Nothing was pushed. Press Refresh, then Remove skill again.",
+    message: "Nothing was pushed. Press Retry check, then Remove skill again.",
   },
   "source-changed": {
     ...promoteHeadings["source-changed"],
-    message: "Nothing was pushed. Press Refresh to repaint the list.",
+    message: "Nothing was pushed. Press Retry check to repaint the list.",
   },
   "promote-in-progress": {
     ...promoteHeadings["promote-in-progress"],
@@ -170,7 +172,7 @@ const deletionHeadings: NoticeTable<PromoteDeletionError> = {
   "confirmation-stale": {
     level: "error",
     label: "Confirmation out of date",
-    message: "Nothing was pushed. Press Refresh, then Remove skill again.",
+    message: "Nothing was pushed. Press Retry check, then Remove skill again.",
     detail: "The copy on the default branch moved after this confirmation.",
   },
   "not-deleted": {
@@ -433,8 +435,33 @@ export const refreshNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(harnessHeadings, error, {
     label: "GitHub not read",
     message:
-      "The Maestro server did not answer, so the Harness is as it was. Press Refresh again.",
+      "The Maestro server did not answer, so the Harness is as it was. Press Retry check.",
   });
+
+// Not a failed press but a failed read: the rows below stand, dated to the
+// last read that answered. Null before any read has ever succeeded — nothing
+// is out of date yet, and the stage labels carry that state instead (#848).
+export const staleStatusNotice = (
+  freshness: HarnessFreshness,
+  onRetry: () => void,
+): NoticeContent | null => {
+  if (
+    freshness.lastFetchedAt === null ||
+    (freshness.outcome !== "offline" && freshness.outcome !== "fetch-failed")
+  ) {
+    return null;
+  }
+  return {
+    level: "warning",
+    label: "Status out of date",
+    message: "Press Retry check to read GitHub again.",
+    detail:
+      freshness.outcome === "offline"
+        ? "Maestro could not reach GitHub, so these rows are from the last read."
+        : "GitHub gave no answer, so these rows are from the last read.",
+    action: { label: "Retry check", onClick: onRetry },
+  };
+};
 
 export const releasePlanNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(releasePlanHeadings, error, {

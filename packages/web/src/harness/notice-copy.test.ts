@@ -10,6 +10,7 @@ import {
   refreshNotice,
   releasePlanNotice,
   removalNotice,
+  staleStatusNotice,
 } from "./notice-copy";
 
 // The finished notice as data: level, heading, sentence, detail (ADR-0025 §10
@@ -82,7 +83,7 @@ const suites: [
       level: "error",
       label: "GitHub not read",
       message:
-        "The Maestro server did not answer, so the Harness is as it was. Press Refresh again.",
+        "The Maestro server did not answer, so the Harness is as it was. Press Retry check.",
     },
     [
       ["not-configured", NOT_CONFIGURED],
@@ -106,7 +107,7 @@ const suites: [
         {
           level: "error",
           label: "No answer from GitHub",
-          message: "Press Refresh, then Create a release again.",
+          message: "Press Retry check, then Create a release again.",
           detail: "A release plan is measured against what GitHub holds.",
         },
       ],
@@ -130,7 +131,7 @@ const suites: [
           level: "error",
           label: "No answer from GitHub",
           message:
-            "Nothing was published. Press Refresh, then Publish release again.",
+            "Nothing was published. Press Retry check, then Publish release again.",
         },
       ],
       [
@@ -194,7 +195,7 @@ const suites: [
           level: "error",
           label: "No answer from GitHub",
           message:
-            "Nothing was pushed. Press Refresh, then Propose change again.",
+            "Nothing was pushed. Press Retry check, then Propose change again.",
         },
       ],
       [
@@ -202,7 +203,7 @@ const suites: [
         {
           level: "error",
           label: "Skill no longer in the Harness",
-          message: "Nothing was pushed. Press Refresh to repaint the list.",
+          message: "Nothing was pushed. Press Retry check to repaint the list.",
         },
       ],
       [
@@ -254,7 +255,7 @@ const suites: [
           level: "error",
           label: "No answer from GitHub",
           message:
-            "Nothing was pushed. Press Refresh, then Remove skill again.",
+            "Nothing was pushed. Press Retry check, then Remove skill again.",
         },
       ],
       [
@@ -262,7 +263,7 @@ const suites: [
         {
           level: "error",
           label: "Folder edit mid-read",
-          message: "Nothing was pushed. Press Refresh to repaint the list.",
+          message: "Nothing was pushed. Press Retry check to repaint the list.",
         },
       ],
       [
@@ -289,7 +290,7 @@ const suites: [
           level: "error",
           label: "Confirmation out of date",
           message:
-            "Nothing was pushed. Press Refresh, then Remove skill again.",
+            "Nothing was pushed. Press Retry check, then Remove skill again.",
           detail:
             "The copy on the default branch moved after this confirmation.",
         },
@@ -589,6 +590,51 @@ describe.each(suites)("%s", (_name, read, fallback, cases) => {
 
   it("shows nothing without an error", () => {
     expect(read(null)).toBeNull();
+  });
+});
+
+describe("staleStatusNotice", () => {
+  const retry = () => {};
+  const READ_AT = "2026-08-03T11:56:00.000Z";
+
+  it("states the whole notice when a fetch failed over an earlier read", () => {
+    expect(
+      staleStatusNotice(
+        { outcome: "fetch-failed", lastFetchedAt: READ_AT },
+        retry,
+      ),
+    ).toEqual({
+      level: "warning",
+      label: "Status out of date",
+      message: "Press Retry check to read GitHub again.",
+      detail: "GitHub gave no answer, so these rows are from the last read.",
+      action: { label: "Retry check", onClick: retry },
+    });
+  });
+
+  it("names being offline as the cause where that is the cause", () => {
+    expect(
+      staleStatusNotice({ outcome: "offline", lastFetchedAt: READ_AT }, retry)
+        ?.detail,
+    ).toBe(
+      "Maestro could not reach GitHub, so these rows are from the last read.",
+    );
+  });
+
+  it("shows nothing where no read has ever succeeded", () => {
+    // Nothing is out of date yet: the stage labels carry that state instead.
+    expect(
+      staleStatusNotice({ outcome: "offline", lastFetchedAt: null }, retry),
+    ).toBeNull();
+  });
+
+  it("shows nothing while the last fetch answered", () => {
+    expect(
+      staleStatusNotice({ outcome: "fetched", lastFetchedAt: READ_AT }, retry),
+    ).toBeNull();
+    expect(
+      staleStatusNotice({ outcome: null, lastFetchedAt: null }, retry),
+    ).toBeNull();
   });
 });
 
