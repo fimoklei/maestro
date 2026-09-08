@@ -180,9 +180,7 @@ export const journeyConfirmedEmpty = (state: HarnessState): boolean =>
 
 // `offline` and `fetch-failed` are the two no-answer classes, and only they
 // close Release: a plan off a picture the remote never answered for could
-// publish a delta that has already moved (#519). Every other state opens the
-// dialog, which states the server's own reply — advisory findings and
-// recognised replies never gate the button.
+// publish a delta that has already moved (#519).
 export const releaseEnabled = (freshness: HarnessFreshness): boolean =>
   freshness.outcome !== "offline" && freshness.outcome !== "fetch-failed";
 

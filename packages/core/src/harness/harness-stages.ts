@@ -1,7 +1,5 @@
-// The three stages of a skill's journey, each answering its own question
-// (ADR-0021 point 10). Membership is independent: one skill may hold a row in
-// every stage, because its local edit, its open proposal and its merged change
-// are different pieces of work.
+// The three stages of a skill's journey, with independent membership: one skill
+// may hold a row in every stage (ADR-0021 point 10).
 import type { GitOrigin } from "../deploy/git-origin";
 import { isConcurrentlyChanged, isLocalDeletion } from "./classify-movement";
 import {
