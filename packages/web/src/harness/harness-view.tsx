@@ -1,13 +1,12 @@
 import type { HarnessState } from "@maestro/core";
 import { useEffect, useState } from "react";
-import { BrowseDialog } from "../shell/browse-dialog";
 import { useBrowsePicker } from "../shell/use-browse-picker";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { Notice } from "../ui/notice";
 import { SectionHeader } from "../ui/section-header";
-import { DeletionDialog } from "./deletion-dialog";
+import { HarnessDialogs } from "./harness-dialogs";
 import { HarnessStrip } from "./harness-strip";
 import {
   freshnessLabel,
@@ -16,20 +15,14 @@ import {
   releaseEnabled,
   stageSections,
 } from "./harness-view-model";
-import { type ImportCheckLoad, ImportDialog } from "./import-dialog";
 import {
-  deletionNotice,
   harnessStateNotice,
-  importNotice,
   promoteNotice,
   proposalNotice,
-  publishReleaseNotice,
   refreshNotice,
-  releasePlanNotice,
   releasePublishedNotice,
   staleStatusNotice,
 } from "./notice-copy";
-import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
 import { rowItems } from "./row-actions";
 import { StageTable } from "./stage-table";
 import type { HarnessStageRow, ReleasePlan, SemverStep } from "./use-harness";
@@ -45,7 +38,6 @@ import {
   useRefreshHarness,
   useReleasePlan,
 } from "./use-harness";
-import { WithdrawDialog } from "./withdraw-dialog";
 
 // The Harness home base: what the released harness is, how fresh that picture
 // is, and whether anything merged is waiting. It leads with state and reads on
@@ -192,10 +184,9 @@ export function HarnessView() {
     promote.mutate({ name });
   };
 
-  // Opening the view fetches, the same act Retry check repeats. A
-  // mutation, not a query: it reaches the network and writes git refs.
-  // Scheduled rather than called, so StrictMode's replayed first mount cancels
-  // its own request in cleanup: one open, one fetch of the author's git refs.
+  // Opening the view fetches, the same act Retry check repeats. Scheduled
+  // rather than called, so StrictMode's replayed first mount cancels its own
+  // request in cleanup: one open, one fetch of the author's git refs.
   useEffect(() => {
     const scheduled = setTimeout(fetchRemote);
     return () => clearTimeout(scheduled);
@@ -335,7 +326,7 @@ export function HarnessView() {
                       <p className="m-0 mt-1 text-desc text-muted">
                         {journeyConfirmedEmpty(state)
                           ? "Skills you import or edit in your clone will appear here."
-                          : "Edit a skill in your clone, or import one, to propose a change."}
+                          : "Edit a skill in your clone, or press Import skill, to propose a change."}
                       </p>
                     </div>
                   ) : (
@@ -367,10 +358,9 @@ export function HarnessView() {
                                 setWithdrawing({ skill, number });
                               },
                             },
-                            // The rule that closes Release: with no answer
-                            // from the remote there is no tip to build the
-                            // commit on. A refresh or a re-read in flight is
-                            // moving the very rows a press would aim at.
+                            // Closed with no answer from the remote: there is
+                            // no tip to build on, and a read in flight is
+                            // moving the rows a press would aim at.
                             releaseEnabled(state.freshness) &&
                               !refresh.isPending &&
                               !harness.isFetching &&
@@ -389,89 +379,36 @@ export function HarnessView() {
               </section>
             );
           })}
-          {importOpen && !picker.open ? (
-            <ImportDialog
-              source={source}
-              name={name}
-              load={importLoad(source, importCheck)}
-              onPickSource={picker.openBrowse}
-              onNameChange={setEditedName}
-              onClose={closeImport}
-              // The dialog stays open on success: it is where the import's
-              // outcome is stated, and closing would take that with it.
-              onImport={() =>
-                source !== null && importSkill.mutate({ source, name })
-              }
-              onView={(name) => {
-                closeImport();
-                setLandedOn(name);
-              }}
-              imported={importSkill.data ?? null}
-              importing={importSkill.isPending}
-              importError={importNotice(importSkill.error)}
-            />
-          ) : null}
-          {picker.open ? (
-            <BrowseDialog
-              mode="import-source"
-              onSelect={picker.selectBrowse}
-              onClose={picker.closeBrowse}
-            />
-          ) : null}
-          {pendingDeletion !== null && pendingDeletion.remoteTree !== null ? (
-            <DeletionDialog
-              skill={pendingDeletion.skill}
-              origin={state.origin}
-              seenRemoteTree={pendingDeletion.remoteTree}
-              onClose={closeConfirmation}
-              // The dialog closes on success only: a refusal is stated in it,
-              // and the way forward is another confirmation (#580).
-              onConfirm={() =>
-                deletion.mutate(
-                  {
-                    name: pendingDeletion.skill,
-                    seenRemoteTree: pendingDeletion.remoteTree as string,
-                  },
-                  {
-                    onSuccess: closeConfirmation,
-                  },
-                )
-              }
-              deleting={deletion.isPending}
-              deleteError={deletionNotice(deletion.error)}
-            />
-          ) : null}
-          {withdrawing !== null ? (
-            <WithdrawDialog
-              skill={withdrawing.skill}
-              number={withdrawing.number}
-              onClose={closeWithdrawal}
-              // Closes on success only: a refusal is stated in the dialog, and
-              // the way forward is another confirmation.
-              onConfirm={() =>
-                proposalAction.mutate(
-                  {
-                    action: "withdraw",
-                    name: withdrawing.skill,
-                    number: withdrawing.number,
-                  },
-                  { onSuccess: closeWithdrawal },
-                )
-              }
-              withdrawing={proposalAction.isPending}
-              withdrawError={proposalNotice(proposalAction.error)}
-            />
-          ) : null}
-          {planOpen ? (
-            <ReleaseDialog
-              origin={state.origin}
-              load={planLoad(plan)}
-              onClose={closePlan}
-              onPublish={handlePublish}
-              publishing={publish.isPending}
-              publishError={publishReleaseNotice(publish.error)}
-            />
-          ) : null}
+          <HarnessDialogs
+            origin={state.origin}
+            importOpen={importOpen}
+            source={source}
+            name={name}
+            importCheck={importCheck}
+            importSkill={importSkill}
+            onPickSource={picker.openBrowse}
+            onNameChange={setEditedName}
+            onImport={() =>
+              source !== null && importSkill.mutate({ source, name })
+            }
+            onImported={(name) => {
+              closeImport();
+              setLandedOn(name);
+            }}
+            onImportClose={closeImport}
+            picker={picker}
+            deletionRow={pendingDeletion}
+            deletion={deletion}
+            onDeletionClose={closeConfirmation}
+            withdrawing={withdrawing}
+            proposalAction={proposalAction}
+            onWithdrawClose={closeWithdrawal}
+            planOpen={planOpen}
+            plan={plan}
+            publish={publish}
+            onPlanClose={closePlan}
+            onPublish={handlePublish}
+          />
         </>
       )}
     </section>
@@ -483,36 +420,4 @@ export function HarnessView() {
 function proposalRows(state: HarnessState | undefined): HarnessStageRow[] {
   const stage = state?.stages.proposal;
   return stage?.outcome === "read" ? stage.rows : [];
-}
-
-// Idle until a folder is picked: with nothing to judge there is no refusal to
-// state, and "loading" would claim a request that was never made.
-function importLoad(
-  source: string | null,
-  check: ReturnType<typeof useImportCheck>,
-): ImportCheckLoad {
-  if (source === null) {
-    return { kind: "idle" };
-  }
-  if (check.data !== undefined) {
-    return { kind: "ready", check: check.data };
-  }
-  const failed = importNotice(check.error);
-  if (failed !== null) {
-    return { kind: "error", notice: failed };
-  }
-  return { kind: "loading" };
-}
-
-// The dialog stays mounted through loading, error, and the ready plan, so the
-// query's three states become its one prop.
-function planLoad(plan: ReturnType<typeof useReleasePlan>): ReleasePlanLoad {
-  if (plan.data !== undefined) {
-    return { kind: "ready", plan: plan.data };
-  }
-  const failed = releasePlanNotice(plan.error);
-  if (failed !== null) {
-    return { kind: "error", notice: failed };
-  }
-  return { kind: "loading" };
 }

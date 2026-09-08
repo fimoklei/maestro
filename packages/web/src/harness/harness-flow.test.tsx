@@ -19,6 +19,13 @@ function InventoryProbe() {
   return null;
 }
 
+// The same query, held but not asked for: a screen that gates its read behind a
+// source has an entry in the cache that nothing is refetching.
+function IdleInventoryProbe() {
+  useInventory({ enabled: false });
+  return null;
+}
+
 const RELEASED: HarnessState = {
   origin: "github.com/fimoklei/agent-harness",
   releasedVersion: "v0.5.0",
@@ -960,6 +967,76 @@ describe("Harness home base", () => {
         calls.filter((call) => call.includes("/api/inventory/primitives")),
       ).toHaveLength(3),
     );
+  });
+
+  // Nothing is holding the Inventory open, so there is no query to invalidate.
+  // The publication still has to read it, or "refreshed Inventory" states a
+  // read that never happened (#849).
+  it("reads the Inventory when no screen is holding it open", async () => {
+    const calls = stubHarnessServer({
+      read: { body: FETCHED },
+      refresh: {
+        body: FETCHED,
+        afterPublish: { ...RELEASED, releasedVersion: "v1.3.0" },
+      },
+      plan: { body: PLAN },
+      publish: { body: { tag: "v1.3.0", revision: PLAN.revision } },
+    });
+    renderHarness();
+
+    const release = await screen.findByRole("button", {
+      name: /^create a release$/i,
+    });
+    await waitFor(() => expect(release).toBeEnabled());
+    await userEvent.click(release);
+    await screen.findByText("v1.3.0");
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
+
+    await waitFor(() =>
+      expect(
+        calls.filter((call) => call.includes("/api/inventory/primitives")),
+      ).toHaveLength(1),
+    );
+    expect(
+      await screen.findByText("Maestro tagged v1.3.0 and refreshed Inventory."),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the publication honest when an unheld Inventory read failed", async () => {
+    stubHarnessServer({
+      read: { body: FETCHED },
+      refresh: {
+        body: FETCHED,
+        afterPublish: { ...RELEASED, releasedVersion: "v1.3.0" },
+      },
+      plan: { body: PLAN },
+      publish: { body: { tag: "v1.3.0", revision: PLAN.revision } },
+      inventory: { afterPublish: { body: {}, status: 500 } },
+    });
+    renderWithQuery(
+      <StrictMode>
+        <HarnessView />
+        <IdleInventoryProbe />
+      </StrictMode>,
+    );
+
+    const release = await screen.findByRole("button", {
+      name: /^create a release$/i,
+    });
+    await waitFor(() => expect(release).toBeEnabled());
+    await userEvent.click(release);
+    await screen.findByText("v1.3.0");
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
+
+    expect(
+      await screen.findByText(
+        "Maestro tagged v1.3.0 but could not refresh Inventory. Re-read Inventory to see the published skills.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("falls back to a plain read when the post-publish fetch cannot reach the remote", async () => {
@@ -2206,6 +2283,28 @@ describe("Harness freshness and failed reads", () => {
       "href",
       "https://github.com/fimoklei/agent-harness/pull/45",
     );
+  });
+
+  // Pending proposal is the one stage an empty read still draws, because it
+  // hosts Import skill. Beside work in another stage the journey is not empty,
+  // so it names the two ways to put a change here.
+  it("sends the author to their clone or to Import skill when only Pending proposal is empty", async () => {
+    stubHarnessServer({
+      read: {
+        body: withStages(RELEASED, {
+          review: [row("pending-review", "tdd", "waiting-for-review")],
+        }),
+      },
+    });
+    renderHarness();
+
+    expect(await screen.findByText("Nothing to propose")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Edit a skill in your clone, or press Import skill, to propose a change.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("No changes yet")).not.toBeInTheDocument();
   });
 
   it("draws no card, no zero and no rows for a stage nobody could read", async () => {

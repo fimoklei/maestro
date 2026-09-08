@@ -7,6 +7,7 @@ import {
   harnessStateNotice,
   importNotice,
   promoteNotice,
+  proposalNotice,
   publishReleaseNotice,
   refreshNotice,
   releasePlanNotice,
@@ -205,6 +206,17 @@ const suites: [
           level: "error",
           label: "Skill no longer in the Harness",
           message: "Nothing was pushed. Press Retry check to repaint the list.",
+        },
+      ],
+      [
+        "extra-requests",
+        {
+          level: "error",
+          label: "Multiple pull requests",
+          message:
+            "Nothing was pushed. Close the extra requests on GitHub, then Propose change again.",
+          detail:
+            "More than one open pull request matches this skill's branch.",
         },
       ],
       [
@@ -574,6 +586,61 @@ const suites: [
           message:
             "This folder matches the skill the Harness holds. Press Close.",
           detail: "Only a changed file can be carried back.",
+        },
+      ],
+    ],
+  ],
+  [
+    "proposalNotice",
+    proposalNotice,
+    {
+      level: "error",
+      label: "Pull request unchanged",
+      message:
+        "The Maestro server did not answer, and GitHub is as it was. Start the change again.",
+    },
+    // Every way through names a control the reader can see: the three actions
+    // share one table, so no row may name one action's button (copy.md).
+    [
+      ["not-configured", NOT_CONFIGURED],
+      ["invalid-skill", UNUSABLE_NAME],
+      [
+        "no-answer",
+        {
+          level: "error",
+          label: "No answer from GitHub",
+          message: "Nothing changed on GitHub. Press Retry check.",
+          detail:
+            "Maestro could not read the branch this proposal is opened against.",
+        },
+      ],
+      [
+        "review-unavailable",
+        {
+          level: "error",
+          label: "Review status unavailable",
+          message: "Sign in with gh auth login, then press Retry check.",
+          detail: "Maestro reads pull requests through your own gh sign-in.",
+        },
+      ],
+      [
+        "review-unknown",
+        {
+          level: "error",
+          label: "Review status unknown",
+          message: "Press Retry check to read GitHub again.",
+          detail: "GitHub gave no answer Maestro can act on.",
+        },
+      ],
+      [
+        "extra-requests",
+        {
+          level: "error",
+          label: "Multiple pull requests",
+          message:
+            "Close the extra requests on GitHub, then press Retry check.",
+          detail:
+            "More than one open pull request matches this skill's branch.",
         },
       ],
     ],

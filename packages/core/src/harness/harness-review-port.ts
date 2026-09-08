@@ -34,13 +34,9 @@ export type ReviewRequest = {
   baseBranch: string;
 };
 
-// Three outcomes that must never collapse into each other.
-// `read` is an answer that arrived, and `complete: false` marks one that filled
-// its bound — usable, but unable to prove any request absent.
-// `failed` is a read that did not answer: the cause is deliberately no more
-// specific than the signal supports (ADR-0029).
-// `unavailable` is no answer possible at all — no gh, no sign-in, no network,
-// or a host Maestro never queries.
+// Three outcomes that must never collapse: an answer that arrived (`complete:
+// false` marks one that filled its bound and so proves nothing absent), a read
+// that did not answer, and no answer being possible at all (ADR-0029).
 export type HarnessReviewRead =
   | {
       outcome: "read";
@@ -79,10 +75,9 @@ export interface HarnessReviewPort {
   closeRequest(origin: GitOrigin, number: number): Promise<ReviewWriteOutcome>;
 }
 
-// A request belongs to one skill's proposal only when its head repository, its
-// head branch and its base branch all say so. A null head repository — deleted
-// — matches nothing. Shared by the stage read and every mutation's recheck, so
-// the two can never disagree about which request a row names.
+// A request belongs to one skill's proposal only when its head repository, head
+// branch and base branch all say so; a null head repository matches nothing.
+// Shared by the stage read and every mutation's recheck.
 export const matchesProposal = (
   request: ReviewRequest,
   target: { ownerRepo: string; branch: string; base: string },

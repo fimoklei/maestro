@@ -723,10 +723,8 @@ export function createApp(deps: AppDeps) {
     });
   });
 
-  // The three mutations that touch only GitHub: open the request a prepared
-  // branch never got, resume a closed one, and withdraw an open one. Each
-  // rechecks identity and the request itself against a fresh read, so the
-  // picture the browser held authorizes nothing (#827).
+  // The three mutations that touch only GitHub. Each rechecks identity and the
+  // request against a fresh read, so the browser's picture authorizes nothing.
   const proposalResponse = (c: Context, result: ProposalActionResult) => {
     if (!result.ok) {
       const { status } = proposalErrorResponses[result.error];

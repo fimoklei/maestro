@@ -1,9 +1,6 @@
 // What one row's menu holds: every action the stage carries and every
-// pull-request link the read model read. The menu is the whole action surface,
-// so no row is a dead end (#809, #844).
-//
-// Three blocked actions stay in the menu, disabled, carrying their reason after
-// an em dash. No other absent action becomes a disabled one.
+// pull-request link, plus three blocked actions kept disabled with their reason
+// after an em dash. No other absent action becomes a disabled one (#809, #844).
 import type { ActionsMenuProps } from "../ui/actions-menu";
 import type { HarnessStageRow, ReviewRequestLink } from "./use-harness";
 

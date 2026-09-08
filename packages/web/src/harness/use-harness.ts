@@ -25,7 +25,10 @@ import type {
 } from "@maestro/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { HttpError, requestJson } from "../api/http";
-import { INVENTORY_KEY } from "../inventory/use-inventory";
+import {
+  fetchInventoryPrimitives,
+  INVENTORY_KEY,
+} from "../inventory/use-inventory";
 
 // Re-exported rather than copied, so the browser's shape cannot drift from the
 // one core defines (architecture.md).
@@ -84,9 +87,6 @@ export function useDiscardReleasePlan() {
 // Confirming a release. `previousTag` and `revision` are what the server
 // compares the freshly read remote against; neither is ever the thing to tag,
 // and no path travels (#520, #521).
-//
-// The picture afterwards is fetched, never read: the plain read paints from a
-// local tag mirror whose write can fail, and the release already happened.
 export function usePublishRelease() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -101,18 +101,19 @@ export function usePublishRelease() {
         { method: "POST", body: JSON.stringify(request) },
       );
       // Inventory answers from the latest release, so publishing one is the
-      // only act that changes it (ADR-0021 §9). Awaited, not fired off: the
-      // tag is atomic, so this re-read is the only half of a publication that
-      // can fail, and the notice states which of the two happened (#849). A
-      // failed re-read lands on the Inventory's own unreadable state.
-      await queryClient
-        .invalidateQueries({ queryKey: INVENTORY_KEY })
-        .catch(() => {});
-      return {
-        tag: release.tag,
-        inventoryRefreshed:
-          queryClient.getQueryState(INVENTORY_KEY)?.status !== "error",
-      };
+      // only act that changes it (ADR-0021 §9). Fetched, not invalidated: a
+      // query nobody holds open would refetch nothing (#849).
+      const inventoryRefreshed = await queryClient
+        .fetchQuery({
+          queryKey: INVENTORY_KEY,
+          queryFn: fetchInventoryPrimitives,
+          staleTime: 0,
+        })
+        .then(
+          () => true,
+          () => false,
+        );
+      return { tag: release.tag, inventoryRefreshed };
     },
     onSuccess: () => {
       void queryClient.cancelQueries({ queryKey: HARNESS_KEY });

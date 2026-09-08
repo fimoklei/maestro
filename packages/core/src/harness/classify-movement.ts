@@ -18,7 +18,7 @@ export type SkillTreeHashes = {
   working: string | null;
 };
 
-// A skill removed from this disk from this disk: it was tracked at local HEAD
+// A skill removed from this disk: it was tracked at local HEAD
 // and is gone from the working tree. Renames are not inferred, so a moved
 // directory is this plus a separate addition, each read on its own (#575).
 export const isLocalDeletion = ({ local, working }: SkillTreeHashes): boolean =>

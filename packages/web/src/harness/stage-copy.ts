@@ -1,7 +1,5 @@
-// Every word the three stage tables show: the chip reading and its colour, the
-// Detail sentence, the reviewer line and the cross-stage line. One row per
-// status, so a new status fails typecheck until it has copy (copy.md,
-// ADR-0025).
+// Every word the three stage tables show. One row per status, so a new status
+// fails typecheck until it has copy (copy.md, ADR-0025).
 import type { ChipProps } from "../ui/chip";
 import type {
   HarnessStage,
@@ -77,7 +75,7 @@ export type StageContext = {
 const requestNumbers = (row: HarnessStageRow): string[] =>
   row.requests.map((request) => `#${request.number}`);
 
-// "#41 and #44", or "#41, #44 and #47" — the shape an author reads aloud.
+// "#41 and #44", or "Pending review and Pending release" — read aloud.
 const listOf = (parts: string[]): string => {
   if (parts.length < 2) {
     return parts[0] ?? "";
@@ -129,7 +127,7 @@ export function detailSentence(
     case "multiple-pull-requests":
       return row.requests.length === 2
         ? `Pull requests ${listOf(requestNumbers(row))} both match this branch, so close one on GitHub.`
-        : `Pull requests ${listOf(requestNumbers(row))} all match this branch, so close all but one on GitHub.`;
+        : "Several pull requests match this branch, so close all but one on GitHub.";
     case "added":
       return release === null
         ? `This skill is on ${branch} and in no release yet.`

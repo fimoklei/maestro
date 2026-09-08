@@ -1,7 +1,4 @@
-// The three proposal mutations that touch GitHub and nothing else: open the
-// request a prepared branch never got, resume a closed one, and withdraw an
-// open one. Every one rechecks the facts it acts on against a fresh read, so
-// what the cockpit painted before the press never authorizes it (#827).
+// The three GitHub-only proposal mutations, each rechecked against a fresh read.
 import { parseGitOrigin } from "../deploy/git-origin";
 import {
   type HarnessReviewPort,
@@ -46,7 +43,7 @@ type Ready = {
   matching: ReviewRequest[];
 };
 
-type Context = Ready | { ok: false; error: ProposalActionError };
+type CheckedFacts = Ready | { ok: false; error: ProposalActionError };
 
 export class ProposalActions {
   private readonly deps: {
@@ -62,17 +59,17 @@ export class ProposalActions {
   // Opening the request a prepared branch never got. Nothing is pushed, so the
   // review sees the branch as it stands and no newer local edit rides along.
   async create(name: string): Promise<ProposalActionResult> {
-    const context = await this.contextFor(name);
-    if (!context.ok) {
-      return context;
+    const checked = await this.checkedFacts(name);
+    if (!checked.ok) {
+      return checked;
     }
-    if (openOf(context.matching).length > 0) {
+    if (openOf(checked.matching).length > 0) {
       return { ok: false, error: "request-exists" };
     }
     return settle(
-      await this.deps.review.createRequest(context.origin, {
-        head: context.branch,
-        base: context.base,
+      await this.deps.review.createRequest(checked.origin, {
+        head: checked.branch,
+        base: checked.base,
         title: proposalTitle(name),
         body: PROPOSAL_BODY,
       }),
@@ -82,38 +79,43 @@ export class ProposalActions {
   // Resuming the same request, which keeps its discussion. A merged one is not
   // resumable, and neither is one this skill's branch no longer owns.
   async reopen(name: string, number: number): Promise<ProposalActionResult> {
-    const context = await this.contextFor(name);
-    if (!context.ok) {
-      return context;
+    const checked = await this.checkedFacts(name);
+    if (!checked.ok) {
+      return checked;
     }
-    const closed = context.matching.some(
+    // Ambiguity blocks a write here as it does on withdrawal: reopening beside
+    // two open requests would leave a third nobody asked for (gh-driver.md).
+    if (openOf(checked.matching).length > 1) {
+      return { ok: false, error: "extra-requests" };
+    }
+    const closed = checked.matching.some(
       (request) => request.state === "closed" && request.number === number,
     );
     if (!closed) {
       return { ok: false, error: "request-gone" };
     }
-    return settle(await this.deps.review.reopenRequest(context.origin, number));
+    return settle(await this.deps.review.reopenRequest(checked.origin, number));
   }
 
   // Closing the request. The remote branch and the author's files are left
   // exactly as they are — the closed proposal is what stays recoverable.
   async withdraw(name: string, number: number): Promise<ProposalActionResult> {
-    const context = await this.contextFor(name);
-    if (!context.ok) {
-      return context;
+    const checked = await this.checkedFacts(name);
+    if (!checked.ok) {
+      return checked;
     }
-    const open = openOf(context.matching);
+    const open = openOf(checked.matching);
     if (open.length > 1) {
       return { ok: false, error: "extra-requests" };
     }
     if (open[0]?.number !== number) {
       return { ok: false, error: "request-gone" };
     }
-    return settle(await this.deps.review.closeRequest(context.origin, number));
+    return settle(await this.deps.review.closeRequest(checked.origin, number));
   }
 
   // The facts every action is checked against, read fresh each time.
-  private async contextFor(name: string): Promise<Context> {
+  private async checkedFacts(name: string): Promise<CheckedFacts> {
     if (!isPromotableSkillName(name)) {
       return { ok: false, error: "invalid-skill" };
     }
