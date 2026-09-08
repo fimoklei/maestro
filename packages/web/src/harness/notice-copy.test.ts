@@ -3,13 +3,13 @@ import { HttpError } from "../api/http";
 import type { NoticeContent } from "../ui/notice";
 import {
   CONCURRENT_CHANGE_NOTICE,
+  deletionNotice,
   harnessStateNotice,
   importNotice,
   promoteNotice,
   publishReleaseNotice,
   refreshNotice,
   releasePlanNotice,
-  removalNotice,
 } from "./notice-copy";
 
 // The finished notice as data: level, heading, sentence, detail (ADR-0025 §10
@@ -235,13 +235,13 @@ const suites: [
     ],
   ],
   [
-    "removalNotice",
-    removalNotice,
+    "deletionNotice",
+    deletionNotice,
     {
       level: "error",
-      label: "Removal not proposed",
+      label: "Deletion not proposed",
       message:
-        "The Maestro server did not answer, and nothing was pushed. Remove skill again.",
+        "The Maestro server did not answer, and nothing was pushed. Delete skill again.",
     },
     [
       ["not-configured", NOT_CONFIGURED],
@@ -254,7 +254,7 @@ const suites: [
           level: "error",
           label: "No answer from GitHub",
           message:
-            "Nothing was pushed. Press Refresh, then Remove skill again.",
+            "Nothing was pushed. Press Refresh, then Delete skill again.",
         },
       ],
       [
@@ -270,7 +270,7 @@ const suites: [
         {
           level: "error",
           label: "Change already being proposed",
-          message: "Wait for that change to finish, then Remove skill again.",
+          message: "Wait for that change to finish, then Delete skill again.",
           detail: "Maestro proposes one change at a time.",
         },
       ],
@@ -278,9 +278,9 @@ const suites: [
         "promote-failed",
         {
           level: "error",
-          label: "Removal not proposed",
+          label: "Deletion not proposed",
           message:
-            "The Harness is as it was. Remove skill again once GitHub is reachable.",
+            "The Harness is as it was. Delete skill again once GitHub is reachable.",
         },
       ],
       [
@@ -289,7 +289,7 @@ const suites: [
           level: "error",
           label: "Confirmation out of date",
           message:
-            "Nothing was pushed. Press Refresh, then Remove skill again.",
+            "Nothing was pushed. Press Refresh, then Delete skill again.",
           detail:
             "The copy on the default branch moved after this confirmation.",
         },
@@ -301,7 +301,7 @@ const suites: [
           label: "Skill still in the Harness",
           message: "Delete the skill folder in the Harness clone first.",
           detail:
-            "A removal publishes what the Harness working tree already says.",
+            "A deletion publishes what the Harness working tree already says.",
         },
       ],
       [
@@ -310,7 +310,7 @@ const suites: [
           level: "error",
           label: "Partial clone",
           message:
-            "Nothing was pushed. Connect a complete clone to remove skills.",
+            "Nothing was pushed. Connect a complete clone to delete skills.",
           detail:
             "A missing folder in a partial clone is not proof of a deletion.",
         },
@@ -321,7 +321,7 @@ const suites: [
           level: "error",
           label: "Unfinished merge",
           message:
-            "Nothing was pushed. Finish or abort the merge, then Remove skill again.",
+            "Nothing was pushed. Finish or abort the merge, then Delete skill again.",
           detail: "A half-merged working tree does not state what should go.",
         },
       ],
@@ -331,7 +331,7 @@ const suites: [
           level: "error",
           label: "Unfinished rebase",
           message:
-            "Nothing was pushed. Finish or abort the rebase, then Remove skill again.",
+            "Nothing was pushed. Finish or abort the rebase, then Delete skill again.",
           detail: "A half-rebased working tree does not state what should go.",
         },
       ],
@@ -341,7 +341,7 @@ const suites: [
           level: "error",
           label: "Unresolved conflicts",
           message:
-            "Nothing was pushed. Resolve the conflicts, then Remove skill again.",
+            "Nothing was pushed. Resolve the conflicts, then Delete skill again.",
           detail: "A conflicted working tree does not state what should go.",
         },
       ],
@@ -351,7 +351,7 @@ const suites: [
           level: "error",
           label: "Unreadable working tree",
           message:
-            "Nothing was pushed. Make the Harness folder readable, then Remove skill again.",
+            "Nothing was pushed. Make the Harness folder readable, then Delete skill again.",
         },
       ],
     ],
@@ -589,6 +589,36 @@ describe.each(suites)("%s", (_name, read, fallback, cases) => {
 
   it("shows nothing without an error", () => {
     expect(read(null)).toBeNull();
+  });
+});
+
+describe("the deletion vocabulary", () => {
+  it("never calls a Harness deletion a removal", () => {
+    // Remove belongs to deployed copies alone (CONTEXT.md · Screen names).
+    const codes = [
+      "not-configured",
+      "no-usable-origin",
+      "invalid-skill",
+      "push-elsewhere",
+      "no-answer",
+      "source-changed",
+      "promote-in-progress",
+      "promote-failed",
+      "extra-requests",
+      "confirmation-stale",
+      "not-deleted",
+      "sparse-checkout",
+      "merge-in-progress",
+      "rebase-in-progress",
+      "unresolved-conflicts",
+      "unreadable",
+      "a-code-this-build-predates",
+    ];
+    for (const code of codes) {
+      const each = notice(deletionNotice, code);
+      const words = `${each?.label} ${each?.message} ${each?.detail ?? ""}`;
+      expect(words, code).not.toMatch(/remov/i);
+    }
   });
 });
 

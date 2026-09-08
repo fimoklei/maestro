@@ -77,7 +77,7 @@ const publishReleaseHeadings: NoticeTable<PublishReleaseError> = {
   },
 };
 
-// A proposed change and a removal share a heading wherever they share a code —
+// A proposed change and a deletion share a heading wherever they share a code —
 // the same thing goes wrong — but each states its own way through, so the
 // sentences differ where the two ways through differ (#686).
 const promoteHeadings: NoticeTable<PromoteSkillError> = {
@@ -146,7 +146,7 @@ const deletionHeadings: NoticeTable<PromoteDeletionError> = {
   "push-elsewhere": promoteHeadings["push-elsewhere"],
   "no-answer": {
     ...promoteHeadings["no-answer"],
-    message: "Nothing was pushed. Press Refresh, then Remove skill again.",
+    message: "Nothing was pushed. Press Refresh, then Delete skill again.",
   },
   "source-changed": {
     ...promoteHeadings["source-changed"],
@@ -154,63 +154,63 @@ const deletionHeadings: NoticeTable<PromoteDeletionError> = {
   },
   "promote-in-progress": {
     ...promoteHeadings["promote-in-progress"],
-    message: "Wait for that change to finish, then Remove skill again.",
+    message: "Wait for that change to finish, then Delete skill again.",
   },
   "promote-failed": {
     ...promoteHeadings["promote-failed"],
-    label: "Removal not proposed",
+    label: "Deletion not proposed",
     message:
-      "The Harness is as it was. Remove skill again once GitHub is reachable.",
+      "The Harness is as it was. Delete skill again once GitHub is reachable.",
   },
   "extra-requests": {
     ...promoteHeadings["extra-requests"],
     message:
-      "Nothing was pushed. Close the extra requests on GitHub, then remove the skill again.",
+      "Nothing was pushed. Close the extra requests on GitHub, then Delete skill again.",
   },
   "confirmation-stale": {
     level: "error",
     label: "Confirmation out of date",
-    message: "Nothing was pushed. Press Refresh, then Remove skill again.",
+    message: "Nothing was pushed. Press Refresh, then Delete skill again.",
     detail: "The copy on the default branch moved after this confirmation.",
   },
   "not-deleted": {
     level: "error",
     label: "Skill still in the Harness",
     message: "Delete the skill folder in the Harness clone first.",
-    detail: "A removal publishes what the Harness working tree already says.",
+    detail: "A deletion publishes what the Harness working tree already says.",
   },
   "sparse-checkout": {
     level: "error",
     label: "Partial clone",
-    message: "Nothing was pushed. Connect a complete clone to remove skills.",
+    message: "Nothing was pushed. Connect a complete clone to delete skills.",
     detail: "A missing folder in a partial clone is not proof of a deletion.",
   },
   "merge-in-progress": {
     level: "error",
     label: "Unfinished merge",
     message:
-      "Nothing was pushed. Finish or abort the merge, then Remove skill again.",
+      "Nothing was pushed. Finish or abort the merge, then Delete skill again.",
     detail: "A half-merged working tree does not state what should go.",
   },
   "rebase-in-progress": {
     level: "error",
     label: "Unfinished rebase",
     message:
-      "Nothing was pushed. Finish or abort the rebase, then Remove skill again.",
+      "Nothing was pushed. Finish or abort the rebase, then Delete skill again.",
     detail: "A half-rebased working tree does not state what should go.",
   },
   "unresolved-conflicts": {
     level: "error",
     label: "Unresolved conflicts",
     message:
-      "Nothing was pushed. Resolve the conflicts, then Remove skill again.",
+      "Nothing was pushed. Resolve the conflicts, then Delete skill again.",
     detail: "A conflicted working tree does not state what should go.",
   },
   unreadable: {
     level: "error",
     label: "Unreadable working tree",
     message:
-      "Nothing was pushed. Make the Harness folder readable, then Remove skill again.",
+      "Nothing was pushed. Make the Harness folder readable, then Delete skill again.",
   },
 };
 
@@ -457,11 +457,11 @@ export const promoteNotice = (error: unknown): NoticeContent | null =>
       "The Maestro server did not answer, and nothing was pushed. Propose change again.",
   });
 
-export const removalNotice = (error: unknown): NoticeContent | null =>
+export const deletionNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(deletionHeadings, error, {
-    label: "Removal not proposed",
+    label: "Deletion not proposed",
     message:
-      "The Maestro server did not answer, and nothing was pushed. Remove skill again.",
+      "The Maestro server did not answer, and nothing was pushed. Delete skill again.",
   });
 
 export const proposalNotice = (error: unknown): NoticeContent | null =>

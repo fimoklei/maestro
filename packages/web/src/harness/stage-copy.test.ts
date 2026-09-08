@@ -64,6 +64,27 @@ describe("chip readings", () => {
     expect(statusReading(row("pending-release", "deleted"))).toBe("Deleted");
   });
 
+  it("gives a deletion one reading in each stage of the journey", () => {
+    // The six readings of #847, each in the stage that carries it.
+    const six: [HarnessStage, StageStatus, string][] = [
+      ["pending-proposal", "deleted-locally", "Deleted locally"],
+      ["pending-review", "draft", "Deletion in draft"],
+      ["pending-review", "waiting-for-review", "Deletion waiting for review"],
+      ["pending-review", "changes-requested", "Deletion changes requested"],
+      [
+        "pending-review",
+        "approved-awaiting-merge",
+        "Deletion approved, awaiting merge",
+      ],
+      ["pending-release", "deleted", "Deleted"],
+    ];
+    for (const [stage, status, reading] of six) {
+      expect(statusReading(row(stage, status, { deletion: true }))).toBe(
+        reading,
+      );
+    }
+  });
+
   it("keeps a deletion's own reading in the stage it is in", () => {
     expect(
       statusReading(

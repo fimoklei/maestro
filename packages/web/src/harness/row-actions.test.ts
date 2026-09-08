@@ -161,6 +161,34 @@ describe("rowItems", () => {
     expect(disabled(items)).toEqual(["Withdraw proposal"]);
   });
 
+  it("gives a deletion the same actions a change gets, and never Remove", () => {
+    // Remove stays reserved for deployed copies: nothing in the journey
+    // offers it, whatever the row proposes (#847).
+    const every = (
+      [
+        ["pending-proposal", "deleted-locally"],
+        ["pending-proposal", "new-local-work"],
+        ["pending-review", "draft"],
+        ["pending-review", "waiting-for-review"],
+        ["pending-review", "changes-requested"],
+        ["pending-review", "approved-awaiting-merge"],
+        ["pending-review", "pull-request-missing"],
+        ["pending-review", "proposal-closed"],
+        ["pending-review", "multiple-pull-requests"],
+        ["pending-release", "deleted"],
+      ] as [HarnessStage, StageStatus][]
+    ).flatMap(([stage, status]) => {
+      const asChange = labels(rowItems(row({ stage, status }), handlers, true));
+      const asDeletion = labels(
+        rowItems(row({ stage, status, deletion: true }), handlers, true),
+      );
+      expect(asDeletion, status).toEqual(asChange);
+      return asDeletion;
+    });
+
+    expect(every.some((label) => label.includes("Remove"))).toBe(false);
+  });
+
   it("turns no other absent action into a disabled one", () => {
     // Exactly the three named blocked actions, and no fourth (#844).
     const every = (
