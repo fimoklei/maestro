@@ -127,6 +127,22 @@ describe("Pending proposal membership", () => {
     expect(row.deletion).toBe(true);
   });
 
+  it("reads a skill restored after a proposed deletion as work to send", () => {
+    // The branch still proposes the deletion; the file is back on disk. That
+    // is an update to the same proposal, not a deletion of its own (#847).
+    const restored: HarnessSkillTrees = {
+      remote: { tdd: "same" },
+      promote: { tdd: null },
+      local: { tdd: "same" },
+      working: { tdd: "same" },
+    };
+    const row = oneRow(
+      stages({ trees: restored, review: reviewOf([request()]) }).proposal,
+    );
+    expect(row.status).toBe("new-local-work");
+    expect(row.deletion).toBe(false);
+  });
+
   it("keeps local edits visible after a proposal, instead of hiding them behind it", () => {
     // The bug #518's exclusive classifier caused: the promote branch won and
     // the author's later edit vanished (user story 6).
@@ -349,6 +365,34 @@ describe("Pending review membership", () => {
     const review = reviewOf([request()]);
     const row = oneRow(stages({ trees: deleting, review }).review);
     expect(row.deletion).toBe(true);
+  });
+
+  it("keeps the deletion fact under every reading a review can take", () => {
+    const deleting: HarnessSkillTrees = {
+      remote: { tdd: "same" },
+      promote: { tdd: null },
+      local: { tdd: "same" },
+      working: {},
+    };
+    const readings: [ReviewRequest[], string][] = [
+      [[request({ draft: true })], "draft"],
+      [[request()], "waiting-for-review"],
+      [[request({ decision: "changes-requested" })], "changes-requested"],
+      [[request({ decision: "approved" })], "approved-awaiting-merge"],
+      [[request({ state: "closed" })], "proposal-closed"],
+      [[], "pull-request-missing"],
+      [
+        [request({ number: 41 }), request({ number: 44 })],
+        "multiple-pull-requests",
+      ],
+    ];
+    for (const [requests, status] of readings) {
+      const row = oneRow(
+        stages({ trees: deleting, review: reviewOf(requests) }).review,
+      );
+      expect(row.status).toBe(status);
+      expect(row.deletion, status).toBe(true);
+    }
   });
 
   it("never claims a request is missing when the read filled its bound", () => {

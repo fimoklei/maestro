@@ -17,6 +17,7 @@ import {
 } from "./harness-view-model";
 import { type ImportCheckLoad, ImportDialog } from "./import-dialog";
 import {
+  deletionNotice,
   harnessStateNotice,
   importNotice,
   promoteNotice,
@@ -24,7 +25,6 @@ import {
   publishReleaseNotice,
   refreshNotice,
   releasePlanNotice,
-  removalNotice,
   staleStatusNotice,
 } from "./notice-copy";
 import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
@@ -122,14 +122,14 @@ export function HarnessView() {
   const promotedSkill = promote.variables?.name ?? null;
   const promoteFailure = promoteNotice(promote.error);
 
-  // A removal never publishes by the row's press alone: it opens a
+  // A deletion never publishes by the row's press alone: it opens a
   // confirmation, which carries the origin/HEAD tree that row was painted
   // from. The pending movement is UI-state; the push is the mutation (#580).
-  const removal = usePromoteDeletion();
+  const deletion = usePromoteDeletion();
   const [confirming, setConfirming] = useState<string | null>(null);
   const pendingDeletion =
     proposalRows(state).find((row) => row.skill === confirming) ?? null;
-  // Left unreset, so a landed removal still names the row that just moved after
+  // Left unreset, so a landed deletion still names the row that just moved after
   // its dialog closes. The next press resets it, which is what keeps a refusal
   // from haunting the confirmation after this one (#580, #581).
   const closeConfirmation = () => setConfirming(null);
@@ -138,8 +138,8 @@ export function HarnessView() {
   // promote mutation alone would drop the keyboard on the document (#581).
   const justMoved = promote.isSuccess
     ? promotedSkill
-    : removal.isSuccess
-      ? (removal.variables?.name ?? null)
+    : deletion.isSuccess
+      ? (deletion.variables?.name ?? null)
       : null;
 
   // The three GitHub-side actions share one mutation: only the route differs,
@@ -174,7 +174,7 @@ export function HarnessView() {
   const promoteSkill = (name: string) => {
     const row = proposalRows(state).find((each) => each.skill === name);
     if (row?.deletion === true) {
-      removal.reset();
+      deletion.reset();
       setConfirming(name);
       return;
     }
@@ -401,7 +401,7 @@ export function HarnessView() {
               // The dialog closes on success only: a refusal is stated in it,
               // and the way forward is another confirmation (#580).
               onConfirm={() =>
-                removal.mutate(
+                deletion.mutate(
                   {
                     name: pendingDeletion.skill,
                     seenRemoteTree: pendingDeletion.remoteTree as string,
@@ -411,8 +411,8 @@ export function HarnessView() {
                   },
                 )
               }
-              removing={removal.isPending}
-              removeError={removalNotice(removal.error)}
+              deleting={deletion.isPending}
+              deleteError={deletionNotice(deletion.error)}
             />
           ) : null}
           {withdrawing !== null ? (

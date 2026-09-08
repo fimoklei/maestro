@@ -4,7 +4,7 @@ import { DialogShell } from "../ui/dialog-shell";
 import { Fact } from "../ui/fact";
 import { Notice, type NoticeContent } from "../ui/notice";
 
-// The confirmation a removal takes before anything is pushed: consequences
+// The confirmation a deletion takes before anything is pushed: consequences
 // first, then the exact origin/HEAD it is given against (#580).
 // Presentational — the host owns the mutation and what the row said.
 export function DeletionDialog({
@@ -13,18 +13,18 @@ export function DeletionDialog({
   seenRemoteTree,
   onClose,
   onConfirm,
-  removing,
-  removeError,
+  deleting,
+  deleteError,
 }: {
   skill: string;
   origin: string;
   seenRemoteTree: string;
   onClose: () => void;
   onConfirm: () => void;
-  removing: boolean;
-  removeError: NoticeContent | null;
+  deleting: boolean;
+  deleteError: NoticeContent | null;
 }) {
-  const heading = `Remove ${skill}`;
+  const heading = `Delete ${skill}`;
 
   return (
     <DialogShell
@@ -34,18 +34,18 @@ export function DeletionDialog({
       width={520}
       height="tall"
       onClose={onClose}
-      closeEnabled={!removing}
+      closeEnabled={!deleting}
     >
       <div className="flex shrink-0 items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
         <h2 className="font-semibold font-ui text-fg text-subtitle">
-          Remove <span className="font-mono">{skill}</span>
+          Delete <span className="font-mono">{skill}</span>
         </h2>
       </div>
 
       <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-3.5 py-3">
         <p className="m-0 font-ui text-desc text-fg-2">
           You deleted <span className="font-mono text-fg">{skill}</span> from
-          the Harness working tree. Confirming proposes that removal to{" "}
+          the Harness working tree. Confirming proposes that deletion to{" "}
           <span className="font-mono text-fg">{origin}</span> on its own branch.
         </p>
         <p className="m-0 font-ui text-desc text-muted">
@@ -62,7 +62,7 @@ export function DeletionDialog({
             <Fact label="Confirmed against" value={seenRemoteTree} wrap />
           </dl>
         </Card>
-        <Notice trigger="user-action" notice={removeError} />
+        <Notice trigger="user-action" notice={deleteError} />
       </div>
 
       <div className="flex shrink-0 items-center gap-2.5 border-line-row border-t px-3.5 py-3">
@@ -72,7 +72,7 @@ export function DeletionDialog({
           className="shrink-0"
           variant="quiet"
           size="sm"
-          disabled={removing}
+          disabled={deleting}
           onClick={onClose}
         >
           Cancel
@@ -82,10 +82,10 @@ export function DeletionDialog({
           className="shrink-0"
           variant="primary"
           size="sm"
-          disabled={removing}
+          disabled={deleting}
           onClick={onConfirm}
         >
-          {removing ? "Removing…" : "Remove skill"}
+          {deleting ? "Deleting…" : "Delete skill"}
         </Button>
       </div>
     </DialogShell>

@@ -105,7 +105,7 @@ function stubHarnessServer(options: {
   // Every promotion's parsed body, in order, so a test can state which skill
   // the row action named.
   promotions?: Record<string, unknown>[];
-  // Publishing a removal, and every confirmation's parsed body in order — so a
+  // Publishing a deletion, and every confirmation's parsed body in order — so a
   // test can state what the confirmation carried without reading it back off
   // the screen. `retry` answers every call after the first.
   deletion?: {
@@ -1405,7 +1405,7 @@ describe("Harness home base", () => {
     ).toBeInTheDocument();
   });
 
-  // A removal never publishes by a single press: the confirmation states what
+  // A deletion never publishes by a single press: the confirmation states what
   // will be removed and carries the origin/HEAD tree the row was painted from,
   // so a remote that moved under it refuses rather than removes (#580).
   const DELETED: HarnessState = withStages(ON_DISK, {
@@ -1426,8 +1426,21 @@ describe("Harness home base", () => {
 
   const openDeletionConfirmation = async () => {
     await promoteRow("old-skill");
-    return screen.findByRole("dialog", { name: /remove old-skill/i });
+    return screen.findByRole("dialog", { name: /delete old-skill/i });
   };
+
+  it("confirms a deletion in the Harness's own words, never Remove", async () => {
+    // Remove belongs to deployed copies alone (CONTEXT.md · Screen names).
+    stubHarnessServer({ read: { body: DELETED }, deletion: { body: REMOVED } });
+    renderHarness();
+
+    const dialog = await openDeletionConfirmation();
+
+    expect(
+      within(dialog).getByRole("button", { name: /^delete skill$/i }),
+    ).toBeVisible();
+    expect(dialog.textContent ?? "").not.toMatch(/remov/i);
+  });
 
   it("asks for a confirmation on a deletion, and pushes nothing until it is given", async () => {
     const deletions: Record<string, unknown>[] = [];
@@ -1455,7 +1468,7 @@ describe("Harness home base", () => {
     const dialog = await openDeletionConfirmation();
 
     await userEvent.click(
-      within(dialog).getByRole("button", { name: /^remove skill$/i }),
+      within(dialog).getByRole("button", { name: /^delete skill$/i }),
     );
 
     await waitFor(() =>
@@ -1483,7 +1496,7 @@ describe("Harness home base", () => {
     const dialog = await openDeletionConfirmation();
 
     await userEvent.click(
-      within(dialog).getByRole("button", { name: /^remove skill$/i }),
+      within(dialog).getByRole("button", { name: /^delete skill$/i }),
     );
 
     const review = (
@@ -1491,6 +1504,49 @@ describe("Harness home base", () => {
     ).closest("section") as HTMLElement;
     expect(within(review).getByText("old-skill")).toBeVisible();
     expect(within(review).getByText("Pull request missing")).toBeVisible();
+  });
+
+  it("sends a skill restored after a proposed deletion through Update proposal", async () => {
+    // The file is back on disk while the branch still proposes deleting it:
+    // work to send, and no confirmation stands between it and the push (#847).
+    const promotions: Record<string, unknown>[] = [];
+    const deletions: Record<string, unknown>[] = [];
+    const request = {
+      number: 45,
+      url: "https://github.com/fimoklei/agent-harness/pull/45",
+    };
+    stubHarnessServer({
+      read: {
+        body: withStages(ON_DISK, {
+          proposal: [
+            row("pending-proposal", "old-skill", "new-local-work", {
+              requests: [request],
+              comparison: { kind: "proposal", number: 45 },
+            }),
+          ],
+          review: [
+            row("pending-review", "old-skill", "waiting-for-review", {
+              deletion: true,
+              requests: [request],
+            }),
+          ],
+        }),
+      },
+      promote: { body: REMOVED },
+      promotions,
+      deletion: { body: REMOVED },
+      deletions,
+    });
+    renderHarness();
+
+    const menu = await openRowMenu("old-skill");
+    await userEvent.click(
+      within(menu).getByRole("menuitem", { name: /^update proposal$/i }),
+    );
+
+    await waitFor(() => expect(promotions).toEqual([{ name: "old-skill" }]));
+    expect(deletions).toEqual([]);
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("states a refused confirmation in the dialog, and asks for a new one", async () => {
@@ -1511,13 +1567,13 @@ describe("Harness home base", () => {
     renderHarness();
     const dialog = await openDeletionConfirmation();
     const confirm = within(dialog).getByRole("button", {
-      name: /^remove skill$/i,
+      name: /^delete skill$/i,
     });
 
     await userEvent.click(confirm);
 
     expect(
-      await within(dialog).findByText(/Remove skill again/i),
+      await within(dialog).findByText(/Delete skill again/i),
     ).toBeInTheDocument();
     // The dialog stays open with the press still there: a refusal changed
     // nothing, so the way forward is another confirmation.
@@ -1542,7 +1598,7 @@ describe("Harness home base", () => {
     const dialog = await openDeletionConfirmation();
 
     await userEvent.click(
-      within(dialog).getByRole("button", { name: /^remove skill$/i }),
+      within(dialog).getByRole("button", { name: /^delete skill$/i }),
     );
 
     expect(
@@ -1566,7 +1622,7 @@ describe("Harness home base", () => {
 
     await waitFor(() =>
       expect(
-        screen.queryByRole("dialog", { name: /remove old-skill/i }),
+        screen.queryByRole("dialog", { name: /delete old-skill/i }),
       ).toBeNull(),
     );
     expect(deletions).toEqual([]);
