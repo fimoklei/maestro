@@ -39,7 +39,7 @@ export const RECHECK_TARGET = "Deploy again to re-check the target.";
 const DEPLOY_AGAIN = "then deploy again.";
 
 const LINK_TARGET_SURVIVES =
-  "Deleting the link leaves the folder it points at untouched.";
+  "This removes the link only. The folder it points at remains on disk.";
 
 export function linkedFolderNotice(path: string): Body {
   return {

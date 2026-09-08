@@ -170,4 +170,32 @@ describe("Registry", () => {
       await expect(registry.isRegistered("/Users/me/link")).resolves.toBe(true);
     });
   });
+
+  describe("resolveRegistered", () => {
+    it("returns the canonical registered repo for a symlinked input", async () => {
+      const fs = new InMemoryFileSystem({
+        directories: {
+          "/Users/me/project": "/Users/me/project",
+          "/Users/me/link": "/Users/me/project",
+        },
+      });
+      const registry = makeRegistry(fs);
+      await registry.register("/Users/me/project");
+
+      await expect(
+        registry.resolveRegistered("/Users/me/link"),
+      ).resolves.toEqual({ path: "/Users/me/project" });
+    });
+
+    it("returns nothing for a repo that is not registered", async () => {
+      const fs = new InMemoryFileSystem({
+        directories: { "/Users/me/project": "/Users/me/project" },
+      });
+      const registry = makeRegistry(fs);
+
+      await expect(
+        registry.resolveRegistered("/Users/me/project"),
+      ).resolves.toBeUndefined();
+    });
+  });
 });

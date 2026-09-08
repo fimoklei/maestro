@@ -40,6 +40,15 @@ A story is documentation, not a test (behaviour → `.test.tsx`, see `testing.md
 - CSF3 (`satisfies Meta<typeof X>`, `StoryObj`); no legacy `storiesOf`.
 - Title is `Group/Component`; reuse existing groups.
 
+## Copy implementation (ADR-0025)
+
+- Keep user-facing text in `packages/web`, centralised per feature. Author a
+  notice's heading, sentence, `detail` and action label together, keyed by error
+  code. The server sends codes and HTTP statuses; its eight request-shape
+  messages remain the exception.
+- Share a string when its meaning and behaviour match. Write dynamic sentences
+  whole and check zero, one, many and long names.
+
 ## Out of scope
 
 - No global client-state library (Redux/Zustand). Routing is `react-router`; add no second router.

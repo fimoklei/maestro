@@ -36,15 +36,19 @@ export class Registry {
 
   // Called before any filesystem or apm access. Exact match after realpath, and
   // never throws: a missing path is simply not registered (security.md).
-  async isRegistered(input: string): Promise<boolean> {
+  async resolveRegistered(input: string): Promise<RegisteredRepo | undefined> {
     let real: string;
     try {
       real = await this.fs.realpath(input);
     } catch {
-      return false;
+      return undefined;
     }
     const { repos } = await this.store.read();
-    return repos.some((repo) => repo.path === real);
+    return repos.find((repo) => repo.path === real);
+  }
+
+  async isRegistered(input: string): Promise<boolean> {
+    return (await this.resolveRegistered(input)) !== undefined;
   }
 
   // Read-modify-write through the store's one lock, so a registration landing

@@ -71,7 +71,8 @@ export const WithPath: Story = {
       label: "Linked skill folder",
       message:
         "Nothing was written. Run rm /Users/developer/.claude/skills/workflow-commit and then deploy again.",
-      detail: "Deleting the link leaves the folder it points at untouched.",
+      detail:
+        "This removes the link only. The folder it points at remains on disk.",
     },
   },
 };

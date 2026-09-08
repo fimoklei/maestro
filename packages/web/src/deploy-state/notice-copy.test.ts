@@ -163,7 +163,8 @@ describe("deploy notices", () => {
         label: "Linked skill folder",
         message:
           "Nothing was written. Delete the linked skill folder in the target, then deploy again.",
-        detail: "Deleting the link leaves the folder it points at untouched.",
+        detail:
+          "This removes the link only. The folder it points at remains on disk.",
       },
     ],
     [
