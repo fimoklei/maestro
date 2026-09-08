@@ -211,7 +211,7 @@ describe("Harness import flow", () => {
     // and is painted on the active surface.
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     const menu = await screen.findByRole("button", {
-      name: "Actions for code-review",
+      name: "Actions for code-review in Pending proposal",
     });
     await waitFor(() => {
       expect(menu).toHaveFocus();
@@ -227,7 +227,7 @@ describe("Harness import flow", () => {
     await openImportWithSource(user);
     await user.click(screen.getByRole("button", { name: "Import skill" }));
     const menu = await screen.findByRole("button", {
-      name: "Actions for code-review",
+      name: "Actions for code-review in Pending proposal",
     });
 
     vi.useFakeTimers();

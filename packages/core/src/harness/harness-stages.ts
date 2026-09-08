@@ -4,10 +4,11 @@
 // are different pieces of work.
 import type { GitOrigin } from "../deploy/git-origin";
 import { isConcurrentlyChanged, isLocalDeletion } from "./classify-movement";
-import type {
-  HarnessReviewRead,
-  RequestedReviewer,
-  ReviewRequest,
+import {
+  type HarnessReviewRead,
+  matchesProposal,
+  type RequestedReviewer,
+  type ReviewRequest,
 } from "./harness-review-port";
 import { promoteBranch } from "./promote-branch";
 import type { HarnessSkillTrees } from "./read-harness-state";
@@ -131,17 +132,15 @@ const matchRequests = ({
   if (review.outcome !== "read" || defaultBranch === null) {
     return matches;
   }
-  const [owner, repo] = origin.ownerRepo.split("/");
   for (const skill of everySkill(trees, release)) {
-    const branch = promoteBranch(skill);
     matches.set(
       skill,
-      review.requests.filter(
-        (request) =>
-          request.headOwner === owner &&
-          request.headRepo === repo &&
-          request.headBranch === branch &&
-          request.baseBranch === defaultBranch,
+      review.requests.filter((request) =>
+        matchesProposal(request, {
+          ownerRepo: origin.ownerRepo,
+          branch: promoteBranch(skill),
+          base: defaultBranch,
+        }),
       ),
     );
   }

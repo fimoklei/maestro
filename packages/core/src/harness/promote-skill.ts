@@ -6,9 +6,16 @@ import { parseGitOrigin } from "../deploy/git-origin";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isConcurrentlyChanged } from "./classify-movement";
 import {
+  type HarnessReviewPort,
+  matchesProposal,
+  type ReviewRequest,
+} from "./harness-review-port";
+import {
   isPromotableSkillName,
+  PROPOSAL_BODY,
   promoteBranch,
   promoteCompareUrl,
+  proposalTitle,
 } from "./promote-branch";
 import type {
   HarnessFreshnessPort,
@@ -29,6 +36,9 @@ export type PromoteSkillError =
   // before the press, since that can be stale by the time it lands here
   // (#579).
   | "concurrent-change"
+  // Two open requests already match this branch, so sending content to it
+  // would update a proposal nobody chose (#827 · Multiple pull requests).
+  | "extra-requests"
   | "promote-failed"
   | "promote-in-progress";
 
@@ -43,6 +53,9 @@ type Checked =
       ok: true;
       origin: NonNullable<ReturnType<typeof parseGitOrigin>>;
       head: string;
+      // The default branch a proposal is opened against, and the skill's own
+      // proposal branch the content lands on.
+      base: string;
       branch: string;
     }
   | { ok: false; error: PromoteSkillError };
@@ -53,6 +66,7 @@ export class PromoteSkill {
     git: HarnessGitPort;
     freshness: HarnessFreshnessPort;
     locks: InFlightLocks;
+    review: HarnessReviewPort;
   };
 
   constructor(deps: PromoteSkill["deps"]) {
@@ -105,6 +119,14 @@ export class PromoteSkill {
       return second;
     }
 
+    // What GitHub says about this branch, read now rather than taken from the
+    // cockpit: it decides whether this press updates a proposal or opens one,
+    // and an ambiguity blocks it before anything is pushed.
+    const open = await this.openRequests(second);
+    if (open !== null && open.length > 1) {
+      return { ok: false, error: "extra-requests" };
+    }
+
     const push = await this.deps.git.pushSkillPromotion(
       root,
       name,
@@ -112,10 +134,22 @@ export class PromoteSkill {
     );
     switch (push) {
       case "pushed":
+        // Only where the branch has no proposal of its own. An open request
+        // keeps its discussion and GitHub's verdict; a review capability that
+        // could not answer leaves the row on Pull request missing, which
+        // Create pull request recovers (gh-driver.md).
+        if (open !== null && open.length === 0) {
+          await this.deps.review.createRequest(second.origin, {
+            head: second.branch,
+            base: second.base,
+            title: proposalTitle(name),
+            body: PROPOSAL_BODY,
+          });
+        }
         return {
           ok: true,
           branch: promoteBranch(name),
-          pullRequestUrl: promoteCompareUrl(second.origin, second.branch, name),
+          pullRequestUrl: promoteCompareUrl(second.origin, second.base, name),
         };
       case "skill-missing":
         return { ok: false, error: "skill-missing" };
@@ -176,6 +210,33 @@ export class PromoteSkill {
     if (concurrentChange) {
       return { ok: false, error: "concurrent-change" };
     }
-    return { ok: true, origin, head, branch };
+    return {
+      ok: true,
+      origin,
+      head,
+      base: branch,
+      branch: promoteBranch(name),
+    };
+  }
+
+  // The open requests over this skill's branch, or null where GitHub could not
+  // answer completely. Null is "unknown", never "none": a review capability
+  // that cannot answer degrades on its own and blocks no push (ADR-0029).
+  private async openRequests(
+    checked: Extract<Checked, { ok: true }>,
+  ): Promise<ReviewRequest[] | null> {
+    const review = await this.deps.review.readReviews(checked.origin);
+    if (review.outcome !== "read" || !review.complete) {
+      return null;
+    }
+    return review.requests.filter(
+      (request) =>
+        request.state === "open" &&
+        matchesProposal(request, {
+          ownerRepo: checked.origin.ownerRepo,
+          branch: checked.branch,
+          base: checked.base,
+        }),
+    );
   }
 }

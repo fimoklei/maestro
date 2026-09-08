@@ -3,10 +3,13 @@
 // never inferred — it takes a confirmation (ADR-0021, #580).
 import { parseGitOrigin } from "../deploy/git-origin";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
+import { type HarnessReviewPort, matchesProposal } from "./harness-review-port";
 import {
   isPromotableSkillName,
+  PROPOSAL_BODY,
   promoteBranch,
   promoteCompareUrl,
+  proposalTitle,
 } from "./promote-branch";
 import type {
   HarnessFreshnessPort,
@@ -33,6 +36,9 @@ export type PromoteDeletionError =
   | WorktreeAmbiguity
   | "push-elsewhere"
   | "source-changed"
+  // Two open requests already match this branch, so sending the removal to it
+  // would update a proposal nobody chose (#827 · Multiple pull requests).
+  | "extra-requests"
   | "promote-failed";
 
 export type PromoteDeletionResult =
@@ -45,6 +51,7 @@ export class PromoteSkillDeletion {
     git: HarnessGitPort;
     freshness: HarnessFreshnessPort;
     locks: InFlightLocks;
+    review: HarnessReviewPort;
   };
 
   constructor(deps: PromoteSkillDeletion["deps"]) {
@@ -130,9 +137,39 @@ export class PromoteSkillDeletion {
       return { ok: false, error: "confirmation-stale" };
     }
 
+    // What GitHub says about this branch, read now rather than taken from the
+    // cockpit: it decides whether this removal updates a proposal or opens
+    // one, and an ambiguity blocks it before anything is pushed.
+    const review = await this.deps.review.readReviews(origin);
+    const open =
+      review.outcome !== "read" || !review.complete
+        ? null
+        : review.requests.filter(
+            (request) =>
+              request.state === "open" &&
+              matchesProposal(request, {
+                ownerRepo: origin.ownerRepo,
+                branch: promoteBranch(name),
+                base: branch,
+              }),
+          );
+    if (open !== null && open.length > 1) {
+      return { ok: false, error: "extra-requests" };
+    }
+
     const push = await this.deps.git.pushSkillDeletion(root, name, head);
     switch (push) {
       case "pushed":
+        // Only where the branch has no proposal of its own; an open request
+        // keeps its discussion and GitHub's verdict (gh-driver.md).
+        if (open !== null && open.length === 0) {
+          await this.deps.review.createRequest(origin, {
+            head: promoteBranch(name),
+            base: branch,
+            title: proposalTitle(name),
+            body: PROPOSAL_BODY,
+          });
+        }
         return {
           ok: true,
           branch: promoteBranch(name),

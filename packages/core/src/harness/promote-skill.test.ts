@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { InFlightLocks } from "../deploy/in-flight-locks";
+import type {
+  HarnessReviewRead,
+  NewReviewRequest,
+  ReviewRequest,
+  ReviewWriteOutcome,
+} from "./harness-review-port";
 import { PromoteSkill } from "./promote-skill";
 import type {
   HarnessFacts,
@@ -16,6 +22,27 @@ const FACTS: HarnessFacts = {
   defaultBranchCommit: "head",
   tags: [],
 };
+
+const EMPTY_REVIEW: HarnessReviewRead = {
+  outcome: "read",
+  requests: [],
+  complete: true,
+  limit: 100,
+};
+
+const openRequest = (over: Partial<ReviewRequest> = {}): ReviewRequest => ({
+  number: 45,
+  url: "https://github.com/fimoklei/agent-harness/pull/45",
+  state: "open",
+  draft: false,
+  decision: null,
+  reviewers: [],
+  headOwner: "fimoklei",
+  headRepo: "agent-harness",
+  headBranch: "maestro/tdd",
+  baseBranch: "main",
+  ...over,
+});
 
 const FRESHNESS: HarnessFreshness = {
   outcome: "fetched",
@@ -38,6 +65,9 @@ function buildPromote(overrides?: {
   // in-promote checks, in the same shape a real re-fetch would surface.
   factsPerCall?: Partial<HarnessFacts>[];
   onFetch?: () => void;
+  review?: HarnessReviewRead;
+  onCreate?: (request: NewReviewRequest) => void;
+  createOutcome?: ReviewWriteOutcome;
 }) {
   let factsCall = 0;
   return new PromoteSkill({
@@ -92,6 +122,15 @@ function buildPromote(overrides?: {
         overrides?.onFreshnessRecord?.(root, freshness);
       },
     },
+    review: {
+      readReviews: async () => overrides?.review ?? EMPTY_REVIEW,
+      createRequest: async (_origin, made) => {
+        overrides?.onCreate?.(made);
+        return overrides?.createOutcome ?? { ok: true };
+      },
+      reopenRequest: async () => ({ ok: true }),
+      closeRequest: async () => ({ ok: true }),
+    },
   });
 }
 
@@ -111,6 +150,80 @@ describe("PromoteSkill", () => {
     // The commit is built on the tip this call just fetched, never on local
     // HEAD: unrelated local commits must not ride into the pull request.
     expect(pushed).toEqual(["/harness", "tdd", "head"]);
+  });
+
+  it("opens the pull request the pushed branch has no proposal for", async () => {
+    const created: NewReviewRequest[] = [];
+    const promote = buildPromote({ onCreate: (made) => created.push(made) });
+
+    await expect(promote.execute("tdd", AT)).resolves.toMatchObject({
+      ok: true,
+    });
+    expect(created).toEqual([
+      {
+        head: "maestro/tdd",
+        base: "main",
+        title: "Promote skill: tdd",
+        body: "Proposed from the Maestro cockpit.",
+      },
+    ]);
+  });
+
+  it("sends an update to the open proposal without touching the request", async () => {
+    // Update proposal is the same push. Leaving the request alone is what
+    // keeps GitHub's review verdict standing (#827 · user story 14).
+    const created: NewReviewRequest[] = [];
+    const promote = buildPromote({
+      review: { ...EMPTY_REVIEW, requests: [openRequest()] },
+      onCreate: (made) => created.push(made),
+    });
+
+    await expect(promote.execute("tdd", AT)).resolves.toMatchObject({
+      ok: true,
+    });
+    expect(created).toEqual([]);
+  });
+
+  it("refuses while more than one open request matches the branch", async () => {
+    const pushed: string[] = [];
+    const promote = buildPromote({
+      review: {
+        ...EMPTY_REVIEW,
+        requests: [openRequest({ number: 41 }), openRequest({ number: 44 })],
+      },
+      onPush: (root) => pushed.push(root),
+    });
+
+    await expect(promote.execute("tdd", AT)).resolves.toEqual({
+      ok: false,
+      error: "extra-requests",
+    });
+    expect(pushed).toEqual([]);
+  });
+
+  it("still pushes when GitHub cannot be asked, leaving the request missing", async () => {
+    // A gh failure degrades the review capability alone (gh-driver.md): the
+    // branch still lands, and the row reads Pull request missing.
+    const pushed: string[] = [];
+    const promote = buildPromote({
+      review: { outcome: "unavailable" },
+      onPush: (root) => pushed.push(root),
+    });
+
+    await expect(promote.execute("tdd", AT)).resolves.toMatchObject({
+      ok: true,
+    });
+    expect(pushed).toEqual(["/harness"]);
+  });
+
+  it("keeps the push when the request could not be opened", async () => {
+    const promote = buildPromote({
+      createOutcome: { ok: false, error: "failed" },
+    });
+
+    await expect(promote.execute("tdd", AT)).resolves.toMatchObject({
+      ok: true,
+    });
   });
 
   it("refuses when no harness is connected", async () => {

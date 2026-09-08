@@ -2,7 +2,6 @@ import type { HarnessState } from "@maestro/core";
 import { useEffect, useState } from "react";
 import { BrowseDialog } from "../shell/browse-dialog";
 import { useBrowsePicker } from "../shell/use-browse-picker";
-import type { ActionsMenuProps } from "../ui/actions-menu";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { Notice } from "../ui/notice";
@@ -21,12 +20,14 @@ import {
   harnessStateNotice,
   importNotice,
   promoteNotice,
+  proposalNotice,
   publishReleaseNotice,
   refreshNotice,
   releasePlanNotice,
   removalNotice,
 } from "./notice-copy";
 import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
+import { rowItems } from "./row-actions";
 import { StageTable } from "./stage-table";
 import type { HarnessStageRow, ReleasePlan, SemverStep } from "./use-harness";
 import {
@@ -36,10 +37,12 @@ import {
   useImportSkill,
   usePromoteDeletion,
   usePromoteSkill,
+  useProposalAction,
   usePublishRelease,
   useRefreshHarness,
   useReleasePlan,
 } from "./use-harness";
+import { WithdrawDialog } from "./withdraw-dialog";
 
 // The Harness home base: what the released harness is, how fresh that picture
 // is, and whether anything merged is waiting. It leads with state and reads on
@@ -137,6 +140,35 @@ export function HarnessView() {
     : removal.isSuccess
       ? (removal.variables?.name ?? null)
       : null;
+
+  // The three GitHub-side actions share one mutation: only the route differs,
+  // and a refusal is stated on the row it was pressed from.
+  const proposalAction = useProposalAction();
+  const proposalSkill = proposalAction.variables?.name ?? null;
+  const proposalFailure = proposalNotice(proposalAction.error);
+  // Withdrawal is the one action that confirms first. The number the row
+  // showed rides with it; the server rechecks it before closing anything.
+  const [withdrawing, setWithdrawing] = useState<{
+    skill: string;
+    number: number;
+  } | null>(null);
+  const closeWithdrawal = () => setWithdrawing(null);
+  // One refusal at a time, stated on the row the press was made from. A
+  // withdrawal's refusal belongs to its dialog, where the confirmation still
+  // stands (#577, #580).
+  const rowFailure = () => {
+    if (promoteFailure !== null && promotedSkill !== null) {
+      return { skill: promotedSkill, notice: promoteFailure };
+    }
+    if (
+      withdrawing === null &&
+      proposalFailure !== null &&
+      proposalSkill !== null
+    ) {
+      return { skill: proposalSkill, notice: proposalFailure };
+    }
+    return null;
+  };
 
   const promoteSkill = (name: string) => {
     const row = proposalRows(state).find((each) => each.skill === name);
@@ -275,22 +307,37 @@ export function HarnessView() {
                       }}
                       actions={{
                         items: (row) =>
-                          rowItems(row, {
-                            onPromote: promoteSkill,
+                          rowItems(
+                            row,
+                            {
+                              promote: promoteSkill,
+                              create: (skill) =>
+                                proposalAction.mutate({
+                                  action: "create",
+                                  name: skill,
+                                }),
+                              reopen: (skill, number) =>
+                                proposalAction.mutate({
+                                  action: "reopen",
+                                  name: skill,
+                                  number,
+                                }),
+                              withdraw: (skill, number) => {
+                                proposalAction.reset();
+                                setWithdrawing({ skill, number });
+                              },
+                            },
                             // The rule that closes Release: with no answer
                             // from the remote there is no tip to build the
                             // commit on. A refresh or a re-read in flight is
                             // moving the very rows a press would aim at.
-                            enabled:
-                              releaseEnabled(state.freshness) &&
+                            releaseEnabled(state.freshness) &&
                               !refresh.isPending &&
                               !harness.isFetching &&
-                              promote.isPending === false,
-                          }),
-                        failed:
-                          promoteFailure === null || promotedSkill === null
-                            ? null
-                            : { skill: promotedSkill, notice: promoteFailure },
+                              promote.isPending === false &&
+                              proposalAction.isPending === false,
+                          ),
+                        failed: rowFailure(),
                         // Focusing the row's menu is what scrolls it into
                         // view: the platform already does that for focus().
                         focus: landedOn ?? justMoved,
@@ -354,6 +401,27 @@ export function HarnessView() {
               removeError={removalNotice(removal.error)}
             />
           ) : null}
+          {withdrawing !== null ? (
+            <WithdrawDialog
+              skill={withdrawing.skill}
+              number={withdrawing.number}
+              onClose={closeWithdrawal}
+              // Closes on success only: a refusal is stated in the dialog, and
+              // the way forward is another confirmation.
+              onConfirm={() =>
+                proposalAction.mutate(
+                  {
+                    action: "withdraw",
+                    name: withdrawing.skill,
+                    number: withdrawing.number,
+                  },
+                  { onSuccess: closeWithdrawal },
+                )
+              }
+              withdrawing={proposalAction.isPending}
+              withdrawError={proposalNotice(proposalAction.error)}
+            />
+          ) : null}
           {planOpen ? (
             <ReleaseDialog
               origin={state.origin}
@@ -375,34 +443,6 @@ export function HarnessView() {
 function proposalRows(state: HarnessState | undefined): HarnessStageRow[] {
   const stage = state?.stages.proposal;
   return stage?.outcome === "read" ? stage.rows : [];
-}
-
-// What the row menu holds today: every pull-request link the read model
-// carries, plus the one press that already exists. The rest of the actions
-// (Update proposal, Create pull request, Reopen proposal, Withdraw proposal)
-// are #844's.
-function rowItems(
-  row: HarnessStageRow,
-  promote: { onPromote: (skill: string) => void; enabled: boolean },
-): ActionsMenuProps["items"] {
-  const links = row.requests.map((request) => ({
-    label:
-      row.requests.length === 1
-        ? "Open pull request"
-        : `Open pull request #${request.number}`,
-    href: request.url,
-  }));
-  if (row.stage !== "pending-proposal") {
-    return links;
-  }
-  return [
-    ...links,
-    {
-      label: "Propose change",
-      disabled: !promote.enabled,
-      onSelect: () => promote.onPromote(row.skill),
-    },
-  ];
 }
 
 // Idle until a folder is picked: with nothing to judge there is no refusal to

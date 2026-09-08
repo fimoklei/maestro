@@ -5,6 +5,7 @@ import type {
   ImportSourceBlocker,
   PromoteDeletionError,
   PromoteSkillError,
+  ProposalActionError,
   PublishReleaseError,
   ReleasePlanError,
 } from "@maestro/core";
@@ -115,6 +116,13 @@ const promoteHeadings: NoticeTable<PromoteSkillError> = {
     message:
       "Their version still stands. Pull it into the Harness clone, then Propose change again.",
   },
+  "extra-requests": {
+    level: "error",
+    label: "Multiple pull requests",
+    message:
+      "Nothing was pushed. Close the extra requests on GitHub, then propose the change again.",
+    detail: "More than one open pull request matches this skill's branch.",
+  },
   "promote-failed": {
     level: "error",
     label: "Change not proposed",
@@ -153,6 +161,11 @@ const deletionHeadings: NoticeTable<PromoteDeletionError> = {
     label: "Removal not proposed",
     message:
       "The Harness is as it was. Remove skill again once GitHub is reachable.",
+  },
+  "extra-requests": {
+    ...promoteHeadings["extra-requests"],
+    message:
+      "Nothing was pushed. Close the extra requests on GitHub, then remove the skill again.",
   },
   "confirmation-stale": {
     level: "error",
@@ -198,6 +211,57 @@ const deletionHeadings: NoticeTable<PromoteDeletionError> = {
     label: "Unreadable working tree",
     message:
       "Nothing was pushed. Make the Harness folder readable, then Remove skill again.",
+  },
+};
+
+// The three GitHub-side mutations. Each refusal leaves the pull request and
+// the clone as they were, so every sentence ends on another press of the same
+// control (ADR-0025).
+const proposalHeadings: NoticeTable<ProposalActionError> = {
+  ...harnessHeadings,
+  "invalid-skill": promoteHeadings["invalid-skill"],
+  "no-answer": {
+    level: "error",
+    label: "No answer from GitHub",
+    message: "Press Retry check, then start the change again.",
+    detail:
+      "Maestro could not read the branch this proposal is opened against.",
+  },
+  "review-unavailable": {
+    level: "error",
+    label: "Review status unavailable",
+    message: "Sign in with gh auth login, then start the change again.",
+    detail: "Maestro reads pull requests through your own gh sign-in.",
+  },
+  "review-unknown": {
+    level: "error",
+    label: "Review status unknown",
+    message: "Press Retry check, then start the change again.",
+    detail: "GitHub gave no answer Maestro can act on.",
+  },
+  "request-gone": {
+    level: "error",
+    label: "Pull request moved on",
+    message: "Press Retry check to read what GitHub holds now.",
+    detail: "This pull request is no longer the one open over this skill.",
+  },
+  "extra-requests": {
+    level: "error",
+    label: "Multiple pull requests",
+    message: "Close the extra requests on GitHub, then start the change again.",
+    detail: "More than one open pull request matches this skill's branch.",
+  },
+  "request-exists": {
+    level: "error",
+    label: "Pull request already open",
+    message: "Press Retry check to read the open pull request.",
+    detail: "GitHub already holds an open request over this skill's branch.",
+  },
+  "action-failed": {
+    level: "error",
+    label: "Pull request unchanged",
+    message: "Open the pull request on GitHub and make the change there.",
+    detail: "GitHub refused the change Maestro asked for.",
   },
 };
 
@@ -398,6 +462,13 @@ export const removalNotice = (error: unknown): NoticeContent | null =>
     label: "Removal not proposed",
     message:
       "The Maestro server did not answer, and nothing was pushed. Remove skill again.",
+  });
+
+export const proposalNotice = (error: unknown): NoticeContent | null =>
+  noticeFromTable(proposalHeadings, error, {
+    label: "Pull request unchanged",
+    message:
+      "The Maestro server did not answer, and GitHub is as it was. Start the change again.",
   });
 
 export const importNotice = (error: unknown): NoticeContent | null =>

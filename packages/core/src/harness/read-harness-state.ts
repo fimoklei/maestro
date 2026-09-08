@@ -223,7 +223,8 @@ export class ReadHarnessState {
     // GitHub's own facts about the proposals. An optional capability: a read
     // that fails or is unavailable degrades one stage, never the others
     // (ADR-0029).
-    review: HarnessReviewPort;
+    // The read half only: nothing a Harness read does may change a proposal.
+    review: Pick<HarnessReviewPort, "readReviews">;
   };
 
   // One fetch per harness at a time: the view opens under StrictMode and a

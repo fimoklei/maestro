@@ -17,6 +17,7 @@ import {
   NodeFileSystem,
   PromoteSkill,
   PromoteSkillDeletion,
+  ProposalActions,
   ReadHarnessState,
   releasedSkillsFromGit,
 } from "@maestro/core";
@@ -114,13 +115,20 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
         resolveRoot,
         git: new HarnessGitAdapter(),
         freshness: new HarnessFreshnessStore({ store }),
+        review,
         locks: new InFlightLocks(),
       }),
       promoteDeletion: new PromoteSkillDeletion({
         resolveRoot,
         git: new HarnessGitAdapter(),
         freshness: new HarnessFreshnessStore({ store }),
+        review,
         locks: new InFlightLocks(),
+      }),
+      proposals: new ProposalActions({
+        resolveRoot,
+        git: new HarnessGitAdapter(),
+        review,
       }),
       deployState: stubDeployState({ fs }),
       deploy: stubDeploy({ inventory, registry, locks }),

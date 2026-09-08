@@ -86,10 +86,12 @@ export { HarnessGitAdapter } from "./harness/harness-git";
 export type {
   HarnessReviewPort,
   HarnessReviewRead,
+  NewReviewRequest,
   RequestedReviewer,
   ReviewDecision,
   ReviewRequest,
   ReviewRequestState,
+  ReviewWriteOutcome,
 } from "./harness/harness-review-port";
 export type {
   HarnessStage,
@@ -122,6 +124,11 @@ export {
   type PromoteSkillError,
   type PromoteSkillResult,
 } from "./harness/promote-skill";
+export {
+  type ProposalActionError,
+  type ProposalActionResult,
+  ProposalActions,
+} from "./harness/proposal-actions";
 export type { SemverStep } from "./harness/propose-release-version";
 export {
   PublishRelease,
