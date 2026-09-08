@@ -90,26 +90,36 @@ export function useDiscardReleasePlan() {
 export function usePublishRelease() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (request: {
+    mutationFn: async (request: {
       step: SemverStep;
       previousTag: string | null;
       previousTagCommit: string | null;
       revision: string;
-    }) =>
-      requestJson<{ tag: string; revision: string }>("/api/harness/release", {
-        method: "POST",
-        body: JSON.stringify(request),
-      }),
+    }) => {
+      const release = await requestJson<{ tag: string; revision: string }>(
+        "/api/harness/release",
+        { method: "POST", body: JSON.stringify(request) },
+      );
+      // Inventory answers from the latest release, so publishing one is the
+      // only act that changes it (ADR-0021 §9). Awaited, not fired off: the
+      // tag is atomic, so this re-read is the only half of a publication that
+      // can fail, and the notice states which of the two happened (#849). A
+      // failed re-read lands on the Inventory's own unreadable state.
+      await queryClient
+        .invalidateQueries({ queryKey: INVENTORY_KEY })
+        .catch(() => {});
+      return {
+        tag: release.tag,
+        inventoryRefreshed:
+          queryClient.getQueryState(INVENTORY_KEY)?.status !== "error",
+      };
+    },
     onSuccess: () => {
       void queryClient.cancelQueries({ queryKey: HARNESS_KEY });
       void fetchHarnessState().then(
         (state) => queryClient.setQueryData(HARNESS_KEY, state),
         () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
       );
-      // Inventory answers from the latest release, so publishing one is the
-      // only act that changes it (ADR-0021 §9). A failed re-read lands on the
-      // Inventory's own unreadable state.
-      void queryClient.invalidateQueries({ queryKey: INVENTORY_KEY });
     },
     // A refused plan comes back with the one that replaces it. Without a
     // replacement the old plan is asked for again, never left standing (#521).

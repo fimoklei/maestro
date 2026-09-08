@@ -121,6 +121,13 @@ function stubHarnessServer(options: {
   // Every release confirmation's parsed body, in order, so a test can state
   // what the browser sent without reading it back off the screen.
   confirmations?: Record<string, unknown>[];
+  // What the Inventory read answers, and what it answers once a release has
+  // gone through — the half of a publication that can fail on its own.
+  inventory?: {
+    body?: unknown;
+    status?: number;
+    afterPublish?: { body?: unknown; status?: number };
+  };
 }) {
   const calls: string[] = [];
   let planCalls = 0;
@@ -191,6 +198,17 @@ function stubHarnessServer(options: {
           published = true;
         }
         return jsonResponse(pub.body, pub.status);
+      }
+      if (url.startsWith("/api/inventory/primitives")) {
+        const inventory = options.inventory ?? {};
+        const answered =
+          published && inventory.afterPublish !== undefined
+            ? inventory.afterPublish
+            : inventory;
+        return jsonResponse(
+          answered.body ?? { primitives: [] },
+          answered.status,
+        );
       }
       if (url.startsWith("/api/harness/refresh")) {
         const refresh = options.refresh ?? options.read;
@@ -823,6 +841,109 @@ describe("Harness home base", () => {
       expect(
         calls.filter((call) => call.includes("/api/inventory/primitives")),
       ).toHaveLength(2),
+    );
+  });
+
+  it("states the published tag and the Inventory read that followed it", async () => {
+    stubHarnessServer({
+      read: { body: FETCHED },
+      refresh: {
+        body: FETCHED,
+        afterPublish: { ...RELEASED, releasedVersion: "v1.3.0" },
+      },
+      plan: { body: PLAN },
+      publish: { body: { tag: "v1.3.0", revision: PLAN.revision } },
+    });
+    renderWithQuery(
+      <StrictMode>
+        <HarnessView />
+        <InventoryProbe />
+      </StrictMode>,
+    );
+
+    const release = await screen.findByRole("button", {
+      name: /^create a release$/i,
+    });
+    await waitFor(() => expect(release).toBeEnabled());
+    await userEvent.click(release);
+    await screen.findByText("v1.3.0");
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
+
+    // The dialog closes on success: the outcome is stated on the screen it
+    // was published from, and the dialog holds no result state (#849).
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(await screen.findByText("Release published")).toBeInTheDocument();
+    expect(
+      screen.getByText("Maestro tagged v1.3.0 and refreshed Inventory."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("A release cannot change after publication."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /re-read inventory/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the publication honest when the Inventory read afterwards failed", async () => {
+    // The tag is atomic, so a refused re-read leaves half an outcome: the
+    // release stands and the Inventory does not show it yet (#849).
+    const calls = stubHarnessServer({
+      read: { body: FETCHED },
+      refresh: {
+        body: FETCHED,
+        afterPublish: { ...RELEASED, releasedVersion: "v1.3.0" },
+      },
+      plan: { body: PLAN },
+      publish: { body: { tag: "v1.3.0", revision: PLAN.revision } },
+      inventory: { afterPublish: { body: {}, status: 500 } },
+    });
+    renderWithQuery(
+      <StrictMode>
+        <HarnessView />
+        <InventoryProbe />
+      </StrictMode>,
+    );
+    await waitFor(() =>
+      expect(
+        calls.filter((call) => call.includes("/api/inventory/primitives")),
+      ).toHaveLength(1),
+    );
+
+    const release = await screen.findByRole("button", {
+      name: /^create a release$/i,
+    });
+    await waitFor(() => expect(release).toBeEnabled());
+    await userEvent.click(release);
+    await screen.findByText("v1.3.0");
+    await userEvent.click(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(await screen.findByText("Release published")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Maestro tagged v1.3.0 but could not refresh Inventory. Re-read Inventory to see the published skills.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("A release cannot change after publication."),
+    ).toBeInTheDocument();
+
+    // The action is the way back: it reads the Inventory again.
+    await userEvent.click(
+      screen.getByRole("button", { name: /^re-read inventory$/i }),
+    );
+    await waitFor(() =>
+      expect(
+        calls.filter((call) => call.includes("/api/inventory/primitives")),
+      ).toHaveLength(3),
     );
   });
 

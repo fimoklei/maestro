@@ -10,6 +10,7 @@ import {
   publishReleaseNotice,
   refreshNotice,
   releasePlanNotice,
+  releasePublishedNotice,
   staleStatusNotice,
 } from "./notice-copy";
 
@@ -673,6 +674,32 @@ describe("CONCURRENT_CHANGE_NOTICE", () => {
     expect(CONCURRENT_CHANGE_NOTICE).toEqual({
       ...CONCURRENT_CHANGE,
       level: "info",
+    });
+  });
+});
+
+describe("releasePublishedNotice", () => {
+  const reread = () => {};
+
+  it("states the tag and the Inventory read that followed it", () => {
+    expect(releasePublishedNotice("v1.5.0", true, reread)).toEqual({
+      level: "success",
+      label: "Release published",
+      message: "Maestro tagged v1.5.0 and refreshed Inventory.",
+      detail: "A release cannot change after publication.",
+    });
+  });
+
+  it("keeps the heading and the detail when only the Inventory read failed", () => {
+    // The tag is atomic, so the release stands whatever the re-read did: one
+    // heading, one subject, one detail across both outcomes (#849).
+    expect(releasePublishedNotice("v1.5.0", false, reread)).toEqual({
+      level: "warning",
+      label: "Release published",
+      message:
+        "Maestro tagged v1.5.0 but could not refresh Inventory. Re-read Inventory to see the published skills.",
+      detail: "A release cannot change after publication.",
+      action: { label: "Re-read Inventory", onClick: reread },
     });
   });
 });
