@@ -355,6 +355,24 @@ Pending review. Then a missing or unauthenticated `gh` costs the link and the
 withdrawal case, and nothing else. That is the lazy shape, and it is the one
 that survives failure mode 3 gracefully.
 
+## 6. The three writes (added 2026-09-08, `gh` 2.86.0)
+
+Read from `gh pr create --help`, `gh pr close --help` and `gh pr reopen --help`
+on the same version. Not executed against a live repository: a write cannot be
+probed without leaving a real pull request behind, so the flags below come from
+the CLI's own help output and the manual, and the adapter is driven by
+controlled process outcomes in the tests.
+
+| Write | Command | What the help states |
+|---|---|---|
+| Open | `gh pr create --repo O/R --head <branch> --base <base> --title T --body B` | *"Upon success, the URL of the created pull request will be printed."* `--head` is what makes gh *"explicitly skip any forking or pushing behavior"*, and `--title`/`--body` are what skip the prompt. |
+| Withdraw | `gh pr close <number> --repo O/R` | Closes it. `--delete-branch` is opt-in, so omitting it leaves the branch — which is what withdrawal must do. |
+| Reopen | `gh pr reopen <number> --repo O/R` | Reopens it. A merged request cannot be reopened, so Maestro refuses one before the call rather than reading gh's prose. |
+
+All three take `{<number> | <url> | <branch>}`; Maestro passes the number it
+matched itself. Exit codes and the offline phrase are §3's, unchanged: a write
+classifies the same way a read does, and its stdout is never parsed.
+
 ## Commands, for re-running
 
 ```sh
@@ -371,6 +389,11 @@ gh api "repos/fimoklei/harness/contents/.apm/skills?ref=main"
 gh api rate_limit
 git ls-remote https://github.com/fimoklei/harness.git 'refs/heads/maestro/*'
 
+# §6 — help output only, no live write
+gh pr create --help
+gh pr close --help
+gh pr reopen --help
+
 # failure probes — none of these touch the author's gh state
 env PATH=/usr/bin:/bin sh -c 'gh --version'
 env GH_CONFIG_DIR=<empty dir> GH_TOKEN= GITHUB_TOKEN= gh pr list --repo fimoklei/harness --state all --json number
@@ -382,6 +405,7 @@ gh pr list --repo nonexistent-host.invalid/some/project --state all --json numbe
 
 ## Sources
 
+- [`gh pr create` manual](https://cli.github.com/manual/gh_pr_create), [`gh pr close`](https://cli.github.com/manual/gh_pr_close), [`gh pr reopen`](https://cli.github.com/manual/gh_pr_reopen) — the three writes, their flags, and `--delete-branch` being opt-in.
 - [`gh pr list` manual](https://cli.github.com/manual/gh_pr_list) — flags, `--state` default `open`, `--limit` default `30`, `--head` has no `<owner>:<branch>` form.
 - [`gh` exit codes](https://cli.github.com/manual/gh_help_exit-codes) — 0 success, 1 failure, 2 cancelled, 4 authentication required.
 - [`gh` environment variables](https://cli.github.com/manual/gh_help_environment) — `GH_TOKEN`, `GITHUB_TOKEN`, `GH_HOST`, `GH_CONFIG_DIR`, `GH_PROMPT_DISABLED`, `NO_COLOR`, `CLICOLOR`, `GH_DEBUG`.

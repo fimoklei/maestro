@@ -14,6 +14,7 @@ import {
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
+import { unavailableHarnessReview } from "../helpers/unreachable-harness";
 
 const run = promisify(execFile);
 
@@ -49,6 +50,9 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
         },
       },
       locks: new InFlightLocks(),
+      // No GitHub capability in this lane: the push is what these journeys
+      // prove, and a request is opened only where gh can answer (ADR-0029).
+      review: unavailableHarnessReview(),
     });
 
   beforeEach(async () => {

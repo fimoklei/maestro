@@ -147,6 +147,7 @@ details may name the exact APM mechanism or file.
 | APM lockfile | **Deployment record** | Show `apm.lock.yaml` only in technical details. |
 | Pinned version | **Deployed version** | Do not introduce *pin* as a user action or state. |
 | Promote | **Propose change** / **proposed change** | *Propose change* is the action and the row button; the noun is a **proposed change**. Pushing alone does not mean a pull request exists or review has started. |
+| Proposal recovery actions | **Update proposal** / **Create pull request** / **Reopen proposal** / **Withdraw proposal** | The row menu's four presses beside *Propose change* and *Open pull request*. *Update proposal* sends new content to the existing proposal; *Create pull request* opens the request a prepared branch has none of; *Withdraw proposal* closes the request and keeps both the local files and the branch. |
 | Local work awaiting proposal | **Pending proposal** | Local skill content differs from the current open or prepared proposal, otherwise from the Harness default branch. |
 | Open proposal | **Pending review** | A matching open pull request into the Harness default branch exists. Its status is **Draft**, **Waiting for review**, **Changes requested**, or **Approved, awaiting merge**, according to the verified facts. |
 | Reviewer asked for changes | **Changes requested** | GitHub's review verdict on an open proposal. It survives an update to the proposal; only GitHub clears it. **Draft** outranks it when both apply. |

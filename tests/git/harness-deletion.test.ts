@@ -14,6 +14,7 @@ import {
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
+import { unavailableHarnessReview } from "../helpers/unreachable-harness";
 
 const run = promisify(execFile);
 
@@ -49,6 +50,7 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
         },
       },
       locks: new InFlightLocks(),
+      review: unavailableHarnessReview(),
     });
 
   // The origin/HEAD tree hash a `deleted locally` row would have shown, read

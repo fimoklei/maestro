@@ -23,6 +23,9 @@ export const unreachableHarnessGit = () => ({
 // stage degrades instead of a stub throwing on a read nobody asked for.
 export const unavailableHarnessReview = () => ({
   readReviews: async () => ({ outcome: "unavailable" }) as const,
+  createRequest: async () => ({ ok: false, error: "unavailable" }) as const,
+  reopenRequest: async () => ({ ok: false, error: "unavailable" }) as const,
+  closeRequest: async () => ({ ok: false, error: "unavailable" }) as const,
 });
 
 export const unfetchedFreshness = () => ({

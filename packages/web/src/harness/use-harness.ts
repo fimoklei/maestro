@@ -17,6 +17,7 @@ import type {
   PendingSkillMovement,
   ReleasePlan,
   RequestedReviewer,
+  ReviewRequestLink,
   SemverStep,
   SkillMovementKind,
   StageStatus,
@@ -42,6 +43,7 @@ export type {
   PendingSkillMovement,
   ReleasePlan,
   RequestedReviewer,
+  ReviewRequestLink,
   SemverStep,
   SkillMovementKind,
   StageStatus,
@@ -247,6 +249,35 @@ export function usePromoteSkill() {
         method: "POST",
         body: JSON.stringify(request),
       }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: HARNESS_KEY });
+    },
+  });
+}
+
+// The three mutations that touch only GitHub: creating the request a prepared
+// branch never got, reopening a closed one and withdrawing an open one. The
+// number the row showed travels as a claim — the server rechecks it against a
+// fresh read before anything is closed or reopened (#827).
+export type ProposalAction = "create" | "reopen" | "withdraw";
+
+export function useProposalAction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      action,
+      ...body
+    }: {
+      action: ProposalAction;
+      name: string;
+      number?: number;
+    }) =>
+      requestJson<{ ok: true }>(`/api/harness/proposal/${action}`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    // What the row now reads is GitHub's answer, not this reply's: the state is
+    // invalidated rather than written.
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: HARNESS_KEY });
     },

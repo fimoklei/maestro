@@ -3,7 +3,7 @@
 // (#827 — Testing Decisions). Git says what the content is; the stub says what
 // the team did with it.
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -17,6 +17,7 @@ import {
   NodeFileSystem,
   PromoteSkill,
   PromoteSkillDeletion,
+  ProposalActions,
   ReadHarnessState,
   type ReviewRequest,
   releasedSkillsFromGit,
@@ -127,13 +128,20 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
         resolveRoot,
         git: new HarnessGitAdapter(),
         freshness: new HarnessFreshnessStore({ store }),
+        review,
         locks,
       }),
       promoteDeletion: new PromoteSkillDeletion({
         resolveRoot,
         git: new HarnessGitAdapter(),
         freshness: new HarnessFreshnessStore({ store }),
+        review,
         locks,
+      }),
+      proposals: new ProposalActions({
+        resolveRoot,
+        git: new HarnessGitAdapter(),
+        review,
       }),
       deployState: stubDeployState({ fs }),
       deploy: stubDeploy({ inventory, registry, locks }),
@@ -164,8 +172,27 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
       body: JSON.stringify({ name }),
     });
 
+  const proposalAction = (
+    app: App,
+    action: "create" | "reopen" | "withdraw",
+    body: Record<string, unknown>,
+  ) =>
+    app.request(`/api/harness/proposal/${action}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
   const rowsOf = (stage: HarnessState["stages"]["proposal"]) =>
     stage.outcome === "read" ? stage.rows : [];
+
+  const branchTree = async (name: string) =>
+    (
+      await git(root, "rev-parse", `refs/remotes/origin/maestro/${name}^{tree}`)
+    ).stdout.trim();
+
+  const answer = (requests: ReviewRequest[]) =>
+    review.answer({ outcome: "read", requests, complete: true, limit: 100 });
 
   it("carries a skill through proposal, review and release as three separate rows", async () => {
     // Local edit → prepared proposal → an open request → a further local edit,
@@ -392,5 +419,248 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
     await refresh(makeApp());
 
     expect(review.asked).toEqual(["fimoklei/agent-harness"]);
+  });
+
+  describe("proposal actions", () => {
+    it("opens a pull request over the branch Propose change pushed", async () => {
+      const app = makeApp();
+      await writeSkill("tdd", "edited on disk");
+
+      expect((await promote(app, "tdd")).status).toBe(200);
+
+      expect(review.created).toEqual([
+        {
+          head: "maestro/tdd",
+          base: "main",
+          title: "Promote skill: tdd",
+          body: "Proposed from the Maestro cockpit.",
+        },
+      ]);
+    });
+
+    it("sends an update to the same proposal, leaving GitHub's request alone", async () => {
+      const app = makeApp();
+      await writeSkill("tdd", "first change");
+      await promote(app, "tdd");
+      const first = await branchTree("tdd");
+      answer([request({ decision: "changes-requested" })]);
+      review.created.length = 0;
+      await writeSkill("tdd", "answering the review");
+
+      expect((await promote(app, "tdd")).status).toBe(200);
+
+      // New content on the same branch, and no second request opened — which
+      // is what leaves GitHub's verdict standing (#827 · user story 14).
+      expect(await branchTree("tdd")).not.toBe(first);
+      expect(review.created).toEqual([]);
+      const state = await refresh(app);
+      expect(rowsOf(state.stages.review)).toMatchObject([
+        { status: "changes-requested", requests: [{ number: 45 }] },
+      ]);
+    });
+
+    it("creates the missing request from the prepared branch, without newer edits", async () => {
+      const app = makeApp();
+      await writeSkill("tdd", "prepared for review");
+      await promote(app, "tdd");
+      const prepared = await branchTree("tdd");
+      review.created.length = 0;
+      // The author keeps editing after preparing. Create pull request must
+      // not carry this along (#827 · user story 19).
+      await writeSkill("tdd", "not sent yet");
+
+      const response = await proposalAction(app, "create", { name: "tdd" });
+
+      expect(response.status).toBe(200);
+      expect(review.created).toEqual([
+        {
+          head: "maestro/tdd",
+          base: "main",
+          title: "Promote skill: tdd",
+          body: "Proposed from the Maestro cockpit.",
+        },
+      ]);
+      expect(await branchTree("tdd")).toBe(prepared);
+    });
+
+    it("refuses to create a second request over a branch that already has one", async () => {
+      const app = makeApp();
+      await writeSkill("tdd", "edited on disk");
+      await promote(app, "tdd");
+      answer([request()]);
+      review.created.length = 0;
+
+      const response = await proposalAction(app, "create", { name: "tdd" });
+
+      expect(response.status).toBe(409);
+      expect(await response.json()).toEqual({ error: "request-exists" });
+      expect(review.created).toEqual([]);
+    });
+
+    it("reopens the closed proposal the row named", async () => {
+      const app = makeApp();
+      await writeSkill("tdd", "edited on disk");
+      await promote(app, "tdd");
+      answer([request({ state: "closed" })]);
+
+      const response = await proposalAction(app, "reopen", {
+        name: "tdd",
+        number: 45,
+      });
+
+      expect(response.status).toBe(200);
+      expect(review.reopened).toEqual([45]);
+    });
+
+    it("refuses to reopen a merged request on a reused branch", async () => {
+      // An old merged request over this branch says nothing about the content
+      // pushed onto it since (ADR-0021, gh-driver.md).
+      const app = makeApp();
+      await writeSkill("tdd", "edited on disk");
+      await promote(app, "tdd");
+      answer([request({ state: "merged" })]);
+
+      const response = await proposalAction(app, "reopen", {
+        name: "tdd",
+        number: 45,
+      });
+
+      expect(response.status).toBe(409);
+      expect(await response.json()).toEqual({ error: "request-gone" });
+      expect(review.reopened).toEqual([]);
+    });
+
+    it("withdraws the open proposal, keeping the branch and the local files", async () => {
+      const app = makeApp();
+      await writeSkill("tdd", "edited on disk");
+      await promote(app, "tdd");
+      const prepared = await branchTree("tdd");
+      answer([request()]);
+
+      const response = await proposalAction(app, "withdraw", {
+        name: "tdd",
+        number: 45,
+      });
+
+      expect(response.status).toBe(200);
+      expect(review.closed).toEqual([45]);
+      expect(await branchTree("tdd")).toBe(prepared);
+      await expect(
+        readFile(join(root, ".apm", "skills", "tdd", "SKILL.md"), "utf8"),
+      ).resolves.toContain("edited on disk");
+    });
+
+    it("blocks update and withdrawal while two requests match the branch", async () => {
+      const app = makeApp();
+      await writeSkill("tdd", "edited on disk");
+      await promote(app, "tdd");
+      const prepared = await branchTree("tdd");
+      answer([request({ number: 41 }), request({ number: 44 })]);
+      await writeSkill("tdd", "a further edit");
+
+      const update = await promote(app, "tdd");
+      const withdrawal = await proposalAction(app, "withdraw", {
+        name: "tdd",
+        number: 41,
+      });
+
+      expect(await update.json()).toEqual({ error: "extra-requests" });
+      expect(await withdrawal.json()).toEqual({ error: "extra-requests" });
+      expect(await branchTree("tdd")).toBe(prepared);
+      expect(review.closed).toEqual([]);
+    });
+
+    it("refuses a number the fresh read no longer matches to this skill", async () => {
+      // The browser's picture is a claim, never an authorisation: GitHub is
+      // re-read before anything is closed (#827).
+      const app = makeApp();
+      await writeSkill("tdd", "edited on disk");
+      await promote(app, "tdd");
+      answer([request({ number: 44 })]);
+
+      const response = await proposalAction(app, "withdraw", {
+        name: "tdd",
+        number: 45,
+      });
+
+      expect(response.status).toBe(409);
+      expect(review.closed).toEqual([]);
+    });
+
+    it("acts on no request opened from another head or into another base", async () => {
+      const app = makeApp();
+      await writeSkill("tdd", "edited on disk");
+      await promote(app, "tdd");
+      answer([
+        request({ headOwner: "someone-else" }),
+        request({ number: 46, headOwner: null, headRepo: null }),
+        request({ number: 47, baseBranch: "release" }),
+      ]);
+
+      const response = await proposalAction(app, "withdraw", {
+        name: "tdd",
+        number: 45,
+      });
+
+      expect(await response.json()).toEqual({ error: "request-gone" });
+      expect(review.closed).toEqual([]);
+    });
+
+    it("acts on a teammate's request over the same branch", async () => {
+      // Author identity restricts nothing: the branch and the base are what
+      // make a request this Harness's (#825).
+      const app = makeApp();
+      await writeSkill("tdd", "edited on disk");
+      await promote(app, "tdd");
+      answer([request({ reviewers: [{ kind: "user", login: "ada" }] })]);
+
+      const response = await proposalAction(app, "withdraw", {
+        name: "tdd",
+        number: 45,
+      });
+
+      expect(response.status).toBe(200);
+      expect(review.closed).toEqual([45]);
+    });
+
+    it("refuses every mutation while GitHub cannot be asked", async () => {
+      const app = makeApp();
+      await writeSkill("tdd", "edited on disk");
+      review.answer({ outcome: "unavailable" });
+
+      const created = await proposalAction(app, "create", { name: "tdd" });
+      const closed = await proposalAction(app, "withdraw", {
+        name: "tdd",
+        number: 45,
+      });
+
+      expect(await created.json()).toEqual({ error: "review-unavailable" });
+      expect(await closed.json()).toEqual({ error: "review-unavailable" });
+    });
+
+    it("states GitHub's refusal without a word of its own output", async () => {
+      const app = makeApp();
+      await writeSkill("tdd", "edited on disk");
+      await promote(app, "tdd");
+      answer([request({ state: "closed" })]);
+      review.answerWrite({ ok: false, error: "failed" });
+
+      const response = await proposalAction(app, "reopen", {
+        name: "tdd",
+        number: 45,
+      });
+
+      expect(response.status).toBe(502);
+      expect(await response.json()).toEqual({ error: "action-failed" });
+    });
+
+    it("refuses a body that does not carry a request number", async () => {
+      const app = makeApp();
+
+      const response = await proposalAction(app, "withdraw", { name: "tdd" });
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({ error: "invalid-body" });
+    });
   });
 });

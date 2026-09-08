@@ -114,6 +114,10 @@ function stubHarnessServer(options: {
     retry?: { body: unknown; status?: number };
   };
   deletions?: Record<string, unknown>[];
+  // The three GitHub-side proposal mutations, and every one the browser sent,
+  // recorded with the route it took.
+  proposal?: { body: unknown; status?: number };
+  proposals?: { action: string; body: Record<string, unknown> }[];
   // Every release confirmation's parsed body, in order, so a test can state
   // what the browser sent without reading it back off the screen.
   confirmations?: Record<string, unknown>[];
@@ -146,6 +150,17 @@ function stubHarnessServer(options: {
         await ("holds" in plan ? plan.holds?.[planCalls] : undefined);
         planCalls += 1;
         return jsonResponse(plan.body, plan.status);
+      }
+      if (url.startsWith("/api/harness/proposal/")) {
+        options.proposals?.push({
+          action: url.slice("/api/harness/proposal/".length),
+          body: JSON.parse(String(init?.body)),
+        });
+        const act = options.proposal ?? { body: { ok: true } };
+        if ((act.status ?? 200) < 400) {
+          promoted = true;
+        }
+        return jsonResponse(act.body, act.status);
       }
       if (url === "/api/harness/promote/deletion") {
         options.deletions?.push(JSON.parse(String(init?.body)));
@@ -1133,9 +1148,11 @@ describe("Harness home base", () => {
   };
 
   // Every action lives in the row menu now, so a press opens it first.
-  const openRowMenu = async (skill: string) => {
+  const openRowMenu = async (skill: string, stage = "Pending proposal") => {
     await userEvent.click(
-      await screen.findByRole("button", { name: `Actions for ${skill}` }),
+      await screen.findByRole("button", {
+        name: `Actions for ${skill} in ${stage}`,
+      }),
     );
     return screen.findByRole("menu");
   };
@@ -1292,12 +1309,20 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    // Nothing to press yet on a pushed row: its menu holds no item at all
-    // until #844 adds Create pull request.
+    // A pushed row's way on is Create pull request, never a second push:
+    // Propose change belongs to the independent Pending proposal row (#844).
     await screen.findByText("lint-rules");
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "Actions for lint-rules in Pending review",
+      }),
+    );
+    const menu = await screen.findByRole("menu");
     expect(
-      screen.getByRole("button", { name: "Actions for lint-rules" }),
-    ).toBeDisabled();
+      within(menu)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Create pull request", "Withdraw proposal — no request yet"]);
   });
 
   it("keeps the pull-request link through a refresh and a remount", async () => {
@@ -1317,7 +1342,7 @@ describe("Harness home base", () => {
     });
     stubHarnessServer({ read: { body: OPEN_REQUEST } });
     const first = renderWithQuery(<HarnessView />);
-    const before = await openRowMenu("lint-rules");
+    const before = await openRowMenu("lint-rules", "Pending review");
     expect(
       within(before).getByRole("menuitem", { name: /open pull request/i }),
     ).toHaveAttribute(
@@ -1328,7 +1353,7 @@ describe("Harness home base", () => {
     first.unmount();
     renderWithQuery(<HarnessView />);
 
-    const after = await openRowMenu("lint-rules");
+    const after = await openRowMenu("lint-rules", "Pending review");
     expect(
       within(after).getByRole("menuitem", { name: /open pull request/i }),
     ).toHaveAttribute(
@@ -1365,7 +1390,7 @@ describe("Harness home base", () => {
         "Pull requests #41 and #44 both match this branch, so close one on GitHub.",
       ),
     ).toBeInTheDocument();
-    const menu = await openRowMenu("lint-rules");
+    const menu = await openRowMenu("lint-rules", "Pending review");
     expect(
       within(menu).getByRole("menuitem", { name: "Open pull request #41" }),
     ).toBeInTheDocument();
@@ -1557,6 +1582,326 @@ describe("Harness home base", () => {
     // a press (#465).
     expect(await screen.findByRole("status")).toHaveTextContent(
       /No Harness connected/i,
+    );
+  });
+});
+
+describe("proposal actions", () => {
+  const CONNECTED: HarnessState = {
+    ...RELEASED,
+    freshness: {
+      outcome: "fetched",
+      lastFetchedAt: "2026-08-03T11:56:00.000Z",
+    },
+  };
+
+  const link = (number: number) => ({
+    number,
+    url: `https://github.com/fimoklei/agent-harness/pull/${number}`,
+  });
+
+  const openRowMenu = async (skill: string, stage = "Pending review") => {
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: `Actions for ${skill} in ${stage}`,
+      }),
+    );
+    return screen.findByRole("menu");
+  };
+
+  const press = async (skill: string, name: RegExp) => {
+    const menu = await openRowMenu(skill);
+    await userEvent.click(within(menu).getByRole("menuitem", { name }));
+  };
+
+  it("names one skill's two menus apart, by the stage each belongs to", async () => {
+    // A skill can hold a row in every stage, so a menu named only after the
+    // skill would name three different sets of actions (copy.md · R-A).
+    stubHarnessServer({
+      read: {
+        body: withStages(CONNECTED, {
+          proposal: [row("pending-proposal", "tdd", "new-local-work")],
+          review: [
+            row("pending-review", "tdd", "waiting-for-review", {
+              requests: [link(45)],
+            }),
+          ],
+        }),
+      },
+    });
+    renderHarness();
+
+    expect(
+      (await screen.findAllByRole("button", { name: /^Actions for tdd/ })).map(
+        (trigger) => trigger.getAttribute("aria-label"),
+      ),
+    ).toEqual([
+      "Actions for tdd in Pending proposal",
+      "Actions for tdd in Pending review",
+    ]);
+  });
+
+  it("holds every action and every link for an open request", async () => {
+    stubHarnessServer({
+      read: {
+        body: withStages(CONNECTED, {
+          review: [
+            row("pending-review", "tdd", "waiting-for-review", {
+              requests: [link(45)],
+            }),
+          ],
+        }),
+      },
+    });
+    renderHarness();
+
+    const menu = await openRowMenu("tdd");
+
+    expect(
+      within(menu)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Open pull request", "Withdraw proposal"]);
+  });
+
+  it("withdraws only after the approved confirmation, and closes that request", async () => {
+    const proposals: { action: string; body: Record<string, unknown> }[] = [];
+    stubHarnessServer({
+      read: {
+        body: withStages(CONNECTED, {
+          review: [
+            row("pending-review", "tdd", "waiting-for-review", {
+              requests: [link(45)],
+            }),
+          ],
+        }),
+        afterPromote: withStages(CONNECTED, {}),
+      },
+      proposals,
+    });
+    renderHarness();
+
+    await press("tdd", /^withdraw proposal$/i);
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent(
+      "This closes the pull request. Your local files and proposal branch remain unchanged.",
+    );
+    expect(proposals).toEqual([]);
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Withdraw proposal" }),
+    );
+
+    await waitFor(() =>
+      expect(proposals).toEqual([
+        { action: "withdraw", body: { name: "tdd", number: 45 } },
+      ]),
+    );
+  });
+
+  it("closes nothing when the confirmation is cancelled", async () => {
+    const proposals: { action: string; body: Record<string, unknown> }[] = [];
+    stubHarnessServer({
+      read: {
+        body: withStages(CONNECTED, {
+          review: [
+            row("pending-review", "tdd", "waiting-for-review", {
+              requests: [link(45)],
+            }),
+          ],
+        }),
+      },
+      proposals,
+    });
+    renderHarness();
+
+    await press("tdd", /^withdraw proposal$/i);
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Cancel",
+      }),
+    );
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(proposals).toEqual([]);
+  });
+
+  it("creates the missing request, and blocks withdrawal with its reason", async () => {
+    const proposals: { action: string; body: Record<string, unknown> }[] = [];
+    stubHarnessServer({
+      read: {
+        body: withStages(CONNECTED, {
+          review: [row("pending-review", "tdd", "pull-request-missing")],
+        }),
+      },
+      proposals,
+    });
+    renderHarness();
+
+    const menu = await openRowMenu("tdd");
+    expect(
+      within(menu).getByRole("menuitem", {
+        name: "Withdraw proposal — no request yet",
+      }),
+    ).toHaveAttribute("data-disabled");
+
+    await userEvent.click(
+      within(menu).getByRole("menuitem", { name: "Create pull request" }),
+    );
+
+    await waitFor(() =>
+      expect(proposals).toEqual([{ action: "create", body: { name: "tdd" } }]),
+    );
+  });
+
+  it("lists every matching link and blocks both mutations when requests are ambiguous", async () => {
+    stubHarnessServer({
+      read: {
+        body: withStages(CONNECTED, {
+          review: [
+            row("pending-review", "tdd", "multiple-pull-requests", {
+              requests: [link(41), link(44)],
+            }),
+          ],
+        }),
+      },
+    });
+    renderHarness();
+
+    const menu = await openRowMenu("tdd");
+
+    expect(
+      within(menu)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual([
+      "Open pull request #41",
+      "Open pull request #44",
+      "Update proposal — close the extra requests on GitHub",
+      "Withdraw proposal — close the extra requests on GitHub",
+    ]);
+    for (const label of [
+      "Update proposal — close the extra requests on GitHub",
+      "Withdraw proposal — close the extra requests on GitHub",
+    ]) {
+      expect(
+        within(menu).getByRole("menuitem", { name: label }),
+      ).toHaveAttribute("data-disabled");
+    }
+    expect(
+      within(menu).getByRole("menuitem", { name: "Open pull request #41" }),
+    ).toHaveAttribute(
+      "href",
+      "https://github.com/fimoklei/agent-harness/pull/41",
+    );
+  });
+
+  it("reopens a closed proposal, with Propose change behind it", async () => {
+    const proposals: { action: string; body: Record<string, unknown> }[] = [];
+    stubHarnessServer({
+      read: {
+        body: withStages(CONNECTED, {
+          review: [
+            row("pending-review", "tdd", "proposal-closed", {
+              requests: [link(45)],
+            }),
+          ],
+        }),
+      },
+      proposals,
+    });
+    renderHarness();
+
+    const menu = await openRowMenu("tdd");
+    expect(
+      within(menu)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Open pull request", "Reopen proposal", "Propose change"]);
+
+    await userEvent.click(
+      within(menu).getByRole("menuitem", { name: "Reopen proposal" }),
+    );
+
+    await waitFor(() =>
+      expect(proposals).toEqual([
+        { action: "reopen", body: { name: "tdd", number: 45 } },
+      ]),
+    );
+  });
+
+  it("states a refused withdrawal in the confirmation, which stays open", async () => {
+    stubHarnessServer({
+      read: {
+        body: withStages(CONNECTED, {
+          review: [
+            row("pending-review", "tdd", "waiting-for-review", {
+              requests: [link(45)],
+            }),
+          ],
+        }),
+      },
+      proposal: { body: { error: "request-gone" }, status: 409 },
+    });
+    renderHarness();
+
+    await press("tdd", /^withdraw proposal$/i);
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Withdraw proposal" }),
+    );
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      /Pull request moved on/i,
+    );
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("reaches the menu and the confirmation with the keyboard alone", async () => {
+    const proposals: { action: string; body: Record<string, unknown> }[] = [];
+    stubHarnessServer({
+      read: {
+        body: withStages(CONNECTED, {
+          review: [
+            row("pending-review", "tdd", "waiting-for-review", {
+              requests: [link(45)],
+            }),
+          ],
+        }),
+      },
+      proposals,
+    });
+    renderHarness();
+
+    const trigger = await screen.findByRole("button", {
+      name: "Actions for tdd in Pending review",
+    });
+    trigger.focus();
+    await userEvent.keyboard("{Enter}");
+    const menu = await screen.findByRole("menu");
+    const withdraw = within(menu).getByRole("menuitem", {
+      name: "Withdraw proposal",
+    });
+    await waitFor(() => expect(document.activeElement).not.toBe(trigger));
+    // Down the menu until the keyboard is on the item, then take it.
+    for (let step = 0; step < 4 && document.activeElement !== withdraw; ) {
+      await userEvent.keyboard("{ArrowDown}");
+      step += 1;
+    }
+    expect(document.activeElement).toBe(withdraw);
+    await userEvent.keyboard("{Enter}");
+
+    const dialog = await screen.findByRole("dialog");
+    const confirm = within(dialog).getByRole("button", {
+      name: "Withdraw proposal",
+    });
+    confirm.focus();
+    await userEvent.keyboard("{Enter}");
+
+    await waitFor(() =>
+      expect(proposals).toEqual([
+        { action: "withdraw", body: { name: "tdd", number: 45 } },
+      ]),
     );
   });
 });

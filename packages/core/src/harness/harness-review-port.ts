@@ -51,8 +51,47 @@ export type HarnessReviewRead =
   | { outcome: "failed" }
   | { outcome: "unavailable" };
 
+// A write either happened or it did not. `unavailable` is the same "no answer
+// possible" class the read has; `failed` is GitHub refusing, which is also what
+// an unreopenable request looks like. Nothing GitHub said crosses (ADR-0029).
+export type ReviewWriteOutcome =
+  | { ok: true }
+  | { ok: false; error: "unavailable" | "failed" };
+
+// What a new request is opened over. The head branch is the skill's own
+// proposal branch, already on the remote: no push happens here.
+export type NewReviewRequest = {
+  head: string;
+  base: string;
+  title: string;
+  body: string;
+};
+
 export interface HarnessReviewPort {
   // Every request the Harness repository holds, in one call. The origin is the
   // only input: the host gate runs on it before anything is spent.
   readReviews(origin: GitOrigin): Promise<HarnessReviewRead>;
+  createRequest(
+    origin: GitOrigin,
+    request: NewReviewRequest,
+  ): Promise<ReviewWriteOutcome>;
+  reopenRequest(origin: GitOrigin, number: number): Promise<ReviewWriteOutcome>;
+  closeRequest(origin: GitOrigin, number: number): Promise<ReviewWriteOutcome>;
 }
+
+// A request belongs to one skill's proposal only when its head repository, its
+// head branch and its base branch all say so. A null head repository — deleted
+// — matches nothing. Shared by the stage read and every mutation's recheck, so
+// the two can never disagree about which request a row names.
+export const matchesProposal = (
+  request: ReviewRequest,
+  target: { ownerRepo: string; branch: string; base: string },
+): boolean => {
+  const [owner, repo] = target.ownerRepo.split("/");
+  return (
+    request.headOwner === owner &&
+    request.headRepo === repo &&
+    request.headBranch === target.branch &&
+    request.baseBranch === target.base
+  );
+};

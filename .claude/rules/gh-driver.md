@@ -26,6 +26,18 @@ ADR-0014; the field carve-out is ADR-0018.
 - Pass ambient env only. Never inject `GH_TOKEN`, `GITHUB_TOKEN` or any other
   credential.
 
+## Writing
+
+- Open a request with `pr create` and an explicit `--head`; never let `gh` push
+  or fork. Pass `--title` and `--body`, never `--fill`.
+- Withdraw with `pr close` and reopen with `pr reopen`, naming the number the
+  fresh read matched. Never pass `--delete-branch`.
+- Recheck identity and the request itself against a fresh read before every
+  write. A number the browser sent is a claim, never an authorisation.
+- Never write while more than one open request matches the branch.
+- Classify a write's failure the way a read's is classified, and parse nothing
+  out of its stdout.
+
 ## Classifying output
 
 - `[]` with exit 0 means none exist. Never read it as a failed read.

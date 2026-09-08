@@ -18,6 +18,13 @@ export const isPromotableSkillName = (name: string): boolean =>
 export const promoteBranch = (name: string): string =>
   `${PROMOTE_NAMESPACE}/${name}`;
 
+// What a request Maestro opens is called on GitHub. Written once, so a request
+// opened alongside a push and one opened later read the same. Neither string is
+// cockpit copy: both live on GitHub, beside the commit of the same subject.
+export const proposalTitle = (name: string): string => `Promote skill: ${name}`;
+
+export const PROPOSAL_BODY = "Proposed from the Maestro cockpit.";
+
 // `compare/<base>...<head>?expand=1` is GitHub's own pull-request form. The
 // base is whatever the remote calls its default branch, so it is escaped; the
 // head is a validated skill name behind a fixed prefix.

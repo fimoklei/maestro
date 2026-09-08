@@ -9,9 +9,11 @@ import { normalizeCommandOutput } from "../normalize-command-output";
 import type {
   HarnessReviewPort,
   HarnessReviewRead,
+  NewReviewRequest,
   RequestedReviewer,
   ReviewDecision,
   ReviewRequest,
+  ReviewWriteOutcome,
 } from "./harness-review-port";
 
 const defaultRun = promisify(execFile);
@@ -155,6 +157,79 @@ export class GhCliAdapter implements HarnessReviewPort {
       complete: rows.data.length < REVIEW_READ_LIMIT,
       limit: REVIEW_READ_LIMIT,
     };
+  }
+
+  // `--head` names the branch, which is also what stops gh pushing or offering
+  // a fork: nothing local is touched here (gh 2.86.0 `gh pr create --help`).
+  async createRequest(
+    origin: GitOrigin,
+    request: NewReviewRequest,
+  ): Promise<ReviewWriteOutcome> {
+    return await this.write(origin, [
+      "pr",
+      "create",
+      "--repo",
+      origin.ownerRepo,
+      "--head",
+      request.head,
+      "--base",
+      request.base,
+      "--title",
+      request.title,
+      "--body",
+      request.body,
+    ]);
+  }
+
+  async reopenRequest(
+    origin: GitOrigin,
+    number: number,
+  ): Promise<ReviewWriteOutcome> {
+    return await this.write(origin, [
+      "pr",
+      "reopen",
+      String(number),
+      "--repo",
+      origin.ownerRepo,
+    ]);
+  }
+
+  // No `--delete-branch`: withdrawal leaves the proposal branch and the
+  // author's files exactly as they are (#827).
+  async closeRequest(
+    origin: GitOrigin,
+    number: number,
+  ): Promise<ReviewWriteOutcome> {
+    return await this.write(origin, [
+      "pr",
+      "close",
+      String(number),
+      "--repo",
+      origin.ownerRepo,
+    ]);
+  }
+
+  // One shape for all three: the host gate first, then the run, then a class.
+  // A write prints only its own URL, so nothing is parsed back out of it.
+  private async write(
+    origin: GitOrigin,
+    args: string[],
+  ): Promise<ReviewWriteOutcome> {
+    if (origin.host !== "github.com") {
+      return { ok: false, error: "unavailable" };
+    }
+    try {
+      await this.run("gh", args, {
+        env: { ...process.env, ...NON_INTERACTIVE },
+        timeout: GH_TIMEOUT_MS,
+      });
+      return { ok: true };
+    } catch (error) {
+      return {
+        ok: false,
+        error: noAnswerPossible(error) ? "unavailable" : "failed",
+      };
+    }
   }
 }
 

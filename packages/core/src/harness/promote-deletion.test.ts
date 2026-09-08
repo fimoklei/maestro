@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { InFlightLocks } from "../deploy/in-flight-locks";
+import type {
+  HarnessReviewRead,
+  NewReviewRequest,
+  ReviewRequest,
+} from "./harness-review-port";
 import { PromoteSkillDeletion } from "./promote-deletion";
 import type {
   HarnessFacts,
@@ -27,6 +32,27 @@ const FRESHNESS: HarnessFreshness = {
 // from the working tree. `seen` is the origin/HEAD hash the row showed them.
 const SEEN = "remote-tree";
 
+const EMPTY_REVIEW: HarnessReviewRead = {
+  outcome: "read",
+  requests: [],
+  complete: true,
+  limit: 100,
+};
+
+const openRequest = (over: Partial<ReviewRequest> = {}): ReviewRequest => ({
+  number: 45,
+  url: "https://github.com/fimoklei/agent-harness/pull/45",
+  state: "open",
+  draft: false,
+  decision: null,
+  reviewers: [],
+  headOwner: "fimoklei",
+  headRepo: "agent-harness",
+  headBranch: "maestro/tdd",
+  baseBranch: "main",
+  ...over,
+});
+
 const TREES: Record<string, HarnessSkillTree[]> = {
   head: [{ name: "tdd", treeHash: SEEN }],
   HEAD: [{ name: "tdd", treeHash: SEEN }],
@@ -42,6 +68,8 @@ function buildDeletion(overrides?: {
   ambiguity?: WorktreeAmbiguity | null;
   trees?: Record<string, HarnessSkillTree[]>;
   working?: Record<string, string>;
+  review?: HarnessReviewRead;
+  onCreate?: (request: NewReviewRequest) => void;
 }) {
   return new PromoteSkillDeletion({
     resolveRoot: async () =>
@@ -73,10 +101,66 @@ function buildDeletion(overrides?: {
       read: async () => overrides?.freshness ?? FRESHNESS,
       record: async () => {},
     },
+    review: {
+      readReviews: async () => overrides?.review ?? EMPTY_REVIEW,
+      createRequest: async (_origin, made) => {
+        overrides?.onCreate?.(made);
+        return { ok: true };
+      },
+      reopenRequest: async () => ({ ok: true }),
+      closeRequest: async () => ({ ok: true }),
+    },
   });
 }
 
 describe("PromoteSkillDeletion", () => {
+  it("opens the pull request the pushed removal has no proposal for", async () => {
+    const created: NewReviewRequest[] = [];
+    const deletion = buildDeletion({ onCreate: (made) => created.push(made) });
+
+    await expect(deletion.execute("tdd", SEEN, AT)).resolves.toMatchObject({
+      ok: true,
+    });
+    expect(created).toEqual([
+      {
+        head: "maestro/tdd",
+        base: "main",
+        title: "Promote skill: tdd",
+        body: "Proposed from the Maestro cockpit.",
+      },
+    ]);
+  });
+
+  it("leaves an open proposal's request alone when the removal updates it", async () => {
+    const created: NewReviewRequest[] = [];
+    const deletion = buildDeletion({
+      review: { ...EMPTY_REVIEW, requests: [openRequest()] },
+      onCreate: (made) => created.push(made),
+    });
+
+    await expect(deletion.execute("tdd", SEEN, AT)).resolves.toMatchObject({
+      ok: true,
+    });
+    expect(created).toEqual([]);
+  });
+
+  it("refuses while more than one open request matches the branch", async () => {
+    const pushed: string[] = [];
+    const deletion = buildDeletion({
+      review: {
+        ...EMPTY_REVIEW,
+        requests: [openRequest({ number: 41 }), openRequest({ number: 44 })],
+      },
+      onPush: (root) => pushed.push(root),
+    });
+
+    await expect(deletion.execute("tdd", SEEN, AT)).resolves.toEqual({
+      ok: false,
+      error: "extra-requests",
+    });
+    expect(pushed).toEqual([]);
+  });
+
   it("pushes the removal and answers with the branch and its pull-request page", async () => {
     const pushed: string[] = [];
     const deletion = buildDeletion({

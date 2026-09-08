@@ -16,6 +16,7 @@ import {
   crossStageLine,
   detailSentence,
   reviewerLine,
+  STAGE_NAMES,
   type StageContext,
   statusReading,
   statusTone,
@@ -117,7 +118,10 @@ export function StageTable({
                 </TableCell>
                 <TableCell className="align-top text-right">
                   <RowMenu
-                    label={`Actions for ${row.skill}`}
+                    // Named by its stage too: one skill can hold a row in
+                    // every stage, and three menus called "Actions for tdd"
+                    // would name the same thing three times (copy.md · R-A).
+                    label={`Actions for ${row.skill} in ${STAGE_NAMES[row.stage]}`}
                     items={actions.items(row)}
                     focus={actions.focus === row.skill}
                   />

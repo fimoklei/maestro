@@ -329,6 +329,119 @@ describe("GhCliAdapter", () => {
     expect(result).toEqual({ outcome: "failed" });
   });
 
+  it("opens a request over a named branch, never the current one", async () => {
+    // `--head` is what makes gh skip its push-or-fork prompt entirely, and
+    // `--repo` is what keeps the call off whatever repository the cwd is
+    // (gh 2.86.0 `gh pr create --help`).
+    const { calls, run } = fakeRun(
+      "https://github.com/fimoklei/harness/pull/9\n",
+    );
+
+    const result = await new GhCliAdapter({ run }).createRequest(origin, {
+      head: "maestro/tdd",
+      base: "main",
+      title: "Promote skill: tdd",
+      body: "Proposed from the Maestro cockpit.",
+    });
+
+    expect(result).toEqual({ ok: true });
+    expect(calls[0]?.args).toEqual([
+      "pr",
+      "create",
+      "--repo",
+      "fimoklei/harness",
+      "--head",
+      "maestro/tdd",
+      "--base",
+      "main",
+      "--title",
+      "Promote skill: tdd",
+      "--body",
+      "Proposed from the Maestro cockpit.",
+    ]);
+    expect(calls[0]?.env.GH_PROMPT_DISABLED).toBe("1");
+    expect(calls[0]?.timeout).toBeGreaterThan(0);
+  });
+
+  it("reopens and closes a request by its number, keeping the branch", async () => {
+    // No `--delete-branch`: withdrawal leaves the proposal branch standing,
+    // which is what keeps a closed proposal recoverable (#827).
+    const reopen = fakeRun("");
+    const close = fakeRun("");
+
+    await new GhCliAdapter({ run: reopen.run }).reopenRequest(origin, 45);
+    await new GhCliAdapter({ run: close.run }).closeRequest(origin, 45);
+
+    expect(reopen.calls[0]?.args).toEqual([
+      "pr",
+      "reopen",
+      "45",
+      "--repo",
+      "fimoklei/harness",
+    ]);
+    expect(close.calls[0]?.args).toEqual([
+      "pr",
+      "close",
+      "45",
+      "--repo",
+      "fimoklei/harness",
+    ]);
+  });
+
+  it("sends no write to a host other than github.com", async () => {
+    const elsewhere = { host: "github.example.com", ownerRepo: "acme/harness" };
+    const create = fakeRun("");
+    const reopen = fakeRun("");
+    const close = fakeRun("");
+
+    const results = [
+      await new GhCliAdapter({ run: create.run }).createRequest(elsewhere, {
+        head: "maestro/tdd",
+        base: "main",
+        title: "t",
+        body: "b",
+      }),
+      await new GhCliAdapter({ run: reopen.run }).reopenRequest(elsewhere, 45),
+      await new GhCliAdapter({ run: close.run }).closeRequest(elsewhere, 45),
+    ];
+
+    expect(results).toEqual([
+      { ok: false, error: "unavailable" },
+      { ok: false, error: "unavailable" },
+      { ok: false, error: "unavailable" },
+    ]);
+    expect([create.calls, reopen.calls, close.calls]).toEqual([[], [], []]);
+  });
+
+  it("reports a write GitHub refused as failed, and an unaskable one as unavailable", async () => {
+    const refused = failingRun(
+      exitError(1, "GraphQL: Pull request is closed (repository)"),
+    );
+    const missing = failingRun(
+      Object.assign(new Error("spawn gh ENOENT"), { code: "ENOENT" }),
+    );
+
+    expect(
+      await new GhCliAdapter({ run: refused.run }).reopenRequest(origin, 45),
+    ).toEqual({ ok: false, error: "failed" });
+    expect(
+      await new GhCliAdapter({ run: missing.run }).closeRequest(origin, 45),
+    ).toEqual({ ok: false, error: "unavailable" });
+  });
+
+  it("lets no word of gh's own output cross a refused write", async () => {
+    const { run } = failingRun(
+      exitError(
+        1,
+        "HTTP 403: Resource not accessible by personal access token",
+      ),
+    );
+
+    const result = await new GhCliAdapter({ run }).closeRequest(origin, 45);
+
+    expect(JSON.stringify(result)).not.toContain("personal access token");
+  });
+
   it("lets no word of gh's own output cross the port", async () => {
     const stderr =
       "HTTP 401: Bad credentials at https://api.github.com/graphql";
