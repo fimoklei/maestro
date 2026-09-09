@@ -77,6 +77,21 @@ export const WithPath: Story = {
   },
 };
 
+// What a stage row's Detail column holds: no fill and no outline, so the
+// notice never reads as a card inside the card the table already sits in.
+export const Inline: Story = {
+  args: {
+    variant: "inline",
+    trigger: "load",
+    notice: {
+      level: "info",
+      label: "Newer change from a teammate",
+      message:
+        "Their version still stands. Pull it into the Harness clone, then Propose change again.",
+    },
+  },
+};
+
 export const WithAction: Story = {
   args: {
     notice: {
