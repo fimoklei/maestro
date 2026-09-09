@@ -171,6 +171,23 @@ export const stageSections = (
   ].map((section) => ({ ...section, title: STAGE_NAMES[section.stage] }));
 };
 
+// What the three stages hold, in the words a screen reader hears when a press
+// moves a row between them or a refresh re-dates the picture (#868). Counts,
+// never statuses: the row itself states why it is where it is.
+export const harnessAnnouncement = (state: HarnessState, now: Date): string => {
+  const stages = stageSections(state, now).map((section) => {
+    if (section.read.outcome !== "read") {
+      return `${section.title} was not read.`;
+    }
+    const count = section.read.rows.length;
+    if (count === 0) {
+      return `${section.title} has no changes.`;
+    }
+    return `${section.title} has ${count} change${count === 1 ? "" : "s"}.`;
+  });
+  return `${stages.join(" ")} ${freshnessLabel(state.freshness, now)}.`;
+};
+
 // Nothing anywhere, and every stage answered for itself. Only then is "No
 // changes yet" a fact rather than a picture nobody could read.
 export const journeyConfirmedEmpty = (state: HarnessState): boolean =>

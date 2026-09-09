@@ -27,7 +27,9 @@ export function ActionsMenu({ label, items }: ActionsMenuProps) {
         aria-label={label}
         disabled={items.length === 0}
         className={cn(
-          "cursor-pointer rounded-control border border-transparent bg-transparent px-1.5 py-0.5 font-mono text-muted text-tag leading-none",
+          // 24×24 is the floor a pointer target may not go under
+          // (WCAG 2.2 SC 2.5.8); the glyph is smaller than its target.
+          "inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-control border border-transparent bg-transparent font-mono text-muted text-tag leading-none",
           HOVER_TRANSITION,
           "enabled:hover:border-line-chip enabled:hover:bg-inset enabled:hover:text-fg-2",
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber",

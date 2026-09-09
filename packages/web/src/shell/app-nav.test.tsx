@@ -93,7 +93,7 @@ describe("cockpit navigation", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { level: 2, name: /harness/i }),
+      await screen.findByRole("heading", { level: 1, name: /harness/i }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: /deploy-state/i }),

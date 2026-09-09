@@ -31,6 +31,7 @@ const meta = {
   title: "Harness/StageTable",
   component: StageTable,
   args: {
+    title: "Pending proposal",
     context: { defaultBranch: "main", releasedVersion: "v1.4.0" },
     actions: { items: () => [], failed: null },
   },
@@ -68,6 +69,7 @@ export const JustLandedRow: Story = {
 
 export const PendingReview: Story = {
   args: {
+    title: "Pending review",
     rows: [
       row("pending-review", "tdd", "waiting-for-review", {
         requests: [request(45)],
@@ -96,6 +98,7 @@ export const PendingReview: Story = {
 
 export const PendingRelease: Story = {
   args: {
+    title: "Pending release",
     rows: [
       row("pending-release", "research", "added"),
       row("pending-release", "tdd", "changed"),

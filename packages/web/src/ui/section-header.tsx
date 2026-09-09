@@ -10,6 +10,11 @@ export interface SectionHeaderProps {
   className?: string;
   /** Heading level for the title. Defaults to 2. */
   level?: 1 | 2 | 3;
+  /**
+   * Type scale, when the outline and the visual weight disagree — a stage
+   * inside a view is an h2 that reads as a subheading. Defaults to `level`.
+   */
+  size?: 1 | 2 | 3;
 }
 
 const LEVELS = {
@@ -24,8 +29,10 @@ export function SectionHeader({
   children,
   className,
   level = 2,
+  size = level,
 }: SectionHeaderProps) {
-  const { tag: Heading, type } = LEVELS[level];
+  const { tag: Heading } = LEVELS[level];
+  const { type } = LEVELS[size];
   return (
     <div className={cn("mb-2.5 flex items-baseline gap-3", className)}>
       <Heading className={cn("m-0 font-ui text-fg", type)}>{title}</Heading>
