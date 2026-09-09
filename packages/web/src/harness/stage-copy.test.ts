@@ -100,28 +100,135 @@ describe("chip readings", () => {
 });
 
 describe("Detail sentences", () => {
-  it("states the approved sentence for a requested change", () => {
-    expect(
-      detailSentence(
-        row("pending-review", "changes-requested", { requests: [request] }),
-        CONTEXT,
-      ),
-    ).toBe(
-      "A reviewer asked for changes on pull request #45; the review is on GitHub.",
+  // Cause first, then `Select {control} to {result}` naming the row's own
+  // control (#838). A status with no cockpit control names the place instead.
+  const approved: [StageStatus, boolean, string][] = [
+    [
+      "not-yet-proposed",
+      false,
+      "Your local copy differs from main. Select Propose change to send it for review.",
+    ],
+    [
+      "not-yet-proposed",
+      true,
+      "This skill is deleted in your clone but still on main. Select Propose change to propose the deletion.",
+    ],
+    [
+      "deleted-locally",
+      true,
+      "This skill is deleted in your clone but still on main. Select Propose change to propose the deletion.",
+    ],
+    [
+      "new-local-work",
+      false,
+      "You edited this skill after pull request #45. Select Update proposal to send the edits.",
+    ],
+    [
+      "draft",
+      false,
+      "Pull request #45 is a draft. Mark it ready for review on GitHub.",
+    ],
+    [
+      "draft",
+      true,
+      "Pull request #45 proposes deleting this skill and is still a draft. Mark it ready for review on GitHub.",
+    ],
+    [
+      "waiting-for-review",
+      false,
+      "Pull request #45 is open and waiting for a reviewer.",
+    ],
+    [
+      "waiting-for-review",
+      true,
+      "Pull request #45 proposes deleting this skill and is waiting for a reviewer.",
+    ],
+    [
+      "changes-requested",
+      false,
+      "A reviewer asked for changes on pull request #45. Select Update proposal to send your changes.",
+    ],
+    [
+      "changes-requested",
+      true,
+      "A reviewer asked for changes on the deletion in pull request #45. Select Update proposal to send your changes.",
+    ],
+    [
+      "approved-awaiting-merge",
+      false,
+      "Pull request #45 is approved. Merge it on GitHub.",
+    ],
+    [
+      "approved-awaiting-merge",
+      true,
+      "Pull request #45 proposes deleting this skill and is approved. Merge it on GitHub.",
+    ],
+    [
+      "pull-request-missing",
+      false,
+      "The proposal branch is on GitHub without a pull request. Select Create pull request to open one.",
+    ],
+    [
+      "proposal-closed",
+      false,
+      "Pull request #45 was closed without merging. Select Reopen proposal to continue it.",
+    ],
+    [
+      "added",
+      false,
+      "This skill was added to main after release v1.4.0. Select Create a release to publish it.",
+    ],
+    [
+      "changed",
+      false,
+      "This skill changed on main after release v1.4.0. Select Create a release to publish it.",
+    ],
+    [
+      "renamed",
+      false,
+      "This skill was renamed from testing on main. Select Create a release to publish it.",
+    ],
+    [
+      "deleted",
+      false,
+      "This skill was deleted from main after release v1.4.0. Select Create a release to publish the deletion.",
+    ],
+  ];
+
+  it.each(approved)(
+    "states the approved sentence for %s (deletion: %s)",
+    (status, deletion, sentence) => {
+      expect(
+        detailSentence(
+          row("pending-review", status, {
+            requests: [request],
+            deletion,
+            previousName: "testing",
+          }),
+          CONTEXT,
+        ),
+      ).toBe(sentence);
+    },
+  );
+
+  it("names the next step when nothing is released yet", () => {
+    const unreleased = { defaultBranch: "main", releasedVersion: null };
+    expect(detailSentence(row("pending-release", "added"), unreleased)).toBe(
+      "This skill is on main and in no release yet. Select Create a release to publish it.",
+    );
+    expect(detailSentence(row("pending-release", "deleted"), unreleased)).toBe(
+      "This skill is no longer on main. Select Create a release to publish the deletion.",
+    );
+    expect(detailSentence(row("pending-release", "renamed"), unreleased)).toBe(
+      "This skill was renamed on main. Select Create a release to publish it.",
     );
   });
 
-  it("states the approved sentence for a requested change on a deletion", () => {
+  it("names the prepared proposal when new local work has no request yet", () => {
     expect(
-      detailSentence(
-        row("pending-review", "changes-requested", {
-          requests: [request],
-          deletion: true,
-        }),
-        CONTEXT,
-      ),
+      detailSentence(row("pending-proposal", "new-local-work"), CONTEXT),
     ).toBe(
-      "A reviewer asked for changes on pull request #45, which proposes deleting this skill.",
+      "You edited this skill after preparing its proposal. Select Update proposal to send the edits.",
     );
   });
 

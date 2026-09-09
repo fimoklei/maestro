@@ -85,65 +85,67 @@ const listOf = (parts: string[]): string => {
 
 const first = (row: HarnessStageRow): string => requestNumbers(row)[0] ?? "";
 
-// One sentence per row, stating the cause. The actions live in the row menu,
-// which is why no sentence here carries an instruction.
+// Cause first, then `Select {control} to {result}` with the row's own control
+// (#838). A status with no cockpit control names the place instead.
 export function detailSentence(
   row: HarnessStageRow,
   { defaultBranch, releasedVersion }: StageContext,
 ): string {
   const branch = defaultBranch ?? "the default branch";
   const release = releasedVersion;
+  const publish = "Select Create a release to publish it.";
+  const deleteLocally = `This skill is deleted in your clone but still on ${branch}. Select Propose change to propose the deletion.`;
   switch (row.status) {
     case "not-yet-proposed":
       return row.deletion
-        ? `You deleted this skill from your clone; ${branch} still carries it.`
-        : `Your local copy differs from ${branch} and no proposal covers it yet.`;
+        ? deleteLocally
+        : `Your local copy differs from ${branch}. Select Propose change to send it for review.`;
     case "deleted-locally":
-      return `You deleted this skill from your clone; ${branch} still carries it.`;
+      return deleteLocally;
     case "new-local-work":
       return first(row) === ""
-        ? "You edited this skill after preparing its proposal."
-        : `Update proposal will add the edits you made since pull request ${first(row)}.`;
+        ? "You edited this skill after preparing its proposal. Select Update proposal to send the edits."
+        : `You edited this skill after pull request ${first(row)}. Select Update proposal to send the edits.`;
     case "draft":
       return row.deletion
-        ? `Pull request ${first(row)} proposes deleting this skill and is still a draft.`
-        : `Pull request ${first(row)} is a draft, so no reviewer sees it yet.`;
+        ? `Pull request ${first(row)} proposes deleting this skill and is still a draft. Mark it ready for review on GitHub.`
+        : `Pull request ${first(row)} is a draft. Mark it ready for review on GitHub.`;
     case "waiting-for-review":
       return row.deletion
-        ? `Pull request ${first(row)} proposes deleting this skill from the Harness.`
+        ? `Pull request ${first(row)} proposes deleting this skill and is waiting for a reviewer.`
         : `Pull request ${first(row)} is open and waiting for a reviewer.`;
     case "changes-requested":
       return row.deletion
-        ? `A reviewer asked for changes on pull request ${first(row)}, which proposes deleting this skill.`
-        : `A reviewer asked for changes on pull request ${first(row)}; the review is on GitHub.`;
+        ? `A reviewer asked for changes on the deletion in pull request ${first(row)}. Select Update proposal to send your changes.`
+        : `A reviewer asked for changes on pull request ${first(row)}. Select Update proposal to send your changes.`;
     case "approved-awaiting-merge":
       return row.deletion
-        ? `Pull request ${first(row)} proposes deleting this skill and can be merged on GitHub.`
-        : `Pull request ${first(row)} is approved and can be merged on GitHub.`;
+        ? `Pull request ${first(row)} proposes deleting this skill and is approved. Merge it on GitHub.`
+        : `Pull request ${first(row)} is approved. Merge it on GitHub.`;
     case "pull-request-missing":
-      return "The proposal branch is pushed, but no pull request opens it.";
+      return "The proposal branch is on GitHub without a pull request. Select Create pull request to open one.";
     case "proposal-closed":
-      return `Pull request ${first(row)} is closed and its content is not on ${branch}.`;
+      return `Pull request ${first(row)} was closed without merging. Select Reopen proposal to continue it.`;
     case "multiple-pull-requests":
       return row.requests.length === 2
         ? `Pull requests ${listOf(requestNumbers(row))} both match this branch, so close one on GitHub.`
         : "Several pull requests match this branch, so close all but one on GitHub.";
     case "added":
       return release === null
-        ? `This skill is on ${branch} and in no release yet.`
-        : `This skill was added to ${branch} after release ${release}.`;
+        ? `This skill is on ${branch} and in no release yet. ${publish}`
+        : `This skill was added to ${branch} after release ${release}. ${publish}`;
     case "changed":
       return release === null
-        ? `This skill is on ${branch} and in no release yet.`
-        : `This skill changed on ${branch} after release ${release}.`;
+        ? `This skill is on ${branch} and in no release yet. ${publish}`
+        : `This skill changed on ${branch} after release ${release}. ${publish}`;
     case "renamed":
       return row.previousName === null
-        ? `This skill was renamed on ${branch}.`
-        : `This skill was renamed from ${row.previousName} on ${branch}.`;
+        ? `This skill was renamed on ${branch}. ${publish}`
+        : `This skill was renamed from ${row.previousName} on ${branch}. ${publish}`;
     case "deleted":
       return release === null
-        ? `This skill is no longer on ${branch}.`
-        : `This skill was deleted from ${branch} after release ${release}.`;
+        ? `This skill is no longer on ${branch}. Select Create a release to publish the deletion.`
+        : `This skill was deleted from ${branch} after release ${release}. Select Create a release to publish the deletion.`;
   }
 }
 
