@@ -91,7 +91,7 @@ describe("rowItems", () => {
     const items = rowItems(row({ status: "proposal-merged" }), handlers, true);
 
     expect(labels(items)).toEqual([
-      "Open pull request",
+      "View pull request",
       "Create pull request",
       "Withdraw proposal — no request yet",
     ]);
@@ -187,6 +187,7 @@ describe("rowItems", () => {
         ["pending-review", "changes-requested"],
         ["pending-review", "approved-awaiting-merge"],
         ["pending-review", "pull-request-missing"],
+        ["pending-review", "proposal-merged"],
         ["pending-review", "proposal-closed"],
         ["pending-review", "multiple-pull-requests"],
         ["pending-release", "deleted"],
@@ -215,6 +216,7 @@ describe("rowItems", () => {
         ["pending-review", "changes-requested"],
         ["pending-review", "approved-awaiting-merge"],
         ["pending-review", "pull-request-missing"],
+        ["pending-review", "proposal-merged"],
         ["pending-review", "proposal-closed"],
         ["pending-review", "multiple-pull-requests"],
         ["pending-release", "added"],
@@ -224,7 +226,10 @@ describe("rowItems", () => {
       disabled(rowItems(row({ stage, status }), handlers, true)),
     );
 
+    // Three labels, no fourth (#844). The first appears twice: both statuses
+    // with no open request over the branch block withdrawal the same way.
     expect(every).toEqual([
+      "Withdraw proposal — no request yet",
       "Withdraw proposal — no request yet",
       "Update proposal — close the extra requests",
       "Withdraw proposal — close the extra requests",
