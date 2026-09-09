@@ -1737,7 +1737,7 @@ describe("Harness home base", () => {
     const first = renderWithQuery(<HarnessView />);
     const before = await openRowMenu("lint-rules", "Pending review");
     expect(
-      within(before).getByRole("menuitem", { name: /open pull request/i }),
+      within(before).getByRole("menuitem", { name: /view pull request/i }),
     ).toHaveAttribute(
       "href",
       "https://github.com/fimoklei/agent-harness/pull/45",
@@ -1748,7 +1748,7 @@ describe("Harness home base", () => {
 
     const after = await openRowMenu("lint-rules", "Pending review");
     expect(
-      within(after).getByRole("menuitem", { name: /open pull request/i }),
+      within(after).getByRole("menuitem", { name: /view pull request/i }),
     ).toHaveAttribute(
       "href",
       "https://github.com/fimoklei/agent-harness/pull/45",
@@ -1780,15 +1780,15 @@ describe("Harness home base", () => {
 
     expect(
       await screen.findByText(
-        "Pull requests #41 and #44 both match this branch, so close one on GitHub.",
+        "Pull requests #41 and #44 both match this branch. Select View pull request #41 to close it.",
       ),
     ).toBeInTheDocument();
     const menu = await openRowMenu("lint-rules", "Pending review");
     expect(
-      within(menu).getByRole("menuitem", { name: "Open pull request #41" }),
+      within(menu).getByRole("menuitem", { name: "View pull request #41" }),
     ).toBeInTheDocument();
     expect(
-      within(menu).getByRole("menuitem", { name: "Open pull request #44" }),
+      within(menu).getByRole("menuitem", { name: "View pull request #44" }),
     ).toBeInTheDocument();
   });
 
@@ -2123,7 +2123,7 @@ describe("proposal actions", () => {
       within(menu)
         .getAllByRole("menuitem")
         .map((item) => item.textContent),
-    ).toEqual(["Open pull request", "Withdraw proposal"]);
+    ).toEqual(["View pull request", "Withdraw proposal"]);
   });
 
   it("withdraws only after the approved confirmation, and closes that request", async () => {
@@ -2241,21 +2241,21 @@ describe("proposal actions", () => {
         .getAllByRole("menuitem")
         .map((item) => item.textContent),
     ).toEqual([
-      "Open pull request #41",
-      "Open pull request #44",
-      "Update proposal — close the extra requests on GitHub",
-      "Withdraw proposal — close the extra requests on GitHub",
+      "View pull request #41",
+      "View pull request #44",
+      "Update proposal — close the extra requests",
+      "Withdraw proposal — close the extra requests",
     ]);
     for (const label of [
-      "Update proposal — close the extra requests on GitHub",
-      "Withdraw proposal — close the extra requests on GitHub",
+      "Update proposal — close the extra requests",
+      "Withdraw proposal — close the extra requests",
     ]) {
       expect(
         within(menu).getByRole("menuitem", { name: label }),
       ).toHaveAttribute("data-disabled");
     }
     expect(
-      within(menu).getByRole("menuitem", { name: "Open pull request #41" }),
+      within(menu).getByRole("menuitem", { name: "View pull request #41" }),
     ).toHaveAttribute(
       "href",
       "https://github.com/fimoklei/agent-harness/pull/41",
@@ -2283,7 +2283,7 @@ describe("proposal actions", () => {
       within(menu)
         .getAllByRole("menuitem")
         .map((item) => item.textContent),
-    ).toEqual(["Open pull request", "Reopen proposal", "Propose change"]);
+    ).toEqual(["View pull request", "Reopen proposal", "Propose change"]);
 
     await userEvent.click(
       within(menu).getByRole("menuitem", { name: "Reopen proposal" }),
@@ -2467,7 +2467,7 @@ describe("Harness freshness and failed reads", () => {
     // The link is not a mutation: it reaches GitHub, which is exactly what a
     // stale picture leaves the author to do.
     const link = within(menu).getByRole("menuitem", {
-      name: /^open pull request$/i,
+      name: /^view pull request$/i,
     });
     expect(link).not.toHaveAttribute("aria-disabled", "true");
     expect(link).toHaveAttribute(

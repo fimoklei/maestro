@@ -85,7 +85,11 @@ synonyms.
 3. **One signal at a time.** Amber means act, green means rest. At most one
    amber-filled action per view. When everything is urgent, nothing is.
 4. **Steering is never a detour.** The action lives next to the state that
-   demands it. Any flow that sends the user back to the CLI has failed.
+   demands it. Going to GitHub for an act Maestro does not own — merging,
+   marking a draft ready, closing a duplicate request — is accepted on one
+   condition: never a detour without a link. Sending the user back to the CLI
+   has failed, with one named exception: `gh auth login`, because `gh` owns its
+   credentials and Maestro never stores or forwards a token (ADR-0029).
 5. **Never rebuild the engine.** The interface exposes APM's truth; it does not
    invent a second one (ADR-0001).
 

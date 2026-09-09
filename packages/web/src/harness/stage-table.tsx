@@ -63,12 +63,14 @@ export function StageTable({
       tabIndex={0}
       className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
     >
-      <Table className="min-w-[760px] table-fixed">
+      <Table className="min-w-[824px] table-fixed">
         <TableHeader>
           <TableRow>
             <TableHead className="w-20">Type</TableHead>
             <TableHead className="w-48">Name</TableHead>
-            <TableHead className="w-56">Status</TableHead>
+            {/* The longest reading, ● Deletion approved, awaiting merge, measures
+                247px; a narrower column pushed it over Detail (#883). */}
+            <TableHead className="w-72">Status</TableHead>
             <TableHead>Detail</TableHead>
             <TableHead className="w-12 text-right">
               <span className="sr-only">Actions</span>
@@ -116,8 +118,9 @@ export function StageTable({
                   {actions.failed?.skill === row.skill ? (
                     // On the row it failed on, not in a dialog: the press is
                     // still there, and a refusal changed nothing (#577).
-                    <div className="mt-1">
+                    <div className="mt-2">
                       <Notice
+                        variant="inline"
                         trigger="user-action"
                         notice={actions.failed.notice}
                       />
@@ -126,8 +129,9 @@ export function StageTable({
                   {row.concurrentChange ? (
                     // Painted with the row, not in answer to a press, so it
                     // stays polite.
-                    <div className="mt-1">
+                    <div className="mt-2">
                       <Notice
+                        variant="inline"
                         trigger="load"
                         notice={CONCURRENT_CHANGE_NOTICE}
                       />

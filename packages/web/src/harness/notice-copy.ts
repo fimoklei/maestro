@@ -123,7 +123,7 @@ const promoteHeadings: NoticeTable<PromoteSkillError> = {
     level: "error",
     label: "Multiple pull requests",
     message:
-      "Nothing was pushed. Close the extra requests on GitHub, then Propose change again.",
+      "Nothing was pushed. Select a View pull request link to close the extras, then Propose change again.",
     detail: "More than one open pull request matches this skill's branch.",
   },
   "promote-failed": {
@@ -168,7 +168,7 @@ const deletionHeadings: NoticeTable<PromoteDeletionError> = {
   "extra-requests": {
     ...promoteHeadings["extra-requests"],
     message:
-      "Nothing was pushed. Close the extra requests on GitHub, then Delete skill again.",
+      "Nothing was pushed. Select a View pull request link to close the extras, then Delete skill again.",
   },
   "confirmation-stale": {
     level: "error",
@@ -251,7 +251,8 @@ const proposalHeadings: NoticeTable<ProposalActionError> = {
   "extra-requests": {
     level: "error",
     label: "Multiple pull requests",
-    message: "Close the extra requests on GitHub, then select Retry check.",
+    message:
+      "Select a View pull request link to close the extras, then select Retry check.",
     detail: "More than one open pull request matches this skill's branch.",
   },
   "request-exists": {

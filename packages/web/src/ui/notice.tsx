@@ -33,15 +33,28 @@ export interface NoticeProps {
   /** Did the user just act, or did this appear on load? Always a literal. */
   trigger: "load" | "user-action";
   notice: NoticeContent | null;
+  /**
+   * `inline` for a notice inside a table row: a filled, outlined panel there is
+   * a card inside a card, which this system rejects (DESIGN.md §6). The rule
+   * on its left carries the level instead.
+   */
+  variant?: "block" | "inline";
   /** For a form field's aria-describedby. */
   id?: string;
 }
 
-const levelClasses: Record<NoticeLevel, string> = {
-  info: "border-line-chip bg-dim-bg",
-  success: "border-green-border bg-green-bg",
-  warning: "border-amber-border bg-amber-bg",
-  error: "border-danger-border bg-danger-bg",
+const borderClasses: Record<NoticeLevel, string> = {
+  info: "border-line-chip",
+  success: "border-green-border",
+  warning: "border-amber-border",
+  error: "border-danger-border",
+};
+
+const fillClasses: Record<NoticeLevel, string> = {
+  info: "bg-dim-bg",
+  success: "bg-green-bg",
+  warning: "bg-amber-bg",
+  error: "bg-danger-bg",
 };
 
 const inkClasses: Record<NoticeLevel, string> = {
@@ -61,7 +74,12 @@ const glyphs: Record<NoticeLevel, string | null> = {
   error: "✕",
 };
 
-export function Notice({ trigger, notice, id }: NoticeProps) {
+export function Notice({
+  trigger,
+  notice,
+  variant = "block",
+  id,
+}: NoticeProps) {
   if (notice === null) {
     // The region outlives its content: one that appears together with its own
     // text is announced unreliably. sr-only takes it out of flow, so an empty
@@ -80,7 +98,11 @@ export function Notice({ trigger, notice, id }: NoticeProps) {
       // Derived, never chosen — which is why the literal string "alert" is
       // built here rather than written at any call site.
       role={assertive ? "alert" : "status"}
-      className={`flex gap-1.5 rounded-control border px-2.5 py-2.5 ${levelClasses[level]}`}
+      className={
+        variant === "inline"
+          ? `flex gap-1.5 border-l pl-2.5 ${borderClasses[level]}`
+          : `flex gap-1.5 rounded-control border px-2.5 py-2.5 ${borderClasses[level]} ${fillClasses[level]}`
+      }
     >
       {glyph === null ? null : (
         <span
@@ -96,7 +118,13 @@ export function Notice({ trigger, notice, id }: NoticeProps) {
         >
           {label}
         </span>
-        <span className="font-ui text-desc text-fg-2">{message}</span>
+        {/* Inline the notice is an aside beside the row's own sentence, so it
+            sits on the same step; the panel has a surface to lift off. */}
+        <span
+          className={`font-ui text-desc ${variant === "inline" ? "text-muted" : "text-fg-2"}`}
+        >
+          {message}
+        </span>
         {detail === undefined ? null : (
           <span className="font-ui text-desc text-dim">{detail}</span>
         )}

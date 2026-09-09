@@ -15,8 +15,8 @@ export type RowActionHandlers = {
 };
 
 const NO_REQUEST = "Withdraw proposal — no request yet";
-const EXTRA_UPDATE = "Update proposal — close the extra requests on GitHub";
-const EXTRA_WITHDRAW = "Withdraw proposal — close the extra requests on GitHub";
+const EXTRA_UPDATE = "Update proposal — close the extra requests";
+const EXTRA_WITHDRAW = "Withdraw proposal — close the extra requests";
 
 // Numbered only where more than one could be meant: a sole request needs no
 // number to be unambiguous.
@@ -30,7 +30,7 @@ export function rowItems(
 ): ActionsMenuProps["items"] {
   const many = row.requests.length > 1;
   const links = row.requests.map((request) => ({
-    label: named("Open pull request", request, many),
+    label: named("View pull request", request, many),
     href: request.url,
   }));
   const sole = row.requests.length === 1 ? row.requests[0] : undefined;
