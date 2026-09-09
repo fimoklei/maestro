@@ -216,7 +216,7 @@ const suites: [
           level: "error",
           label: "Multiple pull requests",
           message:
-            "Nothing was pushed. Select an Open pull request link to close the extras, then Propose change again.",
+            "Nothing was pushed. Select a View pull request link to close the extras, then Propose change again.",
           detail:
             "More than one open pull request matches this skill's branch.",
         },
@@ -306,7 +306,7 @@ const suites: [
           level: "error",
           label: "Multiple pull requests",
           message:
-            "Nothing was pushed. Select an Open pull request link to close the extras, then Delete skill again.",
+            "Nothing was pushed. Select a View pull request link to close the extras, then Delete skill again.",
           detail:
             "More than one open pull request matches this skill's branch.",
         },
@@ -652,7 +652,7 @@ const suites: [
           level: "error",
           label: "Multiple pull requests",
           message:
-            "Select an Open pull request link to close the extras, then select Retry check.",
+            "Select a View pull request link to close the extras, then select Retry check.",
           detail:
             "More than one open pull request matches this skill's branch.",
         },

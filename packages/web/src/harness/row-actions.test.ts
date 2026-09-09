@@ -53,7 +53,7 @@ describe("rowItems", () => {
       true,
     );
 
-    expect(labels(items)).toEqual(["Open pull request", "Update proposal"]);
+    expect(labels(items)).toEqual(["View pull request", "Update proposal"]);
   });
 
   it("offers Withdraw proposal beside the link on an open request", () => {
@@ -64,7 +64,7 @@ describe("rowItems", () => {
       "approved-awaiting-merge",
     ] as StageStatus[]) {
       expect(labels(rowItems(row({ status }), handlers, true))).toEqual([
-        "Open pull request",
+        "View pull request",
         "Withdraw proposal",
       ]);
     }
@@ -88,7 +88,7 @@ describe("rowItems", () => {
     const items = rowItems(row({ status: "proposal-closed" }), handlers, true);
 
     expect(labels(items)).toEqual([
-      "Open pull request",
+      "View pull request",
       "Reopen proposal",
       "Propose change",
     ]);
@@ -108,8 +108,8 @@ describe("rowItems", () => {
     );
 
     expect(labels(items)).toEqual([
-      "Open pull request #41",
-      "Open pull request #44",
+      "View pull request #41",
+      "View pull request #44",
       "Reopen proposal #41",
       "Reopen proposal #44",
       "Propose change",
@@ -130,8 +130,8 @@ describe("rowItems", () => {
     );
 
     expect(labels(items)).toEqual([
-      "Open pull request #41",
-      "Open pull request #44",
+      "View pull request #41",
+      "View pull request #44",
       "Update proposal — close the extra requests",
       "Withdraw proposal — close the extra requests",
     ]);
@@ -148,7 +148,7 @@ describe("rowItems", () => {
       true,
     );
 
-    expect(labels(items)).toEqual(["Open pull request"]);
+    expect(labels(items)).toEqual(["View pull request"]);
   });
 
   it("keeps every link usable while the mutations are closed", () => {

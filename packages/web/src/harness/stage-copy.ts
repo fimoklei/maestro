@@ -134,8 +134,8 @@ export function detailSentence(
         : `You edited this skill after pull request ${first(row)}. Select Update proposal to send the edits.`;
     case "draft":
       return row.deletion
-        ? `Pull request ${first(row)} proposes deleting this skill and is still a draft. Select Open pull request to mark it ready for review.`
-        : `Pull request ${first(row)} is a draft. Select Open pull request to mark it ready for review.`;
+        ? `Pull request ${first(row)} proposes deleting this skill and is still a draft. Select View pull request to mark it ready for review.`
+        : `Pull request ${first(row)} is a draft. Select View pull request to mark it ready for review.`;
     case "waiting-for-review":
       return row.deletion
         ? `Pull request ${first(row)} proposes deleting this skill and is waiting for a reviewer.`
@@ -146,20 +146,20 @@ export function detailSentence(
         : `A reviewer asked for changes on pull request ${first(row)}. Select Update proposal to send your changes.`;
     case "approved-awaiting-merge":
       return row.deletion
-        ? `Pull request ${first(row)} proposes deleting this skill and is approved. Select Open pull request to merge it.`
-        : `Pull request ${first(row)} is approved. Select Open pull request to merge it.`;
+        ? `Pull request ${first(row)} proposes deleting this skill and is approved. Select View pull request to merge it.`
+        : `Pull request ${first(row)} is approved. Select View pull request to merge it.`;
     case "pull-request-missing":
       return "The proposal branch is on GitHub without a pull request. Select Create pull request to open one.";
     case "proposal-closed":
       return `Pull request ${first(row)} was closed without merging. Select Reopen proposal to continue it.`;
     case "multiple-pull-requests":
       // The row's own link labels are numbered here, so the sentence names
-      // one that exists rather than a bare Open pull request (#883).
+      // one that exists rather than a bare View pull request (#883).
       return `${
         row.requests.length === 2
           ? `Pull requests ${listOf(requestNumbers(row))} both match this branch.`
           : "Several pull requests match this branch."
-      } Select Open pull request ${first(row)} to close it.`;
+      } Select View pull request ${first(row)} to close it.`;
     case "added":
       return release === null
         ? `This skill is on ${branch} and in no release yet. ${publish}`
