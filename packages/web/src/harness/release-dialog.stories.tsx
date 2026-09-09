@@ -112,7 +112,7 @@ export const CouldNotPlan: Story = {
       notice: {
         level: "error",
         label: "No answer from GitHub",
-        message: "Press Retry check, then Create a release again.",
+        message: "Select Retry check, then Create a release again.",
         detail: "A release plan is measured against what GitHub holds.",
       },
     },

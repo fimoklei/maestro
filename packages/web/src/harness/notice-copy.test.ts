@@ -85,7 +85,7 @@ const suites: [
       level: "error",
       label: "GitHub not read",
       message:
-        "The Maestro server did not answer, so the Harness is as it was. Press Retry check.",
+        "The Maestro server did not answer, so the Harness is as it was. Select Retry check.",
     },
     [
       ["not-configured", NOT_CONFIGURED],
@@ -109,7 +109,7 @@ const suites: [
         {
           level: "error",
           label: "No answer from GitHub",
-          message: "Press Retry check, then Create a release again.",
+          message: "Select Retry check, then Create a release again.",
           detail: "A release plan is measured against what GitHub holds.",
         },
       ],
@@ -133,7 +133,7 @@ const suites: [
           level: "error",
           label: "No answer from GitHub",
           message:
-            "Nothing was published. Press Retry check, then Publish release again.",
+            "Nothing was published. Select Retry check, then Publish release again.",
         },
       ],
       [
@@ -197,7 +197,7 @@ const suites: [
           level: "error",
           label: "No answer from GitHub",
           message:
-            "Nothing was pushed. Press Retry check, then Propose change again.",
+            "Nothing was pushed. Select Retry check, then Propose change again.",
         },
       ],
       [
@@ -205,7 +205,8 @@ const suites: [
         {
           level: "error",
           label: "Skill no longer in the Harness",
-          message: "Nothing was pushed. Press Retry check to repaint the list.",
+          message:
+            "Nothing was pushed. Select Retry check to repaint the list.",
         },
       ],
       [
@@ -268,7 +269,7 @@ const suites: [
           level: "error",
           label: "No answer from GitHub",
           message:
-            "Nothing was pushed. Press Retry check, then Delete skill again.",
+            "Nothing was pushed. Select Retry check, then Delete skill again.",
         },
       ],
       [
@@ -276,7 +277,8 @@ const suites: [
         {
           level: "error",
           label: "Folder edit mid-read",
-          message: "Nothing was pushed. Press Retry check to repaint the list.",
+          message:
+            "Nothing was pushed. Select Retry check to repaint the list.",
         },
       ],
       [
@@ -303,7 +305,7 @@ const suites: [
           level: "error",
           label: "Confirmation out of date",
           message:
-            "Nothing was pushed. Press Retry check, then Delete skill again.",
+            "Nothing was pushed. Select Retry check, then Delete skill again.",
           detail:
             "The copy on the default branch moved after this confirmation.",
         },
@@ -609,7 +611,7 @@ const suites: [
         {
           level: "error",
           label: "No answer from GitHub",
-          message: "Nothing changed on GitHub. Press Retry check.",
+          message: "Nothing changed on GitHub. Select Retry check.",
           detail:
             "Maestro could not read the branch this proposal is opened against.",
         },
@@ -619,7 +621,7 @@ const suites: [
         {
           level: "error",
           label: "Review status unavailable",
-          message: "Sign in with gh auth login, then press Retry check.",
+          message: "Sign in with gh auth login, then select Retry check.",
           detail: "Maestro reads pull requests through your own gh sign-in.",
         },
       ],
@@ -628,7 +630,7 @@ const suites: [
         {
           level: "error",
           label: "Review status unknown",
-          message: "Press Retry check to read GitHub again.",
+          message: "Select Retry check to read GitHub again.",
           detail: "GitHub gave no answer Maestro can act on.",
         },
       ],
@@ -638,7 +640,7 @@ const suites: [
           level: "error",
           label: "Multiple pull requests",
           message:
-            "Close the extra requests on GitHub, then press Retry check.",
+            "Close the extra requests on GitHub, then select Retry check.",
           detail:
             "More than one open pull request matches this skill's branch.",
         },
@@ -674,7 +676,7 @@ describe("staleStatusNotice", () => {
     ).toEqual({
       level: "warning",
       label: "Status out of date",
-      message: "Press Retry check to read GitHub again.",
+      message: "Select Retry check to read GitHub again.",
       detail: "GitHub gave no answer, so these rows are from the last read.",
       action: { label: "Retry check", onClick: retry },
     });
