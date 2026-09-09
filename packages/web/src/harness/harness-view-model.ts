@@ -4,7 +4,6 @@
 import { STAGE_NAMES } from "./stage-copy";
 import type {
   HarnessFreshness,
-  HarnessReleaseState,
   HarnessStage,
   HarnessStageRead,
   HarnessState,
@@ -199,10 +198,3 @@ export const journeyConfirmedEmpty = (state: HarnessState): boolean =>
 // publish a delta that has already moved (#519).
 export const releaseEnabled = (freshness: HarnessFreshness): boolean =>
   freshness.outcome !== "offline" && freshness.outcome !== "fetch-failed";
-
-export const RELEASE_SUMMARIES: Record<HarnessReleaseState, string> = {
-  released: "Everything merged is released.",
-  "pending-release": "Merged changes are waiting for release.",
-  "never-released": "No release yet.",
-  unknown: "Not read yet, so what is waiting is unknown.",
-};
