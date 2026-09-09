@@ -1770,7 +1770,7 @@ describe("Harness home base", () => {
         body: {
           error: "confirmation-stale",
           message:
-            "The copy on the default branch moved after this confirmation. Nothing was pushed — press Retry check, then Delete skill again.",
+            "The copy on the default branch moved after this confirmation. Nothing was pushed — select Retry check, then Delete skill again.",
         },
         status: 409,
         retry: { body: REMOVED },

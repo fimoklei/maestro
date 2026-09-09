@@ -38,7 +38,7 @@ const releasePlanHeadings: NoticeTable<ReleasePlanError> = {
   "no-answer": {
     level: "error",
     label: "No answer from GitHub",
-    message: "Press Retry check, then Create a release again.",
+    message: "Select Retry check, then Create a release again.",
     detail: "A release plan is measured against what GitHub holds.",
   },
 };
@@ -49,7 +49,7 @@ const publishReleaseHeadings: NoticeTable<PublishReleaseError> = {
     level: "error",
     label: "No answer from GitHub",
     message:
-      "Nothing was published. Press Retry check, then Publish release again.",
+      "Nothing was published. Select Retry check, then Publish release again.",
   },
   "already-released": {
     level: "error",
@@ -93,12 +93,12 @@ const promoteHeadings: NoticeTable<PromoteSkillError> = {
     level: "error",
     label: "No answer from GitHub",
     message:
-      "Nothing was pushed. Press Retry check, then Propose change again.",
+      "Nothing was pushed. Select Retry check, then Propose change again.",
   },
   "skill-missing": {
     level: "error",
     label: "Skill no longer in the Harness",
-    message: "Nothing was pushed. Press Retry check to repaint the list.",
+    message: "Nothing was pushed. Select Retry check to repaint the list.",
   },
   "push-elsewhere": {
     level: "error",
@@ -148,11 +148,11 @@ const deletionHeadings: NoticeTable<PromoteDeletionError> = {
   "push-elsewhere": promoteHeadings["push-elsewhere"],
   "no-answer": {
     ...promoteHeadings["no-answer"],
-    message: "Nothing was pushed. Press Retry check, then Delete skill again.",
+    message: "Nothing was pushed. Select Retry check, then Delete skill again.",
   },
   "source-changed": {
     ...promoteHeadings["source-changed"],
-    message: "Nothing was pushed. Press Retry check to repaint the list.",
+    message: "Nothing was pushed. Select Retry check to repaint the list.",
   },
   "promote-in-progress": {
     ...promoteHeadings["promote-in-progress"],
@@ -172,7 +172,7 @@ const deletionHeadings: NoticeTable<PromoteDeletionError> = {
   "confirmation-stale": {
     level: "error",
     label: "Confirmation out of date",
-    message: "Nothing was pushed. Press Retry check, then Delete skill again.",
+    message: "Nothing was pushed. Select Retry check, then Delete skill again.",
     detail: "The copy on the default branch moved after this confirmation.",
   },
   "not-deleted": {
@@ -225,38 +225,38 @@ const proposalHeadings: NoticeTable<ProposalActionError> = {
   "no-answer": {
     level: "error",
     label: "No answer from GitHub",
-    message: "Nothing changed on GitHub. Press Retry check.",
+    message: "Nothing changed on GitHub. Select Retry check.",
     detail:
       "Maestro could not read the branch this proposal is opened against.",
   },
   "review-unavailable": {
     level: "error",
     label: "Review status unavailable",
-    message: "Sign in with gh auth login, then press Retry check.",
+    message: "Sign in with gh auth login, then select Retry check.",
     detail: "Maestro reads pull requests through your own gh sign-in.",
   },
   "review-unknown": {
     level: "error",
     label: "Review status unknown",
-    message: "Press Retry check to read GitHub again.",
+    message: "Select Retry check to read GitHub again.",
     detail: "GitHub gave no answer Maestro can act on.",
   },
   "request-gone": {
     level: "error",
     label: "Pull request moved on",
-    message: "Press Retry check to read what GitHub holds now.",
+    message: "Select Retry check to read what GitHub holds now.",
     detail: "This pull request is no longer the one open over this skill.",
   },
   "extra-requests": {
     level: "error",
     label: "Multiple pull requests",
-    message: "Close the extra requests on GitHub, then press Retry check.",
+    message: "Close the extra requests on GitHub, then select Retry check.",
     detail: "More than one open pull request matches this skill's branch.",
   },
   "request-exists": {
     level: "error",
     label: "Pull request already open",
-    message: "Press Retry check to read the open pull request.",
+    message: "Select Retry check to read the open pull request.",
     detail: "GitHub already holds an open request over this skill's branch.",
   },
   "action-failed": {
@@ -435,7 +435,7 @@ export const refreshNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(harnessHeadings, error, {
     label: "GitHub not read",
     message:
-      "The Maestro server did not answer, so the Harness is as it was. Press Retry check.",
+      "The Maestro server did not answer, so the Harness is as it was. Select Retry check.",
   });
 
 // Not a failed press but a failed read: the rows below stand, dated to the
@@ -454,7 +454,7 @@ export const staleStatusNotice = (
   return {
     level: "warning",
     label: "Status out of date",
-    message: "Press Retry check to read GitHub again.",
+    message: "Select Retry check to read GitHub again.",
     detail:
       freshness.outcome === "offline"
         ? "Maestro could not reach GitHub, so these rows are from the last read."

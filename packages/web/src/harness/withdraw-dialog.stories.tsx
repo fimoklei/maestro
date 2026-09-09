@@ -31,7 +31,7 @@ export const RequestMovedOn: Story = {
     withdrawError: {
       level: "error",
       label: "Pull request moved on",
-      message: "Press Retry check to read what GitHub holds now.",
+      message: "Select Retry check to read what GitHub holds now.",
       detail: "This pull request is no longer the one open over this skill.",
     },
   },
