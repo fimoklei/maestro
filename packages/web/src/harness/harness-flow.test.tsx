@@ -2375,6 +2375,18 @@ describe("Harness freshness and failed reads", () => {
 
     expect(await screen.findByText("Status unknown")).toBeInTheDocument();
     expect(screen.getByText("Review status unavailable")).toBeInTheDocument();
+    // The cause and the way through, without first attempting a mutation.
+    expect(
+      screen.getByText("GitHub gave no answer Maestro can act on."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Sign in with gh auth login, then select Retry check."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Maestro reads pull requests through your own gh sign-in.",
+      ),
+    ).toBeInTheDocument();
     // A confirmed-empty stage's words must never stand in for an unread one.
     expect(screen.queryByText("No changes yet")).not.toBeInTheDocument();
     expect(
@@ -2385,6 +2397,40 @@ describe("Harness freshness and failed reads", () => {
     expect(
       screen.getByRole("button", { name: /^import skill…$/i }),
     ).toBeInTheDocument();
+  });
+
+  it("reads GitHub again from an unread stage's own Retry check", async () => {
+    const calls = stubHarnessServer({
+      read: {
+        body: {
+          ...RELEASED,
+          stages: {
+            proposal: { outcome: "read", rows: [], bound: null },
+            review: { outcome: "unavailable" },
+            release: { outcome: "read", rows: [], bound: null },
+          },
+        },
+      },
+    });
+    renderHarness();
+
+    // The strip carries one, the unread stage its own: the notice's is the
+    // second, beside the cause it states.
+    const retries = await screen.findAllByRole("button", {
+      name: /^retry check$/i,
+    });
+    expect(retries).toHaveLength(2);
+    const inNotice = retries[1];
+    if (inNotice === undefined) {
+      throw new Error("the stage notice carries no Retry check");
+    }
+    await userEvent.click(inNotice);
+
+    await waitFor(() =>
+      expect(
+        calls.filter((call) => call === "POST /api/harness/refresh"),
+      ).toHaveLength(2),
+    );
   });
 
   it("leaves release facts readable when the review read failed, and the reverse", async () => {

@@ -12,6 +12,7 @@ import {
   refreshNotice,
   releasePlanNotice,
   releasePublishedNotice,
+  stageReadNotice,
   staleStatusNotice,
 } from "./notice-copy";
 
@@ -704,6 +705,48 @@ describe("staleStatusNotice", () => {
     ).toBeNull();
     expect(
       staleStatusNotice({ outcome: null, lastFetchedAt: null }, retry),
+    ).toBeNull();
+  });
+});
+
+describe("stageReadNotice", () => {
+  const retry = () => {};
+
+  it("names the gh sign-in a stage nobody could read needs", () => {
+    expect(
+      stageReadNotice(
+        { outcome: "unavailable" },
+        "Review status unavailable",
+        retry,
+      ),
+    ).toEqual({
+      level: "warning",
+      label: "Review status unavailable",
+      message: "Sign in with gh auth login, then select Retry check.",
+      detail: "Maestro reads pull requests through your own gh sign-in.",
+      action: { label: "Retry check", onClick: retry },
+    });
+  });
+
+  it("states the whole notice for a stage GitHub gave no answer for", () => {
+    expect(
+      stageReadNotice({ outcome: "unknown" }, "Status unknown", retry),
+    ).toEqual({
+      level: "warning",
+      label: "Status unknown",
+      message: "Select Retry check to read GitHub again.",
+      detail: "GitHub gave no answer Maestro can act on.",
+      action: { label: "Retry check", onClick: retry },
+    });
+  });
+
+  it("shows nothing for a stage that was read", () => {
+    expect(
+      stageReadNotice(
+        { outcome: "read", rows: [], bound: null },
+        "Read just now",
+        retry,
+      ),
     ).toBeNull();
   });
 });
