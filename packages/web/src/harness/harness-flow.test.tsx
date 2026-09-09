@@ -1691,6 +1691,19 @@ describe("Harness home base", () => {
     return screen.findByRole("dialog", { name: /delete old-skill/i });
   };
 
+  // Amber owns *do this* alone (DESIGN.md § 2), so a retracting confirmation
+  // never takes the amber fill a publishing one does (#876).
+  it("leaves the deletion confirmation unfilled", async () => {
+    stubHarnessServer({ read: { body: DELETED }, deletion: { body: REMOVED } });
+    renderHarness();
+
+    const dialog = await openDeletionConfirmation();
+
+    expect(
+      within(dialog).getByRole("button", { name: /^delete skill$/i }),
+    ).not.toHaveClass("bg-amber");
+  });
+
   it("confirms a deletion in the Harness's own words, never Remove", async () => {
     // Remove belongs to deployed copies alone (CONTEXT.md · Screen names).
     stubHarnessServer({ read: { body: DELETED }, deletion: { body: REMOVED } });
@@ -2010,6 +2023,10 @@ describe("proposal actions", () => {
     expect(dialog).toHaveTextContent(
       "This closes the pull request. Your local files and proposal branch remain unchanged.",
     );
+    // Retracting is not the publishing action, so it takes no amber fill (#876).
+    expect(
+      within(dialog).getByRole("button", { name: "Withdraw proposal" }),
+    ).not.toHaveClass("bg-amber");
     expect(proposals).toEqual([]);
 
     await userEvent.click(

@@ -67,7 +67,7 @@ export function WithdrawDialog({
         <Button
           type="button"
           className="shrink-0"
-          variant="primary"
+          variant="ghost"
           size="sm"
           disabled={withdrawing}
           onClick={onConfirm}

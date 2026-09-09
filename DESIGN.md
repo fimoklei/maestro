@@ -294,7 +294,10 @@ are deferred (see the note in §1).
 danger red, marks validation errors and nothing else — never a fill for an
 action, never decoration — so amber keeps sole ownership of *do this*. No signal
 colour is ever used for decoration, and at most one amber-filled button exists
-per view.
+per view. A status chip in a stage table marks the exception within its own
+table; *act* is carried by the button, never by the chip. The expected reading
+is always colourless, whatever the row count, and green does not appear on stage
+chips at all.
 
 **The Reserved Hue Rule.** Skill blue, hook purple, mcp teal, and bundle amber
 belong to the primitive-type tag alone. Borrowing them for anything else breaks

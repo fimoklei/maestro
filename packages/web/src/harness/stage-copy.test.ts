@@ -28,6 +28,23 @@ const row = (
   ...over,
 });
 
+const ALL_STATUSES: StageStatus[] = [
+  "not-yet-proposed",
+  "new-local-work",
+  "deleted-locally",
+  "draft",
+  "waiting-for-review",
+  "changes-requested",
+  "approved-awaiting-merge",
+  "pull-request-missing",
+  "proposal-closed",
+  "multiple-pull-requests",
+  "added",
+  "changed",
+  "renamed",
+  "deleted",
+];
+
 const CONTEXT = { defaultBranch: "main", releasedVersion: "v1.4.0" };
 const request = { number: 45, url: "https://github.com/o/r/pull/45" };
 
@@ -48,18 +65,26 @@ describe("the Pending proposal empty state", () => {
 });
 
 describe("chip readings", () => {
-  it("gives waiting and local work a grey chip", () => {
-    expect(statusTone(row("pending-proposal", "not-yet-proposed"))).toBe("dim");
-    expect(statusTone(row("pending-proposal", "new-local-work"))).toBe("dim");
-    expect(statusTone(row("pending-proposal", "deleted-locally"))).toBe("dim");
-    expect(statusTone(row("pending-review", "waiting-for-review"))).toBe("dim");
+  it("leaves every expected reading in its stage colourless", () => {
+    for (const [stage, status] of [
+      ["pending-proposal", "not-yet-proposed"],
+      ["pending-proposal", "new-local-work"],
+      ["pending-proposal", "deleted-locally"],
+      ["pending-review", "draft"],
+      ["pending-review", "waiting-for-review"],
+      ["pending-review", "changes-requested"],
+      ["pending-review", "approved-awaiting-merge"],
+      ["pending-release", "added"],
+      ["pending-release", "changed"],
+      ["pending-release", "renamed"],
+      ["pending-release", "deleted"],
+    ] as [HarnessStage, StageStatus][]) {
+      expect(statusTone(row(stage, status))).toBe("dim");
+    }
   });
 
-  it("gives every state that needs the author an amber chip", () => {
+  it("gives the three Pending review exceptions an amber chip", () => {
     for (const status of [
-      "draft",
-      "changes-requested",
-      "approved-awaiting-merge",
       "pull-request-missing",
       "proposal-closed",
       "multiple-pull-requests",
@@ -68,29 +93,30 @@ describe("chip readings", () => {
     }
   });
 
-  it("gives merged changes a green chip", () => {
-    for (const status of ["added", "changed", "renamed", "deleted"] as const) {
-      expect(statusTone(row("pending-release", status))).toBe("ok");
+  it("never gives a stage chip green", () => {
+    for (const status of ALL_STATUSES) {
+      expect(statusTone(row("pending-review", status))).not.toBe("ok");
     }
   });
 
   it("carries every reading as text, never colour alone", () => {
-    expect(statusReading(row("pending-review", "changes-requested"))).toBe(
-      "▲ Changes requested",
+    expect(statusReading(row("pending-review", "pull-request-missing"))).toBe(
+      "▲ Pull request missing",
     );
     expect(statusReading(row("pending-release", "deleted"))).toBe("● Deleted");
   });
 
-  // Never-Colour-Alone (DESIGN.md § 2): amber reads ▲, grey and green read ●.
+  // Never-Colour-Alone (DESIGN.md § 2): the three exceptions read ▲, every
+  // expected reading reads ●.
   it("prefixes every reading with the glyph its tone carries", () => {
     const readings: [StageStatus, string][] = [
       ["not-yet-proposed", "● Not yet proposed"],
       ["new-local-work", "● New local work"],
       ["deleted-locally", "● Deleted locally"],
       ["waiting-for-review", "● Waiting for review"],
-      ["draft", "▲ Draft"],
-      ["changes-requested", "▲ Changes requested"],
-      ["approved-awaiting-merge", "▲ Approved, awaiting merge"],
+      ["draft", "● Draft"],
+      ["changes-requested", "● Changes requested"],
+      ["approved-awaiting-merge", "● Approved, awaiting merge"],
       ["pull-request-missing", "▲ Pull request missing"],
       ["proposal-closed", "▲ Proposal closed"],
       ["multiple-pull-requests", "▲ Multiple pull requests"],
@@ -108,13 +134,13 @@ describe("chip readings", () => {
     // The six readings of #847, each in the stage that carries it.
     const six: [HarnessStage, StageStatus, string][] = [
       ["pending-proposal", "deleted-locally", "● Deleted locally"],
-      ["pending-review", "draft", "▲ Deletion in draft"],
+      ["pending-review", "draft", "● Deletion in draft"],
       ["pending-review", "waiting-for-review", "● Deletion waiting for review"],
-      ["pending-review", "changes-requested", "▲ Deletion changes requested"],
+      ["pending-review", "changes-requested", "● Deletion changes requested"],
       [
         "pending-review",
         "approved-awaiting-merge",
-        "▲ Deletion approved, awaiting merge",
+        "● Deletion approved, awaiting merge",
       ],
       ["pending-release", "deleted", "● Deleted"],
     ];
@@ -130,12 +156,12 @@ describe("chip readings", () => {
       statusReading(
         row("pending-review", "changes-requested", { deletion: true }),
       ),
-    ).toBe("▲ Deletion changes requested");
+    ).toBe("● Deletion changes requested");
     expect(
       statusReading(
         row("pending-review", "approved-awaiting-merge", { deletion: true }),
       ),
-    ).toBe("▲ Deletion approved, awaiting merge");
+    ).toBe("● Deletion approved, awaiting merge");
   });
 });
 

@@ -28,23 +28,25 @@ export const PROPOSAL_EMPTY = {
   },
 } as const;
 
-// Grey for waiting and local work, amber for exceptional author action, green
-// for merged changes. Colour never carries the reading: every chip is text.
+// The table names the stage; the chip marks whether this row departs from the
+// normal path within it. Grey is the expected reading, amber the exception —
+// the three Pending review statuses CONTEXT.md holds apart from that stage's
+// definition. Green never appears here: it means rest (#876).
 const TONES: Record<StageStatus, NonNullable<ChipProps["tone"]>> = {
   "not-yet-proposed": "dim",
   "new-local-work": "dim",
   "deleted-locally": "dim",
   "waiting-for-review": "dim",
-  draft: "drift",
-  "changes-requested": "drift",
-  "approved-awaiting-merge": "drift",
+  draft: "dim",
+  "changes-requested": "dim",
+  "approved-awaiting-merge": "dim",
   "pull-request-missing": "drift",
   "proposal-closed": "drift",
   "multiple-pull-requests": "drift",
-  added: "ok",
-  changed: "ok",
-  renamed: "ok",
-  deleted: "ok",
+  added: "dim",
+  changed: "dim",
+  renamed: "dim",
+  deleted: "dim",
 };
 
 // A deletion keeps its own reading in every stage, so a local deletion never
