@@ -68,6 +68,32 @@ export const JustLandedRow: Story = {
   },
 };
 
+// The two notices a row can carry, side by side: one painted with the row, one
+// answering a refused press. Both sit in the Detail column without a fill or an
+// outline, so neither reads as a card inside the card (DESIGN.md §6).
+export const RowsCarryingANotice: Story = {
+  args: {
+    rows: [
+      row("pending-proposal", "agent-native-cli", "not-yet-proposed", {
+        concurrentChange: true,
+      }),
+      row("pending-proposal", "grilling", "not-yet-proposed"),
+    ],
+    actions: {
+      items: () => [],
+      failed: {
+        skill: "grilling",
+        notice: {
+          level: "error",
+          label: "No answer from GitHub",
+          message:
+            "Nothing was pushed. Select Retry check, then Propose change again.",
+        },
+      },
+    },
+  },
+};
+
 // The one story whose menus are built, not stubbed: its sentences name the
 // labels the menu carries, and a stub would hide a mismatch (#883).
 const NO_OP = {

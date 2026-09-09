@@ -118,8 +118,9 @@ export function StageTable({
                   {actions.failed?.skill === row.skill ? (
                     // On the row it failed on, not in a dialog: the press is
                     // still there, and a refusal changed nothing (#577).
-                    <div className="mt-1">
+                    <div className="mt-2">
                       <Notice
+                        variant="inline"
                         trigger="user-action"
                         notice={actions.failed.notice}
                       />
@@ -128,8 +129,9 @@ export function StageTable({
                   {row.concurrentChange ? (
                     // Painted with the row, not in answer to a press, so it
                     // stays polite.
-                    <div className="mt-1">
+                    <div className="mt-2">
                       <Notice
+                        variant="inline"
                         trigger="load"
                         notice={CONCURRENT_CHANGE_NOTICE}
                       />
