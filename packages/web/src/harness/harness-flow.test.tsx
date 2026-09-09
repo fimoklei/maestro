@@ -283,9 +283,103 @@ describe("Harness home base", () => {
     expect(
       await screen.findByRole("heading", {
         level: 2,
+        name: "Pending proposal · 1",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("counts what each read stage holds, in its heading", async () => {
+    stubHarnessServer({
+      read: {
+        body: withStages(RELEASED, {
+          proposal: [row("pending-proposal", "tdd", "not-yet-proposed")],
+          review: [
+            row("pending-review", "lint-rules", "waiting-for-review"),
+            row("pending-review", "research", "waiting-for-review"),
+          ],
+          release: [
+            row("pending-release", "tdd", "changed"),
+            row("pending-release", "lint-rules", "added"),
+            row("pending-release", "research", "added"),
+          ],
+        }),
+      },
+    });
+    renderHarness();
+
+    // Three honest numbers, never a sum: one skill can hold a row in all
+    // three stages (ADR-0021 · 10).
+    expect(
+      await screen.findByRole("heading", {
+        level: 2,
+        name: "Pending proposal · 1",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Pending review · 2" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Pending release · 3" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /· 6/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("gives a stage read empty no number", async () => {
+    // Pending proposal is the one stage a confirmed empty read still draws, so
+    // it is where a zero could be mistaken for an unread stage (#827).
+    stubHarnessServer({ read: { body: RELEASED } });
+    renderHarness();
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 2,
         name: "Pending proposal",
       }),
     ).toBeInTheDocument();
+  });
+
+  it("gives a stage nobody read no number and no card", async () => {
+    stubHarnessServer({
+      read: {
+        body: {
+          ...RELEASED,
+          stages: {
+            proposal: { outcome: "read", rows: [], bound: null },
+            review: { outcome: "unavailable" },
+            release: { outcome: "read", rows: [], bound: null },
+          },
+        },
+      },
+    });
+    renderHarness();
+
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "Pending review" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Review status unavailable")).toBeInTheDocument();
+  });
+
+  it("leaves the release summary to the tables that already say it", async () => {
+    stubHarnessServer({
+      read: {
+        body: { ...RELEASED, releaseState: "pending-release" },
+      },
+    });
+    renderHarness();
+
+    await screen.findByRole("heading", { level: 1, name: /harness/i });
+    expect(
+      screen.queryByText("Merged changes are waiting for release."),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Everything merged is released."),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("No release yet.")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Not read yet, so what is waiting is unknown."),
+    ).not.toBeInTheDocument();
   });
 
   // A press moves a row from one stage to another and the meta line re-dates
@@ -366,26 +460,6 @@ describe("Harness home base", () => {
         calls.filter((call) => call === "POST /api/harness/refresh"),
       ).toHaveLength(2),
     );
-  });
-
-  it("reads a quiet harness as nothing waiting", async () => {
-    stubHarnessServer({ read: { body: RELEASED } });
-    renderHarness();
-
-    expect(
-      await screen.findByText("Everything merged is released."),
-    ).toBeInTheDocument();
-  });
-
-  it("says plainly when merged work is waiting for a release", async () => {
-    stubHarnessServer({
-      read: { body: { ...RELEASED, releaseState: "pending-release" } },
-    });
-    renderHarness();
-
-    expect(
-      await screen.findByText("Merged changes are waiting for release."),
-    ).toBeInTheDocument();
   });
 
   it("lists the merged skills that are waiting, with their green readings", async () => {
@@ -479,7 +553,8 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    expect(await screen.findByText("No release yet.")).toBeInTheDocument();
+    // The strip carries the reading now that the summary card is retired.
+    expect(await screen.findByText("None yet")).toBeInTheDocument();
   });
 
   it("keeps the freshly fetched state when the slower read arrives late", async () => {
@@ -723,9 +798,7 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    expect(
-      await screen.findByText("Merged changes are waiting for release."),
-    ).toBeInTheDocument();
+    await screen.findByRole("heading", { level: 1, name: /harness/i });
     expect(
       screen.queryByRole("cell", { name: /not yet proposed/i }),
     ).not.toBeInTheDocument();
