@@ -41,6 +41,9 @@ const TONES: Record<StageStatus, NonNullable<ChipProps["tone"]>> = {
   "changes-requested": "dim",
   "approved-awaiting-merge": "dim",
   "pull-request-missing": "drift",
+  // Grey: a merged proposal is the normal end of a review, not an exception.
+  // Only origin/HEAD lagging behind keeps the row on screen at all (#889).
+  "proposal-merged": "dim",
   "proposal-closed": "drift",
   "multiple-pull-requests": "drift",
   added: "dim",
@@ -60,6 +63,7 @@ const READINGS: Record<StageStatus, string> = {
   "changes-requested": "Changes requested",
   "approved-awaiting-merge": "Approved, awaiting merge",
   "pull-request-missing": "Pull request missing",
+  "proposal-merged": "Proposal merged",
   "proposal-closed": "Proposal closed",
   "multiple-pull-requests": "Multiple pull requests",
   added: "Added",
@@ -73,6 +77,7 @@ const DELETION_READINGS: Partial<Record<StageStatus, string>> = {
   "waiting-for-review": "Deletion waiting for review",
   "changes-requested": "Deletion changes requested",
   "approved-awaiting-merge": "Deletion approved, awaiting merge",
+  "proposal-merged": "Deletion merged",
 };
 
 // Read off the tone, so a chip can never show a glyph its colour contradicts
@@ -150,6 +155,10 @@ export function detailSentence(
         : `Pull request ${first(row)} is approved. Merge it on GitHub.`;
     case "pull-request-missing":
       return "The proposal branch is on GitHub without a pull request. Select Create pull request to open one.";
+    case "proposal-merged":
+      return row.deletion
+        ? `Pull request ${first(row)} merged the deletion. Select Retry check to read GitHub again.`
+        : `Pull request ${first(row)} was merged. Select Retry check to read GitHub again.`;
     case "proposal-closed":
       return `Pull request ${first(row)} was closed without merging. Select Reopen proposal to continue it.`;
     case "multiple-pull-requests":

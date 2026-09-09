@@ -84,6 +84,20 @@ describe("rowItems", () => {
     expect(disabled(items)).toEqual(["Withdraw proposal — no request yet"]);
   });
 
+  // A merged request leaves the branch behind it. Where that branch already
+  // carries newer work, Create pull request is the only way on — without it
+  // the row is a dead end. Withdrawal is not a press GitHub would accept.
+  it("keeps Create pull request on a merged proposal", () => {
+    const items = rowItems(row({ status: "proposal-merged" }), handlers, true);
+
+    expect(labels(items)).toEqual([
+      "Open pull request",
+      "Create pull request",
+      "Withdraw proposal — no request yet",
+    ]);
+    expect(disabled(items)).toEqual(["Withdraw proposal — no request yet"]);
+  });
+
   it("offers Reopen proposal, with Propose change behind it", () => {
     const items = rowItems(row({ status: "proposal-closed" }), handlers, true);
 

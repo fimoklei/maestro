@@ -194,6 +194,19 @@ export function HarnessView() {
     return () => clearTimeout(scheduled);
   }, [fetchRemote]);
 
+  // Returning to the tab is the same act as opening the view: merging happens
+  // on GitHub, and the git refs the stages read only move on a fetch. Skipped
+  // while one is already running, so a second git fetch is never started (#889).
+  const reading = refresh.isPending;
+  useEffect(() => {
+    if (reading) {
+      return;
+    }
+    const reread = () => fetchRemote();
+    window.addEventListener("focus", reread);
+    return () => window.removeEventListener("focus", reread);
+  }, [reading, fetchRemote]);
+
   return (
     <section>
       {/* The view's own <h1>: heading navigation needs a starting point, and
@@ -240,7 +253,7 @@ export function HarnessView() {
             releasedVersion={state.releasedVersion}
             defaultBranch={state.defaultBranch}
             // Read at render, so the age is current every time the strip paints.
-            status={freshnessLabel(state.freshness, new Date())}
+            status={freshnessLabel(state.freshness, new Date(), reading)}
           >
             {/* Closed while the remote's answer is unknown — an offline or
                 failed fetch (releaseEnabled) — and while a refresh is still
@@ -272,7 +285,7 @@ export function HarnessView() {
             aria-label="Harness stages"
             className="sr-only"
           >
-            {harnessAnnouncement(state, new Date())}
+            {harnessAnnouncement(state, new Date(), reading)}
           </span>
           {/* The three stages in journey order, each answering its own
               question. One skill can hold a row in all three (ADR-0021 · 10). */}

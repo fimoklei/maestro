@@ -293,6 +293,45 @@ describe("Pending review membership", () => {
     expect(row.reviewers).toHaveLength(3);
   });
 
+  it("reads a merged request as proposal merged, never as missing", () => {
+    const review = reviewOf([request({ state: "merged" })]);
+    expect(statuses(stages({ trees: pushed, review }).review)).toEqual([
+      "tdd:proposal-merged",
+    ]);
+  });
+
+  it("links the merged request the row states", () => {
+    const review = reviewOf([request({ state: "merged" })]);
+    const row = oneRow(stages({ trees: pushed, review }).review);
+    expect(row.requests).toEqual([
+      {
+        number: 45,
+        url: "https://github.com/fimoklei/agent-harness/pull/45",
+      },
+    ]);
+  });
+
+  it("drops the row once the merge reaches the default branch", () => {
+    const merged: HarnessSkillTrees = {
+      remote: { tdd: "pushed" },
+      promote: { tdd: "pushed" },
+      local: { tdd: "same" },
+      working: { tdd: "pushed" },
+    };
+    const review = reviewOf([request({ state: "merged" })]);
+    expect(statuses(stages({ trees: merged, review }).review)).toEqual([]);
+  });
+
+  it("prefers an open request over a merged one on the same branch", () => {
+    const review = reviewOf([
+      request({ number: 44, state: "merged" }),
+      request({ number: 45, state: "open" }),
+    ]);
+    expect(statuses(stages({ trees: pushed, review }).review)).toEqual([
+      "tdd:waiting-for-review",
+    ]);
+  });
+
   it("never matches a request opened from another repository's branch", () => {
     const review = reviewOf([request({ headOwner: "someone-else" })]);
     expect(statuses(stages({ trees: pushed, review }).review)).toEqual([
@@ -314,11 +353,13 @@ describe("Pending review membership", () => {
     ]);
   });
 
-  it("never lets a historical merged request stand in for an open one", () => {
+  // The claim #843 made here — a merged request is never an open one — kept,
+  // over the reading that replaced it.
+  it("never lets a merged request stand in for an open one", () => {
     const review = reviewOf([request({ state: "merged", number: 12 })]);
-    expect(statuses(stages({ trees: pushed, review }).review)).toEqual([
-      "tdd:pull-request-missing",
-    ]);
+    const row = oneRow(stages({ trees: pushed, review }).review);
+    expect(row.status).toBe("proposal-merged");
+    expect(row.reviewers).toEqual([]);
   });
 
   it("reads a closed request over unincorporated content as proposal closed", () => {

@@ -58,6 +58,9 @@ export function rowItems(
   }
 
   switch (row.status) {
+    // Both leave the branch on GitHub with no open request over it, so both
+    // offer the one press that opens one. Withdrawal has nothing to close.
+    case "proposal-merged":
     case "pull-request-missing":
       return [
         ...links,
