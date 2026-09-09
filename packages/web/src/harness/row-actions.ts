@@ -30,7 +30,7 @@ export function rowItems(
 ): ActionsMenuProps["items"] {
   const many = row.requests.length > 1;
   const links = row.requests.map((request) => ({
-    label: named("Open pull request", request, many),
+    label: named("View pull request", request, many),
     href: request.url,
   }));
   const sole = row.requests.length === 1 ? row.requests[0] : undefined;

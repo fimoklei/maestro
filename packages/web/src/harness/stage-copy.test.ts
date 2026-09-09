@@ -192,12 +192,12 @@ describe("Detail sentences", () => {
     [
       "draft",
       false,
-      "Pull request #45 is a draft. Select Open pull request to mark it ready for review.",
+      "Pull request #45 is a draft. Select View pull request to mark it ready for review.",
     ],
     [
       "draft",
       true,
-      "Pull request #45 proposes deleting this skill and is still a draft. Select Open pull request to mark it ready for review.",
+      "Pull request #45 proposes deleting this skill and is still a draft. Select View pull request to mark it ready for review.",
     ],
     [
       "waiting-for-review",
@@ -222,12 +222,12 @@ describe("Detail sentences", () => {
     [
       "approved-awaiting-merge",
       false,
-      "Pull request #45 is approved. Select Open pull request to merge it.",
+      "Pull request #45 is approved. Select View pull request to merge it.",
     ],
     [
       "approved-awaiting-merge",
       true,
-      "Pull request #45 proposes deleting this skill and is approved. Select Open pull request to merge it.",
+      "Pull request #45 proposes deleting this skill and is approved. Select View pull request to merge it.",
     ],
     [
       "pull-request-missing",
@@ -310,7 +310,7 @@ describe("Detail sentences", () => {
         CONTEXT,
       ),
     ).toBe(
-      "Pull requests #41 and #44 both match this branch. Select Open pull request #41 to close it.",
+      "Pull requests #41 and #44 both match this branch. Select View pull request #41 to close it.",
     );
   });
 
@@ -329,7 +329,7 @@ describe("Detail sentences", () => {
         CONTEXT,
       ),
     ).toBe(
-      "Several pull requests match this branch. Select Open pull request #41 to close it.",
+      "Several pull requests match this branch. Select View pull request #41 to close it.",
     );
   });
 
