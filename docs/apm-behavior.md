@@ -415,8 +415,8 @@ Maestro's own detection:
   with no entry means diverged (`deployed-diverged-from-lock`). A copy with
   no recorded hashes at all cannot be verified and is refused as its own
   state, `deployed-unverifiable` — a copy predating content tracking, with a
-  known false-positive mode (`LEARNINGS.md` ·
-  stale-sandbox-false-unverifiable). Verified end-to-end per-repo (#56) and
+  known false-positive mode (a stale smoke sandbox; see the
+  `verify-in-smoke` skill). Verified end-to-end per-repo (#56) and
   global (#61): the global lockfile (`~/.apm/apm.lock.yaml`) keys its hashes
   HOME-relative, the same form as per-repo, so the identical compare applies
   with deployed root = `HOME`.

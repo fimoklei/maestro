@@ -1,6 +1,6 @@
 ---
 name: worktree
-description: "Create and prepare a git worktree for a Maestro backlog issue, then pull the issue so the agent is ready to implement. Use in the Maestro repo when the user asks to make/set up a worktree for an issue — e.g. 'maak een worktree aan voor issue 214 te implementeren', 'worktree voor issue 214', 'start issue 214 in een worktree'. Also use for cleaning up leftover worktrees — 'welke worktrees staan er nog open', 'verwijder die worktree', 'ruim de worktrees op'. Maestro-specific: worktrees live at ~/Projects/maestro/.claude/worktrees/issue<N> on branch feature/issue<N>."
+description: "Create and prepare a git worktree for a Maestro backlog issue, then pull the issue so the agent is ready to implement. Use in the Maestro repo when the user asks to make/set up a worktree for an issue — e.g. 'maak een worktree aan voor issue 214 te implementeren', 'worktree voor issue 214', 'start issue 214 in een worktree'. Also use for cleaning up leftover worktrees — 'welke worktrees staan er nog open', 'verwijder die worktree', 'ruim de worktrees op'. Maestro-specific: a session that already stands in a workspace worktree (~/orca/workspaces/maestro/<name>) uses it; otherwise worktrees live at ~/Projects/maestro/.claude/worktrees/issue<N> on branch feature/issue<N>."
 ---
 
 # Maestro worktree
@@ -8,8 +8,8 @@ description: "Create and prepare a git worktree for a Maestro backlog issue, the
 Create one worktree per backlog issue, prepared and ready to implement. The convention is fixed for this repo.
 
 **Anchor repo:** `~/Projects/maestro` (the primary checkout — run every `git` command with `-C` against it, never rely on cwd).
-**Worktree path:** `~/Projects/maestro/.claude/worktrees/issue<N>` (under the repo's `.claude/worktrees/`, so `EnterWorktree` can switch this session into it — paths elsewhere are refused).
-**Branch:** `feature/issue<N>`
+**Workspace worktree:** `~/orca/workspaces/maestro/<name>` on a `fimoklei/*` branch — orca creates these before the session starts. A session standing in one already has its worktree.
+**Created worktree:** `~/Projects/maestro/.claude/worktrees/issue<N>` on branch `feature/issue<N>` (under the repo's `.claude/worktrees/`, so `EnterWorktree` can switch this session into it — paths elsewhere are refused).
 
 ## Steps
 
@@ -17,8 +17,10 @@ Create one worktree per backlog issue, prepared and ready to implement. The conv
 Read `<N>` from the user's message. If no number is present, ask for it and stop — do not guess.
 **Done when:** you have a single integer `<N>`.
 
-### 2. Create the worktree from fresh main
-Fetch, then add the worktree branched off origin's main:
+### 2. Use the worktree the session stands in, or create one
+First check where the session is: `git rev-parse --git-common-dir` differs from `git rev-parse --git-dir` when the cwd is a linked worktree of the anchor repo. In that case use it: report path and branch, skip the rest of this step and step 3 (deps are installed by orca; run `pnpm install` only if `node_modules/` is missing), and skip `EnterWorktree` in step 5. A second worktree for the same issue leaves a stray one behind.
+
+Otherwise fetch, then add the worktree branched off origin's main:
 ```bash
 git -C ~/Projects/maestro fetch origin
 git -C ~/Projects/maestro worktree add ~/Projects/maestro/.claude/worktrees/issue<N> -b feature/issue<N> origin/main
@@ -52,6 +54,8 @@ Explain the issue in two or three sentences a product manager can read aloud: wh
 ### 5. Enter the worktree and implement
 If step 4 found an open blocker, stop here and ask Michiel whether to proceed anyway or wait — do not enter the worktree or hand off to implement on an unconfirmed conflict risk.
 
+Already standing in a workspace worktree (step 2) → skip the EnterWorktree call; confirm and hand off as below.
+
 Switch this session into the worktree — no manual `cd`, no new session:
 - Call **EnterWorktree** with the **absolute** path, exactly as `git -C ~/Projects/maestro worktree list` printed it
   (`/Users/<you>/Projects/maestro/.claude/worktrees/issue<N>`). EnterWorktree does not expand `~` — a literal
@@ -70,11 +74,10 @@ whose issue was abandoned, or whose branch was merged elsewhere.
 git -C ~/Projects/maestro worktree list          # what still exists
 git -C ~/Projects/maestro branch --merged main   # which of those branches are already in
 ```
-Remove one, always from the anchor repo and never while the session stands inside it (call **ExitWorktree**
-with `action: "keep"` first):
+Name only paths that `worktree list` printed just now; a path from the session preamble or an earlier turn may be gone already. Remove one, always from the anchor repo and never while the session stands inside it (call **ExitWorktree** with `action: "keep"` first when the session entered it that way). The worktree goes before the branch: `branch -d` refuses a branch a worktree still holds.
 ```bash
-git -C ~/Projects/maestro worktree remove ~/Projects/maestro/.claude/worktrees/issue<N>
-git -C ~/Projects/maestro branch -d feature/issue<N>   # -D only if the PR state says MERGED
+git -C ~/Projects/maestro worktree remove <path>
+git -C ~/Projects/maestro branch -d <branch>   # -D only if the PR state says MERGED
 git -C ~/Projects/maestro worktree prune
 ```
 A worktree with uncommitted work is not leftover — report it and ask, never `--force`.
