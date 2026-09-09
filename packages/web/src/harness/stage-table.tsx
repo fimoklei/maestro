@@ -42,10 +42,13 @@ export type StageRowActions = {
 // One stage's rows. Type is a column even though every row is a skill today:
 // hooks and MCP servers slot in without reshaping the table (#347).
 export function StageTable({
+  title,
   rows,
   context,
   actions,
 }: {
+  /** The stage this table holds, which names its scroll container. */
+  title: string;
   rows: HarnessStageRow[];
   context: StageContext;
   actions: StageRowActions;
@@ -53,7 +56,13 @@ export function StageTable({
   return (
     // Narrow, the five columns would crush the name to nothing. The table keeps
     // a floor and scrolls sideways inside the card instead; Detail wraps.
-    <div className="overflow-x-auto">
+    // Named and focusable, as the Inventory table is (WCAG 2.1.1).
+    <section
+      aria-label={`${title} table`}
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: a scroll container that cannot take focus is keyboard-unreachable (WCAG 2.1.1), and Safari does not focus scrollers on its own
+      tabIndex={0}
+      className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+    >
       <Table className="min-w-[760px] table-fixed">
         <TableHeader>
           <TableRow>
@@ -140,7 +149,7 @@ export function StageTable({
           })}
         </TableBody>
       </Table>
-    </div>
+    </section>
   );
 }
 

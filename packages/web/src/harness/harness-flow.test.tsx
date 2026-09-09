@@ -261,11 +261,52 @@ describe("Harness home base", () => {
     renderHarness();
 
     expect(
-      await screen.findByRole("heading", { level: 2, name: /harness/i }),
+      // The view's own <h1>, so heading navigation has a starting point
+      // (#868). Inventory carries one too.
+      await screen.findByRole("heading", { level: 1, name: /harness/i }),
     ).toBeInTheDocument();
     expect(
       await screen.findByText("github.com/fimoklei/agent-harness"),
     ).toBeInTheDocument();
+  });
+
+  it("puts each stage one level under the view, so the outline never skips", async () => {
+    stubHarnessServer({
+      read: {
+        body: withStages(RELEASED, {
+          proposal: [row("pending-proposal", "tdd", "not-yet-proposed")],
+        }),
+      },
+    });
+    renderHarness();
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 2,
+        name: "Pending proposal",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  // A press moves a row from one stage to another and the meta line re-dates
+  // itself, both without moving focus. Nothing said so out loud before (#868).
+  it("announces what each stage holds, politely", async () => {
+    stubHarnessServer({
+      read: {
+        body: withStages(RELEASED, {
+          proposal: [row("pending-proposal", "tdd", "not-yet-proposed")],
+        }),
+      },
+    });
+    renderHarness();
+
+    const live = await screen.findByRole("status", { name: "Harness stages" });
+    await waitFor(() =>
+      expect(live).toHaveTextContent(
+        "Pending proposal has 1 change. Pending review has no changes. Pending release has no changes. Not read yet.",
+      ),
+    );
+    expect(live).toHaveAttribute("aria-live", "polite");
   });
 
   it("shows the released version and the branch a release would tag", async () => {
@@ -367,7 +408,7 @@ describe("Harness home base", () => {
 
     expect(
       await screen.findByRole("heading", {
-        level: 3,
+        level: 2,
         name: /pending release/i,
       }),
     ).toBeInTheDocument();
@@ -483,7 +524,15 @@ describe("Harness home base", () => {
 
     // Polite, not assertive: the fetch fires on open, so nothing the author
     // did should interrupt them (#465).
-    expect(await screen.findByRole("status")).toHaveTextContent(/GitHub/i);
+    // The notice's own region, not the stage announcement beside it (#868).
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole("status")
+          .map((region) => region.textContent ?? "")
+          .join(" "),
+      ).toMatch(/GitHub/i),
+    );
     // The state that is on screen is the last one that was read, so the
     // version still shows and the button is the way to try again.
     expect(screen.getByText("v0.5.0")).toBeInTheDocument();
@@ -506,11 +555,11 @@ describe("Harness home base", () => {
     renderHarness();
 
     const review = (
-      await screen.findByRole("heading", { level: 3, name: /pending review/i })
+      await screen.findByRole("heading", { level: 2, name: /pending review/i })
     ).closest("section");
     const promotion = (
       await screen.findByRole("heading", {
-        level: 3,
+        level: 2,
         name: /pending proposal/i,
       })
     ).closest("section");
@@ -536,15 +585,15 @@ describe("Harness home base", () => {
 
     expect(
       await screen.findByRole("heading", {
-        level: 3,
+        level: 2,
         name: /pending proposal/i,
       }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("heading", { level: 3, name: /pending review/i }),
+      screen.queryByRole("heading", { level: 2, name: /pending review/i }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("heading", { level: 3, name: /pending release/i }),
+      screen.queryByRole("heading", { level: 2, name: /pending release/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -1447,7 +1496,7 @@ describe("Harness home base", () => {
     await promoteRow("lint-rules");
 
     const review = (
-      await screen.findByRole("heading", { level: 3, name: /pending review/i })
+      await screen.findByRole("heading", { level: 2, name: /pending review/i })
     ).closest("section") as HTMLElement;
     expect(within(review).getByText("lint-rules")).toBeVisible();
     expect(within(review).getByText("Pull request missing")).toBeVisible();
@@ -1713,7 +1762,7 @@ describe("Harness home base", () => {
     );
 
     const review = (
-      await screen.findByRole("heading", { level: 3, name: /pending review/i })
+      await screen.findByRole("heading", { level: 2, name: /pending review/i })
     ).closest("section") as HTMLElement;
     expect(within(review).getByText("old-skill")).toBeVisible();
     expect(within(review).getByText("Pull request missing")).toBeVisible();

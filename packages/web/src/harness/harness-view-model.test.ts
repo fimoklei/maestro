@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   freshnessLabel,
+  harnessAnnouncement,
   journeyConfirmedEmpty,
   RELEASE_SUMMARIES,
   releaseEnabled,
@@ -272,6 +273,77 @@ describe("stageSections", () => {
     expect(
       metaOf(state({ proposal: { outcome: "unknown" } }), "pending-proposal"),
     ).toBe("Status unknown");
+  });
+});
+
+describe("harnessAnnouncement", () => {
+  const READ_AT = "2026-08-03T11:56:00.000Z";
+
+  const state = (stages: Partial<HarnessState["stages"]>): HarnessState => ({
+    origin: "github.com/fimoklei/agent-harness",
+    releasedVersion: "v1.4.0",
+    defaultBranch: "main",
+    releaseState: "released",
+    freshness: { outcome: "fetched", lastFetchedAt: READ_AT },
+    stages: {
+      proposal: { outcome: "read", rows: [], bound: null },
+      review: { outcome: "read", rows: [], bound: null },
+      release: { outcome: "read", rows: [], bound: null },
+      ...stages,
+    },
+  });
+
+  const row = (skill: string): HarnessStageRow => ({
+    stage: "pending-proposal",
+    skill,
+    status: "not-yet-proposed",
+    deletion: false,
+    requests: [],
+    reviewers: [],
+    comparison: { kind: "default-branch" },
+    alsoIn: [],
+    concurrentChange: false,
+    remoteTree: null,
+    previousName: null,
+  });
+
+  it("counts every stage and dates the picture they were read from", () => {
+    const built = state({
+      proposal: { outcome: "read", bound: null, rows: [row("tdd")] },
+    });
+
+    expect(harnessAnnouncement(built, NOW)).toBe(
+      "Pending proposal has 1 change. Pending review has no changes. Pending release has no changes. Read 4 min ago.",
+    );
+  });
+
+  it("counts more than one change in the plural", () => {
+    const built = state({
+      proposal: {
+        outcome: "read",
+        bound: null,
+        rows: [row("tdd"), row("caveman")],
+      },
+    });
+
+    expect(harnessAnnouncement(built, NOW)).toContain(
+      "Pending proposal has 2 changes.",
+    );
+  });
+
+  it("never counts a stage nobody could read as empty", () => {
+    const built = state({ review: { outcome: "unavailable" } });
+
+    expect(harnessAnnouncement(built, NOW)).toContain(
+      "Pending review was not read.",
+    );
+  });
+
+  it("says plainly when no read has ever succeeded", () => {
+    const built = state({});
+    built.freshness = { outcome: null, lastFetchedAt: null };
+
+    expect(harnessAnnouncement(built, NOW)).toContain("Not read yet.");
   });
 });
 

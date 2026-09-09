@@ -10,6 +10,7 @@ import { HarnessDialogs } from "./harness-dialogs";
 import { HarnessStrip } from "./harness-strip";
 import {
   freshnessLabel,
+  harnessAnnouncement,
   journeyConfirmedEmpty,
   RELEASE_SUMMARIES,
   releaseEnabled,
@@ -194,7 +195,9 @@ export function HarnessView() {
 
   return (
     <section>
-      <SectionHeader title="Harness" meta={state?.origin} />
+      {/* The view's own <h1>: heading navigation needs a starting point, and
+          the stages below hang off it (#868). */}
+      <SectionHeader level={1} title="Harness" meta={state?.origin} />
       {/* Mounted before either failure is: the region outlives its content,
           and a read that failed on open is trigger="load" (#465). Empty, both
           children are out of flow and the block costs nothing. */}
@@ -265,6 +268,16 @@ export function HarnessView() {
               {RELEASE_SUMMARIES[state.releaseState]}
             </p>
           </Card>
+          {/* Off-screen, polite: a press moves a row between stages and the
+              tables repaint under the keyboard, saying nothing (#868). */}
+          <span
+            role="status"
+            aria-live="polite"
+            aria-label="Harness stages"
+            className="sr-only"
+          >
+            {harnessAnnouncement(state, new Date())}
+          </span>
           {/* The three stages in journey order, each answering its own
               question. One skill can hold a row in all three (ADR-0021 · 10). */}
           {stageSections(state, new Date()).map((section) => {
@@ -297,7 +310,8 @@ export function HarnessView() {
               return (
                 <section key={section.stage} className="mt-4">
                   <SectionHeader
-                    level={3}
+                    level={2}
+                    size={3}
                     title={section.title}
                     meta={section.meta}
                   >
@@ -309,7 +323,8 @@ export function HarnessView() {
             return (
               <section key={section.stage} className="mt-4">
                 <SectionHeader
-                  level={3}
+                  level={2}
+                  size={3}
                   title={section.title}
                   meta={section.meta}
                 >
@@ -331,6 +346,7 @@ export function HarnessView() {
                     </div>
                   ) : (
                     <StageTable
+                      title={section.title}
                       rows={rows}
                       context={{
                         defaultBranch: state.defaultBranch,
