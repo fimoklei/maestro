@@ -598,9 +598,9 @@ describe("Harness home base", () => {
     renderHarness();
 
     expect(await screen.findAllByText("tdd")).toHaveLength(3);
-    expect(screen.getByText("New local work")).toBeInTheDocument();
-    expect(screen.getByText("Waiting for review")).toBeInTheDocument();
-    expect(screen.getByText("Changed")).toBeInTheDocument();
+    expect(screen.getByText("● New local work")).toBeInTheDocument();
+    expect(screen.getByText("● Waiting for review")).toBeInTheDocument();
+    expect(screen.getByText("● Changed")).toBeInTheDocument();
     expect(
       screen.getByText("Also in Pending review and Pending release."),
     ).toBeInTheDocument();
@@ -1450,7 +1450,7 @@ describe("Harness home base", () => {
       await screen.findByRole("heading", { level: 3, name: /pending review/i })
     ).closest("section") as HTMLElement;
     expect(within(review).getByText("lint-rules")).toBeVisible();
-    expect(within(review).getByText("Pull request missing")).toBeVisible();
+    expect(within(review).getByText("▲ Pull request missing")).toBeVisible();
   });
 
   it("re-reads the harness after a promotion, rather than moving the row itself", async () => {
@@ -1716,7 +1716,7 @@ describe("Harness home base", () => {
       await screen.findByRole("heading", { level: 3, name: /pending review/i })
     ).closest("section") as HTMLElement;
     expect(within(review).getByText("old-skill")).toBeVisible();
-    expect(within(review).getByText("Pull request missing")).toBeVisible();
+    expect(within(review).getByText("▲ Pull request missing")).toBeVisible();
   });
 
   it("sends a skill restored after a proposed deletion through Update proposal", async () => {

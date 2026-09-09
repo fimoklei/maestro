@@ -59,24 +59,47 @@ describe("chip readings", () => {
 
   it("carries every reading as text, never colour alone", () => {
     expect(statusReading(row("pending-review", "changes-requested"))).toBe(
-      "Changes requested",
+      "▲ Changes requested",
     );
-    expect(statusReading(row("pending-release", "deleted"))).toBe("Deleted");
+    expect(statusReading(row("pending-release", "deleted"))).toBe("● Deleted");
+  });
+
+  // Never-Colour-Alone (DESIGN.md § 2): amber reads ▲, grey and green read ●.
+  it("prefixes every reading with the glyph its tone carries", () => {
+    const readings: [StageStatus, string][] = [
+      ["not-yet-proposed", "● Not yet proposed"],
+      ["new-local-work", "● New local work"],
+      ["deleted-locally", "● Deleted locally"],
+      ["waiting-for-review", "● Waiting for review"],
+      ["draft", "▲ Draft"],
+      ["changes-requested", "▲ Changes requested"],
+      ["approved-awaiting-merge", "▲ Approved, awaiting merge"],
+      ["pull-request-missing", "▲ Pull request missing"],
+      ["proposal-closed", "▲ Proposal closed"],
+      ["multiple-pull-requests", "▲ Multiple pull requests"],
+      ["added", "● Added"],
+      ["changed", "● Changed"],
+      ["renamed", "● Renamed"],
+      ["deleted", "● Deleted"],
+    ];
+    for (const [status, reading] of readings) {
+      expect(statusReading(row("pending-review", status))).toBe(reading);
+    }
   });
 
   it("gives a deletion one reading in each stage of the journey", () => {
     // The six readings of #847, each in the stage that carries it.
     const six: [HarnessStage, StageStatus, string][] = [
-      ["pending-proposal", "deleted-locally", "Deleted locally"],
-      ["pending-review", "draft", "Deletion in draft"],
-      ["pending-review", "waiting-for-review", "Deletion waiting for review"],
-      ["pending-review", "changes-requested", "Deletion changes requested"],
+      ["pending-proposal", "deleted-locally", "● Deleted locally"],
+      ["pending-review", "draft", "▲ Deletion in draft"],
+      ["pending-review", "waiting-for-review", "● Deletion waiting for review"],
+      ["pending-review", "changes-requested", "▲ Deletion changes requested"],
       [
         "pending-review",
         "approved-awaiting-merge",
-        "Deletion approved, awaiting merge",
+        "▲ Deletion approved, awaiting merge",
       ],
-      ["pending-release", "deleted", "Deleted"],
+      ["pending-release", "deleted", "● Deleted"],
     ];
     for (const [stage, status, reading] of six) {
       expect(statusReading(row(stage, status, { deletion: true }))).toBe(
@@ -90,12 +113,12 @@ describe("chip readings", () => {
       statusReading(
         row("pending-review", "changes-requested", { deletion: true }),
       ),
-    ).toBe("Deletion changes requested");
+    ).toBe("▲ Deletion changes requested");
     expect(
       statusReading(
         row("pending-review", "approved-awaiting-merge", { deletion: true }),
       ),
-    ).toBe("Deletion approved, awaiting merge");
+    ).toBe("▲ Deletion approved, awaiting merge");
   });
 });
 
