@@ -291,7 +291,7 @@ const importHeadings: NoticeTable<ImportSkillError> = {
   "deployed-copy": {
     level: "error",
     label: "Copy from another Harness",
-    message: "Press Change folder, then pick a folder you wrote yourself.",
+    message: "Select Change folder, then pick a folder you wrote yourself.",
     detail:
       "Only a copy the connected Harness deployed can be carried back into it.",
   },
@@ -315,7 +315,7 @@ const importHeadings: NoticeTable<ImportSkillError> = {
   "nothing-to-carry-back": {
     level: "info",
     label: "Nothing to carry back",
-    message: "This folder matches the skill the Harness holds. Press Close.",
+    message: "This folder matches the skill the Harness holds. Select Close.",
     detail: "Only a changed file can be carried back.",
   },
   "missing-manifest": {

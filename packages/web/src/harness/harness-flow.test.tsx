@@ -2347,10 +2347,12 @@ describe("Harness freshness and failed reads", () => {
     });
     renderHarness();
 
-    expect(await screen.findByText("Nothing to propose")).toBeInTheDocument();
+    expect(
+      await screen.findByText("No changes to propose yet"),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Edit a skill in your clone, or press Import skill, to propose a change.",
+        "Changes you make in your clone appear here. Select Import skill… to bring one in.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("No changes yet")).not.toBeInTheDocument();
@@ -2375,7 +2377,9 @@ describe("Harness freshness and failed reads", () => {
     expect(screen.getByText("Review status unavailable")).toBeInTheDocument();
     // A confirmed-empty stage's words must never stand in for an unread one.
     expect(screen.queryByText("No changes yet")).not.toBeInTheDocument();
-    expect(screen.queryByText("Nothing to propose")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("No changes to propose yet"),
+    ).not.toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
     // Import touches the working tree only, so it survives an unread stage.
     expect(
