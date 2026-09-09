@@ -125,7 +125,7 @@ const DEPLOY: Record<DeploySkillError, Body> = {
   "inventory-unreadable": {
     // "Re-read Inventory" is the Harness location screen's own button (R-D).
     message:
-      "Press Re-read Inventory on the Harness location screen, then deploy again.",
+      "Select Re-read Inventory on the Harness location screen, then deploy again.",
   },
   "repo-not-registered": {
     message: "Register this repository in Maestro, then deploy again.",

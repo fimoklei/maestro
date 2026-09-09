@@ -234,7 +234,7 @@ describe("ReleaseDialog", () => {
           notice: {
             level: "error",
             label: "no answer from GitHub",
-            message: "Press refresh, then open the release again.",
+            message: "Select Retry check, then open the release again.",
           },
         }}
         onClose={vi.fn()}
@@ -244,6 +244,6 @@ describe("ReleaseDialog", () => {
       />,
     );
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/press refresh/i);
+    expect(screen.getByRole("alert")).toHaveTextContent(/select retry check/i);
   });
 });

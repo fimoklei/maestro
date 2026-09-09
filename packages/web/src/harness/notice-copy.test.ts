@@ -553,7 +553,7 @@ const suites: [
           level: "error",
           label: "Copy from another Harness",
           message:
-            "Press Change folder, then pick a folder you wrote yourself.",
+            "Select Change folder, then pick a folder you wrote yourself.",
           detail:
             "Only a copy the connected Harness deployed can be carried back into it.",
         },
@@ -586,7 +586,7 @@ const suites: [
           level: "info",
           label: "Nothing to carry back",
           message:
-            "This folder matches the skill the Harness holds. Press Close.",
+            "This folder matches the skill the Harness holds. Select Close.",
           detail: "Only a changed file can be carried back.",
         },
       ],
