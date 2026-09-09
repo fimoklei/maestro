@@ -169,6 +169,45 @@ describe("Notice", () => {
     });
   });
 
+  // A notice inside a table cell is not a panel: a filled, outlined box in a
+  // row is a card inside a card, which this system rejects (DESIGN.md §6). The
+  // tint of the rule that replaces it is proven in a browser, never here.
+  describe("the inline variant", () => {
+    const regionOf = (variant: "block" | "inline") => {
+      const { unmount } = render(
+        <Notice
+          variant={variant}
+          trigger="load"
+          notice={{
+            level: "error",
+            label: "a heading",
+            message: "a sentence.",
+          }}
+        />,
+      );
+      const className = screen.getByRole("status").className;
+      unmount();
+      return className;
+    };
+
+    it("drops the panel's fill, outline and corner", () => {
+      const inline = regionOf("inline");
+      expect(inline).not.toMatch(/\bbg-/);
+      expect(inline).not.toMatch(/\brounded-control\b/);
+      expect(inline).not.toMatch(/(^|\s)border(\s|$)/);
+    });
+
+    it("keeps a 1px rule so the notice still reads as its own aside", () => {
+      expect(regionOf("inline")).toMatch(/\bborder-l\b/);
+    });
+
+    it("is the panel by default, for every notice outside a row", () => {
+      const block = regionOf("block");
+      expect(block).toMatch(/\bbg-/);
+      expect(block).toMatch(/\brounded-control\b/);
+    });
+  });
+
   // Why this happened, below the sentence and never collapsed — at every
   // level, so no level hides its cause behind a disclosure.
   it.each(["info", "success", "warning", "error"] as const)(
