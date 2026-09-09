@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { rowItems } from "./row-actions";
 import { StageTable } from "./stage-table";
 import type { HarnessStage, HarnessStageRow, StageStatus } from "./use-harness";
 
@@ -67,9 +68,22 @@ export const JustLandedRow: Story = {
   },
 };
 
+// The one story whose menus are built, not stubbed: its sentences name the
+// labels the menu carries, and a stub would hide a mismatch (#883).
+const NO_OP = {
+  promote: () => {},
+  create: () => {},
+  reopen: () => {},
+  withdraw: () => {},
+};
+
 export const PendingReview: Story = {
   args: {
     title: "Pending review",
+    actions: {
+      items: (row) => rowItems(row, NO_OP, true),
+      failed: null,
+    },
     rows: [
       row("pending-review", "tdd", "waiting-for-review", {
         requests: [request(45)],
@@ -91,6 +105,14 @@ export const PendingReview: Story = {
       }),
       row("pending-review", "shipping", "multiple-pull-requests", {
         requests: [request(41), request(44)],
+      }),
+      row("pending-review", "old-skill", "draft", {
+        deletion: true,
+        requests: [request(49)],
+      }),
+      row("pending-review", "legacy-skill", "approved-awaiting-merge", {
+        deletion: true,
+        requests: [request(50)],
       }),
     ],
   },

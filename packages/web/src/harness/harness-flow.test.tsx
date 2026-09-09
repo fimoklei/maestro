@@ -1655,7 +1655,7 @@ describe("Harness home base", () => {
 
     expect(
       await screen.findByText(
-        "Pull requests #41 and #44 both match this branch, so close one on GitHub.",
+        "Pull requests #41 and #44 both match this branch. Select Open pull request #41 to close it.",
       ),
     ).toBeInTheDocument();
     const menu = await openRowMenu("lint-rules", "Pending review");
@@ -2118,12 +2118,12 @@ describe("proposal actions", () => {
     ).toEqual([
       "Open pull request #41",
       "Open pull request #44",
-      "Update proposal — close the extra requests on GitHub",
-      "Withdraw proposal — close the extra requests on GitHub",
+      "Update proposal — close the extra requests",
+      "Withdraw proposal — close the extra requests",
     ]);
     for (const label of [
-      "Update proposal — close the extra requests on GitHub",
-      "Withdraw proposal — close the extra requests on GitHub",
+      "Update proposal — close the extra requests",
+      "Withdraw proposal — close the extra requests",
     ]) {
       expect(
         within(menu).getByRole("menuitem", { name: label }),

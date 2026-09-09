@@ -132,12 +132,12 @@ describe("rowItems", () => {
     expect(labels(items)).toEqual([
       "Open pull request #41",
       "Open pull request #44",
-      "Update proposal — close the extra requests on GitHub",
-      "Withdraw proposal — close the extra requests on GitHub",
+      "Update proposal — close the extra requests",
+      "Withdraw proposal — close the extra requests",
     ]);
     expect(disabled(items)).toEqual([
-      "Update proposal — close the extra requests on GitHub",
-      "Withdraw proposal — close the extra requests on GitHub",
+      "Update proposal — close the extra requests",
+      "Withdraw proposal — close the extra requests",
     ]);
   });
 
@@ -212,8 +212,8 @@ describe("rowItems", () => {
 
     expect(every).toEqual([
       "Withdraw proposal — no request yet",
-      "Update proposal — close the extra requests on GitHub",
-      "Withdraw proposal — close the extra requests on GitHub",
+      "Update proposal — close the extra requests",
+      "Withdraw proposal — close the extra requests",
     ]);
   });
 });

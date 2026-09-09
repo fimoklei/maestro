@@ -28,7 +28,7 @@ const renderTable = () =>
   );
 
 describe("StageTable", () => {
-  // The table keeps a 760px floor and scrolls sideways inside its card. A
+  // The table keeps an 824px floor and scrolls sideways inside its card. A
   // scroll container that cannot take focus is keyboard-unreachable
   // (WCAG 2.1.1), which is what inventory-list.tsx already answers for.
   it("names its scroll container after the stage it holds", () => {
