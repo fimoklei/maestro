@@ -52,6 +52,15 @@ describe("deploy notices", () => {
       },
     ],
     [
+      "inventory-unreadable",
+      {
+        level: "error",
+        label: "Inventory not read",
+        message:
+          "Select Re-read Inventory on the Harness location screen, then deploy again.",
+      },
+    ],
+    [
       "repo-not-registered",
       {
         level: "error",

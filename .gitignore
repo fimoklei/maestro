@@ -13,6 +13,9 @@ storybook-static/
 .maestro-dev.pid
 .maestro-sandbox/
 
+# Full output of the last verify/test run, kept for reading after a failure.
+.logs/
+
 # Per-branch git worktrees created by agent sessions (local checkouts, not source).
 .claude/worktrees/
 

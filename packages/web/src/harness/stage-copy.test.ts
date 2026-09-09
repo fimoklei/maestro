@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   crossStageLine,
   detailSentence,
+  PROPOSAL_EMPTY,
   reviewerLine,
   statusReading,
   statusTone,
@@ -29,6 +30,22 @@ const row = (
 
 const CONTEXT = { defaultBranch: "main", releasedVersion: "v1.4.0" };
 const request = { number: 45, url: "https://github.com/o/r/pull/45" };
+
+describe("the Pending proposal empty state", () => {
+  it("states a confirmed empty journey", () => {
+    expect(PROPOSAL_EMPTY.journey).toEqual({
+      title: "No changes yet",
+      body: "Skills you import or edit in your clone will appear here.",
+    });
+  });
+
+  it("names Import skill… exactly as the button reads", () => {
+    expect(PROPOSAL_EMPTY.stage).toEqual({
+      title: "No changes to propose yet",
+      body: "Changes you make in your clone appear here. Select Import skill… to bring one in.",
+    });
+  });
+});
 
 describe("chip readings", () => {
   it("gives waiting and local work a grey chip", () => {

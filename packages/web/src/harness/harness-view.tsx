@@ -24,6 +24,7 @@ import {
   staleStatusNotice,
 } from "./notice-copy";
 import { rowItems } from "./row-actions";
+import { PROPOSAL_EMPTY } from "./stage-copy";
 import { StageTable } from "./stage-table";
 import type { HarnessStageRow, ReleasePlan, SemverStep } from "./use-harness";
 import {
@@ -271,6 +272,9 @@ export function HarnessView() {
             const rows =
               section.read.outcome === "read" ? section.read.rows : [];
             const proposal = section.stage === "pending-proposal";
+            const proposalEmpty = journeyConfirmedEmpty(state)
+              ? PROPOSAL_EMPTY.journey
+              : PROPOSAL_EMPTY.stage;
             // Import touches the working tree only, so no remote answer gates
             // it — and an unread stage still has a way to put work in it.
             const importAction = proposal ? (
@@ -319,14 +323,10 @@ export function HarnessView() {
                   {rows.length === 0 ? (
                     <div className="p-card-x">
                       <p className="m-0 font-medium text-desc text-fg">
-                        {journeyConfirmedEmpty(state)
-                          ? "No changes yet"
-                          : "Nothing to propose"}
+                        {proposalEmpty.title}
                       </p>
                       <p className="m-0 mt-1 text-desc text-muted">
-                        {journeyConfirmedEmpty(state)
-                          ? "Skills you import or edit in your clone will appear here."
-                          : "Edit a skill in your clone, or press Import skill, to propose a change."}
+                        {proposalEmpty.body}
                       </p>
                     </div>
                   ) : (
