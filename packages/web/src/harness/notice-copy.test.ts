@@ -216,7 +216,7 @@ const suites: [
           level: "error",
           label: "Multiple pull requests",
           message:
-            "Nothing was pushed. Close the extra requests on GitHub, then Propose change again.",
+            "Nothing was pushed. Select an Open pull request link to close the extras, then Propose change again.",
           detail:
             "More than one open pull request matches this skill's branch.",
         },
@@ -298,6 +298,17 @@ const suites: [
           label: "Deletion not proposed",
           message:
             "The Harness is as it was. Delete skill again once GitHub is reachable.",
+        },
+      ],
+      [
+        "extra-requests",
+        {
+          level: "error",
+          label: "Multiple pull requests",
+          message:
+            "Nothing was pushed. Select an Open pull request link to close the extras, then Delete skill again.",
+          detail:
+            "More than one open pull request matches this skill's branch.",
         },
       ],
       [
@@ -641,7 +652,7 @@ const suites: [
           level: "error",
           label: "Multiple pull requests",
           message:
-            "Close the extra requests on GitHub, then select Retry check.",
+            "Select an Open pull request link to close the extras, then select Retry check.",
           detail:
             "More than one open pull request matches this skill's branch.",
         },

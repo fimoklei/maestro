@@ -15,8 +15,8 @@ export type RowActionHandlers = {
 };
 
 const NO_REQUEST = "Withdraw proposal — no request yet";
-const EXTRA_UPDATE = "Update proposal — close the extra requests on GitHub";
-const EXTRA_WITHDRAW = "Withdraw proposal — close the extra requests on GitHub";
+const EXTRA_UPDATE = "Update proposal — close the extra requests";
+const EXTRA_WITHDRAW = "Withdraw proposal — close the extra requests";
 
 // Numbered only where more than one could be meant: a sole request needs no
 // number to be unambiguous.
