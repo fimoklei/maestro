@@ -14,8 +14,8 @@ MCP servers — across repos and tools, built on top of
 [APM](https://microsoft.github.io/apm/). This is the Maestro product repo; the
 central inventory lives in the separate `agent-harness` repo.
 
-**Binding constraint:** APM is the engine (install/sync/pin/lockfile/multi-tool);
-Maestro is the cockpit above it and never reimplements it (ADR-0001).
+**Binding constraint:** APM is the engine, Maestro the cockpit above it
+(ADR-0001; the Hard Rules say what that forbids).
 
 ## Where Things Live
 
@@ -31,16 +31,20 @@ Maestro is the cockpit above it and never reimplements it (ADR-0001).
 │   ├── operating-model.md # how the product is run: the board and the loop
 │   ├── jobs.md            # the board: NOW / NEXT / LATER / DONE
 │   ├── adr/               # accepted architecture and product decisions
-├── packages/
-│   ├── core/              # domain logic
-│   ├── server/            # local Hono service
-│   └── web/               # React/Vite cockpit UI
+│   ├── agents/            # how agents drive this repo's tools and trackers
+│   ├── research/          # measured findings, named by the issue that asked
+├── packages/              # core (domain logic), server (Hono), web (React/Vite)
+│   └── */src/<feature>/   # one dir per domain feature: deploy, drift, registry…
 ├── scripts/               # dev launcher (single-instance; frees ports)
 └── tests/                 # integration tests, fixtures and helpers
 ```
 
 Do not add product behavior outside this shape unless a later accepted ADR or
-a job on the board changes it.
+a job on the board changes it. Before measuring anything, read `docs/research/`
+— the answer is often already captured there.
+
+The harness the cockpit reads is not in this repo. Its path is `inventoryPath`
+in `~/.maestro/config.json`.
 
 ## Behavioral Rules
 
@@ -89,10 +93,7 @@ Run from the repo root.
 - `pnpm test` — whole suite. `test:core` / `test:web` / `test:integration` / `test:git` — one lane; `test:loop` — the three cheap lanes.
 - `pnpm verify` — lint, typecheck and test as three processes, one summary.
 - Full output of the last run is in `.logs/`. Read it; never re-run with a narrower filter.
-- `pnpm typecheck` — typecheck all packages.
-- `pnpm build` — build all packages.
-- `pnpm lint` — run Biome checks.
-- `pnpm format` — format with Biome.
+- `typecheck`, `build`, `lint` and `format` do what their names say; `package.json` holds the rest.
 
 ## Verification
 
