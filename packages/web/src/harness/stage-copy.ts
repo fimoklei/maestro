@@ -73,11 +73,21 @@ const DELETION_READINGS: Partial<Record<StageStatus, string>> = {
   "approved-awaiting-merge": "Deletion approved, awaiting merge",
 };
 
+// Read off the tone, so a chip can never show a glyph its colour contradicts
+// (DESIGN.md § 2 · Never-Colour-Alone).
+const GLYPHS: Record<NonNullable<ChipProps["tone"]>, string> = {
+  dim: "●",
+  drift: "▲",
+  ok: "●",
+};
+
 export const statusTone = (row: HarnessStageRow) => TONES[row.status];
 
 export const statusReading = (row: HarnessStageRow): string =>
-  (row.deletion ? DELETION_READINGS[row.status] : undefined) ??
-  READINGS[row.status];
+  `${GLYPHS[TONES[row.status]]} ${
+    (row.deletion ? DELETION_READINGS[row.status] : undefined) ??
+    READINGS[row.status]
+  }`;
 
 // The facts a sentence substitutes into: both come from the same read the rows
 // did, so a Detail never names a branch or release the rows were not read from.
