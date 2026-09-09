@@ -17,6 +17,18 @@ describe("freshnessLabel", () => {
     );
   });
 
+  // The only feedback a read gives: while one runs, the slot says so rather
+  // than dating the last one.
+  it("says a read is running instead of dating the last one", () => {
+    expect(
+      freshnessLabel(
+        { outcome: "fetched", lastFetchedAt: "2026-08-03T11:56:00.000Z" },
+        NOW,
+        true,
+      ),
+    ).toBe("Reading GitHub…");
+  });
+
   it("dates a successful read in words, so the age reads at a glance", () => {
     expect(
       freshnessLabel(
@@ -316,6 +328,18 @@ describe("harnessAnnouncement", () => {
 
     expect(harnessAnnouncement(built, NOW)).toBe(
       "Pending proposal has 1 change. Pending review has no changes. Pending release has no changes. Read 4 min ago.",
+    );
+  });
+
+  // One owner for the freshness word: a screen reader must never hear the
+  // dated reading while the strip says a read is running.
+  it("tells a screen reader the same reading the strip shows", () => {
+    const built = state({
+      proposal: { outcome: "read", bound: null, rows: [row("tdd")] },
+    });
+
+    expect(harnessAnnouncement(built, NOW, true)).toBe(
+      "Pending proposal has 1 change. Pending review has no changes. Pending release has no changes. Reading GitHub….",
     );
   });
 

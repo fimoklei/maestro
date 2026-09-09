@@ -126,6 +126,9 @@ export const PendingReview: Story = {
         requests: [request(48)],
       }),
       row("pending-review", "lint-rules", "pull-request-missing"),
+      row("pending-review", "wayfinder", "proposal-merged", {
+        requests: [request(52)],
+      }),
       row("pending-review", "spikes", "proposal-closed", {
         requests: [request(30)],
       }),

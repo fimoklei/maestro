@@ -44,7 +44,13 @@ const ago = (iso: string, now: Date): string | null => {
 export const freshnessLabel = (
   freshness: HarnessFreshness,
   now: Date,
+  reading = false,
 ): string => {
+  // A read in flight outranks every dated reading: this slot is the only
+  // feedback the author gets while one runs.
+  if (reading) {
+    return "Reading GitHub…";
+  }
   const since =
     freshness.lastFetchedAt === null ? null : ago(freshness.lastFetchedAt, now);
   if (freshness.outcome === null) {
@@ -172,7 +178,11 @@ export const stageSections = (
 // What the three stages hold, in the words a screen reader hears when a press
 // moves a row between them or a refresh re-dates the picture (#868). Counts,
 // never statuses: the row itself states why it is where it is.
-export const harnessAnnouncement = (state: HarnessState, now: Date): string => {
+export const harnessAnnouncement = (
+  state: HarnessState,
+  now: Date,
+  reading = false,
+): string => {
   const stages = stageSections(state, now).map((section) => {
     if (section.read.outcome !== "read") {
       return `${section.title} was not read.`;
@@ -183,7 +193,7 @@ export const harnessAnnouncement = (state: HarnessState, now: Date): string => {
     }
     return `${section.title} has ${count} change${count === 1 ? "" : "s"}.`;
   });
-  return `${stages.join(" ")} ${freshnessLabel(state.freshness, now)}.`;
+  return `${stages.join(" ")} ${freshnessLabel(state.freshness, now, reading)}.`;
 };
 
 // Nothing anywhere, and every stage answered for itself. Only then is "No

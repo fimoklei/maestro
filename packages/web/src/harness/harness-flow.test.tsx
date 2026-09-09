@@ -462,6 +462,58 @@ describe("Harness home base", () => {
     );
   });
 
+  // Merging happens in a GitHub tab, so coming back is the moment the picture
+  // is most out of date. Without this the git refs stay yesterday's until the
+  // author presses Retry check (#889).
+  it("fetches again when the author returns to the tab", async () => {
+    const calls = stubHarnessServer({ read: { body: RELEASED } });
+    renderHarness();
+
+    await waitFor(() =>
+      expect(
+        calls.filter((call) => call === "POST /api/harness/refresh"),
+      ).toHaveLength(1),
+    );
+    window.dispatchEvent(new Event("focus"));
+
+    await waitFor(() =>
+      expect(
+        calls.filter((call) => call === "POST /api/harness/refresh"),
+      ).toHaveLength(2),
+    );
+  });
+
+  it("says the read is running while it runs", async () => {
+    let release = () => {};
+    const heldUntil = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    stubHarnessServer({
+      read: { body: RELEASED },
+      refresh: {
+        body: {
+          ...RELEASED,
+          freshness: {
+            outcome: "fetched",
+            lastFetchedAt: "2026-08-03T11:56:00.000Z",
+          },
+        },
+        heldUntil,
+      },
+    });
+    renderHarness();
+
+    expect(
+      within(await stripFacts()).getByText("Reading GitHub…"),
+    ).toBeInTheDocument();
+    release();
+    await waitFor(async () =>
+      expect(
+        within(await stripFacts()).getByText("Read 4 min ago"),
+      ).toBeInTheDocument(),
+    );
+  });
+
   it("lists the merged skills that are waiting, with their green readings", async () => {
     // The author column is gone: #827 states no author identity line on the
     // Harness view. The plan dialog still names authors (release-dialog).

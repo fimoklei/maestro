@@ -37,6 +37,7 @@ const ALL_STATUSES: StageStatus[] = [
   "changes-requested",
   "approved-awaiting-merge",
   "pull-request-missing",
+  "proposal-merged",
   "proposal-closed",
   "multiple-pull-requests",
   "added",
@@ -74,6 +75,7 @@ describe("chip readings", () => {
       ["pending-review", "waiting-for-review"],
       ["pending-review", "changes-requested"],
       ["pending-review", "approved-awaiting-merge"],
+      ["pending-review", "proposal-merged"],
       ["pending-release", "added"],
       ["pending-release", "changed"],
       ["pending-release", "renamed"],
@@ -118,6 +120,7 @@ describe("chip readings", () => {
       ["changes-requested", "● Changes requested"],
       ["approved-awaiting-merge", "● Approved, awaiting merge"],
       ["pull-request-missing", "▲ Pull request missing"],
+      ["proposal-merged", "● Proposal merged"],
       ["proposal-closed", "▲ Proposal closed"],
       ["multiple-pull-requests", "▲ Multiple pull requests"],
       ["added", "● Added"],
@@ -143,6 +146,7 @@ describe("chip readings", () => {
         "● Deletion approved, awaiting merge",
       ],
       ["pending-release", "deleted", "● Deleted"],
+      ["pending-review", "proposal-merged", "● Deletion merged"],
     ];
     for (const [stage, status, reading] of six) {
       expect(statusReading(row(stage, status, { deletion: true }))).toBe(
@@ -233,6 +237,16 @@ describe("Detail sentences", () => {
       "pull-request-missing",
       false,
       "The proposal branch is on GitHub without a pull request. Select Create pull request to open one.",
+    ],
+    [
+      "proposal-merged",
+      false,
+      "Pull request #45 was merged. Select Retry check to read GitHub again.",
+    ],
+    [
+      "proposal-merged",
+      true,
+      "Pull request #45 merged the deletion. Select Retry check to read GitHub again.",
     ],
     [
       "proposal-closed",
@@ -349,6 +363,7 @@ describe("Detail sentences", () => {
       "changes-requested",
       "approved-awaiting-merge",
       "pull-request-missing",
+      "proposal-merged",
       "proposal-closed",
       "added",
       "changed",

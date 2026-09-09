@@ -35,6 +35,7 @@ export type ReviewStatus =
   | "changes-requested"
   | "approved-awaiting-merge"
   | "pull-request-missing"
+  | "proposal-merged"
   | "proposal-closed"
   | "multiple-pull-requests";
 
@@ -298,6 +299,15 @@ const openStatus = (request: ReviewRequest): ReviewStatus => {
     : "waiting-for-review";
 };
 
+// The two endings a matching request can have, in the order they are read.
+const ENDED = [
+  ["merged", "proposal-merged"],
+  ["closed", "proposal-closed"],
+] as const satisfies readonly (readonly [
+  ReviewRequest["state"],
+  ReviewStatus,
+])[];
+
 const reviewStage = (
   { trees, review }: StageInput,
   matches: SkillMatches,
@@ -337,12 +347,19 @@ const reviewStage = (
     if (proposal === null) {
       continue;
     }
-    const closed = matching.filter((request) => request.state === "closed");
-    if (closed.length > 0) {
+    // What became of the requests that are no longer open. Merged first:
+    // origin/HEAD lagging one read behind is what keeps the row here at all,
+    // and reading that as a missing request turns the normal end of a review
+    // into a warning.
+    const settled = ENDED.flatMap(([state, status]) => {
+      const requests = matching.filter((request) => request.state === state);
+      return requests.length === 0 ? [] : [{ status, requests }];
+    })[0];
+    if (settled !== undefined) {
       rows.push({
-        ...blankRow("pending-review", skill, "proposal-closed"),
+        ...blankRow("pending-review", skill, settled.status),
         deletion,
-        requests: closed.map(link),
+        requests: settled.requests.map(link),
       });
       continue;
     }
