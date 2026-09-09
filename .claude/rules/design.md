@@ -30,5 +30,7 @@ Mandatory for any change that alters what `packages/web` renders:
 3. Read changed copy at a narrow width and at 200% zoom.
 4. Compare against the design source; on mismatch, fix before claiming done.
 5. Run the `verify-in-smoke` checks before treating the screenshot as proof.
+6. Record the evidence in the commit body: the absolute screenshot path and the
+   cockpit URL from `pnpm cockpit:url`.
 
 Only a screenshot proves visual fidelity — the vitest/jsdom suite renders without CSS.
