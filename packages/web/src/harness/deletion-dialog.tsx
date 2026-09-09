@@ -80,7 +80,7 @@ export function DeletionDialog({
         <Button
           type="button"
           className="shrink-0"
-          variant="primary"
+          variant="ghost"
           size="sm"
           disabled={deleting}
           onClick={onConfirm}
