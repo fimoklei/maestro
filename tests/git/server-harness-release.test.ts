@@ -15,6 +15,7 @@ import {
   NodeFileSystem,
   PublishRelease,
   ReadHarnessState,
+  releasedSkillsFromGit,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -28,6 +29,7 @@ import { stubDrift } from "../helpers/stub-drift";
 import { stubImport } from "../helpers/stub-import";
 import { stubPromotes } from "../helpers/stub-promote";
 import { stubRemove } from "../helpers/stub-remove";
+import { stubReview } from "../helpers/stub-review";
 import { stubScaffold } from "../helpers/stub-scaffold";
 
 const run = promisify(execFile);
@@ -77,6 +79,9 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
     const inventory = new InventoryReader({
       fs,
       resolvePath: () => harnessPath,
+      // The real released read: these suites build real repositories,
+      // so Inventory answers from `refs/maestro/tags` as it does live (#841).
+      readReleasedSkills: releasedSkillsFromGit(new HarnessGitAdapter()),
     });
     const locks = new InFlightLocks();
     const resolveRoot = async () =>
@@ -85,6 +90,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
       resolveRoot,
       git: new HarnessGitAdapter(),
       freshness: new HarnessFreshnessStore({ store }),
+      review: stubReview(),
     });
     return createApp({
       importSkill: stubImport(),

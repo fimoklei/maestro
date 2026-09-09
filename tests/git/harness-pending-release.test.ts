@@ -12,6 +12,7 @@ import type { HarnessFreshness, PendingSkillMovement } from "@maestro/core";
 import { HarnessGitAdapter, ReadHarnessState } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
+import { stubReview } from "../helpers/stub-review";
 
 const run = promisify(execFile);
 
@@ -69,20 +70,42 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
     return { remote, root };
   };
 
-  const movementsOf = async (root: string): Promise<PendingSkillMovement[]> => {
-    const read = new ReadHarnessState({
+  const readerFor = (root: string) =>
+    new ReadHarnessState({
       resolveRoot: async () => root,
       git: new HarnessGitAdapter(),
       freshness: {
         read: async () => FETCHED,
         record: async () => {},
       },
+      review: stubReview(),
     });
-    const result = await read.refresh(new Date("2026-08-03T08:00:00.000Z"));
+
+  const movementsOf = async (root: string): Promise<PendingSkillMovement[]> => {
+    const read = readerFor(root);
+    await read.refresh(new Date("2026-08-03T08:00:00.000Z"));
+    // The delta with its authors, which is what the release dialog reads. The
+    // Pending release stage carries the same movements without the author.
+    const result = await read.planRelease();
     if (!result.ok) {
       throw new Error(`unexpected refusal: ${result.error}`);
     }
-    return result.state.pendingRelease;
+    return result.plan.delta;
+  };
+
+  // What Pending release itself shows: the stage's own rows, so a claim about
+  // the delta is never taken as a claim about the table an author reads.
+  const releaseStageOf = async (root: string): Promise<string[]> => {
+    const result = await readerFor(root).refresh(
+      new Date("2026-08-03T08:00:00.000Z"),
+    );
+    if (!result.ok) {
+      throw new Error(`unexpected refusal: ${result.error}`);
+    }
+    const stage = result.state.stages.release;
+    return stage.outcome === "read"
+      ? stage.rows.map((row) => `${row.skill}:${row.status}`)
+      : [stage.outcome];
   };
 
   // One teammate's work — change tdd, add research — landed on main the way the
@@ -224,12 +247,16 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
       resolveRoot: async () => root,
       git: new HarnessGitAdapter(),
       freshness: { read: async () => FETCHED, record: async () => {} },
+      review: stubReview(),
     });
     const result = await read.refresh(new Date("2026-08-03T08:00:00.000Z"));
 
     expect(result).toMatchObject({
       ok: true,
-      state: { releaseState: "never-released", pendingRelease: [] },
+      state: {
+        releaseState: "never-released",
+        stages: { release: { outcome: "read", rows: [] } },
+      },
     });
   });
 
@@ -252,5 +279,85 @@ describe("Pending release movements", { timeout: 60_000 }, () => {
         author: "Author",
       },
     ]);
+  });
+
+  // The stage's own membership, measured against the latest release rather
+  // than against anything local (#845).
+  describe("Pending release membership", () => {
+    it("holds a change reverted before release out of the stage", async () => {
+      const { root } = await buildHarness("reverted");
+      await writeSkill(root, "tdd", "second");
+      await commitAll(root, "sharpen tdd");
+      await writeSkill(root, "tdd", "first");
+      await commitAll(root, "put tdd back");
+      await git(root, "push", "origin", "HEAD:main");
+
+      await expect(releaseStageOf(root)).resolves.toEqual([]);
+      await expect(movementsOf(root)).resolves.toEqual([]);
+    });
+
+    it("leaves a skill untouched by another skill's change out of the stage", async () => {
+      const { root } = await buildClone("unrelated-skill");
+      await writeSkill(root, "tdd", "first");
+      await writeSkill(root, "research", "first");
+      await commitAll(root, "first skills");
+      await git(root, "tag", "v0.1.0");
+      await git(root, "push", "--tags", "origin", "HEAD:main");
+
+      await writeSkill(root, "tdd", "second");
+      await commitAll(root, "sharpen tdd");
+      await git(root, "push", "origin", "HEAD:main");
+
+      await expect(releaseStageOf(root)).resolves.toEqual(["tdd:changed"]);
+    });
+
+    it("awaits release for every skill on the default branch before the first release", async () => {
+      const { root } = await buildClone("first-release");
+      await writeSkill(root, "tdd", "first");
+      await writeSkill(root, "research", "first");
+      await commitAll(root, "first skills");
+      await git(root, "push", "origin", "HEAD:main");
+
+      await expect(releaseStageOf(root)).resolves.toEqual([
+        "research:added",
+        "tdd:added",
+      ]);
+    });
+
+    it("reads a deletion on the default branch as a deleted row", async () => {
+      const { root } = await buildHarness("stage-deleted");
+      await rm(join(root, ".apm", "skills", "tdd"), { recursive: true });
+      await commitAll(root, "retire tdd");
+      await git(root, "push", "origin", "HEAD:main");
+
+      await expect(releaseStageOf(root)).resolves.toEqual(["tdd:deleted"]);
+    });
+
+    it("never reads a proposal branch's content as released work", async () => {
+      // The proposal is pushed and its request may even be merged elsewhere.
+      // Only what the default branch carries can await release (#845).
+      const { root } = await buildHarness("reused-branch");
+      await git(root, "checkout", "-b", "maestro/tdd");
+      await writeSkill(root, "tdd", "second");
+      await commitAll(root, "sharpen tdd");
+      await git(root, "push", "origin", "HEAD:maestro/tdd");
+      await git(root, "checkout", "main");
+
+      await expect(releaseStageOf(root)).resolves.toEqual([]);
+
+      // The same content lands on main as a squash, and the branch stays put
+      // and is pushed again with newer content. The stage reads main's content
+      // against the release — never the branch, and never which request merged.
+      await git(root, "merge", "--squash", "maestro/tdd");
+      await commitAll(root, "squashed tdd");
+      await git(root, "push", "origin", "HEAD:main");
+      await git(root, "checkout", "maestro/tdd");
+      await writeSkill(root, "tdd", "third");
+      await commitAll(root, "sharpen tdd again");
+      await git(root, "push", "origin", "HEAD:maestro/tdd");
+      await git(root, "checkout", "main");
+
+      await expect(releaseStageOf(root)).resolves.toEqual(["tdd:changed"]);
+    });
   });
 });

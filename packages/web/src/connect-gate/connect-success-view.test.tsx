@@ -52,6 +52,22 @@ describe("ConnectSuccessView", () => {
     },
   );
 
+  // Null is a count that could not be read; a "0 primitives found" would state
+  // a number nothing confirmed (#841).
+  it("names no count when the released count could not be read", () => {
+    render(
+      <ConnectSuccessView
+        outcome="found"
+        primitiveCount={null}
+        inventoryPath="/home/me/agent-harness"
+        onContinue={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/harness found/i)).toBeInTheDocument();
+    expect(screen.queryByText(/primitives/i)).not.toBeInTheDocument();
+  });
+
   it("shows the source and exposes a keyboard-accessible continue action", async () => {
     const onContinue = vi.fn();
     renderSuccess("joined", onContinue);

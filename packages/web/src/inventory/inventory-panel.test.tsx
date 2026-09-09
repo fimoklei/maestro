@@ -1,8 +1,21 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { useRereadInventory } from "../shell/use-reread-inventory";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import { InventoryPanel } from "./inventory-panel";
+
+// Drops the cached read the way the Harness location screen's own button does,
+// so the panel is asked to render a failure over content it already showed.
+function RereadTrigger() {
+  const reread = useRereadInventory();
+  return (
+    <button type="button" onClick={reread}>
+      Force re-read
+    </button>
+  );
+}
 
 // Deploy moved from the row into the detail pane (ADR-0016), so opening the pane
 // is the precondition for asserting anything about its deploy control. Returns
@@ -17,7 +30,11 @@ afterEach(() => {
 });
 
 function renderPanel() {
-  return renderWithQuery(<InventoryPanel />);
+  return renderWithQuery(
+    <MemoryRouter initialEntries={["/inventory"]}>
+      <InventoryPanel />
+    </MemoryRouter>,
+  );
 }
 
 // Routes by URL: inventory, registry (deploy repo choice), and each target's
@@ -214,6 +231,37 @@ describe("InventoryPanel", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("offers the Harness from the empty state when nothing is released", async () => {
+    stubApi([], []);
+    renderPanel();
+
+    expect(await screen.findByText("No released skills")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Inventory shows released skills only. Creating a release on the Harness view will fill it.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Open Harness" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the read failure with its own recovery when the release cannot be read", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ error: "unreadable" }, 503)),
+    );
+    renderPanel();
+
+    const notice = await screen.findByRole("status");
+    expect(notice).toHaveTextContent("Inventory not read");
+    expect(notice).toHaveTextContent("Re-read Inventory to try again.");
+    expect(
+      within(notice).getByRole("button", { name: "Re-read Inventory" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("shows a generic load error for other failures", async () => {
     vi.stubGlobal(
       "fetch",
@@ -222,8 +270,47 @@ describe("InventoryPanel", () => {
     renderPanel();
 
     expect(await screen.findByRole("status")).toHaveTextContent(
-      /Inventory not loaded/i,
+      /Inventory not read/i,
     );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  // A cached list would still be the working tree's answer to a question the
+  // release never answered (#841).
+  it("hides the rows and the count once a later read fails", async () => {
+    let fail = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/registry")) return jsonResponse({ repos: [] });
+        if (url.startsWith("/api/deploy-state"))
+          return jsonResponse({ primitives: [], skipped: [] });
+        return fail
+          ? jsonResponse({ error: "unreadable" }, 503)
+          : jsonResponse({
+              primitives: [
+                { type: "skill", name: "tdd", description: "TDD loop" },
+              ],
+            });
+      }),
+    );
+    renderWithQuery(
+      <MemoryRouter initialEntries={["/inventory"]}>
+        <InventoryPanel />
+        <RereadTrigger />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText("tdd")).toBeInTheDocument();
+    expect(screen.getByText("1 skill")).toBeInTheDocument();
+
+    fail = true;
+    await userEvent.click(
+      screen.getByRole("button", { name: "Force re-read" }),
+    );
+
+    expect(await screen.findByText("Inventory not read")).toBeInTheDocument();
+    expect(screen.queryByText("tdd")).not.toBeInTheDocument();
+    expect(screen.queryByText("1 skill")).not.toBeInTheDocument();
   });
 });

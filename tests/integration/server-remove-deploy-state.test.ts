@@ -142,7 +142,11 @@ describe("the deploy-state read after a removal", () => {
       location,
     });
 
-    const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
+    const inventory = new InventoryReader({
+      fs,
+      resolvePath: () => undefined,
+      readReleasedSkills: async () => [],
+    });
     const app = createApp({
       importSkill: stubImport(),
       registry,

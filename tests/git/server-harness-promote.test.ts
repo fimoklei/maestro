@@ -17,7 +17,9 @@ import {
   NodeFileSystem,
   PromoteSkill,
   PromoteSkillDeletion,
+  ProposalActions,
   ReadHarnessState,
+  releasedSkillsFromGit,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -31,6 +33,7 @@ import { stubDrift } from "../helpers/stub-drift";
 import { stubImport } from "../helpers/stub-import";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
+import { stubReview } from "../helpers/stub-review";
 import { stubScaffold } from "../helpers/stub-scaffold";
 
 const run = promisify(execFile);
@@ -81,7 +84,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     await removeGitTempTree(base);
   });
 
-  function makeApp(harnessPath: string | undefined) {
+  function makeApp(harnessPath: string | undefined, review = stubReview()) {
     const fs = new NodeFileSystem();
     const configPath = join(base, "config.json");
     const registry = realRegistry(fs, configPath);
@@ -89,6 +92,9 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     const inventory = new InventoryReader({
       fs,
       resolvePath: () => harnessPath,
+      // The real released read: these suites build real repositories,
+      // so Inventory answers from `refs/maestro/tags` as it does live (#841).
+      readReleasedSkills: releasedSkillsFromGit(new HarnessGitAdapter()),
     });
     const locks = new InFlightLocks();
     const resolveRoot = async () =>
@@ -97,6 +103,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       resolveRoot,
       git: new HarnessGitAdapter(),
       freshness: new HarnessFreshnessStore({ store }),
+      review,
     });
     return createApp({
       importSkill: stubImport(),
@@ -108,13 +115,20 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
         resolveRoot,
         git: new HarnessGitAdapter(),
         freshness: new HarnessFreshnessStore({ store }),
+        review,
         locks: new InFlightLocks(),
       }),
       promoteDeletion: new PromoteSkillDeletion({
         resolveRoot,
         git: new HarnessGitAdapter(),
         freshness: new HarnessFreshnessStore({ store }),
+        review,
         locks: new InFlightLocks(),
+      }),
+      proposals: new ProposalActions({
+        resolveRoot,
+        git: new HarnessGitAdapter(),
+        review,
       }),
       deployState: stubDeployState({ fs }),
       deploy: stubDeploy({ inventory, registry, locks }),
@@ -186,15 +200,14 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     const promoted = (await (
       await app.request("/api/harness/refresh", { method: "POST" })
     ).json()) as HarnessState;
-    expect(promoted.movements).toEqual([
-      {
-        skill: "tdd",
-        state: "pending-review",
-        deletion: false,
-        concurrentChange: false,
-        remoteTree: expect.any(String),
-      },
-    ]);
+    expect(promoted.stages.review).toMatchObject({
+      outcome: "read",
+      rows: [{ skill: "tdd", status: "pull-request-missing", deletion: false }],
+    });
+    expect(promoted.stages.proposal).toMatchObject({
+      outcome: "read",
+      rows: [],
+    });
 
     // Merged the way a reviewer would, in the fixture's own remote: the row is
     // then the team's, not the author's, and no receipt was ever stored.
@@ -207,7 +220,12 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     const merged = (await (
       await app.request("/api/harness/refresh", { method: "POST" })
     ).json()) as HarnessState;
-    expect(merged.movements).toEqual([]);
+    expect(merged.stages.review).toMatchObject({ outcome: "read", rows: [] });
+    expect(merged.stages.proposal).toMatchObject({ outcome: "read", rows: [] });
+    expect(merged.stages.release).toMatchObject({
+      outcome: "read",
+      rows: [{ skill: "tdd", status: "changed" }],
+    });
     expect(merged.releaseState).toBe("pending-release");
   });
 
@@ -226,15 +244,10 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     const state = (await (
       await app.request("/api/harness/refresh", { method: "POST" })
     ).json()) as HarnessState;
-    expect(state.movements).toEqual([
-      {
-        skill: "tdd",
-        state: "pending-review",
-        deletion: false,
-        concurrentChange: false,
-        remoteTree: expect.any(String),
-      },
-    ]);
+    expect(state.stages.review).toMatchObject({
+      outcome: "read",
+      rows: [{ skill: "tdd", status: "pull-request-missing" }],
+    });
   });
 
   it("refuses a name that is not a skill name, before it reaches git", async () => {
@@ -299,15 +312,18 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       await app.request("/api/harness/refresh", { method: "POST" })
     ).json()) as HarnessState;
 
-    expect(state.movements).toEqual([
-      {
-        skill: "tdd",
-        state: "pending-promotion",
-        deletion: false,
-        concurrentChange: true,
-        remoteTree: expect.any(String),
-      },
-    ]);
+    expect(state.stages.proposal).toMatchObject({
+      outcome: "read",
+      rows: [
+        {
+          skill: "tdd",
+          status: "not-yet-proposed",
+          deletion: false,
+          concurrentChange: true,
+          remoteTree: expect.any(String),
+        },
+      ],
+    });
   });
 
   it("shows no concurrent-change warning when nobody else touched the skill", async () => {
@@ -318,15 +334,18 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       await app.request("/api/harness/refresh", { method: "POST" })
     ).json()) as HarnessState;
 
-    expect(state.movements).toEqual([
-      {
-        skill: "tdd",
-        state: "pending-promotion",
-        deletion: false,
-        concurrentChange: false,
-        remoteTree: expect.any(String),
-      },
-    ]);
+    expect(state.stages.proposal).toMatchObject({
+      outcome: "read",
+      rows: [
+        {
+          skill: "tdd",
+          status: "not-yet-proposed",
+          deletion: false,
+          concurrentChange: false,
+          remoteTree: expect.any(String),
+        },
+      ],
+    });
   });
 
   it("refuses to push over a teammate's change its own fetch just found, never silently replacing it", async () => {
@@ -546,15 +565,13 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       const reviewed = (await (
         await app.request("/api/harness/refresh", { method: "POST" })
       ).json()) as HarnessState;
-      expect(reviewed.movements).toEqual([
-        {
-          skill: "tdd",
-          state: "pending-review",
-          deletion: true,
-          concurrentChange: false,
-          remoteTree: seen,
-        },
-      ]);
+      expect(reviewed.stages.review).toMatchObject({
+        outcome: "read",
+        rows: [
+          { skill: "tdd", status: "pull-request-missing", deletion: true },
+        ],
+      });
+      expect(seen).toEqual(expect.any(String));
 
       // Merged the way a reviewer would, in the fixture's own remote.
       await git(
@@ -566,11 +583,12 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       const merged = (await (
         await app.request("/api/harness/refresh", { method: "POST" })
       ).json()) as HarnessState;
-      expect(merged.movements).toEqual([]);
+      expect(merged.stages.review).toMatchObject({ outcome: "read", rows: [] });
       expect(merged.releaseState).toBe("pending-release");
-      expect(merged.pendingRelease).toMatchObject([
-        { kind: "removed", name: "tdd" },
-      ]);
+      expect(merged.stages.release).toMatchObject({
+        outcome: "read",
+        rows: [{ skill: "tdd", status: "deleted", deletion: true }],
+      });
     });
 
     it("refuses a confirmation given against a tree the remote has moved past", async () => {

@@ -190,7 +190,7 @@ if (smoke) {
   // apm reads it from the env; git needs it written into the sandbox HOME,
   // which seedSandbox does.
   const UNAUTHENTICATED =
-    "[smoke] gh not authenticated — connect/register/UI work, but the harness strip stays on 'Fetch failed' and a real deploy will fail";
+    "[smoke] gh not authenticated — connect/register/UI work, but the harness strip stays on 'Read failed' and a real deploy will fail";
   let githubToken;
   try {
     const token = execFileSync("gh", ["auth", "token"], {

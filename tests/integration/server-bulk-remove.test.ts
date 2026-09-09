@@ -77,7 +77,11 @@ describe("bulk remove HTTP route", () => {
   }) {
     const fs = new NodeFileSystem();
     const registry = realRegistry(fs, join(home, "config.json"));
-    const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
+    const inventory = new InventoryReader({
+      fs,
+      resolvePath: () => undefined,
+      readReleasedSkills: async () => [],
+    });
     const removeCalls: Array<{ target: DeployTarget; ref: string }> = [];
     const fails = new Set(options?.failRepos ?? []);
     const unproven = new Set(options?.unprovenRepos ?? []);

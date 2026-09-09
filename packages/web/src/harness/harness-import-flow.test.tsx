@@ -1,5 +1,5 @@
 import type { HarnessState } from "@maestro/core";
-import { screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse, renderWithQuery } from "../test-utils";
@@ -10,9 +10,38 @@ const HARNESS: HarnessState = {
   releasedVersion: "v0.5.0",
   defaultBranch: "main",
   releaseState: "released",
-  pendingRelease: [],
   freshness: { outcome: "fetched", lastFetchedAt: "2026-08-03T11:56:00.000Z" },
-  movements: [],
+  stages: {
+    proposal: { outcome: "read", rows: [], bound: null },
+    review: { outcome: "read", rows: [], bound: null },
+    release: { outcome: "read", rows: [], bound: null },
+  },
+};
+
+const IMPORTED_HARNESS: HarnessState = {
+  ...HARNESS,
+  stages: {
+    ...HARNESS.stages,
+    proposal: {
+      outcome: "read",
+      bound: null,
+      rows: [
+        {
+          stage: "pending-proposal",
+          skill: "code-review",
+          status: "not-yet-proposed",
+          deletion: false,
+          requests: [],
+          reviewers: [],
+          comparison: { kind: "default-branch" },
+          alsoIn: [],
+          concurrentChange: false,
+          remoteTree: null,
+          previousName: null,
+        },
+      ],
+    },
+  },
 };
 
 const SOURCE = "/home/me/Code Review";
@@ -76,7 +105,8 @@ function stubImportServer(options: {
           options.importStatus,
         );
       }
-      return jsonResponse(HARNESS);
+      // The imported skill is a row of Pending proposal from the next read on.
+      return jsonResponse(imports.length === 0 ? HARNESS : IMPORTED_HARNESS);
     }),
   );
   return { calls, imports };
@@ -121,10 +151,9 @@ describe("Harness import flow", () => {
     });
     // The dialog stays open and states what landed, including what the copy
     // left behind; the harness read is asked again for the new movement.
+    expect(await screen.findByText("Skill imported")).toBeInTheDocument();
     expect(
-      await screen.findByText(
-        /landed in the Harness and is waiting for review/i,
-      ),
+      screen.getByText("View your imported skill in Harness."),
     ).toBeInTheDocument();
     expect(
       await screen.findByText(/3 \.git entries were skipped/i),
@@ -165,6 +194,53 @@ describe("Harness import flow", () => {
       await screen.findByText("SKILL.md is over 500 lines."),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Import skill" })).toBeEnabled();
+  });
+
+  it("sends the author from the confirmation to the imported row", async () => {
+    stubImportServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView />);
+
+    await openImportWithSource(user);
+    await user.click(screen.getByRole("button", { name: "Import skill" }));
+    await user.click(
+      await screen.findByRole("button", { name: "View in Harness" }),
+    );
+
+    // The dialog is gone, and the row it sent the author to holds the keyboard
+    // and is painted on the active surface.
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    const menu = await screen.findByRole("button", {
+      name: "Actions for code-review in Pending proposal",
+    });
+    await waitFor(() => {
+      expect(menu).toHaveFocus();
+    });
+    expect(menu.closest("tr")).toHaveClass("bg-active");
+  });
+
+  it("returns the imported row to normal after about three seconds", async () => {
+    stubImportServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView />);
+
+    await openImportWithSource(user);
+    await user.click(screen.getByRole("button", { name: "Import skill" }));
+    const menu = await screen.findByRole("button", {
+      name: "Actions for code-review in Pending proposal",
+    });
+
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole("button", { name: "View in Harness" }));
+      expect(menu.closest("tr")).toHaveClass("bg-active");
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+      expect(menu.closest("tr")).not.toHaveClass("bg-active");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("asks again with the typed name", async () => {

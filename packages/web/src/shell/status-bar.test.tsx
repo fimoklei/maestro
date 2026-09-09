@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse, renderWithQuery } from "../test-utils";
@@ -115,6 +115,32 @@ describe("StatusBar", () => {
     expect(screen.getByRole("banner")).toHaveTextContent(
       /agent-harness · 3 primitives/i,
     );
+  });
+
+  // An unread Inventory has no count; showing the last one, or a zero, would
+  // state a number nothing confirmed (#841).
+  it("shows no count when the Inventory read failed", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/health"))
+          return jsonResponse({ ok: true }, 200);
+        if (url.startsWith("/api/inventory/config")) {
+          return jsonResponse({ inventoryPath: "/home/me/agent-harness" }, 200);
+        }
+        return jsonResponse({ error: "unreadable" }, 503);
+      }),
+    );
+    renderStatusBar();
+
+    await screen.findByText("Connected");
+    await waitFor(() =>
+      expect(screen.getByRole("banner")).not.toHaveTextContent(
+        /Loading the count/i,
+      ),
+    );
+    expect(screen.getByRole("banner")).not.toHaveTextContent(/primitive/i);
   });
 
   it("opens the source view from the header gear when connected", async () => {

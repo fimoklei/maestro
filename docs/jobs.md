@@ -25,9 +25,7 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 ## NOW
 
-| Job | Main | Job story |
-|---|---|---|
-| Follow a skill change from local work to release · [#827](https://github.com/fimoklei/maestro/issues/827) | C | *When* I import, edit or delete a skill, *I want to* follow its proposal, review and release with a clear next action and a way back, *so I can* make it available in Inventory without losing work or mistaking an unknown status for completion. |
+Empty — pick the next job.
 
 ## NEXT
 
@@ -67,6 +65,7 @@ All shipped **skills-only**, solo, local-first.
 
 | Job | Main | Job story |
 |---|---|---|
+| Follow a skill change from local work to release · [#827](https://github.com/fimoklei/maestro/issues/827) | C | *When* I import, edit or delete a skill, *I want to* follow its proposal, review and release with a clear next action and a way back, *so I can* make it available in Inventory without losing work or mistaking an unknown status for completion. |
 | Adopt apm 0.29 · [#772](https://github.com/fimoklei/maestro/issues/772)–[#775](https://github.com/fimoklei/maestro/issues/775) | B | *When* the engine moves ahead of Maestro's observed knowledge, *I want to* have the driver re-verified against the installed apm, *so I can* trust that cockpit behavior matches what the engine really does. |
 | Tell a skill that changed from one that only lags a tag · [#747](https://github.com/fimoklei/maestro/issues/747) | A | *When* one skill in the Harness is released, *I want to* tell the deployed skills that actually changed from the ones that only lag a tag, *so I can* keep Behind worth reading instead of learning to ignore it. |
 | Install Maestro from a clone in one command · [#717](https://github.com/fimoklei/maestro/issues/717), [#621](https://github.com/fimoklei/maestro/issues/621) | C | *When* a teammate has been given access to Maestro, *I want to* have one bootstrap script check their Node and pnpm and start the cockpit, *so I can* hand them a repo instead of walking them through a toolchain. |

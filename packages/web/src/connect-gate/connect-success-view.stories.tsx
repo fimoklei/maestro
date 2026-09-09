@@ -26,3 +26,8 @@ export const Joined: Story = {
 export const Scaffolded: Story = {
   args: { outcome: "scaffolded", primitiveCount: 0 },
 };
+
+// The released count could not be read, so the sentence names no number (#841).
+export const CountUnread: Story = {
+  args: { outcome: "found", primitiveCount: null },
+};

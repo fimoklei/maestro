@@ -80,8 +80,30 @@ export {
   type CopyTreeFsPort,
   NodeCopyTreeFs,
 } from "./filesystem/copy-tree-fs";
+export { GhCliAdapter, REVIEW_READ_LIMIT } from "./harness/gh-cli-adapter";
 export { HarnessFreshnessStore } from "./harness/harness-freshness-store";
 export { HarnessGitAdapter } from "./harness/harness-git";
+export type {
+  HarnessReviewPort,
+  HarnessReviewRead,
+  NewReviewRequest,
+  RequestedReviewer,
+  ReviewDecision,
+  ReviewRequest,
+  ReviewRequestState,
+  ReviewWriteOutcome,
+} from "./harness/harness-review-port";
+export type {
+  HarnessStage,
+  HarnessStageRead,
+  HarnessStageRow,
+  HarnessStages,
+  ProposalComparison,
+  ReleaseStatus,
+  ReviewRequestLink,
+  ReviewStatus,
+  StageStatus,
+} from "./harness/harness-stages";
 export {
   type ImportCheck,
   type ImportCheckResult,
@@ -102,6 +124,11 @@ export {
   type PromoteSkillError,
   type PromoteSkillResult,
 } from "./harness/promote-skill";
+export {
+  type ProposalActionError,
+  type ProposalActionResult,
+  ProposalActions,
+} from "./harness/proposal-actions";
 export type { SemverStep } from "./harness/propose-release-version";
 export {
   PublishRelease,
@@ -110,7 +137,6 @@ export {
 } from "./harness/publish-release";
 export {
   type HarnessFreshness,
-  type HarnessMovement,
   type HarnessReleaseState,
   type HarnessState,
   type HarnessStateError,
@@ -153,6 +179,11 @@ export {
   InventoryReader,
   type InventoryResult,
 } from "./inventory/inventory-reader";
+export {
+  type ReadReleasedSkills,
+  type ReleasedSkill,
+  releasedSkillsFromGit,
+} from "./inventory/released-skills";
 export { isRepositoryRoot } from "./inventory/repository-root";
 export { resolveInventoryPath } from "./inventory/resolve-inventory-path";
 export {

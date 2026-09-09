@@ -55,7 +55,11 @@ describe("drift HTTP route", () => {
       { kind: "repo"; repoPath: string } | { kind: "global" }
     > = [];
     const registry = realRegistry(fs, join(home, "config.json"));
-    const inventory = new InventoryReader({ fs, resolvePath: () => undefined });
+    const inventory = new InventoryReader({
+      fs,
+      resolvePath: () => undefined,
+      readReleasedSkills: async () => [],
+    });
     const drift = new CheckVersionDrift({
       registry,
       apm: {

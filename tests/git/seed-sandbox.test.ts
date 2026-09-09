@@ -85,7 +85,7 @@ describe("smoke sandbox seeding", () => {
 
   // Redirecting HOME hides the real ~/.gitconfig, so git loses the credential
   // helper it would normally use and every fetch of the seeded clone fails
-  // auth — read back as "Fetch failed" on the harness strip.
+  // auth — read back as "Read failed" on the harness strip.
   it("gives git a github credential under the sandbox home", () => {
     seedSandbox({ home, inventorySource, githubToken: "smoke-token" });
 

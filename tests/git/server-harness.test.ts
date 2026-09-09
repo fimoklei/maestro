@@ -16,6 +16,7 @@ import {
   InventoryReader,
   NodeFileSystem,
   ReadHarnessState,
+  releasedSkillsFromGit,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -30,6 +31,7 @@ import { stubImport } from "../helpers/stub-import";
 import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
+import { stubReview } from "../helpers/stub-review";
 import { stubScaffold } from "../helpers/stub-scaffold";
 
 const run = promisify(execFile);
@@ -92,7 +94,14 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
     await run("git", ["clone", remote, other]);
     await git(other, "config", "user.email", "mate@example.com");
     await git(other, "config", "user.name", "Mate");
-    await writeFile(join(other, `${message}.md`), `${message}\n`, "utf8");
+    // A skill, not a loose file: only skill content moves the Harness between
+    // released and pending release, so the teammate's push has to be one (#845).
+    await mkdir(join(other, ".apm", "skills", message), { recursive: true });
+    await writeFile(
+      join(other, ".apm", "skills", message, "SKILL.md"),
+      `---\ndescription: ${message}\n---\n`,
+      "utf8",
+    );
     await git(other, "add", ".");
     await git(other, "commit", "-m", message);
     if (tag !== undefined) {
@@ -109,6 +118,9 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
     const inventory = new InventoryReader({
       fs,
       resolvePath: () => harnessPath,
+      // The real released read: these suites build real repositories,
+      // so Inventory answers from `refs/maestro/tags` as it does live (#841).
+      readReleasedSkills: releasedSkillsFromGit(new HarnessGitAdapter()),
     });
     const locks = new InFlightLocks();
     return createApp({
@@ -123,6 +135,7 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
             : await fs.realpath(harnessPath),
         git: new HarnessGitAdapter(),
         freshness: new HarnessFreshnessStore({ store }),
+        review: stubReview(),
       }),
       publish: stubPublish(),
       ...stubPromotes(),

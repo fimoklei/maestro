@@ -4,8 +4,10 @@
 
 import type {
   HarnessFreshness,
-  HarnessMovement,
   HarnessReleaseState,
+  HarnessStage,
+  HarnessStageRead,
+  HarnessStageRow,
   HarnessState,
   ImportCheck,
   ImportMode,
@@ -14,19 +16,28 @@ import type {
   ManifestAdvisory,
   PendingSkillMovement,
   ReleasePlan,
+  RequestedReviewer,
+  ReviewRequestLink,
   SemverStep,
   SkillMovementKind,
+  StageStatus,
   StructuralProblem,
 } from "@maestro/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { HttpError, requestJson } from "../api/http";
+import {
+  fetchInventoryPrimitives,
+  INVENTORY_KEY,
+} from "../inventory/use-inventory";
 
 // Re-exported rather than copied, so the browser's shape cannot drift from the
 // one core defines (architecture.md).
 export type {
   HarnessFreshness,
-  HarnessMovement,
   HarnessReleaseState,
+  HarnessStage,
+  HarnessStageRead,
+  HarnessStageRow,
   HarnessState,
   ImportCheck,
   ImportNameBlocker,
@@ -34,8 +45,11 @@ export type {
   ManifestAdvisory,
   PendingSkillMovement,
   ReleasePlan,
+  RequestedReviewer,
+  ReviewRequestLink,
   SemverStep,
   SkillMovementKind,
+  StageStatus,
   StructuralProblem,
 };
 
@@ -73,22 +87,34 @@ export function useDiscardReleasePlan() {
 // Confirming a release. `previousTag` and `revision` are what the server
 // compares the freshly read remote against; neither is ever the thing to tag,
 // and no path travels (#520, #521).
-//
-// The picture afterwards is fetched, never read: the plain read paints from a
-// local tag mirror whose write can fail, and the release already happened.
 export function usePublishRelease() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (request: {
+    mutationFn: async (request: {
       step: SemverStep;
       previousTag: string | null;
       previousTagCommit: string | null;
       revision: string;
-    }) =>
-      requestJson<{ tag: string; revision: string }>("/api/harness/release", {
-        method: "POST",
-        body: JSON.stringify(request),
-      }),
+    }) => {
+      const release = await requestJson<{ tag: string; revision: string }>(
+        "/api/harness/release",
+        { method: "POST", body: JSON.stringify(request) },
+      );
+      // Inventory answers from the latest release, so publishing one is the
+      // only act that changes it (ADR-0021 §9). Fetched, not invalidated: a
+      // query nobody holds open would refetch nothing (#849).
+      const inventoryRefreshed = await queryClient
+        .fetchQuery({
+          queryKey: INVENTORY_KEY,
+          queryFn: fetchInventoryPrimitives,
+          staleTime: 0,
+        })
+        .then(
+          () => true,
+          () => false,
+        );
+      return { tag: release.tag, inventoryRefreshed };
+    },
     onSuccess: () => {
       void queryClient.cancelQueries({ queryKey: HARNESS_KEY });
       void fetchHarnessState().then(
@@ -234,6 +260,35 @@ export function usePromoteSkill() {
         method: "POST",
         body: JSON.stringify(request),
       }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: HARNESS_KEY });
+    },
+  });
+}
+
+// The three mutations that touch only GitHub: creating the request a prepared
+// branch never got, reopening a closed one and withdrawing an open one. The
+// number the row showed travels as a claim — the server rechecks it against a
+// fresh read before anything is closed or reopened (#827).
+export type ProposalAction = "create" | "reopen" | "withdraw";
+
+export function useProposalAction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      action,
+      ...body
+    }: {
+      action: ProposalAction;
+      name: string;
+      number?: number;
+    }) =>
+      requestJson<{ ok: true }>(`/api/harness/proposal/${action}`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    // What the row now reads is GitHub's answer, not this reply's: the state is
+    // invalidated rather than written.
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: HARNESS_KEY });
     },

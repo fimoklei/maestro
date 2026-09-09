@@ -9,12 +9,17 @@ type InventoryResponse = { primitives: Primitive[] };
 // Exported so the connect mutation invalidates this exact cache entry.
 export const INVENTORY_KEY = ["inventory", "primitives"] as const;
 
+// Exported so a publication can read the Inventory itself, whether or not a
+// screen is holding this query open.
+export const fetchInventoryPrimitives = () =>
+  requestJson<InventoryResponse>("/api/inventory/primitives");
+
 // Gates the read for callers without a source yet — during first-run the
 // endpoint 409s.
 export function useInventory({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: INVENTORY_KEY,
-    queryFn: () => requestJson<InventoryResponse>("/api/inventory/primitives"),
+    queryFn: fetchInventoryPrimitives,
     enabled,
   });
 }

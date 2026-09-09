@@ -1,32 +1,31 @@
+import type { HarnessState } from "@maestro/core";
 import { useEffect, useState } from "react";
-import { BrowseDialog } from "../shell/browse-dialog";
 import { useBrowsePicker } from "../shell/use-browse-picker";
+import { useRereadInventory } from "../shell/use-reread-inventory";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { Notice } from "../ui/notice";
 import { SectionHeader } from "../ui/section-header";
-import { DeletionDialog } from "./deletion-dialog";
+import { HarnessDialogs } from "./harness-dialogs";
 import { HarnessStrip } from "./harness-strip";
 import {
   freshnessLabel,
-  movementSections,
+  journeyConfirmedEmpty,
   RELEASE_SUMMARIES,
   releaseEnabled,
+  stageSections,
 } from "./harness-view-model";
-import { type ImportCheckLoad, ImportDialog } from "./import-dialog";
-import { MovementTable } from "./movement-table";
 import {
   harnessStateNotice,
-  importNotice,
   promoteNotice,
-  publishReleaseNotice,
+  proposalNotice,
   refreshNotice,
-  releasePlanNotice,
-  removalNotice,
+  releasePublishedNotice,
+  staleStatusNotice,
 } from "./notice-copy";
-import { PendingRelease } from "./pending-release";
-import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
-import type { ReleasePlan, SemverStep } from "./use-harness";
+import { rowItems } from "./row-actions";
+import { StageTable } from "./stage-table";
+import type { HarnessStageRow, ReleasePlan, SemverStep } from "./use-harness";
 import {
   useDiscardReleasePlan,
   useHarness,
@@ -34,6 +33,7 @@ import {
   useImportSkill,
   usePromoteDeletion,
   usePromoteSkill,
+  useProposalAction,
   usePublishRelease,
   useRefreshHarness,
   useReleasePlan,
@@ -53,6 +53,7 @@ export function HarnessView() {
   const plan = useReleasePlan(planOpen);
   const discardPlan = useDiscardReleasePlan();
   const publish = usePublishRelease();
+  const rereadInventory = useRereadInventory();
   const closePlan = () => {
     setPlanOpen(false);
     discardPlan();
@@ -67,7 +68,15 @@ export function HarnessView() {
         previousTagCommit: plan.previousTagCommit,
         revision: plan.revision,
       },
-      { onSuccess: closePlan },
+      // The dialog closes on success and keeps no result of its own: what was
+      // published is stated above the strip, which is where the Inventory the
+      // release changed is read from (#849).
+      {
+        onSuccess: () => {
+          setPlanOpen(false);
+          discardPlan();
+        },
+      },
     );
   };
 
@@ -97,25 +106,33 @@ export function HarnessView() {
     setEditedName(null);
     importSkill.reset();
   };
+  // The skill the import confirmation sent the author to. It holds the row on
+  // the active surface for about three seconds, long enough to find among the
+  // others and short enough not to read as a state of its own (#846).
+  const [landedOn, setLandedOn] = useState<string | null>(null);
+  useEffect(() => {
+    if (landedOn === null) {
+      return;
+    }
+    const done = setTimeout(() => setLandedOn(null), 3000);
+    return () => clearTimeout(done);
+  }, [landedOn]);
 
   // Promote: which row is waiting and what the last press refused are read off
   // the mutation. The links are kept beside it, one per skill — a second
   // promotion must not take the first one's way to GitHub with it (#577).
   const promote = usePromoteSkill();
-  const [pullRequests, setPullRequests] = useState<Record<string, string>>({});
   const promotedSkill = promote.variables?.name ?? null;
   const promoteFailure = promoteNotice(promote.error);
-  const keepLink = (name: string) => (outcome: { pullRequestUrl: string }) =>
-    setPullRequests((links) => ({ ...links, [name]: outcome.pullRequestUrl }));
 
-  // A removal never publishes by the row's press alone: it opens a
+  // A deletion never publishes by the row's press alone: it opens a
   // confirmation, which carries the origin/HEAD tree that row was painted
   // from. The pending movement is UI-state; the push is the mutation (#580).
-  const removal = usePromoteDeletion();
+  const deletion = usePromoteDeletion();
   const [confirming, setConfirming] = useState<string | null>(null);
   const pendingDeletion =
-    state?.movements.find((movement) => movement.skill === confirming) ?? null;
-  // Left unreset, so a landed removal still names the row that just moved after
+    proposalRows(state).find((row) => row.skill === confirming) ?? null;
+  // Left unreset, so a landed deletion still names the row that just moved after
   // its dialog closes. The next press resets it, which is what keeps a refusal
   // from haunting the confirmation after this one (#580, #581).
   const closeConfirmation = () => setConfirming(null);
@@ -124,24 +141,52 @@ export function HarnessView() {
   // promote mutation alone would drop the keyboard on the document (#581).
   const justMoved = promote.isSuccess
     ? promotedSkill
-    : removal.isSuccess
-      ? (removal.variables?.name ?? null)
+    : deletion.isSuccess
+      ? (deletion.variables?.name ?? null)
       : null;
 
+  // The three GitHub-side actions share one mutation: only the route differs,
+  // and a refusal is stated on the row it was pressed from.
+  const proposalAction = useProposalAction();
+  const proposalSkill = proposalAction.variables?.name ?? null;
+  const proposalFailure = proposalNotice(proposalAction.error);
+  // Withdrawal is the one action that confirms first. The number the row
+  // showed rides with it; the server rechecks it before closing anything.
+  const [withdrawing, setWithdrawing] = useState<{
+    skill: string;
+    number: number;
+  } | null>(null);
+  const closeWithdrawal = () => setWithdrawing(null);
+  // One refusal at a time, stated on the row the press was made from. A
+  // withdrawal's refusal belongs to its dialog, where the confirmation still
+  // stands (#577, #580).
+  const rowFailure = () => {
+    if (promoteFailure !== null && promotedSkill !== null) {
+      return { skill: promotedSkill, notice: promoteFailure };
+    }
+    if (
+      withdrawing === null &&
+      proposalFailure !== null &&
+      proposalSkill !== null
+    ) {
+      return { skill: proposalSkill, notice: proposalFailure };
+    }
+    return null;
+  };
+
   const promoteSkill = (name: string) => {
-    const movement = state?.movements.find((each) => each.skill === name);
-    if (movement?.deletion === true) {
-      removal.reset();
+    const row = proposalRows(state).find((each) => each.skill === name);
+    if (row?.deletion === true) {
+      deletion.reset();
       setConfirming(name);
       return;
     }
-    promote.mutate({ name }, { onSuccess: keepLink(name) });
+    promote.mutate({ name });
   };
 
-  // Opening the view fetches, the same act the Refresh button repeats. A
-  // mutation, not a query: it reaches the network and writes git refs.
-  // Scheduled rather than called, so StrictMode's replayed first mount cancels
-  // its own request in cleanup: one open, one fetch of the author's git refs.
+  // Opening the view fetches, the same act Retry check repeats. Scheduled
+  // rather than called, so StrictMode's replayed first mount cancels its own
+  // request in cleanup: one open, one fetch of the author's git refs.
   useEffect(() => {
     const scheduled = setTimeout(fetchRemote);
     return () => clearTimeout(scheduled);
@@ -155,8 +200,33 @@ export function HarnessView() {
           children are out of flow and the block costs nothing. */}
       <div className="mb-2 flex flex-col gap-2">
         <Notice trigger="load" notice={harnessStateNotice(harness.error)} />
-        {/* A failed refresh is not a failed read: the state below stands. */}
-        <Notice trigger="load" notice={refreshNotice(refresh.error)} />
+        {/* A failed refresh is not a failed read: the state below stands. One
+            notice either way — a stale status is what a refused press left
+            behind, so the two never stack (#848). */}
+        <Notice
+          trigger="load"
+          notice={
+            (state === undefined
+              ? null
+              : staleStatusNotice(state.freshness, () => fetchRemote())) ??
+            refreshNotice(refresh.error)
+          }
+        />
+        {/* What the last publication landed. The tag is atomic, so the only
+            half that can fail is the Inventory re-read, and the notice says
+            which of the two happened (#849). */}
+        <Notice
+          trigger="user-action"
+          notice={
+            publish.data === undefined
+              ? null
+              : releasePublishedNotice(
+                  publish.data.tag,
+                  publish.data.inventoryRefreshed,
+                  rereadInventory,
+                )
+          }
+        />
       </div>
       {harness.isError ? null : state === undefined ? (
         <p className="text-dim text-tag">Loading the Harness…</p>
@@ -178,7 +248,7 @@ export function HarnessView() {
               disabled={!releaseEnabled(state.freshness) || refresh.isPending}
               onClick={() => setPlanOpen(true)}
             >
-              Plan release
+              Create a release
             </Button>
             <Button
               variant="quiet"
@@ -187,16 +257,7 @@ export function HarnessView() {
               disabled={refresh.isPending}
               onClick={() => fetchRemote()}
             >
-              Refresh
-            </Button>
-            {/* Import touches the working tree only, so no remote answer gates
-                it — what lands shows up under Pending promotion. */}
-            <Button
-              variant="quiet"
-              size="sm"
-              onClick={() => setImportOpen(true)}
-            >
-              Import skill…
+              Retry check
             </Button>
           </HarnessStrip>
           <Card className="mt-3" padded>
@@ -204,136 +265,159 @@ export function HarnessView() {
               {RELEASE_SUMMARIES[state.releaseState]}
             </p>
           </Card>
-          {/* The three tables in the order the route runs backwards: what a
-              release carries out, then what it does not touch (#347). */}
-          <PendingRelease movements={state.pendingRelease} />
-          {movementSections(state.movements).map((section) => (
-            <section key={section.state} className="mt-4">
-              <SectionHeader
-                level={3}
-                title={section.title}
-                meta={`${section.movements.length} · ${section.meta}`}
-              />
-              <Card>
-                <MovementTable
-                  movements={section.movements}
-                  promote={{
-                    onPromote: promoteSkill,
-                    // The rule that closes Release: with no answer from the
-                    // remote there is no tip to build the commit on. A refresh
-                    // or a re-read in flight is moving the very rows a press
-                    // would be aimed at.
-                    enabled:
-                      releaseEnabled(state.freshness) &&
-                      !refresh.isPending &&
-                      !harness.isFetching,
-                    pending: promote.isPending ? promotedSkill : null,
-                    pullRequests,
-                    justMoved,
-                    failed:
-                      promoteFailure === null || promotedSkill === null
-                        ? null
-                        : { skill: promotedSkill, notice: promoteFailure },
-                  }}
-                />
-              </Card>
-            </section>
-          ))}
-          {importOpen && !picker.open ? (
-            <ImportDialog
-              source={source}
-              name={name}
-              load={importLoad(source, importCheck)}
-              onPickSource={picker.openBrowse}
-              onNameChange={setEditedName}
-              onClose={closeImport}
-              // The dialog stays open on success: it is where the import's
-              // outcome is stated, and closing would take that with it.
-              onImport={() =>
-                source !== null && importSkill.mutate({ source, name })
-              }
-              imported={importSkill.data ?? null}
-              importing={importSkill.isPending}
-              importError={importNotice(importSkill.error)}
-            />
-          ) : null}
-          {picker.open ? (
-            <BrowseDialog
-              mode="import-source"
-              onSelect={picker.selectBrowse}
-              onClose={picker.closeBrowse}
-            />
-          ) : null}
-          {pendingDeletion !== null && pendingDeletion.remoteTree !== null ? (
-            <DeletionDialog
-              skill={pendingDeletion.skill}
-              origin={state.origin}
-              seenRemoteTree={pendingDeletion.remoteTree}
-              onClose={closeConfirmation}
-              // The dialog closes on success only: a refusal is stated in it,
-              // and the way forward is another confirmation (#580).
-              onConfirm={() =>
-                removal.mutate(
-                  {
-                    name: pendingDeletion.skill,
-                    seenRemoteTree: pendingDeletion.remoteTree as string,
-                  },
-                  {
-                    onSuccess: (outcome) => {
-                      keepLink(pendingDeletion.skill)(outcome);
-                      closeConfirmation();
-                    },
-                  },
-                )
-              }
-              removing={removal.isPending}
-              removeError={removalNotice(removal.error)}
-            />
-          ) : null}
-          {planOpen ? (
-            <ReleaseDialog
-              origin={state.origin}
-              load={planLoad(plan)}
-              onClose={closePlan}
-              onPublish={handlePublish}
-              publishing={publish.isPending}
-              publishError={publishReleaseNotice(publish.error)}
-            />
-          ) : null}
+          {/* The three stages in journey order, each answering its own
+              question. One skill can hold a row in all three (ADR-0021 · 10). */}
+          {stageSections(state, new Date()).map((section) => {
+            const rows =
+              section.read.outcome === "read" ? section.read.rows : [];
+            const proposal = section.stage === "pending-proposal";
+            // Import touches the working tree only, so no remote answer gates
+            // it — and an unread stage still has a way to put work in it.
+            const importAction = proposal ? (
+              <Button
+                variant="quiet"
+                size="sm"
+                onClick={() => setImportOpen(true)}
+              >
+                Import skill…
+              </Button>
+            ) : null;
+            // A confirmed empty stage is absent altogether, except Pending
+            // proposal, which always renders because it hosts Import skill….
+            if (
+              !proposal &&
+              section.read.outcome === "read" &&
+              rows.length === 0
+            ) {
+              return null;
+            }
+            // A stage nobody could read keeps its label and draws no card, no
+            // count and no rows: a zero must never read as an unknown (#848).
+            if (section.read.outcome !== "read") {
+              return (
+                <section key={section.stage} className="mt-4">
+                  <SectionHeader
+                    level={3}
+                    title={section.title}
+                    meta={section.meta}
+                  >
+                    {importAction}
+                  </SectionHeader>
+                </section>
+              );
+            }
+            return (
+              <section key={section.stage} className="mt-4">
+                <SectionHeader
+                  level={3}
+                  title={section.title}
+                  meta={section.meta}
+                >
+                  {importAction}
+                </SectionHeader>
+                <Card>
+                  {rows.length === 0 ? (
+                    <div className="p-card-x">
+                      <p className="m-0 font-medium text-desc text-fg">
+                        {journeyConfirmedEmpty(state)
+                          ? "No changes yet"
+                          : "Nothing to propose"}
+                      </p>
+                      <p className="m-0 mt-1 text-desc text-muted">
+                        {journeyConfirmedEmpty(state)
+                          ? "Skills you import or edit in your clone will appear here."
+                          : "Edit a skill in your clone, or press Import skill, to propose a change."}
+                      </p>
+                    </div>
+                  ) : (
+                    <StageTable
+                      rows={rows}
+                      context={{
+                        defaultBranch: state.defaultBranch,
+                        releasedVersion: state.releasedVersion,
+                      }}
+                      actions={{
+                        items: (row) =>
+                          rowItems(
+                            row,
+                            {
+                              promote: promoteSkill,
+                              create: (skill) =>
+                                proposalAction.mutate({
+                                  action: "create",
+                                  name: skill,
+                                }),
+                              reopen: (skill, number) =>
+                                proposalAction.mutate({
+                                  action: "reopen",
+                                  name: skill,
+                                  number,
+                                }),
+                              withdraw: (skill, number) => {
+                                proposalAction.reset();
+                                setWithdrawing({ skill, number });
+                              },
+                            },
+                            // Closed with no answer from the remote: there is
+                            // no tip to build on, and a read in flight is
+                            // moving the rows a press would aim at.
+                            releaseEnabled(state.freshness) &&
+                              !refresh.isPending &&
+                              !harness.isFetching &&
+                              promote.isPending === false &&
+                              proposalAction.isPending === false,
+                          ),
+                        failed: rowFailure(),
+                        // Focusing the row's menu is what scrolls it into
+                        // view: the platform already does that for focus().
+                        focus: landedOn ?? justMoved,
+                        highlight: landedOn,
+                      }}
+                    />
+                  )}
+                </Card>
+              </section>
+            );
+          })}
+          <HarnessDialogs
+            origin={state.origin}
+            importOpen={importOpen}
+            source={source}
+            name={name}
+            importCheck={importCheck}
+            importSkill={importSkill}
+            onPickSource={picker.openBrowse}
+            onNameChange={setEditedName}
+            onImport={() =>
+              source !== null && importSkill.mutate({ source, name })
+            }
+            onImported={(name) => {
+              closeImport();
+              setLandedOn(name);
+            }}
+            onImportClose={closeImport}
+            picker={picker}
+            deletionRow={pendingDeletion}
+            deletion={deletion}
+            onDeletionClose={closeConfirmation}
+            withdrawing={withdrawing}
+            proposalAction={proposalAction}
+            onWithdrawClose={closeWithdrawal}
+            planOpen={planOpen}
+            plan={plan}
+            publish={publish}
+            onPlanClose={closePlan}
+            onPublish={handlePublish}
+          />
         </>
       )}
     </section>
   );
 }
 
-// Idle until a folder is picked: with nothing to judge there is no refusal to
-// state, and "loading" would claim a request that was never made.
-function importLoad(
-  source: string | null,
-  check: ReturnType<typeof useImportCheck>,
-): ImportCheckLoad {
-  if (source === null) {
-    return { kind: "idle" };
-  }
-  if (check.data !== undefined) {
-    return { kind: "ready", check: check.data };
-  }
-  const failed = importNotice(check.error);
-  if (failed !== null) {
-    return { kind: "error", notice: failed };
-  }
-  return { kind: "loading" };
-}
-
-// The dialog stays mounted through loading, error, and the ready plan, so the
-// query's three states become its one prop.
-function planLoad(plan: ReturnType<typeof useReleasePlan>): ReleasePlanLoad {
-  if (plan.data !== undefined) {
-    return { kind: "ready", plan: plan.data };
-  }
-  const failed = releasePlanNotice(plan.error);
-  if (failed !== null) {
-    return { kind: "error", notice: failed };
-  }
-  return { kind: "loading" };
+// Pending proposal's rows, or none where the stage could not be read: a press
+// aimed at a row nobody read is refused here rather than sent.
+function proposalRows(state: HarnessState | undefined): HarnessStageRow[] {
+  const stage = state?.stages.proposal;
+  return stage?.outcome === "read" ? stage.rows : [];
 }

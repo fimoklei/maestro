@@ -1,8 +1,11 @@
+import { useNavigate } from "react-router";
 import { HttpError } from "../api/http";
 import { useRegistry } from "../registry/use-registry";
+import { useRereadInventory } from "../shell/use-reread-inventory";
 import { Card } from "../ui/card";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { SectionHeader } from "../ui/section-header";
+import { INVENTORY_NOT_READ } from "./inventory-copy";
 import { InventoryList } from "./inventory-list";
 import { useDeploymentTargets } from "./use-deployment-targets";
 import { useInventory } from "./use-inventory";
@@ -12,7 +15,10 @@ import { useInventory } from "./use-inventory";
 
 // The inventory read is web's own query, not one of the server's error tables,
 // so its two headings and sentences live with it.
-function readNotice(error: Error | null): NoticeContent | null {
+function readNotice(
+  error: Error | null,
+  reread: () => void,
+): NoticeContent | null {
   if (error === null) {
     return null;
   }
@@ -25,17 +31,16 @@ function readNotice(error: Error | null): NoticeContent | null {
         detail: "Nothing is connected yet.",
       }
     : {
-        level: "error",
-        label: "Inventory not loaded",
-        message: "Check the path on the Harness location screen.",
-        detail:
-          "The connected Harness may have moved, or its apm.yml may no longer be readable.",
+        ...INVENTORY_NOT_READ,
+        action: { label: "Re-read Inventory", onClick: reread },
       };
 }
 
 export function InventoryPanel() {
   const inventory = useInventory();
   const registry = useRegistry();
+  const reread = useRereadInventory();
+  const navigate = useNavigate();
   const repos = registry.data?.repos ?? [];
   // Reuses the existing deploy-state + drift queries — no new server read (#272).
   const targets = useDeploymentTargets(
@@ -61,7 +66,7 @@ export function InventoryPanel() {
       {/* A section that failed to load is always trigger="load" — nothing here
           followed a click, and Query refetches on window focus (#465). The
           region outlives its content, so it is mounted before the failure is. */}
-      <Notice trigger="load" notice={readNotice(inventory.error)} />
+      <Notice trigger="load" notice={readNotice(inventory.error, reread)} />
       {inventory.isLoading ? (
         <p className="px-card-x py-row-y text-dim text-tag">
           Loading the Inventory…
@@ -73,6 +78,7 @@ export function InventoryPanel() {
             repos={repos}
             registryReady={registry.isSuccess}
             targets={targets}
+            onOpenHarness={() => navigate("/harness")}
           />
         </Card>
       )}

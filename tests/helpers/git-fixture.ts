@@ -34,6 +34,10 @@ export type GitCloneOptions = {
   // Remote-tracking branches created beside `origin/HEAD`. The offline repair
   // reads these, so how many there are decides whether it can answer.
   remoteBranches?: string[];
+  // Publishes the working tree as this release, under `refs/maestro/tags/` —
+  // the namespace a fetch brings remote tags into, and the only one Inventory
+  // reads (#841). Omit it and the clone has no release at all.
+  release?: string;
 };
 
 export async function initGitClone(
@@ -79,6 +83,23 @@ export async function initGitClone(
         "refs/remotes/origin/HEAD",
         `refs/remotes/origin/${defaultBranch}`,
       ],
+      { cwd: root },
+    );
+  }
+
+  if (options?.release !== undefined) {
+    // HEAD is never moved: the release ref is what Inventory reads, and a
+    // fixture that also committed would be proving two things at once.
+    await run("git", ["add", "-A"], { cwd: root });
+    const { stdout: tree } = await run("git", ["write-tree"], { cwd: root });
+    const { stdout: commit } = await run(
+      "git",
+      ["commit-tree", tree.trim(), "-m", `release ${options.release}`],
+      { cwd: root, env: { ...process.env, ...FIXTURE_IDENTITY } },
+    );
+    await run(
+      "git",
+      ["update-ref", `refs/maestro/tags/${options.release}`, commit.trim()],
       { cwd: root },
     );
   }

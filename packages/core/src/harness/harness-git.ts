@@ -676,6 +676,16 @@ export class HarnessGitAdapter implements HarnessGitPort {
     return this.readSkillTrees(root, `${MAESTRO_TAGS}/${tag}`);
   }
 
+  // Each named skill's SKILL.md at a published tag, read from the same
+  // namespace `readSkillTreesAtTag` reads.
+  async readSkillManifestsAtTag(
+    root: string,
+    tag: string,
+    names: string[],
+  ): Promise<Record<string, string | null>> {
+    return this.readSkillManifests(root, `${MAESTRO_TAGS}/${tag}`, names);
+  }
+
   // Reads the skills directory as it stands *inside* `ref`, so a ref that is
   // not an ancestor of anything is still readable. Null on anything the caller
   // must not read as a delta: an unreadable ref, or a listing git worded in a
@@ -793,7 +803,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
   // `readOutput`, not `read`: an empty listing is a namespace with no tags,
   // and only a failed command is null. Collapsing the two would read a git
   // failure as a harness that has never been released (#519).
-  private async readTags(root: string): Promise<HarnessTag[] | null> {
+  async readTags(root: string): Promise<HarnessTag[] | null> {
     const listing = await this.readOutput(root, [
       "for-each-ref",
       `--format=${TAG_FORMAT}`,

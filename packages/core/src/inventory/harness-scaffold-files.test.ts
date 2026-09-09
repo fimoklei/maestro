@@ -119,7 +119,7 @@ describe("CONTRIBUTING.md", () => {
       "**Propose change**",
       "**Pull request →**",
       "**Refresh**",
-      "**Plan release**",
+      "**Create a release**",
       "**Publish release**",
     ]) {
       expect(text()).toContain(label);

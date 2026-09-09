@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ImportDialog } from "./import-dialog";
@@ -18,6 +19,7 @@ function renderDialog(
   source: string | null,
   load: ComponentProps<typeof ImportDialog>["load"] = { kind: "idle" },
   imported: ComponentProps<typeof ImportDialog>["imported"] = null,
+  onView: ComponentProps<typeof ImportDialog>["onView"] = vi.fn(),
 ) {
   render(
     <ImportDialog
@@ -28,6 +30,7 @@ function renderDialog(
       onNameChange={vi.fn()}
       onClose={vi.fn()}
       onImport={vi.fn()}
+      onView={onView}
       importing={false}
       importError={null}
       imported={imported}
@@ -89,6 +92,28 @@ describe("ImportDialog", () => {
     expect(
       screen.getByText(/deploy it again/, { exact: false }),
     ).toBeInTheDocument();
+  });
+
+  it("confirms the import and offers the way to the row, claiming nothing about release", async () => {
+    const onView = vi.fn();
+    renderDialog(
+      DEEP,
+      { kind: "ready", check: CHECK },
+      { mode: "add", name: "release-notes", skipped: 0 },
+      onView,
+    );
+
+    const confirmation = screen.getByText("Skill imported").closest("div")
+      ?.parentElement as HTMLElement;
+    expect(confirmation).toHaveTextContent(
+      "View your imported skill in Harness.",
+    );
+    expect(confirmation.textContent).not.toMatch(/release/i);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "View in Harness" }),
+    );
+    expect(onView).toHaveBeenCalledWith("release-notes");
   });
 
   it("says nothing has been picked before a folder is chosen", () => {

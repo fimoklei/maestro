@@ -18,38 +18,15 @@ export type SkillTreeHashes = {
   working: string | null;
 };
 
-export type MovementState = "pending-review" | "pending-promotion";
-
-export const classifyMovement = ({
-  remote,
-  promote,
-  local,
-  working,
-}: SkillTreeHashes): MovementState | null => {
-  // origin/HEAD is tested first, so a branch whose content already merged is
-  // over. Anything else is a review still open, an older branch included:
-  // proving it merged needs commit ancestry, which ADR-0021 rules out.
-  if (promote !== null && promote.tree !== remote) {
-    return "pending-review";
-  }
-  // Differing from local HEAD too is what separates the author's own edit from
-  // a clone that is merely behind. It also costs a local commit nobody pushed:
-  // through hashes alone the two are the same picture (ADR-0021).
-  if (working !== remote && working !== local) {
-    return "pending-promotion";
-  }
-  return null;
-};
-
-// A movement that removes a skill from this disk: it was tracked at local HEAD
+// A skill removed from this disk: it was tracked at local HEAD
 // and is gone from the working tree. Renames are not inferred, so a moved
 // directory is this plus a separate addition, each read on its own (#575).
 export const isLocalDeletion = ({ local, working }: SkillTreeHashes): boolean =>
   local !== null && working === null;
 
 // origin/HEAD moved past what local HEAD last saw. Never the promote branch
-// too — classifyMovement already reads an unmerged branch as pending-review,
-// so comparing it here would relabel the author's own review as a teammate's.
+// too — an unmerged branch is the author's own proposal, so comparing it here
+// would relabel that review as a teammate's change.
 //
 // A tree-hash difference alone cannot tell "remote moved this skill" from
 // "local moved ahead of remote" (ADR-0021 — no ancestry from hashes).

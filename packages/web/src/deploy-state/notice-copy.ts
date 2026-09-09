@@ -60,6 +60,7 @@ const HEADINGS: Record<DeployStateCode, Heading> = {
   "invalid-name": { level: "error", label: "Unusable skill name" },
   "unknown-skill": { level: "error", label: "Skill not in the Inventory" },
   "inventory-not-configured": { level: "error", label: "No Harness connected" },
+  "inventory-unreadable": { level: "error", label: "Inventory not read" },
   "repo-not-registered": { level: "error", label: "Repository not registered" },
   "inventory-origin-unavailable": { level: "error", label: "No GitHub origin" },
   "no-published-tag": { level: "error", label: "Not in any release" },
@@ -120,6 +121,11 @@ const DEPLOY: Record<DeploySkillError, Body> = {
   },
   "inventory-not-configured": {
     message: "Connect a Harness on the Inventory screen, then deploy again.",
+  },
+  "inventory-unreadable": {
+    // "Re-read Inventory" is the Harness location screen's own button (R-D).
+    message:
+      "Press Re-read Inventory on the Harness location screen, then deploy again.",
   },
   "repo-not-registered": {
     message: "Register this repository in Maestro, then deploy again.",

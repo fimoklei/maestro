@@ -17,6 +17,7 @@ import {
   DeployedRefAdapter,
   DeploySkill,
   type DeploySkillError,
+  GhCliAdapter,
   GitCloneAdapter,
   GitHarnessScaffoldAdapter,
   GlobalDeployStateReader,
@@ -38,6 +39,9 @@ import {
   PromoteSkillDeletion,
   type PromoteSkillError,
   type PromoteSkillResult,
+  type ProposalActionError,
+  type ProposalActionResult,
+  ProposalActions,
   PublishRelease,
   type PublishReleaseError,
   type PublishReleaseResult,
@@ -54,6 +58,7 @@ import {
   type RepoPathError,
   readConfiguredGitOriginUrl,
   readGitOriginUrl,
+  releasedSkillsFromGit,
   resolveApmGlobalRoot,
   resolveApmScratchCwd,
   resolveDefaultBranch,
@@ -141,6 +146,14 @@ const publishReleaseBodySchema = z.object({
 // server-side, so the browser cannot point a promotion at another repository.
 const promoteBodySchema = z.object({ name: z.string() });
 
+// A proposal mutation names the skill and the request the row showed. The
+// number is a claim, never an authorisation: the use case rechecks it against
+// a fresh read before anything is closed or reopened (#827).
+const proposalBodySchema = z.object({
+  name: z.string(),
+  number: z.number().int().positive(),
+});
+
 // The confirmation the author gave: the skill, and the origin/HEAD tree hash
 // the row stated it against. Compared against a freshly fetched remote, never
 // used as the thing to remove (#580).
@@ -158,6 +171,19 @@ const PROMOTE_BODY: RequestShape = {
   message:
     "Nothing was proposed. Reload the page, then propose the change again.",
   detail: "The request carries a skill name: { name: string }.",
+};
+
+const PROPOSAL_CREATE_BODY: RequestShape = {
+  message:
+    "No pull request was created. Reload the page, then create it again.",
+  detail: "The request carries a skill name: { name: string }.",
+};
+
+const PROPOSAL_BODY: RequestShape = {
+  message:
+    "Nothing reached the pull request. Reload the page, then start the change again.",
+  detail:
+    "The request carries a skill name and a pull-request number: { name: string, number: number }.",
 };
 
 const DELETION_BODY: RequestShape = {
@@ -209,14 +235,17 @@ const BULK_REMOVE_BODY: RequestShape = {
 };
 
 // Read through the same InventoryReader the primitives route uses, so the two
-// cannot drift. Degrades to 0: a read failure must not turn an
-// already-successful connect or scaffold into a 500.
-async function countPrimitives(inventory: InventoryReader): Promise<number> {
+// cannot drift. Null is a count that could not be read; it never degrades to 0,
+// which is a confirmed empty release (ADR-0021 §8). A read failure still leaves
+// an already-successful connect or scaffold successful.
+async function countPrimitives(
+  inventory: InventoryReader,
+): Promise<number | null> {
   try {
     const read = await inventory.read();
-    return read.ok ? read.primitives.length : 0;
+    return read.ok ? read.primitives.length : null;
   } catch {
-    return 0;
+    return null;
   }
 }
 
@@ -252,6 +281,7 @@ const deployErrorResponses: ErrorTable<DeploySkillError> = {
   "invalid-name": { status: 400 },
   "unknown-skill": { status: 404 },
   "inventory-not-configured": { status: 409 },
+  "inventory-unreadable": { status: 503 },
   "repo-not-registered": { status: 403 },
   "inventory-origin-unavailable": { status: 502 },
   "no-published-tag": { status: 422 },
@@ -434,8 +464,27 @@ const promoteErrorResponses: ErrorTable<PromoteSkillError> = {
   "push-elsewhere": { status: 422 },
   "source-changed": { status: 409 },
   "concurrent-change": { status: 409 },
+  // Two open requests match the branch: which proposal an update belongs to is
+  // the author's to settle on GitHub (#827).
+  "extra-requests": { status: 409 },
   "promote-failed": { status: 502 },
   "promote-in-progress": { status: 409 },
+};
+
+// The three GitHub-side mutations. Every refusal leaves both the clone and the
+// pull request as they were, so a retry is another press (#827).
+const proposalErrorResponses: ErrorTable<ProposalActionError> = {
+  ...harnessErrorResponses,
+  "invalid-skill": { status: 400 },
+  "no-answer": { status: 409 },
+  // A capability that cannot answer and one whose answer proves nothing are
+  // both preconditions the author clears with Retry check, never dead ends.
+  "review-unavailable": { status: 409 },
+  "review-unknown": { status: 409 },
+  "request-gone": { status: 409 },
+  "extra-requests": { status: 409 },
+  "request-exists": { status: 409 },
+  "action-failed": { status: 502 },
 };
 
 // Promotion's refusals plus the ones only a removal has: a confirmation the
@@ -454,6 +503,7 @@ const deletionErrorResponses: ErrorTable<PromoteDeletionError> = {
   unreadable: { status: 409 },
   "push-elsewhere": promoteErrorResponses["push-elsewhere"],
   "source-changed": { status: 409 },
+  "extra-requests": promoteErrorResponses["extra-requests"],
   "promote-failed": { status: 502 },
   "promote-in-progress": promoteErrorResponses["promote-in-progress"],
 };
@@ -509,6 +559,7 @@ export type AppDeps = {
   publish: PublishRelease;
   promote: PromoteSkill;
   promoteDeletion: PromoteSkillDeletion;
+  proposals: ProposalActions;
   connect: ConnectInventory;
   scaffold: ScaffoldHarness;
   browse: BrowseFilesystem;
@@ -551,9 +602,14 @@ export function createApp(deps: AppDeps) {
   app.get("/api/inventory/primitives", async (c) => {
     const result = await deps.inventory.read();
     if (!result.ok) {
-      // 409: unset/missing/not-a-directory. Never echoes the path. The
-      // cockpit writes its own words for this read (`inventory-panel.tsx`).
-      return c.json({ error: result.error }, 409);
+      // 409: unset/missing/not-a-directory. 503: connected, but its release
+      // could not be read — never the same answer, or the cockpit would send
+      // the author to re-connect a live harness (#841). Never echoes the path;
+      // the cockpit writes its own words (`inventory-panel.tsx`).
+      return c.json(
+        { error: result.error },
+        result.error === "unreadable" ? 503 : 409,
+      );
     }
     return c.json({ primitives: result.primitives });
   });
@@ -665,6 +721,46 @@ export function createApp(deps: AppDeps) {
       branch: result.branch,
       pullRequestUrl: result.pullRequestUrl,
     });
+  });
+
+  // The three mutations that touch only GitHub. Each rechecks identity and the
+  // request against a fresh read, so the browser's picture authorizes nothing.
+  const proposalResponse = (c: Context, result: ProposalActionResult) => {
+    if (!result.ok) {
+      const { status } = proposalErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
+    }
+    return c.json({ ok: true });
+  };
+
+  app.post("/api/harness/proposal/create", async (c) => {
+    const body = await parseBody(c, promoteBodySchema, PROPOSAL_CREATE_BODY);
+    if (!body.ok) {
+      return body.response;
+    }
+    return proposalResponse(c, await deps.proposals.create(body.data.name));
+  });
+
+  app.post("/api/harness/proposal/reopen", async (c) => {
+    const body = await parseBody(c, proposalBodySchema, PROPOSAL_BODY);
+    if (!body.ok) {
+      return body.response;
+    }
+    return proposalResponse(
+      c,
+      await deps.proposals.reopen(body.data.name, body.data.number),
+    );
+  });
+
+  app.post("/api/harness/proposal/withdraw", async (c) => {
+    const body = await parseBody(c, proposalBodySchema, PROPOSAL_BODY);
+    if (!body.ok) {
+      return body.response;
+    }
+    return proposalResponse(
+      c,
+      await deps.proposals.withdraw(body.data.name, body.data.number),
+    );
   });
 
   // What Import would do, before it does it: the proposed name, the refusals,
@@ -976,11 +1072,15 @@ function realDeps(): AppDeps {
       resolveInventoryPath(config, process.env),
   });
   // Resolved per read, so a path saved after startup is picked up without a restart.
+  // Shared by the harness read, the release confirm and the Inventory read
+  // below, so all three name the same connected clone.
+  const harnessGit = new HarnessGitAdapter();
   const inventory = new InventoryReader({
     fs,
     resolvePath: async () =>
       resolveInventoryPath(await store.read(), process.env),
     originUrl: readConfiguredGitOriginUrl,
+    readReleasedSkills: releasedSkillsFromGit(harnessGit),
   });
   const deployState = new GlobalDeployStateReader({
     fs,
@@ -995,8 +1095,6 @@ function realDeps(): AppDeps {
       return cwd;
     },
   });
-  // Shared by the harness read and the release confirm below, so both name
-  // the same connected clone.
   const harnessRoot = async () => {
     const path = resolveInventoryPath(await store.read(), process.env);
     if (path === undefined) {
@@ -1006,7 +1104,10 @@ function realDeps(): AppDeps {
     // never the raw path, which would run git against something unresolved.
     return await fs.realpath(path).catch(() => undefined);
   };
-  const harnessGit = new HarnessGitAdapter();
+  // GitHub's side of the journey, through the author's own gh sign-in. Optional
+  // by design: absent or unauthenticated, the review stage degrades and every
+  // git fact stays readable (ADR-0029).
+  const harnessReview = new GhCliAdapter();
   const harnessFreshness = new HarnessFreshnessStore({ store });
   // Shared by both ways a movement reaches review: two of them for the same
   // harness must queue, not race each other's temporary index and push.
@@ -1082,6 +1183,7 @@ function realDeps(): AppDeps {
     resolveRoot: harnessRoot,
     git: harnessGit,
     freshness: harnessFreshness,
+    review: harnessReview,
   });
   // One register for both use cases: connect writes the offers the scaffold
   // will only act on (#556).
@@ -1156,6 +1258,7 @@ function realDeps(): AppDeps {
       git: harnessGit,
       freshness: harnessFreshness,
       locks: harnessPromoteLocks,
+      review: harnessReview,
     }),
     // Publishing a removal is the same branch lifecycle one movement the other
     // way, so it shares the promotion's lock: an edit and a removal building
@@ -1165,6 +1268,14 @@ function realDeps(): AppDeps {
       git: harnessGit,
       freshness: harnessFreshness,
       locks: harnessPromoteLocks,
+      review: harnessReview,
+    }),
+    // The same gh boundary the read uses, so what a mutation rechecks and what
+    // the rows were painted from cannot come from two places (#827).
+    proposals: new ProposalActions({
+      resolveRoot: harnessRoot,
+      git: harnessGit,
+      review: harnessReview,
     }),
     // Checked offline against local git config, so the error lands before
     // the first deploy (#147).

@@ -5,8 +5,10 @@ import {
   InFlightLocks,
   PromoteSkill,
   PromoteSkillDeletion,
+  ProposalActions,
 } from "@maestro/core";
 import {
+  unavailableHarnessReview,
   unfetchedFreshness,
   unreachableHarnessGit,
 } from "./unreachable-harness";
@@ -14,15 +16,18 @@ import {
 export function stubPromotes(): {
   promote: PromoteSkill;
   promoteDeletion: PromoteSkillDeletion;
+  proposals: ProposalActions;
 } {
   const deps = {
     resolveRoot: async () => undefined,
     git: unreachableHarnessGit(),
     freshness: unfetchedFreshness(),
     locks: new InFlightLocks(),
+    review: unavailableHarnessReview(),
   };
   return {
     promote: new PromoteSkill(deps),
     promoteDeletion: new PromoteSkillDeletion(deps),
+    proposals: new ProposalActions(deps),
   };
 }

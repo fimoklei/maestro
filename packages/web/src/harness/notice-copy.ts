@@ -1,10 +1,12 @@
 import type {
+  HarnessFreshness,
   HarnessStateError,
   ImportNameBlocker,
   ImportSkillError,
   ImportSourceBlocker,
   PromoteDeletionError,
   PromoteSkillError,
+  ProposalActionError,
   PublishReleaseError,
   ReleasePlanError,
 } from "@maestro/core";
@@ -27,7 +29,7 @@ const harnessHeadings: NoticeTable<HarnessStateError> = {
     level: "error",
     label: "No GitHub origin",
     message: "Point the clone's origin at the Harness repository on GitHub.",
-    detail: "Releases are published as tags, fetched over https or ssh.",
+    detail: "Releases are published as tags, read over https or ssh.",
   },
 };
 
@@ -36,7 +38,7 @@ const releasePlanHeadings: NoticeTable<ReleasePlanError> = {
   "no-answer": {
     level: "error",
     label: "No answer from GitHub",
-    message: "Press Refresh, then Plan release again.",
+    message: "Press Retry check, then Create a release again.",
     detail: "A release plan is measured against what GitHub holds.",
   },
 };
@@ -47,7 +49,7 @@ const publishReleaseHeadings: NoticeTable<PublishReleaseError> = {
     level: "error",
     label: "No answer from GitHub",
     message:
-      "Nothing was published. Press Refresh, then Publish release again.",
+      "Nothing was published. Press Retry check, then Publish release again.",
   },
   "already-released": {
     level: "error",
@@ -71,12 +73,12 @@ const publishReleaseHeadings: NoticeTable<PublishReleaseError> = {
   "publish-in-progress": {
     level: "error",
     label: "Release already running",
-    message: "Wait for that release to finish, then Plan release again.",
+    message: "Wait for that release to finish, then Create a release again.",
     detail: "Maestro publishes one release at a time.",
   },
 };
 
-// A proposed change and a removal share a heading wherever they share a code —
+// A proposed change and a deletion share a heading wherever they share a code —
 // the same thing goes wrong — but each states its own way through, so the
 // sentences differ where the two ways through differ (#686).
 const promoteHeadings: NoticeTable<PromoteSkillError> = {
@@ -90,18 +92,19 @@ const promoteHeadings: NoticeTable<PromoteSkillError> = {
   "no-answer": {
     level: "error",
     label: "No answer from GitHub",
-    message: "Nothing was pushed. Press Refresh, then Propose change again.",
+    message:
+      "Nothing was pushed. Press Retry check, then Propose change again.",
   },
   "skill-missing": {
     level: "error",
     label: "Skill no longer in the Harness",
-    message: "Nothing was pushed. Press Refresh to repaint the list.",
+    message: "Nothing was pushed. Press Retry check to repaint the list.",
   },
   "push-elsewhere": {
     level: "error",
     label: "Different push remote",
     message: "Nothing was pushed. Point the clone's push remote at its origin.",
-    detail: "Maestro publishes only to the origin it fetches from.",
+    detail: "Maestro publishes only to the origin it reads from.",
   },
   "source-changed": {
     level: "error",
@@ -114,6 +117,13 @@ const promoteHeadings: NoticeTable<PromoteSkillError> = {
     label: "Newer change from a teammate",
     message:
       "Their version still stands. Pull it into the Harness clone, then Propose change again.",
+  },
+  "extra-requests": {
+    level: "error",
+    label: "Multiple pull requests",
+    message:
+      "Nothing was pushed. Close the extra requests on GitHub, then Propose change again.",
+    detail: "More than one open pull request matches this skill's branch.",
   },
   "promote-failed": {
     level: "error",
@@ -138,66 +148,122 @@ const deletionHeadings: NoticeTable<PromoteDeletionError> = {
   "push-elsewhere": promoteHeadings["push-elsewhere"],
   "no-answer": {
     ...promoteHeadings["no-answer"],
-    message: "Nothing was pushed. Press Refresh, then Remove skill again.",
+    message: "Nothing was pushed. Press Retry check, then Delete skill again.",
   },
   "source-changed": {
     ...promoteHeadings["source-changed"],
-    message: "Nothing was pushed. Press Refresh to repaint the list.",
+    message: "Nothing was pushed. Press Retry check to repaint the list.",
   },
   "promote-in-progress": {
     ...promoteHeadings["promote-in-progress"],
-    message: "Wait for that change to finish, then Remove skill again.",
+    message: "Wait for that change to finish, then Delete skill again.",
   },
   "promote-failed": {
     ...promoteHeadings["promote-failed"],
-    label: "Removal not proposed",
+    label: "Deletion not proposed",
     message:
-      "The Harness is as it was. Remove skill again once GitHub is reachable.",
+      "The Harness is as it was. Delete skill again once GitHub is reachable.",
+  },
+  "extra-requests": {
+    ...promoteHeadings["extra-requests"],
+    message:
+      "Nothing was pushed. Close the extra requests on GitHub, then Delete skill again.",
   },
   "confirmation-stale": {
     level: "error",
     label: "Confirmation out of date",
-    message: "Nothing was pushed. Press Refresh, then Remove skill again.",
+    message: "Nothing was pushed. Press Retry check, then Delete skill again.",
     detail: "The copy on the default branch moved after this confirmation.",
   },
   "not-deleted": {
     level: "error",
     label: "Skill still in the Harness",
     message: "Delete the skill folder in the Harness clone first.",
-    detail: "A removal publishes what the Harness working tree already says.",
+    detail: "A deletion publishes what the Harness working tree already says.",
   },
   "sparse-checkout": {
     level: "error",
     label: "Partial clone",
-    message: "Nothing was pushed. Connect a complete clone to remove skills.",
+    message: "Nothing was pushed. Connect a complete clone to delete skills.",
     detail: "A missing folder in a partial clone is not proof of a deletion.",
   },
   "merge-in-progress": {
     level: "error",
     label: "Unfinished merge",
     message:
-      "Nothing was pushed. Finish or abort the merge, then Remove skill again.",
+      "Nothing was pushed. Finish or abort the merge, then Delete skill again.",
     detail: "A half-merged working tree does not state what should go.",
   },
   "rebase-in-progress": {
     level: "error",
     label: "Unfinished rebase",
     message:
-      "Nothing was pushed. Finish or abort the rebase, then Remove skill again.",
+      "Nothing was pushed. Finish or abort the rebase, then Delete skill again.",
     detail: "A half-rebased working tree does not state what should go.",
   },
   "unresolved-conflicts": {
     level: "error",
     label: "Unresolved conflicts",
     message:
-      "Nothing was pushed. Resolve the conflicts, then Remove skill again.",
+      "Nothing was pushed. Resolve the conflicts, then Delete skill again.",
     detail: "A conflicted working tree does not state what should go.",
   },
   unreadable: {
     level: "error",
     label: "Unreadable working tree",
     message:
-      "Nothing was pushed. Make the Harness folder readable, then Remove skill again.",
+      "Nothing was pushed. Make the Harness folder readable, then Delete skill again.",
+  },
+};
+
+// The three GitHub-side mutations. Each refusal leaves the pull request and
+// the clone as they were, so every sentence ends on another press of the same
+// control (ADR-0025).
+const proposalHeadings: NoticeTable<ProposalActionError> = {
+  ...harnessHeadings,
+  "invalid-skill": promoteHeadings["invalid-skill"],
+  "no-answer": {
+    level: "error",
+    label: "No answer from GitHub",
+    message: "Nothing changed on GitHub. Press Retry check.",
+    detail:
+      "Maestro could not read the branch this proposal is opened against.",
+  },
+  "review-unavailable": {
+    level: "error",
+    label: "Review status unavailable",
+    message: "Sign in with gh auth login, then press Retry check.",
+    detail: "Maestro reads pull requests through your own gh sign-in.",
+  },
+  "review-unknown": {
+    level: "error",
+    label: "Review status unknown",
+    message: "Press Retry check to read GitHub again.",
+    detail: "GitHub gave no answer Maestro can act on.",
+  },
+  "request-gone": {
+    level: "error",
+    label: "Pull request moved on",
+    message: "Press Retry check to read what GitHub holds now.",
+    detail: "This pull request is no longer the one open over this skill.",
+  },
+  "extra-requests": {
+    level: "error",
+    label: "Multiple pull requests",
+    message: "Close the extra requests on GitHub, then press Retry check.",
+    detail: "More than one open pull request matches this skill's branch.",
+  },
+  "request-exists": {
+    level: "error",
+    label: "Pull request already open",
+    message: "Press Retry check to read the open pull request.",
+    detail: "GitHub already holds an open request over this skill's branch.",
+  },
+  "action-failed": {
+    level: "error",
+    label: "Pull request unchanged",
+    message: "Open the pull request on GitHub and make the change there.",
+    detail: "GitHub refused the change Maestro asked for.",
   },
 };
 
@@ -369,8 +435,57 @@ export const refreshNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(harnessHeadings, error, {
     label: "GitHub not read",
     message:
-      "The Maestro server did not answer, so the Harness is as it was. Press Refresh again.",
+      "The Maestro server did not answer, so the Harness is as it was. Press Retry check.",
   });
+
+// Not a failed press but a failed read: the rows below stand, dated to the
+// last read that answered. Null before any read has ever succeeded — nothing
+// is out of date yet, and the stage labels carry that state instead (#848).
+export const staleStatusNotice = (
+  freshness: HarnessFreshness,
+  onRetry: () => void,
+): NoticeContent | null => {
+  if (
+    freshness.lastFetchedAt === null ||
+    (freshness.outcome !== "offline" && freshness.outcome !== "fetch-failed")
+  ) {
+    return null;
+  }
+  return {
+    level: "warning",
+    label: "Status out of date",
+    message: "Press Retry check to read GitHub again.",
+    detail:
+      freshness.outcome === "offline"
+        ? "Maestro could not reach GitHub, so these rows are from the last read."
+        : "GitHub gave no answer, so these rows are from the last read.",
+    action: { label: "Retry check", onClick: onRetry },
+  };
+};
+
+// What a publication landed, and the one place the cockpit states that a
+// release is final (#827). The tag is atomic, so the Inventory re-read is the
+// only half that can fail on its own: both outcomes keep the heading, the
+// subject and the detail, and the way back is written into the sentence (#849).
+export const releasePublishedNotice = (
+  tag: string,
+  inventoryRefreshed: boolean,
+  onReread: () => void,
+): NoticeContent =>
+  inventoryRefreshed
+    ? {
+        level: "success",
+        label: "Release published",
+        message: `Maestro tagged ${tag} and refreshed Inventory.`,
+        detail: "A release cannot change after publication.",
+      }
+    : {
+        level: "warning",
+        label: "Release published",
+        message: `Maestro tagged ${tag} but could not refresh Inventory. Re-read Inventory to see the published skills.`,
+        detail: "A release cannot change after publication.",
+        action: { label: "Re-read Inventory", onClick: onReread },
+      };
 
 export const releasePlanNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(releasePlanHeadings, error, {
@@ -393,11 +508,18 @@ export const promoteNotice = (error: unknown): NoticeContent | null =>
       "The Maestro server did not answer, and nothing was pushed. Propose change again.",
   });
 
-export const removalNotice = (error: unknown): NoticeContent | null =>
+export const deletionNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(deletionHeadings, error, {
-    label: "Removal not proposed",
+    label: "Deletion not proposed",
     message:
-      "The Maestro server did not answer, and nothing was pushed. Remove skill again.",
+      "The Maestro server did not answer, and nothing was pushed. Delete skill again.",
+  });
+
+export const proposalNotice = (error: unknown): NoticeContent | null =>
+  noticeFromTable(proposalHeadings, error, {
+    label: "Pull request unchanged",
+    message:
+      "The Maestro server did not answer, and GitHub is as it was. Start the change again.",
   });
 
 export const importNotice = (error: unknown): NoticeContent | null =>

@@ -72,7 +72,18 @@ describe("the tracer journey through one cockpit", () => {
   function makeApp() {
     const fs = new NodeFileSystem();
     const registry = realRegistry(fs, join(home, "config.json"));
-    const inventory = new InventoryReader({ fs, resolvePath: () => harness });
+    const inventory = new InventoryReader({
+      fs,
+      resolvePath: () => harness,
+      // Released, not merely on disk: Inventory answers from the release (#841).
+      readReleasedSkills: async () => [
+        {
+          name: "tdd",
+          manifest:
+            "---\nname: tdd\ndescription: Test-driven development loop\n---\n",
+        },
+      ],
+    });
     const locks = new InFlightLocks();
     const deploy = new DeploySkill({
       inventory,

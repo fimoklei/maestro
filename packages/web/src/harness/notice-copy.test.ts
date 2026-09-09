@@ -3,13 +3,16 @@ import { HttpError } from "../api/http";
 import type { NoticeContent } from "../ui/notice";
 import {
   CONCURRENT_CHANGE_NOTICE,
+  deletionNotice,
   harnessStateNotice,
   importNotice,
   promoteNotice,
+  proposalNotice,
   publishReleaseNotice,
   refreshNotice,
   releasePlanNotice,
-  removalNotice,
+  releasePublishedNotice,
+  staleStatusNotice,
 } from "./notice-copy";
 
 // The finished notice as data: level, heading, sentence, detail (ADR-0025 §10
@@ -31,7 +34,7 @@ const NO_USABLE_ORIGIN: NoticeContent = {
   level: "error",
   label: "No GitHub origin",
   message: "Point the clone's origin at the Harness repository on GitHub.",
-  detail: "Releases are published as tags, fetched over https or ssh.",
+  detail: "Releases are published as tags, read over https or ssh.",
 };
 
 const UNUSABLE_NAME: NoticeContent = {
@@ -45,7 +48,7 @@ const PUSH_ELSEWHERE: NoticeContent = {
   level: "error",
   label: "Different push remote",
   message: "Nothing was pushed. Point the clone's push remote at its origin.",
-  detail: "Maestro publishes only to the origin it fetches from.",
+  detail: "Maestro publishes only to the origin it reads from.",
 };
 
 const CONCURRENT_CHANGE: NoticeContent = {
@@ -82,7 +85,7 @@ const suites: [
       level: "error",
       label: "GitHub not read",
       message:
-        "The Maestro server did not answer, so the Harness is as it was. Press Refresh again.",
+        "The Maestro server did not answer, so the Harness is as it was. Press Retry check.",
     },
     [
       ["not-configured", NOT_CONFIGURED],
@@ -106,7 +109,7 @@ const suites: [
         {
           level: "error",
           label: "No answer from GitHub",
-          message: "Press Refresh, then Plan release again.",
+          message: "Press Retry check, then Create a release again.",
           detail: "A release plan is measured against what GitHub holds.",
         },
       ],
@@ -130,7 +133,7 @@ const suites: [
           level: "error",
           label: "No answer from GitHub",
           message:
-            "Nothing was published. Press Refresh, then Publish release again.",
+            "Nothing was published. Press Retry check, then Publish release again.",
         },
       ],
       [
@@ -166,7 +169,8 @@ const suites: [
         {
           level: "error",
           label: "Release already running",
-          message: "Wait for that release to finish, then Plan release again.",
+          message:
+            "Wait for that release to finish, then Create a release again.",
           detail: "Maestro publishes one release at a time.",
         },
       ],
@@ -193,7 +197,7 @@ const suites: [
           level: "error",
           label: "No answer from GitHub",
           message:
-            "Nothing was pushed. Press Refresh, then Propose change again.",
+            "Nothing was pushed. Press Retry check, then Propose change again.",
         },
       ],
       [
@@ -201,7 +205,18 @@ const suites: [
         {
           level: "error",
           label: "Skill no longer in the Harness",
-          message: "Nothing was pushed. Press Refresh to repaint the list.",
+          message: "Nothing was pushed. Press Retry check to repaint the list.",
+        },
+      ],
+      [
+        "extra-requests",
+        {
+          level: "error",
+          label: "Multiple pull requests",
+          message:
+            "Nothing was pushed. Close the extra requests on GitHub, then Propose change again.",
+          detail:
+            "More than one open pull request matches this skill's branch.",
         },
       ],
       [
@@ -234,13 +249,13 @@ const suites: [
     ],
   ],
   [
-    "removalNotice",
-    removalNotice,
+    "deletionNotice",
+    deletionNotice,
     {
       level: "error",
-      label: "Removal not proposed",
+      label: "Deletion not proposed",
       message:
-        "The Maestro server did not answer, and nothing was pushed. Remove skill again.",
+        "The Maestro server did not answer, and nothing was pushed. Delete skill again.",
     },
     [
       ["not-configured", NOT_CONFIGURED],
@@ -253,7 +268,7 @@ const suites: [
           level: "error",
           label: "No answer from GitHub",
           message:
-            "Nothing was pushed. Press Refresh, then Remove skill again.",
+            "Nothing was pushed. Press Retry check, then Delete skill again.",
         },
       ],
       [
@@ -261,7 +276,7 @@ const suites: [
         {
           level: "error",
           label: "Folder edit mid-read",
-          message: "Nothing was pushed. Press Refresh to repaint the list.",
+          message: "Nothing was pushed. Press Retry check to repaint the list.",
         },
       ],
       [
@@ -269,7 +284,7 @@ const suites: [
         {
           level: "error",
           label: "Change already being proposed",
-          message: "Wait for that change to finish, then Remove skill again.",
+          message: "Wait for that change to finish, then Delete skill again.",
           detail: "Maestro proposes one change at a time.",
         },
       ],
@@ -277,9 +292,9 @@ const suites: [
         "promote-failed",
         {
           level: "error",
-          label: "Removal not proposed",
+          label: "Deletion not proposed",
           message:
-            "The Harness is as it was. Remove skill again once GitHub is reachable.",
+            "The Harness is as it was. Delete skill again once GitHub is reachable.",
         },
       ],
       [
@@ -288,7 +303,7 @@ const suites: [
           level: "error",
           label: "Confirmation out of date",
           message:
-            "Nothing was pushed. Press Refresh, then Remove skill again.",
+            "Nothing was pushed. Press Retry check, then Delete skill again.",
           detail:
             "The copy on the default branch moved after this confirmation.",
         },
@@ -300,7 +315,7 @@ const suites: [
           label: "Skill still in the Harness",
           message: "Delete the skill folder in the Harness clone first.",
           detail:
-            "A removal publishes what the Harness working tree already says.",
+            "A deletion publishes what the Harness working tree already says.",
         },
       ],
       [
@@ -309,7 +324,7 @@ const suites: [
           level: "error",
           label: "Partial clone",
           message:
-            "Nothing was pushed. Connect a complete clone to remove skills.",
+            "Nothing was pushed. Connect a complete clone to delete skills.",
           detail:
             "A missing folder in a partial clone is not proof of a deletion.",
         },
@@ -320,7 +335,7 @@ const suites: [
           level: "error",
           label: "Unfinished merge",
           message:
-            "Nothing was pushed. Finish or abort the merge, then Remove skill again.",
+            "Nothing was pushed. Finish or abort the merge, then Delete skill again.",
           detail: "A half-merged working tree does not state what should go.",
         },
       ],
@@ -330,7 +345,7 @@ const suites: [
           level: "error",
           label: "Unfinished rebase",
           message:
-            "Nothing was pushed. Finish or abort the rebase, then Remove skill again.",
+            "Nothing was pushed. Finish or abort the rebase, then Delete skill again.",
           detail: "A half-rebased working tree does not state what should go.",
         },
       ],
@@ -340,7 +355,7 @@ const suites: [
           level: "error",
           label: "Unresolved conflicts",
           message:
-            "Nothing was pushed. Resolve the conflicts, then Remove skill again.",
+            "Nothing was pushed. Resolve the conflicts, then Delete skill again.",
           detail: "A conflicted working tree does not state what should go.",
         },
       ],
@@ -350,7 +365,7 @@ const suites: [
           level: "error",
           label: "Unreadable working tree",
           message:
-            "Nothing was pushed. Make the Harness folder readable, then Remove skill again.",
+            "Nothing was pushed. Make the Harness folder readable, then Delete skill again.",
         },
       ],
     ],
@@ -575,6 +590,61 @@ const suites: [
       ],
     ],
   ],
+  [
+    "proposalNotice",
+    proposalNotice,
+    {
+      level: "error",
+      label: "Pull request unchanged",
+      message:
+        "The Maestro server did not answer, and GitHub is as it was. Start the change again.",
+    },
+    // Every way through names a control the reader can see: the three actions
+    // share one table, so no row may name one action's button (copy.md).
+    [
+      ["not-configured", NOT_CONFIGURED],
+      ["invalid-skill", UNUSABLE_NAME],
+      [
+        "no-answer",
+        {
+          level: "error",
+          label: "No answer from GitHub",
+          message: "Nothing changed on GitHub. Press Retry check.",
+          detail:
+            "Maestro could not read the branch this proposal is opened against.",
+        },
+      ],
+      [
+        "review-unavailable",
+        {
+          level: "error",
+          label: "Review status unavailable",
+          message: "Sign in with gh auth login, then press Retry check.",
+          detail: "Maestro reads pull requests through your own gh sign-in.",
+        },
+      ],
+      [
+        "review-unknown",
+        {
+          level: "error",
+          label: "Review status unknown",
+          message: "Press Retry check to read GitHub again.",
+          detail: "GitHub gave no answer Maestro can act on.",
+        },
+      ],
+      [
+        "extra-requests",
+        {
+          level: "error",
+          label: "Multiple pull requests",
+          message:
+            "Close the extra requests on GitHub, then press Retry check.",
+          detail:
+            "More than one open pull request matches this skill's branch.",
+        },
+      ],
+    ],
+  ],
 ];
 
 describe.each(suites)("%s", (_name, read, fallback, cases) => {
@@ -591,11 +661,112 @@ describe.each(suites)("%s", (_name, read, fallback, cases) => {
   });
 });
 
+describe("staleStatusNotice", () => {
+  const retry = () => {};
+  const READ_AT = "2026-08-03T11:56:00.000Z";
+
+  it("states the whole notice when a fetch failed over an earlier read", () => {
+    expect(
+      staleStatusNotice(
+        { outcome: "fetch-failed", lastFetchedAt: READ_AT },
+        retry,
+      ),
+    ).toEqual({
+      level: "warning",
+      label: "Status out of date",
+      message: "Press Retry check to read GitHub again.",
+      detail: "GitHub gave no answer, so these rows are from the last read.",
+      action: { label: "Retry check", onClick: retry },
+    });
+  });
+
+  it("names being offline as the cause where that is the cause", () => {
+    expect(
+      staleStatusNotice({ outcome: "offline", lastFetchedAt: READ_AT }, retry)
+        ?.detail,
+    ).toBe(
+      "Maestro could not reach GitHub, so these rows are from the last read.",
+    );
+  });
+
+  it("shows nothing where no read has ever succeeded", () => {
+    // Nothing is out of date yet: the stage labels carry that state instead.
+    expect(
+      staleStatusNotice({ outcome: "offline", lastFetchedAt: null }, retry),
+    ).toBeNull();
+  });
+
+  it("shows nothing while the last fetch answered", () => {
+    expect(
+      staleStatusNotice({ outcome: "fetched", lastFetchedAt: READ_AT }, retry),
+    ).toBeNull();
+    expect(
+      staleStatusNotice({ outcome: null, lastFetchedAt: null }, retry),
+    ).toBeNull();
+  });
+});
+
+describe("the deletion vocabulary", () => {
+  it("never calls a Harness deletion a removal", () => {
+    // Remove belongs to deployed copies alone (CONTEXT.md · Screen names).
+    const codes = [
+      "not-configured",
+      "no-usable-origin",
+      "invalid-skill",
+      "push-elsewhere",
+      "no-answer",
+      "source-changed",
+      "promote-in-progress",
+      "promote-failed",
+      "extra-requests",
+      "confirmation-stale",
+      "not-deleted",
+      "sparse-checkout",
+      "merge-in-progress",
+      "rebase-in-progress",
+      "unresolved-conflicts",
+      "unreadable",
+      "a-code-this-build-predates",
+    ];
+    for (const code of codes) {
+      const each = notice(deletionNotice, code);
+      const words = `${each?.label} ${each?.message} ${each?.detail ?? ""}`;
+      expect(words, code).not.toMatch(/remov/i);
+    }
+  });
+});
+
 describe("CONCURRENT_CHANGE_NOTICE", () => {
   it("carries the promote table's words at info level", () => {
     expect(CONCURRENT_CHANGE_NOTICE).toEqual({
       ...CONCURRENT_CHANGE,
       level: "info",
+    });
+  });
+});
+
+describe("releasePublishedNotice", () => {
+  const reread = () => {};
+
+  it("states the tag and the Inventory read that followed it", () => {
+    expect(releasePublishedNotice("v1.5.0", true, reread)).toEqual({
+      level: "success",
+      label: "Release published",
+      message: "Maestro tagged v1.5.0 and refreshed Inventory.",
+      detail: "A release cannot change after publication.",
+    });
+  });
+
+  it("keeps the heading and the detail when only the Inventory read failed", () => {
+    // The tag is atomic, so the release stands whatever the re-read did: one
+    // heading, one subject, one detail across both outcomes (#849).
+    expect(releasePublishedNotice("v1.5.0", false, reread)).toEqual({
+      level: "warning",
+      label: "Release published",
+      message:
+        "Maestro tagged v1.5.0 but could not refresh Inventory. Re-read Inventory to see the published skills.",
+      detail: "A release cannot change after publication.",
+      action: { label: "Re-read Inventory", onClick: reread },
     });
   });
 });

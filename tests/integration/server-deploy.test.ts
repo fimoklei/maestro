@@ -108,7 +108,19 @@ describe("deploy HTTP route", () => {
   }) {
     const fs = new NodeFileSystem();
     const registry = realRegistry(fs, join(home, "config.json"));
-    const inventory = new InventoryReader({ fs, resolvePath: () => harness });
+    const inventory = new InventoryReader({
+      fs,
+      resolvePath: () => harness,
+      // Inventory answers from the latest release, so the skill is declared
+      // released here rather than inferred from the harness on disk (#841).
+      readReleasedSkills: async () => [
+        {
+          name: "tdd",
+          manifest:
+            "---\nname: tdd\ndescription: Test-driven development\n---\n",
+        },
+      ],
+    });
     const deployState = stubDeployState({ fs });
     const deployCalls: Array<{
       target: DeployTarget;
