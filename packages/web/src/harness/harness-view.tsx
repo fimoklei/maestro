@@ -12,7 +12,6 @@ import {
   freshnessLabel,
   harnessAnnouncement,
   journeyConfirmedEmpty,
-  RELEASE_SUMMARIES,
   releaseEnabled,
   stageSections,
 } from "./harness-view-model";
@@ -265,11 +264,6 @@ export function HarnessView() {
               Retry check
             </Button>
           </HarnessStrip>
-          <Card className="mt-3" padded>
-            <p className="m-0 font-mono text-desc text-muted">
-              {RELEASE_SUMMARIES[state.releaseState]}
-            </p>
-          </Card>
           {/* Off-screen, polite: a press moves a row between stages and the
               tables repaint under the keyboard, saying nothing (#868). */}
           <span
@@ -286,6 +280,13 @@ export function HarnessView() {
             const rows =
               section.read.outcome === "read" ? section.read.rows : [];
             const proposal = section.stage === "pending-proposal";
+            // Only a read stage that holds rows names its count, so a number
+            // never appears without rows beside it and can never be mistaken
+            // for an unread stage (#827, #881).
+            const heading =
+              rows.length === 0
+                ? section.title
+                : `${section.title} · ${rows.length}`;
             const proposalEmpty = journeyConfirmedEmpty(state)
               ? PROPOSAL_EMPTY.journey
               : PROPOSAL_EMPTY.stage;
@@ -333,7 +334,7 @@ export function HarnessView() {
                 <SectionHeader
                   level={2}
                   size={3}
-                  title={section.title}
+                  title={heading}
                   meta={section.meta}
                 >
                   {importAction}

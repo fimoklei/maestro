@@ -3,7 +3,6 @@ import {
   freshnessLabel,
   harnessAnnouncement,
   journeyConfirmedEmpty,
-  RELEASE_SUMMARIES,
   releaseEnabled,
   stageSections,
 } from "./harness-view-model";
@@ -121,28 +120,6 @@ describe("releaseEnabled", () => {
     // Offline and fetch-failed are the two states that disable it (#519).
     // Anything else opens the dialog, which states the server's own answer.
     expect(releaseEnabled({ outcome: null, lastFetchedAt: null })).toBe(true);
-  });
-});
-
-describe("RELEASE_SUMMARIES", () => {
-  it("reads a quiet harness as nothing waiting", () => {
-    expect(RELEASE_SUMMARIES.released).toBe("Everything merged is released.");
-  });
-
-  it("names merged work the released harness does not carry yet", () => {
-    expect(RELEASE_SUMMARIES["pending-release"]).toBe(
-      "Merged changes are waiting for release.",
-    );
-  });
-
-  it("reads a harness before its first tag as a normal day", () => {
-    expect(RELEASE_SUMMARIES["never-released"]).toBe("No release yet.");
-  });
-
-  it("admits it cannot tell before the first read", () => {
-    expect(RELEASE_SUMMARIES.unknown).toBe(
-      "Not read yet, so what is waiting is unknown.",
-    );
   });
 });
 
