@@ -254,6 +254,31 @@ describe("stageSections", () => {
     );
   });
 
+  it("names the bound a review read filled seconds ago", () => {
+    const built = {
+      ...state({ review: { outcome: "read", bound: 50, rows: [] } }),
+      freshness: {
+        outcome: "fetched" as const,
+        lastFetchedAt: "2026-08-03T11:59:40.000Z",
+      },
+    };
+
+    expect(metaOf(built, "pending-review")).toBe(
+      "Read the 50 most recent pull requests, just now",
+    );
+  });
+
+  it("names the bound without a date when no read has ever landed", () => {
+    const built = {
+      ...state({ review: { outcome: "read", bound: 50, rows: [] } }),
+      freshness: { outcome: null, lastFetchedAt: null },
+    };
+
+    expect(metaOf(built, "pending-review")).toBe(
+      "Read the 50 most recent pull requests",
+    );
+  });
+
   it("replaces the whole slot when a review read failed or was unavailable", () => {
     expect(
       metaOf(state({ review: { outcome: "unknown" } }), "pending-review"),

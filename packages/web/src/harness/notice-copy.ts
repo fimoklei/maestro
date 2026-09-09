@@ -1,5 +1,6 @@
 import type {
   HarnessFreshness,
+  HarnessStageRead,
   HarnessStateError,
   ImportNameBlocker,
   ImportSkillError,
@@ -459,6 +460,31 @@ export const staleStatusNotice = (
       freshness.outcome === "offline"
         ? "Maestro could not reach GitHub, so these rows are from the last read."
         : "GitHub gave no answer, so these rows are from the last read.",
+    action: { label: "Retry check", onClick: onRetry },
+  };
+};
+
+// A stage nobody could read, stated where it happened. The cause and the way
+// through are the proposal table's own — reachable here without first pressing
+// a control that would be refused for the same reason (#866). Warning, not
+// error: the rest of the picture stands, and one more read is a way through.
+export const stageReadNotice = (
+  read: HarnessStageRead,
+  label: string,
+  onRetry: () => void,
+): NoticeContent | null => {
+  if (read.outcome === "read") {
+    return null;
+  }
+  const cause =
+    read.outcome === "unavailable"
+      ? proposalHeadings["review-unavailable"]
+      : proposalHeadings["review-unknown"];
+  return {
+    level: "warning",
+    label,
+    message: cause.message,
+    detail: cause.detail,
     action: { label: "Retry check", onClick: onRetry },
   };
 };

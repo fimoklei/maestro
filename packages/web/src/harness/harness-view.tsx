@@ -22,6 +22,7 @@ import {
   proposalNotice,
   refreshNotice,
   releasePublishedNotice,
+  stageReadNotice,
   staleStatusNotice,
 } from "./notice-copy";
 import { rowItems } from "./row-actions";
@@ -308,19 +309,22 @@ export function HarnessView() {
             ) {
               return null;
             }
-            // A stage nobody could read keeps its label and draws no card, no
-            // count and no rows: a zero must never read as an unknown (#848).
+            // A stage nobody could read draws no card, no count and no rows: a
+            // zero must never read as an unknown (#848). Its reading moves out
+            // of the meta slot into a notice, which is where the cockpit states
+            // a cause and a next step (#866).
             if (section.read.outcome !== "read") {
               return (
                 <section key={section.stage} className="mt-4">
-                  <SectionHeader
-                    level={2}
-                    size={3}
-                    title={section.title}
-                    meta={section.meta}
-                  >
+                  <SectionHeader level={2} size={3} title={section.title}>
                     {importAction}
                   </SectionHeader>
+                  <Notice
+                    trigger="load"
+                    notice={stageReadNotice(section.read, section.meta, () =>
+                      fetchRemote(),
+                    )}
+                  />
                 </section>
               );
             }

@@ -119,12 +119,11 @@ const reviewMeta = (read: HarnessStageRead, since: string | null): string => {
   if (read.outcome === "unknown") {
     return "Review status unknown";
   }
-  // A read that filled its bound names it: it saw that much and no more.
+  // A read that filled its bound names it: it saw that much and no more. The
+  // sentence already says "Read", so the age joins it without withAge's verb.
   if (read.bound !== null) {
-    return withAge(
-      `Read the ${read.bound} most recent pull requests`,
-      since,
-    ).replace(", read ", ", ");
+    const bounded = `Read the ${read.bound} most recent pull requests`;
+    return since === null ? bounded : `${bounded}, ${since}`;
   }
   return since === null ? "Not read yet" : `Read from GitHub ${since}`;
 };
