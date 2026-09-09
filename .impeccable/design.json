@@ -388,7 +388,7 @@
     "rules": [
       {
         "name": "The Two Signals Rule",
-        "body": "Amber means act, green means rest. One further signal, danger red, marks validation errors and nothing else — it is never a fill for an action and never decoration, so amber keeps sole ownership of 'do this'. No signal colour is ever used for decoration, and at most one amber-filled button exists per view.",
+        "body": "Amber means act, green means rest. One further signal, danger red, marks validation errors and nothing else — it is never a fill for an action and never decoration, so amber keeps sole ownership of 'do this'. No signal colour is ever used for decoration, and at most one amber-filled button exists per view. A status chip in a stage table marks the exception within its own table; 'act' is carried by the button, never by the chip. The expected reading is always colourless, whatever the row count, and green does not appear on stage chips at all.",
         "section": "colors"
       },
       {

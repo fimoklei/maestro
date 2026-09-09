@@ -131,6 +131,15 @@ describe("ReleaseDialog", () => {
     ).not.toBeInTheDocument();
   });
 
+  // The one publishing action in the Harness keeps the amber fill (#876).
+  it("fills the publish confirmation with amber", () => {
+    renderReady();
+
+    expect(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    ).toHaveClass("bg-amber");
+  });
+
   it("publishes the proposed step when the author does not override it", async () => {
     const onPublish = vi.fn();
     renderReady({}, { onPublish });
