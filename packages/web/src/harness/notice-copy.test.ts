@@ -13,6 +13,8 @@ import {
   refreshNotice,
   releasePlanNotice,
   releasePublishedNotice,
+  restoreNotice,
+  skillRestoredNotice,
   stageReadNotice,
   staleStatusNotice,
 } from "./notice-copy";
@@ -724,6 +726,177 @@ const suites: [
       ],
     ],
   ],
+  [
+    "restoreNotice",
+    restoreNotice,
+    {
+      level: "error",
+      label: "Skill not restored",
+      message:
+        "Nothing was restored. The Maestro server did not answer. Restore skill again.",
+    },
+    [
+      [
+        "not-configured",
+        {
+          level: "error",
+          label: "No Harness connected",
+          message:
+            "Nothing was restored. Set the Harness location on the Inventory source screen.",
+        },
+      ],
+      [
+        "invalid-skill",
+        {
+          level: "error",
+          label: "Unusable skill name",
+          message:
+            "Nothing was restored. A skill name uses lowercase letters, digits and single hyphens, like code-review.",
+        },
+      ],
+      [
+        "head-moved",
+        {
+          level: "error",
+          label: "Confirmation out of date",
+          message:
+            "Nothing was restored. Select Retry check, then Restore skill again.",
+          detail: "Your clone's last commit moved after this confirmation.",
+        },
+      ],
+      [
+        "staged-changes",
+        {
+          level: "error",
+          label: "Skill has staged changes",
+          message:
+            "Nothing was restored. Unstage this skill in your Git tool, then Restore skill again.",
+          detail: "Maestro never changes what you staged.",
+        },
+      ],
+      [
+        "not-in-commit",
+        {
+          level: "error",
+          label: "Skill not in your last commit",
+          message:
+            "Nothing was restored. Recover the folder in your Git tool instead.",
+          detail: "Maestro restores only what your last local commit holds.",
+        },
+      ],
+      [
+        "destination-exists",
+        {
+          level: "error",
+          label: "Folder already there",
+          message:
+            "Nothing was restored. Move the folder in the Harness clone, then Restore skill again.",
+          detail: "Something already sits where this skill folder belongs.",
+        },
+      ],
+      [
+        "destination-unsafe",
+        {
+          level: "error",
+          label: "Folder outside the Harness",
+          message:
+            "Nothing was restored. Replace the link with a real folder, then Restore skill again.",
+          detail:
+            "The skill folder resolves outside the Harness skills folder.",
+        },
+      ],
+      [
+        "restore-in-progress",
+        {
+          level: "error",
+          label: "Harness already changing",
+          message:
+            "Nothing was restored. Wait for that change to finish, then Restore skill again.",
+          detail: "Maestro changes one Harness at a time.",
+        },
+      ],
+      [
+        "restore-failed",
+        {
+          level: "error",
+          label: "Skill not restored",
+          message:
+            "Nothing was restored. Make the Harness skills folder writable, then Restore skill again.",
+        },
+      ],
+      [
+        "sparse-checkout",
+        {
+          level: "error",
+          label: "Partial clone",
+          message:
+            "Nothing was restored. Connect a complete clone to restore skills.",
+          detail:
+            "A missing folder in a partial clone is not proof of a deletion.",
+        },
+      ],
+      [
+        "merge-in-progress",
+        {
+          level: "error",
+          label: "Unfinished merge",
+          message:
+            "Nothing was restored. Finish or abort the merge, then Restore skill again.",
+          detail: "A half-merged working tree does not state what is missing.",
+        },
+      ],
+      [
+        "rebase-in-progress",
+        {
+          level: "error",
+          label: "Unfinished rebase",
+          message:
+            "Nothing was restored. Finish or abort the rebase, then Restore skill again.",
+          detail: "A half-rebased working tree does not state what is missing.",
+        },
+      ],
+      [
+        "unresolved-conflicts",
+        {
+          level: "error",
+          label: "Unresolved conflicts",
+          message:
+            "Nothing was restored. Resolve the conflicts, then Restore skill again.",
+          detail: "A conflicted working tree does not state what is missing.",
+        },
+      ],
+      [
+        "unreadable",
+        {
+          level: "error",
+          label: "Unreadable working tree",
+          message:
+            "Nothing was restored. Make the Harness folder readable, then Restore skill again.",
+        },
+      ],
+      [
+        "source-unreadable",
+        {
+          level: "error",
+          label: "Committed copy unreadable",
+          message:
+            "Nothing was restored. Check the Harness clone with your Git tool, then Restore skill again.",
+          detail:
+            "Maestro could not read this skill out of your last local commit.",
+        },
+      ],
+      [
+        "destination-unreadable",
+        {
+          level: "error",
+          label: "Skills folder missing",
+          message:
+            "Nothing was restored. Put the .apm/skills folder back in the Harness clone, then Restore skill again.",
+          detail: "Maestro could not read the Harness skills folder.",
+        },
+      ],
+    ],
+  ],
 ];
 
 describe.each(suites)("%s", (_name, read, fallback, cases) => {
@@ -888,6 +1061,51 @@ describe("releasePublishedNotice", () => {
         "Maestro tagged v1.5.0 but could not refresh Inventory. Re-read Inventory to see the published skills.",
       detail: "A release cannot change after publication.",
       action: { label: "Re-read Inventory", onClick: reread },
+    });
+  });
+});
+
+describe("skillRestoredNotice", () => {
+  const retry = () => {};
+
+  it("states what came back and where it came from", () => {
+    expect(skillRestoredNotice(false, true, retry)).toEqual({
+      level: "success",
+      label: "Skill restored",
+      message: "Restored from your last local commit.",
+    });
+  });
+
+  it("says the open proposal is untouched", () => {
+    expect(skillRestoredNotice(true, true, retry)).toEqual({
+      level: "success",
+      label: "Skill restored",
+      message: "Restored from your last local commit.",
+      detail: "Your proposal remains unchanged.",
+    });
+  });
+
+  // The folder is back whatever GitHub said, so the heading holds. Only the
+  // status is unknown, and the way back to it rides in the notice (#915).
+  it("keeps the heading and warns when the status could not be read again", () => {
+    expect(skillRestoredNotice(false, false, retry)).toEqual({
+      level: "warning",
+      label: "Skill restored",
+      message:
+        "The skill folder is back, but the status is out of date. Select Retry check to read GitHub again.",
+      detail: "Maestro could not read GitHub after the restore.",
+      action: { label: "Retry check", onClick: retry },
+    });
+  });
+
+  it("still says the open proposal is untouched at warning level", () => {
+    expect(skillRestoredNotice(true, false, retry)).toEqual({
+      level: "warning",
+      label: "Skill restored",
+      message:
+        "The skill folder is back, but the status is out of date. Select Retry check to read GitHub again.",
+      detail: "Your proposal remains unchanged.",
+      action: { label: "Retry check", onClick: retry },
     });
   });
 });

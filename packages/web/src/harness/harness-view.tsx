@@ -21,6 +21,7 @@ import {
   proposalNotice,
   refreshNotice,
   releasePublishedNotice,
+  skillRestoredNotice,
   stageReadNotice,
   staleStatusNotice,
 } from "./notice-copy";
@@ -45,6 +46,7 @@ import {
   usePublishRelease,
   useRefreshHarness,
   useReleasePlan,
+  useRestoreSkill,
 } from "./use-harness";
 
 // The Harness home base: what the released harness is, how fresh that picture
@@ -154,6 +156,16 @@ export function HarnessView() {
   // its dialog closes. The next press resets it, which is what keeps a refusal
   // from haunting the confirmation after this one (#580, #581).
   const closeConfirmation = () => setConfirming(null);
+
+  // The way back from a deletion, and the one action no remote answer gates:
+  // both the folder and the commit it comes from are already in the clone
+  // (ADR-0030). The row is looked up across both local stages — a restore is
+  // pressed from Pending review as often as from Pending proposal (#915).
+  const restore = useRestoreSkill();
+  const [restoringSkill, setRestoringSkill] = useState<string | null>(null);
+  const restoreRow =
+    localRows(state).find((row) => row.skill === restoringSkill) ?? null;
+  const closeRestore = () => setRestoringSkill(null);
   // The row that just moved sections, whichever press moved it: a deletion is
   // confirmed in a dialog that unmounts with the row it was opened from, so the
   // promote mutation alone would drop the keyboard on the document (#581). A
@@ -272,6 +284,21 @@ export function HarnessView() {
                   publish.data.tag,
                   publish.data.inventoryRefreshed,
                   rereadInventory,
+                )
+          }
+        />
+        {/* What the last restore put back. Above the strip, so it outlives the
+            row it was pressed from — a restored skill leaves the stage it was
+            deleted in (#915). */}
+        <Notice
+          trigger="user-action"
+          notice={
+            restore.data === undefined
+              ? null
+              : skillRestoredNotice(
+                  restore.data.hasRequest,
+                  restore.data.statusRead,
+                  () => fetchRemote(),
                 )
           }
         />
@@ -426,6 +453,10 @@ export function HarnessView() {
                                 deleteLocal.reset();
                                 setConfirming(skill);
                               },
+                              restore: (skill) => {
+                                restore.reset();
+                                setRestoringSkill(skill);
+                              },
                             },
                             // Closed with no answer from the remote: there is
                             // no tip to build on, and a read in flight is
@@ -435,6 +466,13 @@ export function HarnessView() {
                               !harness.isFetching &&
                               promote.isPending === false &&
                               proposalAction.isPending === false &&
+                              deleteLocal.isPending === false,
+                            // Recovery reads the clone alone, so the remote's
+                            // silence never closes it — only a local write or
+                            // a read moving the rows underneath does (#915).
+                            !refresh.isPending &&
+                              !harness.isFetching &&
+                              restore.isPending === false &&
                               deleteLocal.isPending === false,
                           ),
                         failed: rowFailure(),
@@ -471,6 +509,10 @@ export function HarnessView() {
             deletion={deletion}
             deleteLocal={deleteLocal}
             onDeletionClose={closeConfirmation}
+            restoreRow={restoreRow}
+            restoreCommit={state.localHeadCommit}
+            restore={restore}
+            onRestoreClose={closeRestore}
             withdrawing={withdrawing}
             proposalAction={proposalAction}
             onWithdrawClose={closeWithdrawal}
@@ -491,4 +533,15 @@ export function HarnessView() {
 function proposalRows(state: HarnessState | undefined): HarnessStageRow[] {
   const stage = state?.stages.proposal;
   return stage?.outcome === "read" ? stage.rows : [];
+}
+
+// Both stages a local action can be pressed from. A skill holds a row in each
+// independently (ADR-0021 point 10), so the first match is the row the press
+// came from either way — the two carry the same name and the same folder.
+function localRows(state: HarnessState | undefined): HarnessStageRow[] {
+  const review = state?.stages.review;
+  return [
+    ...proposalRows(state),
+    ...(review?.outcome === "read" ? review.rows : []),
+  ];
 }

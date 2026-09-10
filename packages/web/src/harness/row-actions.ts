@@ -16,6 +16,9 @@ export type RowActionHandlers = {
   // Removes the skill's folder from the Working Harness. Offered only where
   // the skill exists nowhere else, so there is no deletion to propose (#798).
   deleteLocal: (skill: string) => void;
+  // Puts the folder back from the clone's last local commit. Local either way,
+  // so it is offered on both local stages and survives a silent GitHub (#915).
+  restore: (skill: string) => void;
 };
 
 const NO_REQUEST = "Withdraw proposal — no request yet";
@@ -28,6 +31,30 @@ const named = (label: string, request: ReviewRequestLink, many: boolean) =>
   many ? `${label} #${request.number}` : label;
 
 export function rowItems(
+  row: HarnessStageRow,
+  handlers: RowActionHandlers,
+  enabled: boolean,
+  // Its own flag: `enabled` closes on the remote's silence, and recovery from
+  // the clone's own commit must stay open exactly then (#915).
+  restoreEnabled: boolean = enabled,
+): ActionsMenuProps["items"] {
+  return [
+    ...stageItems(row, handlers, enabled),
+    // Last of every menu that carries it. An ineligible row shows no item at
+    // all, not a disabled one: there is nothing for the author to fix.
+    ...(row.restorable
+      ? [
+          {
+            label: "Restore skill",
+            disabled: !restoreEnabled,
+            onSelect: () => handlers.restore(row.skill),
+          },
+        ]
+      : []),
+  ];
+}
+
+function stageItems(
   row: HarnessStageRow,
   handlers: RowActionHandlers,
   enabled: boolean,

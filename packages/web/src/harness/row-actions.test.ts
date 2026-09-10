@@ -26,6 +26,7 @@ const handlers = {
   reopen: () => {},
   withdraw: () => {},
   deleteLocal: () => {},
+  restore: () => {},
 };
 
 const labels = (items: ReturnType<typeof rowItems>) =>
@@ -307,5 +308,67 @@ describe("rowItems", () => {
       "Update proposal — close the extra requests",
       "Withdraw proposal — close the extra requests",
     ]);
+  });
+
+  // Recovery is a local act: the folder and the commit it comes from are both
+  // in the clone, so nothing GitHub says can take the way back away (#915).
+  describe("Restore skill", () => {
+    const restorable = (over: Partial<HarnessStageRow> = {}) =>
+      row({ restorable: true, ...over });
+
+    it("closes every menu that carries it, last of all", () => {
+      const items = rowItems(
+        restorable({ stage: "pending-proposal", status: "deleted-locally" }),
+        handlers,
+        true,
+        true,
+      );
+
+      expect(labels(items).at(-1)).toBe("Restore skill");
+    });
+
+    it("offers it in Pending review too", () => {
+      expect(labels(rowItems(restorable(), handlers, true, true)).at(-1)).toBe(
+        "Restore skill",
+      );
+    });
+
+    it("offers nothing at all on a row that cannot be restored", () => {
+      expect(labels(rowItems(row(), handlers, true, true))).not.toContain(
+        "Restore skill",
+      );
+      // Not a disabled variant either: an ineligible row shows no item.
+      expect(disabled(rowItems(row(), handlers, true, true))).not.toContain(
+        "Restore skill",
+      );
+    });
+
+    // The remote's silence closes every other action on the row; this one is
+    // the offline way back, so it keeps its own flag.
+    it("stays open while the remote actions are closed", () => {
+      const items = rowItems(restorable(), handlers, false, true);
+
+      expect(disabled(items)).not.toContain("Restore skill");
+    });
+
+    it("closes while a local change is already running", () => {
+      const items = rowItems(restorable(), handlers, true, false);
+
+      expect(disabled(items)).toContain("Restore skill");
+    });
+
+    it("names the skill it was pressed on", () => {
+      const pressed: string[] = [];
+      const items = rowItems(
+        restorable({ skill: "code-review" }),
+        { ...handlers, restore: (skill: string) => pressed.push(skill) },
+        true,
+        true,
+      );
+
+      items.find((item) => item.label === "Restore skill")?.onSelect?.();
+
+      expect(pressed).toEqual(["code-review"]);
+    });
   });
 });

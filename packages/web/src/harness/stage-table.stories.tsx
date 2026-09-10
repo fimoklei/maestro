@@ -108,6 +108,7 @@ const NO_OP = {
   reopen: () => {},
   withdraw: () => {},
   deleteLocal: () => {},
+  restore: () => {},
 };
 
 export const PendingReview: Story = {
