@@ -31,6 +31,16 @@ import type {
 } from "./use-harness";
 import { WithdrawDialog } from "./withdraw-dialog";
 
+// The whole source identity one restoration is confirmed against, taken when
+// the press was made: the skill, the commit the menu was painted at, and
+// whether a proposal is open over it. A later read moves the rows underneath;
+// it never moves this (ADR-0030).
+export type RestoreTarget = {
+  skill: string;
+  commit: string;
+  hasRequest: boolean;
+};
+
 export type HarnessDialogsProps = {
   origin: string;
   importOpen: boolean;
@@ -48,10 +58,9 @@ export type HarnessDialogsProps = {
   deletion: ReturnType<typeof usePromoteDeletion>;
   deleteLocal: ReturnType<typeof useDeleteLocalSkill>;
   onDeletionClose: () => void;
-  // The row a restore was pressed from, and the commit the whole Harness was
-  // read at. Null while no confirmation is open, or where HEAD is unreadable.
-  restoreRow: HarnessStageRow | null;
-  restoreCommit: string | null;
+  // The frozen source a restore was pressed against. Null while no
+  // confirmation is open.
+  restoring: RestoreTarget | null;
   restore: ReturnType<typeof useRestoreSkill>;
   onRestoreClose: () => void;
   withdrawing: { skill: string; number: number } | null;
@@ -126,23 +135,22 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
           }
         />
       ) : null}
-      {props.restoreRow !== null && props.restoreCommit !== null ? (
+      {props.restoring !== null ? (
         <RestoreDialog
-          skill={props.restoreRow.skill}
-          folder={`${SKILLS_DIR}/${props.restoreRow.skill}`}
-          commit={props.restoreCommit}
-          hasRequest={props.restoreRow.requests.length > 0}
+          skill={props.restoring.skill}
+          folder={`${SKILLS_DIR}/${props.restoring.skill}`}
+          commit={props.restoring.commit}
+          hasRequest={props.restoring.hasRequest}
           onClose={props.onRestoreClose}
           // Closes on success only: a refusal is stated in the dialog, where
           // the confirmation the author gave still stands.
           onConfirm={() =>
-            props.restoreRow !== null &&
-            props.restoreCommit !== null &&
+            props.restoring !== null &&
             props.restore.mutate(
               {
-                name: props.restoreRow.skill,
-                seenHeadCommit: props.restoreCommit,
-                hasRequest: props.restoreRow.requests.length > 0,
+                name: props.restoring.skill,
+                seenHeadCommit: props.restoring.commit,
+                hasRequest: props.restoring.hasRequest,
               },
               { onSuccess: props.onRestoreClose },
             )

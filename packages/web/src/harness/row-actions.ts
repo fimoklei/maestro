@@ -18,8 +18,14 @@ export type RowActionHandlers = {
   deleteLocal: (skill: string) => void;
   // Puts the folder back from the clone's last local commit. Local either way,
   // so it is offered on both local stages and survives a silent GitHub (#915).
-  restore: (skill: string) => void;
+  // Takes the commit the menu was painted at: that is the source the author
+  // confirms, and a later read must not rewrite it (ADR-0030).
+  restore: (row: HarnessStageRow, commit: string) => void;
 };
+
+// Whether the press is open, and the local commit it would be given against.
+// A null commit takes the item off the menu: there is nothing to confirm.
+export type RestoreGate = { enabled: boolean; commit: string | null };
 
 const NO_REQUEST = "Withdraw proposal — no request yet";
 const EXTRA_UPDATE = "Update proposal — close the extra requests";
@@ -34,20 +40,21 @@ export function rowItems(
   row: HarnessStageRow,
   handlers: RowActionHandlers,
   enabled: boolean,
-  // Its own flag: `enabled` closes on the remote's silence, and recovery from
+  // Its own gate: `enabled` closes on the remote's silence, and recovery from
   // the clone's own commit must stay open exactly then (#915).
-  restoreEnabled: boolean = enabled,
+  restore: RestoreGate,
 ): ActionsMenuProps["items"] {
+  const commit = restore.commit;
   return [
     ...stageItems(row, handlers, enabled),
-    // Last of every menu that carries it. An ineligible row shows no item at
-    // all, not a disabled one: there is nothing for the author to fix.
-    ...(row.restorable
+    // Last of every menu that carries it. A row that cannot come back shows no
+    // item at all, not a disabled one: there is nothing for the author to fix.
+    ...(row.restorable && commit !== null
       ? [
           {
             label: "Restore skill",
-            disabled: !restoreEnabled,
-            onSelect: () => handlers.restore(row.skill),
+            disabled: !restore.enabled,
+            onSelect: () => handlers.restore(row, commit),
           },
         ]
       : []),

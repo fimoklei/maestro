@@ -261,93 +261,87 @@ const localDeletionHeadings: NoticeTable<DeleteLocalSkillError> = {
 
 // Putting a deleted skill folder back from the clone's last local commit.
 // Nothing here reaches GitHub and every refusal leaves the working tree as it
-// was, so every sentence opens by saying so (ADR-0030, #915).
-const restorationHeadings: NoticeTable<RestoreSkillError> = {
-  "not-configured": {
-    ...harnessHeadings["not-configured"],
-    message: `Nothing was restored. ${harnessHeadings["not-configured"].message}`,
-  },
-  "invalid-skill": {
-    ...promoteHeadings["invalid-skill"],
-    message: `Nothing was restored. ${promoteHeadings["invalid-skill"].message}`,
-  },
+// was, so every sentence opens by saying so — written once, over the whole
+// table (ADR-0030, #915).
+const nothingRestored = (
+  table: NoticeTable<RestoreSkillError>,
+): NoticeTable<RestoreSkillError> =>
+  Object.fromEntries(
+    Object.entries(table).map(([code, notice]) => [
+      code,
+      { ...notice, message: `Nothing was restored. ${notice.message}` },
+    ]),
+  ) as NoticeTable<RestoreSkillError>;
+
+const restorationHeadings: NoticeTable<RestoreSkillError> = nothingRestored({
+  "not-configured": harnessHeadings["not-configured"],
+  "invalid-skill": promoteHeadings["invalid-skill"],
   "head-moved": {
     level: "error",
     label: "Confirmation out of date",
-    message:
-      "Nothing was restored. Select Retry check, then Restore skill again.",
+    message: "Select Retry check, then Restore skill again.",
     detail: "Your clone's last commit moved after this confirmation.",
   },
   "staged-changes": {
     level: "error",
     label: "Skill has staged changes",
-    message:
-      "Nothing was restored. Unstage this skill in your Git tool, then Restore skill again.",
+    message: "Unstage this skill in your Git tool, then Restore skill again.",
     detail: "Maestro never changes what you staged.",
   },
   "not-in-commit": {
     level: "error",
     label: "Skill not in your last commit",
-    message:
-      "Nothing was restored. Recover the folder in your Git tool instead.",
+    message: "Recover the folder in your Git tool instead.",
     detail: "Maestro restores only what your last local commit holds.",
   },
   "destination-exists": {
     level: "error",
     label: "Folder already there",
-    message:
-      "Nothing was restored. Move the folder in the Harness clone, then Restore skill again.",
+    message: "Move the folder in the Harness clone, then Restore skill again.",
     detail: "Something already sits where this skill folder belongs.",
   },
   "destination-unsafe": {
     level: "error",
     label: "Folder outside the Harness",
-    message:
-      "Nothing was restored. Replace the link with a real folder, then Restore skill again.",
+    message: "Replace the link with a real folder, then Restore skill again.",
     detail: "The skill folder resolves outside the Harness skills folder.",
   },
   "restore-in-progress": {
     level: "error",
     label: "Harness already changing",
-    message:
-      "Nothing was restored. Wait for that change to finish, then Restore skill again.",
+    message: "Wait for that change to finish, then Restore skill again.",
     detail: "Maestro changes one Harness at a time.",
   },
   "restore-failed": {
     level: "error",
     label: "Skill not restored",
     message:
-      "Nothing was restored. Make the Harness skills folder writable, then Restore skill again.",
+      "Make the Harness skills folder writable, then Restore skill again.",
   },
   // A working tree mid-operation does not say what is missing, so the same
   // headings a deletion refuses under stand here, with the way on rewritten.
   "sparse-checkout": {
     ...deletionHeadings["sparse-checkout"],
-    message:
-      "Nothing was restored. Connect a complete clone to restore skills.",
+    message: "Connect a complete clone to restore skills.",
   },
   "merge-in-progress": {
     ...deletionHeadings["merge-in-progress"],
-    message:
-      "Nothing was restored. Finish or abort the merge, then Restore skill again.",
+    message: "Finish or abort the merge, then Restore skill again.",
     detail: "A half-merged working tree does not state what is missing.",
   },
   "rebase-in-progress": {
     ...deletionHeadings["rebase-in-progress"],
-    message:
-      "Nothing was restored. Finish or abort the rebase, then Restore skill again.",
+    message: "Finish or abort the rebase, then Restore skill again.",
     detail: "A half-rebased working tree does not state what is missing.",
   },
   "unresolved-conflicts": {
     ...deletionHeadings["unresolved-conflicts"],
-    message:
-      "Nothing was restored. Resolve the conflicts, then Restore skill again.",
+    message: "Resolve the conflicts, then Restore skill again.",
     detail: "A conflicted working tree does not state what is missing.",
   },
   unreadable: {
     ...deletionHeadings.unreadable,
-    message:
-      "Nothing was restored. Make the Harness folder readable, then Restore skill again.",
+    message: "Make the Harness folder readable, then Restore skill again.",
   },
   // A read that failed is never proof the copy is absent, so the sentence
   // sends the author to their Git tool rather than naming a missing skill.
@@ -355,17 +349,17 @@ const restorationHeadings: NoticeTable<RestoreSkillError> = {
     level: "error",
     label: "Committed copy unreadable",
     message:
-      "Nothing was restored. Check the Harness clone with your Git tool, then Restore skill again.",
+      "Check the Harness clone with your Git tool, then Restore skill again.",
     detail: "Maestro could not read this skill out of your last local commit.",
   },
   "destination-unreadable": {
     level: "error",
     label: "Skills folder missing",
     message:
-      "Nothing was restored. Put the .apm/skills folder back in the Harness clone, then Restore skill again.",
+      "Put the .apm/skills folder back in the Harness clone, then Restore skill again.",
     detail: "Maestro could not read the Harness skills folder.",
   },
-};
+});
 
 // The three GitHub-side mutations. Each refusal leaves the pull request and
 // the clone as they were, so every sentence ends on another press of the same

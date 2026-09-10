@@ -1,6 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { rowItems } from "./row-actions";
+import {
+  rowItems as buildItems,
+  type RestoreGate,
+  type RowActionHandlers,
+} from "./row-actions";
 import type { HarnessStage, HarnessStageRow, StageStatus } from "./use-harness";
+
+// The restore gate defaults to the open one here, and only here: the view has
+// one caller and passes it by hand, so a wrong call cannot pass typecheck.
+const rowItems = (
+  row: HarnessStageRow,
+  handlers: RowActionHandlers,
+  enabled: boolean,
+  restore: RestoreGate = { enabled, commit: "local-head" },
+) => buildItems(row, handlers, enabled, restore);
 
 const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
   stage: "pending-review" as HarnessStage,
@@ -316,59 +329,82 @@ describe("rowItems", () => {
     const restorable = (over: Partial<HarnessStageRow> = {}) =>
       row({ restorable: true, ...over });
 
+    const open: RestoreGate = { enabled: true, commit: "local-head" };
+
     it("closes every menu that carries it, last of all", () => {
       const items = rowItems(
         restorable({ stage: "pending-proposal", status: "deleted-locally" }),
         handlers,
         true,
-        true,
+        open,
       );
 
       expect(labels(items).at(-1)).toBe("Restore skill");
     });
 
     it("offers it in Pending review too", () => {
-      expect(labels(rowItems(restorable(), handlers, true, true)).at(-1)).toBe(
+      expect(labels(rowItems(restorable(), handlers, true, open)).at(-1)).toBe(
         "Restore skill",
       );
     });
 
     it("offers nothing at all on a row that cannot be restored", () => {
-      expect(labels(rowItems(row(), handlers, true, true))).not.toContain(
+      expect(labels(rowItems(row(), handlers, true, open))).not.toContain(
         "Restore skill",
       );
       // Not a disabled variant either: an ineligible row shows no item.
-      expect(disabled(rowItems(row(), handlers, true, true))).not.toContain(
+      expect(disabled(rowItems(row(), handlers, true, open))).not.toContain(
         "Restore skill",
       );
+    });
+
+    // There is nothing to confirm a restoration against, so the press is not
+    // offered at all: a menu item that could only refuse is worse than none.
+    it("offers nothing where the local commit could not be read", () => {
+      const items = rowItems(restorable(), handlers, true, {
+        enabled: true,
+        commit: null,
+      });
+
+      expect(labels(items)).not.toContain("Restore skill");
+      expect(disabled(items)).not.toContain("Restore skill");
     });
 
     // The remote's silence closes every other action on the row; this one is
     // the offline way back, so it keeps its own flag.
     it("stays open while the remote actions are closed", () => {
-      const items = rowItems(restorable(), handlers, false, true);
+      const items = rowItems(restorable(), handlers, false, open);
 
       expect(disabled(items)).not.toContain("Restore skill");
     });
 
     it("closes while a local change is already running", () => {
-      const items = rowItems(restorable(), handlers, true, false);
+      const items = rowItems(restorable(), handlers, true, {
+        ...open,
+        enabled: false,
+      });
 
       expect(disabled(items)).toContain("Restore skill");
     });
 
-    it("names the skill it was pressed on", () => {
-      const pressed: string[] = [];
+    // Row and commit together: the press hands on the whole source identity
+    // the menu was painted from, so a later read cannot rewrite it (ADR-0030).
+    it("names the row it was pressed on and the commit it was painted at", () => {
+      const pressed: [string, string][] = [];
       const items = rowItems(
         restorable({ skill: "code-review" }),
-        { ...handlers, restore: (skill: string) => pressed.push(skill) },
+        {
+          ...handlers,
+          restore: (row: HarnessStageRow, commit: string) =>
+            pressed.push([row.skill, commit]),
+        },
         true,
-        true,
+        open,
       );
 
       items.find((item) => item.label === "Restore skill")?.onSelect?.();
 
-      expect(pressed).toEqual(["code-review"]);
+      expect(pressed).toEqual([["code-review", "local-head"]]);
     });
   });
 });

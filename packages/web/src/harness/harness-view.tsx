@@ -6,7 +6,7 @@ import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { Notice } from "../ui/notice";
 import { SectionHeader } from "../ui/section-header";
-import { HarnessDialogs } from "./harness-dialogs";
+import { HarnessDialogs, type RestoreTarget } from "./harness-dialogs";
 import { HarnessStrip } from "./harness-strip";
 import {
   freshnessLabel,
@@ -159,13 +159,17 @@ export function HarnessView() {
 
   // The way back from a deletion, and the one action no remote answer gates:
   // both the folder and the commit it comes from are already in the clone
-  // (ADR-0030). The row is looked up across both local stages — a restore is
-  // pressed from Pending review as often as from Pending proposal (#915).
+  // (ADR-0030). The press freezes what it was made against, so a check landing
+  // while the confirmation stands cannot rewrite the source or close it (#915).
   const restore = useRestoreSkill();
-  const [restoringSkill, setRestoringSkill] = useState<string | null>(null);
-  const restoreRow =
-    localRows(state).find((row) => row.skill === restoringSkill) ?? null;
-  const closeRestore = () => setRestoringSkill(null);
+  const [restoring, setRestoring] = useState<RestoreTarget | null>(null);
+  const closeRestore = () => setRestoring(null);
+  // What every row press shares: a read in flight is moving the rows a press
+  // would aim at, and the local deletion writes the same folders a restore does.
+  const localSettled =
+    !refresh.isPending &&
+    !harness.isFetching &&
+    deleteLocal.isPending === false;
   // The row that just moved sections, whichever press moved it: a deletion is
   // confirmed in a dialog that unmounts with the row it was opened from, so the
   // promote mutation alone would drop the keyboard on the document (#581). A
@@ -453,27 +457,30 @@ export function HarnessView() {
                                 deleteLocal.reset();
                                 setConfirming(skill);
                               },
-                              restore: (skill) => {
+                              restore: (row, commit) => {
                                 restore.reset();
-                                setRestoringSkill(skill);
+                                setRestoring({
+                                  skill: row.skill,
+                                  commit,
+                                  hasRequest: row.requests.length > 0,
+                                });
                               },
                             },
                             // Closed with no answer from the remote: there is
                             // no tip to build on, and a read in flight is
                             // moving the rows a press would aim at.
                             releaseEnabled(state.freshness) &&
-                              !refresh.isPending &&
-                              !harness.isFetching &&
+                              localSettled &&
                               promote.isPending === false &&
-                              proposalAction.isPending === false &&
-                              deleteLocal.isPending === false,
+                              proposalAction.isPending === false,
                             // Recovery reads the clone alone, so the remote's
                             // silence never closes it — only a local write or
                             // a read moving the rows underneath does (#915).
-                            !refresh.isPending &&
-                              !harness.isFetching &&
-                              restore.isPending === false &&
-                              deleteLocal.isPending === false,
+                            {
+                              enabled:
+                                localSettled && restore.isPending === false,
+                              commit: state.localHeadCommit,
+                            },
                           ),
                         failed: rowFailure(),
                         // Focusing the row's menu is what scrolls it into
@@ -509,8 +516,7 @@ export function HarnessView() {
             deletion={deletion}
             deleteLocal={deleteLocal}
             onDeletionClose={closeConfirmation}
-            restoreRow={restoreRow}
-            restoreCommit={state.localHeadCommit}
+            restoring={restoring}
             restore={restore}
             onRestoreClose={closeRestore}
             withdrawing={withdrawing}
@@ -533,15 +539,4 @@ export function HarnessView() {
 function proposalRows(state: HarnessState | undefined): HarnessStageRow[] {
   const stage = state?.stages.proposal;
   return stage?.outcome === "read" ? stage.rows : [];
-}
-
-// Both stages a local action can be pressed from. A skill holds a row in each
-// independently (ADR-0021 point 10), so the first match is the row the press
-// came from either way — the two carry the same name and the same folder.
-function localRows(state: HarnessState | undefined): HarnessStageRow[] {
-  const review = state?.stages.review;
-  return [
-    ...proposalRows(state),
-    ...(review?.outcome === "read" ? review.rows : []),
-  ];
 }

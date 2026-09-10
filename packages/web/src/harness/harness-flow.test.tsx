@@ -86,12 +86,15 @@ function stubHarnessServer(options: {
     afterPublish?: unknown;
     afterPromote?: unknown;
   };
+  // `retry` answers every check after the open-time one, so a test can move
+  // the picture under a dialog that is already open.
   refresh?: {
     body: unknown;
     status?: number;
     rejects?: boolean;
     heldUntil?: Promise<void>;
     afterPublish?: unknown;
+    retry?: { body: unknown; status?: number };
   };
   // One entry per plan request, so a test can hold the second one and read
   // what the reopened dialog shows while it is still in flight.
@@ -152,6 +155,7 @@ function stubHarnessServer(options: {
   let planCalls = 0;
   let publishCalls = 0;
   let deletionCalls = 0;
+  let refreshCalls = 0;
   let published = false;
   let promoted = false;
   const answer = (route: {
@@ -246,7 +250,12 @@ function stubHarnessServer(options: {
         );
       }
       if (url.startsWith("/api/harness/refresh")) {
-        const refresh = options.refresh ?? options.read;
+        const first = options.refresh ?? options.read;
+        const refresh =
+          refreshCalls > 0 && "retry" in first && first.retry !== undefined
+            ? first.retry
+            : first;
+        refreshCalls += 1;
         if ("rejects" in refresh && refresh.rejects === true) {
           throw new TypeError("Failed to fetch");
         }
@@ -2399,6 +2408,50 @@ describe("Harness home base", () => {
     expect(
       screen.getByText("Restored from your last local commit."),
     ).toBeInTheDocument();
+  });
+
+  // The dialog promises that a moved commit restores nothing, and only the
+  // server can keep that promise: it compares the commit the confirmation
+  // carries against a fresh HEAD. A check that runs while the confirmation is
+  // open must therefore not rewrite what it carries (ADR-0030).
+  it("carries the commit it opened with after a later check moved the picture", async () => {
+    const restores: Record<string, unknown>[] = [];
+    stubHarnessServer({
+      read: { body: DELETED_ROW },
+      refresh: {
+        body: DELETED_ROW,
+        // A newer commit, and the row the press was made on gone from the read.
+        retry: {
+          body: {
+            ...withStages(ON_DISK, {
+              proposal: [
+                row("pending-proposal", "later-skill", "not-yet-proposed"),
+              ],
+            }),
+            localHeadCommit: "moved-head",
+          },
+        },
+      },
+      restore: { body: { name: "old-skill", commit: "local-head" } },
+      restores,
+    });
+    renderHarness();
+    const dialog = await openRestore();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /^retry check$/i }),
+    );
+    // The read landed, and the confirmation it moved under still stands.
+    expect(await screen.findByText("later-skill")).toBeVisible();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /^restore skill$/i }),
+    );
+
+    await waitFor(() =>
+      expect(restores).toEqual([
+        { name: "old-skill", seenHeadCommit: "local-head" },
+      ]),
+    );
   });
 
   it("says the open proposal is untouched, in the dialog and after it", async () => {

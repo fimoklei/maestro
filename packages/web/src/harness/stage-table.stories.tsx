@@ -115,7 +115,8 @@ export const PendingReview: Story = {
   args: {
     title: "Pending review",
     actions: {
-      items: (row) => rowItems(row, NO_OP, true),
+      items: (row) =>
+        rowItems(row, NO_OP, true, { enabled: true, commit: "9f2c1ab" }),
       failed: null,
     },
     rows: [

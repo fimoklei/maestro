@@ -252,6 +252,20 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
     expect(await treeAt("refs/maestro/tags/v0.1.0")).not.toBe(committed);
   });
 
+  // A tree hash cannot see this: hashing the working copy back cleans the line
+  // endings again, so only the bytes on disk say whether the checkout rewrote
+  // them.
+  it("writes the committed bytes even where the clone asks for CRLF", async () => {
+    const app = makeApp();
+    await git(root, "config", "core.autocrlf", "true");
+    await deleteFolder();
+
+    await restore(app, { name: "tdd", seenHeadCommit: localHead });
+
+    const restored = await readFile(join(root, FOLDER, "SKILL.md"));
+    expect(restored.includes("\r\n")).toBe(false);
+  });
+
   it("leaves every ref, HEAD and the real index exactly as they were", async () => {
     const app = makeApp();
     await writeFile(join(root, "staged.md"), "staged\n", "utf8");
