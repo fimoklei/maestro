@@ -80,6 +80,14 @@ _Avoid_: undeploy (constructed jargon), uninstall (APM's verb for the mechanism)
 Recovery of a locally deleted skill folder in the Working Harness from the last local commit, without changing its proposal.
 _Avoid_: undo deletion, which implies recovering the exact pre-deletion state.
 
+**Proposal**:
+One skill's change offered for review: the branch **Propose change** pushed, and the pull request opened over it. A proposal ends when its pull request is merged; the branch itself may outlive it, and a later change to that skill on the default branch never revives it. Without a pull-request check, Maestro cannot see the end and reads the branch as before (#890).
+_Avoid_: promotion (the mechanism), branch (the carrier, not the offer).
+
+**Skill content**:
+Everything inside a skill folder that the team means to share. Repository internals (`.git`) and files the operating system drops into a folder (`.DS_Store`, `._*`, `Thumbs.db`, `desktop.ini`) are not skill content: Import leaves them behind and the Harness ignores them (#890).
+_Avoid_: files, tree (the mechanism that measures it).
+
 **Target**:
 Where a deploy lands. Two kinds: **local** (a consuming repo) or **global** (the user-level config of a present tool). A global deploy resolves to one target per detected tool, so "global" can be several targets on a two-tool machine and one on a single-tool machine (ADR-0011).
 _Avoid_: destination, environment.
