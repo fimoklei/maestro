@@ -58,8 +58,14 @@ export function DeletionDialog({
             <Fact label="Skill" value={skill} wrap />
             <Fact label="Branch" value={`maestro/${skill}`} wrap />
             {/* The whole hash: the exact origin/HEAD copy the confirmation
-                is given against (#580). */}
-            <Fact label="Confirmed against" value={seenRemoteTree} wrap />
+                is given against (#580). The hint says the same thing the
+                confirmation-stale notice does (#885). */}
+            <Fact
+              label="Confirmed against"
+              value={seenRemoteTree}
+              wrap
+              hint="The copy on the default branch now. If it moves before you confirm, nothing is pushed."
+            />
           </dl>
         </Card>
         <Notice trigger="user-action" notice={deleteError} />

@@ -79,6 +79,12 @@ synonyms.
 
 1. **Inspectable, not magical.** The user can always see what is deployed and
    where it came from. Nothing important happens off-screen or without a trace.
+   A trace is not a confirmation step, and the two proposal paths differ on
+   purpose. An edit pushes as soon as `Propose change` is pressed: pressing it
+   again updates the same proposal, and the one unsafe case — a teammate's newer
+   change on the default branch — is recomputed after a fresh fetch and refused
+   there. A deletion asks the team to remove something, so it confirms first,
+   against the exact default-branch copy it was shown.
 2. **Read speed beats everything.** Density, alignment, and a fixed vocabulary
    serve one goal: state understood in a glance. Decoration that costs read
    speed is removed.
