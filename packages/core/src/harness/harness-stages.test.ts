@@ -498,6 +498,94 @@ describe("Pending review membership", () => {
   });
 });
 
+describe("A spent proposal branch", () => {
+  const TIP = "9f1c0b2a4d6e8f0a1b3c5d7e9f0a1b2c3d4e5f60";
+
+  // A branch whose content still differs from origin/HEAD, so only a merged
+  // request over its tip can end the proposal.
+  const ahead: HarnessSkillTrees = {
+    remote: { tdd: "same" },
+    promote: { tdd: { tree: "pushed", commit: TIP } },
+    local: { tdd: "same" },
+    working: { tdd: "same" },
+  };
+  const mergedAtTip = reviewOf([request({ state: "merged", headCommit: TIP })]);
+
+  it("counts a branch whose tip merged in no stage", () => {
+    const built = stages({ trees: ahead, review: mergedAtTip });
+    expect(statuses(built.proposal)).toEqual([]);
+    expect(statuses(built.review)).toEqual([]);
+  });
+
+  it("judges the skill against the default branch as if the branch were gone", () => {
+    const trees = { ...ahead, working: { tdd: "edited" } };
+    const row = oneRow(stages({ trees, review: mergedAtTip }).proposal);
+    expect(row.status).toBe("not-yet-proposed");
+    expect(row.comparison).toEqual({ kind: "default-branch" });
+  });
+
+  it("keeps a merged request over another commit as it reads today", () => {
+    const review = reviewOf([request({ state: "merged" })]);
+    expect(statuses(stages({ trees: ahead, review }).review)).toEqual([
+      "tdd:proposal-merged",
+    ]);
+  });
+
+  it("never lets a read that filled its bound prove a branch spent", () => {
+    const review = reviewOf(
+      [request({ state: "merged", headCommit: TIP })],
+      false,
+    );
+    expect(statuses(stages({ trees: ahead, review }).review)).toEqual([
+      "tdd:proposal-merged",
+    ]);
+  });
+
+  it("keeps the branch a proposal when the review read failed", () => {
+    const trees = { ...ahead, working: { tdd: "edited" } };
+    const built = stages({ trees, review: { outcome: "failed" } });
+    expect(statuses(built.proposal)).toEqual(["tdd:new-local-work"]);
+  });
+
+  it("keeps the branch a proposal when review reads are unavailable", () => {
+    const trees = { ...ahead, working: { tdd: "edited" } };
+    const built = stages({ trees, review: { outcome: "unavailable" } });
+    expect(statuses(built.proposal)).toEqual(["tdd:new-local-work"]);
+  });
+
+  it("keeps a branch with an open request pending review", () => {
+    const review = reviewOf([
+      request({ number: 44, state: "merged", headCommit: TIP }),
+      request({ number: 45, state: "open" }),
+    ]);
+    expect(statuses(stages({ trees: ahead, review }).review)).toEqual([
+      "tdd:waiting-for-review",
+    ]);
+  });
+
+  it("judges a branch reused for several merged requests by its tip", () => {
+    const review = reviewOf([
+      request({
+        number: 44,
+        state: "merged",
+        headCommit: "1111111111111111111111111111111111111111",
+      }),
+      request({ number: 45, state: "merged", headCommit: TIP }),
+    ]);
+    expect(statuses(stages({ trees: ahead, review }).review)).toEqual([]);
+  });
+
+  it("never reads a ref it could not read as spent", () => {
+    const trees = {
+      ...ahead,
+      promote: { tdd: { tree: "pushed", commit: null } },
+    };
+    expect(statuses(stages({ trees, review: mergedAtTip }).review)).toEqual([
+      "tdd:proposal-merged",
+    ]);
+  });
+});
+
 describe("Pending release membership", () => {
   it("reads the merged delta as green release rows", () => {
     const built = stages({
