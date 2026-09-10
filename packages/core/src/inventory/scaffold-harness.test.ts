@@ -124,6 +124,7 @@ describe("ScaffoldHarness", () => {
     expect(git.commits[0]?.paths.sort()).toEqual([
       ".apm/skills/.gitkeep",
       ".github/workflows/skill-check.yml",
+      ".gitignore",
       "CONTRIBUTING.md",
       "README.md",
       "apm.yml",
@@ -230,6 +231,35 @@ describe("ScaffoldHarness", () => {
     expect(await fs.readFile(`${REPO}/apm.yml`)).toBeNull();
     expect(await fs.readFile(`${REPO}/README.md`)).toBe("mine\n");
     expect(git.commits).toEqual([]);
+  });
+
+  it("refuses a repository that already has a .gitignore, and merges nothing into it", async () => {
+    const fs = new InMemoryFileSystem({
+      directories: { [REPO]: REPO },
+      files: { [`${REPO}/.gitignore`]: "node_modules/\n" },
+    });
+    const git = new FakeGit();
+
+    const result = await make(fs, git).scaffold(REPO);
+
+    expect(result).toEqual({
+      ok: false,
+      error: "path-occupied",
+      path: ".gitignore",
+    });
+    expect(await fs.readFile(`${REPO}/.gitignore`)).toBe("node_modules/\n");
+    expect(await fs.readFile(`${REPO}/apm.yml`)).toBeNull();
+    expect(git.commits).toEqual([]);
+  });
+
+  it("writes the .gitignore that keeps operating-system files out of a proposal", async () => {
+    const fs = emptyRepo();
+
+    await make(fs).scaffold(REPO);
+
+    expect(await fs.readFile(`${REPO}/.gitignore`)).toBe(
+      ".DS_Store\n._*\nThumbs.db\ndesktop.ini\n",
+    );
   });
 
   it("refuses a directory that is already a Harness", async () => {
@@ -341,6 +371,7 @@ describe("ScaffoldHarness", () => {
     expect(git.unstaged.sort()).toEqual([
       ".apm/skills/.gitkeep",
       ".github/workflows/skill-check.yml",
+      ".gitignore",
       "CONTRIBUTING.md",
       "README.md",
       "apm.yml",
