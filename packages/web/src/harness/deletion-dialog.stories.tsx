@@ -6,8 +6,11 @@ const meta = {
   component: DeletionDialog,
   args: {
     skill: "old-skill",
-    origin: "github.com/fimoklei/agent-harness",
-    seenRemoteTree: "9f2c1b7a3d4e5f60718293a4b5c6d7e8f9012345",
+    mode: {
+      kind: "propose",
+      origin: "github.com/fimoklei/agent-harness",
+      seenRemoteTree: "9f2c1b7a3d4e5f60718293a4b5c6d7e8f9012345",
+    },
     onClose: () => {},
     onConfirm: () => {},
     deleting: false,
@@ -20,6 +23,12 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Ready: Story = {};
+
+// The other road: the skill exists nowhere else, so there is no deletion to
+// propose and the folder goes from disk.
+export const LocalOnly: Story = {
+  args: { mode: { kind: "local", folder: ".apm/skills/old-skill" } },
+};
 
 export const Deleting: Story = {
   args: { deleting: true },

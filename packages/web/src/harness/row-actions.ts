@@ -13,6 +13,9 @@ export type RowActionHandlers = {
   create: (skill: string) => void;
   reopen: (skill: string, number: number) => void;
   withdraw: (skill: string, number: number) => void;
+  // Removes the skill's folder from the Working Harness. Offered only where
+  // the skill exists nowhere else, so there is no deletion to propose (#798).
+  deleteLocal: (skill: string) => void;
 };
 
 const NO_REQUEST = "Withdraw proposal — no request yet";
@@ -49,6 +52,17 @@ export function rowItems(
         disabled: !enabled,
         onSelect: () => handlers.promote(row),
       },
+      // Only a skill that has never been proposed and sits in no ref at all:
+      // reverting a change to the default branch is a different verb (#798).
+      ...(row.status === "not-yet-proposed" && row.localOnly
+        ? [
+            {
+              label: "Delete skill",
+              disabled: !enabled,
+              onSelect: () => handlers.deleteLocal(row.skill),
+            },
+          ]
+        : []),
     ];
   }
 

@@ -312,6 +312,24 @@ export function usePromoteDeletion() {
   });
 }
 
+// Deleting a skill that exists nowhere else. Only the name travels: there is
+// no remote to confirm against, because nothing reaches one. The harness read
+// is invalidated rather than written — whether the row is gone is read from
+// git, not from this reply (#798).
+export function useDeleteLocalSkill() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: { name: string }) =>
+      requestJson<{ name: string }>("/api/harness/skill/delete", {
+        method: "POST",
+        body: JSON.stringify(request),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: HARNESS_KEY });
+    },
+  });
+}
+
 // Writes the fetched state straight into the query cache: a refresh already
 // carries the answer, so re-reading it would only show an older picture first.
 export function useRefreshHarness() {

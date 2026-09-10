@@ -18,6 +18,7 @@ const row = (
   comparison: stage === "pending-proposal" ? { kind: "default-branch" } : null,
   alsoIn: [],
   concurrentChange: false,
+  localOnly: false,
   remoteTree: null,
   previousName: null,
   ...over,
@@ -105,6 +106,7 @@ const NO_OP = {
   create: () => {},
   reopen: () => {},
   withdraw: () => {},
+  deleteLocal: () => {},
 };
 
 export const PendingReview: Story = {

@@ -1,4 +1,4 @@
-// Every POST body the server accepts, and the eight request-shape refusals it
+// Every POST body the server accepts, and the request-shape refusals it
 // answers a wrong one with — the only prose the server writes (ADR-0025 §8).
 
 import type { Context } from "hono";
@@ -109,7 +109,7 @@ export const deletionBodySchema = z.object({
   seenRemoteTree: z.string(),
 });
 
-// The eight request-shape refusals — the only prose the server writes
+// The request-shape refusals — the only prose the server writes
 // (ADR-0025 §8). The sentence states what did not happen and where to restart;
 // the shape rides in `detail`, which is where the reader meets it.
 export type RequestShape = { message: string; detail: string };
@@ -138,6 +138,13 @@ export const DELETION_BODY: RequestShape = {
     "Nothing was proposed. Reload the page, then remove the skill again.",
   detail:
     "The request carries a skill name and the origin/HEAD tree it was confirmed against.",
+};
+
+// Removing a skill that exists nowhere else. Only the name travels: nothing is
+// compared against a remote, because nothing reaches one (#798).
+export const LOCAL_DELETION_BODY: RequestShape = {
+  message: "Nothing was deleted. Reload the page, then delete the skill again.",
+  detail: "The request carries a skill name: { name: string }.",
 };
 
 export const RELEASE_BODY: RequestShape = {

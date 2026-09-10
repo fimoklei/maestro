@@ -44,7 +44,7 @@ A story is documentation, not a test (behaviour → `.test.tsx`, see `testing.md
 
 - Keep user-facing text in `packages/web`, centralised per feature. Author a
   notice's heading, sentence, `detail` and action label together, keyed by error
-  code. The server sends codes and HTTP statuses; its eight request-shape
+  code. The server sends codes and HTTP statuses; its request-shape
   messages remain the exception.
 - Share a string when its meaning and behaviour match. Write dynamic sentences
   whole and check zero, one, many and long names.

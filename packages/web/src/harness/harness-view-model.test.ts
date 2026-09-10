@@ -163,6 +163,7 @@ describe("stageSections", () => {
     comparison,
     alsoIn: [],
     concurrentChange: false,
+    localOnly: false,
     remoteTree: null,
     previousName: null,
   });
@@ -317,6 +318,7 @@ describe("harnessAnnouncement", () => {
     comparison: { kind: "default-branch" },
     alsoIn: [],
     concurrentChange: false,
+    localOnly: false,
     remoteTree: null,
     previousName: null,
   });

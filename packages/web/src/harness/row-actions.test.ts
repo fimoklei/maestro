@@ -12,6 +12,7 @@ const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
   comparison: null,
   alsoIn: null,
   concurrentChange: false,
+  localOnly: false,
   remoteTree: null,
   previousName: null,
   ...over,
@@ -23,6 +24,7 @@ const handlers = {
   create: noop,
   reopen: () => {},
   withdraw: () => {},
+  deleteLocal: () => {},
 };
 
 const labels = (items: ReturnType<typeof rowItems>) =>
@@ -44,6 +46,76 @@ describe("rowItems", () => {
     );
 
     expect(labels(items)).toEqual(["Propose change"]);
+  });
+
+  // Both facts, or nothing: a skill that exists elsewhere is deleted through a
+  // proposal, and a change to an existing skill is reverted, not deleted (#798).
+  it("offers Delete skill on a never-proposed skill that exists nowhere else", () => {
+    const items = rowItems(
+      row({
+        stage: "pending-proposal",
+        status: "not-yet-proposed",
+        requests: [],
+        localOnly: true,
+      }),
+      handlers,
+      true,
+    );
+
+    expect(labels(items)).toEqual(["Propose change", "Delete skill"]);
+  });
+
+  it.each([
+    ["the skill exists elsewhere", { localOnly: false }],
+    [
+      "it is a change to an existing skill",
+      { status: "new-local-work" as const, localOnly: true },
+    ],
+  ])("never offers Delete skill when %s", (_what, over) => {
+    const items = rowItems(
+      row({
+        stage: "pending-proposal",
+        status: "not-yet-proposed",
+        requests: [],
+        ...over,
+      }),
+      handlers,
+      true,
+    );
+
+    expect(labels(items)).not.toContain("Delete skill");
+  });
+
+  it("names the skill the deletion is for", () => {
+    const named: string[] = [];
+    const items = rowItems(
+      row({
+        stage: "pending-proposal",
+        status: "not-yet-proposed",
+        requests: [],
+        localOnly: true,
+      }),
+      { ...handlers, deleteLocal: (skill) => named.push(skill) },
+      true,
+    );
+
+    items.find((item) => item.label === "Delete skill")?.onSelect?.();
+    expect(named).toEqual(["tdd"]);
+  });
+
+  it("closes Delete skill while the remote's answer is unknown", () => {
+    const items = rowItems(
+      row({
+        stage: "pending-proposal",
+        status: "not-yet-proposed",
+        requests: [],
+        localOnly: true,
+      }),
+      handlers,
+      false,
+    );
+
+    expect(disabled(items)).toContain("Delete skill");
   });
 
   it("offers Update proposal on local work behind an open proposal", () => {
