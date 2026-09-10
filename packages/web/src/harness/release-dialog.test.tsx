@@ -41,6 +41,16 @@ const renderReady = (
   );
 
 describe("ReleaseDialog", () => {
+  it("titles the panel with the confirm button's verb and the origin", () => {
+    renderReady();
+
+    const title = "Publish release for github.com/fimoklei/agent-harness";
+    expect(
+      screen.getByRole("heading", { name: title, level: 2 }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: title })).toBeInTheDocument();
+  });
+
   it("names the version it would release and why Maestro proposed it", () => {
     renderReady();
 
