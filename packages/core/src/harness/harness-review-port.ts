@@ -31,6 +31,9 @@ export type ReviewRequest = {
   headOwner: string | null;
   headRepo: string | null;
   headBranch: string;
+  // The commit the request was opened on, as a full object name. It lets a
+  // branch tip be compared with what a request carried.
+  headCommit: string;
   baseBranch: string;
 };
 
