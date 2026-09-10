@@ -2,7 +2,7 @@
 // names, kinds, bytes and executable bits, with the copy's own skip applied.
 import { join } from "node:path";
 import type { FileSystemPort, RawDirEntry } from "../registry/file-system";
-import { SKIPPED_ENTRY } from "./copy-skill-folder";
+import { isSkippedEntry } from "./copy-skill-folder";
 import type { CopyTreeFsPort } from "./copy-tree-fs";
 
 // Two ports, because no one port carries both file text and mode bits: the
@@ -63,7 +63,7 @@ async function listing(
     ? null
     : entries
         .filter(
-          (entry) => entry.name !== SKIPPED_ENTRY && !exclude.has(entry.name),
+          (entry) => !isSkippedEntry(entry.name) && !exclude.has(entry.name),
         )
         .sort((one, other) => one.name.localeCompare(other.name));
 }

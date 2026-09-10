@@ -120,6 +120,37 @@ describe("CopySkillFolder", () => {
       expect(await readdir(join(destination(), "nested"))).toEqual(["kept.md"]);
     });
 
+    it("omits operating-system files at any depth", async () => {
+      await write("SKILL.md", "# skill\n");
+      await write(".DS_Store", "junk\n");
+      await write("._SKILL.md", "junk\n");
+      await write("Thumbs.db", "junk\n");
+      await write("desktop.ini", "junk\n");
+      await write("nested/kept.md", "kept\n");
+      await write("nested/.DS_Store", "junk\n");
+      await write("nested/._kept.md", "junk\n");
+      await write("nested/Thumbs.db", "junk\n");
+      await write("nested/desktop.ini", "junk\n");
+
+      expect(await copy()).toMatchObject({ ok: true, path: destination() });
+
+      expect((await readdir(destination())).sort()).toEqual([
+        "SKILL.md",
+        "nested",
+      ]);
+      expect(await readdir(join(destination(), "nested"))).toEqual(["kept.md"]);
+    });
+
+    it("counts an operating-system file with the .git entries it skips", async () => {
+      await write("SKILL.md", "# skill\n");
+      await write(".git/config", "[core]\n");
+      await write(".DS_Store", "junk\n");
+      await write("nested/kept.md", "kept\n");
+      await write("nested/._kept.md", "junk\n");
+
+      expect(await copy()).toMatchObject({ ok: true, skipped: 3 });
+    });
+
     it("omits .git reached through a symbolic link", async () => {
       await write("SKILL.md", "# skill\n");
       await write(".git/config", "[core]\n");
