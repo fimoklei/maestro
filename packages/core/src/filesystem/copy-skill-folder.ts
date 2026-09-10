@@ -3,6 +3,7 @@
 import { join, relative, sep } from "node:path";
 import { isWithinRoot } from "./browse-path";
 import type { CopyEntryFacts, CopyTreeFsPort } from "./copy-tree-fs";
+import { isOperatingSystemFile } from "./operating-system-files";
 
 const MAX_FILES = 1000;
 const MAX_BYTES = 50 * 1024 * 1024;
@@ -12,15 +13,8 @@ const MAX_BYTES = 50 * 1024 * 1024;
 // and without counting toward the limits (ADR-0021 point 12). Exported because
 // a comparison of what the copy would land has to skip the same entries
 // (`same-tree.ts`); one owner, not two spellings.
-const SKIPPED_NAMES: ReadonlySet<string> = new Set([
-  ".git",
-  ".DS_Store",
-  "Thumbs.db",
-  "desktop.ini",
-]);
-
 export function isSkippedEntry(name: string): boolean {
-  return SKIPPED_NAMES.has(name) || name.startsWith("._");
+  return name === ".git" || isOperatingSystemFile(name);
 }
 
 export type CopySkillFolderError =

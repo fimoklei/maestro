@@ -291,6 +291,27 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
       });
     });
 
+    it("reads a committed .DS_Store on the default branch as a difference", async () => {
+      // The tree reader ignores nothing (#920): an operating-system file the
+      // default branch already carries stays visible, so removing it is work
+      // the author can see and propose.
+      await writeFile(join(root, ".gitignore"), ".DS_Store\n", "utf8");
+      await writeFile(
+        join(root, ".apm", "skills", "tdd", ".DS_Store"),
+        "junk\n",
+        "utf8",
+      );
+      await git(root, "add", "-A", "-f");
+      await git(root, "commit", "-q", "-m", "commit an operating-system file");
+      await git(root, "push", "-q", "origin", "HEAD:main");
+      await adapter().fetch(root);
+      await rm(join(root, ".apm", "skills", "tdd", ".DS_Store"));
+
+      const trees = await movementTrees(root);
+
+      expect(trees.working.tdd).not.toBe(trees.remote.tdd);
+    });
+
     it("hashes a tracked skill file the same even when a rule ignores it", async () => {
       // git exempts an already-tracked file from the ignore rules. An index
       // built from nothing knows of no tracked files, so the file would drop
