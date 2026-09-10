@@ -64,7 +64,11 @@ export const JustLandedRow: Story = {
       row("pending-proposal", "grilling", "not-yet-proposed"),
       row("pending-proposal", "code-review", "not-yet-proposed"),
     ],
-    actions: { items: () => [], failed: null, highlight: "code-review" },
+    actions: {
+      items: () => [],
+      failed: null,
+      highlight: { stage: "pending-proposal", skill: "code-review" },
+    },
   },
 };
 
@@ -82,7 +86,7 @@ export const RowsCarryingANotice: Story = {
     actions: {
       items: () => [],
       failed: {
-        skill: "grilling",
+        row: { stage: "pending-proposal", skill: "grilling" },
         notice: {
           level: "error",
           label: "No answer from GitHub",

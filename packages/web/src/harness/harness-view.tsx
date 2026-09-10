@@ -26,8 +26,13 @@ import {
 } from "./notice-copy";
 import { rowItems } from "./row-actions";
 import { PROPOSAL_EMPTY } from "./stage-copy";
-import { StageTable } from "./stage-table";
-import type { HarnessStageRow, ReleasePlan, SemverStep } from "./use-harness";
+import { type StageRowKey, StageTable } from "./stage-table";
+import type {
+  HarnessStage,
+  HarnessStageRow,
+  ReleasePlan,
+  SemverStep,
+} from "./use-harness";
 import {
   useDiscardReleasePlan,
   useHarness,
@@ -119,6 +124,10 @@ export function HarnessView() {
     const done = setTimeout(() => setLandedOn(null), 3000);
     return () => clearTimeout(done);
   }, [landedOn]);
+  // An import writes the working tree, so its row is Pending proposal's — even
+  // where the same skill also holds a row in the two remote stages (#865).
+  const imported: StageRowKey | null =
+    landedOn === null ? null : { stage: "pending-proposal", skill: landedOn };
 
   // Promote: which row is waiting and what the last press refused are read off
   // the mutation. The links are kept beside it, one per skill — a second
@@ -126,6 +135,9 @@ export function HarnessView() {
   const promote = usePromoteSkill();
   const promotedSkill = promote.variables?.name ?? null;
   const promoteFailure = promoteNotice(promote.error);
+  // The stage the press was made in. Propose change sits in two of them, and a
+  // refusal belongs to the row it was pressed from, not to the skill (#865).
+  const [promotedFrom, setPromotedFrom] = useState<HarnessStage | null>(null);
 
   // A deletion never publishes by the row's press alone: it opens a
   // confirmation, which carries the origin/HEAD tree that row was painted
@@ -140,11 +152,15 @@ export function HarnessView() {
   const closeConfirmation = () => setConfirming(null);
   // The row that just moved sections, whichever press moved it: a deletion is
   // confirmed in a dialog that unmounts with the row it was opened from, so the
-  // promote mutation alone would drop the keyboard on the document (#581).
+  // promote mutation alone would drop the keyboard on the document (#581). A
+  // landed push always lands in Pending review, whichever stage it was pressed
+  // in — the branch is now ahead of the default branch (#865).
+  const movedTo = (skill: string | null): StageRowKey | null =>
+    skill === null ? null : { stage: "pending-review", skill };
   const justMoved = promote.isSuccess
-    ? promotedSkill
+    ? movedTo(promotedSkill)
     : deletion.isSuccess
-      ? (deletion.variables?.name ?? null)
+      ? movedTo(deletion.variables?.name ?? null)
       : null;
 
   // The three GitHub-side actions share one mutation: only the route differs,
@@ -163,27 +179,38 @@ export function HarnessView() {
   // withdrawal's refusal belongs to its dialog, where the confirmation still
   // stands (#577, #580).
   const rowFailure = () => {
-    if (promoteFailure !== null && promotedSkill !== null) {
-      return { skill: promotedSkill, notice: promoteFailure };
+    if (
+      promoteFailure !== null &&
+      promotedSkill !== null &&
+      promotedFrom !== null
+    ) {
+      return {
+        row: { stage: promotedFrom, skill: promotedSkill },
+        notice: promoteFailure,
+      };
     }
     if (
       withdrawing === null &&
       proposalFailure !== null &&
       proposalSkill !== null
     ) {
-      return { skill: proposalSkill, notice: proposalFailure };
+      // The three GitHub-side actions are Pending review's alone.
+      return {
+        row: { stage: "pending-review" as const, skill: proposalSkill },
+        notice: proposalFailure,
+      };
     }
     return null;
   };
 
-  const promoteSkill = (name: string) => {
-    const row = proposalRows(state).find((each) => each.skill === name);
-    if (row?.deletion === true) {
+  const promoteSkill = (row: HarnessStageRow) => {
+    setPromotedFrom(row.stage);
+    if (row.deletion) {
       deletion.reset();
-      setConfirming(name);
+      setConfirming(row.skill);
       return;
     }
-    promote.mutate({ name });
+    promote.mutate({ name: row.skill });
   };
 
   // Opening the view fetches, the same act Retry check repeats. Scheduled
@@ -404,8 +431,8 @@ export function HarnessView() {
                         failed: rowFailure(),
                         // Focusing the row's menu is what scrolls it into
                         // view: the platform already does that for focus().
-                        focus: landedOn ?? justMoved,
-                        highlight: landedOn,
+                        focus: imported ?? justMoved,
+                        highlight: imported,
                       }}
                     />
                   )}

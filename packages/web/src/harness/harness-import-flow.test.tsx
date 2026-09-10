@@ -1,4 +1,4 @@
-import type { HarnessState } from "@maestro/core";
+import type { HarnessStageRow, HarnessState } from "@maestro/core";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -18,28 +18,60 @@ const HARNESS: HarnessState = {
   },
 };
 
+const IMPORTED_ROW: HarnessStageRow = {
+  stage: "pending-proposal",
+  skill: "code-review",
+  status: "not-yet-proposed",
+  deletion: false,
+  requests: [],
+  reviewers: [],
+  comparison: { kind: "default-branch" },
+  alsoIn: [],
+  concurrentChange: false,
+  remoteTree: null,
+  previousName: null,
+};
+
 const IMPORTED_HARNESS: HarnessState = {
   ...HARNESS,
   stages: {
     ...HARNESS.stages,
-    proposal: {
+    proposal: { outcome: "read", bound: null, rows: [IMPORTED_ROW] },
+  },
+};
+
+// The same skill holding a row in all three stages, which is what one import
+// has to tell apart (#865). The two remote rows carry a request so their menus
+// are pressable, and so a stray focus would land on one of them.
+const REQUEST = {
+  number: 45,
+  url: "https://github.com/fimoklei/agent-harness/pull/45",
+};
+
+const remoteRow = (
+  stage: "pending-review" | "pending-release",
+  status: HarnessStageRow["status"],
+): HarnessStageRow => ({
+  ...IMPORTED_ROW,
+  stage,
+  status,
+  comparison: null,
+  requests: [REQUEST],
+});
+
+const IN_EVERY_STAGE: HarnessState = {
+  ...IMPORTED_HARNESS,
+  stages: {
+    proposal: { outcome: "read", bound: null, rows: [IMPORTED_ROW] },
+    review: {
       outcome: "read",
       bound: null,
-      rows: [
-        {
-          stage: "pending-proposal",
-          skill: "code-review",
-          status: "not-yet-proposed",
-          deletion: false,
-          requests: [],
-          reviewers: [],
-          comparison: { kind: "default-branch" },
-          alsoIn: [],
-          concurrentChange: false,
-          remoteTree: null,
-          previousName: null,
-        },
-      ],
+      rows: [remoteRow("pending-review", "waiting-for-review")],
+    },
+    release: {
+      outcome: "read",
+      bound: null,
+      rows: [remoteRow("pending-release", "changed")],
     },
   },
 };
@@ -59,6 +91,8 @@ function stubImportServer(options: {
   check?: unknown;
   importStatus?: number;
   importBody?: unknown;
+  // What the harness read answers once the import has gone through.
+  imported?: HarnessState;
 }) {
   const calls: string[] = [];
   const imports: unknown[] = [];
@@ -106,7 +140,9 @@ function stubImportServer(options: {
         );
       }
       // The imported skill is a row of Pending proposal from the next read on.
-      return jsonResponse(imports.length === 0 ? HARNESS : IMPORTED_HARNESS);
+      return jsonResponse(
+        imports.length === 0 ? HARNESS : (options.imported ?? IMPORTED_HARNESS),
+      );
     }),
   );
   return { calls, imports };
@@ -216,6 +252,29 @@ describe("Harness import flow", () => {
     await waitFor(() => {
       expect(menu).toHaveFocus();
     });
+    expect(menu.closest("tr")).toHaveClass("bg-active");
+  });
+
+  it("sends the author to one row of a skill that holds all three stages", async () => {
+    // The import landed in Pending proposal, so that is the row the keyboard
+    // and the active surface belong to — never a later-mounted twin (#865).
+    stubImportServer({ imported: IN_EVERY_STAGE });
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView />);
+
+    await openImportWithSource(user);
+    await user.click(screen.getByRole("button", { name: "Import skill" }));
+    await user.click(
+      await screen.findByRole("button", { name: "View in Harness" }),
+    );
+
+    const menu = await screen.findByRole("button", {
+      name: "Actions for code-review in Pending proposal",
+    });
+    await waitFor(() => {
+      expect(menu).toHaveFocus();
+    });
+    expect(document.querySelectorAll("tr.bg-active")).toHaveLength(1);
     expect(menu.closest("tr")).toHaveClass("bg-active");
   });
 

@@ -1627,6 +1627,57 @@ describe("Harness home base", () => {
     expect(within(review).getByText("▲ Pull request missing")).toBeVisible();
   });
 
+  it("lands the keyboard on the promoted row, not on a later stage's twin", async () => {
+    // lint-rules holds a row in every stage. The press made a Pending review
+    // row, so that is where the keyboard goes — Pending release only mounts
+    // last (#865).
+    const request = {
+      number: 45,
+      url: "https://github.com/fimoklei/agent-harness/pull/45",
+    };
+    stubHarnessServer({
+      read: {
+        body: withStages(ON_DISK, {
+          proposal: [row("pending-proposal", "lint-rules", "not-yet-proposed")],
+          review: [
+            row("pending-review", "lint-rules", "waiting-for-review", {
+              requests: [request],
+            }),
+          ],
+          release: [
+            row("pending-release", "lint-rules", "changed", {
+              requests: [request],
+            }),
+          ],
+        }),
+        afterPromote: withStages(ON_DISK, {
+          review: [
+            row("pending-review", "lint-rules", "waiting-for-review", {
+              requests: [request],
+            }),
+          ],
+          release: [
+            row("pending-release", "lint-rules", "changed", {
+              requests: [request],
+            }),
+          ],
+        }),
+      },
+      promote: { body: PUSHED },
+    });
+    renderHarness();
+
+    await promoteRow("lint-rules");
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", {
+          name: "Actions for lint-rules in Pending review",
+        }),
+      ).toHaveFocus(),
+    );
+  });
+
   it("re-reads the harness after a promotion, rather than moving the row itself", async () => {
     const calls = stubHarnessServer({
       read: { body: ON_DISK, afterPromote: REVIEWED },

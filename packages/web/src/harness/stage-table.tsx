@@ -21,22 +21,29 @@ import {
   statusReading,
   statusTone,
 } from "./stage-copy";
-import type { HarnessStageRow } from "./use-harness";
+import type { HarnessStage, HarnessStageRow } from "./use-harness";
+
+// One row of the whole view. A skill can hold a row in all three stages, so its
+// name alone names three rows (#865).
+export type StageRowKey = { stage: HarnessStage; skill: string };
+
+const isRow = (key: StageRowKey | null | undefined, row: HarnessStageRow) =>
+  key?.stage === row.stage && key.skill === row.skill;
 
 // What the host lets a row do. The links come from the read model; anything
 // that presses is passed in, so this file renders and decides nothing.
 export type StageRowActions = {
   items: (row: HarnessStageRow) => ActionsMenuProps["items"];
   // The row a refused press belongs to, stated where the press was.
-  failed: { skill: string; notice: NoticeContent } | null;
-  // The skill whose press just landed. Its row moved stage, taking the menu it
+  failed: { row: StageRowKey; notice: NoticeContent } | null;
+  // The row whose press just landed. Its row moved stage, taking the menu it
   // was pressed from with it, so focus follows to the row that replaced it
   // rather than falling back to the document (#581).
-  focus?: string | null;
-  // The skill a confirmation just sent the author to. Its row sits on the
-  // active surface until the host drops it — a step of the surface ramp, not a
+  focus?: StageRowKey | null;
+  // The row a confirmation just sent the author to. It sits on the active
+  // surface until the host drops it — a step of the surface ramp, not a
   // transition, so reduced motion is honoured by construction (#846).
-  highlight?: string | null;
+  highlight?: StageRowKey | null;
 };
 
 // One stage's rows. Type is a column even though every row is a skill today:
@@ -81,11 +88,14 @@ export function StageTable({
           {rows.map((row) => {
             const reviewers = reviewerLine(row);
             const crossStage = crossStageLine(row);
+            const failed = isRow(actions.failed?.row, row)
+              ? actions.failed
+              : null;
             return (
               <TableRow
                 key={`${row.stage}:${row.skill}`}
                 className={
-                  actions.highlight === row.skill ? "bg-active" : undefined
+                  isRow(actions.highlight, row) ? "bg-active" : undefined
                 }
               >
                 <TableCell className="align-top">
@@ -115,17 +125,17 @@ export function StageTable({
                       {crossStage}
                     </p>
                   )}
-                  {actions.failed?.skill === row.skill ? (
+                  {failed === null ? null : (
                     // On the row it failed on, not in a dialog: the press is
                     // still there, and a refusal changed nothing (#577).
                     <div className="mt-2">
                       <Notice
                         variant="inline"
                         trigger="user-action"
-                        notice={actions.failed.notice}
+                        notice={failed.notice}
                       />
                     </div>
-                  ) : null}
+                  )}
                   {row.concurrentChange ? (
                     // Painted with the row, not in answer to a press, so it
                     // stays polite.
@@ -145,7 +155,7 @@ export function StageTable({
                     // would name the same thing three times (copy.md · R-A).
                     label={`Actions for ${row.skill} in ${STAGE_NAMES[row.stage]}`}
                     items={actions.items(row)}
-                    focus={actions.focus === row.skill}
+                    focus={isRow(actions.focus, row)}
                   />
                 </TableCell>
               </TableRow>
