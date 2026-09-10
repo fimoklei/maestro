@@ -14,6 +14,10 @@ const ORIGIN: GitOrigin = {
   ownerRepo: "fimoklei/agent-harness",
 };
 
+// One promote branch: the tree under review, and the tip commit that carries
+// it. A null tree is a branch proposing to delete its skill.
+const onBranch = (tree: string | null) => ({ tree, commit: "branch-tip" });
+
 // A skill whose content is the same everywhere, with no promote branch: the
 // quiet case each test moves one hash away from.
 const SETTLED: HarnessSkillTrees = {
@@ -116,7 +120,7 @@ describe("Pending proposal membership", () => {
   it.each([
     ["origin/HEAD holds it", { remote: { tdd: "remote" } }],
     ["local HEAD holds it", { local: { tdd: "local" } }],
-    ["a proposal branch holds it", { promote: { tdd: "branch" } }],
+    ["a proposal branch holds it", { promote: { tdd: onBranch("branch") } }],
   ])("never marks a skill local only when %s", (_what, over) => {
     const trees = {
       remote: {},
@@ -160,7 +164,7 @@ describe("Pending proposal membership", () => {
     // is an update to the same proposal, not a deletion of its own (#847).
     const restored: HarnessSkillTrees = {
       remote: { tdd: "same" },
-      promote: { tdd: null },
+      promote: { tdd: onBranch(null) },
       local: { tdd: "same" },
       working: { tdd: "same" },
     };
@@ -176,7 +180,7 @@ describe("Pending proposal membership", () => {
     // the author's later edit vanished (user story 6).
     const trees = {
       remote: { tdd: "same" },
-      promote: { tdd: "pushed" },
+      promote: { tdd: onBranch("pushed") },
       local: { tdd: "same" },
       working: { tdd: "edited" },
     };
@@ -188,7 +192,7 @@ describe("Pending proposal membership", () => {
   it("reads a local reversion against a differing proposal as work to send", () => {
     const trees = {
       remote: { tdd: "same" },
-      promote: { tdd: "pushed" },
+      promote: { tdd: onBranch("pushed") },
       local: { tdd: "same" },
       working: { tdd: "same" },
     };
@@ -200,7 +204,7 @@ describe("Pending proposal membership", () => {
   it("holds a proposal that carries exactly the local content out of the stage", () => {
     const trees = {
       remote: { tdd: "same" },
-      promote: { tdd: "pushed" },
+      promote: { tdd: onBranch("pushed") },
       local: { tdd: "same" },
       working: { tdd: "pushed" },
     };
@@ -212,7 +216,7 @@ describe("Pending proposal membership", () => {
     // request open, so it is the proposal the local content is measured against.
     const trees = {
       remote: { tdd: "pushed" },
-      promote: { tdd: "pushed" },
+      promote: { tdd: onBranch("pushed") },
       local: { tdd: "pushed" },
       working: { tdd: "edited" },
     };
@@ -224,7 +228,7 @@ describe("Pending proposal membership", () => {
   it("compares against the default branch again once the proposal has merged", () => {
     const trees = {
       remote: { tdd: "pushed" },
-      promote: { tdd: "pushed" },
+      promote: { tdd: onBranch("pushed") },
       local: { tdd: "pushed" },
       working: { tdd: "pushed" },
     };
@@ -234,7 +238,7 @@ describe("Pending proposal membership", () => {
   it("names the open request it compared the local content against", () => {
     const trees = {
       remote: { tdd: "same" },
-      promote: { tdd: "pushed" },
+      promote: { tdd: onBranch("pushed") },
       local: { tdd: "same" },
       working: { tdd: "edited" },
     };
@@ -258,7 +262,7 @@ describe("Pending proposal membership", () => {
 describe("Pending review membership", () => {
   const pushed: HarnessSkillTrees = {
     remote: { tdd: "same" },
-    promote: { tdd: "pushed" },
+    promote: { tdd: onBranch("pushed") },
     local: { tdd: "same" },
     working: { tdd: "pushed" },
   };
@@ -342,7 +346,7 @@ describe("Pending review membership", () => {
   it("drops the row once the merge reaches the default branch", () => {
     const merged: HarnessSkillTrees = {
       remote: { tdd: "pushed" },
-      promote: { tdd: "pushed" },
+      promote: { tdd: onBranch("pushed") },
       local: { tdd: "same" },
       working: { tdd: "pushed" },
     };
@@ -400,7 +404,7 @@ describe("Pending review membership", () => {
   it("holds a closed request whose content already merged out of the stage", () => {
     const merged: HarnessSkillTrees = {
       remote: { tdd: "pushed" },
-      promote: { tdd: "pushed" },
+      promote: { tdd: onBranch("pushed") },
       local: { tdd: "pushed" },
       working: { tdd: "pushed" },
     };
@@ -427,7 +431,7 @@ describe("Pending review membership", () => {
   it("keeps a branch that proposes a deletion as a deletion in its own stage", () => {
     const deleting: HarnessSkillTrees = {
       remote: { tdd: "same" },
-      promote: { tdd: null },
+      promote: { tdd: onBranch(null) },
       local: { tdd: "same" },
       working: {},
     };
@@ -439,7 +443,7 @@ describe("Pending review membership", () => {
   it("keeps the deletion fact under every reading a review can take", () => {
     const deleting: HarnessSkillTrees = {
       remote: { tdd: "same" },
-      promote: { tdd: null },
+      promote: { tdd: onBranch(null) },
       local: { tdd: "same" },
       working: {},
     };
@@ -524,7 +528,7 @@ describe("stage memberships are independent", () => {
     stages({
       trees: {
         remote: { tdd: "merged" },
-        promote: { tdd: "pushed" },
+        promote: { tdd: onBranch("pushed") },
         local: { tdd: "merged" },
         working: { tdd: "edited" },
       },

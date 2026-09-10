@@ -223,7 +223,7 @@ const currentProposal = (
   if (!Object.hasOwn(trees.promote, skill)) {
     return null;
   }
-  const tree = trees.promote[skill] ?? null;
+  const tree = trees.promote[skill]?.tree ?? null;
   const unmerged = tree !== (trees.remote[skill] ?? null);
   const open = (matches.get(skill) ?? []).some(
     (request) => request.state === "open",
@@ -243,7 +243,7 @@ const proposalStage = (
     const hashes = {
       remote: trees.remote[skill] ?? null,
       promote: Object.hasOwn(trees.promote, skill)
-        ? { tree: trees.promote[skill] ?? null }
+        ? { tree: trees.promote[skill]?.tree ?? null }
         : null,
       local: trees.local[skill] ?? null,
       working: trees.working[skill] ?? null,

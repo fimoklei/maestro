@@ -26,6 +26,7 @@ import type {
   HarnessFacts,
   HarnessFetchOutcome,
   HarnessGitPort,
+  HarnessPromoteRef,
   HarnessSkillTrees,
   HarnessTag,
   PromoteSkillOutcome,
@@ -49,6 +50,10 @@ const BRANCH_REFSPEC = "+refs/heads/*:refs/remotes/origin/*";
 // One branch per skill under review, named after the skill it carries. Fetched
 // by the branch refspec above, so what is read here is what the team pushed.
 const PROMOTE_BRANCHES = `refs/remotes/origin/${PROMOTE_NAMESPACE}`;
+
+// Tab-separated so a branch name containing spaces stays one field. The second
+// field is the branch's tip commit, read beside the tree under review (#918).
+const PROMOTE_FORMAT = `%(refname:lstrip=${PROMOTE_BRANCHES.split("/").length})\t%(objectname)`;
 
 // Fixed, so a pull request starts legibly without Maestro asking for a message.
 const PROMOTE_SUBJECT = "Promote skill: ";
@@ -578,7 +583,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
     }
     return {
       remote: byName(remote),
-      promote: await this.promoteTrees(root),
+      promote: await this.promoteRefs(root),
       local: byName(local),
       working: byName(working),
     };
@@ -601,13 +606,14 @@ export class HarnessGitAdapter implements HarnessGitPort {
 
   // Each promote branch is asked only about the skill it is named for: a
   // branch carrying anything else is not that skill's review. Every branch
-  // gets a key; a null value is a branch proposing to delete its skill.
-  private async promoteTrees(
+  // gets a key; a null tree is a branch proposing to delete its skill. The tip
+  // commit comes from the same listing, so it costs no extra call.
+  private async promoteRefs(
     root: string,
-  ): Promise<Record<string, string | null>> {
+  ): Promise<Record<string, HarnessPromoteRef>> {
     const listing = await this.read(root, [
       "for-each-ref",
-      `--format=%(refname:lstrip=${PROMOTE_BRANCHES.split("/").length})`,
+      `--format=${PROMOTE_FORMAT}`,
       PROMOTE_BRANCHES,
     ]);
     if (listing === null) {
@@ -615,12 +621,13 @@ export class HarnessGitAdapter implements HarnessGitPort {
     }
 
     const named = await Promise.all(
-      listing.split("\n").map(async (skill) => {
-        const hash = await this.read(root, [
+      listing.split("\n").map(async (line) => {
+        const [skill = "", commit = ""] = line.split("\t");
+        const tree = await this.read(root, [
           "rev-parse",
           `${PROMOTE_BRANCHES}/${skill}:${harnessSkillSubpath(skill)}`,
         ]);
-        return [skill, hash] as const;
+        return [skill, { tree, commit: commit || null }] as const;
       }),
     );
     return Object.fromEntries(named);
