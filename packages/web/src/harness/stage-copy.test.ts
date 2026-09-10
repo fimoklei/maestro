@@ -293,6 +293,25 @@ describe("Detail sentences", () => {
     },
   );
 
+  // Two ways on where the folder can come back, so the one sentence names
+  // both controls rather than hiding the local one (#915).
+  it.each(["not-yet-proposed", "deleted-locally"] as const)(
+    "names Restore skill beside Propose change on a restorable %s row",
+    (status) => {
+      expect(
+        detailSentence(
+          row("pending-proposal", status, {
+            deletion: true,
+            restorable: true,
+          }),
+          CONTEXT,
+        ),
+      ).toBe(
+        "This skill is deleted in your clone but still on main. Select Propose change to propose the deletion, or Restore skill to bring it back.",
+      );
+    },
+  );
+
   it("names the next step when nothing is released yet", () => {
     const unreleased = { defaultBranch: "main", releasedVersion: null };
     expect(detailSentence(row("pending-release", "added"), unreleased)).toBe(

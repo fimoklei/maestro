@@ -12,8 +12,10 @@ import {
   proposalNotice,
   publishReleaseNotice,
   releasePlanNotice,
+  restoreNotice,
 } from "./notice-copy";
 import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
+import { RestoreDialog } from "./restore-dialog";
 import type {
   HarnessStageRow,
   ReleasePlan,
@@ -25,6 +27,7 @@ import type {
   useProposalAction,
   usePublishRelease,
   useReleasePlan,
+  useRestoreSkill,
 } from "./use-harness";
 import { WithdrawDialog } from "./withdraw-dialog";
 
@@ -45,6 +48,12 @@ export type HarnessDialogsProps = {
   deletion: ReturnType<typeof usePromoteDeletion>;
   deleteLocal: ReturnType<typeof useDeleteLocalSkill>;
   onDeletionClose: () => void;
+  // The row a restore was pressed from, and the commit the whole Harness was
+  // read at. Null while no confirmation is open, or where HEAD is unreadable.
+  restoreRow: HarnessStageRow | null;
+  restoreCommit: string | null;
+  restore: ReturnType<typeof useRestoreSkill>;
+  onRestoreClose: () => void;
   withdrawing: { skill: string; number: number } | null;
   proposalAction: ReturnType<typeof useProposalAction>;
   onWithdrawClose: () => void;
@@ -115,6 +124,31 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
               ? localDeletionNotice(props.deleteLocal.error)
               : deletionNotice(props.deletion.error)
           }
+        />
+      ) : null}
+      {props.restoreRow !== null && props.restoreCommit !== null ? (
+        <RestoreDialog
+          skill={props.restoreRow.skill}
+          folder={`${SKILLS_DIR}/${props.restoreRow.skill}`}
+          commit={props.restoreCommit}
+          hasRequest={props.restoreRow.requests.length > 0}
+          onClose={props.onRestoreClose}
+          // Closes on success only: a refusal is stated in the dialog, where
+          // the confirmation the author gave still stands.
+          onConfirm={() =>
+            props.restoreRow !== null &&
+            props.restoreCommit !== null &&
+            props.restore.mutate(
+              {
+                name: props.restoreRow.skill,
+                seenHeadCommit: props.restoreCommit,
+                hasRequest: props.restoreRow.requests.length > 0,
+              },
+              { onSuccess: props.onRestoreClose },
+            )
+          }
+          restoring={props.restore.isPending}
+          restoreError={restoreNotice(props.restore.error)}
         />
       ) : null}
       {props.withdrawing !== null ? (
