@@ -3,7 +3,18 @@
 // local HEAD's, origin/HEAD's, the proposal branch's and the release tag's —
 // and only one of them may ever land on disk (ADR-0030, #888).
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import {
+  lstat,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  readlink,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -199,7 +210,10 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
       await app.request("/api/harness/refresh", { method: "POST" })
     ).json()) as HarnessState;
 
-  const deleteFolder = () => rm(join(root, FOLDER), { recursive: true });
+  // `force` because a sparse checkout takes the folder out itself, and the
+  // ambiguity cases still have to reach the route with it gone.
+  const deleteFolder = () =>
+    rm(join(root, FOLDER), { recursive: true, force: true });
 
   it("offers the deleted skill as restorable, at the commit it read", async () => {
     const app = makeApp();
@@ -364,5 +378,134 @@ describe("harness restore HTTP route", { timeout: 30_000 }, () => {
 
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({ error: "invalid-body" });
+  });
+
+  // A working tree that is mid-rewrite, conflicted or incomplete by design
+  // cannot answer for what the author means, so nothing is written into it.
+  describe("an ambiguous working tree", () => {
+    // Every refusal is proved by the clone as well as the class: the folder is
+    // still gone and no ref on either side moved.
+    const refuses = async (error: string) => {
+      const app = makeApp();
+      await deleteFolder();
+      const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
+      const before = await refs();
+
+      const response = await restore(app, {
+        name: "tdd",
+        seenHeadCommit: head,
+      });
+
+      expect(response.status).toBe(409);
+      expect(await response.json()).toEqual({ error });
+      await expect(stat(join(root, FOLDER))).rejects.toThrow();
+      expect(await refs()).toEqual(before);
+    };
+
+    // Two branches editing the same line of a file outside the skills tree, so
+    // the conflict never touches what the restoration is about.
+    const conflictingBranch = async () => {
+      await git(root, "checkout", "-b", "theirs");
+      await writeFile(join(root, "README.md"), "theirs\n", "utf8");
+      await git(root, "add", "README.md");
+      await git(root, "commit", "-m", "theirs");
+      await git(root, "checkout", "main");
+      await writeFile(join(root, "README.md"), "mine\n", "utf8");
+      await git(root, "add", "README.md");
+      await git(root, "commit", "-m", "mine");
+    };
+
+    it("refuses while the checkout is sparse", async () => {
+      await git(root, "sparse-checkout", "init");
+      await refuses("sparse-checkout");
+    });
+
+    it("refuses while a merge is in progress", async () => {
+      await conflictingBranch();
+      await git(root, "merge", "theirs").catch(() => {});
+      await refuses("merge-in-progress");
+    });
+
+    it("refuses while a rebase is in progress", async () => {
+      await conflictingBranch();
+      await git(root, "rebase", "theirs").catch(() => {});
+      await refuses("rebase-in-progress");
+    });
+
+    it("refuses while a conflict is left unresolved", async () => {
+      await conflictingBranch();
+      await git(root, "merge", "theirs").catch(() => {});
+      // `--quit` drops MERGE_HEAD and leaves the conflicted entries standing,
+      // so this is the unresolved-conflict case on its own.
+      await git(root, "merge", "--quit");
+      await refuses("unresolved-conflicts");
+    });
+  });
+
+  // Whatever sits at the destination is the author's, and a restoration never
+  // replaces it — whichever kind of thing it is.
+  describe("an occupied destination", () => {
+    const refuses = async () => {
+      const app = makeApp();
+
+      const response = await restore(app, {
+        name: "tdd",
+        seenHeadCommit: localHead,
+      });
+
+      expect(response.status).toBe(409);
+      expect(await response.json()).toEqual({ error: "destination-exists" });
+    };
+
+    it("refuses a file standing where the folder was", async () => {
+      await deleteFolder();
+      await writeFile(join(root, FOLDER), "mine\n", "utf8");
+
+      await refuses();
+
+      expect(await readFile(join(root, FOLDER), "utf8")).toBe("mine\n");
+    });
+
+    it("refuses an empty folder, and leaves it empty", async () => {
+      await deleteFolder();
+      await mkdir(join(root, FOLDER), { recursive: true });
+
+      await refuses();
+
+      expect(await readdir(join(root, FOLDER))).toEqual([]);
+    });
+
+    it("refuses a link, without following it out of the skills folder", async () => {
+      await deleteFolder();
+      const outside = join(base, "outside");
+      await mkdir(outside);
+      await symlink(outside, join(root, FOLDER));
+
+      await refuses();
+
+      // The link is still a link pointing where it did, and nothing was
+      // written through it.
+      expect((await lstat(join(root, FOLDER))).isSymbolicLink()).toBe(true);
+      expect(await readlink(join(root, FOLDER))).toBe(outside);
+      expect(await readdir(outside)).toEqual([]);
+    });
+
+    // The skills folder itself gone is a destination that cannot be read, not
+    // one that is free: an unread destination is never an empty one.
+    it("refuses when the skills folder itself is gone", async () => {
+      await rm(join(root, ".apm", "skills"), { recursive: true });
+
+      const app = makeApp();
+      const response = await restore(app, {
+        name: "tdd",
+        seenHeadCommit: localHead,
+      });
+
+      expect(response.status).toBe(409);
+      expect(await response.json()).toEqual({
+        error: "destination-unreadable",
+      });
+      await expect(stat(join(root, ".apm", "skills"))).rejects.toThrow();
+    });
   });
 });

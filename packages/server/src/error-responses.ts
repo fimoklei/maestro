@@ -263,6 +263,15 @@ export const restoreErrorResponses: ErrorTable<RestoreSkillError> = {
   "not-in-commit": { status: 422 },
   "destination-exists": { status: 409 },
   "destination-unsafe": { status: 409 },
+  "destination-unreadable": { status: 409 },
+  "source-unreadable": { status: 409 },
+  // The same four working trees the deletion route refuses under, answered the
+  // same way: a state the author leaves, then presses again (#580).
+  "sparse-checkout": deletionErrorResponses["sparse-checkout"],
+  "merge-in-progress": deletionErrorResponses["merge-in-progress"],
+  "rebase-in-progress": deletionErrorResponses["rebase-in-progress"],
+  "unresolved-conflicts": deletionErrorResponses["unresolved-conflicts"],
+  unreadable: deletionErrorResponses.unreadable,
   "restore-in-progress": { status: 409 },
   "restore-failed": { status: 500 },
 };

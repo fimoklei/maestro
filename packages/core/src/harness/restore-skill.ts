@@ -8,11 +8,15 @@ import type { CopyTreeFsPort } from "../filesystem/copy-tree-fs";
 import { HARNESS_SKILLS_DIR } from "../inventory/harness-layout";
 import type { FileSystemPort } from "../registry/file-system";
 import { isPromotableSkillName } from "./promote-branch";
-import type { HarnessGitPort } from "./read-harness-state";
+import type { HarnessGitPort, WorktreeAmbiguity } from "./read-harness-state";
 
 export type RestoreSkillError =
   | "not-configured"
   | "invalid-skill"
+  // A working tree that is mid-rewrite, conflicted or incomplete by design
+  // answers for no author's intent, so each ambiguity arrives under its own
+  // name — the same four the deletion route refuses under (#580).
+  | WorktreeAmbiguity
   // Local HEAD moved after the confirmation read it, so the committed copy is
   // no longer the one the author approved.
   | "head-moved"
@@ -28,6 +32,13 @@ export type RestoreSkillError =
   | "destination-exists"
   // The skills folder does not resolve inside the Harness (security.md).
   | "destination-unsafe"
+  // The skills folder could not be read at all — it is gone, or the read
+  // failed. Absent is an answer the destination gives; unreadable is none,
+  // and an unread destination is never a free one.
+  | "destination-unreadable"
+  // git could no longer resolve the subtree the commit's own trees just
+  // named. A read that broke is never proof the skill was not committed.
+  | "source-unreadable"
   | "restore-in-progress"
   | "restore-failed";
 
@@ -51,6 +62,7 @@ export class RestoreSkill {
       | "readStagedSkillDifference"
       | "readSkillTrees"
       | "writeSkillTreeInto"
+      | "readWorktreeAmbiguity"
     >;
     locks: InFlightLocks;
   };
@@ -83,6 +95,14 @@ export class RestoreSkill {
     name: string,
     seenHeadCommit: string,
   ): Promise<RestoreSkillResult> {
+    // Asked before anything else, as the deletion route asks it: every fact
+    // below is read out of a working tree, and one of these makes the whole
+    // tree unable to answer.
+    const ambiguity = await this.deps.git.readWorktreeAmbiguity(root);
+    if (ambiguity !== null) {
+      return { ok: false, error: ambiguity };
+    }
+
     // Every fact re-read at the press, never taken from the row: HEAD, the
     // index and the folder all move while a confirmation stands open.
     const head = await this.deps.git.readLocalHeadCommit(root);
@@ -109,8 +129,8 @@ export class RestoreSkill {
     }
 
     const skills = await this.resolveSkillsDir(root);
-    if (skills === null) {
-      return { ok: false, error: "destination-unsafe" };
+    if (typeof skills !== "string") {
+      return { ok: false, error: skills.error };
     }
     const destination = join(skills, name);
     // `describe` never follows a trailing link, so an empty folder, a file and
@@ -144,6 +164,12 @@ export class RestoreSkill {
         commit,
         staging,
       );
+      // `missing` here contradicts the commit's own trees, read a moment ago:
+      // the subtree stopped being readable, which is never a skill that was
+      // never committed.
+      if (written === "missing") {
+        return { ok: false, error: "source-unreadable" };
+      }
       if (written !== "written") {
         return { ok: false, error: "restore-failed" };
       }
@@ -163,16 +189,22 @@ export class RestoreSkill {
   }
 
   // The deletion side's guard, read the other way round: the skills directory
-  // must resolve inside the harness before anything is written into it.
-  private async resolveSkillsDir(root: string): Promise<string | null> {
+  // must resolve inside the harness before anything is written into it. A path
+  // that leads out and a path that cannot be read are told apart, so a missing
+  // skills folder is never reported as an unsafe one.
+  private async resolveSkillsDir(
+    root: string,
+  ): Promise<string | { error: RestoreSkillError }> {
+    let realRoot: string;
+    let skills: string;
     try {
-      const realRoot = await this.deps.fs.realpath(root);
-      const skills = await this.deps.fs.realpath(
-        join(root, HARNESS_SKILLS_DIR),
-      );
-      return isWithinRoot(skills, realRoot) ? skills : null;
+      realRoot = await this.deps.fs.realpath(root);
+      skills = await this.deps.fs.realpath(join(root, HARNESS_SKILLS_DIR));
     } catch {
-      return null;
+      return { error: "destination-unreadable" };
     }
+    return isWithinRoot(skills, realRoot)
+      ? skills
+      : { error: "destination-unsafe" };
   }
 }

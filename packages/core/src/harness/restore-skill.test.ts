@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { InFlightLocks } from "../deploy/in-flight-locks";
 import type { CopyEntryFacts } from "../filesystem/copy-tree-fs";
 import type { HarnessReviewPort } from "./harness-review-port";
-import type { HarnessGitPort } from "./read-harness-state";
+import type { HarnessGitPort, WorktreeAmbiguity } from "./read-harness-state";
 import { RestoreSkill } from "./restore-skill";
 
 const ROOT = "/harness";
@@ -30,6 +30,7 @@ function build(overrides?: {
   realpath?: (path: string) => Promise<string>;
   moveFails?: boolean;
   locks?: InFlightLocks;
+  ambiguity?: WorktreeAmbiguity | null;
 }) {
   const calls: Calls = { git: [], review: [] };
   const moved: [string, string][] = [];
@@ -61,7 +62,7 @@ function build(overrides?: {
     publishTag: record("git", "publishTag"),
     pushSkillPromotion: record("git", "pushSkillPromotion"),
     pushSkillDeletion: record("git", "pushSkillDeletion"),
-    readWorktreeAmbiguity: record("git", "readWorktreeAmbiguity"),
+    readWorktreeAmbiguity: async () => overrides?.ambiguity ?? null,
     readLocalHeadCommit: async () =>
       overrides && "head" in overrides ? (overrides.head ?? null) : HEAD,
     readStagedSkillDifference: async () =>
@@ -235,12 +236,75 @@ describe("RestoreSkill", () => {
   });
 
   it("refuses when the committed copy could not be written", async () => {
-    const { restore, moved } = build({ write: "failed" });
+    const { restore, moved, removed } = build({ write: "failed" });
     await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
       ok: false,
       error: "restore-failed",
     });
+    // Nothing published and nothing half-written left behind.
     expect(moved).toEqual([]);
+    expect(removed).toEqual([STAGING]);
+  });
+
+  // The commit's own trees said the skill is there, so git failing to resolve
+  // it now is a read that broke — never proof the skill was never committed.
+  it("refuses when the committed subtree could no longer be read", async () => {
+    const { restore, moved, removed } = build({ write: "missing" });
+    await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
+      ok: false,
+      error: "source-unreadable",
+    });
+    expect(moved).toEqual([]);
+    expect(removed).toEqual([STAGING]);
+  });
+
+  // Absent is one answer the destination can give; unreadable is no answer at
+  // all, and an unread destination is never an empty one.
+  it("refuses when the skills folder cannot be read at all", async () => {
+    const { restore, written } = build({
+      realpath: async (path) => {
+        if (path === SKILLS) {
+          throw new Error("ENOENT");
+        }
+        return path;
+      },
+    });
+    await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
+      ok: false,
+      error: "destination-unreadable",
+    });
+    expect(written).toEqual([]);
+  });
+
+  // Asked before anything else, so a working tree that cannot answer for the
+  // author's intent refuses under its own name (`promote-deletion.ts`).
+  describe("an ambiguous working tree", () => {
+    const ambiguities: WorktreeAmbiguity[] = [
+      "sparse-checkout",
+      "merge-in-progress",
+      "rebase-in-progress",
+      "unresolved-conflicts",
+      "unreadable",
+    ];
+
+    for (const ambiguity of ambiguities) {
+      it(`refuses under ${ambiguity}, before any other fact is read`, async () => {
+        const { restore, written, moved } = build({
+          ambiguity,
+          // Facts that would each refuse under their own code: none of them is
+          // reached, so the answer proves the order.
+          head: "commit-xyz",
+          staged: true,
+        });
+
+        await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
+          ok: false,
+          error: ambiguity,
+        });
+        expect(written).toEqual([]);
+        expect(moved).toEqual([]);
+      });
+    }
   });
 
   it("refuses a second restore while one holds the Harness", async () => {
