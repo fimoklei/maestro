@@ -79,13 +79,21 @@ export type HarnessFacts = {
   tags: HarnessTag[] | null;
 };
 
+// What one promote branch carries: the skill's tree on it, and the commit its
+// tip sits at. A null tree is a branch proposing to delete its skill; a null
+// commit is a ref that could not be read, never an absent branch.
+export type HarnessPromoteRef = {
+  tree: string | null;
+  commit: string | null;
+};
+
 // One tree hash per canonical skill directory, at each of the four places a
 // skill's content can sit. A name absent from a map is a skill absent there —
-// except in `promote`, where the key is the branch and a null value is a
-// branch proposing to delete its skill.
+// except in `promote`, where the key is the branch and the value carries both
+// the tree under review and the branch's tip commit.
 export type HarnessSkillTrees = {
   remote: Record<string, string>;
-  promote: Record<string, string | null>;
+  promote: Record<string, HarnessPromoteRef>;
   local: Record<string, string>;
   working: Record<string, string>;
 };

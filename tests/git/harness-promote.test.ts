@@ -207,8 +207,8 @@ describe("promoting a skill", { timeout: 30_000 }, () => {
     await new HarnessGitAdapter().fetch(root);
 
     const trees = await new HarnessGitAdapter().readMovementTrees(root);
-    expect(trees?.promote.tdd).toBe(trees?.working.tdd);
-    expect(trees?.promote.tdd).not.toBe(trees?.remote.tdd);
+    expect(trees?.promote.tdd?.tree).toBe(trees?.working.tdd);
+    expect(trees?.promote.tdd?.tree).not.toBe(trees?.remote.tdd);
   });
 
   it("reports a skill the working harness does not have", async () => {

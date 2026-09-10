@@ -245,7 +245,28 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
       const trees = await movementTrees(root);
 
       expect(Object.keys(trees.promote)).toEqual(["tdd"]);
-      expect(trees.promote.tdd).not.toBe(trees.remote.tdd);
+      expect(trees.promote.tdd?.tree).not.toBe(trees.remote.tdd);
+    });
+
+    it("reads a promote branch's tip commit beside its tree", async () => {
+      await writeSkill("tdd", "up for review");
+      await git(root, "add", ".");
+      await git(root, "commit", "-m", "propose");
+      await git(root, "push", "origin", "HEAD:refs/heads/maestro/tdd");
+      const tip = (await git(root, "rev-parse", "HEAD")).stdout.trim();
+      const tree = (
+        await git(root, "rev-parse", "HEAD:.apm/skills/tdd")
+      ).stdout.trim();
+      await git(root, "reset", "--hard", "HEAD~1");
+      await writeSkill("unproposed", "nobody proposed this one");
+      await adapter().fetch(root);
+
+      const trees = await movementTrees(root);
+
+      expect(trees.promote.tdd).toEqual({ tree, commit: tip });
+      // No promote branch is no ref to read: neither answer can be given.
+      expect(trees.promote.unproposed?.tree ?? null).toBeNull();
+      expect(trees.promote.unproposed?.commit ?? null).toBeNull();
     });
 
     it("names a promote branch that proposes deleting its skill", async () => {
@@ -262,7 +283,12 @@ describe("HarnessGitAdapter", { timeout: 30_000 }, () => {
       const trees = await movementTrees(root);
 
       expect(Object.hasOwn(trees.promote, "tdd")).toBe(true);
-      expect(trees.promote.tdd).toBeNull();
+      expect(trees.promote.tdd).toEqual({
+        tree: null,
+        commit: (
+          await git(root, "rev-parse", "refs/remotes/origin/maestro/tdd")
+        ).stdout.trim(),
+      });
     });
 
     it("hashes a tracked skill file the same even when a rule ignores it", async () => {

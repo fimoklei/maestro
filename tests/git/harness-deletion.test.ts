@@ -124,7 +124,7 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
     // The branch exists and carries no tree for this skill: a review proposing
     // to delete it, which is not the same fact as having no branch at all.
     expect(Object.hasOwn(trees?.promote ?? {}, "tdd")).toBe(true);
-    expect(trees?.promote.tdd ?? null).toBeNull();
+    expect(trees?.promote.tdd?.tree ?? null).toBeNull();
     expect(trees?.remote.tdd).toBe(seen);
   });
 
