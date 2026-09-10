@@ -23,6 +23,7 @@ const row = (
   comparison: null,
   alsoIn: [],
   concurrentChange: false,
+  localOnly: false,
   remoteTree: null,
   previousName: null,
   ...over,

@@ -1,6 +1,7 @@
 import type {
   BrowseFilesystem,
   ConnectInventory,
+  DeleteLocalSkill,
   DeploySkill,
   GlobalDeployStateReader,
   ImportSkill,
@@ -26,6 +27,8 @@ export type AppDeps = {
   publish: PublishRelease;
   promote: PromoteSkill;
   promoteDeletion: PromoteSkillDeletion;
+  // The one Harness mutation that never reaches GitHub (#798).
+  deleteLocalSkill: DeleteLocalSkill;
   proposals: ProposalActions;
   connect: ConnectInventory;
   scaffold: ScaffoldHarness;

@@ -80,6 +80,11 @@ export {
   type CopyTreeFsPort,
   NodeCopyTreeFs,
 } from "./filesystem/copy-tree-fs";
+export {
+  DeleteLocalSkill,
+  type DeleteLocalSkillError,
+  type DeleteLocalSkillResult,
+} from "./harness/delete-local-skill";
 export { GhCliAdapter, REVIEW_READ_LIMIT } from "./harness/gh-cli-adapter";
 export { HarnessFreshnessStore } from "./harness/harness-freshness-store";
 export { HarnessGitAdapter } from "./harness/harness-git";

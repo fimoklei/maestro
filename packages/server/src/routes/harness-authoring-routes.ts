@@ -1,4 +1,5 @@
 import type {
+  DeleteLocalSkillResult,
   PromoteDeletionResult,
   PromoteSkillResult,
   ProposalActionResult,
@@ -9,6 +10,7 @@ import { countPrimitives } from "../count-primitives";
 import {
   deletionErrorResponses,
   importErrorResponses,
+  localDeletionErrorResponses,
   promoteErrorResponses,
   proposalErrorResponses,
   scaffoldErrorResponses,
@@ -19,6 +21,7 @@ import {
   deletionBodySchema,
   IMPORT_BODY,
   importBodySchema,
+  LOCAL_DELETION_BODY,
   PATH_BODY,
   PROMOTE_BODY,
   PROPOSAL_BODY,
@@ -33,6 +36,7 @@ type Deps = Pick<
   | "inventory"
   | "promote"
   | "promoteDeletion"
+  | "deleteLocalSkill"
   | "proposals"
   | "importSkill"
   | "scaffold"
@@ -85,6 +89,24 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
       branch: result.branch,
       pullRequestUrl: result.pullRequestUrl,
     });
+  });
+
+  // Deleting a skill that exists nowhere else: the one Harness mutation that
+  // never reaches GitHub. The name is a claim — core re-reads the local refs
+  // and re-resolves the folder before anything leaves the disk (#798).
+  app.post("/api/harness/skill/delete", async (c) => {
+    const body = await parseBody(c, promoteBodySchema, LOCAL_DELETION_BODY);
+    if (!body.ok) {
+      return body.response;
+    }
+    const result: DeleteLocalSkillResult = await deps.deleteLocalSkill.execute(
+      body.data.name,
+    );
+    if (!result.ok) {
+      const { status } = localDeletionErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
+    }
+    return c.json({ name: result.name });
   });
 
   // The three mutations that touch only GitHub. Each rechecks identity and the

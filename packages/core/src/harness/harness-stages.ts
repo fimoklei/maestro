@@ -68,6 +68,10 @@ export type HarnessStageRow = {
   // could not be established — an unknown must never read as "only here".
   alsoIn: HarnessStage[] | null;
   concurrentChange: boolean;
+  // Pending proposal only: this skill sits in the working tree and nowhere
+  // else — no tree on origin/HEAD, none at local HEAD, and no proposal branch.
+  // A deletion here has nothing to publish, so it is made on disk (#798).
+  localOnly: boolean;
   // origin/HEAD's copy of this skill: the opaque token a deletion confirmation
   // is given against (#580).
   remoteTree: string | null;
@@ -183,6 +187,7 @@ const blankRow = (
   comparison: null,
   alsoIn: null,
   concurrentChange: false,
+  localOnly: false,
   remoteTree: null,
   previousName: null,
 });
@@ -279,6 +284,12 @@ const proposalStage = (
         hashes,
         atMergeBase === null ? undefined : (atMergeBase[skill] ?? null),
       ),
+      // Every place but the working tree, asked at once: a skill missing from
+      // all three exists only on this author's disk.
+      localOnly:
+        hashes.remote === null &&
+        hashes.local === null &&
+        !Object.hasOwn(trees.promote, skill),
       remoteTree: hashes.remote,
     });
   }

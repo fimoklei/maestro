@@ -6,6 +6,7 @@ import {
   deletionNotice,
   harnessStateNotice,
   importNotice,
+  localDeletionNotice,
   promoteNotice,
   proposalNotice,
   publishReleaseNotice,
@@ -380,6 +381,70 @@ const suites: [
           label: "Unreadable working tree",
           message:
             "Nothing was pushed. Make the Harness folder readable, then Delete skill again.",
+        },
+      ],
+    ],
+  ],
+  [
+    "localDeletionNotice",
+    localDeletionNotice,
+    {
+      level: "error",
+      label: "Skill not deleted",
+      message:
+        "The Maestro server did not answer, and the Harness is as it was. Delete skill again.",
+    },
+    [
+      ["not-configured", NOT_CONFIGURED],
+      ["invalid-skill", UNUSABLE_NAME],
+      [
+        "already-gone",
+        {
+          level: "error",
+          label: "Skill already deleted",
+          message:
+            "The Harness no longer holds this skill. Select Retry check.",
+          detail: "Something removed the folder after this list was read.",
+        },
+      ],
+      [
+        "not-local-only",
+        {
+          level: "error",
+          label: "Skill exists elsewhere",
+          message:
+            "Nothing was deleted. Select Retry check to repaint the list.",
+          detail:
+            "Maestro found this skill outside the working tree, or could not read the Harness refs.",
+        },
+      ],
+      [
+        "destination-unsafe",
+        {
+          level: "error",
+          label: "Folder outside the Harness",
+          message:
+            "Nothing was deleted. Replace the link with a real folder, then Delete skill again.",
+          detail:
+            "The skill folder resolves outside the Harness skills folder.",
+        },
+      ],
+      [
+        "delete-failed",
+        {
+          level: "error",
+          label: "Skill not deleted",
+          message:
+            "The Harness is as it was. Make the folder writable, then Delete skill again.",
+        },
+      ],
+      [
+        "delete-in-progress",
+        {
+          level: "error",
+          label: "Harness already changing",
+          message: "Wait for that change to finish, then Delete skill again.",
+          detail: "Maestro changes one Harness at a time.",
         },
       ],
     ],

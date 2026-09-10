@@ -31,7 +31,7 @@ anchor tie-breaker and checklist with the short guidance in `copy.md`.
    govern code terminology and which technical terms the screen keeps.
 4. Every user-facing word belongs in `packages/web`, centralised per feature.
    Author a notice's heading, sentence, `detail` and action label together.
-   The server sends error codes and HTTP statuses. Its eight request-shape
+   The server sends error codes and HTTP statuses. Its request-shape
    messages remain the exception, intended only for malformed requests.
 5. A Notice retains one always-visible `detail` slot and one action.
    `detail` explains why the event happened. Progressive disclosure remains

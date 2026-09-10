@@ -9,6 +9,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import {
   ConfigStore,
+  DeleteLocalSkill,
   HarnessFreshnessStore,
   HarnessGitAdapter,
   type HarnessState,
@@ -136,6 +137,12 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
         git: new HarnessGitAdapter(),
         freshness: new HarnessFreshnessStore({ store }),
         review,
+        locks,
+      }),
+      deleteLocalSkill: new DeleteLocalSkill({
+        resolveRoot,
+        fs,
+        git: new HarnessGitAdapter(),
         locks,
       }),
       proposals: new ProposalActions({

@@ -6,6 +6,7 @@
 import type {
   BrowseError,
   ConnectInventoryError,
+  DeleteLocalSkillError,
   DeploySkillError,
   HarnessStateError,
   ImportSkillError,
@@ -235,6 +236,19 @@ export const deletionErrorResponses: ErrorTable<PromoteDeletionError> = {
   "extra-requests": promoteErrorResponses["extra-requests"],
   "promote-failed": { status: 502 },
   "promote-in-progress": promoteErrorResponses["promote-in-progress"],
+};
+
+// Removing a skill that exists nowhere else. Nothing here reaches GitHub, so
+// none of the remote refusals appear: every code is a local precondition the
+// author clears and presses again (#798).
+export const localDeletionErrorResponses: ErrorTable<DeleteLocalSkillError> = {
+  "not-configured": { status: 409 },
+  "invalid-skill": { status: 400 },
+  "already-gone": { status: 409 },
+  "not-local-only": { status: 409 },
+  "destination-unsafe": { status: 409 },
+  "delete-failed": { status: 500 },
+  "delete-in-progress": { status: 409 },
 };
 
 // The sentences live in `harness/notice-copy.ts` — never a filesystem message,

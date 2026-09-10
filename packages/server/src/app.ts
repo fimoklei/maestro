@@ -6,6 +6,7 @@ import {
   ConfigStore,
   ConnectInventory,
   CopySkillFolder,
+  DeleteLocalSkill,
   DeployedCleanupAdapter,
   DeployedContentAdapter,
   DeployedLocation,
@@ -296,6 +297,15 @@ function realDeps(): AppDeps {
       freshness: harnessFreshness,
       locks: harnessPromoteLocks,
       review: harnessReview,
+    }),
+    // Removing a skill that exists nowhere else: no fetch, no push, no review
+    // call. It shares the promotion lock all the same — a removal beside one
+    // would answer for a working tree the other is reading (#798).
+    deleteLocalSkill: new DeleteLocalSkill({
+      resolveRoot: harnessRoot,
+      fs,
+      git: harnessGit,
+      locks: harnessPromoteLocks,
     }),
     // The same gh boundary the read uses, so what a mutation rechecks and what
     // the rows were painted from cannot come from two places (#827).

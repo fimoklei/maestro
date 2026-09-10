@@ -34,6 +34,7 @@ import type {
   SemverStep,
 } from "./use-harness";
 import {
+  useDeleteLocalSkill,
   useDiscardReleasePlan,
   useHarness,
   useImportCheck,
@@ -143,6 +144,9 @@ export function HarnessView() {
   // confirmation, which carries the origin/HEAD tree that row was painted
   // from. The pending movement is UI-state; the push is the mutation (#580).
   const deletion = usePromoteDeletion();
+  // The other road out of the same confirmation: a skill that exists nowhere
+  // else has no deletion to propose, so the folder goes from disk (#798).
+  const deleteLocal = useDeleteLocalSkill();
   const [confirming, setConfirming] = useState<string | null>(null);
   const pendingDeletion =
     proposalRows(state).find((row) => row.skill === confirming) ?? null;
@@ -418,6 +422,10 @@ export function HarnessView() {
                                 proposalAction.reset();
                                 setWithdrawing({ skill, number });
                               },
+                              deleteLocal: (skill) => {
+                                deleteLocal.reset();
+                                setConfirming(skill);
+                              },
                             },
                             // Closed with no answer from the remote: there is
                             // no tip to build on, and a read in flight is
@@ -426,7 +434,8 @@ export function HarnessView() {
                               !refresh.isPending &&
                               !harness.isFetching &&
                               promote.isPending === false &&
-                              proposalAction.isPending === false,
+                              proposalAction.isPending === false &&
+                              deleteLocal.isPending === false,
                           ),
                         failed: rowFailure(),
                         // Focusing the row's menu is what scrolls it into
@@ -460,6 +469,7 @@ export function HarnessView() {
             picker={picker}
             deletionRow={pendingDeletion}
             deletion={deletion}
+            deleteLocal={deleteLocal}
             onDeletionClose={closeConfirmation}
             withdrawing={withdrawing}
             proposalAction={proposalAction}

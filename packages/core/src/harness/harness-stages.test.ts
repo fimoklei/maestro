@@ -100,6 +100,33 @@ describe("Pending proposal membership", () => {
     ]);
   });
 
+  // The fact that decides whether a deletion is proposed or made on disk: no
+  // tree on origin/HEAD, none at local HEAD, and no proposal branch (#798).
+  it("marks a skill that exists only in the working tree as local only", () => {
+    const trees = {
+      remote: {},
+      promote: {},
+      local: {},
+      working: { tdd: "new" },
+    };
+    expect(oneRow(stages({ trees }).proposal).localOnly).toBe(true);
+  });
+
+  it.each([
+    ["origin/HEAD holds it", { remote: { tdd: "remote" } }],
+    ["local HEAD holds it", { local: { tdd: "local" } }],
+    ["a proposal branch holds it", { promote: { tdd: "branch" } }],
+  ])("never marks a skill local only when %s", (_what, over) => {
+    const trees = {
+      remote: {},
+      promote: {},
+      local: {},
+      working: { tdd: "new" },
+      ...over,
+    };
+    expect(oneRow(stages({ trees }).proposal).localOnly).toBe(false);
+  });
+
   it("never presents a clone that is only behind as the author's own change", () => {
     const trees = {
       remote: { tdd: "newer" },

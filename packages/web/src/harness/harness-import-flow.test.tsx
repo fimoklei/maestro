@@ -28,6 +28,7 @@ const IMPORTED_ROW: HarnessStageRow = {
   comparison: { kind: "default-branch" },
   alsoIn: [],
   concurrentChange: false,
+  localOnly: false,
   remoteTree: null,
   previousName: null,
 };

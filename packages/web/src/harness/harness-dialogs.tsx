@@ -3,11 +3,12 @@
 // which is open, what a press does — stays in the view.
 import { BrowseDialog } from "../shell/browse-dialog";
 import type { useBrowsePicker } from "../shell/use-browse-picker";
-import { DeletionDialog } from "./deletion-dialog";
+import { DeletionDialog, type DeletionMode } from "./deletion-dialog";
 import { type ImportCheckLoad, ImportDialog } from "./import-dialog";
 import {
   deletionNotice,
   importNotice,
+  localDeletionNotice,
   proposalNotice,
   publishReleaseNotice,
   releasePlanNotice,
@@ -17,6 +18,7 @@ import type {
   HarnessStageRow,
   ReleasePlan,
   SemverStep,
+  useDeleteLocalSkill,
   useImportCheck,
   useImportSkill,
   usePromoteDeletion,
@@ -41,6 +43,7 @@ export type HarnessDialogsProps = {
   picker: ReturnType<typeof useBrowsePicker>;
   deletionRow: HarnessStageRow | null;
   deletion: ReturnType<typeof usePromoteDeletion>;
+  deleteLocal: ReturnType<typeof useDeleteLocalSkill>;
   onDeletionClose: () => void;
   withdrawing: { skill: string; number: number } | null;
   proposalAction: ReturnType<typeof useProposalAction>;
@@ -54,6 +57,7 @@ export type HarnessDialogsProps = {
 
 export function HarnessDialogs(props: HarnessDialogsProps) {
   const { deletionRow } = props;
+  const mode = deletionMode(deletionRow, props.origin);
   return (
     <>
       {props.importOpen && !props.picker.open ? (
@@ -80,25 +84,37 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
           onClose={props.picker.closeBrowse}
         />
       ) : null}
-      {deletionRow !== null && deletionRow.remoteTree !== null ? (
+      {deletionRow !== null && mode !== null ? (
         <DeletionDialog
           skill={deletionRow.skill}
-          origin={props.origin}
-          seenRemoteTree={deletionRow.remoteTree}
+          mode={mode}
           onClose={props.onDeletionClose}
           // The dialog closes on success only: a refusal is stated in it,
           // and the way forward is another confirmation (#580).
           onConfirm={() =>
-            props.deletion.mutate(
-              {
-                name: deletionRow.skill,
-                seenRemoteTree: deletionRow.remoteTree as string,
-              },
-              { onSuccess: props.onDeletionClose },
-            )
+            mode.kind === "local"
+              ? props.deleteLocal.mutate(
+                  { name: deletionRow.skill },
+                  { onSuccess: props.onDeletionClose },
+                )
+              : props.deletion.mutate(
+                  {
+                    name: deletionRow.skill,
+                    seenRemoteTree: mode.seenRemoteTree,
+                  },
+                  { onSuccess: props.onDeletionClose },
+                )
           }
-          deleting={props.deletion.isPending}
-          deleteError={deletionNotice(props.deletion.error)}
+          deleting={
+            mode.kind === "local"
+              ? props.deleteLocal.isPending
+              : props.deletion.isPending
+          }
+          deleteError={
+            mode.kind === "local"
+              ? localDeletionNotice(props.deleteLocal.error)
+              : deletionNotice(props.deletion.error)
+          }
         />
       ) : null}
       {props.withdrawing !== null ? (
@@ -135,6 +151,30 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
       ) : null}
     </>
   );
+}
+
+// The Harness's own skills folder, spelled here rather than imported: `web`
+// takes types from `core` and never values (architecture.md).
+const SKILLS_DIR = ".apm/skills";
+
+// Which road this row's deletion takes, or null where the row offers neither.
+// The two are exclusive: a proposed deletion is tracked somewhere, and a
+// local-only skill is tracked nowhere.
+function deletionMode(
+  row: HarnessStageRow | null,
+  origin: string,
+): DeletionMode | null {
+  if (row === null) {
+    return null;
+  }
+  if (row.deletion) {
+    return row.remoteTree === null
+      ? null
+      : { kind: "propose", origin, seenRemoteTree: row.remoteTree };
+  }
+  return row.localOnly
+    ? { kind: "local", folder: `${SKILLS_DIR}/${row.skill}` }
+    : null;
 }
 
 // Idle until a folder is picked: with nothing to judge there is no refusal to
