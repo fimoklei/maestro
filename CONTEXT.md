@@ -76,6 +76,10 @@ _Avoid_: skipped entry (reader mechanics), failed deploy, successful deploy.
 The act of undoing a **Deploy**: the primitive disappears from each target and from that target's lockfile bookkeeping, via APM. Scoped to one or more targets — one action can retire a primitive from every target it is deployed to, walking them one at a time and reporting per target what happened. Scoped to targets either way: removing a deploy never touches the central inventory copy. A global remove covers the full set of detected tools, mirroring how a global deploy targets them as one set.
 _Avoid_: undeploy (constructed jargon), uninstall (APM's verb for the mechanism), delete (ambiguous with deleting from the central inventory).
 
+**Skill restoration**:
+Recovery of a locally deleted skill folder in the Working Harness from the last local commit, without changing its proposal.
+_Avoid_: undo deletion, which implies recovering the exact pre-deletion state.
+
 **Target**:
 Where a deploy lands. Two kinds: **local** (a consuming repo) or **global** (the user-level config of a present tool). A global deploy resolves to one target per detected tool, so "global" can be several targets on a two-tool machine and one on a single-tool machine (ADR-0011).
 _Avoid_: destination, environment.
@@ -153,6 +157,7 @@ details may name the exact APM mechanism or file.
 | Reviewer asked for changes | **Changes requested** | GitHub's review verdict on an open proposal. It survives an update to the proposal; only GitHub clears it. **Draft** outranks it when both apply. |
 | Unreleased skill change | **Pending release** | This skill differs between the Harness default branch and the latest release. Explain as *Merged, not yet released*; approval alone is not a merge. |
 | Harness skill deletion | **Delete** / **Deletion** / **Deleted** | *Delete* is the verb, *deletion* is the noun, and *deleted* is the state. Use these forms throughout the Harness journey, including proposed deletions; never *remove* for this concept. The confirmation reads *Delete {skill}* and confirms with **Delete skill**. *Delete* covers two roads: proposing a deletion when the skill exists elsewhere, and removing the folder from the Working Harness when it does not. |
+| Skill restoration | **Restore skill** / **Restore {skill}** | The action and confirmation button read **Restore skill**; the dialog title reads **Restore {skill}**. Never **Undo deletion**. |
 | Proposal without a pull request | **Pull request missing** | A prepared proposal has no matching pull request, confirmed by a complete check. It is not Pending review. |
 | Merged proposal, default branch not yet read | **Proposal merged** | GitHub merged the pull request and the Harness default branch has not been read since. It is the normal end of a review, so it carries no amber marking; the row leaves Pending review on the next read. Never **Pull request missing**, which claims no request ever existed. |
 | Closed unmerged proposal | **Proposal closed** | A closed proposal still holds work not incorporated into the default branch. Keep it visible outside Pending review. |

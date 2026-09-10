@@ -25,7 +25,9 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 ## NOW
 
-Empty — pick the next job.
+| Job | Main | Job story |
+|---|---|---|
+| Recover from a local skill deletion · [#906](https://github.com/fimoklei/maestro/issues/906) | C | *When* I delete a skill folder in my clone and change my mind, *I want to* recover the skill with clear consequences for any proposal, *so I can* continue without guessing which work I will recover or lose. |
 
 ## NEXT
 
