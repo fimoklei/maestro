@@ -4,6 +4,7 @@
 - **Date:** 2026-08-01 (issue #352, closing write-up of the authoring-side map #343)
 - **Amended:** 2026-09-06, [What Inventory says in each of its three states, now that it carries released skills only](https://github.com/fimoklei/maestro/issues/812).
 - **Amended:** 2026-09-08, [What the three stages mean](https://github.com/fimoklei/maestro/issues/808) — point 10.
+- **Amended:** 2026-09-10, [Keep the Harness author journey honest after a merge and a hand-made commit](https://github.com/fimoklei/maestro/issues/890) — points 11 and 12.
 
 ## Context
 
@@ -78,6 +79,21 @@ consumers deploy only from the released state.**
     Membership is per stage, and so is a deletion fact: deleting locally never
     relabels an earlier change in another stage. Where a stage's read failed,
     its membership is unknown, never empty.
+11. **A proposal ends at its merged pull request, not at content equality.**
+    A `maestro/<skill>` branch whose tip is the head commit of a merged request
+    is spent: it counts in no stage, whatever later happens to that skill on
+    the default branch. The branch may stay on GitHub; Maestro never deletes
+    it. Without a pull-request check the end is invisible and the branch reads
+    as before (content compared with the default branch), which *Review status
+    unavailable* already declares. The scaffold's `CONTRIBUTING.md` asks the
+    Harness owner to enable GitHub's automatic head-branch deletion.
+12. **Skill content excludes repository internals and operating-system files.**
+    `.git`, `.DS_Store`, `._*`, `Thumbs.db` and `desktop.ini` are never skill
+    content: Import leaves them behind, counted with the entries it already
+    skips, and the scaffold writes a `.gitignore` naming them so no working
+    hash or proposal carries them. A file of that kind already committed on the
+    default branch stays visible: it is what consumers install, and one commit
+    removes it. Maestro never writes that `.gitignore` into an existing Harness.
 
 ## Consequences
 
@@ -120,5 +136,14 @@ consumers deploy only from the released state.**
 - **Rename the Harness view to keep `harness` reserved for APM.** Aligns with the
   engine, re-opens #347, and puts two entries reading "Inventory" in one sidebar
   — the outcome #347 rejected.
+- **GitHub's auto-delete setting alone (#890).** One minute and no code, but
+  Maestro scaffolds Harnesses it cannot configure on GitHub, and every skill
+  promoted before the setting keeps its stale branch. Kept as advice only.
+- **Ignoring operating-system files in the tree reader (#890).** Would hide a
+  `.DS_Store` already on the default branch, which consumers install; the
+  visible row is what gets it removed.
+- **Maestro writing `.gitignore` into an existing Harness (#890).** An unasked,
+  uncommitted change in the author's clone; against the working-tree promise
+  that Maestro writes only through an action the author pressed.
 - **A separate ADR for the harness shape.** Rejected on #360: nobody looks for a
   directory constant in an ADR of its own, and ADR-0003 is consumer-side.
