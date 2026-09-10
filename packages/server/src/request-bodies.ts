@@ -109,6 +109,14 @@ export const deletionBodySchema = z.object({
   seenRemoteTree: z.string(),
 });
 
+// The confirmation the author gave: the skill, and the local HEAD commit the
+// row read its eligibility at. Compared against a freshly read HEAD, never
+// used as the thing to restore (ADR-0030).
+export const restoreBodySchema = z.object({
+  name: z.string(),
+  seenHeadCommit: z.string(),
+});
+
 // The request-shape refusals — the only prose the server writes
 // (ADR-0025 §8). The sentence states what did not happen and where to restart;
 // the shape rides in `detail`, which is where the reader meets it.
@@ -145,6 +153,15 @@ export const DELETION_BODY: RequestShape = {
 export const LOCAL_DELETION_BODY: RequestShape = {
   message: "Nothing was deleted. Reload the page, then delete the skill again.",
   detail: "The request carries a skill name: { name: string }.",
+};
+
+// Putting a deleted skill folder back. The commit travels only to be compared
+// with a freshly read local HEAD (ADR-0030).
+export const RESTORE_BODY: RequestShape = {
+  message:
+    "Nothing was restored. Reload the page, then restore the skill again.",
+  detail:
+    "The request carries a skill name and the local commit it was confirmed against.",
 };
 
 export const RELEASE_BODY: RequestShape = {

@@ -577,3 +577,66 @@ describe("stage memberships are independent", () => {
     expect(oneRow(built.release).status).toBe("changed");
   });
 });
+
+// The one fact Restore skill is offered from, read from the local trees alone
+// (ADR-0030). A remote or review read never contributes to it.
+describe("Local restoration eligibility", () => {
+  const DELETED: HarnessSkillTrees = {
+    remote: { tdd: "same" },
+    promote: {},
+    local: { tdd: "same" },
+    working: {},
+  };
+
+  it("marks a folder gone from disk that local HEAD still holds as restorable", () => {
+    expect(oneRow(stages({ trees: DELETED }).proposal).restorable).toBe(true);
+  });
+
+  it("marks the same skill's review row restorable too", () => {
+    const deleting: HarnessSkillTrees = { ...DELETED, promote: { tdd: null } };
+    const built = stages({ trees: deleting, review: reviewOf([request()]) });
+    expect(oneRow(built.review).restorable).toBe(true);
+  });
+
+  it("never marks a skill that is still on disk restorable", () => {
+    const trees = { ...SETTLED, working: { tdd: "edited" } };
+    expect(oneRow(stages({ trees }).proposal).restorable).toBe(false);
+  });
+
+  it("never marks a skill local HEAD never held restorable", () => {
+    const trees: HarnessSkillTrees = {
+      remote: {},
+      promote: {},
+      local: {},
+      working: { tdd: "only-here" },
+    };
+    expect(oneRow(stages({ trees }).proposal).restorable).toBe(false);
+  });
+
+  // The trap: a review row's `deletion` comes from the promote branch, not
+  // from disk. A skill whose folder is back must not offer to restore it.
+  it("never reads a branch's proposed deletion as a folder to restore", () => {
+    const restored: HarnessSkillTrees = {
+      remote: { tdd: "same" },
+      promote: { tdd: null },
+      local: { tdd: "same" },
+      working: { tdd: "same" },
+    };
+    const row = oneRow(
+      stages({ trees: restored, review: reviewOf([request()]) }).review,
+    );
+    expect(row.deletion).toBe(true);
+    expect(row.restorable).toBe(false);
+  });
+
+  it("keeps the fact when the review read failed, which never touches it", () => {
+    const built = stages({ trees: DELETED, review: { outcome: "failed" } });
+    expect(oneRow(built.proposal).restorable).toBe(true);
+    expect(built.review.outcome).toBe("unknown");
+  });
+
+  it("never marks a released movement restorable: it names no local tree", () => {
+    const built = stages({ release: [{ kind: "removed", name: "gone" }] });
+    expect(oneRow(built.release).restorable).toBe(false);
+  });
+});

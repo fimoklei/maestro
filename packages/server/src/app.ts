@@ -35,6 +35,7 @@ import {
   RecordedPackageAdapter,
   Registry,
   RemoveDeployedSkill,
+  RestoreSkill,
   readConfiguredGitOriginUrl,
   readGitOriginUrl,
   releasedSkillsFromGit,
@@ -304,6 +305,16 @@ function realDeps(): AppDeps {
     deleteLocalSkill: new DeleteLocalSkill({
       resolveRoot: harnessRoot,
       fs,
+      git: harnessGit,
+      locks: harnessPromoteLocks,
+    }),
+    // Putting one back, from the same clone and behind the same lock: a
+    // restoration writing a folder beside a push reading the working tree
+    // would each answer for what the other saw (ADR-0030).
+    restoreSkill: new RestoreSkill({
+      resolveRoot: harnessRoot,
+      fs,
+      copyFs: copyTreeFs,
       git: harnessGit,
       locks: harnessPromoteLocks,
     }),

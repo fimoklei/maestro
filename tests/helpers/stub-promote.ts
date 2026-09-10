@@ -4,9 +4,11 @@
 import {
   DeleteLocalSkill,
   InFlightLocks,
+  NodeCopyTreeFs,
   PromoteSkill,
   PromoteSkillDeletion,
   ProposalActions,
+  RestoreSkill,
 } from "@maestro/core";
 import {
   unavailableHarnessReview,
@@ -18,6 +20,7 @@ export function stubPromotes(): {
   promote: PromoteSkill;
   promoteDeletion: PromoteSkillDeletion;
   deleteLocalSkill: DeleteLocalSkill;
+  restoreSkill: RestoreSkill;
   proposals: ProposalActions;
 } {
   const deps = {
@@ -38,6 +41,12 @@ export function stubPromotes(): {
         realpath: async (path) => path,
         remove: async () => {},
       },
+    }),
+    // Never reached either, and for the same reason.
+    restoreSkill: new RestoreSkill({
+      ...deps,
+      fs: { realpath: async (path) => path },
+      copyFs: new NodeCopyTreeFs(),
     }),
     proposals: new ProposalActions(deps),
   };

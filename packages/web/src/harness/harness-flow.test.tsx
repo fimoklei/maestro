@@ -32,6 +32,7 @@ const RELEASED: HarnessState = {
   defaultBranch: "main",
   releaseState: "released",
   freshness: { outcome: null, lastFetchedAt: null },
+  localHeadCommit: "local-head",
   stages: {
     proposal: { outcome: "read", rows: [], bound: null },
     review: { outcome: "read", rows: [], bound: null },
@@ -57,6 +58,7 @@ const row = (
   concurrentChange: false,
   localOnly: false,
   remoteTree: null,
+  restorable: false,
   previousName: null,
   ...over,
 });

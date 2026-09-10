@@ -20,6 +20,7 @@ const row = (
   concurrentChange: false,
   localOnly: false,
   remoteTree: null,
+  restorable: false,
   previousName: null,
   ...over,
 });

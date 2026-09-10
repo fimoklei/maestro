@@ -18,6 +18,7 @@ import type {
   RemoveDeployedSkillError,
   RemovePreflightError,
   RepoPathError,
+  RestoreSkillError,
   ScaffoldHarnessError,
 } from "@maestro/core";
 import type { ErrorTable } from "./error-table";
@@ -249,6 +250,21 @@ export const localDeletionErrorResponses: ErrorTable<DeleteLocalSkillError> = {
   "destination-unsafe": { status: 409 },
   "delete-failed": { status: 500 },
   "delete-in-progress": { status: 409 },
+};
+
+// Putting a deleted skill folder back from local HEAD. Nothing here reaches
+// GitHub either: every code is a local precondition the author clears and
+// presses again (ADR-0030, #888).
+export const restoreErrorResponses: ErrorTable<RestoreSkillError> = {
+  "not-configured": { status: 409 },
+  "invalid-skill": { status: 400 },
+  "head-moved": { status: 409 },
+  "staged-changes": { status: 409 },
+  "not-in-commit": { status: 422 },
+  "destination-exists": { status: 409 },
+  "destination-unsafe": { status: 409 },
+  "restore-in-progress": { status: 409 },
+  "restore-failed": { status: 500 },
 };
 
 // The sentences live in `harness/notice-copy.ts` — never a filesystem message,

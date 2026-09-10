@@ -14,6 +14,7 @@ const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
   concurrentChange: false,
   localOnly: false,
   remoteTree: null,
+  restorable: false,
   previousName: null,
   ...over,
 });

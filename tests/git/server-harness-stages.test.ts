@@ -15,11 +15,13 @@ import {
   type HarnessState,
   InFlightLocks,
   InventoryReader,
+  NodeCopyTreeFs,
   NodeFileSystem,
   PromoteSkill,
   PromoteSkillDeletion,
   ProposalActions,
   ReadHarnessState,
+  RestoreSkill,
   type ReviewRequest,
   releasedSkillsFromGit,
 } from "@maestro/core";
@@ -142,6 +144,13 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
       deleteLocalSkill: new DeleteLocalSkill({
         resolveRoot,
         fs,
+        git: new HarnessGitAdapter(),
+        locks,
+      }),
+      restoreSkill: new RestoreSkill({
+        resolveRoot,
+        fs,
+        copyFs: new NodeCopyTreeFs(),
         git: new HarnessGitAdapter(),
         locks,
       }),

@@ -599,6 +599,82 @@ export class HarnessGitAdapter implements HarnessGitPort {
     return this.read(root, ["merge-base", remoteCommit, "HEAD"]);
   }
 
+  // The clone's own HEAD, not `origin/HEAD`: a restoration is confirmed
+  // against the author's last local commit (ADR-0030).
+  async readLocalHeadCommit(root: string): Promise<string | null> {
+    return this.read(root, ["rev-parse", "HEAD"]);
+  }
+
+  // Exit 0 is a clean entry, exit 1 is a staged difference, and anything else
+  // — a killed run included — is a question that got no answer (#888).
+  async readStagedSkillDifference(
+    root: string,
+    name: string,
+  ): Promise<boolean | null> {
+    try {
+      await run(
+        "git",
+        [
+          "-C",
+          root,
+          "diff-index",
+          "--cached",
+          "--quiet",
+          "HEAD",
+          "--",
+          harnessSkillSubpath(name),
+        ],
+        gitOptions(),
+      );
+      return false;
+    } catch (error) {
+      const killed = (error as { killed?: boolean }).killed === true;
+      return !killed && (error as { code?: number }).code === 1 ? true : null;
+    }
+  }
+
+  // git writes the bytes and the mode bits from the commit itself, through a
+  // throwaway index, so nothing here is re-implemented and nothing the author
+  // staged moves. The caller publishes the result with one rename (#888).
+  async writeSkillTreeInto(
+    root: string,
+    name: string,
+    commit: string,
+    into: string,
+  ): Promise<"written" | "missing" | "failed"> {
+    const indexDir = await mkdtemp(join(tmpdir(), "maestro-harness-restore-"));
+    const options = indexOptions(join(indexDir, "index"));
+    try {
+      try {
+        await run(
+          "git",
+          [
+            "-C",
+            root,
+            "read-tree",
+            `--prefix=${name}/`,
+            `${commit}:${harnessSkillSubpath(name)}`,
+          ],
+          options,
+        );
+      } catch {
+        // The commit does not hold that path. Every other failure below stays
+        // `failed`: a read that broke must never be reported as absence.
+        return "missing";
+      }
+      await run(
+        "git",
+        ["-C", root, "checkout-index", "-a", "-f", `--prefix=${into}/`],
+        options,
+      );
+      return "written";
+    } catch {
+      return "failed";
+    } finally {
+      await rm(indexDir, { recursive: true, force: true });
+    }
+  }
+
   // Each promote branch is asked only about the skill it is named for: a
   // branch carrying anything else is not that skill's review. Every branch
   // gets a key; a null value is a branch proposing to delete its skill.

@@ -88,6 +88,9 @@ function buildRead(overrides?: {
         throw new Error("git port's pushSkillDeletion was reached");
       },
       readWorktreeAmbiguity: async () => null,
+      readLocalHeadCommit: async () => "local-head",
+      readStagedSkillDifference: async () => false,
+      writeSkillTreeInto: async () => "written",
     },
     review: {
       readReviews: async () =>

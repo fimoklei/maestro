@@ -150,6 +150,24 @@ export interface HarnessGitPort {
   // What makes the working tree stop answering for the author's whole intent,
   // or null when nothing does. Never a path or git's own words (security.md).
   readWorktreeAmbiguity(root: string): Promise<WorktreeAmbiguity | null>;
+  // The clone's own HEAD commit: the frozen local source a restoration is
+  // confirmed against. Null where it cannot be read, an unborn branch included.
+  readLocalHeadCommit(root: string): Promise<string | null>;
+  // Whether this skill's index entry differs from HEAD — a staged edit or a
+  // staged deletion. Null where the question could not be asked (fail-closed).
+  readStagedSkillDifference(
+    root: string,
+    name: string,
+  ): Promise<boolean | null>;
+  // Writes `<commit>:.apm/skills/<name>` into `<into>/<name>`, content and mode
+  // exactly as committed. `missing` is a commit that does not hold the skill.
+  // Never touches HEAD, the real index, or the working tree (ADR-0030).
+  writeSkillTreeInto(
+    root: string,
+    name: string,
+    commit: string,
+    into: string,
+  ): Promise<"written" | "missing" | "failed">;
 }
 
 // Every call names the harness root: one record per harness, so connecting a
@@ -176,6 +194,10 @@ export type HarnessState = {
   defaultBranch: string | null;
   releaseState: HarnessReleaseState;
   freshness: HarnessFreshness;
+  // The clone's last local commit, which a restoration is confirmed against.
+  // One per Harness, not per row: it is the same commit for every skill, and
+  // it is a fact to compare, never a source the browser may name (ADR-0030).
+  localHeadCommit: string | null;
   // The three stages of the journey, each with its own membership and its own
   // outcome: a stage nobody could read is unknown, never empty (ADR-0021 · 10).
   stages: HarnessStages;
@@ -411,6 +433,7 @@ export class ReadHarnessState {
             ? releaseState(released, head, movements)
             : "unknown",
         freshness,
+        localHeadCommit: await this.deps.git.readLocalHeadCommit(root),
         stages: buildStages({
           origin,
           defaultBranch: facts.defaultBranch,

@@ -15,11 +15,13 @@ import {
   type HarnessState,
   InFlightLocks,
   InventoryReader,
+  NodeCopyTreeFs,
   NodeFileSystem,
   PromoteSkill,
   PromoteSkillDeletion,
   ProposalActions,
   ReadHarnessState,
+  RestoreSkill,
   releasedSkillsFromGit,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
@@ -129,6 +131,13 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       deleteLocalSkill: new DeleteLocalSkill({
         resolveRoot,
         fs,
+        git: new HarnessGitAdapter(),
+        locks: new InFlightLocks(),
+      }),
+      restoreSkill: new RestoreSkill({
+        resolveRoot,
+        fs,
+        copyFs: new NodeCopyTreeFs(),
         git: new HarnessGitAdapter(),
         locks: new InFlightLocks(),
       }),
