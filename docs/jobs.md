@@ -31,7 +31,11 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 ## NEXT
 
-Empty — pick the next job.
+Why now: spec'd and `ready-for-agent`; every promoted skill carries a stale branch, so the Harness view stays noisy until this lands.
+
+| Job | Main | Job story |
+|---|---|---|
+| Keep the Harness view honest after a merge · [#911](https://github.com/fimoklei/maestro/issues/911) | C | *When* a proposal of mine is merged and the skill later changes on the default branch, or the operating system drops a file into a skill folder, *I want to* see rows only for work I still have to do, *so I can* trust the Harness view instead of reading nine true rows that mean nothing. |
 
 ## LATER
 
