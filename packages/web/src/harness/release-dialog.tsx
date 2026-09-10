@@ -48,7 +48,7 @@ export function ReleaseDialog({
   publishing: boolean;
   publishError: NoticeContent | null;
 }) {
-  const heading = `Release ${origin}`;
+  const heading = `Publish release for ${origin}`;
   // `null` until the author overrides it; the proposal fills in until then, so
   // one state serves both the display and what Publish sends.
   const [chosenStep, setChosenStep] = useState<SemverStep | null>(null);
@@ -83,7 +83,7 @@ export function ReleaseDialog({
     >
       <div className="flex shrink-0 items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
         <h2 className="font-semibold font-ui text-fg text-subtitle">
-          Release <span className="font-mono">{origin}</span>
+          Publish release for <span className="font-mono">{origin}</span>
         </h2>
       </div>
 
