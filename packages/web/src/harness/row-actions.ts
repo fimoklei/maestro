@@ -7,8 +7,9 @@ import type { HarnessStageRow, ReviewRequestLink } from "./use-harness";
 export type RowActionHandlers = {
   // Pushes this skill's working content to its proposal branch, and opens a
   // request where the branch has none. The one press behind both Propose
-  // change and Update proposal.
-  promote: (skill: string) => void;
+  // change and Update proposal. It takes the row, not the name: two stages
+  // carry the press, and a refusal belongs to the one it was made in (#865).
+  promote: (row: HarnessStageRow) => void;
   create: (skill: string) => void;
   reopen: (skill: string, number: number) => void;
   withdraw: (skill: string, number: number) => void;
@@ -46,7 +47,7 @@ export function rowItems(
             ? "Update proposal"
             : "Propose change",
         disabled: !enabled,
-        onSelect: () => handlers.promote(row.skill),
+        onSelect: () => handlers.promote(row),
       },
     ];
   }
@@ -84,7 +85,7 @@ export function rowItems(
         {
           label: "Propose change",
           disabled: !enabled,
-          onSelect: () => handlers.promote(row.skill),
+          onSelect: () => handlers.promote(row),
         },
       ];
     case "multiple-pull-requests":
