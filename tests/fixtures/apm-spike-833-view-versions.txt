@@ -1,0 +1,12 @@
+[!] A new version of APM is available: 0.30.0 (current: 0.29.0)
+Run apm self-update to upgrade
+
+     Available versions:      
+    fimoklei/apm-spike-833    
+┏━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━┓
+┃ Name   ┃ Type   ┃ Commit   ┃
+┡━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━┩
+│ v2.0.0 │ tag    │ 4beb0720 │
+│ v1.0.0 │ tag    │ c9782621 │
+│ main   │ branch │ 4beb0720 │
+└────────┴────────┴──────────┘

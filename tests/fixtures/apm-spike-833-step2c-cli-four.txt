@@ -1,0 +1,11 @@
+[*] Validating 1 package...
+[+] fimoklei/apm-spike-833#v2.0.0 (updated ref in apm.yml)
+[*] Updated apm.yml dependency entries
+[>] Installing 1 new package...
+[>] Resolving fimoklei/apm-spike-833...
+[i] Targets: claude  (source: --target flag)
+  [+] fimoklei/apm-spike-833 #v2.0.0 @4beb0720
+  |-- 4 skill(s) integrated -> .claude/skills/
+[i] Cleaned 2 stale files from fimoklei/apm-spike-833
+
+[*] Installed 1 APM dependency (2 stale files cleaned) in 0.3s.

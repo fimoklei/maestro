@@ -1,0 +1,7 @@
+[>] Uninstalling 1 package(s)...
+[+] fimoklei/apm-spike-833 - found in apm.yml
+[i] Cleaned 6 stale files from fimoklei/apm-spike-833
+[i] Removed fimoklei/apm-spike-833 from dependencies.apm in apm.yml
+[*] Updated /private/var/folders/md/9htx0_616wl_v3lv2ldd9pcr0000gn/T/tmp.tvFSxGKXjM/proj/apm.yml (removed 1 package(s))
+[i] Removed fimoklei/apm-spike-833 from apm_modules/
+[*] Uninstall complete: Removed 1 package(s) from apm.yml, Removed 1 package(s) from apm_modules/

@@ -1,0 +1,7 @@
+[>] Installing dependencies from apm.yml...
+[>] Resolving fimoklei/apm-spike-833...
+[i] Targets: claude  (source: --target flag)
+  [+] fimoklei/apm-spike-833 #v2.0.0 @4beb0720
+  |-- 4 skill(s) integrated -> .claude/skills/
+
+[*] Installed 1 APM dependency in 0.2s.

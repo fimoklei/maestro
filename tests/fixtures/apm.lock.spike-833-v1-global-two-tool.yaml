@@ -1,0 +1,231 @@
+lockfile_version: '1'
+generated_at: '2026-09-11T11:13:04.392745+00:00'
+apm_version: 0.29.0
+dependencies:
+- repo_url: fimoklei/apm-spike-833
+  name: apm-spike-833
+  host: github.com
+  resolved_commit: c9782621c77e6052ba94fc600aca13bd09cfe9b0
+  resolved_ref: v1.0.0
+  version: 0.0.0
+  package_type: apm_package
+  deployed_files:
+  - .agents/skills/alpha
+  - .agents/skills/alpha/SKILL.md
+  - .agents/skills/beta
+  - .agents/skills/beta/SKILL.md
+  - .agents/skills/delta
+  - .agents/skills/delta/SKILL.md
+  - .agents/skills/epsilon
+  - .agents/skills/epsilon/SKILL.md
+  - .agents/skills/gamma
+  - .agents/skills/gamma/SKILL.md
+  - .claude/skills/alpha
+  - .claude/skills/alpha/SKILL.md
+  - .claude/skills/beta
+  - .claude/skills/beta/SKILL.md
+  - .claude/skills/delta
+  - .claude/skills/delta/SKILL.md
+  - .claude/skills/epsilon
+  - .claude/skills/epsilon/SKILL.md
+  - .claude/skills/gamma
+  - .claude/skills/gamma/SKILL.md
+  deployed_file_hashes:
+    .agents/skills/alpha/SKILL.md: sha256:e5ec7628e5943faec04ead4ed2c536288653d54a2a08d46432a3d5683b468bf7
+    .agents/skills/beta/SKILL.md: sha256:2a98ce08d577e727a83fea53d96f217d97a0fb840d3f8091e0fd7c546e18b604
+    .agents/skills/delta/SKILL.md: sha256:48a44cfbdcc88bed6c84080f30ba9e84f4dbe9657e23b22440175b24924012c2
+    .agents/skills/epsilon/SKILL.md: sha256:9d612de04ff44eb094b300846bf71fda13f20f39952277301dafaf9c9fcc911a
+    .agents/skills/gamma/SKILL.md: sha256:841275361c13c9a73513d260d26761204c0ef459a3d2d4a7b61958b7f3a31031
+    .claude/skills/alpha/SKILL.md: sha256:e5ec7628e5943faec04ead4ed2c536288653d54a2a08d46432a3d5683b468bf7
+    .claude/skills/beta/SKILL.md: sha256:2a98ce08d577e727a83fea53d96f217d97a0fb840d3f8091e0fd7c546e18b604
+    .claude/skills/delta/SKILL.md: sha256:48a44cfbdcc88bed6c84080f30ba9e84f4dbe9657e23b22440175b24924012c2
+    .claude/skills/epsilon/SKILL.md: sha256:9d612de04ff44eb094b300846bf71fda13f20f39952277301dafaf9c9fcc911a
+    .claude/skills/gamma/SKILL.md: sha256:841275361c13c9a73513d260d26761204c0ef459a3d2d4a7b61958b7f3a31031
+  content_hash: sha256:f971b4c7f3300d7e056392b92c726ba4a1fca0e3f4bdf11f2e5cfc9a4ace22d2
+  skill_subset:
+  - alpha
+  - beta
+  - delta
+  - epsilon
+  - gamma
+deployments:
+- kind: project-relative
+  target: claude
+  value: .claude/skills/alpha
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/apm-spike-833
+  active_owner: fimoklei/apm-spike-833
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/alpha/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/apm-spike-833
+  active_owner: fimoklei/apm-spike-833
+  content_hash: sha256:e5ec7628e5943faec04ead4ed2c536288653d54a2a08d46432a3d5683b468bf7
+- kind: project-relative
+  target: claude
+  value: .claude/skills/beta
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/apm-spike-833
+  active_owner: fimoklei/apm-spike-833
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/beta/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/apm-spike-833
+  active_owner: fimoklei/apm-spike-833
+  content_hash: sha256:2a98ce08d577e727a83fea53d96f217d97a0fb840d3f8091e0fd7c546e18b604
+- kind: project-relative
+  target: claude
+  value: .claude/skills/delta
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/apm-spike-833
+  active_owner: fimoklei/apm-spike-833
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/delta/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/apm-spike-833
+  active_owner: fimoklei/apm-spike-833
+  content_hash: sha256:48a44cfbdcc88bed6c84080f30ba9e84f4dbe9657e23b22440175b24924012c2
+- kind: project-relative
+  target: claude
+  value: .claude/skills/epsilon
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/apm-spike-833
+  active_owner: fimoklei/apm-spike-833
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/epsilon/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/apm-spike-833
+  active_owner: fimoklei/apm-spike-833
+  content_hash: sha256:9d612de04ff44eb094b300846bf71fda13f20f39952277301dafaf9c9fcc911a
+- kind: project-relative
+  target: claude
+  value: .claude/skills/gamma
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/apm-spike-833
+  active_owner: fimoklei/apm-spike-833
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/gamma/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/apm-spike-833
+  active_owner: fimoklei/apm-spike-833
+  content_hash: sha256:841275361c13c9a73513d260d26761204c0ef459a3d2d4a7b61958b7f3a31031
+- kind: project-relative
+  target: codex
+  value: .agents/skills/alpha
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/apm-spike-833
+  active_owner: fimoklei/apm-spike-833
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/alpha/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/apm-spike-833
+  active_owner: fimoklei/apm-spike-833
+  content_hash: sha256:e5ec7628e5943faec04ead4ed2c536288653d54a2a08d46432a3d5683b468bf7
+- kind: project-relative
+  target: codex
+  value: .agents/skills/beta
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/apm-spike-833
+  active_owner: fimoklei/apm-spike-833
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/beta/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/apm-spike-833
+  active_owner: fimoklei/apm-spike-833
+  content_hash: sha256:2a98ce08d577e727a83fea53d96f217d97a0fb840d3f8091e0fd7c546e18b604
+- kind: project-relative
+  target: codex
+  value: .agents/skills/delta
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/apm-spike-833
+  active_owner: fimoklei/apm-spike-833
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/delta/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/apm-spike-833
+  active_owner: fimoklei/apm-spike-833
+  content_hash: sha256:48a44cfbdcc88bed6c84080f30ba9e84f4dbe9657e23b22440175b24924012c2
+- kind: project-relative
+  target: codex
+  value: .agents/skills/epsilon
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/apm-spike-833
+  active_owner: fimoklei/apm-spike-833
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/epsilon/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/apm-spike-833
+  active_owner: fimoklei/apm-spike-833
+  content_hash: sha256:9d612de04ff44eb094b300846bf71fda13f20f39952277301dafaf9c9fcc911a
+- kind: project-relative
+  target: codex
+  value: .agents/skills/gamma
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/apm-spike-833
+  active_owner: fimoklei/apm-spike-833
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/gamma/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/apm-spike-833
+  active_owner: fimoklei/apm-spike-833
+  content_hash: sha256:841275361c13c9a73513d260d26761204c0ef459a3d2d4a7b61958b7f3a31031
