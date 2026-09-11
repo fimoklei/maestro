@@ -1,6 +1,7 @@
 # ADR-0031 — A target follows one Harness release
 
 - **Status:** Accepted — amends ADR-0019 §1, ADR-0027 and ADR-0028
+- **Amended:** 2026-09-11 — rules 9 and 10 and the manifest write, after the #833 review
 - **Date:** 2026-09-11 (wayfinder map #833: gate #930, spike #929, research #928)
 
 ## Context
@@ -27,10 +28,10 @@ the result.
   the latest release can be adopted, and **Update target** moves the whole
   selection there in one preview and one install (#932).
 - **Selection**: **Deploy skill** adds at the target's release, **Remove
-  skill** takes away; Update never changes it (#937). Removing one skill is an
-  `uninstall` of the Harness dependency followed by an `install` at the same
-  tag with the narrower selection; Maestro never writes the consumer's
-  `apm.yml` (ADR-0019 §7).
+  skill** takes away; Update never changes it (#937). Before every install
+  Maestro writes the exact selection to `skills:` in the consumer's `apm.yml`
+  and passes the same list as `--skill`; removing one skill is one `install`
+  at the same tag with the narrower list (ADR-0019 §7).
 - **Global** adopts as one set of detected tools (ADR-0011).
 
 ### What Maestro owns
@@ -41,12 +42,14 @@ The gaps #929 measured, and the rule for each:
 |---|---|
 | A selected skill absent at the new tag is cleaned silently on a bare install | Compare the selection with `.apm/skills/` at the chosen tag before install; the preview states the removal. |
 | Fails closed only when every name is re-passed as `--skill` | Always pass the full selection as `--skill` on every install. |
-| `skills:` / `skill_subset` keep stale names | Read deployed state from `deployed_files` per `skills/<name>/`, never from the subset list. |
-| No atomicity, no no-op marker for a root package | Compare `deployed_file_hashes` before and after; a half-landed Update reads **Mixed releases** per skill from the files; **Retry update** re-runs the same chosen tag. |
+| `skills:` / `skill_subset` keep stale names, and `--skill` only unions | Write `skills:` to the exact selection before every install, so a dropped name never returns; read deployed state from `deployed_files` per `skills/<name>/`, never from the subset list. |
+| No atomicity, no no-op marker for a root package | Record the chosen tag as the target's **Pending release** in `~/.maestro` before the install and clear it once the lockfile shows that tag; compare `deployed_file_hashes` before and after; a half-landed Update reads **Mixed releases** per skill from the files; **Retry update** re-runs the Pending release, across a restart too. |
 | A same-ref reinstall resets an edited copy silently | The Local-edits guard (#931) runs before every install: deploy, remove, update. |
 | `deployments[].target` differs per form | The lockfile reader admits `package_type: apm_package` and attributes files by path and target. |
 | A false `-g` ownership warning | Never shown, never parsed. |
 | An update banner on `apm view` stdout | The versions parser skips leading lines. |
+| `apm.yml` may hold any shape | Edit `skills:` only under exactly one dependency on the connected Harness; any other shape stops before the install with **Manifest not recognised**. |
+| `includes: auto` deploys every primitive type | Count lockfile files outside `skills/<name>/`; more than zero shows **Extra files deployed** on the target card. |
 
 ### Accepted limits
 
@@ -54,7 +57,11 @@ The gaps #929 measured, and the rule for each:
    and Retry converges (#929 measured it).
 2. *No content changes* is Maestro's own reading from hashes, never APM's.
 3. `includes: auto` deploys every primitive type the Harness holds; the
-   Harness stays skills-only.
+   Harness stays skills-only, and the cockpit counts what lands outside it.
+4. Only the latest release can be adopted and an empty target pins it. A
+   broken latest release has one way out: tag a new release in the Harness.
+   Rolling back stays a LATER job.
+5. Comments in the consumer's `apm.yml` may not survive Maestro's write.
 
 ## Consequences
 
@@ -62,12 +69,15 @@ The gaps #929 measured, and the rule for each:
   and **Behind** become target readings; **Older tag** retires; **Bundle**
   keeps Maestro's meaning with an *Avoid* line for APM's.
 - ADR-0019 §1 is amended (the consumer pins the Harness, not a skill) and §7
-  is added (narrowing by uninstall plus reinstall). ADR-0027 keeps its content
+  is added (Maestro writes `skills:` before every install). ADR-0027 keeps its content
   reading as the changed count and loses its row status and row action.
   ADR-0028 keeps its row reading; the action moves to the target.
 - Migrating a target that still holds per-skill dependencies is its own
   decision (#933).
-- The apm-driver rules for the eight gaps are written when the code that
+- `CONTEXT.md` gains **Pending release**, **Manifest not recognised** and
+  **Extra files deployed**; **Removal incomplete** and **Retry removal**
+  retire, since a Remove no longer empties the target.
+- The apm-driver rules for the gaps are written when the code that
   follows them lands, not before.
 
 ## Rejected alternatives
@@ -78,5 +88,10 @@ The gaps #929 measured, and the rule for each:
   the data — the lockfile would still say forty-seven pins while the cockpit
   claims one release — and because every Update would be forty-seven
   installs with no natural half-landed state to read back.
-- **Maestro edits the consumer's `apm.yml` to narrow the selection.** APM's
-  own way to narrow. Rejected: see ADR-0019 §7.
+- **Remove = uninstall the Harness, then reinstall with the narrower list,
+  Maestro never touching `apm.yml`.** The first accepted shape (2026-09-11,
+  gate #930). Reversed the same day: the target is empty between the two
+  calls and the reinstall needs GitHub, so one Remove could empty a
+  forty-seven skill target; and `skills:` would keep every name a release
+  dropped, so a later release reusing the name would deploy it unasked.
+  Writing one list APM created is the smaller departure (ADR-0019 §7).
