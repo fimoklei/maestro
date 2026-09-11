@@ -75,6 +75,11 @@ export type HarnessStageRow = {
   // origin/HEAD's copy of this skill: the opaque token a deletion confirmation
   // is given against (#580).
   remoteTree: string | null;
+  // Local recovery is possible: the whole folder is absent from the working
+  // tree and local HEAD holds its tree. Read from the local trees alone, never
+  // from a remote or a review read, and never from this row's `deletion`,
+  // which a review row takes from the promote branch (ADR-0030).
+  restorable: boolean;
   // Pending release only: the name a renamed skill moved from.
   previousName: string | null;
 };
@@ -189,8 +194,19 @@ const blankRow = (
   concurrentChange: false,
   localOnly: false,
   remoteTree: null,
+  restorable: false,
   previousName: null,
 });
+
+// `isLocalDeletion` asked of the two local places only, so the answer is the
+// same whichever stage builds the row.
+const isRestorable = (trees: HarnessSkillTrees, skill: string): boolean =>
+  isLocalDeletion({
+    remote: null,
+    promote: null,
+    local: trees.local[skill] ?? null,
+    working: trees.working[skill] ?? null,
+  });
 
 const releaseStage = (release: SkillMovement[] | null): HarnessStageRead => {
   if (release === null) {
@@ -297,6 +313,7 @@ const proposalStage = (
             : "new-local-work",
       ),
       deletion: isLocalDeletion(hashes),
+      restorable: isRestorable(trees, skill),
       comparison:
         proposal === null
           ? { kind: "default-branch" }
@@ -357,11 +374,17 @@ const reviewStage = (
     const matching = matches.get(skill) ?? [];
     const open = matching.filter((request) => request.state === "open");
     const proposal = currentProposal(trees, skill, matches, complete);
-    const deletion = proposal !== null && proposal.tree === null;
+    // The branch's own deletion fact, and the disk's. They disagree whenever a
+    // deletion was proposed and the folder came back, so both travel together
+    // rather than one being read off the other.
+    const local = {
+      deletion: proposal !== null && proposal.tree === null,
+      restorable: isRestorable(trees, skill),
+    };
     if (open.length > 1) {
       rows.push({
         ...blankRow("pending-review", skill, "multiple-pull-requests"),
-        deletion,
+        ...local,
         requests: open.map(link),
       });
       continue;
@@ -370,7 +393,7 @@ const reviewStage = (
     if (sole !== undefined) {
       rows.push({
         ...blankRow("pending-review", skill, openStatus(sole)),
-        deletion,
+        ...local,
         requests: [link(sole)],
         reviewers: sole.reviewers,
       });
@@ -392,7 +415,7 @@ const reviewStage = (
     if (settled !== undefined) {
       rows.push({
         ...blankRow("pending-review", skill, settled.status),
-        deletion,
+        ...local,
         requests: settled.requests.map(link),
       });
       continue;
@@ -402,7 +425,7 @@ const reviewStage = (
     if (review.complete) {
       rows.push({
         ...blankRow("pending-review", skill, "pull-request-missing"),
-        deletion,
+        ...local,
       });
     }
   }

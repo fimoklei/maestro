@@ -17,6 +17,9 @@ export const unreachableHarnessGit = () => ({
   pushSkillPromotion: unreachable,
   pushSkillDeletion: unreachable,
   readWorktreeAmbiguity: unreachable,
+  readLocalHeadCommit: unreachable,
+  readStagedSkillDifference: unreachable,
+  writeSkillTreeInto: unreachable,
 });
 
 // The review port a "nothing connected" stub gets: no capability at all, so a

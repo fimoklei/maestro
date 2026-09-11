@@ -145,6 +145,7 @@ describe("stageSections", () => {
     defaultBranch: "main",
     releaseState: "released",
     freshness: { outcome: "fetched", lastFetchedAt: READ_AT },
+    localHeadCommit: "local-head",
     stages: {
       proposal: { outcome: "read", rows: [], bound: null },
       review: { outcome: "read", rows: [], bound: null },
@@ -165,6 +166,7 @@ describe("stageSections", () => {
     concurrentChange: false,
     localOnly: false,
     remoteTree: null,
+    restorable: false,
     previousName: null,
   });
 
@@ -262,6 +264,7 @@ describe("stageSections", () => {
     const built = {
       ...state({ review: { outcome: "read", bound: 50, rows: [] } }),
       freshness: { outcome: null, lastFetchedAt: null },
+      localHeadCommit: "local-head",
     };
 
     expect(metaOf(built, "pending-review")).toBe(
@@ -300,6 +303,7 @@ describe("harnessAnnouncement", () => {
     defaultBranch: "main",
     releaseState: "released",
     freshness: { outcome: "fetched", lastFetchedAt: READ_AT },
+    localHeadCommit: "local-head",
     stages: {
       proposal: { outcome: "read", rows: [], bound: null },
       review: { outcome: "read", rows: [], bound: null },
@@ -320,6 +324,7 @@ describe("harnessAnnouncement", () => {
     concurrentChange: false,
     localOnly: false,
     remoteTree: null,
+    restorable: false,
     previousName: null,
   });
 
@@ -387,6 +392,7 @@ describe("journeyConfirmedEmpty", () => {
     defaultBranch: "main",
     releaseState: "never-released",
     freshness: { outcome: "fetched", lastFetchedAt: null },
+    localHeadCommit: "local-head",
     stages,
   });
 

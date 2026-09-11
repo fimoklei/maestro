@@ -125,7 +125,11 @@ export function detailSentence(
   const branch = defaultBranch ?? "the default branch";
   const release = releasedVersion;
   const publish = "Select Create a release to publish it.";
-  const deleteLocally = `This skill is deleted in your clone but still on ${branch}. Select Propose change to propose the deletion.`;
+  // Two ways on where local HEAD still holds the folder: propose the deletion,
+  // or take it back. The sentence names both controls the row offers (#915).
+  const deleteLocally = row.restorable
+    ? `This skill is deleted in your clone but still on ${branch}. Select Propose change to propose the deletion, or Restore skill to bring it back.`
+    : `This skill is deleted in your clone but still on ${branch}. Select Propose change to propose the deletion.`;
   switch (row.status) {
     case "not-yet-proposed":
       return row.deletion

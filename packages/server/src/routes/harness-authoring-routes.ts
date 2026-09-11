@@ -3,6 +3,7 @@ import type {
   PromoteDeletionResult,
   PromoteSkillResult,
   ProposalActionResult,
+  RestoreSkillResult,
 } from "@maestro/core";
 import type { Context, Hono } from "hono";
 import type { AppDeps } from "../app-deps";
@@ -13,6 +14,7 @@ import {
   localDeletionErrorResponses,
   promoteErrorResponses,
   proposalErrorResponses,
+  restoreErrorResponses,
   scaffoldErrorResponses,
 } from "../error-responses";
 import {
@@ -29,6 +31,8 @@ import {
   parseBody,
   promoteBodySchema,
   proposalBodySchema,
+  RESTORE_BODY,
+  restoreBodySchema,
 } from "../request-bodies";
 
 type Deps = Pick<
@@ -37,6 +41,7 @@ type Deps = Pick<
   | "promote"
   | "promoteDeletion"
   | "deleteLocalSkill"
+  | "restoreSkill"
   | "proposals"
   | "importSkill"
   | "scaffold"
@@ -107,6 +112,26 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
       return c.json({ error: result.error }, status);
     }
     return c.json({ name: result.name });
+  });
+
+  // Putting a deleted skill folder back from the clone's last local commit.
+  // The commit in the body is the one the row read eligibility at: core
+  // compares it with a freshly read local HEAD and restores from that, so the
+  // browser names a source no more than it names a path (ADR-0030).
+  app.post("/api/harness/skill/restore", async (c) => {
+    const body = await parseBody(c, restoreBodySchema, RESTORE_BODY);
+    if (!body.ok) {
+      return body.response;
+    }
+    const result: RestoreSkillResult = await deps.restoreSkill.execute(
+      body.data.name,
+      body.data.seenHeadCommit,
+    );
+    if (!result.ok) {
+      const { status } = restoreErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
+    }
+    return c.json({ name: result.name, commit: result.commit });
   });
 
   // The three mutations that touch only GitHub. Each rechecks identity and the

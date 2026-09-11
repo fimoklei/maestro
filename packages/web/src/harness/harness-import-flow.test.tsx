@@ -11,6 +11,7 @@ const HARNESS: HarnessState = {
   defaultBranch: "main",
   releaseState: "released",
   freshness: { outcome: "fetched", lastFetchedAt: "2026-08-03T11:56:00.000Z" },
+  localHeadCommit: "local-head",
   stages: {
     proposal: { outcome: "read", rows: [], bound: null },
     review: { outcome: "read", rows: [], bound: null },
@@ -30,6 +31,7 @@ const IMPORTED_ROW: HarnessStageRow = {
   concurrentChange: false,
   localOnly: false,
   remoteTree: null,
+  restorable: false,
   previousName: null,
 };
 

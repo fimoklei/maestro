@@ -91,6 +91,9 @@ function buildDeletion(overrides?: {
       }),
       readSkillManifests: async () => ({}),
       readWorktreeAmbiguity: async () => overrides?.ambiguity ?? null,
+      readLocalHeadCommit: async () => "local-head",
+      readStagedSkillDifference: async () => false,
+      writeSkillTreeInto: async () => "written",
       publishTag: async () => "pushed",
       pushSkillPromotion: async () => "pushed",
       pushSkillDeletion: async (root, name, base) => {

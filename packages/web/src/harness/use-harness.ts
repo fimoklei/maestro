@@ -330,6 +330,53 @@ export function useDeleteLocalSkill() {
   });
 }
 
+// Putting a deleted skill folder back from the clone's last local commit. The
+// commit the confirmation was given against travels with it and the server
+// re-reads it; `hasRequest` never leaves the browser, and only says which
+// sentence the notice takes (ADR-0030, #915).
+export function useRestoreSkill() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (request: {
+      name: string;
+      seenHeadCommit: string;
+      hasRequest: boolean;
+    }) => {
+      const restored = await requestJson<{ name: string; commit: string }>(
+        "/api/harness/skill/restore",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            name: request.name,
+            seenHeadCommit: request.seenHeadCommit,
+          }),
+        },
+      );
+      // The folder is on disk from here on, whatever the re-read answers. The
+      // read races nothing else, so it is cancelled first and its answer
+      // written straight in, as a publication's is.
+      void queryClient.cancelQueries({ queryKey: HARNESS_KEY });
+      const state = await fetchHarnessState().then(
+        (fresh) => {
+          queryClient.setQueryData(HARNESS_KEY, fresh);
+          return fresh;
+        },
+        () => {
+          void queryClient.invalidateQueries({ queryKey: HARNESS_KEY });
+          return null;
+        },
+      );
+      return {
+        name: restored.name,
+        hasRequest: request.hasRequest,
+        // A local success is never presented as a verified remote one: the
+        // review stage is what GitHub answered, and it stands for the status.
+        statusRead: state !== null && state.stages.review.outcome === "read",
+      };
+    },
+  });
+}
+
 // Writes the fetched state straight into the query cache: a refresh already
 // carries the answer, so re-reading it would only show an older picture first.
 export function useRefreshHarness() {

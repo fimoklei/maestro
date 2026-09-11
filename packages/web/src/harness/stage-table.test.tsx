@@ -15,6 +15,7 @@ const row = (skill: string): HarnessStageRow => ({
   concurrentChange: false,
   localOnly: false,
   remoteTree: null,
+  restorable: false,
   previousName: null,
 });
 

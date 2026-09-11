@@ -6,7 +6,7 @@ import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { Notice } from "../ui/notice";
 import { SectionHeader } from "../ui/section-header";
-import { HarnessDialogs } from "./harness-dialogs";
+import { HarnessDialogs, type RestoreTarget } from "./harness-dialogs";
 import { HarnessStrip } from "./harness-strip";
 import {
   freshnessLabel,
@@ -21,6 +21,7 @@ import {
   proposalNotice,
   refreshNotice,
   releasePublishedNotice,
+  skillRestoredNotice,
   stageReadNotice,
   staleStatusNotice,
 } from "./notice-copy";
@@ -45,6 +46,7 @@ import {
   usePublishRelease,
   useRefreshHarness,
   useReleasePlan,
+  useRestoreSkill,
 } from "./use-harness";
 
 // The Harness home base: what the released harness is, how fresh that picture
@@ -154,6 +156,20 @@ export function HarnessView() {
   // its dialog closes. The next press resets it, which is what keeps a refusal
   // from haunting the confirmation after this one (#580, #581).
   const closeConfirmation = () => setConfirming(null);
+
+  // The way back from a deletion, and the one action no remote answer gates:
+  // both the folder and the commit it comes from are already in the clone
+  // (ADR-0030). The press freezes what it was made against, so a check landing
+  // while the confirmation stands cannot rewrite the source or close it (#915).
+  const restore = useRestoreSkill();
+  const [restoring, setRestoring] = useState<RestoreTarget | null>(null);
+  const closeRestore = () => setRestoring(null);
+  // What every row press shares: a read in flight is moving the rows a press
+  // would aim at, and the local deletion writes the same folders a restore does.
+  const localSettled =
+    !refresh.isPending &&
+    !harness.isFetching &&
+    deleteLocal.isPending === false;
   // The row that just moved sections, whichever press moved it: a deletion is
   // confirmed in a dialog that unmounts with the row it was opened from, so the
   // promote mutation alone would drop the keyboard on the document (#581). A
@@ -272,6 +288,21 @@ export function HarnessView() {
                   publish.data.tag,
                   publish.data.inventoryRefreshed,
                   rereadInventory,
+                )
+          }
+        />
+        {/* What the last restore put back. Above the strip, so it outlives the
+            row it was pressed from — a restored skill leaves the stage it was
+            deleted in (#915). */}
+        <Notice
+          trigger="user-action"
+          notice={
+            restore.data === undefined
+              ? null
+              : skillRestoredNotice(
+                  restore.data.hasRequest,
+                  restore.data.statusRead,
+                  () => fetchRemote(),
                 )
           }
         />
@@ -426,16 +457,30 @@ export function HarnessView() {
                                 deleteLocal.reset();
                                 setConfirming(skill);
                               },
+                              restore: (row, commit) => {
+                                restore.reset();
+                                setRestoring({
+                                  skill: row.skill,
+                                  commit,
+                                  hasRequest: row.requests.length > 0,
+                                });
+                              },
                             },
                             // Closed with no answer from the remote: there is
                             // no tip to build on, and a read in flight is
                             // moving the rows a press would aim at.
                             releaseEnabled(state.freshness) &&
-                              !refresh.isPending &&
-                              !harness.isFetching &&
+                              localSettled &&
                               promote.isPending === false &&
-                              proposalAction.isPending === false &&
-                              deleteLocal.isPending === false,
+                              proposalAction.isPending === false,
+                            // Recovery reads the clone alone, so the remote's
+                            // silence never closes it — only a local write or
+                            // a read moving the rows underneath does (#915).
+                            {
+                              enabled:
+                                localSettled && restore.isPending === false,
+                              commit: state.localHeadCommit,
+                            },
                           ),
                         failed: rowFailure(),
                         // Focusing the row's menu is what scrolls it into
@@ -471,6 +516,9 @@ export function HarnessView() {
             deletion={deletion}
             deleteLocal={deleteLocal}
             onDeletionClose={closeConfirmation}
+            restoring={restoring}
+            restore={restore}
+            onRestoreClose={closeRestore}
             withdrawing={withdrawing}
             proposalAction={proposalAction}
             onWithdrawClose={closeWithdrawal}

@@ -20,6 +20,11 @@ import {
 } from "../inventory/harness-layout";
 import { classifyFetchFailure } from "./classify-fetch-failure";
 import { classifyPushFailure } from "./classify-push-failure";
+import {
+  readLocalHeadCommit as readLocalHead,
+  readStagedSkillDifference as readStagedDifference,
+  writeSkillTreeInto as writeSkillTree,
+} from "./harness-git-restore";
 import { PROMOTE_NAMESPACE, promoteBranch } from "./promote-branch";
 import { pushesWhereItFetched } from "./push-destination";
 import type {
@@ -603,6 +608,11 @@ export class HarnessGitAdapter implements HarnessGitPort {
   ): Promise<string | null> {
     return this.read(root, ["merge-base", remoteCommit, "HEAD"]);
   }
+
+  // Local restoration's three reads, whole in their own module (ADR-0030).
+  readLocalHeadCommit = readLocalHead;
+  readStagedSkillDifference = readStagedDifference;
+  writeSkillTreeInto = writeSkillTree;
 
   // Each promote branch is asked only about the skill it is named for: a
   // branch carrying anything else is not that skill's review. Every branch

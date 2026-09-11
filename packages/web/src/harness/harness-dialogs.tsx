@@ -12,8 +12,10 @@ import {
   proposalNotice,
   publishReleaseNotice,
   releasePlanNotice,
+  restoreNotice,
 } from "./notice-copy";
 import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
+import { RestoreDialog } from "./restore-dialog";
 import type {
   HarnessStageRow,
   ReleasePlan,
@@ -25,8 +27,19 @@ import type {
   useProposalAction,
   usePublishRelease,
   useReleasePlan,
+  useRestoreSkill,
 } from "./use-harness";
 import { WithdrawDialog } from "./withdraw-dialog";
+
+// The whole source identity one restoration is confirmed against, taken when
+// the press was made: the skill, the commit the menu was painted at, and
+// whether a proposal is open over it. A later read moves the rows underneath;
+// it never moves this (ADR-0030).
+export type RestoreTarget = {
+  skill: string;
+  commit: string;
+  hasRequest: boolean;
+};
 
 export type HarnessDialogsProps = {
   origin: string;
@@ -45,6 +58,11 @@ export type HarnessDialogsProps = {
   deletion: ReturnType<typeof usePromoteDeletion>;
   deleteLocal: ReturnType<typeof useDeleteLocalSkill>;
   onDeletionClose: () => void;
+  // The frozen source a restore was pressed against. Null while no
+  // confirmation is open.
+  restoring: RestoreTarget | null;
+  restore: ReturnType<typeof useRestoreSkill>;
+  onRestoreClose: () => void;
   withdrawing: { skill: string; number: number } | null;
   proposalAction: ReturnType<typeof useProposalAction>;
   onWithdrawClose: () => void;
@@ -115,6 +133,30 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
               ? localDeletionNotice(props.deleteLocal.error)
               : deletionNotice(props.deletion.error)
           }
+        />
+      ) : null}
+      {props.restoring !== null ? (
+        <RestoreDialog
+          skill={props.restoring.skill}
+          folder={`${SKILLS_DIR}/${props.restoring.skill}`}
+          commit={props.restoring.commit}
+          hasRequest={props.restoring.hasRequest}
+          onClose={props.onRestoreClose}
+          // Closes on success only: a refusal is stated in the dialog, where
+          // the confirmation the author gave still stands.
+          onConfirm={() =>
+            props.restoring !== null &&
+            props.restore.mutate(
+              {
+                name: props.restoring.skill,
+                seenHeadCommit: props.restoring.commit,
+                hasRequest: props.restoring.hasRequest,
+              },
+              { onSuccess: props.onRestoreClose },
+            )
+          }
+          restoring={props.restore.isPending}
+          restoreError={restoreNotice(props.restore.error)}
         />
       ) : null}
       {props.withdrawing !== null ? (

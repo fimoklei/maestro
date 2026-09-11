@@ -54,6 +54,9 @@ function build(overrides?: {
     pushSkillPromotion: record("git", "pushSkillPromotion"),
     pushSkillDeletion: record("git", "pushSkillDeletion"),
     readWorktreeAmbiguity: record("git", "readWorktreeAmbiguity"),
+    readLocalHeadCommit: record("git", "readLocalHeadCommit"),
+    readStagedSkillDifference: record("git", "readStagedSkillDifference"),
+    writeSkillTreeInto: record("git", "writeSkillTreeInto"),
   };
   const review: HarnessReviewPort = {
     readReviews: record("review", "readReviews"),

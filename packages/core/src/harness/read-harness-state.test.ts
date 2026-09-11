@@ -130,6 +130,9 @@ function buildRead(overrides?: {
         throw new Error("git port's pushSkillDeletion was reached");
       },
       readWorktreeAmbiguity: async () => null,
+      readLocalHeadCommit: async () => "local-head",
+      readStagedSkillDifference: async () => false,
+      writeSkillTreeInto: async () => "written",
     },
     freshness: overrides?.freshness ?? stubFreshness(FETCHED),
     review: {
@@ -158,6 +161,7 @@ describe("ReadHarnessState", () => {
         defaultBranch: "main",
         releaseState: "released",
         freshness: FETCHED,
+        localHeadCommit: "local-head",
         stages: {
           proposal: { outcome: "read", rows: [], bound: null },
           review: { outcome: "read", rows: [], bound: null },
@@ -744,6 +748,9 @@ describe("ReadHarnessState refresh", () => {
           throw new Error("git port's pushSkillDeletion was reached");
         },
         readWorktreeAmbiguity: async () => null,
+        readLocalHeadCommit: async () => "local-head",
+        readStagedSkillDifference: async () => false,
+        writeSkillTreeInto: async () => "written",
       },
       freshness: stubFreshness(),
       review: {

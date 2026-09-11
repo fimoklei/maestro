@@ -155,6 +155,11 @@ export {
   type ReleasePlanResult,
   type WorktreeAmbiguity,
 } from "./harness/read-harness-state";
+export {
+  RestoreSkill,
+  type RestoreSkillError,
+  type RestoreSkillResult,
+} from "./harness/restore-skill";
 export type { ManifestAdvisory } from "./harness/skill-manifest";
 export type {
   SkillMovement,
