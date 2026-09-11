@@ -1,6 +1,6 @@
 # ADR-0027 — Behind separates a moved skill from a lagging pin
 
-- **Status:** Accepted — extends ADR-0007; narrowed by ADR-0028 for an absent skill name
+- **Status:** Accepted — extends ADR-0007; narrowed by ADR-0028 for an absent skill name; amended by ADR-0031 (see *Amendment*)
 - **Date:** 2026-09-04 (issue #747, found by walking the cockpit, #711)
 
 ## Context
@@ -67,3 +67,25 @@ carries the content fact.
   skill.
 - ADR-0028 covers a deployed skill name absent at the latest tag. It has
   nothing to update to, which is a different fact from **Behind**.
+
+## Amendment — 2026-09-11, ADR-0031
+
+A target now follows one Harness release with one selection (ADR-0031), so a
+pin lags per target, never per skill. What changes:
+
+- **Older tag retires.** The two readings of point 1 become the two sections
+  of the **Update target** preview, **Changed** and **Unchanged**, and the
+  count on the target's Release head (`2 of 5 skills changed`). No row carries
+  a version status of its own.
+- **Point 2 survives as that count.** Only changed skills count; a release
+  that changes no selected skill is still adoptable and reads **No content
+  changes** (#932).
+- **Point 4's fallback moves to the head.** Where the content question cannot
+  be answered, the head shows both releases with the meta line *Changes could
+  not be read* (#932) instead of a row reading **Behind**.
+- **Point 6 is replaced.** The action is **Update target** on the target, and
+  it moves the whole selection at once; the per-skill *Update skill* button
+  retires. A bulk update acting on moved skills only no longer exists — a
+  release is adopted whole.
+
+Points 3 and 5 stand unchanged.
