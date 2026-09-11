@@ -125,7 +125,7 @@ A deployed primitive whose pinned version lags the latest tag on the **Released 
 _Avoid_: outdated (that is APM's word for the mechanism).
 
 **Content drift**:
-A deployed primitive whose materialized files have diverged from the pinned tag's tree (edited or added locally). `apm outdated` does **not** detect it; deploy-time and remove-time refusal do (tree-diff, ADR-0003; a removal refuses it because apm 0.29.0 aborts part-way on such a copy, #775). Not surfaced by the deploy-state view yet (see "See local divergence from central" on the board, `docs/jobs.md`).
+A deployed primitive whose materialized files have diverged from the pinned tag's tree (edited or added locally). `apm outdated` does **not** detect it; deploy-time and remove-time refusal do (tree-diff, ADR-0003; a removal refuses it because apm 0.29.0 aborts part-way on such a copy, #775). A copy whose folder equals the skill at the chosen release exactly is not content drift for an Update, whatever the old record says (#931).
 _Avoid_: local edit, dirty.
 
 **Shadow skill** _(future-relevance)_:
@@ -185,6 +185,7 @@ details may name the exact APM mechanism or file.
 | `apm.yml` | `apm.yml` | Name the file in a `detail`, never in the sentence — the reader meets it in their own editor. |
 | Bulk removal outcome | **Left alone** | A target the run did not remove, whether it refused or failed; never *skipped*. |
 | Remove | **Remove** / **Removal** | *Remove* is the action, *removal* is the noun for the attempt and its outcome. These terms apply to deployed copies in targets; the Harness skill remains. Never call this *delete*. |
+| Content drift | **Local edits** | The row reading and the Update preview's block for a deployed copy that differs from its record and from the chosen release; the per-skill control in that preview is **Discard local edits** (#931). An edited copy whose folder equals the chosen release is not **Local edits**. |
 | Force reinstall | **Deploy again** | The one label for overwriting a deployed copy that has local edits; never *Reinstall fresh* or *Re-deploy*. |
 | Up-to-date | **Up to date** | One skill's drift status. Never hyphenated on screen. |
 | Target roll-up | **In sync** | A whole target's state, on its card header. A single skill is **Up to date**, never *in sync*. |
