@@ -62,10 +62,10 @@ _Avoid_: published, approved (those name the future lifecycle step, not the stat
 
 **Bundle**:
 A named set of primitives composed from the central inventory for scoped deployment (e.g. `frontend`, `engineering-stack`). The convenient unit to deploy together.
-_Avoid_: skill group, category, tag, profile.
+_Avoid_: skill group, category, tag, profile, bundle in APM's sense (there it names the whole selectable package a target depends on — that is the **Harness**, ADR-0031).
 
 **Deploy**:
-The act of reproducing a primitive or bundle from the central inventory into a target, via APM. A deployed copy is also where an improvement may start: an edited copy of a skill this Harness deployed travels back through **Import skill…** → **Update skill** → **Pending proposal** → **Propose change** → **Release** (ADR-0026).
+The act of adding a primitive to a target's **Selection** so APM reproduces it from the central inventory at the **Target release** (ADR-0031). A deployed copy is also where an improvement may start: an edited copy of a skill this Harness deployed travels back through **Import skill…** → **Update skill** → **Pending proposal** → **Propose change** → **Release** (ADR-0026).
 _Avoid_: install (that is APM's verb for the mechanism), copy, sync.
 
 **Unsupported deployment**:
@@ -91,6 +91,14 @@ _Avoid_: files, tree (the mechanism that measures it).
 **Target**:
 Where a deploy lands. Two kinds: **local** (a consuming repo) or **global** (the user-level config of a present tool). A global deploy resolves to one target per detected tool, so "global" can be several targets on a two-tool machine and one on a single-tool machine (ADR-0011).
 _Avoid_: destination, environment.
+
+**Target release**:
+The one Harness release every skill in a target's **Selection** is deployed from; a target has exactly one, except while a stopped Update leaves it in **Mixed releases** (ADR-0031).
+_Avoid_: pin (APM's mechanism), adopted release (a second name for the same thing), version (that is the tag's number, not the release).
+
+**Selection**:
+The skills a target follows from its **Target release**. Only **Deploy skill** and **Remove skill** change it; **Update target** moves it to a newer release and never changes it (ADR-0031). On screen: *selected skills*.
+_Avoid_: subset (APM's word for the mechanism), bundle, skill list.
 
 **Empty target**:
 A target with nothing deployed to it yet — its deploy-state read cleanly and found zero primitives. Its own state, distinct from **Drift**'s "unknown" (a check that could not run) and from "in sync" (deployed primitives that all match the central inventory): an empty target has nothing to be behind, so a confirmed-empty deploy-state overrides the drift check. The first reading a freshly-registered consuming repo shows.
@@ -121,8 +129,8 @@ The umbrella term for a deployed primitive that no longer matches the **Released
 _Avoid_: staleness, out-of-sync.
 
 **Version drift**:
-A deployed primitive whose pinned version lags the latest tag on the **Released harness**. Detectable via `apm outdated`; the cockpit shows it as the **deployed → latest version pair** (e.g. `2.1.0 → 2.3.1`), read straight from `apm outdated`'s output — not a binary flag, and not a "versions behind" distance (ADR-0007). This is the facet MVP1 surfaces. It has two readings, because the tag names the whole Harness and not one skill (ADR-0019 §1): a primitive whose tree moved between the two tags, and one whose tree is identical at both and only lags the tag. Only the first counts toward a target's drift (ADR-0027).
-_Avoid_: outdated (that is APM's word for the mechanism).
+A target whose **Target release** lags the latest tag on the **Released harness**. Detectable via `apm outdated`; the cockpit shows it as the **deployed → latest version pair** (e.g. `2.1.0 → 2.3.1`), read straight from `apm outdated`'s output — not a binary flag, and not a "versions behind" distance (ADR-0007). A release moves the tag for the whole Harness, so each selected skill has its own reading: a **changed skill**, whose tree differs between the two releases, and an **unchanged skill**, whose tree is identical at both. Only changed skills count on the target's Release head (ADR-0027, amended by ADR-0031).
+_Avoid_: outdated (that is APM's word for the mechanism), behind skill (a skill has no release of its own; the target does).
 
 **Content drift**:
 A deployed primitive whose materialized files have diverged from the pinned tag's tree (edited or added locally). `apm outdated` does **not** detect it; deploy-time and remove-time refusal do (tree-diff, ADR-0003; a removal refuses it because apm 0.29.0 aborts part-way on such a copy, #775). A copy whose folder equals the skill at the chosen release exactly is not content drift for an Update, whatever the old record says (#931).
@@ -148,9 +156,9 @@ details may name the exact APM mechanism or file.
 | Harness | **Harness** | Use **Working Harness** or **Released Harness** when the state matters. |
 | Central inventory | **Inventory** | Reserve **Inventory** for the collection and its screen. |
 | Inventory source | **Harness location** | Do not use *source* for the configured Harness location. The controls on that screen are **Re-read Inventory**, **Change Harness location** and **Set Harness location**. |
-| Drift | **Behind** | Use *an update is available* as explanation, not as a second status name. The `?` marker reads **Update check did not run**; *drift* never reaches the screen. **Behind** claims a newer release exists and nothing more — a skill whose content did not move reads **Older tag** (ADR-0027). |
-| Version drift, content unmoved | **Older tag** | The reading for a deployed skill identical at the pinned tag and the latest release. Explain it as *identical at the pinned tag and the latest release*; never *same content*, which is **Content drift**'s territory. Where the content question cannot be answered, the row reads **Behind**. |
-| Version drift, skill absent | **No longer released** | The reading for a deployed skill whose name is absent from the latest release. Never use *Deprecated*, which claims an intent the Harness does not record. |
+| Drift | **Behind** | A target's reading, stated on its **Release head**; never a skill's. Use *an update is available* as explanation, not as a second status name. The `?` marker reads **Update check did not run**; *drift* never reaches the screen. **Behind** claims a newer release exists and nothing more (ADR-0027); the changed count beside it carries the content fact. *Older tag* is retired (ADR-0031). |
+| Changed / unchanged skill | **Changed** / **Unchanged** | The two sections of the **Update target** preview, and the count on the Release head (`2 of 5 skills changed`). Explain *unchanged* as *identical at both releases*; never *same content*, which is **Content drift**'s territory. |
+| Version drift, skill absent | **No longer released** | The row reading for a selected skill whose name is absent from the latest release; the **Update target** preview lists it under **Removed by this release**. Never use *Deprecated*, which claims an intent the Harness does not record. |
 | Target | **Target** | Prefer the concrete repository or tool name after the concept is established. |
 | Deploy | **Deploy** / **Deployed** | *Deploy* is the action and *deployed* is the state; *install* is APM's mechanism. |
 | Skill | **Skill** | Use `SKILL.md` only when the file itself matters. |
@@ -178,7 +186,7 @@ details may name the exact APM mechanism or file.
 | Release | **Release** / **Released** | *Release* is the action, *released* is the state, and *latest release* is the result. |
 | Release dialog | **Create a release** / **Publish release for {origin}** / **Publish release** | *Create a release* opens the dialog on the Harness strip; the dialog reads *Publish release for {origin}*; *Publish release* confirms publication. References to either control use its exact label; *Plan release* is retired. Never a bare *Release* on a button or in the title. |
 | Import dialog | **Import skill…** / **Import skill** | The trailing ellipsis marks the control that opens the dialog; the dialog's confirm carries no ellipsis. |
-| Import dialog, replacing | **Update skill** | The dialog reads *Update a skill* and confirms with *Update skill* when it replaces a skill the Harness holds; it reads *Import a skill* and *Import skill* when it adds one. The control that opens it keeps its ellipsis either way. What an update lands sits under **Pending proposal**. The deploy-state row's button carries the same label for the other direction — deploying the latest release into a target that reads **Behind**. The two never share a screen; change one and check the other. |
+| Import dialog, replacing | **Update skill** | The dialog reads *Update a skill* and confirms with *Update skill* when it replaces a skill the Harness holds; it reads *Import a skill* and *Import skill* when it adds one. The control that opens it keeps its ellipsis either way. What an update lands sits under **Pending proposal**. The Deploy-state row once carried the same label for the other direction; that button retires for **Update target** on the target (#932). |
 | Consuming repo | **Repository** | Write it out in a sentence; *repo* stays only inside the `+ repo` control label. |
 | Scaffold | **Scaffold** / **Harness scaffold** | *Scaffold* is the action and *Harness scaffold* is the thing on offer; never *generate* or *initialise*. |
 | Clone folder | **Clone** | The local copy of the Harness repository. Say **folder** for any other directory on disk. |
@@ -228,8 +236,8 @@ Decided so far:
 - The **central inventory** (the `agent-harness` repo) contains many **Primitives** (skills, hooks, MCP servers).
 - A **Bundle** is composed from primitives in the central inventory; a primitive belongs to zero or more bundles.
 - **Maestro** (the product, the `maestro` repo) is separate from the central inventory it conducts; one Maestro can conduct any inventory.
-- A **Deploy** reproduces a primitive or bundle from the central inventory into a **Target**, which is either **local** (a consuming repo) or **global** (a tool config). The mechanism is **APM**.
-- **Deploy-state** is the aggregate of every deploy across consuming repos and global targets; **Drift** is a deploy-state entry lagging the central inventory.
+- A **Target** — either **local** (a consuming repo) or **global** (a tool config) — follows one **Target release** with one **Selection**. A **Deploy** adds to the selection, a **Remove** takes from it, and **Update target** moves the whole selection to a newer release. The mechanism is **APM**.
+- **Deploy-state** is the aggregate of every target's release and selection across consuming repos and global targets; **Drift** is a target lagging the central inventory.
 
 ## Flagged ambiguities
 

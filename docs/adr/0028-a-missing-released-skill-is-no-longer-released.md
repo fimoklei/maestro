@@ -41,3 +41,10 @@ bulk update does not include that deployment.
   absent name. Replacement stays separate from truthful status reporting.
 - Issue #749 remains separate: it covers a Target holding deployments from a
   different Harness, not one missing skill in the connected Harness.
+
+## Amendment — 2026-09-11, ADR-0031
+
+The row still reads **No longer released** and the target still reads
+**Attention**. The update action it withholds is now **Update target** on the
+target, not a row button: the **Update target** preview lists the skill under
+**Removed by this release**, and the Update removes it (#932).

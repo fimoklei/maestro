@@ -21,7 +21,7 @@ This file records what Maestro **decided**. What apm *does* is
 
 ## Decision
 
-Six entries. Each names what APM says, what this route does, and the verdict:
+Seven entries. Each names what APM says, what this route does, and the verdict:
 **deliberate**, **drift**, or **not a departure**.
 
 ### 1. The version lives on a git tag, not in the package manifest — deliberate
@@ -30,7 +30,8 @@ Six entries. Each names what APM says, what this route does, and the verdict:
   installs the package at that version.
 - **This route:** the git tag is the only version number. `apm.yml`'s
   `version:` is inert, and the scaffold writes `0.0.0` so the manifest claims
-  nothing. A consumer pins one skill by subpath at a tag.
+  nothing. A consumer pins the whole Harness at a tag, with a skill selection
+  (ADR-0031; until then it pinned one skill by subpath at a tag).
 - **Why:** the marketplace was ruled out 2026-07-27, so no package-install
   route exists to carry a manifest version. Maestro's consumer side deploys
   skills selectively. Banked in #350; ADR-0003, ADR-0014.
@@ -131,6 +132,22 @@ Six entries. Each names what APM says, what this route does, and the verdict:
   measures is *pushed, and the commit is not yet an ancestor of
   `origin/main`*. The name matches this team's definition of review; it is not
   a check.
+
+### 7. A selection is narrowed by uninstall plus reinstall, never by editing `apm.yml` — deliberate
+
+- **APM:** a consumer narrows a root package's skill subset by editing
+  `skills:` in its own `apm.yml` and running `apm install` again; `--skill`
+  only unions with what is persisted (#928, measured on 0.29.0).
+- **This route:** **Remove skill** runs `apm uninstall` of the Harness
+  dependency, then `apm install` at the same tag with the narrower selection
+  passed whole as `--skill`. Maestro never writes the consumer's `apm.yml`
+  (ADR-0031; Michiel, 2026-09-11).
+- **Why:** `apm.yml` is the consumer's file, and a Maestro that edits it
+  becomes a second writer of a manifest APM owns (ADR-0001). The lockfile's
+  `skills:` list keeps stale names anyway (#929), so deployed state is read
+  from `deployed_files`, never from the manifest.
+- **Accepted cost:** between the two calls the target is empty; a stop there
+  reads **Removal incomplete** with **Retry removal** (#937).
 
 ## Consequences
 
