@@ -16,6 +16,7 @@ Retired entries are deleted, not archived.
 
 ## Active
 
+- **2026-09-11 · apm/remove-warns-but-exits-zero** — apm 0.29.0 narrowing (`skills:` shrunk + install at the same tag) never fails: a kept edited copy and an undeletable dir both exit 0 with the success marker and warn on stdout, and the lockfile can keep `deployed_files` rows for files no longer on disk (phantom rows after a kept-edited narrow; the retained dir row after a permission error). → Read a Remove's outcome from disk plus lockfile, never from exit code or marker; treat a lockfile row without a file as not deployed. Measured in `docs/research/941-narrowing-spike.md`.
 Confirmed patterns. Apply as rules. Newest on top.
 
 - **2026-09-09 · tooling/smoke-binds-ipv6-only** — vite (8.2.0) under `pnpm smoke` listens on `[::1]:5173` only — confirmed with `lsof -nP -iTCP:5173 -sTCP:LISTEN` — so that URL answers `ERR_CONNECTION_REFUSED` even after `pnpm smoke:ready` reports the cockpit up. The server (3000) does bind `127.0.0.1`, so the mismatch looks like a half-started stack. → Point agent-browser at `http://localhost:5173`; read a refused connection on the web port as an address-family mismatch, not a dead server.

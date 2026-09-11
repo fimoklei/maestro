@@ -1,0 +1,14 @@
+[*] Validating 1 package...
+[+] fimoklei/apm-spike-833#v2.0.0 (updated ref in apm.yml)
+[*] Updated apm.yml dependency entries
+[>] Installing 1 new package...
+[i] Targets: claude, codex  (source: --target flag)
+  [+] fimoklei/apm-spike-833 #v2.0.0 @4beb0720 (cached)
+  |-- 4 skill(s) integrated -> .agents/skills/, .claude/skills/
+[!]   Kept user-edited file .claude/skills/delta/SKILL.md (from fimoklei/apm-spike-833); delete manually if no longer needed
+[i] Cleaned 2 stale files from fimoklei/apm-spike-833
+  [!] [fimoklei/apm-spike-833] Skipped removing .claude/skills/delta/SKILL.md: file has been edited since APM deployed it. Delete it manually if you no longer need it, or ignore this warning to keep 
+your changes.
+  [!] [fimoklei/apm-spike-833] Skipped removing skill directory .claude/skills/delta: 1 file(s) not owned by APM or modified since deployment: .claude/skills/delta/SKILL.md. Remove manually if no 
+longer needed.
+[*] Installed 1 APM dependency (2 stale files cleaned) in 0.2s.

@@ -78,6 +78,25 @@ for `view` and `outdated`.
 | `apm-uninstall-dry-run.txt` | `apm uninstall --dry-run -v <ref>#v0.5.1` | repo holding two deps at `-t claude,codex` | 0 | out+err |
 | `apm-uninstall-ok.txt` | `apm uninstall -v <ref>#v0.5.1` | same repo, removes one of the two deps | 0 | out+err |
 | `apm-uninstall-not-found.txt` | `apm uninstall <ref>#v0.5.1` | same repo, package already gone | 1 | out+err |
+| `apm-spike-941-step1-project.txt` | `apm install github.com/fimoklei/apm-spike-833#v2.0.0 --skill alpha --skill beta --skill gamma --skill delta --skill zeta -t claude,codex` | fresh `git init` repo, no credentials (#941) | 0 | out+err |
+| `apm-spike-941-step1-global.txt` | same, `-g`, from a neutral cwd | sandbox `HOME` | 0 | out+err |
+| `apm-spike-941-step2-narrow-project.txt` | `skills:` written to four, then `apm install <ref>#v2.0.0 --skill alpha --skill beta --skill gamma --skill zeta -t claude,codex` | five installed before | 0 | out+err |
+| `apm-spike-941-step2-narrow-global.txt` | same, `-g` | five installed before | 0 | out+err |
+| `apm-spike-941-step3-edited-drop-project.txt` | as step 2 | `.claude/skills/delta/SKILL.md` edited before the narrow | 0 | out+err |
+| `apm-spike-941-step3-edited-drop-global.txt` | as step 2, `-g` | same edit under `HOME` | 0 | out+err |
+| `apm-spike-941-step3b-second-install.txt` | as step 2, again | edited `delta` copy still on disk | 0 | out+err |
+| `apm-spike-941-step3c-after-manual-delete.txt` | as step 2, again | edited `delta` copy deleted by hand | 0 | out+err |
+| `apm-spike-941-step3d-narrow-again.txt` | as step 2 | after: kept-edited narrow, manual delete, reinstall of five | 0 | out+err |
+| `apm-spike-941-step4-fail-project.txt` | as step 2 | `.claude/skills/gamma` 555, its `SKILL.md` 444 | 0 | out+err |
+| `apm-spike-941-step4b-fail-project.txt` | as step 2 | `.claude/skills` 555 | 0 | out+err |
+| `apm-spike-941-step4b-retry-project.txt` | as step 2 | after `chmod 755 .claude/skills` | 0 | out+err |
+| `apm-spike-941-step4b-fail-global.txt` | as step 2, `-g` | `~/.claude/skills` 555 | 0 | out+err |
+| `apm-spike-941-step4b-retry-global.txt` | as step 2, `-g` | after `chmod 755` | 0 | out+err |
+| `apm-spike-941-step5-exact-list-v3.txt` | `skills:` written to `alpha beta gamma delta`, then `apm install <ref>#v3.0.0 --skill alpha --skill beta --skill gamma --skill delta -t claude,codex` | four at v2.0.0 before | 0 | out+err |
+| `apm-spike-941-step5-control-v3-bare.txt` | `ref:` edited to `v3.0.0`, `apm install -t claude,codex` | `skills:` still names `epsilon` from a v1.0.0 install | 0 | out+err |
+| `apm-spike-941-step5-control-v3-cli-stale.txt` | `apm install <ref>#v3.0.0 --skill alpha --skill beta --skill gamma --skill delta -t claude,codex` | `skills:` still names `epsilon` | 0 | out+err |
+| `apm-spike-941-step6-install-cli.txt` | `apm install <ref>#v2.0.0 --skill alpha --skill beta --skill gamma -t claude,codex` | `apm.yml` = `apm.yml.spike-941-step6-after-writer.yaml` | 0 | out+err |
+| `apm-spike-941-step6-install-bare.txt` | `apm install -t claude,codex` | same manifest, second (local-path) dependency present | 0 | out+err |
 | `apm-uninstall-retained.txt` | `apm uninstall -v <ref>#v0.5.1` | same repo, `.claude/skills/tdd/SKILL.md` edited before the call | 1 | out+err |
 | `apm-uninstall-global-ok.txt` | `apm uninstall -g -v <ref>#v0.5.1` | neutral cwd, global install at `-t claude,codex` beside an unrelated skill | 0 | out+err |
 
@@ -112,6 +131,15 @@ which drops comments, not by the raw-text greps the section above is about.
 | `apm.lock.tag-pinned-v0.5.1.yaml` | `apm install <ref>#v0.5.1 -t claude` (per-repo) |
 | `apm.lock.global-two-tool.yaml` | `apm install <ref>#v0.5.1 -g -t claude,codex` |
 | `apm.lock.global-single-tool.yaml` | `apm install <ref>#v0.5.1 -g -t claude` |
+| `apm.lock.spike-941-step3-kept-edited.yaml` | step 3 narrow over an edited `delta` copy (per-repo) — the kept file stays owned |
+| `apm.lock.spike-941-step3d-phantom.yaml` | step 3d narrow (per-repo) — `.agents/skills/delta` rows with no file on disk |
+| `apm.lock.spike-941-step4b-fail.yaml` | step 4b narrow with `.claude/skills` read-only (per-repo) — the dir row retained |
+
+Two manifests sit beside them for #941 step 6: `apm.yml.spike-941-step6-before.yaml`
+(hand-edited: a `#` line above the Harness entry, an inline comment on a list
+item, a second local-path dependency) and `apm.yml.spike-941-step6-after-writer.yaml`
+(the same file after the `skills:` writer prototype ran; see
+`docs/research/941-narrowing-spike.md`).
 
 Three facts worth knowing before reading them, all written up in
 `docs/apm-behavior.md` § Lockfile: the `deployments:` rows record

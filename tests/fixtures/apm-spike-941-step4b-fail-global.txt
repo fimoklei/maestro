@@ -1,0 +1,16 @@
+[i] Installing to user scope (~/.apm/)
+[!] User-scope primitives are fully supported by claude, kiro, gemini, grok-build, grok-cloud, agent-skills, openclaw, hermes, copilot-cowork, copilot-app. Partially supported: copilot, cursor, 
+opencode, antigravity, codex, windsurf.
+Some primitives are not supported: cursor (instructions); opencode (hooks); antigravity (instructions, hooks); windsurf (instructions)
+[*] Validating 1 package...
+[+] fimoklei/apm-spike-833#v2.0.0 (updated ref in apm.yml)
+[*] Updated apm.yml dependency entries
+[>] Installing 1 new package...
+  [+] fimoklei/apm-spike-833 #v2.0.0 @4beb0720 (cached)
+  |-- 4 skill(s) integrated -> .agents/skills/, .claude/skills/
+  [+] <project root> (local)
+  |-- (files unchanged)
+[i] Cleaned 3 stale files from fimoklei/apm-spike-833
+  [!] [fimoklei/apm-spike-833] Could not remove skill directory .claude/skills/delta: [Errno 13] Permission denied: 
+'/private/tmp/claude-501/-Users-michielmerks-Projects-maestro/6604b510-2317-4b1e-9173-02d38d5b76c3/scratchpad/home/.claude/skills/delta'. Path retained in lockfile; will retry on next 'apm install'.
+[*] Installed 1 APM dependency (3 stale files cleaned) in 0.2s.
