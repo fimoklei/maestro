@@ -150,3 +150,54 @@ comment header noted above — because a single-tool global install and a
 single-tool per-repo install produce the same relative paths; and on 0.29.0 the
 `.agents/…` rows carry `target: agents`, the deploy root, where 0.26.0 wrote the
 tool name `codex`.
+
+## Native-model spike (#929)
+
+Captured 2026-09-11 on apm 0.29.0 by `docs/research/929-native-model-spike.md`
+against the throwaway root package `github.com/fimoklei/apm-spike-833`
+(`apm.yml` + `includes: auto` + six skills under `.apm/skills/`, tags
+`v1.0.0` and `v2.0.0`; v2 changes `beta` and `gamma`, adds `eta`, deletes
+`epsilon`). Conditions common to all: `COLUMNS=200`, `NO_COLOR=1`, sandbox
+`HOME` (`realpath`ed), **no credentials at all** (`GITHUB_TOKEN`, `GH_TOKEN`,
+`GITHUB_APM_PAT` unset; the repository is public), no rate-limit line in any
+capture. `FIVE` below is `--skill alpha --skill beta --skill gamma --skill
+delta --skill epsilon`; `FOUR` drops `epsilon`. "ref edit" means the
+`ref: v1.0.0` line in the manifest was changed to `v2.0.0` by hand before a
+bare install. Global runs used `-t claude,codex` from a neutral cwd.
+
+`apm-spike-833-view-versions.txt` opens with the two-line
+`A new version of APM is available` banner: the update check prints it to
+**stdout** on the first apm command of a sandbox and caches the check in
+`~/.cache/apm/last_version_check`. It is a true capture, kept so the versions
+parser is exercised against it.
+
+| Fixture | Command | Conditions | Exit | Streams |
+|---|---|---|---|---|
+| `apm-spike-833-view-versions.txt` | `apm view fimoklei/apm-spike-833 versions` | first command in a fresh sandbox | 0 | out |
+| `apm-spike-833-step1-project.txt` | `apm install <ref>#v1.0.0 FIVE -t claude` | fresh `git init` repo | 0 | out+err |
+| `apm-spike-833-step1-global.txt` | `apm install <ref>#v1.0.0 FIVE -g -t claude,codex` | empty sandbox home | 0 | out+err |
+| `apm-spike-833-step2-project-cli.txt` | `apm install <ref>#v2.0.0 FIVE -t claude` | after step 1 project | 1 | out+err |
+| `apm-spike-833-step2-project-bare.txt` | `apm install -t claude` | after step 1 project, ref edit, `epsilon` still in `skills:` | 0 | out+err |
+| `apm-spike-833-step2c-cli-four.txt` | `apm install <ref>#v2.0.0 FOUR -t claude` | fresh repo after a v1 `FIVE` install | 0 | out+err |
+| `apm-spike-833-step2-global-cli.txt` | `apm install <ref>#v2.0.0 FIVE -g -t claude,codex` | after step 1 global | 1 | out+err |
+| `apm-spike-833-step2-global-bare.txt` | `apm install -g -t claude,codex` | after step 1 global, ref edit | 0 | out+err |
+| `apm-spike-833-step2-global-bare-verbose.txt` | `apm install -g -t claude,codex --verbose` | same state, second sandbox | 0 | out+err |
+| `apm-spike-833-step3-narrow.txt` | `apm install -t claude` | after step 2 project bare, `- delta` removed from `skills:` | 0 | out+err |
+| `apm-spike-833-step3-narrow-global.txt` | `apm install -g -t claude,codex` | after step 2 global bare, `- delta` removed | 0 | out+err |
+| `apm-spike-833-step4-bare.txt` | `apm install -t claude` | v1 `FOUR` install, `beta`/`gamma` copies overwritten with v2 content, ref edit | 0 | out+err |
+| `apm-spike-833-step4c-same-ref.txt` | `apm install -t claude` | v1 `FOUR` install, `beta` copy overwritten, ref unchanged | 0 | out+err |
+| `apm-spike-833-same-ref-clean-reinstall.txt` | `apm install -t claude` | v1 `FIVE` install, nothing touched | 0 | out+err |
+| `apm-spike-833-step5-fail.txt` | `apm install -t claude` | v1 `FOUR` install, `.claude/skills/gamma` `chmod 555` and its `SKILL.md` `chmod 444`, ref edit | 1 | out+err |
+| `apm-spike-833-step5-retry.txt` | `apm install -t claude` | same repo, permissions restored | 0 | out+err |
+| `apm-spike-833-step6-outdated-project.txt` | `apm outdated` | after step 1 project (v1 pinned, v2 exists) | 0 | out |
+| `apm-spike-833-step6-outdated-global.txt` | `apm outdated -g` | after step 1 global | 0 | out |
+| `apm-spike-833-step6-outdated-project-v2.txt` | `apm outdated` | after step 3 (v2 pinned) | 0 | out |
+| `apm-spike-833-step6-uninstall-project.txt` | `apm uninstall <ref>#v2.0.0` | after step 3 project | 0 | out+err |
+| `apm-spike-833-step6-uninstall-global.txt` | `apm uninstall -g <ref>#v2.0.0` | after step 3 global, neutral cwd | 0 | out+err |
+
+Lockfiles from the same run, copied verbatim:
+
+| Fixture | Install |
+|---|---|
+| `apm.lock.spike-833-v1-global-two-tool.yaml` | step 1 global — five skills, `skill_subset`, `.agents/…` rows carry `target: codex` |
+| `apm.lock.spike-833-v2-project.yaml` | step 2 project bare — four skills on disk while `skill_subset` still lists `epsilon` |

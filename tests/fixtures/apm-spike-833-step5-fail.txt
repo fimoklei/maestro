@@ -1,0 +1,7 @@
+[>] Installing dependencies from apm.yml...
+[>] Resolving fimoklei/apm-spike-833...
+[i] Targets: claude  (source: --target flag)
+  [+] fimoklei/apm-spike-833 #v2.0.0 @4beb0720
+  [x] 1 package failed:
+    +- fimoklei/apm-spike-833 -- Failed to integrate primitives: [Errno 13] Permission denied: 'SKILL.md'
+[x] Installation failed with 1 error(s) in 0.2s. No install transaction changes were committed.

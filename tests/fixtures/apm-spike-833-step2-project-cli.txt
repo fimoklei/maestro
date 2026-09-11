@@ -1,0 +1,12 @@
+[*] Validating 1 package...
+[+] fimoklei/apm-spike-833#v2.0.0 (updated ref in apm.yml)
+[*] Updated apm.yml dependency entries
+[>] Installing 1 new package...
+[>] Resolving fimoklei/apm-spike-833...
+[i] Targets: claude  (source: --target flag)
+  [+] fimoklei/apm-spike-833 #v2.0.0 @4beb0720
+[i] apm.yml restored to its previous state.
+  [x] 1 package failed:
+    +- fimoklei/apm-spike-833 -- --skill did not match skills in 'fimoklei/apm-spike-833'. Requested: epsilon. Available: alpha, beta, delta, eta, gamma, zeta. Choose an available skill or update the 
+package manifest, then reinstall.
+[x] Installation failed with 1 error(s) in 0.6s. No install transaction changes were committed.

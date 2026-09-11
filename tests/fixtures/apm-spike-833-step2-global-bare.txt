@@ -1,0 +1,14 @@
+[i] Installing to user scope (~/.apm/)
+[!] User-scope primitives are fully supported by claude, kiro, gemini, grok-build, grok-cloud, agent-skills, openclaw, hermes, copilot-cowork, copilot-app. Partially supported: copilot, cursor, 
+opencode, antigravity, codex, windsurf.
+Some primitives are not supported: cursor (instructions); opencode (hooks); antigravity (instructions, hooks); windsurf (instructions)
+[>] Installing dependencies from apm.yml...
+[>] Resolving fimoklei/apm-spike-833...
+  [+] fimoklei/apm-spike-833 #v2.0.0 @4beb0720
+  |-- 4 skill(s) integrated -> .agents/skills/, .claude/skills/
+  [+] <project root> (local)
+  |-- (files unchanged)
+[i] Cleaned 4 stale files from fimoklei/apm-spike-833
+  [!] 2 skills replaced by a different package (last installed wins)
+    Run with --verbose to see details
+[*] Installed 1 APM dependency (4 stale files cleaned) in 0.2s.
