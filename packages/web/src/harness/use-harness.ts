@@ -4,7 +4,6 @@
 
 import type {
   HarnessFreshness,
-  HarnessReleaseState,
   HarnessStage,
   HarnessStageRead,
   HarnessStageRow,
@@ -34,7 +33,6 @@ import {
 // one core defines (architecture.md).
 export type {
   HarnessFreshness,
-  HarnessReleaseState,
   HarnessStage,
   HarnessStageRead,
   HarnessStageRow,
