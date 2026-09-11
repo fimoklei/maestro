@@ -30,11 +30,8 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 ## NEXT
 
-Why now: spec'd and `ready-for-agent`; every promoted skill carries a stale branch, so the Harness view stays noisy until this lands.
-
 | Job | Main | Job story |
 |---|---|---|
-| Keep the Harness view honest after a merge · [#911](https://github.com/fimoklei/maestro/issues/911) | C | *When* a proposal of mine is merged and the skill later changes on the default branch, or the operating system drops a file into a skill folder, *I want to* see rows only for work I still have to do, *so I can* trust the Harness view instead of reading nine true rows that mean nothing. |
 
 ## LATER
 
@@ -70,6 +67,7 @@ All shipped **skills-only**, solo, local-first.
 
 | Job | Main | Job story |
 |---|---|---|
+| Keep the Harness view honest after a merge · [#911](https://github.com/fimoklei/maestro/issues/911) | C | *When* a proposal of mine is merged and the skill later changes on the default branch, or the operating system drops a file into a skill folder, *I want to* see rows only for work I still have to do, *so I can* trust the Harness view instead of reading nine true rows that mean nothing. |
 | Follow a skill change from local work to release · [#827](https://github.com/fimoklei/maestro/issues/827) | C | *When* I import, edit or delete a skill, *I want to* follow its proposal, review and release with a clear next action and a way back, *so I can* make it available in Inventory without losing work or mistaking an unknown status for completion. |
 | Recover from a local skill deletion · [#906](https://github.com/fimoklei/maestro/issues/906) | C | *When* I delete a skill folder in my clone and change my mind, *I want to* recover the skill with clear consequences for any proposal, *so I can* continue without guessing which work I will recover or lose. |
 | Adopt apm 0.29 · [#772](https://github.com/fimoklei/maestro/issues/772)–[#775](https://github.com/fimoklei/maestro/issues/775) | B | *When* the engine moves ahead of Maestro's observed knowledge, *I want to* have the driver re-verified against the installed apm, *so I can* trust that cockpit behavior matches what the engine really does. |
