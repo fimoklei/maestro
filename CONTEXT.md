@@ -100,6 +100,10 @@ _Avoid_: pin (APM's mechanism), adopted release (a second name for the same thin
 The skills a target follows from its **Target release**. Only **Deploy skill** and **Remove skill** change it; **Update target** moves it to a newer release and never changes it (ADR-0031). On screen: *selected skills*.
 _Avoid_: subset (APM's word for the mechanism), bundle, skill list.
 
+**Pending release**:
+The release a target chose for an **Update target** that the deployment record does not show yet. Maestro remembers it from the moment the Update starts until the record names that release, so **Mixed releases** and **Retry update** survive a restart (ADR-0031).
+_Avoid_: chosen tag (the mechanism), in-flight release.
+
 **Empty target**:
 A target with nothing deployed to it yet — its deploy-state read cleanly and found zero primitives. Its own state, distinct from **Drift**'s "unknown" (a check that could not run) and from "in sync" (deployed primitives that all match the central inventory): an empty target has nothing to be behind, so a confirmed-empty deploy-state overrides the drift check. The first reading a freshly-registered consuming repo shows.
 _Avoid_: unknown, uninitialized.
@@ -196,10 +200,11 @@ details may name the exact APM mechanism or file.
 | Content drift | **Local edits** | The row reading and the Update preview's block for a deployed copy that differs from its record and from the chosen release; the per-skill control in that preview is **Discard local edits** (#931). An edited copy whose folder equals the chosen release is not **Local edits**. |
 | Release head | **Release head** | The first line of a target card: `Release vX · In sync`, or `Release vX · newer release vY: N of M skills changed`. When the changed count cannot be read, the head shows both releases and the meta line *Changes could not be read* (#932). |
 | Adopt a release | **Update target** | The one control and dialog that moves a target's whole selection to the newest release; never *Update skill* on a row, which retires (#932). The preview's chip for a release that changes no selected skill is **No content changes**. |
-| Half-landed Update | **Mixed releases** | A target card whose files sit partly on the chosen release after an Update stopped; its notice is **Update incomplete** and its control **Retry update**, which runs the same chosen release again. Never a target that still holds per-skill dependencies, which reads **Pinned per skill**. |
+| Half-landed Update | **Mixed releases** | A target card whose files sit partly on the chosen release after an Update stopped; its notice is **Update incomplete** and its control **Retry update**, which runs the **Pending release** again. Never a target that still holds per-skill dependencies, which reads **Pinned per skill**. |
 | Per-skill dependencies | **Pinned per skill** | The status of a target whose skills were deployed one at a time, before it followed one release: head `Pinned per skill · 3 skills at v0.3.1`, notice **Release not adopted**. It has no **Update target**; the way to one release is **Remove skill** for each skill, then **Deploy skill**. Deploy refuses such a target with `Left alone — pinned per skill` (#933). |
 | Add to a selection | **Deploy skill** | From the Inventory, adds a skill to a target's selection at the target's release; an empty target pins the latest release. On a behind target it opens **Update target** with the section **Added by this deploy** — a second entrance to the same Update, never a second flow (#937). Bulk deploy never moves a release. |
-| Half-landed Remove | **Removal incomplete** | A target left empty when the reinstall after an uninstall stopped; its control is **Retry removal** (#937). |
+| Manifest shape Maestro cannot edit | **Manifest not recognised** | The notice when the consumer's `apm.yml` holds anything other than one dependency on the connected Harness with a `skills:` list; nothing installs until the reader fixes it by hand (ADR-0031). |
+| Files outside the selection | **Extra files deployed** | The notice on a target card when the deployment record holds files that belong to no selected skill; a fact to know, not an action to take (ADR-0031). *Removal incomplete* and *Retry removal* are retired: a Remove no longer empties the target. |
 | Concurrent operation | **Target busy** | The notice when a deploy, removal or update is still running on the target; nothing runs until it finishes (#932). |
 | Force reinstall | **Deploy again** | The one label for overwriting a deployed copy that has local edits; never *Reinstall fresh* or *Re-deploy*. Retires from the Deploy-state row once **Update target** ships: discarding is **Discard local edits** inside the preview (#932). |
 | Up-to-date | **Up to date** | One skill's drift status. Never hyphenated on screen. |

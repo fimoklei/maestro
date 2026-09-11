@@ -133,21 +133,26 @@ Seven entries. Each names what APM says, what this route does, and the verdict:
   `origin/main`*. The name matches this team's definition of review; it is not
   a check.
 
-### 7. A selection is narrowed by uninstall plus reinstall, never by editing `apm.yml` — deliberate
+### 7. Maestro writes the `skills:` list before every install — deliberate
 
 - **APM:** a consumer narrows a root package's skill subset by editing
   `skills:` in its own `apm.yml` and running `apm install` again; `--skill`
-  only unions with what is persisted (#928, measured on 0.29.0).
-- **This route:** **Remove skill** runs `apm uninstall` of the Harness
-  dependency, then `apm install` at the same tag with the narrower selection
-  passed whole as `--skill`. Maestro never writes the consumer's `apm.yml`
-  (ADR-0031; Michiel, 2026-09-11).
-- **Why:** `apm.yml` is the consumer's file, and a Maestro that edits it
-  becomes a second writer of a manifest APM owns (ADR-0001). The lockfile's
-  `skills:` list keeps stale names anyway (#929), so deployed state is read
-  from `deployed_files`, never from the manifest.
-- **Accepted cost:** between the two calls the target is empty; a stop there
-  reads **Removal incomplete** with **Retry removal** (#937).
+  only unions with what is persisted, and a name a release dropped stays in
+  the list (#928, #929, measured on 0.29.0).
+- **This route:** before every install on a target (Deploy, Remove, Update)
+  Maestro sets `skills:` under the one dependency on the connected Harness to
+  the exact Selection, then passes the same list as `--skill` so a missing
+  name fails closed. Any other manifest shape stops the install before it
+  starts (**Manifest not recognised**). Maestro touches nothing else in the
+  file (ADR-0031 rule 9; Michiel, 2026-09-11).
+- **Why:** APM's own narrowing route, and the only way a dropped name leaves
+  the list — otherwise a later release that reuses the name deploys it
+  unasked. The alternative, uninstall of the whole Harness plus reinstall
+  with the narrower list, leaves the target empty between two calls and
+  needs GitHub for the second; one Remove could empty a forty-seven skill
+  target (#833 review, 2026-09-11).
+- **Accepted cost:** Maestro writes one list in a manifest APM owns
+  (ADR-0001). Comments in `apm.yml` may not survive the write.
 
 ## Consequences
 
