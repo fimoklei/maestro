@@ -110,6 +110,21 @@ describe("sameTree", () => {
     await expect(sameTree(fs, "/left", "/right")).resolves.toBe(true);
   });
 
+  it("leaves operating-system files out at every depth", async () => {
+    const fs = disk({
+      "/left/SKILL.md": text("One.\n"),
+      "/left/.DS_Store": text("junk\n"),
+      "/left/desktop.ini": text("junk\n"),
+      "/left/steps/first.md": text("Two.\n"),
+      "/left/steps/Thumbs.db": text("junk\n"),
+      "/left/steps/._first.md": text("junk\n"),
+      "/right/SKILL.md": text("One.\n"),
+      "/right/steps/first.md": text("Two.\n"),
+    });
+
+    await expect(sameTree(fs, "/left", "/right")).resolves.toBe(true);
+  });
+
   it("leaves out the names the caller excludes, at the top level only", async () => {
     const fs = disk({
       "/left/SKILL.md": text("One.\n"),

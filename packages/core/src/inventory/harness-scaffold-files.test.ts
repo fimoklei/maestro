@@ -3,20 +3,35 @@ import { parse } from "yaml";
 import {
   canonicalHarnessFiles,
   SCAFFOLD_ENTRIES,
+  SCAFFOLD_ROOTS,
 } from "./harness-scaffold-files";
 
 const byPath = (ownerRepo = "fimoklei/agent-harness") =>
   new Map(canonicalHarnessFiles(ownerRepo).map((file) => [file.path, file]));
 
 describe("canonicalHarnessFiles", () => {
-  it("writes exactly the five canonical entries and nothing else", () => {
+  it("writes exactly the six canonical entries and nothing else", () => {
     expect([...byPath().keys()].sort()).toEqual([
       ".apm/skills/.gitkeep",
       ".github/workflows/skill-check.yml",
+      ".gitignore",
       "CONTRIBUTING.md",
       "README.md",
       "apm.yml",
     ]);
+  });
+
+  it("ignores the four operating-system files and nothing else", () => {
+    const gitignore = byPath().get(".gitignore");
+    expect(gitignore?.contents.trim().split("\n")).toEqual([
+      ".DS_Store",
+      "._*",
+      "Thumbs.db",
+      "desktop.ini",
+    ]);
+    // Offered like every other scaffold file: an occupied one refuses the
+    // scaffold, so it is never merged into a `.gitignore` already there (#921).
+    expect(gitignore?.skipIfExists).toBeUndefined();
   });
 
   it("omits plugin.json, which belongs to the plugin-author workflow", () => {
@@ -152,6 +167,16 @@ describe("CONTRIBUTING.md", () => {
     expect(flat()).toMatch(/not repo-specific/i);
   });
 
+  it("names the two steps only the Harness owner can take", () => {
+    const ready = (situations().at(-1) as string).replace(/\s+/g, " ");
+    expect(ready).toContain(
+      "GitHub keeps the branch after a merge, so select **Automatically delete head branches** in this repository's settings to remove it.",
+    );
+    expect(ready).toContain(
+      "A Harness scaffolded before this file has no `.gitignore`, so add one naming `.DS_Store`, `._*`, `Thumbs.db` and `desktop.ini` to keep operating-system files out of a proposal.",
+    );
+  });
+
   it("closes on why independent review holds without branch protection", () => {
     expect(sections().at(-1)).toMatch(/^Why this is a human agreement\n/);
     expect(flat()).toMatch(/branch protection/i);
@@ -172,6 +197,17 @@ describe("SCAFFOLD_ENTRIES", () => {
       ".github",
       ".github/workflows",
       ".github/workflows/skill-check.yml",
+      ".gitignore",
+      "README.md",
+      "apm.yml",
+    ]);
+  });
+
+  it("rolls back every root it creates, the .gitignore included", () => {
+    expect(SCAFFOLD_ROOTS).toEqual([
+      ".apm",
+      ".github",
+      ".gitignore",
       "README.md",
       "apm.yml",
     ]);

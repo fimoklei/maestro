@@ -116,6 +116,42 @@ describe("ImportDialog", () => {
     expect(onView).toHaveBeenCalledWith("release-notes");
   });
 
+  it("names .git and operating-system files for one skipped entry", () => {
+    renderDialog(
+      DEEP,
+      { kind: "ready", check: CHECK },
+      { mode: "add", name: "release-notes", skipped: 1 },
+    );
+
+    expect(
+      screen.getByText("1 entry was skipped: .git and operating-system files."),
+    ).toBeInTheDocument();
+  });
+
+  it("names .git and operating-system files for several skipped entries", () => {
+    renderDialog(
+      DEEP,
+      { kind: "ready", check: CHECK },
+      { mode: "add", name: "release-notes", skipped: 4 },
+    );
+
+    expect(
+      screen.getByText(
+        "4 entries were skipped: .git and operating-system files.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("says nothing about skipped entries when none were skipped", () => {
+    renderDialog(
+      DEEP,
+      { kind: "ready", check: CHECK },
+      { mode: "add", name: "release-notes", skipped: 0 },
+    );
+
+    expect(screen.queryByText(/skipped/)).not.toBeInTheDocument();
+  });
+
   it("says nothing has been picked before a folder is chosen", () => {
     renderDialog(null);
 

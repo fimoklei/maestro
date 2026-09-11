@@ -212,43 +212,67 @@ const releaseStage = (release: SkillMovement[] | null): HarnessStageRead => {
 };
 
 // The proposal a skill currently has: its promote branch, while that branch is
-// still a proposal. A branch whose content already reached origin/HEAD is over
-// unless GitHub says a request over it is still open — comparing against a
-// merged branch nobody reopened would hide the author's own work.
+// still a proposal. A proposal ends at its merged request, so a branch whose
+// tip is the head commit of one is spent and holds no stage (ADR-0021 point
+// 11). Where no review read proves that, content equality with origin/HEAD is
+// the fallback — comparing against a merged branch nobody reopened would hide
+// the author's own work.
+// `completeRead` is the whole read's own fact, asked once by the caller: a read
+// that filled its bound proves nothing spent, the way it proves nothing absent
+// (ADR-0029 point 7).
 const currentProposal = (
   trees: HarnessSkillTrees,
   skill: string,
   matches: SkillMatches,
+  completeRead: boolean,
 ): { tree: string | null } | null => {
-  if (!Object.hasOwn(trees.promote, skill)) {
+  const branch = trees.promote[skill];
+  if (branch === undefined) {
     return null;
   }
-  const tree = trees.promote[skill] ?? null;
-  const unmerged = tree !== (trees.remote[skill] ?? null);
-  const open = (matches.get(skill) ?? []).some(
-    (request) => request.state === "open",
-  );
-  return unmerged || open ? { tree } : null;
+  const { tree } = branch;
+  const matching = matches.get(skill) ?? [];
+  // An open request outranks everything: it is review work whatever the
+  // branch's history says.
+  if (matching.some((request) => request.state === "open")) {
+    return { tree };
+  }
+  // A tip nobody could read proves nothing spent either.
+  const spent =
+    completeRead &&
+    branch.commit !== null &&
+    matching.some(
+      (request) =>
+        request.state === "merged" && request.headCommit === branch.commit,
+    );
+  if (spent) {
+    return null;
+  }
+  return tree !== (trees.remote[skill] ?? null) ? { tree } : null;
 };
 
+// One fact about the whole review read, not about any one skill.
+const isCompleteRead = (review: HarnessReviewRead): boolean =>
+  review.outcome === "read" && review.complete;
+
 const proposalStage = (
-  { trees, atMergeBase }: StageInput,
+  { trees, atMergeBase, review }: StageInput,
   matches: SkillMatches,
 ): HarnessStageRead => {
   if (trees === null) {
     return { outcome: "unknown" };
   }
+  const complete = isCompleteRead(review);
   const rows: HarnessStageRow[] = [];
   for (const skill of everySkill(trees, null)) {
+    const branch = trees.promote[skill];
     const hashes = {
       remote: trees.remote[skill] ?? null,
-      promote: Object.hasOwn(trees.promote, skill)
-        ? { tree: trees.promote[skill] ?? null }
-        : null,
+      promote: branch === undefined ? null : { tree: branch.tree },
       local: trees.local[skill] ?? null,
       working: trees.working[skill] ?? null,
     };
-    const proposal = currentProposal(trees, skill, matches);
+    const proposal = currentProposal(trees, skill, matches, complete);
     // Against a proposal, any difference is work the reviewer has not been
     // sent. Against the default branch, differing from local HEAD too is what
     // separates the author's own edit from a clone merely behind (ADR-0021).
@@ -287,9 +311,7 @@ const proposalStage = (
       // Every place but the working tree, asked at once: a skill missing from
       // all three exists only on this author's disk.
       localOnly:
-        hashes.remote === null &&
-        hashes.local === null &&
-        !Object.hasOwn(trees.promote, skill),
+        hashes.remote === null && hashes.local === null && branch === undefined,
       remoteTree: hashes.remote,
     });
   }
@@ -329,11 +351,12 @@ const reviewStage = (
   if (review.outcome === "failed" || trees === null) {
     return { outcome: "unknown" };
   }
+  const complete = isCompleteRead(review);
   const rows: HarnessStageRow[] = [];
   for (const skill of everySkill(trees, null)) {
     const matching = matches.get(skill) ?? [];
     const open = matching.filter((request) => request.state === "open");
-    const proposal = currentProposal(trees, skill, matches);
+    const proposal = currentProposal(trees, skill, matches, complete);
     const deletion = proposal !== null && proposal.tree === null;
     if (open.length > 1) {
       rows.push({

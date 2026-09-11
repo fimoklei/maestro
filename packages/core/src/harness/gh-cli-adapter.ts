@@ -37,6 +37,7 @@ const JSON_FIELDS = [
   "reviewDecision",
   "reviewRequests",
   "headRefName",
+  "headRefOid",
   "baseRefName",
   "headRepository",
   "headRepositoryOwner",
@@ -71,6 +72,11 @@ const STATES = {
 // the only host this port ever queries (ADR-0014).
 const urlSchema = z.string().regex(/^https:\/\/github\.com\/[^\s"'<>]+$/);
 
+// A full SHA-1 object name, the only form gh prints for a head commit
+// (research 806 § 2). Anything else cannot be compared with a commit, so the
+// row carrying it fails.
+const commitSchema = z.string().regex(/^[0-9a-f]{40}$/);
+
 const reviewerSchema = z.discriminatedUnion("__typename", [
   z.object({ __typename: z.literal("User"), login: z.string() }),
   z.object({ __typename: z.literal("Team"), slug: z.string() }),
@@ -91,6 +97,7 @@ const requestSchema = z.object({
   ]),
   reviewRequests: z.array(reviewerSchema),
   headRefName: z.string(),
+  headRefOid: commitSchema,
   baseRefName: z.string(),
   // Both are null once the head repository is deleted; `nameWithOwner` is empty
   // in a list read, so the owner only ever arrives in the second field.
@@ -244,6 +251,7 @@ function toReviewRequest(row: z.infer<typeof requestSchema>): ReviewRequest {
     headOwner: row.headRepositoryOwner?.login ?? null,
     headRepo: row.headRepository?.name ?? null,
     headBranch: row.headRefName,
+    headCommit: row.headRefOid,
     baseBranch: row.baseRefName,
   };
 }

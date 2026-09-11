@@ -193,7 +193,9 @@ describe("Harness import flow", () => {
       screen.getByText("View your imported skill in Harness."),
     ).toBeInTheDocument();
     expect(
-      await screen.findByText(/3 \.git entries were skipped/i),
+      await screen.findByText(
+        "3 entries were skipped: .git and operating-system files.",
+      ),
     ).toBeInTheDocument();
     await waitFor(() => {
       expect(

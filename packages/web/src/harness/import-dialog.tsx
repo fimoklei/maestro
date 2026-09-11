@@ -166,8 +166,8 @@ export function ImportDialog({
             {imported.skipped === 0 ? null : (
               <p className="m-0 font-ui text-desc text-dim">
                 {imported.skipped === 1
-                  ? "1 .git entry was skipped."
-                  : `${imported.skipped} .git entries were skipped.`}
+                  ? "1 entry was skipped: .git and operating-system files."
+                  : `${imported.skipped} entries were skipped: .git and operating-system files.`}
               </p>
             )}
           </>
