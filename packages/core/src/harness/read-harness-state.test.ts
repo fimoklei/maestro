@@ -51,6 +51,10 @@ function stubFreshness(
 // adapter could not read.
 type TreesByRef = Record<string, HarnessSkillTree[] | null>;
 
+// One promote branch: the tree under review, and the tip commit that carries
+// it. A null tree is a branch proposing to delete its skill.
+const onBranch = (tree: string | null) => ({ tree, commit: "branch-tip" });
+
 // A harness whose one skill sits at the same content everywhere: the quiet
 // case each movement test moves a single ref away from.
 const SETTLED_TREES: HarnessSkillTrees = {
@@ -342,7 +346,7 @@ describe("ReadHarnessState stages", () => {
     const read = buildRead({
       movementTrees: {
         remote: { docs: "same", tdd: "same" },
-        promote: { tdd: "pushed" },
+        promote: { tdd: onBranch("pushed") },
         local: { docs: "same", tdd: "same" },
         working: { docs: "edited", tdd: "same" },
       },
@@ -370,7 +374,7 @@ describe("ReadHarnessState stages", () => {
     const read = buildRead({
       movementTrees: {
         remote: {},
-        promote: { fresh: "pushed" },
+        promote: { fresh: onBranch("pushed") },
         local: {},
         working: {},
       },
@@ -394,7 +398,7 @@ describe("ReadHarnessState stages", () => {
     const read = buildRead({
       movementTrees: {
         remote: { tdd: "same" },
-        promote: { tdd: null },
+        promote: { tdd: onBranch(null) },
         local: { tdd: "same" },
         working: { tdd: "same" },
       },

@@ -4,8 +4,8 @@ import { GhCliAdapter, REVIEW_READ_LIMIT } from "./gh-cli-adapter";
 // The adapter shells out via an injected `run` (promisify(execFile) in
 // production). These tests pin the command construction, the shape check and
 // the failure classification without spawning gh and without a GitHub account:
-// every payload below is a real `gh pr list --json` capture replayed through
-// `run` (gh-driver.md § Testing).
+// every payload below is built from a real `gh --json` capture replayed
+// through `run` (gh-driver.md § Testing).
 type RunCall = {
   file: string;
   args: string[];
@@ -15,14 +15,23 @@ type RunCall = {
 
 const origin = { host: "github.com", ownerRepo: "fimoklei/harness" };
 
+// The head commit of `fimoklei/harness` #8, from the `gh pr view 8 --repo
+// fimoklei/harness --json …headRefOid` capture in
+// `docs/research/806-gh-pull-request-status.md` § 2 (gh 2.86.0, 2026-09-08).
+// The list captures below predate the field, so this one value is added to
+// both rows; `cli/cli` #14398 has no head commit of its own on record.
+const capturedHeadOid = "a7cbf2efbd0eb978503342906593ef81ca724894";
+
 // Captured verbatim from `gh pr list --repo fimoklei/harness --state all
 // --limit 3 --json number,url,state,isDraft,reviewDecision,reviewRequests,
 // headRefName,baseRefName,headRepository,headRepositoryOwner` on gh 2.86.0
-// (2026-09-08), reduced to one row. Note `nameWithOwner` is empty in a list
-// read — the head repository's owner only arrives in `headRepositoryOwner`.
+// (2026-09-08), reduced to one row, with `headRefOid` added from the capture
+// above. Note `nameWithOwner` is empty in a list read — the head repository's
+// owner only arrives in `headRepositoryOwner`.
 const mergedRow = {
   baseRefName: "main",
   headRefName: "maestro/agent-native-cli",
+  headRefOid: capturedHeadOid,
   headRepository: { id: "R_kgDOT_xZSw", name: "harness", nameWithOwner: "" },
   headRepositoryOwner: { id: "MDQ6VXNlcjE2OTU3MjU4", login: "fimoklei" },
   isDraft: false,
@@ -34,10 +43,12 @@ const mergedRow = {
 };
 
 // Captured verbatim from the same command against `cli/cli` on gh 2.86.0
-// (2026-09-08): an open request from a fork, awaiting a named reviewer.
+// (2026-09-08), `headRefOid` added the same way: an open request from a fork,
+// awaiting a named reviewer.
 const openForkRow = {
   baseRefName: "trunk",
   headRefName: "issue-12195",
+  headRefOid: capturedHeadOid,
   headRepository: { id: "R_kgDOUSrCEg", name: "cli", nameWithOwner: "" },
   headRepositoryOwner: {
     id: "MDQ6VXNlcjMwMDI1OA==",
@@ -99,7 +110,7 @@ describe("GhCliAdapter", () => {
       "--limit",
       String(REVIEW_READ_LIMIT),
       "--json",
-      "number,url,state,isDraft,reviewDecision,reviewRequests,headRefName,baseRefName,headRepository,headRepositoryOwner",
+      "number,url,state,isDraft,reviewDecision,reviewRequests,headRefName,headRefOid,baseRefName,headRepository,headRepositoryOwner",
     ]);
   });
 
@@ -158,6 +169,7 @@ describe("GhCliAdapter", () => {
           headOwner: "timmattison",
           headRepo: "cli",
           headBranch: "issue-12195",
+          headCommit: capturedHeadOid,
           baseBranch: "trunk",
         },
       ],
@@ -250,6 +262,16 @@ describe("GhCliAdapter", () => {
       JSON.stringify([
         { ...mergedRow, url: "javascript:alert(1)//github.com/a/b/pull/1" },
       ]),
+    );
+
+    const result = await new GhCliAdapter({ run }).readReviews(origin);
+
+    expect(result).toEqual({ outcome: "failed" });
+  });
+
+  it("fails the read on a head commit that is not a full object name", async () => {
+    const { run } = fakeRun(
+      JSON.stringify([{ ...mergedRow, headRefOid: "a7cbf2e" }]),
     );
 
     const result = await new GhCliAdapter({ run }).readReviews(origin);

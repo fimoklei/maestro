@@ -2,6 +2,10 @@
 // apm scaffolds `apm.yml` and nothing else, and `plugin.json` belongs to the
 // plugin-author workflow — see docs/research/552-empty-repo-and-scaffold-shape.md.
 import { stringify } from "yaml";
+import {
+  operatingSystemFileList,
+  operatingSystemGitignore,
+} from "../filesystem/operating-system-files";
 import { HARNESS_MANIFEST, HARNESS_SKILLS_DIR } from "./harness-layout";
 
 // skipIfExists marks a file the scaffold offers but never overwrites: a
@@ -13,6 +17,11 @@ export type ScaffoldFile = {
 };
 
 const WORKFLOW = ".github/workflows/skill-check.yml";
+const GITIGNORE = ".gitignore";
+
+// Working-tree hashing runs `git add -A`, which honours .gitignore, so these
+// four keep an operating system's files out of every proposal (#921).
+const GITIGNORE_CONTENTS = operatingSystemGitignore();
 
 // Every entry the scaffold brings into existence, parents included, so an
 // occupied `.github/` is refused before a single byte is written.
@@ -23,6 +32,7 @@ export const SCAFFOLD_ENTRIES = [
   ".github",
   ".github/workflows",
   WORKFLOW,
+  GITIGNORE,
   "README.md",
   HARNESS_MANIFEST,
 ];
@@ -32,6 +42,7 @@ export const SCAFFOLD_ENTRIES = [
 export const SCAFFOLD_ROOTS = [
   ".apm",
   ".github",
+  GITIGNORE,
   "README.md",
   HARNESS_MANIFEST,
 ];
@@ -43,6 +54,7 @@ export const canonicalHarnessFiles = (ownerRepo: string): ScaffoldFile[] => {
     { path: "README.md", contents: readme(ownerRepo, repo) },
     { path: `${HARNESS_SKILLS_DIR}/.gitkeep`, contents: "" },
     { path: WORKFLOW, contents: SKILL_CHECK_WORKFLOW },
+    { path: GITIGNORE, contents: GITIGNORE_CONTENTS },
     {
       path: "CONTRIBUTING.md",
       contents: contributing(ownerRepo),
@@ -157,6 +169,11 @@ repository, then open a pull request with just that change.
 
 Because trying a skill costs no tag, a tag stays a real promise: only cut one
 when the content is ready, never just to test it.
+
+GitHub keeps the branch after a merge, so select **Automatically delete head
+branches** in this repository's settings to remove it. A Harness scaffolded
+before this file has no \`.gitignore\`, so add one naming
+${operatingSystemFileList()} to keep operating-system files out of a proposal.
 
 ## Why this is a human agreement
 

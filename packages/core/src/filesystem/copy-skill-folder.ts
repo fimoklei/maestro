@@ -3,15 +3,19 @@
 import { join, relative, sep } from "node:path";
 import { isWithinRoot } from "./browse-path";
 import type { CopyEntryFacts, CopyTreeFsPort } from "./copy-tree-fs";
+import { isOperatingSystemFile } from "./operating-system-files";
 
 const MAX_FILES = 1000;
 const MAX_BYTES = 50 * 1024 * 1024;
 
 // Skipped at any depth, so a cloned skill repository copies without its
-// repository internals — and without counting toward the limits. Exported
-// because a comparison of what the copy would land has to skip the same entry
+// repository internals or the files an operating system drops beside them —
+// and without counting toward the limits (ADR-0021 point 12). Exported because
+// a comparison of what the copy would land has to skip the same entries
 // (`same-tree.ts`); one owner, not two spellings.
-export const SKIPPED_ENTRY = ".git";
+export function isSkippedEntry(name: string): boolean {
+  return name === ".git" || isOperatingSystemFile(name);
+}
 
 export type CopySkillFolderError =
   | "invalid-name"
@@ -29,7 +33,7 @@ export type CopySkillFolderError =
   // The filesystem refused a read or a write. Never carries its reason.
   | "copy-failed";
 
-// `skipped` counts the `.git` entries left behind, so a caller can say what a
+// `skipped` counts the entries left behind, so a caller can say what a
 // successful copy did not carry.
 export type CopySkillFolderResult =
   | { ok: true; path: string; skipped: number }
@@ -134,7 +138,7 @@ export class CopySkillFolder {
       return "copy-failed";
     }
     for (const name of names) {
-      if (name === SKIPPED_ENTRY) {
+      if (isSkippedEntry(name)) {
         walk.plan.skipped += 1;
         continue;
       }
@@ -192,9 +196,9 @@ export class CopySkillFolder {
     if (target === null || !isWithinRoot(target, walk.root)) {
       return "unsafe-link";
     }
-    // The skip is about repository internals, not about the name of the entry
-    // that leads to them: a link is judged by where it lands.
-    if (isRepositoryInternal(walk.root, target)) {
+    // The skip is about what the link lands on, not about the name of the
+    // entry that leads there: a link is judged by its target.
+    if (landsOnSkipped(walk.root, target)) {
       walk.plan.skipped += 1;
       return null;
     }
@@ -386,10 +390,10 @@ export class CopySkillFolder {
   }
 }
 
-// True when a canonical path inside the source root sits in or under a `.git`
-// directory at any depth. Both inputs are already realpath output.
-function isRepositoryInternal(root: string, target: string): boolean {
-  return relative(root, target).split(sep).includes(SKIPPED_ENTRY);
+// True when a canonical path inside the source root is, or sits under, a
+// skipped entry at any depth. Both inputs are already realpath output.
+function landsOnSkipped(root: string, target: string): boolean {
+  return relative(root, target).split(sep).some(isSkippedEntry);
 }
 
 // A plain directory name and nothing else: anything that could climb out of the
@@ -406,7 +410,7 @@ function isSingleSegment(name: string): boolean {
 }
 
 // Adds one regular file to the plan, or returns the rule that refuses it. The
-// limits count only what reaches here, which is what makes them "after .git
+// limits count only what reaches here, which is what makes them "after the
 // exclusions".
 function planFile(plan: Plan, file: PlannedFile): CopySkillFolderError | null {
   if (file.facts.hardLinks > 1) {
