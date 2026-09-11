@@ -27,6 +27,7 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 | Job | Main | Job story |
 |---|---|---|
+| Adopt a Harness release per target · [#833](https://github.com/fimoklei/maestro/issues/833) (map) → [#945](https://github.com/fimoklei/maestro/issues/945) (spec) | B, A | *When* a Harness release is published, *I want to* move a target's whole skill selection to it in one action and see which skills really changed, *so I can* stay current without updating skills one by one. |
 
 ## NEXT
 
@@ -52,7 +53,6 @@ Detail lives in tracker issues; elaboration happens in the grill.
 | See global↔local duplication | A | *When* a skill is deployed both globally and in a consuming repo, *I want to* have the cockpit flag that overlap in both views, *so I can* remove the redundant copy instead of running two unaware. |
 | Guard against duplicate deploy | B | *When* I deploy a skill already deployed on the other scope, *I want to* have the cockpit warn me before it proceeds, *so I can* avoid an accidental duplicate while still keeping a deliberate one. |
 | Backfill a newly-detected global tool | B, A | *When* I install a second tool after already deploying globally, *I want to* have the cockpit offer to bring the new tool up to the same set, *so I can* keep my tools in sync instead of the new one starting empty. |
-| Adopt a Harness release per target · [#833](https://github.com/fimoklei/maestro/issues/833) (map) | B, A | *When* a Harness release is published, *I want to* move a target's whole skill selection to it in one action and see which skills really changed, *so I can* stay current without updating skills one by one. |
 | Update every behind target in one action | B, A | *When* several targets are behind the same Harness release, *I want to* move them all in one action, *so I can* stay current across my machine without opening each target's Update. Ruled out of the #833 map (#932): one target per Update keeps a half-landed Update readable. |
 | Roll back a target to an earlier release | B | *When* a release I adopted turns out wrong, *I want to* move a target back to the release it had before, *so I can* undo an adoption without removing and deploying every skill by hand. |
 | Replace a renamed deployed skill | B | *When* a deployed skill has a new name in the latest release, *I want to* replace the old copy with the renamed skill, *so I can* follow the Harness change without removing and deploying it by hand. |

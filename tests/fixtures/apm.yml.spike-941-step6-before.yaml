@@ -1,0 +1,24 @@
+name: proj5
+version: 1.0.0
+description: APM project for proj5
+author: Developer
+# Which agent platforms to deploy to.
+# Resolution order: --target flag > this field > auto-detect from filesystem.
+# Accepted values: agent-skills, antigravity, claude, codex, copilot, cursor, gemini, grok-build, kiro, opencode, vscode, windsurf
+targets:
+  - claude
+  - codex
+dependencies:
+  apm:
+    # the Harness this repo follows
+    - git: fimoklei/apm-spike-833
+      ref: v2.0.0
+      skills:
+        - alpha
+        - beta
+        - gamma  # keep gamma
+        - zeta
+    - /private/tmp/claude-501/-Users-michielmerks-Projects-maestro/6604b510-2317-4b1e-9173-02d38d5b76c3/scratchpad/localpkg
+  mcp: []
+includes: auto
+scripts: {}
