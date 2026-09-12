@@ -40,12 +40,12 @@ export function UpdateSkillAction({
         <DeployRefusalNotice
           error={deploy.error}
           reinstalling={deploy.isPending}
-          onReinstall={() =>
+          onReinstall={(confirmedCopyReceipt) =>
             deploy.mutate({
               type: "skill",
               name: skillName,
               target,
-              force: true,
+              confirmedCopyReceipt,
             })
           }
         />

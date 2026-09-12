@@ -23,6 +23,7 @@ import {
   InventoryGitAdapter,
   InventoryReader,
   isRepositoryRoot,
+  LocalCopyGuard,
   NodeCopyTreeFs,
   NodeFileSystem,
   PromoteSkill,
@@ -173,14 +174,26 @@ function realDeps(): AppDeps {
   // Shared by deploy and remove: both rewrite the same apm.lock.yaml, and a
   // deploy racing a remove would corrupt it.
   const apmWriteLocks = new InFlightLocks();
+  const inventoryGit = new InventoryGitAdapter({
+    resolveRoot: async () =>
+      resolveInventoryPath(await store.read(), process.env),
+  });
+  // One guard for every write entry point, so a copy is classified the same way
+  // whichever one is about to overwrite it, and one consent mechanism covers
+  // them all (#952).
+  const copyGuard = new LocalCopyGuard({
+    content: new DeployedContentAdapter({
+      location: deployedLocation,
+      inventoryGit,
+    }),
+  });
   const deploy = new DeploySkill({
     inventory,
     registry,
     apm,
-    inventoryGit: new InventoryGitAdapter({
-      resolveRoot: async () =>
-        resolveInventoryPath(await store.read(), process.env),
-    }),
+    inventoryGit,
+    copyGuard,
+    // The linked-destination probe only; the classification is the guard's.
     deployedContent: new DeployedContentAdapter({ location: deployedLocation }),
     // apm's success marker says nothing about what it recorded, so the lockfile
     // is read back before the deploy is called clean (#358).
@@ -208,6 +221,8 @@ function realDeps(): AppDeps {
     deployedRef: new DeployedRefAdapter({ fs, location: deployedLocation }),
     // apm deletes an edited file silently — a removal must prove nothing to
     // lose first (apm-driver.md § Remove).
+    copyGuard,
+    // The post-removal probe, which tells an absent copy from a clean one.
     deployedContent: new DeployedContentAdapter({ location: deployedLocation }),
     apm,
     // For copies apm's uninstall can't reach: a tool this machine no longer detects (#339).

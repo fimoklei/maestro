@@ -78,7 +78,7 @@ describe("BulkDeployBar", () => {
     });
   });
 
-  it("force-reinstalls a diverged attention skill on its own", async () => {
+  it("reinstalls a diverged attention skill on its own row's receipt", async () => {
     stubReads({
       target: { kind: "global" },
       deployed: [{ name: "tdd", version: "v1.0.0" }],
@@ -87,6 +87,8 @@ describe("BulkDeployBar", () => {
           name: "review",
           error: "deployed-diverged-from-lock",
           forceable: true,
+          copyReceipt:
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         },
       ],
       failed: [],
@@ -115,7 +117,8 @@ describe("BulkDeployBar", () => {
       type: "skill",
       name: "review",
       target: { kind: "global" },
-      force: true,
+      confirmedCopyReceipt:
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     });
   });
 

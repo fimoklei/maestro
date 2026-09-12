@@ -8,7 +8,7 @@ import { Notice } from "../ui/notice";
 function errorBodyField(
   error: Error,
   codes: readonly string[],
-  field: "packageType" | "linkedPath",
+  field: "packageType" | "linkedPath" | "copyReceipt",
 ): string | null {
   if (
     !(error instanceof HttpError) ||
@@ -21,17 +21,20 @@ function errorBodyField(
   return typeof value === "string" ? value : null;
 }
 
-// A refusal the user can override adds a "Reinstall fresh" action that re-runs
-// the deploy with force. One affordance, both entry points. Which refusals
-// those are is the table's `warning` level (ADR-0006, #66) — never the message
-// text, and never a second list here.
+// A refusal the user can override adds a "Deploy again" action that re-runs the
+// deploy with the receipt this refusal minted. One affordance, both entry
+// points. Which refusals those are is the table's `warning` level (ADR-0006,
+// #66) — never the message text, and never a second list here.
 export function DeployRefusalNotice({
   error,
   onReinstall,
   reinstalling,
 }: {
   error: Error;
-  onReinstall: () => void;
+  // The server's consent for the copies this refusal read. Absent only where
+  // the server sent none, and the plain retry then restates the refusal with a
+  // fresh one rather than claiming a consent nobody gave (#952).
+  onReinstall: (confirmedCopyReceipt?: string) => void;
   reinstalling: boolean;
 }) {
   const base = deployNotice(error);
@@ -57,6 +60,14 @@ export function DeployRefusalNotice({
       ? notice.detail
       : `apm recorded this package as ${packageType}.`;
 
+  // Minted only where consent can clear the refusal — the same two codes the
+  // copy table levels as a warning (#952).
+  const copyReceipt = errorBodyField(
+    error,
+    ["deployed-diverged-from-lock", "deployed-unverifiable"],
+    "copyReceipt",
+  );
+
   return (
     <Notice
       trigger="user-action"
@@ -70,7 +81,7 @@ export function DeployRefusalNotice({
               // it charges is stated in the sentence itself (F8).
               action: {
                 label: "Deploy again",
-                onClick: onReinstall,
+                onClick: () => onReinstall(copyReceipt ?? undefined),
                 disabled: reinstalling,
               },
             }

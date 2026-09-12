@@ -60,6 +60,7 @@ describe("narrowed global deploy — which copies survive on disk", () => {
         syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => false,
+        readSkillFilesAtTag: async () => null,
       },
       // A proven skill record: this journey is not about the post-install read.
       recordedPackage: {

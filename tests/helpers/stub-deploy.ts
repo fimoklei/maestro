@@ -32,6 +32,7 @@ export const stubDeploy = (deps: {
       syncBeforeDeploy: async () => {},
       skillExistsAtTag: async () => false,
       skillDivergesFromTag: async () => false,
+      readSkillFilesAtTag: async () => null,
     },
     deployedContent: {
       classify: async () => "not-deployed",

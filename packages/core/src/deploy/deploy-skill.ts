@@ -8,6 +8,7 @@ import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type { SupportedTool } from "./deploy-tools";
 import { parseGitOrigin } from "./git-origin";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
+import { type CopyVerdict, LocalCopyGuard } from "./local-copy-guard";
 import { buildSkillPackageRef, isValidSkillSlug } from "./package-ref";
 import { reclaimUntargetedCopies } from "./reclaim-untargeted-copies";
 
@@ -64,6 +65,14 @@ export type InventoryGitPort = {
   skillExistsAtTag(tag: string, name: string): Promise<boolean>;
   // Tree-diff, never apm's opaque content_hash (apm-driver.md § Lockfile).
   skillDivergesFromTag(tag: string, name: string): Promise<boolean>;
+  // The skill's files at one release: sha256 per path, relative to the skill
+  // directory, so a deployed copy can be compared with it file for file. Null
+  // where the clone, the tag or a blob could not be read — the guard then keeps
+  // the copy protected (#952).
+  readSkillFilesAtTag(
+    tag: string,
+    name: string,
+  ): Promise<Record<string, string> | null>;
 };
 
 // The deployed copy vs the lockfile's deployed_file_hashes (#56). The three
@@ -84,6 +93,11 @@ export type DeployedContentPort = {
     target: DeployTarget;
     name: string;
     tools?: readonly SupportedTool[];
+    // The release the write would install. A copy that differs from its
+    // recorded baseline but equals this release in full is `clean`; a release
+    // that cannot be read grants no such pass, so the copy stays `diverged`
+    // (fail closed, #952).
+    release?: string;
   }): Promise<DeployedContentState>;
   // The leaf skill directory apm refuses to write into, when one of this
   // deploy's destinations is a symlink; null when none is. Recomputed from the
@@ -126,9 +140,10 @@ type DeploySkillInput = {
   type: string;
   name: string;
   target: DeployTarget;
-  // Overrides only the two not-proven-clean states; every other guard still
-  // runs (ADR-0006, #66).
-  force?: boolean;
+  // The receipt this deploy's own refusal minted, licensing the overwrite of
+  // the copies it named. Content that changed since retires it, so a stale one
+  // consents to nothing (ADR-0006, #952).
+  confirmedCopyReceipt?: string;
 };
 
 // Each member's meaning for the user is the server's `deployErrorResponses`
@@ -167,12 +182,24 @@ type DeploySkillResult =
   | { ok: true; deployed: { type: "skill"; name: string; version: string } }
   // `packageType` is one of our own readings of apm's recorded type, and
   // `linkedPath` a path Maestro built itself — never apm prose (ADR-0018).
+  // `copyReceipt` is present only where consent can clear the refusal: it
+  // licenses exactly the copies the guard just read (#952).
   | {
       ok: false;
       error: DeploySkillError;
       packageType?: string;
       linkedPath?: string;
+      copyReceipt?: string;
     };
+
+// One mapping from the guard's verdict to the refusal the server's table
+// already carries, so the guard adds no second vocabulary (#952).
+const COPY_ERRORS: Record<Exclude<CopyVerdict, "clean">, DeploySkillError> = {
+  "local-edits": "deployed-diverged-from-lock",
+  unverified: "deployed-unverifiable",
+  unreadable: "deployed-unreadable",
+  "lockfile-malformed": "lockfile-malformed",
+};
 
 export class DeploySkill {
   private readonly deps: {
@@ -180,6 +207,10 @@ export class DeploySkill {
     registry: { isRegistered(path: string): Promise<boolean> };
     apm: Pick<ApmDriverPort, "resolveLatestTag" | "deploySkill">;
     inventoryGit: InventoryGitPort;
+    // The one guard every write entry point classifies and consents through
+    // (#952). Injected so a receipt one flow minted is the same proof another
+    // checks; left out, this deploy guards through its own classifier alone.
+    copyGuard?: Pick<LocalCopyGuard, "check" | "admits">;
     deployedContent: DeployedContentPort;
     recordedPackage: RecordedPackagePort;
     // Global path only (ADR-0011, #136).
@@ -193,8 +224,12 @@ export class DeploySkill {
     locks: InFlightLocks;
   };
 
+  private readonly copyGuard: Pick<LocalCopyGuard, "check" | "admits">;
+
   constructor(deps: DeploySkill["deps"]) {
     this.deps = deps;
+    this.copyGuard =
+      deps.copyGuard ?? new LocalCopyGuard({ content: deps.deployedContent });
   }
 
   async execute(input: DeploySkillInput): Promise<DeploySkillResult> {
@@ -283,11 +318,15 @@ export class DeploySkill {
         return { ok: false, error: "local-diverged-from-tag" };
       }
       // A clean source can still overwrite a locally-edited deployed copy: a
-      // same-ref apm install resets it to the tag silently (#56).
-      const deployedState = await this.deps.deployedContent.classify({
-        target: input.target,
-        name: input.name,
-        tools: globalTools,
+      // same-ref apm install resets it to the tag silently (#56). The tag goes
+      // in, so a copy already equal to this release is not read as an edit
+      // (#952).
+      const scope = { write: "deploy", target: input.target } as const;
+      const check = await this.copyGuard.check({
+        ...scope,
+        names: [input.name],
+        ...(globalTools === undefined ? {} : { tools: globalTools }),
+        release: tag,
       });
       // Files apm placed under a package type it could not manage are apm's
       // own, not local work: refusing the corrected release over them would
@@ -298,19 +337,21 @@ export class DeploySkill {
       });
       const apmOwnsCopy =
         standing.kind === "recorded" && standing.reading.kind !== "skill";
-      // `force` never overrides "unreadable" or "lockfile-malformed": with no
+      const admitted = this.copyGuard.admits(
+        scope,
+        check,
+        input.confirmedCopyReceipt,
+      );
+      // No consent clears "unreadable" or "lockfile-malformed": with no
       // baseline the overwrite would be blind, not informed (ADR-0006).
-      if (deployedState === "diverged" && !input.force) {
-        return { ok: false, error: "deployed-diverged-from-lock" };
-      }
-      if (deployedState === "unverifiable" && !input.force && !apmOwnsCopy) {
-        return { ok: false, error: "deployed-unverifiable" };
-      }
-      if (deployedState === "unreadable") {
-        return { ok: false, error: "deployed-unreadable" };
-      }
-      if (deployedState === "lockfile-malformed") {
-        return { ok: false, error: "lockfile-malformed" };
+      if (!admitted.ok && !(admitted.blocked === "unverified" && apmOwnsCopy)) {
+        return {
+          ok: false,
+          error: COPY_ERRORS[admitted.blocked],
+          ...(admitted.receipt === null
+            ? {}
+            : { copyReceipt: admitted.receipt }),
+        };
       }
 
       const ref = buildSkillPackageRef({

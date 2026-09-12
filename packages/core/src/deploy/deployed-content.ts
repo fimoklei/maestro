@@ -13,6 +13,7 @@ import type {
   DeployedContentPort,
   DeployedContentState,
   DeployTarget,
+  InventoryGitPort,
 } from "./deploy-skill";
 import { deployTargetSubtrees, type SupportedTool } from "./deploy-tools";
 import {
@@ -40,6 +41,9 @@ export class DeployedContentAdapter implements DeployedContentPort {
     // Shared with DeployedCleanupAdapter so the guard and the cleanup always
     // agree on the tree.
     location: Pick<DeployedLocation, "treeRoot" | "lockfilePath">;
+    // The release side of the comparison. Absent, a copy is only ever measured
+    // against its recorded baseline — never a pass the guard did not prove.
+    inventoryGit?: Pick<InventoryGitPort, "readSkillFilesAtTag">;
   };
 
   constructor(deps: DeployedContentAdapter["deps"]) {
@@ -50,6 +54,7 @@ export class DeployedContentAdapter implements DeployedContentPort {
     target: DeployTarget;
     name: string;
     tools?: readonly SupportedTool[];
+    release?: string;
   }): Promise<DeployedContentState> {
     const subtrees = deployTargetSubtrees(input.name, input.tools);
     // Baseline first: with no recorded hashes only existence matters, so the
@@ -86,7 +91,47 @@ export class DeployedContentAdapter implements DeployedContentPort {
     if (baseline.kind !== "hashes") {
       return "unverifiable";
     }
-    return classifyDeployedDrift(baseline.hashes, scan.hashes);
+    if (classifyDeployedDrift(baseline.hashes, scan.hashes) === "clean") {
+      return "clean";
+    }
+    // Second chance, never a first one: a copy the record no longer describes
+    // is still clean when its whole tree is the release about to be installed
+    // — an upstream change is not the reader's edit (#952).
+    return (await this.equalsRelease(input.release, input.name, subtrees, scan))
+      ? "clean"
+      : "diverged";
+  }
+
+  // Whole-tree equality, per targeted subtree: an extra, missing or differing
+  // file anywhere leaves the copy protected. A release that cannot be read
+  // answers false — fail closed, never a pass on a guess (#952).
+  private async equalsRelease(
+    release: string | undefined,
+    name: string,
+    subtrees: string[],
+    scan: SubtreeScan,
+  ): Promise<boolean> {
+    if (release === undefined || this.deps.inventoryGit === undefined) {
+      return false;
+    }
+    const released = await this.deps.inventoryGit
+      .readSkillFilesAtTag(release, name)
+      .catch(() => null);
+    if (released === null) {
+      return false;
+    }
+    for (const subtree of subtrees) {
+      const deployed = stripSubtree(scan.hashes, subtree);
+      // A subtree the write never landed in is not a missing copy; only the
+      // ones holding files have to match.
+      if (Object.keys(deployed).length === 0) {
+        continue;
+      }
+      if (classifyDeployedDrift(released, deployed) !== "clean") {
+        return false;
+      }
+    }
+    return true;
   }
 
   // apm refuses the install when the *leaf* skill dir is a symlink, and names
@@ -221,6 +266,21 @@ export class DeployedContentAdapter implements DeployedContentPort {
     }
     return { hashes, fileCount };
   }
+}
+
+// Re-keys one subtree's scanned hashes relative to the skill directory, which
+// is how the release names its own files.
+function stripSubtree(
+  hashes: DeployedFileHashes,
+  subtree: string,
+): DeployedFileHashes {
+  const stripped: DeployedFileHashes = {};
+  for (const [path, hash] of Object.entries(hashes)) {
+    if (path.startsWith(`${subtree}/`)) {
+      stripped[path.slice(subtree.length + 1)] = hash;
+    }
+  }
+  return stripped;
 }
 
 // The trailing "/" matters: without it ".claude/skills/tddx" matches ".../tdd".

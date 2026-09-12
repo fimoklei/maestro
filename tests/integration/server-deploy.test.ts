@@ -183,6 +183,7 @@ describe("deploy HTTP route", () => {
         syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => options?.skillAtTag ?? true,
         skillDivergesFromTag: async () => options?.diverged ?? false,
+        readSkillFilesAtTag: async () => null,
       },
       deployedContent: {
         classify: async () => {
@@ -596,8 +597,11 @@ describe("deploy HTTP route", () => {
     });
 
     expect(res.status).toBe(409);
+    // The refusal carries the consent its own reading minted, so the reader's
+    // next attempt licenses exactly these copies (#952).
     expect(await res.json()).toEqual({
       error: "deployed-diverged-from-lock",
+      copyReceipt: expect.stringMatching(/^[0-9a-f]{64}$/),
     });
     expect(deployCalls).toEqual([]);
   });
@@ -618,20 +622,29 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({
       error: "deployed-unverifiable",
+      copyReceipt: expect.stringMatching(/^[0-9a-f]{64}$/),
     });
   });
 
-  it("force-deploys past a diverged deployed copy, reinstalling at the tag", async () => {
-    // The confirmed reinstall: the route carries force through to the use-case,
-    // which skips the destination guard and reinstalls at the latest tag (#66).
+  it("deploys past a diverged copy on the receipt its refusal minted", async () => {
+    // The whole journey over the wire: the route answers a refusal with the
+    // consent, and carries that consent back to the use-case, which reinstalls
+    // at the latest tag (#66, #952).
     const { app, registry, deployCalls } = makeApp({ destDiverged: true });
     await registry.register(repo);
+
+    const refused = await post(app, {
+      type: "skill",
+      name: "tdd",
+      target: repoTarget(repo),
+    });
+    const { copyReceipt } = (await refused.json()) as { copyReceipt: string };
 
     const res = await post(app, {
       type: "skill",
       name: "tdd",
       target: repoTarget(repo),
-      force: true,
+      confirmedCopyReceipt: copyReceipt,
     });
 
     expect(res.status).toBe(200);
