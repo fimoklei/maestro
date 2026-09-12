@@ -34,6 +34,7 @@ import {
   ReadHarnessState,
   RecordedPackageAdapter,
   Registry,
+  ReleaseHeadReader,
   RemoveDeployedSkill,
   RestoreSkill,
   readConfiguredGitOriginUrl,
@@ -111,9 +112,32 @@ function realDeps(): AppDeps {
     originUrl: readConfiguredGitOriginUrl,
     readReleasedSkills: releasedSkillsFromGit(harnessGit),
   });
+  const harnessRoot = async () => {
+    const path = resolveInventoryPath(await store.read(), process.env);
+    if (path === undefined) {
+      return undefined;
+    }
+    // A path git cannot be pointed at is a harness that is not connected —
+    // never the raw path, which would run git against something unresolved.
+    return await fs.realpath(path).catch(() => undefined);
+  };
+  // Shared instance: a global deploy's lockfile root and deploy tree differ
+  // (~/.apm vs ~/.claude/skills, apm-driver.md #56/#61) — guard and cleanup agree by construction.
+  const deployedLocation = new DeployedLocation(process.env);
   const deployState = new GlobalDeployStateReader({
     fs,
     toolPresence: new ToolPresenceAdapter(),
+    treeRoot: () => deployedLocation.treeRoot({ kind: "global" }),
+    // Which release each target follows, compared against the connected
+    // Harness's own tags and trees (ADR-0031).
+    releaseHead: new ReleaseHeadReader({
+      git: harnessGit,
+      resolveRoot: harnessRoot,
+      now: () => new Date(),
+    }),
+    // The Local edits / Unverified chip a deployed row carries, from the same
+    // classifier the write path's guard uses.
+    content: new DeployedContentAdapter({ location: deployedLocation }),
   });
   // Runs from a scratch dir under MAESTRO_HOME, created on demand, so apm's
   // .gitignore side-effect never lands in a real repo (apm-driver.md, J07).
@@ -124,15 +148,6 @@ function realDeps(): AppDeps {
       return cwd;
     },
   });
-  const harnessRoot = async () => {
-    const path = resolveInventoryPath(await store.read(), process.env);
-    if (path === undefined) {
-      return undefined;
-    }
-    // A path git cannot be pointed at is a harness that is not connected —
-    // never the raw path, which would run git against something unresolved.
-    return await fs.realpath(path).catch(() => undefined);
-  };
   // GitHub's side of the journey, through the author's own gh sign-in. Optional
   // by design: absent or unauthenticated, the review stage degrades and every
   // git fact stays readable (ADR-0029).
@@ -142,9 +157,6 @@ function realDeps(): AppDeps {
   // harness must queue, not race each other's temporary index and push.
   const harnessPromoteLocks = new InFlightLocks();
 
-  // Shared instance: a global deploy's lockfile root and deploy tree differ
-  // (~/.apm vs ~/.claude/skills, apm-driver.md #56/#61) — guard and cleanup agree by construction.
-  const deployedLocation = new DeployedLocation(process.env);
   // apm owns Behind; the content reading beside it is a git-tree read of the
   // connected Harness, joined before the row renders (ADR-0027).
   const drift = new ReadDrift({
