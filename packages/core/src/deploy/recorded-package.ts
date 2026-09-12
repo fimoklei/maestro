@@ -23,10 +23,9 @@ export class RecordedPackageAdapter implements RecordedPackagePort {
     this.location = deps.location;
   }
 
-  // Everything short of an entry we read is "unverified": a missing lockfile, a
-  // malformed one, an entry too broken to parse, and a file holding no such
-  // entry all leave apm's marker as the only evidence — the evidence this read
-  // exists to distrust (#58, #357).
+  // Everything short of an entry we read is "unverified": the rest leave apm's
+  // marker as the only evidence, which is the evidence this read exists to
+  // distrust (#58, #357).
   async read(input: {
     target: DeployTarget;
     name: string;
@@ -41,10 +40,9 @@ export class RecordedPackageAdapter implements RecordedPackagePort {
     if (!parsed.ok) {
       return { kind: "unverified" };
     }
-    // basename, never a literal `skills/<name>`: a harness is free to record
-    // its own subpath (LEARNINGS · ref-subpath-is-literal).
-    // A root-package row names no subpath, so it never matches here and the
-    // read stays unverified. Reading one back is the deploy ticket's work.
+    // basename, never a literal `skills/<name>`: a harness records its own
+    // subpath (LEARNINGS · ref-subpath-is-literal). A root-package row names
+    // none, so it never matches and the read stays unverified.
     const entry = parsed.entries.find(
       (candidate) =>
         candidate.virtual_path !== undefined &&

@@ -1,7 +1,6 @@
-// The one guard that stands between a write and a deployed copy carrying work.
-// Every write entry point — deploy, remove, the per-skill uninstall migration
-// runs, and the Update slices to come — classifies through `check` and is
-// licensed through `admits`. See ADR-0006, ADR-0031, #952.
+// The one guard between a write and a deployed copy carrying work: every write
+// classifies through `check` and is licensed through `admits` (ADR-0006,
+// ADR-0031 § How the code follows it).
 import type {
   DeployedContentPort,
   DeployedContentState,
@@ -134,9 +133,8 @@ export class LocalCopyGuard {
     };
   }
 
-  // The write's verdict against the copies just read, and the receipt that
-  // would license it. The check is what the guard found now, never what the
-  // caller claims: a receipt minted for other content is no consent for this
+  // The verdict against the copies just read, and the receipt that would
+  // license it. A receipt minted for other content is no consent for this
   // (#364, #952).
   admits(
     scope: LocalCopyScope,

@@ -21,10 +21,9 @@ function errorBodyField(
   return typeof value === "string" ? value : null;
 }
 
-// A refusal the user can override adds a "Deploy again" action that re-runs the
-// deploy with the receipt this refusal minted. One affordance, both entry
-// points. Which refusals those are is the table's `warning` level (ADR-0006,
-// #66) — never the message text, and never a second list here.
+// A refusal the user can override adds a "Deploy again" action carrying the
+// receipt this refusal minted. Which refusals those are is the table's
+// `warning` level, never the message text and never a second list (ADR-0006).
 export function DeployRefusalNotice({
   error,
   onReinstall,

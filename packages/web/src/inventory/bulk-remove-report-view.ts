@@ -114,10 +114,9 @@ export function bulkRemoveReportView(input: {
   };
 }
 
-// What the server's own probe of the disk found after apm failed, appended to
-// the reason. A failed removal can still have taken the copy off: "go and
-// look" and "nothing left to do" are opposite instructions. Silence where the
-// probe proved nothing — an unanswered probe is not a clean copy (J04).
+// What the server's probe of the disk found after apm failed, appended to the
+// reason: "go and look" and "nothing left to do" are opposite instructions.
+// Silence where the probe proved nothing (J04).
 function probed(outcome: RemoveOutcome | undefined): string {
   if (outcome === undefined) {
     return "";

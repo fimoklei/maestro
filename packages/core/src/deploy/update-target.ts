@@ -1,8 +1,5 @@
-// The Update use-case. `preview` prices moving a whole target to the latest
-// release — what changes, what the release removes, and which copies stand in
-// the way — and mints the token that proves this server priced it. `run` takes
-// that token, re-prices under the target lock and writes through the one
-// Selection lifecycle. See ADR-0031, ADR-0020, #953, #954.
+// The Update use-case: `preview` prices the move and mints the token, `run`
+// re-prices under the lock and writes (ADR-0031, ADR-0020).
 import type { ReleaseHeadGitPort } from "../deploy-state/release-head";
 import { highestReleaseTag } from "../harness/release-tag";
 import type { HarnessSkillTree } from "../harness/skill-movements";
@@ -447,9 +444,8 @@ export class UpdateTarget {
       add !== undefined && !state.selection.includes(add) ? [add] : [];
 
     // Every selected copy is at risk: the install rewrites the whole Selection,
-    // and a name this release dropped is deleted. The skill being added joins
-    // them — a copy of it already on disk is overwritten too. The chosen release
-    // goes in, so a copy already equal to it is not read as an edit (#952).
+    // and the added skill joins them. The chosen release goes in, so a copy
+    // already equal to it is not read as an edit (#952).
     const copies = await this.deps.copyGuard.check({
       write: "update",
       target,

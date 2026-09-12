@@ -1,8 +1,6 @@
-// Which release a target follows, and how much of its selection the newest
-// release actually touches (ADR-0031). Read from the connected Harness clone's
-// own tags and trees, so the answer is content, never commit ancestry
-// (ADR-0027). Every unknown stays null: a fabricated count reads as work that
-// is not there.
+// Which release a target follows, and how much of its Selection the newest one
+// touches. Content, never ancestry; every unknown stays null (ADR-0031,
+// ADR-0027).
 import type { HarnessTag } from "../harness/read-harness-state";
 import { highestReleaseTag, RELEASE_TAG_PATTERN } from "../harness/release-tag";
 import type { HarnessSkillTree } from "../harness/skill-movements";

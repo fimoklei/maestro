@@ -40,11 +40,9 @@ export function DeployStatePanel({
   const pending = deployState.data?.pendingOperation;
   const retry = useRetryOperation();
   const update = useUpdateTarget();
-  // One control per behind target, so one release costs one action instead of N
-  // (ADR-0031). A target still pinned per skill carries no head, so none is
-  // offered there — there is no mechanism to sell it (#950).
-  // An unfinished operation outranks it: that target is converged first, so it
-  // is never offered an Update beside a Retry (#951, #954).
+  // One control per behind target (ADR-0031). A pinned-per-skill target carries
+  // no head, so none is offered there (#950); an unfinished operation outranks
+  // it, because that target converges first (#951, #954).
   const behind =
     head !== undefined &&
     head.latestRelease !== null &&

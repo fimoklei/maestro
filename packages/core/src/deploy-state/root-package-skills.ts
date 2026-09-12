@@ -63,10 +63,9 @@ export async function deployedRootPackageSkills(
   return attributed.filter((_skill, index) => present[index] === true);
 }
 
-// What the deploy put in a tool's subtree that belongs to no skill: `includes:
-// auto` deploys every primitive type while the Harness stays skills-only, so
-// this is a fact to know, never an action to take (ADR-0031 § Accepted limits).
-// A file under none of the given prefixes belongs to no target counted here.
+// What the deploy put in a tool's subtree that belongs to no skill — a fact to
+// know, never an action to take (ADR-0031 § Accepted limits). A file under none
+// of the given prefixes is counted by nothing here.
 export function countExtraRootPackageFiles(
   entry: LockfileEntry,
   prefixes: readonly string[],

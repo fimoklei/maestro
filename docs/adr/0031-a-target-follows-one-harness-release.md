@@ -66,6 +66,32 @@ The gaps #929 measured, and the rule for each:
 | `apm.yml` may hold any shape | Edit `skills:` only under exactly one dependency on the connected Harness; any other shape stops before the install with **Manifest not recognised**. |
 | `includes: auto` deploys every primitive type | Count lockfile files outside `skills/<name>/`; more than zero shows **Extra files deployed** on the target card. |
 
+### How the code follows it
+
+- **One Selection write path.** `SelectionWriter` owns the order every write
+  shares: record the intent in `~/.maestro`, write `skills:` to the exact
+  Selection, run one `apm install` with the whole list as `--skill`, then read
+  back disk, manifest and lockfile before clearing the record. Deploy, Remove,
+  Update and Retry all go through it, so no caller can invent its own order.
+- **Completion is proof, never an exit code.** A write is finished only when
+  the files, the manifest and the deployment record all name the desired
+  Selection at the chosen release. Anything else leaves the record standing and
+  the card reads *Mixed releases* with a Retry.
+- **Reading is fail-closed.** A lockfile that is present but unreadable, a
+  record naming more than one Harness package, and a ref that is not a release
+  tag are all refusals — never an empty target a write may install over.
+- **Consent binds content, not verdicts.** The local-copy guard fingerprints
+  the bytes of every copy a consent would cover, and both the Update preflight
+  token and the copy receipt sign that fingerprint. An edit made after the
+  preview was priced therefore refuses the confirm with *Status out of date*.
+- **Pinned per skill and a Release head are exclusive.** A target still holding
+  per-skill dependencies follows no single release, so the reader answers one
+  status or the other and no *Update target* is offered where no mechanism
+  exists.
+- **The Selection is what the roll-up counts.** `→ N targets` and the changed
+  count speak about the Selection the target follows, never about whatever is
+  left on disk beside it.
+
 ### Accepted limits
 
 1. No all-or-nothing install. The cockpit shows a half-landed Update honestly,

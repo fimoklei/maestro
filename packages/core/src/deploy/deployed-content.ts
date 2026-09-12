@@ -1,7 +1,6 @@
-// Classifies the deployed copy against the lockfile's deployed_file_hashes, and
-// names a destination apm refuses because it is a symlink.
-// Touches node:fs directly rather than through a port — no port models walking
-// and hashing a tree. See #56.
+// Classifies a deployed copy against the lockfile's deployed_file_hashes, and
+// names a destination apm refuses as a symlink. Touches node:fs directly: no
+// port models walking and hashing a tree (#56).
 
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
@@ -154,10 +153,9 @@ export class DeployedContentAdapter implements DeployedContentPort {
     return true;
   }
 
-  // apm refuses the install when the *leaf* skill dir is a symlink, and names
-  // the path only in prose Maestro never forwards (apm-behavior.md § Install
-  // signals (3), ADR-0018). lstat, not stat: following the link would report a
-  // real directory (#748).
+  // apm refuses the install when the *leaf* skill dir is a symlink, naming the
+  // path only in prose Maestro never forwards (apm-behavior.md § Install
+  // signals (3), ADR-0018). lstat, not stat — a link resolves to a dir (#748).
   async linkedSkillPath(input: {
     target: DeployTarget;
     name: string;
@@ -206,11 +204,9 @@ export class DeployedContentAdapter implements DeployedContentPort {
       return { kind: "malformed" };
     }
 
-    // By name, never by package_type: the copy on disk belongs to this skill
-    // whatever apm recorded it as, and a hybrid record's hashes are still its
-    // baseline (#358).
-    // A root package records every skill it deployed in one row, so its hashes
-    // are this skill's baseline too, scoped to the subtrees below (ADR-0031).
+    // By name, never by package_type (#358). A root package records every skill
+    // it deployed in one row, so its hashes are this skill's baseline too,
+    // scoped to the subtrees below (ADR-0031).
     const entry =
       parsed.entries.find(
         (e) =>

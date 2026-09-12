@@ -171,8 +171,7 @@ export const refusalCodes = Object.keys(removePreflightErrorResponses) as [
 ];
 
 // The same four failures under a Notice heading, which already names the
-// subject. The sentences live in `inventory/connect-notice.ts`; the register
-// run's report has no heading and keeps its own standalone wording (#465,
+// subject. The sentences live in `inventory/connect-notice.ts` (#465,
 // decision 9).
 const HEADED_REPO_PATH_RESPONSES: ErrorTable<RepoPathError> = {
   missing: { status: 400 },

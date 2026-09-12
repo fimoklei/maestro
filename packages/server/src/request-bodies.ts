@@ -95,10 +95,9 @@ export const updatePreflightBodySchema = z.object({
   add: z.string().optional(),
 });
 
-// The confirm carries the two proofs and the same request: the token saying this
-// server priced this update, the receipt licensing the copies it named, and the
-// skill it was priced with — a different one mints a different token, so the
-// release and the Selection stay the server's own reading (#954, #955).
+// The confirm carries the two proofs and the same request: the token, the
+// receipt, and the skill it was priced with. A different skill mints a
+// different token (#954, #955).
 export const updateBodySchema = z.object({
   target: targetSchema,
   token: z.string().regex(/^[0-9a-f]{64}$/),

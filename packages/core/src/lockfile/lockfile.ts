@@ -98,9 +98,8 @@ export function unreadableCovers(
 }
 
 // What apm recorded, in the terms the cockpit reports: a manageable skill, a
-// root package holding many of them, a package it materialized but Maestro
-// cannot manage as one, apm's own "this attempt placed nothing" verdict, or a
-// different primitive altogether (#358, ADR-0031).
+// root package holding many, an unmanageable package, apm's own "placed
+// nothing" verdict, or a different primitive (#358, ADR-0031).
 export type PackageClass =
   | "skill"
   | "package"

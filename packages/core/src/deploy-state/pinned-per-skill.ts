@@ -9,9 +9,8 @@ import type { PinnedPerSkill } from "./deploy-state-types";
 export type SkillPin = { name: string; release: string };
 
 // A per-skill dependency on the connected Harness, or null for every other row.
-// A pin on another origin is not this Harness's business: it decides no status
-// and blocks nothing (ADR-0031, #950). An unknown origin decides nothing
-// either — attributing it would be a guess (J04).
+// A foreign or unknown origin decides no status and blocks nothing: attributing
+// one would be a guess (ADR-0031, #950, J04).
 export function harnessSkillPin(
   entry: LockfileEntry,
   origin: GitOrigin | null,

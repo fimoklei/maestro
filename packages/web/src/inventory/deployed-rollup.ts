@@ -26,11 +26,9 @@ export type DeploymentTarget = {
   releaseHead?: ReleaseHead;
 };
 
-// One per-skill reading from the Release heads a target carries — one for a
-// repo, one per detected tool for global. Under one release the answer is
-// content: Behind means this skill's own files differ at the newest release,
-// never that the target is behind. Undefined where no head is known, so the
-// caller falls back to the per-skill drift check (ADR-0031, #956).
+// One per-skill reading from the Release heads a target carries. Behind means
+// this skill's own files differ at the newest release, never that the target
+// is. Undefined where no head is known (ADR-0031, #956).
 export function headsReading(
   heads: readonly (ReleaseHead | undefined)[],
   skillName: string,

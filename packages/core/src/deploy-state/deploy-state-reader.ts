@@ -1,8 +1,5 @@
-// Reads a target's apm.lock.yaml plus what is actually on disk under it. Four
-// outcomes the cockpit must never blur: missing is "nothing deployed", an entry
-// that is not a manageable skill is skipped with its reading, a recorded file
-// that is gone is not a deployed skill, and malformed is a visible error (#58,
-// #358, #941).
+// Reads a target's apm.lock.yaml plus what is on disk under it, keeping absent,
+// skipped, phantom and malformed apart (ADR-0031, #58, #358, #941).
 import { join } from "node:path";
 import type { DeployedContentPort, DeployTarget } from "../deploy/deploy-skill";
 import type { SupportedTool } from "../deploy/deploy-tools";

@@ -14,10 +14,9 @@ import { type BulkDeployPlan, planBulkDeploy } from "./plan-bulk-deploy";
 import { useBulkDeploy } from "./use-bulk-deploy";
 import { type DeployTarget, useDeploySkill } from "./use-deploy-skill";
 
-// Bulk-deploy control (#291, #292): plans → executes → reports over the
-// staged set. Skips already-deployed-and-up-to-date skills; a diverged copy
-// comes back as an attention row with an inline force reinstall. Mounted only
-// while something is staged, so it never stands empty.
+// Bulk-deploy control (#291, #292): plans, executes and reports over the staged
+// set, skipping what is already up to date. Mounted only while something is
+// staged, so it never stands empty.
 const GLOBAL_VALUE = "global";
 
 export function BulkDeployBar({

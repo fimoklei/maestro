@@ -34,10 +34,9 @@ import {
   useRemovePreflight,
 } from "./use-remove-preflight";
 
-// Per-skill drift badge. State is carried in text, never colour alone, so
-// "unknown" never reads as up-to-date (J04). Renders nothing while pending.
-// *Older tag* is retired with the per-skill release it implied: the skill is
-// identical at both tags, so nothing marks the row (ADR-0031, #956).
+// Per-skill drift badge. State is carried in text, never colour alone (J04);
+// nothing renders while pending. *Older tag* is retired with the per-skill
+// release it implied (ADR-0031, #956).
 const driftBadge: Partial<
   Record<
     DriftStatus,
@@ -140,10 +139,9 @@ export function DeployStateList({
   onRemoved?: () => void;
 }) {
   const [removing, setRemoving] = useState<string | null>(null);
-  // Held here rather than read off the mutation: starting the retry clears the
-  // mutation's error, and the panel would leave its failed state during the
-  // attempt that state offered (#415). Message and outcome travel together, so
-  // a ledger can never outlive the failure it reports on (#416).
+  // Held here, not read off the mutation: a retry clears the mutation's error
+  // mid-attempt (#415). Message and outcome travel together, so a ledger never
+  // outlives the failure it reports on (#416).
   const [news, setNews] = useState<RemovalNews | null>(null);
   const [justRemoved, setJustRemoved] = useState(false);
   const [removed, setRemoved] = useState<TracedRemoval[]>([]);
@@ -255,10 +253,9 @@ export function DeployStateList({
                     setJustRemoved(true);
                     return;
                   }
-                  // The server priced the copy again and took no action. Its
-                  // answer replaces the one on screen whole — cost, receipt and
-                  // leftovers — so the next confirm can never pair one attempt's
-                  // price with another's consent (#364).
+                  // The server re-priced and acted on nothing. Its answer
+                  // replaces the one on screen whole, so no confirm pairs one
+                  // attempt's price with another's consent (#364).
                   const cost = restatedCost(error);
                   if (cost !== null) {
                     queryClient.setQueryData(

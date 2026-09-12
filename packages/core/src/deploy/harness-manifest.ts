@@ -1,15 +1,12 @@
 // The consumer's apm.yml, read and rewritten around one key: the Selection
-// under the single dependency on the connected Harness. apm persists the
-// Selection there and `--skill` only ever unions with it, so the exact list has
-// to be written before every install (ADR-0031, apm-behavior.md § Root package
-// and its Selection).
+// under the single dependency on the connected Harness (ADR-0031,
+// apm-behavior.md § Root package and its Selection).
 import { isMap, isSeq, parseDocument, type YAMLMap } from "yaml";
 import { isValidSkillSlug } from "./package-ref";
 
-// "absent" is the first-Deploy path: apm creates the dependency itself.
-// "not-recognised" is every shape Maestro will not edit — two Harness
-// dependencies, a bare root string, a missing or non-list `skills:` — and stops
-// the write before anything is touched.
+// "absent" is the first-Deploy path, where apm creates the dependency itself.
+// "not-recognised" is every shape Maestro will not edit; it stops the write
+// before anything is touched.
 export type ManifestSelection =
   | { kind: "absent" }
   | { kind: "selection"; skills: string[] }

@@ -31,6 +31,12 @@ import {
   updatePreviewBody,
 } from "../update-preview-response";
 
+// The consent a refusal minted, so the reader's next attempt licenses exactly
+// the copies they were shown (#952). Spread into every refusal body: deploy,
+// update and retry all mint one.
+const refusalBody = (result: { copyReceipt?: string }) =>
+  result.copyReceipt ? { copyReceipt: result.copyReceipt } : {};
+
 type Deps = Pick<
   AppDeps,
   | "registry"
@@ -121,9 +127,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
           error: result.error,
           ...(result.packageType ? { packageType: result.packageType } : {}),
           ...(result.linkedPath ? { linkedPath: result.linkedPath } : {}),
-          // The consent this refusal minted, so the reader's next attempt
-          // licenses exactly the copies they were shown (#952).
-          ...(result.copyReceipt ? { copyReceipt: result.copyReceipt } : {}),
+          ...refusalBody(result),
         },
         status,
       );
@@ -140,10 +144,9 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     const result = await deps.remove.execute(body.data);
     if (!result.ok) {
       const { status } = removeErrorResponses[result.error];
-      // Omitted, never null: a failure that never reached apm has no outcome,
-      // and an absent key cannot be mistaken for one the server proved (#416).
-      // The restated cost and its receipt travel the same way — together, or
-      // the confirmation would name a cost it cannot act on (#364).
+      // Omitted, never null: an absent key cannot be mistaken for an outcome
+      // the server proved (#416). The restated cost and its receipt travel
+      // together, or the confirmation names a cost it cannot act on (#364).
       return c.json(
         {
           error: result.error,
@@ -228,9 +231,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
         {
           error: result.error,
           ...(outcome === null ? {} : { outcome }),
-          // The consent this refusal minted, so the reader's next attempt
-          // licenses exactly the copies they were shown (#952).
-          ...(result.copyReceipt ? { copyReceipt: result.copyReceipt } : {}),
+          ...refusalBody(result),
         },
         status,
       );
@@ -258,9 +259,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
       return c.json(
         {
           error: result.error,
-          // The consent this refusal minted, so the reader's next attempt
-          // licenses exactly the copies they were shown (#952).
-          ...(result.copyReceipt ? { copyReceipt: result.copyReceipt } : {}),
+          ...refusalBody(result),
         },
         status,
       );

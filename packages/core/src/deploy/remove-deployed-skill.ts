@@ -102,11 +102,8 @@ export type RemoveToolCheck = {
   warning: RemoveWarning | null;
 };
 
-// What the check found, shaped by the scope it ran against. A repo has one row
-// and its deployed copy spans several tool subtrees, so one aggregate answer is
-// the honest thing to state; the global scope has a row per tool, so it answers
-// per tool. One field rather than an aggregate beside a breakdown, because two
-// would eventually disagree.
+// What the check found, at the grain its scope states costs at: one answer for
+// a repo, one per tool for global. Never both, because two would disagree.
 export type RemoveCheck =
   | { scope: "repo"; warning: RemoveWarning | null }
   | { scope: "global"; tools: readonly RemoveToolCheck[] };
@@ -211,11 +208,9 @@ type RemoveDeployedSkillResult =
         scope: RemovedScope;
       };
     }
-  // `outcome` is present only where apm ran and left something to probe; a
-  // failure that never reached it has no outcome to report. The other three
-  // appear only where the removal stopped because the cost it found was never
-  // agreed to: together they are the whole restated question, so the next
-  // attempt never mixes a fresh cost with a stale consent (#364).
+  // `outcome` only where apm ran; the other three only where the removal
+  // stopped on a cost nobody agreed to. Together they restate the whole
+  // question, so no attempt mixes a fresh cost with a stale consent (#364).
   | {
       ok: false;
       error: RemoveDeployedSkillError;
@@ -328,11 +323,9 @@ export class RemoveDeployedSkill {
     }
   }
 
-  // One pricing, run by both halves against the same seam: the confirmation
-  // states it, and the removal proves the request agreed to the one it finds
-  // (#364). The reclaim comes first because the check follows it — a copy the
-  // removal would delete is a copy to price, whether or not this machine still
-  // has the tool that reads it.
+  // One pricing for both halves: the confirmation states it, the removal proves
+  // the request agreed to the one it finds (#364). Reclaim first, because the
+  // check follows it.
   private async price(
     input: RemoveDeployedSkillInput,
     scope: ResolvedScope & { ok: true },
@@ -363,10 +356,8 @@ export class RemoveDeployedSkill {
     return { ok: true, copies, check, reclaim };
   }
 
-  // The repo scope has one copy, so one answer covers it. The global scope asks
-  // per tool, because that is the grain the confirmation states costs at:
-  // deleting a copy in full and deleting work nothing else holds are different
-  // prices, and only the check tells them apart (#414).
+  // One answer for a repo's single copy; per tool for global, which is the
+  // grain the confirmation states costs at (#414).
   private async runCheck(
     input: RemoveDeployedSkillInput,
     scope: ResolvedScope & { ok: true },
@@ -386,10 +377,9 @@ export class RemoveDeployedSkill {
     if (scope.scope === "repo") {
       return await ask();
     }
-    // Only the write asks for the whole copy: every supported tool's, whatever
-    // this machine detects today. apm's uninstall deletes by its own recorded
-    // targets, so a copy in a tool that has since dropped out is still at risk.
-    // A read prices what the reader sees; the write protects what apm reaches.
+    // Only the write asks for the whole copy: apm's uninstall deletes by its
+    // own recorded targets, so a tool that has since dropped out is still at
+    // risk. A read prices what the reader sees; the write what apm reaches.
     const parts = [
       ...(wholeCopy ? [await ask()] : []),
       await ask([
@@ -481,10 +471,9 @@ export class RemoveDeployedSkill {
     return undefined;
   }
 
-  // Which mechanism this removal uses. A target following one release narrows
-  // its Selection with one install, or lets the last skill go with the named
-  // uninstall of the Harness dependency; a target still holding per-skill
-  // dependencies keeps the uninstall it was deployed with (ADR-0031, #933).
+  // Which mechanism this removal uses: one narrowing install, the named
+  // uninstall for the last skill, or the per-skill uninstall a not-yet-migrated
+  // target was deployed with (ADR-0031, #933).
   private async planRemoval(
     target: DeployTarget,
     name: string,
@@ -538,11 +527,9 @@ export class RemoveDeployedSkill {
       }
       const version = plan.kind === "root" ? plan.release : plan.version;
 
-      // Priced through the shared guard, and only a receipt minted for what is
-      // found now lets the removal through. A baseline lost between the check
-      // and the click therefore stops it, and so does a request that
-      // acknowledged nothing (#364, #952). The pinned release goes in, so a
-      // copy equal to it is not read as an edit.
+      // Only a receipt minted for what the guard finds now lets the removal
+      // through, so a baseline lost since the check stops it (#364, #952). The
+      // pinned release goes in, so a copy equal to it is not read as an edit.
       const priced = await this.price(input, scope, version, true);
       if (!priced.ok) {
         return priced;
@@ -617,9 +604,8 @@ export class RemoveDeployedSkill {
     }
   }
 
-  // One install at the same release with the narrower list, or — when the last
-  // skill goes — the named uninstall of the Harness dependency, which apm
-  // proved leaves every other dependency and hand-placed file intact (#957,
+  // One install at the same release with the narrower list, or the named
+  // uninstall of the Harness dependency when the last skill goes (#957,
   // apm-behavior.md § Root package and its Selection). Null when it landed.
   private async narrowSelection(
     plan: { origin: GitOrigin; release: string; previous: string[] },

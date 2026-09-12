@@ -1,8 +1,5 @@
-// A target card's lockfile-derived readings. Their release names are read off
-// apm's lockfile, so they cross the wire only shape-checked, here at the edge
-// (ADR-0018, security.md). A reading failing the shape does not cross at all:
-// the card then reads as a target with no known release, never as one claiming
-// a release the server could not vouch for (J04).
+// A target card's lockfile-derived readings, shape-checked at the edge; one
+// failing the shape does not cross (ADR-0018, security.md, J04).
 import {
   type PinnedPerSkill,
   RELEASE_TAG_PATTERN,

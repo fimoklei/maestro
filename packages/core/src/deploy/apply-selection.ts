@@ -1,10 +1,4 @@
-// The one owner of a Selection change: plan, persist the intent, write the
-// manifest, drive apm once, and prove the result from disk. Deploy and Remove
-// both come through here, so neither can invent its own rule for what landed
-// (ADR-0031, #951).
-//
-// Local-copy protection is the caller's: it runs the shared guard before the
-// target lock is handed to this write (local-copy-guard.ts).
+// The one owner of a Selection change — see ADR-0031 § How the code follows it.
 import type { FileSystemPort } from "../registry/file-system";
 import type { ApmDriverPort, DeployTarget } from "./deploy-skill";
 import type { SupportedTool } from "./deploy-tools";

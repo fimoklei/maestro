@@ -92,11 +92,9 @@ export class InventoryGitAdapter implements InventoryGitPort {
     }
   }
 
-  // The release side of the local-copy guard. Blob bytes, hashed the way apm
-  // records a deployed file, so the two maps compare directly. Null for every
-  // failure alike — an unfetched tag, a missing clone, an unreadable blob: the
-  // guard reads it as "no proof of equality" and keeps the copy protected
-  // (#952).
+  // The release side of the local-copy guard: blob bytes hashed the way apm
+  // records a deployed file. Null for every failure alike, which the guard
+  // reads as no proof of equality (#952).
   async readSkillFilesAtTag(
     tag: string,
     name: string,

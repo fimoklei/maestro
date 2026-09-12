@@ -71,9 +71,8 @@ export type InventoryGitPort = {
   // Tree-diff, never apm's opaque content_hash (apm-driver.md § Lockfile).
   skillDivergesFromTag(tag: string, name: string): Promise<boolean>;
   // The skill's files at one release: sha256 per path, relative to the skill
-  // directory, so a deployed copy can be compared with it file for file. Null
-  // where the clone, the tag or a blob could not be read — the guard then keeps
-  // the copy protected (#952).
+  // directory. Null where nothing could be read, which keeps the copy
+  // protected (#952).
   readSkillFilesAtTag(
     tag: string,
     name: string,
@@ -98,10 +97,8 @@ export type DeployedContentPort = {
     target: DeployTarget;
     name: string;
     tools?: readonly SupportedTool[];
-    // The release the write would install. A copy that differs from its
-    // recorded baseline but equals this release in full is `clean`; a release
-    // that cannot be read grants no such pass, so the copy stays `diverged`
-    // (fail closed, #952).
+    // The release the write would install: a copy equalling it in full is
+    // `clean`, and a release that cannot be read grants no such pass (#952).
     release?: string;
   }): Promise<DeployedContentState>;
   // A digest of the copy's bytes as they are right now. Consent is given for
@@ -204,10 +201,8 @@ export type DeploySkillError =
 
 type DeploySkillResult =
   | { ok: true; deployed: { type: "skill"; name: string; version: string } }
-  // `packageType` is one of our own readings of apm's recorded type, and
-  // `linkedPath` a path Maestro built itself — never apm prose (ADR-0018).
-  // `copyReceipt` is present only where consent can clear the refusal: it
-  // licenses exactly the copies the guard just read (#952).
+  // `packageType` and `linkedPath` are Maestro's own readings, never apm prose
+  // (ADR-0018); `copyReceipt` licenses exactly the copies just read (#952).
   | {
       ok: false;
       error: DeploySkillError;
@@ -387,10 +382,8 @@ export class DeploySkill {
       // is what the guard reads and what consent covers (ADR-0031, #952).
       const deployed = current.kind === "root" ? current.deployed : [];
       const desired = [...new Set([...deployed, input.name])];
-      // A clean source can still overwrite a locally-edited deployed copy: a
-      // same-ref apm install resets it to the tag silently (#56). The tag goes
-      // in, so a copy already equal to this release is not read as an edit
-      // (#952).
+      // A same-ref apm install resets an edited copy silently (#56). The tag
+      // goes in, so a copy already equal to this release is not an edit (#952).
       const scope = { write: "deploy", target: input.target } as const;
       const check = await this.copyGuard.check({
         ...scope,

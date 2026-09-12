@@ -1,8 +1,5 @@
-// The Update preview's shape check at the edge. Its release names come off
-// apm's lockfile and its skill names off the Harness's own trees, so both cross
-// the wire only shape-checked, here where that output is first read (ADR-0018,
-// security.md). A preview failing the shape does not cross at all: the reader
-// then sees a refusal, never a priced update the server could not vouch for.
+// The Update preview's shape check at the edge; a preview failing it does not
+// cross at all (ADR-0018, security.md).
 import {
   isValidSkillSlug,
   RELEASE_TAG_PATTERN,

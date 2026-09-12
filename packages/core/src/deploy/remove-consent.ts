@@ -75,9 +75,8 @@ export class RemoveConsentIssuer {
       : null;
   }
 
-  // The proof that this server priced the removal itself, minted by every
-  // preflight that answers. Unlike a reclaim, it names no paths: what it
-  // authorizes is deleting the copy the request already names, at the cost the
+  // The proof that this server priced the removal itself. It names no paths:
+  // it authorizes deleting the copy the request already names, at the cost the
   // check found (#458, #364).
   receipt(scope: RemoveScope, check: RemoveCheck): string {
     return this.sign({
