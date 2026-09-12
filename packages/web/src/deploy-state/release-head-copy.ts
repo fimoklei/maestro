@@ -2,6 +2,10 @@
 // clock-injected, so the read time is testable.
 import { ago } from "../harness/harness-view-model";
 import type { NoticeContent } from "../ui/notice";
+import {
+  UPDATE_INCOMPLETE,
+  UPDATE_INCOMPLETE_SENTENCE,
+} from "./update-target-copy";
 import type {
   DeployedPrimitive,
   PinnedPerSkill,
@@ -54,13 +58,20 @@ export const RELEASE_NOT_ADOPTED = {
     "This target was deployed one skill at a time. Select Remove skill for each skill, then Deploy skill to put them back on one release.",
 } satisfies NoticeContent;
 
-// The two notices an unfinished operation carries. Warning, not error: the
+// The three notices an unfinished operation carries. Warning, not error: the
 // files are in a state one control converges, and the action names the
-// operation that stopped (copy.md, #951).
+// operation that stopped (copy.md, #951, #954).
 export function unfinishedOperationNotice(pending: {
-  kind: "deploy" | "remove";
+  kind: "deploy" | "remove" | "update";
   release: string;
 }): { level: "warning"; label: string; message: string } {
+  if (pending.kind === "update") {
+    return {
+      level: "warning",
+      label: UPDATE_INCOMPLETE,
+      message: UPDATE_INCOMPLETE_SENTENCE,
+    };
+  }
   return pending.kind === "deploy"
     ? {
         level: "warning",

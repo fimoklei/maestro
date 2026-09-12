@@ -91,6 +91,15 @@ export const bulkRemoveBodySchema = z.object({
 // skills the update touches is the preview's answer, never the caller's claim.
 export const updatePreflightBodySchema = z.object({ target: targetSchema });
 
+// The confirm carries the two proofs and nothing else: the token saying this
+// server priced this update, and the receipt licensing the copies it named.
+// The release and the Selection stay the server's own reading (#954).
+export const updateBodySchema = z.object({
+  target: targetSchema,
+  token: z.string().regex(/^[0-9a-f]{64}$/),
+  confirmedCopyReceipt: consentTokenSchema,
+});
+
 // `previousTag` and `revision` prove the confirmation is against the plan the
 // author saw: the server refuses when the freshly read remote no longer agrees
 // with either, and computes what to tag from its own read (#520, #521).
@@ -208,6 +217,12 @@ export const UPDATE_TARGET_BODY: RequestShape = {
     "Nothing was previewed. Reload the page, then start the update again.",
   detail:
     'The request carries a target: { kind: "repo", repoPath } or { kind: "global" }.',
+};
+
+export const UPDATE_BODY: RequestShape = {
+  message: "Nothing was updated. Reload the page, then start the update again.",
+  detail:
+    "The request carries a target and the token the preview answered with.",
 };
 
 export const BULK_DEPLOY_BODY: RequestShape = {

@@ -7,6 +7,7 @@ import {
   removePreflightErrorResponses,
   retryOperationErrorResponses,
   updatePreviewErrorResponses,
+  updateRunErrorResponses,
 } from "../error-responses";
 import { requireRegisteredRepo } from "../registered-repo-route";
 import { cardReadingFields } from "../release-head-response";
@@ -20,10 +21,15 @@ import {
   removeBodySchema,
   retryOperationBodySchema,
   TARGET_BODY,
+  UPDATE_BODY,
   UPDATE_TARGET_BODY,
+  updateBodySchema,
   updatePreflightBodySchema,
 } from "../request-bodies";
-import { updatePreviewBody } from "../update-preview-response";
+import {
+  updateOutcomeBody,
+  updatePreviewBody,
+} from "../update-preview-response";
 
 type Deps = Pick<
   AppDeps,
@@ -199,6 +205,42 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
       return c.json({ error: "preview-failed" }, 502);
     }
     return c.json({ preview });
+  });
+
+  // The confirm. Everything it acts on the use-case reads itself under the
+  // target lock; the body carries only the two proofs the reader was handed.
+  app.post("/api/deploy/update", async (c) => {
+    const body = await parseBody(c, updateBodySchema, UPDATE_BODY);
+    if (!body.ok) {
+      return body.response;
+    }
+
+    const result = await deps.update.run(body.data);
+    // Omitted, never null: a refusal that never reached apm has no outcome,
+    // and an absent key cannot be mistaken for one the server proved (#416).
+    const outcome =
+      result.ok || result.outcome
+        ? updateOutcomeBody(result.ok ? result.outcome : (result.outcome ?? []))
+        : null;
+    if (!result.ok) {
+      const { status } = updateRunErrorResponses[result.error];
+      return c.json(
+        {
+          error: result.error,
+          ...(outcome === null ? {} : { outcome }),
+          // The consent this refusal minted, so the reader's next attempt
+          // licenses exactly the copies they were shown (#952).
+          ...(result.copyReceipt ? { copyReceipt: result.copyReceipt } : {}),
+        },
+        status,
+      );
+    }
+    // An outcome failing its own shape check does not cross: the reader sees a
+    // refusal rather than a ledger the server cannot vouch for (#416).
+    if (outcome === null) {
+      return c.json({ error: "update-failed" }, 502);
+    }
+    return c.json({ release: result.release, outcome });
   });
 
   // The one way out of a Deploy or Remove that never finished. It re-runs the

@@ -3,7 +3,15 @@
 // retry converges (ADR-0031, #951).
 import { Notice } from "../ui/notice";
 import { unfinishedOperationNotice } from "./release-head-copy";
+import { RETRY_UPDATE } from "./update-target-copy";
 import type { PendingOperation } from "./use-deploy-state";
+
+// One label per operation, each naming the operation that stopped (copy.md).
+const RETRY_LABELS: Record<PendingOperation["kind"], string> = {
+  deploy: "Retry deploy",
+  remove: "Retry removal",
+  update: RETRY_UPDATE,
+};
 
 export function UnfinishedOperationHead({
   pending,
@@ -21,7 +29,7 @@ export function UnfinishedOperationHead({
         notice={{
           ...unfinishedOperationNotice(pending),
           action: {
-            label: pending.kind === "deploy" ? "Retry deploy" : "Retry removal",
+            label: RETRY_LABELS[pending.kind],
             onClick: onRetry,
             disabled: isRetrying,
           },

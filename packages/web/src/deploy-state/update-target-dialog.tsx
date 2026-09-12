@@ -1,5 +1,6 @@
 import type {
   CopyConsentRow,
+  UpdateOutcomeRow,
   UpdatePreview,
   UpdateSkillRow,
 } from "@maestro/core";
@@ -10,10 +11,12 @@ import { cn } from "../ui/cn";
 import { DialogShell } from "../ui/dialog-shell";
 import { Notice } from "../ui/notice";
 import type { DeployStateNotice } from "./notice-copy";
+import { type OutcomeLine, updateOutcomeLines } from "./update-outcome-lines";
 import {
   ADDED_BY_THIS_DEPLOY,
   BECOMES_EMPTY,
   CHANGED,
+  CLOSE,
   consentRowName,
   countingSentence,
   DISCARD_LOCAL_EDITS,
@@ -25,12 +28,16 @@ import {
   NO_CONTENT_CHANGES,
   OVERWRITE_UNVERIFIED,
   REMOVED_BY_THIS_RELEASE,
+  RETRY_UPDATE,
   releaseMoveLine,
   selectionAfterLine,
   UNCHANGED,
   UNVERIFIED_SENTENCE,
+  UPDATE_INCOMPLETE,
+  UPDATE_INCOMPLETE_SENTENCE,
   UPDATE_TARGET,
   updateDialogTitle,
+  updatingLine,
 } from "./update-target-copy";
 
 // One consent, identified by the copy it licenses — the same grain the guard
@@ -165,13 +172,40 @@ function ConsentRow({
   );
 }
 
-// Prices an Update and asks for what it costs; it starts nothing on its own.
-// The host owns the request — this slice writes nothing (#953, #954).
+// One line per skill, from what the server read back — never from what the
+// update asked for (spec story 28, in the shape of the removal trace).
+function OutcomeTrace({ lines }: { lines: readonly OutcomeLine[] }) {
+  return (
+    <div role="status">
+      <ul className="flex flex-col gap-1">
+        {lines.map((line) => (
+          <li
+            key={line.key}
+            className={cn(
+              "flex items-start gap-1.5 font-mono text-tag",
+              line.ok ? "text-green-ink" : "text-amber-ink",
+            )}
+          >
+            <span aria-hidden="true">{line.ok ? "✓" : "✗"}</span>
+            <span className="break-all">{line.text}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// Prices an Update, asks for what it costs, and states what landed. The host
+// owns the request; this reads what came back (#953, #954).
 export function UpdateTargetDialog({
   targetName,
   preview,
   isLoading,
   error,
+  outcome,
+  isRunning = false,
+  incomplete = false,
+  onRetry = () => {},
   onCancel,
   onConfirm,
 }: {
@@ -182,6 +216,12 @@ export function UpdateTargetDialog({
   preview: UpdatePreview | null;
   isLoading: boolean;
   error: DeployStateNotice | null;
+  // Present once apm ran: what every copy reads as now. It replaces the
+  // sections, so the reader is never shown a plan beside its result.
+  outcome?: readonly UpdateOutcomeRow[] | null;
+  isRunning?: boolean;
+  incomplete?: boolean;
+  onRetry?: () => void;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -193,6 +233,15 @@ export function UpdateTargetDialog({
   const leadInId = `${dialogId}-lead-in`;
 
   const heading = updateDialogTitle(targetName);
+  // The outcome replaces the plan: one screen states either what an update
+  // would do, or what it did.
+  const lines =
+    outcome && preview
+      ? updateOutcomeLines(outcome, {
+          from: preview.release,
+          to: preview.chosenRelease,
+        })
+      : null;
   const required =
     preview === null
       ? []
@@ -227,7 +276,22 @@ export function UpdateTargetDialog({
       </div>
 
       <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-3.5 py-3">
-        {preview === null ? (
+        {lines !== null ? (
+          <>
+            <OutcomeTrace lines={lines} />
+            {incomplete ? (
+              <Notice
+                trigger="user-action"
+                notice={{
+                  level: "warning",
+                  label: UPDATE_INCOMPLETE,
+                  message: UPDATE_INCOMPLETE_SENTENCE,
+                  action: { label: RETRY_UPDATE, onClick: onRetry },
+                }}
+              />
+            ) : null}
+          </>
+        ) : preview === null ? (
           <p className="font-ui text-desc text-dim">
             {isLoading ? LOADING_PREVIEW : null}
           </p>
@@ -321,19 +385,19 @@ export function UpdateTargetDialog({
 
       <div className="flex shrink-0 items-center justify-end gap-2.5 border-line-row border-t px-3.5 py-3">
         <Button type="button" variant="quiet" size="sm" onClick={onCancel}>
-          Cancel
+          {lines === null ? "Cancel" : CLOSE}
         </Button>
         {/* The one amber fill in this view; the card's own control is the ghost
             variant (ADR-0031, design.md § the signal rule). */}
-        {preview === null ? null : (
+        {preview === null || lines !== null ? null : (
           <Button
             type="button"
             variant="primary"
             size="sm"
-            disabled={!consentComplete}
+            disabled={!consentComplete || isRunning}
             onClick={onConfirm}
           >
-            {UPDATE_TARGET}
+            {isRunning ? updatingLine(preview.chosenRelease) : UPDATE_TARGET}
           </Button>
         )}
       </div>

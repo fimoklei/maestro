@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { type ReactNode, useRef } from "react";
 import type { DriftViewModel } from "../drift/drift-view-model";
 import { Card } from "../ui/card";
 import { Notice } from "../ui/notice";
@@ -18,6 +18,7 @@ import { TargetDeployAction } from "./target-deploy-action";
 import { TargetStatusChip } from "./target-status-chip";
 import { toolPresentation } from "./tool-presentation";
 import { UnfinishedOperationHead } from "./unfinished-operation-head";
+import { UpdatingLine } from "./updating-line";
 import type { PendingOperation, SkippedEntry } from "./use-deploy-state";
 import type { ToolDeployState } from "./use-global-deploy-state";
 
@@ -33,6 +34,8 @@ export function GlobalTargets({
   pendingOperation,
   onRetryOperation,
   isRetryingOperation = false,
+  updateAction,
+  isUpdating = false,
   drift,
   onStartDeploy,
 }: {
@@ -47,6 +50,10 @@ export function GlobalTargets({
   pendingOperation?: PendingOperation;
   onRetryOperation?: () => void;
   isRetryingOperation?: boolean;
+  // Section-wide too: one Update covers the whole detected tool set, as Deploy
+  // and Remove already do (spec story 32). A slot, so this stays presentational.
+  updateAction?: ReactNode;
+  isUpdating?: boolean;
   drift: DriftViewModel;
   onStartDeploy: () => void;
 }) {
@@ -90,10 +97,20 @@ export function GlobalTargets({
               />
             </div>
           ) : null}
+          {isUpdating ? (
+            // No control anywhere in the section while apm runs, so a second
+            // operation cannot be started (spec story 27).
+            <div className="lg:col-span-2">
+              <UpdatingLine release={updatingRelease(tools)} />
+            </div>
+          ) : updateAction ? (
+            <div className="flex justify-end lg:col-span-2">{updateAction}</div>
+          ) : null}
           {tools.map((group) => (
             <ToolTargetCard
               key={group.tool}
               group={group}
+              mixedReleases={pendingOperation?.kind === "update"}
               drift={drift}
               // Section-wide, since a skipped entry names no tool (#358).
               attentionCount={skipped.filter(skippedNeedsAttention).length}
@@ -114,8 +131,15 @@ export function GlobalTargets({
   );
 }
 
+// The one release the whole global target is moving to, from whichever card
+// carries a reading; empty where none does, so nothing is invented.
+const updatingRelease = (tools: ToolDeployState[]): string =>
+  tools.find((group) => group.releaseHead?.latestRelease)?.releaseHead
+    ?.latestRelease ?? "";
+
 function ToolTargetCard({
   group,
+  mixedReleases = false,
   drift,
   detectedTools,
   attentionCount,
@@ -123,6 +147,7 @@ function ToolTargetCard({
   onStartDeploy,
 }: {
   group: ToolDeployState;
+  mixedReleases?: boolean;
   drift: DriftViewModel;
   detectedTools: string[];
   attentionCount: number;
@@ -164,6 +189,7 @@ function ToolTargetCard({
         <TargetStatusChip
           indicator={indicator}
           pinnedPerSkill={group.pinnedPerSkill !== undefined}
+          mixedReleases={mixedReleases}
         />
       }
     >

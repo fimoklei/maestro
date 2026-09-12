@@ -35,6 +35,25 @@ describe("UnfinishedOperationHead", () => {
     ).toBeInTheDocument();
   });
 
+  it("offers Retry update on an unfinished update", () => {
+    render(
+      <UnfinishedOperationHead
+        pending={{ ...pending, kind: "update" }}
+        onRetry={() => {}}
+      />,
+    );
+
+    expect(screen.getByText("Update incomplete")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "The update is incomplete. Select Retry update to run the same release again.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Retry update" }),
+    ).toBeInTheDocument();
+  });
+
   it("runs the retry once the reader selects it", async () => {
     const onRetry = vi.fn();
     render(<UnfinishedOperationHead pending={pending} onRetry={onRetry} />);

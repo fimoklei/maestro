@@ -84,7 +84,9 @@ describe("DeployStatePanel drift badge", () => {
     expect(
       await screen.findByText(/v0\.5\.0\s*→\s*v0\.5\.1/),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /update/i })).toBeInTheDocument();
+    // The row states the reading and offers nothing: one release moves through
+    // the card's own Update target (spec story 12, #954).
+    expect(screen.queryByRole("button", { name: /update skill/i })).toBeNull();
     expect(await screen.findByText(/in sync/i)).toBeInTheDocument();
   });
 

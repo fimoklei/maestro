@@ -96,3 +96,27 @@ export const Refused: Story = {
     error: updatePreviewNotice(new HttpError(404, "unused", "not-deployed")),
   },
 };
+
+// What landed, read back per copy. The ledger replaces the sections (#954).
+export const Outcome: Story = {
+  args: {
+    outcome: [
+      { name: "tdd", tool: null, state: "updated" },
+      { name: "jobs", tool: null, state: "updated" },
+      { name: "review", tool: null, state: "removed" },
+    ],
+  },
+};
+
+// A partial landing, with the tool named where the copies disagree.
+export const IncompleteOutcome: Story = {
+  args: {
+    incomplete: true,
+    outcome: [
+      { name: "tdd", tool: null, state: "updated" },
+      { name: "jobs", tool: "claude", state: "updated" },
+      { name: "jobs", tool: "codex", state: "not-updated" },
+      { name: "review", tool: null, state: "not-removed" },
+    ],
+  },
+};

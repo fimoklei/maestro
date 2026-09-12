@@ -6,6 +6,7 @@
 import {
   isValidSkillSlug,
   RELEASE_TAG_PATTERN,
+  type UpdateOutcomeRow,
   type UpdatePreview,
 } from "@maestro/core";
 import { z } from "zod";
@@ -53,5 +54,29 @@ const previewSchema = z.object({
 
 export function updatePreviewBody(preview: UpdatePreview): unknown | null {
   const parsed = previewSchema.safeParse(preview);
+  return parsed.success ? parsed.data : null;
+}
+
+// The outcome's names come off the same two readings, so they cross the same
+// way: shape-checked here, and a row failing it fails the whole report rather
+// than half-drawing a ledger (ADR-0018, #954).
+const outcomeSchema = z.array(
+  z.object({
+    name: skillName,
+    tool: z.string().max(40).nullable(),
+    state: z.enum([
+      "updated",
+      "removed",
+      "not-updated",
+      "not-removed",
+      "unknown",
+    ]),
+  }),
+);
+
+export function updateOutcomeBody(
+  outcome: readonly UpdateOutcomeRow[],
+): unknown | null {
+  const parsed = outcomeSchema.safeParse(outcome);
   return parsed.success ? parsed.data : null;
 }

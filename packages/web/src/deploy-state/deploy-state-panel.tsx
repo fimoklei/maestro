@@ -13,8 +13,10 @@ import { TargetDeployAction } from "./target-deploy-action";
 import { TargetStatusChip } from "./target-status-chip";
 import { UnfinishedOperationHead } from "./unfinished-operation-head";
 import { UpdateTargetAction } from "./update-target-action";
+import { UpdatingLine } from "./updating-line";
 import { useDeployState } from "./use-deploy-state";
 import { useRetryOperation } from "./use-retry-operation";
+import { useUpdateTarget } from "./use-update-target";
 
 // One repo's target card. Deploy-state and drift are separate queries: the
 // skill list renders first, each drift badge fills in later. A failed read
@@ -37,13 +39,17 @@ export function DeployStatePanel({
   const pinned = deployState.data?.pinnedPerSkill;
   const pending = deployState.data?.pendingOperation;
   const retry = useRetryOperation();
+  const update = useUpdateTarget();
   // One control per behind target, so one release costs one action instead of N
   // (ADR-0031). A target still pinned per skill carries no head, so none is
   // offered there — there is no mechanism to sell it (#950).
+  // An unfinished operation outranks it: that target is converged first, so it
+  // is never offered an Update beside a Retry (#951, #954).
   const behind =
     head !== undefined &&
     head.latestRelease !== null &&
-    head.latestRelease !== head.release;
+    head.latestRelease !== head.release &&
+    pending === undefined;
   const label = targetLabel(repo, siblings);
   // Where focus goes when a removal destroys the row it was triggered from.
   const headerRef = useRef<HTMLHeadingElement>(null);
@@ -61,11 +67,17 @@ export function DeployStatePanel({
             indicator={indicator}
             pinnedPerSkill={pinned !== undefined}
             behind={behind}
+            mixedReleases={pending?.kind === "update"}
           />
-          {behind ? (
+          {/* Kept mounted while the update has an answer: the dialog holds the
+              outcome the reader just earned, even though the target is no
+              longer offered another Update (#954). */}
+          {behind || update.data !== undefined || update.isError ? (
             <UpdateTargetAction
               targetName={label}
               target={{ kind: "repo", repoPath: repo }}
+              update={update}
+              offered={behind}
             />
           ) : null}
         </>
@@ -87,6 +99,10 @@ export function DeployStatePanel({
             }}
           />
         </div>
+      ) : update.isPending ? (
+        // No control at all while apm runs, so a second operation cannot be
+        // started from this card (spec story 27).
+        <UpdatingLine release={head?.latestRelease ?? ""} />
       ) : indicator === "empty" && pending === undefined ? (
         <TargetDeployAction onStartDeploy={onStartDeploy} />
       ) : (

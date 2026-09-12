@@ -2,7 +2,8 @@
 // exercise other routes but must satisfy createApp's update dependency. Every
 // port refuses, so a stray call answers with a refusal rather than pretending
 // to have priced an update.
-import { UpdateTarget } from "@maestro/core";
+import { InFlightLocks, UpdateTarget } from "@maestro/core";
+import { stubSelectionWriter } from "./stub-deploy";
 
 export const stubUpdate = () =>
   new UpdateTarget({
@@ -20,4 +21,9 @@ export const stubUpdate = () =>
       check: async () => ({ findings: [] }),
       admits: () => ({ ok: true }),
     },
+    // The write side refuses too: nothing here may reach a real target.
+    selection: stubSelectionWriter(),
+    deployedContent: { classify: async () => "unreadable" },
+    canonicalPath: async (path) => path,
+    locks: new InFlightLocks(),
   });
