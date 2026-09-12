@@ -696,3 +696,160 @@ describe("DeployStateReader copy chips", () => {
     });
   });
 });
+
+// A per-skill dependency, the shape every target held before ADR-0031: one
+// entry per skill, pinned at its own tag under `.apm/skills/<name>`.
+function pinnedEntry(name: string, ref: string, prefixes = [".claude"]) {
+  const files = prefixes
+    .map((prefix) => `  - ${prefix}/skills/${name}/SKILL.md\n`)
+    .join("");
+  return `- repo_url: fimoklei/agent-harness\n  host: github.com\n  resolved_ref: ${ref}\n  virtual_path: .apm/skills/${name}\n  package_type: claude_skill\n  deployed_files:\n${files}`;
+}
+
+const HARNESS_ORIGIN = async () => ({
+  host: "github.com",
+  ownerRepo: "fimoklei/agent-harness",
+});
+
+describe("DeployStateReader on a target pinned per skill", () => {
+  it("reads the skills its per-skill dependencies pin, grouped by release", async () => {
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(
+          pinnedEntry("tdd", "v0.3.1") +
+            pinnedEntry("grill", "v0.3.1") +
+            pinnedEntry("jobs", "v0.3.0"),
+        ),
+      },
+    });
+    const reader = new DeployStateReader({ fs, harnessOrigin: HARNESS_ORIGIN });
+
+    const result = await reader.read(REPO);
+
+    expect(result).toMatchObject({
+      ok: true,
+      pinnedPerSkill: [
+        { release: "v0.3.1", skills: 2 },
+        { release: "v0.3.0", skills: 1 },
+      ],
+    });
+  });
+
+  it("reads no such status from per-skill entries of another Harness", async () => {
+    const foreign = `- repo_url: other/harness\n  host: github.com\n  resolved_ref: v1.0.0\n  virtual_path: .apm/skills/tdd\n  package_type: claude_skill\n  deployed_files:\n  - .claude/skills/tdd/SKILL.md\n`;
+    const fs = new InMemoryFileSystem({
+      files: { [LOCKFILE]: lockfile(foreign) },
+    });
+    const reader = new DeployStateReader({ fs, harnessOrigin: HARNESS_ORIGIN });
+
+    const result = await reader.read(REPO);
+
+    expect(result).toMatchObject({
+      ok: true,
+      primitives: [{ type: "skill", name: "tdd", version: "v1.0.0" }],
+    });
+    expect(
+      "pinnedPerSkill" in result ? result.pinnedPerSkill : undefined,
+    ).toBeUndefined();
+  });
+
+  it("reads no such status while the connected Harness is unknown", async () => {
+    const fs = new InMemoryFileSystem({
+      files: { [LOCKFILE]: lockfile(pinnedEntry("tdd", "v0.3.1")) },
+    });
+
+    const result = await new DeployStateReader({ fs }).read(REPO);
+
+    expect(
+      "pinnedPerSkill" in result ? result.pinnedPerSkill : undefined,
+    ).toBeUndefined();
+  });
+});
+
+describe("DeployStateReader on a record holding extra files", () => {
+  it("counts the recorded files that belong to no selected skill", async () => {
+    const files = [".claude/skills/tdd/SKILL.md", ".claude/agents/review.md"];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])),
+        ...onDisk(REPO, files),
+      },
+    });
+
+    const result = await new DeployStateReader({ fs }).read(REPO);
+
+    expect(result).toMatchObject({ ok: true, extraFiles: 1 });
+  });
+
+  it("says nothing where every recorded file belongs to a skill", async () => {
+    const files = [".claude/skills/tdd/SKILL.md"];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])),
+        ...onDisk(REPO, files),
+      },
+    });
+
+    const result = await new DeployStateReader({ fs }).read(REPO);
+
+    expect(
+      "extraFiles" in result ? result.extraFiles : undefined,
+    ).toBeUndefined();
+  });
+});
+
+describe("GlobalDeployStateReader on a target pinned per skill", () => {
+  it("reads the status per tool, from that tool's own per-skill entries", async () => {
+    const fs = new InMemoryFileSystem({
+      files: {
+        [GLOBAL_LOCKFILE]: lockfile(
+          pinnedEntry("tdd", "v0.3.1", [".claude", ".agents"]) +
+            pinnedEntry("grill", "v0.3.0", [".claude"]),
+        ),
+      },
+    });
+    const reader = new GlobalDeployStateReader({
+      fs,
+      toolPresence: fakePresence(["claude", "codex"]),
+      treeRoot: () => "/home",
+      harnessOrigin: HARNESS_ORIGIN,
+    });
+
+    const result = await reader.readGlobal(GLOBAL_ROOT);
+
+    expect(
+      result.ok && result.tools.map((group) => group.pinnedPerSkill),
+    ).toStrictEqual([
+      [
+        { release: "v0.3.1", skills: 1 },
+        { release: "v0.3.0", skills: 1 },
+      ],
+      [{ release: "v0.3.1", skills: 1 }],
+    ]);
+  });
+
+  it("counts extra files per tool, from that tool's own subtree", async () => {
+    const files = [
+      ".claude/skills/tdd/SKILL.md",
+      ".claude/agents/review.md",
+      ".agents/skills/tdd/SKILL.md",
+    ];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [GLOBAL_LOCKFILE]: lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])),
+        ...onDisk("/home", files),
+      },
+    });
+    const reader = new GlobalDeployStateReader({
+      fs,
+      toolPresence: fakePresence(["claude", "codex"]),
+      treeRoot: () => "/home",
+    });
+
+    const result = await reader.readGlobal(GLOBAL_ROOT);
+
+    expect(
+      result.ok && result.tools.map((group) => group.extraFiles),
+    ).toStrictEqual([1, undefined]);
+  });
+});

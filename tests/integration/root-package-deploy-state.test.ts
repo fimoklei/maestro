@@ -99,6 +99,10 @@ describe("reading a root-package target over HTTP", () => {
         toolPresence: { detectGlobalTools: async () => ["claude", "codex"] },
         treeRoot: () => home,
         releaseHead: { read: async () => head ?? HEAD },
+        harnessOrigin: async () => ({
+          host: "github.com",
+          ownerRepo: "fimoklei/agent-harness",
+        }),
       }),
       deploy: stubDeploy({ inventory, registry, locks }),
       remove: stubRemove({ registry, locks }),
@@ -186,6 +190,68 @@ describe("reading a root-package target over HTTP", () => {
     expect(await res.json()).toEqual({
       primitives: [{ type: "skill", name: "tdd", version: "main" }],
       skipped: [],
+    });
+  });
+
+  it("carries the count of recorded files outside the selected skills", async () => {
+    const files = [
+      ".claude/skills/tdd/SKILL.md",
+      ".claude/agents/reviewer.md",
+      ".claude/hooks/format.json",
+    ];
+    await seedFiles(repo, files);
+    await writeFile(
+      join(repo, "apm.lock.yaml"),
+      rootPackageLockfile("v0.3.2", files, ["tdd"]),
+      "utf8",
+    );
+
+    const app = await makeApp();
+    const res = await app.request(
+      `/api/deploy-state?repo=${encodeURIComponent(repo)}`,
+    );
+
+    expect(await res.json()).toMatchObject({ extraFiles: 2 });
+  });
+
+  it("carries the per-skill pins a target still holds, grouped by release", async () => {
+    const files = [
+      ".claude/skills/tdd/SKILL.md",
+      ".claude/skills/grill/SKILL.md",
+    ];
+    await seedFiles(repo, files);
+    await writeFile(
+      join(repo, "apm.lock.yaml"),
+      [
+        "lockfile_version: '1'",
+        "dependencies:",
+        ...files.flatMap((file, index) => {
+          const name = file.split("/")[2];
+          return [
+            "- repo_url: fimoklei/agent-harness",
+            "  host: github.com",
+            `  resolved_ref: v0.3.${index}`,
+            `  virtual_path: .apm/skills/${name}`,
+            "  package_type: claude_skill",
+            "  deployed_files:",
+            `  - ${file}`,
+          ];
+        }),
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const app = await makeApp();
+    const res = await app.request(
+      `/api/deploy-state?repo=${encodeURIComponent(repo)}`,
+    );
+
+    expect(await res.json()).toMatchObject({
+      pinnedPerSkill: [
+        { release: "v0.3.1", skills: 1 },
+        { release: "v0.3.0", skills: 1 },
+      ],
     });
   });
 

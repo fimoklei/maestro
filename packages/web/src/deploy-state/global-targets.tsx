@@ -6,6 +6,7 @@ import { SectionHeader } from "../ui/section-header";
 import { DeployStateList } from "./deploy-state-list";
 import { toolDeployedView, withOtherOrigins } from "./deployed-view";
 import { joinNames } from "./join-names";
+import { PinnedPerSkillHead } from "./pinned-per-skill-head";
 import { releaseLabel } from "./release-head-copy";
 import { ReleaseHeadMeta } from "./release-head-meta";
 import {
@@ -141,7 +142,12 @@ function ToolTargetCard({
       kind="global"
       data={group.releaseHead ? releaseLabel(group.releaseHead) : undefined}
       drift={indicator === "drift"}
-      status={<TargetStatusChip indicator={indicator} />}
+      status={
+        <TargetStatusChip
+          indicator={indicator}
+          pinnedPerSkill={group.pinnedPerSkill !== undefined}
+        />
+      }
     >
       {indicator === "foreign" ? (
         // Foreign is empty plus a fact, so the fact stands above the same
@@ -159,11 +165,15 @@ function ToolTargetCard({
           {group.releaseHead ? (
             <ReleaseHeadMeta head={group.releaseHead} />
           ) : null}
+          {group.pinnedPerSkill ? (
+            <PinnedPerSkillHead pinned={group.pinnedPerSkill} />
+          ) : null}
           <DeployStateList
             primitives={group.primitives}
             skipped={[]}
             drift={toolDrift}
             headRelease={group.releaseHead?.release}
+            extraFiles={group.extraFiles}
             target={{ kind: "global", tools: detectedTools }}
             onRemoved={() => headerRef.current?.focus()}
           />

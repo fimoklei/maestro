@@ -6,6 +6,7 @@
 import { join } from "node:path";
 import type { DeployedContentPort, DeployTarget } from "../deploy/deploy-skill";
 import type { SupportedTool } from "../deploy/deploy-tools";
+import type { GitOrigin } from "../deploy/git-origin";
 import { resolveHomeDirectory } from "../home-directory";
 import {
   type LockfileEntry,
@@ -17,6 +18,7 @@ import type { FileSystemPort } from "../registry/file-system";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import {
   type DeployedPrimitive,
+  type PinnedPerSkill,
   type ReleaseHead,
   type SkippedEntry,
   skippedFromReading,
@@ -25,8 +27,10 @@ import {
   groupPrimitivesByTool,
   type ToolDeployState,
 } from "./group-primitives-by-tool";
+import { harnessSkillPin, type SkillPin, tallyPins } from "./pinned-per-skill";
 import type { ReleaseHeadReader } from "./release-head";
 import {
+  countExtraRootPackageFiles,
   DEPLOY_SKILL_PREFIXES,
   deployedRootPackageSkills,
 } from "./root-package-skills";
@@ -39,6 +43,11 @@ type DeployStateResult =
       // Absent for a target that follows no single release, and for one read
       // without a Release-head reader wired in.
       releaseHead?: ReleaseHead;
+      // Absent unless the target still holds per-skill dependencies on the
+      // connected Harness (#950).
+      pinnedPerSkill?: PinnedPerSkill;
+      // Absent where the record holds no file outside the selected skills.
+      extraFiles?: number;
     }
   | { ok: false; error: "malformed" };
 
@@ -54,12 +63,15 @@ type GlobalDeployStateResult =
     }
   | { ok: false; error: "malformed" };
 
-// The two optional readings a target card leads with. Omitting either leaves an
-// honest unknown — a missing Release head, a row with no copy chip — never a
-// claim the reader did not measure (J04).
+// The optional readings a target card leads with. Omitting any of them leaves
+// an honest unknown — a missing Release head, a row with no copy chip, no
+// status on a pin — never a claim the reader did not measure (J04).
 export type DeployStateExtras = {
   releaseHead?: Pick<ReleaseHeadReader, "read">;
   content?: Pick<DeployedContentPort, "classify">;
+  // Which Harness the cockpit is connected to. Without it a per-skill pin gets
+  // no reading at all: attributing one to this Harness would be a guess (#950).
+  harnessOrigin?: () => Promise<GitOrigin | null>;
 };
 
 export class DeployStateReader {
@@ -68,7 +80,17 @@ export class DeployStateReader {
 
   constructor(deps: { fs: FileSystemPort } & DeployStateExtras) {
     this.fs = deps.fs;
-    this.extras = { releaseHead: deps.releaseHead, content: deps.content };
+    this.extras = {
+      releaseHead: deps.releaseHead,
+      content: deps.content,
+      harnessOrigin: deps.harnessOrigin,
+    };
+  }
+
+  // Null on every failure: an origin that could not be read is unknown, which
+  // reads the same as no Harness connected (J04).
+  protected async connectedOrigin(): Promise<GitOrigin | null> {
+    return (await this.extras.harnessOrigin?.().catch(() => null)) ?? null;
   }
 
   async read(repoPath: string): Promise<DeployStateResult> {
@@ -84,6 +106,8 @@ export class DeployStateReader {
 
     const primitives: DeployedPrimitive[] = [];
     const skipped: SkippedEntry[] = unreadableAsSkipped(parsed.unreadable);
+    const origin = await this.connectedOrigin();
+    const pins: SkillPin[] = [];
     let root: LockfileEntry | undefined;
     for (const entry of parsed.entries) {
       const reading = readPackage(entry);
@@ -97,6 +121,10 @@ export class DeployStateReader {
         // Parsing rejects a non-root row that names no path, so this one has it.
         skipped.push(skippedFromReading(reading, entry.virtual_path ?? ""));
         continue;
+      }
+      const pin = harnessSkillPin(entry, origin);
+      if (pin !== null) {
+        pins.push(pin);
       }
       primitives.push({
         type: "skill",
@@ -123,9 +151,21 @@ export class DeployStateReader {
       root === undefined
         ? undefined
         : await this.readHead(repoPath, root.resolved_ref, primitives);
-    return releaseHead === undefined
-      ? { ok: true, primitives, skipped }
-      : { ok: true, primitives, skipped, releaseHead };
+    const extraFiles =
+      root === undefined
+        ? 0
+        : countExtraRootPackageFiles(root, DEPLOY_SKILL_PREFIXES);
+    const pinnedPerSkill = tallyPins(pins);
+    // Spread, never a null key: a reading this target has not got must not
+    // survive JSON as one the cockpit reads as measured (#416).
+    return {
+      ok: true,
+      primitives,
+      skipped,
+      ...(releaseHead === undefined ? {} : { releaseHead }),
+      ...(pinnedPerSkill === undefined ? {} : { pinnedPerSkill }),
+      ...(extraFiles === 0 ? {} : { extraFiles }),
+    };
   }
 
   // The chip a row carries when its copy disagrees with the recorded baseline,
@@ -226,6 +266,7 @@ export class GlobalDeployStateReader extends DeployStateReader {
     const tree = this.treeRoot();
     const grouped = await groupPrimitivesByTool(parsed.entries, detected, {
       fileExists: (file) => this.fs.isFileEntry(join(tree, file)),
+      origin: await this.connectedOrigin(),
     });
     for (const group of grouped.tools) {
       await this.markCopies(group.primitives, { kind: "global" }, [group.tool]);

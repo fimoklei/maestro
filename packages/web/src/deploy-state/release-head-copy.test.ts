@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   comparedLine,
   copyChipText,
+  extraFilesLine,
+  pinnedTagsLine,
+  RELEASE_NOT_ADOPTED,
   releaseLabel,
   releaseSentence,
 } from "./release-head-copy";
@@ -94,5 +97,53 @@ describe("copyChipText", () => {
       label: "Unverified",
       hint: "This copy could not be verified against a recorded baseline",
     });
+  });
+});
+
+describe("pinnedTagsLine", () => {
+  it("counts the skills a target still pins one at a time", () => {
+    expect(pinnedTagsLine([{ release: "v0.3.1", skills: 3 }])).toBe(
+      "3 skills at v0.3.1",
+    );
+  });
+
+  it("names one skill as one", () => {
+    expect(pinnedTagsLine([{ release: "v0.3.1", skills: 1 }])).toBe(
+      "1 skill at v0.3.1",
+    );
+  });
+
+  it("lists disagreeing tags after the biggest group", () => {
+    expect(
+      pinnedTagsLine([
+        { release: "v0.3.1", skills: 3 },
+        { release: "v0.3.0", skills: 1 },
+      ]),
+    ).toBe("3 skills at v0.3.1, 1 at v0.3.0");
+  });
+});
+
+describe("RELEASE_NOT_ADOPTED", () => {
+  it("names the way to one release", () => {
+    expect(RELEASE_NOT_ADOPTED).toStrictEqual({
+      level: "info",
+      label: "Release not adopted",
+      message:
+        "This target was deployed one skill at a time. Select Remove skill for each skill, then Deploy skill to put them back on one release.",
+    });
+  });
+});
+
+describe("extraFilesLine", () => {
+  it("counts the deployed files that belong to no selected skill", () => {
+    expect(extraFilesLine(2)).toBe(
+      "Extra files deployed: 2 files outside the selected skills.",
+    );
+  });
+
+  it("counts one file as one", () => {
+    expect(extraFilesLine(1)).toBe(
+      "Extra files deployed: 1 file outside the selected skills.",
+    );
   });
 });

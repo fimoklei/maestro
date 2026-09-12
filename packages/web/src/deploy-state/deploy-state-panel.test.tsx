@@ -359,3 +359,83 @@ describe("DeployStatePanel Release head", () => {
     expect(screen.getAllByText("v0.3.2")).toHaveLength(2);
   });
 });
+
+describe("DeployStatePanel on a target pinned per skill", () => {
+  function stubDeployState(body: Record<string, unknown>) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input).startsWith("/api/drift")
+          ? jsonResponse({ behind: [] }, 200)
+          : jsonResponse(body, 200),
+      ),
+    );
+  }
+
+  it("reads the status, the tags under it, and the way out", async () => {
+    stubDeployState({
+      primitives: [
+        { type: "skill", name: "tdd", version: "v0.3.1" },
+        { type: "skill", name: "jobs", version: "v0.3.0" },
+      ],
+      skipped: [],
+      pinnedPerSkill: [
+        { release: "v0.3.1", skills: 1 },
+        { release: "v0.3.0", skills: 1 },
+      ],
+    });
+    renderPanel("/Users/me/project");
+
+    expect(await screen.findByText("▲ Pinned per skill")).toBeInTheDocument();
+    expect(
+      screen.getByText("1 skill at v0.3.1, 1 at v0.3.0"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Release not adopted")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "This target was deployed one skill at a time. Select Remove skill for each skill, then Deploy skill to put them back on one release.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("offers no Update target, which no mechanism stands behind", async () => {
+    stubDeployState({
+      primitives: [{ type: "skill", name: "tdd", version: "v0.3.1" }],
+      skipped: [],
+      pinnedPerSkill: [{ release: "v0.3.1", skills: 1 }],
+    });
+    renderPanel("/Users/me/project");
+
+    expect(await screen.findByText("tdd")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /update target/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says nothing about pins a target on one release does not hold", async () => {
+    stubDeployState({
+      primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
+      skipped: [],
+    });
+    renderPanel("/Users/me/project");
+
+    expect(await screen.findByText("tdd")).toBeInTheDocument();
+    expect(screen.queryByText("▲ Pinned per skill")).not.toBeInTheDocument();
+    expect(screen.queryByText("Release not adopted")).not.toBeInTheDocument();
+  });
+
+  it("counts the deployed files that belong to no selected skill", async () => {
+    stubDeployState({
+      primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
+      skipped: [],
+      extraFiles: 2,
+    });
+    renderPanel("/Users/me/project");
+
+    expect(
+      await screen.findByText(
+        "Extra files deployed: 2 files outside the selected skills.",
+      ),
+    ).toBeInTheDocument();
+  });
+});

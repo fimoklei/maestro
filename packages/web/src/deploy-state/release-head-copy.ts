@@ -1,7 +1,12 @@
 // Every word a target card's Release head shows (ADR-0025, copy.md). Pure and
 // clock-injected, so the read time is testable.
 import { ago } from "../harness/harness-view-model";
-import type { DeployedPrimitive, ReleaseHead } from "./use-deploy-state";
+import type { NoticeContent } from "../ui/notice";
+import type {
+  DeployedPrimitive,
+  PinnedPerSkill,
+  ReleaseHead,
+} from "./use-deploy-state";
 
 // The mono data step in the card header, before the status chip.
 export const releaseLabel = (head: ReleaseHead): string =>
@@ -26,6 +31,33 @@ export function comparedLine(head: ReleaseHead, now: Date): string {
   const since = head.comparedAt === null ? null : ago(head.comparedAt, now);
   return `Compared with the Harness, ${since === null ? "not read yet" : `read ${since}`}`;
 }
+
+// The meta line under a *Pinned per skill* chip: the release most of the target
+// sits on, then every tag that disagrees with it. Never a *Mixed releases*
+// sentence — nothing here is half-landed (ADR-0031).
+export function pinnedTagsLine(pinned: PinnedPerSkill): string {
+  return pinned
+    .map((group, index) => {
+      const skills =
+        index === 0 ? ` skill${group.skills === 1 ? "" : "s"}` : "";
+      return `${group.skills}${skills} at ${group.release}`;
+    })
+    .join(", ");
+}
+
+// The way to one release, through the two controls that already exist (#933).
+// No action on the notice: both of them live on the rows and in the Inventory.
+export const RELEASE_NOT_ADOPTED = {
+  level: "info",
+  label: "Release not adopted",
+  message:
+    "This target was deployed one skill at a time. Select Remove skill for each skill, then Deploy skill to put them back on one release.",
+} satisfies NoticeContent;
+
+// A fact to know, not an action to take: the Harness is skills-only, and a
+// deploy carries whatever else the release holds (ADR-0031 § Accepted limits).
+export const extraFilesLine = (count: number): string =>
+  `Extra files deployed: ${count} file${count === 1 ? "" : "s"} outside the selected skills.`;
 
 const COPY_CHIPS = {
   "local-edits": {

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { type LockfileEntry, parseLockfile } from "../lockfile/lockfile";
 import {
   attributeRootPackageFiles,
+  countExtraRootPackageFiles,
   isRootPackage,
 } from "./root-package-skills";
 
@@ -97,5 +98,39 @@ describe("attributeRootPackageFiles", () => {
     expect(
       attributeRootPackageFiles(entry, PREFIXES).map((skill) => skill.name),
     ).toStrictEqual(["tdd"]);
+  });
+});
+
+describe("countExtraRootPackageFiles", () => {
+  it("counts the recorded files a tool subtree holds outside skills/", () => {
+    const entry = firstEntry(
+      "dependencies:\n- resolved_ref: v1.0.0\n  virtual_path: .\n  package_type: apm_package\n  deployed_files:\n  - .claude/skills/tdd/SKILL.md\n  - .claude/agents/reviewer.md\n  - .agents/hooks/format/hook.json\n",
+    );
+
+    expect(countExtraRootPackageFiles(entry, PREFIXES)).toBe(2);
+  });
+
+  it("counts the skill directory row as part of the selection", () => {
+    const entry = firstEntry(
+      "dependencies:\n- resolved_ref: v1.0.0\n  virtual_path: .\n  package_type: apm_package\n  deployed_files:\n  - .claude/skills/tdd\n  - .claude/skills/tdd/SKILL.md\n",
+    );
+
+    expect(countExtraRootPackageFiles(entry, PREFIXES)).toBe(0);
+  });
+
+  it("counts nothing outside the prefixes it was given", () => {
+    const entry = firstEntry(
+      "dependencies:\n- resolved_ref: v1.0.0\n  virtual_path: .\n  package_type: apm_package\n  deployed_files:\n  - .claude/agents/reviewer.md\n  - .agents/agents/reviewer.md\n",
+    );
+
+    expect(countExtraRootPackageFiles(entry, [".claude"])).toBe(1);
+  });
+
+  it("counts nothing on a record that names no file", () => {
+    const entry = firstEntry(
+      "dependencies:\n- resolved_ref: v1.0.0\n  virtual_path: .\n  package_type: apm_package\n",
+    );
+
+    expect(countExtraRootPackageFiles(entry, PREFIXES)).toBe(0);
   });
 });

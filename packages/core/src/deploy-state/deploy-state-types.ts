@@ -26,6 +26,11 @@ export type ReleaseHead = {
   comparedAt: string | null;
 };
 
+// A target still holding per-skill dependencies, by the release each group of
+// them is pinned at, biggest group first. Never empty: no group is no status
+// (ADR-0031, #950).
+export type PinnedPerSkill = readonly { release: string; skills: number }[];
+
 // An entry that yielded no primitive, surfaced with its reason so the cockpit
 // warns instead of silently dropping it — and so "one entry could not be read"
 // never reads as "this lockfile is broken" (#357). The two package reasons keep
