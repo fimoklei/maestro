@@ -13,6 +13,7 @@ import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
+import { stubUpdate } from "../helpers/stub-update";
 
 // Integration lane: pins the 400 every POST route answers to a body it cannot
 // parse. One table over all seven, so the shared parse step cannot drift a
@@ -71,6 +72,7 @@ describe("POST body parsing", () => {
       remove: stubRemove({ registry, locks }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
+      update: stubUpdate(),
       enforceOriginHost: false,
     });
   }

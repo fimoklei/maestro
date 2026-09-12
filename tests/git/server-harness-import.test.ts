@@ -37,6 +37,7 @@ import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
+import { stubUpdate } from "../helpers/stub-update";
 
 // Integration lane: the whole import journey through the HTTP route against a
 // real disk — what lands in the Working harness, what is skipped, and what is
@@ -103,6 +104,7 @@ describe("harness import HTTP route", () => {
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
       browse: stubBrowse(),
+      update: stubUpdate(),
       enforceOriginHost: false,
     });
   }

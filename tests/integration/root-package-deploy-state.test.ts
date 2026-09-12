@@ -21,6 +21,7 @@ import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
+import { stubUpdate } from "../helpers/stub-update";
 
 // The read journey for a target that follows one Harness release: real files on
 // disk decide what is deployed, and the Release head reaches the screen through
@@ -114,6 +115,7 @@ describe("reading a root-package target over HTTP", () => {
       connect: stubConnect(),
       scaffold: stubScaffold(),
       browse: stubBrowse(),
+      update: stubUpdate(),
       enforceOriginHost: false,
     });
     await registry.register(repo);

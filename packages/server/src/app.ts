@@ -48,7 +48,9 @@ import {
   resolveMaestroConfigPath,
   ScaffoldHarness,
   ScaffoldOffers,
+  TargetSelectionAdapter,
   ToolPresenceAdapter,
+  UpdateTarget,
 } from "@maestro/core";
 import { Hono } from "hono";
 import type { AppDeps } from "./app-deps";
@@ -377,6 +379,23 @@ function realDeps(): AppDeps {
     deployState,
     deploy,
     remove,
+    // The same guard, Harness clone and deploy-state the card and the write
+    // paths read, so the preview cannot price a state the card never showed.
+    update: new UpdateTarget({
+      registry,
+      targetSelection: new TargetSelectionAdapter({
+        deployState,
+        globalRoot: () => resolveApmGlobalRoot(process.env),
+      }),
+      git: harnessGit,
+      resolveRoot: harnessRoot,
+      harnessOrigin: async () => {
+        const root = await harnessRoot();
+        return root === undefined ? null : await harnessGit.readOrigin(root);
+      },
+      toolPresence: new ToolPresenceAdapter(),
+      copyGuard,
+    }),
     drift,
     resolveGlobalRoot: () => resolveApmGlobalRoot(process.env),
     enforceOriginHost: true,

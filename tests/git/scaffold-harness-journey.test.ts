@@ -44,6 +44,7 @@ import { stubImport } from "../helpers/stub-import";
 import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
+import { stubUpdate } from "../helpers/stub-update";
 
 const run = promisify(execFile);
 
@@ -171,6 +172,7 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
       browse: new BrowseFilesystem({ fs, homeRoot: () => home }),
+      update: stubUpdate(),
       enforceOriginHost: false,
     });
   }

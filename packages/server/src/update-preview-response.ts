@@ -1,0 +1,57 @@
+// The Update preview's shape check at the edge. Its release names come off
+// apm's lockfile and its skill names off the Harness's own trees, so both cross
+// the wire only shape-checked, here where that output is first read (ADR-0018,
+// security.md). A preview failing the shape does not cross at all: the reader
+// then sees a refusal, never a priced update the server could not vouch for.
+import {
+  isValidSkillSlug,
+  RELEASE_TAG_PATTERN,
+  type UpdatePreview,
+} from "@maestro/core";
+import { z } from "zod";
+
+const skillName = z.string().refine(isValidSkillSlug);
+
+const skillRow = z.object({
+  name: skillName,
+  // Built by core from the connected Harness's own origin, never a line of apm
+  // prose, and never a host ADR-0014 does not admit.
+  url: z.url().startsWith("https://github.com/").nullable(),
+});
+
+const consentRow = z.object({
+  name: skillName,
+  tool: z.string().max(40).nullable(),
+});
+
+const token = z.string().regex(/^[0-9a-f]{64}$/);
+
+const previewSchema = z.object({
+  release: z.string().regex(RELEASE_TAG_PATTERN),
+  chosenRelease: z.string().regex(RELEASE_TAG_PATTERN),
+  counts: z.object({
+    changed: z.number().int().nonnegative(),
+    removed: z.number().int().nonnegative(),
+    unchanged: z.number().int().nonnegative(),
+  }),
+  addedByThisDeploy: z.array(skillRow),
+  changed: z.array(skillRow),
+  removed: z.array(skillName),
+  unchanged: z.array(skillName),
+  newInRelease: z.array(skillRow),
+  localEdits: z.object({
+    discard: z.array(consentRow),
+    unverified: z.array(consentRow),
+  }),
+  selection: z.object({
+    current: z.array(skillName),
+    desired: z.array(skillName),
+  }),
+  copyReceipt: token.nullable(),
+  token,
+});
+
+export function updatePreviewBody(preview: UpdatePreview): unknown | null {
+  const parsed = previewSchema.safeParse(preview);
+  return parsed.success ? parsed.data : null;
+}

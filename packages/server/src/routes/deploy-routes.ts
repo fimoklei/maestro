@@ -5,6 +5,7 @@ import {
   deployErrorResponses,
   removeErrorResponses,
   removePreflightErrorResponses,
+  updatePreviewErrorResponses,
 } from "../error-responses";
 import { requireRegisteredRepo } from "../registered-repo-route";
 import { cardReadingFields } from "../release-head-response";
@@ -17,7 +18,10 @@ import {
   parseBody,
   removeBodySchema,
   TARGET_BODY,
+  UPDATE_TARGET_BODY,
+  updatePreflightBodySchema,
 } from "../request-bodies";
+import { updatePreviewBody } from "../update-preview-response";
 
 type Deps = Pick<
   AppDeps,
@@ -25,6 +29,7 @@ type Deps = Pick<
   | "deployState"
   | "deploy"
   | "remove"
+  | "update"
   | "drift"
   | "resolveGlobalRoot"
 >;
@@ -158,6 +163,32 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
       reclaim: result.reclaim,
       receipt: result.receipt,
     });
+  });
+
+  // Read-only despite the POST: the target's path travels in the body, like the
+  // removal's own preflight. This slice writes nothing — the confirm is #954.
+  app.post("/api/deploy/update/preflight", async (c) => {
+    const body = await parseBody(
+      c,
+      updatePreflightBodySchema,
+      UPDATE_TARGET_BODY,
+    );
+    if (!body.ok) {
+      return body.response;
+    }
+
+    const result = await deps.update.preview(body.data);
+    if (!result.ok) {
+      const { status } = updatePreviewErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
+    }
+    // A preview failing its own shape check does not cross: the reader sees a
+    // refusal rather than a priced update the server cannot vouch for (#416).
+    const preview = updatePreviewBody(result.preview);
+    if (preview === null) {
+      return c.json({ error: "preview-failed" }, 502);
+    }
+    return c.json({ preview });
   });
 
   // Always 200 with a report — a per-skill refusal is data, not an HTTP error.

@@ -26,6 +26,7 @@ import { stubImport } from "../helpers/stub-import";
 import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubScaffold } from "../helpers/stub-scaffold";
+import { stubUpdate } from "../helpers/stub-update";
 
 // The whole job (#409). server-bulk-remove.test.ts asserts the report the route
 // returns; this asserts the screen afterwards, so apm has to be faithful: it
@@ -162,6 +163,7 @@ describe("retiring a skill from every target it is deployed to", () => {
       connect: stubConnect(),
       scaffold: stubScaffold(),
       browse: stubBrowse(),
+      update: stubUpdate(),
       enforceOriginHost: false,
     });
 

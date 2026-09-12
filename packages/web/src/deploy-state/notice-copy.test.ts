@@ -6,6 +6,7 @@ import {
   FIX_AND_RELEASE,
   linkedFolderNotice,
   removeNotice,
+  updatePreviewNotice,
 } from "./notice-copy";
 
 // Asserted as data, never as prose: ADR-0025 §10 rejected a copy linter, so a
@@ -406,6 +407,111 @@ describe("remove notices", () => {
       message:
         "Nothing reached the target. Reload the page, then start the change again.",
       detail: "The request carries a type, a name and a target.",
+    });
+  });
+});
+
+describe("update preview notices", () => {
+  const cases: [string, DeployStateNotice][] = [
+    [
+      "repo-not-registered",
+      {
+        level: "error",
+        label: "Repository not registered",
+        message:
+          "Register this repository in Maestro, then select Update target again.",
+      },
+    ],
+    [
+      "no-supported-tool",
+      {
+        level: "error",
+        label: "No supported tool",
+        message:
+          "Neither Claude Code nor Codex is on this machine. There is nothing here to update.",
+      },
+    ],
+    [
+      "not-deployed",
+      {
+        level: "error",
+        label: "Nothing deployed here",
+        message:
+          "This target follows no release. Select Deploy skill in the Inventory to put one on it.",
+      },
+    ],
+    [
+      "lockfile-malformed",
+      {
+        level: "error",
+        label: "Deployment record unreadable",
+        message:
+          "Repair or delete apm.lock.yaml in the target, then select Update target again.",
+        detail:
+          "The file is present but does not parse, so the target's state is unknown.",
+      },
+    ],
+    [
+      "deployed-unreadable",
+      {
+        level: "error",
+        label: "Deployed copy unreadable",
+        message:
+          "Nothing was changed. Make the deployed copy readable, then select Update target again.",
+        detail: "Its permissions or its shape blocked the check.",
+      },
+    ],
+    [
+      "inventory-not-configured",
+      {
+        level: "error",
+        label: "No Harness connected",
+        message:
+          "Connect a Harness on the Inventory screen, then select Update target again.",
+      },
+    ],
+    [
+      "inventory-unreadable",
+      {
+        level: "error",
+        label: "Inventory not read",
+        message:
+          "Select Re-read Inventory on the Harness location screen, then select Update target again.",
+      },
+    ],
+    [
+      "no-published-tag",
+      {
+        level: "error",
+        label: "Not in any release",
+        message:
+          "Publish a release on the Harness screen, then select Update target again.",
+        detail: "An update moves the target to a published tag.",
+      },
+    ],
+    [
+      "preview-failed",
+      {
+        level: "error",
+        label: "Preview did not run",
+        message:
+          "Nothing was changed. Wait a moment, then select Update target again.",
+      },
+    ],
+  ];
+
+  it.each(cases)("states %s", (code, expected) => {
+    expect(updatePreviewNotice(refusal(code))).toEqual(expected);
+  });
+
+  it("names a failure it has no code for", () => {
+    expect(updatePreviewNotice(new Error("offline"))).toEqual({
+      level: "error",
+      label: "Preview outcome unknown",
+      message:
+        "Nothing was changed. Wait a moment, then select Update target again.",
+      detail:
+        "A dropped connection, or a failure this version of Maestro does not name.",
     });
   });
 });
