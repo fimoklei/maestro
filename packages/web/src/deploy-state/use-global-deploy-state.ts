@@ -3,11 +3,17 @@
 // flattened `primitives` list for callers that predate it.
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
-import type { DeployedPrimitive, SkippedEntry } from "./use-deploy-state";
+import type {
+  DeployedPrimitive,
+  ReleaseHead,
+  SkippedEntry,
+} from "./use-deploy-state";
 
 export type ToolDeployState = {
   tool: string;
   primitives: DeployedPrimitive[];
+  // Absent where the target follows no single release (ADR-0031).
+  releaseHead?: ReleaseHead;
 };
 
 // Not Zod-validated here (architecture.md — that's the server's job): `tools`

@@ -657,3 +657,42 @@ describe("GlobalDeployStateReader on a root-package target", () => {
     ).toStrictEqual([["alpha"], ["alpha"]]);
   });
 });
+
+// A classifier that reads its own injected state, the way DeployedContentAdapter
+// does: a reader calling the method detached loses it and silently chips
+// nothing (found in smoke, #949).
+class StatefulClassifier {
+  private readonly edited: string;
+
+  constructor(edited: string) {
+    this.edited = edited;
+  }
+
+  async classify(input: { name: string }) {
+    return input.name === this.edited
+      ? ("diverged" as const)
+      : ("clean" as const);
+  }
+}
+
+describe("DeployStateReader copy chips", () => {
+  it("calls the content port as a method, so an adapter keeps its own state", async () => {
+    const files = [".claude/skills/tdd/SKILL.md"];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])),
+        ...onDisk(REPO, files),
+      },
+    });
+    const reader = new DeployStateReader({
+      fs,
+      content: new StatefulClassifier("tdd"),
+    });
+
+    await expect(reader.read(REPO)).resolves.toMatchObject({
+      primitives: [
+        { type: "skill", name: "tdd", version: "v0.3.2", copy: "local-edits" },
+      ],
+    });
+  });
+});

@@ -14,6 +14,7 @@ import { ActionsMenu } from "../ui/actions-menu";
 import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
 import { type DeployStateNotice, removeNotice } from "./notice-copy";
+import { copyChipText } from "./release-head-copy";
 import { removalOutcome } from "./removal-outcome";
 import { RemovalTrace, type TracedRemoval } from "./removal-trace";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
@@ -98,6 +99,20 @@ function DriftBadge({ status }: { status: DriftStatus }) {
   );
 }
 
+// The copy's own reading, beside the drift one: a row can be up to date and
+// still hold work the next install would overwrite (#931).
+function CopyChip({ copy }: { copy: DeployedPrimitive["copy"] }) {
+  if (copy === undefined) {
+    return null;
+  }
+  const { label, hint } = copyChipText(copy);
+  return (
+    <Chip tone="drift" title={hint}>
+      {label}
+    </Chip>
+  );
+}
+
 // Presentational rows for one target. A genuinely empty target renders no
 // body — the card header's "● empty" chip already states it. Pending default
 // avoids a spurious badge before the drift query resolves.
@@ -107,12 +122,16 @@ export function DeployStateList({
   primitives,
   skipped,
   drift = PENDING_DRIFT,
+  headRelease,
   target,
   onRemoved,
 }: {
   primitives: DeployedPrimitive[];
   skipped: SkippedEntry[];
   drift?: DriftViewModel;
+  // The release the whole target follows. A row states its own release only
+  // where it disagrees with this one, so one release is stated once (ADR-0031).
+  headRelease?: string;
   // Required, not optional: a global target's tools must be present or the
   // confirmation can't render, and an optional prop could drop them (#338).
   target: RemoveDialogTarget;
@@ -163,16 +182,21 @@ export function DeployStateList({
         return (
           <div
             key={primitive.name}
-            className="flex items-center gap-3 px-card-x py-row-y"
+            // Wraps rather than crushing the name: the version column drops
+            // first, then the chips move under the name (ADR-0031).
+            className="flex flex-wrap items-center gap-x-3 gap-y-1 px-card-x py-row-y"
           >
-            <span className="flex-1 truncate font-mono text-data text-fg">
+            <span className="min-w-[8ch] flex-1 truncate font-mono text-data text-fg">
               {primitive.name}
             </span>
-            <span className={cn("font-mono text-tag", versionColor[status])}>
-              {lagsPin(status) && latest
-                ? `${primitive.version} → ${latest}`
-                : primitive.version}
-            </span>
+            {primitive.version === headRelease ? null : (
+              <span className={cn("font-mono text-tag", versionColor[status])}>
+                {lagsPin(status) && latest
+                  ? `${primitive.version} → ${latest}`
+                  : primitive.version}
+              </span>
+            )}
+            <CopyChip copy={primitive.copy} />
             <DriftBadge status={status} />
             {lagsPin(status) ? (
               <UpdateSkillAction

@@ -185,3 +185,177 @@ describe("DeployStatePanel", () => {
     expect(screen.getByText(/hooks\/format/)).toBeInTheDocument();
   });
 });
+
+// The Release head: a target following one Harness release (ADR-0031).
+describe("DeployStatePanel Release head", () => {
+  const stubDeployState = (releaseHead: unknown, names = ["tdd", "grill"]) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        url.startsWith("/api/deploy-state")
+          ? jsonResponse(
+              {
+                primitives: names.map((name) => ({
+                  type: "skill",
+                  name,
+                  version: "v0.3.2",
+                })),
+                skipped: [],
+                ...(releaseHead === undefined ? {} : { releaseHead }),
+              },
+              200,
+            )
+          : jsonResponse({ behind: [] }, 200),
+      ),
+    );
+  };
+
+  const BEHIND = {
+    release: "v0.3.2",
+    latestRelease: "v0.3.4",
+    changed: 2,
+    selected: 5,
+    comparedAt: new Date().toISOString(),
+  };
+
+  it("leads the header with the release the target follows", async () => {
+    stubDeployState(BEHIND);
+    renderPanel("/Users/me/project");
+
+    expect(await screen.findByText("Release v0.3.2")).toBeInTheDocument();
+  });
+
+  it("states the newer release and how much of the selection it changes", async () => {
+    stubDeployState(BEHIND);
+    renderPanel("/Users/me/project");
+
+    expect(
+      await screen.findByText("Newer release v0.3.4: 2 of 5 skills changed"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Compared with the Harness, read just now"),
+    ).toBeInTheDocument();
+  });
+
+  it("still states a release that changes nothing selected", async () => {
+    stubDeployState({ ...BEHIND, changed: 0 });
+    renderPanel("/Users/me/project");
+
+    expect(
+      await screen.findByText("Newer release v0.3.4: 0 of 5 skills changed"),
+    ).toBeInTheDocument();
+  });
+
+  it("carries the read time alone for a target on the latest release", async () => {
+    stubDeployState({ ...BEHIND, release: "v0.3.4", changed: 0 });
+    renderPanel("/Users/me/project");
+
+    expect(await screen.findByText("Release v0.3.4")).toBeInTheDocument();
+    expect(
+      screen.getByText("Compared with the Harness, read just now"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/skills changed/)).not.toBeInTheDocument();
+  });
+
+  it("names both releases and keeps the last read time when the changes could not be read", async () => {
+    stubDeployState({
+      ...BEHIND,
+      changed: null,
+      comparedAt: new Date(Date.now() - 30 * 60_000).toISOString(),
+    });
+    renderPanel("/Users/me/project");
+
+    expect(await screen.findByText("Release v0.3.2")).toBeInTheDocument();
+    expect(
+      screen.getByText("Newer release v0.3.4. Changes could not be read."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Compared with the Harness, read 30 min ago"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/skills changed/)).not.toBeInTheDocument();
+  });
+
+  it("states a row's release only where it differs from the head", async () => {
+    stubDeployState(BEHIND);
+    renderPanel("/Users/me/project");
+
+    expect(await screen.findByText("tdd")).toBeInTheDocument();
+    expect(screen.queryByText("v0.3.2")).not.toBeInTheDocument();
+  });
+
+  it("states a row's release where the row disagrees with the head", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        url.startsWith("/api/deploy-state")
+          ? jsonResponse(
+              {
+                primitives: [
+                  { type: "skill", name: "tdd", version: "v0.3.2" },
+                  { type: "skill", name: "grill", version: "v0.3.1" },
+                ],
+                skipped: [],
+                releaseHead: BEHIND,
+              },
+              200,
+            )
+          : jsonResponse({ behind: [] }, 200),
+      ),
+    );
+    renderPanel("/Users/me/project");
+
+    expect(await screen.findByText("grill")).toBeInTheDocument();
+    expect(screen.getByText("v0.3.1")).toBeInTheDocument();
+    expect(screen.queryByText("v0.3.2")).not.toBeInTheDocument();
+  });
+
+  it("marks a row whose copy was edited locally", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        url.startsWith("/api/deploy-state")
+          ? jsonResponse(
+              {
+                primitives: [
+                  {
+                    type: "skill",
+                    name: "tdd",
+                    version: "v0.3.2",
+                    copy: "local-edits",
+                  },
+                  {
+                    type: "skill",
+                    name: "grill",
+                    version: "v0.3.2",
+                    copy: "unverified",
+                  },
+                  { type: "skill", name: "jobs", version: "v0.3.2" },
+                ],
+                skipped: [],
+                releaseHead: BEHIND,
+              },
+              200,
+            )
+          : jsonResponse({ behind: [] }, 200),
+      ),
+    );
+    renderPanel("/Users/me/project");
+
+    expect(await screen.findByText("Local edits")).toBeInTheDocument();
+    expect(screen.getByText("Unverified")).toBeInTheDocument();
+    expect(screen.getAllByText(/Local edits|Unverified/)).toHaveLength(2);
+  });
+
+  it("shows no Release head for a target that follows no single release", async () => {
+    stubDeployState(undefined);
+    renderPanel("/Users/me/project");
+
+    expect(await screen.findByText("tdd")).toBeInTheDocument();
+    expect(screen.queryByText(/^Release /)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Compared with the Harness/),
+    ).not.toBeInTheDocument();
+    // The per-row release is the only reading left, so it stays.
+    expect(screen.getAllByText("v0.3.2")).toHaveLength(2);
+  });
+});

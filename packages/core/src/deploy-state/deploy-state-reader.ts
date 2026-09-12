@@ -136,17 +136,21 @@ export class DeployStateReader {
     target: DeployTarget,
     tools?: readonly SupportedTool[],
   ): Promise<void> {
-    const classify = this.extras.content?.classify;
-    if (classify === undefined) {
+    // Called on the port, never detached: the adapter's classify reads its own
+    // injected location off `this`.
+    const content = this.extras.content;
+    if (content === undefined) {
       return;
     }
     await Promise.all(
       primitives.map(async (primitive) => {
-        const state = await classify({
-          target,
-          name: primitive.name,
-          tools,
-        }).catch(() => null);
+        const state = await content
+          .classify({
+            target,
+            name: primitive.name,
+            tools,
+          })
+          .catch(() => null);
         if (state === "diverged") {
           primitive.copy = "local-edits";
         } else if (state === "unverifiable") {
