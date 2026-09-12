@@ -405,6 +405,16 @@ const UPDATE_PREVIEW: Record<UpdatePreviewError, Body> = {
     message: `Publish a release on the Harness screen, ${UPDATE_AGAIN}`,
     detail: "An update moves the target to a published tag.",
   },
+  "inventory-origin-unavailable": {
+    message: `Point the Harness clone's origin at its GitHub repository, ${UPDATE_AGAIN}`,
+    detail: "An update installs from a GitHub tag, over https or ssh.",
+  },
+  // The same cause as on a deploy: the target's own record names no single
+  // package, and this one states the update's way back to it (#684, #960).
+  "ref-unresolvable": {
+    message: `Nothing was changed. Leave one entry for the Harness in apm.lock.yaml, ${UPDATE_AGAIN}`,
+    detail: "The target's record names more than one, or names no release.",
+  },
   // The Inventory's entrance only: the reader asked for a skill, and no release
   // on offer holds it. "Deploy again" names the control they started from (#955).
   "skill-not-in-release": {
@@ -421,10 +431,6 @@ const UPDATE_PREVIEW: Record<UpdatePreviewError, Body> = {
 // Each states the update's way through, never another surface's (#684, #954).
 const UPDATE: Record<UpdateRunError, Body> = {
   ...UPDATE_PREVIEW,
-  "inventory-origin-unavailable": {
-    message: `Point the Harness clone's origin at its GitHub repository, ${UPDATE_AGAIN}`,
-    detail: "An update installs from a GitHub tag, over https or ssh.",
-  },
   // One code, two causes — a release published since, and a copy edited since.
   // Neither is guessed at: the sentence states what the server observed.
   "status-out-of-date": {

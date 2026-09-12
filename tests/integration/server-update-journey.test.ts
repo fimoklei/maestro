@@ -4,12 +4,10 @@ import { join } from "node:path";
 import {
   DeployedContentAdapter,
   type DeployedContentState,
-  GlobalDeployStateReader,
   InFlightLocks,
   InventoryReader,
   LocalCopyGuard,
   NodeFileSystem,
-  TargetSelectionAdapter,
   UpdateTarget,
 } from "@maestro/core";
 import { createApp } from "@maestro/server";
@@ -107,22 +105,6 @@ describe("update HTTP journey", () => {
       readReleasedSkills: async () => [],
     });
     const locks = new InFlightLocks();
-    const deployState = new GlobalDeployStateReader({
-      fs,
-      toolPresence: { detectGlobalTools: async () => ["claude"] },
-      treeRoot: () => home,
-      // The card's own Release head, which is where the release a target
-      // follows is read from — production wires the same reader (app.ts).
-      releaseHead: {
-        read: async ({ release, selection }) => ({
-          release,
-          latestRelease: "v0.3.4",
-          changed: null,
-          selected: selection.length,
-          comparedAt: null,
-        }),
-      },
-    });
     const apm = rootPackageApm({
       globalRoot: join(home, ".apm"),
       ...(options?.lands === undefined ? {} : { lands: options.lands }),
@@ -150,10 +132,6 @@ describe("update HTTP journey", () => {
       browse: stubBrowse(),
       update: new UpdateTarget({
         registry,
-        targetSelection: new TargetSelectionAdapter({
-          deployState,
-          globalRoot: () => join(home, ".apm"),
-        }),
         git: {
           readTags: async () => [
             { name: "v0.3.2", commit: "aaa" },

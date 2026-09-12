@@ -203,6 +203,7 @@ export function UpdateTargetDialog({
   preview,
   isLoading,
   error,
+  blocked = null,
   outcome,
   isRunning = false,
   incomplete = false,
@@ -217,6 +218,9 @@ export function UpdateTargetDialog({
   preview: UpdatePreview | null;
   isLoading: boolean;
   error: DeployStateNotice | null;
+  // The confirm's label where the refusal has no way through inside this
+  // dialog: the control stays on screen, disabled, stating its cause (#960).
+  blocked?: string | null;
   // Present once apm ran: what every copy reads as now. It replaces the
   // sections, so the reader is never shown a plan beside its result.
   outcome?: readonly UpdateOutcomeRow[] | null;
@@ -395,7 +399,11 @@ export function UpdateTargetDialog({
         </Button>
         {/* The one amber fill in this view; the card's own control is the ghost
             variant (ADR-0031, design.md § the signal rule). */}
-        {preview === null || lines !== null ? null : (
+        {blocked !== null ? (
+          <Button type="button" variant="primary" size="sm" disabled={true}>
+            {blocked}
+          </Button>
+        ) : preview === null || lines !== null ? null : (
           <Button
             type="button"
             variant="primary"

@@ -74,10 +74,14 @@ const TREE_ROOT = "/target";
 
 function subject(options: Options = {}) {
   const world = selectionWorld({ harness: HARNESS, treeRoot: TREE_ROOT });
-  world.seed({
-    release: options.release ?? "v0.3.2",
-    skills: [...(options.selection ?? SELECTION)],
-  });
+  // `selection: null` leaves the world unseeded: no lockfile is a target that
+  // follows no release, which is what the reading answers with.
+  if (options.selection !== null) {
+    world.seed({
+      release: options.release ?? "v0.3.2",
+      skills: [...(options.selection ?? SELECTION)],
+    });
+  }
   const locks = new InFlightLocks();
   // Before the write the recorded baseline decides, which is what the guard
   // reads; afterwards the disk and the deployment record do.
@@ -105,23 +109,6 @@ function subject(options: Options = {}) {
     canonicalPath: async (path) => path,
     locks,
     registry: { isRegistered: async () => options.registered ?? true },
-    targetSelection: {
-      // The release comes off the world's own lockfile, so a write that moved
-      // it — or failed to — is what the reading answers with.
-      read: async () =>
-        options.selection === null
-          ? { ok: false, reason: "not-deployed" }
-          : {
-              ok: true,
-              release:
-                (world.files.get(`${TREE_ROOT}/apm.lock.yaml`) ?? "").match(
-                  /resolved_ref: (\S+)/,
-                )?.[1] ??
-                options.release ??
-                "v0.3.2",
-              selection: options.selection ?? SELECTION,
-            },
-    },
     git: {
       readTags: async () =>
         options.tagNames === null
@@ -209,10 +196,13 @@ describe("UpdateTarget.preview", () => {
     );
   });
 
-  it("names no link when the connected Harness has no usable origin", async () => {
-    const preview = await previewed({ origin: null });
+  it("refuses to price an update when the connected Harness has no usable origin", async () => {
+    const result = await subject({ origin: null }).preview();
 
-    expect(preview.changed.every((row) => row.url === null)).toBe(true);
+    expect(result).toStrictEqual({
+      ok: false,
+      error: "inventory-origin-unavailable",
+    });
   });
 
   it("drops the names this release removed from the desired Selection", async () => {
@@ -388,6 +378,24 @@ describe("UpdateTarget.preview refusals", () => {
     const result = await subject({ selection: null }).preview();
 
     expect(result).toStrictEqual({ ok: false, error: "not-deployed" });
+  });
+
+  it("refuses a deployment record whose Harness entry names no release", async () => {
+    const world = subject();
+    world.world.files.set(
+      `${TREE_ROOT}/apm.lock.yaml`,
+      `dependencies:
+- repo_url: ${HARNESS}
+  host: github.com
+  resolved_ref: main
+  package_type: apm_package
+`,
+    );
+
+    expect(await world.preview()).toStrictEqual({
+      ok: false,
+      error: "ref-unresolvable",
+    });
   });
 
   it("refuses a global target no supported tool is installed for", async () => {

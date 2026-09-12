@@ -52,7 +52,6 @@ import {
   ScaffoldOffers,
   SelectionWriter,
   TargetOperationStore,
-  TargetSelectionAdapter,
   ToolPresenceAdapter,
   UpdateTarget,
 } from "@maestro/core";
@@ -419,10 +418,6 @@ function realDeps(): AppDeps {
     // paths read, so the preview cannot price a state the card never showed.
     update: new UpdateTarget({
       registry,
-      targetSelection: new TargetSelectionAdapter({
-        deployState,
-        globalRoot: () => resolveApmGlobalRoot(process.env),
-      }),
       git: harnessGit,
       resolveRoot: harnessRoot,
       harnessOrigin: async () => {

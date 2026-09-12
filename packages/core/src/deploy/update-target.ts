@@ -20,21 +20,11 @@ import {
   type LocalCopyGuard,
 } from "./local-copy-guard";
 import { ConsentSigner } from "./signed-consent";
-
-// What a target follows today: the one release, and the skills deployed under
-// it. Read from the deployment record's own files, never from `skills:`
-// (ADR-0031). A target on no single release has nothing to update.
-export type TargetSelectionResult =
-  | { ok: true; release: string; selection: readonly string[] }
-  | { ok: false; reason: "not-deployed" | "lockfile-malformed" };
-
-export type TargetSelectionPort = {
-  read(target: DeployTarget): Promise<TargetSelectionResult>;
-};
+import type { TargetSelection } from "./target-selection";
 
 // A skill the reader can go and read before adopting it: the name, and its
-// folder at the chosen release. `url` is null where the connected Harness names
-// no usable origin — a link nobody can follow is worse than none (ADR-0014).
+// folder at the chosen release. Null where a caller has no link to give; a
+// priced preview always has one, since pricing needs the origin (#960).
 export type UpdateSkillRow = { name: string; url: string | null };
 
 // One copy the update would overwrite, at the grain consent is given at: per
@@ -89,6 +79,13 @@ export type UpdatePreviewError =
   // preview never guesses a count (J04).
   | "inventory-unreadable"
   | "no-published-tag"
+  // The connected Harness names no GitHub origin, so nothing can attribute the
+  // target's root package to it. An update is never priced against a package
+  // Maestro cannot prove is ours (ADR-0014, ADR-0031, #960).
+  | "inventory-origin-unavailable"
+  // The target's own record names more than one Harness package, or one whose
+  // ref is no release tag.
+  | "ref-unresolvable"
   // The requested skill is not in the release this update would adopt, so
   // nothing is priced: the reader is never moved to a release without it.
   | "skill-not-in-release"
@@ -129,7 +126,6 @@ export type UpdateOutcomeRow = {
 
 export type UpdateRunError =
   | UpdatePreviewError
-  | "inventory-origin-unavailable"
   // The state the token priced is not the state under the lock: a newer
   // release, another Selection, or a copy that changed since (spec 24, 41).
   | "status-out-of-date"
@@ -188,7 +184,6 @@ const DROPPED: Record<DeployedContentState, UpdateSkillState> = {
 export class UpdateTarget {
   private readonly deps: {
     registry: { isRegistered(path: string): Promise<boolean> };
-    targetSelection: TargetSelectionPort;
     // The connected Harness's own tags and trees: content decides what changed,
     // never commit ancestry (ADR-0027).
     git: ReleaseHeadGitPort;
@@ -200,7 +195,7 @@ export class UpdateTarget {
     copyGuard: Pick<LocalCopyGuard, "check" | "admits">;
     // The one owner of a Selection change: the manifest, the single apm call
     // and the proof it landed all belong to it (ADR-0031, #951).
-    selection: Pick<SelectionWriter, "apply" | "pending">;
+    selection: Pick<SelectionWriter, "apply" | "pending" | "readTarget">;
     // The outcome probe only; classification is the guard's.
     deployedContent: Pick<DeployedContentPort, "classify">;
     // realpath, so the lock cannot be sidestepped by a symlinked spelling.
@@ -326,7 +321,7 @@ export class UpdateTarget {
         desired: scope.desired,
         ...(scope.tools.length === 0 ? {} : { tools: scope.tools }),
       });
-      const outcome = await this.outcome(scope);
+      const outcome = await this.outcome(scope, origin);
       if (applied.ok) {
         return { ok: true, release: scope.chosenRelease, outcome };
       }
@@ -349,18 +344,21 @@ export class UpdateTarget {
   // What landed, read back per copy: content equal to the chosen release, or an
   // absence where the release dropped the name. apm's own marker decides
   // nothing here (ADR-0031 § completion).
-  private async outcome(scope: UpdateScope): Promise<UpdateOutcomeRow[]> {
+  private async outcome(
+    scope: UpdateScope,
+    origin: GitOrigin,
+  ): Promise<UpdateOutcomeRow[]> {
     const tools: (SupportedTool | null)[] =
       scope.tools.length === 0 ? [null] : [...scope.tools];
     const kept = new Set(scope.desired);
     // A copy equal to its recorded baseline proves only that the copy and the
     // record agree. Which release that record names is the other half, and
     // without it no skill is claimed to have moved (ADR-0031 § completion).
-    const landed = await this.deps.targetSelection
-      .read(scope.target)
+    const landed = await this.deps.selection
+      .readTarget(scope.target, origin)
       .catch(() => null);
     const onRelease =
-      landed === null || !landed.ok
+      landed === null || landed.kind !== "root"
         ? null
         : landed.release === scope.chosenRelease;
     const rows: UpdateOutcomeRow[] = [];
@@ -410,14 +408,22 @@ export class UpdateTarget {
       return { ok: false, error: "no-supported-tool" };
     }
 
-    const state = await this.deps.targetSelection.read(target);
-    if (!state.ok) {
-      return { ok: false, error: state.reason };
-    }
-
     const root = await this.deps.resolveRoot();
     if (root === undefined) {
       return { ok: false, error: "inventory-not-configured" };
+    }
+    // Before the target is read: attributing its root package to the connected
+    // Harness needs that Harness's origin, and nothing is priced without it
+    // (ADR-0014, #960).
+    const origin = await this.deps.harnessOrigin().catch(() => null);
+    if (origin === null) {
+      return { ok: false, error: "inventory-origin-unavailable" };
+    }
+    const state = readSelection(
+      await this.deps.selection.readTarget(target, origin),
+    );
+    if (!state.ok) {
+      return { ok: false, error: state.error };
     }
     const tags = await this.deps.git.readTags(root);
     if (tags === null) {
@@ -469,12 +475,10 @@ export class UpdateTarget {
       };
     }
 
-    const origin = await this.deps.harnessOrigin().catch(() => null);
-    const link = (name: string) =>
-      origin === null
-        ? null
-        : `https://${origin.host}/${origin.ownerRepo}/tree/${latest.name}/.apm/skills/${name}`;
-    const row = (name: string): UpdateSkillRow => ({ name, url: link(name) });
+    const row = (name: string): UpdateSkillRow => ({
+      name,
+      url: `https://${origin.host}/${origin.ownerRepo}/tree/${latest.name}/.apm/skills/${name}`,
+    });
 
     const changed = state.selection.filter(
       (name) => next.has(name) && current.get(name) !== next.get(name),
@@ -571,6 +575,27 @@ function whereRecorded(
     return state;
   }
   return onRelease === null ? "unknown" : "not-updated";
+}
+
+// The one reading of what a target follows, in the terms pricing needs. Empty
+// and pinned-per-skill both follow no single release, so neither has an update
+// to preview.
+function readSelection(
+  selection: TargetSelection,
+):
+  | { ok: true; release: string; selection: readonly string[] }
+  | { ok: false; error: UpdatePreviewError } {
+  if (selection.kind === "root") {
+    return {
+      ok: true,
+      release: selection.release,
+      selection: selection.deployed,
+    };
+  }
+  if (selection.kind === "unreadable") {
+    return { ok: false, error: selection.reason };
+  }
+  return { ok: false, error: "not-deployed" };
 }
 
 function consentRows(

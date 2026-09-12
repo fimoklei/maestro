@@ -8,6 +8,11 @@ import { toolDisplayName } from "./tool-labels";
 // so the reader sees the same act named twice (copy.md § Dialog).
 export const UPDATE_TARGET = "Update target";
 
+// The same control with nothing behind it: an origin-less Harness cannot
+// attribute the target's release, so no update can be priced (#960, copy.md
+// § Blocked control).
+export const UPDATE_TARGET_NO_ORIGIN = `${UPDATE_TARGET} — no GitHub origin`;
+
 // The dialog acts on a target the reader already chose, so its title names it.
 export const updateDialogTitle = (target: string): string => `Update ${target}`;
 

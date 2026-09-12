@@ -134,6 +134,9 @@ export const updatePreviewErrorResponses: ErrorTable<UpdatePreviewError> = {
   "inventory-not-configured": deployErrorResponses["inventory-not-configured"],
   "inventory-unreadable": deployErrorResponses["inventory-unreadable"],
   "no-published-tag": deployErrorResponses["no-published-tag"],
+  "inventory-origin-unavailable":
+    deployErrorResponses["inventory-origin-unavailable"],
+  "ref-unresolvable": deployErrorResponses["ref-unresolvable"],
   // 422, like no-published-tag: the release the target would adopt does not
   // hold the skill, and publishing one that does is the reader's next step.
   "skill-not-in-release": { status: 422 },
@@ -145,8 +148,6 @@ export const updatePreviewErrorResponses: ErrorTable<UpdatePreviewError> = {
 // `deploy-state/notice-copy.ts` (#954).
 export const updateRunErrorResponses: ErrorTable<UpdateRunError> = {
   ...updatePreviewErrorResponses,
-  "inventory-origin-unavailable":
-    deployErrorResponses["inventory-origin-unavailable"],
   // 409: the state the reader confirmed is not the state on disk, and a fresh
   // preview is the way through.
   "status-out-of-date": { status: 409 },

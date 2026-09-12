@@ -21,6 +21,7 @@ import {
   UPDATE_INCOMPLETE,
   UPDATE_INCOMPLETE_SENTENCE,
   UPDATE_TARGET,
+  UPDATE_TARGET_NO_ORIGIN,
   updateDialogTitle,
   updatingLine,
 } from "./update-target-copy";
@@ -28,6 +29,10 @@ import {
 describe("Update target copy", () => {
   it("names the control and the confirm with one verb and object", () => {
     expect(UPDATE_TARGET).toBe("Update target");
+  });
+
+  it("states the cause on the control an origin-less Harness blocks", () => {
+    expect(UPDATE_TARGET_NO_ORIGIN).toBe("Update target — no GitHub origin");
   });
 
   it("titles the dialog with the target it acts on", () => {

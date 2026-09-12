@@ -67,8 +67,6 @@ export {
 export { TargetOperationStore } from "./deploy/target-operation";
 export {
   type CopyConsentRow,
-  type TargetSelectionPort,
-  type TargetSelectionResult,
   type UpdateOutcomeRow,
   type UpdatePreview,
   type UpdatePreviewError,
@@ -91,7 +89,6 @@ export type {
 export type { ToolDeployState } from "./deploy-state/group-primitives-by-tool";
 export { ReleaseHeadReader } from "./deploy-state/release-head";
 export { resolveApmGlobalRoot } from "./deploy-state/resolve-apm-global-root";
-export { TargetSelectionAdapter } from "./deploy-state/target-selection";
 export { CheckVersionDrift } from "./drift/check-version-drift";
 export type { VersionDrift } from "./drift/parse-outdated";
 export {

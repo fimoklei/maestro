@@ -251,6 +251,29 @@ describe("UpdateTargetDialog", () => {
     expect(screen.getByText("Loading the update preview…")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Update target" })).toBeNull();
   });
+
+  it("blocks the confirm with its cause when the Harness names no origin", () => {
+    render(
+      <UpdateTargetDialog
+        targetName="agent-harness"
+        preview={null}
+        isLoading={false}
+        blocked="Update target — no GitHub origin"
+        error={{
+          level: "error",
+          label: "No GitHub origin",
+          message: "Point the Harness clone's origin at its GitHub repository.",
+        }}
+        onCancel={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    const button = screen.getByRole("button", {
+      name: "Update target — no GitHub origin",
+    });
+    expect(button).toBeDisabled();
+  });
 });
 
 // What the reader sees once apm ran: the ledger replaces the plan (#954).

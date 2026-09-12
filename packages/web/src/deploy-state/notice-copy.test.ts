@@ -511,6 +511,26 @@ describe("update preview notices", () => {
       },
     ],
     [
+      "inventory-origin-unavailable",
+      {
+        level: "error",
+        label: "No GitHub origin",
+        message:
+          "Point the Harness clone's origin at its GitHub repository, then select Update target again.",
+        detail: "An update installs from a GitHub tag, over https or ssh.",
+      },
+    ],
+    [
+      "ref-unresolvable",
+      {
+        level: "error",
+        label: "Unrecognisable deployment entry",
+        message:
+          "Nothing was changed. Leave one entry for the Harness in apm.lock.yaml, then select Update target again.",
+        detail: "The target's record names more than one, or names no release.",
+      },
+    ],
+    [
       "preview-failed",
       {
         level: "error",

@@ -1,9 +1,10 @@
 import { useState } from "react";
+import { HttpError } from "../api/http";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { Button } from "../ui/button";
 import { updateNotice, updatePreviewNotice } from "./notice-copy";
 import { updateOutcomeRows } from "./update-outcome-lines";
-import { UPDATE_TARGET } from "./update-target-copy";
+import { UPDATE_TARGET, UPDATE_TARGET_NO_ORIGIN } from "./update-target-copy";
 import { UpdateTargetDialog } from "./update-target-dialog";
 import { useRetryOperation } from "./use-retry-operation";
 import { useUpdatePreflight } from "./use-update-preflight";
@@ -80,6 +81,14 @@ export function UpdateTargetAction({
           // same retry the card offers (#951).
           incomplete={outcome !== null && update.isError}
           onRetry={() => retry.mutate({ target })}
+          // The one refusal with no way through from this dialog: the Harness
+          // clone's origin is fixed outside the cockpit (#960).
+          blocked={
+            preflight.error instanceof HttpError &&
+            preflight.error.code === "inventory-origin-unavailable"
+              ? UPDATE_TARGET_NO_ORIGIN
+              : null
+          }
           error={
             preflight.isError
               ? updatePreviewNotice(preflight.error)

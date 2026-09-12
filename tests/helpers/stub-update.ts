@@ -8,9 +8,6 @@ import { stubSelectionWriter } from "./stub-deploy";
 export const stubUpdate = () =>
   new UpdateTarget({
     registry: { isRegistered: async () => false },
-    targetSelection: {
-      read: async () => ({ ok: false, reason: "not-deployed" }),
-    },
     git: { readTags: async () => null, readSkillTreesAtTag: async () => null },
     resolveRoot: async () => undefined,
     harnessOrigin: async () => null,
