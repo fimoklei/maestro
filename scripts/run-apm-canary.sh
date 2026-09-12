@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs the four real-apm canary integration tests (network + auth to the private
+# Runs the real-apm canary integration tests (network + auth to the private
 # agent-harness repo required). Kept out of the fast loop; see apm-driver.md.
 # Also the command the weekly `.github/workflows/apm-canary.yml` runs.
 set -euo pipefail

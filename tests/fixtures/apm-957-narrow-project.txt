@@ -1,0 +1,10 @@
+[*] Validating 1 package...
+[+] fimoklei/agent-harness#v0.6.0 (updated ref in apm.yml)
+[*] Updated apm.yml dependency entries
+[>] Installing 1 new package...
+[i] Targets: claude  (source: --target flag)
+  [+] fimoklei/agent-harness #v0.6.0 @f8208f12 (cached)
+  |-- 1 skill(s) integrated -> .claude/skills/
+[i] Cleaned 2 stale files from fimoklei/agent-harness
+
+[*] Installed 1 APM dependency (2 stale files cleaned) in 2.5s.

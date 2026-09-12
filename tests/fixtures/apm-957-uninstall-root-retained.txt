@@ -1,0 +1,10 @@
+[>] Uninstalling 1 package(s)...
+[+] fimoklei/agent-harness - found in apm.yml
+Retained user-edited file .claude/skills/caveman/SKILL.md from 
+fimoklei/agent-harness; resolve it and retry.
+[i] Cleaned 4 stale files from fimoklei/agent-harness
+[x] Uninstall could not remove tracked target files; package state was 
+preserved.
+[x]   - .claude/skills/caveman
+[x]   - .claude/skills/caveman/SKILL.md
+[x] Resolve or remove the listed files, then retry uninstall.

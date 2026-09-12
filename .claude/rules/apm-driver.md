@@ -35,6 +35,28 @@ targets = detected tools), 0013 (narrowed-install reconciliation), 0014
 - Keep real apm out of the fast test loop (`testing.md`); network + auth
   belong to the canary/integration lanes.
 
+## Root package and its Selection
+
+- Install the Harness as the tag-pinned repository root ref, one `--skill`
+  flag per selected name. A Selection is never a set of per-skill subpath
+  refs.
+- Write the exact Selection to `skills:` in `apm.yml` before every install,
+  and pass those same names as `--skill`; the flag alone only adds.
+- Never write `skills: []` and never drop the `skills:` key: an empty list is
+  refused, and a missing key installs the whole bundle. Remove the last
+  selected skill by naming the package in `apm uninstall`.
+- Remove the Harness by naming its root ref. Never uninstall a neighbouring
+  dependency to reach it, and never widen the removal — a named uninstall
+  already spares every other dependency, including one from the same
+  repository.
+- Read what is deployed from `deployed_files` plus the file's existence,
+  never from `skill_subset` or `skills:`; both keep names apm has already
+  dropped.
+- Read the Selection back after every install. apm sorts `skills:`, so the
+  written order is never the order you passed.
+- Classify a Remove from files and the lockfile, never from the exit code or
+  a marker: a blocked removal has already deleted the rest of the Selection.
+
 ## Classifying output
 
 - Success = the `Installed \d+ APM dependenc` marker or the
