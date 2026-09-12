@@ -5,7 +5,7 @@
 // Written as ignore patterns, because the `.gitignore` is generated from this
 // list. `._*` is the only wildcard; a pattern is either a literal name or a
 // prefix followed by `*`.
-export const OPERATING_SYSTEM_FILE_PATTERNS = [
+const OPERATING_SYSTEM_FILE_PATTERNS = [
   ".DS_Store",
   "._*",
   "Thumbs.db",
