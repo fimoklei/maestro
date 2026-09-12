@@ -41,6 +41,11 @@ export const LEFT_ALONE_PINNED = "Left alone — pinned per skill";
 export const RETRY_ON_CARD =
   "Select Retry deploy on the target card, then deploy again.";
 
+// One string, two surfaces: the deploy refusal's notice and the bulk report's
+// row both tell the reader to wait for the same operation.
+export const DEPLOY_STILL_RUNNING =
+  "A deploy is still running on this target. Wait for it to finish.";
+
 export const UPDATE_TO_REACH_RELEASE =
   "Select Update target to reach this release.";
 
@@ -198,7 +203,7 @@ const DEPLOY: Record<DeploySkillError, Body> = {
       "The file is present but does not parse, so the target's state is unknown.",
   },
   "deploy-in-progress": {
-    message: "A deploy is still running on this target. Wait for it to finish.",
+    message: DEPLOY_STILL_RUNNING,
   },
   // The same cause as on a removal: the target's own record names no single
   // package, so one wording covers both (#684).

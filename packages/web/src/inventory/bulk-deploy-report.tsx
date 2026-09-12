@@ -1,5 +1,6 @@
 import type { DeploySkillError } from "@maestro/core";
 import {
+  DEPLOY_STILL_RUNNING,
   deployStateHeading,
   LEFT_ALONE_PINNED,
   RETRY_ON_CARD,
@@ -23,6 +24,7 @@ const recoverySteps: Partial<Record<DeploySkillError, string>> = {
   "target-pinned-per-skill": LEFT_ALONE_PINNED,
   "not-at-target-release": UPDATE_TO_REACH_RELEASE,
   "operation-unfinished": RETRY_ON_CARD,
+  "deploy-in-progress": DEPLOY_STILL_RUNNING,
   "deploy-incomplete": RETRY_ON_CARD,
 };
 

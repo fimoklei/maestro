@@ -170,15 +170,18 @@ export class DeployStateReader {
 
     const target: DeployTarget = { kind: "repo", repoPath };
     await this.markCopies(primitives, target);
+    const pinnedPerSkill = tallyPins(pins);
+    // The two statuses are exclusive: a target still holding per-skill pins
+    // reads as Pinned per skill and follows no single release, so no Update
+    // target is offered where there is no mechanism for one (stories 59, 60).
     const releaseHead =
-      root === undefined
+      root === undefined || pinnedPerSkill !== undefined
         ? undefined
         : await this.readHead(repoPath, root.resolved_ref, selection);
     const extraFiles =
       root === undefined
         ? 0
         : countExtraRootPackageFiles(root, DEPLOY_SKILL_PREFIXES);
-    const pinnedPerSkill = tallyPins(pins);
     const pendingOperation = await this.readPending(target);
     // Spread, never a null key: a reading this target has not got must not
     // survive JSON as one the cockpit reads as measured (#416).
@@ -305,7 +308,8 @@ export class GlobalDeployStateReader extends DeployStateReader {
     });
     for (const group of grouped.tools) {
       await this.markCopies(group.primitives, { kind: "global" }, [group.tool]);
-      if (grouped.release !== undefined) {
+      // Exclusive with Pinned per skill, as on the repo card (stories 59, 60).
+      if (grouped.release !== undefined && group.pinnedPerSkill === undefined) {
         group.releaseHead = await this.readHead(
           `global:${group.tool}`,
           grouped.release,

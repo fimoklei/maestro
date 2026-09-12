@@ -95,6 +95,9 @@ const ATTENTION: Partial<Record<DeploySkillError, { forceable: boolean }>> = {
   // (ADR-0031, #951).
   "not-at-target-release": { forceable: false },
   "target-pinned-per-skill": { forceable: false },
+  // A deploy, removal or update already holds this target's lock. Nothing
+  // went wrong; the reader waits (spec story 51).
+  "deploy-in-progress": { forceable: false },
   "manifest-not-recognised": { forceable: false },
   "operation-unfinished": { forceable: false },
 };

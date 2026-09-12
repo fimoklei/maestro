@@ -52,6 +52,24 @@ describe("BulkDeploySkills", () => {
     expect(report.failed).toEqual([]);
   });
 
+  // A busy target is a reasoned skip, not a failure: nothing went wrong and
+  // the reader's step is to wait (spec story 51).
+  it("reports a busy target as attention, with no force to offer", async () => {
+    const bulk = new BulkDeploySkills({
+      deploy: fakeDeploy({ tdd: fail("deploy-in-progress") }),
+    });
+
+    const report = await bulk.execute({
+      names: ["tdd"],
+      target: { kind: "global" },
+    });
+
+    expect(report.attention).toEqual([
+      { name: "tdd", error: "deploy-in-progress", forceable: false },
+    ]);
+    expect(report.failed).toEqual([]);
+  });
+
   it("reports a skill absent at the target's release as attention, never as a failure", async () => {
     const bulk = new BulkDeploySkills({
       deploy: fakeDeploy({ tdd: fail("not-at-target-release") }),

@@ -537,6 +537,44 @@ describe("DeployStateReader on a root-package target", () => {
     expect(result).toMatchObject({ ok: true, releaseHead: { selected: 1 } });
   });
 
+  // Pinned per skill and a Release head are two answers to one question. A
+  // target carrying both would show the chip and the Update target control at
+  // once, and there is no mechanism behind that Update (spec stories 59, 60).
+  it("reads a target still holding per-skill pins as pinned, with no Release head", async () => {
+    const files = [".claude/skills/tdd/SKILL.md"];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]:
+          lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])) +
+          pinnedEntry("legacy", "v0.3.1"),
+        ...onDisk(REPO, files),
+      },
+    });
+    const reader = new DeployStateReader({
+      fs,
+      harnessOrigin: HARNESS_ORIGIN,
+      releaseHead: {
+        read: async (input) => ({
+          release: input.release,
+          latestRelease: "v0.3.4",
+          changed: 0,
+          selected: input.selection.length,
+          comparedAt: "2026-09-12T10:00:00.000Z",
+        }),
+      },
+    });
+
+    const result = await reader.read(REPO);
+
+    expect(result).toMatchObject({
+      ok: true,
+      pinnedPerSkill: [{ release: "v0.3.1", skills: 1 }],
+    });
+    expect(
+      "releaseHead" in result ? result.releaseHead : undefined,
+    ).toBeUndefined();
+  });
+
   it("marks a row whose copy diverged from its baseline as locally edited", async () => {
     const files = [
       ".claude/skills/tdd/SKILL.md",
@@ -665,6 +703,42 @@ describe("GlobalDeployStateReader on a root-package target", () => {
         },
       ],
     );
+  });
+
+  // Same exclusivity as the repo card: a tool group still holding per-skill
+  // pins reads as Pinned per skill and is offered no Update (stories 59, 60).
+  it("carries no Release head for a tool group still pinned per skill", async () => {
+    const files = [".claude/skills/tdd/SKILL.md"];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [GLOBAL_LOCKFILE]:
+          lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])) +
+          pinnedEntry("legacy", "v0.3.1"),
+        ...onDisk("/home", files),
+      },
+    });
+    const reader = new GlobalDeployStateReader({
+      fs,
+      toolPresence: fakePresence(["claude"]),
+      treeRoot: () => "/home",
+      harnessOrigin: HARNESS_ORIGIN,
+      releaseHead: {
+        read: async (input) => ({
+          release: input.release,
+          latestRelease: "v0.3.4",
+          changed: 0,
+          selected: input.selection.length,
+          comparedAt: "2026-09-12T10:00:00.000Z",
+        }),
+      },
+    });
+
+    const result = await reader.readGlobal(GLOBAL_ROOT);
+
+    expect(result.ok && result.tools[0]?.pinnedPerSkill).toEqual([
+      { release: "v0.3.1", skills: 1 },
+    ]);
+    expect(result.ok && result.tools[0]?.releaseHead).toBeUndefined();
   });
 
   it("leaves a phantom row out of the tool that no longer holds it", async () => {

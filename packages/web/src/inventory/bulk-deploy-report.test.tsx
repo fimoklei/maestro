@@ -48,6 +48,30 @@ describe("BulkDeployReport", () => {
     ).toBeInTheDocument();
   });
 
+  it("gives a busy row the reason a single deploy states", () => {
+    render(
+      <BulkDeployReport
+        view={{
+          tone: "attention",
+          targetLabel: "Global",
+          deployed: [],
+          skipped: [],
+          attention: [
+            { name: "tdd", error: "deploy-in-progress", forceable: false },
+          ],
+          failed: [],
+          counts: { deployed: 0, skipped: 0, attention: 1, failed: 0 },
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        "A deploy is still running on this target. Wait for it to finish.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("names a failure the report carries no recovery step for", () => {
     render(
       <BulkDeployReport
