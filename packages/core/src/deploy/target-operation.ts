@@ -6,7 +6,7 @@ import type { ConfigStore } from "../registry/config-store";
 import type { DeployTarget } from "./deploy-skill";
 import type { SupportedTool } from "./deploy-tools";
 
-export type TargetOperationKind = "deploy" | "remove";
+export type TargetOperationKind = "deploy" | "remove" | "update";
 
 export type TargetOperation = {
   // The target's lock key: the canonical repo path, or "global". One

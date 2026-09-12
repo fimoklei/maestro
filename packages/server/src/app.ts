@@ -431,6 +431,14 @@ function realDeps(): AppDeps {
       },
       toolPresence: new ToolPresenceAdapter(),
       copyGuard,
+      // The same Selection lifecycle, target lock and content probe deploy and
+      // remove write through: no write path keeps a rule of its own (#954).
+      selection,
+      deployedContent: new DeployedContentAdapter({
+        location: deployedLocation,
+      }),
+      canonicalPath: (path) => fs.realpath(path),
+      locks: apmWriteLocks,
     }),
     retryOperation,
     drift,

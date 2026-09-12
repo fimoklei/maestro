@@ -1,20 +1,27 @@
 import { describe, expect, it } from "vitest";
 import {
   BECOMES_EMPTY,
+  CLOSE,
   consentRowName,
   countingSentence,
   DISCARD_LOCAL_EDITS,
   foldedHeading,
   LOADING_PREVIEW,
   localEditsSentence,
+  MIXED_RELEASES,
   NO_CONTENT_CHANGES,
   OVERWRITE_UNVERIFIED,
+  outcomeLine,
+  RETRY_UPDATE,
   releaseMoveLine,
   SECTION_HEADINGS,
   selectionAfterLine,
   UNVERIFIED_SENTENCE,
+  UPDATE_INCOMPLETE,
+  UPDATE_INCOMPLETE_SENTENCE,
   UPDATE_TARGET,
   updateDialogTitle,
+  updatingLine,
 } from "./update-target-copy";
 
 describe("Update target copy", () => {
@@ -110,5 +117,59 @@ describe("Update target copy", () => {
 
   it("names what is loading by the screen it is for", () => {
     expect(LOADING_PREVIEW).toBe("Loading the update preview…");
+  });
+
+  it("reads the release it is moving to while apm runs", () => {
+    expect(updatingLine("v0.3.4")).toBe("Updating to v0.3.4…");
+  });
+
+  it("names a half-landed update on the card", () => {
+    expect(MIXED_RELEASES).toBe("Mixed releases");
+  });
+
+  it("states one outcome per skill, from what was read back", () => {
+    const releases = { from: "v0.3.2", to: "v0.3.4" };
+    expect(
+      outcomeLine({ name: "tdd", tool: null, state: "updated" }, releases),
+    ).toBe("tdd updated to v0.3.4");
+    expect(
+      outcomeLine({ name: "review", tool: null, state: "removed" }, releases),
+    ).toBe("review removed");
+    expect(
+      outcomeLine(
+        { name: "grill", tool: null, state: "not-updated" },
+        releases,
+      ),
+    ).toBe("grill still at v0.3.2");
+    expect(
+      outcomeLine(
+        { name: "review", tool: null, state: "not-removed" },
+        releases,
+      ),
+    ).toBe("review still deployed");
+    expect(
+      outcomeLine({ name: "grill", tool: null, state: "unknown" }, releases),
+    ).toBe("grill outcome unknown");
+  });
+
+  it("names the tool of an outcome the global target answers per tool", () => {
+    expect(
+      outcomeLine(
+        { name: "grill", tool: "codex", state: "not-updated" },
+        { from: "v0.3.2", to: "v0.3.4" },
+      ),
+    ).toBe("grill still at v0.3.2 in Codex");
+  });
+
+  it("names the one way out of a half-landed update", () => {
+    expect(UPDATE_INCOMPLETE).toBe("Update incomplete");
+    expect(RETRY_UPDATE).toBe("Retry update");
+    expect(UPDATE_INCOMPLETE_SENTENCE).toBe(
+      "The update is incomplete. Select Retry update to run the same release again.",
+    );
+  });
+
+  it("leaves one control once the outcome is in", () => {
+    expect(CLOSE).toBe("Close");
   });
 });

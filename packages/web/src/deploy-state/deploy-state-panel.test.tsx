@@ -480,3 +480,55 @@ describe("DeployStatePanel on a target pinned per skill", () => {
     ).toBeInTheDocument();
   });
 });
+
+// A half-landed Update: the card states it and offers the one way out (#954).
+describe("DeployStatePanel unfinished update", () => {
+  const BEHIND = {
+    release: "v0.3.2",
+    latestRelease: "v0.3.4",
+    changed: 2,
+    selected: 5,
+    comparedAt: new Date().toISOString(),
+  };
+
+  const stubCard = (pendingOperation?: unknown) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        url.startsWith("/api/deploy-state")
+          ? jsonResponse(
+              {
+                primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
+                skipped: [],
+                releaseHead: BEHIND,
+                ...(pendingOperation === undefined ? {} : { pendingOperation }),
+              },
+              200,
+            )
+          : jsonResponse({ behind: [] }, 200),
+      ),
+    );
+  };
+
+  it("reads Mixed releases and offers Retry update, not another Update", async () => {
+    stubCard({ kind: "update", release: "v0.3.4", desired: ["tdd"] });
+    renderPanel("/Users/me/project");
+
+    expect(await screen.findByText("▲ Mixed releases")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Retry update" }),
+    ).toBeInTheDocument();
+    // One unfinished change is converged before another one starts (#951).
+    expect(screen.queryByRole("button", { name: /Update target/ })).toBeNull();
+  });
+
+  it("offers Update target on a behind target with nothing unfinished", async () => {
+    stubCard();
+    renderPanel("/Users/me/project");
+
+    expect(
+      await screen.findByRole("button", { name: /Update target/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("▲ Mixed releases")).not.toBeInTheDocument();
+  });
+});

@@ -39,13 +39,14 @@ describe("DeployStateList row actions", () => {
     ).toBeInTheDocument();
   });
 
-  it("keeps Update outside the menu on a behind row", () => {
+  // A target follows one release, so a row carries no update of its own: the
+  // whole target moves through Update target (spec story 12, #954).
+  it("offers no per-row update on a behind row", () => {
     renderList(behindTdd);
 
-    // Update is readable and clickable with the menu still closed: it is this
-    // view's primary steering action, never a two-click detour.
+    expect(screen.queryByRole("button", { name: /update/i })).toBeNull();
     expect(
-      screen.getByRole("button", { name: /update skill tdd/i }),
+      screen.getByRole("button", { name: "Actions for tdd" }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("menuitem")).not.toBeInTheDocument();
   });

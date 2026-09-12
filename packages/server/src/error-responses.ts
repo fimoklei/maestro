@@ -22,6 +22,7 @@ import type {
   RetryTargetOperationError,
   ScaffoldHarnessError,
   UpdatePreviewError,
+  UpdateRunError,
 } from "@maestro/core";
 import type { ErrorTable } from "./error-table";
 
@@ -134,6 +135,29 @@ export const updatePreviewErrorResponses: ErrorTable<UpdatePreviewError> = {
   "inventory-unreadable": deployErrorResponses["inventory-unreadable"],
   "no-published-tag": deployErrorResponses["no-published-tag"],
   "preview-failed": { status: 502 },
+};
+
+// The confirm's own refusals. Every code it shares with deploy, remove or the
+// preview is answered the same way; its sentences live beside theirs in
+// `deploy-state/notice-copy.ts` (#954).
+export const updateRunErrorResponses: ErrorTable<UpdateRunError> = {
+  ...updatePreviewErrorResponses,
+  "inventory-origin-unavailable":
+    deployErrorResponses["inventory-origin-unavailable"],
+  // 409: the state the reader confirmed is not the state on disk, and a fresh
+  // preview is the way through.
+  "status-out-of-date": { status: 409 },
+  "update-in-progress": deployErrorResponses["deploy-in-progress"],
+  "operation-unfinished": deployErrorResponses["operation-unfinished"],
+  "deployed-diverged-from-lock":
+    deployErrorResponses["deployed-diverged-from-lock"],
+  "deployed-unverifiable": deployErrorResponses["deployed-unverifiable"],
+  "manifest-not-recognised": deployErrorResponses["manifest-not-recognised"],
+  "destination-symlinked": deployErrorResponses["destination-symlinked"],
+  // 502: apm ran and what landed is not what was asked for; the retry is on
+  // the target card (#951).
+  "update-incomplete": { status: 502 },
+  "update-failed": { status: 502 },
 };
 
 // Exhaustive by construction: the table above is keyed by the error union

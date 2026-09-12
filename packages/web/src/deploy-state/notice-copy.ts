@@ -3,6 +3,7 @@ import type {
   RemoveDeployedSkillError,
   RemovePreflightError,
   UpdatePreviewError,
+  UpdateRunError,
 } from "@maestro/core";
 import { HttpError } from "../api/http";
 import type { NoticeLevel } from "../ui/notice";
@@ -15,7 +16,8 @@ type DeployStateCode =
   | DeploySkillError
   | RemoveDeployedSkillError
   | RemovePreflightError
-  | UpdatePreviewError;
+  | UpdatePreviewError
+  | UpdateRunError;
 
 /** A finished notice: heading, sentence and detail, ready to render. */
 export type DeployStateNotice = {
@@ -116,6 +118,12 @@ const HEADINGS: Record<DeployStateCode, Heading> = {
   "remove-failed": { level: "error", label: "Removal unproven" },
   "preflight-failed": { level: "error", label: "Check did not run" },
   "preview-failed": { level: "error", label: "Preview did not run" },
+  // The update's own four. "Status out of date" covers both a release and a
+  // copy that moved after the preview priced them (spec stories 24, 41).
+  "status-out-of-date": { level: "error", label: "Status out of date" },
+  "update-in-progress": { level: "error", label: "Target busy" },
+  "update-incomplete": { level: "warning", label: "Update incomplete" },
+  "update-failed": { level: "error", label: "Update unproven" },
 };
 
 // One string, two surfaces: every update refusal sends the reader back to the
@@ -339,6 +347,15 @@ const UNKNOWN_UPDATE: DeployStateNotice = {
   detail: UNKNOWN_DETAIL,
 };
 
+// A write whose answer never arrived: the target may hold a partial update, so
+// this one sends the reader to the card rather than claiming nothing happened.
+const UNKNOWN_UPDATE_RUN: DeployStateNotice = {
+  level: "error",
+  label: "Update outcome unknown",
+  message: `Nothing confirmed the update. Check the target card, ${UPDATE_AGAIN}`,
+  detail: UNKNOWN_DETAIL,
+};
+
 // The update preview's own refusals. Six codes it shares with deploy and remove
 // state the update's way through, never the other surface's (#684).
 const UPDATE_PREVIEW: Record<UpdatePreviewError, Body> = {
@@ -382,6 +399,56 @@ const UPDATE_PREVIEW: Record<UpdatePreviewError, Body> = {
   },
 };
 
+// The confirm's own refusals: the preview's, plus the ones only a write has.
+// Each states the update's way through, never another surface's (#684, #954).
+const UPDATE: Record<UpdateRunError, Body> = {
+  ...UPDATE_PREVIEW,
+  "inventory-origin-unavailable": {
+    message: `Point the Harness clone's origin at its GitHub repository, ${UPDATE_AGAIN}`,
+    detail: "An update installs from a GitHub tag, over https or ssh.",
+  },
+  // One code, two causes — a release published since, and a copy edited since.
+  // Neither is guessed at: the sentence states what the server observed.
+  "status-out-of-date": {
+    message: `The target changed since this update was priced. Nothing was changed, ${UPDATE_AGAIN}`,
+  },
+  "update-in-progress": {
+    message:
+      "An update is still running on this target. Wait for it to finish.",
+  },
+  "operation-unfinished": {
+    message:
+      "An earlier change on this target did not finish. Select Retry deploy on the target card, then select Update target again.",
+  },
+  "deployed-diverged-from-lock": {
+    message: `Nothing was changed. Select Update target again to read the copies in the way.`,
+    detail: "The edits never went through the Harness.",
+  },
+  "deployed-unverifiable": {
+    message: `Nothing was changed. Select Update target again to read the copies in the way.`,
+    detail:
+      "These copies predate content tracking, so any change in them is invisible.",
+  },
+  "manifest-not-recognised": {
+    // The filename stays in the sentence: the instruction acts on the file
+    // itself (`copy.md`).
+    message: `Nothing was changed. Leave one dependency on the Harness with a skills list in apm.yml, ${UPDATE_AGAIN}`,
+    detail: "Maestro edits that list only, and it found another shape.",
+  },
+  "destination-symlinked": {
+    message: `Nothing was written. Delete the linked skill folder in the target, ${UPDATE_AGAIN}`,
+    detail: LINK_TARGET_SURVIVES,
+  },
+  "update-incomplete": {
+    message:
+      "The update is incomplete. Select Retry update to run the same release again.",
+    detail: "apm reported success, and the files say otherwise.",
+  },
+  "update-failed": {
+    message: `Nothing proved the update finished. Check the target card, ${UPDATE_AGAIN}`,
+  },
+};
+
 // Required return, never `?? error.message`: an uncovered code would otherwise
 // render the wrapper's own "Request failed with status 422." on screen.
 function noticeFor(
@@ -419,6 +486,11 @@ export function deployNotice(error: unknown): DeployStateNotice {
 /** The whole notice for a refused Update preview. */
 export function updatePreviewNotice(error: unknown): DeployStateNotice {
   return noticeFor(UPDATE_PREVIEW, error, UNKNOWN_UPDATE);
+}
+
+/** The whole notice for a refused or failed Update. */
+export function updateNotice(error: unknown): DeployStateNotice {
+  return noticeFor(UPDATE, error, UNKNOWN_UPDATE_RUN);
 }
 
 /** The whole notice for a refused or failed removal. */

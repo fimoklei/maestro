@@ -145,6 +145,37 @@ describe("RetryTargetOperation", () => {
     });
   });
 
+  // An Update recovers the same way: the record names the release the reader
+  // previewed, and a release published since is not it (#954, spec story 30).
+  it("reruns an interrupted update at the release the reader chose", async () => {
+    const { world, retry } = buildUseCase();
+    world.seed({ release: "v0.5.0", skills: ["prototype", "review"] });
+    await world.operations.begin({
+      ...interrupted,
+      kind: "update",
+      release: "v0.6.0",
+      previous: ["prototype", "review"],
+      desired: ["prototype", "review"],
+    });
+
+    expect(await retry.execute({ target })).toEqual({
+      ok: true,
+      completed: {
+        kind: "update",
+        release: "v0.6.0",
+        desired: ["prototype", "review"],
+      },
+    });
+    expect(world.calls).toEqual([
+      {
+        command: "install",
+        target,
+        ref: `github.com/${HARNESS}#v0.6.0`,
+        skills: ["prototype", "review"],
+      },
+    ]);
+  });
+
   it("refuses an unregistered repository before reading anything", async () => {
     const world = selectionWorld();
     const retry = new RetryTargetOperation({

@@ -3,7 +3,9 @@ import type { HarnessTag } from "../harness/read-harness-state";
 import type { HarnessSkillTree } from "../harness/skill-movements";
 import type { DeployedContentState, DeployTarget } from "./deploy-skill";
 import type { SupportedTool } from "./deploy-tools";
+import { InFlightLocks } from "./in-flight-locks";
 import { LocalCopyGuard } from "./local-copy-guard";
+import { selectionWorld } from "./selection-writer-fake";
 import { UpdateTarget } from "./update-target";
 
 const REPO: DeployTarget = { kind: "repo", repoPath: "/repo" };
@@ -19,6 +21,14 @@ const trees = (content: Record<string, string>): HarnessSkillTree[] =>
 const TREES: Record<string, HarnessSkillTree[]> = {
   "v0.3.2": trees({ tdd: "a", grill: "b", jobs: "c", review: "d", brief: "e" }),
   "v0.3.4": trees({
+    tdd: "a2",
+    grill: "b",
+    jobs: "c2",
+    brief: "e",
+    wizard: "f",
+  }),
+  // The release that appears between preview and confirm.
+  "v0.3.5": trees({
     tdd: "a2",
     grill: "b",
     jobs: "c2",
@@ -50,18 +60,60 @@ type Options = {
   registered?: boolean;
   copies?: Record<string, DeployedContentState>;
   target?: DeployTarget;
+  // Read after apm ran, where the disk cannot answer for itself.
+  copiesAfter?: Record<string, DeployedContentState>;
 };
 
+const HARNESS = "fimoklei/harness";
+const TREE_ROOT = "/target";
+
 function subject(options: Options = {}) {
+  const world = selectionWorld({ harness: HARNESS, treeRoot: TREE_ROOT });
+  world.seed({
+    release: options.release ?? "v0.3.2",
+    skills: [...(options.selection ?? SELECTION)],
+  });
+  const locks = new InFlightLocks();
+  // Before the write the recorded baseline decides, which is what the guard
+  // reads; afterwards the disk and the deployment record do.
+  const classify = async (input: { name: string; release?: string }) => {
+    if (world.calls.length === 0) {
+      return options.copies?.[input.name] ?? "clean";
+    }
+    const forced = options.copiesAfter?.[input.name];
+    if (forced !== undefined) {
+      return forced;
+    }
+    if (
+      !world.files.has(`${TREE_ROOT}/.claude/skills/${input.name}/SKILL.md`)
+    ) {
+      return "not-deployed" as const;
+    }
+    const lockfile = world.files.get(`${TREE_ROOT}/apm.lock.yaml`) ?? "";
+    return lockfile.includes(`resolved_ref: ${input.release}`)
+      ? ("clean" as const)
+      : ("diverged" as const);
+  };
   const update = new UpdateTarget({
+    selection: world.writer,
+    deployedContent: { classify },
+    canonicalPath: async (path) => path,
+    locks,
     registry: { isRegistered: async () => options.registered ?? true },
     targetSelection: {
+      // The release comes off the world's own lockfile, so a write that moved
+      // it — or failed to — is what the reading answers with.
       read: async () =>
         options.selection === null
           ? { ok: false, reason: "not-deployed" }
           : {
               ok: true,
-              release: options.release ?? "v0.3.2",
+              release:
+                (world.files.get(`${TREE_ROOT}/apm.lock.yaml`) ?? "").match(
+                  /resolved_ref: (\S+)/,
+                )?.[1] ??
+                options.release ??
+                "v0.3.2",
               selection: options.selection ?? SELECTION,
             },
     },
@@ -81,15 +133,16 @@ function subject(options: Options = {}) {
     toolPresence: {
       detectGlobalTools: async () => options.detected ?? ["claude"],
     },
-    copyGuard: new LocalCopyGuard({
-      content: {
-        classify: async ({ name }) => options.copies?.[name] ?? "clean",
-      },
-    }),
+    copyGuard: new LocalCopyGuard({ content: { classify } }),
   });
+  const target = options.target ?? REPO;
   return {
     update,
-    preview: () => update.preview({ target: options.target ?? REPO }),
+    world,
+    locks,
+    preview: () => update.preview({ target }),
+    run: (input: { token: string; confirmedCopyReceipt?: string }) =>
+      update.run({ target, ...input }),
   };
 }
 
@@ -376,5 +429,203 @@ describe("UpdateTarget preflight token", () => {
         "0".repeat(64),
       ),
     ).toBe(false);
+  });
+});
+
+// The confirm: what the reader saw, re-read under the target lock and written
+// through the one Selection lifecycle (#954).
+async function confirmed(options: Options = {}) {
+  const running = subject(options);
+  const answer = await running.preview();
+  if (!answer.ok) {
+    throw new Error(`preview refused: ${answer.error}`);
+  }
+  return { ...running, token: answer.preview.token, preview: answer.preview };
+}
+
+describe("UpdateTarget.run", () => {
+  it("moves the whole Selection to the chosen release and states one outcome per skill", async () => {
+    const running = await confirmed();
+
+    const result = await running.run({ token: running.token });
+
+    expect(result).toStrictEqual({
+      ok: true,
+      release: "v0.3.4",
+      outcome: [
+        { name: "tdd", tool: null, state: "updated" },
+        { name: "grill", tool: null, state: "updated" },
+        { name: "jobs", tool: null, state: "updated" },
+        { name: "review", tool: null, state: "removed" },
+        { name: "brief", tool: null, state: "updated" },
+      ],
+    });
+    expect(running.world.files.get("/target/apm.yml")).toContain("- brief");
+    expect(running.world.files.get("/target/apm.yml")).not.toContain("review");
+  });
+
+  it("names the tool on every outcome row of the global target", async () => {
+    const running = await confirmed({
+      target: GLOBAL,
+      detected: ["claude", "codex"],
+    });
+
+    const result = await running.run({ token: running.token });
+
+    expect(result.ok).toBe(true);
+    expect(result.ok ? result.outcome.slice(0, 2) : []).toStrictEqual([
+      { name: "tdd", tool: "claude", state: "updated" },
+      { name: "tdd", tool: "codex", state: "updated" },
+    ]);
+    expect(running.world.calls[0]?.tools).toStrictEqual(["claude", "codex"]);
+  });
+
+  it("ends Empty through the named uninstall when the release removes every selected skill", async () => {
+    const running = await confirmed({
+      selection: ["review"],
+      treesAt: (tag) => (tag === "v0.3.2" ? (TREES["v0.3.2"] ?? []) : []),
+    });
+
+    const result = await running.run({ token: running.token });
+
+    expect(result).toStrictEqual({
+      ok: true,
+      release: "v0.3.4",
+      outcome: [{ name: "review", tool: null, state: "removed" }],
+    });
+    expect(running.world.calls.map((call) => call.command)).toStrictEqual([
+      "uninstall",
+    ]);
+  });
+
+  it("keeps the operation and states what did not land when the install is partial", async () => {
+    const running = await confirmed();
+    running.world.landsOnly(["tdd"]);
+
+    const result = await running.run({ token: running.token });
+
+    expect(result.ok).toBe(false);
+    expect(result.ok ? null : result.error).toBe("update-incomplete");
+    expect(result.ok ? [] : (result.outcome ?? [])).toStrictEqual([
+      { name: "tdd", tool: null, state: "updated" },
+      { name: "grill", tool: null, state: "not-updated" },
+      { name: "jobs", tool: null, state: "not-updated" },
+      { name: "review", tool: null, state: "removed" },
+      { name: "brief", tool: null, state: "not-updated" },
+    ]);
+    expect(await running.world.operations.read("/repo")).toMatchObject({
+      kind: "update",
+      release: "v0.3.4",
+      desired: ["tdd", "grill", "jobs", "brief"],
+    });
+  });
+
+  // A copy equal to its own record proves only that the two agree: which
+  // release the record names is the other half of "updated" (#954).
+  it("claims no skill moved while the record still names the old release", async () => {
+    const running = await confirmed({ copiesAfter: { tdd: "clean" } });
+    running.world.refuseWith({ ok: false, reason: "failed" });
+
+    const result = await running.run({ token: running.token });
+
+    expect(result.ok).toBe(false);
+    expect(result.ok ? [] : (result.outcome ?? [])).toContainEqual({
+      name: "tdd",
+      tool: null,
+      state: "not-updated",
+    });
+  });
+
+  it("claims nothing about a copy it could not read back", async () => {
+    const running = await confirmed({ copiesAfter: { grill: "unreadable" } });
+
+    const result = await running.run({ token: running.token });
+
+    expect(result.ok ? result.outcome : []).toContainEqual({
+      name: "grill",
+      tool: null,
+      state: "unknown",
+    });
+  });
+
+  it("refuses a token minted before a newer release appeared", async () => {
+    const options: Options = {};
+    const running = await confirmed(options);
+    options.tagNames = ["v0.3.2", "v0.3.4", "v0.3.5"];
+
+    const result = await running.run({ token: running.token });
+
+    expect(result.ok ? null : result.error).toBe("status-out-of-date");
+    expect(running.world.calls).toStrictEqual([]);
+  });
+
+  it("refuses a token minted before the copy on disk changed", async () => {
+    const options: Options = {};
+    const running = await confirmed(options);
+    options.copies = { tdd: "diverged" };
+
+    const result = await running.run({ token: running.token });
+
+    expect(result.ok ? null : result.error).toBe("status-out-of-date");
+    expect(running.world.calls).toStrictEqual([]);
+  });
+
+  it("asks for consent before it overwrites an edited copy, and takes it once", async () => {
+    const running = await confirmed({ copies: { tdd: "diverged" } });
+
+    const refused = await running.run({ token: running.token });
+    expect(refused.ok ? null : refused.error).toBe(
+      "deployed-diverged-from-lock",
+    );
+    expect(running.world.calls).toStrictEqual([]);
+
+    const receipt = refused.ok ? undefined : refused.copyReceipt;
+    const result = await running.run({
+      token: running.token,
+      confirmedCopyReceipt: receipt,
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it("writes nothing when the preflight refuses", async () => {
+    const running = await confirmed();
+
+    const result = await subject({ registered: false }).run({
+      token: running.token,
+    });
+
+    expect(result.ok ? null : result.error).toBe("repo-not-registered");
+    expect(running.world.calls).toStrictEqual([]);
+  });
+
+  it("refuses while an earlier change on the target has not finished", async () => {
+    const running = await confirmed();
+    await running.world.operations.begin({
+      key: "/repo",
+      target: REPO,
+      harness: HARNESS,
+      kind: "deploy",
+      release: "v0.3.2",
+      previous: [],
+      desired: ["tdd"],
+      tools: null,
+    });
+
+    const result = await running.run({ token: running.token });
+
+    expect(result.ok ? null : result.error).toBe("operation-unfinished");
+    expect(running.world.calls).toStrictEqual([]);
+  });
+
+  it("refuses a second write while one is running on the same target", async () => {
+    const running = await confirmed();
+
+    const held = await running.locks.run("/repo", async () =>
+      running.run({ token: running.token }),
+    );
+
+    expect(held.ok ? (held.value.ok ? null : held.value.error) : null).toBe(
+      "update-in-progress",
+    );
   });
 });

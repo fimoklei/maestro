@@ -23,8 +23,8 @@ const configSchema = z.object({
     })
     .optional()
     .catch(undefined),
-  // The unfinished Deploy or Remove per target, so recovery survives a restart
-  // (ADR-0031, #951). Read as absent when it does not parse, like the record
+  // The unfinished Deploy, Remove or Update per target, so recovery survives a
+  // restart (ADR-0031, #951). Read as absent when it does not parse, like the record
   // above: a record left by an older shape costs one retry offer, and the disk
   // rather than this list is what says whether a skill is deployed.
   targetOperations: z
@@ -36,7 +36,7 @@ const configSchema = z.object({
           z.object({ kind: z.literal("global") }),
         ]),
         harness: z.string(),
-        kind: z.enum(["deploy", "remove"]),
+        kind: z.enum(["deploy", "remove", "update"]),
         release: z.string(),
         previous: z.array(z.string()),
         desired: z.array(z.string()),

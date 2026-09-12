@@ -69,10 +69,13 @@ export {
   type CopyConsentRow,
   type TargetSelectionPort,
   type TargetSelectionResult,
+  type UpdateOutcomeRow,
   type UpdatePreview,
   type UpdatePreviewError,
+  type UpdateRunError,
   type UpdateScope,
   type UpdateSkillRow,
+  type UpdateSkillState,
   UpdateTarget,
 } from "./deploy/update-target";
 export {

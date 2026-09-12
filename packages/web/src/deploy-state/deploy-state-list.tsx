@@ -26,7 +26,6 @@ import {
   skippedEntryText,
   skippedNeedsAttention,
 } from "./skipped-entry-text";
-import { UpdateSkillAction } from "./update-skill-action";
 import type { DeployedPrimitive, SkippedEntry } from "./use-deploy-state";
 import { useRemoveDeployedSkill } from "./use-remove-deployed-skill";
 import {
@@ -207,12 +206,6 @@ export function DeployStateList({
             )}
             <CopyChip copy={primitive.copy} />
             <DriftBadge status={status} />
-            {lagsPin(status) ? (
-              <UpdateSkillAction
-                skillName={primitive.name}
-                target={wireTarget}
-              />
-            ) : null}
             <ActionsMenu
               label={`Actions for ${primitive.name}`}
               items={[

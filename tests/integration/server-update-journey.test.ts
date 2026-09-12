@@ -1,7 +1,8 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  DeployedContentAdapter,
   type DeployedContentState,
   GlobalDeployStateReader,
   InFlightLocks,
@@ -14,6 +15,12 @@ import {
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { realRegistry } from "../helpers/real-registry";
+import {
+  manifest,
+  rootPackageApm,
+  rootPackageLocation,
+  rootPackageSelection,
+} from "../helpers/root-package-apm";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
@@ -26,9 +33,10 @@ import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
 
-// The preview journey for an Update: a real registry, a real root-package
-// lockfile and real files on disk, priced against a Harness whose releases the
-// test controls. It writes nothing — the confirm is #954.
+// The Update journey: a real registry, a real root-package lockfile and real
+// files on disk, priced against a Harness whose releases the test controls,
+// then written through the real Selection lifecycle behind a fake apm that
+// moves the manifest, the lockfile and the files the way apm does (#953, #954).
 
 // The shape apm 0.29.0 writes for a root package (fixture
 // apm.lock.spike-941-step3d-phantom.yaml).
@@ -60,7 +68,7 @@ const TREES: Record<string, { name: string; treeHash: string }[]> = {
   ],
 };
 
-describe("update preflight HTTP route", () => {
+describe("update HTTP journey", () => {
   let home: string;
   let repo: string;
 
@@ -87,7 +95,10 @@ describe("update preflight HTTP route", () => {
     );
   }
 
-  async function makeApp(options?: { copy?: DeployedContentState }) {
+  async function makeApp(options?: {
+    copy?: DeployedContentState;
+    lands?: (skills: readonly string[]) => readonly string[];
+  }) {
     const fs = new NodeFileSystem();
     const registry = realRegistry(fs, join(home, "config.json"));
     const inventory = new InventoryReader({
@@ -111,6 +122,15 @@ describe("update preflight HTTP route", () => {
           comparedAt: null,
         }),
       },
+    });
+    const apm = rootPackageApm({
+      globalRoot: join(home, ".apm"),
+      ...(options?.lands === undefined ? {} : { lands: options.lands }),
+    });
+    const selection = rootPackageSelection({
+      globalRoot: join(home, ".apm"),
+      configPath: join(home, "config.json"),
+      apm,
     });
     const app = createApp({
       importSkill: stubImport(),
@@ -150,10 +170,18 @@ describe("update preflight HTTP route", () => {
         copyGuard: new LocalCopyGuard({
           content: { classify: async () => options?.copy ?? "clean" },
         }),
+        selection,
+        // The outcome is read from the files and the record apm just wrote,
+        // never stubbed: that reading is what the ledger states (#954).
+        deployedContent: new DeployedContentAdapter({
+          location: rootPackageLocation(join(home, ".apm")),
+        }),
+        canonicalPath: async (path: string) => path,
+        locks,
       }),
       enforceOriginHost: false,
     });
-    return { app, registry };
+    return { app, registry, apm };
   }
 
   const preflight = (
@@ -250,6 +278,110 @@ describe("update preflight HTTP route", () => {
 
     expect(response.status).toBe(404);
     expect(await response.json()).toStrictEqual({ error: "not-deployed" });
+  });
+
+  // The confirm, end to end: the reader's token, the write, and the ledger read
+  // back off the files apm left behind.
+  async function priced(options?: {
+    lands?: (skills: readonly string[]) => readonly string[];
+  }) {
+    const made = await makeApp(options ?? {});
+    await seedTarget(["tdd", "grill", "review"]);
+    await writeFile(
+      join(repo, "apm.yml"),
+      manifest(["grill", "review", "tdd"]),
+      "utf8",
+    );
+    await made.registry.register(repo);
+    const response = await preflight(made.app, {
+      target: { kind: "repo", repoPath: repo },
+    });
+    const body = (await response.json()) as { preview: { token: string } };
+    return { ...made, token: body.preview.token };
+  }
+
+  const update = (
+    app: Awaited<ReturnType<typeof makeApp>>["app"],
+    body: unknown,
+  ) =>
+    app.request("/api/deploy/update", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+  it("moves the target to the chosen release and states what landed", async () => {
+    const { app, token } = await priced();
+
+    const response = await update(app, {
+      target: { kind: "repo", repoPath: repo },
+      token,
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toStrictEqual({
+      release: "v0.3.4",
+      outcome: [
+        { name: "tdd", tool: null, state: "updated" },
+        { name: "grill", tool: null, state: "updated" },
+        { name: "review", tool: null, state: "removed" },
+      ],
+    });
+    // The exact Selection, with the name this release dropped gone (ADR-0031).
+    expect(await readFile(join(repo, "apm.yml"), "utf8")).toBe(
+      manifest(["grill", "tdd"]),
+    );
+  });
+
+  it("states the skills that did not land and keeps the way out", async () => {
+    const { app, token } = await priced({ lands: () => ["tdd"] });
+
+    const response = await update(app, {
+      target: { kind: "repo", repoPath: repo },
+      token,
+    });
+
+    expect(response.status).toBe(502);
+    expect(await response.json()).toStrictEqual({
+      error: "update-incomplete",
+      outcome: [
+        { name: "tdd", tool: null, state: "updated" },
+        { name: "grill", tool: null, state: "not-updated" },
+        { name: "review", tool: null, state: "removed" },
+      ],
+    });
+  });
+
+  it("refuses a token nobody minted, leaving the target untouched", async () => {
+    const { app, apm } = await priced();
+
+    const response = await update(app, {
+      target: { kind: "repo", repoPath: repo },
+      token: "0".repeat(64),
+    });
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toStrictEqual({
+      error: "status-out-of-date",
+    });
+    expect(apm.installs).toStrictEqual([]);
+  });
+
+  it("answers a confirm with no token with the server's own request shape", async () => {
+    const { app } = await makeApp();
+
+    const response = await update(app, {
+      target: { kind: "repo", repoPath: repo },
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toStrictEqual({
+      error: "invalid-body",
+      message:
+        "Nothing was updated. Reload the page, then start the update again.",
+      detail:
+        "The request carries a target and the token the preview answered with.",
+    });
   });
 
   it("answers a body naming no target with the server's own request shape", async () => {

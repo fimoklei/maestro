@@ -238,3 +238,82 @@ describe("UpdateTargetDialog", () => {
     expect(screen.queryByRole("button", { name: "Update target" })).toBeNull();
   });
 });
+
+// What the reader sees once apm ran: the ledger replaces the plan (#954).
+describe("UpdateTargetDialog outcome", () => {
+  const showOutcome = (
+    outcome: {
+      name: string;
+      tool: "claude" | "codex" | null;
+      state: "updated" | "removed" | "not-updated" | "not-removed" | "unknown";
+    }[],
+    props: { incomplete?: boolean; onRetry?: () => void } = {},
+  ) =>
+    render(
+      <UpdateTargetDialog
+        targetName="agent-harness"
+        preview={preview()}
+        isLoading={false}
+        error={null}
+        outcome={outcome}
+        onCancel={vi.fn()}
+        onConfirm={vi.fn()}
+        {...props}
+      />,
+    );
+
+  it("states one line per skill and drops the sections it planned", () => {
+    showOutcome([
+      { name: "tdd", tool: null, state: "updated" },
+      { name: "review", tool: null, state: "removed" },
+    ]);
+
+    expect(screen.getByText("tdd updated to v0.3.4")).toBeInTheDocument();
+    expect(screen.getByText("review removed")).toBeInTheDocument();
+    expect(screen.queryByText("Changed")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Update target" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
+  });
+
+  it("names the tool of a failing row on the global target", () => {
+    showOutcome([
+      { name: "grill", tool: "claude", state: "updated" },
+      { name: "grill", tool: "codex", state: "not-updated" },
+    ]);
+
+    expect(
+      screen.getByText("grill still at v0.3.2 in Codex"),
+    ).toBeInTheDocument();
+  });
+
+  it("offers Retry update on a partial landing", async () => {
+    const onRetry = vi.fn();
+    showOutcome([{ name: "grill", tool: null, state: "not-updated" }], {
+      incomplete: true,
+      onRetry,
+    });
+
+    expect(screen.getByText("Update incomplete")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Retry update" }));
+
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks the confirm while the update is running", () => {
+    render(
+      <UpdateTargetDialog
+        targetName="agent-harness"
+        preview={preview()}
+        isLoading={false}
+        error={null}
+        isRunning
+        onCancel={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Updating to v0.3.4…" }),
+    ).toBeDisabled();
+  });
+});
