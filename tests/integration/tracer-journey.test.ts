@@ -107,6 +107,7 @@ describe("the tracer journey through one cockpit", () => {
         syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => false,
+        readSkillFilesAtTag: async () => null,
       },
       // A proven skill record: this journey is not about the post-install read.
       recordedPackage: {

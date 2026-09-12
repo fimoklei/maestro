@@ -1,6 +1,5 @@
 // Consents only preflight can mint: reclaim (#339, #390), receipt (#458).
 // Stateless by design — see ADR-0020.
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { join } from "node:path";
 import type { DeployTarget } from "./deploy-skill";
 import {
@@ -9,6 +8,7 @@ import {
   type SupportedTool,
 } from "./deploy-tools";
 import type { RemoveCheck } from "./remove-deployed-skill";
+import { ConsentSigner } from "./signed-consent";
 
 export type ReclaimPreview = {
   tool: SupportedTool;
@@ -44,7 +44,7 @@ export type ReclaimScope = RemoveScope & {
 
 export class RemoveConsentIssuer {
   // Never exposed over the wire, never persisted (ADR-0020).
-  private readonly secret = randomBytes(32);
+  private readonly signer = new ConsentSigner();
   private readonly treeRoot: (target: DeployTarget) => string;
 
   constructor(deps: { treeRoot: (target: DeployTarget) => string }) {
@@ -151,19 +151,10 @@ export class RemoveConsentIssuer {
   // `kind` keeps the two apart: neither token may ever pass as the other, since
   // they authorize different destruction.
   private sign(payload: Record<string, unknown>): string {
-    return createHmac("sha256", this.secret)
-      .update(JSON.stringify(payload))
-      .digest("hex");
+    return this.signer.sign(payload);
   }
 
-  // Constant-time; anything malformed fails the match rather than throwing.
   private matches(expected: string, actual: string): boolean {
-    try {
-      const a = Buffer.from(expected, "hex");
-      const b = Buffer.from(actual, "hex");
-      return a.length === b.length && timingSafeEqual(a, b);
-    } catch {
-      return false;
-    }
+    return this.signer.matches(expected, actual);
   }
 }

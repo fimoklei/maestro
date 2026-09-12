@@ -43,12 +43,13 @@ export const deployBodySchema = z.object({
   type: z.string(),
   name: z.string(),
   target: targetSchema,
-  // Deliberate override of the destination guard (ADR-0006, #66).
-  force: z.boolean().optional(),
+  // The receipt this deploy's own refusal minted, licensing the overwrite of
+  // exactly the copies it named (ADR-0006, #66, #952).
+  confirmedCopyReceipt: consentTokenSchema,
 });
 
-// No batch-wide force: a diverged copy always comes back as an attention row,
-// overridden only per item via the single-deploy route (#292).
+// No batch-wide consent: a copy with local edits always comes back as an
+// attention row, overwritten only per item via the single-deploy route (#292).
 export const bulkDeployBodySchema = z.object({
   names: z.array(z.string()).min(1),
   target: targetSchema,

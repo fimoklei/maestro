@@ -34,7 +34,7 @@ export function BulkDeployBar({
   const [chosen, setChosen] = useState<string | null>(null);
   const [plan, setPlan] = useState<BulkDeployPlan | null>(null);
   const bulk = useBulkDeploy();
-  // Reuses the single-deploy path with force: true — one behaviour, both
+  // Reuses the single-deploy path with the row's own receipt — one behaviour,
   // entry points (ADR-0006, #66).
   const forceDeploy = useDeploySkill();
 
@@ -183,8 +183,13 @@ export function BulkDeployBar({
         <BulkDeployReport
           view={reportView}
           isDeploying={bulk.isPending}
-          onForce={(name) =>
-            forceDeploy.mutate({ type: "skill", name, target, force: true })
+          onForce={(name, confirmedCopyReceipt) =>
+            forceDeploy.mutate({
+              type: "skill",
+              name,
+              target,
+              confirmedCopyReceipt,
+            })
           }
         />
       ) : null}

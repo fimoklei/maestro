@@ -356,9 +356,10 @@ describe("Update action on a behind skill", () => {
     ).toBeInTheDocument();
   });
 
-  it("confirming the reinstall re-runs the update with force", async () => {
-    // Clicking the inline button re-runs the same deploy with force: true, the
-    // deliberate override that skips the destination guard (#66).
+  it("confirming the reinstall re-runs the update with the server's receipt", async () => {
+    // Clicking the inline button re-runs the same deploy carrying the receipt
+    // the refusal minted — the deliberate, content-bound consent that clears
+    // the destination guard (#66, #952).
     let deployCalls = 0;
     const fetchMock = vi.fn(
       async (input: RequestInfo | URL, _init?: RequestInit) => {
@@ -369,6 +370,8 @@ describe("Update action on a behind skill", () => {
             return new Response(
               JSON.stringify({
                 error: "deployed-diverged-from-lock",
+                copyReceipt:
+                  "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
                 message:
                   "Those edits never went through the harness. Reinstalling replaces the copy with the latest published tag.",
               }),
@@ -416,7 +419,8 @@ describe("Update action on a behind skill", () => {
       type: "skill",
       name: "tdd",
       target: { kind: "repo", repoPath: "/Users/me/project" },
-      force: true,
+      confirmedCopyReceipt:
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     });
   });
 

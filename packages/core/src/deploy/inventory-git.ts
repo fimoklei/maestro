@@ -1,6 +1,7 @@
 // Asks the local inventory clone the git questions apm cannot answer. The `--`
 // separator keeps tag and name data, never command text (security.md).
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -88,6 +89,44 @@ export class InventoryGitAdapter implements InventoryGitPort {
       );
     } finally {
       await rm(indexDir, { recursive: true, force: true });
+    }
+  }
+
+  // The release side of the local-copy guard. Blob bytes, hashed the way apm
+  // records a deployed file, so the two maps compare directly. Null for every
+  // failure alike — an unfetched tag, a missing clone, an unreadable blob: the
+  // guard reads it as "no proof of equality" and keeps the copy protected
+  // (#952).
+  async readSkillFilesAtTag(
+    tag: string,
+    name: string,
+  ): Promise<Record<string, string> | null> {
+    const subtree = harnessSkillSubpath(name);
+    try {
+      const root = await this.root();
+      // -z, so a path holding a quote or a newline survives the split.
+      const { stdout } = await run(
+        "git",
+        ["-C", root, "ls-tree", "-r", "-z", "--name-only", tag, "--", subtree],
+        gitOptions(),
+      );
+      const paths = stdout.split("\0").filter((path) => path.length > 0);
+      if (paths.length === 0) {
+        return null;
+      }
+      const files: Record<string, string> = {};
+      for (const path of paths) {
+        const { stdout: bytes } = await run(
+          "git",
+          ["-C", root, "show", `${tag}:${path}`],
+          { ...gitOptions(), encoding: "buffer", maxBuffer: 32 * 1024 * 1024 },
+        );
+        files[path.slice(subtree.length + 1)] =
+          `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+      }
+      return files;
+    } catch {
+      return null;
     }
   }
 

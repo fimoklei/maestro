@@ -431,10 +431,11 @@ describe("DeploySkillAction", () => {
     expect(alert).toHaveTextContent(/the folder it points at remains on disk/i);
   });
 
-  it("offers an inline Reinstall-fresh confirm that re-deploys with force", async () => {
+  it("offers an inline confirm that re-deploys with the server's receipt", async () => {
     // ADR-0006: a not-proven-clean copy is confirm-and-proceed at the Deploy
     // entry point too, not a refusal. The inline button re-runs the same deploy
-    // with force: true — one behaviour, both entry points (#66).
+    // carrying the receipt the refusal minted — one behaviour, both entry
+    // points (#66, #952).
     let deployCalls = 0;
     const fetchMock = vi.fn(
       async (input: RequestInfo | URL, _init?: RequestInit) => {
@@ -445,6 +446,8 @@ describe("DeploySkillAction", () => {
             return new Response(
               JSON.stringify({
                 error: "deployed-unverifiable",
+                copyReceipt:
+                  "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
                 message:
                   "This copy predates content tracking, so local changes can't be checked. Updating reinstalls fresh at the latest tag; any local changes are discarded.",
               }),
@@ -480,7 +483,9 @@ describe("DeploySkillAction", () => {
       )
       .map(([, init]) => JSON.parse((init as RequestInit).body as string));
     expect(deployBodies).toHaveLength(2);
-    expect(deployBodies[1].force).toBe(true);
+    expect(deployBodies[1].confirmedCopyReceipt).toBe(
+      "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    );
   });
 
   it("clears the Reinstall affordance when the target changes after a refusal", async () => {

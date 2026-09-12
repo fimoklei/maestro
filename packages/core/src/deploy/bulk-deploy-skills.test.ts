@@ -10,12 +10,12 @@ type Scripted = Awaited<ReturnType<DeploySkill["execute"]>>;
 function fakeDeploy(
   script: Record<string, Scripted>,
   calls?: string[],
-  forceSeen?: (boolean | undefined)[],
+  consentSeen?: (string | undefined)[],
 ): Pick<DeploySkill, "execute"> {
   return {
     async execute(input) {
       calls?.push(input.name);
-      forceSeen?.push(input.force);
+      consentSeen?.push(input.confirmedCopyReceipt);
       const result = script[input.name];
       if (!result) {
         throw new Error(`no scripted result for ${input.name}`);
@@ -182,8 +182,8 @@ describe("BulkDeploySkills", () => {
     ]);
   });
 
-  it("never forwards a batch-wide force to individual deploys", async () => {
-    const forceSeen: (boolean | undefined)[] = [];
+  it("never forwards a batch-wide consent to individual deploys", async () => {
+    const consentSeen: (string | undefined)[] = [];
     const bulk = new BulkDeploySkills({
       deploy: fakeDeploy(
         {
@@ -191,20 +191,20 @@ describe("BulkDeploySkills", () => {
           review: ok("review", "v0.9.0"),
         },
         undefined,
-        forceSeen,
+        consentSeen,
       ),
     });
 
     // A caller reaching past the type (e.g. a hand-built request body) must
-    // still never smuggle a batch-wide force through to per-skill deploys —
-    // force stays a deliberate, per-item decision (#292).
+    // still never smuggle a batch-wide overwrite consent through to per-skill
+    // deploys — it stays a deliberate, per-item decision (#292, #952).
     await bulk.execute({
       names: ["tdd", "review"],
       target: { kind: "global" },
-      force: true,
+      confirmedCopyReceipt: "a".repeat(64),
     } as unknown as BulkDeployInput);
 
-    expect(forceSeen).toEqual([undefined, undefined]);
+    expect(consentSeen).toEqual([undefined, undefined]);
   });
 
   it("keeps going after an unexpected exception mid-batch", async () => {

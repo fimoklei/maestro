@@ -3,6 +3,7 @@ import type { DeployedContentState, DeployTarget } from "./deploy-skill";
 import type { SupportedTool } from "./deploy-tools";
 import type { DeployedRefLookup } from "./deployed-ref";
 import { InFlightLocks } from "./in-flight-locks";
+import { LocalCopyGuard } from "./local-copy-guard";
 import {
   RemoveDeployedSkill,
   type RemoveToolCheck,
@@ -91,6 +92,27 @@ function buildUseCase(overrides: Overrides = {}) {
       tools: readonly SupportedTool[];
     }[];
   } = { lookups: [], removes: [], classifies: [], cleanups: [] };
+  // One fake classifier behind both readers: the shared guard reads it before
+  // apm runs, and the probe reads it after (#952).
+  const deployedContent = {
+    classify: async ({
+      target,
+      tools,
+    }: {
+      target: DeployTarget;
+      tools?: readonly SupportedTool[];
+    }) => {
+      calls.classifies.push({ target, tools });
+      if (calls.removes.length > 0 && overrides.probe !== undefined) {
+        return overrides.probe(tools);
+      }
+      return (
+        overrides.deployedStateForScope?.(tools) ??
+        overrides.deployedState ??
+        "clean"
+      );
+    },
+  };
   const useCase = new RemoveDeployedSkill({
     registry: { isRegistered: async () => overrides.registered ?? true },
     deployedRef: {
@@ -99,19 +121,8 @@ function buildUseCase(overrides: Overrides = {}) {
         return overrides.lookup ?? { ok: true, ref: REF, version: VERSION };
       },
     },
-    deployedContent: {
-      classify: async ({ target, tools }) => {
-        calls.classifies.push({ target, tools });
-        if (calls.removes.length > 0 && overrides.probe !== undefined) {
-          return overrides.probe(tools);
-        }
-        return (
-          overrides.deployedStateForScope?.(tools) ??
-          overrides.deployedState ??
-          "clean"
-        );
-      },
-    },
+    copyGuard: new LocalCopyGuard({ content: deployedContent }),
+    deployedContent,
     apm: {
       removeSkill: async ({ target, ref }) => {
         calls.removes.push({ target, ref });
@@ -445,6 +456,9 @@ describe("RemoveDeployedSkill", () => {
       deployedRef: {
         resolve: async () => ({ ok: true, ref: REF, version: VERSION }),
       },
+      copyGuard: new LocalCopyGuard({
+        content: { classify: async () => "clean" },
+      }),
       deployedContent: { classify: async () => "clean" },
       apm: {
         removeSkill: async () => {
@@ -1226,6 +1240,14 @@ describe("RemoveDeployedSkill.preflight", () => {
       deployedRef: {
         resolve: async () => ({ ok: true, ref: REF, version: VERSION }),
       },
+      copyGuard: new LocalCopyGuard({
+        content: {
+          classify: async ({ name }) => {
+            classified.push(name);
+            return "clean";
+          },
+        },
+      }),
       deployedContent: {
         classify: async ({ name }) => {
           classified.push(name);
@@ -1263,12 +1285,19 @@ describe("RemoveDeployedSkill.preflight", () => {
     ).resolves.toEqual({ ok: false, error: "unsupported-primitive-type" });
   });
 
-  it("reports a classification that threw, never guessing it clean", async () => {
+  it("prices a classification that threw as unread, never guessing it clean", async () => {
     const useCase = new RemoveDeployedSkill({
       registry: { isRegistered: async () => true },
       deployedRef: {
         resolve: async () => ({ ok: true, ref: REF, version: VERSION }),
       },
+      copyGuard: new LocalCopyGuard({
+        content: {
+          classify: async () => {
+            throw new Error("disk exploded");
+          },
+        },
+      }),
       deployedContent: {
         classify: async () => {
           throw new Error("disk exploded");
@@ -1282,9 +1311,16 @@ describe("RemoveDeployedSkill.preflight", () => {
       location: { treeRoot: () => "/home" },
     });
 
-    await expect(useCase.preflight(removeTdd)).resolves.toEqual({
+    // Priced as a cost the confirmation must state, never as a clean copy (J04),
+    // and the removal itself still refuses outright — no consent clears a copy
+    // nobody could read (#952).
+    await expect(useCase.preflight(removeTdd)).resolves.toMatchObject({
+      ok: true,
+      check: { scope: "repo", warning: "check-did-not-run" },
+    });
+    await expect(useCase.execute(removeTdd)).resolves.toEqual({
       ok: false,
-      error: "preflight-failed",
+      error: "deployed-unreadable",
     });
   });
 });

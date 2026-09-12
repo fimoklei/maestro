@@ -21,6 +21,9 @@ type BulkAttentionRow = {
   error: DeploySkillError;
   packageType?: string;
   forceable: boolean;
+  // The receipt this row's own refusal minted, so the row's inline deploy
+  // grants exactly what that refusal read and nothing else (#952).
+  copyReceipt?: string;
 };
 type BulkFailure = { error: DeploySkillError; names: string[] };
 
@@ -63,6 +66,7 @@ export class BulkDeploySkills {
           name,
           error: result.error,
           ...(result.packageType ? { packageType: result.packageType } : {}),
+          ...(result.copyReceipt ? { copyReceipt: result.copyReceipt } : {}),
           forceable: ATTENTION[result.error]?.forceable ?? false,
         });
       } else {

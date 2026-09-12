@@ -100,6 +100,9 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
           error: result.error,
           ...(result.packageType ? { packageType: result.packageType } : {}),
           ...(result.linkedPath ? { linkedPath: result.linkedPath } : {}),
+          // The consent this refusal minted, so the reader's next attempt
+          // licenses exactly the copies they were shown (#952).
+          ...(result.copyReceipt ? { copyReceipt: result.copyReceipt } : {}),
         },
         status,
       );

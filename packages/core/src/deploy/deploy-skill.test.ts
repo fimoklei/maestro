@@ -8,6 +8,7 @@ import {
 } from "./deploy-skill";
 import type { SupportedTool } from "./deploy-tools";
 import { InFlightLocks } from "./in-flight-locks";
+import { LocalCopyGuard } from "./local-copy-guard";
 
 const repo = (repoPath: string): DeployTarget => ({ kind: "repo", repoPath });
 const globalTarget: DeployTarget = { kind: "global" };
@@ -19,9 +20,13 @@ const contentState = (state: DeployedContentState): DeployedContentPort => ({
   linkedSkillPath: async () => null,
 });
 
-// In-memory fakes: real objects honoring the ports, no I/O.
+// In-memory fakes: real objects honoring the ports, no I/O. `deployedContent`
+// is the whole port here, because the guard built below reads its `classify`
+// while the use-case only ever asks it for a linked destination.
 const buildDeps = (
-  overrides?: Partial<ConstructorParameters<typeof DeploySkill>[0]>,
+  overrides?: Partial<
+    Omit<ConstructorParameters<typeof DeploySkill>[0], "deployedContent">
+  > & { deployedContent?: DeployedContentPort },
 ) => {
   const deployed: Array<{
     target: DeployTarget;
@@ -38,7 +43,7 @@ const buildDeps = (
     name: string;
     tools: readonly SupportedTool[];
   }> = [];
-  const deps = {
+  const base = {
     inventory: {
       read: async () => ({
         ok: true as const,
@@ -73,6 +78,7 @@ const buildDeps = (
       syncBeforeDeploy: async () => {},
       skillExistsAtTag: async (_tag: string, _name: string) => true,
       skillDivergesFromTag: async (_tag: string, _name: string) => false,
+      readSkillFilesAtTag: async (_tag: string, _name: string) => null,
     },
     deployedContent: {
       classify: async (input: {
@@ -113,7 +119,11 @@ const buildDeps = (
     locks: new InFlightLocks(),
     ...overrides,
   };
-  return { deps, deployed, classified, cleaned };
+  // The real guard over the fake classifier: the refusal and consent rules are
+  // the guard's, and the use-case tests prove it is wired to them (#952).
+  const copyGuard = new LocalCopyGuard({ content: base.deployedContent });
+  const deps = { ...base, copyGuard };
+  return { deps, deployed, classified, cleaned, copyGuard };
 };
 
 describe("DeploySkill", () => {
@@ -347,7 +357,12 @@ describe("DeploySkill", () => {
     });
 
     expect(classified).toEqual([
-      { target: globalTarget, name: "tdd", tools: ["claude"] },
+      {
+        target: globalTarget,
+        name: "tdd",
+        tools: ["claude"],
+        release: "v0.5.1",
+      },
     ]);
   });
 
@@ -361,8 +376,15 @@ describe("DeploySkill", () => {
       target: repo("/registered/repo"),
     });
 
+    // No tool scope, and the release the deploy is about to install, so a copy
+    // already equal to it is not read as local edits (#952).
     expect(classified).toEqual([
-      { target: repo("/registered/repo"), name: "tdd", tools: undefined },
+      {
+        target: repo("/registered/repo"),
+        name: "tdd",
+        tools: undefined,
+        release: "v0.5.1",
+      },
     ]);
   });
 
@@ -857,6 +879,7 @@ describe("DeploySkill", () => {
         syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => false,
         skillDivergesFromTag: async () => false,
+        readSkillFilesAtTag: async () => null,
       },
     });
     const result = await new DeploySkill(deps).execute({
@@ -878,6 +901,7 @@ describe("DeploySkill", () => {
         syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => true,
+        readSkillFilesAtTag: async () => null,
       },
     });
     const result = await new DeploySkill(deps).execute({
@@ -901,6 +925,7 @@ describe("DeploySkill", () => {
         syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => true,
+        readSkillFilesAtTag: async () => null,
       },
     });
     const result = await new DeploySkill(deps).execute({
@@ -927,7 +952,7 @@ describe("DeploySkill", () => {
       target: repo("/registered/repo"),
     });
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       ok: false,
       error: "deployed-diverged-from-lock",
     });
@@ -948,7 +973,7 @@ describe("DeploySkill", () => {
       target: repo("/registered/repo"),
     });
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       ok: false,
       error: "deployed-unverifiable",
     });
@@ -991,10 +1016,11 @@ describe("DeploySkill", () => {
     expect(deployed).toEqual([]);
   });
 
-  it("force still refuses a malformed lockfile", async () => {
-    // force overrides only the not-proven-clean states (diverged, unverifiable).
-    // A malformed lockfile is not non-precious drift: we cannot read the baseline
-    // at all, so a forced overwrite would be blind. Refuse even under force (#58).
+  it("offers no consent past a malformed lockfile", async () => {
+    // Consent covers the two not-proven-clean states (local edits, unverified).
+    // A malformed lockfile is not non-precious drift: we cannot read the
+    // baseline at all, so the overwrite would be blind. The refusal therefore
+    // mints no receipt, and a made-up one clears nothing (#58, #952).
     const { deps, deployed } = buildDeps({
       deployedContent: contentState("lockfile-malformed"),
     });
@@ -1002,7 +1028,7 @@ describe("DeploySkill", () => {
       type: "skill",
       name: "tdd",
       target: repo("/registered/repo"),
-      force: true,
+      confirmedCopyReceipt: "a".repeat(64),
     });
 
     expect(result).toEqual({ ok: false, error: "lockfile-malformed" });
@@ -1037,26 +1063,37 @@ describe("DeploySkill", () => {
       target: globalTarget,
     });
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       ok: false,
       error: "deployed-diverged-from-lock",
     });
     expect(deployed).toEqual([]);
   });
 
-  it("force-deploys past a diverged deployed copy (confirm-and-proceed)", async () => {
+  it("deploys past a locally edited copy once its own receipt comes back", async () => {
     // ADR-0006: a not-proven-clean deployed copy is non-precious generated
-    // content. With an explicit force (the cockpit's confirmed reinstall), the
-    // destination guard is skipped and the skill reinstalls at the latest tag,
-    // discarding the local edits — never the default, always opt-in (#66).
+    // content. The refusal mints the receipt that licenses overwriting exactly
+    // the copies it read; sending it back reinstalls at the latest tag and
+    // discards the local edits — never the default, always opt-in (#66, #952).
     const { deps, deployed } = buildDeps({
       deployedContent: contentState("diverged"),
     });
+    const refusal = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+    if (refusal.ok) {
+      throw new Error("expected the edited copy to be refused");
+    }
+    expect(refusal.error).toBe("deployed-diverged-from-lock");
+    expect(refusal.copyReceipt).toMatch(/^[0-9a-f]{64}$/);
+
     const result = await new DeploySkill(deps).execute({
       type: "skill",
       name: "tdd",
       target: repo("/registered/repo"),
-      force: true,
+      confirmedCopyReceipt: refusal.copyReceipt,
     });
 
     expect(result).toEqual({
@@ -1066,33 +1103,82 @@ describe("DeploySkill", () => {
     expect(deployed).toHaveLength(1);
   });
 
-  it("force-deploys past an unverifiable deployed copy (self-healing)", async () => {
-    // A pre-0.20.0 copy has no baseline to verify; a confirmed force reinstalls
-    // fresh, after which apm writes deployed_file_hashes and the copy becomes
-    // verifiable on the next pass — no bulk update-all (ADR-0006, #66).
+  it("deploys past an unverified copy once its own receipt comes back", async () => {
+    // A pre-0.20.0 copy has no baseline to verify; the consented reinstall
+    // lands fresh, after which apm writes deployed_file_hashes and the copy
+    // becomes verifiable on the next pass (ADR-0006, #952).
     const { deps, deployed } = buildDeps({
       deployedContent: contentState("unverifiable"),
     });
+    const refusal = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+    if (refusal.ok) {
+      throw new Error("expected the unverified copy to be refused");
+    }
+    expect(refusal.error).toBe("deployed-unverifiable");
+
     const result = await new DeploySkill(deps).execute({
       type: "skill",
       name: "tdd",
       target: repo("/registered/repo"),
-      force: true,
+      confirmedCopyReceipt: refusal.copyReceipt,
     });
 
     expect(result.ok).toBe(true);
     expect(deployed).toHaveLength(1);
   });
 
-  it("force skips only the destination guard — source divergence still refuses", async () => {
-    // force is a narrow override of the destination guard, not a master switch.
-    // A source tree that diverges from the tag would ship stale content, so that
-    // guard still bites even under force (#66).
+  it("refuses a receipt minted for another skill on the same target", async () => {
+    // The consent names the copies it was read against, so it can never be
+    // lifted off one refusal and spent on another (#952).
+    const { deps, deployed } = buildDeps({
+      deployedContent: contentState("diverged"),
+      inventory: {
+        read: async () => ({
+          ok: true as const,
+          primitives: [
+            { type: "skill" as const, name: "tdd", description: "One" },
+            { type: "skill" as const, name: "grill", description: "Two" },
+          ],
+        }),
+      },
+    });
+    const other = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "grill",
+      target: repo("/registered/repo"),
+    });
+    if (other.ok) {
+      throw new Error("expected the edited copy to be refused");
+    }
+
+    const result = await new DeploySkill(deps).execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+      confirmedCopyReceipt: other.copyReceipt,
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: "deployed-diverged-from-lock",
+    });
+    expect(deployed).toEqual([]);
+  });
+
+  it("consents to the copy only — source divergence still refuses", async () => {
+    // Consent is a narrow licence for the destination, not a master switch. A
+    // source tree that diverges from the tag would ship stale content, so that
+    // guard still bites (#66).
     const { deps, deployed } = buildDeps({
       inventoryGit: {
         syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => true,
+        readSkillFilesAtTag: async () => null,
       },
       deployedContent: contentState("diverged"),
     });
@@ -1100,17 +1186,17 @@ describe("DeploySkill", () => {
       type: "skill",
       name: "tdd",
       target: repo("/registered/repo"),
-      force: true,
+      confirmedCopyReceipt: "a".repeat(64),
     });
 
     expect(result).toEqual({ ok: false, error: "local-diverged-from-tag" });
     expect(deployed).toEqual([]);
   });
 
-  it("force still refuses an unreadable deployed copy", async () => {
-    // unreadable (#59) is not non-precious drift — we cannot read what is there,
-    // so a forced overwrite would be a blind one, not an informed choice. The
-    // confirm-and-proceed path covers diverged/unverifiable only (ADR-0006, #66).
+  it("offers no consent past an unreadable deployed copy", async () => {
+    // unreadable (#59) is not non-precious drift — we cannot read what is
+    // there, so the overwrite would be blind, not an informed choice. The
+    // refusal carries no receipt at all (ADR-0006, #952).
     const { deps, deployed } = buildDeps({
       deployedContent: contentState("unreadable"),
     });
@@ -1118,7 +1204,7 @@ describe("DeploySkill", () => {
       type: "skill",
       name: "tdd",
       target: repo("/registered/repo"),
-      force: true,
+      confirmedCopyReceipt: "a".repeat(64),
     });
 
     expect(result).toEqual({ ok: false, error: "deployed-unreadable" });

@@ -1,9 +1,11 @@
 // The update journey driving the REAL destination guard against a real deployed
 // subtree on disk — not the "clean" stub the J08 update journey and the
 // server-deploy route both use. This wires DeployedContentAdapter into a real
-// DeploySkill and runs execute() for every cell of the confirm-and-proceed
-// matrix (ADR-0006, #66): a not-proven-clean copy refuses without force and
-// reinstalls with it, while an unreadable copy refuses even with force (#59).
+// LocalCopyGuard and a real DeploySkill, and runs execute() for every cell of
+// the confirm-and-proceed matrix (ADR-0006, #66, #952): a not-proven-clean copy
+// refuses, its refusal mints the receipt that licenses the overwrite, an
+// unreadable copy refuses with no receipt at all, and a copy that already
+// equals the chosen release passes without consent.
 import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -16,6 +18,7 @@ import {
   type DeployTarget,
   InFlightLocks,
   type InventoryResult,
+  LocalCopyGuard,
   NodeFileSystem,
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -81,11 +84,15 @@ describe("update journey against the real destination guard", () => {
   // boundary is faked; classify runs against the live subtree under `root`.
   // The fake takes the install's side effect on disk; the driver's own success
   // result is added here, so a test only describes what apm would write.
+  // `released` is what the chosen release holds for the skill, keyed inside the
+  // skill folder — null when the clone cannot answer, which is every test but
+  // the release-equality one.
   const makeDeploy = (
     install: (input: {
       target: DeployTarget;
       ref: string;
     }) => Promise<void> = async () => undefined,
+    released: Record<string, string> | null = null,
   ) => {
     const inventory: { read(): Promise<InventoryResult> } = {
       read: async () => ({
@@ -120,7 +127,17 @@ describe("update journey against the real destination guard", () => {
         syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => false,
+        readSkillFilesAtTag: async () => released,
       },
+      copyGuard: new LocalCopyGuard({
+        content: new DeployedContentAdapter({
+          location: {
+            treeRoot: () => root,
+            lockfilePath: () => join(root, "apm.lock.yaml"),
+          },
+          inventoryGit: { readSkillFilesAtTag: async () => released },
+        }),
+      }),
       deployedContent: new DeployedContentAdapter({
         location: {
           treeRoot: () => root,
@@ -136,13 +153,25 @@ describe("update journey against the real destination guard", () => {
     });
   };
 
-  const update = (deploy: DeploySkill, options?: { force?: boolean }) =>
+  const update = (deploy: DeploySkill, options?: { consent?: string }) =>
     deploy.execute({
       type: "skill",
       name: "tdd",
       target: { kind: "repo", repoPath: root },
-      force: options?.force,
+      ...(options?.consent === undefined
+        ? {}
+        : { confirmedCopyReceipt: options.consent }),
     });
+
+  // The journey a reader takes: the refusal hands back the receipt for the
+  // copies it just read, and that receipt is what the confirmation sends.
+  const consentFrom = async (deploy: DeploySkill) => {
+    const refusal = await update(deploy);
+    if (refusal.ok) {
+      throw new Error("expected the guard to refuse");
+    }
+    return refusal.copyReceipt;
+  };
 
   // A faithful apm reinstall: a same-ref install resets both deployed copies to
   // the tag's content and rewrites the lockfile with their fresh per-file hashes
@@ -251,10 +280,48 @@ describe("update journey against the real destination guard", () => {
 
     const deploy = makeDeploy();
 
-    expect(await update(deploy)).toEqual({
+    expect(await update(deploy)).toMatchObject({
       ok: false,
       error: "deployed-diverged-from-lock",
+      copyReceipt: expect.stringMatching(/^[0-9a-f]{64}$/),
     });
+  });
+
+  it("passes a copy that no longer matches its record but equals the release", async () => {
+    // An upstream change is not the reader's edit: the record describes the
+    // older release, and the copy on disk is byte-for-byte the one about to be
+    // installed. Nothing is at risk, so nothing is asked (#952).
+    const original = "---\nname: tdd\n---\noriginal\n";
+    const atRelease = "---\nname: tdd\n---\nreleased\n";
+    await writeDeployed(".claude/skills/tdd/SKILL.md", atRelease);
+    await writeDeployed(".agents/skills/tdd/SKILL.md", atRelease);
+    await writeLockfile("tdd", {
+      ".claude/skills/tdd/SKILL.md": sha(original),
+      ".agents/skills/tdd/SKILL.md": sha(original),
+    });
+
+    const deploy = makeDeploy(async () => undefined, {
+      "SKILL.md": sha(atRelease),
+    });
+
+    expect(await update(deploy)).toEqual({
+      ok: true,
+      deployed: { type: "skill", name: "tdd", version: LATEST_TAG },
+    });
+  });
+
+  it("keeps a copy protected when the release cannot be read", async () => {
+    // Fail closed: with no readable release there is no proof of equality, so
+    // the copy is treated as local edits and consent is required (#952).
+    const original = "---\nname: tdd\n---\noriginal\n";
+    await writeDeployed(".claude/skills/tdd/SKILL.md", "changed upstream\n");
+    await writeLockfile("tdd", {
+      ".claude/skills/tdd/SKILL.md": sha(original),
+    });
+
+    expect(await update(makeDeploy(async () => undefined, null))).toMatchObject(
+      { ok: false, error: "deployed-diverged-from-lock" },
+    );
   });
 
   it("refuses a legacy lockfile without force, distinctly unverifiable", async () => {
@@ -266,16 +333,17 @@ describe("update journey against the real destination guard", () => {
 
     const deploy = makeDeploy();
 
-    expect(await update(deploy)).toEqual({
+    expect(await update(deploy)).toMatchObject({
       ok: false,
       error: "deployed-unverifiable",
+      copyReceipt: expect.stringMatching(/^[0-9a-f]{64}$/),
     });
   });
 
-  it("force-reinstalls past an edited deployed copy at the latest tag", async () => {
-    // A confirmed reinstall overrides the diverged refusal: the destination guard
-    // is skipped and apm reinstalls at the latest tag, discarding the edit
-    // (ADR-0006). Every other guard still ran to get here.
+  it("reinstalls past an edited copy once its own receipt comes back", async () => {
+    // The consented reinstall clears the refusal: apm reinstalls at the latest
+    // tag and the edit goes. Every other guard still ran to get here
+    // (ADR-0006, #952).
     const original = "---\nname: tdd\n---\noriginal\n";
     await writeDeployed(".claude/skills/tdd/SKILL.md", "edited locally\n");
     await writeLockfile("tdd", {
@@ -288,31 +356,57 @@ describe("update journey against the real destination guard", () => {
       await reinstallAtTag();
     });
 
-    expect(await update(deploy, { force: true })).toEqual({
+    expect(
+      await update(deploy, { consent: await consentFrom(deploy) }),
+    ).toEqual({
       ok: true,
       deployed: { type: "skill", name: "tdd", version: LATEST_TAG },
     });
     expect(reinstalled).toBe(true);
   });
 
-  it("force-reinstalls past an unverifiable deployed copy at the latest tag", async () => {
-    // The other force-overridable state: a legacy copy with no recorded hashes.
-    // A confirmed reinstall proceeds and re-pins it at the latest tag.
+  it("refuses a receipt minted before the copy changed again", async () => {
+    // The reader consented to overwriting a copy that is no longer there. The
+    // consent retires with the content it named, and the refusal restates the
+    // question with a fresh receipt (#952).
+    const original = "---\nname: tdd\n---\noriginal\n";
+    await writeLegacyLockfile("tdd");
+    await writeDeployed(".claude/skills/tdd/SKILL.md", "deployed long ago\n");
+    const deploy = makeDeploy();
+    const stale = await consentFrom(deploy);
+
+    // The copy gains a baseline it disagrees with: unverified becomes an edit.
+    await writeLockfile("tdd", {
+      ".claude/skills/tdd/SKILL.md": sha(original),
+    });
+
+    expect(await update(deploy, { consent: stale })).toMatchObject({
+      ok: false,
+      error: "deployed-diverged-from-lock",
+      copyReceipt: expect.stringMatching(/^[0-9a-f]{64}$/),
+    });
+  });
+
+  it("reinstalls past an unverified copy once its own receipt comes back", async () => {
+    // The other consentable state: a legacy copy with no recorded hashes. The
+    // consented reinstall proceeds and re-pins it at the latest tag.
     await writeDeployed(".claude/skills/tdd/SKILL.md", "deployed long ago\n");
     await writeLegacyLockfile("tdd");
 
     const deploy = makeDeploy(reinstallAtTag);
 
-    expect(await update(deploy, { force: true })).toEqual({
+    expect(
+      await update(deploy, { consent: await consentFrom(deploy) }),
+    ).toEqual({
       ok: true,
       deployed: { type: "skill", name: "tdd", version: LATEST_TAG },
     });
   });
 
-  it("refuses an unreadable deployed copy even with force", async () => {
+  it("refuses an unreadable deployed copy, offering no receipt at all", async () => {
     // A regular file sits where .claude/skills/tdd should be a directory, so the
-    // copy cannot be read. force is not an override here: a blind overwrite of
-    // something we cannot inspect is never an informed choice (#59).
+    // copy cannot be read. No consent is on offer here: a blind overwrite of
+    // something we cannot inspect is never an informed choice (#59, #952).
     await writeDeployed(".claude/skills/tdd", "a file, not a directory\n");
     await writeLockfile("tdd", { ".claude/skills/tdd/SKILL.md": sha("x") });
 
@@ -321,29 +415,38 @@ describe("update journey against the real destination guard", () => {
       reinstalled = true;
     });
 
-    expect(await update(deploy, { force: true })).toEqual({
+    expect(await update(deploy)).toEqual({
+      ok: false,
+      error: "deployed-unreadable",
+    });
+    expect(await update(deploy, { consent: "a".repeat(64) })).toEqual({
       ok: false,
       error: "deployed-unreadable",
     });
     expect(reinstalled).toBe(false);
   });
 
-  it("self-heals an unverifiable copy: force once, then it verifies clean", async () => {
-    // ADR-0006, no bulk update-all: a forced reinstall records deployed_file_hashes
-    // the legacy copy lacked, so the very next update verifies clean and proceeds
-    // without force — the unverifiable state does not persist.
+  it("self-heals an unverified copy: consent once, then it verifies clean", async () => {
+    // ADR-0006, no bulk update-all: the consented reinstall records the
+    // deployed_file_hashes the legacy copy lacked, so the very next update
+    // verifies clean and proceeds unasked — the unverified state does not persist.
     await writeDeployed(".claude/skills/tdd/SKILL.md", "deployed long ago\n");
     await writeLegacyLockfile("tdd");
 
     const deploy = makeDeploy(reinstallAtTag);
 
     // Before: a plain update refuses, the copy cannot be verified.
-    expect(await update(deploy)).toEqual({
+    const refusal = await update(deploy);
+    expect(refusal).toMatchObject({
       ok: false,
       error: "deployed-unverifiable",
     });
-    // The confirmed reinstall heals it.
-    expect(await update(deploy, { force: true })).toMatchObject({ ok: true });
+    // The consented reinstall heals it.
+    expect(
+      await update(deploy, {
+        consent: refusal.ok ? undefined : refusal.copyReceipt,
+      }),
+    ).toMatchObject({ ok: true });
     // After: a plain update now proceeds — the copy verifies clean on its own.
     expect(await update(deploy)).toEqual({
       ok: true,

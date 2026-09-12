@@ -129,6 +129,8 @@ describe("BulkDeployReport", () => {
               name: "tdd",
               error: "deployed-diverged-from-lock",
               forceable: true,
+              copyReceipt:
+                "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             },
           ],
           counts: { deployed: 0, skipped: 0, attention: 1, failed: 0 },
@@ -140,7 +142,10 @@ describe("BulkDeployReport", () => {
     await userEvent.click(
       screen.getByRole("button", { name: /deploy tdd again/i }),
     );
-    expect(onForce).toHaveBeenCalledWith("tdd");
+    expect(onForce).toHaveBeenCalledWith(
+      "tdd",
+      "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    );
   });
 
   // DESIGN.md §6: a cursor-pointer with no hover step changes the cursor and

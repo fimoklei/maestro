@@ -37,7 +37,9 @@ export function BulkDeployReport({
 }: {
   view: BulkDeployReportView;
   isDeploying?: boolean;
-  onForce?: (name: string) => void;
+  // The row's own consent, so the inline deploy grants only what this row's
+  // refusal read (#952).
+  onForce?: (name: string, confirmedCopyReceipt?: string) => void;
 }) {
   // Distinct message, never the counts summary — zeroed counts would look
   // like a clean success (#292).
@@ -153,7 +155,7 @@ export function BulkDeployReport({
                     <Button
                       variant="quiet"
                       size="sm"
-                      onClick={() => onForce(row.name)}
+                      onClick={() => onForce(row.name, row.copyReceipt)}
                     >
                       Deploy {row.name} again
                     </Button>

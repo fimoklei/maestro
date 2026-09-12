@@ -33,8 +33,9 @@ export type DeployRequest = {
   type: "skill";
   name: string;
   target: DeployTarget;
-  // Set only by the inline "Reinstall fresh" confirm, never a plain deploy (ADR-0006, #66).
-  force?: boolean;
+  // The receipt the server's own refusal minted. Set only by the inline
+  // "Deploy again" confirm, never a plain deploy (ADR-0006, #66, #952).
+  confirmedCopyReceipt?: string;
 };
 
 type DeployResponse = {
