@@ -1,9 +1,14 @@
-// Reads a target's apm.lock.yaml, never the network. Three outcomes the cockpit
-// must never blur: missing is "nothing deployed", an entry that is not a
-// manageable skill is skipped with its reading, and malformed is a visible
-// error (#58, #358).
+// Reads a target's apm.lock.yaml plus what is actually on disk under it. Four
+// outcomes the cockpit must never blur: missing is "nothing deployed", an entry
+// that is not a manageable skill is skipped with its reading, a recorded file
+// that is gone is not a deployed skill, and malformed is a visible error (#58,
+// #358, #941).
 import { join } from "node:path";
+import type { DeployedContentPort, DeployTarget } from "../deploy/deploy-skill";
+import type { SupportedTool } from "../deploy/deploy-tools";
+import { resolveHomeDirectory } from "../home-directory";
 import {
+  type LockfileEntry,
   parseLockfile,
   readPackage,
   type UnreadableEntry,
@@ -12,6 +17,7 @@ import type { FileSystemPort } from "../registry/file-system";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import {
   type DeployedPrimitive,
+  type ReleaseHead,
   type SkippedEntry,
   skippedFromReading,
 } from "./deploy-state-types";
@@ -19,9 +25,21 @@ import {
   groupPrimitivesByTool,
   type ToolDeployState,
 } from "./group-primitives-by-tool";
+import type { ReleaseHeadReader } from "./release-head";
+import {
+  DEPLOY_SKILL_PREFIXES,
+  deployedRootPackageSkills,
+} from "./root-package-skills";
 
 type DeployStateResult =
-  | { ok: true; primitives: DeployedPrimitive[]; skipped: SkippedEntry[] }
+  | {
+      ok: true;
+      primitives: DeployedPrimitive[];
+      skipped: SkippedEntry[];
+      // Absent for a target that follows no single release, and for one read
+      // without a Release-head reader wired in.
+      releaseHead?: ReleaseHead;
+    }
   | { ok: false; error: "malformed" };
 
 // Grouped per detected tool, which also carries the detected set (ADR-0011).
@@ -36,11 +54,21 @@ type GlobalDeployStateResult =
     }
   | { ok: false; error: "malformed" };
 
+// The two optional readings a target card leads with. Omitting either leaves an
+// honest unknown — a missing Release head, a row with no copy chip — never a
+// claim the reader did not measure (J04).
+export type DeployStateExtras = {
+  releaseHead?: Pick<ReleaseHeadReader, "read">;
+  content?: Pick<DeployedContentPort, "classify">;
+};
+
 export class DeployStateReader {
   protected readonly fs: FileSystemPort;
+  protected readonly extras: DeployStateExtras;
 
-  constructor(deps: { fs: FileSystemPort }) {
+  constructor(deps: { fs: FileSystemPort } & DeployStateExtras) {
     this.fs = deps.fs;
+    this.extras = { releaseHead: deps.releaseHead, content: deps.content };
   }
 
   async read(repoPath: string): Promise<DeployStateResult> {
@@ -56,10 +84,18 @@ export class DeployStateReader {
 
     const primitives: DeployedPrimitive[] = [];
     const skipped: SkippedEntry[] = unreadableAsSkipped(parsed.unreadable);
+    let root: LockfileEntry | undefined;
     for (const entry of parsed.entries) {
       const reading = readPackage(entry);
+      if (reading.kind === "package") {
+        // More than one root package is a shape this read cannot attribute;
+        // the first is the Harness dependency in every shape apm writes today.
+        root ??= entry;
+        continue;
+      }
       if (reading.kind !== "skill") {
-        skipped.push(skippedFromReading(reading, entry.virtual_path));
+        // Parsing rejects a non-root row that names no path, so this one has it.
+        skipped.push(skippedFromReading(reading, entry.virtual_path ?? ""));
         continue;
       }
       primitives.push({
@@ -68,7 +104,72 @@ export class DeployStateReader {
         version: entry.resolved_ref,
       });
     }
-    return { ok: true, primitives, skipped };
+
+    if (root !== undefined) {
+      const deployed = await deployedRootPackageSkills(
+        root,
+        DEPLOY_SKILL_PREFIXES,
+        (file) => this.fs.isFileEntry(join(repoPath, file)),
+      );
+      // One row per skill, whatever the number of tool subtrees holding it.
+      for (const name of new Set(deployed.map((skill) => skill.name))) {
+        primitives.push({ type: "skill", name, version: root.resolved_ref });
+      }
+    }
+
+    const target: DeployTarget = { kind: "repo", repoPath };
+    await this.markCopies(primitives, target);
+    const releaseHead =
+      root === undefined
+        ? undefined
+        : await this.readHead(repoPath, root.resolved_ref, primitives);
+    return releaseHead === undefined
+      ? { ok: true, primitives, skipped }
+      : { ok: true, primitives, skipped, releaseHead };
+  }
+
+  // The chip a row carries when its copy disagrees with the recorded baseline,
+  // or has none to check it against. An unreadable copy carries no chip: the
+  // write path is where that refusal belongs, not the reading.
+  protected async markCopies(
+    primitives: DeployedPrimitive[],
+    target: DeployTarget,
+    tools?: readonly SupportedTool[],
+  ): Promise<void> {
+    // Called on the port, never detached: the adapter's classify reads its own
+    // injected location off `this`.
+    const content = this.extras.content;
+    if (content === undefined) {
+      return;
+    }
+    await Promise.all(
+      primitives.map(async (primitive) => {
+        const state = await content
+          .classify({
+            target,
+            name: primitive.name,
+            tools,
+          })
+          .catch(() => null);
+        if (state === "diverged") {
+          primitive.copy = "local-edits";
+        } else if (state === "unverifiable") {
+          primitive.copy = "unverified";
+        }
+      }),
+    );
+  }
+
+  protected async readHead(
+    key: string,
+    release: string,
+    primitives: readonly DeployedPrimitive[],
+  ): Promise<ReleaseHead | undefined> {
+    return await this.extras.releaseHead?.read({
+      key,
+      release,
+      selection: primitives.map((primitive) => primitive.name),
+    });
   }
 }
 
@@ -85,10 +186,21 @@ function unreadableAsSkipped(
 // constructor: omitting it fails to compile rather than 500 at runtime (#187).
 export class GlobalDeployStateReader extends DeployStateReader {
   private readonly toolPresence: ToolPresencePort;
+  private readonly treeRoot: () => string;
 
-  constructor(deps: { fs: FileSystemPort; toolPresence: ToolPresencePort }) {
+  constructor(
+    deps: {
+      fs: FileSystemPort;
+      toolPresence: ToolPresencePort;
+      // What deployed_files are relative to. A global install splits lockfile
+      // from tree: apm writes the lockfile under ~/.apm and the files under
+      // HOME (apm-behavior.md § Global scope).
+      treeRoot?: () => string;
+    } & DeployStateExtras,
+  ) {
     super(deps);
     this.toolPresence = deps.toolPresence;
+    this.treeRoot = deps.treeRoot ?? (() => resolveHomeDirectory(process.env));
   }
 
   // `rootPath` is server-resolved; no client path reaches here. Detection is
@@ -111,7 +223,20 @@ export class GlobalDeployStateReader extends DeployStateReader {
     if (!parsed.ok) {
       return { ok: false, error: "malformed" };
     }
-    const grouped = groupPrimitivesByTool(parsed.entries, detected);
+    const tree = this.treeRoot();
+    const grouped = await groupPrimitivesByTool(parsed.entries, detected, {
+      fileExists: (file) => this.fs.isFileEntry(join(tree, file)),
+    });
+    for (const group of grouped.tools) {
+      await this.markCopies(group.primitives, { kind: "global" }, [group.tool]);
+      if (grouped.release !== undefined) {
+        group.releaseHead = await this.readHead(
+          `global:${group.tool}`,
+          grouped.release,
+          group.primitives,
+        );
+      }
+    }
     return {
       ok: true,
       tools: grouped.tools,

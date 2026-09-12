@@ -43,8 +43,12 @@ export class RecordedPackageAdapter implements RecordedPackagePort {
     }
     // basename, never a literal `skills/<name>`: a harness is free to record
     // its own subpath (LEARNINGS · ref-subpath-is-literal).
+    // A root-package row names no subpath, so it never matches here and the
+    // read stays unverified. Reading one back is the deploy ticket's work.
     const entry = parsed.entries.find(
-      (candidate) => basename(candidate.virtual_path) === input.name,
+      (candidate) =>
+        candidate.virtual_path !== undefined &&
+        basename(candidate.virtual_path) === input.name,
     );
     return entry === undefined
       ? { kind: "unverified" }

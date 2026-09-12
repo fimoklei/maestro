@@ -7,6 +7,7 @@ import { createHash } from "node:crypto";
 import { constants } from "node:fs";
 import { access, lstat, readdir, readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
+import { isRootPackage } from "../deploy-state/root-package-skills";
 import { parseLockfile, unreadableCovers } from "../lockfile/lockfile";
 import type {
   DeployedContentPort,
@@ -143,7 +144,13 @@ export class DeployedContentAdapter implements DeployedContentPort {
     // By name, never by package_type: the copy on disk belongs to this skill
     // whatever apm recorded it as, and a hybrid record's hashes are still its
     // baseline (#358).
-    const entry = parsed.entries.find((e) => basename(e.virtual_path) === name);
+    // A root package records every skill it deployed in one row, so its hashes
+    // are this skill's baseline too, scoped to the subtrees below (ADR-0031).
+    const entry =
+      parsed.entries.find(
+        (e) =>
+          e.virtual_path !== undefined && basename(e.virtual_path) === name,
+      ) ?? parsed.entries.find(isRootPackage);
     if (entry === undefined) {
       return { kind: "none" };
     }

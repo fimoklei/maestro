@@ -352,6 +352,11 @@ export class DeploySkill {
       if (recorded.kind === "unverified") {
         return { ok: false, error: "deploy-unverified" };
       }
+      // A root-package row proves nothing about one skill; reading one back is
+      // the root-package deploy's own work (#951).
+      if (recorded.reading.kind === "package") {
+        return { ok: false, error: "deploy-unverified" };
+      }
       if (recorded.reading.kind !== "skill") {
         return recorded.reading.kind === "invalid"
           ? {

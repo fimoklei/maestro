@@ -6,6 +6,8 @@ import { Card } from "../ui/card";
 import { Notice } from "../ui/notice";
 import { DeployStateList } from "./deploy-state-list";
 import { toDeployedView } from "./deployed-view";
+import { releaseLabel } from "./release-head-copy";
+import { ReleaseHeadMeta } from "./release-head-meta";
 import { TargetDeployAction } from "./target-deploy-action";
 import { TargetStatusChip } from "./target-status-chip";
 import { useDeployState } from "./use-deploy-state";
@@ -27,6 +29,7 @@ export function DeployStatePanel({
   const deployState = useDeployState(repo);
   const drift = driftViewModel(useDrift(repo));
   const indicator = drift.targetIndicator(toDeployedView(deployState));
+  const head = deployState.data?.releaseHead;
   // Where focus goes when a removal destroys the row it was triggered from.
   const headerRef = useRef<HTMLHeadingElement>(null);
 
@@ -35,6 +38,7 @@ export function DeployStatePanel({
       title={<span title={repo}>{targetLabel(repo, siblings)}</span>}
       titleRef={headerRef}
       kind="local"
+      data={head ? releaseLabel(head) : undefined}
       drift={indicator === "drift"}
       status={<TargetStatusChip indicator={indicator} />}
     >
@@ -57,13 +61,17 @@ export function DeployStatePanel({
       ) : indicator === "empty" ? (
         <TargetDeployAction onStartDeploy={onStartDeploy} />
       ) : (
-        <DeployStateList
-          primitives={deployState.data?.primitives ?? []}
-          skipped={deployState.data?.skipped ?? []}
-          drift={drift}
-          target={{ kind: "repo", repoPath: repo }}
-          onRemoved={() => headerRef.current?.focus()}
-        />
+        <>
+          {head ? <ReleaseHeadMeta head={head} /> : null}
+          <DeployStateList
+            primitives={deployState.data?.primitives ?? []}
+            skipped={deployState.data?.skipped ?? []}
+            drift={drift}
+            headRelease={head?.release}
+            target={{ kind: "repo", repoPath: repo }}
+            onRemoved={() => headerRef.current?.focus()}
+          />
+        </>
       )}
     </Card>
   );

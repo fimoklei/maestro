@@ -343,3 +343,356 @@ describe("GlobalDeployStateReader.readGlobal", () => {
     });
   });
 });
+
+// The root-package shape: one apm_package dependency deploying many skills,
+// captured by the #941 narrowing spike.
+const PHANTOM_LOCKFILE = readFileSync(
+  new URL(
+    "../../../../tests/fixtures/apm.lock.spike-941-step3d-phantom.yaml",
+    import.meta.url,
+  ),
+  "utf8",
+);
+
+// Keys copied from that capture: a root-package row carries no virtual_path.
+function rootPackageEntry(
+  ref: string,
+  deployedFiles: string[],
+  subset: string[],
+): string {
+  const files = deployedFiles.map((file) => `  - ${file}\n`).join("");
+  const skills = subset.map((name) => `  - ${name}\n`).join("");
+  return `- repo_url: fimoklei/agent-harness\n  name: agent-harness\n  host: github.com\n  resolved_commit: 4beb072048aa5952555e8a3941d3d1873abfe6e7\n  resolved_ref: ${ref}\n  package_type: apm_package\n  deployed_files:\n${files}  skill_subset:\n${skills}`;
+}
+
+// Every file the entry names is on disk, so nothing reads as a phantom.
+function onDisk(root: string, files: string[]): Record<string, string> {
+  return Object.fromEntries(files.map((file) => [`${root}/${file}`, "x"]));
+}
+
+describe("DeployStateReader on a root-package target", () => {
+  it("lists the skills its deployed files name, at the target's release", async () => {
+    const files = [
+      ".claude/skills/tdd/SKILL.md",
+      ".agents/skills/tdd/SKILL.md",
+      ".claude/skills/grill/SKILL.md",
+    ];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(
+          rootPackageEntry("v0.3.2", files, ["tdd", "grill"]),
+        ),
+        ...onDisk(REPO, files),
+      },
+    });
+
+    await expect(new DeployStateReader({ fs }).read(REPO)).resolves.toEqual({
+      ok: true,
+      primitives: [
+        { type: "skill", name: "tdd", version: "v0.3.2" },
+        { type: "skill", name: "grill", version: "v0.3.2" },
+      ],
+      skipped: [],
+    });
+  });
+
+  it("never reads a name from skill_subset that no file on disk backs", async () => {
+    const files = [".claude/skills/tdd/SKILL.md"];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(
+          rootPackageEntry("v0.3.2", files, ["tdd", "removed-long-ago"]),
+        ),
+        ...onDisk(REPO, files),
+      },
+    });
+
+    const result = await new DeployStateReader({ fs }).read(REPO);
+
+    expect(result).toEqual({
+      ok: true,
+      primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
+      skipped: [],
+    });
+  });
+
+  it("does not count a recorded row whose file is gone from disk", async () => {
+    // The real phantom capture: `delta` is recorded under .agents but the
+    // narrow deleted the file (#941 step 3d).
+    const onlyRealFiles = [
+      ".agents/skills/alpha/SKILL.md",
+      ".claude/skills/alpha/SKILL.md",
+    ];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: PHANTOM_LOCKFILE,
+        ...onDisk(REPO, onlyRealFiles),
+      },
+    });
+
+    const result = await new DeployStateReader({ fs }).read(REPO);
+
+    expect(result).toEqual({
+      ok: true,
+      primitives: [{ type: "skill", name: "alpha", version: "v2.0.0" }],
+      skipped: [],
+    });
+  });
+
+  it("reads no Release head without a reader for it", async () => {
+    const files = [".claude/skills/tdd/SKILL.md"];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])),
+        ...onDisk(REPO, files),
+      },
+    });
+
+    const result = await new DeployStateReader({ fs }).read(REPO);
+
+    expect(result).toMatchObject({ ok: true });
+    expect(
+      "releaseHead" in result ? result.releaseHead : undefined,
+    ).toBeUndefined();
+  });
+
+  it("carries the Release head over the skills it found deployed", async () => {
+    const files = [
+      ".claude/skills/tdd/SKILL.md",
+      ".claude/skills/grill/SKILL.md",
+    ];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(
+          rootPackageEntry("v0.3.2", files, ["tdd", "grill"]),
+        ),
+        ...onDisk(REPO, files),
+      },
+    });
+    const seen: string[][] = [];
+    const reader = new DeployStateReader({
+      fs,
+      releaseHead: {
+        read: async (input) => {
+          seen.push([...input.selection]);
+          return {
+            release: input.release,
+            latestRelease: "v0.3.4",
+            changed: 1,
+            selected: input.selection.length,
+            comparedAt: "2026-09-12T10:00:00.000Z",
+          };
+        },
+      },
+    });
+
+    const result = await reader.read(REPO);
+
+    expect(seen).toStrictEqual([["tdd", "grill"]]);
+    expect(result).toMatchObject({
+      ok: true,
+      releaseHead: {
+        release: "v0.3.2",
+        latestRelease: "v0.3.4",
+        changed: 1,
+        selected: 2,
+        comparedAt: "2026-09-12T10:00:00.000Z",
+      },
+    });
+  });
+
+  it("marks a row whose copy diverged from its baseline as locally edited", async () => {
+    const files = [
+      ".claude/skills/tdd/SKILL.md",
+      ".claude/skills/grill/SKILL.md",
+      ".claude/skills/jobs/SKILL.md",
+    ];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(
+          rootPackageEntry("v0.3.2", files, ["tdd", "grill", "jobs"]),
+        ),
+        ...onDisk(REPO, files),
+      },
+    });
+    const reader = new DeployStateReader({
+      fs,
+      content: {
+        classify: async ({ name }) =>
+          name === "tdd"
+            ? "diverged"
+            : name === "grill"
+              ? "unverifiable"
+              : "clean",
+      },
+    });
+
+    await expect(reader.read(REPO)).resolves.toEqual({
+      ok: true,
+      primitives: [
+        { type: "skill", name: "tdd", version: "v0.3.2", copy: "local-edits" },
+        { type: "skill", name: "grill", version: "v0.3.2", copy: "unverified" },
+        { type: "skill", name: "jobs", version: "v0.3.2" },
+      ],
+      skipped: [],
+    });
+  });
+});
+
+describe("GlobalDeployStateReader on a root-package target", () => {
+  it("groups the root package's skills under the tool their files sit in", async () => {
+    const files = [
+      ".claude/skills/tdd/SKILL.md",
+      ".agents/skills/tdd/SKILL.md",
+      ".agents/skills/grill/SKILL.md",
+    ];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [GLOBAL_LOCKFILE]: lockfile(
+          rootPackageEntry("v0.3.2", files, ["tdd", "grill"]),
+        ),
+        ...onDisk("/home", files),
+      },
+    });
+    const reader = new GlobalDeployStateReader({
+      fs,
+      toolPresence: fakePresence(["claude", "codex"]),
+      treeRoot: () => "/home",
+    });
+
+    await expect(reader.readGlobal(GLOBAL_ROOT)).resolves.toEqual({
+      ok: true,
+      tools: [
+        {
+          tool: "claude",
+          primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
+        },
+        {
+          tool: "codex",
+          primitives: [
+            { type: "skill", name: "tdd", version: "v0.3.2" },
+            { type: "skill", name: "grill", version: "v0.3.2" },
+          ],
+        },
+      ],
+      skipped: [],
+      otherOrigins: [],
+    });
+  });
+
+  it("carries a Release head per tool, over that tool's skills", async () => {
+    const files = [
+      ".claude/skills/tdd/SKILL.md",
+      ".agents/skills/tdd/SKILL.md",
+      ".agents/skills/grill/SKILL.md",
+    ];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [GLOBAL_LOCKFILE]: lockfile(
+          rootPackageEntry("v0.3.2", files, ["tdd", "grill"]),
+        ),
+        ...onDisk("/home", files),
+      },
+    });
+    const reader = new GlobalDeployStateReader({
+      fs,
+      toolPresence: fakePresence(["claude", "codex"]),
+      treeRoot: () => "/home",
+      releaseHead: {
+        read: async (input) => ({
+          release: input.release,
+          latestRelease: "v0.3.4",
+          changed: input.selection.length,
+          selected: input.selection.length,
+          comparedAt: "2026-09-12T10:00:00.000Z",
+        }),
+      },
+    });
+
+    const result = await reader.readGlobal(GLOBAL_ROOT);
+
+    expect(result.ok && result.tools.map((group) => group.releaseHead)).toEqual(
+      [
+        {
+          release: "v0.3.2",
+          latestRelease: "v0.3.4",
+          changed: 1,
+          selected: 1,
+          comparedAt: "2026-09-12T10:00:00.000Z",
+        },
+        {
+          release: "v0.3.2",
+          latestRelease: "v0.3.4",
+          changed: 2,
+          selected: 2,
+          comparedAt: "2026-09-12T10:00:00.000Z",
+        },
+      ],
+    );
+  });
+
+  it("leaves a phantom row out of the tool that no longer holds it", async () => {
+    const fs = new InMemoryFileSystem({
+      files: {
+        [GLOBAL_LOCKFILE]: PHANTOM_LOCKFILE,
+        ...onDisk("/home", [
+          ".agents/skills/alpha/SKILL.md",
+          ".claude/skills/alpha/SKILL.md",
+        ]),
+      },
+    });
+    const reader = new GlobalDeployStateReader({
+      fs,
+      toolPresence: fakePresence(["claude", "codex"]),
+      treeRoot: () => "/home",
+    });
+
+    const result = await reader.readGlobal(GLOBAL_ROOT);
+
+    expect(
+      result.ok &&
+        result.tools.map((group) =>
+          group.primitives.map((primitive) => primitive.name),
+        ),
+    ).toStrictEqual([["alpha"], ["alpha"]]);
+  });
+});
+
+// A classifier that reads its own injected state, the way DeployedContentAdapter
+// does: a reader calling the method detached loses it and silently chips
+// nothing (found in smoke, #949).
+class StatefulClassifier {
+  private readonly edited: string;
+
+  constructor(edited: string) {
+    this.edited = edited;
+  }
+
+  async classify(input: { name: string }) {
+    return input.name === this.edited
+      ? ("diverged" as const)
+      : ("clean" as const);
+  }
+}
+
+describe("DeployStateReader copy chips", () => {
+  it("calls the content port as a method, so an adapter keeps its own state", async () => {
+    const files = [".claude/skills/tdd/SKILL.md"];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])),
+        ...onDisk(REPO, files),
+      },
+    });
+    const reader = new DeployStateReader({
+      fs,
+      content: new StatefulClassifier("tdd"),
+    });
+
+    await expect(reader.read(REPO)).resolves.toMatchObject({
+      primitives: [
+        { type: "skill", name: "tdd", version: "v0.3.2", copy: "local-edits" },
+      ],
+    });
+  });
+});

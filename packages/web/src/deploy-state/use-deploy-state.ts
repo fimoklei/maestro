@@ -1,16 +1,22 @@
 // Server-state hook for a single repo's deploy-state, keyed by repo path
 // (frontend.md).
-import type { DeployedPrimitive, SkippedEntry } from "@maestro/core";
+import type {
+  DeployedPrimitive,
+  ReleaseHead,
+  SkippedEntry,
+} from "@maestro/core";
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 
 // Re-exported rather than copied, so the two ends of the wire cannot drift
 // (architecture.md).
-export type { DeployedPrimitive, SkippedEntry };
+export type { DeployedPrimitive, ReleaseHead, SkippedEntry };
 
 type DeployStateResponse = {
   primitives: DeployedPrimitive[];
   skipped: SkippedEntry[];
+  // Absent where the target follows no single release (ADR-0031).
+  releaseHead?: ReleaseHead;
 };
 
 // Shared so single-repo and multi-repo readers use the same key/fetch — they

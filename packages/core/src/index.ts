@@ -50,8 +50,11 @@ export {
 } from "./deploy-state/deploy-state-reader";
 export type {
   DeployedPrimitive,
+  ReleaseHead,
   SkippedEntry,
 } from "./deploy-state/deploy-state-types";
+export type { ToolDeployState } from "./deploy-state/group-primitives-by-tool";
+export { ReleaseHeadReader } from "./deploy-state/release-head";
 export { resolveApmGlobalRoot } from "./deploy-state/resolve-apm-global-root";
 export { CheckVersionDrift } from "./drift/check-version-drift";
 export type { VersionDrift } from "./drift/parse-outdated";
@@ -155,6 +158,7 @@ export {
   type ReleasePlanResult,
   type WorktreeAmbiguity,
 } from "./harness/read-harness-state";
+export { RELEASE_TAG_PATTERN } from "./harness/release-tag";
 export {
   RestoreSkill,
   type RestoreSkillError,

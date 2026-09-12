@@ -6,6 +6,8 @@ import { SectionHeader } from "../ui/section-header";
 import { DeployStateList } from "./deploy-state-list";
 import { toolDeployedView, withOtherOrigins } from "./deployed-view";
 import { joinNames } from "./join-names";
+import { releaseLabel } from "./release-head-copy";
+import { ReleaseHeadMeta } from "./release-head-meta";
 import {
   skippedEntryKey,
   skippedEntryText,
@@ -137,6 +139,7 @@ function ToolTargetCard({
       }
       titleRef={headerRef}
       kind="global"
+      data={group.releaseHead ? releaseLabel(group.releaseHead) : undefined}
       drift={indicator === "drift"}
       status={<TargetStatusChip indicator={indicator} />}
     >
@@ -152,13 +155,19 @@ function ToolTargetCard({
       ) : indicator === "empty" ? (
         <TargetDeployAction onStartDeploy={onStartDeploy} />
       ) : (
-        <DeployStateList
-          primitives={group.primitives}
-          skipped={[]}
-          drift={toolDrift}
-          target={{ kind: "global", tools: detectedTools }}
-          onRemoved={() => headerRef.current?.focus()}
-        />
+        <>
+          {group.releaseHead ? (
+            <ReleaseHeadMeta head={group.releaseHead} />
+          ) : null}
+          <DeployStateList
+            primitives={group.primitives}
+            skipped={[]}
+            drift={toolDrift}
+            headRelease={group.releaseHead?.release}
+            target={{ kind: "global", tools: detectedTools }}
+            onRemoved={() => headerRef.current?.focus()}
+          />
+        </>
       )}
     </Card>
   );

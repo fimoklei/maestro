@@ -7,6 +7,7 @@ import {
   removePreflightErrorResponses,
 } from "../error-responses";
 import { requireRegisteredRepo } from "../registered-repo-route";
+import { releaseHeadFields } from "../release-head-response";
 import {
   BULK_DEPLOY_BODY,
   BULK_REMOVE_BODY,
@@ -55,7 +56,11 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
       // 422: lockfile exists but couldn't be read — never a silent empty list.
       return c.json({ error: result.error }, 422);
     }
-    return c.json({ primitives: result.primitives, skipped: result.skipped });
+    return c.json({
+      primitives: result.primitives,
+      skipped: result.skipped,
+      ...releaseHeadFields(result.releaseHead),
+    });
   });
 
   // Grouped per detected tool (ADR-0011). Server resolves the root itself —
@@ -66,7 +71,10 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
       return c.json({ error: result.error }, 422);
     }
     return c.json({
-      tools: result.tools,
+      tools: result.tools.map(({ releaseHead, ...group }) => ({
+        ...group,
+        ...releaseHeadFields(releaseHead),
+      })),
       skipped: result.skipped,
       otherOrigins: result.otherOrigins,
     });
