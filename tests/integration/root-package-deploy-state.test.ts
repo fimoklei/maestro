@@ -169,6 +169,26 @@ describe("reading a root-package target over HTTP", () => {
     expect(body.releaseHead.changedSkills).toEqual(["tdd"]);
   });
 
+  // The Inventory's `→ N targets` counts the Selection, so the Selection has to
+  // reach it (spec story 52).
+  it("carries the Selection the count speaks about", async () => {
+    const files = [".claude/skills/tdd/SKILL.md"];
+    await seedFiles(repo, files);
+    await writeFile(
+      join(repo, "apm.lock.yaml"),
+      rootPackageLockfile("v0.3.2", files, ["tdd"]),
+      "utf8",
+    );
+
+    const app = await makeApp({ ...HEAD, selected: 1, selection: ["tdd"] });
+    const res = await app.request(
+      `/api/deploy-state?repo=${encodeURIComponent(repo)}`,
+    );
+
+    const body = (await res.json()) as { releaseHead: ReleaseHead };
+    expect(body.releaseHead.selection).toEqual(["tdd"]);
+  });
+
   it("leaves a skill whose file is gone off the list", async () => {
     const recorded = [
       ".claude/skills/tdd/SKILL.md",

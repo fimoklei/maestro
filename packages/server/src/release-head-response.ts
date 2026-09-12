@@ -17,6 +17,7 @@ const releaseHeadSchema = z.object({
   // Skill names read off the Harness trees, bounded like every other name the
   // server lets cross (ADR-0018).
   changedSkills: z.array(z.string().max(200)).optional(),
+  selection: z.array(z.string().max(200)).optional(),
   selected: z.number().int().nonnegative(),
   comparedAt: z.iso.datetime().nullable(),
 });

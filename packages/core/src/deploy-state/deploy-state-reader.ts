@@ -128,6 +128,9 @@ export class DeployStateReader {
     const origin = await this.connectedOrigin();
     const pins: SkillPin[] = [];
     let root: LockfileEntry | undefined;
+    // The Selection: the root package's own skills. A leftover per-skill row
+    // from before migration is deployed but selected by nothing (story 4).
+    const selection: string[] = [];
     for (const entry of parsed.entries) {
       const reading = readPackage(entry);
       if (reading.kind === "package") {
@@ -160,6 +163,7 @@ export class DeployStateReader {
       );
       // One row per skill, whatever the number of tool subtrees holding it.
       for (const name of new Set(deployed.map((skill) => skill.name))) {
+        selection.push(name);
         primitives.push({ type: "skill", name, version: root.resolved_ref });
       }
     }
@@ -169,7 +173,7 @@ export class DeployStateReader {
     const releaseHead =
       root === undefined
         ? undefined
-        : await this.readHead(repoPath, root.resolved_ref, primitives);
+        : await this.readHead(repoPath, root.resolved_ref, selection);
     const extraFiles =
       root === undefined
         ? 0
@@ -235,13 +239,9 @@ export class DeployStateReader {
   protected async readHead(
     key: string,
     release: string,
-    primitives: readonly DeployedPrimitive[],
+    selection: readonly string[],
   ): Promise<ReleaseHead | undefined> {
-    return await this.extras.releaseHead?.read({
-      key,
-      release,
-      selection: primitives.map((primitive) => primitive.name),
-    });
+    return await this.extras.releaseHead?.read({ key, release, selection });
   }
 }
 
@@ -309,7 +309,7 @@ export class GlobalDeployStateReader extends DeployStateReader {
         group.releaseHead = await this.readHead(
           `global:${group.tool}`,
           grouped.release,
-          group.primitives,
+          group.primitives.map((primitive) => primitive.name),
         );
       }
     }

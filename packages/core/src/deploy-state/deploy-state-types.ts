@@ -23,7 +23,9 @@ export type ReleaseHead = {
   // Absent wherever `changed` is null — the per-skill reading is the same
   // comparison, so it is never known when the count is not (#956).
   changedSkills?: readonly string[];
-  // The size of the selection the count speaks about.
+  // The selection the count speaks about, and its size. The names answer
+  // "where is this skill selected?" — a leftover copy on disk is not in it.
+  selection?: readonly string[];
   selected: number;
   // ISO-8601 moment of the last comparison that succeeded, kept when a later
   // one fails; null when none ever has.

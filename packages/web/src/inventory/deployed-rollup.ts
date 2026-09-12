@@ -95,7 +95,11 @@ export function rollUpDeployment(
     if (target.deployed.status !== "ready") {
       continue;
     }
-    if (!target.deployed.names.includes(skillName)) {
+    // The Selection where the target follows one release; what is on disk only
+    // where it follows none, which is the one case with no Selection to read
+    // (spec story 52).
+    const selected = target.releaseHead?.selection ?? target.deployed.names;
+    if (!selected.includes(skillName)) {
       continue;
     }
     targetCount++;

@@ -43,7 +43,11 @@ export class ReleaseHeadReader {
     selection: readonly string[];
   }): Promise<ReleaseHead> {
     const remembered = this.last.get(input.key);
-    const base = { release: input.release, selected: input.selection.length };
+    const base = {
+      release: input.release,
+      selection: [...input.selection],
+      selected: input.selection.length,
+    };
     const unread = (latestRelease: string | null): ReleaseHead => ({
       ...base,
       latestRelease: latestRelease ?? remembered?.latestRelease ?? null,

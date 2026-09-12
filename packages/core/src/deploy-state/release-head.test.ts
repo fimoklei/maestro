@@ -54,6 +54,7 @@ describe("ReleaseHeadReader", () => {
       latestRelease: "v0.3.4",
       changed: 2,
       changedSkills: ["tdd", "jobs"],
+      selection: SELECTION,
       selected: 5,
       comparedAt: AT.toISOString(),
     });
@@ -110,6 +111,7 @@ describe("ReleaseHeadReader", () => {
       latestRelease: "v0.3.4",
       changed: 0,
       changedSkills: [],
+      selection: SELECTION,
       selected: 5,
       comparedAt: AT.toISOString(),
     });
@@ -133,6 +135,7 @@ describe("ReleaseHeadReader", () => {
       release: "v0.3.2",
       latestRelease: "v0.3.4",
       changed: null,
+      selection: SELECTION,
       selected: 5,
       comparedAt: null,
     });
@@ -154,6 +157,7 @@ describe("ReleaseHeadReader", () => {
       release: "v0.3.2",
       latestRelease: "v0.3.4",
       changed: null,
+      selection: SELECTION,
       selected: 5,
       comparedAt: AT.toISOString(),
     });
@@ -192,6 +196,7 @@ describe("ReleaseHeadReader", () => {
       release: "v0.3.2",
       latestRelease: null,
       changed: null,
+      selection: SELECTION,
       selected: 5,
       comparedAt: null,
     });

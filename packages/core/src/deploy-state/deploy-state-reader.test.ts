@@ -502,6 +502,41 @@ describe("DeployStateReader on a root-package target", () => {
     });
   });
 
+  // A target part-way through migration still carries per-skill rows. They
+  // belong to no Selection, so they may not swell the count (spec story 4).
+  it("keeps a leftover per-skill row out of the Release head's selection", async () => {
+    const files = [".claude/skills/tdd/SKILL.md"];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]:
+          lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])) +
+          skillEntry("v0.3.1", "skills/legacy"),
+        ...onDisk(REPO, files),
+      },
+    });
+    const seen: string[][] = [];
+    const reader = new DeployStateReader({
+      fs,
+      releaseHead: {
+        read: async (input) => {
+          seen.push([...input.selection]);
+          return {
+            release: input.release,
+            latestRelease: "v0.3.4",
+            changed: 0,
+            selected: input.selection.length,
+            comparedAt: "2026-09-12T10:00:00.000Z",
+          };
+        },
+      },
+    });
+
+    const result = await reader.read(REPO);
+
+    expect(seen).toStrictEqual([["tdd"]]);
+    expect(result).toMatchObject({ ok: true, releaseHead: { selected: 1 } });
+  });
+
   it("marks a row whose copy diverged from its baseline as locally edited", async () => {
     const files = [
       ".claude/skills/tdd/SKILL.md",

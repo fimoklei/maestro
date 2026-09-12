@@ -75,6 +75,33 @@ describe("rollUpDeployment — target count", () => {
     expect(rollUpDeployment("tdd", targets).targetCount).toBe(0);
   });
 
+  // Story 52: the roll-up answers "where is this selected?", so a leftover copy
+  // the Selection no longer holds is not a target this skill is deployed to.
+  it("counts the Selection, not what is left on disk", () => {
+    const target: DeploymentTarget = {
+      ...paneFields,
+      deployed: {
+        status: "ready",
+        names: ["tdd", "leftover"],
+        skippedCount: 0,
+        attentionCount: 0,
+      },
+      drift: ranDrift([]),
+      releaseHead: {
+        release: "v0.3.2",
+        latestRelease: "v0.3.2",
+        changed: 0,
+        changedSkills: [],
+        selection: ["tdd"],
+        selected: 1,
+        comparedAt: "2026-09-12T10:00:00.000Z",
+      },
+    };
+
+    expect(rollUpDeployment("tdd", [target]).targetCount).toBe(1);
+    expect(rollUpDeployment("leftover", [target]).targetCount).toBe(0);
+  });
+
   it("does not count a target whose deploy-state has not resolved yet", () => {
     const targets: DeploymentTarget[] = [
       { ...paneFields, deployed: { status: "pending" }, drift: ranDrift([]) },
