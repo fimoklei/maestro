@@ -1,6 +1,7 @@
 // The pre-flight plan for a bulk deploy. A skill skips as a no-op only once
 // confirmed present AND up-to-date on every target — a skill missing from a
-// newly-added tool is never mistaken for fully clean (#292).
+// newly-added tool is never mistaken for fully clean (#292). A bulk run never
+// moves a target's release, so it plans no update either (ADR-0031, #956).
 
 import type { DeployedView } from "../deploy-state/deployed-view";
 import type { DeploymentTarget } from "./deployed-rollup";
@@ -9,29 +10,17 @@ export type BulkDeployPlan = {
   // Names to send to the target, in the caller's order.
   toDeploy: string[];
   skippedClean: string[];
-  // Confirmed behind on at least one target: an update, not a first install (#292).
-  updateToLatest: string[];
 };
 
 function deployedOn(deployed: DeployedView, name: string): boolean {
   return deployed.status === "ready" && deployed.names.includes(name);
 }
 
-// Folds "deployed here" + drift in one pass, so the plan never walks
-// `targets` twice for the same check.
-function targetStatus(
-  target: DeploymentTarget,
-  name: string,
-): "up-to-date" | "behind" | "other" {
-  if (!deployedOn(target.deployed, name)) {
-    return "other";
-  }
-  const status = target.drift.skillStatus(name);
-  // "older-tag" falls to "other": the skill is still deployed at a lagging
-  // pin, so it is not clean, but a bulk run does not call it an update
-  // either — that acts on moved skills only (ADR-0027 §6).
-  return status === "up-to-date" || status === "behind" ? status : "other";
-}
+// Deployed here and proven current. Every other reading — behind, lagging a
+// tag, un-run — keeps the skill attempted rather than assumed clean.
+const isClean = (target: DeploymentTarget, name: string): boolean =>
+  deployedOn(target.deployed, name) &&
+  target.drift.skillStatus(name) === "up-to-date";
 
 export function planBulkDeploy(
   names: string[],
@@ -39,32 +28,19 @@ export function planBulkDeploy(
 ): BulkDeployPlan {
   const toDeploy: string[] = [];
   const skippedClean: string[] = [];
-  const updateToLatest: string[] = [];
 
   for (const name of names) {
     // A single un-run or missing target keeps the skill attempted, not
     // assumed clean (J04).
-    let allUpToDate = targets.length > 0;
-    let confirmedBehindSomewhere = false;
-    for (const target of targets) {
-      const status = targetStatus(target, name);
-      if (status !== "up-to-date") {
-        allUpToDate = false;
-      }
-      if (status === "behind") {
-        confirmedBehindSomewhere = true;
-      }
-    }
+    const allUpToDate =
+      targets.length > 0 && targets.every((target) => isClean(target, name));
 
     if (allUpToDate) {
       skippedClean.push(name);
       continue;
     }
     toDeploy.push(name);
-    if (confirmedBehindSomewhere) {
-      updateToLatest.push(name);
-    }
   }
 
-  return { toDeploy, skippedClean, updateToLatest };
+  return { toDeploy, skippedClean };
 }

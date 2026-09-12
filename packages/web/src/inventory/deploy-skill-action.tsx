@@ -10,7 +10,9 @@ import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { Notice } from "../ui/notice";
 import { DeployRefusalNotice } from "./deploy-refusal-notice";
+import { headsReading } from "./deployed-rollup";
 import { globalOptionLabel } from "./global-option-label";
+import { targetSyncLine } from "./inventory-copy";
 import { type DeployTarget, useDeploySkill } from "./use-deploy-skill";
 
 type DeploySkillActionProps = {
@@ -57,13 +59,28 @@ export function DeploySkillAction({
   const globalDrift = useGlobalDrift(registryReady && isGlobal);
   const deployState = isGlobal ? globalDeployState : repoDeployState;
   const drift = driftViewModel(isGlobal ? globalDrift : repoDrift);
-  const syncedState = drift.syncedState(
-    deployState.data?.primitives,
-    skillName,
-  );
   const deployedVersion = deployState.data?.primitives?.find(
     (primitive) => primitive.name === skillName,
   )?.version;
+  // The Release head answers first: the per-skill drift check says nothing
+  // about a target that follows one release, so a behind copy read as in sync
+  // (ADR-0031, #956). Global carries one head per detected tool.
+  const headStatus = headsReading(
+    isGlobal
+      ? (globalDeployState.data?.tools ?? []).map((tool) => tool.releaseHead)
+      : [repoDeployState.data?.releaseHead],
+    skillName,
+  );
+  const deployedHere = deployedVersion !== undefined;
+  const syncedState =
+    headStatus === undefined
+      ? drift.syncedState(deployState.data?.primitives, skillName)
+      : deployedHere && headStatus === "up-to-date"
+        ? "synced"
+        : "not-synced";
+  // Deployed, but the newest release changed it: Update target moves it, and
+  // redeploying at this release would change nothing.
+  const behindHere = deployedHere && headStatus === "behind";
 
   // Undefined while loading/unreadable — never gate on a tool set we can't prove.
   const globalTools = globalDeployState.data?.detectedTools;
@@ -109,29 +126,18 @@ export function DeploySkillAction({
           </option>
         ))}
       </select>
-      {syncedState === "synced" ? (
-        <>
-          <Button
-            variant="quiet"
-            size="sm"
-            disabled={deploy.isPending}
-            onClick={() =>
-              deploy.mutate({ type: "skill", name: skillName, target })
-            }
-          >
-            {deploy.isPending ? "Deploying skill…" : "Deploy skill again"}
-          </Button>
-          {/* State, not an action, so it drops out of the control row onto its
-              own line and stays quiet — the chip read as a second button. */}
-          <span
-            className={cn(
-              "basis-full font-mono text-tag",
-              versionColor["up-to-date"],
-            )}
-          >
-            {deployedVersion ? `● In sync · ${deployedVersion}` : "● In sync"}
-          </span>
-        </>
+      {syncedState === "synced" || behindHere ? (
+        /* State, not an action: *Deploy skill again* is retired, because a
+           skill already on the target's release has nothing to redeploy and
+           the control implied a release of its own (ADR-0031, #956). */
+        <span
+          className={cn(
+            "basis-full font-mono text-tag",
+            versionColor[behindHere ? "behind" : "up-to-date"],
+          )}
+        >
+          {targetSyncLine(behindHere ? "behind" : "in-sync", deployedVersion)}
+        </span>
       ) : (
         <Button
           variant="ghost"

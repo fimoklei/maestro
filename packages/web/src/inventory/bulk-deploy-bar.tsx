@@ -117,7 +117,6 @@ export function BulkDeployBar({
     ? bulkDeployReportView({
         report,
         skippedClean: plan.skippedClean,
-        updateToLatest: plan.updateToLatest,
         targetLabel: chosenLabel,
         requestFailed: bulk.isError,
       })

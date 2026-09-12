@@ -30,16 +30,37 @@ const target = (
   drift: ranDrift(behind),
 });
 
+// The same target, now following one Harness release (ADR-0031). An undefined
+// `changedSkills` is the comparison that could not be read.
+const onRelease = (
+  label: string,
+  names: string[],
+  changedSkills: string[] | undefined,
+): DeploymentTarget => ({
+  ...target(
+    label,
+    names.map((name) => ({ name, version: "v0.3.2" })),
+  ),
+  releaseHead: {
+    release: "v0.3.2",
+    latestRelease: "v0.3.4",
+    changed: changedSkills?.length ?? null,
+    ...(changedSkills ? { changedSkills } : {}),
+    selected: names.length,
+    comparedAt: "2026-09-12T10:00:00.000Z",
+  },
+});
+
 describe("skillDeployments", () => {
-  it("lists the label and deployed version for each target holding the skill", () => {
+  it("lists the label and deployed release for each target holding the skill", () => {
     const targets = [
       target("Claude Code", [{ name: "tdd", version: "v1.0.0" }]),
       target("/dev/acme-web", [{ name: "tdd", version: "v1.1.0" }]),
     ];
 
     expect(skillDeployments("tdd", targets)).toEqual([
-      { label: "Claude Code", version: "v1.0.0", status: "up-to-date" },
-      { label: "/dev/acme-web", version: "v1.1.0", status: "up-to-date" },
+      { label: "Claude Code", release: "v1.0.0", status: "up-to-date" },
+      { label: "/dev/acme-web", release: "v1.1.0", status: "up-to-date" },
     ]);
   });
 
@@ -50,11 +71,35 @@ describe("skillDeployments", () => {
     ];
 
     expect(skillDeployments("tdd", targets)).toEqual([
-      { label: "/dev/acme-web", version: "v1.0.0", status: "up-to-date" },
+      { label: "/dev/acme-web", release: "v1.0.0", status: "up-to-date" },
     ]);
   });
 
-  it("carries the drift status and latest tag when a target is behind", () => {
+  it("names the target's release and reads behind where this skill changed", () => {
+    const targets = [onRelease("Claude Code", ["tdd", "grill"], ["tdd"])];
+
+    expect(skillDeployments("tdd", targets)).toEqual([
+      { label: "Claude Code", release: "v0.3.2", status: "behind" },
+    ]);
+  });
+
+  it("reads a skill the release left alone as up to date on a behind target", () => {
+    const targets = [onRelease("Claude Code", ["tdd", "grill"], ["tdd"])];
+
+    expect(skillDeployments("grill", targets)).toEqual([
+      { label: "Claude Code", release: "v0.3.2", status: "up-to-date" },
+    ]);
+  });
+
+  it("reads a target whose comparison could not be read as unknown", () => {
+    const targets = [onRelease("Claude Code", ["tdd"], undefined)];
+
+    expect(skillDeployments("tdd", targets)).toEqual([
+      { label: "Claude Code", release: "v0.3.2", status: "unknown" },
+    ]);
+  });
+
+  it("carries the drift status when a target is behind", () => {
     const targets = [
       target(
         "Claude Code",
@@ -71,12 +116,7 @@ describe("skillDeployments", () => {
     ];
 
     expect(skillDeployments("tdd", targets)).toEqual([
-      {
-        label: "Claude Code",
-        version: "v1.0.0",
-        status: "behind",
-        latest: "v1.2.0",
-      },
+      { label: "Claude Code", release: "v1.0.0", status: "behind" },
     ]);
   });
 
@@ -100,7 +140,7 @@ describe("skillDeployments", () => {
     ];
 
     expect(skillDeployments("tdd", targets)).toEqual([
-      { label: "Claude Code", version: "v1.0.0", status: "up-to-date" },
+      { label: "Claude Code", release: "v1.0.0", status: "up-to-date" },
     ]);
   });
 });

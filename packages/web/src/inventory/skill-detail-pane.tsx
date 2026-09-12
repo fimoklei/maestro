@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { type DriftStatus, lagsPin } from "../drift/drift-view-model";
+import type { DriftStatus } from "../drift/drift-view-model";
 import { versionColor } from "../drift/version-color";
 import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
@@ -173,17 +173,18 @@ function ActionSection({
   );
 }
 
+// *Older tag* is retired with the per-skill release it implied: a row names
+// the release its target follows and nothing else (ADR-0031, #956).
 const driftChip: Partial<
   Record<DriftStatus, { tone: "drift" | "dim"; label: string }>
 > = {
   behind: { tone: "drift", label: "Behind" },
-  "older-tag": { tone: "dim", label: "Older tag" },
   unknown: { tone: "dim", label: "Unknown" },
   unverified: { tone: "dim", label: "Unverified" },
 };
 
 function DeployedRow({ deployment }: { deployment: SkillDeployment }) {
-  const { label, version, status, latest } = deployment;
+  const { label, release, status } = deployment;
   const chip = driftChip[status];
   return (
     <li className="flex items-center gap-2 py-1 text-tag">
@@ -197,7 +198,7 @@ function DeployedRow({ deployment }: { deployment: SkillDeployment }) {
       ) : null}
       <span className="flex-1 truncate text-fg-2">{label}</span>
       <span className={cn("font-mono", versionColor[status])}>
-        {lagsPin(status) && latest ? `${version} → ${latest}` : version}
+        release {release}
       </span>
       {chip ? <Chip tone={chip.tone}>{chip.label}</Chip> : null}
     </li>
