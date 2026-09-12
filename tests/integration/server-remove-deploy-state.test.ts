@@ -17,7 +17,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { realRegistry } from "../helpers/real-registry";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
-import { stubDeploy } from "../helpers/stub-deploy";
+import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubImport } from "../helpers/stub-import";
@@ -157,6 +157,7 @@ describe("the deploy-state read after a removal", () => {
         toolPresence: { detectGlobalTools: async () => tools },
       }),
       deploy: stubDeploy({ inventory, registry, locks }),
+      retryOperation: stubRetryOperation({ registry, locks }),
       remove,
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => apmRoot,

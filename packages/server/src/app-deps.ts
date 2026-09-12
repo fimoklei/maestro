@@ -15,6 +15,7 @@ import type {
   Registry,
   RemoveDeployedSkill,
   RestoreSkill,
+  RetryTargetOperation,
   ScaffoldHarness,
   UpdateTarget,
 } from "@maestro/core";
@@ -44,6 +45,8 @@ export type AppDeps = {
   remove: RemoveDeployedSkill;
   // Prices moving a whole target to the latest release; the confirm is #954.
   update: UpdateTarget;
+  // The one way out of a Deploy or Remove that never finished (#951).
+  retryOperation: RetryTargetOperation;
   drift: ReadDrift;
   // Tests inject a sandbox so the real ~/.apm is never touched (apm-driver.md).
   resolveGlobalRoot: () => string;

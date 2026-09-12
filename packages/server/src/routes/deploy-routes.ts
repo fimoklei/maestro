@@ -5,6 +5,7 @@ import {
   deployErrorResponses,
   removeErrorResponses,
   removePreflightErrorResponses,
+  retryOperationErrorResponses,
   updatePreviewErrorResponses,
 } from "../error-responses";
 import { requireRegisteredRepo } from "../registered-repo-route";
@@ -17,6 +18,7 @@ import {
   deployBodySchema,
   parseBody,
   removeBodySchema,
+  retryOperationBodySchema,
   TARGET_BODY,
   UPDATE_TARGET_BODY,
   updatePreflightBodySchema,
@@ -30,6 +32,7 @@ type Deps = Pick<
   | "deploy"
   | "remove"
   | "update"
+  | "retryOperation"
   | "drift"
   | "resolveGlobalRoot"
 >;
@@ -64,6 +67,10 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     return c.json({
       primitives: result.primitives,
       skipped: result.skipped,
+      // Maestro's own record, not an apm reading, so it crosses as it is.
+      ...(result.pendingOperation
+        ? { pendingOperation: result.pendingOperation }
+        : {}),
       ...cardReadingFields(result),
     });
   });
@@ -84,6 +91,9 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
       ),
       skipped: result.skipped,
       otherOrigins: result.otherOrigins,
+      ...(result.pendingOperation
+        ? { pendingOperation: result.pendingOperation }
+        : {}),
     });
   });
 
@@ -189,6 +199,31 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
       return c.json({ error: "preview-failed" }, 502);
     }
     return c.json({ preview });
+  });
+
+  // The one way out of a Deploy or Remove that never finished. It re-runs the
+  // release and Selection the server itself recorded, so nothing the client
+  // sends chooses what happens (#951).
+  app.post("/api/deploy/retry", async (c) => {
+    const body = await parseBody(c, retryOperationBodySchema, TARGET_BODY);
+    if (!body.ok) {
+      return body.response;
+    }
+
+    const result = await deps.retryOperation.execute(body.data);
+    if (!result.ok) {
+      const { status } = retryOperationErrorResponses[result.error];
+      return c.json(
+        {
+          error: result.error,
+          // The consent this refusal minted, so the reader's next attempt
+          // licenses exactly the copies they were shown (#952).
+          ...(result.copyReceipt ? { copyReceipt: result.copyReceipt } : {}),
+        },
+        status,
+      );
+    }
+    return c.json({ completed: result.completed });
   });
 
   // Always 200 with a report — a per-skill refusal is data, not an HTTP error.

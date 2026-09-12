@@ -17,7 +17,8 @@ import {
 import { TargetDeployAction } from "./target-deploy-action";
 import { TargetStatusChip } from "./target-status-chip";
 import { toolPresentation } from "./tool-presentation";
-import type { SkippedEntry } from "./use-deploy-state";
+import { UnfinishedOperationHead } from "./unfinished-operation-head";
+import type { PendingOperation, SkippedEntry } from "./use-deploy-state";
 import type { ToolDeployState } from "./use-global-deploy-state";
 
 // Presentational "GLOBAL TARGETS" section: one Card per detected tool
@@ -29,6 +30,9 @@ export function GlobalTargets({
   tools,
   skipped,
   otherOrigins = [],
+  pendingOperation,
+  onRetryOperation,
+  isRetryingOperation = false,
   drift,
   onStartDeploy,
 }: {
@@ -38,6 +42,11 @@ export function GlobalTargets({
   skipped: SkippedEntry[];
   // Repos named on a lockfile entry no detected tool's prefix covers (#655).
   otherOrigins?: string[];
+  // Section-wide: the global target holds one unfinished operation whatever the
+  // tool count, and one retry converges it (#951).
+  pendingOperation?: PendingOperation;
+  onRetryOperation?: () => void;
+  isRetryingOperation?: boolean;
   drift: DriftViewModel;
   onStartDeploy: () => void;
 }) {
@@ -72,6 +81,15 @@ export function GlobalTargets({
         />
       ) : (
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {pendingOperation ? (
+            <div className="lg:col-span-2">
+              <UnfinishedOperationHead
+                pending={pendingOperation}
+                onRetry={onRetryOperation ?? (() => {})}
+                isRetrying={isRetryingOperation}
+              />
+            </div>
+          ) : null}
           {tools.map((group) => (
             <ToolTargetCard
               key={group.tool}

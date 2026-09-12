@@ -27,7 +27,7 @@ function view(overrides: Partial<ReportView> = {}): ReportView {
 }
 
 describe("BulkDeployReport", () => {
-  it("gives an unsupported row the same recovery step as a single deploy", () => {
+  it("gives a pinned-per-skill row the reason a single deploy states", () => {
     render(
       <BulkDeployReport
         view={{
@@ -37,23 +37,17 @@ describe("BulkDeployReport", () => {
           updated: [],
           skipped: [],
           attention: [
-            {
-              name: "tdd",
-              error: "deployed-unsupported-package-type",
-              packageType: "hybrid",
-              forceable: false,
-            },
+            { name: "tdd", error: "target-pinned-per-skill", forceable: false },
           ],
-          failed: [{ error: "deploy-recorded-invalid", names: ["review"] }],
-          counts: { deployed: 0, skipped: 0, attention: 1, failed: 1 },
+          failed: [],
+          counts: { deployed: 0, skipped: 0, attention: 1, failed: 0 },
         }}
       />,
     );
 
-    expect(screen.getByText(/\(hybrid\)/)).toBeInTheDocument();
     expect(
-      screen.getAllByText(/publish a release, then deploy again/i),
-    ).toHaveLength(2);
+      screen.getByText("Left alone — pinned per skill"),
+    ).toBeInTheDocument();
   });
 
   it("names a failure the report carries no recovery step for", () => {

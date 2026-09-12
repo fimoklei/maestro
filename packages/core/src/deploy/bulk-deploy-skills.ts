@@ -86,10 +86,15 @@ export class BulkDeploySkills {
 }
 
 // One owner for both readings: a refusal the user acts on, and whether a force
-// is the action (ADR-0006). Every error absent here is a genuine failure —
-// including apm's invalid verdict, which deployed nothing (#358).
+// is the action (ADR-0006). Every error absent here is a genuine failure.
 const ATTENTION: Partial<Record<DeploySkillError, { forceable: boolean }>> = {
   "deployed-diverged-from-lock": { forceable: true },
   "deployed-unverifiable": { forceable: true },
-  "deployed-unsupported-package-type": { forceable: false },
+  // A bulk deploy never moves a target's release and never grants consent for
+  // the reader, so each of these is a row to read, not a row to force
+  // (ADR-0031, #951).
+  "not-at-target-release": { forceable: false },
+  "target-pinned-per-skill": { forceable: false },
+  "manifest-not-recognised": { forceable: false },
+  "operation-unfinished": { forceable: false },
 };

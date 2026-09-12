@@ -11,8 +11,10 @@ import { releaseLabel } from "./release-head-copy";
 import { ReleaseHeadMeta } from "./release-head-meta";
 import { TargetDeployAction } from "./target-deploy-action";
 import { TargetStatusChip } from "./target-status-chip";
+import { UnfinishedOperationHead } from "./unfinished-operation-head";
 import { UpdateTargetAction } from "./update-target-action";
 import { useDeployState } from "./use-deploy-state";
+import { useRetryOperation } from "./use-retry-operation";
 
 // One repo's target card. Deploy-state and drift are separate queries: the
 // skill list renders first, each drift badge fills in later. A failed read
@@ -33,6 +35,8 @@ export function DeployStatePanel({
   const indicator = drift.targetIndicator(toDeployedView(deployState));
   const head = deployState.data?.releaseHead;
   const pinned = deployState.data?.pinnedPerSkill;
+  const pending = deployState.data?.pendingOperation;
+  const retry = useRetryOperation();
   // One control per behind target, so one release costs one action instead of N
   // (ADR-0031). A target still pinned per skill carries no head, so none is
   // offered there — there is no mechanism to sell it (#950).
@@ -83,10 +87,19 @@ export function DeployStatePanel({
             }}
           />
         </div>
-      ) : indicator === "empty" ? (
+      ) : indicator === "empty" && pending === undefined ? (
         <TargetDeployAction onStartDeploy={onStartDeploy} />
       ) : (
         <>
+          {pending ? (
+            <UnfinishedOperationHead
+              pending={pending}
+              onRetry={() =>
+                retry.mutate({ target: { kind: "repo", repoPath: repo } })
+              }
+              isRetrying={retry.isPending}
+            />
+          ) : null}
           {head ? <ReleaseHeadMeta head={head} /> : null}
           {pinned ? <PinnedPerSkillHead pinned={pinned} /> : null}
           <DeployStateList

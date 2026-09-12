@@ -2,6 +2,7 @@
 // (frontend.md).
 import type {
   DeployedPrimitive,
+  PendingOperation,
   PinnedPerSkill,
   ReleaseHead,
   SkippedEntry,
@@ -11,7 +12,13 @@ import { requestJson } from "../api/http";
 
 // Re-exported rather than copied, so the two ends of the wire cannot drift
 // (architecture.md).
-export type { DeployedPrimitive, PinnedPerSkill, ReleaseHead, SkippedEntry };
+export type {
+  DeployedPrimitive,
+  PendingOperation,
+  PinnedPerSkill,
+  ReleaseHead,
+  SkippedEntry,
+};
 
 type DeployStateResponse = {
   primitives: DeployedPrimitive[];
@@ -22,6 +29,8 @@ type DeployStateResponse = {
   pinnedPerSkill?: PinnedPerSkill;
   // Absent where the record holds no file outside the selected skills.
   extraFiles?: number;
+  // Absent unless a Deploy or Remove on this target never finished (#951).
+  pendingOperation?: PendingOperation;
 };
 
 // Shared so single-repo and multi-repo readers use the same key/fetch — they

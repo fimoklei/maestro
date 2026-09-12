@@ -2,6 +2,7 @@
 // stays off this list, so the surface reads as a contract, not an index.
 export { ApmCliDriver } from "./deploy/apm-cli-driver";
 export { resolveApmScratchCwd } from "./deploy/apm-scratch-cwd";
+export { SelectionWriter } from "./deploy/apply-selection";
 export {
   type BulkDeployReport,
   BulkDeploySkills,
@@ -12,6 +13,9 @@ export {
   type BulkRemoveTarget,
 } from "./deploy/bulk-remove-deployed-skill";
 export {
+  // The apm boundary itself: the integration lane fakes it to prove a write
+  // landed on disk (tests/helpers/root-package-apm.ts).
+  type ApmDriverPort,
   type DeployedContentState,
   DeploySkill,
   type DeploySkillError,
@@ -22,6 +26,7 @@ export { DeployedCleanupAdapter } from "./deploy/deployed-cleanup";
 export { DeployedContentAdapter } from "./deploy/deployed-content";
 export { DeployedLocation } from "./deploy/deployed-location";
 export { DeployedRefAdapter } from "./deploy/deployed-ref";
+export { parseGitOrigin } from "./deploy/git-origin";
 export {
   readConfiguredGitOriginUrl,
   readGitOriginUrl,
@@ -54,6 +59,12 @@ export {
   type RemoveToolOutcome,
   type RemoveWarning,
 } from "./deploy/remove-deployed-skill";
+export {
+  type PendingOperation,
+  RetryTargetOperation,
+  type RetryTargetOperationError,
+} from "./deploy/retry-target-operation";
+export { TargetOperationStore } from "./deploy/target-operation";
 export {
   type CopyConsentRow,
   type TargetSelectionPort,

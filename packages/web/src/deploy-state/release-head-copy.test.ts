@@ -7,6 +7,7 @@ import {
   RELEASE_NOT_ADOPTED,
   releaseLabel,
   releaseSentence,
+  unfinishedOperationNotice,
 } from "./release-head-copy";
 import type { ReleaseHead } from "./use-deploy-state";
 
@@ -145,5 +146,29 @@ describe("extraFilesLine", () => {
     expect(extraFilesLine(1)).toBe(
       "Extra files deployed: 1 file outside the selected skills.",
     );
+  });
+});
+
+describe("unfinishedOperationNotice", () => {
+  it("names the release a retried deploy would install again", () => {
+    expect(
+      unfinishedOperationNotice({ kind: "deploy", release: "v0.3.4" }),
+    ).toEqual({
+      level: "warning",
+      label: "Deploy incomplete",
+      message:
+        "Part of the selection is not on disk. Select Retry deploy to install release v0.3.4 again.",
+    });
+  });
+
+  it("states an unfinished removal from what is still on disk", () => {
+    expect(
+      unfinishedOperationNotice({ kind: "remove", release: "v0.3.4" }),
+    ).toEqual({
+      level: "warning",
+      label: "Removal incomplete",
+      message:
+        "The skill's files are still on disk. Select Retry removal to run the same removal again.",
+    });
   });
 });

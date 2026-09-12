@@ -30,10 +30,17 @@ export type DeployStateNotice = {
 export const FIX_AND_RELEASE =
   "Fix the skill in the Harness, publish a release, then deploy again.";
 
-export const ADD_SKILL_MD =
-  "Add a SKILL.md in the Harness, publish a release, then deploy again.";
-
 export const RECHECK_TARGET = "Deploy again to re-check the target.";
+
+// One string, two surfaces again: the bulk report's row and the single
+// refusal's notice send the reader to the same control (ADR-0031, #951).
+export const LEFT_ALONE_PINNED = "Left alone — pinned per skill";
+
+export const RETRY_ON_CARD =
+  "Select Retry deploy on the target card, then deploy again.";
+
+export const UPDATE_TO_REACH_RELEASE =
+  "Select Update target to reach this release.";
 
 // The symlink refusal, in two spellings of one recovery: the exact `rm` when the
 // server names the link, the folder-shaped fallback when it cannot (#748). Both
@@ -83,16 +90,21 @@ const HEADINGS: Record<DeployStateCode, Heading> = {
     level: "error",
     label: "Deployment record unreadable",
   },
-  "deploy-in-progress": { level: "error", label: "Deploy already running" },
+  // One heading for both scopes: a target takes one change at a time, whichever
+  // change is running (ADR-0031, #951).
+  "deploy-in-progress": { level: "error", label: "Target busy" },
+  "not-at-target-release": { level: "error", label: "Not in this release" },
+  "target-pinned-per-skill": { level: "error", label: "Release not adopted" },
+  "manifest-not-recognised": {
+    level: "error",
+    label: "Manifest not recognised",
+  },
+  "operation-unfinished": { level: "error", label: "Change not finished" },
+  "deploy-incomplete": { level: "error", label: "Deploy incomplete" },
+  "remove-incomplete": { level: "error", label: "Removal incomplete" },
   "no-supported-tool": { level: "error", label: "No supported tool" },
   "auth-required": { level: "error", label: "No GitHub access" },
   "destination-symlinked": { level: "error", label: "Linked skill folder" },
-  "deployed-unsupported-package-type": {
-    level: "error",
-    label: "Unsupported package type",
-  },
-  "deploy-recorded-invalid": { level: "error", label: "No files deployed" },
-  "deploy-unverified": { level: "error", label: "Deploy unproven" },
   "deploy-failed": { level: "error", label: "Deploy stopped part-way" },
   "not-deployed": { level: "error", label: "Nothing deployed here" },
   "ref-unresolvable": {
@@ -100,7 +112,7 @@ const HEADINGS: Record<DeployStateCode, Heading> = {
     label: "Unrecognisable deployment entry",
   },
   "cost-not-acknowledged": { level: "warning", label: "Nothing removed" },
-  "remove-in-progress": { level: "error", label: "Change already running" },
+  "remove-in-progress": { level: "error", label: "Target busy" },
   "remove-failed": { level: "error", label: "Removal unproven" },
   "preflight-failed": { level: "error", label: "Check did not run" },
   "preview-failed": { level: "error", label: "Preview did not run" },
@@ -172,8 +184,38 @@ const DEPLOY: Record<DeploySkillError, Body> = {
       "The file is present but does not parse, so the target's state is unknown.",
   },
   "deploy-in-progress": {
+    message: "A deploy is still running on this target. Wait for it to finish.",
+  },
+  // The same cause as on a removal: the target's own record names no single
+  // package, so one wording covers both (#684).
+  "ref-unresolvable": {
     message:
-      "This target takes one change at a time. Wait for the running deploy to finish.",
+      "Nothing was installed. Leave one entry for the Harness in apm.lock.yaml, then deploy again.",
+    detail: "The target's record names more than one, or names no release.",
+  },
+  "not-at-target-release": {
+    message:
+      "This skill is not in the release this target follows. Select Update target to move to the release that holds it.",
+  },
+  "target-pinned-per-skill": {
+    message:
+      "This target was deployed one skill at a time. Select Remove skill for each skill, then Deploy skill to put them back on one release.",
+  },
+  "manifest-not-recognised": {
+    // The filename stays in the sentence: the instruction acts on the file
+    // itself (`copy.md`).
+    message:
+      "Nothing was installed. Leave one dependency on the Harness with a skills list in apm.yml, then deploy again.",
+    detail: "Maestro edits that list only, and it found another shape.",
+  },
+  "operation-unfinished": {
+    message:
+      "An earlier change on this target did not finish. Select Retry deploy on the target card, then deploy again.",
+  },
+  "deploy-incomplete": {
+    message:
+      "Part of the selection is not on disk. Select Retry deploy to run the same release again.",
+    detail: "apm reported success, and the files say otherwise.",
   },
   "no-supported-tool": {
     message:
@@ -187,15 +229,6 @@ const DEPLOY: Record<DeploySkillError, Body> = {
   "destination-symlinked": {
     message: `Nothing was written. Delete the linked skill folder in the target, ${DEPLOY_AGAIN}`,
     detail: LINK_TARGET_SURVIVES,
-  },
-  "deployed-unsupported-package-type": {
-    message: `Its files are still there. ${FIX_AND_RELEASE}`,
-  },
-  "deploy-recorded-invalid": {
-    message: ADD_SKILL_MD,
-  },
-  "deploy-unverified": {
-    message: `The target's deployment record does not show it. ${RECHECK_TARGET}`,
   },
   "deploy-failed": {
     message:
@@ -254,7 +287,21 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
   },
   "remove-in-progress": {
     message:
-      "This target takes one change at a time. Wait for the running change to finish.",
+      "A removal is still running on this target. Wait for it to finish.",
+  },
+  "manifest-not-recognised": {
+    message:
+      "Nothing was removed. Leave one dependency on the Harness with a skills list in apm.yml, then remove the skill again.",
+    detail: "Maestro edits that list only, and it found another shape.",
+  },
+  "operation-unfinished": {
+    message:
+      "An earlier change on this target did not finish. Select Retry removal on the target card, then remove the skill again.",
+  },
+  "remove-incomplete": {
+    message:
+      "The skill's files are still on disk. Select Retry removal to run the same removal again.",
+    detail: "apm reported success, and the files say otherwise.",
   },
   "remove-failed": {
     message:

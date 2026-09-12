@@ -34,15 +34,11 @@ function fail(error: DeploySkillError): Scripted {
 }
 
 describe("BulkDeploySkills", () => {
-  it("reports an unsupported package type as attention, with no force to offer", async () => {
+  it("reports a target pinned per skill as attention, with no force to offer", async () => {
+    // A bulk deploy never grants the reader's consent and never moves a
+    // target's release, so this row is read, not forced (ADR-0031, #951).
     const bulk = new BulkDeploySkills({
-      deploy: fakeDeploy({
-        tdd: {
-          ok: false,
-          error: "deployed-unsupported-package-type",
-          packageType: "hybrid",
-        },
-      }),
+      deploy: fakeDeploy({ tdd: fail("target-pinned-per-skill") }),
     });
 
     const report = await bulk.execute({
@@ -51,14 +47,24 @@ describe("BulkDeploySkills", () => {
     });
 
     expect(report.attention).toEqual([
-      {
-        name: "tdd",
-        error: "deployed-unsupported-package-type",
-        packageType: "hybrid",
-        forceable: false,
-      },
+      { name: "tdd", error: "target-pinned-per-skill", forceable: false },
     ]);
     expect(report.failed).toEqual([]);
+  });
+
+  it("reports a skill absent at the target's release as attention, never as a failure", async () => {
+    const bulk = new BulkDeploySkills({
+      deploy: fakeDeploy({ tdd: fail("not-at-target-release") }),
+    });
+
+    const report = await bulk.execute({
+      names: ["tdd"],
+      target: { kind: "global" },
+    });
+
+    expect(report.attention).toEqual([
+      { name: "tdd", error: "not-at-target-release", forceable: false },
+    ]);
   });
 
   it("keeps a forceable refusal marked as one", async () => {
@@ -76,9 +82,9 @@ describe("BulkDeploySkills", () => {
     ]);
   });
 
-  it("counts apm's invalid verdict as a failure, never as a success", async () => {
+  it("counts an install that did not land as a failure, never as a success", async () => {
     const bulk = new BulkDeploySkills({
-      deploy: fakeDeploy({ tdd: fail("deploy-recorded-invalid") }),
+      deploy: fakeDeploy({ tdd: fail("deploy-incomplete") }),
     });
 
     const report = await bulk.execute({
@@ -88,7 +94,7 @@ describe("BulkDeploySkills", () => {
 
     expect(report.deployed).toEqual([]);
     expect(report.failed).toEqual([
-      { error: "deploy-recorded-invalid", names: ["tdd"] },
+      { error: "deploy-incomplete", names: ["tdd"] },
     ]);
   });
 

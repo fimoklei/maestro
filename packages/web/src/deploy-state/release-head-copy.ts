@@ -54,6 +54,27 @@ export const RELEASE_NOT_ADOPTED = {
     "This target was deployed one skill at a time. Select Remove skill for each skill, then Deploy skill to put them back on one release.",
 } satisfies NoticeContent;
 
+// The two notices an unfinished operation carries. Warning, not error: the
+// files are in a state one control converges, and the action names the
+// operation that stopped (copy.md, #951).
+export function unfinishedOperationNotice(pending: {
+  kind: "deploy" | "remove";
+  release: string;
+}): { level: "warning"; label: string; message: string } {
+  return pending.kind === "deploy"
+    ? {
+        level: "warning",
+        label: "Deploy incomplete",
+        message: `Part of the selection is not on disk. Select Retry deploy to install release ${pending.release} again.`,
+      }
+    : {
+        level: "warning",
+        label: "Removal incomplete",
+        message:
+          "The skill's files are still on disk. Select Retry removal to run the same removal again.",
+      };
+}
+
 // A fact to know, not an action to take: the Harness is skills-only, and a
 // deploy carries whatever else the release holds (ADR-0031 § Accepted limits).
 export const extraFilesLine = (count: number): string =>

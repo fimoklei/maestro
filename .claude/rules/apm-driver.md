@@ -56,6 +56,15 @@ targets = detected tools), 0013 (narrowed-install reconciliation), 0014
   written order is never the order you passed.
 - Classify a Remove from files and the lockfile, never from the exit code or
   a marker: a blocked removal has already deleted the rest of the Selection.
+- Edit `skills:` only under exactly one dependency on the connected Harness
+  carrying an explicit list. Refuse every other shape — two such dependencies,
+  a bare root-ref string, a missing or non-list `skills:` — before anything is
+  written, and leave an absent dependency for apm to create on a first Deploy.
+- Record the operation, its release and its desired Selection before the first
+  mutation, and clear the record only once disk, `skills:` and the deployment
+  record all agree with that Selection. A matching tag clears nothing.
+- Guard every copy in the desired Selection, never only the named skill: one
+  install rewrites the whole Selection.
 
 ## Classifying output
 

@@ -2,6 +2,7 @@
 // `execute` carries it out under the same per-target lock the deploy takes.
 // See ADR-0011, ADR-0013, #337, apm-behavior.md § Remove.
 import type { ToolPresencePort } from "../tools/tool-presence-port";
+import type { SelectionWriter } from "./apply-selection";
 import type {
   ApmDriverPort,
   DeployedCleanupPort,
@@ -12,6 +13,7 @@ import type {
 import type { SupportedTool } from "./deploy-tools";
 import type { DeployedLocation } from "./deployed-location";
 import type { DeployedRefLookup } from "./deployed-ref";
+import type { GitOrigin } from "./git-origin";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import {
   type CopyFinding,
@@ -59,6 +61,15 @@ export type RemoveDeployedSkillError =
   | "deployed-diverged-from-lock"
   | "cost-not-acknowledged"
   | "remove-in-progress"
+  // The consumer's apm.yml holds a Harness dependency Maestro will not edit, so
+  // nothing was written (ADR-0031).
+  | "manifest-not-recognised"
+  // A Deploy or Remove on this target never finished; it is converged before
+  // anything else runs (#951).
+  | "operation-unfinished"
+  // apm ran and the skill's files, or its name in the manifest, are still
+  // there. The operation record survives, so Retry removal converges on it.
+  | "remove-incomplete"
   | "remove-failed";
 
 // Named for the consequence the user consents to, not the classifier state.
@@ -251,6 +262,11 @@ export class RemoveDeployedSkill {
     // Shared with the deploy use-case: both rewrite the same apm.lock.yaml.
     locks: InFlightLocks;
     location: Pick<DeployedLocation, "treeRoot">;
+    // The shared Selection write, and the connected Harness it is written
+    // against. Absent, this removal stays on the per-skill uninstall path a
+    // target still holding per-skill dependencies needs (#933, #951).
+    selection?: SelectionWriter;
+    inventoryOrigin?: () => Promise<GitOrigin | null>;
   };
 
   private readonly consent: RemoveConsentIssuer;
@@ -417,7 +433,7 @@ export class RemoveDeployedSkill {
     }
 
     const run = await this.deps.locks.run(lockKey, () =>
-      this.remove(input, scope),
+      this.remove(input, scope, lockKey),
     );
     return run.ok ? run.value : { ok: false, error: "remove-in-progress" };
   }
@@ -463,29 +479,69 @@ export class RemoveDeployedSkill {
     return undefined;
   }
 
+  // Which mechanism this removal uses. A target following one release narrows
+  // its Selection with one install, or lets the last skill go with the named
+  // uninstall of the Harness dependency; a target still holding per-skill
+  // dependencies keeps the uninstall it was deployed with (ADR-0031, #933).
+  private async planRemoval(
+    target: DeployTarget,
+    name: string,
+    lockKey: string,
+  ): Promise<
+    | { kind: "root"; origin: GitOrigin; release: string; previous: string[] }
+    | { kind: "per-skill"; ref: string; version: string }
+    | { kind: "refused"; error: RemoveDeployedSkillError }
+  > {
+    const origin = (await this.deps.inventoryOrigin?.()) ?? null;
+    const selection = this.deps.selection;
+    if (origin !== null && selection !== undefined) {
+      const current = await selection.readTarget(target, origin);
+      if (current.kind === "unreadable") {
+        return { kind: "refused", error: current.reason };
+      }
+      if (current.kind === "root") {
+        if (!current.deployed.includes(name)) {
+          return { kind: "refused", error: "not-deployed" };
+        }
+        if ((await selection.pending(lockKey)) !== null) {
+          return { kind: "refused", error: "operation-unfinished" };
+        }
+        return {
+          kind: "root",
+          origin,
+          release: current.release,
+          previous: current.deployed,
+        };
+      }
+    }
+    const lookup = await this.deps.deployedRef.resolve({ target, name });
+    return lookup.ok
+      ? { kind: "per-skill", ref: lookup.ref, version: lookup.version }
+      : { kind: "refused", error: lookup.reason };
+  }
+
   private async remove(
     input: RemoveDeployedSkillInput,
     scope: ResolvedScope & { ok: true },
+    lockKey: string,
   ): Promise<RemoveDeployedSkillResult> {
     const target = input.target;
     const detected = scope.scope === "global" ? scope.detected : undefined;
     // Swallow rather than rethrow: a raw apm message may carry a token and must
     // never reach the transport layer (security.md).
     try {
-      const lookup = await this.deps.deployedRef.resolve({
-        target,
-        name: input.name,
-      });
-      if (!lookup.ok) {
-        return { ok: false, error: lookup.reason };
+      const plan = await this.planRemoval(target, input.name, lockKey);
+      if (plan.kind === "refused") {
+        return { ok: false, error: plan.error };
       }
+      const version = plan.kind === "root" ? plan.release : plan.version;
 
       // Priced through the shared guard, and only a receipt minted for what is
       // found now lets the removal through. A baseline lost between the check
       // and the click therefore stops it, and so does a request that
       // acknowledged nothing (#364, #952). The pinned release goes in, so a
       // copy equal to it is not read as an edit.
-      const priced = await this.price(input, scope, lookup.version, true);
+      const priced = await this.price(input, scope, version, true);
       if (!priced.ok) {
         return priced;
       }
@@ -518,14 +574,18 @@ export class RemoveDeployedSkill {
         };
       }
 
-      const removed = await this.deps.apm.removeSkill({
-        target,
-        ref: lookup.ref,
-      });
-      if (!removed.ok) {
+      const failure =
+        plan.kind === "root"
+          ? await this.narrowSelection(plan, input, lockKey, detected)
+          : (await this.deps.apm.removeSkill({ target, ref: plan.ref })).ok
+            ? null
+            : "remove-failed";
+      if (failure !== null) {
         return {
           ok: false,
-          error: "remove-failed",
+          error: failure,
+          // What the disk says, whatever apm claimed: a blocked uninstall
+          // deletes the rest of the Selection first (apm-behavior.md).
           outcome: await this.probeOutcome(target, input.name, detected),
         };
       }
@@ -543,7 +603,7 @@ export class RemoveDeployedSkill {
         removed: {
           type: "skill",
           name: input.name,
-          version: lookup.version,
+          version,
           scope:
             detected === undefined
               ? { kind: "repo" }
@@ -553,6 +613,36 @@ export class RemoveDeployedSkill {
     } catch {
       return { ok: false, error: "remove-failed" };
     }
+  }
+
+  // One install at the same release with the narrower list, or — when the last
+  // skill goes — the named uninstall of the Harness dependency, which apm
+  // proved leaves every other dependency and hand-placed file intact (#957,
+  // apm-behavior.md § Root package and its Selection). Null when it landed.
+  private async narrowSelection(
+    plan: { origin: GitOrigin; release: string; previous: string[] },
+    input: RemoveDeployedSkillInput,
+    lockKey: string,
+    detected: readonly SupportedTool[] | undefined,
+  ): Promise<RemoveDeployedSkillError | null> {
+    const applied = await (this.deps.selection as SelectionWriter).apply({
+      target: input.target,
+      key: lockKey,
+      kind: "remove",
+      origin: plan.origin,
+      release: plan.release,
+      previous: plan.previous,
+      desired: plan.previous.filter((name) => name !== input.name),
+      ...(detected === undefined ? {} : { tools: detected }),
+    });
+    if (applied.ok) {
+      return null;
+    }
+    return applied.error === "manifest-not-recognised"
+      ? "manifest-not-recognised"
+      : applied.error === "apply-incomplete"
+        ? "remove-incomplete"
+        : "remove-failed";
   }
 
   // apm can remove a copy and still fail to say so, and the disk is the only

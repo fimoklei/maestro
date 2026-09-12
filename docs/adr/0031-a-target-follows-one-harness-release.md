@@ -2,6 +2,8 @@
 
 - **Status:** Accepted — amends ADR-0019 §1, ADR-0027 and ADR-0028
 - **Amended:** 2026-09-11 — rules 9 and 10 and the manifest write, after the #833 review
+- **Amended:** 2026-09-12 — the last removal, the operation record, and the two
+  recovery notices that no longer retire, after the #957 canary (#951)
 - **Date:** 2026-09-11 (wayfinder map #833: gate #930, spike #929, research #928)
 
 ## Context
@@ -32,6 +34,19 @@ the result.
   Maestro writes the exact selection to `skills:` in the consumer's `apm.yml`
   and passes the same list as `--skill`; removing one skill is one `install`
   at the same tag with the narrower list (ADR-0019 §7).
+- **An empty Selection has no expression.** The #957 canary measured apm
+  refusing `skills: []` outright, and installing the whole bundle when the key
+  is dropped. Removing the *last* skill is therefore a guarded, named
+  `apm uninstall` of the Harness dependency, which spares every other
+  dependency and every hand-placed file in both scopes. The target then reads
+  **Empty**, with no Target release.
+- **The intent is durable.** Before the first mutation Maestro records the
+  target, the Harness, the operation, the chosen release, the previous and the
+  desired Selection and the affected tools in `~/.maestro`. It is cleared only
+  when disk, the manifest and the deployment record all agree with the desired
+  result; a matching tag alone never clears it. One target holds one unfinished
+  operation, and a second operation is refused until a retry converges. Deploy,
+  Remove and Update share this one record.
 - **Global** adopts as one set of detected tools (ADR-0011).
 
 ### What Maestro owns
@@ -75,8 +90,10 @@ The gaps #929 measured, and the rule for each:
 - Migrating a target that still holds per-skill dependencies is its own
   decision (#933).
 - `CONTEXT.md` gains **Pending release**, **Manifest not recognised** and
-  **Extra files deployed**; **Removal incomplete** and **Retry removal**
-  retire, since a Remove no longer empties the target.
+  **Extra files deployed**. **Removal incomplete** and **Retry removal** stay:
+  the last removal does empty the target, and a blocked uninstall leaves files
+  behind whatever apm's exit code says. **Deploy incomplete** and **Retry
+  deploy** join them, on the same record.
 - The apm-driver rules for the gaps are written when the code that
   follows them lands, not before.
 
