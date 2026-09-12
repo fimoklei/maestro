@@ -24,6 +24,7 @@ function buildUseCase() {
     },
     deployedContent: {
       classify: async () => "clean" as const,
+      contentDigest: async () => null,
     },
     apm: { removeSkill: async () => ({ ok: true as const }) },
     deployedCleanup: { removeSkillTargets: async () => {} },

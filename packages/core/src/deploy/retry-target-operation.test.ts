@@ -12,7 +12,10 @@ function buildUseCase(state: DeployedContentState = "clean") {
   const retry = new RetryTargetOperation({
     registry: { isRegistered: async () => true },
     selection: world.writer,
-    deployedContent: { classify: async () => state },
+    deployedContent: {
+      classify: async () => state,
+      contentDigest: async () => null,
+    },
     toolPresence: { detectGlobalTools: async () => ["claude" as const] },
     canonicalPath: async (path: string) => path,
     locks: new InFlightLocks(),
@@ -181,7 +184,10 @@ describe("RetryTargetOperation", () => {
     const retry = new RetryTargetOperation({
       registry: { isRegistered: async () => false },
       selection: world.writer,
-      deployedContent: { classify: async () => "clean" as const },
+      deployedContent: {
+        classify: async () => "clean" as const,
+        contentDigest: async () => null,
+      },
       toolPresence: { detectGlobalTools: async () => ["claude" as const] },
       canonicalPath: async (path: string) => path,
       locks: new InFlightLocks(),

@@ -104,6 +104,14 @@ export type DeployedContentPort = {
     // (fail closed, #952).
     release?: string;
   }): Promise<DeployedContentState>;
+  // A digest of the copy's bytes as they are right now. Consent is given for
+  // content, not for a verdict: two different edits both read `diverged`.
+  // Null where nothing could be read (ADR-0031, spec story 41).
+  contentDigest(input: {
+    target: DeployTarget;
+    name: string;
+    tools?: readonly SupportedTool[];
+  }): Promise<string | null>;
   // The leaf skill directory apm refuses to write into, when one of this
   // deploy's destinations is a symlink; null when none is. Recomputed from the
   // same subtrees rather than read out of apm's prose (ADR-0018, #748).

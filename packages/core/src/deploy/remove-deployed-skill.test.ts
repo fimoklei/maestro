@@ -112,6 +112,7 @@ function buildUseCase(overrides: Overrides = {}) {
         "clean"
       );
     },
+    contentDigest: async () => null,
   };
   const useCase = new RemoveDeployedSkill({
     registry: { isRegistered: async () => overrides.registered ?? true },
@@ -457,9 +458,15 @@ describe("RemoveDeployedSkill", () => {
         resolve: async () => ({ ok: true, ref: REF, version: VERSION }),
       },
       copyGuard: new LocalCopyGuard({
-        content: { classify: async () => "clean" },
+        content: {
+          classify: async () => "clean",
+          contentDigest: async () => null,
+        },
       }),
-      deployedContent: { classify: async () => "clean" },
+      deployedContent: {
+        classify: async () => "clean",
+        contentDigest: async () => null,
+      },
       apm: {
         removeSkill: async () => {
           throw new Error("apm exploded");
@@ -1246,6 +1253,7 @@ describe("RemoveDeployedSkill.preflight", () => {
             classified.push(name);
             return "clean";
           },
+          contentDigest: async () => null,
         },
       }),
       deployedContent: {
@@ -1253,6 +1261,7 @@ describe("RemoveDeployedSkill.preflight", () => {
           classified.push(name);
           return "clean";
         },
+        contentDigest: async () => null,
       },
       apm: { removeSkill: async () => ({ ok: true }) },
       deployedCleanup: { removeSkillTargets: async () => undefined },
@@ -1296,12 +1305,14 @@ describe("RemoveDeployedSkill.preflight", () => {
           classify: async () => {
             throw new Error("disk exploded");
           },
+          contentDigest: async () => null,
         },
       }),
       deployedContent: {
         classify: async () => {
           throw new Error("disk exploded");
         },
+        contentDigest: async () => null,
       },
       apm: { removeSkill: async () => ({ ok: true }) },
       deployedCleanup: { removeSkillTargets: async () => undefined },

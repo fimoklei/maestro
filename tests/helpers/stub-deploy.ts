@@ -46,7 +46,10 @@ export const stubRetryOperation = (deps: {
   new RetryTargetOperation({
     registry: deps.registry,
     selection: stubSelectionWriter(),
-    deployedContent: { classify: async () => "not-deployed" },
+    deployedContent: {
+      classify: async () => "not-deployed",
+      contentDigest: async () => null,
+    },
     toolPresence: { detectGlobalTools: async () => ["claude", "codex"] },
     canonicalPath: async (path) => path,
     locks: deps.locks,
@@ -81,6 +84,7 @@ export const stubDeploy = (deps: {
     },
     deployedContent: {
       classify: async () => "not-deployed",
+      contentDigest: async () => null,
       linkedSkillPath: async () => null,
     },
     deployedCleanup: { removeSkillTargets: async () => undefined },

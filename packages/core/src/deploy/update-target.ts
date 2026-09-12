@@ -16,10 +16,11 @@ import type {
 import type { SupportedTool } from "./deploy-tools";
 import type { GitOrigin } from "./git-origin";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
-import type {
-  CopyVerdict,
-  LocalCopyCheck,
-  LocalCopyGuard,
+import {
+  type CopyVerdict,
+  copyKeys,
+  type LocalCopyCheck,
+  type LocalCopyGuard,
 } from "./local-copy-guard";
 import { ConsentSigner } from "./signed-consent";
 
@@ -545,12 +546,8 @@ export class UpdateTarget {
       current: [...scope.current].sort(),
       desired: [...scope.desired].sort(),
       tools: [...scope.tools].sort(),
-      copies: scope.copies.findings
-        .map(
-          (finding) =>
-            `${finding.name}:${finding.tool ?? ""}:${finding.verdict}`,
-        )
-        .sort(),
+      copies: copyKeys(scope.copies),
+      content: scope.copies.digest,
     });
   }
 

@@ -18,6 +18,7 @@ const globalTarget: DeployTarget = { kind: "global" };
 // but the symlink one needs.
 const contentState = (state: DeployedContentState): DeployedContentPort => ({
   classify: async () => state,
+  contentDigest: async () => null,
   linkedSkillPath: async () => null,
 });
 
@@ -84,6 +85,7 @@ const buildDeps = (
         classified.push(input);
         return "not-deployed" as const;
       },
+      contentDigest: async () => null,
       linkedSkillPath: async () => null,
     },
     deployedCleanup: {
@@ -196,6 +198,7 @@ describe("DeploySkill", () => {
     const { deps } = buildDeps({
       deployedContent: {
         classify: async () => "unverifiable" as const,
+        contentDigest: async () => null,
         linkedSkillPath: async () => null,
       },
       recordedPackage: {
@@ -846,6 +849,7 @@ describe("DeploySkill", () => {
     const { deps, world } = buildDeps({
       deployedContent: {
         classify: async () => "not-deployed" as const,
+        contentDigest: async () => null,
         linkedSkillPath: async () => "/registered/repo/.claude/skills/tdd",
       },
     });

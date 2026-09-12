@@ -168,7 +168,10 @@ describe("update HTTP journey", () => {
         }),
         toolPresence: { detectGlobalTools: async () => ["claude"] },
         copyGuard: new LocalCopyGuard({
-          content: { classify: async () => options?.copy ?? "clean" },
+          content: {
+            classify: async () => options?.copy ?? "clean",
+            contentDigest: async () => null,
+          },
         }),
         selection,
         // The outcome is read from the files and the record apm just wrote,

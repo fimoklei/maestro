@@ -57,7 +57,7 @@ export class RetryTargetOperation {
     registry: { isRegistered(path: string): Promise<boolean> };
     selection: SelectionWriter;
     copyGuard?: Pick<LocalCopyGuard, "check" | "admits">;
-    deployedContent: Pick<DeployedContentPort, "classify">;
+    deployedContent: Pick<DeployedContentPort, "classify" | "contentDigest">;
     toolPresence: ToolPresencePort;
     canonicalPath: (path: string) => Promise<string>;
     locks: InFlightLocks;

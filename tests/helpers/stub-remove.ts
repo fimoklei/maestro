@@ -19,7 +19,10 @@ export const stubRemove = (deps: {
     deployedRef: {
       resolve: async () => ({ ok: false as const, reason: "not-deployed" }),
     },
-    deployedContent: { classify: async () => "clean" },
+    deployedContent: {
+      classify: async () => "clean",
+      contentDigest: async () => null,
+    },
     apm: { removeSkill: async () => ({ ok: true as const }) },
     // Never reached: the ref lookup above refuses first, so nothing gets far
     // enough to reclaim a leftover.

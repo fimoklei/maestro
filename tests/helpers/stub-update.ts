@@ -18,7 +18,7 @@ export const stubUpdate = () =>
     // scope this stub never had.
     toolPresence: { detectGlobalTools: async () => [] },
     copyGuard: {
-      check: async () => ({ findings: [] }),
+      check: async () => ({ findings: [], digest: null }),
       admits: () => ({ ok: true }),
     },
     // The write side refuses too: nothing here may reach a real target.

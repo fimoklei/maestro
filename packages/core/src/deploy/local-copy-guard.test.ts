@@ -24,6 +24,7 @@ function guardOver(
         }
         return state;
       },
+      contentDigest: async () => null,
     },
   });
   return { guard, calls };
@@ -90,6 +91,7 @@ describe("LocalCopyGuard", () => {
     const guard = new LocalCopyGuard({
       content: {
         classify: async (input) => states[`${input.name}:`] ?? "clean",
+        contentDigest: async () => null,
       },
     });
     const scope = { write: "deploy", target: repo } as const;
@@ -101,6 +103,24 @@ describe("LocalCopyGuard", () => {
     const fresh = await guard.check({ ...scope, names: ["tdd"] });
     expect(guard.admits(scope, fresh, receipt).ok).toBe(false);
     expect(guard.admits(scope, priced, receipt).ok).toBe(true);
+  });
+
+  it("refuses a receipt once the same verdict covers different content", async () => {
+    let body = "first edit";
+    const guard = new LocalCopyGuard({
+      content: {
+        classify: async () => "diverged" as const,
+        contentDigest: async () => body,
+      },
+    });
+    const scope = { write: "deploy", target: repo } as const;
+    const priced = await guard.check({ ...scope, names: ["tdd"] });
+    const receipt = guard.receipt(scope, priced);
+
+    body = "second edit";
+    const fresh = await guard.check({ ...scope, names: ["tdd"] });
+    expect(fresh.findings).toEqual(priced.findings);
+    expect(guard.admits(scope, fresh, receipt).ok).toBe(false);
   });
 
   it("refuses a receipt minted for another write", async () => {
@@ -243,6 +263,7 @@ describe("LocalCopyGuard", () => {
           releases.push(input.release);
           return "clean";
         },
+        contentDigest: async () => null,
       },
     });
 

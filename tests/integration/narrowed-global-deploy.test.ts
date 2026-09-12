@@ -83,6 +83,7 @@ describe("narrowed global deploy — which copies survive on disk", () => {
         }),
       },
       deployedContent: {
+        contentDigest: async () => null,
         classify: async () => "not-deployed" as const,
         linkedSkillPath: async () => null,
       },

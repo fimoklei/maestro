@@ -102,6 +102,26 @@ export class DeployedContentAdapter implements DeployedContentPort {
       : "diverged";
   }
 
+  // The bytes themselves, hashed per file and folded into one string. Null
+  // where the copy could not be read, which no consent may cover anyway.
+  async contentDigest(input: {
+    target: DeployTarget;
+    name: string;
+    tools?: readonly SupportedTool[];
+  }): Promise<string | null> {
+    const root = this.deps.location.treeRoot(input.target);
+    const subtrees = deployTargetSubtrees(input.name, input.tools);
+    const scan = await this.scanSubtrees(root, subtrees, { hash: true }).catch(
+      () => null,
+    );
+    return scan === null
+      ? null
+      : Object.entries(scan.hashes)
+          .sort(([a], [b]) => (a < b ? -1 : 1))
+          .map(([path, hash]) => `${path}=${hash}`)
+          .join("\n");
+  }
+
   // Whole-tree equality, per targeted subtree: an extra, missing or differing
   // file anywhere leaves the copy protected. A release that cannot be read
   // answers false — fail closed, never a pass on a guess (#952).

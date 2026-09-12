@@ -119,7 +119,10 @@ describe("retiring a skill from every target it is deployed to", () => {
       registry,
       locks,
       deployedRef: new DeployedRefAdapter({ fs, location }),
-      deployedContent: { classify: async () => "clean" as const },
+      deployedContent: {
+        classify: async () => "clean" as const,
+        contentDigest: async () => null,
+      },
       apm: {
         removeSkill: async ({ target, ref }) => {
           if (target.kind === "repo" && fails.has(target.repoPath)) {

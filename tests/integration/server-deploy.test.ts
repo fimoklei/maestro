@@ -198,6 +198,7 @@ describe("deploy HTTP route", () => {
         readSkillFilesAtTag: async () => null,
       },
       deployedContent: {
+        contentDigest: async () => null,
         classify: async () => {
           if (options?.destLockfileMalformed) return "lockfile-malformed";
           if (options?.destUnreadable) return "unreadable";

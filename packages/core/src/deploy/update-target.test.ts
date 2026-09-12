@@ -47,6 +47,7 @@ const CLEAN_COPIES = {
     tool: null,
     verdict: "clean" as const,
   })),
+  digest: null,
 };
 
 type Options = {
@@ -64,6 +65,8 @@ type Options = {
   copiesAfter?: Record<string, DeployedContentState>;
   // The skill the Inventory's entrance asks for beside the release move (#955).
   add?: string;
+  // What the copies read as byte for byte, re-read on every check.
+  bytes?: () => string | null;
 };
 
 const HARNESS = "fimoklei/harness";
@@ -135,7 +138,12 @@ function subject(options: Options = {}) {
     toolPresence: {
       detectGlobalTools: async () => options.detected ?? ["claude"],
     },
-    copyGuard: new LocalCopyGuard({ content: { classify } }),
+    copyGuard: new LocalCopyGuard({
+      content: {
+        classify,
+        contentDigest: async () => options.bytes?.() ?? null,
+      },
+    }),
   });
   const target = options.target ?? REPO;
   const add = options.add === undefined ? {} : { add: options.add };
@@ -464,6 +472,24 @@ describe("UpdateTarget preflight token", () => {
     expect(update.accepts({ ...scope, desired: ["tdd"] }, token)).toBe(false);
     expect(update.accepts({ ...scope, tools: ["claude"] }, token)).toBe(false);
     expect(update.accepts({ ...scope, target: GLOBAL }, token)).toBe(false);
+  });
+
+  it("refuses the confirm when a blocked copy was edited again after pricing", async () => {
+    let body = "first edit";
+    const { preview, run } = subject({
+      copies: { tdd: "diverged" },
+      bytes: () => body,
+    });
+    const answer = await preview();
+    if (!answer.ok) {
+      throw new Error("preview refused");
+    }
+    const receipt = answer.preview.copyReceipt ?? undefined;
+
+    body = "second edit";
+    await expect(
+      run({ token: answer.preview.token, confirmedCopyReceipt: receipt }),
+    ).resolves.toMatchObject({ ok: false, error: "status-out-of-date" });
   });
 
   it("retires when the content it priced changed", async () => {

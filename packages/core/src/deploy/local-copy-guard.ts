@@ -59,7 +59,13 @@ export type LocalCopyScope = {
   target: DeployTarget;
 };
 
-export type LocalCopyCheck = { findings: readonly CopyFinding[] };
+// `digest` fingerprints the bytes of every copy consent would cover, so a
+// second edit under the same verdict retires the consent (spec story 41).
+// Null where no copy needs consent.
+export type LocalCopyCheck = {
+  findings: readonly CopyFinding[];
+  digest: string | null;
+};
 
 // `receipt` is null where no consent exists, so a caller cannot offer a way
 // past a refusal that has none.
@@ -72,8 +78,20 @@ export type LocalCopyDecision =
       receipt: string | null;
     };
 
+// Order-independent: the same copies in another order are the same consent.
+// Shared with the Update preflight token, so the two never bind different facts.
+export function copyKeys(check: LocalCopyCheck): string[] {
+  return check.findings
+    .map(
+      (finding) => `${finding.name}:${finding.tool ?? ""}:${finding.verdict}`,
+    )
+    .sort();
+}
+
 export class LocalCopyGuard {
-  private readonly deps: { content: Pick<DeployedContentPort, "classify"> };
+  private readonly deps: {
+    content: Pick<DeployedContentPort, "classify" | "contentDigest">;
+  };
   private readonly signer = new ConsentSigner();
 
   constructor(deps: LocalCopyGuard["deps"]) {
@@ -96,16 +114,24 @@ export class LocalCopyGuard {
       ? [...input.tools]
       : [null];
     const findings: CopyFinding[] = [];
+    // Only consentable copies are fingerprinted: nothing else can be waved
+    // through, so nothing else needs its bytes bound.
+    const bytes: string[] = [];
     for (const name of input.names) {
       for (const tool of scopes) {
-        findings.push({
-          name,
-          tool,
-          verdict: await this.classify(input, name, tool),
-        });
+        const verdict = await this.classify(input, name, tool);
+        findings.push({ name, tool, verdict });
+        if (CONSENTABLE.has(verdict)) {
+          bytes.push(
+            `${name}:${tool ?? ""}:${await this.digest(input, name, tool)}`,
+          );
+        }
       }
     }
-    return { findings };
+    return {
+      findings,
+      digest: bytes.length === 0 ? null : bytes.sort().join("\n"),
+    };
   }
 
   // The write's verdict against the copies just read, and the receipt that
@@ -145,13 +171,25 @@ export class LocalCopyGuard {
           : { kind: "global" },
       // Order-independent: the same copies in another order are the same
       // consent.
-      copies: check.findings
-        .map(
-          (finding) =>
-            `${finding.name}:${finding.tool ?? ""}:${finding.verdict}`,
-        )
-        .sort(),
+      copies: copyKeys(check),
+      content: check.digest,
     });
+  }
+
+  // Null is "nothing could be read", which is never consentable: it can only
+  // widen a refusal, never license a write (fail closed).
+  private async digest(
+    input: LocalCopyScope,
+    name: string,
+    tool: SupportedTool | null,
+  ): Promise<string | null> {
+    return this.deps.content
+      .contentDigest({
+        target: input.target,
+        name,
+        ...(tool === null ? {} : { tools: [tool] }),
+      })
+      .catch(() => null);
   }
 
   // Caught per copy: one unreadable subtree answers for itself, and a check

@@ -124,6 +124,7 @@ describe("bulk deploy HTTP route", () => {
         }),
       },
       deployedContent: {
+        contentDigest: async () => null,
         classify: async ({ name }) =>
           diverged.has(name) ? "diverged" : "not-deployed",
         linkedSkillPath: async () => null,

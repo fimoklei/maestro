@@ -109,6 +109,7 @@ describe("remove HTTP route", () => {
               classifyCalls.push({ tools });
               return options?.deployedState ?? "clean";
             },
+            contentDigest: async () => null,
           },
       apm: {
         removeSkill: async (input) => {

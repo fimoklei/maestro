@@ -106,6 +106,7 @@ describe("the tracer journey through one cockpit", () => {
         }),
       },
       deployedContent: {
+        contentDigest: async () => null,
         classify: async () => "not-deployed" as const,
         linkedSkillPath: async () => null,
       },

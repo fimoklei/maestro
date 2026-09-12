@@ -95,6 +95,7 @@ describe("bulk remove HTTP route", () => {
       locks,
       deployedRef: new DeployedRefAdapter({ fs, location }),
       deployedContent: {
+        contentDigest: async () => null,
         classify: async ({ target }) => {
           if (target.kind !== "repo") {
             return "clean";

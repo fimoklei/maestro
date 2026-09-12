@@ -248,7 +248,7 @@ export class RemoveDeployedSkill {
     copyGuard?: Pick<LocalCopyGuard, "check">;
     // The post-removal probe only: it tells an absent copy from a clean one,
     // which the guard's verdicts deliberately collapse.
-    deployedContent: Pick<DeployedContentPort, "classify">;
+    deployedContent: Pick<DeployedContentPort, "classify" | "contentDigest">;
     apm: Pick<ApmDriverPort, "removeSkill">;
     // The only mechanism allowed to clear a copy apm left behind: a bare
     // `apm uninstall -g` deletes beyond its own lockfile (apm-driver.md
@@ -386,23 +386,25 @@ export class RemoveDeployedSkill {
     if (scope.scope === "repo") {
       return await ask();
     }
-    const findings: CopyFinding[] = [];
-    // Only the write asks this: every supported tool's copy, whatever this
-    // machine detects today. apm's uninstall deletes by its own recorded
+    // Only the write asks for the whole copy: every supported tool's, whatever
+    // this machine detects today. apm's uninstall deletes by its own recorded
     // targets, so a copy in a tool that has since dropped out is still at risk.
     // A read prices what the reader sees; the write protects what apm reaches.
-    if (wholeCopy) {
-      findings.push(...(await ask()).findings);
-    }
-    findings.push(
-      ...(
-        await ask([
-          ...scope.detected,
-          ...(reclaim?.previews ?? []).map((preview) => preview.tool),
-        ])
-      ).findings,
-    );
-    return { findings };
+    const parts = [
+      ...(wholeCopy ? [await ask()] : []),
+      await ask([
+        ...scope.detected,
+        ...(reclaim?.previews ?? []).map((preview) => preview.tool),
+      ]),
+    ];
+    const findings: CopyFinding[] = parts.flatMap((part) => [...part.findings]);
+    const digests = parts
+      .map((part) => part.digest)
+      .filter((digest): digest is string => digest !== null);
+    return {
+      findings,
+      digest: digests.length === 0 ? null : digests.sort().join("\n"),
+    };
   }
 
   async execute(

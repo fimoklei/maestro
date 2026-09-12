@@ -119,7 +119,10 @@ describe("the deploy-state read after a removal", () => {
       registry,
       locks,
       deployedRef: new DeployedRefAdapter({ fs, location }),
-      deployedContent: { classify: async () => "clean" as const },
+      deployedContent: {
+        classify: async () => "clean" as const,
+        contentDigest: async () => null,
+      },
       apm: {
         removeSkill: async ({ target, ref }) => {
           if (!confirms) {
