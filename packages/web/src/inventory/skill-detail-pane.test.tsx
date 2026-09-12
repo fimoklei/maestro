@@ -50,10 +50,11 @@ describe("SkillDetailPane", () => {
       ],
     });
 
+    // `{target} · release v0.3.2` — the separator is the spec's (story 54).
     expect(screen.getByText("Claude Code")).toBeInTheDocument();
-    expect(screen.getByText("release v1.0.0")).toBeInTheDocument();
+    expect(screen.getByText("· release v1.0.0")).toBeInTheDocument();
     expect(screen.getByText("/dev/acme-web")).toBeInTheDocument();
-    expect(screen.getByText("release v1.1.0")).toBeInTheDocument();
+    expect(screen.getByText("· release v1.1.0")).toBeInTheDocument();
   });
 
   it("marks an in-sync target with a status word, not colour alone", () => {
@@ -79,7 +80,7 @@ describe("SkillDetailPane", () => {
       ],
     });
 
-    expect(screen.getByText("release v1.0.0")).toBeInTheDocument();
+    expect(screen.getByText("· release v1.0.0")).toBeInTheDocument();
     expect(screen.getByText("Behind")).toBeInTheDocument();
   });
 

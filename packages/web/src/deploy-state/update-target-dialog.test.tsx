@@ -222,6 +222,20 @@ describe("UpdateTargetDialog", () => {
     ).toBeTruthy();
   });
 
+  // Story 36: two ways out, so the one this dialog cannot host names its place.
+  it("names importing as the way to keep the work, beside discarding it", () => {
+    show({
+      localEdits: { discard: [{ name: "tdd", tool: null }], unverified: [] },
+      copyReceipt: "b".repeat(64),
+    });
+
+    expect(
+      screen.getByText(
+        "Keep this work instead: select Cancel, then Import skill… on the Harness screen.",
+      ),
+    ).toBeTruthy();
+  });
+
   it("names what is loading while the preview is read", () => {
     render(
       <UpdateTargetDialog

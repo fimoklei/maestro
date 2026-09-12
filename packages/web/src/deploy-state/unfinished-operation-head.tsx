@@ -2,23 +2,30 @@
 // that carries it. The record is durable, so this survives a restart until the
 // retry converges (ADR-0031, #951).
 import { Notice } from "../ui/notice";
-import { unfinishedOperationNotice } from "./release-head-copy";
+import {
+  RETRY_DEPLOY,
+  RETRY_REMOVAL,
+  unfinishedOperationNotice,
+} from "./release-head-copy";
 import { RETRY_UPDATE } from "./update-target-copy";
-import type { PendingOperation } from "./use-deploy-state";
+import type { DeployedPrimitive, PendingOperation } from "./use-deploy-state";
 
-// One label per operation, each naming the operation that stopped (copy.md).
 const RETRY_LABELS: Record<PendingOperation["kind"], string> = {
-  deploy: "Retry deploy",
-  remove: "Retry removal",
+  deploy: RETRY_DEPLOY,
+  remove: RETRY_REMOVAL,
   update: RETRY_UPDATE,
 };
 
 export function UnfinishedOperationHead({
   pending,
+  primitives = [],
   onRetry,
   isRetrying = false,
 }: {
   pending: PendingOperation;
+  // What the target holds now, which is how a half-landed update counts what
+  // landed (spec story 8).
+  primitives?: readonly DeployedPrimitive[];
   onRetry: () => void;
   isRetrying?: boolean;
 }) {
@@ -27,7 +34,7 @@ export function UnfinishedOperationHead({
       <Notice
         trigger="load"
         notice={{
-          ...unfinishedOperationNotice(pending),
+          ...unfinishedOperationNotice(pending, primitives),
           action: {
             label: RETRY_LABELS[pending.kind],
             onClick: onRetry,

@@ -279,7 +279,7 @@ describe("InventoryList", () => {
       within(pane).getByRole("heading", { name: /tdd/i }),
     ).toBeInTheDocument();
     // The per-target release lens: tdd is deployed to the one target (#956).
-    expect(within(pane).getByText("release v1.0.0")).toBeInTheDocument();
+    expect(within(pane).getByText("· release v1.0.0")).toBeInTheDocument();
   });
 
   it("closes the pane on Escape and returns focus to the row that opened it", async () => {

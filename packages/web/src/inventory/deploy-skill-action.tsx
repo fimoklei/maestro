@@ -190,9 +190,10 @@ export function DeploySkillAction({
           }
         />
       ) : null}
-      {/* The one refusal another release clears: the same preview the card
-          opens, priced with this skill as well (ADR-0031, #955). */}
-      {needsNewerRelease ? (
+      {/* Two ways into one preview: the refusal another release clears, and a
+          copy the newest release changed. Both price this skill as well, so a
+          Selection that already holds it simply adds nothing (#955, story 46). */}
+      {needsNewerRelease || behindHere ? (
         <UpdateTargetAction
           targetName={targetName}
           target={target}

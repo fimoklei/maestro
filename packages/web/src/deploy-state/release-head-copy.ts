@@ -58,31 +58,53 @@ export const RELEASE_NOT_ADOPTED = {
     "This target was deployed one skill at a time. Select Remove skill for each skill, then Deploy skill to put them back on one release.",
 } satisfies NoticeContent;
 
+// The control each unfinished operation offers, named for the operation that
+// stopped (copy.md). Shared with the sentences below, so label and step agree.
+export const RETRY_DEPLOY = "Retry deploy";
+export const RETRY_REMOVAL = "Retry removal";
+
 // The three notices an unfinished operation carries. Warning, not error: the
 // files are in a state one control converges, and the action names the
 // operation that stopped (copy.md, #951, #954).
-export function unfinishedOperationNotice(pending: {
-  kind: "deploy" | "remove" | "update";
-  release: string;
-}): { level: "warning"; label: string; message: string } {
+export function unfinishedOperationNotice(
+  pending: {
+    kind: "deploy" | "remove" | "update";
+    release: string;
+    desired?: readonly string[];
+  },
+  // What the target holds now, so the update's detail can measure what landed
+  // rather than restate the intent (spec story 8).
+  primitives: readonly DeployedPrimitive[] = [],
+): { level: "warning"; label: string; message: string; detail?: string } {
   if (pending.kind === "update") {
+    const desired = pending.desired ?? [];
+    const landed = desired.filter((name) =>
+      primitives.some(
+        (primitive) =>
+          primitive.name === name && primitive.version === pending.release,
+      ),
+    ).length;
     return {
       level: "warning",
       label: UPDATE_INCOMPLETE,
       message: UPDATE_INCOMPLETE_SENTENCE,
+      ...(desired.length === 0
+        ? {}
+        : {
+            detail: `Update to ${pending.release} incomplete: ${landed} of ${desired.length} skills landed.`,
+          }),
     };
   }
   return pending.kind === "deploy"
     ? {
         level: "warning",
         label: "Deploy incomplete",
-        message: `Part of the selection is not on disk. Select Retry deploy to install release ${pending.release} again.`,
+        message: `Part of the selection is not on disk. Select ${RETRY_DEPLOY} to install release ${pending.release} again.`,
       }
     : {
         level: "warning",
         label: "Removal incomplete",
-        message:
-          "The skill's files are still on disk. Select Retry removal to run the same removal again.",
+        message: `The skill's files are still on disk. Select ${RETRY_REMOVAL} to run the same removal again.`,
       };
 }
 

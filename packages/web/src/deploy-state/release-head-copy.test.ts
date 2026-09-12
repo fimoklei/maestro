@@ -171,4 +171,31 @@ describe("unfinishedOperationNotice", () => {
         "The skill's files are still on disk. Select Retry removal to run the same removal again.",
     });
   });
+
+  // Story 8: the half-landed Update states what landed, not just that it
+  // stopped. The chip names the state; this sentence measures it.
+  it("counts what a half-landed update landed", () => {
+    expect(
+      unfinishedOperationNotice(
+        {
+          kind: "update",
+          release: "v0.3.4",
+          desired: ["tdd", "grill", "jobs", "brief", "review"],
+        },
+        [
+          { type: "skill", name: "tdd", version: "v0.3.4" },
+          { type: "skill", name: "grill", version: "v0.3.4" },
+          { type: "skill", name: "jobs", version: "v0.3.4" },
+          { type: "skill", name: "brief", version: "v0.3.2" },
+          { type: "skill", name: "review", version: "v0.3.2" },
+        ],
+      ),
+    ).toEqual({
+      level: "warning",
+      label: "Update incomplete",
+      message:
+        "The update is incomplete. Select Retry update to run the same release again.",
+      detail: "Update to v0.3.4 incomplete: 3 of 5 skills landed.",
+    });
+  });
 });

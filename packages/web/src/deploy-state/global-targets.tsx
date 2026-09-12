@@ -92,6 +92,7 @@ export function GlobalTargets({
             <div className="lg:col-span-2">
               <UnfinishedOperationHead
                 pending={pendingOperation}
+                primitives={tools.flatMap((group) => group.primitives)}
                 onRetry={onRetryOperation ?? (() => {})}
                 isRetrying={isRetryingOperation}
               />
@@ -110,6 +111,7 @@ export function GlobalTargets({
             <ToolTargetCard
               key={group.tool}
               group={group}
+              isUpdating={isUpdating}
               mixedReleases={pendingOperation?.kind === "update"}
               drift={drift}
               // Section-wide, since a skipped entry names no tool (#358).
@@ -139,6 +141,7 @@ const updatingRelease = (tools: ToolDeployState[]): string =>
 
 function ToolTargetCard({
   group,
+  isUpdating = false,
   mixedReleases = false,
   drift,
   detectedTools,
@@ -147,6 +150,9 @@ function ToolTargetCard({
   onStartDeploy,
 }: {
   group: ToolDeployState;
+  // The section states the release once; the card drops its body, so no row
+  // menu or deploy action survives the write (spec story 27).
+  isUpdating?: boolean;
   mixedReleases?: boolean;
   drift: DriftViewModel;
   detectedTools: string[];
@@ -193,7 +199,7 @@ function ToolTargetCard({
         />
       }
     >
-      {indicator === "foreign" ? (
+      {isUpdating ? null : indicator === "foreign" ? (
         // Foreign is empty plus a fact, so the fact stands above the same
         // action an empty target offers, never instead of it (#749).
         <>

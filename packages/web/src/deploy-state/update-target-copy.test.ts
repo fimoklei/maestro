@@ -6,6 +6,7 @@ import {
   countingSentence,
   DISCARD_LOCAL_EDITS,
   foldedHeading,
+  KEEP_WORK_BY_IMPORTING,
   LOADING_PREVIEW,
   localEditsSentence,
   MIXED_RELEASES,
@@ -93,6 +94,9 @@ describe("Update target copy", () => {
 
   it("names both consents by the effect each one allows", () => {
     expect(DISCARD_LOCAL_EDITS).toBe("Discard local edits");
+    expect(KEEP_WORK_BY_IMPORTING).toBe(
+      "Keep this work instead: select Cancel, then Import skill… on the Harness screen.",
+    );
     expect(OVERWRITE_UNVERIFIED).toBe("Overwrite unverified copy");
   });
 

@@ -198,7 +198,7 @@ function DeployedRow({ deployment }: { deployment: SkillDeployment }) {
       ) : null}
       <span className="flex-1 truncate text-fg-2">{label}</span>
       <span className={cn("font-mono", versionColor[status])}>
-        release {release}
+        · release {release}
       </span>
       {chip ? <Chip tone={chip.tone}>{chip.label}</Chip> : null}
     </li>

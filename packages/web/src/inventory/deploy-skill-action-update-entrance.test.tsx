@@ -83,6 +83,40 @@ describe("DeploySkillAction routing into the Update preview", () => {
     ).toBeInTheDocument();
   });
 
+  // Story 46: a deployed skill the newest release changed needs the same
+  // entrance. Without it the row states Behind and offers nothing at all.
+  it("offers Update target for a skill deployed here but behind", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/deploy-state?")) {
+          return jsonResponse({
+            primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
+            skipped: [],
+            releaseHead: {
+              release: "v0.3.2",
+              latestRelease: "v0.3.4",
+              changed: 1,
+              changedSkills: ["tdd"],
+              selection: ["tdd"],
+              selected: 1,
+              comparedAt: "2026-09-12T10:00:00.000Z",
+            },
+          });
+        }
+        return jsonResponse({ tools: [], primitives: [], skipped: [] });
+      }),
+    );
+    renderWithQuery(
+      <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
+    );
+
+    expect(
+      await screen.findByRole("button", { name: /update target/i }),
+    ).toBeInTheDocument();
+  });
+
   it("offers no Update target for a refusal another release cannot clear", async () => {
     await refusedDeploy({ deployError: "local-diverged-from-tag" });
 

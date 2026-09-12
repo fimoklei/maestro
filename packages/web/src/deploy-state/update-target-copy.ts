@@ -68,6 +68,11 @@ export const BECOMES_EMPTY =
 export const DISCARD_LOCAL_EDITS = "Discard local edits";
 export const OVERWRITE_UNVERIFIED = "Overwrite unverified copy";
 
+// The second way out (spec story 36). Import skill… lives on the Harness
+// screen, which this dialog cannot host, so the step names that place.
+export const KEEP_WORK_BY_IMPORTING =
+  "Keep this work instead: select Cancel, then Import skill… on the Harness screen.";
+
 export const localEditsSentence = (name: string, release: string): string =>
   `Your copy of ${name} differs from release ${release}.`;
 

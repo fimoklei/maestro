@@ -110,6 +110,7 @@ export function DeployStatePanel({
           {pending ? (
             <UnfinishedOperationHead
               pending={pending}
+              primitives={deployState.data?.primitives ?? []}
               onRetry={() =>
                 retry.mutate({ target: { kind: "repo", repoPath: repo } })
               }

@@ -21,6 +21,7 @@ import {
   countingSentence,
   DISCARD_LOCAL_EDITS,
   foldedHeading,
+  KEEP_WORK_BY_IMPORTING,
   LOADING_PREVIEW,
   LOCAL_EDITS,
   localEditsSentence,
@@ -324,6 +325,11 @@ export function UpdateTargetDialog({
             ) : null}
             {required.length > 0 ? (
               <Section heading={LOCAL_EDITS}>
+                {preview.localEdits.discard.length > 0 ? (
+                  <p className="mb-2 font-ui text-desc text-dim">
+                    {KEEP_WORK_BY_IMPORTING}
+                  </p>
+                ) : null}
                 <ul className="flex flex-col gap-2">
                   {preview.localEdits.discard.map((row) => (
                     <ConsentRow

@@ -46,6 +46,32 @@ describe("GlobalTargets", () => {
     expect(screen.queryByText("● Empty")).not.toBeInTheDocument();
   });
 
+  // Story 27: while apm runs no control anywhere in the section may start a
+  // second operation — the row menus included.
+  it("carries no control on a tool card while the update runs", () => {
+    renderTargets({
+      isUpdating: true,
+      tools: [
+        {
+          tool: "claude",
+          primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
+          releaseHead: {
+            release: "v0.3.2",
+            latestRelease: "v0.3.4",
+            changed: 1,
+            changedSkills: ["tdd"],
+            selection: ["tdd"],
+            selected: 1,
+            comparedAt: "2026-09-12T10:00:00.000Z",
+          },
+        },
+      ],
+    });
+
+    expect(screen.getByText("Updating to v0.3.4…")).toBeInTheDocument();
+    expect(screen.queryAllByRole("button")).toEqual([]);
+  });
+
   it("names the recorded type of an unsupported deployment and how to recover", () => {
     renderTargets({
       tools: [{ tool: "claude", primitives: [] }],

@@ -21,6 +21,27 @@ describe("UnfinishedOperationHead", () => {
     ).toBeInTheDocument();
   });
 
+  it("states what a half-landed update landed", () => {
+    render(
+      <UnfinishedOperationHead
+        pending={{
+          kind: "update",
+          release: "v0.3.4",
+          desired: ["tdd", "grill"],
+        }}
+        primitives={[
+          { type: "skill", name: "tdd", version: "v0.3.4" },
+          { type: "skill", name: "grill", version: "v0.3.2" },
+        ]}
+        onRetry={() => {}}
+      />,
+    );
+
+    expect(
+      screen.getByText("Update to v0.3.4 incomplete: 1 of 2 skills landed."),
+    ).toBeInTheDocument();
+  });
+
   it("offers Retry removal on an unfinished removal", () => {
     render(
       <UnfinishedOperationHead
