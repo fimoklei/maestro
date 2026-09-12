@@ -1,6 +1,9 @@
 import { useState } from "react";
+import { HttpError } from "../api/http";
+import { UpdateTargetAction } from "../deploy-state/update-target-action";
 import { useDeployState } from "../deploy-state/use-deploy-state";
 import { useGlobalDeployState } from "../deploy-state/use-global-deploy-state";
+import { useUpdateTarget } from "../deploy-state/use-update-target";
 import { driftViewModel } from "../drift/drift-view-model";
 import { useDrift, useGlobalDrift } from "../drift/use-drift";
 import { versionColor } from "../drift/version-color";
@@ -33,6 +36,7 @@ export function DeploySkillAction({
 }: DeploySkillActionProps) {
   const [chosen, setChosen] = useState<string | null>(null);
   const deploy = useDeploySkill();
+  const update = useUpdateTarget();
 
   const isKnown =
     chosen === GLOBAL_VALUE || repos.some((repo) => repo.path === chosen);
@@ -89,9 +93,20 @@ export function DeploySkillAction({
   // where Global is the default pick.
   const globalUnavailable = isGlobal && globalDisabled;
 
+  // The deploy refused because this release does not hold the skill, and the
+  // newer one may. Read from the code, never the sentence (#66, #955).
+  const needsNewerRelease =
+    deploy.error instanceof HttpError &&
+    deploy.error.code === "not-at-target-release";
+
   const selectId = `deploy-${skillName}-target`;
   // Shortened like every other target name in the cockpit (#211).
   const repoPaths = repos.map((repo) => repo.path);
+  // The picker's own words for the chosen target, so the dialog names it the
+  // way the reader picked it.
+  const targetName = isGlobal
+    ? globalOptionLabel(globalTools)
+    : targetLabel(selected, repoPaths);
 
   const buttonLabel = !registryReady
     ? "Loading targets…"
@@ -173,6 +188,19 @@ export function DeploySkillAction({
               confirmedCopyReceipt,
             })
           }
+        />
+      ) : null}
+      {/* The one refusal another release clears: the same preview the card
+          opens, priced with this skill as well (ADR-0031, #955). */}
+      {needsNewerRelease ? (
+        <UpdateTargetAction
+          targetName={targetName}
+          target={target}
+          update={update}
+          add={skillName}
+          // The refusal described a target this update just moved, so it goes
+          // with the dialog rather than outliving what it stated.
+          onClose={() => deploy.reset()}
         />
       ) : null}
     </span>

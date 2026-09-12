@@ -90,6 +90,22 @@ export const BecomesEmpty: Story = {
   },
 };
 
+// The Inventory's entrance: one skill added beside the release move, named
+// first and gone from New in this release (#955).
+export const AddedByThisDeploy: Story = {
+  args: {
+    preview: {
+      ...PREVIEW,
+      addedByThisDeploy: [row("wizard")],
+      newInRelease: [],
+      selection: {
+        ...PREVIEW.selection,
+        desired: [...PREVIEW.selection.desired, "wizard"],
+      },
+    },
+  },
+};
+
 export const Refused: Story = {
   args: {
     preview: null,

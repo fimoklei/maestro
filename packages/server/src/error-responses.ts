@@ -134,6 +134,9 @@ export const updatePreviewErrorResponses: ErrorTable<UpdatePreviewError> = {
   "inventory-not-configured": deployErrorResponses["inventory-not-configured"],
   "inventory-unreadable": deployErrorResponses["inventory-unreadable"],
   "no-published-tag": deployErrorResponses["no-published-tag"],
+  // 422, like no-published-tag: the release the target would adopt does not
+  // hold the skill, and publishing one that does is the reader's next step.
+  "skill-not-in-release": { status: 422 },
   "preview-failed": { status: 502 },
 };
 

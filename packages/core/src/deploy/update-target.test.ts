@@ -62,6 +62,8 @@ type Options = {
   target?: DeployTarget;
   // Read after apm ran, where the disk cannot answer for itself.
   copiesAfter?: Record<string, DeployedContentState>;
+  // The skill the Inventory's entrance asks for beside the release move (#955).
+  add?: string;
 };
 
 const HARNESS = "fimoklei/harness";
@@ -136,13 +138,17 @@ function subject(options: Options = {}) {
     copyGuard: new LocalCopyGuard({ content: { classify } }),
   });
   const target = options.target ?? REPO;
+  const add = options.add === undefined ? {} : { add: options.add };
   return {
     update,
     world,
     locks,
-    preview: () => update.preview({ target }),
-    run: (input: { token: string; confirmedCopyReceipt?: string }) =>
-      update.run({ target, ...input }),
+    preview: () => update.preview({ target, ...add }),
+    run: (input: {
+      token: string;
+      add?: string;
+      confirmedCopyReceipt?: string;
+    }) => update.run({ target, ...add, ...input }),
   };
 }
 
@@ -241,6 +247,75 @@ describe("UpdateTarget.preview", () => {
     });
 
     expect(preview.chosenRelease).toBe("v0.3.4");
+  });
+});
+
+// The Inventory's entrance: the reader asked for one skill the target's own
+// release does not hold, so the release move and the addition are priced
+// together (#955).
+describe("UpdateTarget.preview with a requested skill", () => {
+  it("names the requested skill and adds it to the desired Selection", async () => {
+    const preview = await previewed({ add: "wizard" });
+
+    expect(preview.addedByThisDeploy).toStrictEqual([
+      {
+        name: "wizard",
+        url: "https://github.com/fimoklei/harness/tree/v0.3.4/.apm/skills/wizard",
+      },
+    ]);
+    expect(preview.selection.desired).toStrictEqual([
+      "tdd",
+      "grill",
+      "jobs",
+      "brief",
+      "wizard",
+    ]);
+  });
+
+  it("keeps the counting sentence over the Selection the target already holds", async () => {
+    const preview = await previewed({ add: "wizard" });
+
+    expect(preview.counts).toStrictEqual({
+      changed: 2,
+      removed: 1,
+      unchanged: 2,
+    });
+    expect(preview.newInRelease.map((row) => row.name)).toStrictEqual([]);
+  });
+
+  it("adds nothing when the requested skill is already selected", async () => {
+    const preview = await previewed({ add: "grill" });
+
+    expect(preview.addedByThisDeploy).toStrictEqual([]);
+    expect(preview.selection.desired).toStrictEqual([
+      "tdd",
+      "grill",
+      "jobs",
+      "brief",
+    ]);
+  });
+
+  it("refuses a requested skill the chosen release removed", async () => {
+    const result = await subject({ add: "review" }).preview();
+
+    expect(result).toStrictEqual({ ok: false, error: "skill-not-in-release" });
+  });
+
+  it("refuses a requested skill no release holds", async () => {
+    const result = await subject({ add: "nothing-here" }).preview();
+
+    expect(result).toStrictEqual({ ok: false, error: "skill-not-in-release" });
+  });
+
+  it("asks consent for a copy in the way of the skill it would add", async () => {
+    const preview = await previewed({
+      add: "wizard",
+      copies: { wizard: "diverged" },
+    });
+
+    expect(preview.localEdits.discard).toStrictEqual([
+      { name: "wizard", tool: null },
+    ]);
   });
 });
 
@@ -615,6 +690,77 @@ describe("UpdateTarget.run", () => {
 
     expect(result.ok ? null : result.error).toBe("operation-unfinished");
     expect(running.world.calls).toStrictEqual([]);
+  });
+
+  it("adopts the release and adds the requested skill in one act", async () => {
+    const running = await confirmed({ add: "wizard" });
+
+    const result = await running.run({ token: running.token, add: "wizard" });
+
+    expect(result).toStrictEqual({
+      ok: true,
+      release: "v0.3.4",
+      outcome: [
+        { name: "tdd", tool: null, state: "updated" },
+        { name: "grill", tool: null, state: "updated" },
+        { name: "jobs", tool: null, state: "updated" },
+        { name: "review", tool: null, state: "removed" },
+        { name: "brief", tool: null, state: "updated" },
+        { name: "wizard", tool: null, state: "updated" },
+      ],
+    });
+    expect(running.world.calls[0]?.skills).toContain("wizard");
+    expect(running.world.files.get("/target/apm.yml")).toContain("- wizard");
+  });
+
+  it("refuses to add a skill while a write is running on the same target", async () => {
+    const running = await confirmed({ add: "wizard" });
+
+    const held = await running.locks.run("/repo", async () =>
+      running.run({ token: running.token, add: "wizard" }),
+    );
+
+    expect(held.ok ? (held.value.ok ? null : held.value.error) : null).toBe(
+      "update-in-progress",
+    );
+  });
+
+  it("refuses a token minted without the requested skill", async () => {
+    const running = await confirmed();
+
+    const result = await running.run({ token: running.token, add: "wizard" });
+
+    expect(result.ok ? null : result.error).toBe("status-out-of-date");
+    expect(running.world.calls).toStrictEqual([]);
+  });
+
+  it("refuses a requested skill the chosen release does not hold, writing nothing", async () => {
+    const running = await confirmed({ add: "wizard" });
+
+    const result = await running.run({ token: running.token, add: "review" });
+
+    expect(result.ok ? null : result.error).toBe("skill-not-in-release");
+    expect(running.world.calls).toStrictEqual([]);
+  });
+
+  it("asks consent through this entrance too before it overwrites an edited copy", async () => {
+    const running = await confirmed({
+      add: "wizard",
+      copies: { wizard: "diverged" },
+    });
+
+    const refused = await running.run({ token: running.token, add: "wizard" });
+    expect(refused.ok ? null : refused.error).toBe(
+      "deployed-diverged-from-lock",
+    );
+    expect(running.world.calls).toStrictEqual([]);
+
+    const result = await running.run({
+      token: running.token,
+      add: "wizard",
+      ...(refused.ok ? {} : { confirmedCopyReceipt: refused.copyReceipt }),
+    });
+    expect(result.ok).toBe(true);
   });
 
   it("refuses a second write while one is running on the same target", async () => {

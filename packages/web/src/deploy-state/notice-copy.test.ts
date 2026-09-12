@@ -501,6 +501,16 @@ describe("update preview notices", () => {
       },
     ],
     [
+      "skill-not-in-release",
+      {
+        level: "error",
+        label: "Not in the latest release",
+        message:
+          "The latest release does not hold this skill. Publish a release on the Harness screen, then deploy again.",
+        detail: "Nothing was changed, and the target keeps its own release.",
+      },
+    ],
+    [
       "preview-failed",
       {
         level: "error",

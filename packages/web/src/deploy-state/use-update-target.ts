@@ -13,6 +13,9 @@ import {
 export type UpdateRequest = {
   target: DeployTarget;
   token: string;
+  // The skill the preview was priced with; another one mints another token, so
+  // the server refuses rather than move a release nobody previewed (#955).
+  add?: string;
   // The receipt the preview or this update's own refusal minted (#952).
   confirmedCopyReceipt?: string;
 };

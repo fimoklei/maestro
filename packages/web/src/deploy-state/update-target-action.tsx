@@ -17,10 +17,15 @@ export function UpdateTargetAction({
   target,
   update,
   offered = true,
+  add,
+  onClose = () => {},
 }: {
   // The target's own label, as the card's header shows it.
   targetName: string;
   target: DeployTarget;
+  // The skill the Inventory's entrance asks for beside the release move. Absent
+  // from the card, which adds no skill of its own (#955).
+  add?: string;
   // The card owns the mutation: while apm runs it reads `Updating to v0.3.4…`
   // and carries no control at all (spec story 27).
   update: ReturnType<typeof useUpdateTarget>;
@@ -28,11 +33,15 @@ export function UpdateTargetAction({
   // unfinished operation, which is converged before another Update is offered.
   // The dialog stays, so the reader keeps the ledger it just earned (#951).
   offered?: boolean;
+  // Run when the dialog closes, so an entrance that opened on a refusal can
+  // drop it: the target the refusal described is gone (#955).
+  onClose?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const preflight = useUpdatePreflight(
     target,
     open && update.data === undefined,
+    add,
   );
   const retry = useRetryOperation();
   const preview = preflight.data?.preview ?? null;
@@ -44,6 +53,7 @@ export function UpdateTargetAction({
     setOpen(false);
     update.reset();
     retry.reset();
+    onClose();
   };
 
   return (
@@ -84,6 +94,7 @@ export function UpdateTargetAction({
               : update.mutate({
                   target,
                   token: preview.token,
+                  ...(add === undefined ? {} : { add }),
                   ...(preview.copyReceipt === null
                     ? {}
                     : { confirmedCopyReceipt: preview.copyReceipt }),
