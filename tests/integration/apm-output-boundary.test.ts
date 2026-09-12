@@ -24,7 +24,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { realRegistry } from "../helpers/real-registry";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
-import { stubDeploy } from "../helpers/stub-deploy";
+import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift, withoutContentCheck } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
@@ -124,6 +124,7 @@ describe("apm output never reaches the client", () => {
       inventory,
       deployState: stubDeployState({ fs }),
       deploy: stubDeploy({ inventory, registry, locks }),
+      retryOperation: stubRetryOperation({ registry, locks }),
       remove: new RemoveDeployedSkill({
         registry,
         deployedRef: new DeployedRefAdapter({ fs, location }),
@@ -238,6 +239,7 @@ describe("apm output never reaches the client", () => {
         inventory,
         deployState: stubDeployState({ fs }),
         deploy: stubDeploy({ inventory, registry, locks }),
+        retryOperation: stubRetryOperation({ registry, locks }),
         remove: stubRemove({ registry, locks }),
         drift: withoutContentCheck(
           new CheckVersionDrift({

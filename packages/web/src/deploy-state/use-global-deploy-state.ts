@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 import type {
   DeployedPrimitive,
+  PendingOperation,
   PinnedPerSkill,
   ReleaseHead,
   SkippedEntry,
@@ -29,6 +30,8 @@ type GlobalDeployStateResponse = {
   skipped: SkippedEntry[];
   // Repos named on a lockfile entry no detected tool's prefix covers (#655).
   otherOrigins?: string[];
+  // One record for the whole global target, whatever the tool count (#951).
+  pendingOperation?: PendingOperation;
 };
 
 export type GlobalDeployStateView = {
@@ -39,6 +42,7 @@ export type GlobalDeployStateView = {
   primitives: DeployedPrimitive[];
   skipped: SkippedEntry[];
   otherOrigins: string[];
+  pendingOperation?: PendingOperation;
 };
 
 export function useGlobalDeployState(enabled = true) {
@@ -54,6 +58,9 @@ export function useGlobalDeployState(enabled = true) {
         skipped: data.skipped,
         primitives: flattenPrimitives(tools),
         otherOrigins: data.otherOrigins ?? [],
+        ...(data.pendingOperation
+          ? { pendingOperation: data.pendingOperation }
+          : {}),
       };
     },
     enabled,

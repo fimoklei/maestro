@@ -238,6 +238,61 @@ describe("ApmCliDriver.deploySkill", () => {
     ]);
   });
 
+  it("passes the whole selection as one --skill flag per name", async () => {
+    // One flag per name, in the order given: a comma list is not the grammar,
+    // and a name left out stays installed (apm-behavior.md § Root package).
+    const { run, calls } = fakeRun(installOkOutput);
+    const driver = new ApmCliDriver({ run });
+    const root = "github.com/fimoklei/agent-harness#v0.6.0";
+
+    await driver.deploySkill({
+      target: { kind: "repo", repoPath: "/repo" },
+      ref: root,
+      skills: ["prototype", "review"],
+    });
+
+    expect(calls).toEqual([
+      {
+        file: "apm",
+        args: [
+          "install",
+          root,
+          "--skill",
+          "prototype",
+          "--skill",
+          "review",
+          "-t",
+          "claude,codex",
+        ],
+        cwd: "/repo",
+      },
+    ]);
+  });
+
+  it("passes the selection on a global install too", async () => {
+    const { run, calls } = fakeRun(installOkOutput);
+    const driver = new ApmCliDriver({
+      run,
+      prepareGlobalCwd: async () => "/scratch/.apm-scratch",
+    });
+    const root = "github.com/fimoklei/agent-harness#v0.6.0";
+
+    await driver.deploySkill({
+      target: { kind: "global" },
+      ref: root,
+      skills: ["prototype"],
+      tools: ["claude"],
+    });
+
+    expect(calls).toEqual([
+      {
+        file: "apm",
+        args: ["install", root, "--skill", "prototype", "-g", "-t", "claude"],
+        cwd: "/scratch/.apm-scratch",
+      },
+    ]);
+  });
+
   it("installs globally with -g from the prepared scratch cwd", async () => {
     // A global install adds -g and runs from a neutral scratch dir, because apm
     // appends apm_modules/ to the cwd's .gitignore even for -g — never a real

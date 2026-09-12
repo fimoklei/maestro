@@ -30,6 +30,7 @@ import {
   PromoteSkillDeletion,
   ProposalActions,
   PublishRelease,
+  parseGitOrigin,
   probeHead,
   ReadDrift,
   ReadHarnessState,
@@ -38,6 +39,7 @@ import {
   ReleaseHeadReader,
   RemoveDeployedSkill,
   RestoreSkill,
+  RetryTargetOperation,
   readConfiguredGitOriginUrl,
   readGitOriginUrl,
   releasedSkillsFromGit,
@@ -48,6 +50,8 @@ import {
   resolveMaestroConfigPath,
   ScaffoldHarness,
   ScaffoldOffers,
+  SelectionWriter,
+  TargetOperationStore,
   ToolPresenceAdapter,
 } from "@maestro/core";
 import { Hono } from "hono";
@@ -145,6 +149,9 @@ function realDeps(): AppDeps {
     // The Local edits / Unverified chip a deployed row carries, from the same
     // classifier the write path's guard uses.
     content: new DeployedContentAdapter({ location: deployedLocation }),
+    // Read per request, not captured at construction: the retry use-case is
+    // built further down, and the record it reads changes with every write.
+    operations: { pending: (target) => retryOperation.pending(target) },
   });
   // Runs from a scratch dir under MAESTRO_HOME, created on demand, so apm's
   // .gitignore side-effect never lands in a real repo (apm-driver.md, J07).
@@ -193,10 +200,26 @@ function realDeps(): AppDeps {
       inventoryGit,
     }),
   });
+  // The Selection lifecycle: the consumer's apm.yml, the one install or named
+  // uninstall, the durable operation record and the proof it landed. Deploy,
+  // Remove and Retry all write through this one owner (ADR-0031, #951).
+  const selection = new SelectionWriter({
+    fs,
+    location: deployedLocation,
+    apm,
+    operations: new TargetOperationStore({ store }),
+  });
+  // The connected Harness a target's one dependency names (ADR-0014).
+  const inventoryOrigin = async () => {
+    const root = resolveInventoryPath(await store.read(), process.env);
+    const url = root === undefined ? null : await readGitOriginUrl(root);
+    return url === null ? null : parseGitOrigin(url);
+  };
   const deploy = new DeploySkill({
     inventory,
     registry,
     apm,
+    selection,
     inventoryGit,
     copyGuard,
     // The linked-destination probe only; the classification is the guard's.
@@ -237,6 +260,19 @@ function realDeps(): AppDeps {
     canonicalPath: (path) => fs.realpath(path),
     locks: apmWriteLocks,
     location: deployedLocation,
+    selection,
+    inventoryOrigin,
+  });
+  // The one way out of a Deploy or Remove that never finished, at the release
+  // and Selection it saved (#951).
+  const retryOperation = new RetryTargetOperation({
+    registry,
+    selection,
+    copyGuard,
+    deployedContent: new DeployedContentAdapter({ location: deployedLocation }),
+    toolPresence: new ToolPresenceAdapter(),
+    canonicalPath: (path) => fs.realpath(path),
+    locks: apmWriteLocks,
   });
   // Same connected clone the inventory reads, canonicalized per call so a
   // path saved after startup is picked up and a symlinked one is resolved.
@@ -377,6 +413,7 @@ function realDeps(): AppDeps {
     deployState,
     deploy,
     remove,
+    retryOperation,
     drift,
     resolveGlobalRoot: () => resolveApmGlobalRoot(process.env),
     enforceOriginHost: true,

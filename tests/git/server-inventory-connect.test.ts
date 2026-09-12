@@ -31,7 +31,7 @@ import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type GitCloneOptions, initGitClone } from "../helpers/git-fixture";
 import { centralInventoryPath } from "../helpers/real-registry";
-import { stubDeploy } from "../helpers/stub-deploy";
+import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
@@ -119,6 +119,7 @@ describe("inventory connect HTTP route", () => {
       deployState,
       deploy: stubDeploy({ inventory, registry, locks }),
       remove: stubRemove({ registry, locks }),
+      retryOperation: stubRetryOperation({ registry, locks }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
       // The real browser, ceilinged at this test's temp dir rather than the

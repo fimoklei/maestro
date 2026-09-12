@@ -11,7 +11,9 @@ import { releaseLabel } from "./release-head-copy";
 import { ReleaseHeadMeta } from "./release-head-meta";
 import { TargetDeployAction } from "./target-deploy-action";
 import { TargetStatusChip } from "./target-status-chip";
+import { UnfinishedOperationHead } from "./unfinished-operation-head";
 import { useDeployState } from "./use-deploy-state";
+import { useRetryOperation } from "./use-retry-operation";
 
 // One repo's target card. Deploy-state and drift are separate queries: the
 // skill list renders first, each drift badge fills in later. A failed read
@@ -32,6 +34,8 @@ export function DeployStatePanel({
   const indicator = drift.targetIndicator(toDeployedView(deployState));
   const head = deployState.data?.releaseHead;
   const pinned = deployState.data?.pinnedPerSkill;
+  const pending = deployState.data?.pendingOperation;
+  const retry = useRetryOperation();
   // Where focus goes when a removal destroys the row it was triggered from.
   const headerRef = useRef<HTMLHeadingElement>(null);
 
@@ -65,10 +69,19 @@ export function DeployStatePanel({
             }}
           />
         </div>
-      ) : indicator === "empty" ? (
+      ) : indicator === "empty" && pending === undefined ? (
         <TargetDeployAction onStartDeploy={onStartDeploy} />
       ) : (
         <>
+          {pending ? (
+            <UnfinishedOperationHead
+              pending={pending}
+              onRetry={() =>
+                retry.mutate({ target: { kind: "repo", repoPath: repo } })
+              }
+              isRetrying={retry.isPending}
+            />
+          ) : null}
           {head ? <ReleaseHeadMeta head={head} /> : null}
           {pinned ? <PinnedPerSkillHead pinned={pinned} /> : null}
           <DeployStateList

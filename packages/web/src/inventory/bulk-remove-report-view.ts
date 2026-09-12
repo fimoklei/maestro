@@ -60,6 +60,9 @@ const FAILURE_REASON: Record<RemoveDeployedSkillError, string> = {
   // row has no ledger to state what the check found instead (J04, #364).
   "cost-not-acknowledged": "What it would delete was never confirmed",
   "remove-in-progress": "Target held by another operation",
+  "manifest-not-recognised": "apm.yml holds an unexpected shape",
+  "operation-unfinished": "An earlier change did not finish",
+  "remove-incomplete": "Files are still on disk",
   "remove-failed": "Removal not completed by apm",
 };
 

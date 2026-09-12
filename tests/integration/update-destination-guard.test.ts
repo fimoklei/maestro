@@ -15,13 +15,16 @@ import {
   DeployedContentAdapter,
   DeploySkill,
   DeployStateReader,
-  type DeployTarget,
   InFlightLocks,
   type InventoryResult,
   LocalCopyGuard,
   NodeFileSystem,
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  rootPackageApm,
+  rootPackageSelection,
+} from "../helpers/root-package-apm";
 
 const sha = (contents: Buffer | string) =>
   `sha256:${createHash("sha256").update(contents).digest("hex")}`;
@@ -81,19 +84,14 @@ describe("update journey against the real destination guard", () => {
   };
 
   // A real DeploySkill with the real destination guard wired in. Only the apm
-  // boundary is faked; classify runs against the live subtree under `root`.
-  // The fake takes the install's side effect on disk; the driver's own success
-  // result is added here, so a test only describes what apm would write.
+  // boundary is faked: a faithful install that resets both deployed copies to
+  // the release and rewrites the lockfile with their fresh per-file hashes
+  // (apm 0.20.0, apm-driver.md), which is what lets an unverifiable copy heal.
   // `released` is what the chosen release holds for the skill, keyed inside the
   // skill folder — null when the clone cannot answer, which is every test but
   // the release-equality one.
-  const makeDeploy = (
-    install: (input: {
-      target: DeployTarget;
-      ref: string;
-    }) => Promise<void> = async () => undefined,
-    released: Record<string, string> | null = null,
-  ) => {
+  const makeDeploy = (released: Record<string, string> | null = null) => {
+    const apm = rootPackageApm({ globalRoot: root });
     const inventory: { read(): Promise<InventoryResult> } = {
       read: async () => ({
         ok: true,
@@ -106,9 +104,14 @@ describe("update journey against the real destination guard", () => {
         ],
       }),
     };
-    return new DeploySkill({
+    const deploy = new DeploySkill({
       inventory,
       registry: { isRegistered: async () => true },
+      selection: rootPackageSelection({
+        globalRoot: root,
+        configPath: join(root, "maestro.json"),
+        apm,
+      }),
       // A proven skill record: this journey is not about the post-install read.
       recordedPackage: {
         read: async () => ({
@@ -118,10 +121,7 @@ describe("update journey against the real destination guard", () => {
       },
       apm: {
         resolveLatestTag: async () => ({ ok: true, tag: LATEST_TAG }),
-        deploySkill: async (input) => {
-          await install(input);
-          return { ok: true };
-        },
+        deploySkill: apm.deploySkill,
       },
       inventoryGit: {
         syncBeforeDeploy: async () => {},
@@ -151,6 +151,7 @@ describe("update journey against the real destination guard", () => {
       canonicalPath: async (path) => path,
       locks: new InFlightLocks(),
     });
+    return { deploy, installs: apm.installs };
   };
 
   const update = (deploy: DeploySkill, options?: { consent?: string }) =>
@@ -173,26 +174,12 @@ describe("update journey against the real destination guard", () => {
     return refusal.copyReceipt;
   };
 
-  // A faithful apm reinstall: a same-ref install resets both deployed copies to
-  // the tag's content and rewrites the lockfile with their fresh per-file hashes
-  // (apm 0.20.0, apm-driver.md). After it runs the destination verifies clean —
-  // the basis for self-healing an unverifiable copy.
-  const TAG_BODY = "---\nname: tdd\n---\nfresh from the tag\n";
-  const reinstallAtTag = async () => {
-    await writeDeployed(".claude/skills/tdd/SKILL.md", TAG_BODY);
-    await writeDeployed(".agents/skills/tdd/SKILL.md", TAG_BODY);
-    await writeLockfile("tdd", {
-      ".claude/skills/tdd/SKILL.md": sha(TAG_BODY),
-      ".agents/skills/tdd/SKILL.md": sha(TAG_BODY),
-    });
-  };
-
   it("updates a clean deployed copy, the guard letting it proceed", async () => {
     const body = "---\nname: tdd\n---\nbody\n";
     await writeDeployed(".claude/skills/tdd/SKILL.md", body);
     await writeLockfile("tdd", { ".claude/skills/tdd/SKILL.md": sha(body) });
 
-    const deploy = makeDeploy();
+    const { deploy } = makeDeploy();
 
     expect(await update(deploy)).toEqual({
       ok: true,
@@ -253,7 +240,7 @@ describe("update journey against the real destination guard", () => {
       behind: [{ name: "tdd", current: "v0.5.0", latest: LATEST_TAG }],
     });
 
-    expect(await update(makeDeploy(reinstallAtTag))).toMatchObject({
+    expect(await update(makeDeploy().deploy)).toMatchObject({
       ok: true,
     });
 
@@ -278,7 +265,7 @@ describe("update journey against the real destination guard", () => {
       ".claude/skills/tdd/SKILL.md": sha(original),
     });
 
-    const deploy = makeDeploy();
+    const { deploy } = makeDeploy();
 
     expect(await update(deploy)).toMatchObject({
       ok: false,
@@ -300,9 +287,7 @@ describe("update journey against the real destination guard", () => {
       ".agents/skills/tdd/SKILL.md": sha(original),
     });
 
-    const deploy = makeDeploy(async () => undefined, {
-      "SKILL.md": sha(atRelease),
-    });
+    const { deploy } = makeDeploy({ "SKILL.md": sha(atRelease) });
 
     expect(await update(deploy)).toEqual({
       ok: true,
@@ -319,9 +304,10 @@ describe("update journey against the real destination guard", () => {
       ".claude/skills/tdd/SKILL.md": sha(original),
     });
 
-    expect(await update(makeDeploy(async () => undefined, null))).toMatchObject(
-      { ok: false, error: "deployed-diverged-from-lock" },
-    );
+    expect(await update(makeDeploy(null).deploy)).toMatchObject({
+      ok: false,
+      error: "deployed-diverged-from-lock",
+    });
   });
 
   it("refuses a legacy lockfile without force, distinctly unverifiable", async () => {
@@ -331,7 +317,7 @@ describe("update journey against the real destination guard", () => {
     await writeDeployed(".claude/skills/tdd/SKILL.md", "deployed long ago\n");
     await writeLegacyLockfile("tdd");
 
-    const deploy = makeDeploy();
+    const { deploy } = makeDeploy();
 
     expect(await update(deploy)).toMatchObject({
       ok: false,
@@ -350,11 +336,7 @@ describe("update journey against the real destination guard", () => {
       ".claude/skills/tdd/SKILL.md": sha(original),
     });
 
-    let reinstalled = false;
-    const deploy = makeDeploy(async () => {
-      reinstalled = true;
-      await reinstallAtTag();
-    });
+    const { deploy, installs } = makeDeploy();
 
     expect(
       await update(deploy, { consent: await consentFrom(deploy) }),
@@ -362,7 +344,7 @@ describe("update journey against the real destination guard", () => {
       ok: true,
       deployed: { type: "skill", name: "tdd", version: LATEST_TAG },
     });
-    expect(reinstalled).toBe(true);
+    expect(installs).toHaveLength(1);
   });
 
   it("refuses a receipt minted before the copy changed again", async () => {
@@ -372,7 +354,7 @@ describe("update journey against the real destination guard", () => {
     const original = "---\nname: tdd\n---\noriginal\n";
     await writeLegacyLockfile("tdd");
     await writeDeployed(".claude/skills/tdd/SKILL.md", "deployed long ago\n");
-    const deploy = makeDeploy();
+    const { deploy } = makeDeploy();
     const stale = await consentFrom(deploy);
 
     // The copy gains a baseline it disagrees with: unverified becomes an edit.
@@ -393,7 +375,7 @@ describe("update journey against the real destination guard", () => {
     await writeDeployed(".claude/skills/tdd/SKILL.md", "deployed long ago\n");
     await writeLegacyLockfile("tdd");
 
-    const deploy = makeDeploy(reinstallAtTag);
+    const { deploy } = makeDeploy();
 
     expect(
       await update(deploy, { consent: await consentFrom(deploy) }),
@@ -410,10 +392,7 @@ describe("update journey against the real destination guard", () => {
     await writeDeployed(".claude/skills/tdd", "a file, not a directory\n");
     await writeLockfile("tdd", { ".claude/skills/tdd/SKILL.md": sha("x") });
 
-    let reinstalled = false;
-    const deploy = makeDeploy(async () => {
-      reinstalled = true;
-    });
+    const { deploy, installs } = makeDeploy();
 
     expect(await update(deploy)).toEqual({
       ok: false,
@@ -423,7 +402,7 @@ describe("update journey against the real destination guard", () => {
       ok: false,
       error: "deployed-unreadable",
     });
-    expect(reinstalled).toBe(false);
+    expect(installs).toEqual([]);
   });
 
   it("self-heals an unverified copy: consent once, then it verifies clean", async () => {
@@ -433,7 +412,7 @@ describe("update journey against the real destination guard", () => {
     await writeDeployed(".claude/skills/tdd/SKILL.md", "deployed long ago\n");
     await writeLegacyLockfile("tdd");
 
-    const deploy = makeDeploy(reinstallAtTag);
+    const { deploy } = makeDeploy();
 
     // Before: a plain update refuses, the copy cannot be verified.
     const refusal = await update(deploy);

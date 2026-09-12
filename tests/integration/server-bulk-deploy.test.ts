@@ -12,8 +12,13 @@ import {
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { realRegistry } from "../helpers/real-registry";
+import {
+  rootPackageApm,
+  rootPackageSelection,
+} from "../helpers/root-package-apm";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
+import { stubRetryOperation } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubImport } from "../helpers/stub-import";
@@ -25,26 +30,9 @@ import { stubScaffold } from "../helpers/stub-scaffold";
 // Integration lane: the bulk-deploy route over the real Hono app, driving the
 // real DeploySkill (its guards intact) once per staged skill. Only the ApmDriver
 // and the destination classifier are faked, per skill, so continue-and-harvest,
-// attention-marking, and failure-merging are exercised end to end.
-// A user-scope lockfile carrying one claude_skill dependency per name, the
-// shape apm accumulates across successive global installs.
-const globalLockfile = (names: string[]) =>
-  [
-    "lockfile_version: '1'",
-    "dependencies:",
-    ...names.flatMap((name) => [
-      "- repo_url: fimoklei/agent-harness",
-      "  host: github.com",
-      "  resolved_ref: v0.5.1",
-      `  virtual_path: .apm/skills/${name}`,
-      "  package_type: claude_skill",
-      // The per-tool attribution the global read groups by (#187).
-      "  deployed_files:",
-      `  - .claude/skills/${name}`,
-      `  - .agents/skills/${name}`,
-    ]),
-    "",
-  ].join("\n");
+// attention-marking, and failure-merging are exercised end to end. Each staged
+// skill joins one Selection on one root package, so the run's second install
+// carries the first one's name too (ADR-0031).
 
 describe("bulk deploy HTTP route", () => {
   let home: string;
@@ -92,10 +80,19 @@ describe("bulk deploy HTTP route", () => {
     });
     const diverged = new Set(options?.divergedNames ?? []);
     const fails = new Set(options?.failNames ?? []);
-    // What apm leaves behind: the user-scope lockfile grows one entry per
-    // successful install, exactly where the global deploy-state read looks.
-    const installed: string[] = [];
     const locks = new InFlightLocks();
+    // A failing name never lands, so it only ever appears in the install that
+    // stages it: the Selection write fails and the lockfile keeps what landed.
+    const landing = rootPackageApm({ globalRoot });
+    const apm = {
+      ...landing,
+      deploySkill: async (input: Parameters<typeof landing.deploySkill>[0]) => {
+        if ((input.skills ?? []).some((name) => fails.has(name))) {
+          throw new Error("apm install failed: token in stderr");
+        }
+        return await landing.deploySkill(input);
+      },
+    };
     const deploy = new DeploySkill({
       inventory,
       registry,
@@ -105,28 +102,13 @@ describe("bulk deploy HTTP route", () => {
           options?.authRequired
             ? { ok: false, reason: "auth-required" }
             : { ok: true, tag: "v0.5.1" },
-        deploySkill: async (input) => {
-          const failing = [...fails].some((name) =>
-            input.ref.includes(`/skills/${name}#`),
-          );
-          if (failing) {
-            throw new Error("apm install failed: token in stderr");
-          }
-          const name = input.ref.match(/\/skills\/([^#]+)#/)?.[1];
-          if (name === undefined) {
-            // A fake that silently records an unnamed entry would let the
-            // read-back assert against a lockfile no install could produce.
-            throw new Error(`unexpected deploy ref shape: ${input.ref}`);
-          }
-          installed.push(name);
-          await writeFile(
-            join(globalRoot, "apm.lock.yaml"),
-            globalLockfile(installed),
-            "utf8",
-          );
-          return { ok: true };
-        },
+        deploySkill: apm.deploySkill,
       },
+      selection: rootPackageSelection({
+        globalRoot,
+        configPath: join(home, "config.json"),
+        apm,
+      }),
       inventoryGit: {
         syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => true,
@@ -158,9 +140,13 @@ describe("bulk deploy HTTP route", () => {
       deployState: new GlobalDeployStateReader({
         fs,
         toolPresence: { detectGlobalTools: async () => ["claude", "codex"] },
+        // A root package's recorded files are probed on disk, so the read has
+        // to look under this run's temp root and never the real HOME.
+        treeRoot: () => globalRoot,
       }),
       deploy,
       remove: stubRemove({ registry, locks }),
+      retryOperation: stubRetryOperation({ registry, locks }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => globalRoot,
       harness: stubHarness(),

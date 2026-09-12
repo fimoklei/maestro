@@ -7,6 +7,7 @@ import { join } from "node:path";
 import type { DeployedContentPort, DeployTarget } from "../deploy/deploy-skill";
 import type { SupportedTool } from "../deploy/deploy-tools";
 import type { GitOrigin } from "../deploy/git-origin";
+import type { PendingOperation } from "../deploy/retry-target-operation";
 import { resolveHomeDirectory } from "../home-directory";
 import {
   type LockfileEntry,
@@ -48,6 +49,8 @@ type DeployStateResult =
       pinnedPerSkill?: PinnedPerSkill;
       // Absent where the record holds no file outside the selected skills.
       extraFiles?: number;
+      // Absent unless a Deploy or Remove on this target never finished (#951).
+      pendingOperation?: PendingOperation;
     }
   | { ok: false; error: "malformed" };
 
@@ -60,6 +63,8 @@ type GlobalDeployStateResult =
       tools: ToolDeployState[];
       skipped: SkippedEntry[];
       otherOrigins: string[];
+      // One record for the whole global target, whatever the tool count (#951).
+      pendingOperation?: PendingOperation;
     }
   | { ok: false; error: "malformed" };
 
@@ -72,6 +77,11 @@ export type DeployStateExtras = {
   // Which Harness the cockpit is connected to. Without it a per-skill pin gets
   // no reading at all: attributing one to this Harness would be a guess (#950).
   harnessOrigin?: () => Promise<GitOrigin | null>;
+  // What a Deploy or Remove on this target set out to do and never finished,
+  // so the card can offer the retry (#951).
+  operations?: {
+    pending(target: DeployTarget): Promise<PendingOperation | null>;
+  };
 };
 
 export class DeployStateReader {
@@ -84,6 +94,7 @@ export class DeployStateReader {
       releaseHead: deps.releaseHead,
       content: deps.content,
       harnessOrigin: deps.harnessOrigin,
+      operations: deps.operations,
     };
   }
 
@@ -96,7 +107,15 @@ export class DeployStateReader {
   async read(repoPath: string): Promise<DeployStateResult> {
     const raw = await this.fs.readFile(join(repoPath, "apm.lock.yaml"));
     if (raw === null) {
-      return { ok: true, primitives: [], skipped: [] };
+      // Still read the record: a first Deploy that stopped leaves no lockfile,
+      // and its Retry deploy has to survive that (#951).
+      const unfinished = await this.readPending({ kind: "repo", repoPath });
+      return {
+        ok: true,
+        primitives: [],
+        skipped: [],
+        ...(unfinished === undefined ? {} : { pendingOperation: unfinished }),
+      };
     }
 
     const parsed = parseLockfile(raw);
@@ -156,6 +175,7 @@ export class DeployStateReader {
         ? 0
         : countExtraRootPackageFiles(root, DEPLOY_SKILL_PREFIXES);
     const pinnedPerSkill = tallyPins(pins);
+    const pendingOperation = await this.readPending(target);
     // Spread, never a null key: a reading this target has not got must not
     // survive JSON as one the cockpit reads as measured (#416).
     return {
@@ -165,7 +185,19 @@ export class DeployStateReader {
       ...(releaseHead === undefined ? {} : { releaseHead }),
       ...(pinnedPerSkill === undefined ? {} : { pinnedPerSkill }),
       ...(extraFiles === 0 ? {} : { extraFiles }),
+      ...(pendingOperation === undefined ? {} : { pendingOperation }),
     };
+  }
+
+  // Undefined on every failure: a record the reader could not reach is not an
+  // operation it can claim never finished (J04).
+  protected async readPending(
+    target: DeployTarget,
+  ): Promise<PendingOperation | undefined> {
+    return (
+      (await this.extras.operations?.pending(target).catch(() => null)) ??
+      undefined
+    );
   }
 
   // The chip a row carries when its copy disagrees with the recorded baseline,
@@ -250,12 +282,15 @@ export class GlobalDeployStateReader extends DeployStateReader {
     const raw = await this.fs.readFile(join(rootPath, "apm.lock.yaml"));
     if (raw === null) {
       // Nothing deployed yet: an empty group per detected tool, never an error
-      // and never a tool the machine does not have.
+      // and never a tool the machine does not have. The record is still read: a
+      // first Deploy that stopped leaves no lockfile (#951).
+      const unfinished = await this.readPending({ kind: "global" });
       return {
         ok: true,
         tools: detected.map((tool) => ({ tool, primitives: [] })),
         skipped: [],
         otherOrigins: [],
+        ...(unfinished === undefined ? {} : { pendingOperation: unfinished }),
       };
     }
 
@@ -278,11 +313,13 @@ export class GlobalDeployStateReader extends DeployStateReader {
         );
       }
     }
+    const pendingOperation = await this.readPending({ kind: "global" });
     return {
       ok: true,
       tools: grouped.tools,
       skipped: [...unreadableAsSkipped(parsed.unreadable), ...grouped.skipped],
       otherOrigins: grouped.otherOrigins,
+      ...(pendingOperation === undefined ? {} : { pendingOperation }),
     };
   }
 }

@@ -4,6 +4,7 @@ import type { SupportedTool } from "../deploy/deploy-tools";
 import { InMemoryFileSystem } from "../registry/file-system.fake";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import {
+  type DeployStateExtras,
   DeployStateReader,
   GlobalDeployStateReader,
 } from "./deploy-state-reader";
@@ -851,5 +852,63 @@ describe("GlobalDeployStateReader on a target pinned per skill", () => {
     expect(
       result.ok && result.tools.map((group) => group.extraFiles),
     ).toStrictEqual([1, undefined]);
+  });
+});
+
+// An operation the record says never finished, so the card can offer the one
+// way out of it (#951).
+describe("DeployStateReader on a target with an unfinished operation", () => {
+  const files = [".claude/skills/tdd/SKILL.md"];
+  const pending = {
+    kind: "deploy" as const,
+    release: "v0.3.4",
+    desired: ["tdd", "review"],
+  };
+
+  const readerWith = (operations: DeployStateExtras["operations"]) =>
+    new DeployStateReader({
+      fs: new InMemoryFileSystem({
+        files: {
+          [LOCKFILE]: lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])),
+          ...onDisk(REPO, files),
+        },
+      }),
+      operations,
+    });
+
+  it("carries the operation, its release and its desired selection", async () => {
+    await expect(
+      readerWith({ pending: async () => pending }).read(REPO),
+    ).resolves.toMatchObject({ pendingOperation: pending });
+  });
+
+  it("offers the retry on a target a first deploy left with no lockfile", async () => {
+    // A first Deploy that stopped writes no lockfile at all, and its Retry
+    // deploy still has to be offered (#951).
+    const reader = new DeployStateReader({
+      fs: new InMemoryFileSystem({ files: {} }),
+      operations: { pending: async () => pending },
+    });
+
+    await expect(reader.read(REPO)).resolves.toMatchObject({
+      primitives: [],
+      pendingOperation: pending,
+    });
+  });
+
+  it("carries no key when nothing on the target is unfinished", async () => {
+    const result = await readerWith({ pending: async () => null }).read(REPO);
+
+    expect(result).not.toHaveProperty("pendingOperation");
+  });
+
+  it("carries no key when the record could not be read", async () => {
+    const result = await readerWith({
+      pending: async () => {
+        throw new Error("config unreadable");
+      },
+    }).read(REPO);
+
+    expect(result).not.toHaveProperty("pendingOperation");
   });
 });

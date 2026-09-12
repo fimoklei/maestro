@@ -48,6 +48,13 @@ export const deployBodySchema = z.object({
   confirmedCopyReceipt: consentTokenSchema,
 });
 
+// Retrying names only the target: which operation, at which release and with
+// which Selection, comes from the record the server itself wrote (#951).
+export const retryOperationBodySchema = z.object({
+  target: targetSchema,
+  confirmedCopyReceipt: consentTokenSchema,
+});
+
 // No batch-wide consent: a copy with local edits always comes back as an
 // attention row, overwritten only per item via the single-deploy route (#292).
 export const bulkDeployBodySchema = z.object({

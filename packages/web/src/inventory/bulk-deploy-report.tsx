@@ -1,9 +1,9 @@
 import type { DeploySkillError } from "@maestro/core";
 import {
-  ADD_SKILL_MD,
   deployStateHeading,
-  FIX_AND_RELEASE,
-  RECHECK_TARGET,
+  LEFT_ALONE_PINNED,
+  RETRY_ON_CARD,
+  UPDATE_TO_REACH_RELEASE,
 } from "../deploy-state/notice-copy";
 import { Button } from "../ui/button";
 import { Chip } from "../ui/chip";
@@ -20,9 +20,10 @@ import {
 // The row's words come from the deploy notice table, so a code reads the same
 // here and in a single deploy's notice, and no code can reach the screen raw.
 const recoverySteps: Partial<Record<DeploySkillError, string>> = {
-  "deployed-unsupported-package-type": FIX_AND_RELEASE,
-  "deploy-recorded-invalid": ADD_SKILL_MD,
-  "deploy-unverified": RECHECK_TARGET,
+  "target-pinned-per-skill": LEFT_ALONE_PINNED,
+  "not-at-target-release": UPDATE_TO_REACH_RELEASE,
+  "operation-unfinished": RETRY_ON_CARD,
+  "deploy-incomplete": RETRY_ON_CARD,
 };
 
 function RecoveryStep({ error }: { error: DeploySkillError }) {

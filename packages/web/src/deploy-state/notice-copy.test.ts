@@ -3,7 +3,6 @@ import { HttpError } from "../api/http";
 import {
   type DeployStateNotice,
   deployNotice,
-  FIX_AND_RELEASE,
   linkedFolderNotice,
   removeNotice,
 } from "./notice-copy";
@@ -141,9 +140,9 @@ describe("deploy notices", () => {
       "deploy-in-progress",
       {
         level: "error",
-        label: "Deploy already running",
+        label: "Target busy",
         message:
-          "This target takes one change at a time. Wait for the running deploy to finish.",
+          "A deploy is still running on this target. Wait for it to finish.",
       },
     ],
     [
@@ -177,29 +176,31 @@ describe("deploy notices", () => {
       },
     ],
     [
-      "deployed-unsupported-package-type",
+      "target-pinned-per-skill",
       {
         level: "error",
-        label: "Unsupported package type",
-        message: `Its files are still there. ${FIX_AND_RELEASE}`,
+        label: "Release not adopted",
+        message:
+          "This target was deployed one skill at a time. Select Remove skill for each skill, then Deploy skill to put them back on one release.",
       },
     ],
     [
-      "deploy-recorded-invalid",
+      "not-at-target-release",
       {
         level: "error",
-        label: "No files deployed",
+        label: "Not in this release",
         message:
-          "Add a SKILL.md in the Harness, publish a release, then deploy again.",
+          "This skill is not in the release this target follows. Select Update target to move to the release that holds it.",
       },
     ],
     [
-      "deploy-unverified",
+      "deploy-incomplete",
       {
         level: "error",
-        label: "Deploy unproven",
+        label: "Deploy incomplete",
         message:
-          "The target's deployment record does not show it. Deploy again to re-check the target.",
+          "Part of the selection is not on disk. Select Retry deploy to run the same release again.",
+        detail: "apm reported success, and the files say otherwise.",
       },
     ],
     [
@@ -343,9 +344,19 @@ describe("remove notices", () => {
       "remove-in-progress",
       {
         level: "error",
-        label: "Change already running",
+        label: "Target busy",
         message:
-          "This target takes one change at a time. Wait for the running change to finish.",
+          "A removal is still running on this target. Wait for it to finish.",
+      },
+    ],
+    [
+      "remove-incomplete",
+      {
+        level: "error",
+        label: "Removal incomplete",
+        message:
+          "The skill's files are still on disk. Select Retry removal to run the same removal again.",
+        detail: "apm reported success, and the files say otherwise.",
       },
     ],
     [
@@ -428,9 +439,12 @@ describe("every deploy and remove notice", () => {
     "no-supported-tool",
     "auth-required",
     "destination-symlinked",
-    "deployed-unsupported-package-type",
-    "deploy-recorded-invalid",
-    "deploy-unverified",
+    "target-pinned-per-skill",
+    "not-at-target-release",
+    "manifest-not-recognised",
+    "operation-unfinished",
+    "deploy-incomplete",
+    "remove-incomplete",
     "deploy-failed",
     "not-deployed",
     "ref-unresolvable",

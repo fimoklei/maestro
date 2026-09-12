@@ -15,6 +15,7 @@ import type {
   Registry,
   RemoveDeployedSkill,
   RestoreSkill,
+  RetryTargetOperation,
   ScaffoldHarness,
 } from "@maestro/core";
 
@@ -41,6 +42,8 @@ export type AppDeps = {
   deployState: GlobalDeployStateReader;
   deploy: DeploySkill;
   remove: RemoveDeployedSkill;
+  // The one way out of a Deploy or Remove that never finished (#951).
+  retryOperation: RetryTargetOperation;
   drift: ReadDrift;
   // Tests inject a sandbox so the real ~/.apm is never touched (apm-driver.md).
   resolveGlobalRoot: () => string;
