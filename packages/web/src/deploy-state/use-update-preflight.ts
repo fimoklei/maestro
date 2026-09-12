@@ -14,13 +14,23 @@ export type UpdatePreflight = { preview: UpdatePreview };
 export function updatePreflightQueryOptions(
   target: DeployTarget,
   enabled: boolean,
+  // The skill the Inventory's entrance asks for beside the release move. Part
+  // of the key: a preview priced without it answers another question (#955).
+  add?: string,
 ) {
   return {
-    queryKey: ["update-preflight", targetQueryKey(target)] as const,
+    queryKey: [
+      "update-preflight",
+      targetQueryKey(target),
+      add ?? null,
+    ] as const,
     queryFn: () =>
       requestJson<UpdatePreflight>("/api/deploy/update/preflight", {
         method: "POST",
-        body: JSON.stringify({ target }),
+        body: JSON.stringify({
+          target,
+          ...(add === undefined ? {} : { add }),
+        }),
       }),
     enabled,
     // Fresh every open: a cached price from before an edit or a release is the
@@ -31,6 +41,10 @@ export function updatePreflightQueryOptions(
   };
 }
 
-export function useUpdatePreflight(target: DeployTarget, enabled: boolean) {
-  return useQuery(updatePreflightQueryOptions(target, enabled));
+export function useUpdatePreflight(
+  target: DeployTarget,
+  enabled: boolean,
+  add?: string,
+) {
+  return useQuery(updatePreflightQueryOptions(target, enabled, add));
 }

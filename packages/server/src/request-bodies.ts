@@ -87,16 +87,22 @@ export const bulkRemoveBodySchema = z.object({
     .min(1),
 });
 
-// The whole target moves to one release, so no skill name travels: which
-// skills the update touches is the preview's answer, never the caller's claim.
-export const updatePreflightBodySchema = z.object({ target: targetSchema });
+// The whole target moves to one release, so the only skill name that travels is
+// `add`: the one the Inventory's entrance asks for beside the move. Which skills
+// the release itself touches is the preview's answer, never the caller's claim.
+export const updatePreflightBodySchema = z.object({
+  target: targetSchema,
+  add: z.string().optional(),
+});
 
-// The confirm carries the two proofs and nothing else: the token saying this
-// server priced this update, and the receipt licensing the copies it named.
-// The release and the Selection stay the server's own reading (#954).
+// The confirm carries the two proofs and the same request: the token saying this
+// server priced this update, the receipt licensing the copies it named, and the
+// skill it was priced with — a different one mints a different token, so the
+// release and the Selection stay the server's own reading (#954, #955).
 export const updateBodySchema = z.object({
   target: targetSchema,
   token: z.string().regex(/^[0-9a-f]{64}$/),
+  add: z.string().optional(),
   confirmedCopyReceipt: consentTokenSchema,
 });
 

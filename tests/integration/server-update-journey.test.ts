@@ -254,6 +254,53 @@ describe("update HTTP journey", () => {
     expect(body.preview.copyReceipt).toMatch(/^[0-9a-f]{64}$/);
   });
 
+  // The Inventory's entrance: the same preview, asked to add one skill the
+  // target's own release does not hold (#955).
+  it("names the requested skill and carries it into the desired Selection", async () => {
+    const { app, registry } = await makeApp();
+    await seedTarget(["tdd", "grill", "review"]);
+    await registry.register(repo);
+
+    const response = await preflight(app, {
+      target: { kind: "repo", repoPath: repo },
+      add: "wizard",
+    });
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      preview: Record<string, unknown>;
+    };
+    expect(body.preview).toMatchObject({
+      addedByThisDeploy: [
+        {
+          name: "wizard",
+          url: "https://github.com/fimoklei/agent-harness/tree/v0.3.4/.apm/skills/wizard",
+        },
+      ],
+      newInRelease: [],
+      selection: {
+        current: ["tdd", "grill", "review"],
+        desired: ["tdd", "grill", "wizard"],
+      },
+    });
+  });
+
+  it("refuses to price a release that does not hold the requested skill", async () => {
+    const { app, registry } = await makeApp();
+    await seedTarget(["tdd", "grill", "review"]);
+    await registry.register(repo);
+
+    const response = await preflight(app, {
+      target: { kind: "repo", repoPath: repo },
+      add: "review",
+    });
+
+    expect(response.status).toBe(422);
+    expect(await response.json()).toStrictEqual({
+      error: "skill-not-in-release",
+    });
+  });
+
   it("refuses a repository the registry does not hold", async () => {
     const { app } = await makeApp();
     await seedTarget(["tdd"]);
@@ -284,6 +331,7 @@ describe("update HTTP journey", () => {
   // back off the files apm left behind.
   async function priced(options?: {
     lands?: (skills: readonly string[]) => readonly string[];
+    add?: string;
   }) {
     const made = await makeApp(options ?? {});
     await seedTarget(["tdd", "grill", "review"]);
@@ -295,6 +343,7 @@ describe("update HTTP journey", () => {
     await made.registry.register(repo);
     const response = await preflight(made.app, {
       target: { kind: "repo", repoPath: repo },
+      ...(options?.add === undefined ? {} : { add: options.add }),
     });
     const body = (await response.json()) as { preview: { token: string } };
     return { ...made, token: body.preview.token };
@@ -350,6 +399,46 @@ describe("update HTTP journey", () => {
         { name: "review", tool: null, state: "removed" },
       ],
     });
+  });
+
+  it("adopts the release and adds the requested skill in one confirm", async () => {
+    const { app, token } = await priced({ add: "wizard" });
+
+    const response = await update(app, {
+      target: { kind: "repo", repoPath: repo },
+      token,
+      add: "wizard",
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toStrictEqual({
+      release: "v0.3.4",
+      outcome: [
+        { name: "tdd", tool: null, state: "updated" },
+        { name: "grill", tool: null, state: "updated" },
+        { name: "review", tool: null, state: "removed" },
+        { name: "wizard", tool: null, state: "updated" },
+      ],
+    });
+    expect(await readFile(join(repo, "apm.yml"), "utf8")).toBe(
+      manifest(["grill", "tdd", "wizard"]),
+    );
+  });
+
+  it("refuses a confirm naming a skill the preview never priced", async () => {
+    const { app, token, apm } = await priced();
+
+    const response = await update(app, {
+      target: { kind: "repo", repoPath: repo },
+      token,
+      add: "wizard",
+    });
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toStrictEqual({
+      error: "status-out-of-date",
+    });
+    expect(apm.installs).toStrictEqual([]);
   });
 
   it("refuses a token nobody minted, leaving the target untouched", async () => {

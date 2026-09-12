@@ -96,6 +96,12 @@ const HEADINGS: Record<DeployStateCode, Heading> = {
   // change is running (ADR-0031, #951).
   "deploy-in-progress": { level: "error", label: "Target busy" },
   "not-at-target-release": { level: "error", label: "Not in this release" },
+  // One release further than the refusal above: the latest release holds the
+  // skill no more than the target's own does, so no move would help (#955).
+  "skill-not-in-release": {
+    level: "error",
+    label: "Not in the latest release",
+  },
   "target-pinned-per-skill": { level: "error", label: "Release not adopted" },
   "manifest-not-recognised": {
     level: "error",
@@ -393,6 +399,13 @@ const UPDATE_PREVIEW: Record<UpdatePreviewError, Body> = {
   "no-published-tag": {
     message: `Publish a release on the Harness screen, ${UPDATE_AGAIN}`,
     detail: "An update moves the target to a published tag.",
+  },
+  // The Inventory's entrance only: the reader asked for a skill, and no release
+  // on offer holds it. "Deploy again" names the control they started from (#955).
+  "skill-not-in-release": {
+    message:
+      "The latest release does not hold this skill. Publish a release on the Harness screen, then deploy again.",
+    detail: "Nothing was changed, and the target keeps its own release.",
   },
   "preview-failed": {
     message: `Nothing was changed. Wait a moment, ${UPDATE_AGAIN}`,

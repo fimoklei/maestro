@@ -50,8 +50,9 @@ export type UpdatePreview = {
   chosenRelease: string;
   // The three numbers the counting sentence states, over the current Selection.
   counts: { changed: number; removed: number; unchanged: number };
-  // The Inventory's second entrance fills this; an Update from the card adds no
-  // skill of its own (#955).
+  // The skill the Inventory's entrance asked for, when the target's own release
+  // does not hold it. Empty from the card, which adds no skill of its own, and
+  // empty when the request names a skill the Selection already carries (#955).
   addedByThisDeploy: readonly UpdateSkillRow[];
   changed: readonly UpdateSkillRow[];
   removed: readonly string[];
@@ -90,6 +91,9 @@ export type UpdatePreviewError =
   // preview never guesses a count (J04).
   | "inventory-unreadable"
   | "no-published-tag"
+  // The requested skill is not in the release this update would adopt, so
+  // nothing is priced: the reader is never moved to a release without it.
+  | "skill-not-in-release"
   | "preview-failed";
 
 export type UpdatePreviewResult =
@@ -217,7 +221,11 @@ export class UpdateTarget {
 
   // A read: it takes no lock, so previewing cannot block an operation already
   // in flight.
-  async preview(input: { target: DeployTarget }): Promise<UpdatePreviewResult> {
+  async preview(input: {
+    target: DeployTarget;
+    // The Inventory's entrance: one skill to add beside the release move (#955).
+    add?: string;
+  }): Promise<UpdatePreviewResult> {
     // Before any filesystem or apm access (security.md).
     if (
       input.target.kind === "repo" &&
@@ -226,7 +234,7 @@ export class UpdateTarget {
       return { ok: false, error: "repo-not-registered" };
     }
     try {
-      const priced = await this.price(input.target);
+      const priced = await this.price(input.target, input.add);
       return priced.ok
         ? { ok: true, preview: priced.preview }
         : { ok: false, error: priced.error };
@@ -242,6 +250,7 @@ export class UpdateTarget {
   async run(input: {
     target: DeployTarget;
     token: string;
+    add?: string;
     confirmedCopyReceipt?: string;
   }): Promise<UpdateRunResult> {
     // Before any filesystem or apm access (security.md).
@@ -268,6 +277,7 @@ export class UpdateTarget {
     input: {
       target: DeployTarget;
       token: string;
+      add?: string;
       confirmedCopyReceipt?: string;
     },
     key: string,
@@ -275,7 +285,7 @@ export class UpdateTarget {
     // Swallow rather than rethrow: a raw apm message may carry a token and must
     // never reach the transport layer (security.md).
     try {
-      const priced = await this.price(input.target);
+      const priced = await this.price(input.target, input.add);
       if (!priced.ok) {
         return { ok: false, error: priced.error };
       }
@@ -389,6 +399,7 @@ export class UpdateTarget {
   // scope the token is minted over can never disagree.
   private async price(
     target: DeployTarget,
+    add?: string,
   ): Promise<
     | { ok: true; preview: UpdatePreview; scope: UpdateScope }
     | { ok: false; error: UpdatePreviewError }
@@ -426,13 +437,22 @@ export class UpdateTarget {
       return { ok: false, error: "inventory-unreadable" };
     }
 
+    // Read before anything is priced: a release that does not hold the skill
+    // the reader asked for is never adopted on their behalf (#955).
+    if (add !== undefined && !next.has(add)) {
+      return { ok: false, error: "skill-not-in-release" };
+    }
+    const added =
+      add !== undefined && !state.selection.includes(add) ? [add] : [];
+
     // Every selected copy is at risk: the install rewrites the whole Selection,
-    // and a name this release dropped is deleted. The chosen release goes in,
-    // so a copy already equal to it is not read as an edit (#952).
+    // and a name this release dropped is deleted. The skill being added joins
+    // them — a copy of it already on disk is overwritten too. The chosen release
+    // goes in, so a copy already equal to it is not read as an edit (#952).
     const copies = await this.deps.copyGuard.check({
       write: "update",
       target,
-      names: state.selection,
+      names: [...state.selection, ...added],
       ...(tools.length === 0 ? {} : { tools }),
       release: latest.name,
     });
@@ -467,11 +487,15 @@ export class UpdateTarget {
       (name) => next.has(name) && current.get(name) === next.get(name),
     );
     // Update adds nothing automatically: these are shown to read, not to pick
-    // (spec story 18).
+    // (spec story 18). The requested skill is named in its own section, so it
+    // never appears twice.
     const newInRelease = [...next.keys()].filter(
-      (name) => !state.selection.includes(name),
+      (name) => !state.selection.includes(name) && !added.includes(name),
     );
-    const desired = state.selection.filter((name) => next.has(name));
+    const desired = [
+      ...state.selection.filter((name) => next.has(name)),
+      ...added,
+    ];
     const scope: UpdateScope = {
       target,
       chosenRelease: latest.name,
@@ -492,7 +516,7 @@ export class UpdateTarget {
           removed: removed.length,
           unchanged: unchanged.length,
         },
-        addedByThisDeploy: [],
+        addedByThisDeploy: added.map(row),
         changed: changed.map(row),
         removed,
         unchanged,
