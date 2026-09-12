@@ -63,6 +63,26 @@ export async function deployedRootPackageSkills(
   return attributed.filter((_skill, index) => present[index] === true);
 }
 
+// What the deploy put in a tool's subtree that belongs to no skill: `includes:
+// auto` deploys every primitive type while the Harness stays skills-only, so
+// this is a fact to know, never an action to take (ADR-0031 § Accepted limits).
+// A file under none of the given prefixes belongs to no target counted here.
+export function countExtraRootPackageFiles(
+  entry: LockfileEntry,
+  prefixes: readonly string[],
+): number {
+  return (entry.deployed_files ?? []).filter((file) =>
+    prefixes.some(
+      (prefix) =>
+        file.startsWith(`${prefix}/`) &&
+        !file.startsWith(`${prefix}/skills/`) &&
+        // The skills directory row itself names the selection, not a file
+        // beside it.
+        file !== `${prefix}/skills`,
+    ),
+  ).length;
+}
+
 // `<prefix>/skills/<name>/<rest>` and nothing else — a path with no `<rest>` is
 // the directory row, and one under another prefix belongs to no detected tool.
 function skillNameUnder(file: string, prefix: string): string | null {

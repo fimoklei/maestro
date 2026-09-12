@@ -2,6 +2,7 @@
 // (frontend.md).
 import type {
   DeployedPrimitive,
+  PinnedPerSkill,
   ReleaseHead,
   SkippedEntry,
 } from "@maestro/core";
@@ -10,13 +11,17 @@ import { requestJson } from "../api/http";
 
 // Re-exported rather than copied, so the two ends of the wire cannot drift
 // (architecture.md).
-export type { DeployedPrimitive, ReleaseHead, SkippedEntry };
+export type { DeployedPrimitive, PinnedPerSkill, ReleaseHead, SkippedEntry };
 
 type DeployStateResponse = {
   primitives: DeployedPrimitive[];
   skipped: SkippedEntry[];
   // Absent where the target follows no single release (ADR-0031).
   releaseHead?: ReleaseHead;
+  // Absent unless the target still holds per-skill dependencies (#950).
+  pinnedPerSkill?: PinnedPerSkill;
+  // Absent where the record holds no file outside the selected skills.
+  extraFiles?: number;
 };
 
 // Shared so single-repo and multi-repo readers use the same key/fetch — they

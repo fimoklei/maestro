@@ -3,20 +3,31 @@
 // attributed per prefix found there and to no other tool (ADR-0011). A
 // root-package entry works the same way, one row for many skills (ADR-0031).
 import { DEPLOY_TOOLS, type SupportedTool } from "../deploy/deploy-tools";
+import type { GitOrigin } from "../deploy/git-origin";
 import { type LockfileEntry, readPackage } from "../lockfile/lockfile";
 import {
   type DeployedPrimitive,
+  type PinnedPerSkill,
   type ReleaseHead,
   type SkippedEntry,
   skippedFromReading,
 } from "./deploy-state-types";
-import { deployedRootPackageSkills } from "./root-package-skills";
+import { harnessSkillPin, type SkillPin, tallyPins } from "./pinned-per-skill";
+import {
+  countExtraRootPackageFiles,
+  deployedRootPackageSkills,
+} from "./root-package-skills";
 
 export type ToolDeployState = {
   tool: SupportedTool;
   primitives: DeployedPrimitive[];
   // Absent where this target follows no single release (ADR-0031).
   releaseHead?: ReleaseHead;
+  // Absent unless this tool still holds per-skill dependencies on the connected
+  // Harness (#950).
+  pinnedPerSkill?: PinnedPerSkill;
+  // Absent where this tool's subtree holds no file outside the selected skills.
+  extraFiles?: number;
 };
 
 const SKILLS_DIR_PREFIX = new Map<SupportedTool, string>(
@@ -26,7 +37,11 @@ const SKILLS_DIR_PREFIX = new Map<SupportedTool, string>(
 export async function groupPrimitivesByTool(
   entries: LockfileEntry[],
   detectedTools: readonly SupportedTool[],
-  deps: { fileExists: (path: string) => Promise<boolean> },
+  deps: {
+    fileExists: (path: string) => Promise<boolean>;
+    // The connected Harness, or null while it is unknown (#950).
+    origin?: GitOrigin | null;
+  },
 ): Promise<{
   tools: ToolDeployState[];
   skipped: SkippedEntry[];
@@ -44,6 +59,11 @@ export async function groupPrimitivesByTool(
   // it is deployed by a repo this read cannot attribute, so its origin is
   // named instead of the entry vanishing (#655).
   const otherOrigins = new Set<string>();
+  // One list per tool, so a pin decides the status of the subtree it landed in
+  // and of no other.
+  const pins = new Map<SupportedTool, SkillPin[]>(
+    tools.map((group) => [group.tool, []]),
+  );
   let release: string | undefined;
 
   for (const entry of entries) {
@@ -62,6 +82,13 @@ export async function groupPrimitivesByTool(
       );
       for (const group of tools) {
         const prefix = SKILLS_DIR_PREFIX.get(group.tool);
+        const extra = countExtraRootPackageFiles(
+          entry,
+          prefix === undefined ? [] : [prefix],
+        );
+        if (extra > 0) {
+          group.extraFiles = extra;
+        }
         for (const skill of deployed) {
           if (skill.prefix === prefix) {
             group.primitives.push({
@@ -79,6 +106,7 @@ export async function groupPrimitivesByTool(
       skipped.push(skippedFromReading(reading, entry.virtual_path ?? ""));
       continue;
     }
+    const pin = harnessSkillPin(entry, deps.origin ?? null);
     let claimed = false;
     for (const group of tools) {
       const prefix = SKILLS_DIR_PREFIX.get(group.tool);
@@ -89,10 +117,19 @@ export async function groupPrimitivesByTool(
           name: reading.name,
           version: entry.resolved_ref,
         });
+        if (pin !== null) {
+          pins.get(group.tool)?.push(pin);
+        }
       }
     }
     if (!claimed && entry.repo_url !== undefined) {
       otherOrigins.add(entry.repo_url);
+    }
+  }
+  for (const group of tools) {
+    const tallied = tallyPins(pins.get(group.tool) ?? []);
+    if (tallied !== undefined) {
+      group.pinnedPerSkill = tallied;
     }
   }
   return release === undefined

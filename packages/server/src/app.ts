@@ -135,6 +135,12 @@ function realDeps(): AppDeps {
       resolveRoot: harnessRoot,
       now: () => new Date(),
     }),
+    // Which Harness a target's per-skill pins name: one on another origin
+    // decides no status and blocks nothing (ADR-0031).
+    harnessOrigin: async () => {
+      const root = await harnessRoot();
+      return root === undefined ? null : await harnessGit.readOrigin(root);
+    },
     // The Local edits / Unverified chip a deployed row carries, from the same
     // classifier the write path's guard uses.
     content: new DeployedContentAdapter({ location: deployedLocation }),

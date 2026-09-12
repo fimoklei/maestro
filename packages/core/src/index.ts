@@ -50,6 +50,7 @@ export {
 } from "./deploy-state/deploy-state-reader";
 export type {
   DeployedPrimitive,
+  PinnedPerSkill,
   ReleaseHead,
   SkippedEntry,
 } from "./deploy-state/deploy-state-types";

@@ -6,6 +6,7 @@ import { Card } from "../ui/card";
 import { Notice } from "../ui/notice";
 import { DeployStateList } from "./deploy-state-list";
 import { toDeployedView } from "./deployed-view";
+import { PinnedPerSkillHead } from "./pinned-per-skill-head";
 import { releaseLabel } from "./release-head-copy";
 import { ReleaseHeadMeta } from "./release-head-meta";
 import { TargetDeployAction } from "./target-deploy-action";
@@ -30,6 +31,7 @@ export function DeployStatePanel({
   const drift = driftViewModel(useDrift(repo));
   const indicator = drift.targetIndicator(toDeployedView(deployState));
   const head = deployState.data?.releaseHead;
+  const pinned = deployState.data?.pinnedPerSkill;
   // Where focus goes when a removal destroys the row it was triggered from.
   const headerRef = useRef<HTMLHeadingElement>(null);
 
@@ -40,7 +42,12 @@ export function DeployStatePanel({
       kind="local"
       data={head ? releaseLabel(head) : undefined}
       drift={indicator === "drift"}
-      status={<TargetStatusChip indicator={indicator} />}
+      status={
+        <TargetStatusChip
+          indicator={indicator}
+          pinnedPerSkill={pinned !== undefined}
+        />
+      }
     >
       {deployState.isLoading ? (
         <p className="px-card-x py-row-y text-dim text-tag">
@@ -63,11 +70,13 @@ export function DeployStatePanel({
       ) : (
         <>
           {head ? <ReleaseHeadMeta head={head} /> : null}
+          {pinned ? <PinnedPerSkillHead pinned={pinned} /> : null}
           <DeployStateList
             primitives={deployState.data?.primitives ?? []}
             skipped={deployState.data?.skipped ?? []}
             drift={drift}
             headRelease={head?.release}
+            extraFiles={deployState.data?.extraFiles}
             target={{ kind: "repo", repoPath: repo }}
             onRemoved={() => headerRef.current?.focus()}
           />

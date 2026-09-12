@@ -7,7 +7,7 @@ import {
   removePreflightErrorResponses,
 } from "../error-responses";
 import { requireRegisteredRepo } from "../registered-repo-route";
-import { releaseHeadFields } from "../release-head-response";
+import { cardReadingFields } from "../release-head-response";
 import {
   BULK_DEPLOY_BODY,
   BULK_REMOVE_BODY,
@@ -59,7 +59,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     return c.json({
       primitives: result.primitives,
       skipped: result.skipped,
-      ...releaseHeadFields(result.releaseHead),
+      ...cardReadingFields(result),
     });
   });
 
@@ -71,10 +71,12 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
       return c.json({ error: result.error }, 422);
     }
     return c.json({
-      tools: result.tools.map(({ releaseHead, ...group }) => ({
-        ...group,
-        ...releaseHeadFields(releaseHead),
-      })),
+      tools: result.tools.map(
+        ({ releaseHead, pinnedPerSkill, extraFiles, ...group }) => ({
+          ...group,
+          ...cardReadingFields({ releaseHead, pinnedPerSkill, extraFiles }),
+        }),
+      ),
       skipped: result.skipped,
       otherOrigins: result.otherOrigins,
     });

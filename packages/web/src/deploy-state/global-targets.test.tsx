@@ -274,3 +274,31 @@ describe("GlobalTargets", () => {
     expect(screen.queryByText(/not deployed here/i)).not.toBeInTheDocument();
   });
 });
+
+describe("GlobalTargets on a tool still pinned per skill", () => {
+  it("reads the status and the way out on that tool's card alone", () => {
+    renderTargets({
+      tools: [
+        {
+          tool: "claude",
+          primitives: [{ type: "skill", name: "tdd", version: "v0.3.1" }],
+          pinnedPerSkill: [{ release: "v0.3.1", skills: 1 }],
+        },
+        {
+          tool: "codex",
+          primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
+          extraFiles: 1,
+        },
+      ],
+    });
+
+    expect(screen.getAllByText("▲ Pinned per skill")).toHaveLength(1);
+    expect(screen.getByText("1 skill at v0.3.1")).toBeInTheDocument();
+    expect(screen.getByText("Release not adopted")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Extra files deployed: 1 file outside the selected skills.",
+      ),
+    ).toBeInTheDocument();
+  });
+});

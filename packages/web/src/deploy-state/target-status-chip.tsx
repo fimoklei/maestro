@@ -6,9 +6,17 @@ import { Chip } from "../ui/chip";
 // reads as in sync (J04, see deployed-view.ts).
 export function TargetStatusChip({
   indicator,
+  pinnedPerSkill = false,
 }: {
   indicator: TargetDriftIndicator;
+  // A target still deployed one skill at a time. It outranks every drift
+  // reading: no release was adopted here, so none of them is the target's
+  // status (ADR-0031, #950).
+  pinnedPerSkill?: boolean;
 }) {
+  if (pinnedPerSkill) {
+    return <Chip tone="drift">▲ Pinned per skill</Chip>;
+  }
   if (indicator === "ok") {
     return <Chip tone="ok">● In sync</Chip>;
   }

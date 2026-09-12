@@ -14,7 +14,7 @@ import { ActionsMenu } from "../ui/actions-menu";
 import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
 import { type DeployStateNotice, removeNotice } from "./notice-copy";
-import { copyChipText } from "./release-head-copy";
+import { copyChipText, extraFilesLine } from "./release-head-copy";
 import { removalOutcome } from "./removal-outcome";
 import { RemovalTrace, type TracedRemoval } from "./removal-trace";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
@@ -123,12 +123,16 @@ export function DeployStateList({
   skipped,
   drift = PENDING_DRIFT,
   headRelease,
+  extraFiles,
   target,
   onRemoved,
 }: {
   primitives: DeployedPrimitive[];
   skipped: SkippedEntry[];
   drift?: DriftViewModel;
+  // How many recorded files belong to no selected skill. A fact under the rows,
+  // in the shape of the skipped list — never a chip, never its own card (#950).
+  extraFiles?: number;
   // The release the whole target follows. A row states its own release only
   // where it disagrees with this one, so one release is stated once (ADR-0031).
   headRelease?: string;
@@ -165,7 +169,12 @@ export function DeployStateList({
 
   // Genuinely nothing — a skipped-only target still falls through to its
   // warning below, and a card just emptied by its own removal shows the trace.
-  if (primitives.length === 0 && skipped.length === 0 && removed.length === 0) {
+  if (
+    primitives.length === 0 &&
+    skipped.length === 0 &&
+    removed.length === 0 &&
+    (extraFiles ?? 0) === 0
+  ) {
     return null;
   }
 
@@ -306,6 +315,11 @@ export function DeployStateList({
       {orphans.length > 0 && (
         <p className="px-card-x py-row-y text-amber-ink text-tag">
           Reported behind, not deployed here: {orphans.join(", ")}
+        </p>
+      )}
+      {extraFiles === undefined || extraFiles === 0 ? null : (
+        <p className="px-card-x py-row-y text-dim text-tag">
+          {extraFilesLine(extraFiles)}
         </p>
       )}
       {skipped.length > 0 && (
