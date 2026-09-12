@@ -1,0 +1,16 @@
+[!] A new version of APM is available: 0.30.0 (current: 0.29.0)
+Run apm self-update to upgrade
+
+[*] Created apm.yml
+[i] Targets set: claude (persisted to apm.yml)
+[*] Validating 1 package...
+[+] fimoklei/agent-harness#v0.6.0
+[*] Updated apm.yml with 1 new package(s)
+[>] Installing 1 new package...
+[>] Resolving fimoklei/agent-harness...
+[i] Targets: claude  (source: --target flag)
+  [+] fimoklei/agent-harness #v0.6.0 @f8208f12
+  |-- 2 skill(s) integrated -> .claude/skills/
+[i] Added apm_modules/ to .gitignore
+
+[*] Installed 1 APM dependency in 2.8s.

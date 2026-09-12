@@ -1,0 +1,7 @@
+[>] Installing dependencies from apm.yml...
+[i] Targets: claude  (source: --target flag)
+  [+] fimoklei/agent-harness #v0.6.0 @f8208f12 (cached)
+  |-- 36 skill(s) integrated -> .claude/skills/
+  [!] 1 file(s) contain hidden characters
+    Run with --verbose to see details
+[*] Installed 1 APM dependency in 0.3s.

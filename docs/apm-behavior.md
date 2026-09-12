@@ -127,6 +127,47 @@ The deploy path must not trust the exit code:
    `core/target_detection.py::resolve_targets` → `_validate_canonical_v2`
    raises `UnknownTargetError`).
 
+### Root package and its Selection
+
+Installing a repository *root* (`github.com/<owner>/<repo>#vX.Y.Z`, no
+subpath) creates **one** dependency whose skills are chosen with `--skill
+<name>`, repeated once per name. Measured 2026-09-12 against
+`github.com/fimoklei/agent-harness#v0.6.0`, per repo and at `-g -t
+claude,codex`; `tests/integration/apm-root-package-canary.test.ts` re-runs the
+whole sequence (issue #957). Captures: `apm-957-*.txt`,
+`apm.lock.957-root-selection-project.yaml`,
+`apm.yml.957-narrowed-with-foreign.yaml`.
+
+- The first install persists the Selection into `apm.yml` under the one
+  `git:` entry as `skills:` — **sorted**, not in the order passed — and into
+  the lockfile as `skill_subset`. The entry carries `package_type:
+  apm_package`, and `deployed_files` lists the selected skills only.
+- **Narrowing takes two steps:** write the shorter list to `skills:`, then
+  install the same names as `--skill` flags (a `--skill` list alone unions
+  with the persisted one, § Deploy / #929). The install prints `Cleaned N
+  stale files`, and the dropped skill leaves disk, `deployed_files` and
+  `skill_subset` in every tool root the package wrote.
+- **`skills: []` is refused, not empty.** The manifest fails to parse before
+  anything is touched: `Invalid APM dependency …: skills: must contain at
+  least one name; remove the field to install all skills in the bundle.`,
+  exit 1, no marker, files and lockfile unchanged; the CLI-ref path adds
+  `apm.yml restored to its previous state`. Dropping the field instead
+  installs the **whole** bundle (36 skills at that tag) and leaves no
+  `skill_subset` in the lockfile. An empty Selection therefore has no
+  expression: the last removal is an `apm uninstall` of the package.
+- **A named uninstall of the root package is scoped.** Measured with a second
+  dependency from the *same repository* (`…/.apm/skills/tdd#v0.6.0`) and a
+  hand-placed `.claude/skills/handmade/` beside it: the Harness entry, its
+  files and its `apm_modules/` subtree go; the other dependency and the
+  hand-placed directory stay — in `apm.yml`, in the lockfile and on disk, per
+  repo and at `-g`. The lockfile is rewritten while another dependency
+  remains; it is deleted only with the last one (§ Remove).
+- **A blocked removal still deletes the rest.** With one deployed file edited
+  locally the uninstall exits 1 with no success marker and retains that file,
+  while the package's other skills are already gone and `apm.yml` and the
+  lockfile still list the whole Selection. Neither the exit code nor the
+  markers say what is on disk.
+
 ## Lockfile — `apm.lock.yaml`
 
 Top level: `lockfile_version`, `generated_at`, `apm_version`,
