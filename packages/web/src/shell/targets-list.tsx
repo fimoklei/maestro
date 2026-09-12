@@ -5,6 +5,7 @@ import {
 } from "../deploy-state/deployed-view";
 import { skippedNeedsAttention } from "../deploy-state/skipped-entry-text";
 import { toolPresentation } from "../deploy-state/tool-presentation";
+import type { ReleaseHead } from "../deploy-state/use-deploy-state";
 import { useDeployState } from "../deploy-state/use-deploy-state";
 import {
   type ToolDeployState,
@@ -75,6 +76,16 @@ export function TargetsList() {
   );
 }
 
+// What the Release head says about a whole target, which the per-skill drift
+// check cannot answer for a target that follows one release (ADR-0031, #956).
+function headReading(head: ReleaseHead | undefined) {
+  const behind =
+    head !== undefined &&
+    head.latestRelease !== null &&
+    head.latestRelease !== head.release;
+  return { behind, changedCount: head?.changed ?? 0 };
+}
+
 function ToolTargetItem({
   group,
   drift,
@@ -91,6 +102,7 @@ function ToolTargetItem({
   const names = group.primitives.map((primitive) => primitive.name);
   const toolDrift = drift.forTool(names);
   const deployed = toolDeployedView(names, read, attentionCount);
+  const head = headReading(group.releaseHead);
   return (
     <TargetItem
       label={toolPresentation(group.tool).label}
@@ -100,6 +112,8 @@ function ToolTargetItem({
         otherOrigins,
       )}
       driftCount={toolDrift.driftCount(deployed)}
+      behind={head.behind}
+      changedCount={head.changedCount}
     />
   );
 }
@@ -114,6 +128,7 @@ function RepoTargetItem({
   const drift = driftViewModel(useDrift(repo));
   const deployState = useDeployState(repo);
   const deployed = toDeployedView(deployState);
+  const head = headReading(deployState.data?.releaseHead);
   return (
     <TargetItem
       label={targetLabel(repo, siblings)}
@@ -121,6 +136,9 @@ function RepoTargetItem({
       kind="local"
       indicator={drift.targetIndicator(deployed)}
       driftCount={drift.driftCount(deployed)}
+      pinnedPerSkill={deployState.data?.pinnedPerSkill !== undefined}
+      behind={head.behind}
+      changedCount={head.changedCount}
     />
   );
 }

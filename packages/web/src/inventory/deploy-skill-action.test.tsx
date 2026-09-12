@@ -260,7 +260,10 @@ describe("DeploySkillAction", () => {
     });
   });
 
-  it("names the deployed version in sync and offers Deploy skill again for a proven current target", async () => {
+  // *Deploy skill again* is retired: a skill already on the target's release
+  // has nothing to redeploy, and a control that reinstalls one skill implies a
+  // release of its own (ADR-0031, #956).
+  it("names the deployed version in sync and offers no deploy control for a proven current target", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
@@ -288,25 +291,78 @@ describe("DeploySkillAction", () => {
 
     expect(await screen.findByText("● In sync · v0.5.1")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Deploy skill again" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Deploy skill" }),
+      screen.queryByRole("button", { name: /deploy skill/i }),
     ).not.toBeInTheDocument();
+  });
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Deploy skill again" }),
+  // The per-skill drift check answers nothing for a target on one release, so
+  // this read In sync while the newest release had changed the skill (#956).
+  it("reads a skill the newest release changed as behind, never as in sync", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/deploy-state")) {
+          return jsonResponse({
+            primitives: [{ type: "skill", name: "tdd", version: "v0.5.1" }],
+            skipped: [],
+            releaseHead: {
+              release: "v0.5.1",
+              latestRelease: "v0.6.0",
+              changed: 1,
+              changedSkills: ["tdd"],
+              selected: 1,
+              comparedAt: "2026-09-12T10:00:00.000Z",
+            },
+          });
+        }
+        if (url.startsWith("/api/drift")) {
+          return jsonResponse({ behind: [] });
+        }
+        throw new Error(`Unexpected request: ${url}`);
+      }),
+    );
+    renderAction(
+      <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
     );
 
-    const deployCall = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
-      ([url]) => url === "/api/deploy",
+    expect(await screen.findByText("▲ Behind · v0.5.1")).toBeInTheDocument();
+    expect(screen.queryByText(/in sync/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /deploy skill/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("reads a skill the newest release left alone as in sync", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/deploy-state")) {
+          return jsonResponse({
+            primitives: [{ type: "skill", name: "tdd", version: "v0.5.1" }],
+            skipped: [],
+            releaseHead: {
+              release: "v0.5.1",
+              latestRelease: "v0.6.0",
+              changed: 1,
+              changedSkills: ["grill"],
+              selected: 2,
+              comparedAt: "2026-09-12T10:00:00.000Z",
+            },
+          });
+        }
+        if (url.startsWith("/api/drift")) {
+          return jsonResponse({ behind: [] });
+        }
+        throw new Error(`Unexpected request: ${url}`);
+      }),
     );
-    if (!deployCall) throw new Error("expected a POST to /api/deploy");
-    expect(JSON.parse((deployCall[1] as RequestInit).body as string)).toEqual({
-      type: "skill",
-      name: "tdd",
-      target: { kind: "repo", repoPath: "/projects/alpha" },
-    });
+    renderAction(
+      <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
+    );
+
+    expect(await screen.findByText("● In sync · v0.5.1")).toBeInTheDocument();
   });
 
   it("returns to deploy when the selected target is not synced", async () => {

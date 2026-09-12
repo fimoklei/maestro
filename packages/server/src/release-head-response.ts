@@ -14,6 +14,9 @@ const releaseHeadSchema = z.object({
   release: z.string().regex(RELEASE_TAG_PATTERN),
   latestRelease: z.string().regex(RELEASE_TAG_PATTERN).nullable(),
   changed: z.number().int().nonnegative().nullable(),
+  // Skill names read off the Harness trees, bounded like every other name the
+  // server lets cross (ADR-0018).
+  changedSkills: z.array(z.string().max(200)).optional(),
   selected: z.number().int().nonnegative(),
   comparedAt: z.iso.datetime().nullable(),
 });

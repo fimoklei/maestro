@@ -3,8 +3,11 @@
 // re-derives.
 
 import type { DeployedView } from "../deploy-state/deployed-view";
-import type { DeployedPrimitive } from "../deploy-state/use-deploy-state";
-import type { DriftViewModel } from "../drift/drift-view-model";
+import type {
+  DeployedPrimitive,
+  ReleaseHead,
+} from "../deploy-state/use-deploy-state";
+import type { DriftStatus, DriftViewModel } from "../drift/drift-view-model";
 import type { DeployTarget } from "./use-deploy-skill";
 
 // Count roll-up reads `deployed` + `drift`; the skill detail pane reads
@@ -18,7 +21,42 @@ export type DeploymentTarget = {
   deployed: DeployedView;
   primitives: DeployedPrimitive[];
   drift: DriftViewModel;
+  // The one release this target follows (ADR-0031). Absent where it follows
+  // none — a target still pinned per skill, or one whose read has not landed.
+  releaseHead?: ReleaseHead;
 };
+
+// One per-skill reading from the Release heads a target carries — one for a
+// repo, one per detected tool for global. Under one release the answer is
+// content: Behind means this skill's own files differ at the newest release,
+// never that the target is behind. Undefined where no head is known, so the
+// caller falls back to the per-skill drift check (ADR-0031, #956).
+export function headsReading(
+  heads: readonly (ReleaseHead | undefined)[],
+  skillName: string,
+): DriftStatus | undefined {
+  const known = heads.filter((head) => head !== undefined);
+  if (known.length === 0) {
+    return undefined;
+  }
+  // One behind copy makes the skill behind; an unread comparison beats a clean
+  // one, so a partial answer never reads as up to date (J04).
+  if (known.some((head) => head.changedSkills?.includes(skillName))) {
+    return "behind";
+  }
+  return known.some((head) => head.changedSkills === undefined)
+    ? "unknown"
+    : "up-to-date";
+}
+
+// The Inventory's two lenses share this, so the count and the detail pane can
+// never disagree (ADR-0016).
+export const skillReading = (
+  target: DeploymentTarget,
+  skillName: string,
+): DriftStatus =>
+  headsReading([target.releaseHead], skillName) ??
+  target.drift.skillStatus(skillName);
 
 // No mark means confirmed up-to-date on every target — silence never stands
 // for "we couldn't check" (J04).
@@ -62,7 +100,7 @@ export function rollUpDeployment(
     }
     targetCount++;
 
-    const status = target.drift.skillStatus(skillName);
+    const status = skillReading(target, skillName);
     if (status === "behind") {
       behindCount++;
     } else if (status === "unknown" || status === "unverified") {

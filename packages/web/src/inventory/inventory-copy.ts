@@ -12,6 +12,18 @@ export const INVENTORY_NOT_READ = {
   message: "Re-read Inventory to try again.",
 } as const;
 
+// The deploy picker's state line for a skill already deployed on the chosen
+// target: a fact about the copy, never a control. Behind is the reading the
+// target's Release head gives, and its way out is Update target on the
+// Deploy-state (ADR-0031, #956).
+export const targetSyncLine = (
+  reading: "in-sync" | "behind",
+  release: string | undefined,
+): string => {
+  const head = reading === "behind" ? "▲ Behind" : "● In sync";
+  return release === undefined ? head : `${head} · ${release}`;
+};
+
 // Empty is an offer, not a failure: the heading names what is on offer and the
 // action is the one step that fills the list (copy.md → R-B).
 export const NO_RELEASED_SKILLS = {

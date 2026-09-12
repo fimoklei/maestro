@@ -67,6 +67,29 @@ describe("BulkDeploySkills", () => {
     ]);
   });
 
+  // Story 51: a bulk run skips a target needing recovery, or one holding a
+  // manifest Maestro will not edit, and states the reason (#956).
+  it("reports an unfinished operation and an unrecognised manifest as attention", async () => {
+    const bulk = new BulkDeploySkills({
+      deploy: fakeDeploy({
+        tdd: fail("operation-unfinished"),
+        grill: fail("manifest-not-recognised"),
+      }),
+    });
+
+    const report = await bulk.execute({
+      names: ["tdd", "grill"],
+      target: { kind: "global" },
+    });
+
+    expect(report.attention).toEqual([
+      { name: "tdd", error: "operation-unfinished", forceable: false },
+      { name: "grill", error: "manifest-not-recognised", forceable: false },
+    ]);
+    expect(report.deployed).toEqual([]);
+    expect(report.failed).toEqual([]);
+  });
+
   it("keeps a forceable refusal marked as one", async () => {
     const bulk = new BulkDeploySkills({
       deploy: fakeDeploy({ tdd: fail("deployed-diverged-from-lock") }),

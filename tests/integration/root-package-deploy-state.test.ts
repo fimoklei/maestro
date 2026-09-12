@@ -151,6 +151,24 @@ describe("reading a root-package target over HTTP", () => {
     });
   });
 
+  it("carries the names the newest release changed, so the Inventory can mark one skill", async () => {
+    const files = [".claude/skills/tdd/SKILL.md"];
+    await seedFiles(repo, files);
+    await writeFile(
+      join(repo, "apm.lock.yaml"),
+      rootPackageLockfile("v0.3.2", files, ["tdd"]),
+      "utf8",
+    );
+
+    const app = await makeApp({ ...HEAD, selected: 1, changedSkills: ["tdd"] });
+    const res = await app.request(
+      `/api/deploy-state?repo=${encodeURIComponent(repo)}`,
+    );
+
+    const body = (await res.json()) as { releaseHead: ReleaseHead };
+    expect(body.releaseHead.changedSkills).toEqual(["tdd"]);
+  });
+
   it("leaves a skill whose file is gone off the list", async () => {
     const recorded = [
       ".claude/skills/tdd/SKILL.md",

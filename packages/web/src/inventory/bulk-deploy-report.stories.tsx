@@ -10,7 +10,6 @@ const meta = {
       tone: "success",
       targetLabel: "Global",
       deployed: [{ name: "research", version: "v0.3.0" }],
-      updated: [{ name: "tdd", version: "v1.2.0" }],
       skipped: ["review"],
       attention: [],
       failed: [],
@@ -41,7 +40,6 @@ export const WithAttentionAndFailure: Story = {
       tone: "attention",
       targetLabel: "Global",
       deployed: [{ name: "tdd", version: "v1.2.0" }],
-      updated: [],
       skipped: ["docs"],
       attention: [
         {
@@ -64,7 +62,6 @@ export const Deploying: Story = {
       tone: "success",
       targetLabel: "Global",
       deployed: [],
-      updated: [],
       skipped: [],
       attention: [],
       failed: [],

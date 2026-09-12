@@ -19,6 +19,10 @@ export type ReleaseHead = {
   release: string;
   latestRelease: string | null;
   changed: number | null;
+  // Which selected skills that count names, in the selection's own order.
+  // Absent wherever `changed` is null — the per-skill reading is the same
+  // comparison, so it is never known when the count is not (#956).
+  changedSkills?: readonly string[];
   // The size of the selection the count speaks about.
   selected: number;
   // ISO-8601 moment of the last comparison that succeeded, kept when a later

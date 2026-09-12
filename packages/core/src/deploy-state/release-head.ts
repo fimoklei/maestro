@@ -70,6 +70,7 @@ export class ReleaseHeadReader {
         ...base,
         latestRelease,
         changed: 0,
+        changedSkills: [],
         comparedAt,
       });
     }
@@ -89,13 +90,14 @@ export class ReleaseHeadReader {
     }
     // An identical tree hash is identical content; a name the newer release
     // dropped has no hash there, which is a change to this target too.
-    const changed = input.selection.filter(
+    const changedSkills = input.selection.filter(
       (name) => current.get(name) !== next.get(name),
-    ).length;
+    );
     return this.remember(input.key, {
       ...base,
       latestRelease,
-      changed,
+      changed: changedSkills.length,
+      changedSkills,
       comparedAt,
     });
   }

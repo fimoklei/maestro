@@ -93,6 +93,9 @@ export function useDeploymentTargets(
         },
         primitives: tool.primitives,
         drift: globalDrift.forTool(names),
+        // Under one release, this tool's own Release head answers the per-skill
+        // reading; the drift model is the fallback where there is none (#956).
+        ...(tool.releaseHead ? { releaseHead: tool.releaseHead } : {}),
       });
     }
   }
@@ -108,6 +111,9 @@ export function useDeploymentTargets(
       deployed: toDeployedView(deploy),
       primitives: deploy.data?.primitives ?? [],
       drift: driftViewModel(repoDrift[index] ?? pending),
+      ...(deploy.data?.releaseHead
+        ? { releaseHead: deploy.data.releaseHead }
+        : {}),
     });
   });
 

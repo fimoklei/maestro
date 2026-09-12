@@ -37,18 +37,15 @@ import {
 
 // Per-skill drift badge. State is carried in text, never colour alone, so
 // "unknown" never reads as up-to-date (J04). Renders nothing while pending.
-const driftBadge: Record<
-  Exclude<DriftStatus, "pending">,
-  { tone: "ok" | "drift" | "dim"; label: string; hint?: string }
+// *Older tag* is retired with the per-skill release it implied: the skill is
+// identical at both tags, so nothing marks the row (ADR-0031, #956).
+const driftBadge: Partial<
+  Record<
+    DriftStatus,
+    { tone: "ok" | "drift" | "dim"; label: string; hint?: string }
+  >
 > = {
   behind: { tone: "drift", label: "Behind" },
-  // Behind claims a newer release exists; this one adds that the skill itself
-  // did not move in it (ADR-0027).
-  "older-tag": {
-    tone: "dim",
-    label: "Older tag",
-    hint: "This skill is identical at the pinned tag and the latest release",
-  },
   "no-longer-released": {
     tone: "drift",
     label: "No longer released",
@@ -88,13 +85,13 @@ const removalFailure = (error: unknown): RemovalNews => ({
 });
 
 function DriftBadge({ status }: { status: DriftStatus }) {
-  if (status === "pending") {
+  const badge = driftBadge[status];
+  if (badge === undefined) {
     return null;
   }
-  const { tone, label, hint } = driftBadge[status];
   return (
-    <Chip tone={tone} title={hint}>
-      {label}
+    <Chip tone={badge.tone} title={badge.hint}>
+      {badge.label}
     </Chip>
   );
 }

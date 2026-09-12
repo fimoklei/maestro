@@ -77,7 +77,9 @@ describe("bulkDeployReportView", () => {
     ]);
   });
 
-  it("names a behind skill as updated to latest, not a first deploy", () => {
+  // A bulk run never moves a target's release (ADR-0031, #956), so every
+  // success is one deploy at the release the target already follows.
+  it("names every success as a deploy, never as an update to latest", () => {
     const view = expectReportView(
       bulkDeployReportView({
         report: report({
@@ -87,14 +89,14 @@ describe("bulkDeployReportView", () => {
           ],
         }),
         skippedClean: [],
-        updateToLatest: ["tdd"],
         targetLabel: "global",
       }),
     );
 
-    expect(view.updated).toEqual([{ name: "tdd", version: "v1.2.0" }]);
-    expect(view.deployed).toEqual([{ name: "research", version: "v0.3.0" }]);
-    // The summary still counts every success, however it got there.
+    expect(view.deployed).toEqual([
+      { name: "tdd", version: "v1.2.0" },
+      { name: "research", version: "v0.3.0" },
+    ]);
     expect(view.counts.deployed).toBe(2);
   });
 

@@ -53,9 +53,38 @@ describe("ReleaseHeadReader", () => {
       release: "v0.3.2",
       latestRelease: "v0.3.4",
       changed: 2,
+      changedSkills: ["tdd", "jobs"],
       selected: 5,
       comparedAt: AT.toISOString(),
     });
+  });
+
+  it("names the changed skills in the selection's own order", async () => {
+    const head = await reader({
+      readSkillTreesAtTag: async (_root, tag) => TREES[tag] ?? null,
+    }).read({
+      key: "/repo",
+      release: "v0.3.2",
+      selection: ["jobs", "grill", "tdd"],
+    });
+
+    expect(head.changedSkills).toEqual(["jobs", "tdd"]);
+  });
+
+  it("names no changed skill for a target on the latest release", async () => {
+    const head = await reader({
+      readSkillTreesAtTag: async (_root, tag) => TREES[tag] ?? null,
+    }).read({ key: "/repo", release: "v0.3.4", selection: SELECTION });
+
+    expect(head.changedSkills).toEqual([]);
+  });
+
+  it("names no changed skills at all when the comparison could not be read", async () => {
+    const head = await reader({
+      readSkillTreesAtTag: async () => null,
+    }).read({ key: "/repo", release: "v0.3.2", selection: SELECTION });
+
+    expect(head.changedSkills).toBeUndefined();
   });
 
   it("leaves a changed skill outside the selection out of the count", async () => {
@@ -80,6 +109,7 @@ describe("ReleaseHeadReader", () => {
       release: "v0.3.4",
       latestRelease: "v0.3.4",
       changed: 0,
+      changedSkills: [],
       selected: 5,
       comparedAt: AT.toISOString(),
     });

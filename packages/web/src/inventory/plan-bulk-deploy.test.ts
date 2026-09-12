@@ -22,9 +22,9 @@ function target(
 }
 
 describe("planBulkDeploy", () => {
-  // ADR-0027 §6: the pin still lags, so the skill is not clean; but a bulk run
-  // calls an update only for a skill that moved.
-  it("deploys a skill that only lags a tag without calling it an update", () => {
+  // ADR-0027 §6: the pin still lags, so the skill is not clean. A bulk run
+  // deploys it at the target's own release and never claims it moved (#956).
+  it("deploys a skill that only lags a tag", () => {
     const targets = [
       target(
         "Claude Code",
@@ -43,11 +43,10 @@ describe("planBulkDeploy", () => {
     expect(planBulkDeploy(["tdd"], targets)).toEqual({
       toDeploy: ["tdd"],
       skippedClean: [],
-      updateToLatest: [],
     });
   });
 
-  it("keeps a no-longer-released deployment out of the bulk update list", () => {
+  it("deploys a no-longer-released deployment rather than skipping it", () => {
     const plan = planBulkDeploy(
       ["tdd"],
       [
@@ -69,7 +68,6 @@ describe("planBulkDeploy", () => {
     expect(plan).toEqual({
       toDeploy: ["tdd"],
       skippedClean: [],
-      updateToLatest: [],
     });
   });
 
@@ -87,7 +85,7 @@ describe("planBulkDeploy", () => {
     expect(plan.skippedClean).toEqual([]);
   });
 
-  it("deploys a deployed-but-behind skill as an update", () => {
+  it("deploys a deployed-but-behind skill", () => {
     const plan = planBulkDeploy(
       ["tdd"],
       [
@@ -108,16 +106,6 @@ describe("planBulkDeploy", () => {
 
     expect(plan.toDeploy).toEqual(["tdd"]);
     expect(plan.skippedClean).toEqual([]);
-    // A behind copy is an update-to-latest, not a first deploy — named so the
-    // report can say which skills were updated rather than newly installed.
-    expect(plan.updateToLatest).toEqual(["tdd"]);
-  });
-
-  it("does not call a not-yet-deployed skill an update-to-latest", () => {
-    const plan = planBulkDeploy(["research"], [target("global", [], [])]);
-
-    expect(plan.toDeploy).toEqual(["research"]);
-    expect(plan.updateToLatest).toEqual([]);
   });
 
   it("keeps only a clean-and-latest skill out of the deploy list", () => {
@@ -165,7 +153,7 @@ describe("planBulkDeploy", () => {
     expect(plan.toDeploy).toEqual([]);
   });
 
-  it("calls a skill behind on one tool an update, not a first install", () => {
+  it("deploys a skill behind on one tool", () => {
     const plan = planBulkDeploy(
       ["tdd"],
       [
@@ -186,6 +174,30 @@ describe("planBulkDeploy", () => {
     );
 
     expect(plan.toDeploy).toEqual(["tdd"]);
-    expect(plan.updateToLatest).toEqual(["tdd"]);
+    expect(plan.skippedClean).toEqual([]);
+  });
+
+  // A bulk run never moves a target's release (ADR-0031, #956), so no plan
+  // entry may read as an update to the latest one.
+  it("plans nothing but names to deploy and names already clean", () => {
+    const plan = planBulkDeploy(
+      ["tdd", "review"],
+      [
+        target(
+          "global",
+          ["tdd", "review"],
+          [
+            {
+              name: "review",
+              current: "v0.1.0",
+              latest: "v0.2.0",
+              reading: "behind",
+            },
+          ],
+        ),
+      ],
+    );
+
+    expect(Object.keys(plan).sort()).toEqual(["skippedClean", "toDeploy"]);
   });
 });
