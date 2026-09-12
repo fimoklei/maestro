@@ -32,6 +32,7 @@ import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
+import { stubUpdate } from "../helpers/stub-update";
 
 // Integration lane: the deploy route over the real Hono app, real temp dirs,
 // real inventory files. Only the ApmDriver is faked — its deploySkill writes
@@ -243,6 +244,7 @@ describe("deploy HTTP route", () => {
       connect: stubConnect(),
       scaffold: stubScaffold(),
       browse: stubBrowse(),
+      update: stubUpdate(),
       enforceOriginHost: false,
     });
     return { app, registry, deployCalls, cleanupCalls };

@@ -16,6 +16,7 @@ import type {
   RemoveDeployedSkill,
   RestoreSkill,
   ScaffoldHarness,
+  UpdateTarget,
 } from "@maestro/core";
 
 // Built from injected dependencies so routes are testable in isolation
@@ -41,6 +42,8 @@ export type AppDeps = {
   deployState: GlobalDeployStateReader;
   deploy: DeploySkill;
   remove: RemoveDeployedSkill;
+  // Prices moving a whole target to the latest release; the confirm is #954.
+  update: UpdateTarget;
   drift: ReadDrift;
   // Tests inject a sandbox so the real ~/.apm is never touched (apm-driver.md).
   resolveGlobalRoot: () => string;

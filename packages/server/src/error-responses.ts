@@ -20,6 +20,7 @@ import type {
   RepoPathError,
   RestoreSkillError,
   ScaffoldHarnessError,
+  UpdatePreviewError,
 } from "@maestro/core";
 import type { ErrorTable } from "./error-table";
 
@@ -89,6 +90,20 @@ export const removePreflightErrorResponses: ErrorTable<RemovePreflightError> = {
   "deployed-diverged-from-lock":
     removeErrorResponses["deployed-diverged-from-lock"],
   "preflight-failed": { status: 502 },
+};
+
+// The sentences live beside the deploy ones in `deploy-state/notice-copy.ts`:
+// every code but the catch-all is already a refusal one of them can state.
+export const updatePreviewErrorResponses: ErrorTable<UpdatePreviewError> = {
+  "repo-not-registered": removeErrorResponses["repo-not-registered"],
+  "no-supported-tool": removeErrorResponses["no-supported-tool"],
+  "not-deployed": removeErrorResponses["not-deployed"],
+  "lockfile-malformed": removeErrorResponses["lockfile-malformed"],
+  "deployed-unreadable": deployErrorResponses["deployed-unreadable"],
+  "inventory-not-configured": deployErrorResponses["inventory-not-configured"],
+  "inventory-unreadable": deployErrorResponses["inventory-unreadable"],
+  "no-published-tag": deployErrorResponses["no-published-tag"],
+  "preview-failed": { status: 502 },
 };
 
 // Exhaustive by construction: the table above is keyed by the error union

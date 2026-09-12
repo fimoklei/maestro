@@ -40,6 +40,7 @@ import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
+import { stubUpdate } from "../helpers/stub-update";
 
 const run = promisify(execFile);
 const REMOTE_HEAD = "refs/remotes/origin/HEAD";
@@ -124,6 +125,7 @@ describe("inventory connect HTTP route", () => {
       // The real browser, ceilinged at this test's temp dir rather than the
       // user's home, so a picked path can be handed straight to connect.
       browse: new BrowseFilesystem({ fs, homeRoot: () => dir }),
+      update: stubUpdate(),
       enforceOriginHost: false,
     });
   }

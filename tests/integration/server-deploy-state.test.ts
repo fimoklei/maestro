@@ -16,6 +16,7 @@ import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
+import { stubUpdate } from "../helpers/stub-update";
 
 // Integration lane: drives the real Hono app via app.request against real temp
 // dirs. The deploy-state route is registry-gated — membership is checked before
@@ -57,6 +58,7 @@ describe("deploy-state HTTP route", () => {
       connect: stubConnect(),
       scaffold: stubScaffold(),
       browse: stubBrowse(),
+      update: stubUpdate(),
       enforceOriginHost: false,
     });
     return { app, registry };

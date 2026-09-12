@@ -80,6 +80,10 @@ export const bulkRemoveBodySchema = z.object({
     .min(1),
 });
 
+// The whole target moves to one release, so no skill name travels: which
+// skills the update touches is the preview's answer, never the caller's claim.
+export const updatePreflightBodySchema = z.object({ target: targetSchema });
+
 // `previousTag` and `revision` prove the confirmation is against the plan the
 // author saw: the server refuses when the freshly read remote no longer agrees
 // with either, and computes what to tag from its own read (#520, #521).
@@ -190,6 +194,13 @@ export const TARGET_BODY: RequestShape = {
     "Nothing reached the target. Reload the page, then start the change again.",
   detail:
     'The request carries a type, a name and a target: { kind: "repo", repoPath } or { kind: "global" }.',
+};
+
+export const UPDATE_TARGET_BODY: RequestShape = {
+  message:
+    "Nothing was previewed. Reload the page, then start the update again.",
+  detail:
+    'The request carries a target: { kind: "repo", repoPath } or { kind: "global" }.',
 };
 
 export const BULK_DEPLOY_BODY: RequestShape = {

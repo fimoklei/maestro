@@ -45,6 +45,7 @@ import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
+import { stubUpdate } from "../helpers/stub-update";
 
 const run = promisify(execFile);
 
@@ -157,6 +158,7 @@ describe("joining a Harness by its GitHub url", () => {
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
       browse: new BrowseFilesystem({ fs, homeRoot: () => home }),
+      update: stubUpdate(),
       enforceOriginHost: false,
     });
   }

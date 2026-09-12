@@ -246,6 +246,47 @@ describe("DeployStatePanel Release head", () => {
     ).toBeInTheDocument();
   });
 
+  it("offers one Update target control on a behind target", async () => {
+    stubDeployState(BEHIND);
+    renderPanel("/Users/me/project");
+
+    expect(
+      await screen.findByRole("button", { name: "Update target …/me/project" }),
+    ).toBeInTheDocument();
+  });
+
+  it("reads a behind target as behind, never as in sync", async () => {
+    stubDeployState(BEHIND);
+    renderPanel("/Users/me/project");
+
+    expect(await screen.findByText("▲ Behind")).toBeInTheDocument();
+    expect(screen.queryByText("● In sync")).not.toBeInTheDocument();
+  });
+
+  it("offers no Update target control on a target already on the latest release", async () => {
+    stubDeployState({ ...BEHIND, release: "v0.3.4", changed: 0 });
+    renderPanel("/Users/me/project");
+
+    expect(await screen.findByText("Release v0.3.4")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Update target/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("opens the preview naming the target it acts on", async () => {
+    const user = userEvent.setup();
+    stubDeployState(BEHIND);
+    renderPanel("/Users/me/project");
+
+    await user.click(
+      await screen.findByRole("button", { name: "Update target …/me/project" }),
+    );
+
+    expect(
+      await screen.findByRole("dialog", { name: "Update …/me/project" }),
+    ).toBeInTheDocument();
+  });
+
   it("carries the read time alone for a target on the latest release", async () => {
     stubDeployState({ ...BEHIND, release: "v0.3.4", changed: 0 });
     renderPanel("/Users/me/project");

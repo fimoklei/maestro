@@ -2,6 +2,7 @@ import type {
   DeploySkillError,
   RemoveDeployedSkillError,
   RemovePreflightError,
+  UpdatePreviewError,
 } from "@maestro/core";
 import { HttpError } from "../api/http";
 import type { NoticeLevel } from "../ui/notice";
@@ -13,7 +14,8 @@ import { requestShapeNotice } from "../ui/notice-table";
 type DeployStateCode =
   | DeploySkillError
   | RemoveDeployedSkillError
-  | RemovePreflightError;
+  | RemovePreflightError
+  | UpdatePreviewError;
 
 /** A finished notice: heading, sentence and detail, ready to render. */
 export type DeployStateNotice = {
@@ -101,7 +103,12 @@ const HEADINGS: Record<DeployStateCode, Heading> = {
   "remove-in-progress": { level: "error", label: "Change already running" },
   "remove-failed": { level: "error", label: "Removal unproven" },
   "preflight-failed": { level: "error", label: "Check did not run" },
+  "preview-failed": { level: "error", label: "Preview did not run" },
 };
+
+// One string, two surfaces: every update refusal sends the reader back to the
+// same control.
+const UPDATE_AGAIN = "then select Update target again.";
 
 // Sentence and detail per code, kept apart from the headings above because six
 // codes refuse both a deploy and a removal, and each states its own way through
@@ -278,6 +285,56 @@ const UNKNOWN_REMOVE: DeployStateNotice = {
   detail: UNKNOWN_DETAIL,
 };
 
+const UNKNOWN_UPDATE: DeployStateNotice = {
+  level: "error",
+  label: "Preview outcome unknown",
+  message: `Nothing was changed. Wait a moment, ${UPDATE_AGAIN}`,
+  detail: UNKNOWN_DETAIL,
+};
+
+// The update preview's own refusals. Six codes it shares with deploy and remove
+// state the update's way through, never the other surface's (#684).
+const UPDATE_PREVIEW: Record<UpdatePreviewError, Body> = {
+  "repo-not-registered": {
+    message: `Register this repository in Maestro, ${UPDATE_AGAIN}`,
+  },
+  // No way through inside the cockpit, so the notice ends on the cause
+  // (`copy.md` — where no action exists, that notice is complete).
+  "no-supported-tool": {
+    message:
+      "Neither Claude Code nor Codex is on this machine. There is nothing here to update.",
+  },
+  "not-deployed": {
+    message:
+      "This target follows no release. Select Deploy skill in the Inventory to put one on it.",
+  },
+  "lockfile-malformed": {
+    // The filename stays in the sentence: the instruction acts on the file
+    // itself (`copy.md`).
+    message: `Repair or delete apm.lock.yaml in the target, ${UPDATE_AGAIN}`,
+    detail:
+      "The file is present but does not parse, so the target's state is unknown.",
+  },
+  "deployed-unreadable": {
+    message: `Nothing was changed. Make the deployed copy readable, ${UPDATE_AGAIN}`,
+    detail: "Its permissions or its shape blocked the check.",
+  },
+  "inventory-not-configured": {
+    message: `Connect a Harness on the Inventory screen, ${UPDATE_AGAIN}`,
+  },
+  "inventory-unreadable": {
+    // "Re-read Inventory" is the Harness location screen's own button (R-D).
+    message: `Select Re-read Inventory on the Harness location screen, ${UPDATE_AGAIN}`,
+  },
+  "no-published-tag": {
+    message: `Publish a release on the Harness screen, ${UPDATE_AGAIN}`,
+    detail: "An update moves the target to a published tag.",
+  },
+  "preview-failed": {
+    message: `Nothing was changed. Wait a moment, ${UPDATE_AGAIN}`,
+  },
+};
+
 // Required return, never `?? error.message`: an uncovered code would otherwise
 // render the wrapper's own "Request failed with status 422." on screen.
 function noticeFor(
@@ -310,6 +367,11 @@ export function deployStateHeading(code: DeployStateCode): string {
 /** The whole notice for a refused or failed deploy. */
 export function deployNotice(error: unknown): DeployStateNotice {
   return noticeFor(DEPLOY, error, UNKNOWN_DEPLOY);
+}
+
+/** The whole notice for a refused Update preview. */
+export function updatePreviewNotice(error: unknown): DeployStateNotice {
+  return noticeFor(UPDATE_PREVIEW, error, UNKNOWN_UPDATE);
 }
 
 /** The whole notice for a refused or failed removal. */

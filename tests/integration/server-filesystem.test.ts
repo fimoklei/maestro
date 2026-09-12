@@ -28,6 +28,7 @@ import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
+import { stubUpdate } from "../helpers/stub-update";
 
 // Integration lane: drives the real browse route against a real sandbox
 // filesystem. Home-root ceiling, dirs-only filtering, and symlink resolution —
@@ -75,6 +76,7 @@ describe("filesystem browse HTTP route", () => {
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
       browse: new BrowseFilesystem({ fs, homeRoot: () => home }),
+      update: stubUpdate(),
       enforceOriginHost: false,
     });
   }

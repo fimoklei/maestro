@@ -33,6 +33,7 @@ import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
+import { stubUpdate } from "../helpers/stub-update";
 
 // Each shape apm's real output can carry, named so a leak reports which kind of
 // secret escaped rather than "a string was found". Synthetic by design: these
@@ -143,6 +144,7 @@ describe("apm output never reaches the client", () => {
       connect: stubConnect(),
       scaffold: stubScaffold(),
       browse: stubBrowse(),
+      update: stubUpdate(),
       enforceOriginHost: false,
     });
 
@@ -256,6 +258,7 @@ describe("apm output never reaches the client", () => {
         connect: stubConnect(),
         scaffold: stubScaffold(),
         browse: stubBrowse(),
+        update: stubUpdate(),
         enforceOriginHost: false,
       });
       await registry.register(repo);

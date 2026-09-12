@@ -37,6 +37,7 @@ export {
   type LocalCopyScope,
   type LocalCopyWrite,
 } from "./deploy/local-copy-guard";
+export { isValidSkillSlug } from "./deploy/package-ref";
 export { RecordedPackageAdapter } from "./deploy/recorded-package";
 export type {
   ReclaimConsent,
@@ -54,6 +55,16 @@ export {
   type RemoveWarning,
 } from "./deploy/remove-deployed-skill";
 export {
+  type CopyConsentRow,
+  type TargetSelectionPort,
+  type TargetSelectionResult,
+  type UpdatePreview,
+  type UpdatePreviewError,
+  type UpdateScope,
+  type UpdateSkillRow,
+  UpdateTarget,
+} from "./deploy/update-target";
+export {
   DeployStateReader,
   GlobalDeployStateReader,
 } from "./deploy-state/deploy-state-reader";
@@ -66,6 +77,7 @@ export type {
 export type { ToolDeployState } from "./deploy-state/group-primitives-by-tool";
 export { ReleaseHeadReader } from "./deploy-state/release-head";
 export { resolveApmGlobalRoot } from "./deploy-state/resolve-apm-global-root";
+export { TargetSelectionAdapter } from "./deploy-state/target-selection";
 export { CheckVersionDrift } from "./drift/check-version-drift";
 export type { VersionDrift } from "./drift/parse-outdated";
 export {

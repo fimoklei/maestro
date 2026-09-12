@@ -31,6 +31,7 @@ import { stubPromotes } from "../helpers/stub-promote";
 import { stubRemove } from "../helpers/stub-remove";
 import { stubReview } from "../helpers/stub-review";
 import { stubScaffold } from "../helpers/stub-scaffold";
+import { stubUpdate } from "../helpers/stub-update";
 
 const run = promisify(execFile);
 
@@ -113,6 +114,7 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
       connect: stubConnect(),
       scaffold: stubScaffold(),
       browse: stubBrowse(),
+      update: stubUpdate(),
       enforceOriginHost: false,
     });
   }

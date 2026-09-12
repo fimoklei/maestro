@@ -22,6 +22,7 @@ import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
+import { stubUpdate } from "../helpers/stub-update";
 
 // Integration lane for global (user-scope) deploy-state, now grouped per detected
 // tool (ADR-0011, J03). The server resolves the user-scope location itself — no
@@ -96,6 +97,7 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
       connect: stubConnect(),
       scaffold: stubScaffold(),
       browse: stubBrowse(),
+      update: stubUpdate(),
       enforceOriginHost: false,
     });
   }

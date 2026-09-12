@@ -7,18 +7,26 @@ import { Chip } from "../ui/chip";
 export function TargetStatusChip({
   indicator,
   pinnedPerSkill = false,
+  behind = false,
 }: {
   indicator: TargetDriftIndicator;
   // A target still deployed one skill at a time. It outranks every drift
   // reading: no release was adopted here, so none of them is the target's
   // status (ADR-0031, #950).
   pinnedPerSkill?: boolean;
+  // The Release head's own reading: a target whose release is not the latest
+  // one is behind, whatever the per-skill drift check made of it (ADR-0031).
+  behind?: boolean;
 }) {
   if (pinnedPerSkill) {
     return <Chip tone="drift">▲ Pinned per skill</Chip>;
   }
   if (indicator === "ok") {
-    return <Chip tone="ok">● In sync</Chip>;
+    return behind ? (
+      <Chip tone="drift">▲ Behind</Chip>
+    ) : (
+      <Chip tone="ok">● In sync</Chip>
+    );
   }
   if (indicator === "attention") {
     return <Chip tone="drift">▲ Attention</Chip>;

@@ -1,0 +1,342 @@
+import type {
+  CopyConsentRow,
+  UpdatePreview,
+  UpdateSkillRow,
+} from "@maestro/core";
+import { type ReactNode, useId, useState } from "react";
+import { Button } from "../ui/button";
+import { Chip } from "../ui/chip";
+import { cn } from "../ui/cn";
+import { DialogShell } from "../ui/dialog-shell";
+import { Notice } from "../ui/notice";
+import type { DeployStateNotice } from "./notice-copy";
+import {
+  ADDED_BY_THIS_DEPLOY,
+  BECOMES_EMPTY,
+  CHANGED,
+  consentRowName,
+  countingSentence,
+  DISCARD_LOCAL_EDITS,
+  foldedHeading,
+  LOADING_PREVIEW,
+  LOCAL_EDITS,
+  localEditsSentence,
+  NEW_IN_THIS_RELEASE,
+  NO_CONTENT_CHANGES,
+  OVERWRITE_UNVERIFIED,
+  REMOVED_BY_THIS_RELEASE,
+  releaseMoveLine,
+  selectionAfterLine,
+  UNCHANGED,
+  UNVERIFIED_SENTENCE,
+  UPDATE_TARGET,
+  updateDialogTitle,
+} from "./update-target-copy";
+
+// One consent, identified by the copy it licenses — the same grain the guard
+// reads at, so one checkbox can never stand for two copies (#952).
+const consentKey = (row: CopyConsentRow) => `${row.name}:${row.tool ?? ""}`;
+
+// `inline` keeps a folded section's heading on the disclosure triangle's own
+// line: a block heading inside `summary` pushes the text under the marker.
+function SectionHeading({
+  children,
+  inline = false,
+}: {
+  children: ReactNode;
+  inline?: boolean;
+}) {
+  return (
+    <h3
+      className={cn(
+        "font-semibold font-ui text-desc text-fg-2",
+        inline ? "inline" : null,
+      )}
+    >
+      {children}
+    </h3>
+  );
+}
+
+// Open by construction: the work is what the dialog opens on (spec story 19).
+function Section({
+  heading,
+  children,
+}: {
+  heading: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-1.5">
+      <SectionHeading>{heading}</SectionHeading>
+      {children}
+    </section>
+  );
+}
+
+// Folded behind its count, so a selection of forty-seven skills still opens on
+// the work rather than on a list. `details` carries the toggle natively.
+function FoldedSection({
+  heading,
+  count,
+  children,
+}: {
+  heading: string;
+  count: number;
+  children: ReactNode;
+}) {
+  return (
+    <details className="flex flex-col gap-1.5">
+      <summary className="cursor-pointer marker:text-dim">
+        <SectionHeading inline>{foldedHeading(heading, count)}</SectionHeading>
+      </summary>
+      <div className="pt-1.5">{children}</div>
+    </details>
+  );
+}
+
+function NameList({ names }: { names: readonly string[] }) {
+  return (
+    <ul className="flex flex-col gap-1">
+      {names.map((name) => (
+        <li key={name} className="font-mono text-data text-fg">
+          {name}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// The link text names the skill, so the destination is named in the link
+// itself (design.md). A row with no readable origin keeps the name and drops
+// the link rather than pointing at a guess.
+function SkillRows({ rows }: { rows: readonly UpdateSkillRow[] }) {
+  return (
+    <ul className="flex flex-col gap-1">
+      {rows.map((row) => (
+        <li key={row.name} className="font-mono text-data text-fg">
+          {row.url === null ? (
+            row.name
+          ) : (
+            <a
+              href={row.url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-amber-ink underline decoration-dotted underline-offset-2"
+            >
+              {row.name}
+            </a>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// The section that takes input. Each copy states its own cost and carries its
+// own consent: confirmation covers every copy at risk, never a set of them
+// (spec story 37).
+function ConsentRow({
+  row,
+  label,
+  sentence,
+  checked,
+  onToggle,
+}: {
+  row: CopyConsentRow;
+  label: string;
+  sentence: string;
+  checked: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <li className="flex flex-col gap-1 rounded-item border border-amber-border bg-amber-bg px-3 py-2">
+      <p className="font-ui text-amber-ink text-desc">{sentence}</p>
+      <label className="flex cursor-pointer items-center gap-2 font-ui text-desc text-fg">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={onToggle}
+          className="accent-amber"
+        />
+        {`${label} for ${consentRowName(row)}`}
+      </label>
+    </li>
+  );
+}
+
+// Prices an Update and asks for what it costs; it starts nothing on its own.
+// The host owns the request — this slice writes nothing (#953, #954).
+export function UpdateTargetDialog({
+  targetName,
+  preview,
+  isLoading,
+  error,
+  onCancel,
+  onConfirm,
+}: {
+  // The target's own label, as the card shows it.
+  targetName: string;
+  // Null while the preview is being read, and after a refusal — the dialog
+  // never prices an update from a reading it did not get (J04).
+  preview: UpdatePreview | null;
+  isLoading: boolean;
+  error: DeployStateNotice | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  // UI state: which copies the reader has agreed to overwrite in this dialog.
+  // It never leaves the screen — the proof the server acts on is the receipt
+  // the preview carried (frontend.md, #952).
+  const [consented, setConsented] = useState<readonly string[]>([]);
+  const dialogId = useId();
+  const leadInId = `${dialogId}-lead-in`;
+
+  const heading = updateDialogTitle(targetName);
+  const required =
+    preview === null
+      ? []
+      : [...preview.localEdits.discard, ...preview.localEdits.unverified].map(
+          consentKey,
+        );
+  const consentComplete = required.every((key) => consented.includes(key));
+  // Maestro's own reading from content hashes, never apm's: a release that
+  // touches nothing selected is still adoptable (spec story 21).
+  const noContentChanges =
+    preview !== null &&
+    preview.counts.changed === 0 &&
+    preview.counts.removed === 0;
+
+  const toggle = (key: string) =>
+    setConsented((keys) =>
+      keys.includes(key) ? keys.filter((held) => held !== key) : [...keys, key],
+    );
+
+  return (
+    <DialogShell
+      label={heading}
+      describedBy={preview === null ? null : leadInId}
+      width={620}
+      onClose={onCancel}
+    >
+      <div className="flex shrink-0 items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
+        <h2 className="font-semibold font-ui text-fg text-subtitle">
+          Update <span className="font-mono">{targetName}</span>
+        </h2>
+        {noContentChanges ? <Chip tone="dim">{NO_CONTENT_CHANGES}</Chip> : null}
+      </div>
+
+      <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-3.5 py-3">
+        {preview === null ? (
+          <p className="font-ui text-desc text-dim">
+            {isLoading ? LOADING_PREVIEW : null}
+          </p>
+        ) : (
+          <>
+            <div className="flex flex-col gap-1">
+              <p id={leadInId} className="font-ui text-desc text-fg">
+                {countingSentence(preview.counts)}
+              </p>
+              <p className="font-ui text-desc text-dim">
+                {releaseMoveLine(preview.release, preview.chosenRelease)}
+              </p>
+            </div>
+
+            {/* The fixed order, whichever sections this preview has. */}
+            {preview.addedByThisDeploy.length > 0 ? (
+              <Section heading={ADDED_BY_THIS_DEPLOY}>
+                <SkillRows rows={preview.addedByThisDeploy} />
+              </Section>
+            ) : null}
+            {preview.changed.length > 0 ? (
+              <Section heading={CHANGED}>
+                <SkillRows rows={preview.changed} />
+              </Section>
+            ) : null}
+            {preview.removed.length > 0 ? (
+              <Section heading={REMOVED_BY_THIS_RELEASE}>
+                <NameList names={preview.removed} />
+              </Section>
+            ) : null}
+            {required.length > 0 ? (
+              <Section heading={LOCAL_EDITS}>
+                <ul className="flex flex-col gap-2">
+                  {preview.localEdits.discard.map((row) => (
+                    <ConsentRow
+                      key={consentKey(row)}
+                      row={row}
+                      label={DISCARD_LOCAL_EDITS}
+                      sentence={localEditsSentence(
+                        row.name,
+                        preview.chosenRelease,
+                      )}
+                      checked={consented.includes(consentKey(row))}
+                      onToggle={() => toggle(consentKey(row))}
+                    />
+                  ))}
+                  {preview.localEdits.unverified.map((row) => (
+                    <ConsentRow
+                      key={consentKey(row)}
+                      row={row}
+                      label={OVERWRITE_UNVERIFIED}
+                      sentence={UNVERIFIED_SENTENCE}
+                      checked={consented.includes(consentKey(row))}
+                      onToggle={() => toggle(consentKey(row))}
+                    />
+                  ))}
+                </ul>
+              </Section>
+            ) : null}
+            {preview.unchanged.length > 0 ? (
+              <FoldedSection
+                heading={UNCHANGED}
+                count={preview.unchanged.length}
+              >
+                <NameList names={preview.unchanged} />
+              </FoldedSection>
+            ) : null}
+            {/* No checkbox here: Update adds no skill automatically (story 18). */}
+            {preview.newInRelease.length > 0 ? (
+              <FoldedSection
+                heading={NEW_IN_THIS_RELEASE}
+                count={preview.newInRelease.length}
+              >
+                <SkillRows rows={preview.newInRelease} />
+              </FoldedSection>
+            ) : null}
+
+            <p className="font-ui text-desc text-dim">
+              {preview.selection.desired.length === 0
+                ? BECOMES_EMPTY
+                : selectionAfterLine(preview.selection.desired)}
+            </p>
+          </>
+        )}
+
+        <Notice
+          trigger="user-action"
+          notice={error ? { ...error, level: "error" } : null}
+        />
+      </div>
+
+      <div className="flex shrink-0 items-center justify-end gap-2.5 border-line-row border-t px-3.5 py-3">
+        <Button type="button" variant="quiet" size="sm" onClick={onCancel}>
+          Cancel
+        </Button>
+        {/* The one amber fill in this view; the card's own control is the ghost
+            variant (ADR-0031, design.md § the signal rule). */}
+        {preview === null ? null : (
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            disabled={!consentComplete}
+            onClick={onConfirm}
+          >
+            {UPDATE_TARGET}
+          </Button>
+        )}
+      </div>
+    </DialogShell>
+  );
+}

@@ -11,6 +11,7 @@ import { releaseLabel } from "./release-head-copy";
 import { ReleaseHeadMeta } from "./release-head-meta";
 import { TargetDeployAction } from "./target-deploy-action";
 import { TargetStatusChip } from "./target-status-chip";
+import { UpdateTargetAction } from "./update-target-action";
 import { useDeployState } from "./use-deploy-state";
 
 // One repo's target card. Deploy-state and drift are separate queries: the
@@ -32,21 +33,38 @@ export function DeployStatePanel({
   const indicator = drift.targetIndicator(toDeployedView(deployState));
   const head = deployState.data?.releaseHead;
   const pinned = deployState.data?.pinnedPerSkill;
+  // One control per behind target, so one release costs one action instead of N
+  // (ADR-0031). A target still pinned per skill carries no head, so none is
+  // offered there — there is no mechanism to sell it (#950).
+  const behind =
+    head !== undefined &&
+    head.latestRelease !== null &&
+    head.latestRelease !== head.release;
+  const label = targetLabel(repo, siblings);
   // Where focus goes when a removal destroys the row it was triggered from.
   const headerRef = useRef<HTMLHeadingElement>(null);
 
   return (
     <Card
-      title={<span title={repo}>{targetLabel(repo, siblings)}</span>}
+      title={<span title={repo}>{label}</span>}
       titleRef={headerRef}
       kind="local"
       data={head ? releaseLabel(head) : undefined}
       drift={indicator === "drift"}
       status={
-        <TargetStatusChip
-          indicator={indicator}
-          pinnedPerSkill={pinned !== undefined}
-        />
+        <>
+          <TargetStatusChip
+            indicator={indicator}
+            pinnedPerSkill={pinned !== undefined}
+            behind={behind}
+          />
+          {behind ? (
+            <UpdateTargetAction
+              targetName={label}
+              target={{ kind: "repo", repoPath: repo }}
+            />
+          ) : null}
+        </>
       }
     >
       {deployState.isLoading ? (
