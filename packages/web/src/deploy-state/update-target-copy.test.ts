@@ -11,17 +11,18 @@ import {
   localEditsSentence,
   MIXED_RELEASES,
   NO_CONTENT_CHANGES,
+  NOT_ADDED,
   OVERWRITE_UNVERIFIED,
   outcomeLine,
   RETRY_UPDATE,
   releaseMoveLine,
   SECTION_HEADINGS,
   selectionAfterLine,
-  UNVERIFIED_SENTENCE,
   UPDATE_INCOMPLETE,
   UPDATE_INCOMPLETE_SENTENCE,
   UPDATE_TARGET,
   UPDATE_TARGET_NO_ORIGIN,
+  unverifiedSentence,
   updateDialogTitle,
   updatingLine,
 } from "./update-target-copy";
@@ -58,9 +59,7 @@ describe("Update target copy", () => {
   });
 
   it("names the release the target leaves and the one it adopts", () => {
-    expect(releaseMoveLine("v0.3.2", "v0.3.4")).toBe(
-      "This target moves from release v0.3.2 to release v0.3.4.",
-    );
+    expect(releaseMoveLine("v0.3.2", "v0.3.4")).toBe("release v0.3.2 → v0.3.4");
   });
 
   it("heads the six sections in one fixed order", () => {
@@ -72,6 +71,10 @@ describe("Update target copy", () => {
       "Unchanged",
       "New in this release",
     ]);
+  });
+
+  it("says New in this release adds nothing by itself", () => {
+    expect(NOT_ADDED).toBe("not added");
   });
 
   it("folds a section behind its count", () => {
@@ -87,7 +90,7 @@ describe("Update target copy", () => {
 
   it("states the exact Selection the update leaves behind", () => {
     expect(selectionAfterLine(["tdd", "grill", "jobs"])).toBe(
-      "Selection after this update: tdd, grill and jobs.",
+      "Selected skills after this update: tdd, grill and jobs.",
     );
   });
 
@@ -100,20 +103,20 @@ describe("Update target copy", () => {
   it("names both consents by the effect each one allows", () => {
     expect(DISCARD_LOCAL_EDITS).toBe("Discard local edits");
     expect(KEEP_WORK_BY_IMPORTING).toBe(
-      "Keep this work instead: select Cancel, then Import skill… on the Harness screen.",
+      "To keep the edits instead, select Cancel, then Import skill… on the Harness screen.",
     );
     expect(OVERWRITE_UNVERIFIED).toBe("Overwrite unverified copy");
   });
 
   it("says what an edited copy differs from", () => {
     expect(localEditsSentence("tdd", "v0.3.4")).toBe(
-      "Your copy of tdd differs from release v0.3.4.",
+      "tdd has local edits. This update replaces them with release v0.3.4.",
     );
   });
 
   it("says what an unverified copy could not prove", () => {
-    expect(UNVERIFIED_SENTENCE).toBe(
-      "This copy could not be verified. Confirm to overwrite it.",
+    expect(unverifiedSentence("jobs")).toBe(
+      "jobs could not be verified. This update overwrites it.",
     );
   });
 

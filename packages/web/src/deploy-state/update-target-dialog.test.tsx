@@ -70,11 +70,7 @@ describe("UpdateTargetDialog", () => {
   it("names the release the target moves to", () => {
     show();
 
-    expect(
-      screen.getByText(
-        "This target moves from release v0.3.2 to release v0.3.4.",
-      ),
-    ).toBeTruthy();
+    expect(screen.getByText("release v0.3.2 → v0.3.4")).toBeTruthy();
   });
 
   it("renders the sections it has, in the fixed order", () => {
@@ -127,6 +123,7 @@ describe("UpdateTargetDialog", () => {
       .getByRole("heading", { level: 3, name: "New in this release (1)" })
       .closest("details") as HTMLElement;
     expect(within(section).queryByRole("checkbox")).toBeNull();
+    expect(within(section).getByText("not added")).toBeTruthy();
   });
 
   it("states the exact Selection the update leaves behind", () => {
@@ -134,7 +131,7 @@ describe("UpdateTargetDialog", () => {
 
     expect(
       screen.getByText(
-        "Selection after this update: tdd, jobs, grill, brief and worktree.",
+        "Selected skills after this update: tdd, jobs, grill, brief and worktree.",
       ),
     ).toBeTruthy();
   });
@@ -208,11 +205,13 @@ describe("UpdateTargetDialog", () => {
     });
 
     expect(
-      screen.getByText("Your copy of tdd differs from release v0.3.4."),
+      screen.getByText(
+        "tdd has local edits. This update replaces them with release v0.3.4.",
+      ),
     ).toBeTruthy();
     expect(
       screen.getByText(
-        "This copy could not be verified. Confirm to overwrite it.",
+        "jobs could not be verified. This update overwrites it.",
       ),
     ).toBeTruthy();
     expect(
@@ -229,10 +228,15 @@ describe("UpdateTargetDialog", () => {
       copyReceipt: "b".repeat(64),
     });
 
+    const keep = screen.getByText(
+      "To keep the edits instead, select Cancel, then Import skill… on the Harness screen.",
+    );
+    // Cause first, then the step (copy.md): the consent precedes the way out.
+    const consent = screen.getByRole("checkbox", {
+      name: "Discard local edits for tdd",
+    });
     expect(
-      screen.getByText(
-        "Keep this work instead: select Cancel, then Import skill… on the Harness screen.",
-      ),
+      consent.compareDocumentPosition(keep) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
 

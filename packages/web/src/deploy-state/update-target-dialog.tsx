@@ -27,16 +27,17 @@ import {
   localEditsSentence,
   NEW_IN_THIS_RELEASE,
   NO_CONTENT_CHANGES,
+  NOT_ADDED,
   OVERWRITE_UNVERIFIED,
   REMOVED_BY_THIS_RELEASE,
   RETRY_UPDATE,
   releaseMoveLine,
   selectionAfterLine,
   UNCHANGED,
-  UNVERIFIED_SENTENCE,
   UPDATE_INCOMPLETE,
   UPDATE_INCOMPLETE_SENTENCE,
   UPDATE_TARGET,
+  unverifiedSentence,
   updateDialogTitle,
   updatingLine,
 } from "./update-target-copy";
@@ -57,8 +58,8 @@ function SectionHeading({
   return (
     <h3
       className={cn(
-        "font-semibold font-ui text-desc text-fg-2",
-        inline ? "inline" : null,
+        "font-mono text-tag uppercase tracking-tag",
+        inline ? "inline text-inherit" : "text-dim",
       )}
     >
       {children}
@@ -75,7 +76,7 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-1.5">
+    <section className="flex flex-col gap-1">
       <SectionHeading>{heading}</SectionHeading>
       {children}
     </section>
@@ -87,16 +88,24 @@ function Section({
 function FoldedSection({
   heading,
   count,
+  note = null,
   children,
 }: {
   heading: string;
   count: number;
+  note?: string | null;
   children: ReactNode;
 }) {
   return (
-    <details className="flex flex-col gap-1.5">
-      <summary className="cursor-pointer marker:text-dim">
+    <details className="flex flex-col gap-1">
+      <summary className="cursor-pointer font-mono text-dim text-tag hover:text-fg-2 motion-safe:transition-colors">
         <SectionHeading inline>{foldedHeading(heading, count)}</SectionHeading>
+        {note === null ? null : (
+          <span className="font-mono text-tag">
+            <span aria-hidden="true"> · </span>
+            <span>{note}</span>
+          </span>
+        )}
       </summary>
       <div className="pt-1.5">{children}</div>
     </details>
@@ -130,7 +139,7 @@ function SkillRows({ rows }: { rows: readonly UpdateSkillRow[] }) {
               href={row.url}
               target="_blank"
               rel="noreferrer"
-              className="text-amber-ink underline decoration-dotted underline-offset-2"
+              className="underline decoration-dim decoration-dotted underline-offset-2 hover:decoration-fg motion-safe:transition-colors"
             >
               {row.name}
             </a>
@@ -273,14 +282,21 @@ export function UpdateTargetDialog({
       width={620}
       onClose={onCancel}
     >
-      <div className="flex shrink-0 items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
-        <h2 className="font-semibold font-ui text-fg text-subtitle">
-          Update <span className="font-mono">{targetName}</span>
-        </h2>
+      <div className="flex shrink-0 items-start justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <h2 className="font-semibold font-ui text-fg text-subtitle">
+            Update <span className="break-all font-mono">{targetName}</span>
+          </h2>
+          {preview !== null && lines === null ? (
+            <p className="font-mono text-dim text-mono-sm">
+              {releaseMoveLine(preview.release, preview.chosenRelease)}
+            </p>
+          ) : null}
+        </div>
         {noContentChanges ? <Chip tone="dim">{NO_CONTENT_CHANGES}</Chip> : null}
       </div>
 
-      <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-3.5 py-3">
+      <div className="flex min-h-0 flex-col gap-4 overflow-y-auto px-3.5 py-3">
         {lines !== null ? (
           <>
             <OutcomeTrace lines={lines} />
@@ -306,8 +322,10 @@ export function UpdateTargetDialog({
               <p id={leadInId} className="font-ui text-desc text-fg">
                 {countingSentence(preview.counts)}
               </p>
-              <p className="font-ui text-desc text-dim">
-                {releaseMoveLine(preview.release, preview.chosenRelease)}
+              <p className="font-ui text-desc text-muted">
+                {preview.selection.desired.length === 0
+                  ? BECOMES_EMPTY
+                  : selectionAfterLine(preview.selection.desired)}
               </p>
             </div>
 
@@ -329,11 +347,6 @@ export function UpdateTargetDialog({
             ) : null}
             {required.length > 0 ? (
               <Section heading={LOCAL_EDITS}>
-                {preview.localEdits.discard.length > 0 ? (
-                  <p className="mb-2 font-ui text-desc text-dim">
-                    {KEEP_WORK_BY_IMPORTING}
-                  </p>
-                ) : null}
                 <ul className="flex flex-col gap-2">
                   {preview.localEdits.discard.map((row) => (
                     <ConsentRow
@@ -353,37 +366,39 @@ export function UpdateTargetDialog({
                       key={consentKey(row)}
                       row={row}
                       label={OVERWRITE_UNVERIFIED}
-                      sentence={UNVERIFIED_SENTENCE}
+                      sentence={unverifiedSentence(row.name)}
                       checked={consented.includes(consentKey(row))}
                       onToggle={() => toggle(consentKey(row))}
                     />
                   ))}
                 </ul>
+                {preview.localEdits.discard.length > 0 ? (
+                  <p className="mt-1 font-ui text-desc text-muted">
+                    {KEEP_WORK_BY_IMPORTING}
+                  </p>
+                ) : null}
               </Section>
             ) : null}
-            {preview.unchanged.length > 0 ? (
-              <FoldedSection
-                heading={UNCHANGED}
-                count={preview.unchanged.length}
-              >
-                <NameList names={preview.unchanged} />
-              </FoldedSection>
-            ) : null}
-            {/* No checkbox here: Update adds no skill automatically (story 18). */}
-            {preview.newInRelease.length > 0 ? (
-              <FoldedSection
-                heading={NEW_IN_THIS_RELEASE}
-                count={preview.newInRelease.length}
-              >
-                <SkillRows rows={preview.newInRelease} />
-              </FoldedSection>
-            ) : null}
-
-            <p className="font-ui text-desc text-dim">
-              {preview.selection.desired.length === 0
-                ? BECOMES_EMPTY
-                : selectionAfterLine(preview.selection.desired)}
-            </p>
+            <div className="flex flex-col gap-2 empty:hidden">
+              {preview.unchanged.length > 0 ? (
+                <FoldedSection
+                  heading={UNCHANGED}
+                  count={preview.unchanged.length}
+                >
+                  <NameList names={preview.unchanged} />
+                </FoldedSection>
+              ) : null}
+              {/* No checkbox here: Update adds no skill automatically (story 18). */}
+              {preview.newInRelease.length > 0 ? (
+                <FoldedSection
+                  heading={NEW_IN_THIS_RELEASE}
+                  count={preview.newInRelease.length}
+                  note={NOT_ADDED}
+                >
+                  <SkillRows rows={preview.newInRelease} />
+                </FoldedSection>
+              ) : null}
+            </div>
           </>
         )}
 

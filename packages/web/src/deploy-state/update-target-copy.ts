@@ -26,10 +26,10 @@ export function countingSentence(counts: {
   return `Updates ${counts.changed} ${skills}, removes ${counts.removed}, leaves ${counts.unchanged} unchanged.`;
 }
 
-// Which release the target leaves and which one it adopts. Only the latest is
-// ever offered (ADR-0031 § Accepted limits).
+// Which release the target leaves and which one it adopts, as a version pair
+// under the title. Only the latest is ever offered (ADR-0031 § Accepted limits).
 export const releaseMoveLine = (from: string, to: string): string =>
-  `This target moves from release ${from} to release ${to}.`;
+  `release ${from} → ${to}`;
 
 // The fixed order the dialog renders. Added by this deploy is the Inventory's
 // entrance (#955); Unchanged and New in this release are folded.
@@ -56,13 +56,16 @@ export const [
 export const foldedHeading = (heading: string, count: number): string =>
   `${heading} (${count})`;
 
+// Beside the folded New in this release: Update adds no skill (spec story 18).
+export const NOT_ADDED = "not added";
+
 // Maestro's own reading from content hashes, never apm's (ADR-0031 § Accepted
 // limits). Two words, no verb: a status chip (copy.md § Forms).
 export const NO_CONTENT_CHANGES = "No content changes";
 
-// The exact Selection the confirm would leave behind.
+// The exact Selection the confirm would leave behind, in its on-screen words.
 export const selectionAfterLine = (desired: readonly string[]): string =>
-  `Selection after this update: ${joinNames(desired)}.`;
+  `Selected skills after this update: ${joinNames(desired)}.`;
 
 // The same reading when nothing is left. "Empty" is the word the card and the
 // sidebar already use for a target holding nothing.
@@ -76,13 +79,13 @@ export const OVERWRITE_UNVERIFIED = "Overwrite unverified copy";
 // The second way out (spec story 36). Import skill… lives on the Harness
 // screen, which this dialog cannot host, so the step names that place.
 export const KEEP_WORK_BY_IMPORTING =
-  "Keep this work instead: select Cancel, then Import skill… on the Harness screen.";
+  "To keep the edits instead, select Cancel, then Import skill… on the Harness screen.";
 
 export const localEditsSentence = (name: string, release: string): string =>
-  `Your copy of ${name} differs from release ${release}.`;
+  `${name} has local edits. This update replaces them with release ${release}.`;
 
-export const UNVERIFIED_SENTENCE =
-  "This copy could not be verified. Confirm to overwrite it.";
+export const unverifiedSentence = (name: string): string =>
+  `${name} could not be verified. This update overwrites it.`;
 
 // One copy at the grain consent is given at: the skill, and the tool where the
 // target splits by tool.
