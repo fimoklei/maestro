@@ -68,20 +68,33 @@ function SectionHeading({
 }
 
 // Open by construction: the work is what the dialog opens on (spec story 19).
+// One ruled row: the kind of change in a label column, its content beside it.
 function Section({
   heading,
+  signal = false,
   children,
 }: {
   heading: string;
+  signal?: boolean;
   children: ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-1">
-      <SectionHeading>{heading}</SectionHeading>
-      {children}
+    <section className="grid grid-cols-1 gap-x-4 gap-y-1 py-2.5 sm:grid-cols-[10.5rem_1fr]">
+      <h3
+        className={cn(
+          "font-mono text-tag uppercase leading-5 tracking-tag",
+          signal ? "text-amber-ink" : "text-dim",
+        )}
+      >
+        {heading}
+      </h3>
+      <div className="flex min-w-0 flex-col gap-2">{children}</div>
     </section>
   );
 }
+
+const listClass = (inline: boolean) =>
+  inline ? "flex flex-wrap gap-x-4 gap-y-0.5" : "flex flex-col gap-1";
 
 // Folded behind its count, so a selection of forty-seven skills still opens on
 // the work rather than on a list. `details` carries the toggle natively.
@@ -112,9 +125,15 @@ function FoldedSection({
   );
 }
 
-function NameList({ names }: { names: readonly string[] }) {
+function NameList({
+  names,
+  inline = false,
+}: {
+  names: readonly string[];
+  inline?: boolean;
+}) {
   return (
-    <ul className="flex flex-col gap-1">
+    <ul className={listClass(inline)}>
       {names.map((name) => (
         <li key={name} className="font-mono text-data text-fg">
           {name}
@@ -127,9 +146,15 @@ function NameList({ names }: { names: readonly string[] }) {
 // The link text names the skill, so the destination is named in the link
 // itself (design.md). A row with no readable origin keeps the name and drops
 // the link rather than pointing at a guess.
-function SkillRows({ rows }: { rows: readonly UpdateSkillRow[] }) {
+function SkillRows({
+  rows,
+  inline = false,
+}: {
+  rows: readonly UpdateSkillRow[];
+  inline?: boolean;
+}) {
   return (
-    <ul className="flex flex-col gap-1">
+    <ul className={listClass(inline)}>
       {rows.map((row) => (
         <li key={row.name} className="font-mono text-data text-fg">
           {row.url === null ? (
@@ -330,55 +355,57 @@ export function UpdateTargetDialog({
             </div>
 
             {/* The fixed order, whichever sections this preview has. */}
-            {preview.addedByThisDeploy.length > 0 ? (
-              <Section heading={ADDED_BY_THIS_DEPLOY}>
-                <SkillRows rows={preview.addedByThisDeploy} />
-              </Section>
-            ) : null}
-            {preview.changed.length > 0 ? (
-              <Section heading={CHANGED}>
-                <SkillRows rows={preview.changed} />
-              </Section>
-            ) : null}
-            {preview.removed.length > 0 ? (
-              <Section heading={REMOVED_BY_THIS_RELEASE}>
-                <NameList names={preview.removed} />
-              </Section>
-            ) : null}
-            {required.length > 0 ? (
-              <Section heading={LOCAL_EDITS}>
-                <ul className="flex flex-col gap-2">
-                  {preview.localEdits.discard.map((row) => (
-                    <ConsentRow
-                      key={consentKey(row)}
-                      row={row}
-                      label={DISCARD_LOCAL_EDITS}
-                      sentence={localEditsSentence(
-                        row.name,
-                        preview.chosenRelease,
-                      )}
-                      checked={consented.includes(consentKey(row))}
-                      onToggle={() => toggle(consentKey(row))}
-                    />
-                  ))}
-                  {preview.localEdits.unverified.map((row) => (
-                    <ConsentRow
-                      key={consentKey(row)}
-                      row={row}
-                      label={OVERWRITE_UNVERIFIED}
-                      sentence={unverifiedSentence(row.name)}
-                      checked={consented.includes(consentKey(row))}
-                      onToggle={() => toggle(consentKey(row))}
-                    />
-                  ))}
-                </ul>
-                {preview.localEdits.discard.length > 0 ? (
-                  <p className="mt-1 font-ui text-desc text-muted">
-                    {KEEP_WORK_BY_IMPORTING}
-                  </p>
-                ) : null}
-              </Section>
-            ) : null}
+            <div className="flex flex-col divide-y divide-line-row border-line-row border-y empty:hidden">
+              {preview.addedByThisDeploy.length > 0 ? (
+                <Section heading={ADDED_BY_THIS_DEPLOY}>
+                  <SkillRows rows={preview.addedByThisDeploy} inline={true} />
+                </Section>
+              ) : null}
+              {preview.changed.length > 0 ? (
+                <Section heading={CHANGED}>
+                  <SkillRows rows={preview.changed} inline={true} />
+                </Section>
+              ) : null}
+              {preview.removed.length > 0 ? (
+                <Section heading={REMOVED_BY_THIS_RELEASE}>
+                  <NameList names={preview.removed} inline={true} />
+                </Section>
+              ) : null}
+              {required.length > 0 ? (
+                <Section heading={LOCAL_EDITS} signal={true}>
+                  <ul className="flex flex-col gap-2">
+                    {preview.localEdits.discard.map((row) => (
+                      <ConsentRow
+                        key={consentKey(row)}
+                        row={row}
+                        label={DISCARD_LOCAL_EDITS}
+                        sentence={localEditsSentence(
+                          row.name,
+                          preview.chosenRelease,
+                        )}
+                        checked={consented.includes(consentKey(row))}
+                        onToggle={() => toggle(consentKey(row))}
+                      />
+                    ))}
+                    {preview.localEdits.unverified.map((row) => (
+                      <ConsentRow
+                        key={consentKey(row)}
+                        row={row}
+                        label={OVERWRITE_UNVERIFIED}
+                        sentence={unverifiedSentence(row.name)}
+                        checked={consented.includes(consentKey(row))}
+                        onToggle={() => toggle(consentKey(row))}
+                      />
+                    ))}
+                  </ul>
+                  {preview.localEdits.discard.length > 0 ? (
+                    <p className="font-ui text-desc text-muted">
+                      {KEEP_WORK_BY_IMPORTING}
+                    </p>
+                  ) : null}
+                </Section>
+              ) : null}
+            </div>
             <div className="flex flex-col gap-2 empty:hidden">
               {preview.unchanged.length > 0 ? (
                 <FoldedSection
