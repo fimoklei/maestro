@@ -23,19 +23,23 @@ import {
   InventoryGitAdapter,
   InventoryReader,
   isRepositoryRoot,
+  LocalCopyGuard,
   NodeCopyTreeFs,
   NodeFileSystem,
   PromoteSkill,
   PromoteSkillDeletion,
   ProposalActions,
   PublishRelease,
+  parseGitOrigin,
   probeHead,
   ReadDrift,
   ReadHarnessState,
   RecordedPackageAdapter,
   Registry,
+  ReleaseHeadReader,
   RemoveDeployedSkill,
   RestoreSkill,
+  RetryTargetOperation,
   readConfiguredGitOriginUrl,
   readGitOriginUrl,
   releasedSkillsFromGit,
@@ -46,7 +50,10 @@ import {
   resolveMaestroConfigPath,
   ScaffoldHarness,
   ScaffoldOffers,
+  SelectionWriter,
+  TargetOperationStore,
   ToolPresenceAdapter,
+  UpdateTarget,
 } from "@maestro/core";
 import { Hono } from "hono";
 import type { AppDeps } from "./app-deps";
@@ -111,9 +118,41 @@ function realDeps(): AppDeps {
     originUrl: readConfiguredGitOriginUrl,
     readReleasedSkills: releasedSkillsFromGit(harnessGit),
   });
+  const harnessRoot = async () => {
+    const path = resolveInventoryPath(await store.read(), process.env);
+    if (path === undefined) {
+      return undefined;
+    }
+    // A path git cannot be pointed at is a harness that is not connected —
+    // never the raw path, which would run git against something unresolved.
+    return await fs.realpath(path).catch(() => undefined);
+  };
+  // Shared instance: a global deploy's lockfile root and deploy tree differ
+  // (~/.apm vs ~/.claude/skills, apm-driver.md #56/#61) — guard and cleanup agree by construction.
+  const deployedLocation = new DeployedLocation(process.env);
   const deployState = new GlobalDeployStateReader({
     fs,
     toolPresence: new ToolPresenceAdapter(),
+    treeRoot: () => deployedLocation.treeRoot({ kind: "global" }),
+    // Which release each target follows, compared against the connected
+    // Harness's own tags and trees (ADR-0031).
+    releaseHead: new ReleaseHeadReader({
+      git: harnessGit,
+      resolveRoot: harnessRoot,
+      now: () => new Date(),
+    }),
+    // Which Harness a target's per-skill pins name: one on another origin
+    // decides no status and blocks nothing (ADR-0031).
+    harnessOrigin: async () => {
+      const root = await harnessRoot();
+      return root === undefined ? null : await harnessGit.readOrigin(root);
+    },
+    // The Local edits / Unverified chip a deployed row carries, from the same
+    // classifier the write path's guard uses.
+    content: new DeployedContentAdapter({ location: deployedLocation }),
+    // Read per request, not captured at construction: the retry use-case is
+    // built further down, and the record it reads changes with every write.
+    operations: { pending: (target) => retryOperation.pending(target) },
   });
   // Runs from a scratch dir under MAESTRO_HOME, created on demand, so apm's
   // .gitignore side-effect never lands in a real repo (apm-driver.md, J07).
@@ -124,15 +163,6 @@ function realDeps(): AppDeps {
       return cwd;
     },
   });
-  const harnessRoot = async () => {
-    const path = resolveInventoryPath(await store.read(), process.env);
-    if (path === undefined) {
-      return undefined;
-    }
-    // A path git cannot be pointed at is a harness that is not connected —
-    // never the raw path, which would run git against something unresolved.
-    return await fs.realpath(path).catch(() => undefined);
-  };
   // GitHub's side of the journey, through the author's own gh sign-in. Optional
   // by design: absent or unauthenticated, the review stage degrades and every
   // git fact stays readable (ADR-0029).
@@ -142,9 +172,6 @@ function realDeps(): AppDeps {
   // harness must queue, not race each other's temporary index and push.
   const harnessPromoteLocks = new InFlightLocks();
 
-  // Shared instance: a global deploy's lockfile root and deploy tree differ
-  // (~/.apm vs ~/.claude/skills, apm-driver.md #56/#61) — guard and cleanup agree by construction.
-  const deployedLocation = new DeployedLocation(process.env);
   // apm owns Behind; the content reading beside it is a git-tree read of the
   // connected Harness, joined before the row renders (ADR-0027).
   const drift = new ReadDrift({
@@ -161,14 +188,42 @@ function realDeps(): AppDeps {
   // Shared by deploy and remove: both rewrite the same apm.lock.yaml, and a
   // deploy racing a remove would corrupt it.
   const apmWriteLocks = new InFlightLocks();
+  const inventoryGit = new InventoryGitAdapter({
+    resolveRoot: async () =>
+      resolveInventoryPath(await store.read(), process.env),
+  });
+  // One guard for every write entry point, so a copy is classified the same way
+  // whichever one is about to overwrite it, and one consent mechanism covers
+  // them all (#952).
+  const copyGuard = new LocalCopyGuard({
+    content: new DeployedContentAdapter({
+      location: deployedLocation,
+      inventoryGit,
+    }),
+  });
+  // The Selection lifecycle: the consumer's apm.yml, the one install or named
+  // uninstall, the durable operation record and the proof it landed. Deploy,
+  // Remove and Retry all write through this one owner (ADR-0031, #951).
+  const selection = new SelectionWriter({
+    fs,
+    location: deployedLocation,
+    apm,
+    operations: new TargetOperationStore({ store }),
+  });
+  // The connected Harness a target's one dependency names (ADR-0014).
+  const inventoryOrigin = async () => {
+    const root = resolveInventoryPath(await store.read(), process.env);
+    const url = root === undefined ? null : await readGitOriginUrl(root);
+    return url === null ? null : parseGitOrigin(url);
+  };
   const deploy = new DeploySkill({
     inventory,
     registry,
     apm,
-    inventoryGit: new InventoryGitAdapter({
-      resolveRoot: async () =>
-        resolveInventoryPath(await store.read(), process.env),
-    }),
+    selection,
+    inventoryGit,
+    copyGuard,
+    // The linked-destination probe only; the classification is the guard's.
     deployedContent: new DeployedContentAdapter({ location: deployedLocation }),
     // apm's success marker says nothing about what it recorded, so the lockfile
     // is read back before the deploy is called clean (#358).
@@ -196,6 +251,8 @@ function realDeps(): AppDeps {
     deployedRef: new DeployedRefAdapter({ fs, location: deployedLocation }),
     // apm deletes an edited file silently — a removal must prove nothing to
     // lose first (apm-driver.md § Remove).
+    copyGuard,
+    // The post-removal probe, which tells an absent copy from a clean one.
     deployedContent: new DeployedContentAdapter({ location: deployedLocation }),
     apm,
     // For copies apm's uninstall can't reach: a tool this machine no longer detects (#339).
@@ -204,6 +261,19 @@ function realDeps(): AppDeps {
     canonicalPath: (path) => fs.realpath(path),
     locks: apmWriteLocks,
     location: deployedLocation,
+    selection,
+    inventoryOrigin,
+  });
+  // The one way out of a Deploy or Remove that never finished, at the release
+  // and Selection it saved (#951).
+  const retryOperation = new RetryTargetOperation({
+    registry,
+    selection,
+    copyGuard,
+    deployedContent: new DeployedContentAdapter({ location: deployedLocation }),
+    toolPresence: new ToolPresenceAdapter(),
+    canonicalPath: (path) => fs.realpath(path),
+    locks: apmWriteLocks,
   });
   // Same connected clone the inventory reads, canonicalized per call so a
   // path saved after startup is picked up and a symlinked one is resolved.
@@ -344,6 +414,28 @@ function realDeps(): AppDeps {
     deployState,
     deploy,
     remove,
+    // The same guard, Harness clone and deploy-state the card and the write
+    // paths read, so the preview cannot price a state the card never showed.
+    update: new UpdateTarget({
+      registry,
+      git: harnessGit,
+      resolveRoot: harnessRoot,
+      harnessOrigin: async () => {
+        const root = await harnessRoot();
+        return root === undefined ? null : await harnessGit.readOrigin(root);
+      },
+      toolPresence: new ToolPresenceAdapter(),
+      copyGuard,
+      // The same Selection lifecycle, target lock and content probe deploy and
+      // remove write through: no write path keeps a rule of its own (#954).
+      selection,
+      deployedContent: new DeployedContentAdapter({
+        location: deployedLocation,
+      }),
+      canonicalPath: (path) => fs.realpath(path),
+      locks: apmWriteLocks,
+    }),
+    retryOperation,
     drift,
     resolveGlobalRoot: () => resolveApmGlobalRoot(process.env),
     enforceOriginHost: true,

@@ -11,7 +11,10 @@ import { z } from "zod";
 // rather than failing the whole file. Unknown keys (content_hash) are ignored.
 const lockfileEntrySchema = z.object({
   resolved_ref: z.string(),
-  virtual_path: z.string(),
+  // Absent on a root-package row, which names the whole repository rather than
+  // one primitive inside it (fixture apm.lock.spike-941-step3d-phantom.yaml).
+  // Every other row must carry one, enforced below.
+  virtual_path: z.string().optional(),
   // Bounded here, where apm output is first read: this value is the one
   // apm-derived field an HTTP response carries (ADR-0018, security.md).
   package_type: z.string().regex(/^[a-z0-9_-]{1,40}$/i),
@@ -19,6 +22,9 @@ const lockfileEntrySchema = z.object({
   repo_url: z.string().optional(),
   deployed_files: z.array(z.string()).optional(),
   deployed_file_hashes: z.record(z.string(), z.string()).optional(),
+  // Only a root-package row carries one: the selection apm persisted. Parsed so
+  // the shape is known, never read as what is deployed (#941, ADR-0031).
+  skill_subset: z.array(z.string()).optional(),
 });
 
 const lockfileSchema = z.object({
@@ -57,7 +63,9 @@ export function parseLockfile(raw: string): LockfileParseResult {
   const unreadable: UnreadableEntry[] = [];
   for (const candidate of parsed.data.dependencies) {
     const entry = lockfileEntrySchema.safeParse(candidate);
-    if (entry.success) {
+    // A row that is not a root package and names no path identifies nothing:
+    // reading it as a skill would invent the empty name (#357).
+    if (entry.success && namesItself(entry.data)) {
       entries.push(entry.data);
       continue;
     }
@@ -67,6 +75,13 @@ export function parseLockfile(raw: string): LockfileParseResult {
     });
   }
   return { ok: true, entries, unreadable };
+}
+
+function namesItself(entry: LockfileEntry): boolean {
+  return (
+    entry.virtual_path !== undefined ||
+    classifyPackageType(entry.package_type) === "package"
+  );
 }
 
 // The write path stays fail-closed: skipping an entry is safe for a reader, but
@@ -83,9 +98,14 @@ export function unreadableCovers(
 }
 
 // What apm recorded, in the terms the cockpit reports: a manageable skill, a
-// package it materialized but Maestro cannot manage as one, apm's own "this
-// attempt placed nothing" verdict, or a different primitive altogether (#358).
-export type PackageClass = "skill" | "unsupported" | "invalid" | "other";
+// root package holding many, an unmanageable package, apm's own "placed
+// nothing" verdict, or a different primitive (#358, ADR-0031).
+export type PackageClass =
+  | "skill"
+  | "package"
+  | "unsupported"
+  | "invalid"
+  | "other";
 
 // What apm 0.26.0 writes for a skill that also carries an apm.yml or a
 // plugin.json (docs/apm-behavior.md § Lockfile).
@@ -94,6 +114,11 @@ const UNSUPPORTED_TYPES = new Set(["hybrid", "marketplace_plugin"]);
 export function classifyPackageType(packageType: string): PackageClass {
   if (packageType === "claude_skill") {
     return "skill";
+  }
+  // One dependency on the whole Harness, with its own selection of skills
+  // (docs/research/929-native-model-spike.md).
+  if (packageType === "apm_package") {
+    return "package";
   }
   if (packageType === "invalid") {
     return "invalid";
@@ -104,13 +129,21 @@ export function classifyPackageType(packageType: string): PackageClass {
 // A skill carries its name; every other reading carries the type to report.
 export type PackageReading =
   | { kind: "skill"; name: string }
-  | { kind: Exclude<PackageClass, "skill">; packageType: string };
+  // A root package names no one skill; its skills come from its recorded files.
+  | { kind: "package" }
+  | {
+      kind: Exclude<PackageClass, "skill" | "package">;
+      packageType: string;
+    };
 
 // The identity rule, written once so no layer re-implements it.
 export function readPackage(entry: LockfileEntry): PackageReading {
   const kind = classifyPackageType(entry.package_type);
-  return kind === "skill"
-    ? { kind, name: basename(entry.virtual_path) }
+  if (kind === "skill") {
+    return { kind, name: basename(entry.virtual_path ?? "") };
+  }
+  return kind === "package"
+    ? { kind }
     : { kind, packageType: entry.package_type };
 }
 

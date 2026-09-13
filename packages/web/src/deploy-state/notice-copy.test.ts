@@ -3,9 +3,9 @@ import { HttpError } from "../api/http";
 import {
   type DeployStateNotice,
   deployNotice,
-  FIX_AND_RELEASE,
   linkedFolderNotice,
   removeNotice,
+  updatePreviewNotice,
 } from "./notice-copy";
 
 // Asserted as data, never as prose: ADR-0025 §10 rejected a copy linter, so a
@@ -141,9 +141,9 @@ describe("deploy notices", () => {
       "deploy-in-progress",
       {
         level: "error",
-        label: "Deploy already running",
+        label: "Target busy",
         message:
-          "This target takes one change at a time. Wait for the running deploy to finish.",
+          "A deploy is still running on this target. Wait for it to finish.",
       },
     ],
     [
@@ -177,29 +177,31 @@ describe("deploy notices", () => {
       },
     ],
     [
-      "deployed-unsupported-package-type",
+      "target-pinned-per-skill",
       {
         level: "error",
-        label: "Unsupported package type",
-        message: `Its files are still there. ${FIX_AND_RELEASE}`,
+        label: "Release not adopted",
+        message:
+          "This target was deployed one skill at a time. Select Remove skill for each skill, then Deploy skill to put them back on one release.",
       },
     ],
     [
-      "deploy-recorded-invalid",
+      "not-at-target-release",
       {
         level: "error",
-        label: "No files deployed",
+        label: "Not in this release",
         message:
-          "Add a SKILL.md in the Harness, publish a release, then deploy again.",
+          "This skill is not in the release this target follows. Select Update target to move to the release that holds it.",
       },
     ],
     [
-      "deploy-unverified",
+      "deploy-incomplete",
       {
         level: "error",
-        label: "Deploy unproven",
+        label: "Deploy incomplete",
         message:
-          "The target's deployment record does not show it. Deploy again to re-check the target.",
+          "Part of the selection is not on disk. Select Retry deploy to run the same release again.",
+        detail: "apm reported success, and the files say otherwise.",
       },
     ],
     [
@@ -343,9 +345,19 @@ describe("remove notices", () => {
       "remove-in-progress",
       {
         level: "error",
-        label: "Change already running",
+        label: "Target busy",
         message:
-          "This target takes one change at a time. Wait for the running change to finish.",
+          "A removal is still running on this target. Wait for it to finish.",
+      },
+    ],
+    [
+      "remove-incomplete",
+      {
+        level: "error",
+        label: "Removal incomplete",
+        message:
+          "The skill's files are still on disk. Select Retry removal to run the same removal again.",
+        detail: "apm reported success, and the files say otherwise.",
       },
     ],
     [
@@ -410,6 +422,141 @@ describe("remove notices", () => {
   });
 });
 
+describe("update preview notices", () => {
+  const cases: [string, DeployStateNotice][] = [
+    [
+      "repo-not-registered",
+      {
+        level: "error",
+        label: "Repository not registered",
+        message:
+          "Register this repository in Maestro, then select Update target again.",
+      },
+    ],
+    [
+      "no-supported-tool",
+      {
+        level: "error",
+        label: "No supported tool",
+        message:
+          "Neither Claude Code nor Codex is on this machine. There is nothing here to update.",
+      },
+    ],
+    [
+      "not-deployed",
+      {
+        level: "error",
+        label: "Nothing deployed here",
+        message:
+          "This target follows no release. Select Deploy skill in the Inventory to put one on it.",
+      },
+    ],
+    [
+      "lockfile-malformed",
+      {
+        level: "error",
+        label: "Deployment record unreadable",
+        message:
+          "Repair or delete apm.lock.yaml in the target, then select Update target again.",
+        detail:
+          "The file is present but does not parse, so the target's state is unknown.",
+      },
+    ],
+    [
+      "deployed-unreadable",
+      {
+        level: "error",
+        label: "Deployed copy unreadable",
+        message:
+          "Nothing was changed. Make the deployed copy readable, then select Update target again.",
+        detail: "Its permissions or its shape blocked the check.",
+      },
+    ],
+    [
+      "inventory-not-configured",
+      {
+        level: "error",
+        label: "No Harness connected",
+        message:
+          "Connect a Harness on the Inventory screen, then select Update target again.",
+      },
+    ],
+    [
+      "inventory-unreadable",
+      {
+        level: "error",
+        label: "Inventory not read",
+        message:
+          "Select Re-read Inventory on the Harness location screen, then select Update target again.",
+      },
+    ],
+    [
+      "no-published-tag",
+      {
+        level: "error",
+        label: "Not in any release",
+        message:
+          "Publish a release on the Harness screen, then select Update target again.",
+        detail: "An update moves the target to a published tag.",
+      },
+    ],
+    [
+      "skill-not-in-release",
+      {
+        level: "error",
+        label: "Not in the latest release",
+        message:
+          "The latest release does not hold this skill. Publish a release on the Harness screen, then deploy again.",
+        detail: "Nothing was changed, and the target keeps its own release.",
+      },
+    ],
+    [
+      "inventory-origin-unavailable",
+      {
+        level: "error",
+        label: "No GitHub origin",
+        message:
+          "Point the Harness clone's origin at its GitHub repository, then select Update target again.",
+        detail: "An update installs from a GitHub tag, over https or ssh.",
+      },
+    ],
+    [
+      "ref-unresolvable",
+      {
+        level: "error",
+        label: "Unrecognisable deployment entry",
+        message:
+          "Nothing was changed. Leave one entry for the Harness in apm.lock.yaml, then select Update target again.",
+        detail: "The target's record names more than one, or names no release.",
+      },
+    ],
+    [
+      "preview-failed",
+      {
+        level: "error",
+        label: "Preview did not run",
+        message:
+          "Nothing was changed. Wait a moment, then select Update target again.",
+      },
+    ],
+  ];
+
+  it.each(cases)("states %s", (code, expected) => {
+    expect(updatePreviewNotice(refusal(code))).toEqual(expected);
+  });
+
+  it("names a failure it has no code for", () => {
+    expect(updatePreviewNotice(new Error("offline"))).toEqual({
+      level: "error",
+      label: "Preview outcome unknown",
+      message:
+        "Nothing was changed. Wait a moment, then select Update target again.",
+      detail:
+        "A dropped connection, or a failure this version of Maestro does not name.",
+    });
+  });
+});
+
 describe("every deploy and remove notice", () => {
   const codes = [
     "unsupported-primitive-type",
@@ -428,9 +575,12 @@ describe("every deploy and remove notice", () => {
     "no-supported-tool",
     "auth-required",
     "destination-symlinked",
-    "deployed-unsupported-package-type",
-    "deploy-recorded-invalid",
-    "deploy-unverified",
+    "target-pinned-per-skill",
+    "not-at-target-release",
+    "manifest-not-recognised",
+    "operation-unfinished",
+    "deploy-incomplete",
+    "remove-incomplete",
     "deploy-failed",
     "not-deployed",
     "ref-unresolvable",

@@ -1,0 +1,82 @@
+lockfile_version: '1'
+generated_at: '2026-09-12T10:51:59.281167+00:00'
+apm_version: 0.29.0
+dependencies:
+- repo_url: fimoklei/agent-harness
+  name: agent-harness
+  host: github.com
+  resolved_commit: f8208f12c2f4fed97ef1b7266964824137cc8daf
+  resolved_ref: v0.6.0
+  version: 1.0.0
+  package_type: apm_package
+  deployed_files:
+  - .claude/skills/caveman
+  - .claude/skills/caveman/SKILL.md
+  - .claude/skills/prototype
+  - .claude/skills/prototype/LOGIC.md
+  - .claude/skills/prototype/SKILL.md
+  - .claude/skills/prototype/UI.md
+  deployed_file_hashes:
+    .claude/skills/caveman/SKILL.md: sha256:b4bb6fe3bf3da222993ca0aee5e7c6f5368b182dd30ce1172e8f8e3280eb7052
+    .claude/skills/prototype/LOGIC.md: sha256:da91dc92195c00d5dc33863b8c1a030998025a0f8583ebf2babd770825b7f70c
+    .claude/skills/prototype/SKILL.md: sha256:a653deb65afa2ee8f45c68f6ef4f593147171b386e994c8cccf89292d9ea9d75
+    .claude/skills/prototype/UI.md: sha256:d76d565149ee50456c5ddc5e29c27fec8737637874fe5c37d970db085a200b27
+  content_hash: sha256:f37814f39aed0165ff29bddab90ca093f4698eb18b2f32b7c8fa4d648f55fd66
+  skill_subset:
+  - caveman
+  - prototype
+deployments:
+- kind: project-relative
+  target: claude
+  value: .claude/skills/caveman
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/agent-harness
+  active_owner: fimoklei/agent-harness
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/caveman/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/agent-harness
+  active_owner: fimoklei/agent-harness
+  content_hash: sha256:b4bb6fe3bf3da222993ca0aee5e7c6f5368b182dd30ce1172e8f8e3280eb7052
+- kind: project-relative
+  target: claude
+  value: .claude/skills/prototype
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/agent-harness
+  active_owner: fimoklei/agent-harness
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/prototype/LOGIC.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/agent-harness
+  active_owner: fimoklei/agent-harness
+  content_hash: sha256:da91dc92195c00d5dc33863b8c1a030998025a0f8583ebf2babd770825b7f70c
+- kind: project-relative
+  target: claude
+  value: .claude/skills/prototype/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/agent-harness
+  active_owner: fimoklei/agent-harness
+  content_hash: sha256:a653deb65afa2ee8f45c68f6ef4f593147171b386e994c8cccf89292d9ea9d75
+- kind: project-relative
+  target: claude
+  value: .claude/skills/prototype/UI.md
+  runtime: null
+  scope: project
+  owners:
+  - fimoklei/agent-harness
+  active_owner: fimoklei/agent-harness
+  content_hash: sha256:d76d565149ee50456c5ddc5e29c27fec8737637874fe5c37d970db085a200b27

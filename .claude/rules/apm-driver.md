@@ -35,6 +35,37 @@ targets = detected tools), 0013 (narrowed-install reconciliation), 0014
 - Keep real apm out of the fast test loop (`testing.md`); network + auth
   belong to the canary/integration lanes.
 
+## Root package and its Selection
+
+- Install the Harness as the tag-pinned repository root ref, one `--skill`
+  flag per selected name. A Selection is never a set of per-skill subpath
+  refs.
+- Write the exact Selection to `skills:` in `apm.yml` before every install,
+  and pass those same names as `--skill`; the flag alone only adds.
+- Never write `skills: []` and never drop the `skills:` key: an empty list is
+  refused, and a missing key installs the whole bundle. Remove the last
+  selected skill by naming the package in `apm uninstall`.
+- Remove the Harness by naming its root ref. Never uninstall a neighbouring
+  dependency to reach it, and never widen the removal — a named uninstall
+  already spares every other dependency, including one from the same
+  repository.
+- Read what is deployed from `deployed_files` plus the file's existence,
+  never from `skill_subset` or `skills:`; both keep names apm has already
+  dropped.
+- Read the Selection back after every install. apm sorts `skills:`, so the
+  written order is never the order you passed.
+- Classify a Remove from files and the lockfile, never from the exit code or
+  a marker: a blocked removal has already deleted the rest of the Selection.
+- Edit `skills:` only under exactly one dependency on the connected Harness
+  carrying an explicit list. Refuse every other shape — two such dependencies,
+  a bare root-ref string, a missing or non-list `skills:` — before anything is
+  written, and leave an absent dependency for apm to create on a first Deploy.
+- Record the operation, its release and its desired Selection before the first
+  mutation, and clear the record only once disk, `skills:` and the deployment
+  record all agree with that Selection. A matching tag clears nothing.
+- Guard every copy in the desired Selection, never only the named skill: one
+  install rewrites the whole Selection.
+
 ## Classifying output
 
 - Success = the `Installed \d+ APM dependenc` marker or the

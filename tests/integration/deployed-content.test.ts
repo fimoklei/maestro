@@ -484,4 +484,35 @@ describe("DeployedContentAdapter", () => {
       ).resolves.toBeNull();
     });
   });
+
+  describe("contentDigest", () => {
+    it("changes when a byte of the deployed copy changes", async () => {
+      await writeDeployed(".claude/skills/tdd/SKILL.md", "first edit");
+      const before = await adapter().contentDigest({
+        target: { kind: "repo", repoPath: root },
+        name: "tdd",
+        tools: ["claude"],
+      });
+
+      await writeDeployed(".claude/skills/tdd/SKILL.md", "second edit");
+      const after = await adapter().contentDigest({
+        target: { kind: "repo", repoPath: root },
+        name: "tdd",
+        tools: ["claude"],
+      });
+
+      expect(before).not.toBeNull();
+      expect(after).not.toBe(before);
+    });
+
+    it("reads an absent copy as an empty digest, not as a failure", async () => {
+      await expect(
+        adapter().contentDigest({
+          target: { kind: "repo", repoPath: root },
+          name: "tdd",
+          tools: ["claude"],
+        }),
+      ).resolves.toBe("");
+    });
+  });
 });

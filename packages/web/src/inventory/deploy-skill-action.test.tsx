@@ -260,7 +260,10 @@ describe("DeploySkillAction", () => {
     });
   });
 
-  it("names the deployed version in sync and offers Deploy skill again for a proven current target", async () => {
+  // *Deploy skill again* is retired: a skill already on the target's release
+  // has nothing to redeploy, and a control that reinstalls one skill implies a
+  // release of its own (ADR-0031, #956).
+  it("names the deployed version in sync and offers no deploy control for a proven current target", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
@@ -288,25 +291,78 @@ describe("DeploySkillAction", () => {
 
     expect(await screen.findByText("● In sync · v0.5.1")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Deploy skill again" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Deploy skill" }),
+      screen.queryByRole("button", { name: /deploy skill/i }),
     ).not.toBeInTheDocument();
+  });
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Deploy skill again" }),
+  // The per-skill drift check answers nothing for a target on one release, so
+  // this read In sync while the newest release had changed the skill (#956).
+  it("reads a skill the newest release changed as behind, never as in sync", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/deploy-state")) {
+          return jsonResponse({
+            primitives: [{ type: "skill", name: "tdd", version: "v0.5.1" }],
+            skipped: [],
+            releaseHead: {
+              release: "v0.5.1",
+              latestRelease: "v0.6.0",
+              changed: 1,
+              changedSkills: ["tdd"],
+              selected: 1,
+              comparedAt: "2026-09-12T10:00:00.000Z",
+            },
+          });
+        }
+        if (url.startsWith("/api/drift")) {
+          return jsonResponse({ behind: [] });
+        }
+        throw new Error(`Unexpected request: ${url}`);
+      }),
+    );
+    renderAction(
+      <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
     );
 
-    const deployCall = (fetch as ReturnType<typeof vi.fn>).mock.calls.find(
-      ([url]) => url === "/api/deploy",
+    expect(await screen.findByText("▲ Behind · v0.5.1")).toBeInTheDocument();
+    expect(screen.queryByText(/in sync/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /deploy skill/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("reads a skill the newest release left alone as in sync", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/deploy-state")) {
+          return jsonResponse({
+            primitives: [{ type: "skill", name: "tdd", version: "v0.5.1" }],
+            skipped: [],
+            releaseHead: {
+              release: "v0.5.1",
+              latestRelease: "v0.6.0",
+              changed: 1,
+              changedSkills: ["grill"],
+              selected: 2,
+              comparedAt: "2026-09-12T10:00:00.000Z",
+            },
+          });
+        }
+        if (url.startsWith("/api/drift")) {
+          return jsonResponse({ behind: [] });
+        }
+        throw new Error(`Unexpected request: ${url}`);
+      }),
     );
-    if (!deployCall) throw new Error("expected a POST to /api/deploy");
-    expect(JSON.parse((deployCall[1] as RequestInit).body as string)).toEqual({
-      type: "skill",
-      name: "tdd",
-      target: { kind: "repo", repoPath: "/projects/alpha" },
-    });
+    renderAction(
+      <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
+    );
+
+    expect(await screen.findByText("● In sync · v0.5.1")).toBeInTheDocument();
   });
 
   it("returns to deploy when the selected target is not synced", async () => {
@@ -431,10 +487,11 @@ describe("DeploySkillAction", () => {
     expect(alert).toHaveTextContent(/the folder it points at remains on disk/i);
   });
 
-  it("offers an inline Reinstall-fresh confirm that re-deploys with force", async () => {
+  it("offers an inline confirm that re-deploys with the server's receipt", async () => {
     // ADR-0006: a not-proven-clean copy is confirm-and-proceed at the Deploy
     // entry point too, not a refusal. The inline button re-runs the same deploy
-    // with force: true — one behaviour, both entry points (#66).
+    // carrying the receipt the refusal minted — one behaviour, both entry
+    // points (#66, #952).
     let deployCalls = 0;
     const fetchMock = vi.fn(
       async (input: RequestInfo | URL, _init?: RequestInit) => {
@@ -445,6 +502,8 @@ describe("DeploySkillAction", () => {
             return new Response(
               JSON.stringify({
                 error: "deployed-unverifiable",
+                copyReceipt:
+                  "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
                 message:
                   "This copy predates content tracking, so local changes can't be checked. Updating reinstalls fresh at the latest tag; any local changes are discarded.",
               }),
@@ -480,7 +539,9 @@ describe("DeploySkillAction", () => {
       )
       .map(([, init]) => JSON.parse((init as RequestInit).body as string));
     expect(deployBodies).toHaveLength(2);
-    expect(deployBodies[1].force).toBe(true);
+    expect(deployBodies[1].confirmedCopyReceipt).toBe(
+      "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    );
   });
 
   it("clears the Reinstall affordance when the target changes after a refusal", async () => {

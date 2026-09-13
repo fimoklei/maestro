@@ -201,3 +201,36 @@ Lockfiles from the same run, copied verbatim:
 |---|---|
 | `apm.lock.spike-833-v1-global-two-tool.yaml` | step 1 global — five skills, `skill_subset`, `.agents/…` rows carry `target: codex` |
 | `apm.lock.spike-833-v2-project.yaml` | step 2 project bare — four skills on disk while `skill_subset` still lists `epsilon` |
+
+## Root-package canary (#957)
+
+Measured 2026-09-12, apm 0.29.0, against `github.com/fimoklei/agent-harness`
+at `v0.6.0` (the #929/#941 fixture repo `fimoklei/apm-spike-833` no longer
+exists). Sandbox `HOME` (`realpath`ed), a `GITHUB_TOKEN` from `gh auth token`
+for the installs, no rate-limit line in any capture. `<root>` =
+`github.com/fimoklei/agent-harness#v0.6.0`, `<foreign>` =
+`github.com/fimoklei/agent-harness/.apm/skills/tdd#v0.6.0`. Project runs used
+a fresh `git init` repo with a hand-placed `.claude/skills/handmade/SKILL.md`;
+global runs used `-g -t claude,codex` from a scratch cwd inside the sandbox.
+`tests/integration/apm-root-package-canary.test.ts` re-runs the same sequence.
+
+| Fixture | Command | Conditions | Exit | Streams |
+|---|---|---|---|---|
+| `apm-957-root-install-project.txt` | `apm install <root> --skill prototype --skill caveman -t claude` | fresh repo | 0 | out+err |
+| `apm-957-narrow-project.txt` | `apm install <root> --skill prototype -t claude` | `skills:` written down to `prototype`, `<foreign>` installed beside it | 0 | out+err |
+| `apm-957-empty-skills-bare.txt` | `apm install -t claude` | `skills: []` written under the root entry | 1 | out+err |
+| `apm-957-empty-skills-cli.txt` | `apm install <root> -t claude` | same manifest | 1 | out+err |
+| `apm-957-no-skills-field.txt` | `apm install -t claude` | `skills:` key deleted — the whole bundle installs | 0 | out+err |
+| `apm-957-uninstall-root-project.txt` | `apm uninstall <root>` | after the narrow, `<foreign>` and the hand-placed skill present | 0 | out+err |
+| `apm-957-uninstall-root-retained.txt` | `apm uninstall <root>` | two-skill Selection, `.claude/skills/caveman/SKILL.md` edited | 1 | out+err |
+| `apm-957-root-install-global.txt` | `apm install <root> --skill prototype --skill caveman -g -t claude,codex` | empty sandbox home | 0 | out+err |
+| `apm-957-narrow-global.txt` | `apm install <root> --skill prototype -g -t claude,codex` | as the project narrow, at `-g` | 0 | out+err |
+| `apm-957-empty-skills-global.txt` | `apm install -g -t claude,codex` | `skills: []` in `~/.apm/apm.yml` | 1 | out+err |
+| `apm-957-uninstall-root-global.txt` | `apm uninstall -g <root>` | after the global narrow | 0 | out+err |
+
+Two files from the same run, copied verbatim:
+
+| Fixture | State |
+|---|---|
+| `apm.lock.957-root-selection-project.yaml` | the first project install — one `package_type: apm_package` entry, `skill_subset` holding the exact Selection sorted |
+| `apm.yml.957-narrowed-with-foreign.yaml` | after the project narrow — the root entry with a one-name `skills:` list beside the bare-string foreign dependency |

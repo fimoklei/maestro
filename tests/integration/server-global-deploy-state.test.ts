@@ -14,7 +14,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { realRegistry } from "../helpers/real-registry";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
-import { stubDeploy } from "../helpers/stub-deploy";
+import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubImport } from "../helpers/stub-import";
@@ -22,6 +22,7 @@ import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
+import { stubUpdate } from "../helpers/stub-update";
 
 // Integration lane for global (user-scope) deploy-state, now grouped per detected
 // tool (ADR-0011, J03). The server resolves the user-scope location itself — no
@@ -88,6 +89,7 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
       deployState,
       deploy: stubDeploy({ inventory, registry, locks }),
       remove: stubRemove({ registry, locks }),
+      retryOperation: stubRetryOperation({ registry, locks }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => apmRoot,
       harness: stubHarness(),
@@ -96,6 +98,7 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
       connect: stubConnect(),
       scaffold: stubScaffold(),
       browse: stubBrowse(),
+      update: stubUpdate(),
       enforceOriginHost: false,
     });
   }

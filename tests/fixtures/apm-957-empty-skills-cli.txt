@@ -1,0 +1,9 @@
+[*] Validating 1 package...
+[+] fimoklei/agent-harness#v0.6.0
+[*] Updated apm.yml with 1 new package(s)
+[>] Installing 1 new package...
+[x] Failed to parse apm.yml: Invalid APM dependency {'git': 
+'fimoklei/agent-harness', 'ref': 'v0.6.0', 'skills': []}: skills: must contain 
+at least one name; remove the field to install all skills in the bundle.
+[i] apm.yml restored to its previous state.
+[x] Install failed after 0.4s.

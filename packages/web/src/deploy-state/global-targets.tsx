@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { type ReactNode, useRef } from "react";
 import type { DriftViewModel } from "../drift/drift-view-model";
 import { Card } from "../ui/card";
 import { Notice } from "../ui/notice";
@@ -6,6 +6,9 @@ import { SectionHeader } from "../ui/section-header";
 import { DeployStateList } from "./deploy-state-list";
 import { toolDeployedView, withOtherOrigins } from "./deployed-view";
 import { joinNames } from "./join-names";
+import { PinnedPerSkillHead } from "./pinned-per-skill-head";
+import { releaseLabel } from "./release-head-copy";
+import { ReleaseHeadMeta } from "./release-head-meta";
 import {
   skippedEntryKey,
   skippedEntryText,
@@ -14,7 +17,9 @@ import {
 import { TargetDeployAction } from "./target-deploy-action";
 import { TargetStatusChip } from "./target-status-chip";
 import { toolPresentation } from "./tool-presentation";
-import type { SkippedEntry } from "./use-deploy-state";
+import { UnfinishedOperationHead } from "./unfinished-operation-head";
+import { UpdatingLine } from "./updating-line";
+import type { PendingOperation, SkippedEntry } from "./use-deploy-state";
 import type { ToolDeployState } from "./use-global-deploy-state";
 
 // Presentational "GLOBAL TARGETS" section: one Card per detected tool
@@ -26,6 +31,11 @@ export function GlobalTargets({
   tools,
   skipped,
   otherOrigins = [],
+  pendingOperation,
+  onRetryOperation,
+  isRetryingOperation = false,
+  updateAction,
+  isUpdating = false,
   drift,
   onStartDeploy,
 }: {
@@ -35,6 +45,15 @@ export function GlobalTargets({
   skipped: SkippedEntry[];
   // Repos named on a lockfile entry no detected tool's prefix covers (#655).
   otherOrigins?: string[];
+  // Section-wide: the global target holds one unfinished operation whatever the
+  // tool count, and one retry converges it (#951).
+  pendingOperation?: PendingOperation;
+  onRetryOperation?: () => void;
+  isRetryingOperation?: boolean;
+  // Section-wide too: one Update covers the whole detected tool set, as Deploy
+  // and Remove already do (spec story 32). A slot, so this stays presentational.
+  updateAction?: ReactNode;
+  isUpdating?: boolean;
   drift: DriftViewModel;
   onStartDeploy: () => void;
 }) {
@@ -69,10 +88,31 @@ export function GlobalTargets({
         />
       ) : (
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {pendingOperation ? (
+            <div className="lg:col-span-2">
+              <UnfinishedOperationHead
+                pending={pendingOperation}
+                primitives={tools.flatMap((group) => group.primitives)}
+                onRetry={onRetryOperation ?? (() => {})}
+                isRetrying={isRetryingOperation}
+              />
+            </div>
+          ) : null}
+          {isUpdating ? (
+            // No control anywhere in the section while apm runs, so a second
+            // operation cannot be started (spec story 27).
+            <div className="lg:col-span-2">
+              <UpdatingLine release={updatingRelease(tools)} />
+            </div>
+          ) : updateAction ? (
+            <div className="flex justify-end lg:col-span-2">{updateAction}</div>
+          ) : null}
           {tools.map((group) => (
             <ToolTargetCard
               key={group.tool}
               group={group}
+              isUpdating={isUpdating}
+              mixedReleases={pendingOperation?.kind === "update"}
               drift={drift}
               // Section-wide, since a skipped entry names no tool (#358).
               attentionCount={skipped.filter(skippedNeedsAttention).length}
@@ -93,8 +133,16 @@ export function GlobalTargets({
   );
 }
 
+// The one release the whole global target is moving to, from whichever card
+// carries a reading; empty where none does, so nothing is invented.
+const updatingRelease = (tools: ToolDeployState[]): string =>
+  tools.find((group) => group.releaseHead?.latestRelease)?.releaseHead
+    ?.latestRelease ?? "";
+
 function ToolTargetCard({
   group,
+  isUpdating = false,
+  mixedReleases = false,
   drift,
   detectedTools,
   attentionCount,
@@ -102,6 +150,10 @@ function ToolTargetCard({
   onStartDeploy,
 }: {
   group: ToolDeployState;
+  // The section states the release once; the card drops its body, so no row
+  // menu or deploy action survives the write (spec story 27).
+  isUpdating?: boolean;
+  mixedReleases?: boolean;
   drift: DriftViewModel;
   detectedTools: string[];
   attentionCount: number;
@@ -137,10 +189,17 @@ function ToolTargetCard({
       }
       titleRef={headerRef}
       kind="global"
+      data={group.releaseHead ? releaseLabel(group.releaseHead) : undefined}
       drift={indicator === "drift"}
-      status={<TargetStatusChip indicator={indicator} />}
+      status={
+        <TargetStatusChip
+          indicator={indicator}
+          pinnedPerSkill={group.pinnedPerSkill !== undefined}
+          mixedReleases={mixedReleases}
+        />
+      }
     >
-      {indicator === "foreign" ? (
+      {isUpdating ? null : indicator === "foreign" ? (
         // Foreign is empty plus a fact, so the fact stands above the same
         // action an empty target offers, never instead of it (#749).
         <>
@@ -152,13 +211,23 @@ function ToolTargetCard({
       ) : indicator === "empty" ? (
         <TargetDeployAction onStartDeploy={onStartDeploy} />
       ) : (
-        <DeployStateList
-          primitives={group.primitives}
-          skipped={[]}
-          drift={toolDrift}
-          target={{ kind: "global", tools: detectedTools }}
-          onRemoved={() => headerRef.current?.focus()}
-        />
+        <>
+          {group.releaseHead ? (
+            <ReleaseHeadMeta head={group.releaseHead} />
+          ) : null}
+          {group.pinnedPerSkill ? (
+            <PinnedPerSkillHead pinned={group.pinnedPerSkill} />
+          ) : null}
+          <DeployStateList
+            primitives={group.primitives}
+            skipped={[]}
+            drift={toolDrift}
+            headRelease={group.releaseHead?.release}
+            extraFiles={group.extraFiles}
+            target={{ kind: "global", tools: detectedTools }}
+            onRemoved={() => headerRef.current?.focus()}
+          />
+        </>
       )}
     </Card>
   );

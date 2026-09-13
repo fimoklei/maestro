@@ -19,7 +19,10 @@ import type {
   RemovePreflightError,
   RepoPathError,
   RestoreSkillError,
+  RetryTargetOperationError,
   ScaffoldHarnessError,
+  UpdatePreviewError,
+  UpdateRunError,
 } from "@maestro/core";
 import type { ErrorTable } from "./error-table";
 
@@ -33,6 +36,16 @@ export const deployErrorResponses: ErrorTable<DeploySkillError> = {
   "repo-not-registered": { status: 403 },
   "inventory-origin-unavailable": { status: 502 },
   "no-published-tag": { status: 422 },
+  // 409: the skill exists, and moving the whole target to the release that
+  // holds it is the reader's next step (ADR-0031).
+  "not-at-target-release": { status: 409 },
+  "target-pinned-per-skill": { status: 409 },
+  "manifest-not-recognised": { status: 409 },
+  "ref-unresolvable": { status: 409 },
+  "operation-unfinished": { status: 409 },
+  // 502: apm ran and what landed is not what was asked for, so the outcome is
+  // apm's to answer for — and the retry is on the target card (#951).
+  "deploy-incomplete": { status: 502 },
   "local-diverged-from-tag": { status: 409 },
   "deployed-diverged-from-lock": { status: 409 },
   "deployed-unverifiable": { status: 409 },
@@ -48,11 +61,26 @@ export const deployErrorResponses: ErrorTable<DeploySkillError> = {
   "destination-symlinked": { status: 409 },
   // 409, not 502: apm installed something, and the package shape is the
   // user's to correct (#358).
-  "deployed-unsupported-package-type": { status: 409 },
-  "deploy-recorded-invalid": { status: 502 },
-  "deploy-unverified": { status: 502 },
   "deploy-failed": { status: 502 },
 };
+
+// The way out of an operation that never finished; its sentences sit beside the
+// deploy and remove ones in `deploy-state/notice-copy.ts`.
+export const retryOperationErrorResponses: ErrorTable<RetryTargetOperationError> =
+  {
+    "repo-not-registered": { status: 403 },
+    // 409: the target has nothing unfinished, so the offer the reader acted on
+    // is out of date.
+    "nothing-to-retry": { status: 409 },
+    "retry-in-progress": { status: 409 },
+    "deployed-diverged-from-lock": { status: 409 },
+    "deployed-unverifiable": { status: 409 },
+    "deployed-unreadable": { status: 409 },
+    "lockfile-malformed": { status: 409 },
+    "manifest-not-recognised": { status: 409 },
+    "retry-incomplete": { status: 502 },
+    "retry-failed": { status: 502 },
+  };
 
 // The sentences live beside the deploy ones in `deploy-state/notice-copy.ts`:
 // six codes refuse both, and each states its own way through.
@@ -74,6 +102,10 @@ export const removeErrorResponses: ErrorTable<RemoveDeployedSkillError> = {
   // What it costs now travels beside this refusal, never inside it (#364).
   "cost-not-acknowledged": { status: 409 },
   "remove-in-progress": { status: 409 },
+  "manifest-not-recognised": { status: 409 },
+  "operation-unfinished": { status: 409 },
+  // 502: apm ran and the skill, its files or its name are still there (#951).
+  "remove-incomplete": { status: 502 },
   // 502: apm ran and didn't prove removal, so the outcome is unknown.
   "remove-failed": { status: 502 },
 };
@@ -91,6 +123,47 @@ export const removePreflightErrorResponses: ErrorTable<RemovePreflightError> = {
   "preflight-failed": { status: 502 },
 };
 
+// The sentences live beside the deploy ones in `deploy-state/notice-copy.ts`:
+// every code but the catch-all is already a refusal one of them can state.
+export const updatePreviewErrorResponses: ErrorTable<UpdatePreviewError> = {
+  "repo-not-registered": removeErrorResponses["repo-not-registered"],
+  "no-supported-tool": removeErrorResponses["no-supported-tool"],
+  "not-deployed": removeErrorResponses["not-deployed"],
+  "lockfile-malformed": removeErrorResponses["lockfile-malformed"],
+  "deployed-unreadable": deployErrorResponses["deployed-unreadable"],
+  "inventory-not-configured": deployErrorResponses["inventory-not-configured"],
+  "inventory-unreadable": deployErrorResponses["inventory-unreadable"],
+  "no-published-tag": deployErrorResponses["no-published-tag"],
+  "inventory-origin-unavailable":
+    deployErrorResponses["inventory-origin-unavailable"],
+  "ref-unresolvable": deployErrorResponses["ref-unresolvable"],
+  // 422, like no-published-tag: the release the target would adopt does not
+  // hold the skill, and publishing one that does is the reader's next step.
+  "skill-not-in-release": { status: 422 },
+  "preview-failed": { status: 502 },
+};
+
+// The confirm's own refusals. Every code it shares with deploy, remove or the
+// preview is answered the same way; its sentences live beside theirs in
+// `deploy-state/notice-copy.ts` (#954).
+export const updateRunErrorResponses: ErrorTable<UpdateRunError> = {
+  ...updatePreviewErrorResponses,
+  // 409: the state the reader confirmed is not the state on disk, and a fresh
+  // preview is the way through.
+  "status-out-of-date": { status: 409 },
+  "update-in-progress": deployErrorResponses["deploy-in-progress"],
+  "operation-unfinished": deployErrorResponses["operation-unfinished"],
+  "deployed-diverged-from-lock":
+    deployErrorResponses["deployed-diverged-from-lock"],
+  "deployed-unverifiable": deployErrorResponses["deployed-unverifiable"],
+  "manifest-not-recognised": deployErrorResponses["manifest-not-recognised"],
+  "destination-symlinked": deployErrorResponses["destination-symlinked"],
+  // 502: apm ran and what landed is not what was asked for; the retry is on
+  // the target card (#951).
+  "update-incomplete": { status: 502 },
+  "update-failed": { status: 502 },
+};
+
 // Exhaustive by construction: the table above is keyed by the error union
 // itself, so a new refusal cannot be missing from the allowlist.
 export const refusalCodes = Object.keys(removePreflightErrorResponses) as [
@@ -99,8 +172,7 @@ export const refusalCodes = Object.keys(removePreflightErrorResponses) as [
 ];
 
 // The same four failures under a Notice heading, which already names the
-// subject. The sentences live in `inventory/connect-notice.ts`; the register
-// run's report has no heading and keeps its own standalone wording (#465,
+// subject. The sentences live in `inventory/connect-notice.ts` (#465,
 // decision 9).
 const HEADED_REPO_PATH_RESPONSES: ErrorTable<RepoPathError> = {
   missing: { status: 400 },

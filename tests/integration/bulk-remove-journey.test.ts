@@ -19,13 +19,14 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { realRegistry } from "../helpers/real-registry";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
-import { stubDeploy } from "../helpers/stub-deploy";
+import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubImport } from "../helpers/stub-import";
 import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubScaffold } from "../helpers/stub-scaffold";
+import { stubUpdate } from "../helpers/stub-update";
 
 // The whole job (#409). server-bulk-remove.test.ts asserts the report the route
 // returns; this asserts the screen afterwards, so apm has to be faithful: it
@@ -118,7 +119,10 @@ describe("retiring a skill from every target it is deployed to", () => {
       registry,
       locks,
       deployedRef: new DeployedRefAdapter({ fs, location }),
-      deployedContent: { classify: async () => "clean" as const },
+      deployedContent: {
+        classify: async () => "clean" as const,
+        contentDigest: async () => null,
+      },
       apm: {
         removeSkill: async ({ target, ref }) => {
           if (target.kind === "repo" && fails.has(target.repoPath)) {
@@ -153,6 +157,7 @@ describe("retiring a skill from every target it is deployed to", () => {
         toolPresence: { detectGlobalTools: async () => TOOLS },
       }),
       deploy: stubDeploy({ inventory, registry, locks }),
+      retryOperation: stubRetryOperation({ registry, locks }),
       remove,
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => apmRoot,
@@ -162,6 +167,7 @@ describe("retiring a skill from every target it is deployed to", () => {
       connect: stubConnect(),
       scaffold: stubScaffold(),
       browse: stubBrowse(),
+      update: stubUpdate(),
       enforceOriginHost: false,
     });
 

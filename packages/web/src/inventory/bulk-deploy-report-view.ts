@@ -14,10 +14,8 @@ export type BulkDeployReportView =
   | {
       tone: "success" | "attention";
       targetLabel: string;
-      // Successes that were a first install here.
+      // Every success, at the release the target already follows (#956).
       deployed: { name: string; version: string }[];
-      // Successes that replaced a behind copy (#292).
-      updated: { name: string; version: string }[];
       skipped: string[];
       attention: BulkDeployReport["attention"];
       failed: { error: DeploySkillError; names: string[] }[];
@@ -53,8 +51,6 @@ export function bulkDeploySummary(input: {
 export function bulkDeployReportView(input: {
   report: BulkDeployReport;
   skippedClean: string[];
-  // Absent means every success reads as a first deploy.
-  updateToLatest?: string[];
   targetLabel: string;
   // `report` carries no real data when true — must never be read.
   requestFailed?: boolean;
@@ -73,10 +69,6 @@ export function bulkDeployReportView(input: {
     };
   }
 
-  const wasBehind = new Set(input.updateToLatest ?? []);
-  const updated = report.deployed.filter((row) => wasBehind.has(row.name));
-  const deployed = report.deployed.filter((row) => !wasBehind.has(row.name));
-
   // A merged failure line carries every affected skill — sum names, not lines.
   const failedCount = report.failed.reduce(
     (total, line) => total + line.names.length,
@@ -91,8 +83,7 @@ export function bulkDeployReportView(input: {
   return {
     tone,
     targetLabel,
-    deployed,
-    updated,
+    deployed: report.deployed,
     skipped: skippedClean,
     attention: report.attention,
     failed: report.failed,

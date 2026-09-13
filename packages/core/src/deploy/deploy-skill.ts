@@ -5,10 +5,12 @@ import type { OutdatedResult } from "../drift/parse-outdated";
 import type { InventoryResult } from "../inventory/inventory-reader";
 import type { PackageReading } from "../lockfile/lockfile";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
+import type { SelectionWriter } from "./apply-selection";
 import type { SupportedTool } from "./deploy-tools";
 import { parseGitOrigin } from "./git-origin";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
-import { buildSkillPackageRef, isValidSkillSlug } from "./package-ref";
+import { type CopyVerdict, LocalCopyGuard } from "./local-copy-guard";
+import { isValidSkillSlug } from "./package-ref";
 import { reclaimUntargetedCopies } from "./reclaim-untargeted-copies";
 
 // Only the repo arm carries a client-supplied path; the global location is
@@ -40,6 +42,10 @@ export type ApmDriverPort = {
   deploySkill(input: {
     target: DeployTarget;
     ref: string;
+    // The whole desired Selection, one `--skill` flag per name. Never a subset:
+    // the flag unions with the list apm persisted, so a name left out stays
+    // installed (apm-behavior.md § Root package and its Selection, ADR-0031).
+    skills?: readonly string[];
     tools?: readonly SupportedTool[];
   }): Promise<DeploySkillDriverResult>;
   // No tools list: uninstall has no -t. `ref` must be the tag-pinned one the
@@ -64,6 +70,13 @@ export type InventoryGitPort = {
   skillExistsAtTag(tag: string, name: string): Promise<boolean>;
   // Tree-diff, never apm's opaque content_hash (apm-driver.md § Lockfile).
   skillDivergesFromTag(tag: string, name: string): Promise<boolean>;
+  // The skill's files at one release: sha256 per path, relative to the skill
+  // directory. Null where nothing could be read, which keeps the copy
+  // protected (#952).
+  readSkillFilesAtTag(
+    tag: string,
+    name: string,
+  ): Promise<Record<string, string> | null>;
 };
 
 // The deployed copy vs the lockfile's deployed_file_hashes (#56). The three
@@ -84,7 +97,18 @@ export type DeployedContentPort = {
     target: DeployTarget;
     name: string;
     tools?: readonly SupportedTool[];
+    // The release the write would install: a copy equalling it in full is
+    // `clean`, and a release that cannot be read grants no such pass (#952).
+    release?: string;
   }): Promise<DeployedContentState>;
+  // A digest of the copy's bytes as they are right now. Consent is given for
+  // content, not for a verdict: two different edits both read `diverged`.
+  // Null where nothing could be read (ADR-0031, spec story 41).
+  contentDigest(input: {
+    target: DeployTarget;
+    name: string;
+    tools?: readonly SupportedTool[];
+  }): Promise<string | null>;
   // The leaf skill directory apm refuses to write into, when one of this
   // deploy's destinations is a symlink; null when none is. Recomputed from the
   // same subtrees rather than read out of apm's prose (ADR-0018, #748).
@@ -126,9 +150,10 @@ type DeploySkillInput = {
   type: string;
   name: string;
   target: DeployTarget;
-  // Overrides only the two not-proven-clean states; every other guard still
-  // runs (ADR-0006, #66).
-  force?: boolean;
+  // The receipt this deploy's own refusal minted, licensing the overwrite of
+  // the copies it named. Content that changed since retires it, so a stale one
+  // consents to nothing (ADR-0006, #952).
+  confirmedCopyReceipt?: string;
 };
 
 // Each member's meaning for the user is the server's `deployErrorResponses`
@@ -144,6 +169,25 @@ export type DeploySkillError =
   | "repo-not-registered"
   | "inventory-origin-unavailable"
   | "no-published-tag"
+  // The skill is released, but not at the release this target follows. Moving
+  // the whole target there is Update target's job, never this deploy's
+  // (ADR-0031).
+  | "not-at-target-release"
+  // The target still holds per-skill dependencies, which a root package must
+  // never sit beside (ADR-0031, #950).
+  | "target-pinned-per-skill"
+  // The consumer's apm.yml holds a Harness dependency Maestro will not edit, so
+  // nothing was written (ADR-0031).
+  | "manifest-not-recognised"
+  // Two Harness root packages, or one pinned at something that is not a
+  // release: the target names no single package to install over.
+  | "ref-unresolvable"
+  // A Deploy or Remove on this target never finished; it is retried before
+  // anything else runs (#951).
+  | "operation-unfinished"
+  // apm ran and what is on disk is not the Selection that was asked for. The
+  // operation record survives, so Retry deploy converges on it (#951).
+  | "deploy-incomplete"
   | "local-diverged-from-tag"
   | "deployed-diverged-from-lock"
   | "deployed-unverifiable"
@@ -153,26 +197,28 @@ export type DeploySkillError =
   | "no-supported-tool"
   | "auth-required"
   | "destination-symlinked"
-  // apm installed the package but recorded it as something Maestro cannot
-  // manage as a skill; the files are on disk and stay there (#358).
-  | "deployed-unsupported-package-type"
-  // apm's own verdict that the attempt placed nothing, worn under a success
-  // marker (#358).
-  | "deploy-recorded-invalid"
-  // apm reported an install Maestro could not confirm from the lockfile (#358).
-  | "deploy-unverified"
   | "deploy-failed";
 
 type DeploySkillResult =
   | { ok: true; deployed: { type: "skill"; name: string; version: string } }
-  // `packageType` is one of our own readings of apm's recorded type, and
-  // `linkedPath` a path Maestro built itself — never apm prose (ADR-0018).
+  // `packageType` and `linkedPath` are Maestro's own readings, never apm prose
+  // (ADR-0018); `copyReceipt` licenses exactly the copies just read (#952).
   | {
       ok: false;
       error: DeploySkillError;
       packageType?: string;
       linkedPath?: string;
+      copyReceipt?: string;
     };
+
+// One mapping from the guard's verdict to the refusal the server's table
+// already carries, so the guard adds no second vocabulary (#952).
+const COPY_ERRORS: Record<Exclude<CopyVerdict, "clean">, DeploySkillError> = {
+  "local-edits": "deployed-diverged-from-lock",
+  unverified: "deployed-unverifiable",
+  unreadable: "deployed-unreadable",
+  "lockfile-malformed": "lockfile-malformed",
+};
 
 export class DeploySkill {
   private readonly deps: {
@@ -180,6 +226,10 @@ export class DeploySkill {
     registry: { isRegistered(path: string): Promise<boolean> };
     apm: Pick<ApmDriverPort, "resolveLatestTag" | "deploySkill">;
     inventoryGit: InventoryGitPort;
+    // The one guard every write entry point classifies and consents through
+    // (#952). Injected so a receipt one flow minted is the same proof another
+    // checks; left out, this deploy guards through its own classifier alone.
+    copyGuard?: Pick<LocalCopyGuard, "check" | "admits">;
     deployedContent: DeployedContentPort;
     recordedPackage: RecordedPackagePort;
     // Global path only (ADR-0011, #136).
@@ -191,10 +241,17 @@ export class DeploySkill {
     canonicalPath: (path: string) => Promise<string>;
     // Shared with the remove use-case: both rewrite the same apm.lock.yaml.
     locks: InFlightLocks;
+    // The shared Selection write: manifest, install and the proof it landed
+    // (#951). Both this deploy and the remove use-case go through it.
+    selection: SelectionWriter;
   };
+
+  private readonly copyGuard: Pick<LocalCopyGuard, "check" | "admits">;
 
   constructor(deps: DeploySkill["deps"]) {
     this.deps = deps;
+    this.copyGuard =
+      deps.copyGuard ?? new LocalCopyGuard({ content: deps.deployedContent });
   }
 
   async execute(input: DeploySkillInput): Promise<DeploySkillResult> {
@@ -225,11 +282,16 @@ export class DeploySkill {
       lockKey = GLOBAL_LOCK_KEY;
     }
 
-    const run = await this.deps.locks.run(lockKey, () => this.deploy(input));
+    const run = await this.deps.locks.run(lockKey, () =>
+      this.deploy(input, lockKey),
+    );
     return run.ok ? run.value : { ok: false, error: "deploy-in-progress" };
   }
 
-  private async deploy(input: DeploySkillInput): Promise<DeploySkillResult> {
+  private async deploy(
+    input: DeploySkillInput,
+    lockKey: string,
+  ): Promise<DeploySkillResult> {
     const inventory = await this.deps.inventory.read();
     if (!inventory.ok) {
       return {
@@ -264,30 +326,70 @@ export class DeploySkill {
         globalTools = detected;
       }
 
-      const tagResult = await this.deps.apm.resolveLatestTag(origin.ownerRepo);
-      if (!tagResult.ok) {
-        if (tagResult.reason === "auth-required") {
-          return { ok: false, error: "auth-required" };
-        }
-        if (tagResult.reason === "no-tag") {
-          return { ok: false, error: "no-published-tag" };
-        }
-        return { ok: false, error: "deploy-failed" };
+      // What the target already follows decides the release: a skill is added
+      // at the release the target is on, even a Behind one, so adding one skill
+      // never adopts a release the reader did not preview (ADR-0031).
+      const current = await this.deps.selection.readTarget(
+        input.target,
+        origin,
+      );
+      if (current.kind === "unreadable") {
+        return { ok: false, error: current.reason };
       }
-      const tag = tagResult.tag;
+      if (current.kind === "pinned-per-skill") {
+        return { ok: false, error: "target-pinned-per-skill" };
+      }
+      // An unfinished operation is converged before anything else runs, so a
+      // retry never has to reconcile two intents (#951).
+      if ((await this.deps.selection.pending(lockKey)) !== null) {
+        return { ok: false, error: "operation-unfinished" };
+      }
+
+      let tag: string;
+      if (current.kind === "root") {
+        tag = current.release;
+      } else {
+        const tagResult = await this.deps.apm.resolveLatestTag(
+          origin.ownerRepo,
+        );
+        if (!tagResult.ok) {
+          if (tagResult.reason === "auth-required") {
+            return { ok: false, error: "auth-required" };
+          }
+          if (tagResult.reason === "no-tag") {
+            return { ok: false, error: "no-published-tag" };
+          }
+          return { ok: false, error: "deploy-failed" };
+        }
+        tag = tagResult.tag;
+      }
       await this.deps.inventoryGit.syncBeforeDeploy();
       if (!(await this.deps.inventoryGit.skillExistsAtTag(tag, input.name))) {
-        return { ok: false, error: "no-published-tag" };
+        // Absent at the target's own release is a different refusal from absent
+        // everywhere: the way out is Update target, not a Harness release.
+        return {
+          ok: false,
+          error:
+            current.kind === "root"
+              ? "not-at-target-release"
+              : "no-published-tag",
+        };
       }
       if (await this.deps.inventoryGit.skillDivergesFromTag(tag, input.name)) {
         return { ok: false, error: "local-diverged-from-tag" };
       }
-      // A clean source can still overwrite a locally-edited deployed copy: a
-      // same-ref apm install resets it to the tag silently (#56).
-      const deployedState = await this.deps.deployedContent.classify({
-        target: input.target,
-        name: input.name,
-        tools: globalTools,
+      // One install rewrites every copy in the Selection, so every one of them
+      // is what the guard reads and what consent covers (ADR-0031, #952).
+      const deployed = current.kind === "root" ? current.deployed : [];
+      const desired = [...new Set([...deployed, input.name])];
+      // A same-ref apm install resets an edited copy silently (#56). The tag
+      // goes in, so a copy already equal to this release is not an edit (#952).
+      const scope = { write: "deploy", target: input.target } as const;
+      const check = await this.copyGuard.check({
+        ...scope,
+        names: desired,
+        ...(globalTools === undefined ? {} : { tools: globalTools }),
+        release: tag,
       });
       // Files apm placed under a package type it could not manage are apm's
       // own, not local work: refusing the corrected release over them would
@@ -298,82 +400,73 @@ export class DeploySkill {
       });
       const apmOwnsCopy =
         standing.kind === "recorded" && standing.reading.kind !== "skill";
-      // `force` never overrides "unreadable" or "lockfile-malformed": with no
+      const admitted = this.copyGuard.admits(
+        scope,
+        check,
+        input.confirmedCopyReceipt,
+      );
+      // No consent clears "unreadable" or "lockfile-malformed": with no
       // baseline the overwrite would be blind, not informed (ADR-0006).
-      if (deployedState === "diverged" && !input.force) {
-        return { ok: false, error: "deployed-diverged-from-lock" };
-      }
-      if (deployedState === "unverifiable" && !input.force && !apmOwnsCopy) {
-        return { ok: false, error: "deployed-unverifiable" };
-      }
-      if (deployedState === "unreadable") {
-        return { ok: false, error: "deployed-unreadable" };
-      }
-      if (deployedState === "lockfile-malformed") {
-        return { ok: false, error: "lockfile-malformed" };
-      }
-
-      const ref = buildSkillPackageRef({
-        host: origin.host,
-        ownerRepo: origin.ownerRepo,
-        name: input.name,
-        tag,
-      });
-      const installed = await this.deps.apm.deploySkill({
-        target: input.target,
-        ref,
-        tools: globalTools,
-      });
-      if (!installed.ok) {
-        if (installed.reason !== "destination-symlinked") {
-          return { ok: false, error: "deploy-failed" };
-        }
-        // The exact link, so the notice can spell out one `rm`; omitted rather
-        // than guessed when nothing on disk is one (#748).
-        const linkedPath = await this.deps.deployedContent.linkedSkillPath({
-          target: input.target,
-          name: input.name,
-          tools: globalTools,
-        });
+      if (!admitted.ok && !(admitted.blocked === "unverified" && apmOwnsCopy)) {
         return {
           ok: false,
-          error: "destination-symlinked",
-          ...(linkedPath === null ? {} : { linkedPath }),
+          error: COPY_ERRORS[admitted.blocked],
+          ...(admitted.receipt === null
+            ? {}
+            : { copyReceipt: admitted.receipt }),
         };
       }
 
-      // apm exits 0 and prints its success marker even for a package it
-      // recorded as invalid, so the record is the only honest outcome (#358).
-      // Read before the reclaim: nothing is tidied up around it.
-      const recorded = await this.deps.recordedPackage.read({
+      // One Harness dependency at one release, carrying the exact Selection:
+      // the manifest write, the install and the proof it landed all belong to
+      // the shared writer (ADR-0031, #951).
+      const applied = await this.deps.selection.apply({
         target: input.target,
-        name: input.name,
+        key: lockKey,
+        kind: "deploy",
+        origin,
+        release: tag,
+        previous: deployed,
+        desired,
+        ...(globalTools === undefined ? {} : { tools: globalTools }),
       });
-      if (recorded.kind === "unverified") {
-        return { ok: false, error: "deploy-unverified" };
-      }
-      if (recorded.reading.kind !== "skill") {
-        return recorded.reading.kind === "invalid"
-          ? {
-              ok: false,
-              error: "deploy-recorded-invalid",
-              packageType: recorded.reading.packageType,
-            }
-          : {
-              ok: false,
-              error: "deployed-unsupported-package-type",
-              packageType: recorded.reading.packageType,
-            };
+      if (!applied.ok) {
+        if (applied.error === "destination-symlinked") {
+          // The exact link, so the notice can spell out one `rm`; omitted
+          // rather than guessed when nothing on disk is one (#748).
+          const linkedPath = await this.deps.deployedContent.linkedSkillPath({
+            target: input.target,
+            name: input.name,
+            tools: globalTools,
+          });
+          return {
+            ok: false,
+            error: "destination-symlinked",
+            ...(linkedPath === null ? {} : { linkedPath }),
+          };
+        }
+        return {
+          ok: false,
+          error:
+            applied.error === "manifest-not-recognised"
+              ? "manifest-not-recognised"
+              : applied.error === "apply-incomplete"
+                ? "deploy-incomplete"
+                : "deploy-failed",
+        };
       }
 
       // After a proven install, never before, so a failed install never
-      // reconciles (ADR-0011, #136).
-      await reclaimUntargetedCopies({
-        cleanup: this.deps.deployedCleanup,
-        target: input.target,
-        name: input.name,
-        detected: globalTools,
-      });
+      // reconciles (ADR-0011, #136). Every selected skill: one install
+      // rewrites the whole Selection.
+      for (const name of desired) {
+        await reclaimUntargetedCopies({
+          cleanup: this.deps.deployedCleanup,
+          target: input.target,
+          name,
+          detected: globalTools,
+        });
+      }
 
       return {
         ok: true,

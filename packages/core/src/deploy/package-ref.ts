@@ -14,6 +14,14 @@ export const isValidSkillSlug = (name: string): boolean =>
 
 export { MAX_SLUG_LENGTH };
 
+// The repository root, with no subpath: one dependency carrying a Selection,
+// which is the shape a target follows one release in (ADR-0031).
+export const buildHarnessPackageRef = (input: {
+  host: string;
+  ownerRepo: string;
+  tag: string;
+}): string => `${input.host}/${input.ownerRepo}#${input.tag}`;
+
 export const buildSkillPackageRef = (input: {
   host: string;
   ownerRepo: string;

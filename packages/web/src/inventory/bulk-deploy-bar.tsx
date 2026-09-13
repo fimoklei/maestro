@@ -14,10 +14,9 @@ import { type BulkDeployPlan, planBulkDeploy } from "./plan-bulk-deploy";
 import { useBulkDeploy } from "./use-bulk-deploy";
 import { type DeployTarget, useDeploySkill } from "./use-deploy-skill";
 
-// Bulk-deploy control (#291, #292): plans → executes → reports over the
-// staged set. Skips already-deployed-and-up-to-date skills; a diverged copy
-// comes back as an attention row with an inline force reinstall. Mounted only
-// while something is staged, so it never stands empty.
+// Bulk-deploy control (#291, #292): plans, executes and reports over the staged
+// set, skipping what is already up to date. Mounted only while something is
+// staged, so it never stands empty.
 const GLOBAL_VALUE = "global";
 
 export function BulkDeployBar({
@@ -34,7 +33,7 @@ export function BulkDeployBar({
   const [chosen, setChosen] = useState<string | null>(null);
   const [plan, setPlan] = useState<BulkDeployPlan | null>(null);
   const bulk = useBulkDeploy();
-  // Reuses the single-deploy path with force: true — one behaviour, both
+  // Reuses the single-deploy path with the row's own receipt — one behaviour,
   // entry points (ADR-0006, #66).
   const forceDeploy = useDeploySkill();
 
@@ -117,7 +116,6 @@ export function BulkDeployBar({
     ? bulkDeployReportView({
         report,
         skippedClean: plan.skippedClean,
-        updateToLatest: plan.updateToLatest,
         targetLabel: chosenLabel,
         requestFailed: bulk.isError,
       })
@@ -183,8 +181,13 @@ export function BulkDeployBar({
         <BulkDeployReport
           view={reportView}
           isDeploying={bulk.isPending}
-          onForce={(name) =>
-            forceDeploy.mutate({ type: "skill", name, target, force: true })
+          onForce={(name, confirmedCopyReceipt) =>
+            forceDeploy.mutate({
+              type: "skill",
+              name,
+              target,
+              confirmedCopyReceipt,
+            })
           }
         />
       ) : null}

@@ -80,6 +80,123 @@ const codexWithTdd = {
 };
 
 describe("TargetsList", () => {
+  // Gap the Release head closes (ADR-0031, #956): the per-skill drift check
+  // answers nothing for a target that follows one release, so a behind target
+  // read as In sync until this row read the head instead.
+  it("reads a repo behind its Harness release as behind, never as In sync", async () => {
+    stubFetch({
+      tools: [],
+      globalBehind: { behind: [] },
+      repos: [{ path: "/Users/me/app" }],
+      repoDeployState: {
+        primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
+        skipped: [],
+        releaseHead: {
+          release: "v0.3.2",
+          latestRelease: "v0.3.4",
+          changed: 2,
+          changedSkills: ["tdd", "grill"],
+          selected: 5,
+          comparedAt: "2026-09-12T10:00:00.000Z",
+        },
+      },
+      repoDrift: { behind: [] },
+    });
+    renderTargets();
+
+    expect(await screen.findByText("▲2")).toBeInTheDocument();
+    expect(screen.queryByText("In sync")).not.toBeInTheDocument();
+  });
+
+  it("reads a behind repo whose release changed nothing selected as behind", async () => {
+    stubFetch({
+      tools: [],
+      globalBehind: { behind: [] },
+      repos: [{ path: "/Users/me/app" }],
+      repoDeployState: {
+        primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
+        skipped: [],
+        releaseHead: {
+          release: "v0.3.2",
+          latestRelease: "v0.3.4",
+          changed: 0,
+          changedSkills: [],
+          selected: 5,
+          comparedAt: "2026-09-12T10:00:00.000Z",
+        },
+      },
+      repoDrift: { behind: [] },
+    });
+    renderTargets();
+
+    expect(await screen.findByText("Behind")).toBeInTheDocument();
+  });
+
+  it("reads a repo on the latest release as In sync", async () => {
+    stubFetch({
+      tools: [],
+      globalBehind: { behind: [] },
+      repos: [{ path: "/Users/me/app" }],
+      repoDeployState: {
+        primitives: [{ type: "skill", name: "tdd", version: "v0.3.4" }],
+        skipped: [],
+        releaseHead: {
+          release: "v0.3.4",
+          latestRelease: "v0.3.4",
+          changed: 0,
+          changedSkills: [],
+          selected: 1,
+          comparedAt: "2026-09-12T10:00:00.000Z",
+        },
+      },
+      repoDrift: { behind: [] },
+    });
+    renderTargets();
+
+    expect(await screen.findByText("In sync")).toBeInTheDocument();
+  });
+
+  it("reads a repo still pinned per skill as such, not as In sync", async () => {
+    stubFetch({
+      tools: [],
+      globalBehind: { behind: [] },
+      repos: [{ path: "/Users/me/app" }],
+      repoDeployState: {
+        primitives: [{ type: "skill", name: "tdd", version: "v0.3.1" }],
+        skipped: [],
+        pinnedPerSkill: [{ release: "v0.3.1", skills: 3 }],
+      },
+      repoDrift: { behind: [] },
+    });
+    renderTargets();
+
+    expect(await screen.findByText("Pinned per skill")).toBeInTheDocument();
+    expect(screen.queryByText("In sync")).not.toBeInTheDocument();
+  });
+
+  it("reads a tool behind its Harness release as behind", async () => {
+    stubFetch({
+      tools: [
+        {
+          ...claudeWithTdd,
+          releaseHead: {
+            release: "v0.3.2",
+            latestRelease: "v0.3.4",
+            changed: 1,
+            changedSkills: ["tdd"],
+            selected: 1,
+            comparedAt: "2026-09-12T10:00:00.000Z",
+          },
+        },
+      ],
+      globalBehind: { behind: [] },
+    });
+    renderTargets();
+
+    expect(await screen.findByText("▲1")).toBeInTheDocument();
+    expect(screen.queryByText("In sync")).not.toBeInTheDocument();
+  });
+
   it("lists one row per detected tool and each registered repo, with no single Global row", async () => {
     stubFetch({
       tools: [claudeWithTdd, codexWithTdd],

@@ -1,0 +1,27 @@
+[!] A new version of APM is available: 0.30.0 (current: 0.29.0)
+Run apm self-update to upgrade
+
+[i] Installing to user scope (~/.apm/)
+[!] User-scope primitives are fully supported by claude, kiro, gemini, 
+grok-build, grok-cloud, agent-skills, openclaw, hermes, copilot-cowork, 
+copilot-app. Partially supported: copilot, cursor, opencode, antigravity, codex,
+windsurf.
+Some primitives are not supported: cursor (instructions); opencode (hooks); 
+antigravity (instructions, hooks); windsurf (instructions)
+[*] Created 
+/private/tmp/claude-501/-Users-michielmerks-orca-workspaces-maestro-seagrass/15f
+81207-14d4-418e-b0a7-53482dbf35c3/scratchpad/canary/ghome.n3hL/.apm/apm.yml
+[i] Targets set: claude, codex (persisted to 
+/private/tmp/claude-501/-Users-michielmerks-orca-workspaces-maestro-seagrass/15f
+81207-14d4-418e-b0a7-53482dbf35c3/scratchpad/canary/ghome.n3hL/.apm/apm.yml)
+[*] Validating 1 package...
+[+] fimoklei/agent-harness#v0.6.0
+[*] Updated apm.yml with 1 new package(s)
+[>] Installing 1 new package...
+[>] Resolving fimoklei/agent-harness...
+  [+] fimoklei/agent-harness #v0.6.0 @f8208f12
+  |-- 2 skill(s) integrated -> .agents/skills/, .claude/skills/
+  [+] <project root> (local)
+  |-- (files unchanged)
+
+[*] Installed 1 APM dependency in 2.7s.

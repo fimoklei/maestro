@@ -10,12 +10,12 @@ type Scripted = Awaited<ReturnType<DeploySkill["execute"]>>;
 function fakeDeploy(
   script: Record<string, Scripted>,
   calls?: string[],
-  forceSeen?: (boolean | undefined)[],
+  consentSeen?: (string | undefined)[],
 ): Pick<DeploySkill, "execute"> {
   return {
     async execute(input) {
       calls?.push(input.name);
-      forceSeen?.push(input.force);
+      consentSeen?.push(input.confirmedCopyReceipt);
       const result = script[input.name];
       if (!result) {
         throw new Error(`no scripted result for ${input.name}`);
@@ -34,15 +34,11 @@ function fail(error: DeploySkillError): Scripted {
 }
 
 describe("BulkDeploySkills", () => {
-  it("reports an unsupported package type as attention, with no force to offer", async () => {
+  it("reports a target pinned per skill as attention, with no force to offer", async () => {
+    // A bulk deploy never grants the reader's consent and never moves a
+    // target's release, so this row is read, not forced (ADR-0031, #951).
     const bulk = new BulkDeploySkills({
-      deploy: fakeDeploy({
-        tdd: {
-          ok: false,
-          error: "deployed-unsupported-package-type",
-          packageType: "hybrid",
-        },
-      }),
+      deploy: fakeDeploy({ tdd: fail("target-pinned-per-skill") }),
     });
 
     const report = await bulk.execute({
@@ -51,13 +47,64 @@ describe("BulkDeploySkills", () => {
     });
 
     expect(report.attention).toEqual([
-      {
-        name: "tdd",
-        error: "deployed-unsupported-package-type",
-        packageType: "hybrid",
-        forceable: false,
-      },
+      { name: "tdd", error: "target-pinned-per-skill", forceable: false },
     ]);
+    expect(report.failed).toEqual([]);
+  });
+
+  // A busy target is a reasoned skip, not a failure: nothing went wrong and
+  // the reader's step is to wait (spec story 51).
+  it("reports a busy target as attention, with no force to offer", async () => {
+    const bulk = new BulkDeploySkills({
+      deploy: fakeDeploy({ tdd: fail("deploy-in-progress") }),
+    });
+
+    const report = await bulk.execute({
+      names: ["tdd"],
+      target: { kind: "global" },
+    });
+
+    expect(report.attention).toEqual([
+      { name: "tdd", error: "deploy-in-progress", forceable: false },
+    ]);
+    expect(report.failed).toEqual([]);
+  });
+
+  it("reports a skill absent at the target's release as attention, never as a failure", async () => {
+    const bulk = new BulkDeploySkills({
+      deploy: fakeDeploy({ tdd: fail("not-at-target-release") }),
+    });
+
+    const report = await bulk.execute({
+      names: ["tdd"],
+      target: { kind: "global" },
+    });
+
+    expect(report.attention).toEqual([
+      { name: "tdd", error: "not-at-target-release", forceable: false },
+    ]);
+  });
+
+  // Story 51: a bulk run skips a target needing recovery, or one holding a
+  // manifest Maestro will not edit, and states the reason (#956).
+  it("reports an unfinished operation and an unrecognised manifest as attention", async () => {
+    const bulk = new BulkDeploySkills({
+      deploy: fakeDeploy({
+        tdd: fail("operation-unfinished"),
+        grill: fail("manifest-not-recognised"),
+      }),
+    });
+
+    const report = await bulk.execute({
+      names: ["tdd", "grill"],
+      target: { kind: "global" },
+    });
+
+    expect(report.attention).toEqual([
+      { name: "tdd", error: "operation-unfinished", forceable: false },
+      { name: "grill", error: "manifest-not-recognised", forceable: false },
+    ]);
+    expect(report.deployed).toEqual([]);
     expect(report.failed).toEqual([]);
   });
 
@@ -76,9 +123,9 @@ describe("BulkDeploySkills", () => {
     ]);
   });
 
-  it("counts apm's invalid verdict as a failure, never as a success", async () => {
+  it("counts an install that did not land as a failure, never as a success", async () => {
     const bulk = new BulkDeploySkills({
-      deploy: fakeDeploy({ tdd: fail("deploy-recorded-invalid") }),
+      deploy: fakeDeploy({ tdd: fail("deploy-incomplete") }),
     });
 
     const report = await bulk.execute({
@@ -88,7 +135,7 @@ describe("BulkDeploySkills", () => {
 
     expect(report.deployed).toEqual([]);
     expect(report.failed).toEqual([
-      { error: "deploy-recorded-invalid", names: ["tdd"] },
+      { error: "deploy-incomplete", names: ["tdd"] },
     ]);
   });
 
@@ -182,8 +229,8 @@ describe("BulkDeploySkills", () => {
     ]);
   });
 
-  it("never forwards a batch-wide force to individual deploys", async () => {
-    const forceSeen: (boolean | undefined)[] = [];
+  it("never forwards a batch-wide consent to individual deploys", async () => {
+    const consentSeen: (string | undefined)[] = [];
     const bulk = new BulkDeploySkills({
       deploy: fakeDeploy(
         {
@@ -191,20 +238,20 @@ describe("BulkDeploySkills", () => {
           review: ok("review", "v0.9.0"),
         },
         undefined,
-        forceSeen,
+        consentSeen,
       ),
     });
 
     // A caller reaching past the type (e.g. a hand-built request body) must
-    // still never smuggle a batch-wide force through to per-skill deploys —
-    // force stays a deliberate, per-item decision (#292).
+    // still never smuggle a batch-wide overwrite consent through to per-skill
+    // deploys — it stays a deliberate, per-item decision (#292, #952).
     await bulk.execute({
       names: ["tdd", "review"],
       target: { kind: "global" },
-      force: true,
+      confirmedCopyReceipt: "a".repeat(64),
     } as unknown as BulkDeployInput);
 
-    expect(forceSeen).toEqual([undefined, undefined]);
+    expect(consentSeen).toEqual([undefined, undefined]);
   });
 
   it("keeps going after an unexpected exception mid-batch", async () => {

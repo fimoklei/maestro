@@ -64,9 +64,10 @@ describe("DeployStatePanel drift badge", () => {
     ).toBeInTheDocument();
   });
 
-  // ADR-0027: the release moved, this skill did not. The row still states the
-  // lagging pin and keeps its Update action; the target does not read Behind.
-  it("shows an older-tag badge for a skill whose content did not move", async () => {
+  // ADR-0027: the release moved, this skill did not. The *Older tag* chip is
+  // retired with the per-skill release it implied (#956); the row still states
+  // the lagging pin and keeps its Update action, and the target reads in sync.
+  it("shows no Older tag chip for a skill whose content did not move", async () => {
     stubFetch(tddDeployed, {
       behind: [
         {
@@ -79,11 +80,13 @@ describe("DeployStatePanel drift badge", () => {
     });
     renderPanel("/Users/me/project");
 
-    expect(await screen.findByText("Older tag")).toBeInTheDocument();
+    expect(screen.queryByText("Older tag")).not.toBeInTheDocument();
     expect(
       await screen.findByText(/v0\.5\.0\s*→\s*v0\.5\.1/),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /update/i })).toBeInTheDocument();
+    // The row states the reading and offers nothing: one release moves through
+    // the card's own Update target (spec story 12, #954).
+    expect(screen.queryByRole("button", { name: /update skill/i })).toBeNull();
     expect(await screen.findByText(/in sync/i)).toBeInTheDocument();
   });
 

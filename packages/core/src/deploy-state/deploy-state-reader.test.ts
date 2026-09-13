@@ -4,6 +4,7 @@ import type { SupportedTool } from "../deploy/deploy-tools";
 import { InMemoryFileSystem } from "../registry/file-system.fake";
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import {
+  type DeployStateExtras,
   DeployStateReader,
   GlobalDeployStateReader,
 } from "./deploy-state-reader";
@@ -341,5 +342,682 @@ describe("GlobalDeployStateReader.readGlobal", () => {
       ok: false,
       error: "malformed",
     });
+  });
+});
+
+// The root-package shape: one apm_package dependency deploying many skills,
+// captured by the #941 narrowing spike.
+const PHANTOM_LOCKFILE = readFileSync(
+  new URL(
+    "../../../../tests/fixtures/apm.lock.spike-941-step3d-phantom.yaml",
+    import.meta.url,
+  ),
+  "utf8",
+);
+
+// Keys copied from that capture: a root-package row carries no virtual_path.
+function rootPackageEntry(
+  ref: string,
+  deployedFiles: string[],
+  subset: string[],
+): string {
+  const files = deployedFiles.map((file) => `  - ${file}\n`).join("");
+  const skills = subset.map((name) => `  - ${name}\n`).join("");
+  return `- repo_url: fimoklei/agent-harness\n  name: agent-harness\n  host: github.com\n  resolved_commit: 4beb072048aa5952555e8a3941d3d1873abfe6e7\n  resolved_ref: ${ref}\n  package_type: apm_package\n  deployed_files:\n${files}  skill_subset:\n${skills}`;
+}
+
+// Every file the entry names is on disk, so nothing reads as a phantom.
+function onDisk(root: string, files: string[]): Record<string, string> {
+  return Object.fromEntries(files.map((file) => [`${root}/${file}`, "x"]));
+}
+
+describe("DeployStateReader on a root-package target", () => {
+  it("lists the skills its deployed files name, at the target's release", async () => {
+    const files = [
+      ".claude/skills/tdd/SKILL.md",
+      ".agents/skills/tdd/SKILL.md",
+      ".claude/skills/grill/SKILL.md",
+    ];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(
+          rootPackageEntry("v0.3.2", files, ["tdd", "grill"]),
+        ),
+        ...onDisk(REPO, files),
+      },
+    });
+
+    await expect(new DeployStateReader({ fs }).read(REPO)).resolves.toEqual({
+      ok: true,
+      primitives: [
+        { type: "skill", name: "tdd", version: "v0.3.2" },
+        { type: "skill", name: "grill", version: "v0.3.2" },
+      ],
+      skipped: [],
+    });
+  });
+
+  it("never reads a name from skill_subset that no file on disk backs", async () => {
+    const files = [".claude/skills/tdd/SKILL.md"];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(
+          rootPackageEntry("v0.3.2", files, ["tdd", "removed-long-ago"]),
+        ),
+        ...onDisk(REPO, files),
+      },
+    });
+
+    const result = await new DeployStateReader({ fs }).read(REPO);
+
+    expect(result).toEqual({
+      ok: true,
+      primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
+      skipped: [],
+    });
+  });
+
+  it("does not count a recorded row whose file is gone from disk", async () => {
+    // The real phantom capture: `delta` is recorded under .agents but the
+    // narrow deleted the file (#941 step 3d).
+    const onlyRealFiles = [
+      ".agents/skills/alpha/SKILL.md",
+      ".claude/skills/alpha/SKILL.md",
+    ];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: PHANTOM_LOCKFILE,
+        ...onDisk(REPO, onlyRealFiles),
+      },
+    });
+
+    const result = await new DeployStateReader({ fs }).read(REPO);
+
+    expect(result).toEqual({
+      ok: true,
+      primitives: [{ type: "skill", name: "alpha", version: "v2.0.0" }],
+      skipped: [],
+    });
+  });
+
+  it("reads no Release head without a reader for it", async () => {
+    const files = [".claude/skills/tdd/SKILL.md"];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])),
+        ...onDisk(REPO, files),
+      },
+    });
+
+    const result = await new DeployStateReader({ fs }).read(REPO);
+
+    expect(result).toMatchObject({ ok: true });
+    expect(
+      "releaseHead" in result ? result.releaseHead : undefined,
+    ).toBeUndefined();
+  });
+
+  it("carries the Release head over the skills it found deployed", async () => {
+    const files = [
+      ".claude/skills/tdd/SKILL.md",
+      ".claude/skills/grill/SKILL.md",
+    ];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(
+          rootPackageEntry("v0.3.2", files, ["tdd", "grill"]),
+        ),
+        ...onDisk(REPO, files),
+      },
+    });
+    const seen: string[][] = [];
+    const reader = new DeployStateReader({
+      fs,
+      releaseHead: {
+        read: async (input) => {
+          seen.push([...input.selection]);
+          return {
+            release: input.release,
+            latestRelease: "v0.3.4",
+            changed: 1,
+            selected: input.selection.length,
+            comparedAt: "2026-09-12T10:00:00.000Z",
+          };
+        },
+      },
+    });
+
+    const result = await reader.read(REPO);
+
+    expect(seen).toStrictEqual([["tdd", "grill"]]);
+    expect(result).toMatchObject({
+      ok: true,
+      releaseHead: {
+        release: "v0.3.2",
+        latestRelease: "v0.3.4",
+        changed: 1,
+        selected: 2,
+        comparedAt: "2026-09-12T10:00:00.000Z",
+      },
+    });
+  });
+
+  // A target part-way through migration still carries per-skill rows. They
+  // belong to no Selection, so they may not swell the count (spec story 4).
+  it("keeps a leftover per-skill row out of the Release head's selection", async () => {
+    const files = [".claude/skills/tdd/SKILL.md"];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]:
+          lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])) +
+          skillEntry("v0.3.1", "skills/legacy"),
+        ...onDisk(REPO, files),
+      },
+    });
+    const seen: string[][] = [];
+    const reader = new DeployStateReader({
+      fs,
+      releaseHead: {
+        read: async (input) => {
+          seen.push([...input.selection]);
+          return {
+            release: input.release,
+            latestRelease: "v0.3.4",
+            changed: 0,
+            selected: input.selection.length,
+            comparedAt: "2026-09-12T10:00:00.000Z",
+          };
+        },
+      },
+    });
+
+    const result = await reader.read(REPO);
+
+    expect(seen).toStrictEqual([["tdd"]]);
+    expect(result).toMatchObject({ ok: true, releaseHead: { selected: 1 } });
+  });
+
+  // Pinned per skill and a Release head are two answers to one question. A
+  // target carrying both would show the chip and the Update target control at
+  // once, and there is no mechanism behind that Update (spec stories 59, 60).
+  it("reads a target still holding per-skill pins as pinned, with no Release head", async () => {
+    const files = [".claude/skills/tdd/SKILL.md"];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]:
+          lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])) +
+          pinnedEntry("legacy", "v0.3.1"),
+        ...onDisk(REPO, files),
+      },
+    });
+    const reader = new DeployStateReader({
+      fs,
+      harnessOrigin: HARNESS_ORIGIN,
+      releaseHead: {
+        read: async (input) => ({
+          release: input.release,
+          latestRelease: "v0.3.4",
+          changed: 0,
+          selected: input.selection.length,
+          comparedAt: "2026-09-12T10:00:00.000Z",
+        }),
+      },
+    });
+
+    const result = await reader.read(REPO);
+
+    expect(result).toMatchObject({
+      ok: true,
+      pinnedPerSkill: [{ release: "v0.3.1", skills: 1 }],
+    });
+    expect(
+      "releaseHead" in result ? result.releaseHead : undefined,
+    ).toBeUndefined();
+  });
+
+  it("marks a row whose copy diverged from its baseline as locally edited", async () => {
+    const files = [
+      ".claude/skills/tdd/SKILL.md",
+      ".claude/skills/grill/SKILL.md",
+      ".claude/skills/jobs/SKILL.md",
+    ];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(
+          rootPackageEntry("v0.3.2", files, ["tdd", "grill", "jobs"]),
+        ),
+        ...onDisk(REPO, files),
+      },
+    });
+    const reader = new DeployStateReader({
+      fs,
+      content: {
+        classify: async ({ name }) =>
+          name === "tdd"
+            ? "diverged"
+            : name === "grill"
+              ? "unverifiable"
+              : "clean",
+      },
+    });
+
+    await expect(reader.read(REPO)).resolves.toEqual({
+      ok: true,
+      primitives: [
+        { type: "skill", name: "tdd", version: "v0.3.2", copy: "local-edits" },
+        { type: "skill", name: "grill", version: "v0.3.2", copy: "unverified" },
+        { type: "skill", name: "jobs", version: "v0.3.2" },
+      ],
+      skipped: [],
+    });
+  });
+});
+
+describe("GlobalDeployStateReader on a root-package target", () => {
+  it("groups the root package's skills under the tool their files sit in", async () => {
+    const files = [
+      ".claude/skills/tdd/SKILL.md",
+      ".agents/skills/tdd/SKILL.md",
+      ".agents/skills/grill/SKILL.md",
+    ];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [GLOBAL_LOCKFILE]: lockfile(
+          rootPackageEntry("v0.3.2", files, ["tdd", "grill"]),
+        ),
+        ...onDisk("/home", files),
+      },
+    });
+    const reader = new GlobalDeployStateReader({
+      fs,
+      toolPresence: fakePresence(["claude", "codex"]),
+      treeRoot: () => "/home",
+    });
+
+    await expect(reader.readGlobal(GLOBAL_ROOT)).resolves.toEqual({
+      ok: true,
+      tools: [
+        {
+          tool: "claude",
+          primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
+        },
+        {
+          tool: "codex",
+          primitives: [
+            { type: "skill", name: "tdd", version: "v0.3.2" },
+            { type: "skill", name: "grill", version: "v0.3.2" },
+          ],
+        },
+      ],
+      skipped: [],
+      otherOrigins: [],
+    });
+  });
+
+  it("carries a Release head per tool, over that tool's skills", async () => {
+    const files = [
+      ".claude/skills/tdd/SKILL.md",
+      ".agents/skills/tdd/SKILL.md",
+      ".agents/skills/grill/SKILL.md",
+    ];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [GLOBAL_LOCKFILE]: lockfile(
+          rootPackageEntry("v0.3.2", files, ["tdd", "grill"]),
+        ),
+        ...onDisk("/home", files),
+      },
+    });
+    const reader = new GlobalDeployStateReader({
+      fs,
+      toolPresence: fakePresence(["claude", "codex"]),
+      treeRoot: () => "/home",
+      releaseHead: {
+        read: async (input) => ({
+          release: input.release,
+          latestRelease: "v0.3.4",
+          changed: input.selection.length,
+          selected: input.selection.length,
+          comparedAt: "2026-09-12T10:00:00.000Z",
+        }),
+      },
+    });
+
+    const result = await reader.readGlobal(GLOBAL_ROOT);
+
+    expect(result.ok && result.tools.map((group) => group.releaseHead)).toEqual(
+      [
+        {
+          release: "v0.3.2",
+          latestRelease: "v0.3.4",
+          changed: 1,
+          selected: 1,
+          comparedAt: "2026-09-12T10:00:00.000Z",
+        },
+        {
+          release: "v0.3.2",
+          latestRelease: "v0.3.4",
+          changed: 2,
+          selected: 2,
+          comparedAt: "2026-09-12T10:00:00.000Z",
+        },
+      ],
+    );
+  });
+
+  // Same exclusivity as the repo card: a tool group still holding per-skill
+  // pins reads as Pinned per skill and is offered no Update (stories 59, 60).
+  it("carries no Release head for a tool group still pinned per skill", async () => {
+    const files = [".claude/skills/tdd/SKILL.md"];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [GLOBAL_LOCKFILE]:
+          lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])) +
+          pinnedEntry("legacy", "v0.3.1"),
+        ...onDisk("/home", files),
+      },
+    });
+    const reader = new GlobalDeployStateReader({
+      fs,
+      toolPresence: fakePresence(["claude"]),
+      treeRoot: () => "/home",
+      harnessOrigin: HARNESS_ORIGIN,
+      releaseHead: {
+        read: async (input) => ({
+          release: input.release,
+          latestRelease: "v0.3.4",
+          changed: 0,
+          selected: input.selection.length,
+          comparedAt: "2026-09-12T10:00:00.000Z",
+        }),
+      },
+    });
+
+    const result = await reader.readGlobal(GLOBAL_ROOT);
+
+    expect(result.ok && result.tools[0]?.pinnedPerSkill).toEqual([
+      { release: "v0.3.1", skills: 1 },
+    ]);
+    expect(result.ok && result.tools[0]?.releaseHead).toBeUndefined();
+  });
+
+  it("leaves a phantom row out of the tool that no longer holds it", async () => {
+    const fs = new InMemoryFileSystem({
+      files: {
+        [GLOBAL_LOCKFILE]: PHANTOM_LOCKFILE,
+        ...onDisk("/home", [
+          ".agents/skills/alpha/SKILL.md",
+          ".claude/skills/alpha/SKILL.md",
+        ]),
+      },
+    });
+    const reader = new GlobalDeployStateReader({
+      fs,
+      toolPresence: fakePresence(["claude", "codex"]),
+      treeRoot: () => "/home",
+    });
+
+    const result = await reader.readGlobal(GLOBAL_ROOT);
+
+    expect(
+      result.ok &&
+        result.tools.map((group) =>
+          group.primitives.map((primitive) => primitive.name),
+        ),
+    ).toStrictEqual([["alpha"], ["alpha"]]);
+  });
+});
+
+// A classifier that reads its own injected state, the way DeployedContentAdapter
+// does: a reader calling the method detached loses it and silently chips
+// nothing (found in smoke, #949).
+class StatefulClassifier {
+  private readonly edited: string;
+
+  constructor(edited: string) {
+    this.edited = edited;
+  }
+
+  async classify(input: { name: string }) {
+    return input.name === this.edited
+      ? ("diverged" as const)
+      : ("clean" as const);
+  }
+}
+
+describe("DeployStateReader copy chips", () => {
+  it("calls the content port as a method, so an adapter keeps its own state", async () => {
+    const files = [".claude/skills/tdd/SKILL.md"];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])),
+        ...onDisk(REPO, files),
+      },
+    });
+    const reader = new DeployStateReader({
+      fs,
+      content: new StatefulClassifier("tdd"),
+    });
+
+    await expect(reader.read(REPO)).resolves.toMatchObject({
+      primitives: [
+        { type: "skill", name: "tdd", version: "v0.3.2", copy: "local-edits" },
+      ],
+    });
+  });
+});
+
+// A per-skill dependency, the shape every target held before ADR-0031: one
+// entry per skill, pinned at its own tag under `.apm/skills/<name>`.
+function pinnedEntry(name: string, ref: string, prefixes = [".claude"]) {
+  const files = prefixes
+    .map((prefix) => `  - ${prefix}/skills/${name}/SKILL.md\n`)
+    .join("");
+  return `- repo_url: fimoklei/agent-harness\n  host: github.com\n  resolved_ref: ${ref}\n  virtual_path: .apm/skills/${name}\n  package_type: claude_skill\n  deployed_files:\n${files}`;
+}
+
+const HARNESS_ORIGIN = async () => ({
+  host: "github.com",
+  ownerRepo: "fimoklei/agent-harness",
+});
+
+describe("DeployStateReader on a target pinned per skill", () => {
+  it("reads the skills its per-skill dependencies pin, grouped by release", async () => {
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(
+          pinnedEntry("tdd", "v0.3.1") +
+            pinnedEntry("grill", "v0.3.1") +
+            pinnedEntry("jobs", "v0.3.0"),
+        ),
+      },
+    });
+    const reader = new DeployStateReader({ fs, harnessOrigin: HARNESS_ORIGIN });
+
+    const result = await reader.read(REPO);
+
+    expect(result).toMatchObject({
+      ok: true,
+      pinnedPerSkill: [
+        { release: "v0.3.1", skills: 2 },
+        { release: "v0.3.0", skills: 1 },
+      ],
+    });
+  });
+
+  it("reads no such status from per-skill entries of another Harness", async () => {
+    const foreign = `- repo_url: other/harness\n  host: github.com\n  resolved_ref: v1.0.0\n  virtual_path: .apm/skills/tdd\n  package_type: claude_skill\n  deployed_files:\n  - .claude/skills/tdd/SKILL.md\n`;
+    const fs = new InMemoryFileSystem({
+      files: { [LOCKFILE]: lockfile(foreign) },
+    });
+    const reader = new DeployStateReader({ fs, harnessOrigin: HARNESS_ORIGIN });
+
+    const result = await reader.read(REPO);
+
+    expect(result).toMatchObject({
+      ok: true,
+      primitives: [{ type: "skill", name: "tdd", version: "v1.0.0" }],
+    });
+    expect(
+      "pinnedPerSkill" in result ? result.pinnedPerSkill : undefined,
+    ).toBeUndefined();
+  });
+
+  it("reads no such status while the connected Harness is unknown", async () => {
+    const fs = new InMemoryFileSystem({
+      files: { [LOCKFILE]: lockfile(pinnedEntry("tdd", "v0.3.1")) },
+    });
+
+    const result = await new DeployStateReader({ fs }).read(REPO);
+
+    expect(
+      "pinnedPerSkill" in result ? result.pinnedPerSkill : undefined,
+    ).toBeUndefined();
+  });
+});
+
+describe("DeployStateReader on a record holding extra files", () => {
+  it("counts the recorded files that belong to no selected skill", async () => {
+    const files = [".claude/skills/tdd/SKILL.md", ".claude/agents/review.md"];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])),
+        ...onDisk(REPO, files),
+      },
+    });
+
+    const result = await new DeployStateReader({ fs }).read(REPO);
+
+    expect(result).toMatchObject({ ok: true, extraFiles: 1 });
+  });
+
+  it("says nothing where every recorded file belongs to a skill", async () => {
+    const files = [".claude/skills/tdd/SKILL.md"];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])),
+        ...onDisk(REPO, files),
+      },
+    });
+
+    const result = await new DeployStateReader({ fs }).read(REPO);
+
+    expect(
+      "extraFiles" in result ? result.extraFiles : undefined,
+    ).toBeUndefined();
+  });
+});
+
+describe("GlobalDeployStateReader on a target pinned per skill", () => {
+  it("reads the status per tool, from that tool's own per-skill entries", async () => {
+    const fs = new InMemoryFileSystem({
+      files: {
+        [GLOBAL_LOCKFILE]: lockfile(
+          pinnedEntry("tdd", "v0.3.1", [".claude", ".agents"]) +
+            pinnedEntry("grill", "v0.3.0", [".claude"]),
+        ),
+      },
+    });
+    const reader = new GlobalDeployStateReader({
+      fs,
+      toolPresence: fakePresence(["claude", "codex"]),
+      treeRoot: () => "/home",
+      harnessOrigin: HARNESS_ORIGIN,
+    });
+
+    const result = await reader.readGlobal(GLOBAL_ROOT);
+
+    expect(
+      result.ok && result.tools.map((group) => group.pinnedPerSkill),
+    ).toStrictEqual([
+      [
+        { release: "v0.3.1", skills: 1 },
+        { release: "v0.3.0", skills: 1 },
+      ],
+      [{ release: "v0.3.1", skills: 1 }],
+    ]);
+  });
+
+  it("counts extra files per tool, from that tool's own subtree", async () => {
+    const files = [
+      ".claude/skills/tdd/SKILL.md",
+      ".claude/agents/review.md",
+      ".agents/skills/tdd/SKILL.md",
+    ];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [GLOBAL_LOCKFILE]: lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])),
+        ...onDisk("/home", files),
+      },
+    });
+    const reader = new GlobalDeployStateReader({
+      fs,
+      toolPresence: fakePresence(["claude", "codex"]),
+      treeRoot: () => "/home",
+    });
+
+    const result = await reader.readGlobal(GLOBAL_ROOT);
+
+    expect(
+      result.ok && result.tools.map((group) => group.extraFiles),
+    ).toStrictEqual([1, undefined]);
+  });
+});
+
+// An operation the record says never finished, so the card can offer the one
+// way out of it (#951).
+describe("DeployStateReader on a target with an unfinished operation", () => {
+  const files = [".claude/skills/tdd/SKILL.md"];
+  const pending = {
+    kind: "deploy" as const,
+    release: "v0.3.4",
+    desired: ["tdd", "review"],
+  };
+
+  const readerWith = (operations: DeployStateExtras["operations"]) =>
+    new DeployStateReader({
+      fs: new InMemoryFileSystem({
+        files: {
+          [LOCKFILE]: lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])),
+          ...onDisk(REPO, files),
+        },
+      }),
+      operations,
+    });
+
+  it("carries the operation, its release and its desired selection", async () => {
+    await expect(
+      readerWith({ pending: async () => pending }).read(REPO),
+    ).resolves.toMatchObject({ pendingOperation: pending });
+  });
+
+  it("offers the retry on a target a first deploy left with no lockfile", async () => {
+    // A first Deploy that stopped writes no lockfile at all, and its Retry
+    // deploy still has to be offered (#951).
+    const reader = new DeployStateReader({
+      fs: new InMemoryFileSystem({ files: {} }),
+      operations: { pending: async () => pending },
+    });
+
+    await expect(reader.read(REPO)).resolves.toMatchObject({
+      primitives: [],
+      pendingOperation: pending,
+    });
+  });
+
+  it("carries no key when nothing on the target is unfinished", async () => {
+    const result = await readerWith({ pending: async () => null }).read(REPO);
+
+    expect(result).not.toHaveProperty("pendingOperation");
+  });
+
+  it("carries no key when the record could not be read", async () => {
+    const result = await readerWith({
+      pending: async () => {
+        throw new Error("config unreadable");
+      },
+    }).read(REPO);
+
+    expect(result).not.toHaveProperty("pendingOperation");
   });
 });

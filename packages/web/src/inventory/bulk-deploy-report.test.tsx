@@ -17,7 +17,6 @@ function view(overrides: Partial<ReportView> = {}): ReportView {
     tone: "success",
     targetLabel: "Global",
     deployed: [],
-    updated: [],
     skipped: [],
     attention: [],
     failed: [],
@@ -27,33 +26,50 @@ function view(overrides: Partial<ReportView> = {}): ReportView {
 }
 
 describe("BulkDeployReport", () => {
-  it("gives an unsupported row the same recovery step as a single deploy", () => {
+  it("gives a pinned-per-skill row the reason a single deploy states", () => {
     render(
       <BulkDeployReport
         view={{
           tone: "attention",
           targetLabel: "Global",
           deployed: [],
-          updated: [],
           skipped: [],
           attention: [
-            {
-              name: "tdd",
-              error: "deployed-unsupported-package-type",
-              packageType: "hybrid",
-              forceable: false,
-            },
+            { name: "tdd", error: "target-pinned-per-skill", forceable: false },
           ],
-          failed: [{ error: "deploy-recorded-invalid", names: ["review"] }],
-          counts: { deployed: 0, skipped: 0, attention: 1, failed: 1 },
+          failed: [],
+          counts: { deployed: 0, skipped: 0, attention: 1, failed: 0 },
         }}
       />,
     );
 
-    expect(screen.getByText(/\(hybrid\)/)).toBeInTheDocument();
     expect(
-      screen.getAllByText(/publish a release, then deploy again/i),
-    ).toHaveLength(2);
+      screen.getByText("Left alone — pinned per skill"),
+    ).toBeInTheDocument();
+  });
+
+  it("gives a busy row the reason a single deploy states", () => {
+    render(
+      <BulkDeployReport
+        view={{
+          tone: "attention",
+          targetLabel: "Global",
+          deployed: [],
+          skipped: [],
+          attention: [
+            { name: "tdd", error: "deploy-in-progress", forceable: false },
+          ],
+          failed: [],
+          counts: { deployed: 0, skipped: 0, attention: 1, failed: 0 },
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        "A deploy is still running on this target. Wait for it to finish.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("names a failure the report carries no recovery step for", () => {
@@ -88,19 +104,21 @@ describe("BulkDeployReport", () => {
     expect(summary).toHaveTextContent(/1 skipped/);
   });
 
-  it("names a skill that replaced a behind copy as updated to latest", () => {
+  // The control is retired with the branch behind it (ADR-0031, #956): a bulk
+  // run deploys at the release the target already follows.
+  it("shows no updated-to-latest list", () => {
     render(
       <BulkDeployReport
         view={view({
-          updated: [{ name: "tdd", version: "v1.2.0" }],
+          deployed: [{ name: "tdd", version: "v1.2.0" }],
           counts: { deployed: 1, skipped: 0, attention: 0, failed: 0 },
         })}
       />,
     );
 
     expect(
-      screen.getByRole("list", { name: /updated to latest/i }),
-    ).toHaveTextContent("tdd");
+      screen.queryByRole("list", { name: /updated to latest/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("lists a merged failure line carrying every affected skill", () => {
@@ -129,6 +147,8 @@ describe("BulkDeployReport", () => {
               name: "tdd",
               error: "deployed-diverged-from-lock",
               forceable: true,
+              copyReceipt:
+                "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             },
           ],
           counts: { deployed: 0, skipped: 0, attention: 1, failed: 0 },
@@ -140,7 +160,10 @@ describe("BulkDeployReport", () => {
     await userEvent.click(
       screen.getByRole("button", { name: /deploy tdd again/i }),
     );
-    expect(onForce).toHaveBeenCalledWith("tdd");
+    expect(onForce).toHaveBeenCalledWith(
+      "tdd",
+      "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    );
   });
 
   // DESIGN.md §6: a cursor-pointer with no hover step changes the cursor and

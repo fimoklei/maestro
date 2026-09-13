@@ -2,6 +2,7 @@
 // stays off this list, so the surface reads as a contract, not an index.
 export { ApmCliDriver } from "./deploy/apm-cli-driver";
 export { resolveApmScratchCwd } from "./deploy/apm-scratch-cwd";
+export { SelectionWriter } from "./deploy/apply-selection";
 export {
   type BulkDeployReport,
   BulkDeploySkills,
@@ -12,6 +13,9 @@ export {
   type BulkRemoveTarget,
 } from "./deploy/bulk-remove-deployed-skill";
 export {
+  // The apm boundary itself: the integration lane fakes it to prove a write
+  // landed on disk (tests/helpers/root-package-apm.ts).
+  type ApmDriverPort,
   type DeployedContentState,
   DeploySkill,
   type DeploySkillError,
@@ -22,12 +26,23 @@ export { DeployedCleanupAdapter } from "./deploy/deployed-cleanup";
 export { DeployedContentAdapter } from "./deploy/deployed-content";
 export { DeployedLocation } from "./deploy/deployed-location";
 export { DeployedRefAdapter } from "./deploy/deployed-ref";
+export { parseGitOrigin } from "./deploy/git-origin";
 export {
   readConfiguredGitOriginUrl,
   readGitOriginUrl,
 } from "./deploy/git-origin-url";
 export { InFlightLocks } from "./deploy/in-flight-locks";
 export { InventoryGitAdapter } from "./deploy/inventory-git";
+export {
+  type CopyFinding,
+  type CopyVerdict,
+  type LocalCopyCheck,
+  type LocalCopyDecision,
+  LocalCopyGuard,
+  type LocalCopyScope,
+  type LocalCopyWrite,
+} from "./deploy/local-copy-guard";
+export { isValidSkillSlug } from "./deploy/package-ref";
 export { RecordedPackageAdapter } from "./deploy/recorded-package";
 export type {
   ReclaimConsent,
@@ -45,13 +60,34 @@ export {
   type RemoveWarning,
 } from "./deploy/remove-deployed-skill";
 export {
+  type PendingOperation,
+  RetryTargetOperation,
+  type RetryTargetOperationError,
+} from "./deploy/retry-target-operation";
+export { TargetOperationStore } from "./deploy/target-operation";
+export {
+  type CopyConsentRow,
+  type UpdateOutcomeRow,
+  type UpdatePreview,
+  type UpdatePreviewError,
+  type UpdateRunError,
+  type UpdateScope,
+  type UpdateSkillRow,
+  type UpdateSkillState,
+  UpdateTarget,
+} from "./deploy/update-target";
+export {
   DeployStateReader,
   GlobalDeployStateReader,
 } from "./deploy-state/deploy-state-reader";
 export type {
   DeployedPrimitive,
+  PinnedPerSkill,
+  ReleaseHead,
   SkippedEntry,
 } from "./deploy-state/deploy-state-types";
+export type { ToolDeployState } from "./deploy-state/group-primitives-by-tool";
+export { ReleaseHeadReader } from "./deploy-state/release-head";
 export { resolveApmGlobalRoot } from "./deploy-state/resolve-apm-global-root";
 export { CheckVersionDrift } from "./drift/check-version-drift";
 export type { VersionDrift } from "./drift/parse-outdated";
@@ -155,6 +191,7 @@ export {
   type ReleasePlanResult,
   type WorktreeAmbiguity,
 } from "./harness/read-harness-state";
+export { RELEASE_TAG_PATTERN } from "./harness/release-tag";
 export {
   RestoreSkill,
   type RestoreSkillError,

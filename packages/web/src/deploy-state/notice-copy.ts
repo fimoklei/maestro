@@ -2,6 +2,8 @@ import type {
   DeploySkillError,
   RemoveDeployedSkillError,
   RemovePreflightError,
+  UpdatePreviewError,
+  UpdateRunError,
 } from "@maestro/core";
 import { HttpError } from "../api/http";
 import type { NoticeLevel } from "../ui/notice";
@@ -13,7 +15,9 @@ import { requestShapeNotice } from "../ui/notice-table";
 type DeployStateCode =
   | DeploySkillError
   | RemoveDeployedSkillError
-  | RemovePreflightError;
+  | RemovePreflightError
+  | UpdatePreviewError
+  | UpdateRunError;
 
 /** A finished notice: heading, sentence and detail, ready to render. */
 export type DeployStateNotice = {
@@ -28,10 +32,22 @@ export type DeployStateNotice = {
 export const FIX_AND_RELEASE =
   "Fix the skill in the Harness, publish a release, then deploy again.";
 
-export const ADD_SKILL_MD =
-  "Add a SKILL.md in the Harness, publish a release, then deploy again.";
-
 export const RECHECK_TARGET = "Deploy again to re-check the target.";
+
+// One string, two surfaces again: the bulk report's row and the single
+// refusal's notice send the reader to the same control (ADR-0031, #951).
+export const LEFT_ALONE_PINNED = "Left alone — pinned per skill";
+
+export const RETRY_ON_CARD =
+  "Select Retry deploy on the target card, then deploy again.";
+
+// One string, two surfaces: the deploy refusal's notice and the bulk report's
+// row both tell the reader to wait for the same operation.
+export const DEPLOY_STILL_RUNNING =
+  "A deploy is still running on this target. Wait for it to finish.";
+
+export const UPDATE_TO_REACH_RELEASE =
+  "Select Update target to reach this release.";
 
 // The symlink refusal, in two spellings of one recovery: the exact `rm` when the
 // server names the link, the folder-shaped fallback when it cannot (#748). Both
@@ -81,16 +97,27 @@ const HEADINGS: Record<DeployStateCode, Heading> = {
     level: "error",
     label: "Deployment record unreadable",
   },
-  "deploy-in-progress": { level: "error", label: "Deploy already running" },
+  // One heading for both scopes: a target takes one change at a time, whichever
+  // change is running (ADR-0031, #951).
+  "deploy-in-progress": { level: "error", label: "Target busy" },
+  "not-at-target-release": { level: "error", label: "Not in this release" },
+  // One release further than the refusal above: the latest release holds the
+  // skill no more than the target's own does, so no move would help (#955).
+  "skill-not-in-release": {
+    level: "error",
+    label: "Not in the latest release",
+  },
+  "target-pinned-per-skill": { level: "error", label: "Release not adopted" },
+  "manifest-not-recognised": {
+    level: "error",
+    label: "Manifest not recognised",
+  },
+  "operation-unfinished": { level: "error", label: "Change not finished" },
+  "deploy-incomplete": { level: "error", label: "Deploy incomplete" },
+  "remove-incomplete": { level: "error", label: "Removal incomplete" },
   "no-supported-tool": { level: "error", label: "No supported tool" },
   "auth-required": { level: "error", label: "No GitHub access" },
   "destination-symlinked": { level: "error", label: "Linked skill folder" },
-  "deployed-unsupported-package-type": {
-    level: "error",
-    label: "Unsupported package type",
-  },
-  "deploy-recorded-invalid": { level: "error", label: "No files deployed" },
-  "deploy-unverified": { level: "error", label: "Deploy unproven" },
   "deploy-failed": { level: "error", label: "Deploy stopped part-way" },
   "not-deployed": { level: "error", label: "Nothing deployed here" },
   "ref-unresolvable": {
@@ -98,10 +125,21 @@ const HEADINGS: Record<DeployStateCode, Heading> = {
     label: "Unrecognisable deployment entry",
   },
   "cost-not-acknowledged": { level: "warning", label: "Nothing removed" },
-  "remove-in-progress": { level: "error", label: "Change already running" },
+  "remove-in-progress": { level: "error", label: "Target busy" },
   "remove-failed": { level: "error", label: "Removal unproven" },
   "preflight-failed": { level: "error", label: "Check did not run" },
+  "preview-failed": { level: "error", label: "Preview did not run" },
+  // The update's own four. "Status out of date" covers both a release and a
+  // copy that moved after the preview priced them (spec stories 24, 41).
+  "status-out-of-date": { level: "error", label: "Status out of date" },
+  "update-in-progress": { level: "error", label: "Target busy" },
+  "update-incomplete": { level: "warning", label: "Update incomplete" },
+  "update-failed": { level: "error", label: "Update unproven" },
 };
+
+// One string, two surfaces: every update refusal sends the reader back to the
+// same control.
+const UPDATE_AGAIN = "then select Update target again.";
 
 // Sentence and detail per code, kept apart from the headings above because six
 // codes refuse both a deploy and a removal, and each states its own way through
@@ -165,8 +203,38 @@ const DEPLOY: Record<DeploySkillError, Body> = {
       "The file is present but does not parse, so the target's state is unknown.",
   },
   "deploy-in-progress": {
+    message: DEPLOY_STILL_RUNNING,
+  },
+  // The same cause as on a removal: the target's own record names no single
+  // package, so one wording covers both (#684).
+  "ref-unresolvable": {
     message:
-      "This target takes one change at a time. Wait for the running deploy to finish.",
+      "Nothing was installed. Leave one entry for the Harness in apm.lock.yaml, then deploy again.",
+    detail: "The target's record names more than one, or names no release.",
+  },
+  "not-at-target-release": {
+    message:
+      "This skill is not in the release this target follows. Select Update target to move to the release that holds it.",
+  },
+  "target-pinned-per-skill": {
+    message:
+      "This target was deployed one skill at a time. Select Remove skill for each skill, then Deploy skill to put them back on one release.",
+  },
+  "manifest-not-recognised": {
+    // The filename stays in the sentence: the instruction acts on the file
+    // itself (`copy.md`).
+    message:
+      "Nothing was installed. Leave one dependency on the Harness with a skills list in apm.yml, then deploy again.",
+    detail: "Maestro edits that list only, and it found another shape.",
+  },
+  "operation-unfinished": {
+    message:
+      "An earlier change on this target did not finish. Select Retry deploy on the target card, then deploy again.",
+  },
+  "deploy-incomplete": {
+    message:
+      "Part of the selection is not on disk. Select Retry deploy to run the same release again.",
+    detail: "apm reported success, and the files say otherwise.",
   },
   "no-supported-tool": {
     message:
@@ -180,15 +248,6 @@ const DEPLOY: Record<DeploySkillError, Body> = {
   "destination-symlinked": {
     message: `Nothing was written. Delete the linked skill folder in the target, ${DEPLOY_AGAIN}`,
     detail: LINK_TARGET_SURVIVES,
-  },
-  "deployed-unsupported-package-type": {
-    message: `Its files are still there. ${FIX_AND_RELEASE}`,
-  },
-  "deploy-recorded-invalid": {
-    message: ADD_SKILL_MD,
-  },
-  "deploy-unverified": {
-    message: `The target's deployment record does not show it. ${RECHECK_TARGET}`,
   },
   "deploy-failed": {
     message:
@@ -247,7 +306,21 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
   },
   "remove-in-progress": {
     message:
-      "This target takes one change at a time. Wait for the running change to finish.",
+      "A removal is still running on this target. Wait for it to finish.",
+  },
+  "manifest-not-recognised": {
+    message:
+      "Nothing was removed. Leave one dependency on the Harness with a skills list in apm.yml, then remove the skill again.",
+    detail: "Maestro edits that list only, and it found another shape.",
+  },
+  "operation-unfinished": {
+    message:
+      "An earlier change on this target did not finish. Select Retry removal on the target card, then remove the skill again.",
+  },
+  "remove-incomplete": {
+    message:
+      "The skill's files are still on disk. Select Retry removal to run the same removal again.",
+    detail: "apm reported success, and the files say otherwise.",
   },
   "remove-failed": {
     message:
@@ -276,6 +349,128 @@ const UNKNOWN_REMOVE: DeployStateNotice = {
   message:
     "Nothing confirmed the removal. Reload the page, then check whether the skill is still deployed.",
   detail: UNKNOWN_DETAIL,
+};
+
+const UNKNOWN_UPDATE: DeployStateNotice = {
+  level: "error",
+  label: "Preview outcome unknown",
+  message: `Nothing was changed. Wait a moment, ${UPDATE_AGAIN}`,
+  detail: UNKNOWN_DETAIL,
+};
+
+// A write whose answer never arrived: the target may hold a partial update, so
+// this one sends the reader to the card rather than claiming nothing happened.
+const UNKNOWN_UPDATE_RUN: DeployStateNotice = {
+  level: "error",
+  label: "Update outcome unknown",
+  message: `Nothing confirmed the update. Check the target card, ${UPDATE_AGAIN}`,
+  detail: UNKNOWN_DETAIL,
+};
+
+// The update preview's own refusals. Six codes it shares with deploy and remove
+// state the update's way through, never the other surface's (#684).
+const UPDATE_PREVIEW: Record<UpdatePreviewError, Body> = {
+  "repo-not-registered": {
+    message: `Register this repository in Maestro, ${UPDATE_AGAIN}`,
+  },
+  // No way through inside the cockpit, so the notice ends on the cause
+  // (`copy.md` — where no action exists, that notice is complete).
+  "no-supported-tool": {
+    message:
+      "Neither Claude Code nor Codex is on this machine. There is nothing here to update.",
+  },
+  "not-deployed": {
+    message:
+      "This target follows no release. Select Deploy skill in the Inventory to put one on it.",
+  },
+  "lockfile-malformed": {
+    // The filename stays in the sentence: the instruction acts on the file
+    // itself (`copy.md`).
+    message: `Repair or delete apm.lock.yaml in the target, ${UPDATE_AGAIN}`,
+    detail:
+      "The file is present but does not parse, so the target's state is unknown.",
+  },
+  "deployed-unreadable": {
+    message: `Nothing was changed. Make the deployed copy readable, ${UPDATE_AGAIN}`,
+    detail: "Its permissions or its shape blocked the check.",
+  },
+  "inventory-not-configured": {
+    message: `Connect a Harness on the Inventory screen, ${UPDATE_AGAIN}`,
+  },
+  "inventory-unreadable": {
+    // "Re-read Inventory" is the Harness location screen's own button (R-D).
+    message: `Select Re-read Inventory on the Harness location screen, ${UPDATE_AGAIN}`,
+  },
+  "no-published-tag": {
+    message: `Publish a release on the Harness screen, ${UPDATE_AGAIN}`,
+    detail: "An update moves the target to a published tag.",
+  },
+  "inventory-origin-unavailable": {
+    message: `Point the Harness clone's origin at its GitHub repository, ${UPDATE_AGAIN}`,
+    detail: "An update installs from a GitHub tag, over https or ssh.",
+  },
+  // The same cause as on a deploy: the target's own record names no single
+  // package, and this one states the update's way back to it (#684, #960).
+  "ref-unresolvable": {
+    message: `Nothing was changed. Leave one entry for the Harness in apm.lock.yaml, ${UPDATE_AGAIN}`,
+    detail: "The target's record names more than one, or names no release.",
+  },
+  // The Inventory's entrance only: the reader asked for a skill, and no release
+  // on offer holds it. "Deploy again" names the control they started from (#955).
+  "skill-not-in-release": {
+    message:
+      "The latest release does not hold this skill. Publish a release on the Harness screen, then deploy again.",
+    detail: "Nothing was changed, and the target keeps its own release.",
+  },
+  "preview-failed": {
+    message: `Nothing was changed. Wait a moment, ${UPDATE_AGAIN}`,
+  },
+};
+
+// The confirm's own refusals: the preview's, plus the ones only a write has.
+// Each states the update's way through, never another surface's (#684, #954).
+const UPDATE: Record<UpdateRunError, Body> = {
+  ...UPDATE_PREVIEW,
+  // One code, two causes — a release published since, and a copy edited since.
+  // Neither is guessed at: the sentence states what the server observed.
+  "status-out-of-date": {
+    message: `The target changed since this update was priced. Nothing was changed, ${UPDATE_AGAIN}`,
+  },
+  "update-in-progress": {
+    message:
+      "An update is still running on this target. Wait for it to finish.",
+  },
+  "operation-unfinished": {
+    message:
+      "An earlier change on this target did not finish. Select Retry deploy on the target card, then select Update target again.",
+  },
+  "deployed-diverged-from-lock": {
+    message: `Nothing was changed. Select Update target again to read the copies in the way.`,
+    detail: "The edits never went through the Harness.",
+  },
+  "deployed-unverifiable": {
+    message: `Nothing was changed. Select Update target again to read the copies in the way.`,
+    detail:
+      "These copies predate content tracking, so any change in them is invisible.",
+  },
+  "manifest-not-recognised": {
+    // The filename stays in the sentence: the instruction acts on the file
+    // itself (`copy.md`).
+    message: `Nothing was changed. Leave one dependency on the Harness with a skills list in apm.yml, ${UPDATE_AGAIN}`,
+    detail: "Maestro edits that list only, and it found another shape.",
+  },
+  "destination-symlinked": {
+    message: `Nothing was written. Delete the linked skill folder in the target, ${UPDATE_AGAIN}`,
+    detail: LINK_TARGET_SURVIVES,
+  },
+  "update-incomplete": {
+    message:
+      "The update is incomplete. Select Retry update to run the same release again.",
+    detail: "apm reported success, and the files say otherwise.",
+  },
+  "update-failed": {
+    message: `Nothing proved the update finished. Check the target card, ${UPDATE_AGAIN}`,
+  },
 };
 
 // Required return, never `?? error.message`: an uncovered code would otherwise
@@ -310,6 +505,16 @@ export function deployStateHeading(code: DeployStateCode): string {
 /** The whole notice for a refused or failed deploy. */
 export function deployNotice(error: unknown): DeployStateNotice {
   return noticeFor(DEPLOY, error, UNKNOWN_DEPLOY);
+}
+
+/** The whole notice for a refused Update preview. */
+export function updatePreviewNotice(error: unknown): DeployStateNotice {
+  return noticeFor(UPDATE_PREVIEW, error, UNKNOWN_UPDATE);
+}
+
+/** The whole notice for a refused or failed Update. */
+export function updateNotice(error: unknown): DeployStateNotice {
+  return noticeFor(UPDATE, error, UNKNOWN_UPDATE_RUN);
 }
 
 /** The whole notice for a refused or failed removal. */

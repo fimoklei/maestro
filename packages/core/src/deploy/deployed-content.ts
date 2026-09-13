@@ -1,17 +1,18 @@
-// Classifies the deployed copy against the lockfile's deployed_file_hashes, and
-// names a destination apm refuses because it is a symlink.
-// Touches node:fs directly rather than through a port — no port models walking
-// and hashing a tree. See #56.
+// Classifies a deployed copy against the lockfile's deployed_file_hashes, and
+// names a destination apm refuses as a symlink. Touches node:fs directly: no
+// port models walking and hashing a tree (#56).
 
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
 import { access, lstat, readdir, readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
+import { isRootPackage } from "../deploy-state/root-package-skills";
 import { parseLockfile, unreadableCovers } from "../lockfile/lockfile";
 import type {
   DeployedContentPort,
   DeployedContentState,
   DeployTarget,
+  InventoryGitPort,
 } from "./deploy-skill";
 import { deployTargetSubtrees, type SupportedTool } from "./deploy-tools";
 import {
@@ -39,6 +40,9 @@ export class DeployedContentAdapter implements DeployedContentPort {
     // Shared with DeployedCleanupAdapter so the guard and the cleanup always
     // agree on the tree.
     location: Pick<DeployedLocation, "treeRoot" | "lockfilePath">;
+    // The release side of the comparison. Absent, a copy is only ever measured
+    // against its recorded baseline — never a pass the guard did not prove.
+    inventoryGit?: Pick<InventoryGitPort, "readSkillFilesAtTag">;
   };
 
   constructor(deps: DeployedContentAdapter["deps"]) {
@@ -49,6 +53,7 @@ export class DeployedContentAdapter implements DeployedContentPort {
     target: DeployTarget;
     name: string;
     tools?: readonly SupportedTool[];
+    release?: string;
   }): Promise<DeployedContentState> {
     const subtrees = deployTargetSubtrees(input.name, input.tools);
     // Baseline first: with no recorded hashes only existence matters, so the
@@ -85,13 +90,72 @@ export class DeployedContentAdapter implements DeployedContentPort {
     if (baseline.kind !== "hashes") {
       return "unverifiable";
     }
-    return classifyDeployedDrift(baseline.hashes, scan.hashes);
+    if (classifyDeployedDrift(baseline.hashes, scan.hashes) === "clean") {
+      return "clean";
+    }
+    // Second chance, never a first one: a copy the record no longer describes
+    // is still clean when its whole tree is the release about to be installed
+    // — an upstream change is not the reader's edit (#952).
+    return (await this.equalsRelease(input.release, input.name, subtrees, scan))
+      ? "clean"
+      : "diverged";
   }
 
-  // apm refuses the install when the *leaf* skill dir is a symlink, and names
-  // the path only in prose Maestro never forwards (apm-behavior.md § Install
-  // signals (3), ADR-0018). lstat, not stat: following the link would report a
-  // real directory (#748).
+  // The bytes themselves, hashed per file and folded into one string. Null
+  // where the copy could not be read, which no consent may cover anyway.
+  async contentDigest(input: {
+    target: DeployTarget;
+    name: string;
+    tools?: readonly SupportedTool[];
+  }): Promise<string | null> {
+    const root = this.deps.location.treeRoot(input.target);
+    const subtrees = deployTargetSubtrees(input.name, input.tools);
+    const scan = await this.scanSubtrees(root, subtrees, { hash: true }).catch(
+      () => null,
+    );
+    return scan === null
+      ? null
+      : Object.entries(scan.hashes)
+          .sort(([a], [b]) => (a < b ? -1 : 1))
+          .map(([path, hash]) => `${path}=${hash}`)
+          .join("\n");
+  }
+
+  // Whole-tree equality, per targeted subtree: an extra, missing or differing
+  // file anywhere leaves the copy protected. A release that cannot be read
+  // answers false — fail closed, never a pass on a guess (#952).
+  private async equalsRelease(
+    release: string | undefined,
+    name: string,
+    subtrees: string[],
+    scan: SubtreeScan,
+  ): Promise<boolean> {
+    if (release === undefined || this.deps.inventoryGit === undefined) {
+      return false;
+    }
+    const released = await this.deps.inventoryGit
+      .readSkillFilesAtTag(release, name)
+      .catch(() => null);
+    if (released === null) {
+      return false;
+    }
+    for (const subtree of subtrees) {
+      const deployed = stripSubtree(scan.hashes, subtree);
+      // A subtree the write never landed in is not a missing copy; only the
+      // ones holding files have to match.
+      if (Object.keys(deployed).length === 0) {
+        continue;
+      }
+      if (classifyDeployedDrift(released, deployed) !== "clean") {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // apm refuses the install when the *leaf* skill dir is a symlink, naming the
+  // path only in prose Maestro never forwards (apm-behavior.md § Install
+  // signals (3), ADR-0018). lstat, not stat — a link resolves to a dir (#748).
   async linkedSkillPath(input: {
     target: DeployTarget;
     name: string;
@@ -140,10 +204,14 @@ export class DeployedContentAdapter implements DeployedContentPort {
       return { kind: "malformed" };
     }
 
-    // By name, never by package_type: the copy on disk belongs to this skill
-    // whatever apm recorded it as, and a hybrid record's hashes are still its
-    // baseline (#358).
-    const entry = parsed.entries.find((e) => basename(e.virtual_path) === name);
+    // By name, never by package_type (#358). A root package records every skill
+    // it deployed in one row, so its hashes are this skill's baseline too,
+    // scoped to the subtrees below (ADR-0031).
+    const entry =
+      parsed.entries.find(
+        (e) =>
+          e.virtual_path !== undefined && basename(e.virtual_path) === name,
+      ) ?? parsed.entries.find(isRootPackage);
     if (entry === undefined) {
       return { kind: "none" };
     }
@@ -214,6 +282,21 @@ export class DeployedContentAdapter implements DeployedContentPort {
     }
     return { hashes, fileCount };
   }
+}
+
+// Re-keys one subtree's scanned hashes relative to the skill directory, which
+// is how the release names its own files.
+function stripSubtree(
+  hashes: DeployedFileHashes,
+  subtree: string,
+): DeployedFileHashes {
+  const stripped: DeployedFileHashes = {};
+  for (const [path, hash] of Object.entries(hashes)) {
+    if (path.startsWith(`${subtree}/`)) {
+      stripped[path.slice(subtree.length + 1)] = hash;
+    }
+  }
+  return stripped;
 }
 
 // The trailing "/" matters: without it ".claude/skills/tddx" matches ".../tdd".

@@ -16,6 +16,10 @@ import {
   type SupportedTool,
 } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  rootPackageApm,
+  rootPackageSelection,
+} from "../helpers/root-package-apm";
 
 const exists = async (path: string): Promise<boolean> => {
   try {
@@ -40,6 +44,10 @@ describe("narrowed global deploy — which copies survive on disk", () => {
   // cleanup adapter and the filesystem are real.
   const deployGlobally = async (present: SupportedTool[]) => {
     const env = { HOME: home } as NodeJS.ProcessEnv;
+    // The install records the copies but never writes them, so the tree the
+    // assertions read is the one this test seeded — anything gone was deleted
+    // by the reconciliation, not by apm.
+    const apm = rootPackageApm({ globalRoot: home, placesFiles: false });
     const deploy = new DeploySkill({
       inventory: {
         read: async () => ({
@@ -52,14 +60,20 @@ describe("narrowed global deploy — which copies survive on disk", () => {
       registry: { isRegistered: async () => false },
       apm: {
         resolveLatestTag: async () => ({ ok: true as const, tag: "v0.5.1" }),
-        deploySkill: async () => ({ ok: true as const }),
+        deploySkill: apm.deploySkill,
       },
+      selection: rootPackageSelection({
+        globalRoot: home,
+        configPath: join(home, "config.json"),
+        apm,
+      }),
       inventoryOriginUrl: async () =>
         "git@github.com:fimoklei/agent-harness.git",
       inventoryGit: {
         syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => false,
+        readSkillFilesAtTag: async () => null,
       },
       // A proven skill record: this journey is not about the post-install read.
       recordedPackage: {
@@ -69,6 +83,7 @@ describe("narrowed global deploy — which copies survive on disk", () => {
         }),
       },
       deployedContent: {
+        contentDigest: async () => null,
         classify: async () => "not-deployed" as const,
         linkedSkillPath: async () => null,
       },

@@ -1,9 +1,10 @@
 import type { DeploySkillError } from "@maestro/core";
 import {
-  ADD_SKILL_MD,
+  DEPLOY_STILL_RUNNING,
   deployStateHeading,
-  FIX_AND_RELEASE,
-  RECHECK_TARGET,
+  LEFT_ALONE_PINNED,
+  RETRY_ON_CARD,
+  UPDATE_TO_REACH_RELEASE,
 } from "../deploy-state/notice-copy";
 import { Button } from "../ui/button";
 import { Chip } from "../ui/chip";
@@ -20,9 +21,11 @@ import {
 // The row's words come from the deploy notice table, so a code reads the same
 // here and in a single deploy's notice, and no code can reach the screen raw.
 const recoverySteps: Partial<Record<DeploySkillError, string>> = {
-  "deployed-unsupported-package-type": FIX_AND_RELEASE,
-  "deploy-recorded-invalid": ADD_SKILL_MD,
-  "deploy-unverified": RECHECK_TARGET,
+  "target-pinned-per-skill": LEFT_ALONE_PINNED,
+  "not-at-target-release": UPDATE_TO_REACH_RELEASE,
+  "operation-unfinished": RETRY_ON_CARD,
+  "deploy-in-progress": DEPLOY_STILL_RUNNING,
+  "deploy-incomplete": RETRY_ON_CARD,
 };
 
 function RecoveryStep({ error }: { error: DeploySkillError }) {
@@ -37,7 +40,9 @@ export function BulkDeployReport({
 }: {
   view: BulkDeployReportView;
   isDeploying?: boolean;
-  onForce?: (name: string) => void;
+  // The row's own consent, so the inline deploy grants only what this row's
+  // refusal read (#952).
+  onForce?: (name: string, confirmedCopyReceipt?: string) => void;
 }) {
   // Distinct message, never the counts summary — zeroed counts would look
   // like a clean success (#292).
@@ -113,24 +118,6 @@ export function BulkDeployReport({
             </ul>
           ) : null}
 
-          {view.updated.length > 0 ? (
-            <ul aria-label="Updated to latest" className="flex flex-col gap-1">
-              {view.updated.map((row) => (
-                <li
-                  key={row.name}
-                  className="flex items-baseline gap-2 text-tag"
-                >
-                  <span className="text-green-ink">↑</span>
-                  <span className="font-mono text-fg text-mono-sm">
-                    {row.name}
-                  </span>
-                  <span className="text-dim">{row.version}</span>
-                  <span className="text-muted">Updated to latest</span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-
           {view.attention.length > 0 ? (
             <ul aria-label="Attention" className="flex flex-col gap-1">
               {view.attention.map((row) => (
@@ -153,7 +140,7 @@ export function BulkDeployReport({
                     <Button
                       variant="quiet"
                       size="sm"
-                      onClick={() => onForce(row.name)}
+                      onClick={() => onForce(row.name, row.copyReceipt)}
                     >
                       Deploy {row.name} again
                     </Button>

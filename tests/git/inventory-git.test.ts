@@ -2,6 +2,7 @@
 // clone: does a tag's tree contain skills/<name>? (apm view is repo-level —
 // see .claude/rules/apm-driver.md.)
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -123,6 +124,74 @@ describe("InventoryGitAdapter", () => {
       resolveRoot: async () => undefined,
     });
     await expect(broken.skillExistsAtTag("v0.1.0", "tdd")).rejects.toThrow();
+  });
+
+  // The release side of the local-copy guard: a deployed copy is compared with
+  // these hashes file for file, so an equal copy is never read as local edits
+  // (#952).
+  describe("reading a skill's files at a release", () => {
+    const sha = (contents: string) =>
+      `sha256:${createHash("sha256").update(contents).digest("hex")}`;
+    const SKILL_MD = "---\nname: tdd\ndescription: A skill\n---\n";
+
+    it("hashes every file under the skill, keyed inside the skill folder", async () => {
+      await writeFile(
+        join(root, ".apm", "skills", "tdd", "reference.md"),
+        "how to drive the loop\n",
+        "utf8",
+      );
+      await mkdir(join(root, ".apm", "skills", "tdd", "scripts"));
+      await writeFile(
+        join(root, ".apm", "skills", "tdd", "scripts", "run.sh"),
+        "#!/bin/sh\n",
+        "utf8",
+      );
+      await git("add", ".");
+      await git("commit", "-m", "grow the skill");
+      await git("tag", "v0.2.0");
+
+      await expect(
+        adapter().readSkillFilesAtTag("v0.2.0", "tdd"),
+      ).resolves.toEqual({
+        "SKILL.md": sha(SKILL_MD),
+        "reference.md": sha("how to drive the loop\n"),
+        "scripts/run.sh": sha("#!/bin/sh\n"),
+      });
+    });
+
+    it("reads the release's content, never the working tree's", async () => {
+      await writeFile(
+        join(root, ".apm", "skills", "tdd", "SKILL.md"),
+        "edited after the release\n",
+        "utf8",
+      );
+
+      await expect(
+        adapter().readSkillFilesAtTag("v0.1.0", "tdd"),
+      ).resolves.toEqual({ "SKILL.md": sha(SKILL_MD) });
+    });
+
+    it("answers null for a tag the clone does not have", async () => {
+      await expect(
+        adapter().readSkillFilesAtTag("v9.9.9", "tdd"),
+      ).resolves.toBeNull();
+    });
+
+    it("answers null for a skill the release does not hold", async () => {
+      await expect(
+        adapter().readSkillFilesAtTag("v0.1.0", "absent"),
+      ).resolves.toBeNull();
+    });
+
+    it("answers null with no inventory root configured", async () => {
+      const broken = new InventoryGitAdapter({
+        resolveRoot: async () => undefined,
+      });
+
+      await expect(
+        broken.readSkillFilesAtTag("v0.1.0", "tdd"),
+      ).resolves.toBeNull();
+    });
   });
 });
 

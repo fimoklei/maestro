@@ -24,7 +24,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { realRegistry } from "../helpers/real-registry";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
-import { stubDeploy } from "../helpers/stub-deploy";
+import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift, withoutContentCheck } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
@@ -33,6 +33,7 @@ import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
+import { stubUpdate } from "../helpers/stub-update";
 
 // Each shape apm's real output can carry, named so a leak reports which kind of
 // secret escaped rather than "a string was found". Synthetic by design: these
@@ -124,6 +125,7 @@ describe("apm output never reaches the client", () => {
       inventory,
       deployState: stubDeployState({ fs }),
       deploy: stubDeploy({ inventory, registry, locks }),
+      retryOperation: stubRetryOperation({ registry, locks }),
       remove: new RemoveDeployedSkill({
         registry,
         deployedRef: new DeployedRefAdapter({ fs, location }),
@@ -143,6 +145,7 @@ describe("apm output never reaches the client", () => {
       connect: stubConnect(),
       scaffold: stubScaffold(),
       browse: stubBrowse(),
+      update: stubUpdate(),
       enforceOriginHost: false,
     });
 
@@ -238,6 +241,7 @@ describe("apm output never reaches the client", () => {
         inventory,
         deployState: stubDeployState({ fs }),
         deploy: stubDeploy({ inventory, registry, locks }),
+        retryOperation: stubRetryOperation({ registry, locks }),
         remove: stubRemove({ registry, locks }),
         drift: withoutContentCheck(
           new CheckVersionDrift({
@@ -256,6 +260,7 @@ describe("apm output never reaches the client", () => {
         connect: stubConnect(),
         scaffold: stubScaffold(),
         browse: stubBrowse(),
+        update: stubUpdate(),
         enforceOriginHost: false,
       });
       await registry.register(repo);

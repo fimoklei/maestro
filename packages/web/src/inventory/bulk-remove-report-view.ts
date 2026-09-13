@@ -60,6 +60,9 @@ const FAILURE_REASON: Record<RemoveDeployedSkillError, string> = {
   // row has no ledger to state what the check found instead (J04, #364).
   "cost-not-acknowledged": "What it would delete was never confirmed",
   "remove-in-progress": "Target held by another operation",
+  "manifest-not-recognised": "apm.yml holds an unexpected shape",
+  "operation-unfinished": "An earlier change did not finish",
+  "remove-incomplete": "Files are still on disk",
   "remove-failed": "Removal not completed by apm",
 };
 
@@ -111,10 +114,9 @@ export function bulkRemoveReportView(input: {
   };
 }
 
-// What the server's own probe of the disk found after apm failed, appended to
-// the reason. A failed removal can still have taken the copy off: "go and
-// look" and "nothing left to do" are opposite instructions. Silence where the
-// probe proved nothing — an unanswered probe is not a clean copy (J04).
+// What the server's probe of the disk found after apm failed, appended to the
+// reason: "go and look" and "nothing left to do" are opposite instructions.
+// Silence where the probe proved nothing (J04).
 function probed(outcome: RemoveOutcome | undefined): string {
   if (outcome === undefined) {
     return "";

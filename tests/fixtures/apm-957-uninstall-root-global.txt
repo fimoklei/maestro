@@ -1,0 +1,12 @@
+[i] Uninstalling from user scope (~/.apm/)
+[>] Uninstalling 1 package(s)...
+[+] fimoklei/agent-harness - found in apm.yml
+[i] Cleaned 8 stale files from fimoklei/agent-harness
+[i] Removed fimoklei/agent-harness from dependencies.apm in apm.yml
+[*] Updated 
+/private/tmp/claude-501/-Users-michielmerks-orca-workspaces-maestro-seagrass/15f
+81207-14d4-418e-b0a7-53482dbf35c3/scratchpad/canary/ghome.n3hL/.apm/apm.yml 
+(removed 1 package(s))
+[i] Removed fimoklei/agent-harness from apm_modules/
+[*] Uninstall complete: Removed 1 package(s) from apm.yml, Removed 1 package(s) 
+from apm_modules/

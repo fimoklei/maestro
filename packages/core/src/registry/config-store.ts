@@ -7,11 +7,9 @@ const configSchema = z.object({
   repos: z.array(z.object({ path: z.string() })),
   // Absent on a fresh config; the inventory then falls back to the env var.
   inventoryPath: z.string().optional(),
-  // How the connected Harness's last fetch went, and when one last succeeded.
-  // Absent until the Harness view has fetched once.
-  // Read as absent when it does not parse, unlike the rest of the config: this
-  // is a cache of how the last fetch went, so a record left by an older shape
-  // or a hand-edited timestamp costs an age label, never the whole cockpit.
+  // How the connected Harness's last fetch went; absent until it has fetched
+  // once. Read as absent when it does not parse, unlike the rest of the config:
+  // a stale shape costs an age label, never the whole cockpit.
   harnessFreshness: z
     .object({
       // Which harness the record belongs to, so a reconnect cannot inherit it.
@@ -21,6 +19,28 @@ const configSchema = z.object({
       // formatter and throws, taking the Harness view down (#516).
       lastFetchedAt: z.iso.datetime().nullable(),
     })
+    .optional()
+    .catch(undefined),
+  // The unfinished Deploy, Remove or Update per target, so recovery survives a
+  // restart (ADR-0031, #951). Absent when it does not parse, like the record
+  // above: the disk, not this list, says whether a skill is deployed.
+  targetOperations: z
+    .array(
+      z.object({
+        key: z.string(),
+        target: z.discriminatedUnion("kind", [
+          z.object({ kind: z.literal("repo"), repoPath: z.string() }),
+          z.object({ kind: z.literal("global") }),
+        ]),
+        harness: z.string(),
+        kind: z.enum(["deploy", "remove", "update"]),
+        release: z.string(),
+        previous: z.array(z.string()),
+        desired: z.array(z.string()),
+        tools: z.array(z.enum(["claude", "codex"])).nullable(),
+        startedAt: z.iso.datetime(),
+      }),
+    )
     .optional()
     .catch(undefined),
 });
@@ -73,10 +93,9 @@ export class ConfigStore {
     return result.data;
   }
 
-  // The one serialized read-modify-write. Every writer rewrites the whole
-  // file, so two landing at once would silently drop one of them; a promise
-  // chain is enough because a single server owns the file.
-  // Return no `config` to leave the file untouched (a refused change).
+  // The one serialized read-modify-write: every writer rewrites the whole file,
+  // so two at once would drop one. Return no `config` to leave the file
+  // untouched (a refused change).
   async update<T = void>(
     mutate: (config: MaestroConfig) =>
       | Promise<{ config?: MaestroConfig; result?: T }>

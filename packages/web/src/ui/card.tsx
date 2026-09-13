@@ -10,6 +10,8 @@ export interface CardProps {
   titleRef?: Ref<HTMLHeadingElement>;
   /** Target kind shown before the title: "global" (blue) or "local" (grey). */
   kind?: "global" | "local";
+  /** Mono data step between title and status — the target's release. */
+  data?: ReactNode;
   /** Right-aligned header slot — usually a Chip ("● in sync" / "▲ 2 drift"). */
   status?: ReactNode;
   /** Warm the outline to flag drift inside. */
@@ -26,6 +28,7 @@ export function Card({
   title,
   titleRef,
   kind,
+  data,
   status,
   drift = false,
   padded = false,
@@ -44,8 +47,10 @@ export function Card({
         className,
       )}
     >
+      {/* The header wraps rather than overflows: on a narrow card the release
+          and the status chip drop to a second line (ADR-0031). */}
       {title ? (
-        <div className="flex items-center gap-2.5 border-b border-line-row px-card-x py-header-y">
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 border-b border-line-row px-card-x py-header-y">
           {kind ? (
             <span
               className={cn(
@@ -61,10 +66,15 @@ export function Card({
           <h2
             ref={titleRef}
             tabIndex={-1}
-            className="flex-1 truncate font-mono text-data text-fg outline-none"
+            className="min-w-0 flex-1 truncate font-mono text-data text-fg outline-none"
           >
             {title}
           </h2>
+          {data ? (
+            <span className="ml-auto shrink-0 font-mono text-dim text-tag">
+              {data}
+            </span>
+          ) : null}
           {status}
         </div>
       ) : null}

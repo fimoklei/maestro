@@ -21,7 +21,7 @@ const dayAndMonth = new Intl.DateTimeFormat("en-GB", {
 
 // Null when the string is not a moment, so a hand-edited config reads as
 // "never read" instead of throwing inside the date formatter (#516).
-const ago = (iso: string, now: Date): string | null => {
+export const ago = (iso: string, now: Date): string | null => {
   const at = Date.parse(iso);
   if (Number.isNaN(at)) {
     return null;

@@ -3,11 +3,23 @@
 // flattened `primitives` list for callers that predate it.
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
-import type { DeployedPrimitive, SkippedEntry } from "./use-deploy-state";
+import type {
+  DeployedPrimitive,
+  PendingOperation,
+  PinnedPerSkill,
+  ReleaseHead,
+  SkippedEntry,
+} from "./use-deploy-state";
 
 export type ToolDeployState = {
   tool: string;
   primitives: DeployedPrimitive[];
+  // Absent where the target follows no single release (ADR-0031).
+  releaseHead?: ReleaseHead;
+  // Absent unless this tool still holds per-skill dependencies (#950).
+  pinnedPerSkill?: PinnedPerSkill;
+  // Absent where this tool's subtree holds no file outside the selection.
+  extraFiles?: number;
 };
 
 // Not Zod-validated here (architecture.md — that's the server's job): `tools`
@@ -18,6 +30,8 @@ type GlobalDeployStateResponse = {
   skipped: SkippedEntry[];
   // Repos named on a lockfile entry no detected tool's prefix covers (#655).
   otherOrigins?: string[];
+  // One record for the whole global target, whatever the tool count (#951).
+  pendingOperation?: PendingOperation;
 };
 
 export type GlobalDeployStateView = {
@@ -28,6 +42,7 @@ export type GlobalDeployStateView = {
   primitives: DeployedPrimitive[];
   skipped: SkippedEntry[];
   otherOrigins: string[];
+  pendingOperation?: PendingOperation;
 };
 
 export function useGlobalDeployState(enabled = true) {
@@ -43,6 +58,9 @@ export function useGlobalDeployState(enabled = true) {
         skipped: data.skipped,
         primitives: flattenPrimitives(tools),
         otherOrigins: data.otherOrigins ?? [],
+        ...(data.pendingOperation
+          ? { pendingOperation: data.pendingOperation }
+          : {}),
       };
     },
     enabled,

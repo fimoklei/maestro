@@ -46,6 +46,32 @@ describe("GlobalTargets", () => {
     expect(screen.queryByText("● Empty")).not.toBeInTheDocument();
   });
 
+  // Story 27: while apm runs no control anywhere in the section may start a
+  // second operation — the row menus included.
+  it("carries no control on a tool card while the update runs", () => {
+    renderTargets({
+      isUpdating: true,
+      tools: [
+        {
+          tool: "claude",
+          primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
+          releaseHead: {
+            release: "v0.3.2",
+            latestRelease: "v0.3.4",
+            changed: 1,
+            changedSkills: ["tdd"],
+            selection: ["tdd"],
+            selected: 1,
+            comparedAt: "2026-09-12T10:00:00.000Z",
+          },
+        },
+      ],
+    });
+
+    expect(screen.getByText("Updating to v0.3.4…")).toBeInTheDocument();
+    expect(screen.queryAllByRole("button")).toEqual([]);
+  });
+
   it("names the recorded type of an unsupported deployment and how to recover", () => {
     renderTargets({
       tools: [{ tool: "claude", primitives: [] }],
@@ -272,5 +298,37 @@ describe("GlobalTargets", () => {
     // The codex card reads as a clean empty card, not a drift warning.
     expect(screen.getByText("● Empty")).toBeInTheDocument();
     expect(screen.queryByText(/not deployed here/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("GlobalTargets on a tool still pinned per skill", () => {
+  it("reads the status and the way out on that tool's card alone", () => {
+    renderTargets({
+      tools: [
+        {
+          tool: "claude",
+          primitives: [{ type: "skill", name: "tdd", version: "v0.3.1" }],
+          pinnedPerSkill: [{ release: "v0.3.1", skills: 1 }],
+        },
+        {
+          tool: "codex",
+          primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
+          extraFiles: 1,
+        },
+      ],
+    });
+
+    expect(screen.getAllByText("▲ Pinned per skill")).toHaveLength(1);
+    expect(screen.getByText("1 skill at v0.3.1")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Release not adopted. Select Remove skill for each, then Deploy skill.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Extra files deployed: 1 file outside the selected skills.",
+      ),
+    ).toBeInTheDocument();
   });
 });

@@ -1,15 +1,16 @@
 // The skill detail pane's "deployed to" lens (#290, ADR-0016): a per-primitive
 // slice of the same targets the deployed column rolls up, so the two can't diverge.
 
-import { type DriftStatus, lagsPin } from "../drift/drift-view-model";
-import type { DeploymentTarget } from "./deployed-rollup";
+import type { DriftStatus } from "../drift/drift-view-model";
+import { type DeploymentTarget, skillReading } from "./deployed-rollup";
 
 export type SkillDeployment = {
   label: string;
-  version: string;
+  // The release the target follows, stated once per row (ADR-0031). Falls back
+  // to the recorded pin where the target follows no single release.
+  release: string;
   // Never up-to-date for an un-run check (J04, see deploy-state/deployed-view.ts).
   status: DriftStatus;
-  latest?: string;
 };
 
 export function skillDeployments(
@@ -30,13 +31,10 @@ export function skillDeployments(
       continue;
     }
 
-    const status = target.drift.skillStatus(skillName);
-    const latest = target.drift.latest(skillName);
     rows.push({
       label: target.label,
-      version: deployed.version,
-      status,
-      ...(lagsPin(status) && latest ? { latest } : {}),
+      release: target.releaseHead?.release ?? deployed.version,
+      status: skillReading(target, skillName),
     });
   }
 

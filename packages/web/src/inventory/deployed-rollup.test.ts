@@ -40,6 +40,26 @@ const deployedTarget = (
   drift: ranDrift(behind),
 });
 
+// A target following one Harness release. `changedSkills` undefined is the
+// comparison that could not be read; `selected` defaults to the deployed set.
+const onRelease = (
+  names: string[],
+  changedSkills: string[] | undefined,
+  selected = names.length,
+): DeploymentTarget => ({
+  ...paneFields,
+  deployed: { status: "ready", names, skippedCount: 0, attentionCount: 0 },
+  drift: ranDrift([]),
+  releaseHead: {
+    release: "v0.3.2",
+    latestRelease: "v0.3.4",
+    changed: changedSkills?.length ?? null,
+    ...(changedSkills ? { changedSkills } : {}),
+    selected,
+    comparedAt: "2026-09-12T10:00:00.000Z",
+  },
+});
+
 describe("rollUpDeployment — target count", () => {
   it("counts every target the skill is deployed to", () => {
     const targets = [
@@ -53,6 +73,33 @@ describe("rollUpDeployment — target count", () => {
   it("counts zero when the skill is deployed nowhere", () => {
     const targets = [deployedTarget(["caveman"]), deployedTarget(["research"])];
     expect(rollUpDeployment("tdd", targets).targetCount).toBe(0);
+  });
+
+  // Story 52: the roll-up answers "where is this selected?", so a leftover copy
+  // the Selection no longer holds is not a target this skill is deployed to.
+  it("counts the Selection, not what is left on disk", () => {
+    const target: DeploymentTarget = {
+      ...paneFields,
+      deployed: {
+        status: "ready",
+        names: ["tdd", "leftover"],
+        skippedCount: 0,
+        attentionCount: 0,
+      },
+      drift: ranDrift([]),
+      releaseHead: {
+        release: "v0.3.2",
+        latestRelease: "v0.3.2",
+        changed: 0,
+        changedSkills: [],
+        selection: ["tdd"],
+        selected: 1,
+        comparedAt: "2026-09-12T10:00:00.000Z",
+      },
+    };
+
+    expect(rollUpDeployment("tdd", [target]).targetCount).toBe(1);
+    expect(rollUpDeployment("leftover", [target]).targetCount).toBe(0);
   });
 
   it("does not count a target whose deploy-state has not resolved yet", () => {
@@ -133,6 +180,41 @@ describe("rollUpDeployment — behind count (▲N)", () => {
     // not inflate the chip.
     const targets = [deployedTarget(["caveman"], [pair("tdd")])];
     expect(rollUpDeployment("tdd", targets).behindCount).toBe(0);
+  });
+});
+
+// One release per target (ADR-0031): the mark speaks about this skill's own
+// content at the newest release, never about the target being behind (#956).
+describe("rollUpDeployment — behind count under one release", () => {
+  it("counts a target whose release changed this skill's content", () => {
+    const targets = [onRelease(["tdd", "grill"], ["tdd"])];
+
+    expect(rollUpDeployment("tdd", targets).behindCount).toBe(1);
+  });
+
+  it("leaves a behind target alone where this skill's content did not change", () => {
+    const rollup = rollUpDeployment("grill", [
+      onRelease(["tdd", "grill"], ["tdd"]),
+    ]);
+
+    expect(rollup.behindCount).toBe(0);
+    expect(rollup.unknownCount).toBe(0);
+    expect(rollup.targetCount).toBe(1);
+  });
+
+  it("counts a target whose comparison could not be read as unknown, never behind", () => {
+    const rollup = rollUpDeployment("tdd", [onRelease(["tdd"], undefined)]);
+
+    expect(rollup.behindCount).toBe(0);
+    expect(rollup.unknownCount).toBe(1);
+  });
+
+  it("counts a skill the target selected but never deployed nowhere", () => {
+    // The selection may name more than the record's files hold while an
+    // operation is unfinished; the reach counts files, never intent (#956).
+    const target = onRelease(["grill"], ["tdd", "grill"], 2);
+
+    expect(rollUpDeployment("tdd", [target]).targetCount).toBe(0);
   });
 });
 

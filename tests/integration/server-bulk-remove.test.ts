@@ -17,7 +17,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { realRegistry } from "../helpers/real-registry";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
-import { stubDeploy } from "../helpers/stub-deploy";
+import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
@@ -25,6 +25,7 @@ import { stubImport } from "../helpers/stub-import";
 import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubScaffold } from "../helpers/stub-scaffold";
+import { stubUpdate } from "../helpers/stub-update";
 
 // Integration lane: the bulk-remove route over the real Hono app, driving the
 // real RemoveDeployedSkill (its guards intact) once per target. Only the apm
@@ -94,6 +95,7 @@ describe("bulk remove HTTP route", () => {
       locks,
       deployedRef: new DeployedRefAdapter({ fs, location }),
       deployedContent: {
+        contentDigest: async () => null,
         classify: async ({ target }) => {
           if (target.kind !== "repo") {
             return "clean";
@@ -127,6 +129,7 @@ describe("bulk remove HTTP route", () => {
       inventory,
       deployState: stubDeployState({ fs }),
       deploy: stubDeploy({ inventory, registry, locks }),
+      retryOperation: stubRetryOperation({ registry, locks }),
       remove,
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => join(home, ".apm"),
@@ -136,6 +139,7 @@ describe("bulk remove HTTP route", () => {
       connect: stubConnect(),
       scaffold: stubScaffold(),
       browse: stubBrowse(),
+      update: stubUpdate(),
       enforceOriginHost: false,
     });
     return { app, registry, removeCalls };

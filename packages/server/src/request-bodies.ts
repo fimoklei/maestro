@@ -43,12 +43,20 @@ export const deployBodySchema = z.object({
   type: z.string(),
   name: z.string(),
   target: targetSchema,
-  // Deliberate override of the destination guard (ADR-0006, #66).
-  force: z.boolean().optional(),
+  // The receipt this deploy's own refusal minted, licensing the overwrite of
+  // exactly the copies it named (ADR-0006, #66, #952).
+  confirmedCopyReceipt: consentTokenSchema,
 });
 
-// No batch-wide force: a diverged copy always comes back as an attention row,
-// overridden only per item via the single-deploy route (#292).
+// Retrying names only the target: which operation, at which release and with
+// which Selection, comes from the record the server itself wrote (#951).
+export const retryOperationBodySchema = z.object({
+  target: targetSchema,
+  confirmedCopyReceipt: consentTokenSchema,
+});
+
+// No batch-wide consent: a copy with local edits always comes back as an
+// attention row, overwritten only per item via the single-deploy route (#292).
 export const bulkDeployBodySchema = z.object({
   names: z.array(z.string()).min(1),
   target: targetSchema,
@@ -77,6 +85,24 @@ export const bulkRemoveBodySchema = z.object({
       }),
     )
     .min(1),
+});
+
+// The whole target moves to one release, so the only skill name that travels is
+// `add`: the one the Inventory's entrance asks for beside the move. Which skills
+// the release itself touches is the preview's answer, never the caller's claim.
+export const updatePreflightBodySchema = z.object({
+  target: targetSchema,
+  add: z.string().optional(),
+});
+
+// The confirm carries the two proofs and the same request: the token, the
+// receipt, and the skill it was priced with. A different skill mints a
+// different token (#954, #955).
+export const updateBodySchema = z.object({
+  target: targetSchema,
+  token: z.string().regex(/^[0-9a-f]{64}$/),
+  add: z.string().optional(),
+  confirmedCopyReceipt: consentTokenSchema,
 });
 
 // `previousTag` and `revision` prove the confirmation is against the plan the
@@ -189,6 +215,19 @@ export const TARGET_BODY: RequestShape = {
     "Nothing reached the target. Reload the page, then start the change again.",
   detail:
     'The request carries a type, a name and a target: { kind: "repo", repoPath } or { kind: "global" }.',
+};
+
+export const UPDATE_TARGET_BODY: RequestShape = {
+  message:
+    "Nothing was previewed. Reload the page, then start the update again.",
+  detail:
+    'The request carries a target: { kind: "repo", repoPath } or { kind: "global" }.',
+};
+
+export const UPDATE_BODY: RequestShape = {
+  message: "Nothing was updated. Reload the page, then start the update again.",
+  detail:
+    "The request carries a target and the token the preview answered with.",
 };
 
 export const BULK_DEPLOY_BODY: RequestShape = {

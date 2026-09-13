@@ -27,13 +27,8 @@ const meta = {
     onClose: () => {},
     getTriggerElement: () => null,
     deployments: [
-      { label: "Claude Code", version: "v1.2.0", status: "up-to-date" },
-      {
-        label: "~/dev/acme-web",
-        version: "v1.0.0",
-        status: "behind",
-        latest: "v1.2.0",
-      },
+      { label: "Claude Code", release: "v1.2.0", status: "up-to-date" },
+      { label: "~/dev/acme-web", release: "v1.0.0", status: "behind" },
     ],
   },
   decorators: [
@@ -62,7 +57,7 @@ export const PartialReach: Story = {
     unconfirmed: true,
     removeAction: null,
     deployments: [
-      { label: "Claude Code", version: "v1.2.0", status: "up-to-date" },
+      { label: "Claude Code", release: "v1.2.0", status: "up-to-date" },
     ],
   },
 };

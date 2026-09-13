@@ -2,6 +2,7 @@
 // `execute` carries it out under the same per-target lock the deploy takes.
 // See ADR-0011, ADR-0013, #337, apm-behavior.md § Remove.
 import type { ToolPresencePort } from "../tools/tool-presence-port";
+import type { SelectionWriter } from "./apply-selection";
 import type {
   ApmDriverPort,
   DeployedCleanupPort,
@@ -12,7 +13,14 @@ import type {
 import type { SupportedTool } from "./deploy-tools";
 import type { DeployedLocation } from "./deployed-location";
 import type { DeployedRefLookup } from "./deployed-ref";
+import type { GitOrigin } from "./git-origin";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
+import {
+  type CopyFinding,
+  type CopyVerdict,
+  type LocalCopyCheck,
+  LocalCopyGuard,
+} from "./local-copy-guard";
 import { isValidSkillSlug } from "./package-ref";
 import { reclaimTools } from "./reclaim-untargeted-copies";
 import { type ReclaimConsent, RemoveConsentIssuer } from "./remove-consent";
@@ -53,6 +61,15 @@ export type RemoveDeployedSkillError =
   | "deployed-diverged-from-lock"
   | "cost-not-acknowledged"
   | "remove-in-progress"
+  // The consumer's apm.yml holds a Harness dependency Maestro will not edit, so
+  // nothing was written (ADR-0031).
+  | "manifest-not-recognised"
+  // A Deploy or Remove on this target never finished; it is converged before
+  // anything else runs (#951).
+  | "operation-unfinished"
+  // apm ran and the skill's files, or its name in the manifest, are still
+  // there. The operation record survives, so Retry removal converges on it.
+  | "remove-incomplete"
   | "remove-failed";
 
 // Named for the consequence the user consents to, not the classifier state.
@@ -63,10 +80,8 @@ export type RemoveWarning = "cannot-verify-local-edits" | "check-did-not-run";
 // A diverged copy refuses like deploy and update do: apm 0.29.0 keeps the
 // edited file and aborts after deleting the rest of the copy (apm-behavior.md
 // § Remove), so no consent can make that removal whole (#775).
-const GUARD_REFUSALS: Partial<
-  Record<DeployedContentState, RemoveDeployedSkillError>
-> = {
-  diverged: "deployed-diverged-from-lock",
+const GUARD_REFUSALS: Partial<Record<CopyVerdict, RemoveDeployedSkillError>> = {
+  "local-edits": "deployed-diverged-from-lock",
   unreadable: "deployed-unreadable",
   "lockfile-malformed": "lockfile-malformed",
 };
@@ -74,8 +89,8 @@ const GUARD_REFUSALS: Partial<
 // Absent means nothing to lose ("clean", "not-deployed") — silence in a
 // confirmation reads that way, so every other state must appear here (J04).
 // A state the removal refuses still warns, except the one `preflight` refuses.
-const GUARD_WARNINGS: Partial<Record<DeployedContentState, RemoveWarning>> = {
-  unverifiable: "cannot-verify-local-edits",
+const GUARD_WARNINGS: Partial<Record<CopyVerdict, RemoveWarning>> = {
+  unverified: "cannot-verify-local-edits",
   unreadable: "check-did-not-run",
   "lockfile-malformed": "check-did-not-run",
 };
@@ -87,21 +102,37 @@ export type RemoveToolCheck = {
   warning: RemoveWarning | null;
 };
 
-// What the check found, shaped by the scope it ran against. A repo has one row
-// and its deployed copy spans several tool subtrees, so one aggregate answer is
-// the honest thing to state; the global scope has a row per tool, so it answers
-// per tool. One field rather than an aggregate beside a breakdown, because two
-// would eventually disagree.
+// What the check found, at the grain its scope states costs at: one answer for
+// a repo, one per tool for global. Never both, because two would disagree.
 export type RemoveCheck =
   | { scope: "repo"; warning: RemoveWarning | null }
   | { scope: "global"; tools: readonly RemoveToolCheck[] };
 
 // A repo's deployed copy spans several tool subtrees, so its one row is priced
 // from the one aggregate answer — the same state the guard above refuses on.
-const repoCheck = (state: DeployedContentState): RemoveCheck => ({
+const repoCheck = (verdict: CopyVerdict): RemoveCheck => ({
   scope: "repo",
-  warning: GUARD_WARNINGS[state] ?? null,
+  warning: GUARD_WARNINGS[verdict] ?? null,
 });
+
+// The verdict a repo-scoped check answers with: one copy, one finding. An empty
+// check is unreadable, never clean — nothing was proved (J04).
+const soleVerdict = (copies: LocalCopyCheck): CopyVerdict =>
+  copies.findings[0]?.verdict ?? "unreadable";
+
+// A tool's own finding, in the order the check asked, so the confirmation's
+// rows do not reshuffle under the answer.
+const toolChecks = (findings: readonly CopyFinding[]): RemoveToolCheck[] =>
+  findings.flatMap((finding) =>
+    finding.tool === null
+      ? []
+      : [
+          {
+            tool: finding.tool,
+            warning: GUARD_WARNINGS[finding.verdict] ?? null,
+          },
+        ],
+  );
 
 // What a probe of one target's disk found once apm failed to confirm. A probe
 // that could not answer is "unknown", never "removed" (J04).
@@ -141,7 +172,14 @@ export type RemovePreflightError =
 // The check's answer: a price the confirmation can state, or the one state
 // that has no price because apm would leave the copy half-deleted.
 type Priced =
-  | { ok: true; check: RemoveCheck; reclaim: ReclaimConsent | null }
+  | {
+      ok: true;
+      // What the shared guard read, and the priced shape the confirmation
+      // states. Both come from one pass, so they can never disagree.
+      copies: LocalCopyCheck;
+      check: RemoveCheck;
+      reclaim: ReclaimConsent | null;
+    }
   | { ok: false; error: "deployed-diverged-from-lock" };
 
 // `detected` is not what the guard reads — apm deletes by its own recorded
@@ -170,11 +208,9 @@ type RemoveDeployedSkillResult =
         scope: RemovedScope;
       };
     }
-  // `outcome` is present only where apm ran and left something to probe; a
-  // failure that never reached it has no outcome to report. The other three
-  // appear only where the removal stopped because the cost it found was never
-  // agreed to: together they are the whole restated question, so the next
-  // attempt never mixes a fresh cost with a stale consent (#364).
+  // `outcome` only where apm ran; the other three only where the removal
+  // stopped on a cost nobody agreed to. Together they restate the whole
+  // question, so no attempt mixes a fresh cost with a stale consent (#364).
   | {
       ok: false;
       error: RemoveDeployedSkillError;
@@ -202,10 +238,12 @@ export class RemoveDeployedSkill {
     registry: { isRegistered(path: string): Promise<boolean> };
     deployedRef: DeployedRefPort;
     // apm deletes an edited copy silently, so this guard is what stands between
-    // a tidy-up and lost work (.claude/rules/apm-driver.md).
-    // Only the classification: the linked-destination probe is the deploy's,
-    // and a removal never installs (#748).
-    deployedContent: Pick<DeployedContentPort, "classify">;
+    // a tidy-up and lost work (.claude/rules/apm-driver.md). The same instance
+    // the deploy and the Update slices classify through (#952).
+    copyGuard?: Pick<LocalCopyGuard, "check">;
+    // The post-removal probe only: it tells an absent copy from a clean one,
+    // which the guard's verdicts deliberately collapse.
+    deployedContent: Pick<DeployedContentPort, "classify" | "contentDigest">;
     apm: Pick<ApmDriverPort, "removeSkill">;
     // The only mechanism allowed to clear a copy apm left behind: a bare
     // `apm uninstall -g` deletes beyond its own lockfile (apm-driver.md
@@ -219,12 +257,20 @@ export class RemoveDeployedSkill {
     // Shared with the deploy use-case: both rewrite the same apm.lock.yaml.
     locks: InFlightLocks;
     location: Pick<DeployedLocation, "treeRoot">;
+    // The shared Selection write, and the connected Harness it is written
+    // against. Absent, this removal stays on the per-skill uninstall path a
+    // target still holding per-skill dependencies needs (#933, #951).
+    selection?: SelectionWriter;
+    inventoryOrigin?: () => Promise<GitOrigin | null>;
   };
 
   private readonly consent: RemoveConsentIssuer;
+  private readonly copyGuard: Pick<LocalCopyGuard, "check">;
 
   constructor(deps: RemoveDeployedSkill["deps"]) {
     this.deps = deps;
+    this.copyGuard =
+      deps.copyGuard ?? new LocalCopyGuard({ content: deps.deployedContent });
     this.consent = new RemoveConsentIssuer({
       treeRoot: (target) => deps.location.treeRoot(target),
     });
@@ -252,7 +298,17 @@ export class RemoveDeployedSkill {
     }
 
     try {
-      const priced = await this.price(input, scope);
+      // Best effort: the pin is what a copy may legitimately equal, and a
+      // lockfile that will not answer simply leaves that pass unearned.
+      const lookup = await this.deps.deployedRef
+        .resolve({ target: input.target, name: input.name })
+        .catch(() => null);
+      const priced = await this.price(
+        input,
+        scope,
+        lookup?.ok === true ? lookup.version : undefined,
+        false,
+      );
       if (!priced.ok) {
         return priced;
       }
@@ -267,80 +323,78 @@ export class RemoveDeployedSkill {
     }
   }
 
-  // One pricing, run by both halves against the same seam: the confirmation
-  // states it, and the removal proves the request agreed to the one it finds
-  // (#364). The reclaim comes first because the check follows it — a copy the
-  // removal would delete is a copy to price, whether or not this machine still
-  // has the tool that reads it.
+  // One pricing for both halves: the confirmation states it, the removal proves
+  // the request agreed to the one it finds (#364). Reclaim first, because the
+  // check follows it.
   private async price(
     input: RemoveDeployedSkillInput,
     scope: ResolvedScope & { ok: true },
+    release: string | undefined,
+    wholeCopy: boolean,
   ): Promise<Priced> {
     const reclaim = this.consent.offer({
       target: input.target,
       name: input.name,
       detected: scope.scope === "global" ? scope.detected : undefined,
     });
-    const check = await this.runCheck(input, scope, reclaim);
-    return check === "deployed-diverged-from-lock"
-      ? { ok: false, error: check }
-      : { ok: true, check, reclaim };
+    const copies = await this.runCheck(
+      input,
+      scope,
+      reclaim,
+      release,
+      wholeCopy,
+    );
+    // One diverged copy refuses the whole set: apm's uninstall has no -t, so it
+    // would abort on that copy after deleting the others (#775).
+    if (copies.findings.some((finding) => finding.verdict === "local-edits")) {
+      return { ok: false, error: "deployed-diverged-from-lock" };
+    }
+    const check: RemoveCheck =
+      scope.scope === "repo"
+        ? repoCheck(soleVerdict(copies))
+        : { scope: "global", tools: toolChecks(copies.findings) };
+    return { ok: true, copies, check, reclaim };
   }
 
-  // The global scope asks per tool, because that is the grain the confirmation
-  // states costs at: one entry per detected tool, then one per leftover copy
-  // the reclaim would delete. Deleting a copy in full and deleting work
-  // nothing else holds are different prices, and only the check tells them
-  // apart (#414). One diverged copy refuses the whole set: apm's uninstall
-  // has no -t, so it would abort on that copy after deleting the others.
+  // One answer for a repo's single copy; per tool for global, which is the
+  // grain the confirmation states costs at (#414).
   private async runCheck(
     input: RemoveDeployedSkillInput,
     scope: ResolvedScope & { ok: true },
     reclaim: ReclaimConsent | null,
-  ): Promise<RemoveCheck | "deployed-diverged-from-lock"> {
-    if (scope.scope === "repo") {
-      const state = await this.deps.deployedContent.classify({
+    release: string | undefined,
+    wholeCopy: boolean,
+  ): Promise<LocalCopyCheck> {
+    const ask = (tools?: readonly SupportedTool[]) =>
+      this.copyGuard.check({
+        write: "remove",
         target: input.target,
-        name: input.name,
+        names: [input.name],
+        ...(tools === undefined ? {} : { tools }),
+        ...(release === undefined ? {} : { release }),
       });
-      return state === "diverged"
-        ? "deployed-diverged-from-lock"
-        : repoCheck(state);
-    }
-    const priced = [
-      ...scope.detected,
-      ...(reclaim?.previews ?? []).map((preview) => preview.tool),
-    ];
-    const tools: RemoveToolCheck[] = [];
-    for (const tool of priced) {
-      const warning = await this.checkTool(input, tool);
-      if (warning === "deployed-diverged-from-lock") {
-        return warning;
-      }
-      tools.push({ tool, warning });
-    }
-    return { scope: "global", tools };
-  }
 
-  // Caught per tool: one unreadable copy answers for itself and takes no other
-  // tool's answer with it. A check that could not run is never reported as a
-  // clean copy (J04).
-  private async checkTool(
-    input: RemoveDeployedSkillInput,
-    tool: SupportedTool,
-  ): Promise<RemoveWarning | null | "deployed-diverged-from-lock"> {
-    try {
-      const state = await this.deps.deployedContent.classify({
-        target: input.target,
-        name: input.name,
-        tools: [tool],
-      });
-      return state === "diverged"
-        ? "deployed-diverged-from-lock"
-        : (GUARD_WARNINGS[state] ?? null);
-    } catch {
-      return "check-did-not-run";
+    if (scope.scope === "repo") {
+      return await ask();
     }
+    // Only the write asks for the whole copy: apm's uninstall deletes by its
+    // own recorded targets, so a tool that has since dropped out is still at
+    // risk. A read prices what the reader sees; the write what apm reaches.
+    const parts = [
+      ...(wholeCopy ? [await ask()] : []),
+      await ask([
+        ...scope.detected,
+        ...(reclaim?.previews ?? []).map((preview) => preview.tool),
+      ]),
+    ];
+    const findings: CopyFinding[] = parts.flatMap((part) => [...part.findings]);
+    const digests = parts
+      .map((part) => part.digest)
+      .filter((digest): digest is string => digest !== null);
+    return {
+      findings,
+      digest: digests.length === 0 ? null : digests.sort().join("\n"),
+    };
   }
 
   async execute(
@@ -371,7 +425,7 @@ export class RemoveDeployedSkill {
     }
 
     const run = await this.deps.locks.run(lockKey, () =>
-      this.remove(input, scope),
+      this.remove(input, scope, lockKey),
     );
     return run.ok ? run.value : { ok: false, error: "remove-in-progress" };
   }
@@ -417,47 +471,77 @@ export class RemoveDeployedSkill {
     return undefined;
   }
 
+  // Which mechanism this removal uses: one narrowing install, the named
+  // uninstall for the last skill, or the per-skill uninstall a not-yet-migrated
+  // target was deployed with (ADR-0031, #933).
+  private async planRemoval(
+    target: DeployTarget,
+    name: string,
+    lockKey: string,
+  ): Promise<
+    | { kind: "root"; origin: GitOrigin; release: string; previous: string[] }
+    | { kind: "per-skill"; ref: string; version: string }
+    | { kind: "refused"; error: RemoveDeployedSkillError }
+  > {
+    const origin = (await this.deps.inventoryOrigin?.()) ?? null;
+    const selection = this.deps.selection;
+    if (origin !== null && selection !== undefined) {
+      const current = await selection.readTarget(target, origin);
+      if (current.kind === "unreadable") {
+        return { kind: "refused", error: current.reason };
+      }
+      if (current.kind === "root") {
+        if (!current.deployed.includes(name)) {
+          return { kind: "refused", error: "not-deployed" };
+        }
+        if ((await selection.pending(lockKey)) !== null) {
+          return { kind: "refused", error: "operation-unfinished" };
+        }
+        return {
+          kind: "root",
+          origin,
+          release: current.release,
+          previous: current.deployed,
+        };
+      }
+    }
+    const lookup = await this.deps.deployedRef.resolve({ target, name });
+    return lookup.ok
+      ? { kind: "per-skill", ref: lookup.ref, version: lookup.version }
+      : { kind: "refused", error: lookup.reason };
+  }
+
   private async remove(
     input: RemoveDeployedSkillInput,
     scope: ResolvedScope & { ok: true },
+    lockKey: string,
   ): Promise<RemoveDeployedSkillResult> {
     const target = input.target;
     const detected = scope.scope === "global" ? scope.detected : undefined;
     // Swallow rather than rethrow: a raw apm message may carry a token and must
     // never reach the transport layer (security.md).
     try {
-      const lookup = await this.deps.deployedRef.resolve({
-        target,
-        name: input.name,
-      });
-      if (!lookup.ok) {
-        return { ok: false, error: lookup.reason };
+      const plan = await this.planRemoval(target, input.name, lockKey);
+      if (plan.kind === "refused") {
+        return { ok: false, error: plan.error };
       }
+      const version = plan.kind === "root" ? plan.release : plan.version;
 
-      // An unverifiable copy goes once the consequence `preflight` stated was
-      // priced for this very request; an edited or unreadable one refuses
-      // outright (#458, #775).
-      const deployedState = await this.deps.deployedContent.classify({
-        target,
-        name: input.name,
-      });
-      const refusal = GUARD_REFUSALS[deployedState];
-      if (refusal !== undefined) {
-        return { ok: false, error: refusal };
-      }
-
-      // Priced again, and only a receipt minted for what is found now lets the
-      // removal through. A baseline lost between the check and the click
-      // therefore stops it, and so does a request that acknowledged nothing
-      // (#364). The repo scope reuses the state the guard just read and has no
-      // leftovers by definition; the global scope prices per tool, the grain
-      // the confirmation states costs at.
-      const priced: Priced =
-        scope.scope === "repo"
-          ? { ok: true, check: repoCheck(deployedState), reclaim: null }
-          : await this.price(input, scope);
+      // Only a receipt minted for what the guard finds now lets the removal
+      // through, so a baseline lost since the check stops it (#364, #952). The
+      // pinned release goes in, so a copy equal to it is not read as an edit.
+      const priced = await this.price(input, scope, version, true);
       if (!priced.ok) {
         return priced;
+      }
+      // An unverified copy goes once the consequence `preflight` stated was
+      // priced for this very request; an unreadable one refuses outright, with
+      // no consent that could clear it (#458, #775, #952).
+      const refusal = priced.copies.findings
+        .map((finding) => GUARD_REFUSALS[finding.verdict])
+        .find((error) => error !== undefined);
+      if (refusal !== undefined) {
+        return { ok: false, error: refusal };
       }
       const consentScope = { target, name: input.name };
       if (
@@ -479,14 +563,18 @@ export class RemoveDeployedSkill {
         };
       }
 
-      const removed = await this.deps.apm.removeSkill({
-        target,
-        ref: lookup.ref,
-      });
-      if (!removed.ok) {
+      const failure =
+        plan.kind === "root"
+          ? await this.narrowSelection(plan, input, lockKey, detected)
+          : (await this.deps.apm.removeSkill({ target, ref: plan.ref })).ok
+            ? null
+            : "remove-failed";
+      if (failure !== null) {
         return {
           ok: false,
-          error: "remove-failed",
+          error: failure,
+          // What the disk says, whatever apm claimed: a blocked uninstall
+          // deletes the rest of the Selection first (apm-behavior.md).
           outcome: await this.probeOutcome(target, input.name, detected),
         };
       }
@@ -504,7 +592,7 @@ export class RemoveDeployedSkill {
         removed: {
           type: "skill",
           name: input.name,
-          version: lookup.version,
+          version,
           scope:
             detected === undefined
               ? { kind: "repo" }
@@ -514,6 +602,35 @@ export class RemoveDeployedSkill {
     } catch {
       return { ok: false, error: "remove-failed" };
     }
+  }
+
+  // One install at the same release with the narrower list, or the named
+  // uninstall of the Harness dependency when the last skill goes (#957,
+  // apm-behavior.md § Root package and its Selection). Null when it landed.
+  private async narrowSelection(
+    plan: { origin: GitOrigin; release: string; previous: string[] },
+    input: RemoveDeployedSkillInput,
+    lockKey: string,
+    detected: readonly SupportedTool[] | undefined,
+  ): Promise<RemoveDeployedSkillError | null> {
+    const applied = await (this.deps.selection as SelectionWriter).apply({
+      target: input.target,
+      key: lockKey,
+      kind: "remove",
+      origin: plan.origin,
+      release: plan.release,
+      previous: plan.previous,
+      desired: plan.previous.filter((name) => name !== input.name),
+      ...(detected === undefined ? {} : { tools: detected }),
+    });
+    if (applied.ok) {
+      return null;
+    }
+    return applied.error === "manifest-not-recognised"
+      ? "manifest-not-recognised"
+      : applied.error === "apply-incomplete"
+        ? "remove-incomplete"
+        : "remove-failed";
   }
 
   // apm can remove a copy and still fail to say so, and the disk is the only

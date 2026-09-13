@@ -22,8 +22,18 @@ export class DeployedLocation {
   }
 
   lockfilePath(target: DeployTarget): string {
+    return this.apmRoot(target, "apm.lock.yaml");
+  }
+
+  // The consumer's apm.yml, which holds the Selection apm installs from
+  // (ADR-0031). It sits beside the lockfile in both scopes.
+  manifestPath(target: DeployTarget): string {
+    return this.apmRoot(target, "apm.yml");
+  }
+
+  private apmRoot(target: DeployTarget, file: string): string {
     return target.kind === "repo"
-      ? join(target.repoPath, "apm.lock.yaml")
-      : join(resolveApmGlobalRoot(this.env), "apm.lock.yaml");
+      ? join(target.repoPath, file)
+      : join(resolveApmGlobalRoot(this.env), file);
   }
 }

@@ -18,7 +18,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { realRegistry } from "../helpers/real-registry";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
-import { stubDeploy } from "../helpers/stub-deploy";
+import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
@@ -27,6 +27,7 @@ import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
+import { stubUpdate } from "../helpers/stub-update";
 
 // Integration lane: drives the real Hono app via app.request against a real
 // agent-harness-shaped clone on a temp dir. The Origin/Host guard is disabled
@@ -81,6 +82,7 @@ describe("inventory HTTP route", () => {
       deployState,
       deploy: stubDeploy({ inventory, registry, locks }),
       remove: stubRemove({ registry, locks }),
+      retryOperation: stubRetryOperation({ registry, locks }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
       harness: stubHarness(),
@@ -89,6 +91,7 @@ describe("inventory HTTP route", () => {
       connect: stubConnect(),
       scaffold: stubScaffold(),
       browse: stubBrowse(),
+      update: stubUpdate(),
       enforceOriginHost: false,
     });
   }

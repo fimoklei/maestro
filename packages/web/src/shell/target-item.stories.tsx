@@ -45,6 +45,24 @@ export const NeedsUpdate: Story = {
 // repo. Neutral, not a problem: distinct from "unknown" (a check that failed).
 export const Empty: Story = { args: { indicator: "empty" } };
 
+// The target follows one release and a newer one exists: the Release head's
+// reading, which the per-skill drift check cannot give (ADR-0031, #956).
+export const BehindRelease: Story = {
+  args: { indicator: "ok", behind: true, changedCount: 2 },
+};
+
+// The same target where the newer release touched nothing it selected — still
+// behind, with no count to show.
+export const BehindNothingChanged: Story = {
+  args: { indicator: "ok", behind: true, changedCount: 0 },
+};
+
+// Still deployed one skill at a time: no release was adopted here, so no drift
+// reading is this target's status (#950).
+export const PinnedPerSkill: Story = {
+  args: { indicator: "ok", pinnedPerSkill: true },
+};
+
 export const Unknown: Story = { args: { indicator: "unknown" } };
 
 // apm reached the tool but could not resolve against the remote (no auth/network)

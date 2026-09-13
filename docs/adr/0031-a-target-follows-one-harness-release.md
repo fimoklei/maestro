@@ -2,6 +2,8 @@
 
 - **Status:** Accepted — amends ADR-0019 §1, ADR-0027 and ADR-0028
 - **Amended:** 2026-09-11 — rules 9 and 10 and the manifest write, after the #833 review
+- **Amended:** 2026-09-12 — the last removal, the operation record, and the two
+  recovery notices that no longer retire, after the #957 canary (#951)
 - **Date:** 2026-09-11 (wayfinder map #833: gate #930, spike #929, research #928)
 
 ## Context
@@ -32,6 +34,19 @@ the result.
   Maestro writes the exact selection to `skills:` in the consumer's `apm.yml`
   and passes the same list as `--skill`; removing one skill is one `install`
   at the same tag with the narrower list (ADR-0019 §7).
+- **An empty Selection has no expression.** The #957 canary measured apm
+  refusing `skills: []` outright, and installing the whole bundle when the key
+  is dropped. Removing the *last* skill is therefore a guarded, named
+  `apm uninstall` of the Harness dependency, which spares every other
+  dependency and every hand-placed file in both scopes. The target then reads
+  **Empty**, with no Target release.
+- **The intent is durable.** Before the first mutation Maestro records the
+  target, the Harness, the operation, the chosen release, the previous and the
+  desired Selection and the affected tools in `~/.maestro`. It is cleared only
+  when disk, the manifest and the deployment record all agree with the desired
+  result; a matching tag alone never clears it. One target holds one unfinished
+  operation, and a second operation is refused until a retry converges. Deploy,
+  Remove and Update share this one record.
 - **Global** adopts as one set of detected tools (ADR-0011).
 
 ### What Maestro owns
@@ -50,6 +65,32 @@ The gaps #929 measured, and the rule for each:
 | An update banner on `apm view` stdout | The versions parser skips leading lines. |
 | `apm.yml` may hold any shape | Edit `skills:` only under exactly one dependency on the connected Harness; any other shape stops before the install with **Manifest not recognised**. |
 | `includes: auto` deploys every primitive type | Count lockfile files outside `skills/<name>/`; more than zero shows **Extra files deployed** on the target card. |
+
+### How the code follows it
+
+- **One Selection write path.** `SelectionWriter` owns the order every write
+  shares: record the intent in `~/.maestro`, write `skills:` to the exact
+  Selection, run one `apm install` with the whole list as `--skill`, then read
+  back disk, manifest and lockfile before clearing the record. Deploy, Remove,
+  Update and Retry all go through it, so no caller can invent its own order.
+- **Completion is proof, never an exit code.** A write is finished only when
+  the files, the manifest and the deployment record all name the desired
+  Selection at the chosen release. Anything else leaves the record standing and
+  the card reads *Mixed releases* with a Retry.
+- **Reading is fail-closed.** A lockfile that is present but unreadable, a
+  record naming more than one Harness package, and a ref that is not a release
+  tag are all refusals — never an empty target a write may install over.
+- **Consent binds content, not verdicts.** The local-copy guard fingerprints
+  the bytes of every copy a consent would cover, and both the Update preflight
+  token and the copy receipt sign that fingerprint. An edit made after the
+  preview was priced therefore refuses the confirm with *Status out of date*.
+- **Pinned per skill and a Release head are exclusive.** A target still holding
+  per-skill dependencies follows no single release, so the reader answers one
+  status or the other and no *Update target* is offered where no mechanism
+  exists.
+- **The Selection is what the roll-up counts.** `→ N targets` and the changed
+  count speak about the Selection the target follows, never about whatever is
+  left on disk beside it.
 
 ### Accepted limits
 
@@ -75,8 +116,10 @@ The gaps #929 measured, and the rule for each:
 - Migrating a target that still holds per-skill dependencies is its own
   decision (#933).
 - `CONTEXT.md` gains **Pending release**, **Manifest not recognised** and
-  **Extra files deployed**; **Removal incomplete** and **Retry removal**
-  retire, since a Remove no longer empties the target.
+  **Extra files deployed**. **Removal incomplete** and **Retry removal** stay:
+  the last removal does empty the target, and a blocked uninstall leaves files
+  behind whatever apm's exit code says. **Deploy incomplete** and **Retry
+  deploy** join them, on the same record.
 - The apm-driver rules for the gaps are written when the code that
   follows them lands, not before.
 

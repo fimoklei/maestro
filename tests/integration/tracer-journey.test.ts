@@ -11,8 +11,13 @@ import {
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { realRegistry } from "../helpers/real-registry";
+import {
+  rootPackageApm,
+  rootPackageSelection,
+} from "../helpers/root-package-apm";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
+import { stubRetryOperation } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubImport } from "../helpers/stub-import";
@@ -20,6 +25,7 @@ import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
 import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
+import { stubUpdate } from "../helpers/stub-update";
 
 // The tracer journey end to end: register, see, deploy, see it back. Each step
 // is covered on its own elsewhere; what only this file proves is that they
@@ -27,21 +33,6 @@ import { stubScaffold } from "../helpers/stub-scaffold";
 // the read-back finds the lockfile that same deploy wrote.
 
 const LATEST_TAG = "v0.5.1";
-
-// What apm writes into the target after a repo install.
-const lockfileAtTag = (tag: string) =>
-  [
-    "lockfile_version: '1'",
-    "dependencies:",
-    "- repo_url: fimoklei/agent-harness",
-    "  host: github.com",
-    `  resolved_ref: ${tag}`,
-    "  virtual_path: .apm/skills/tdd",
-    "  package_type: claude_skill",
-    "  deployed_files:",
-    "  - .claude/skills/tdd",
-    "",
-  ].join("\n");
 
 describe("the tracer journey through one cockpit", () => {
   let home: string;
@@ -85,28 +76,27 @@ describe("the tracer journey through one cockpit", () => {
       ],
     });
     const locks = new InFlightLocks();
+    // The install lands a real root package in the repo, so the read-back step
+    // reads files this deploy wrote rather than a lockfile the test typed.
+    const apm = rootPackageApm({ globalRoot: join(home, ".apm") });
     const deploy = new DeploySkill({
       inventory,
       registry,
       locks,
       apm: {
         resolveLatestTag: async () => ({ ok: true, tag: LATEST_TAG }),
-        deploySkill: async (input) => {
-          if (input.target.kind !== "repo") {
-            throw new Error("the tracer journey only deploys to a repo");
-          }
-          await writeFile(
-            join(input.target.repoPath, "apm.lock.yaml"),
-            lockfileAtTag(LATEST_TAG),
-            "utf8",
-          );
-          return { ok: true };
-        },
+        deploySkill: apm.deploySkill,
       },
+      selection: rootPackageSelection({
+        globalRoot: join(home, ".apm"),
+        configPath: join(home, "config.json"),
+        apm,
+      }),
       inventoryGit: {
         syncBeforeDeploy: async () => {},
         skillExistsAtTag: async () => true,
         skillDivergesFromTag: async () => false,
+        readSkillFilesAtTag: async () => null,
       },
       // A proven skill record: this journey is not about the post-install read.
       recordedPackage: {
@@ -116,6 +106,7 @@ describe("the tracer journey through one cockpit", () => {
         }),
       },
       deployedContent: {
+        contentDigest: async () => null,
         classify: async () => "not-deployed" as const,
         linkedSkillPath: async () => null,
       },
@@ -135,6 +126,7 @@ describe("the tracer journey through one cockpit", () => {
       }),
       deploy,
       remove: stubRemove({ registry, locks }),
+      retryOperation: stubRetryOperation({ registry, locks }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => join(home, ".apm"),
       harness: stubHarness(),
@@ -143,6 +135,7 @@ describe("the tracer journey through one cockpit", () => {
       connect: stubConnect(),
       scaffold: stubScaffold(),
       browse: stubBrowse(),
+      update: stubUpdate(),
       enforceOriginHost: false,
     });
   }

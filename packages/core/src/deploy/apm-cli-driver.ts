@@ -126,6 +126,7 @@ export class ApmCliDriver implements ApmDriverPort {
   async deploySkill(input: {
     target: DeployTarget;
     ref: string;
+    skills?: readonly string[];
     tools?: readonly SupportedTool[];
   }): Promise<DeploySkillDriverResult> {
     const started = Date.now();
@@ -133,6 +134,7 @@ export class ApmCliDriver implements ApmDriverPort {
       input.target,
       input.ref,
       input.tools,
+      input.skills,
     );
     let output: string;
     try {
@@ -222,13 +224,18 @@ export class ApmCliDriver implements ApmDriverPort {
     target: DeployTarget,
     ref: string,
     tools?: readonly SupportedTool[],
+    skills?: readonly string[],
   ): Promise<{ cwd: string; args: string[]; logTarget: string }> {
+    // One `--skill` per name, never a comma list: that is the grammar apm
+    // takes, and the flag unions with the persisted Selection rather than
+    // replacing it (apm-behavior.md § Root package and its Selection).
+    const selection = (skills ?? []).flatMap((name) => ["--skill", name]);
     if (target.kind === "repo") {
       // A stray `tools` here is deliberately ignored: the repo path always
       // targets every DEPLOY_TOOLS tool (#131).
       return {
         cwd: target.repoPath,
-        args: ["install", ref, "-t", APM_DEPLOY_TARGET_FLAG],
+        args: ["install", ref, ...selection, "-t", APM_DEPLOY_TARGET_FLAG],
         logTarget: basename(target.repoPath),
       };
     }
@@ -239,7 +246,14 @@ export class ApmCliDriver implements ApmDriverPort {
     }
     return {
       cwd: await this.prepareGlobalCwd(),
-      args: ["install", ref, "-g", "-t", apmTargetFlagForTools(tools)],
+      args: [
+        "install",
+        ref,
+        ...selection,
+        "-g",
+        "-t",
+        apmTargetFlagForTools(tools),
+      ],
       logTarget: "global",
     };
   }

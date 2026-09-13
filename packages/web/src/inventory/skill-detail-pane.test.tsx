@@ -42,18 +42,19 @@ describe("SkillDetailPane", () => {
     expect(screen.getByText("Test-driven development.")).toBeInTheDocument();
   });
 
-  it("lists each target the skill is deployed to with its version", () => {
+  it("names the release each target follows beside its label", () => {
     renderPane({
       deployments: [
-        { label: "Claude Code", version: "v1.0.0", status: "up-to-date" },
-        { label: "/dev/acme-web", version: "v1.1.0", status: "up-to-date" },
+        { label: "Claude Code", release: "v1.0.0", status: "up-to-date" },
+        { label: "/dev/acme-web", release: "v1.1.0", status: "up-to-date" },
       ],
     });
 
+    // `{target} · release v0.3.2` — the separator is the spec's (story 54).
     expect(screen.getByText("Claude Code")).toBeInTheDocument();
-    expect(screen.getByText("v1.0.0")).toBeInTheDocument();
+    expect(screen.getByText("· release v1.0.0")).toBeInTheDocument();
     expect(screen.getByText("/dev/acme-web")).toBeInTheDocument();
-    expect(screen.getByText("v1.1.0")).toBeInTheDocument();
+    expect(screen.getByText("· release v1.1.0")).toBeInTheDocument();
   });
 
   it("marks an in-sync target with a status word, not colour alone", () => {
@@ -62,27 +63,35 @@ describe("SkillDetailPane", () => {
     // meaning). The in-sync state must carry a readable word too.
     renderPane({
       deployments: [
-        { label: "Claude Code", version: "v1.0.0", status: "up-to-date" },
+        { label: "Claude Code", release: "v1.0.0", status: "up-to-date" },
       ],
     });
 
     expect(screen.getByText(/up to date/i)).toBeInTheDocument();
   });
 
-  it("shows the deployed -> latest pair and a behind marker for a behind target", () => {
+  // One release is stated once (ADR-0031): the row names the release the
+  // target follows, and the Behind chip marks only a skill this release
+  // actually changed — no per-skill version pair any more (#956).
+  it("marks a target Behind where this skill changed, naming only its release", () => {
     renderPane({
       deployments: [
-        {
-          label: "Claude Code",
-          version: "v1.0.0",
-          status: "behind",
-          latest: "v1.2.0",
-        },
+        { label: "Claude Code", release: "v1.0.0", status: "behind" },
       ],
     });
 
-    expect(screen.getByText(/v1\.0\.0 → v1\.2\.0/)).toBeInTheDocument();
-    expect(screen.getByText(/behind/i)).toBeInTheDocument();
+    expect(screen.getByText("· release v1.0.0")).toBeInTheDocument();
+    expect(screen.getByText("Behind")).toBeInTheDocument();
+  });
+
+  it("leaves a skill the release did not change without a Behind chip", () => {
+    renderPane({
+      deployments: [
+        { label: "Claude Code", release: "v1.0.0", status: "up-to-date" },
+      ],
+    });
+
+    expect(screen.queryByText("Behind")).not.toBeInTheDocument();
   });
 
   it("states the skill is deployed nowhere when it has no targets", () => {
@@ -111,7 +120,7 @@ describe("SkillDetailPane", () => {
     // the whole reach (J04) — so it still warns more targets may exist.
     renderPane({
       deployments: [
-        { label: "Claude Code", version: "v1.0.0", status: "up-to-date" },
+        { label: "Claude Code", release: "v1.0.0", status: "up-to-date" },
       ],
       unconfirmed: true,
     });

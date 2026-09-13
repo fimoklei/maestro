@@ -14,6 +14,7 @@ import { ActionsMenu } from "../ui/actions-menu";
 import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
 import { type DeployStateNotice, removeNotice } from "./notice-copy";
+import { copyChipText, extraFilesLine } from "./release-head-copy";
 import { removalOutcome } from "./removal-outcome";
 import { RemovalTrace, type TracedRemoval } from "./removal-trace";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
@@ -25,7 +26,6 @@ import {
   skippedEntryText,
   skippedNeedsAttention,
 } from "./skipped-entry-text";
-import { UpdateSkillAction } from "./update-skill-action";
 import type { DeployedPrimitive, SkippedEntry } from "./use-deploy-state";
 import { useRemoveDeployedSkill } from "./use-remove-deployed-skill";
 import {
@@ -34,20 +34,16 @@ import {
   useRemovePreflight,
 } from "./use-remove-preflight";
 
-// Per-skill drift badge. State is carried in text, never colour alone, so
-// "unknown" never reads as up-to-date (J04). Renders nothing while pending.
-const driftBadge: Record<
-  Exclude<DriftStatus, "pending">,
-  { tone: "ok" | "drift" | "dim"; label: string; hint?: string }
+// Per-skill drift badge. State is carried in text, never colour alone (J04);
+// nothing renders while pending. *Older tag* is retired with the per-skill
+// release it implied (ADR-0031, #956).
+const driftBadge: Partial<
+  Record<
+    DriftStatus,
+    { tone: "ok" | "drift" | "dim"; label: string; hint?: string }
+  >
 > = {
   behind: { tone: "drift", label: "Behind" },
-  // Behind claims a newer release exists; this one adds that the skill itself
-  // did not move in it (ADR-0027).
-  "older-tag": {
-    tone: "dim",
-    label: "Older tag",
-    hint: "This skill is identical at the pinned tag and the latest release",
-  },
   "no-longer-released": {
     tone: "drift",
     label: "No longer released",
@@ -87,12 +83,26 @@ const removalFailure = (error: unknown): RemovalNews => ({
 });
 
 function DriftBadge({ status }: { status: DriftStatus }) {
-  if (status === "pending") {
+  const badge = driftBadge[status];
+  if (badge === undefined) {
     return null;
   }
-  const { tone, label, hint } = driftBadge[status];
   return (
-    <Chip tone={tone} title={hint}>
+    <Chip tone={badge.tone} title={badge.hint}>
+      {badge.label}
+    </Chip>
+  );
+}
+
+// The copy's own reading, beside the drift one: a row can be up to date and
+// still hold work the next install would overwrite (#931).
+function CopyChip({ copy }: { copy: DeployedPrimitive["copy"] }) {
+  if (copy === undefined) {
+    return null;
+  }
+  const { label, hint } = copyChipText(copy);
+  return (
+    <Chip tone="drift" title={hint}>
       {label}
     </Chip>
   );
@@ -107,12 +117,20 @@ export function DeployStateList({
   primitives,
   skipped,
   drift = PENDING_DRIFT,
+  headRelease,
+  extraFiles,
   target,
   onRemoved,
 }: {
   primitives: DeployedPrimitive[];
   skipped: SkippedEntry[];
   drift?: DriftViewModel;
+  // How many recorded files belong to no selected skill. A fact under the rows,
+  // in the shape of the skipped list — never a chip, never its own card (#950).
+  extraFiles?: number;
+  // The release the whole target follows. A row states its own release only
+  // where it disagrees with this one, so one release is stated once (ADR-0031).
+  headRelease?: string;
   // Required, not optional: a global target's tools must be present or the
   // confirmation can't render, and an optional prop could drop them (#338).
   target: RemoveDialogTarget;
@@ -121,10 +139,9 @@ export function DeployStateList({
   onRemoved?: () => void;
 }) {
   const [removing, setRemoving] = useState<string | null>(null);
-  // Held here rather than read off the mutation: starting the retry clears the
-  // mutation's error, and the panel would leave its failed state during the
-  // attempt that state offered (#415). Message and outcome travel together, so
-  // a ledger can never outlive the failure it reports on (#416).
+  // Held here, not read off the mutation: a retry clears the mutation's error
+  // mid-attempt (#415). Message and outcome travel together, so a ledger never
+  // outlives the failure it reports on (#416).
   const [news, setNews] = useState<RemovalNews | null>(null);
   const [justRemoved, setJustRemoved] = useState(false);
   const [removed, setRemoved] = useState<TracedRemoval[]>([]);
@@ -146,7 +163,12 @@ export function DeployStateList({
 
   // Genuinely nothing — a skipped-only target still falls through to its
   // warning below, and a card just emptied by its own removal shows the trace.
-  if (primitives.length === 0 && skipped.length === 0 && removed.length === 0) {
+  if (
+    primitives.length === 0 &&
+    skipped.length === 0 &&
+    removed.length === 0 &&
+    (extraFiles ?? 0) === 0
+  ) {
     return null;
   }
 
@@ -163,23 +185,22 @@ export function DeployStateList({
         return (
           <div
             key={primitive.name}
-            className="flex items-center gap-3 px-card-x py-row-y"
+            // Wraps rather than crushing the name: the version column drops
+            // first, then the chips move under the name (ADR-0031).
+            className="flex flex-wrap items-center gap-x-3 gap-y-1 px-card-x py-row-y"
           >
-            <span className="flex-1 truncate font-mono text-data text-fg">
+            <span className="min-w-[8ch] flex-1 truncate font-mono text-data text-fg">
               {primitive.name}
             </span>
-            <span className={cn("font-mono text-tag", versionColor[status])}>
-              {lagsPin(status) && latest
-                ? `${primitive.version} → ${latest}`
-                : primitive.version}
-            </span>
+            {primitive.version === headRelease ? null : (
+              <span className={cn("font-mono text-tag", versionColor[status])}>
+                {lagsPin(status) && latest
+                  ? `${primitive.version} → ${latest}`
+                  : primitive.version}
+              </span>
+            )}
+            <CopyChip copy={primitive.copy} />
             <DriftBadge status={status} />
-            {lagsPin(status) ? (
-              <UpdateSkillAction
-                skillName={primitive.name}
-                target={wireTarget}
-              />
-            ) : null}
             <ActionsMenu
               label={`Actions for ${primitive.name}`}
               items={[
@@ -232,10 +253,9 @@ export function DeployStateList({
                     setJustRemoved(true);
                     return;
                   }
-                  // The server priced the copy again and took no action. Its
-                  // answer replaces the one on screen whole — cost, receipt and
-                  // leftovers — so the next confirm can never pair one attempt's
-                  // price with another's consent (#364).
+                  // The server re-priced and acted on nothing. Its answer
+                  // replaces the one on screen whole, so no confirm pairs one
+                  // attempt's price with another's consent (#364).
                   const cost = restatedCost(error);
                   if (cost !== null) {
                     queryClient.setQueryData(
@@ -282,6 +302,11 @@ export function DeployStateList({
       {orphans.length > 0 && (
         <p className="px-card-x py-row-y text-amber-ink text-tag">
           Reported behind, not deployed here: {orphans.join(", ")}
+        </p>
+      )}
+      {extraFiles === undefined || extraFiles === 0 ? null : (
+        <p className="px-card-x py-row-y text-dim text-tag">
+          {extraFilesLine(extraFiles)}
         </p>
       )}
       {skipped.length > 0 && (
