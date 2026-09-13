@@ -24,7 +24,7 @@ The reader should understand it on the first reading.
 - Before writing a sentence, grep `packages/web/src` for the control or status
   it names and reuse the form you find. Same meaning, same words.
 - Approved sentences live in the copy module's sibling test as exact strings.
-  A new sentence is added there; an existing one changes only with an issue.
+  Add a new sentence there; change an existing one there.
 
 ## Forms
 
