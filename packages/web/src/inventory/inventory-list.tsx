@@ -190,7 +190,7 @@ export function InventoryList({
           <TableHeader className="sticky top-0 z-10 bg-card">
             <TableRow>
               <TableHead className="w-10">
-                <span className="sr-only">Stage for bulk deploy</span>
+                <span className="sr-only">Select for bulk deploy</span>
               </TableHead>
               <SortableHead
                 className="w-20"
@@ -248,7 +248,7 @@ export function InventoryList({
                         type="checkbox"
                         checked={staged.has(primitive.name)}
                         onChange={() => toggleStagedName(primitive.name)}
-                        aria-label={`Stage ${primitive.name} for bulk deploy`}
+                        aria-label={`Select ${primitive.name} for bulk deploy`}
                         className="size-4 accent-amber focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
                       />
                     </label>

@@ -47,18 +47,25 @@ describe("noticeFromTable", () => {
   it("hands a request-shape refusal to the shared path", () => {
     const notice = noticeFromTable(
       headings,
-      new HttpError(400, "No path reached the server.", "invalid-body", {
-        error: "invalid-body",
-        message: "No path reached the server.",
-        detail: "The request carries a path: { path: string }.",
-      }),
+      new HttpError(
+        400,
+        "Maestro did not receive a folder. Reload the page, then choose a folder again.",
+        "invalid-body",
+        {
+          error: "invalid-body",
+          message:
+            "Maestro did not receive a folder. Reload the page, then choose a folder again.",
+          detail: "The request carries a path: { path: string }.",
+        },
+      ),
       fallback,
     );
 
     expect(notice).toEqual({
       level: "error",
-      label: "Request not accepted",
-      message: "No path reached the server.",
+      label: "Maestro could not start the action",
+      message:
+        "Maestro did not receive a folder. Reload the page, then choose a folder again.",
       detail: "The request carries a path: { path: string }.",
     });
   });

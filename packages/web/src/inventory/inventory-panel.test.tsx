@@ -238,7 +238,7 @@ describe("InventoryPanel", () => {
     expect(await screen.findByText("No released skills")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Inventory shows released skills only. Creating a release on the Harness view will fill it.",
+        "Inventory shows skills from the latest release. Open Harness, then create a release to add skills.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -254,8 +254,8 @@ describe("InventoryPanel", () => {
     renderPanel();
 
     const notice = await screen.findByRole("status");
-    expect(notice).toHaveTextContent("Inventory not read");
-    expect(notice).toHaveTextContent("Re-read Inventory to try again.");
+    expect(notice).toHaveTextContent("Could not read Inventory");
+    expect(notice).toHaveTextContent("Select Re-read Inventory to try again.");
     expect(
       within(notice).getByRole("button", { name: "Re-read Inventory" }),
     ).toBeInTheDocument();
@@ -270,7 +270,7 @@ describe("InventoryPanel", () => {
     renderPanel();
 
     expect(await screen.findByRole("status")).toHaveTextContent(
-      /Inventory not read/i,
+      /Could not read Inventory/i,
     );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -309,7 +309,9 @@ describe("InventoryPanel", () => {
       screen.getByRole("button", { name: "Force re-read" }),
     );
 
-    expect(await screen.findByText("Inventory not read")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Could not read Inventory"),
+    ).toBeInTheDocument();
     expect(screen.queryByText("tdd")).not.toBeInTheDocument();
     expect(screen.queryByText("1 skill")).not.toBeInTheDocument();
   });

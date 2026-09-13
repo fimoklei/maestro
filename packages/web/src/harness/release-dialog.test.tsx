@@ -51,12 +51,12 @@ describe("ReleaseDialog", () => {
     expect(screen.getByRole("dialog", { name: title })).toBeInTheDocument();
   });
 
-  it("names the version it would release and why Maestro proposed it", () => {
+  it("names the version it would release and why Maestro suggested it", () => {
     renderReady();
 
     expect(screen.getByText("v1.3.0")).toBeInTheDocument();
     expect(
-      screen.getByText(/proposed v1\.3\.0 — A skill was added\./),
+      screen.getByText(/Suggested: v1\.3\.0\. A skill was added\./),
     ).toBeInTheDocument();
   });
 
@@ -99,7 +99,7 @@ describe("ReleaseDialog", () => {
     expect(screen.getByText("v2.0.0")).toBeInTheDocument();
     // The proposal is a fact about the delta, not about the author's pick.
     expect(
-      screen.getByText(/proposed v1\.3\.0 — A skill was added\./),
+      screen.getByText(/Suggested: v1\.3\.0\. A skill was added\./),
     ).toBeInTheDocument();
   });
 

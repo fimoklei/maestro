@@ -134,7 +134,7 @@ describe("connect gate", () => {
     expect(connectBodies).toEqual([
       JSON.stringify({ path: "https://github.com/fimoklei/agent-harness" }),
     ]);
-    expect(await screen.findByText(/harness joined/i)).toBeInTheDocument();
+    expect(await screen.findByText(/harness connected/i)).toBeInTheDocument();
     expect(await screen.findByText(/3 primitives found/i)).toBeInTheDocument();
     expect(screen.getByText(/cloned harness/i)).toBeInTheDocument();
     expect(
@@ -226,15 +226,13 @@ describe("connect gate", () => {
     expect(scaffoldBodies).toEqual([
       JSON.stringify({ path: "/home/me/team-harness" }),
     ]);
-    expect(await screen.findByText(/harness scaffolded/i)).toBeInTheDocument();
-    expect(screen.getByText(/harness is empty/i)).toBeInTheDocument();
+    expect(await screen.findByText(/harness created/i)).toBeInTheDocument();
+    expect(screen.getByText(/it has no skills yet/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/skill-check workflow is advisory/i),
+      screen.getByText(/skill checks do not block releases/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(
-        /only becomes a gate if the team makes it a required check/i,
-      ),
+      screen.getByText(/unless the team makes them required/i),
     ).toBeInTheDocument();
     await userEvent.click(
       await screen.findByRole("button", { name: /continue/i }),

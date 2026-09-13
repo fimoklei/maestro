@@ -157,7 +157,7 @@ describe("removing a deployed skill from a row", () => {
     await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      /Nothing was deleted/,
+      /Nothing was removed/,
     );
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(onRemoved).not.toHaveBeenCalled();

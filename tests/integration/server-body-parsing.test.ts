@@ -16,18 +16,18 @@ import { stubScaffold } from "../helpers/stub-scaffold";
 import { stubUpdate } from "../helpers/stub-update";
 
 // Integration lane: pins the 400 every POST route answers to a body it cannot
-// parse. One table over all seven, so the shared parse step cannot drift a
+// parse. One table over all nine, so the shared parse step cannot drift a
 // route's status, error code or wording (#434). Everything behind the parse is
 // stubbed — no route is reached.
 describe("POST body parsing", () => {
   const PATH_SHAPE = {
     message:
-      "No path reached the server. Reload the page, then name the folder again.",
+      "Maestro did not receive a folder. Reload the page, then choose a folder again.",
     detail: "The request carries a path: { path: string }.",
   };
   const TARGET_SHAPE = {
     message:
-      "Nothing reached the target. Reload the page, then start the change again.",
+      "Maestro could not start this change. Reload the page, then try again.",
     detail:
       'The request carries a type, a name and a target: { kind: "repo", repoPath } or { kind: "global" }.',
   };
@@ -36,6 +36,12 @@ describe("POST body parsing", () => {
       "Nothing was deployed. Reload the page, then stage the skills again.",
     detail:
       'The request carries a non-empty names array and a target: { kind: "repo", repoPath } or { kind: "global" }.',
+  };
+  const PROPOSAL_SHAPE = {
+    message:
+      "Maestro could not change the pull request. Reload the page, then try again.",
+    detail:
+      "The request carries a skill name and a pull-request number: { name: string, number: number }.",
   };
 
   const routes = [
@@ -46,6 +52,8 @@ describe("POST body parsing", () => {
     { path: "/api/deploy/remove", shape: TARGET_SHAPE },
     { path: "/api/deploy/remove/preflight", shape: TARGET_SHAPE },
     { path: "/api/deploy/bulk", shape: BULK_SHAPE },
+    { path: "/api/harness/proposal/reopen", shape: PROPOSAL_SHAPE },
+    { path: "/api/harness/proposal/withdraw", shape: PROPOSAL_SHAPE },
   ];
 
   function makeApp() {

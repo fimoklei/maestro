@@ -163,12 +163,12 @@ describe("bulkDeploySummary", () => {
     );
   });
 
-  it("says nothing changed rather than showing a row of zeros", () => {
+  it("says the selected skills are already up to date rather than showing a row of zeros", () => {
     expect(
       bulkDeploySummary({
         targetLabel: "Global",
         counts: { deployed: 0, skipped: 0, attention: 0, failed: 0 },
       }),
-    ).toBe("Deployed to Global · nothing to do");
+    ).toBe("Deployed to Global · all selected skills are up to date");
   });
 });

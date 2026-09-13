@@ -162,7 +162,7 @@ export const PROPOSAL_CREATE_BODY: RequestShape = {
 
 export const PROPOSAL_BODY: RequestShape = {
   message:
-    "Nothing reached the pull request. Reload the page, then start the change again.",
+    "Maestro could not change the pull request. Reload the page, then try again.",
   detail:
     "The request carries a skill name and a pull-request number: { name: string, number: number }.",
 };
@@ -199,7 +199,7 @@ export const RELEASE_BODY: RequestShape = {
 
 export const PATH_BODY: RequestShape = {
   message:
-    "No path reached the server. Reload the page, then name the folder again.",
+    "Maestro did not receive a folder. Reload the page, then choose a folder again.",
   detail: "The request carries a path: { path: string }.",
 };
 
@@ -212,7 +212,7 @@ export const IMPORT_BODY: RequestShape = {
 
 export const TARGET_BODY: RequestShape = {
   message:
-    "Nothing reached the target. Reload the page, then start the change again.",
+    "Maestro could not start this change. Reload the page, then try again.",
   detail:
     'The request carries a type, a name and a target: { kind: "repo", repoPath } or { kind: "global" }.',
 };

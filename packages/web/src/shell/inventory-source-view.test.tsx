@@ -18,8 +18,8 @@ describe("the read-failure notice", () => {
     expect(READ_FAILED).toEqual(INVENTORY_NOT_READ);
     expect(READ_FAILED).toEqual({
       level: "error",
-      label: "Inventory not read",
-      message: "Re-read Inventory to try again.",
+      label: "Could not read Inventory",
+      message: "Select Re-read Inventory to try again.",
     });
   });
 });
@@ -361,7 +361,9 @@ describe("InventorySourceView", () => {
     );
     renderView();
 
-    expect(await screen.findByText(/Inventory not read/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Could not read Inventory/i),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/loading the count/i)).not.toBeInTheDocument();
     // A pure read failure takes the count pill's place — a stale count beside
     // a failed read would read as two answers to one question.
@@ -410,7 +412,9 @@ describe("InventorySourceView", () => {
       screen.getByRole("button", { name: /re-read inventory/i }),
     );
 
-    expect(await screen.findByText(/Inventory not read/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Could not read Inventory/i),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/2 primitives/i)).not.toBeInTheDocument();
   });
 
@@ -446,9 +450,9 @@ describe("InventorySourceView", () => {
     renderView();
 
     // The loading skeleton is a role="status" too, so settle on the text first.
-    await screen.findByText(/Inventory not read/i);
+    await screen.findByText(/Could not read Inventory/i);
     const notice = screen.getByRole("status");
-    expect(notice).toHaveTextContent(/^✕Inventory not read/i);
+    expect(notice).toHaveTextContent(/^✕Could not read Inventory/i);
     expect(notice).toHaveClass("border-danger-border", "bg-danger-bg");
   });
 
@@ -486,7 +490,9 @@ describe("InventorySourceView", () => {
     );
     renderView();
 
-    expect(await screen.findByText(/Inventory not read/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Could not read Inventory/i),
+    ).toBeInTheDocument();
 
     await userEvent.click(
       screen.getByRole("button", { name: /re-read inventory/i }),
@@ -546,7 +552,9 @@ describe("InventorySourceView", () => {
     await userEvent.click(
       screen.getByRole("button", { name: /re-read inventory/i }),
     );
-    expect(await screen.findByText(/Inventory not read/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Could not read Inventory/i),
+    ).toBeInTheDocument();
 
     await userEvent.click(
       screen.getByRole("button", { name: /re-read inventory/i }),
