@@ -1,7 +1,6 @@
 // Every word a target card's Release head shows (ADR-0025, copy.md). Pure and
 // clock-injected, so the read time is testable.
 import { ago } from "../harness/harness-view-model";
-import type { NoticeContent } from "../ui/notice";
 import {
   UPDATE_INCOMPLETE,
   UPDATE_INCOMPLETE_SENTENCE,
@@ -49,14 +48,11 @@ export function pinnedTagsLine(pinned: PinnedPerSkill): string {
     .join(", ");
 }
 
-// The way to one release, through the two controls that already exist (#933).
-// No action on the notice: both of them live on the rows and in the Inventory.
-export const RELEASE_NOT_ADOPTED = {
-  level: "info",
-  label: "Release not adopted",
-  message:
-    "This target was deployed one skill at a time. Select Remove skill for each skill, then Deploy skill to put them back on one release.",
-} satisfies NoticeContent;
+// The meta block's second line under a *Pinned per skill* chip: the way to one
+// release, through the two controls that already live on the rows and in the
+// Inventory (#933, #962).
+export const RELEASE_NOT_ADOPTED =
+  "Release not adopted. Select Remove skill for each, then Deploy skill.";
 
 // The control each unfinished operation offers, named for the operation that
 // stopped (copy.md). Shared with the sentences below, so label and step agree.

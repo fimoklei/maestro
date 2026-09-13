@@ -1,4 +1,3 @@
-import { Notice } from "../ui/notice";
 import { pinnedTagsLine, RELEASE_NOT_ADOPTED } from "./release-head-copy";
 import type { PinnedPerSkill } from "./use-deploy-state";
 
@@ -7,9 +6,9 @@ import type { PinnedPerSkill } from "./use-deploy-state";
 // then the way to one release (ADR-0031, #950).
 export function PinnedPerSkillHead({ pinned }: { pinned: PinnedPerSkill }) {
   return (
-    <div className="space-y-2 border-line-row border-b px-card-x py-row-y">
-      <p className="text-dim text-tag">{pinnedTagsLine(pinned)}</p>
-      <Notice trigger="load" notice={RELEASE_NOT_ADOPTED} />
+    <div className="border-line-row border-b px-card-x py-row-y text-dim text-tag">
+      <p>{pinnedTagsLine(pinned)}</p>
+      <p>{RELEASE_NOT_ADOPTED}</p>
     </div>
   );
 }

@@ -125,13 +125,10 @@ describe("pinnedTagsLine", () => {
 });
 
 describe("RELEASE_NOT_ADOPTED", () => {
-  it("names the way to one release", () => {
-    expect(RELEASE_NOT_ADOPTED).toStrictEqual({
-      level: "info",
-      label: "Release not adopted",
-      message:
-        "This target was deployed one skill at a time. Select Remove skill for each skill, then Deploy skill to put them back on one release.",
-    });
+  it("names the way to one release in one meta line", () => {
+    expect(RELEASE_NOT_ADOPTED).toBe(
+      "Release not adopted. Select Remove skill for each, then Deploy skill.",
+    );
   });
 });
 

@@ -1,6 +1,8 @@
 // The way out of a Deploy or Remove that never finished, on the target card
 // that carries it. The record is durable, so this survives a restart until the
 // retry converges (ADR-0031, #951).
+// The one boxed head: in the card's head slot a Notice means there is something
+// to press, and the other heads are dim meta lines (#962).
 import { Notice } from "../ui/notice";
 import {
   RETRY_DEPLOY,

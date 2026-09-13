@@ -320,7 +320,11 @@ describe("GlobalTargets on a tool still pinned per skill", () => {
 
     expect(screen.getAllByText("▲ Pinned per skill")).toHaveLength(1);
     expect(screen.getByText("1 skill at v0.3.1")).toBeInTheDocument();
-    expect(screen.getByText("Release not adopted")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Release not adopted. Select Remove skill for each, then Deploy skill.",
+      ),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(
         "Extra files deployed: 1 file outside the selected skills.",

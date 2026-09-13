@@ -431,10 +431,9 @@ describe("DeployStatePanel on a target pinned per skill", () => {
     expect(
       screen.getByText("1 skill at v0.3.1, 1 at v0.3.0"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Release not adopted")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "This target was deployed one skill at a time. Select Remove skill for each skill, then Deploy skill to put them back on one release.",
+        "Release not adopted. Select Remove skill for each, then Deploy skill.",
       ),
     ).toBeInTheDocument();
   });
@@ -462,7 +461,11 @@ describe("DeployStatePanel on a target pinned per skill", () => {
 
     expect(await screen.findByText("tdd")).toBeInTheDocument();
     expect(screen.queryByText("▲ Pinned per skill")).not.toBeInTheDocument();
-    expect(screen.queryByText("Release not adopted")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Release not adopted. Select Remove skill for each, then Deploy skill.",
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it("counts the deployed files that belong to no selected skill", async () => {
