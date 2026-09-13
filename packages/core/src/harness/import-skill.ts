@@ -4,6 +4,11 @@
 import { basename, join } from "node:path";
 import { parseGitOrigin } from "../deploy/git-origin";
 import { isValidSkillSlug } from "../deploy/package-ref";
+import {
+  attributeRootPackageFiles,
+  DEPLOY_SKILL_PREFIXES,
+  isRootPackage,
+} from "../deploy-state/root-package-skills";
 import { isWithinRoot } from "../filesystem/browse-path";
 import type {
   CopySkillFolderError,
@@ -365,7 +370,7 @@ export class ImportSkill {
           if (real !== source) {
             continue;
           }
-          const name = await this.ownSkillName(root, entry);
+          const name = await this.ownSkillName(root, entry, file);
           return name === null ? { kind: "foreign" } : { kind: "own", name };
         }
       }
@@ -378,8 +383,9 @@ export class ImportSkill {
   private async ownSkillName(
     root: string,
     entry: LockfileEntry,
+    file: string,
   ): Promise<string | null> {
-    const name = claudeSkillName(entry);
+    const name = recordedSkillName(entry, file);
     if (name === null || !isValidSkillSlug(name)) {
       return null;
     }
@@ -472,6 +478,18 @@ type CopyRequest = Pick<
   CopySkillFolderInput,
   "source" | "destinationParent" | "name" | "replaceExisting" | "finalize"
 >;
+
+// The skill a matched record row names. A Root package names no one skill, so
+// only the directory row of a skill it deployed does (ADR-0031).
+function recordedSkillName(entry: LockfileEntry, file: string): string | null {
+  if (!isRootPackage(entry)) {
+    return claudeSkillName(entry);
+  }
+  const skill = attributeRootPackageFiles(entry, DEPLOY_SKILL_PREFIXES).find(
+    (candidate) => `${candidate.prefix}/skills/${candidate.name}` === file,
+  );
+  return skill?.name ?? null;
+}
 
 // What the deployment records say about the picked folder: nothing at all, an
 // entry this harness cannot claim, or one that proves the folder is a copy of

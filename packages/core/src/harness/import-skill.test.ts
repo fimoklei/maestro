@@ -338,6 +338,127 @@ describe("ImportSkill.check", () => {
     });
   });
 
+  // One Harness dependency deploying code-review beside another skill, the
+  // shape apm 0.29.0 writes for a Root package (apm.lock.957-root-selection-project.yaml).
+  const rootPackageLockfile = (provenance: string[], prefix = ".claude") =>
+    [
+      "dependencies:",
+      "- name: agent-harness",
+      "  resolved_ref: v1.0.0",
+      "  package_type: apm_package",
+      ...provenance,
+      "  deployed_files:",
+      `  - ${prefix}/skills/caveman`,
+      `  - ${prefix}/skills/caveman/SKILL.md`,
+      `  - ${prefix}/skills/code-review`,
+      `  - ${prefix}/skills/code-review/SKILL.md`,
+    ].join("\n");
+
+  // One copy of code-review a Root package deployed under `prefix`.
+  const deployedByRootPackage = (
+    provenance: string[],
+    prefix = ".claude",
+    treeRoot = "/repo",
+    lockfilePath = "/repo/apm.lock.yaml",
+  ) => {
+    const deployed = `${treeRoot}/${prefix}/skills/code-review`;
+    return {
+      deployed,
+      ...harness({
+        files: {
+          [`${deployed}/SKILL.md`]: MANIFEST,
+          [lockfilePath]: rootPackageLockfile(provenance, prefix),
+        },
+        directories: [deployed, `${ROOT}/.apm/skills/code-review`],
+        deployedTargets: [{ treeRoot, lockfilePath }],
+      }),
+    };
+  };
+
+  it("offers an update for a copy this Harness's Root package deployed", async () => {
+    const { importSkill, deployed } = deployedByRootPackage(FROM_THIS_HARNESS);
+
+    await expect(
+      importSkill.check({ source: deployed }),
+    ).resolves.toMatchObject({
+      check: {
+        mode: "update",
+        name: "code-review",
+        sourceBlocker: null,
+        nameBlocker: null,
+      },
+    });
+  });
+
+  it("offers an update for a copy this Harness's Root package deployed globally for Codex", async () => {
+    const { importSkill, deployed } = deployedByRootPackage(
+      FROM_THIS_HARNESS,
+      ".agents",
+      "/home",
+      "/home/.apm/apm.lock.yaml",
+    );
+
+    await expect(
+      importSkill.check({ source: deployed }),
+    ).resolves.toMatchObject({
+      check: { mode: "update", name: "code-review", sourceBlocker: null },
+    });
+  });
+
+  it("refuses a copy a Root package from another repository deployed", async () => {
+    const { importSkill, deployed } = deployedByRootPackage([
+      "  host: github.com",
+      "  repo_url: someone-else/agent-harness",
+    ]);
+
+    await expect(
+      importSkill.check({ source: deployed }),
+    ).resolves.toMatchObject({
+      check: { mode: "add", sourceBlocker: "deployed-copy" },
+    });
+  });
+
+  it("refuses a Root package copy under a skill name the Harness does not hold", async () => {
+    const { importSkill } = harness({
+      files: {
+        "/repo/.claude/skills/caveman/SKILL.md": MANIFEST,
+        "/repo/apm.lock.yaml": rootPackageLockfile(FROM_THIS_HARNESS),
+      },
+      directories: ["/repo/.claude/skills/caveman"],
+      deployedTargets: [
+        { treeRoot: "/repo", lockfilePath: "/repo/apm.lock.yaml" },
+      ],
+    });
+
+    await expect(
+      importSkill.check({ source: "/repo/.claude/skills/caveman" }),
+    ).resolves.toMatchObject({
+      check: { mode: "add", sourceBlocker: "deployed-copy" },
+    });
+  });
+
+  it("refuses the skills directory a Root package deployed into", async () => {
+    const { importSkill } = harness({
+      files: {
+        "/repo/.claude/skills/SKILL.md": MANIFEST,
+        "/repo/apm.lock.yaml": [
+          rootPackageLockfile(FROM_THIS_HARNESS),
+          "  - .claude/skills",
+        ].join("\n"),
+      },
+      directories: ["/repo/.claude/skills"],
+      deployedTargets: [
+        { treeRoot: "/repo", lockfilePath: "/repo/apm.lock.yaml" },
+      ],
+    });
+
+    await expect(
+      importSkill.check({ source: "/repo/.claude/skills" }),
+    ).resolves.toMatchObject({
+      check: { mode: "add", sourceBlocker: "deployed-copy" },
+    });
+  });
+
   it("offers an update for a globally deployed copy too", async () => {
     const deployed = "/home/.claude/skills/code-review";
     const { importSkill } = harness({
