@@ -371,6 +371,77 @@ describe("harness import HTTP route", () => {
     expect(trees?.working["code-review"]).not.toBe(trees?.local["code-review"]);
   }, 30_000);
 
+  // The same chain for a copy one Root package deployed: the record names no
+  // one skill, so the name comes from its deployed files (#967).
+  it("carries an edited copy a Root package deployed back as a pending change", async () => {
+    const run = promisify(execFile);
+    const git = (...args: string[]) =>
+      run(
+        "git",
+        ["-c", "user.email=t@example.invalid", "-c", "user.name=T", ...args],
+        { cwd: harnessRoot },
+      );
+    await initGitClone(harnessRoot);
+    const held = join(harnessRoot, ".apm", "skills", "caveman");
+    const released = manifest("As released.").replace(
+      "whatever-the-author-called-it",
+      "caveman",
+    );
+    await mkdir(held, { recursive: true });
+    await writeFile(join(held, "SKILL.md"), released, "utf8");
+    await git("add", "-A");
+    await git("commit", "-m", "first skill");
+
+    // A real apm 0.29.0 record: one apm_package row deploying caveman and
+    // prototype (tests/fixtures/README.md § Root-package canary).
+    const repo = join(base, "repo");
+    const deployed = join(repo, ".claude", "skills", "caveman");
+    await mkdir(deployed, { recursive: true });
+    await writeFile(join(deployed, "SKILL.md"), released, "utf8");
+    const lockfilePath = join(repo, "apm.lock.yaml");
+    await writeFile(
+      lockfilePath,
+      await readFile(
+        new URL(
+          "../fixtures/apm.lock.957-root-selection-project.yaml",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+      "utf8",
+    );
+    const app = makeApp([{ treeRoot: repo, lockfilePath }]);
+
+    const unedited = await check(app, { source: deployed });
+    expect(await unedited.json()).toMatchObject({
+      mode: "update",
+      name: "caveman",
+      sourceBlocker: "nothing-to-carry-back",
+    });
+
+    await writeFile(
+      join(deployed, "SKILL.md"),
+      manifest("Fixed in place."),
+      "utf8",
+    );
+    const offered = await check(app, { source: deployed });
+    expect(await offered.json()).toMatchObject({
+      mode: "update",
+      name: "caveman",
+      sourceBlocker: null,
+      nameBlocker: null,
+    });
+
+    const response = await importSkill(app, { source: deployed });
+
+    expect(response.status).toBe(200);
+    expect(await readFile(join(held, "SKILL.md"), "utf8")).toContain(
+      "Fixed in place.",
+    );
+    const trees = await new HarnessGitAdapter().readMovementTrees(harnessRoot);
+    expect(trees?.working.caveman).not.toBe(trees?.local.caveman);
+  }, 30_000);
+
   it("leaves nothing behind when the copy is refused mid-tree", async () => {
     // A hard-linked file is refused, and it sits beside files the walk already
     // planned: neither the destination nor a staging leftover may appear.
