@@ -693,7 +693,7 @@ describe("BrowseDialog", () => {
 
     const stubRepoListing = () => stubFilesystemServer({ answer: repoEntries });
 
-    it("shows a disabled checkbox and reason for a folder that is not a git repo", async () => {
+    it("shows a disabled checkbox and reason for a folder that is not a Git repository", async () => {
       stubRepoListing();
       renderDialog({ mode: "register" });
 
@@ -704,7 +704,7 @@ describe("BrowseDialog", () => {
         screen.getByRole("checkbox", { name: /payments-api/i }),
       ).toBeInTheDocument();
       expect(screen.getByRole("checkbox", { name: /scratch/i })).toBeDisabled();
-      expect(screen.getByText("Not a git repository")).toBeInTheDocument();
+      expect(screen.getByText("Not a Git repository")).toBeInTheDocument();
     });
 
     it("shows the connected central inventory as unavailable", async () => {

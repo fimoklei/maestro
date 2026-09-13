@@ -5,7 +5,7 @@ import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 const browseHeadings: NoticeTable<BrowseError> = {
   "outside-root": {
     level: "error",
-    label: "Out of reach",
+    label: "Folder outside your home folder",
     message: "Pick a folder inside your home folder.",
     detail: "Maestro browses inside the home folder only.",
   },
@@ -13,7 +13,7 @@ const browseHeadings: NoticeTable<BrowseError> = {
     level: "error",
     label: "No folder at that path",
     message: "Pick another folder.",
-    detail: "It may have been moved or deleted since the last look.",
+    detail: "It may have moved or been deleted since Maestro last read it.",
   },
   "not-a-directory": {
     level: "error",
@@ -33,6 +33,6 @@ const browseHeadings: NoticeTable<BrowseError> = {
 export function browseNotice(error: unknown): NoticeContent | null {
   return noticeFromTable(browseHeadings, error, {
     label: "Folder not read",
-    message: "The Maestro server did not answer. Pick the folder again.",
+    message: "Maestro could not read this folder. Pick it again.",
   });
 }

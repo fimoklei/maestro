@@ -339,7 +339,11 @@ describe("removePreflightView", () => {
       expect(failedView(new HttpError(400, message, "invalid-body"))).toEqual({
         kind: "refused",
         code: "invalid-body",
-        notice: { level: "error", label: "Request not accepted", message },
+        notice: {
+          level: "error",
+          label: "Maestro could not start the action",
+          message,
+        },
       });
     });
   });

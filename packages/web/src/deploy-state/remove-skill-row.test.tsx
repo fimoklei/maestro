@@ -209,16 +209,19 @@ describe("removing a deployed skill from a row", () => {
     });
 
     // apm 0.29.0 keeps an edited file and aborts after deleting the rest, so
-    // the server refuses in front of it and the way through is the deploy
-    // row's own control, named letter for letter (#775, copy.md R-D).
-    it("refuses a copy with local edits and names Deploy again as the way through", async () => {
+    // the server refuses in front of it and states the safe recovery (#775,
+    // copy.md R-D).
+    it("explains why local changes block removal and how to recover", async () => {
       const fetchMock = refuseWith("deployed-diverged-from-lock", 409);
       renderRow();
 
       const dialog = await openRemoveDialog();
 
       expect(await within(dialog).findByRole("alert")).toHaveTextContent(
-        /Deploy again to replace the local edits, then remove the skill/,
+        /The skill was not removed. Its files changed after deployment/,
+      );
+      expect(dialog).toHaveTextContent(
+        /Deploy again to restore the released files. Then remove the skill/,
       );
       expect(screen.queryByRole("button", { name: CONFIRM })).toBeNull();
       expect(removeCalls(fetchMock)).toEqual([]);

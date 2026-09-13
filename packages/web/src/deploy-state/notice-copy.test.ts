@@ -55,7 +55,7 @@ describe("deploy notices", () => {
       "inventory-unreadable",
       {
         level: "error",
-        label: "Inventory not read",
+        label: "Could not read Inventory",
         message:
           "Select Re-read Inventory on the Harness location screen, then deploy again.",
       },
@@ -100,7 +100,7 @@ describe("deploy notices", () => {
       "deployed-diverged-from-lock",
       {
         level: "warning",
-        label: "Local edits in the deployed copy",
+        label: "Local changes in deployed files",
         message:
           "Deploy again to replace the local edits with the latest release.",
         detail: "The edits never went through the Harness.",
@@ -130,7 +130,7 @@ describe("deploy notices", () => {
       "lockfile-malformed",
       {
         level: "error",
-        label: "Deployment record unreadable",
+        label: "Could not read deployment record",
         message:
           "Repair or delete apm.lock.yaml in the target, then deploy again.",
         detail:
@@ -141,7 +141,7 @@ describe("deploy notices", () => {
       "deploy-in-progress",
       {
         level: "error",
-        label: "Target busy",
+        label: "Another change is running",
         message:
           "A deploy is still running on this target. Wait for it to finish.",
       },
@@ -182,7 +182,7 @@ describe("deploy notices", () => {
         level: "error",
         label: "Release not adopted",
         message:
-          "This target was deployed one skill at a time. Select Remove skill for each skill, then Deploy skill to put them back on one release.",
+          "This target has skills from separate deployments. Select Remove skill for each skill, then Deploy skill to put them on one release.",
       },
     ],
     [
@@ -201,14 +201,14 @@ describe("deploy notices", () => {
         label: "Deploy incomplete",
         message:
           "Part of the selection is not on disk. Select Retry deploy to run the same release again.",
-        detail: "apm reported success, and the files say otherwise.",
+        detail: "apm reported success, but some files are missing.",
       },
     ],
     [
       "deploy-failed",
       {
         level: "error",
-        label: "Deploy stopped part-way",
+        label: "Deploy did not finish",
         message:
           "The target may hold a partial install. Check its state below, then deploy again.",
       },
@@ -233,15 +233,15 @@ describe("deploy notices", () => {
   it("keeps the server's request-shape sentence for a malformed request", () => {
     const error = new HttpError(
       400,
-      "Nothing reached the target. Reload the page, then start the change again.",
+      "Maestro could not start this change. Reload the page, then try again.",
       "invalid-body",
       { detail: "The request carries a type, a name and a target." },
     );
     expect(deployNotice(error)).toEqual({
       level: "error",
-      label: "Request not accepted",
+      label: "Maestro could not start the action",
       message:
-        "Nothing reached the target. Reload the page, then start the change again.",
+        "Maestro could not start this change. Reload the page, then try again.",
       detail: "The request carries a type, a name and a target.",
     });
   });
@@ -298,14 +298,14 @@ describe("remove notices", () => {
       {
         level: "error",
         label: "Nothing deployed here",
-        message: "Nothing was deleted. Reload the page to read the list again.",
+        message: "Nothing was removed. Reload the page to read the list again.",
       },
     ],
     [
       "lockfile-malformed",
       {
         level: "error",
-        label: "Deployment record unreadable",
+        label: "Could not read deployment record",
         message:
           "Repair or delete apm.lock.yaml in the target, then remove again.",
         detail:
@@ -316,7 +316,7 @@ describe("remove notices", () => {
       "ref-unresolvable",
       {
         level: "error",
-        label: "Unrecognisable deployment entry",
+        label: "Cannot identify deployed skill",
         message:
           "A removal could delete the wrong package. Deploy the skill again to restore a readable entry.",
         detail:
@@ -345,7 +345,7 @@ describe("remove notices", () => {
       "remove-in-progress",
       {
         level: "error",
-        label: "Target busy",
+        label: "Another change is running",
         message:
           "A removal is still running on this target. Wait for it to finish.",
       },
@@ -357,14 +357,14 @@ describe("remove notices", () => {
         label: "Removal incomplete",
         message:
           "The skill's files are still on disk. Select Retry removal to run the same removal again.",
-        detail: "apm reported success, and the files say otherwise.",
+        detail: "apm reported success, but some files are missing.",
       },
     ],
     [
       "remove-failed",
       {
         level: "error",
-        label: "Removal unproven",
+        label: "Removal outcome unknown",
         message:
           "The copy may be gone or may still be there. Confirm the removal again to delete whatever is left.",
         detail: "The removal ran but proved nothing.",
@@ -374,7 +374,7 @@ describe("remove notices", () => {
       "preflight-failed",
       {
         level: "error",
-        label: "Check did not run",
+        label: "Could not check deployed files",
         message:
           "Make the deployed copy readable, then start the removal again.",
       },
@@ -408,15 +408,15 @@ describe("remove notices", () => {
   it("keeps the server's request-shape sentence for a malformed request", () => {
     const error = new HttpError(
       400,
-      "Nothing reached the target. Reload the page, then start the change again.",
+      "Maestro could not start this change. Reload the page, then try again.",
       "invalid-body",
       { detail: "The request carries a type, a name and a target." },
     );
     expect(removeNotice(error)).toEqual({
       level: "error",
-      label: "Request not accepted",
+      label: "Maestro could not start the action",
       message:
-        "Nothing reached the target. Reload the page, then start the change again.",
+        "Maestro could not start this change. Reload the page, then try again.",
       detail: "The request carries a type, a name and a target.",
     });
   });
@@ -455,7 +455,7 @@ describe("update preview notices", () => {
       "lockfile-malformed",
       {
         level: "error",
-        label: "Deployment record unreadable",
+        label: "Could not read deployment record",
         message:
           "Repair or delete apm.lock.yaml in the target, then select Update target again.",
         detail:
@@ -485,7 +485,7 @@ describe("update preview notices", () => {
       "inventory-unreadable",
       {
         level: "error",
-        label: "Inventory not read",
+        label: "Could not read Inventory",
         message:
           "Select Re-read Inventory on the Harness location screen, then select Update target again.",
       },
@@ -524,7 +524,7 @@ describe("update preview notices", () => {
       "ref-unresolvable",
       {
         level: "error",
-        label: "Unrecognisable deployment entry",
+        label: "Cannot identify deployed skill",
         message:
           "Nothing was changed. Leave one entry for the Harness in apm.lock.yaml, then select Update target again.",
         detail: "The target's record names more than one, or names no release.",

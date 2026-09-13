@@ -40,7 +40,7 @@ const releasePlanHeadings: NoticeTable<ReleasePlanError> = {
   ...harnessHeadings,
   "no-answer": {
     level: "error",
-    label: "No answer from GitHub",
+    label: "GitHub did not respond",
     message: "Select Retry check, then Create a release again.",
     detail: "A release plan is measured against what GitHub holds.",
   },
@@ -50,26 +50,26 @@ const publishReleaseHeadings: NoticeTable<PublishReleaseError> = {
   ...harnessHeadings,
   "no-answer": {
     level: "error",
-    label: "No answer from GitHub",
+    label: "GitHub did not respond",
     message:
       "Nothing was published. Select Retry check, then Publish release again.",
   },
   "already-released": {
     level: "error",
-    label: "Version number taken",
+    label: "Release already exists",
     message:
       "Maestro rebuilt the plan against the newest release. Check it, then Publish release.",
   },
   "plan-changed": {
     level: "error",
-    label: "Plan out of date",
+    label: "Release plan changed",
     message:
       "Nothing was published. Maestro rebuilt the plan, so check it, then Publish release.",
     detail: "GitHub moved while this dialog was open.",
   },
   "publish-failed": {
     level: "error",
-    label: "Tag not pushed",
+    label: "Release not published",
     message:
       "The Harness is as it was. Publish release again once GitHub is reachable.",
   },
@@ -94,7 +94,7 @@ const promoteHeadings: NoticeTable<PromoteSkillError> = {
   },
   "no-answer": {
     level: "error",
-    label: "No answer from GitHub",
+    label: "GitHub did not respond",
     message:
       "Nothing was pushed. Select Retry check, then Propose change again.",
   },
@@ -111,7 +111,7 @@ const promoteHeadings: NoticeTable<PromoteSkillError> = {
   },
   "source-changed": {
     level: "error",
-    label: "Folder edit mid-read",
+    label: "Files changed during the check",
     message:
       "Nothing was pushed. Let the edit on disk finish, then Propose change again.",
   },
@@ -369,7 +369,7 @@ const proposalHeadings: NoticeTable<ProposalActionError> = {
   "invalid-skill": promoteHeadings["invalid-skill"],
   "no-answer": {
     level: "error",
-    label: "No answer from GitHub",
+    label: "GitHub did not respond",
     message: "Nothing changed on GitHub. Select Retry check.",
     detail:
       "Maestro could not read the branch this proposal is opened against.",

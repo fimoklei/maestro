@@ -76,7 +76,7 @@ const HEADINGS: Record<DeployStateCode, Heading> = {
   "invalid-name": { level: "error", label: "Unusable skill name" },
   "unknown-skill": { level: "error", label: "Skill not in the Inventory" },
   "inventory-not-configured": { level: "error", label: "No Harness connected" },
-  "inventory-unreadable": { level: "error", label: "Inventory not read" },
+  "inventory-unreadable": { level: "error", label: "Could not read Inventory" },
   "repo-not-registered": { level: "error", label: "Repository not registered" },
   "inventory-origin-unavailable": { level: "error", label: "No GitHub origin" },
   "no-published-tag": { level: "error", label: "Not in any release" },
@@ -86,7 +86,7 @@ const HEADINGS: Record<DeployStateCode, Heading> = {
   },
   "deployed-diverged-from-lock": {
     level: "warning",
-    label: "Local edits in the deployed copy",
+    label: "Local changes in deployed files",
   },
   "deployed-unverifiable": {
     level: "warning",
@@ -95,11 +95,11 @@ const HEADINGS: Record<DeployStateCode, Heading> = {
   "deployed-unreadable": { level: "error", label: "Deployed copy unreadable" },
   "lockfile-malformed": {
     level: "error",
-    label: "Deployment record unreadable",
+    label: "Could not read deployment record",
   },
   // One heading for both scopes: a target takes one change at a time, whichever
   // change is running (ADR-0031, #951).
-  "deploy-in-progress": { level: "error", label: "Target busy" },
+  "deploy-in-progress": { level: "error", label: "Another change is running" },
   "not-at-target-release": { level: "error", label: "Not in this release" },
   // One release further than the refusal above: the latest release holds the
   // skill no more than the target's own does, so no move would help (#955).
@@ -110,7 +110,7 @@ const HEADINGS: Record<DeployStateCode, Heading> = {
   "target-pinned-per-skill": { level: "error", label: "Release not adopted" },
   "manifest-not-recognised": {
     level: "error",
-    label: "Manifest not recognised",
+    label: "Unsupported apm.yml",
   },
   "operation-unfinished": { level: "error", label: "Change not finished" },
   "deploy-incomplete": { level: "error", label: "Deploy incomplete" },
@@ -118,23 +118,26 @@ const HEADINGS: Record<DeployStateCode, Heading> = {
   "no-supported-tool": { level: "error", label: "No supported tool" },
   "auth-required": { level: "error", label: "No GitHub access" },
   "destination-symlinked": { level: "error", label: "Linked skill folder" },
-  "deploy-failed": { level: "error", label: "Deploy stopped part-way" },
+  "deploy-failed": { level: "error", label: "Deploy did not finish" },
   "not-deployed": { level: "error", label: "Nothing deployed here" },
   "ref-unresolvable": {
     level: "error",
-    label: "Unrecognisable deployment entry",
+    label: "Cannot identify deployed skill",
   },
   "cost-not-acknowledged": { level: "warning", label: "Nothing removed" },
-  "remove-in-progress": { level: "error", label: "Target busy" },
-  "remove-failed": { level: "error", label: "Removal unproven" },
-  "preflight-failed": { level: "error", label: "Check did not run" },
+  "remove-in-progress": { level: "error", label: "Another change is running" },
+  "remove-failed": { level: "error", label: "Removal outcome unknown" },
+  "preflight-failed": {
+    level: "error",
+    label: "Could not check deployed files",
+  },
   "preview-failed": { level: "error", label: "Preview did not run" },
   // The update's own four. "Status out of date" covers both a release and a
   // copy that moved after the preview priced them (spec stories 24, 41).
   "status-out-of-date": { level: "error", label: "Status out of date" },
-  "update-in-progress": { level: "error", label: "Target busy" },
+  "update-in-progress": { level: "error", label: "Another change is running" },
   "update-incomplete": { level: "warning", label: "Update incomplete" },
-  "update-failed": { level: "error", label: "Update unproven" },
+  "update-failed": { level: "error", label: "Update outcome unknown" },
 };
 
 // One string, two surfaces: every update refusal sends the reader back to the
@@ -218,7 +221,7 @@ const DEPLOY: Record<DeploySkillError, Body> = {
   },
   "target-pinned-per-skill": {
     message:
-      "This target was deployed one skill at a time. Select Remove skill for each skill, then Deploy skill to put them back on one release.",
+      "This target has skills from separate deployments. Select Remove skill for each skill, then Deploy skill to put them on one release.",
   },
   "manifest-not-recognised": {
     // The filename stays in the sentence: the instruction acts on the file
@@ -234,7 +237,7 @@ const DEPLOY: Record<DeploySkillError, Body> = {
   "deploy-incomplete": {
     message:
       "Part of the selection is not on disk. Select Retry deploy to run the same release again.",
-    detail: "apm reported success, and the files say otherwise.",
+    detail: "apm reported success, but some files are missing.",
   },
   "no-supported-tool": {
     message:
@@ -274,7 +277,7 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
       "Neither Claude Code nor Codex is on this machine. There is nothing here to remove.",
   },
   "not-deployed": {
-    message: "Nothing was deleted. Reload the page to read the list again.",
+    message: "Nothing was removed. Reload the page to read the list again.",
   },
   "lockfile-malformed": {
     message: "Repair or delete apm.lock.yaml in the target, then remove again.",
@@ -295,10 +298,9 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
   // to reset an edited copy inside the cockpit. Global copies under Other
   // copies have no such control, hence the detail.
   "deployed-diverged-from-lock": {
-    message:
-      "Nothing was removed. Deploy again to replace the local edits, then remove the skill.",
+    message: "The skill was not removed. Its files changed after deployment.",
     detail:
-      "apm keeps an edited or added file and stops part-way; a copy nothing deploys to is reset by hand.",
+      "Deploy again to restore the released files. Then remove the skill. Reset any copy under Other copies manually.",
   },
   "cost-not-acknowledged": {
     message:
@@ -320,7 +322,7 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
   "remove-incomplete": {
     message:
       "The skill's files are still on disk. Select Retry removal to run the same removal again.",
-    detail: "apm reported success, and the files say otherwise.",
+    detail: "apm reported success, but some files are missing.",
   },
   "remove-failed": {
     message:
@@ -466,7 +468,7 @@ const UPDATE: Record<UpdateRunError, Body> = {
   "update-incomplete": {
     message:
       "The update is incomplete. Select Retry update to run the same release again.",
-    detail: "apm reported success, and the files say otherwise.",
+    detail: "apm reported success, but some files are missing.",
   },
   "update-failed": {
     message: `Nothing proved the update finished. Check the target card, ${UPDATE_AGAIN}`,

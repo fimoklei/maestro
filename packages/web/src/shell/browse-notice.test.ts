@@ -12,7 +12,7 @@ describe("browseNotice", () => {
   it("sends a path outside the home folder back to the picker", () => {
     expect(browseNotice(refusal("outside-root"))).toEqual({
       level: "error",
-      label: "Out of reach",
+      label: "Folder outside your home folder",
       message: "Pick a folder inside your home folder.",
       detail: "Maestro browses inside the home folder only.",
     });
@@ -23,7 +23,7 @@ describe("browseNotice", () => {
       level: "error",
       label: "No folder at that path",
       message: "Pick another folder.",
-      detail: "It may have been moved or deleted since the last look.",
+      detail: "It may have moved or been deleted since Maestro last read it.",
     });
   });
 
@@ -49,7 +49,7 @@ describe("browseNotice", () => {
     expect(browseNotice(refusal("teleported"))).toEqual({
       level: "error",
       label: "Folder not read",
-      message: "The Maestro server did not answer. Pick the folder again.",
+      message: "Maestro could not read this folder. Pick it again.",
       detail: undefined,
     });
   });

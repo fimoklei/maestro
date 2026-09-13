@@ -128,10 +128,10 @@ export function BulkDeployBar({
       <div className="flex flex-wrap items-center gap-2">
         <span
           role="status"
-          aria-label="Staged for bulk deploy"
+          aria-label="Selected for bulk deploy"
           className="flex flex-wrap items-center gap-2 font-mono"
         >
-          {stagedNames.length} staged for bulk deploy
+          {stagedNames.length} selected for bulk deploy
           {hiddenCount > 0 ? (
             <span className="text-muted text-tag">
               · {hiddenCount} hidden by the filter
