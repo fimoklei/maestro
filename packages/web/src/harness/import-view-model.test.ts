@@ -49,12 +49,25 @@ describe("importLabels", () => {
       title: "Update a skill",
       confirm: "Update skill",
       busy: "Updating…",
-      hint: "The Harness's own folder for this skill is replaced, whole",
+      hint: "Updating replaces the skill folder in the Harness.",
     });
   });
 
+  it("names an unchanged update before offering another action", () => {
+    expect(
+      importLabels({
+        ...clean,
+        mode: "update",
+        sourceBlocker: "nothing-to-carry-back",
+      }),
+    ).toMatchObject({ title: "No changes to update" });
+  });
+
   it("names it after adding otherwise, including before a check comes back", () => {
-    expect(importLabels(clean).confirm).toBe("Import skill");
+    expect(importLabels(clean)).toMatchObject({
+      confirm: "Import skill",
+      hint: "Maestro uses this as the folder name and updates the name in SKILL.md to match.",
+    });
     expect(importLabels(undefined).confirm).toBe("Import skill");
   });
 });

@@ -345,7 +345,7 @@ describe("Detail sentences", () => {
         CONTEXT,
       ),
     ).toBe(
-      "Pull requests #41 and #44 both match this branch. Select View pull request #41 to close it.",
+      "Pull requests #41 and #44 both match this branch. Open the extra pull requests on GitHub and close them.",
     );
   });
 
@@ -364,7 +364,7 @@ describe("Detail sentences", () => {
         CONTEXT,
       ),
     ).toBe(
-      "Several pull requests match this branch. Select View pull request #41 to close it.",
+      "Several pull requests match this branch. Open the extra pull requests on GitHub and close them.",
     );
   });
 

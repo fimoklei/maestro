@@ -232,7 +232,7 @@ const DEPLOY: Record<DeploySkillError, Body> = {
   },
   "operation-unfinished": {
     message:
-      "An earlier change on this target did not finish. Select Retry deploy on the target card, then deploy again.",
+      "An earlier change on this target did not finish. Check the target card to finish that change, then deploy again.",
   },
   "deploy-incomplete": {
     message:
@@ -317,7 +317,7 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
   },
   "operation-unfinished": {
     message:
-      "An earlier change on this target did not finish. Select Retry removal on the target card, then remove the skill again.",
+      "An earlier change on this target did not finish. Check the target card to finish that change, then remove the skill again.",
   },
   "remove-incomplete": {
     message:
@@ -444,14 +444,16 @@ const UPDATE: Record<UpdateRunError, Body> = {
   },
   "operation-unfinished": {
     message:
-      "An earlier change on this target did not finish. Select Retry deploy on the target card, then select Update target again.",
+      "An earlier change on this target did not finish. Check the target card to finish that change, then select Update target again.",
   },
   "deployed-diverged-from-lock": {
-    message: `Nothing was changed. Select Update target again to read the copies in the way.`,
+    message:
+      "Nothing was changed. Select Update target again to review the local edits before updating.",
     detail: "The edits never went through the Harness.",
   },
   "deployed-unverifiable": {
-    message: `Nothing was changed. Select Update target again to read the copies in the way.`,
+    message:
+      "Nothing was changed. Select Update target again to review the unverified copies before updating.",
     detail:
       "These copies predate content tracking, so any change in them is invisible.",
   },

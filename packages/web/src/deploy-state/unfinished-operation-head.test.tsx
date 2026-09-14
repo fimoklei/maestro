@@ -38,7 +38,9 @@ describe("UnfinishedOperationHead", () => {
     );
 
     expect(
-      screen.getByText("Update to v0.3.4 incomplete: 1 of 2 skills landed."),
+      screen.getByText(
+        "Update to v0.3.4 incomplete: 1 of 2 skills now use this release.",
+      ),
     ).toBeInTheDocument();
   });
 

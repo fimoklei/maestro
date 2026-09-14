@@ -23,7 +23,7 @@ type BrowseModeConfig = {
 
 export const browseModes: Record<BrowseDialogMode, BrowseModeConfig> = {
   register: {
-    title: "Repositories to register",
+    title: "Register repositories",
     confirmLabel: (count) =>
       `Register ${count} ${count === 1 ? "repository" : "repositories"}`,
     // A git repo is what this listing is for; only the refusal earns a chip,
@@ -34,7 +34,7 @@ export const browseModes: Record<BrowseDialogMode, BrowseModeConfig> = {
       "Registering changes no files. Files change only when you deploy.",
   },
   connect: {
-    title: "Inventory folder",
+    title: "Choose an Inventory folder",
     confirmLabel: () => "Use this folder",
     badges: ({ entry }) =>
       entry.facts.hasApmManifest ? <Chip tone="drift">◆ Inventory</Chip> : null,
@@ -44,17 +44,17 @@ export const browseModes: Record<BrowseDialogMode, BrowseModeConfig> = {
   // Picks the skill folder itself, so the badge marks a folder that already
   // looks like a harness — a skill never is one (#576).
   "import-source": {
-    title: "Skill folder",
+    title: "Choose a skill folder",
     confirmLabel: () => "Import this folder",
     badges: ({ entry }) =>
       entry.facts.hasApmManifest ? <Chip tone="drift">◆ Inventory</Chip> : null,
     writePromise:
-      "Picking a folder changes no files. Import copies the folder into the Working Harness and leaves the original folder untouched.",
+      "Import copies this folder to the Working Harness. The original folder stays unchanged.",
   },
   // Picks the folder a clone lands *in*, so the badge marks the one thing that
   // would block it: a Harness already sitting there (#555).
   "clone-parent": {
-    title: "Folder to clone into",
+    title: "Choose a folder for the Harness",
     confirmLabel: () => "Clone into this folder",
     badges: ({ entry }) =>
       entry.facts.hasApmManifest ? <Chip tone="drift">◆ Inventory</Chip> : null,

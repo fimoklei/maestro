@@ -192,7 +192,7 @@ describe("unfinishedOperationNotice", () => {
       label: "Update incomplete",
       message:
         "The update is incomplete. Select Retry update to run the same release again.",
-      detail: "Update to v0.3.4 incomplete: 3 of 5 skills landed.",
+      detail: "Update to v0.3.4 incomplete: 3 of 5 skills now use this release.",
     });
   });
 });

@@ -20,7 +20,7 @@ const registerSentences: Record<RepoPathError | "central-inventory", string> = {
 // A failure the table does not cover: a dropped connection, a 500, or a code
 // this build predates.
 const NOT_ANSWERED =
-  "The Maestro server did not answer. Register the repository again.";
+  "Maestro could not register this repository. Try registering it again.";
 
 /**
  * The register run's own sentence for one refused repository. Required return,

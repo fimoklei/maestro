@@ -258,7 +258,7 @@ describe("BrowseDialog", () => {
     const { onClose } = renderDialog();
 
     expect(
-      screen.getByRole("heading", { name: "Inventory folder" }),
+      screen.getByRole("heading", { name: "Choose an Inventory folder" }),
     ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /close/i }));
     expect(onClose).toHaveBeenCalledOnce();
@@ -269,7 +269,7 @@ describe("BrowseDialog", () => {
     renderDialog({ mode: "register" });
 
     expect(
-      await screen.findByRole("heading", { name: "Repositories to register" }),
+      await screen.findByRole("heading", { name: "Register repositories" }),
     ).toBeInTheDocument();
   });
 
@@ -717,7 +717,7 @@ describe("BrowseDialog", () => {
       expect(
         await screen.findByRole("checkbox", { name: /acme-web/i }),
       ).toBeDisabled();
-      expect(screen.getByText("Connected Inventory")).toBeInTheDocument();
+      expect(screen.getByText("Current Inventory")).toBeInTheDocument();
     });
 
     it("never offers checkboxes in connect mode", async () => {
@@ -1006,7 +1006,7 @@ describe("BrowseDialog", () => {
       );
       expect(confirm).toHaveAccessibleDescription(/renamed, moved or deleted/i);
       expect(
-        screen.getByRole("heading", { name: /folder to clone into/i }),
+        screen.getByRole("heading", { name: "Choose a folder for the Harness" }),
       ).toBeInTheDocument();
     });
   });
