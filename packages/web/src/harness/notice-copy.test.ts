@@ -603,18 +603,18 @@ const suites: [
         "source-changed",
         {
           level: "error",
-          label: "Folder edit mid-copy",
+          label: "Folder changed during import",
           message:
-            "Nothing was left in the Harness. Let the edit on disk finish, then Import skill again.",
+            "The skill was not imported. Let the folder change finish, then Import skill again.",
         },
       ],
       [
         "copy-failed",
         {
           level: "error",
-          label: "Unfinished copy",
+          label: "Skill not imported",
           message:
-            "Nothing was left in the Harness. Free up disk space, then Import skill again.",
+            "The skill was not imported. Free up disk space, then Import skill again.",
         },
       ],
       [
@@ -632,9 +632,9 @@ const suites: [
           level: "error",
           label: "Copy from another Harness",
           message:
-            "Select Change folder, then pick a folder you wrote yourself.",
+            "Select Change folder, then choose a folder that is not a copy deployed by another Harness.",
           detail:
-            "Only a copy the connected Harness deployed can be carried back into it.",
+            "Maestro can update only copies deployed by the connected Harness.",
         },
       ],
       [
@@ -643,9 +643,8 @@ const suites: [
           level: "error",
           label: "Uncommitted changes in the Harness",
           message:
-            "Commit or undo the Harness's own changes to this skill, then Update skill again.",
-          detail:
-            "Replacing the folder now would take work git has no record of.",
+            "This skill has uncommitted changes in the Harness. Commit or undo them, then Update skill again.",
+          detail: "Updating now would overwrite changes Git cannot restore.",
         },
       ],
       [
@@ -663,10 +662,10 @@ const suites: [
         "nothing-to-carry-back",
         {
           level: "info",
-          label: "Nothing to carry back",
+          label: "Folder already matches",
           message:
-            "This folder matches the skill the Harness holds. Select Close.",
-          detail: "Only a changed file can be carried back.",
+            "This folder already matches the skill in the Harness. Select Close.",
+          detail: "Choose a folder with changes to update the skill.",
         },
       ],
     ],

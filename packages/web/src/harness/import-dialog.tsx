@@ -133,7 +133,7 @@ export function ImportDialog({
             className="flex flex-col gap-1.5 rounded-control border border-line-drift bg-amber-bg px-2.5 py-2.5"
           >
             <span className="font-semibold font-ui text-amber-ink text-desc">
-              Convention checks — the import still runs
+              Skill checks found issues. You can still import the skill.
             </span>
             <ul className="m-0 flex list-none flex-col gap-1 p-0">
               {advisories.map((advisory) => (
@@ -151,11 +151,17 @@ export function ImportDialog({
               trigger="user-action"
               notice={{
                 level: "success",
-                label: "Skill imported",
-                message: "View your imported skill in Harness.",
+                label:
+                  imported.mode === "update"
+                    ? "Skill updated"
+                    : "Skill imported",
+                message:
+                  imported.mode === "update"
+                    ? "The skill was updated in the Harness. Select View in Harness to find it."
+                    : "The skill was imported into the Harness. Select View in Harness to find it.",
                 detail:
                   imported.mode === "update"
-                    ? "The deployed copy is not up to date until you deploy it again."
+                    ? "The deployed copies still have the earlier version. Select View in Harness, then deploy the skill again."
                     : undefined,
                 action: {
                   label: "View in Harness",

@@ -172,7 +172,7 @@ export function detailSentence(
         row.requests.length === 2
           ? `Pull requests ${listOf(requestNumbers(row))} both match this branch.`
           : "Several pull requests match this branch."
-      } Select View pull request ${first(row)} to close it.`;
+      } Open the extra pull requests on GitHub and close them.`;
     case "added":
       return release === null
         ? `This skill is on ${branch} and in no release yet. ${publish}`

@@ -154,7 +154,7 @@ describe("sidebar register affordance", () => {
     expect(
       await screen.findByRole("checkbox", { name: /agent-harness/i }),
     ).toBeDisabled();
-    expect(screen.getByText("Connected Inventory")).toBeInTheDocument();
+    expect(screen.getByText("Current Inventory")).toBeInTheDocument();
   });
 
   it("has no path input of its own — the picker's paste field is the one", async () => {

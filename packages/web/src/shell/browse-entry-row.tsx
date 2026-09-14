@@ -25,7 +25,7 @@ export function BrowseEntryRow({
   const isRegistered = registeredPaths?.has(entry.path) ?? false;
   const unavailableReason =
     mode === "register" && entry.path === inventoryPath
-      ? "Connected Inventory"
+      ? "Current Inventory"
       : mode === "register" && !entry.facts.isGitRepo
         ? "Not a Git repository"
         : undefined;

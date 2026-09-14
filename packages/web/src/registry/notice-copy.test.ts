@@ -53,12 +53,14 @@ describe("registerMessage", () => {
   it("never renders the wrapper's own status line for an uncovered code", () => {
     expect(
       registerMessage(new HttpError(500, "Request failed with status 500.")),
-    ).toBe("The Maestro server did not answer. Register the repository again.");
+    ).toBe(
+      "Maestro could not register this repository. Try registering it again.",
+    );
   });
 
   it("states the same for a failure that never reached the server", () => {
     expect(registerMessage(new TypeError("network down"))).toBe(
-      "The Maestro server did not answer. Register the repository again.",
+      "Maestro could not register this repository. Try registering it again.",
     );
   });
 });

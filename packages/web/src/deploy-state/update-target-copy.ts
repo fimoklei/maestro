@@ -130,7 +130,7 @@ function outcomeFact(
   if (state === "not-removed") {
     return `${name} still deployed`;
   }
-  return `${name} outcome unknown`;
+  return `Maestro could not confirm whether ${name} was updated.`;
 }
 
 // The way out of a half-landed update, named on the card and in the dialog.

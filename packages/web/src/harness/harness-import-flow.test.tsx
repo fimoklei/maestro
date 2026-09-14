@@ -192,7 +192,9 @@ describe("Harness import flow", () => {
     // left behind; the harness read is asked again for the new movement.
     expect(await screen.findByText("Skill imported")).toBeInTheDocument();
     expect(
-      screen.getByText("View your imported skill in Harness."),
+      screen.getByText(
+        "The skill was imported into the Harness. Select View in Harness to find it.",
+      ),
     ).toBeInTheDocument();
     expect(
       await screen.findByText(

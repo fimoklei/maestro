@@ -161,7 +161,7 @@ describe("Update target copy", () => {
     ).toBe("review still deployed");
     expect(
       outcomeLine({ name: "grill", tool: null, state: "unknown" }, releases),
-    ).toBe("grill outcome unknown");
+    ).toBe("Maestro could not confirm whether grill was updated.");
   });
 
   it("names the tool of an outcome the global target answers per tool", () => {
