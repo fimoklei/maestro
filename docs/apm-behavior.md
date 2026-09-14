@@ -340,7 +340,8 @@ tag (`apm view`) + install at that tag; no other apm command is involved.
 scoped: it deletes the named package's deployed files, its `apm.yml` entry,
 its `apm_modules/` subtree, and its lockfile entry — and nothing else. Other
 dependencies and hand-placed skill dirs beside them survive, per-repo and
-global alike. No network and no credentials: every capture below ran with no
+global alike — except beside a legacy per-skill entry (§ A legacy entry's
+removal can take a root package's copies). No network and no credentials: every capture below ran with no
 token in the environment.
 
 There is **no `-t` flag** (`--dry-run`, `-v`, `-g` are the whole surface).
@@ -420,6 +421,43 @@ lockfile entry went.
   `apm.lock.yaml` disappears rather than being rewritten with `dependencies:
   []`; `apm.yml` keeps `apm: []`. A reader must treat an absent lockfile as
   nothing deployed, never as an error.
+
+### A legacy entry's removal can take a root package's copies
+
+Observed once, on a real global install (#958, 2026-09-13), not reproduced in
+a sandbox and backed by no fixture. The lockfile was last written by apm
+0.20.0 and held two entries: a legacy `claude_skill` row
+(`fimoklei/agent-harness`, `virtual_path: skills/47`, no `deployed_files`)
+and a root package from another repository (`fimoklei/harness`, three
+selected skills, deployed `-t claude,codex`). From a neutral cwd:
+
+```
+HOME=$(realpath ~) apm uninstall -g "fimoklei/agent-harness/skills/47#v0.5.1"
+```
+
+```
+[!] Best-effort re-integration skipped for fimoklei/harness. Run 'apm install' to rebuild integrated files.
+  [!] 1 skill replaced by a different package (last installed wins)
+[+] Cleaned up 7 integrated skills
+[*] Uninstall complete: Removed 1 package(s) from apm.yml, Removed 1 package(s) from apm_modules/
+```
+
+Exit 0 with the success marker, and the removal reached past the named
+package:
+
+- The root package's `.claude/skills/<name>/` copies were deleted; its
+  `.agents/skills/<name>/` copies survived.
+- Its lockfile entry kept every `.claude` path in `deployed_files`, so the
+  record claimed files that were gone.
+- The legacy entry's own `.claude/skills/47/` and `.agents/skills/47/` stayed
+  on disk, now owned by no entry.
+- It printed 0.26.0's `Cleaned up N integrated skills` line, not
+  `Cleaned N stale files`.
+
+A same-ref install of the root package with its Selection
+(`apm install github.com/fimoklei/harness#v0.3.4 --skill … -g -t claude,codex`)
+restored the copies with their recorded hashes. The cause is not read from
+source.
 
 ### Narrowed `targets:` no longer scopes anything
 

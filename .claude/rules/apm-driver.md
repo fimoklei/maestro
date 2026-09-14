@@ -49,6 +49,10 @@ targets = detected tools), 0013 (narrowed-install reconciliation), 0014
   dependency to reach it, and never widen the removal — a named uninstall
   already spares every other dependency, including one from the same
   repository.
+- Expect an uninstall of a legacy per-skill entry to delete a root package's
+  copies. Verify every remaining entry's `deployed_files` exist afterwards,
+  and re-install a root package at its same ref when they do not
+  (`docs/apm-behavior.md` § A legacy entry's removal).
 - Read what is deployed from `deployed_files` plus the file's existence,
   never from `skill_subset` or `skills:`; both keep names apm has already
   dropped.
