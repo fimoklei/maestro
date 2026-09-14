@@ -88,7 +88,7 @@ export function GlobalTargets({
         />
       ) : (
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {pendingOperation ? (
+          {pendingOperation && !isUpdating ? (
             <div className="lg:col-span-2">
               <UnfinishedOperationHead
                 pending={pendingOperation}
@@ -98,14 +98,18 @@ export function GlobalTargets({
               />
             </div>
           ) : null}
-          {isUpdating ? (
-            // No control anywhere in the section while apm runs, so a second
-            // operation cannot be started (spec story 27).
-            <div className="lg:col-span-2">
-              <UpdatingLine release={updatingRelease(tools)} />
+          {isUpdating || updateAction ? (
+            // The action stays mounted through the run, so its dialog lives to
+            // show the outcome (#980); it disables its own trigger meanwhile.
+            <div className="flex flex-wrap items-center justify-end lg:col-span-2">
+              {isUpdating ? (
+                // No enabled control in the section while apm runs (story 27).
+                <div className="mr-auto">
+                  <UpdatingLine release={updatingRelease(tools)} />
+                </div>
+              ) : null}
+              {updateAction}
             </div>
-          ) : updateAction ? (
-            <div className="flex justify-end lg:col-span-2">{updateAction}</div>
           ) : null}
           {tools.map((group) => (
             <ToolTargetCard

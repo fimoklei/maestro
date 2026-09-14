@@ -44,7 +44,11 @@ export function GlobalDeployStatePanel({
       isRetryingOperation={retry.isPending}
       isUpdating={update.isPending}
       updateAction={
-        behind || update.data !== undefined || update.isError ? (
+        // Pending too: a mid-run read can find the update unfinished (#980).
+        behind ||
+        update.isPending ||
+        update.data !== undefined ||
+        update.isError ? (
           // Named by the tools it covers: one Update moves the whole detected
           // set (spec story 32).
           <UpdateTargetAction

@@ -67,10 +67,13 @@ export function DeployStatePanel({
             behind={behind}
             mixedReleases={pending?.kind === "update"}
           />
-          {/* Kept mounted while the update has an answer: the dialog holds the
-              outcome the reader just earned, even though the target is no
-              longer offered another Update (#954). */}
-          {behind || update.data !== undefined || update.isError ? (
+          {/* Kept mounted while the update runs or has an answer: the dialog
+              holds the outcome the reader just earned, even though the target
+              is no longer offered another Update (#954, #980). */}
+          {behind ||
+          update.isPending ||
+          update.data !== undefined ||
+          update.isError ? (
             <UpdateTargetAction
               targetName={label}
               target={{ kind: "repo", repoPath: repo }}
