@@ -88,6 +88,10 @@ const HEADINGS: Record<DeployStateCode, Heading> = {
     level: "warning",
     label: "Local edits in the deployed copy",
   },
+  "deployed-diverged-pinned-per-skill": {
+    level: "warning",
+    label: "Local edits in the deployed copy",
+  },
   "deployed-unverifiable": {
     level: "warning",
     label: "Local edits unverifiable",
@@ -299,6 +303,13 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
       "Nothing was removed. Deploy again to replace the local edits, then remove the skill.",
     detail:
       "apm keeps an edited or added file and stops part-way; a copy nothing deploys to is reset by hand.",
+  },
+  // A pinned target takes no deploy, so this one names no control (#966).
+  "deployed-diverged-pinned-per-skill": {
+    message:
+      "Nothing was removed. Save the edits, restore the copy from its pinned release, then select Remove skill again.",
+    detail:
+      "Deploy refuses a target pinned per skill. The Harness clone holds each release.",
   },
   "cost-not-acknowledged": {
     message:

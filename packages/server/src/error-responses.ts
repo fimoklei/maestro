@@ -97,6 +97,7 @@ export const removeErrorResponses: ErrorTable<RemoveDeployedSkillError> = {
   // 409, as on the deploy table: apm would abort on the edited file after
   // deleting the rest, so the copy is the user's to reset first (#775).
   "deployed-diverged-from-lock": { status: 409 },
+  "deployed-diverged-pinned-per-skill": { status: 409 },
   // 409: the request is well-formed, but the copy on disk is not the one it
   // agreed to lose — either it changed since, or nothing was agreed at all.
   // What it costs now travels beside this refusal, never inside it (#364).
@@ -120,6 +121,8 @@ export const removePreflightErrorResponses: ErrorTable<RemovePreflightError> = {
   "no-supported-tool": removeErrorResponses["no-supported-tool"],
   "deployed-diverged-from-lock":
     removeErrorResponses["deployed-diverged-from-lock"],
+  "deployed-diverged-pinned-per-skill":
+    removeErrorResponses["deployed-diverged-pinned-per-skill"],
   "preflight-failed": { status: 502 },
 };
 

@@ -333,6 +333,17 @@ describe("remove notices", () => {
       },
     ],
     [
+      "deployed-diverged-pinned-per-skill",
+      {
+        level: "warning",
+        label: "Local edits in the deployed copy",
+        message:
+          "Nothing was removed. Save the edits, restore the copy from its pinned release, then select Remove skill again.",
+        detail:
+          "Deploy refuses a target pinned per skill. The Harness clone holds each release.",
+      },
+    ],
+    [
       "cost-not-acknowledged",
       {
         level: "warning",
@@ -568,6 +579,7 @@ describe("every deploy and remove notice", () => {
     "no-published-tag",
     "local-diverged-from-tag",
     "deployed-diverged-from-lock",
+    "deployed-diverged-pinned-per-skill",
     "deployed-unverifiable",
     "deployed-unreadable",
     "lockfile-malformed",

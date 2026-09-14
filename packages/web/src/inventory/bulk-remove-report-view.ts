@@ -56,6 +56,7 @@ const FAILURE_REASON: Record<RemoveDeployedSkillError, string> = {
   "ref-unresolvable": "Version could not be resolved",
   "deployed-unreadable": "Deployed copy could not be read",
   "deployed-diverged-from-lock": "Local edits in the deployed copy",
+  "deployed-diverged-pinned-per-skill": "Local edits in the deployed copy",
   // Never "its copy changed": the run may have agreed to nothing at all, and a
   // row has no ledger to state what the check found instead (J04, #364).
   "cost-not-acknowledged": "What it would delete was never confirmed",

@@ -59,6 +59,9 @@ export type RemoveDeployedSkillError =
   | "ref-unresolvable"
   | "deployed-unreadable"
   | "deployed-diverged-from-lock"
+  // The same edits on a target that takes no deploy, so no control resets them
+  // (#966).
+  | "deployed-diverged-pinned-per-skill"
   | "cost-not-acknowledged"
   | "remove-in-progress"
   // The consumer's apm.yml holds a Harness dependency Maestro will not edit, so
@@ -166,7 +169,7 @@ export type RemovePreflightError =
   | "invalid-name"
   | "repo-not-registered"
   | "no-supported-tool"
-  | "deployed-diverged-from-lock"
+  | LocalEditsRefusal
   | "preflight-failed";
 
 // The check's answer: a price the confirmation can state, or the one state
@@ -180,7 +183,11 @@ type Priced =
       check: RemoveCheck;
       reclaim: ReclaimConsent | null;
     }
-  | { ok: false; error: "deployed-diverged-from-lock" };
+  | { ok: false; error: LocalEditsRefusal };
+
+type LocalEditsRefusal =
+  | "deployed-diverged-from-lock"
+  | "deployed-diverged-pinned-per-skill";
 
 // `detected` is not what the guard reads — apm deletes by its own recorded
 // targets. It feeds the cleanup after a successful removal (#339); required on
@@ -347,13 +354,28 @@ export class RemoveDeployedSkill {
     // One diverged copy refuses the whole set: apm's uninstall has no -t, so it
     // would abort on that copy after deleting the others (#775).
     if (copies.findings.some((finding) => finding.verdict === "local-edits")) {
-      return { ok: false, error: "deployed-diverged-from-lock" };
+      return { ok: false, error: await this.localEditsRefusal(input.target) };
     }
     const check: RemoveCheck =
       scope.scope === "repo"
         ? repoCheck(soleVerdict(copies))
         : { scope: "global", tools: toolChecks(copies.findings) };
     return { ok: true, copies, check, reclaim };
+  }
+
+  // Deploy again resets an edited copy only where a deploy can run, and a
+  // target still pinned per skill refuses every deploy (#945, #966).
+  private async localEditsRefusal(
+    target: DeployTarget,
+  ): Promise<LocalEditsRefusal> {
+    const origin = (await this.deps.inventoryOrigin?.()) ?? null;
+    const current =
+      origin === null
+        ? undefined
+        : await this.deps.selection?.readTarget(target, origin);
+    return current?.kind === "pinned-per-skill"
+      ? "deployed-diverged-pinned-per-skill"
+      : "deployed-diverged-from-lock";
   }
 
   // One answer for a repo's single copy; per tool for global, which is the
