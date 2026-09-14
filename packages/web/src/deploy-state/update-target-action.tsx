@@ -28,7 +28,7 @@ export function UpdateTargetAction({
   // from the card, which adds no skill of its own (#955).
   add?: string;
   // The card owns the mutation: while apm runs it reads `Updating to v0.3.4…`
-  // and carries no control at all (spec story 27).
+  // and this trigger stays only disabled, to keep the dialog (story 27, #980).
   update: ReturnType<typeof useUpdateTarget>;
   // False once the answer is in: an incomplete Update leaves the target with an
   // unfinished operation, which is converged before another Update is offered.
