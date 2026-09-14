@@ -12,7 +12,7 @@ const HARNESS = "fimoklei/agent-harness";
 const ROOT = `github.com/${HARNESS}`;
 const target: DeployTarget = { kind: "repo", repoPath: "/repo" };
 
-function buildUseCase() {
+function buildUseCase(copy: "clean" | "diverged" = "clean") {
   const world = selectionWorld();
   const deps = {
     registry: { isRegistered: async () => true },
@@ -23,7 +23,7 @@ function buildUseCase() {
       }),
     },
     deployedContent: {
-      classify: async () => "clean" as const,
+      classify: async () => copy,
       contentDigest: async () => null,
     },
     apm: { removeSkill: async () => ({ ok: true as const }) },
@@ -169,6 +169,59 @@ describe("RemoveDeployedSkill on a target following one release", () => {
       ok: false,
       error: "not-deployed",
     });
+    expect(world.calls).toEqual([]);
+  });
+});
+
+// Deploy again resets an edited copy only on a target that follows one release;
+// a target still pinned per skill refuses every deploy (#945, #966).
+describe("RemoveDeployedSkill refusing a copy with local edits", () => {
+  const request = { type: "skill", name: "tdd", target };
+
+  it.each<DeployTarget>([target, { kind: "global" }])(
+    "names the pinned-per-skill refusal on a target still pinned per skill (%o)",
+    async (pinned) => {
+      const request = { type: "skill", name: "tdd", target: pinned };
+      const { world, deps } = buildUseCase("diverged");
+      // A pinned target is removed by its own per-skill ref, so the lookup answers.
+      const remove = new RemoveDeployedSkill({
+        ...deps,
+        deployedRef: {
+          resolve: async () => ({
+            ok: true as const,
+            ref: `${ROOT}/.apm/skills/tdd#v0.4.0`,
+            version: "v0.4.0",
+          }),
+        },
+      });
+      world.files.set(
+        "/target/apm.lock.yaml",
+        `dependencies:
+- repo_url: ${HARNESS}
+  host: github.com
+  resolved_ref: v0.4.0
+  virtual_path: .apm/skills/tdd
+  package_type: claude_skill
+`,
+      );
+
+      const refusal = {
+        ok: false,
+        error: "deployed-diverged-pinned-per-skill",
+      };
+      expect(await remove.preflight(request)).toEqual(refusal);
+      expect(await remove.execute(request)).toEqual(refusal);
+      expect(world.calls).toEqual([]);
+    },
+  );
+
+  it("keeps the Deploy again refusal on a target following one release", async () => {
+    const { world, remove } = buildUseCase("diverged");
+    world.seed({ release: "v0.6.0", skills: ["tdd"] });
+
+    const refusal = { ok: false, error: "deployed-diverged-from-lock" };
+    expect(await remove.preflight(request)).toEqual(refusal);
+    expect(await remove.execute(request)).toEqual(refusal);
     expect(world.calls).toEqual([]);
   });
 });

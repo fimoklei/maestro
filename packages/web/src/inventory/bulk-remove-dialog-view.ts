@@ -65,6 +65,7 @@ export const REFUSAL_REASON: Record<RefusalCode, string> = {
   "invalid-name": "Unusable skill name",
   "unsupported-primitive-type": "Type cannot be removed",
   "deployed-diverged-from-lock": "Local changes in deployed files",
+  "deployed-diverged-pinned-per-skill": "Local changes in deployed files",
   "invalid-body": "Malformed request",
   // Never a refusal — a check that could not run leaves the removal on offer,
   // and its target is priced under cost instead. Listed so a new code in
