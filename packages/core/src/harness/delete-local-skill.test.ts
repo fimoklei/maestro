@@ -42,6 +42,8 @@ function build(overrides?: {
   const git: HarnessGitPort = {
     fetch: record("git", "fetch"),
     readFacts: record("git", "readFacts"),
+    catchUp: record("git", "catchUp"),
+    readCloneSync: record("git", "readCloneSync"),
     readSkillTrees: record("git", "readSkillTrees"),
     readSkillAuthors: record("git", "readSkillAuthors"),
     readMovementTrees: async () =>

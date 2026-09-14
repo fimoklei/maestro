@@ -11,6 +11,7 @@ const HARNESS: HarnessState = {
   defaultBranch: "main",
   releaseState: "released",
   freshness: { outcome: "fetched", lastFetchedAt: "2026-08-03T11:56:00.000Z" },
+  cloneSync: "current",
   localHeadCommit: "local-head",
   stages: {
     proposal: { outcome: "read", rows: [], bound: null },

@@ -4,6 +4,7 @@ import type {
   HarnessReviewRead,
 } from "./harness-review-port";
 import type {
+  CloneSync,
   HarnessFacts,
   HarnessFetchOutcome,
   HarnessFreshness,
@@ -86,6 +87,9 @@ function buildRead(overrides?: {
   // The whole port, when a case is about how it is called rather than what it
   // answered.
   readReviews?: HarnessReviewPort["readReviews"];
+  // Where the clone stands against its upstream, and what a catch-up does.
+  catchUp?: () => Promise<void>;
+  readCloneSync?: () => Promise<CloneSync>;
 }) {
   const head =
     overrides?.facts?.defaultBranchCommit ?? FACTS.defaultBranchCommit;
@@ -97,6 +101,8 @@ function buildRead(overrides?: {
     git: {
       fetch: overrides?.fetch ?? (async () => "fetched"),
       readFacts: async () => ({ ...FACTS, ...overrides?.facts }),
+      catchUp: overrides?.catchUp ?? (async () => {}),
+      readCloneSync: overrides?.readCloneSync ?? (async () => "current"),
       readSkillTrees: async (_root: string, ref: string) =>
         overrides?.trees?.[ref] === undefined ? [] : overrides.trees[ref],
       readSkillAuthors: async (_root: string, ref: string, names: string[]) => {
@@ -161,6 +167,7 @@ describe("ReadHarnessState", () => {
         defaultBranch: "main",
         releaseState: "released",
         freshness: FETCHED,
+        cloneSync: "current",
         localHeadCommit: "local-head",
         stages: {
           proposal: { outcome: "read", rows: [], bound: null },
@@ -729,6 +736,8 @@ describe("ReadHarnessState refresh", () => {
           readFor.push(root);
           return FACTS;
         },
+        catchUp: async () => {},
+        readCloneSync: async () => "current",
         readSkillTrees: async () => [],
         readSkillAuthors: async () => ({}),
         readMovementTrees: async (root) => {
@@ -767,6 +776,49 @@ describe("ReadHarnessState refresh", () => {
 
     expect(fetched).toEqual(["/harness-a"]);
     expect(readFor).toEqual(["/harness-a", "/harness-a"]);
+  });
+
+  it("catches the clone up with what the fetch brought, before reading it", async () => {
+    let fetched = false;
+    let sync: CloneSync = "local-changes";
+    const read = buildRead({
+      fetch: async () => {
+        fetched = true;
+        return "fetched";
+      },
+      catchUp: async () => {
+        sync = fetched ? "current" : sync;
+      },
+      readCloneSync: async () => sync,
+    });
+
+    await expect(read.refresh(AT)).resolves.toMatchObject({
+      ok: true,
+      state: { cloneSync: "current" },
+    });
+  });
+
+  it("reports a clone that could not catch up", async () => {
+    const read = buildRead({ readCloneSync: async () => "diverged" });
+
+    await expect(read.refresh(AT)).resolves.toMatchObject({
+      ok: true,
+      state: { cloneSync: "diverged" },
+    });
+  });
+
+  it("never moves the clone on a plain read", async () => {
+    const catchUp = vi.fn(async () => {});
+    const read = buildRead({
+      catchUp,
+      readCloneSync: async () => "local-changes",
+    });
+
+    await expect(read.execute()).resolves.toMatchObject({
+      ok: true,
+      state: { cloneSync: "local-changes" },
+    });
+    expect(catchUp).not.toHaveBeenCalled();
   });
 
   it("answers two refreshes at once with one fetch", async () => {

@@ -145,6 +145,7 @@ describe("stageSections", () => {
     defaultBranch: "main",
     releaseState: "released",
     freshness: { outcome: "fetched", lastFetchedAt: READ_AT },
+    cloneSync: "current",
     localHeadCommit: "local-head",
     stages: {
       proposal: { outcome: "read", rows: [], bound: null },
@@ -303,6 +304,7 @@ describe("harnessAnnouncement", () => {
     defaultBranch: "main",
     releaseState: "released",
     freshness: { outcome: "fetched", lastFetchedAt: READ_AT },
+    cloneSync: "current",
     localHeadCommit: "local-head",
     stages: {
       proposal: { outcome: "read", rows: [], bound: null },
@@ -392,6 +394,7 @@ describe("journeyConfirmedEmpty", () => {
     defaultBranch: "main",
     releaseState: "never-released",
     freshness: { outcome: "fetched", lastFetchedAt: null },
+    cloneSync: "current",
     localHeadCommit: "local-head",
     stages,
   });

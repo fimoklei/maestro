@@ -6,6 +6,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import { catchUpClone } from "../git/catch-up-clone";
 import { gitOptions, indexOptions } from "../git/non-interactive";
 import { harnessSkillSubpath } from "../inventory/harness-layout";
 import type { InventoryGitPort } from "./deploy-skill";
@@ -23,20 +24,16 @@ export class InventoryGitAdapter implements InventoryGitPort {
   }
 
   // Catches the clone up with what a merged promotion actually released
-  // (#666). Best-effort: an offline fetch, a missing upstream, or real local
-  // edits all leave the clone exactly as it was.
+  // (#666), by the same rule as the Harness Read (#978). An offline fetch
+  // still catches up to the refs this clone already holds.
   async syncBeforeDeploy(): Promise<void> {
     const root = await this.root();
-    try {
-      await run("git", ["-C", root, "fetch", "origin", "--tags"], gitOptions());
-      await run(
-        "git",
-        ["-C", root, "merge", "--ff-only", "@{u}"],
-        gitOptions(),
-      );
-    } catch {
-      // Best-effort, per the comment above.
-    }
+    await run(
+      "git",
+      ["-C", root, "fetch", "origin", "--tags"],
+      gitOptions(),
+    ).catch(() => {});
+    await catchUpClone(root);
   }
 
   async skillExistsAtTag(tag: string, name: string): Promise<boolean> {

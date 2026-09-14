@@ -48,6 +48,8 @@ function buildRead(overrides?: {
       overrides && "root" in overrides ? overrides.root : "/harness",
     git: {
       fetch: async () => "fetched",
+      catchUp: async () => {},
+      readCloneSync: async () => "current" as const,
       readFacts: async () => ({ ...FACTS, ...overrides?.facts }),
       readSkillTrees: async (_root: string, ref: string) => {
         overrides?.onReadSkillTrees?.(ref);
