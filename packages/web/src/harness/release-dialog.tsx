@@ -166,7 +166,7 @@ function PlanBody({
           className="flex flex-col gap-1.5 rounded-control border border-line-drift bg-amber-bg px-2.5 py-2.5"
         >
           <span className="font-semibold font-ui text-amber-ink text-desc">
-            Structural checks — the release still runs
+            Skill checks need attention
           </span>
           <ul className="m-0 flex list-none flex-col gap-1 p-0">
             {plan.findings.map((finding) => (
@@ -196,7 +196,7 @@ function PlanBody({
             {/* Maestro's proposal is a fact about the delta, so it stands
                 unchanged beside whatever the author picks. */}
             <span className="font-ui text-desc text-muted">
-              {`Maestro proposed ${plan.versions[plan.proposedStep]} — ${plan.reason}`}
+              {`Suggested: ${plan.versions[plan.proposedStep]}. ${plan.reason}`}
             </span>
           </div>
           <SegmentedControl

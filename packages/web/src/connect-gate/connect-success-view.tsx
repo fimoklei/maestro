@@ -36,15 +36,15 @@ function completionCopy(
       };
     case "joined":
       return {
-        title: `✓ Harness joined · ${found}`,
+        title: `✓ Harness connected · ${found}`,
         detail: "The cloned Harness is ready in Inventory.",
         continueLabel: "Continue to Inventory",
       };
     case "scaffolded":
       return {
-        title: "✓ Harness scaffolded · The Harness is empty",
+        title: "✓ Harness created. It has no skills yet.",
         detail:
-          "The skill-check workflow is advisory. It only becomes a gate if the team makes it a required check.",
+          "Skill checks do not block releases unless the team makes them required.",
         continueLabel: "Continue to Harness",
       };
   }

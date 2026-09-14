@@ -7,13 +7,13 @@ const refusal = (code: string) => new HttpError(400, "ignored", code);
 describe("registerMessage", () => {
   it("asks for an absolute path when none was sent", () => {
     expect(registerMessage(refusal("missing"))).toBe(
-      "No path was sent. Name the repository's absolute path.",
+      "Enter the repository's absolute path.",
     );
   });
 
   it("shows what an absolute path looks like", () => {
     expect(registerMessage(refusal("relative"))).toBe(
-      "A repository is registered by its absolute path, like /Users/name/code/my-repo.",
+      "Enter the repository's absolute path, for example /Users/name/code/my-repo.",
     );
   });
 

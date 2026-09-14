@@ -155,6 +155,6 @@ describe("ImportDialog", () => {
   it("says nothing has been picked before a folder is chosen", () => {
     renderDialog(null);
 
-    expect(screen.getByText("No folder picked yet")).toBeInTheDocument();
+    expect(screen.getByText("Choose a skill folder")).toBeInTheDocument();
   });
 });

@@ -7,8 +7,8 @@ export const LOADING_INVENTORY_CONNECTION = "Loading the Inventory connection…
 // action rides at the call site.
 export const INVENTORY_NOT_READ = {
   level: "error",
-  label: "Inventory not read",
-  message: "Re-read Inventory to try again.",
+  label: "Could not read Inventory",
+  message: "Select Re-read Inventory to try again.",
 } as const;
 
 // The deploy picker's state line for a skill already deployed on the chosen
@@ -28,5 +28,5 @@ export const NO_RELEASED_SKILLS = {
   level: "info",
   label: "No released skills",
   message:
-    "Inventory shows released skills only. Creating a release on the Harness view will fill it.",
+    "Inventory shows skills from the latest release. Open Harness, then create a release to add skills.",
 } as const;

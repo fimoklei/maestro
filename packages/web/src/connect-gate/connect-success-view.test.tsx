@@ -19,16 +19,16 @@ const outcomeCases: Array<{
   },
   {
     outcome: "joined",
-    expected: [/harness joined/i, /7 primitives found/i, /cloned harness/i],
+    expected: [/harness connected/i, /7 primitives found/i, /cloned harness/i],
     forbidden: [/deploys never write back to this harness/i, /advisory/i],
   },
   {
     outcome: "scaffolded",
     expected: [
-      /harness scaffolded/i,
-      /harness is empty/i,
-      /skill-check workflow is advisory/i,
-      /only becomes a gate if the team makes it a required check/i,
+      /harness created/i,
+      /has no skills yet/i,
+      /skill checks do not block releases/i,
+      /team makes them required/i,
     ],
     forbidden: [
       /deploys never write back to this harness/i,

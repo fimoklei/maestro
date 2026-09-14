@@ -37,7 +37,7 @@ export function requestShapeNotice(error: unknown): NoticeContent | null {
     ?.detail;
   return {
     level: "error",
-    label: "Request not accepted",
+    label: "Maestro could not start the action",
     message: error.message,
     ...(typeof detail === "string" ? { detail } : {}),
   };

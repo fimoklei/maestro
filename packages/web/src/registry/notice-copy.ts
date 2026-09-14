@@ -6,9 +6,9 @@ import { requestShapeNotice } from "../ui/notice-table";
 // its own subject — unlike the connect form's four, which start at the
 // recovery (`inventory/connect-notice.ts`, #465 decision 9).
 const registerSentences: Record<RepoPathError | "central-inventory", string> = {
-  missing: "No path was sent. Name the repository's absolute path.",
+  missing: "Enter the repository's absolute path.",
   relative:
-    "A repository is registered by its absolute path, like /Users/name/code/my-repo.",
+    "Enter the repository's absolute path, for example /Users/name/code/my-repo.",
   "not-found":
     "Nothing exists there to register. Check the spelling, or pick another folder.",
   "not-a-directory":

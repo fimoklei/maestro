@@ -53,7 +53,7 @@ in `~/.maestro/config.json`.
 ### When shelling out to APM or reading external files/lockfiles → Read `.claude/rules/security.md`
 ### When writing a React component or client-side data access → Read `.claude/rules/frontend.md`
 ### When changing what `packages/web` renders → Read `.claude/rules/design.md`
-### When writing any word the cockpit shows → Read `.claude/rules/copy.md`
+### When authoring or reviewing user-facing copy, including controls and cockpit-visible server messages → Read `.claude/rules/copy.md` and complete its copy review
 ### When driving `apm` or parsing its lockfile/output → Read `.claude/rules/apm-driver.md`
 ### When driving `gh` or parsing its output → Read `.claude/rules/gh-driver.md`
 ### When starting a grill or picking the next job → Use the `jobs` skill; the board's Legend (`docs/jobs.md`) holds the transition rules

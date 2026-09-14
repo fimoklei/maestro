@@ -945,7 +945,7 @@ describe("Harness home base", () => {
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("v1.3.0")).toBeInTheDocument();
     expect(
-      within(dialog).getByText(/proposed v1\.3\.0 — A skill was added\./),
+      within(dialog).getByText(/Suggested: v1\.3\.0\. A skill was added\./),
     ).toBeInTheDocument();
     // The advisory finding shows without disabling anything (#519).
     expect(within(dialog).getByText(/broken/)).toBeInTheDocument();

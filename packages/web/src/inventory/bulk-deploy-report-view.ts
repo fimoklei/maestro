@@ -44,7 +44,8 @@ export function bulkDeploySummary(input: {
   const named = parts
     .filter(([count]) => count > 0)
     .map(([count, label]) => `${count} ${label}`);
-  const tail = named.length > 0 ? named.join(" · ") : "nothing to do";
+  const tail =
+    named.length > 0 ? named.join(" · ") : "all selected skills are up to date";
   return `Deployed to ${input.targetLabel} · ${tail}`;
 }
 

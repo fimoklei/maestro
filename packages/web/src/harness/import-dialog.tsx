@@ -89,7 +89,7 @@ export function ImportDialog({
               title={source ?? undefined}
               className="min-w-0 flex-1 truncate font-mono text-data text-fg"
             >
-              {source === null ? "No folder picked yet" : targetLabel(source)}
+              {source === null ? "Choose a skill folder" : targetLabel(source)}
             </span>
             <Button
               type="button"

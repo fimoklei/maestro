@@ -406,7 +406,7 @@ describe("RemoveSkillDialog", () => {
 
   // A warning and a failure used to render as the same object: same fill, same
   // border, same padding, told apart only by a glyph one of them lacked. "This
-  // may cost work" and "Removal unproven" mean opposite things.
+  // may cost work" and "Removal outcome unknown" mean opposite things.
   it("wears danger with a glyph when the removal failed, not the amber of a warning", () => {
     renderDialog({ error: FAILURE });
 
@@ -421,7 +421,9 @@ describe("RemoveSkillDialog", () => {
     // word, so it survives without colour perception.
     renderDialog({ error: FAILURE });
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/Removal unproven/);
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /Removal outcome unknown/,
+    );
   });
 
   // The design handoff labels this block in apm's terms (`apm exited 1`, state
@@ -433,11 +435,13 @@ describe("RemoveSkillDialog", () => {
     });
 
     const alert = screen.getByRole("alert");
-    expect(within(alert).getByText("Removal unproven")).toBeInTheDocument();
+    expect(
+      within(alert).getByText("Removal outcome unknown"),
+    ).toBeInTheDocument();
     // The label is the panel's, not a mono echo of the reason beside it.
-    expect(within(alert).getByText("Removal unproven").className).not.toContain(
-      "font-mono",
-    );
+    expect(
+      within(alert).getByText("Removal outcome unknown").className,
+    ).not.toContain("font-mono");
   });
 
   // apm's uninstall reports one outcome for every tool at once, so after a
@@ -913,7 +917,7 @@ describe("RemoveSkillDialog", () => {
     it("never names a failure more quietly than it explains it", () => {
       renderDialog({ error: FAILURE });
 
-      const label = screen.getByText("Removal unproven");
+      const label = screen.getByText("Removal outcome unknown");
       const message = screen.getByText(FAILURE.message);
       expect(stepOf(label)).toBeGreaterThanOrEqual(0);
       expect(stepOf(label)).toBeLessThanOrEqual(stepOf(message));

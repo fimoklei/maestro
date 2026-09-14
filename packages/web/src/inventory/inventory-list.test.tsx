@@ -130,7 +130,7 @@ describe("InventoryList", () => {
     expect(screen.getByText("No released skills")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Inventory shows released skills only. Creating a release on the Harness view will fill it.",
+        "Inventory shows skills from the latest release. Open Harness, then create a release to add skills.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
@@ -543,12 +543,12 @@ describe("InventoryList", () => {
       <InventoryList primitives={primitives} repos={[]} registryReady />,
     );
 
-    const checkbox = screen.getByRole("checkbox", { name: /stage tdd/i });
+    const checkbox = screen.getByRole("checkbox", { name: /select tdd/i });
     expect(checkbox).not.toBeChecked();
 
     await userEvent.click(checkbox);
 
-    expect(screen.getByRole("checkbox", { name: /stage tdd/i })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /select tdd/i })).toBeChecked();
   });
 
   it("stages a skill without opening its detail pane", async () => {
@@ -565,7 +565,9 @@ describe("InventoryList", () => {
       />,
     );
 
-    await userEvent.click(screen.getByRole("checkbox", { name: /stage tdd/i }));
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /select tdd/i }),
+    );
 
     // Model A: staging never toggles the inspection surface.
     expect(
@@ -594,7 +596,7 @@ describe("InventoryList", () => {
       screen.getByRole("complementary", { name: /tdd detail/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("checkbox", { name: /stage tdd/i }),
+      screen.getByRole("checkbox", { name: /select tdd/i }),
     ).not.toBeChecked();
   });
 
@@ -607,18 +609,20 @@ describe("InventoryList", () => {
       <InventoryList primitives={primitives} repos={[]} registryReady />,
     );
 
-    await userEvent.click(screen.getByRole("checkbox", { name: /stage tdd/i }));
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /select tdd/i }),
+    );
 
     const search = screen.getByRole("searchbox", { name: /search/i });
     await userEvent.type(search, "cave");
     // tdd is filtered out of view here, but its staged state must survive.
     expect(
-      screen.queryByRole("checkbox", { name: /stage tdd/i }),
+      screen.queryByRole("checkbox", { name: /select tdd/i }),
     ).not.toBeInTheDocument();
 
     await userEvent.clear(search);
 
-    expect(screen.getByRole("checkbox", { name: /stage tdd/i })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /select tdd/i })).toBeChecked();
   });
 
   it("reports how many staged skills the current filter hides", async () => {
@@ -632,20 +636,24 @@ describe("InventoryList", () => {
 
     // Nothing staged, nothing to bulk-deploy: the strip stays out of the way.
     expect(
-      screen.queryByRole("status", { name: /staged for bulk deploy/i }),
+      screen.queryByRole("status", { name: /selected for bulk deploy/i }),
     ).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("checkbox", { name: /stage tdd/i }));
     await userEvent.click(
-      screen.getByRole("checkbox", { name: /stage caveman/i }),
+      screen.getByRole("checkbox", { name: /select tdd/i }),
+    );
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /select caveman/i }),
     );
     await userEvent.type(
       screen.getByRole("searchbox", { name: /search/i }),
       "cave",
     );
 
-    const bar = screen.getByRole("status", { name: /staged for bulk deploy/i });
-    expect(bar).toHaveTextContent(/2 staged for bulk deploy/i);
+    const bar = screen.getByRole("status", {
+      name: /selected for bulk deploy/i,
+    });
+    expect(bar).toHaveTextContent(/2 selected for bulk deploy/i);
     expect(bar).toHaveTextContent(/1 hidden by the filter/i);
   });
 
@@ -670,14 +678,18 @@ describe("InventoryList", () => {
       <InventoryList primitives={primitives} repos={[]} registryReady />,
     );
 
-    await userEvent.click(screen.getByRole("checkbox", { name: /stage tdd/i }));
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /select tdd/i }),
+    );
     expect(
-      screen.getByRole("status", { name: /staged for bulk deploy/i }),
+      screen.getByRole("status", { name: /selected for bulk deploy/i }),
     ).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("checkbox", { name: /stage tdd/i }));
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /select tdd/i }),
+    );
     expect(
-      screen.queryByRole("status", { name: /staged for bulk deploy/i }),
+      screen.queryByRole("status", { name: /selected for bulk deploy/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -740,13 +752,13 @@ describe("InventoryList", () => {
     );
 
     const hitArea = screen
-      .getByRole("checkbox", { name: /stage tdd/i })
+      .getByRole("checkbox", { name: /select tdd/i })
       .closest("label");
     if (hitArea === null) throw new Error("checkbox has no label hit area");
 
     await userEvent.click(hitArea);
 
-    expect(screen.getByRole("checkbox", { name: /stage tdd/i })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /select tdd/i })).toBeChecked();
     expect(
       screen.queryByRole("complementary", { name: /tdd detail/i }),
     ).not.toBeInTheDocument();
