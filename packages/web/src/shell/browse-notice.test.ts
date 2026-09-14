@@ -39,7 +39,7 @@ describe("browseNotice", () => {
   it("states the permissions and asks for another folder", () => {
     expect(browseNotice(refusal("unreadable"))).toEqual({
       level: "error",
-      label: "Folder unreadable",
+      label: "Could not read folder",
       message: "Pick another folder.",
       detail: "Its permissions do not allow reading.",
     });
@@ -48,7 +48,7 @@ describe("browseNotice", () => {
   it("falls back to the folder staying unread for a code it does not cover", () => {
     expect(browseNotice(refusal("teleported"))).toEqual({
       level: "error",
-      label: "Folder not read",
+      label: "Could not read folder",
       message: "Maestro could not read this folder. Pick it again.",
       detail: undefined,
     });

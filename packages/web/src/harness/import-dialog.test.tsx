@@ -62,6 +62,24 @@ describe("ImportDialog", () => {
     expect(screen.getByRole("dialog")).toHaveAccessibleName("Update a skill");
   });
 
+  it("names an unchanged folder before asking for another one", () => {
+    renderDialog(DEEP, {
+      kind: "ready",
+      check: {
+        ...CHECK,
+        mode: "update",
+        sourceBlocker: "nothing-to-carry-back",
+      },
+    });
+
+    expect(
+      screen.getByRole("heading", { level: 2, name: "No changes to update" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Choose a folder with changes to update the skill."),
+    ).toBeInTheDocument();
+  });
+
   it("locks the name to the skill the folder came from", () => {
     renderDialog(DEEP, {
       kind: "ready",
@@ -82,7 +100,7 @@ describe("ImportDialog", () => {
     ).toBeInTheDocument();
   });
 
-  it("says the deployed copy is behind until it is deployed again", () => {
+  it("explains that deployed copies still need the updated skill", () => {
     renderDialog(
       DEEP,
       { kind: "ready", check: { ...CHECK, mode: "update" } },
@@ -90,7 +108,9 @@ describe("ImportDialog", () => {
     );
 
     expect(
-      screen.getByText(/deploy it again/, { exact: false }),
+      screen.getByText(
+        "The deployed copies still have the earlier version. Select View in Harness, then deploy the skill again.",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -106,7 +126,7 @@ describe("ImportDialog", () => {
     const confirmation = screen.getByText("Skill imported").closest("div")
       ?.parentElement as HTMLElement;
     expect(confirmation).toHaveTextContent(
-      "View your imported skill in Harness.",
+      "The skill was imported into the Harness. Select View in Harness to find it.",
     );
     expect(confirmation.textContent).not.toMatch(/release/i);
 

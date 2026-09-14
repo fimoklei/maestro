@@ -22,7 +22,7 @@ const browseHeadings: NoticeTable<BrowseError> = {
   },
   unreadable: {
     level: "error",
-    label: "Folder unreadable",
+    label: "Could not read folder",
     message: "Pick another folder.",
     detail: "Its permissions do not allow reading.",
   },
@@ -32,7 +32,7 @@ const browseHeadings: NoticeTable<BrowseError> = {
 // last read, so the sentence sends the user back to the picker (#688).
 export function browseNotice(error: unknown): NoticeContent | null {
   return noticeFromTable(browseHeadings, error, {
-    label: "Folder not read",
+    label: "Could not read folder",
     message: "Maestro could not read this folder. Pick it again.",
   });
 }

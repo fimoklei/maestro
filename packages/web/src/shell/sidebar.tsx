@@ -63,7 +63,8 @@ export function Sidebar() {
       <div className="m-label mt-5 mb-1.5 px-3">Targets</div>
       {firstRun ? (
         <p className="px-3 font-mono text-dim text-tag">
-          No targets yet. Select Connect Inventory to add one.
+          No targets yet. Select Connect Inventory to read the connected
+          Harness.
         </p>
       ) : (
         <>

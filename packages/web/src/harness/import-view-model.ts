@@ -50,16 +50,19 @@ export const importLabels = (
 ): { title: string; confirm: string; busy: string; hint: string } =>
   check?.mode === "update"
     ? {
-        title: "Update a skill",
+        title:
+          check.sourceBlocker === "nothing-to-carry-back"
+            ? "No changes to update"
+            : "Update a skill",
         confirm: "Update skill",
         busy: "Updating…",
-        hint: "The Harness's own folder for this skill is replaced, whole",
+        hint: "Updating replaces the skill folder in the Harness.",
       }
     : {
         title: "Import a skill",
         confirm: "Import skill",
         busy: "Importing…",
-        hint: "This becomes the folder name, and the name in SKILL.md is rewritten to match",
+        hint: "Maestro uses this as the folder name and updates the name in SKILL.md to match.",
       };
 
 export const advisoryTexts = (

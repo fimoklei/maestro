@@ -1868,7 +1868,7 @@ describe("Harness home base", () => {
 
     expect(
       await screen.findByText(
-        "Pull requests #41 and #44 both match this branch. Select View pull request #41 to close it.",
+        "Pull requests #41 and #44 both match this branch. Open the extra pull requests on GitHub and close them.",
       ),
     ).toBeInTheDocument();
     const menu = await openRowMenu("lint-rules", "Pending review");

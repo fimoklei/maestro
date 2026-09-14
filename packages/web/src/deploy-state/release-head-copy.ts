@@ -87,7 +87,7 @@ export function unfinishedOperationNotice(
       ...(desired.length === 0
         ? {}
         : {
-            detail: `Update to ${pending.release} incomplete: ${landed} of ${desired.length} skills landed.`,
+            detail: `Update to ${pending.release} incomplete: ${landed} of ${desired.length} skills now use this release.`,
           }),
     };
   }
