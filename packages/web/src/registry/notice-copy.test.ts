@@ -53,7 +53,9 @@ describe("registerMessage", () => {
   it("never renders the wrapper's own status line for an uncovered code", () => {
     expect(
       registerMessage(new HttpError(500, "Request failed with status 500.")),
-    ).toBe("Maestro could not register this repository. Try registering it again.");
+    ).toBe(
+      "Maestro could not register this repository. Try registering it again.",
+    );
   });
 
   it("states the same for a failure that never reached the server", () => {

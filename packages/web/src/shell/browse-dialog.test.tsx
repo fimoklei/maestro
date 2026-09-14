@@ -1006,7 +1006,9 @@ describe("BrowseDialog", () => {
       );
       expect(confirm).toHaveAccessibleDescription(/renamed, moved or deleted/i);
       expect(
-        screen.getByRole("heading", { name: "Choose a folder for the Harness" }),
+        screen.getByRole("heading", {
+          name: "Choose a folder for the Harness",
+        }),
       ).toBeInTheDocument();
     });
   });

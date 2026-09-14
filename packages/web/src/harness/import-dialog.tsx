@@ -152,7 +152,9 @@ export function ImportDialog({
               notice={{
                 level: "success",
                 label:
-                  imported.mode === "update" ? "Skill updated" : "Skill imported",
+                  imported.mode === "update"
+                    ? "Skill updated"
+                    : "Skill imported",
                 message:
                   imported.mode === "update"
                     ? "The skill was updated in the Harness. Select View in Harness to find it."

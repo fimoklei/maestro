@@ -439,8 +439,7 @@ const importHeadings: NoticeTable<ImportSkillError> = {
     label: "Copy from another Harness",
     message:
       "Select Change folder, then choose a folder that is not a copy deployed by another Harness.",
-    detail:
-      "Maestro can update only copies deployed by the connected Harness.",
+    detail: "Maestro can update only copies deployed by the connected Harness.",
   },
   "harness-copy-uncommitted": {
     level: "error",
@@ -462,7 +461,8 @@ const importHeadings: NoticeTable<ImportSkillError> = {
   "nothing-to-carry-back": {
     level: "info",
     label: "Folder already matches",
-    message: "This folder already matches the skill in the Harness. Select Close.",
+    message:
+      "This folder already matches the skill in the Harness. Select Close.",
     detail: "Choose a folder with changes to update the skill.",
   },
   "missing-manifest": {
