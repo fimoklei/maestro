@@ -3,7 +3,7 @@
 // failure leaves as a class, a read as a named field (ADR-0021).
 import { execFile } from "node:child_process";
 import { access, mkdtemp, rm } from "node:fs/promises";
-import { devNull, tmpdir } from "node:os";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { type GitOrigin, parseGitOrigin } from "../deploy/git-origin";
@@ -11,7 +11,8 @@ import {
   readConfiguredGitOriginUrl,
   readGitOriginUrl,
 } from "../deploy/git-origin-url";
-import { gitOptions, indexOptions } from "../git/non-interactive";
+import { catchUpClone, readCloneSync } from "../git/catch-up-clone";
+import { gitOptions, indexOptions, NO_HOOKS } from "../git/non-interactive";
 import { runGitText } from "../git/run-git-text";
 import { readRemoteDefaultBranch } from "../inventory/default-branch";
 import {
@@ -609,6 +610,9 @@ export class HarnessGitAdapter implements HarnessGitPort {
     return this.read(root, ["merge-base", remoteCommit, "HEAD"]);
   }
 
+  catchUp = catchUpClone;
+  readCloneSync = readCloneSync;
+
   // Local restoration's three reads, whole in their own module (ADR-0030).
   readLocalHeadCommit = readLocalHead;
   readStagedSkillDifference = readStagedDifference;
@@ -841,14 +845,6 @@ export class HarnessGitAdapter implements HarnessGitPort {
       });
   }
 }
-
-// The author's hooks are theirs, and these commands promise to leave the
-// checkout alone: a `pre-push` hook is free to write in the working tree, or to
-// fail after the remote already took the push. `devNull` is a hooks directory
-// git finds nothing in, so none of them run. Passed as `-c` rather than through
-// `GIT_CONFIG_*`, which would silently drop config the caller's env already
-// carries (#574).
-const NO_HOOKS = ["-c", `core.hooksPath=${devNull}`];
 
 // A run we cut off got no answer at all, which is the offline class —
 // reading it as a reply would put words in the remote's mouth. Anything else

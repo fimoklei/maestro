@@ -70,6 +70,17 @@ export type HarnessFreshness = {
 
 export type HarnessTag = { name: string; commit: string };
 
+// Where the clone stands against its upstream. `behind` is one the next
+// catch-up moves; `local-changes` holds uncommitted work on a path upstream
+// changed, so it stays put. A local commit ahead of upstream is `current`.
+export type CloneSync =
+  | "current"
+  | "behind"
+  | "local-changes"
+  | "diverged"
+  | "no-upstream"
+  | "unreadable";
+
 // `tags: null` is a namespace that could not be read at all — never a harness
 // with no releases. An empty list is only ever "looked, found none".
 export type HarnessFacts = {
@@ -101,6 +112,10 @@ export type HarnessSkillTrees = {
 export interface HarnessGitPort {
   fetch(root: string): Promise<HarnessFetchOutcome>;
   readFacts(root: string): Promise<HarnessFacts>;
+  // Moves the clone to its upstream only where no local work would be lost;
+  // never throws (#978).
+  catchUp(root: string): Promise<void>;
+  readCloneSync(root: string): Promise<CloneSync>;
   // One tree hash per canonical skill directory at `ref`, so the delta is read
   // from content rather than from which commits lead where. Null is a ref that
   // could not be read at all — never an empty harness.
@@ -202,6 +217,7 @@ export type HarnessState = {
   defaultBranch: string | null;
   releaseState: HarnessReleaseState;
   freshness: HarnessFreshness;
+  cloneSync: CloneSync;
   // The clone's last local commit, which a restoration is confirmed against.
   // One per Harness, not per row: it is the same commit for every skill, and
   // it is a fact to compare, never a source the browser may name (ADR-0030).
@@ -291,6 +307,9 @@ export class ReadHarnessState {
     at: Date,
   ): Promise<HarnessStateResult> {
     await recordFetch(this.deps, root, at);
+    // After the fetch, so landed work is compared with what GitHub holds now.
+    // A POST alone reaches here: catching up writes the working tree (#978).
+    await this.deps.git.catchUp(root);
     // The root resolved above, never a second lookup: a reconnect in between
     // would fetch one harness and report the other.
     return this.stateFor(root);
@@ -441,6 +460,7 @@ export class ReadHarnessState {
             ? releaseState(released, head, movements)
             : "unknown",
         freshness,
+        cloneSync: await this.deps.git.readCloneSync(root),
         localHeadCommit: await this.deps.git.readLocalHeadCommit(root),
         stages: buildStages({
           origin,

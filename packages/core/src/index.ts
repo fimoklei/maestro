@@ -177,6 +177,7 @@ export {
   type PublishReleaseResult,
 } from "./harness/publish-release";
 export {
+  type CloneSync,
   type HarnessFreshness,
   type HarnessReleaseState,
   type HarnessState,

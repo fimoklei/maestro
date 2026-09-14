@@ -8,6 +8,8 @@ const unreachable = (): never => {
 export const unreachableHarnessGit = () => ({
   fetch: unreachable,
   readFacts: unreachable,
+  catchUp: unreachable,
+  readCloneSync: unreachable,
   readSkillTrees: unreachable,
   readSkillAuthors: unreachable,
   readMovementTrees: unreachable,

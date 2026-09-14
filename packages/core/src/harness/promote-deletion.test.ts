@@ -78,6 +78,8 @@ function buildDeletion(overrides?: {
     locks: new InFlightLocks(),
     git: {
       fetch: async () => overrides?.fetchOutcome ?? "fetched",
+      catchUp: async () => {},
+      readCloneSync: async () => "current" as const,
       readFacts: async () => ({ ...FACTS, ...overrides?.facts }),
       readSkillTrees: async (_root: string, ref: string) =>
         (overrides?.trees ?? TREES)[ref] ?? [],

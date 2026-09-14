@@ -245,6 +245,31 @@ describe("InventoryGitAdapter.syncBeforeDeploy", () => {
   const adapter = () =>
     new InventoryGitAdapter({ resolveRoot: async () => root });
 
+  it("clears a carried-back change once it is released, and catches up", async () => {
+    // #978: the same rule as the Harness Read, so deploy never reads a
+    // landed change as local work standing in the way.
+    await writeFile(
+      join(author, ".apm", "skills", "tdd", "SKILL.md"),
+      "---\nname: tdd\ndescription: Carried back\n---\n",
+      "utf8",
+    );
+    await git(author, "commit", "-am", "carry back tdd");
+    await git(author, "push", "origin", "main");
+    await writeFile(
+      join(root, ".apm", "skills", "tdd", "SKILL.md"),
+      "---\nname: tdd\ndescription: Carried back\n---\n",
+      "utf8",
+    );
+
+    await adapter().syncBeforeDeploy();
+
+    const status = await git(root, "status", "--porcelain");
+    const head = await git(root, "rev-parse", "HEAD", "origin/main");
+    expect(status.stdout).toBe("");
+    const [local, upstream] = head.stdout.trim().split("\n");
+    expect(local).toBe(upstream);
+  });
+
   it("catches up a clean clone left behind by a merged release", async () => {
     await addSkill(author, "fresh");
     await git(author, "add", ".");

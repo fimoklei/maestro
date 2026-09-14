@@ -32,6 +32,7 @@ const RELEASED: HarnessState = {
   defaultBranch: "main",
   releaseState: "released",
   freshness: { outcome: null, lastFetchedAt: null },
+  cloneSync: "current",
   localHeadCommit: "local-head",
   stages: {
     proposal: { outcome: "read", rows: [], bound: null },
@@ -2958,6 +2959,52 @@ describe("Harness freshness and failed reads", () => {
     expect(filled.map((button) => button.textContent)).toEqual([
       "Create a release",
     ]);
+  });
+
+  it("states a clone the check could not catch up", async () => {
+    stubHarnessServer({
+      read: { body: RELEASED },
+      refresh: { body: { ...RELEASED, cloneSync: "local-changes" } },
+    });
+    renderHarness();
+
+    expect(
+      await screen.findAllByText("Harness clone not updated"),
+    ).toHaveLength(1);
+    expect(
+      screen.getByText(
+        "Your local changes are as they were. Commit or undo them in your Git tool, then select Retry check.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("waits for the open-time check before stating where the clone stands", async () => {
+    // The plain read paints the clone before the check catches it up, so its
+    // reading is the one the check is about to replace (#978).
+    let release = () => {};
+    const heldUntil = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    stubHarnessServer({
+      read: { body: { ...RELEASED, cloneSync: "local-changes" } },
+      refresh: { body: RELEASED, heldUntil },
+    });
+    renderHarness();
+
+    await screen.findByRole("button", { name: /^create a release$/i });
+    expect(
+      screen.queryByText("Harness clone not updated"),
+    ).not.toBeInTheDocument();
+
+    release();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /^retry check$/i }),
+      ).toBeEnabled(),
+    );
+    expect(
+      screen.queryByText("Harness clone not updated"),
+    ).not.toBeInTheDocument();
   });
 
   it("states one Status out of date notice over a previous read", async () => {

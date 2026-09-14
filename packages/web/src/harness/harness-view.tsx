@@ -6,6 +6,7 @@ import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { Notice } from "../ui/notice";
 import { SectionHeader } from "../ui/section-header";
+import { cloneSyncNotice } from "./clone-sync-notice";
 import { HarnessDialogs, type RestoreTarget } from "./harness-dialogs";
 import { HarnessStrip } from "./harness-strip";
 import {
@@ -233,6 +234,16 @@ export function HarnessView() {
     promote.mutate({ name: row.skill });
   };
 
+  // The plain read paints the clone before the open-time check has caught it
+  // up, so where the clone stands is stated only once a check has answered.
+  const checkSettled = refresh.isSuccess || refresh.isError;
+  const [checkedOnce, setCheckedOnce] = useState(false);
+  useEffect(() => {
+    if (checkSettled) {
+      setCheckedOnce(true);
+    }
+  }, [checkSettled]);
+
   // Opening the view fetches, the same act Retry check repeats. Scheduled
   // rather than called, so StrictMode's replayed first mount cancels its own
   // request in cleanup: one open, one fetch of the author's git refs.
@@ -274,6 +285,14 @@ export function HarnessView() {
               ? null
               : staleStatusNotice(state.freshness, () => fetchRemote())) ??
             refreshNotice(refresh.error)
+          }
+        />
+        <Notice
+          trigger="load"
+          notice={
+            state === undefined || !checkedOnce
+              ? null
+              : cloneSyncNotice(state.cloneSync, () => fetchRemote())
           }
         />
         {/* What the last publication landed. The tag is atomic, so the only

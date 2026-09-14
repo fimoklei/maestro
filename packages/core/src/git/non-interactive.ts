@@ -1,3 +1,5 @@
+import { devNull } from "node:os";
+
 // Ambient credentials only, and no prompt of any kind: `GIT_TERMINAL_PROMPT`
 // covers https, and only ssh's BatchMode refuses a passphrase or host-key
 // question, which would otherwise hang until the timeout (security.md).
@@ -21,3 +23,11 @@ export const indexOptions = (indexFile: string) => {
   const options = gitOptions();
   return { ...options, env: { ...options.env, GIT_INDEX_FILE: indexFile } };
 };
+
+// The author's hooks are theirs, and these commands promise to leave the
+// checkout alone: a `pre-push` hook is free to write in the working tree, or to
+// fail after the remote already took the push. `devNull` is a hooks directory
+// git finds nothing in, so none of them run. Passed as `-c` rather than through
+// `GIT_CONFIG_*`, which would silently drop config the caller's env already
+// carries (#574).
+export const NO_HOOKS = ["-c", `core.hooksPath=${devNull}`];

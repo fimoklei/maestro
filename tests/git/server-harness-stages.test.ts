@@ -254,6 +254,29 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
     ]);
   });
 
+  it("clears a carried-back change from Pending proposal once its proposal merges", async () => {
+    // #978: the change stays uncommitted in the clone after Propose change,
+    // and merging it on GitHub moved nothing locally.
+    const app = makeApp();
+    await writeSkill("tdd", "carried back");
+    await promote(app, "tdd");
+    await git(
+      remote,
+      "update-ref",
+      "refs/heads/main",
+      "refs/heads/maestro/tdd",
+    );
+
+    const state = await refresh(app);
+
+    expect(rowsOf(state.stages.proposal)).toEqual([]);
+    expect(state.cloneSync).toBe("current");
+    expect((await git(root, "status", "--porcelain")).stdout).toBe("");
+    expect((await git(root, "rev-parse", "HEAD")).stdout).toBe(
+      (await git(root, "rev-parse", "origin/main")).stdout,
+    );
+  });
+
   it("keeps the pull-request URL across a fresh read, never in the browser", async () => {
     const app = makeApp();
     await writeSkill("tdd", "edited on disk");

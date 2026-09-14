@@ -76,6 +76,8 @@ function buildPublish(overrides?: {
         fetches += 1;
         return scripted ?? overrides?.fetchOutcome ?? "fetched";
       },
+      catchUp: async () => {},
+      readCloneSync: async () => "current" as const,
       readFacts: async () => ({ ...FACTS, ...overrides?.facts }),
       readSkillTrees: async () => [],
       readSkillAuthors: async () => ({}),

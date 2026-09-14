@@ -81,6 +81,8 @@ function buildPromote(overrides?: {
         await overrides?.fetchHold;
         return overrides?.fetchOutcome ?? "fetched";
       },
+      catchUp: async () => {},
+      readCloneSync: async () => "current" as const,
       readFacts: async () => {
         const perCall = overrides?.factsPerCall;
         const facts =
