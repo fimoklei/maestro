@@ -88,6 +88,10 @@ const HEADINGS: Record<DeployStateCode, Heading> = {
     level: "warning",
     label: "Local changes in deployed files",
   },
+  "deployed-diverged-pinned-per-skill": {
+    level: "warning",
+    label: "Local changes in deployed files",
+  },
   "deployed-unverifiable": {
     level: "warning",
     label: "Local edits unverifiable",
@@ -301,6 +305,12 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
     message: "The skill was not removed. Its files changed after deployment.",
     detail:
       "Deploy again to restore the released files. Then remove the skill. Reset any copy under Other copies manually.",
+  },
+  // A pinned target takes no deploy, so this one names no control (#966).
+  "deployed-diverged-pinned-per-skill": {
+    message: "The skill was not removed. Its files changed after deployment.",
+    detail:
+      "Save the changes. Restore the files from the pinned release in the Harness clone, then select Remove skill again.",
   },
   "cost-not-acknowledged": {
     message:

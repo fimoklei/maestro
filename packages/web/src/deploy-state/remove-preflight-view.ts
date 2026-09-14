@@ -63,6 +63,7 @@ const REFUSES_THE_REMOVAL: Record<RefusalCode, boolean> = {
   "repo-not-registered": true,
   "no-supported-tool": true,
   "deployed-diverged-from-lock": true,
+  "deployed-diverged-pinned-per-skill": true,
   "preflight-failed": false,
 };
 
