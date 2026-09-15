@@ -65,6 +65,17 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
     await git(root, "commit", "-m", "first skill");
     await git(root, "tag", "v0.1.0");
     await git(root, "push", "--tags", "origin", "HEAD:main");
+    // A second skill after the tag, so every release this suite publishes has
+    // something in it — publishing v0.1.0 itself again would be empty (#970).
+    await mkdir(join(root, ".apm", "skills", "research"), { recursive: true });
+    await writeFile(
+      join(root, ".apm", "skills", "research", "SKILL.md"),
+      "---\ndescription: Research loop\n---\n",
+      "utf8",
+    );
+    await git(root, "add", ".");
+    await git(root, "commit", "-m", "second skill");
+    await git(root, "push", "origin", "HEAD:main");
     await new HarnessGitAdapter().fetch(root);
   }, 30_000);
 
@@ -549,6 +560,20 @@ describe("harness release HTTP route", { timeout: 30_000 }, () => {
       await git(other, "commit", "-m", "side commit");
       await git(other, "tag", "v0.4.0");
       await git(other, "push", "--tags", "origin", "HEAD:refs/heads/side");
+      // A skill added on main after the side branch forked, so main's own
+      // delta since v0.4.0 is never empty (#970) — orthogonal to the tag
+      // reachability this describe block is about.
+      await mkdir(join(root, ".apm", "skills", "prototype"), {
+        recursive: true,
+      });
+      await writeFile(
+        join(root, ".apm", "skills", "prototype", "SKILL.md"),
+        "---\ndescription: Prototype loop\n---\n",
+        "utf8",
+      );
+      await git(root, "add", ".");
+      await git(root, "commit", "-m", "third skill");
+      await git(root, "push", "origin", "HEAD:main");
       await new HarnessGitAdapter().fetch(root);
     }, 30_000);
 

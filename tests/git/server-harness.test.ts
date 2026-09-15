@@ -376,16 +376,19 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
     expect(body.error).toBe("no-answer");
   });
 
-  it("leaves the author's checkout untouched across a refresh", async () => {
+  it("catches the checkout up to the team's push, leaving unrelated local work alone", async () => {
+    // The clone fast-forwards on a refresh (#978): `wip.md` sits on a path
+    // upstream never touched, so it survives staged exactly as it was.
     const app = makeApp(root);
     await teammatePushes("team-change");
     await writeFile(join(root, "wip.md"), "work in progress\n", "utf8");
     await git(root, "add", "wip.md");
-    const before = (await git(root, "rev-parse", "HEAD")).stdout.trim();
 
     await refreshHarness(app);
 
-    expect((await git(root, "rev-parse", "HEAD")).stdout.trim()).toBe(before);
+    expect((await git(root, "rev-parse", "HEAD")).stdout.trim()).toBe(
+      (await git(remote, "rev-parse", "main")).stdout.trim(),
+    );
     expect((await git(root, "status", "--porcelain")).stdout).toContain(
       "A  wip.md",
     );

@@ -141,6 +141,15 @@ const suites: [
         },
       ],
       [
+        "empty-delta",
+        {
+          level: "error",
+          label: "Nothing to release",
+          message:
+            "Nothing was published. No skill has changed since the last release.",
+        },
+      ],
+      [
         "already-released",
         {
           level: "error",
