@@ -118,6 +118,10 @@ Default vocabulary — `needs-triage`, `needs-info`, `ready-for-agent`, `ready-f
 
 Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
+### Cloud routines
+
+The instructions of the `Dead-code sweep (1 PR/day)` routine live in `docs/agents/dead-code-sweep.md`.
+
 ## LEARNINGS.md
 
 Read `LEARNINGS.md` at session start. Apply `## Active` as rules;
