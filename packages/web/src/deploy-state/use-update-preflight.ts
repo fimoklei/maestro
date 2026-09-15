@@ -11,7 +11,7 @@ import {
 
 export type UpdatePreflight = { preview: UpdatePreview };
 
-export function updatePreflightQueryOptions(
+function updatePreflightQueryOptions(
   target: DeployTarget,
   enabled: boolean,
   // The skill the Inventory's entrance asks for beside the release move. Part
