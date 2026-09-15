@@ -54,6 +54,12 @@ const publishReleaseHeadings: NoticeTable<PublishReleaseError> = {
     message:
       "Nothing was published. Select Retry check, then Publish release again.",
   },
+  "empty-delta": {
+    level: "error",
+    label: "Nothing to release",
+    message:
+      "Nothing was published. No skill has changed since the last release.",
+  },
   "already-released": {
     level: "error",
     label: "Release already exists",

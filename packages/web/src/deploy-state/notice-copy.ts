@@ -32,7 +32,7 @@ export type DeployStateNotice = {
 export const FIX_AND_RELEASE =
   "Fix the skill in the Harness, publish a release, then deploy again.";
 
-export const RECHECK_TARGET = "Deploy again to re-check the target.";
+const RECHECK_TARGET = "Deploy again to re-check the target.";
 
 // One string, two surfaces again: the bulk report's row and the single
 // refusal's notice send the reader to the same control (ADR-0031, #951).

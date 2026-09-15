@@ -124,7 +124,12 @@ export function ReleaseDialog({
           className="shrink-0"
           variant="primary"
           size="sm"
-          disabled={step === null || plan === null || publishing}
+          disabled={
+            step === null ||
+            plan === null ||
+            plan.delta.length === 0 ||
+            publishing
+          }
           onClick={() =>
             step !== null && plan !== null && onPublish(step, plan)
           }

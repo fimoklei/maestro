@@ -12,11 +12,13 @@ import type {
 } from "./read-harness-state";
 import { recordFetch } from "./record-fetch";
 import { highestReleaseTag } from "./release-tag";
+import { diffSkillTrees } from "./skill-movements";
 
 export type PublishReleaseError =
   | "not-configured"
   | "no-usable-origin"
   | "no-answer"
+  | "empty-delta"
   | "already-released"
   | "plan-changed"
   | "publish-failed"
@@ -99,9 +101,9 @@ export class PublishRelease {
     }
 
     const released = highestReleaseTag(facts.tags);
-    // The delta never travels here: every step's version is a pure function
-    // of the previous tag, so the empty movements list changes nothing this
-    // reads (#520).
+    // The delta never travels here for the version proposal: every step's
+    // version is a pure function of the previous tag alone (#520). It is read
+    // here only to refuse a release with nothing in it (#970).
     const { versions } = proposeReleaseVersion(released?.name ?? null, []);
     const tag = versions[confirmation.step];
 
@@ -117,6 +119,21 @@ export class PublishRelease {
       // The mismatch was found in refs this call just fetched, so they already
       // carry the plan that replaces this one.
       return await this.refuse(root, "plan-changed", true);
+    }
+
+    // Read only once the plan is confirmed current, so a stale plan is always
+    // reported as `plan-changed` — its recomputed replacement carries this
+    // same emptiness check on its own next confirmation (#970).
+    const previous =
+      released === null
+        ? []
+        : await this.deps.git.readSkillTrees(root, released.commit);
+    const current = await this.deps.git.readSkillTrees(root, head);
+    if (previous === null || current === null) {
+      return { ok: false, error: "no-answer" };
+    }
+    if (diffSkillTrees(previous, current).length === 0) {
+      return await this.refuse(root, "empty-delta", true);
     }
 
     const push = await this.deps.git.publishTag(root, tag, head, branch);

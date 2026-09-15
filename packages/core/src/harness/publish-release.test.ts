@@ -8,6 +8,7 @@ import type {
   ReleasePlan,
   ReleasePlanResult,
 } from "./read-harness-state";
+import type { HarnessSkillTree } from "./skill-movements";
 
 const AT = new Date("2026-08-04T12:00:00.000Z");
 
@@ -61,6 +62,7 @@ function buildPublish(overrides?: {
   onFetch?: () => void;
   replan?: (root: string) => Promise<ReleasePlanResult>;
   locks?: InFlightLocks;
+  skillTrees?: (ref: string) => HarnessSkillTree[] | null;
 }) {
   let fetches = 0;
   return new PublishRelease({
@@ -79,7 +81,15 @@ function buildPublish(overrides?: {
       catchUp: async () => {},
       readCloneSync: async () => "current" as const,
       readFacts: async () => ({ ...FACTS, ...overrides?.facts }),
-      readSkillTrees: async () => [],
+      // Distinct content at the default branch's own tip, so every scenario
+      // not explicitly about an empty delta gets one movement to publish
+      // rather than an accidental empty-delta refusal.
+      readSkillTrees: async (_root: string, ref: string) =>
+        overrides?.skillTrees?.(ref) ??
+        (ref ===
+        (overrides?.facts?.defaultBranchCommit ?? FACTS.defaultBranchCommit)
+          ? [{ name: "research", treeHash: "new" }]
+          : []),
       readSkillAuthors: async () => ({}),
       readMovementTrees: async () => ({
         remote: {},
@@ -426,6 +436,30 @@ describe("PublishRelease", () => {
       ok: false,
       error: "publish-failed",
     });
+  });
+
+  it("refuses to publish a release with nothing to release", async () => {
+    // The freshly read head carries the same skill trees the previous release
+    // tagged: nothing changed, so there is no release to make (#970).
+    const publish = buildPublish({ skillTrees: () => [] });
+
+    await expect(publish.execute(CONFIRMED, AT)).resolves.toEqual({
+      ok: false,
+      error: "empty-delta",
+      recomputed: RECOMPUTED,
+    });
+  });
+
+  it("never pushes a tag for an empty delta", async () => {
+    const calls: string[] = [];
+    const publish = buildPublish({
+      skillTrees: () => [],
+      onPublishTag: (name) => calls.push(name),
+    });
+
+    await publish.execute(CONFIRMED, AT);
+
+    expect(calls).toEqual([]);
   });
 
   it("refuses a second confirmation for the same harness while one is already running", async () => {

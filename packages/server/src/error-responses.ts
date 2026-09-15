@@ -250,6 +250,9 @@ export const releasePlanErrorResponses: ErrorTable<ReleasePlanError> = {
 export const publishReleaseErrorResponses: ErrorTable<PublishReleaseError> = {
   ...harnessErrorResponses,
   "no-answer": { status: 409 },
+  // Nothing to release is a precondition, not a dead end: the reply carries
+  // the recomputed plan the author's dialog would show instead (#970).
+  "empty-delta": { status: 409 },
   // Both are ordinary races, not dead ends: nothing was overwritten, and the
   // reply carries the recomputed plan the author confirms instead (#521).
   "already-released": { status: 409 },

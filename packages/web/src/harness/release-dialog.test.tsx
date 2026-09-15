@@ -206,6 +206,17 @@ describe("ReleaseDialog", () => {
     expect(onPublish).toHaveBeenCalledWith("patch", recomputed);
   });
 
+  it("disables publish when nothing has changed since the last release", () => {
+    renderReady({ delta: [] });
+
+    expect(
+      screen.getByText(/no skill has changed since the last release/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^publish release$/i }),
+    ).toBeDisabled();
+  });
+
   it("disables publish and says so while a release is in flight", () => {
     renderReady({}, { publishing: true });
 
