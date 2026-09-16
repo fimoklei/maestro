@@ -191,7 +191,9 @@ details may name the exact APM mechanism or file.
 | Release dialog | **Create a release** / **Publish release for {origin}** / **Publish release** | *Create a release* opens the dialog on the Harness strip; the dialog reads *Publish release for {origin}*; *Publish release* confirms publication. References to either control use its exact label; *Plan release* is retired. Never a bare *Release* on a button or in the title. |
 | Import dialog | **Import skill…** / **Import skill** | The trailing ellipsis marks the control that opens the dialog; the dialog's confirm carries no ellipsis. |
 | Import dialog, replacing | **Update skill** | The dialog reads *Update a skill* and confirms with *Update skill* when it replaces a skill the Harness holds; it reads *Import a skill* and *Import skill* when it adds one. The control that opens it keeps its ellipsis either way. What an update lands sits under **Pending proposal**. The Deploy-state row once carried the same label for the other direction; that button retires for **Update target** on the target (#932). |
-| Consuming repo | **Repository** | Write it out in a sentence; *repo* stays only inside the `+ repo` control label. |
+| Consuming repo | **Repository** | Write it out in a sentence; *repo* stays only inside a control label. |
+| Consuming-repo registry | **Repositories** | The screen that lists the registered repositories and registers a new one; the plural of **Repository**, and the third item in the cockpit's first navigation block (#991). |
+| Harness, as the author's block | **Author** | The heading over the navigation block that holds the **Harness** screen. A heading only; the screen keeps the name **Harness**. |
 | Scaffold | **Scaffold** / **Harness scaffold** | *Scaffold* is the action and *Harness scaffold* is the thing on offer; never *generate* or *initialise*. |
 | Clone folder | **Clone** | The local copy of the Harness repository. Say **folder** for any other directory on disk. |
 | `apm.yml` | `apm.yml` | Name the file in a `detail`, never in the sentence — the reader meets it in their own editor. |
