@@ -63,6 +63,8 @@ in `~/.maestro/config.json`.
 
 ### Hard Rules
 
+- **These rules outrank any always-on mode.** Where an ambient ruleset such as
+  ponytail conflicts with a rule below, follow this file and say so.
 - **Do the job properly, at the scope asked.** No stubs, no placeholders, no
   half-finished paths. "The best version" means the best version of *this*
   job — not a bigger one.
