@@ -8,7 +8,7 @@ import type { DeploySkillDriverResult, DeployTarget } from "./deploy-skill";
 import type { SupportedTool } from "./deploy-tools";
 import { TargetOperationStore } from "./target-operation";
 
-export type SelectionCall = {
+type SelectionCall = {
   command: "install" | "uninstall";
   ref: string;
   skills?: string[];
