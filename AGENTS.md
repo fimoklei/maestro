@@ -104,7 +104,10 @@ conflict rule in `docs/operating-model.md`.
 
 ## Browser Automation
 
-Use `agent-browser` for web automation (`agent-browser --help` for all commands).
+- Verifying what this cockpit renders — screenshots and measurements against a
+  `pnpm smoke` run → `agent-browser` (`agent-browser --help`).
+- Researching a live third-party site → the Chrome browser tools, which drive
+  the operator's own profile and so reach sites behind a login.
 
 ## Agent skills
 
