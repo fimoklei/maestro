@@ -33,7 +33,7 @@ export type SelectionWrite = {
 // "apply-incomplete" is the state the operation record exists for: apm ran and
 // what is on disk is not what was asked for, so the target keeps its unfinished
 // operation and a retry converges on it.
-export type SelectionError =
+type SelectionError =
   | "manifest-not-recognised"
   | "destination-symlinked"
   | "apply-incomplete"
