@@ -16,6 +16,7 @@ Retired entries are deleted, not archived.
 
 ## Active
 
+- **2026-09-18 · tooling/gh-api-sends-ids-as-strings** — `gh api -X POST … -f sub_issue_id=$ID` posts the id as a JSON string, and GitHub answers 422 `Invalid property /sub_issue_id: "…" is not of type integer` — same for `issues/<n>/dependencies/blocked_by`. The message names the property, not the flag, so it reads as a wrong id. → Pass numeric ids with `-F`, and take the id from `gh api repos/<owner>/<repo>/issues/<n> --jq .id` (the database id), never the issue number.
 - **2026-09-11 · apm/remove-warns-but-exits-zero** — apm 0.29.0 narrowing (`skills:` shrunk + install at the same tag) never fails: a kept edited copy and an undeletable dir both exit 0 with the success marker and warn on stdout, and the lockfile can keep `deployed_files` rows for files no longer on disk (phantom rows after a kept-edited narrow; the retained dir row after a permission error). → Read a Remove's outcome from disk plus lockfile, never from exit code or marker; treat a lockfile row without a file as not deployed. Measured in `docs/research/941-narrowing-spike.md`.
 Confirmed patterns. Apply as rules. Newest on top.
 
