@@ -197,6 +197,7 @@ details may name the exact APM mechanism or file.
 | Repositories row reading | **Ready** / **Folder missing** / **Not a Git repository** | The Status column on **Repositories**, read from the folder alone: *Ready* means the folder is there and is a Git repository. A release, a status and a skill count belong to **Deploy-state** (#1009). |
 | Harness, as the author's block | **Author** | The heading over the navigation block that holds the **Harness** screen. A heading only; the screen keeps the name **Harness**. |
 | Preferences, configuration | **Settings** | The area outside the working screens, entered from the Harness button's menu; **Back to app** leaves it. Its pages sit under the sidebar heading *Personal* — a heading only. **Harness location** is its first page and keeps its name; **Appearance** holds how the cockpit looks (#995). |
+| Dark mode, colour mode | **Interface theme** | The one setting on **Appearance**, under the section heading *Theme*. Its values are **System**, **Light** and **Dark**; *System* follows the operating system. Never *mode* or *colour scheme* (#996). |
 | Scaffold | **Scaffold** / **Harness scaffold** | *Scaffold* is the action and *Harness scaffold* is the thing on offer; never *generate* or *initialise*. |
 | Clone folder | **Clone** | The local copy of the Harness repository. Say **folder** for any other directory on disk. |
 | `apm.yml` | `apm.yml` | Name the file in a `detail`, never in the sentence — the reader meets it in their own editor. |
