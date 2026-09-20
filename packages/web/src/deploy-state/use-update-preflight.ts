@@ -9,7 +9,7 @@ import {
   targetQueryKey,
 } from "../inventory/use-deploy-skill";
 
-export type UpdatePreflight = { preview: UpdatePreview };
+type UpdatePreflight = { preview: UpdatePreview };
 
 function updatePreflightQueryOptions(
   target: DeployTarget,
