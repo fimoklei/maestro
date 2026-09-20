@@ -182,11 +182,11 @@ details may name the exact APM mechanism or file.
 | Merged proposal, default branch not yet read | **Proposal merged** | GitHub merged the pull request and the Harness default branch has not been read since. It is the normal end of a review, so it carries no amber marking; the row leaves Pending review on the next read. Never **Pull request missing**, which claims no request ever existed. |
 | Closed unmerged proposal | **Proposal closed** | A closed proposal still holds work not incorporated into the default branch. Keep it visible outside Pending review. |
 | Ambiguous open proposal | **Multiple pull requests** | Several matching open pull requests remain; show their links without choosing one. |
-| Stale Harness status | **Status out of date** | Previously verified information whose refresh failed; never present it as current. |
+| Stale Harness status | **Status out of date** | Previously verified information whose re-read failed; never present it as current. |
 | Unknown Harness status | **Status unknown** / **Review status unknown** | No verified status is available; use the review-specific name when only review status is unknown. Unknown is not empty. |
 | Unavailable review status | **Review status unavailable** | The pull-request check is unavailable; do not infer whether a proposal exists. |
-| Harness freshness reading | **Read** | The one word for reading the Harness, on every surface: *Read 4 min ago*, *Read from GitHub 4 min ago*, *Not read yet*, *Read failed — never read*. While a read runs, the strip's Status reads *Reading GitHub…*. *Fetch* and *fetched* are retired from user-facing copy; they survive only as the wire field `lastFetchedAt` and the `fetched` / `fetch-failed` outcome values. |
-| Harness re-read | **Retry check** | The one re-read control on the Harness view: the strip's control and the single action in every failed-read notice. *Refresh* is retired — never on a control, never in a sentence. **Re-read Inventory** stays Inventory's own control. |
+| Freshness reading | **Read** | The one word for reading, on every screen: *Read 4 min ago*, *Read from GitHub 4 min ago*, *Not read yet*, *Read failed — never read*. Only the Harness and Deploy-state show it, because only their data ages; it dates the oldest reading on the screen. While a Harness read runs, its Status reads *Reading GitHub…*. *Fetch* and *fetched* are retired from user-facing copy; they survive only as the wire field `lastFetchedAt` and the `fetched` / `fetch-failed` outcome values. |
+| Re-read | **Re-read {screen name}** | The one re-read control on a screen, and the single action in that screen's failed-read notice: **Re-read Deploy-state**, **Re-read Inventory**, **Re-read Repositories**, **Re-read Harness**. *Refresh* and *Retry check* are retired — never on a control, never in a sentence. |
 | Release | **Release** / **Released** | *Release* is the action, *released* is the state, and *latest release* is the result. |
 | Release dialog | **Create a release** / **Publish release for {origin}** / **Publish release** | *Create a release* opens the dialog on the Harness strip; the dialog reads *Publish release for {origin}*; *Publish release* confirms publication. References to either control use its exact label; *Plan release* is retired. Never a bare *Release* on a button or in the title. |
 | Import dialog | **Import skill…** / **Import skill** | The trailing ellipsis marks the control that opens the dialog; the dialog's confirm carries no ellipsis. |
@@ -221,9 +221,9 @@ details may name the exact APM mechanism or file.
 | Up-to-date | **Up to date** | One skill's drift status. Never hyphenated on screen. |
 | Target roll-up | **In sync** | A whole target's state, on its card header. A single skill is **Up to date**, never *in sync*. |
 | Browse dialog title | a noun phrase | Name what the dialog picks — **Inventory folder**, **Skill folder**, **Folder to clone into**, **Repositories to register** — never an imperative. |
-| Read failure | **Not read** | Any read that failed says `{the thing} not read` — never *not loaded*. On a deploy-state read the way out is always *Reload the page*. |
+| Read failure | **Not read** | Any read that failed says `{the thing} not read` — never *not loaded*. The way out is the screen's **Re-read** control, never *Reload the page*. |
 | Registration outcome | **Registered** / **Skipped** | A repository the run did not register is **skipped**; *left alone* stays the bulk-removal word. |
-| Browser reload | **Page** | Say *Reload the page*; never *screen* or *reload the view* for the same act. |
+| Browser reload | **Page** | Say *Reload the page*; never *screen* or *reload the view* for the same act. Only a request-shape message asks for it; a failed read never does. |
 | Symbolic link | **Link** | A linked skill directory is a **linked skill folder**; *symlink* never reaches the screen. |
 | Directory | **Folder** | One word for the concept, on every surface. |
 | Skill detail pane | **{name} detail** | The pane is named after the skill it shows; its close control is **Close {name} detail**. |
