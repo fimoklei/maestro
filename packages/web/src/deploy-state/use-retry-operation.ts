@@ -10,8 +10,6 @@ import {
   invalidateTarget,
 } from "../inventory/use-deploy-skill";
 
-export type { PendingOperation };
-
 export type RetryRequest = {
   target: DeployTarget;
   // The receipt this retry's own refusal minted: content that changed since
