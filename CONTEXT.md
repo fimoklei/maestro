@@ -228,8 +228,6 @@ details may name the exact APM mechanism or file.
 | Directory | **Folder** | One word for the concept, on every surface. |
 | Skill detail pane | **{name} detail** | The pane is named after the skill it shows; its close control is **Close {name} detail**. |
 | Bulk staging | **Bulk deploy** | The checkbox stages a skill **for bulk deploy**; the strip above the table is **Staged for bulk deploy**. |
-| End a running bulk deploy | **Stop** | The control **Cancel** becomes while a bulk deploy runs: the skill being deployed finishes and no further skill starts. Never *Cancel* or *Abort* — nothing already deployed is undone. Closing the tab does the same (#1018). |
-| Bulk deploy outcome, never reached | **Not started** | A skill a stopped bulk deploy never reached; the lowest group of its Report. Never *Not deployed*, which is the status of a skill deployed to no target (#1018). |
 
 The three Harness stages have no additional group name. One skill may appear in
 all three when each row represents different work; ordinary explanation may say
