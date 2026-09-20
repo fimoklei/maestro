@@ -5,7 +5,8 @@ Treat every input as hostile. Read before writing code that starts a process, to
 ## Hard rules
 
 - **Shelling out.** Args array only (`execFile`/`spawn` with a list). Never `exec`, never `shell: true`, never concatenate input into a command. Names, paths, and versions go in as data, not command text.
-  - **Three executables, no fourth.** Maestro starts `apm`, `git` and `gh` and nothing else. `gh` is optional: its absence degrades the review capability only, never blocks the cockpit (ADR-0029). Adding a fourth takes an ADR.
+  - **Three product executables plus one folder-chooser helper per platform.** Maestro starts `apm`, `git` and `gh`, plus `/usr/bin/osascript` (macOS) or Windows PowerShell to open the system folder chooser, and nothing else. `gh` is optional: its absence degrades the review capability only, never blocks the cockpit (ADR-0029). Adding another executable, or another use of a helper, takes an ADR.
+  - **The chooser helper (ADR-0032).** Start it by absolute system path, never through `PATH`. Keep its script a constant; pass the start folder as an `argv` item (macOS) or `MAESTRO_CHOOSER_START` (Windows), never in script text. Treat the returned path as a typed path. Render no **Browse** where no helper exists.
 - **Filesystem paths.** Resolve against one fixed allowed root; assert the result stays inside it. Reject `..` and absolute paths from external input.
   - **Exception — the consuming-repo registry is the allowlist.** Registration deliberately accepts an arbitrary absolute path. Controls: registration validates absolute + `realpath` + exists + is-a-directory; **every** path-taking endpoint (deploy *and* deploy-state read) requires exact registry membership after `realpath` before any filesystem or `apm` access. A path not in the registry is rejected.
 - **External data is untrusted.** Lockfiles, `apm.yml`, `apm` stdout: parse → validate with Zod → use. Never `eval`. Safe YAML only (no custom tags).
