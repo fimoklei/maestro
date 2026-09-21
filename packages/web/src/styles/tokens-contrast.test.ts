@@ -1,40 +1,132 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-// WCAG 2.2 AA floor (PRODUCT.md: 4.5:1) — #209 measured --text-dim below it
-// on nine controls. Guards every text step against every surface, shipped theme only.
+// The allowlist of foreground/background pairings (ADR-0033 §4). A pairing
+// outside this table is not used in a component; it enters here, and passes,
+// first. Floors and the measured values are in issue #988.
 
-const AA = 4.5;
+const AA_TEXT = 4.5;
+const AA_NON_TEXT = 3;
 
-const surfaceTokens = [
-  "bg-0",
-  "bg-1",
-  "surface-card",
-  "surface-inset",
-  "surface-active",
+type Pair = {
+  readonly name: string;
+  readonly floor: number;
+  readonly foregrounds: readonly string[];
+  readonly backgrounds: readonly string[];
+};
+
+const SLATE_1_TO_5 = [
+  "gray-1",
+  "gray-2",
+  "gray-3",
+  "gray-4",
+  "gray-5",
 ] as const;
 
-const textTokens = [
-  "text-1",
-  "text-2",
-  "text-3",
-  "text-muted",
-  "text-dim",
-] as const;
-
-function parseShippedTokens(css: string): Record<string, string> {
-  // The shipped theme is the first token block. tokens.css declares no nested
-  // braces inside a block, so the first "}" closes it.
-  const block = css.slice(css.indexOf("{") + 1, css.indexOf("}"));
-  const tokens: Record<string, string> = {};
-  for (const match of block.matchAll(/--([\w-]+):\s*(#[0-9a-fA-F]{6})/g)) {
-    const [, name, hex] = match;
-    if (name && hex) {
-      tokens[name] = hex;
-    }
-  }
-  return tokens;
-}
+const PAIRS: readonly Pair[] = [
+  {
+    name: "Text: slate 12 on slate 1-5",
+    floor: AA_TEXT,
+    foregrounds: ["gray-12"],
+    backgrounds: SLATE_1_TO_5,
+  },
+  {
+    name: "Muted text: slate 11 on slate 1-5",
+    floor: AA_TEXT,
+    foregrounds: ["gray-11"],
+    backgrounds: SLATE_1_TO_5,
+  },
+  {
+    name: "Text on selected row: slate 12 / 11 on blue 5",
+    floor: AA_TEXT,
+    foregrounds: ["gray-12", "gray-11"],
+    backgrounds: ["blue-5"],
+  },
+  {
+    name: "Primary button: slate 1 on slate 12 / hover 11",
+    floor: AA_TEXT,
+    foregrounds: ["gray-1"],
+    backgrounds: ["gray-12", "gray-11"],
+  },
+  {
+    name: "Link: blue 11 on slate 1-2",
+    floor: AA_TEXT,
+    foregrounds: ["blue-11"],
+    backgrounds: ["gray-1", "gray-2"],
+  },
+  {
+    name: "Focus ring: blue 9 vs slate 1-2",
+    floor: AA_NON_TEXT,
+    foregrounds: ["blue-9"],
+    backgrounds: ["gray-1", "gray-2"],
+  },
+  {
+    name: "Field and checkbox border: slate 9 vs slate 1-2",
+    floor: AA_NON_TEXT,
+    foregrounds: ["gray-9"],
+    backgrounds: ["gray-1", "gray-2"],
+  },
+  {
+    name: "Good text: green 12 on green 3",
+    floor: AA_TEXT,
+    foregrounds: ["green-12"],
+    backgrounds: ["green-3"],
+  },
+  {
+    name: "Good marker: green 11 on green 3",
+    floor: AA_NON_TEXT,
+    foregrounds: ["green-11"],
+    backgrounds: ["green-3"],
+  },
+  {
+    name: "Good marker: green 11 on slate 1-2",
+    floor: AA_NON_TEXT,
+    foregrounds: ["green-11"],
+    backgrounds: ["gray-1", "gray-2"],
+  },
+  {
+    name: "Attention text: amber 12 on amber 3",
+    floor: AA_TEXT,
+    foregrounds: ["amber-12"],
+    backgrounds: ["amber-3"],
+  },
+  {
+    name: "Attention marker: amber 11 on amber 3",
+    floor: AA_NON_TEXT,
+    foregrounds: ["amber-11"],
+    backgrounds: ["amber-3"],
+  },
+  {
+    name: "Attention marker: amber 11 on slate 1-2",
+    floor: AA_NON_TEXT,
+    foregrounds: ["amber-11"],
+    backgrounds: ["gray-1", "gray-2"],
+  },
+  {
+    name: "Failed text: red 12 on red 3",
+    floor: AA_TEXT,
+    foregrounds: ["red-12"],
+    backgrounds: ["red-3"],
+  },
+  {
+    name: "Failed marker: red 11 on red 3",
+    floor: AA_NON_TEXT,
+    foregrounds: ["red-11"],
+    backgrounds: ["red-3"],
+  },
+  {
+    name: "Failed marker: red 11 on slate 1-2",
+    floor: AA_NON_TEXT,
+    foregrounds: ["red-11"],
+    backgrounds: ["gray-1", "gray-2"],
+  },
+  {
+    name: "Destructive button text: red 11 on slate 1-2",
+    floor: AA_TEXT,
+    foregrounds: ["red-11"],
+    backgrounds: ["gray-1", "gray-2"],
+  },
+];
 
 function channel(value: number): number {
   const s = value / 255;
@@ -72,112 +164,53 @@ if (!tokensCssPath) {
 
 const tokensCss = readFileSync(tokensCssPath, "utf8");
 
-describe("shipped text ramp contrast", () => {
-  const tokens = parseShippedTokens(tokensCss);
-
-  const pairs = textTokens.flatMap((text) =>
-    surfaceTokens.map((surface) => [text, surface] as const),
-  );
-
-  it.each(pairs)("%s clears WCAG AA on %s", (textToken, surfaceToken) => {
-    const text = tokens[textToken];
-    const surface = tokens[surfaceToken];
-    // A renamed or missing token is a regression in itself, not a pass.
-    expect(text, `missing token --${textToken}`).toBeDefined();
-    expect(surface, `missing token --${surfaceToken}`).toBeDefined();
-    const ratio = contrastRatio(text as string, surface as string);
-    expect(ratio).toBeGreaterThanOrEqual(AA);
-  });
-});
-
-// The danger signal (#213) renders validation-error text on the same
-// surfaces the text ramp uses, so it holds to the same 4.5:1 floor.
-describe("danger signal contrast", () => {
-  const tokens = parseShippedTokens(tokensCss);
-
-  it.each(surfaceTokens)("danger clears WCAG AA on %s", (surfaceToken) => {
-    const danger = tokens.danger;
-    const surface = tokens[surfaceToken];
-    expect(danger, "missing token --danger").toBeDefined();
-    expect(surface, `missing token --${surfaceToken}`).toBeDefined();
-    const ratio = contrastRatio(danger as string, surface as string);
-    expect(ratio).toBeGreaterThanOrEqual(AA);
-  });
-});
-
-// --danger-bg is a 10% danger tint (tokens.css: rgba(236,92,106,0.1))
-// composited over the surface, which the opaque check above misses.
-// Alpha is fixed by the chip-tint convention.
-const DANGER_BG_ALPHA = 0.1;
-
-function hexToRgb(hex: string): [number, number, number] {
-  const n = Number.parseInt(hex.slice(1), 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+// Both themes ship, in one block each. tokens.css declares no nested braces, so
+// a block runs from its selector's "{" to the next "}".
+function parseThemeBlock(
+  css: string,
+  selector: string,
+): Record<string, string> {
+  const start = css.indexOf(selector);
+  if (start === -1) {
+    throw new Error(`theme block ${selector} not found in tokens.css`);
+  }
+  const open = css.indexOf("{", start);
+  const block = css.slice(open + 1, css.indexOf("}", open));
+  const tokens: Record<string, string> = {};
+  for (const match of block.matchAll(/--([\w-]+):\s*(#[0-9a-fA-F]{6})/g)) {
+    const [, name, hex] = match;
+    if (name && hex) {
+      tokens[name] = hex;
+    }
+  }
+  return tokens;
 }
 
-function rgbToHex([r, g, b]: [number, number, number]): string {
-  return `#${[r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
-}
+const THEMES = [
+  ["dark", '[data-theme="dark"]'],
+  ["light", '[data-theme="light"]'],
+] as const;
 
-function composite(fg: string, alpha: number, bg: string): string {
-  const [fr, fg2, fb] = hexToRgb(fg);
-  const [br, bg2, bb] = hexToRgb(bg);
-  const mix = (a: number, b: number) => Math.round(alpha * a + (1 - alpha) * b);
-  return rgbToHex([mix(fr, br), mix(fg2, bg2), mix(fb, bb)]);
-}
+describe.each(THEMES)("%s theme contrast", (_theme, selector) => {
+  const tokens = parseThemeBlock(tokensCss, selector);
 
-describe("danger signal contrast on its tinted refusal card", () => {
-  const tokens = parseShippedTokens(tokensCss);
-
-  it.each(surfaceTokens)(
-    "danger-ink clears WCAG AA on the danger tint over %s",
-    (surfaceToken) => {
-      const danger = tokens.danger;
-      const surface = tokens[surfaceToken];
-      expect(danger, "missing token --danger").toBeDefined();
-      expect(surface, `missing token --${surfaceToken}`).toBeDefined();
-      const tinted = composite(
-        danger as string,
-        DANGER_BG_ALPHA,
-        surface as string,
-      );
-      const ratio = contrastRatio(danger as string, tinted);
-      expect(ratio).toBeGreaterThanOrEqual(AA);
+  it.each(PAIRS.map((pair) => [pair.name, pair] as const))(
+    "%s",
+    (_name, pair) => {
+      for (const foreground of pair.foregrounds) {
+        for (const background of pair.backgrounds) {
+          const fg = tokens[foreground];
+          const bg = tokens[background];
+          // A renamed or missing token is a regression in itself, not a pass.
+          expect(fg, `missing token --${foreground}`).toBeDefined();
+          expect(bg, `missing token --${background}`).toBeDefined();
+          const ratio = contrastRatio(fg as string, bg as string);
+          expect(
+            ratio,
+            `--${foreground} on --${background}`,
+          ).toBeGreaterThanOrEqual(pair.floor);
+        }
+      }
     },
   );
-});
-
-// The filled buttons swap their fill for a hover step up the signal's tonal ramp
-// (DESIGN.md §5). The label stays --on-accent through the swap, so both hover
-// fills hold the same 4.5:1 floor as the resting fills they replace.
-describe("filled-button hover fills keep their label readable", () => {
-  const tokens = parseShippedTokens(tokensCss);
-
-  it.each(["amber-hover", "green-hover"] as const)(
-    "on-accent clears WCAG AA on --%s",
-    (fillToken) => {
-      const fill = tokens[fillToken];
-      const label = tokens["on-accent"];
-      expect(fill, `missing token --${fillToken}`).toBeDefined();
-      expect(label, "missing token --on-accent").toBeDefined();
-      const ratio = contrastRatio(label as string, fill as string);
-      expect(ratio).toBeGreaterThanOrEqual(AA);
-    },
-  );
-});
-
-// The focus ring (#214) is amber, offset onto the surface behind every
-// control. WCAG 2.2 asks non-text indicators to clear 3:1 against it.
-describe("focus ring contrast", () => {
-  const NON_TEXT_AA = 3;
-  const tokens = parseShippedTokens(tokensCss);
-
-  it.each(surfaceTokens)("--amber clears 3:1 on %s", (surfaceToken) => {
-    const amber = tokens.amber;
-    const surface = tokens[surfaceToken];
-    expect(amber, "missing token --amber").toBeDefined();
-    expect(surface, `missing token --${surfaceToken}`).toBeDefined();
-    const ratio = contrastRatio(amber as string, surface as string);
-    expect(ratio).toBeGreaterThanOrEqual(NON_TEXT_AA);
-  });
 });

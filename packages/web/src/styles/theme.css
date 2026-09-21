@@ -1,113 +1,212 @@
-/* Maestro web styling entry — Control Room design system on Tailwind v4.
-   Loads Tailwind, the raw colour tokens, then maps everything to clean Tailwind
-   utility names. Two @theme blocks, on purpose:
+/* Maestro web styling entry — the neutral two-theme system on Tailwind v4
+   (ADR-0033). Loads Tailwind, the raw colour tokens, then maps everything to
+   Tailwind utility names. Two @theme blocks, on purpose:
 
-   - @theme inline  → colours. `inline` makes utilities reference the raw token
-     directly (e.g. bg-card → var(--surface-card)), so flipping data-theme on the
-     root re-skins everything because only the raw value changes.
-   - @theme         → theme-independent constants (fonts, type scale, radii,
-     spacing). Literal values; they never switch per theme. */
+   - @theme inline  → colours and the one shadow. `inline` makes a utility
+     reference the raw token directly (bg-canvas → var(--gray-1)), so flipping
+     data-theme on the root re-skins everything because only the raw value
+     changes.
+   - @theme         → theme-independent constants (fonts, type ramp, density,
+     spacing, radii, motion). Literal values; they never switch per theme.
 
-/* Fonts are self-hosted via @fontsource-variable, imported as a side-effect from
-   whatever entry loads this stylesheet (Storybook's preview, later the app
-   entry) — never a runtime CDN fetch, which would break the local-first/offline
-   scope. The token stacks below name the variable families first. */
+   Every Control Room name below is kept as an alias onto a new value. No
+   component is rewritten before its own rebuild job, so a screen that has not
+   been touched still paints; the aliases go in job 11. style-rules.test.ts
+   fails if one is dropped. */
+
 @import "tailwindcss";
 @import "./tokens.css";
 
+/* Geist and Geist Mono (OFL 1.1), self-hosted — never a runtime CDN fetch,
+   which would break the local-first/offline scope. One variable woff2 per
+   family: the face is declared here rather than through the package's
+   index.css, which carries five subsets and would ship all five. The cockpit's
+   words are Latin; the status glyphs are not in Geist and fall back either way.
+   The files come from @fontsource-variable/geist{,-mono} (5.3.0), resolved by
+   the bundler, so the version is pinned in package.json and nothing binary
+   lives in the repo. */
+@font-face {
+  font-family: "Geist Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("@fontsource-variable/geist/files/geist-latin-wght-normal.woff2")
+    format("woff2-variations");
+}
+@font-face {
+  font-family: "Geist Mono Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2")
+    format("woff2-variations");
+}
+
 @theme inline {
-  /* surfaces → bg-canvas / bg-chrome / bg-card / bg-inset / bg-active */
-  --color-canvas: var(--bg-0);
-  --color-chrome: var(--bg-1);
-  --color-card: var(--surface-card);
-  --color-inset: var(--surface-inset);
-  --color-active: var(--surface-active);
+  /* ── the scale, by step (ADR-0033 §1) ─────────────────────────────────── */
+  --color-gray-1: var(--gray-1);
+  --color-gray-2: var(--gray-2);
+  --color-gray-3: var(--gray-3);
+  --color-gray-4: var(--gray-4);
+  --color-gray-5: var(--gray-5);
+  --color-gray-6: var(--gray-6);
+  --color-gray-7: var(--gray-7);
+  --color-gray-8: var(--gray-8);
+  --color-gray-9: var(--gray-9);
+  --color-gray-10: var(--gray-10);
+  --color-gray-11: var(--gray-11);
+  --color-gray-12: var(--gray-12);
 
-  /* text → text-fg / text-fg-2 / text-fg-3 / text-muted / text-dim */
-  --color-fg: var(--text-1);
-  --color-fg-2: var(--text-2);
-  --color-fg-3: var(--text-3);
-  --color-muted: var(--text-muted);
-  --color-dim: var(--text-dim);
+  --color-blue-5: var(--blue-5);
+  --color-blue-9: var(--blue-9);
+  --color-blue-11: var(--blue-11);
 
-  /* borders → border-line / border-line-chip / … */
-  --color-line-faint: var(--border-faint);
-  --color-line-row: var(--border-row);
-  --color-line: var(--border-strong);
-  --color-line-chip: var(--border-chip);
-  --color-line-dashed: var(--border-dashed);
-  --color-line-drift: var(--border-drift);
-  --color-line-amber-dim: var(--border-amber-dim);
+  --color-green-3: var(--green-3);
+  --color-green-7: var(--green-7);
+  --color-green-11: var(--green-11);
+  --color-green-12: var(--green-12);
 
-  /* signals → bg-amber / text-amber-ink / border-amber-border / … */
-  --color-amber: var(--amber);
-  --color-amber-hover: var(--amber-hover);
-  --color-green-hover: var(--green-hover);
-  --color-amber-ink: var(--amber-ink);
-  --color-amber-bg: var(--amber-bg);
-  --color-amber-border: var(--amber-border);
-  --color-green: var(--green);
-  --color-green-ink: var(--green-ink);
-  --color-green-bg: var(--green-bg);
-  --color-green-border: var(--green-border);
-  --color-danger-ink: var(--danger-ink);
-  --color-danger-bg: var(--danger-bg);
-  --color-danger-border: var(--danger-border);
-  --color-dim-bg: var(--dim-bg);
-  --color-on-accent: var(--on-accent);
+  --color-amber-3: var(--amber-3);
+  --color-amber-7: var(--amber-7);
+  --color-amber-11: var(--amber-11);
+  --color-amber-12: var(--amber-12);
 
-  /* primitive type colours → text-type-skill / border-type-hook / … */
-  --color-type-skill: var(--type-skill);
-  --color-type-hook: var(--type-hook);
-  --color-type-mcp: var(--type-mcp);
-  --color-type-bundle: var(--type-bundle);
+  --color-red-3: var(--red-3);
+  --color-red-7: var(--red-7);
+  --color-red-11: var(--red-11);
+  --color-red-12: var(--red-12);
+
+  --color-backdrop: var(--backdrop);
+
+  /* the one shadow, for a menu, a popover or a dialog (ADR-0033 §7) */
+  --shadow-float: var(--shadow-float-value);
+
+  /* ── Control Room aliases ─────────────────────────────────────────────── */
+  /* surfaces */
+  --color-canvas: var(--gray-1);
+  --color-chrome: var(--gray-2);
+  --color-card: var(--gray-2);
+  --color-inset: var(--gray-3);
+  --color-active: var(--gray-4);
+
+  /* text — the old five-step ramp collapses onto the two the system has */
+  --color-fg: var(--gray-12);
+  --color-fg-2: var(--gray-12);
+  --color-fg-3: var(--gray-11);
+  --color-muted: var(--gray-11);
+  --color-dim: var(--gray-11);
+
+  /* borders */
+  --color-line-faint: var(--gray-6);
+  --color-line-row: var(--gray-7);
+  --color-line: var(--gray-7);
+  --color-line-chip: var(--gray-7);
+  --color-line-dashed: var(--gray-7);
+  --color-line-drift: var(--amber-7);
+  --color-line-amber-dim: var(--amber-7);
+
+  /* signals — the mark sits on step 11, its surface on 3, its border on 7 */
+  --color-amber: var(--amber-11);
+  --color-amber-hover: var(--amber-12);
+  --color-amber-ink: var(--amber-11);
+  --color-amber-bg: var(--amber-3);
+  --color-amber-border: var(--amber-7);
+  --color-green: var(--green-11);
+  --color-green-hover: var(--green-12);
+  --color-green-ink: var(--green-11);
+  --color-green-bg: var(--green-3);
+  --color-green-border: var(--green-7);
+  --color-danger-ink: var(--red-11);
+  --color-danger-bg: var(--red-3);
+  --color-danger-border: var(--red-7);
+  --color-dim-bg: var(--gray-3);
+  --color-on-accent: var(--gray-1);
+
+  /* a primitive type is its plain word in gray 11, with no hue (#987) */
+  --color-type-skill: var(--gray-11);
+  --color-type-hook: var(--gray-11);
+  --color-type-mcp: var(--gray-11);
+  --color-type-bundle: var(--gray-11);
 }
 
 @theme {
   /* fonts → font-ui / font-mono */
-  --font-ui:
-    "Space Grotesk Variable", "Space Grotesk", "Helvetica Neue", Helvetica,
-    sans-serif;
+  --font-ui: "Geist Variable", "Geist", "Helvetica Neue", Helvetica, sans-serif;
   --font-mono:
-    "JetBrains Mono Variable", "JetBrains Mono", "SFMono-Regular", Menlo,
-    monospace;
+    "Geist Mono Variable", "Geist Mono", "SFMono-Regular", Menlo, monospace;
 
-  /* type scale (dense cockpit — small but never below 10px) → text-title … text-tag */
-  --text-title: 16px;
-  --text-subtitle: 14px;
-  --text-body: 13.5px;
-  --text-data: 13px;
-  --text-desc: 12.5px;
-  --text-mono-sm: 11.5px;
-  --text-chip: 11px;
-  --text-tag: 10px;
+  /* type ramp, five sizes in rem (ADR-0033 §6) → text-meta … text-title */
+  --text-meta: 0.75rem;
+  --text-meta--line-height: 1rem;
+  --text-row: 0.8125rem;
+  --text-row--line-height: 1.25rem;
+  --text-prose: 0.875rem;
+  --text-prose--line-height: 1.25rem;
+  --text-heading: 1rem;
+  --text-heading--line-height: 1.5rem;
+  --text-title: 1.25rem;
+  --text-title--line-height: 1.75rem;
 
-  /* letter-spacing → tracking-label / tracking-tag */
+  /* Control Room type aliases. Nothing goes below the 12px floor, so the four
+     sizes under it all land on meta. --text-title is an alias by identity. */
+  --text-subtitle: var(--text-prose);
+  --text-body: var(--text-prose);
+  --text-data: var(--text-row);
+  --text-desc: var(--text-meta);
+  --text-mono-sm: var(--text-meta);
+  --text-chip: var(--text-meta);
+  --text-tag: var(--text-meta);
+
+  /* letter-spacing → tracking-heading / tracking-title */
+  --tracking-heading: -0.2px;
+  --tracking-title: -0.4px;
+  /* Control Room aliases: the uppercase mono micro-label retires with its last
+     user (job 9), so its tracking keeps its own value until then. */
   --tracking-label: 0.12em;
   --tracking-tag: 0.08em;
 
-  /* corner radii — tight, nothing pill-shaped → rounded-tag … rounded-card */
-  --radius-tag: 3px;
-  --radius-control: 4px;
-  --radius-item: 5px;
-  --radius-card: 6px;
+  /* corner radii (ADR-0033 §7) → rounded-chip / rounded-control / rounded-float */
+  --radius-chip: 4px;
+  --radius-control: 6px;
+  --radius-float: 12px;
+  /* Control Room aliases */
+  --radius-tag: var(--radius-chip);
+  --radius-item: var(--radius-control);
+  --radius-card: var(--radius-control);
 
-  /* recurring paddings → px-card-x / py-row-y / py-header-y */
-  --spacing-card-x: 14px;
-  --spacing-row-y: 9px;
-  --spacing-header-y: 10px;
+  /* density (ADR-0033 §7) → h-row / h-control / h-control-row */
+  --spacing-row: 2rem;
+  --spacing-control: 2rem;
+  --spacing-control-row: 1.5rem;
 
-  /* gap between two peer sections in a view → mt-section */
-  --spacing-section: 24px;
+  /* the 4px base, six steps, no half steps → p-cell / gap-inline / mt-section */
+  --spacing-tight: 0.25rem;
+  --spacing-inline: 0.5rem;
+  --spacing-cell: 0.75rem;
+  --spacing-panel: 1rem;
+  --spacing-section: 1.5rem;
+  --spacing-page: 2rem;
+  /* Control Room aliases. A 32px row is a 20px line plus 6px above and below,
+     which is the padding the old row and header tokens carried. */
+  --spacing-card-x: var(--spacing-cell);
+  --spacing-row-y: 0.375rem;
+  --spacing-header-y: 0.375rem;
+
+  /* motion (ADR-0033 §8). Only what floats moves, by opacity alone. */
+  --motion-quick: 150ms;
+  --motion-float-in: 300ms;
+  --motion-float-out: 200ms;
+  --motion-loop: 1400ms;
+  --motion-spin: 800ms;
+  --motion-hover-open: 400ms;
+  --motion-hover-close: 150ms;
+  --motion-ease: ease-out;
+
+  /* the sidebar folds into a 48px bar below this width */
+  --breakpoint-sidebar: 1024px;
 }
 
 @layer base {
-  /* The UA paints native controls (checkbox, select popup, scrollbar, autofill)
-     from color-scheme, not from data-theme; without it the unchecked checkbox is
-     pure white. Move onto the [data-theme] selectors when a light theme ships. */
-  :root {
-    color-scheme: dark;
-  }
   html,
   body,
   #root {
@@ -115,37 +214,37 @@
   }
   /* The cockpit shell owns scrolling: the routed main region scrolls, the page
      itself never does. Without this the long inventory list leaks past main and
-     scrolls the whole document, dragging the status bar and sidebar nav
-     off-screen. Lock must sit on <html> — overflow on <body> does not propagate
-     to the viewport here. */
+     scrolls the whole document, dragging the sidebar nav off-screen. Lock must
+     sit on <html> — overflow on <body> does not propagate to the viewport. */
   html {
     overflow: hidden;
   }
   body {
     margin: 0;
-    background: var(--bg-0);
-    color: var(--text-1);
+    background: var(--gray-1);
+    color: var(--gray-12);
     font-family: var(--font-ui);
   }
-  /* One keyboard focus ring for every control, on the amber accent (issue #214).
-     Replaces the browser-default blue — off-palette and only 3.2:1 on the near-
-     black canvas — with the accent that already reads on every surface (≥3:1,
-     guarded in tokens-contrast.test.ts). :focus-visible so it appears for
-     keyboard users, not on a mouse press; the outline follows each control's own
-     border-radius. A control that needs no ring opts out with `outline-none`. */
+  /* One keyboard focus ring for every control, on blue 9 — the only thing blue
+     does besides selection and links (ADR-0033 §2). It clears 3:1 on gray 1
+     and 2 in both themes, guarded in tokens-contrast.test.ts. :focus-visible so
+     it appears for keyboard users, not on a mouse press; the outline follows
+     each control's own border-radius. A control that needs no ring opts out
+     with `outline-none`. */
   :focus-visible {
-    outline: 2px solid var(--amber);
+    outline: 2px solid var(--blue-9);
     outline-offset: 2px;
   }
 }
 
-/* uppercase mono micro-label, e.g. "TARGETS", "DEPLOY TO" */
+/* uppercase mono micro-label, e.g. "TARGETS", "DEPLOY TO". Retires with its
+   last user; the system's own column header is sentence-case Geist. */
 .m-label {
   font-family: var(--font-mono);
-  font-size: var(--text-tag);
+  font-size: var(--text-meta);
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
-  color: var(--text-dim);
+  color: var(--gray-11);
 }
 
 /* mono data text */
@@ -154,7 +253,9 @@
 }
 
 /* The connect gate's arrival — the one entrance animation in the cockpit, and
-   only on that screen (ADR-0022). Runs once on mount; nothing loops. */
+   only on that screen (ADR-0022). Runs once on mount; nothing loops. Its rule
+   is gray: amber means Attention and never decorates (ADR-0033 amends
+   ADR-0022). */
 @keyframes connect-gate-rule {
   from {
     transform: scaleX(0);
@@ -172,13 +273,13 @@
   display: block;
   width: 96px;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--amber), transparent);
+  background: linear-gradient(90deg, transparent, var(--gray-9), transparent);
   opacity: 0.55;
 }
 
-/* Declared once, the way hover-transition.ts owns the colour transition. The
-   last delay plus the duration is the sequence's total; ADR-0022 caps it at
-   600ms so the action never sits invisible while it is already clickable. */
+/* Declared once. The last delay plus the duration is the sequence's total;
+   ADR-0022 caps it at 600ms so the action never sits invisible while it is
+   already clickable. */
 :root {
   --gate-arrival-duration: 420ms;
   --gate-arrival-ease: cubic-bezier(0.16, 1, 0.3, 1);
