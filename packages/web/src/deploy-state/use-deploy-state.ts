@@ -35,7 +35,8 @@ type DeployStateResponse = {
 
 // Shared so single-repo and multi-repo readers use the same key/fetch — they
 // must never diverge or two screens would cache-miss each other. No staleTime:
-// kept live so an external apm change shows on open/focus.
+// kept live so an external apm change shows on open/focus. The one query that
+// opts back into focus, against the root's default (#1037).
 export function deployStateQueryOptions(repo: string) {
   return {
     queryKey: ["deploy-state", repo] as const,
@@ -43,6 +44,7 @@ export function deployStateQueryOptions(repo: string) {
       requestJson<DeployStateResponse>(
         `/api/deploy-state?repo=${encodeURIComponent(repo)}`,
       ),
+    refetchOnWindowFocus: true,
   };
 }
 

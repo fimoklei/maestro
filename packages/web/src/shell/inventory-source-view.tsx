@@ -78,7 +78,7 @@ export function InventorySourceView() {
           <div className="flex flex-col gap-3">
             {/* The notice region outlives its content (#465, decision 12), and
                 a panel that failed to read is always trigger="load" — one
-                block for a first read, a retry and a refetch on focus. */}
+                block for a first read and for a pressed re-read. */}
             <Notice trigger="load" notice={failed ? READ_FAILED : null} />
             {/* The count pill stays mounted through a retry, even if the last
                 read errored: unmounting it would leave the recovered count

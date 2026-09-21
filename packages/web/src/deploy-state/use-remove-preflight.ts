@@ -39,7 +39,6 @@ export function removePreflightQueryOptions(
     // this check exists to prevent.
     gcTime: 0,
     staleTime: 0,
-    retry: false,
   };
 }
 

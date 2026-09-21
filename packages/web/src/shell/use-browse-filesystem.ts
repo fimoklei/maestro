@@ -20,8 +20,5 @@ export function useBrowseFilesystem(path: string) {
         method: "POST",
         body: JSON.stringify({ path }),
       }),
-    // Every failure here is a verdict on the path itself; re-asking can't
-    // change it, and default retries would stall the dialog for seconds (#406).
-    retry: false,
   });
 }

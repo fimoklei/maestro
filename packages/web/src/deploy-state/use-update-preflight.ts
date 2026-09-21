@@ -37,7 +37,6 @@ function updatePreflightQueryOptions(
     // one lie this preview exists to prevent.
     gcTime: 0,
     staleTime: 0,
-    retry: false,
   };
 }
 
