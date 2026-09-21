@@ -1,9 +1,26 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import { RepositoriesView } from "./repositories-view";
+import { REGISTRY_KEY } from "./use-registry";
+
+// Stands in for the screen's own Re-read control, which arrives with the
+// Repositories job: it drops the cached read so the view renders a failure over
+// content it already showed.
+function RereadTrigger() {
+  const queryClient = useQueryClient();
+  return (
+    <button
+      type="button"
+      onClick={() => queryClient.invalidateQueries({ queryKey: REGISTRY_KEY })}
+    >
+      Force re-read
+    </button>
+  );
+}
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -176,6 +193,43 @@ describe("Repositories", () => {
       await screen.findByRole("checkbox", { name: /agent-harness/i }),
     ).toBeDisabled();
     expect(screen.getByText("Current Inventory")).toBeInTheDocument();
+  });
+
+  // The read rules (#1037): no retry, so the notice lands on the first
+  // failure, and the rows the reader already had stay put.
+  it("states a failed re-read after one failed request, rows still on screen", async () => {
+    let fail = false;
+    const fetchRegistry = vi.fn();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (!String(input).includes("/api/registry/repos")) {
+          return jsonResponse({ primitives: [], skipped: [] }, 200);
+        }
+        fetchRegistry();
+        return fail
+          ? jsonResponse({ error: "unreadable" }, 503)
+          : jsonResponse({ repos: [{ path: "/home/me/acme-web" }] }, 200);
+      }),
+    );
+    renderWithQuery(
+      <MemoryRouter initialEntries={["/repositories"]}>
+        <RepositoriesView />
+        <RereadTrigger />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByTitle("/home/me/acme-web")).toBeInTheDocument();
+
+    fail = true;
+    await userEvent.click(
+      screen.getByRole("button", { name: "Force re-read" }),
+    );
+
+    expect(
+      await screen.findByText("Registered repositories not read"),
+    ).toBeInTheDocument();
+    expect(screen.getByTitle("/home/me/acme-web")).toBeInTheDocument();
+    expect(fetchRegistry).toHaveBeenCalledTimes(2);
   });
 
   it("has no path input of its own — the picker's paste field is the one", async () => {

@@ -45,12 +45,14 @@ export type GlobalDeployStateView = {
   pendingOperation?: PendingOperation;
 };
 
-export function useGlobalDeployState(enabled = true) {
-  return useQuery({
-    queryKey: ["deploy-state", "global"],
+// Shaped like the per-repo options so both reads stay one pair. The one other
+// query that opts back into focus, against the root's default (#1037).
+export function globalDeployStateQueryOptions() {
+  return {
+    queryKey: ["deploy-state", "global"] as const,
     queryFn: () =>
       requestJson<GlobalDeployStateResponse>("/api/deploy-state/global"),
-    select: (data): GlobalDeployStateView => {
+    select: (data: GlobalDeployStateResponse): GlobalDeployStateView => {
       const tools = data.tools ?? [];
       return {
         tools,
@@ -63,8 +65,12 @@ export function useGlobalDeployState(enabled = true) {
           : {}),
       };
     },
-    enabled,
-  });
+    refetchOnWindowFocus: true,
+  };
+}
+
+export function useGlobalDeployState(enabled = true) {
+  return useQuery({ ...globalDeployStateQueryOptions(), enabled });
 }
 
 // Dedupe by name+version, preserving first-seen order.

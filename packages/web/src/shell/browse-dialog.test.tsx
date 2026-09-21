@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import {
   act,
   fireEvent,
@@ -9,6 +9,7 @@ import {
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createQueryClient } from "../api/query-client";
 import type { RegistrationOutcome } from "../registry/use-register-repos";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import { BrowseDialog } from "./browse-dialog";
@@ -563,18 +564,16 @@ describe("BrowseDialog", () => {
     });
 
     it("reaches home on the first refusal under production query defaults", async () => {
-      // Other tests here disable retries; production's default of three with
-      // backoff would stall the fallback and re-send an unchanging refusal.
-      // Rendered with a bare QueryClient so that default is under test.
+      // Query's own default of three retries with backoff would stall the
+      // fallback and re-send an unchanging refusal. The cockpit's client is
+      // built here rather than taken from renderWithQuery, so the one-request
+      // count below proves the root's rule (#1037), not a test-only setting.
       writeLastFolder("connect", "/elsewhere/repos");
       const fetchMock = stubFilesystemServer({
         paths: { "/elsewhere/repos": { error: "outside-root", status: 403 } },
       });
-      // Production defaults on purpose — retries stay on, which is what makes
-      // the one-request count below prove the hook's own guard rather than the
-      // test client's. Never renderWithQuery here.
       render(
-        <QueryClientProvider client={new QueryClient()}>
+        <QueryClientProvider client={createQueryClient()}>
           <BrowseDialog mode="connect" onSelect={vi.fn()} onClose={vi.fn()} />
         </QueryClientProvider>,
       );

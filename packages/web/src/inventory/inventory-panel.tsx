@@ -63,8 +63,8 @@ export function InventoryPanel() {
           Below 1200px the pane stacks under the table and needs no bound. */}
       <section className="flex flex-col p-panel min-[1200px]:h-[100cqh]">
         {/* A section that failed to load is always trigger="load" — nothing here
-          followed a click, and Query refetches on window focus (#465). The
-          region outlives its content, so it is mounted before the failure is. */}
+          followed a click (#465). The region outlives its content, so it is
+          mounted before the failure is. */}
         <Notice trigger="load" notice={readNotice(inventory.error, reread)} />
         {inventory.isLoading ? (
           <p className="px-card-x py-row-y text-dim text-tag">
