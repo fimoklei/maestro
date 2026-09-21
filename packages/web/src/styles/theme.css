@@ -1,30 +1,13 @@
-/* Maestro web styling entry — the neutral two-theme system on Tailwind v4
-   (ADR-0033). Loads Tailwind, the raw colour tokens, then maps everything to
-   Tailwind utility names. Two @theme blocks, on purpose:
-
-   - @theme inline  → colours and the one shadow. `inline` makes a utility
-     reference the raw token directly (bg-canvas → var(--gray-1)), so flipping
-     data-theme on the root re-skins everything because only the raw value
-     changes.
-   - @theme         → theme-independent constants (fonts, type ramp, density,
-     spacing, radii, motion). Literal values; they never switch per theme.
-
-   Every Control Room name below is kept as an alias onto a new value. No
-   component is rewritten before its own rebuild job, so a screen that has not
-   been touched still paints; the aliases go in job 11. style-rules.test.ts
-   fails if one is dropped. */
+/* Maestro web styling entry: Tailwind v4, the raw colour tokens, then the
+   utility names. Why two @theme blocks and why the Control Room aliases stay
+   until job 11: ADR-0033. style-rules.test.ts fails if an alias is dropped. */
 
 @import "tailwindcss";
 @import "./tokens.css";
 
-/* Geist and Geist Mono (OFL 1.1), self-hosted — never a runtime CDN fetch,
-   which would break the local-first/offline scope. One variable woff2 per
-   family: the face is declared here rather than through the package's
-   index.css, which carries five subsets and would ship all five. The cockpit's
-   words are Latin; the status glyphs are not in Geist and fall back either way.
-   The files come from @fontsource-variable/geist{,-mono} (5.3.0), resolved by
-   the bundler, so the version is pinned in package.json and nothing binary
-   lives in the repo. */
+/* Geist and Geist Mono (OFL 1.1), self-hosted, one variable woff2 per family.
+   The face is declared here, not through the package's five-subset index.css
+   (ADR-0033). */
 @font-face {
   font-family: "Geist Variable";
   font-style: normal;
@@ -212,10 +195,8 @@
   #root {
     height: 100%;
   }
-  /* The cockpit shell owns scrolling: the routed main region scrolls, the page
-     itself never does. Without this the long inventory list leaks past main and
-     scrolls the whole document, dragging the sidebar nav off-screen. Lock must
-     sit on <html> — overflow on <body> does not propagate to the viewport. */
+  /* The routed main region scrolls, the page never does. The lock must sit on
+     <html>: overflow on <body> does not propagate to the viewport. */
   html {
     overflow: hidden;
   }
@@ -225,12 +206,9 @@
     color: var(--gray-12);
     font-family: var(--font-ui);
   }
-  /* One keyboard focus ring for every control, on blue 9 — the only thing blue
-     does besides selection and links (ADR-0033 §2). It clears 3:1 on gray 1
-     and 2 in both themes, guarded in tokens-contrast.test.ts. :focus-visible so
-     it appears for keyboard users, not on a mouse press; the outline follows
-     each control's own border-radius. A control that needs no ring opts out
-     with `outline-none`. */
+  /* One keyboard focus ring for every control, on blue 9 (ADR-0033 §2); its
+     contrast is guarded in tokens-contrast.test.ts. A control that needs no
+     ring opts out with `outline-none`. */
   :focus-visible {
     outline: 2px solid var(--blue-9);
     outline-offset: 2px;
@@ -252,10 +230,8 @@
   font-family: var(--font-mono);
 }
 
-/* The connect gate's arrival — the one entrance animation in the cockpit, and
-   only on that screen (ADR-0022). Runs once on mount; nothing loops. Its rule
-   is gray: amber means Attention and never decorates (ADR-0033 amends
-   ADR-0022). */
+/* The connect gate's arrival, the one entrance animation (ADR-0022). Its rule
+   is gray, since amber never decorates (ADR-0033 amends ADR-0022). */
 @keyframes connect-gate-rule {
   from {
     transform: scaleX(0);

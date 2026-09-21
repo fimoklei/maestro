@@ -1,20 +1,6 @@
-/* Raw colour tokens — generated from `.impeccable/design.json`, never edited by
-   hand. Change a value there and regenerate (`/impeccable`), so design.json,
-   this file and DESIGN.md never disagree (ADR-0033).
-
-   Radix Colors 3.0.0, values unchanged, light and dark on the same step
-   numbers. The neutral role is named `gray`; its values are Radix `slate`.
-   Each step has one task: 1 canvas, 2 panel, 3 control, 4 hover, 5 selected,
-   6 separator, 7 border, 8 border-hover, 9 solid, 10 solid-hover, 11 muted
-   text, 12 text. Seventeen foreground/background pairs are documented and
-   measured in `tokens-contrast.test.ts`; a pairing outside that list enters it,
-   and passes, before a component uses it.
-
-   Theme-independent tokens (fonts, type ramp, density, radii, motion) are NOT
-   here — they live in theme.css's @theme block, since they never switch and
-   Tailwind needs them declared there to emit utilities. That file also keeps
-   the Control Room token names alive as aliases onto these values, so no
-   component is rewritten before its own rebuild job. */
+/* Raw colour tokens, generated from `.impeccable/design.json` — never edited by
+   hand; change a value there and regenerate (`/impeccable`). Step semantics, the
+   17 measured pairs and the theme-independent tokens: ADR-0033. */
 
 /* ── dark (the pinned default until the Interface theme row ships) ───────── */
 :root,
