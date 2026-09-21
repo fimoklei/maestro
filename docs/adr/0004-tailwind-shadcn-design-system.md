@@ -2,7 +2,9 @@
 
 - **Status:** Accepted — component layer and level-3-from-scratch scope
   **superseded in part by ADR-0008** (2026-06-19). Tailwind v4 `@theme` for
-  tokens, capability-before-UI, and the single UI pass still stand.
+  tokens, capability-before-UI, and the single UI pass still stand. ADR-0008 was
+  itself superseded by ADR-0033 (2026-09-21), which takes components from
+  shadcn/ui first.
 - **Date:** 2026-06-13
 
 ## Context

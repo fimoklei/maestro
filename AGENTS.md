@@ -28,6 +28,7 @@ central inventory lives in the separate `agent-harness` repo.
 ├── .claude/rules/         # Claude-specific project rules
 ├── docs/
 │   ├── brief.md           # product thesis and the bet
+│   ├── design-principles.md # the ten principles a new screen is designed from
 │   ├── operating-model.md # how the product is run: the board and the loop
 │   ├── jobs.md            # the board: NOW / NEXT / LATER / DONE
 │   ├── adr/               # accepted architecture and product decisions
@@ -52,6 +53,7 @@ in `~/.maestro/config.json`.
 ### When writing tests → Read `.claude/rules/testing.md`
 ### When shelling out to APM or reading external files/lockfiles → Read `.claude/rules/security.md`
 ### When writing a React component or client-side data access → Read `.claude/rules/frontend.md`
+### When designing a new screen, dialog or use case → Read `docs/design-principles.md`
 ### When changing what `packages/web` renders → Read `.claude/rules/design.md`
 ### When authoring or reviewing user-facing copy, including controls and cockpit-visible server messages → Read `.claude/rules/copy.md` and complete its copy review
 ### When driving `apm` or parsing its lockfile/output → Read `.claude/rules/apm-driver.md`

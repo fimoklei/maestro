@@ -2,6 +2,8 @@
 
 - **Status:** Accepted
 - **Date:** 2026-08-03
+- **Amended 2026-09-21** by ADR-0033, which supersedes ADR-0008: the rule turns
+  from amber to slate. The arrival itself stands.
 - **Amends** ADR-0008 (Control Room design system) — the motion rule, and only
   for the surface named here.
 

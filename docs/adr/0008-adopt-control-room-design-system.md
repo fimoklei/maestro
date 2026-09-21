@@ -1,6 +1,6 @@
 # ADR-0008 — Adopt the "Control Room" design system (amends ADR-0004)
 
-- **Status:** Accepted — amends ADR-0004 (Tailwind v4 `@theme` stays; the
+- **Status:** Superseded by ADR-0033 (2026-09-21). Was: Accepted — amends ADR-0004 (Tailwind v4 `@theme` stays; the
   shadcn-catalogue-from-scratch scope is dropped)
 - **Date:** 2026-06-19
 - **Amended 2026-08-03** by ADR-0022 — the motion rule gains one exception, the

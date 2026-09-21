@@ -64,7 +64,9 @@ Deploy again to restore the released files. Then remove the skill.
 | Blocked control | Label, em dash, cause in five words or fewer | `Withdraw proposal — no request yet` |
 | Meta line | Fact, comma, when it was read | `Compared with main, read just now` |
 | Empty state | `No {things} yet`, then one sentence saying what appears here | `No changes yet` |
-| Loading text | `Loading the {screen name}…` | `Loading the Inventory…` |
+| Busy label | `{Verb}ing…`, the verb of the control's own label, no object | `Deploying…` |
+| Status announcement | Start: the busy label. End: `{Done word} {name}.` A failure is the notice, a toast replaces the end | `Deployed tdd.` |
+| Loading text | `Loading the {screen name}…` — heard, not seen; visible only inside a dialog | `Loading the Inventory…` |
 | Dialog | Title and confirm button share a verb. A dialog that acts on a subject the reader already chose titles `{Verb} {name}`, or `{Verb} {object} for {name}` where the verb carries its own object. A dialog that asks the reader to choose the subject titles `{Verb} a {thing}`. Confirm button `{Verb} {thing}` | `Delete {skill}` / `Delete skill`; `Withdraw proposal for {skill}` / `Withdraw proposal`; `Update a skill` / `Update skill` |
 | Field | Visible label naming the value; a hint adds what a label cannot | `Folder path` |
 | Accessible name | Visible words first, in the same order (`design.md`) | `Inventory table` |
