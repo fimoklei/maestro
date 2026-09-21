@@ -57,15 +57,91 @@ describe("placeholder colour", () => {
   });
 });
 
-// DESIGN.md §2: hierarchy comes from lightness steps. The UA paints native
-// controls (checkbox, select popup, scrollbar, autofill) from color-scheme, not
-// from data-theme, so without this every unchecked checkbox is pure white —
-// brighter than --text-1 — and drowns out the amber checked state (issue #468).
+// The UA paints native controls (checkbox, select popup, scrollbar, autofill)
+// from color-scheme, not from data-theme, so without it an unchecked checkbox
+// is pure white on the dark cockpit (issue #468). Both themes ship, so both
+// blocks declare it beside their values (ADR-0033 §5).
 describe("native control colour scheme", () => {
-  it("theme.css declares a dark color-scheme", () => {
-    const themeCss = readFileSync(join(SRC_DIR, "styles/theme.css"), "utf8");
+  const tokensCss = readFileSync(join(SRC_DIR, "styles/tokens.css"), "utf8");
 
-    expect(themeCss).toMatch(/color-scheme:\s*dark;/);
+  it.each([
+    ["dark", '[data-theme="dark"]'],
+    ["light", '[data-theme="light"]'],
+  ])("the %s block declares its colour scheme", (theme, selector) => {
+    const open = tokensCss.indexOf("{", tokensCss.indexOf(selector));
+    const block = tokensCss.slice(open + 1, tokensCss.indexOf("}", open));
+
+    expect(block).toMatch(new RegExp(`color-scheme:\\s*${theme};`));
+  });
+});
+
+// ADR-0033: the token layer is replaced before any component is. Every
+// Control Room name stays as an alias onto a new value until the job that
+// rebuilds its last user, so a screen that was never touched still paints.
+// The list is the pre-rebuild @theme block, written out so a dropped alias
+// fails here instead of silently rendering an unstyled utility.
+describe("Control Room token aliases", () => {
+  const themeCss = readFileSync(join(SRC_DIR, "styles/theme.css"), "utf8");
+
+  const aliases = [
+    ...[
+      "canvas",
+      "chrome",
+      "card",
+      "inset",
+      "active",
+      "fg",
+      "fg-2",
+      "fg-3",
+      "muted",
+      "dim",
+      "line-faint",
+      "line-row",
+      "line",
+      "line-chip",
+      "line-dashed",
+      "line-drift",
+      "line-amber-dim",
+      "amber",
+      "amber-hover",
+      "amber-ink",
+      "amber-bg",
+      "amber-border",
+      "green",
+      "green-hover",
+      "green-ink",
+      "green-bg",
+      "green-border",
+      "danger-ink",
+      "danger-bg",
+      "danger-border",
+      "dim-bg",
+      "on-accent",
+      "type-skill",
+      "type-hook",
+      "type-mcp",
+      "type-bundle",
+    ].map((name) => `--color-${name}`),
+    ...["ui", "mono"].map((name) => `--font-${name}`),
+    ...[
+      "title",
+      "subtitle",
+      "body",
+      "data",
+      "desc",
+      "mono-sm",
+      "chip",
+      "tag",
+    ].map((name) => `--text-${name}`),
+    ...["label", "tag"].map((name) => `--tracking-${name}`),
+    ...["tag", "control", "item", "card"].map((name) => `--radius-${name}`),
+    ...["card-x", "row-y", "header-y", "section"].map(
+      (name) => `--spacing-${name}`,
+    ),
+  ];
+
+  it.each(aliases)("%s still resolves", (alias) => {
+    expect(themeCss).toContain(`${alias}:`);
   });
 });
 

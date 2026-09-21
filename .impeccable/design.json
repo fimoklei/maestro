@@ -1,468 +1,523 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-07-25T00:00:00.000Z",
+  "generatedAt": "2026-09-21T00:00:00.000Z",
   "title": "Design System: Maestro",
   "extensions": {
     "colorMeta": {
-      "amber": {
-        "role": "primary",
-        "displayName": "Signal Amber",
-        "canonical": "#e8a33d",
-        "tonalRamp": [
-          "#2a1c05",
-          "#4a3210",
-          "#6b481a",
-          "#8c5f24",
-          "#b0700f",
-          "#e8a33d",
-          "#f2c982",
-          "#fae8c6"
-        ]
+      "gray-1": {
+        "role": "canvas",
+        "displayName": "Canvas",
+        "light": "#fcfcfd",
+        "dark": "#111113"
       },
-      "green": {
-        "role": "secondary",
-        "displayName": "Signal Green",
-        "canonical": "#62c47e",
-        "tonalRamp": [
-          "#07240f",
-          "#0d3d1c",
-          "#13592a",
-          "#178a4c",
-          "#3dba75",
-          "#62c47e",
-          "#9adcae",
-          "#d3f1dc"
-        ]
+      "gray-2": {
+        "role": "panel",
+        "displayName": "Panel",
+        "light": "#f9f9fb",
+        "dark": "#18191b"
       },
-      "danger": {
-        "role": "secondary",
-        "displayName": "Signal Red",
-        "canonical": "#ec5c6a",
-        "tonalRamp": [
-          "#2a0d10",
-          "#4a1418",
-          "#6b1c22",
-          "#8c242c",
-          "#c23a44",
-          "#ec5c6a",
-          "#f28f98",
-          "#f9cdd2"
-        ]
+      "gray-3": {
+        "role": "control",
+        "displayName": "Control",
+        "light": "#f0f0f3",
+        "dark": "#212225"
       },
-      "bg-0": {
-        "role": "neutral",
-        "displayName": "App Canvas",
-        "canonical": "#0b0d10",
-        "tonalRamp": [
-          "#0b0d10",
-          "#0f1318",
-          "#171d24",
-          "#232a33",
-          "#48525f",
-          "#8a94a0",
-          "#c3cad2",
-          "#eceef2"
-        ]
+      "gray-4": {
+        "role": "hover",
+        "displayName": "Hover",
+        "light": "#e8e8ec",
+        "dark": "#272a2d"
       },
-      "surface-card": {
-        "role": "neutral",
-        "displayName": "Card Surface",
-        "canonical": "#0f1318",
-        "tonalRamp": [
-          "#0b0d10",
-          "#0d1014",
-          "#0f1318",
-          "#11161c",
-          "#171d24",
-          "#e6ebf1",
-          "#f3f5f8",
-          "#ffffff"
-        ]
+      "gray-5": {
+        "role": "selected",
+        "displayName": "Selected",
+        "light": "#e0e1e6",
+        "dark": "#2e3135"
       },
-      "text-1": {
-        "role": "neutral",
-        "displayName": "Primary Ink",
-        "canonical": "#e6e9ed",
-        "tonalRamp": [
-          "#1a212b",
-          "#343e4b",
-          "#48525f",
-          "#687482",
-          "#8a94a0",
-          "#aeb6bf",
-          "#c3cad2",
-          "#e6e9ed"
-        ]
+      "gray-6": {
+        "role": "separator",
+        "displayName": "Separator",
+        "light": "#d9d9e0",
+        "dark": "#363a3f"
       },
-      "text-muted": {
-        "role": "neutral",
-        "displayName": "Muted Ink",
-        "canonical": "#8a94a0",
-        "tonalRamp": [
-          "#1a212b",
-          "#343e4b",
-          "#48525f",
-          "#687482",
-          "#7d8794",
-          "#8a94a0",
-          "#8b95a1",
-          "#aeb6bf"
-        ]
+      "gray-7": {
+        "role": "border",
+        "displayName": "Border",
+        "light": "#cdced6",
+        "dark": "#43484e"
       },
-      "border-strong": {
-        "role": "neutral",
-        "displayName": "Structural Line",
-        "canonical": "#1d232b",
-        "tonalRamp": [
-          "#13181e",
-          "#161b22",
-          "#1d232b",
-          "#232a33",
-          "#ccd3dc",
-          "#dce1e8",
-          "#e6eaef",
-          "#eef1f4"
-        ]
+      "gray-8": {
+        "role": "border-hover",
+        "displayName": "Border hover",
+        "light": "#b9bbc6",
+        "dark": "#5a6169"
       },
-      "border-dashed": {
-        "role": "neutral",
-        "displayName": "Additive Dashed Line",
-        "canonical": "#2a313a"
+      "gray-9": {
+        "role": "solid",
+        "displayName": "Solid",
+        "light": "#8b8d98",
+        "dark": "#696e77"
       },
-      "border-drift": {
-        "role": "primary",
-        "displayName": "Drift Outline",
-        "canonical": "#4a3a1c"
+      "gray-10": {
+        "role": "solid-hover",
+        "displayName": "Solid hover",
+        "light": "#80838d",
+        "dark": "#777b84"
       },
-      "border-amber-dim": {
-        "role": "primary",
-        "displayName": "Dim Amber Line",
-        "canonical": "#3a3327"
+      "gray-11": {
+        "role": "text-muted",
+        "displayName": "Muted text",
+        "light": "#60646c",
+        "dark": "#b0b4ba"
       },
-      "type-skill": {
-        "role": "tertiary",
-        "displayName": "Skill Blue",
-        "canonical": "#7aa5d8",
-        "tonalRamp": [
-          "#0c1930",
-          "#132749",
-          "#1c3a6b",
-          "#2650a0",
-          "#3163cc",
-          "#5a86d8",
-          "#7aa5d8",
-          "#c2d7ee"
-        ]
+      "gray-12": {
+        "role": "text",
+        "displayName": "Text",
+        "light": "#1c2024",
+        "dark": "#edeef0"
       },
-      "type-hook": {
-        "role": "tertiary",
-        "displayName": "Hook Purple",
-        "canonical": "#b48ad6",
-        "tonalRamp": [
-          "#1b1030",
-          "#2c1a4d",
-          "#41266f",
-          "#5f379e",
-          "#8a55ce",
-          "#a274da",
-          "#b48ad6",
-          "#dfc9ef"
-        ]
+      "blue-5": {
+        "role": "selected-fill",
+        "displayName": "Selected row",
+        "light": "#c2e5ff",
+        "dark": "#004074"
       },
-      "type-mcp": {
-        "role": "tertiary",
-        "displayName": "MCP Teal",
-        "canonical": "#5fbfb0",
-        "tonalRamp": [
-          "#06231f",
-          "#0a3a34",
-          "#0f544c",
-          "#147268",
-          "#1a8e82",
-          "#3aa89a",
-          "#5fbfb0",
-          "#c0e6e0"
-        ]
+      "blue-9": {
+        "role": "focus-ring",
+        "displayName": "Focus ring",
+        "light": "#0090ff",
+        "dark": "#0090ff"
       },
-      "type-bundle": {
-        "role": "tertiary",
-        "displayName": "Bundle Amber",
-        "canonical": "#e8a33d",
-        "tonalRamp": [
-          "#2a1c05",
-          "#4a3210",
-          "#6b481a",
-          "#8c5f24",
-          "#b0700f",
-          "#e8a33d",
-          "#f2c982",
-          "#fae8c6"
-        ]
+      "blue-11": {
+        "role": "link",
+        "displayName": "Link",
+        "light": "#0d74ce",
+        "dark": "#70b8ff"
       },
-      "amber-hover": {
-        "role": "primary",
-        "displayName": "Amber Lift",
-        "canonical": "#f2c982",
-        "tonalRamp": [
-          "#2a1c05",
-          "#4a3210",
-          "#6b481a",
-          "#8c5f24",
-          "#b0700f",
-          "#e8a33d",
-          "#f2c982",
-          "#fae8c6"
-        ]
+      "green-3": {
+        "role": "good-surface",
+        "displayName": "Good surface",
+        "light": "#e6f6eb",
+        "dark": "#132d21"
       },
-      "green-hover": {
-        "role": "secondary",
-        "displayName": "Green Lift",
-        "canonical": "#9adcae",
-        "tonalRamp": [
-          "#07240f",
-          "#0d3d1c",
-          "#13592a",
-          "#178a4c",
-          "#3dba75",
-          "#62c47e",
-          "#9adcae",
-          "#d3f1dc"
-        ]
+      "green-7": {
+        "role": "good-border",
+        "displayName": "Good border",
+        "light": "#8eceaa",
+        "dark": "#28684a"
+      },
+      "green-11": {
+        "role": "good-mark",
+        "displayName": "Good mark",
+        "light": "#218358",
+        "dark": "#3dd68c"
+      },
+      "green-12": {
+        "role": "good-text",
+        "displayName": "Good text",
+        "light": "#193b2d",
+        "dark": "#b1f1cb"
+      },
+      "amber-3": {
+        "role": "attention-surface",
+        "displayName": "Attention surface",
+        "light": "#fff7c2",
+        "dark": "#302008"
+      },
+      "amber-7": {
+        "role": "attention-border",
+        "displayName": "Attention border",
+        "light": "#e9c162",
+        "dark": "#714f19"
+      },
+      "amber-11": {
+        "role": "attention-mark",
+        "displayName": "Attention mark",
+        "light": "#ab6400",
+        "dark": "#ffca16"
+      },
+      "amber-12": {
+        "role": "attention-text",
+        "displayName": "Attention text",
+        "light": "#4f3422",
+        "dark": "#ffe7b3"
+      },
+      "red-3": {
+        "role": "failed-surface",
+        "displayName": "Failed surface",
+        "light": "#feebec",
+        "dark": "#3b1219"
+      },
+      "red-7": {
+        "role": "failed-border",
+        "displayName": "Failed border",
+        "light": "#f4a9aa",
+        "dark": "#8c333a"
+      },
+      "red-11": {
+        "role": "failed-mark",
+        "displayName": "Failed mark",
+        "light": "#ce2c31",
+        "dark": "#ff9592"
+      },
+      "red-12": {
+        "role": "failed-text",
+        "displayName": "Failed text",
+        "light": "#641723",
+        "dark": "#ffd1d9"
+      },
+      "black-a7": {
+        "role": "backdrop",
+        "displayName": "Dialog backdrop",
+        "light": "rgba(0, 0, 0, 0.5)",
+        "dark": "rgba(0, 0, 0, 0.5)"
       }
     },
+    "colorPairs": [
+      {
+        "name": "Text",
+        "foreground": ["gray-12"],
+        "background": ["gray-1", "gray-2", "gray-3", "gray-4", "gray-5"],
+        "floor": 4.5
+      },
+      {
+        "name": "Muted text",
+        "foreground": ["gray-11"],
+        "background": ["gray-1", "gray-2", "gray-3", "gray-4", "gray-5"],
+        "floor": 4.5
+      },
+      {
+        "name": "Text on selected row",
+        "foreground": ["gray-12", "gray-11"],
+        "background": ["blue-5"],
+        "floor": 4.5
+      },
+      {
+        "name": "Primary button",
+        "foreground": ["gray-1"],
+        "background": ["gray-12", "gray-11"],
+        "floor": 4.5
+      },
+      {
+        "name": "Link",
+        "foreground": ["blue-11"],
+        "background": ["gray-1", "gray-2"],
+        "floor": 4.5
+      },
+      {
+        "name": "Focus ring",
+        "foreground": ["blue-9"],
+        "background": ["gray-1", "gray-2"],
+        "floor": 3
+      },
+      {
+        "name": "Field and checkbox border",
+        "foreground": ["gray-9"],
+        "background": ["gray-1", "gray-2"],
+        "floor": 3
+      },
+      {
+        "name": "Good text",
+        "foreground": ["green-12"],
+        "background": ["green-3"],
+        "floor": 4.5
+      },
+      {
+        "name": "Good mark on its own surface",
+        "foreground": ["green-11"],
+        "background": ["green-3"],
+        "floor": 3
+      },
+      {
+        "name": "Good mark on the page",
+        "foreground": ["green-11"],
+        "background": ["gray-1", "gray-2"],
+        "floor": 3
+      },
+      {
+        "name": "Attention text",
+        "foreground": ["amber-12"],
+        "background": ["amber-3"],
+        "floor": 4.5
+      },
+      {
+        "name": "Attention mark on its own surface",
+        "foreground": ["amber-11"],
+        "background": ["amber-3"],
+        "floor": 3
+      },
+      {
+        "name": "Attention mark on the page",
+        "foreground": ["amber-11"],
+        "background": ["gray-1", "gray-2"],
+        "floor": 3
+      },
+      {
+        "name": "Failed text",
+        "foreground": ["red-12"],
+        "background": ["red-3"],
+        "floor": 4.5
+      },
+      {
+        "name": "Failed mark on its own surface",
+        "foreground": ["red-11"],
+        "background": ["red-3"],
+        "floor": 3
+      },
+      {
+        "name": "Failed mark on the page",
+        "foreground": ["red-11"],
+        "background": ["gray-1", "gray-2"],
+        "floor": 3
+      },
+      {
+        "name": "Destructive button text",
+        "foreground": ["red-11"],
+        "background": ["gray-1", "gray-2"],
+        "floor": 4.5
+      }
+    ],
     "typographyMeta": {
+      "meta": {
+        "displayName": "Meta",
+        "size": "0.75rem",
+        "lineHeight": "1rem",
+        "weight": 400,
+        "tracking": "0",
+        "purpose": "Meta line, chip, column header, hint. 12px is the floor."
+      },
+      "row": {
+        "displayName": "Row",
+        "size": "0.8125rem",
+        "lineHeight": "1.25rem",
+        "weight": 400,
+        "tracking": "0",
+        "purpose": "Table row, button label, field. Weight 500 marks the identifier in the first column, and nothing else."
+      },
+      "prose": {
+        "displayName": "Prose",
+        "size": "0.875rem",
+        "lineHeight": "1.25rem",
+        "weight": 400,
+        "tracking": "0",
+        "purpose": "Sentences: a notice, a dialog body."
+      },
+      "heading": {
+        "displayName": "Heading",
+        "size": "1rem",
+        "lineHeight": "1.5rem",
+        "weight": 600,
+        "tracking": "-0.2px",
+        "purpose": "Section heading, dialog title."
+      },
       "title": {
         "displayName": "Title",
-        "purpose": "Panel and view titles, sentence case, sans."
-      },
-      "subtitle": {
-        "displayName": "Subtitle",
-        "purpose": "Navigation items and secondary headings."
-      },
-      "body": {
-        "displayName": "Body",
-        "purpose": "The small amount of prose the cockpit contains."
-      },
-      "data": {
-        "displayName": "Data",
-        "purpose": "Primitive names, target names, paths, versions — mono."
-      },
-      "chip": {
-        "displayName": "Chip",
-        "purpose": "Status capsules and button labels — mono."
-      },
-      "label": {
-        "displayName": "Micro-label",
-        "purpose": "10px uppercase mono labels such as TARGETS, DEPLOY TO."
+        "size": "1.25rem",
+        "lineHeight": "1.75rem",
+        "weight": 600,
+        "tracking": "-0.4px",
+        "purpose": "Screen title."
       }
     },
-    "shadows": [],
+    "fonts": [
+      {
+        "name": "ui",
+        "family": "Geist Variable",
+        "license": "OFL 1.1",
+        "purpose": "Every word on screen that is not a machine value."
+      },
+      {
+        "name": "mono",
+        "family": "Geist Mono Variable",
+        "license": "OFL 1.1",
+        "purpose": "A machine value only: version, tag, path, ref, commit hash. It takes the size of its slot."
+      }
+    ],
+    "densityMeta": {
+      "row": {
+        "value": "2rem",
+        "purpose": "Table row, table header, list row, navigation item. 20px line plus 6px above and below."
+      },
+      "control-in-row": {
+        "value": "1.5rem",
+        "purpose": "Button, field or checkbox inside a row. WCAG 2.2 2.5.8 floor, never smaller."
+      },
+      "control": {
+        "value": "2rem",
+        "purpose": "Button, field or checkbox in a band, a dialog or a form."
+      },
+      "measure": {
+        "value": "18 rows at 1440x900",
+        "purpose": "The one number a screen is checked against."
+      }
+    },
+    "spacingMeta": {
+      "tight": {
+        "value": "0.25rem",
+        "purpose": "An icon beside a word, the inside of a chip."
+      },
+      "inline": {
+        "value": "0.5rem",
+        "purpose": "Between two controls side by side."
+      },
+      "cell": {
+        "value": "0.75rem",
+        "purpose": "Left and right in a table cell, inside a card."
+      },
+      "panel": {
+        "value": "1rem",
+        "purpose": "The inner edge of a panel or a dialog."
+      },
+      "section": {
+        "value": "1.5rem",
+        "purpose": "Between two blocks on a screen."
+      },
+      "page": {
+        "value": "2rem",
+        "purpose": "The outer edge of the screen."
+      }
+    },
+    "radiusMeta": {
+      "chip": {
+        "value": "4px",
+        "purpose": "Chip, tag."
+      },
+      "control": {
+        "value": "6px",
+        "purpose": "Button, field, card, panel."
+      },
+      "float": {
+        "value": "12px",
+        "purpose": "Menu, popover, dialog. Floating layers only."
+      }
+    },
+    "shadows": [
+      {
+        "name": "float",
+        "light": "0 4px 12px rgba(0, 0, 0, 0.12)",
+        "dark": "0 4px 12px rgba(0, 0, 0, 0.5)",
+        "purpose": "The one shadow. Menu, popover and dialog, always with a 1px gray-7 border. The page itself uses borders and tonal steps, never a shadow."
+      }
+    ],
     "motion": [
       {
-        "name": "state-transition",
-        "value": "150ms ease-out on background-color, border-color and color",
-        "purpose": "The system's working motion, declared once and reused by every hoverable control. Gated behind prefers-reduced-motion: no-preference, so the reduced alternative is an instant colour change."
+        "name": "quick",
+        "value": "150ms",
+        "easing": "ease-out",
+        "purpose": "Colour, background and border change on hover and focus; a control revealed on row hover.",
+        "reducedMotion": "Instant."
+      },
+      {
+        "name": "float-in",
+        "value": "300ms",
+        "easing": "ease-out",
+        "purpose": "Opacity of everything that floats, the backdrop included: the row menu, a popover, the hover card, a dialog, the selection bar. Opacity only, no scale.",
+        "reducedMotion": "Instant."
+      },
+      {
+        "name": "float-out",
+        "value": "200ms",
+        "easing": "ease-out",
+        "purpose": "The same layers on the way out.",
+        "reducedMotion": "Instant."
+      },
+      {
+        "name": "loop",
+        "value": "1400ms",
+        "easing": "linear",
+        "purpose": "The skeleton's shimmer, infinite.",
+        "reducedMotion": "Stands still; the skeleton stays as flat blocks."
+      },
+      {
+        "name": "spin",
+        "value": "800ms",
+        "easing": "linear",
+        "purpose": "The spinner in a button, in the Re-read control and in a row's menu icon, infinite.",
+        "reducedMotion": "Keeps turning: it is the only visible sign of busy."
+      },
+      {
+        "name": "hover-open",
+        "value": "400ms",
+        "easing": "none",
+        "purpose": "A wait, not motion: the pointer rests this long before a hover card opens. Keyboard focus opens it at once.",
+        "reducedMotion": "Unchanged."
+      },
+      {
+        "name": "hover-close",
+        "value": "150ms",
+        "easing": "none",
+        "purpose": "A wait, not motion: the pointer leaves for this long before the hover card closes. Entering the card cancels the close.",
+        "reducedMotion": "Unchanged."
       },
       {
         "name": "gate-arrival",
         "value": "whole sequence within 600ms, cubic-bezier(0.16, 1, 0.3, 1), on opacity, translateY, scaleX and blur, once on mount",
-        "purpose": "The connect gate's welcome screen only (ADR-0022). The empty first screen states its own emptiness on arrival: a 1px amber rule draws in, then heading, copy and action resolve from blurred to sharp in sequence. The rule's gradient fill stays on the finished screen; the blur exists only inside the keyframe. 600ms caps the whole sequence, last element included, so no control is clickable while still invisible. Nothing loops; gated behind prefers-reduced-motion: no-preference. Any other surface keeps the entrance-animation ban."
+        "easing": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "The connect gate's welcome only (ADR-0022), and the one exception to the entrance-animation ban. Its rule is gray, not amber: amber means Attention and never decorates (ADR-0033).",
+        "reducedMotion": "Nothing runs."
       }
     ],
     "breakpoints": [
+      {
+        "name": "sidebar-collapse",
+        "value": "1024px"
+      },
       {
         "name": "design-width",
         "value": "1440px"
       }
     ]
   },
-  "components": [
-    {
-      "name": "Primary Button",
-      "kind": "button",
-      "refersTo": "button-primary",
-      "description": "The single main action in a view — amber fill, mono, bold.",
-      "html": "<button class=\"ds-btn ds-btn-primary\">deploy →</button>",
-      "css": ".ds-btn { font-family: var(--font-mono, 'JetBrains Mono', monospace); font-size: 11px; border-width: 1px; border-style: solid; border-radius: 4px; padding: 6px 12px; cursor: pointer; white-space: nowrap; transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out; } .ds-btn-primary { background: var(--amber, #e8a33d); border-color: var(--amber, #e8a33d); color: var(--on-accent, #0b0d10); font-weight: 700; } .ds-btn-primary:hover { background: var(--amber-hover, #f2c982); border-color: var(--amber-hover, #f2c982); } .ds-btn-primary:focus-visible { outline: 2px solid var(--amber, #e8a33d); outline-offset: 2px; } .ds-btn:disabled { cursor: not-allowed; background: var(--dim-bg, rgba(138,148,160,0.08)); border-color: var(--border-chip, #232a33); color: var(--text-dim, #7d8794); }"
-    },
-    {
-      "name": "Success Button",
-      "kind": "button",
-      "refersTo": "button-success",
-      "description": "Final confirmation of a deploy — green fill, used sparingly.",
-      "html": "<button class=\"ds-btn ds-btn-success\">confirm ✓</button>",
-      "css": ".ds-btn-success { background: var(--green, #62c47e); border-color: var(--green, #62c47e); color: var(--on-accent, #0b0d10); font-weight: 700; } .ds-btn-success:hover { background: var(--green-hover, #9adcae); border-color: var(--green-hover, #9adcae); } .ds-btn-success:focus-visible { outline: 2px solid var(--green, #62c47e); outline-offset: 2px; }"
-    },
-    {
-      "name": "Ghost Button",
-      "kind": "button",
-      "refersTo": "button-ghost",
-      "description": "Row-level action — transparent with a dim amber outline.",
-      "html": "<button class=\"ds-btn ds-btn-ghost\">deploy →</button>",
-      "css": ".ds-btn-ghost { background: transparent; border-color: var(--border-amber-dim, #3a3327); color: var(--amber-ink, #e8a33d); } .ds-btn-ghost:hover { background: var(--amber-bg, rgba(232,163,61,0.1)); border-color: var(--amber-border, rgba(232,163,61,0.3)); } .ds-btn-ghost:focus-visible { outline: 2px solid var(--amber, #e8a33d); outline-offset: 2px; }"
-    },
-    {
-      "name": "Dashed Button",
-      "kind": "button",
-      "refersTo": "button-dashed",
-      "description": "Additive affordance — the only place a dashed border appears on a control.",
-      "html": "<button class=\"ds-btn ds-btn-dashed\">+ register repo</button>",
-      "css": ".ds-btn-dashed { background: transparent; border-style: dashed; border-color: var(--border-dashed, #2a313a); color: var(--text-muted, #8a94a0); } .ds-btn-dashed:hover { background: var(--surface-inset, #11161c); color: var(--text-2, #c3cad2); } .ds-btn-dashed:focus-visible { outline: 2px solid var(--amber, #e8a33d); outline-offset: 2px; }"
-    },
-    {
-      "name": "Quiet Button",
-      "kind": "button",
-      "refersTo": "button-quiet",
-      "description": "The grey-outlined dismissal, e.g. cancel beside a primary action.",
-      "html": "<button class=\"ds-btn ds-btn-quiet\">cancel</button>",
-      "css": ".ds-btn-quiet { background: transparent; border-color: var(--border-chip, #232a33); color: var(--text-muted, #8a94a0); } .ds-btn-quiet:hover { background: var(--surface-inset, #11161c); border-color: var(--border-dashed, #2a313a); color: var(--text-2, #c3cad2); } .ds-btn-quiet:focus-visible { outline: 2px solid var(--amber, #e8a33d); outline-offset: 2px; }"
-    },
-    {
-      "name": "Status Chip",
-      "kind": "chip",
-      "refersTo": "chip-ok",
-      "description": "Read-only state capsule. Always leads with a glyph so colour is never the only signal.",
-      "html": "<span class=\"ds-chip ds-chip-ok\">● in sync</span> <span class=\"ds-chip ds-chip-drift\">▲ 2 drift</span> <span class=\"ds-chip ds-chip-dim\">1.4.0</span>",
-      "css": ".ds-chip { display: inline-block; font-family: var(--font-mono, 'JetBrains Mono', monospace); font-size: 11px; border-width: 1px; border-style: solid; border-radius: 4px; padding: 2px 7px; white-space: nowrap; } .ds-chip-ok { color: var(--green-ink, #62c47e); background: var(--green-bg, rgba(98,196,126,0.1)); border-color: var(--green-border, rgba(98,196,126,0.25)); } .ds-chip-drift { color: var(--amber-ink, #e8a33d); background: var(--amber-bg, rgba(232,163,61,0.1)); border-color: var(--amber-border, rgba(232,163,61,0.3)); } .ds-chip-dim { color: var(--text-muted, #8a94a0); background: var(--dim-bg, rgba(138,148,160,0.08)); border-color: var(--border-chip, #232a33); }"
-    },
-    {
-      "name": "Segmented Control",
-      "kind": "chip",
-      "refersTo": "segment",
-      "description": "A row of real buttons holding one choice, such as the type filter above the inventory table. Hover sits one step below active so it never reads as selecting.",
-      "html": "<fieldset class=\"ds-seg\"><button class=\"ds-seg-item ds-seg-item-active\" aria-pressed=\"true\">all</button><button class=\"ds-seg-item\" aria-pressed=\"false\">skills</button><button class=\"ds-seg-item\" aria-pressed=\"false\">hooks</button></fieldset>",
-      "css": ".ds-seg { display: inline-flex; gap: 4px; padding: 2px; border: 0; margin: 0; border-radius: 4px; } .ds-seg-item { font-family: var(--font-mono, monospace); font-size: 10px; letter-spacing: 0.08em; text-transform: lowercase; padding: 4px 12px; border-radius: 4px; border: 1px solid transparent; background: transparent; color: var(--text-muted, #8a94a0); cursor: pointer; transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out; } .ds-seg-item:hover { background: var(--surface-inset, #11161c); color: var(--text-2, #c3cad2); } .ds-seg-item-active { background: var(--surface-active, #171d24); border-color: var(--border-chip, #232a33); color: var(--text-1, #e6e9ed); } .ds-seg-item-active:hover { background: var(--surface-active, #171d24); } .ds-seg-item:focus-visible { outline: 2px solid var(--amber, #e8a33d); outline-offset: 2px; }"
-    },
-    {
-      "name": "Target Card",
-      "kind": "card",
-      "refersTo": "card",
-      "description": "The basic panel. Mono header with kind label, truncating title, right-aligned status chip. No shadow.",
-      "html": "<div class=\"ds-card\"><div class=\"ds-card-head\"><span class=\"ds-card-kind\">local</span><span class=\"ds-card-title\">acme-web</span><span class=\"ds-chip ds-chip-ok\">● in sync</span></div><div class=\"ds-card-row\">code-review · 1.4.0</div></div>",
-      "css": ".ds-card { background: var(--surface-card, #0f1318); border: 1px solid var(--border-strong, #1d232b); border-radius: 6px; overflow: hidden; } .ds-card-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border-row, #161b22); } .ds-card-kind { font-family: var(--font-mono, monospace); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted, #8a94a0); } .ds-card-title { flex: 1; font-family: var(--font-mono, monospace); font-size: 13px; color: var(--text-1, #e6e9ed); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ds-card-row { padding: 9px 14px; font-family: var(--font-mono, monospace); font-size: 13px; color: var(--text-2, #c3cad2); }"
-    },
-    {
-      "name": "Drift Card",
-      "kind": "card",
-      "refersTo": "card-drift",
-      "description": "Same panel with its outline warmed to amber-brown — the only structural colour change in the system.",
-      "html": "<div class=\"ds-card ds-card-drift\"><div class=\"ds-card-head\"><span class=\"ds-card-kind\">global</span><span class=\"ds-card-title\">claude-code</span><span class=\"ds-chip ds-chip-drift\">▲ 2 drift</span></div><div class=\"ds-card-row\">code-review · 1.0.0 → 1.2.0</div></div>",
-      "css": ".ds-card-drift { border-color: var(--border-drift, #4a3a1c); }"
-    },
-    {
-      "name": "Inventory Table Row",
-      "kind": "custom",
-      "refersTo": "table-row",
-      "description": "The densest surface in the cockpit. A clickable row hovers to the inset surface; the selected row holds the active surface one step above it.",
-      "html": "<table class=\"ds-table\"><tbody><tr class=\"ds-row\"><td class=\"ds-cell\">audit-dependencies</td><td class=\"ds-cell ds-cell-dim\">not deployed</td></tr><tr class=\"ds-row ds-row-selected\"><td class=\"ds-cell\">brutal-critic</td><td class=\"ds-cell ds-cell-dim\">1.4.0</td></tr><tr class=\"ds-row\"><td class=\"ds-cell\">caveman</td><td class=\"ds-cell ds-cell-dim\">not deployed</td></tr></tbody></table>",
-      "css": ".ds-table { width: 100%; border-collapse: collapse; text-align: left; } .ds-row { border-bottom: 1px solid var(--border-row, #161b22); cursor: pointer; transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out; } .ds-row:last-child { border-bottom: 0; } .ds-row:hover { background: var(--surface-inset, #11161c); } .ds-row-selected { background: var(--surface-active, #171d24); } .ds-row-selected:hover { background: var(--surface-active, #171d24); } .ds-cell { padding: 9px 14px; font-family: var(--font-mono, monospace); font-size: 13px; color: var(--text-1, #e6e9ed); } .ds-cell-dim { color: var(--text-muted, #8a94a0); }"
-    },
-    {
-      "name": "Nav Item",
-      "kind": "nav",
-      "refersTo": "nav-item",
-      "description": "Sidebar entry. Active state raises the surface, outlines it, and turns the glyph amber.",
-      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item ds-nav-item-active\" href=\"#\"><span class=\"ds-nav-glyph\">▤</span>Central inventory</a><a class=\"ds-nav-item\" href=\"#\"><span class=\"ds-nav-glyph ds-nav-glyph-idle\">⇶</span>Deploy-state</a></nav>",
-      "css": ".ds-nav { display: flex; flex-direction: column; gap: 2px; width: 208px; } .ds-nav-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid transparent; border-radius: 5px; font-family: var(--font-ui, sans-serif); font-size: 14px; color: var(--text-muted, #8a94a0); text-decoration: none; cursor: pointer; transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out; } .ds-nav-item:hover { background: var(--surface-inset, #11161c); color: var(--text-2, #c3cad2); } .ds-nav-item-active { background: var(--surface-active, #171d24); border-color: var(--border-chip, #232a33); color: var(--text-1, #e6e9ed); } .ds-nav-item-active:hover { background: var(--surface-active, #171d24); } .ds-nav-glyph { font-family: var(--font-mono, monospace); font-size: 14px; color: var(--amber, #e8a33d); } .ds-nav-glyph-idle { color: var(--text-dim, #7d8794); }"
-    },
-    {
-      "name": "Micro-label",
-      "kind": "custom",
-      "refersTo": "typography.label",
-      "description": "10px uppercase mono label that opens a section. The floor of the type scale.",
-      "html": "<div class=\"ds-label\">targets</div>",
-      "css": ".ds-label { font-family: var(--font-mono, monospace); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim, #7d8794); }"
-    }
-  ],
+  "components": [],
   "narrative": {
-    "northStar": "The Control Room",
-    "overview": "Maestro is a room you step into to read instruments, not a page you browse. The surfaces are calm near-black with a faint blue cast; structure is drawn with 1px lines rather than shadows; and almost every piece of text that carries data is set in monospace. The effect is an instrument panel: nothing competes for attention until something needs it.\n\nTwo colours carry the working meaning. Amber means act — it marks drift, the brand mark, and the single primary action in a view. Green means rest — in sync, healthy, confirmed. A third signal, danger red, is held in reserve for validation errors alone, so amber never has to mean both 'do this' and 'this is wrong'. Everything else is a step on a grey ramp. Because the palette is this narrow, a single amber chip in a long list is impossible to miss, which is exactly the product's core signal.\n\nThe system explicitly rejects the generic SaaS dashboard, the friendly consumer app, the structureless terminal dump, and heavily animated interfaces. Density here is not decoration — it is how a whole agent setup fits on one screen.",
+    "northStar": "A cockpit you can read at a glance and steer without guessing: neutral surfaces, one meaning per mark, and every word readable in both themes.",
+    "overview": "Maestro is a dense local cockpit for an AI agent setup. Its design system is a neutral Radix-grammar palette in a light and a dark theme, Geist type, one fixed density and one frame per screen (ADR-0033). Colour is the third cue behind the word and the glyph, never the first. The chain is design.json to tokens.css to DESIGN.md: this file is the source, tokens.css ships, DESIGN.md is regenerated and never hand-edited.",
     "keyCharacteristics": [
-      "Cool near-black canvas, five surface steps, zero shadows",
-      "Monospace is the dominant voice; the sans is only used for chrome",
-      "Two action signals (amber, green) plus a danger red for errors, and four fixed primitive-type colours",
-      "Tight 3–6px radii; nothing pill-shaped, no circles except status dots",
-      "Cockpit density: 14px card padding, 9px rows, 12px gaps, 24px between sections",
-      "Flat fills only — no gradients, textures, blur, or transparency layers, except the connect gate's arrival (ADR-0022)"
+      "Radix Colors 3.0.0 values, unchanged, with light and dark on the same step numbers.",
+      "The neutral role is named gray and its values are slate; five scales in total and no sixth.",
+      "Seventeen documented foreground and background pairs are the allowlist, each measured at its own floor in both themes.",
+      "Geist and Geist Mono, five sizes in rem, weights 400, 500 and 600.",
+      "One fixed density: every row is 32px, and the Inventory shows at least 18 rows at 1440x900.",
+      "Only what floats moves, by opacity alone."
     ],
     "rules": [
-      {
-        "name": "The Two Signals Rule",
-        "body": "Amber means act, green means rest. One further signal, danger red, marks validation errors and nothing else — it is never a fill for an action and never decoration, so amber keeps sole ownership of 'do this'. No signal colour is ever used for decoration, and at most one amber-filled button exists per view. A status chip in a stage table marks the exception within its own table; 'act' is carried by the button, never by the chip. The expected reading is always colourless, whatever the row count, and green does not appear on stage chips at all.",
-        "section": "colors"
-      },
-      {
-        "name": "The Reserved Hue Rule",
-        "body": "Skill blue, hook purple, mcp teal, and bundle amber belong to the primitive-type tag alone.",
-        "section": "colors"
-      },
-      {
-        "name": "The Never-Colour-Alone Rule",
-        "body": "Any state expressed in colour also carries a glyph and a word: ● in sync, ▲ 2 drift.",
-        "section": "colors"
-      },
-      {
-        "name": "The Mono-Is-Data Rule",
-        "body": "Names, versions, paths, timestamps, and actions are lowercase mono. Interface chrome is sentence-case sans. There is no third case.",
-        "section": "typography"
-      },
-      {
-        "name": "The 10px Floor Rule",
-        "body": "Nothing is set below 10px. Density is bought with padding and line-height, not by shrinking type past legibility.",
-        "section": "typography"
-      },
-      {
-        "name": "The Fixed Vocabulary Rule",
-        "body": "Primitive, bundle, target, deploy-state, drift, in sync, central inventory, compose, register — these exact words, no synonyms. Never emoji.",
-        "section": "typography"
-      },
-      {
-        "name": "The No-Shadow Rule",
-        "body": "box-shadow does not appear in this system. Adding one to soften the light theme produces a different design system, not this one.",
-        "section": "elevation"
-      },
-      {
-        "name": "The Borders-Do-The-Work Rule",
-        "body": "Structure, grouping, and separation are drawn with 1px lines from the border ramp. When a boundary feels weak, move one step up the ramp.",
-        "section": "elevation"
-      },
-      {
-        "name": "The One-Step Hover Rule",
-        "body": "Every hoverable control moves exactly one step up the ramp it already sits on, over 150ms ease-out, and changes nothing else. Colour is the only property that moves. Nothing scales, lifts, or gains a shadow. A control already sitting on the inset surface — the detail pane's close, the browse dialog's ↑ up — has no fill step left, so it takes the border half of the rule instead: the outline moves from the chip step to the dashed step and the text moves one step up the ramp.",
-        "section": "components"
-      },
-      {
-        "name": "The Hover-Is-Not-Selection Rule",
-        "body": "Hover lands on the inset surface; a standing choice — selected row, active nav item, chosen segment — lands on the active surface. A hover that reaches the active surface makes the two states indistinguishable and is therefore wrong.",
-        "section": "components"
-      }
+      "Take every colour, size and spacing from a token. A mock is never the source.",
+      "Give a column, a badge, a glyph and a word one meaning on every screen.",
+      "Show every status as a word plus its family's glyph. Colour is the third cue.",
+      "Use blue only for focus, selection and links, and keep the primary action neutral: gray 12 fill, gray 11 on hover.",
+      "Make the destructive button outlined: red 11 text on a red 7 border, on gray 1 or 2.",
+      "Give fields and checkboxes a gray 9 border; button borders and separators stay on gray 7.",
+      "Put a link on gray 1 or 2 only.",
+      "Use Geist Mono for a machine value and nothing else: version, tag, path, ref, hash.",
+      "Keep a row to one line at 32px, and put no button in it.",
+      "Use the one shadow for a menu, a popover or a dialog, and nowhere else."
     ],
     "dos": [
-      "Do express depth with the five surface steps and the six-step border ramp.",
-      "Do set every name, version, path, timestamp, and action label in lowercase mono; reserve the sans for sentence-case chrome.",
-      "Do pair every colour signal with a glyph and a word (▲ 2 drift), so the meaning survives without colour.",
-      "Do keep to one amber-filled primary button per view.",
-      "Do chain meta fragments with the middle dot: agent-harness · main · 9 primitives.",
-      "Do write drift as a version pair, 1.0.0 → 1.2.0, in mono, never rounded.",
-      "Do keep transitions to 150ms ease-out on background, border, and text colour, with an instant alternative under prefers-reduced-motion.",
-      "Do give every clickable surface a visible hover, not just a pointer cursor — one step up its own ramp, colour only.",
-      "Do declare that transition once and reuse it. Retyping the duration per component is how the window drifts out of the range this document states.",
-      "Do use dashed borders for additive affordances, and only for those."
+      "Add a new pairing to design.json and the contrast test before a component uses it.",
+      "Write sizes in rem so 200% zoom keeps working.",
+      "Mark the identifier in a row with weight 500, and let colour carry the rest of the rank.",
+      "Right-align a count and give it tabular figures.",
+      "Fade a floating layer in at 300ms and out at 200ms, on opacity.",
+      "Keep the spinner turning under reduced motion; it is the only sign of busy.",
+      "Stamp data-theme on the root before first paint, so the wrong theme never flashes.",
+      "Set color-scheme beside data-theme, so native controls follow the theme.",
+      "Use a tonal step or a border for a surface on the page.",
+      "Read the step's task from its number: 1 canvas, 2 panel, 3 control, 4 hover, 5 selected, 6 separator, 7 border, 8 border-hover, 9 solid, 10 solid-hover, 11 muted text, 12 text."
     ],
     "donts": [
-      "Don't add a box-shadow anywhere, in either theme.",
-      "Don't use gradients, textures, blur, backdrop-filter, or glassmorphism. The connect gate's arrival is the single exception (ADR-0022): a gradient fades its 1px rule out at both ends, and blur resolves to sharp inside that one sequence.",
-      "Don't build hero metric tiles, gradient accents, pill shapes, or cards nested inside cards.",
-      "Don't add illustrations, emoji, or reassuring marketing copy.",
-      "Don't strip structure down to a bare terminal dump.",
-      "Don't add entrance animations, hover scaling, or decorative motion. The connect gate's welcome screen is the single exception (ADR-0022); a second one amends that ADR rather than citing it.",
-      "Don't hover a control onto the active surface — that is the colour of a standing choice, and reusing it makes hover and selected indistinguishable.",
-      "Don't ship a cursor-pointer with no colour change behind it; the cursor moves, the screen must too.",
-      "Don't leave a transition un-gated by motion-safe:; a bare transition-colors ignores prefers-reduced-motion.",
-      "Don't introduce a fourth signal colour, use danger red for anything but errors, or borrow a primitive-type hue for anything other than the type tag.",
-      "Don't set any text below 10px.",
-      "Don't use border-left or border-right above 1px as a coloured accent stripe.",
-      "Don't use 'you' or 'we' inside the cockpit, or invent synonyms for the fixed vocabulary."
+      "Never let colour alone carry a status: no Radix good and fail pair stays apart under deuteranopia.",
+      "Never fill a button with blue: white on blue 9 is about 3:1.",
+      "Never let amber decorate. It means Attention.",
+      "Never use a status mark on step 9: in light, green 9 on green 3 is 2.82.",
+      "Never put a link on gray 3 or darker.",
+      "Never write a colour, a size or a spacing as a literal value in a component.",
+      "Never go below 12px.",
+      "Never set a font size in px; the ramp is in rem.",
+      "Never animate anything that does not float, and never with scale or overshoot.",
+      "Never add an entrance animation; the connect gate is the one exception (ADR-0022).",
+      "Never stack shadow levels: there is one shadow.",
+      "Never give a primitive type a hue. It is its plain word in gray 11.",
+      "Never edit tokens.css or DESIGN.md by hand; change design.json and regenerate."
     ]
   }
 }

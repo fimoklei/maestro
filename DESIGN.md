@@ -1,547 +1,273 @@
 ---
 name: Maestro
-description: A dense, dark, monospace-heavy cockpit for seeing and steering an AI agent setup.
+description: A dense local cockpit for seeing and steering an AI agent setup, in a neutral two-theme system.
 colors:
-  bg-0: "#0b0d10"
-  bg-1: "#0d1014"
-  surface-card: "#0f1318"
-  surface-inset: "#11161c"
-  surface-active: "#171d24"
-  border-faint: "#13181e"
-  border-row: "#161b22"
-  border-strong: "#1d232b"
-  border-chip: "#232a33"
-  border-dashed: "#2a313a"
-  border-drift: "#4a3a1c"
-  border-amber-dim: "#3a3327"
-  text-1: "#e6e9ed"
-  text-2: "#c3cad2"
-  text-3: "#aeb6bf"
-  text-muted: "#8a94a0"
-  text-dim: "#7d8794"
-  amber: "#e8a33d"
-  amber-hover: "#f2c982"
-  green: "#62c47e"
-  green-hover: "#9adcae"
-  danger: "#ec5c6a"
-  on-accent: "#0b0d10"
-  type-skill: "#7aa5d8"
-  type-hook: "#b48ad6"
-  type-mcp: "#5fbfb0"
-  type-bundle: "#e8a33d"
+  light:
+    gray-1: "#fcfcfd"
+    gray-2: "#f9f9fb"
+    gray-3: "#f0f0f3"
+    gray-4: "#e8e8ec"
+    gray-5: "#e0e1e6"
+    gray-6: "#d9d9e0"
+    gray-7: "#cdced6"
+    gray-8: "#b9bbc6"
+    gray-9: "#8b8d98"
+    gray-10: "#80838d"
+    gray-11: "#60646c"
+    gray-12: "#1c2024"
+    blue-5: "#c2e5ff"
+    blue-9: "#0090ff"
+    blue-11: "#0d74ce"
+    green-3: "#e6f6eb"
+    green-7: "#8eceaa"
+    green-11: "#218358"
+    green-12: "#193b2d"
+    amber-3: "#fff7c2"
+    amber-7: "#e9c162"
+    amber-11: "#ab6400"
+    amber-12: "#4f3422"
+    red-3: "#feebec"
+    red-7: "#f4a9aa"
+    red-11: "#ce2c31"
+    red-12: "#641723"
+    backdrop: "rgba(0, 0, 0, 0.5)"
+  dark:
+    gray-1: "#111113"
+    gray-2: "#18191b"
+    gray-3: "#212225"
+    gray-4: "#272a2d"
+    gray-5: "#2e3135"
+    gray-6: "#363a3f"
+    gray-7: "#43484e"
+    gray-8: "#5a6169"
+    gray-9: "#696e77"
+    gray-10: "#777b84"
+    gray-11: "#b0b4ba"
+    gray-12: "#edeef0"
+    blue-5: "#004074"
+    blue-9: "#0090ff"
+    blue-11: "#70b8ff"
+    green-3: "#132d21"
+    green-7: "#28684a"
+    green-11: "#3dd68c"
+    green-12: "#b1f1cb"
+    amber-3: "#302008"
+    amber-7: "#714f19"
+    amber-11: "#ffca16"
+    amber-12: "#ffe7b3"
+    red-3: "#3b1219"
+    red-7: "#8c333a"
+    red-11: "#ff9592"
+    red-12: "#ffd1d9"
+    backdrop: "rgba(0, 0, 0, 0.5)"
 typography:
-  title:
-    fontFamily: "Space Grotesk Variable, Space Grotesk, Helvetica Neue, sans-serif"
-    fontSize: "16px"
+  meta:
+    fontFamily: "Geist Variable, Geist, Helvetica Neue, Helvetica, sans-serif"
+    fontSize: "0.75rem"
+    lineHeight: "1rem"
+    fontWeight: 400
+    letterSpacing: "0"
+  row:
+    fontFamily: "Geist Variable, Geist, Helvetica Neue, Helvetica, sans-serif"
+    fontSize: "0.8125rem"
+    lineHeight: "1.25rem"
+    fontWeight: 400
+    letterSpacing: "0"
+  prose:
+    fontFamily: "Geist Variable, Geist, Helvetica Neue, Helvetica, sans-serif"
+    fontSize: "0.875rem"
+    lineHeight: "1.25rem"
+    fontWeight: 400
+    letterSpacing: "0"
+  heading:
+    fontFamily: "Geist Variable, Geist, Helvetica Neue, Helvetica, sans-serif"
+    fontSize: "1rem"
+    lineHeight: "1.5rem"
     fontWeight: 600
-    lineHeight: 1.3
-  subtitle:
-    fontFamily: "Space Grotesk Variable, Space Grotesk, Helvetica Neue, sans-serif"
-    fontSize: "14px"
-    fontWeight: 500
-    lineHeight: 1.4
-  body:
-    fontFamily: "Space Grotesk Variable, Space Grotesk, Helvetica Neue, sans-serif"
-    fontSize: "13.5px"
-    fontWeight: 400
-    lineHeight: 1.5
-  data:
-    fontFamily: "JetBrains Mono Variable, JetBrains Mono, SFMono-Regular, Menlo, monospace"
-    fontSize: "13px"
-    fontWeight: 400
-    lineHeight: 1.5
-  chip:
-    fontFamily: "JetBrains Mono Variable, JetBrains Mono, SFMono-Regular, Menlo, monospace"
-    fontSize: "11px"
-    fontWeight: 400
-    lineHeight: 1.4
-  label:
-    fontFamily: "JetBrains Mono Variable, JetBrains Mono, SFMono-Regular, Menlo, monospace"
-    fontSize: "10px"
-    fontWeight: 400
-    letterSpacing: "0.12em"
-    lineHeight: 1.4
+    letterSpacing: "-0.2px"
+  title:
+    fontFamily: "Geist Variable, Geist, Helvetica Neue, Helvetica, sans-serif"
+    fontSize: "1.25rem"
+    lineHeight: "1.75rem"
+    fontWeight: 600
+    letterSpacing: "-0.4px"
 rounded:
-  tag: "3px"
-  control: "4px"
-  item: "5px"
-  card: "6px"
+  chip: "4px"
+  control: "6px"
+  float: "12px"
 spacing:
-  card-x: "14px"
-  row-y: "9px"
-  header-y: "10px"
-  grid-gap: "12px"
-  section: "24px"
-components:
-  button-primary:
-    backgroundColor: "{colors.amber}"
-    textColor: "{colors.on-accent}"
-    typography: "{typography.chip}"
-    rounded: "{rounded.control}"
-    padding: "6px 12px"
-  button-primary-hover:
-    backgroundColor: "{colors.amber-hover}"
-    textColor: "{colors.on-accent}"
-  button-success:
-    backgroundColor: "{colors.green}"
-    textColor: "{colors.on-accent}"
-    typography: "{typography.chip}"
-    rounded: "{rounded.control}"
-    padding: "6px 12px"
-  button-success-hover:
-    backgroundColor: "{colors.green-hover}"
-    textColor: "{colors.on-accent}"
-  button-ghost:
-    backgroundColor: "#00000000"
-    textColor: "{colors.amber}"
-    typography: "{typography.chip}"
-    rounded: "{rounded.control}"
-    padding: "6px 12px"
-  button-ghost-hover:
-    backgroundColor: "#e8a33d1a"
-    textColor: "{colors.amber}"
-  button-quiet:
-    backgroundColor: "#00000000"
-    textColor: "{colors.text-muted}"
-    typography: "{typography.chip}"
-    rounded: "{rounded.control}"
-    padding: "6px 12px"
-  button-quiet-hover:
-    backgroundColor: "{colors.surface-inset}"
-    textColor: "{colors.text-2}"
-  button-dashed:
-    backgroundColor: "#00000000"
-    textColor: "{colors.text-muted}"
-    typography: "{typography.chip}"
-    rounded: "{rounded.control}"
-    padding: "6px 12px"
-  button-dashed-hover:
-    backgroundColor: "{colors.surface-inset}"
-    textColor: "{colors.text-2}"
-  segment:
-    backgroundColor: "#00000000"
-    textColor: "{colors.text-muted}"
-    typography: "{typography.label}"
-    rounded: "{rounded.control}"
-    padding: "4px 12px"
-  segment-hover:
-    backgroundColor: "{colors.surface-inset}"
-    textColor: "{colors.text-2}"
-  segment-active:
-    backgroundColor: "{colors.surface-active}"
-    textColor: "{colors.text-1}"
-  table-row:
-    backgroundColor: "#00000000"
-    textColor: "{colors.text-1}"
-    typography: "{typography.data}"
-    padding: "9px 14px"
-  table-row-hover:
-    backgroundColor: "{colors.surface-inset}"
-  table-row-selected:
-    backgroundColor: "{colors.surface-active}"
-  nav-item:
-    backgroundColor: "#00000000"
-    textColor: "{colors.text-muted}"
-    typography: "{typography.subtitle}"
-    rounded: "{rounded.item}"
-    padding: "8px 12px"
-  nav-item-hover:
-    backgroundColor: "{colors.surface-inset}"
-    textColor: "{colors.text-2}"
-  nav-item-active:
-    backgroundColor: "{colors.surface-active}"
-    textColor: "{colors.text-1}"
-  card:
-    backgroundColor: "{colors.surface-card}"
-    textColor: "{colors.text-1}"
-    rounded: "{rounded.card}"
-    padding: "14px"
-  card-drift:
-    backgroundColor: "{colors.surface-card}"
-    textColor: "{colors.text-1}"
-    rounded: "{rounded.card}"
-    padding: "14px"
-  chip-ok:
-    backgroundColor: "#62c47e1a"
-    textColor: "{colors.green}"
-    typography: "{typography.chip}"
-    rounded: "{rounded.control}"
-    padding: "2px 7px"
-  chip-drift:
-    backgroundColor: "#e8a33d1a"
-    textColor: "{colors.amber}"
-    typography: "{typography.chip}"
-    rounded: "{rounded.control}"
-    padding: "2px 7px"
-  chip-dim:
-    backgroundColor: "#8a94a014"
-    textColor: "{colors.text-muted}"
-    typography: "{typography.chip}"
-    rounded: "{rounded.control}"
-    padding: "2px 7px"
+  tight: "0.25rem"
+  inline: "0.5rem"
+  cell: "0.75rem"
+  panel: "1rem"
+  section: "1.5rem"
+  page: "2rem"
+density:
+  row: "2rem"
+  control-in-row: "1.5rem"
+  control: "2rem"
+  measure: "18 rows at 1440x900"
+shadow:
+  float:
+    light: "0 4px 12px rgba(0, 0, 0, 0.12)"
+    dark: "0 4px 12px rgba(0, 0, 0, 0.5)"
+motion:
+  quick: "150ms ease-out"
+  float-in: "300ms ease-out"
+  float-out: "200ms ease-out"
+  loop: "1400ms linear"
+  spin: "800ms linear"
+  hover-open: "400ms"
+  hover-close: "150ms"
+  gate-arrival: "600ms cubic-bezier(0.16, 1, 0.3, 1), once on mount, connect gate only"
 ---
 
 # Design System: Maestro
 
-The "Control Room" system is designed in Claude Design (project
-`382d1f68-3ef6-49f3-a058-a6eec53e6a86`, "Maestro Design System") and read
-through the DesignSync tool. It is owned in the app as Tailwind v4 `@theme`
-tokens (ADR-0008); `packages/web/src/styles/tokens.css` is what the browser
-actually loads, and therefore what ships.
-
-This file is the agent-facing summary, regenerated from those tokens with
-`/impeccable document`. It is derived, never hand-maintained: on any conflict
-the live design project wins, and `tokens.css` wins over the prose here.
+This file is derived from `.impeccable/design.json` via `/impeccable` and is
+never hand-edited. On conflict, `design.json` wins; `tokens.css` is what
+ships. See ADR-0033 for the decision that replaced the retired "Control Room"
+system with this one.
 
 ## 1. Overview
 
-**Creative North Star: "The Control Room"**
+A cockpit you can read at a glance and steer without guessing: neutral
+surfaces, one meaning per mark, and every word readable in both themes.
 
-Maestro is a room you step into to read instruments, not a page you browse. The
-surfaces are calm near-black with a faint blue cast; structure is drawn with 1px
-lines rather than shadows; and almost every piece of text that carries data is
-set in monospace. The effect is an instrument panel: nothing competes for
-attention until something needs it.
+Maestro is a dense local cockpit for an AI agent setup. Its design system is a
+neutral Radix-grammar palette in a light and a dark theme, Geist type, one
+fixed density and one frame per screen. Colour is the third cue behind the
+word and the glyph, never the first.
 
-Two colours carry the working meaning. Amber means *act* — it marks drift, the
-brand mark, and the single primary action in a view. Green means *rest* — in
-sync, healthy, confirmed. A third signal, danger red, is held in reserve for
-validation errors alone, so amber never has to mean both *do this* and *this is
-wrong*. Everything else is a step on a grey ramp. Because the palette is this
-narrow, a single amber chip in a long list is impossible to miss, which is
-exactly the product's core signal.
+Both themes ship. The cockpit is pinned to dark until the Interface theme row
+lands in the last rebuild job — this is a rollout order, not a dark-only
+design.
 
-The system explicitly rejects the generic SaaS dashboard (hero metric tiles,
-gradients, pill shapes, cards inside cards), the friendly consumer app
-(illustrations, emoji, soft rounded surfaces), the structureless terminal dump,
-and heavily animated interfaces. Density here is not decoration — it is how a
-whole agent setup fits on one screen.
+Key characteristics:
 
-The system ships one theme: dark. A light "lights on" variant is designed
-upstream, but it is not shipped — no theme toggle exists yet and its ramp failed
-WCAG 2.2 AA, so it was removed from `tokens.css` until a toggle lands and the
-light ramp is re-derived to AA (issue #209).
-
-**Key Characteristics:**
-
-- Cool near-black canvas, five surface steps, zero shadows
-- Monospace is the dominant voice; the sans is only used for chrome
-- Two action signals (amber, green) plus a danger red for errors, and four fixed primitive-type colours
-- Tight 3–6px radii; nothing pill-shaped, no circles except status dots
-- Cockpit density: 14px card padding, 9px rows, 12px gaps, 24px between sections
-- Flat fills only — no gradients, textures, blur, or transparency layers,
-  except the connect gate's arrival (ADR-0022)
+- Radix Colors 3.0.0 values, unchanged, with light and dark on the same step
+  numbers.
+- The neutral role is named `gray` and its values are Radix `slate`; five
+  scales in total and no sixth.
+- Seventeen documented foreground/background pairs are the allowlist, each
+  measured at its own floor in both themes.
+- Geist and Geist Mono, five sizes in rem, weights 400, 500 and 600.
+- One fixed density: every row is 32px, and the Inventory shows at least 18
+  rows at 1440x900.
+- Only what floats moves, by opacity alone.
 
 ## 2. Colors
 
-A cool near-black grey ramp with two signal colours and four reserved
-primitive-type hues; hierarchy comes from lightness steps and borders, never from
-shadow.
+Five gray steps carry structure (canvas, panel, control, hover, selected),
+then separator, border, border-hover, solid, solid-hover, muted text and text.
+Blue is reserved for focus, selection and links. Green, amber and red each
+carry a surface/border/mark/text set for good, attention and failed states.
+Values are in the frontmatter (`colors.light`, `colors.dark`).
 
-### Primary
+Rules:
 
-- **Signal Amber** (`#e8a33d`): the brand colour and the act colour. Used for
-  drift, the logo tile, and the one amber-filled button per view. Its rarity is
-  what makes it work.
-- **Amber Lift** (`#f2c982`): the amber fill under the pointer, and nothing else.
-  One step up amber's own tonal ramp, because a filled button has no surface ramp
-  to climb.
-
-### Secondary
-
-- **Signal Green** (`#62c47e`): in sync, healthy, and the final confirm on a
-  deploy. Never used decoratively.
-- **Green Lift** (`#9adcae`): the green fill under the pointer, and nothing else —
-  the same one-step move as Amber Lift.
-- **Signal Red** (`#ec5c6a`): the danger signal, reserved for validation errors
-  and nothing else. It renders error text, so it clears WCAG 2.2 AA (≥4.5:1) on
-  every surface it lands on. Never a fill for an action, never decoration — this
-  is what keeps amber as the sole "act" colour.
-
-### Tertiary
-
-Four fixed hues reserved exclusively for the primitive-type tag — never reused
-anywhere else in the interface.
-
-Values below are the shipped dark theme; the light equivalents live upstream and
-are deferred (see the note in §1).
-
-- **Skill Blue** (`#7aa5d8`)
-- **Hook Purple** (`#b48ad6`)
-- **MCP Teal** (`#5fbfb0`)
-- **Bundle Amber** (`#e8a33d`)
-
-### Neutral
-
-- **App Canvas** (`#0b0d10`): the page behind everything.
-- **Raised Chrome** (`#0d1014`): status bar and sidebar.
-- **Card Surface** (`#0f1318`): the standard panel fill.
-- **Inset Surface** (`#11161c`): recessed regions inside a card, and the surface
-  every hoverable control moves to.
-- **Active Surface** (`#171d24`): the selected row, the active nav item, the
-  chosen segment. It marks a standing choice, never a passing pointer.
-- **Text ramp** (`#e6e9ed` → `#7d8794`): five steps from primary text down to dim
-  labels. Every step clears WCAG 2.2 AA (≥4.5:1) on every surface it renders on.
-  Dim is for micro-labels and disabled states, never for body copy.
-- **Border ramp** (`#13181e` → `#232a33`): six steps from hairline to chip
-  outline. A dashed border marks an additive affordance (`#2a313a`); a warm
-  outline marks a card whose contents drift (`#4a3a1c`). The dim amber outline
-  used by the ghost button is `#3a3327`.
-
-### Named Rules
-
-**The Two Signals Rule.** Amber means act, green means rest. One further signal,
-danger red, marks validation errors and nothing else — never a fill for an
-action, never decoration — so amber keeps sole ownership of *do this*. No signal
-colour is ever used for decoration, and at most one amber-filled button exists
-per view. A status chip in a stage table marks the exception within its own
-table; *act* is carried by the button, never by the chip. The expected reading
-is always colourless, whatever the row count, and green does not appear on stage
-chips at all.
-
-**The Reserved Hue Rule.** Skill blue, hook purple, mcp teal, and bundle amber
-belong to the primitive-type tag alone. Borrowing them for anything else breaks
-the one place where colour carries a taxonomy.
-
-**The Never-Colour-Alone Rule.** Any state expressed in colour also carries a
-glyph and a word: `● in sync`, `▲ 2 drift`, `✕ no directory exists`. The signal
-must survive without colour perception.
+- Take every colour from a token; a mock is never the source.
+- Use blue only for focus, selection and links; keep the primary action
+  neutral (gray 12 fill, gray 11 on hover).
+- Make the destructive button outlined: red 11 text on a red 7 border, on
+  gray 1 or 2.
+- Give fields and checkboxes a gray 9 border; button borders and separators
+  stay on gray 7.
+- Put a link on gray 1 or 2 only; never on gray 3 or darker.
+- Never let colour alone carry a status; never fill a button with blue; never
+  let amber decorate — amber means Attention only.
+- Never use a status mark on step 9 (fails contrast in light).
+- Give a primitive type its plain word in gray 11, no hue.
+- A new pairing enters `design.json` and the contrast test before a component
+  uses it.
 
 ## 3. Typography
 
-**Chrome Font:** Space Grotesk Variable (fallback Helvetica Neue, sans-serif)
-**Data / Mono Font:** JetBrains Mono Variable (fallback SFMono-Regular, Menlo,
-monospace)
+Geist (`ui`) for every word on screen; Geist Mono (`mono`) for a machine
+value only — version, tag, path, ref, commit hash, and nothing else. Both
+self-hosted, no runtime CDN fetch.
 
-Both are self-hosted via `@fontsource-variable`; no runtime CDN fetch, because
-the cockpit is local-first and must work offline.
+Five sizes, all in rem (frontmatter `typography`): meta (12px, chips/column
+headers/hints), row (13px, table row/button label/field — weight 500 marks
+the row identifier and nothing else), prose (14px, sentences), heading (16px,
+section/dialog title), title (20px, screen title).
 
-**Character:** A geometric sans handles the few pieces of interface chrome —
-section titles and navigation — while everything the user actually reads for
-information is monospace. Names, versions, paths, timestamps, button labels, and
-micro-labels are all mono, which keeps columns aligned and semver instantly
-scannable. The pairing contrasts on a real axis (geometric sans against a
-technical mono) rather than mixing two similar sans faces.
+Rules: never below 12px; never a font size in px — the ramp is in rem, so
+200% zoom keeps working.
 
-### Hierarchy
+## 4. Density and elevation
 
-- **Title** (600, 16px): panel and view titles, sentence case.
-- **Subtitle** (500, 14px): navigation items and secondary headings.
-- **Body** (400, 13.5px): the small amount of prose the cockpit contains.
-- **Data** (400, 13px, mono): primitive names, target names, paths, versions.
-- **Description** (400, 12.5px, mono): supporting one-liners under a name.
-- **Chip** (400, 11px, mono): status capsules and button labels.
-- **Label** (400, 10px, mono, 0.12em tracking, uppercase): micro-labels such as
-  `TARGETS` and `DEPLOY TO`.
+One fixed density: a table row, header, list row and nav item are all 32px
+(20px line plus 6px above and below); a control inside a row is 24px (the
+WCAG 2.2 2.5.8 floor); a control in a band, dialog or form is 32px. The
+Inventory is checked against 18 rows visible at 1440x900.
 
-### Named Rules
+Spacing runs a six-step scale from tight (4px, icon beside a word) to page
+(32px, screen outer edge) — see frontmatter `spacing`.
 
-**The Mono-Is-Data Rule.** If it is a name, a version, a path, a timestamp, or an
-action, it is lowercase mono. If it is interface chrome, it is sentence-case
-sans. There is no third case.
+Radii: chip 4px, control 6px (button/field/card/panel), float 12px
+(menu/popover/dialog only).
 
-**The 10px Floor Rule.** Nothing is set below 10px, ever. Density is bought with
-padding and line-height, not by shrinking type past legibility.
+There is one shadow, `float`, always paired with a 1px gray-7 border, used
+only for a menu, popover or dialog. The page itself uses tonal steps and
+borders, never a shadow. Never stack shadow levels.
 
-**The Fixed Vocabulary Rule.** Primitive, bundle, target, deploy-state, drift, in
-sync, central inventory, compose, register. These exact words, no synonyms.
-Version drift is written `1.0.0 → 1.2.0`. Never emoji.
+## 5. Motion
 
-## 4. Elevation
+Only what floats moves, by opacity alone: 150ms ease-out for a hover/focus
+colour change; 300ms in / 200ms out for a floating layer's opacity; 1400ms
+linear loop for the skeleton shimmer; 800ms linear spin for a busy spinner,
+which keeps turning under reduced motion as the one sign of busy. A hover
+card waits 400ms to open and 150ms to close on pointer rest.
 
-This system has **no shadows at all**, in either theme. Depth is expressed
-entirely through tonal layering and 1px borders: five surface steps from the app
-canvas up to the active surface, plus a six-step border ramp. A panel reads as
-raised because it is one lightness step lighter than what surrounds it and is
-outlined with a hairline, not because it floats.
+The connect gate's arrival is the one entrance animation in the cockpit
+(ADR-0022, amended by ADR-0033): 600ms, cubic-bezier(0.16, 1, 0.3, 1), on
+opacity, translateY, scaleX and blur, once on mount. Its rule is gray, never
+amber — amber means Attention and never decorates.
 
-Backgrounds are flat fills only. No gradients, textures, patterns, blur, or
-backdrop-filter — the connect gate's arrival is the one exception (ADR-0022).
-The single use of alpha is the 10–12% tint inside a status chip, paired with a
-~25–30% alpha border of the same colour.
+Never animate anything that does not float, and never with scale or
+overshoot. Never add a second entrance animation.
 
-### Named Rules
+## 6. Components
 
-**The No-Shadow Rule.** `box-shadow` does not appear in this system. Adding one
-to "soften" the light theme produces a different design system, not this one.
+No owned component set has landed yet. It arrives area by area over the
+rebuild jobs — shadcn/ui components first, restyled to these tokens, and
+owned-from-scratch components last (ADR-0033 §12). Every new component lands
+with a Storybook story. `theme.css` keeps the retired Control Room token
+names alive as aliases onto these values until each component's own rebuild
+job touches it — that alias layer is scaffolding, not part of this system.
 
-**The Borders-Do-The-Work Rule.** Structure, grouping, and separation are all
-drawn with 1px lines from the border ramp. When a boundary feels weak, move one
-step up the ramp — do not reach for a shadow or a heavier stroke.
+## 7. Do's and Don'ts
 
-## 5. Components
+Do:
 
-### Buttons
+- Add a new colour pairing to `design.json` and the contrast test before a
+  component uses it.
+- Write sizes in rem.
+- Mark the row identifier with weight 500; let colour carry the rest of the
+  rank.
+- Right-align a count with tabular figures.
+- Fade a floating layer in at 300ms and out at 200ms, on opacity only.
+- Keep the spinner turning under reduced motion.
+- Stamp `data-theme` and `color-scheme` on the root before first paint, so
+  the wrong theme never flashes and native controls follow it.
+- Use a tonal step or a border for a surface on the page, never a shadow.
+- Read a gray step's task from its number: 1 canvas, 2 panel, 3 control, 4
+  hover, 5 selected, 6 separator, 7 border, 8 border-hover, 9 solid, 10
+  solid-hover, 11 muted text, 12 text.
 
-Mono-typeset, compact, never pill-shaped. Five variants, each with a fixed job.
+Don't:
 
-- **Shape:** 4px radius (5px at `lg`), 1px border on every variant.
-- **Primary:** amber fill, near-black text, bold. One per view — the main action.
-- **Success:** green fill, near-black text, bold. Reserved for confirming a deploy.
-- **Ghost:** transparent with a dim amber outline and amber text — the row-level
-  `deploy →`.
-- **Quiet:** transparent with a grey chip-step outline and muted text.
-- **Dashed:** transparent with a dashed outline — additive actions like
-  `+ register`.
-- **Sizes:** `sm` 10px / `md` 11px / `lg` 12px, with padding scaling from
-  `2px 8px` to `10px 16px`.
-- **Hover:** one step up the ramp the variant already sits on, over 150ms
-  ease-out. No scale, no lift, no shadow. The two filled variants have no surface
-  ramp to climb, so they step up their own signal instead: primary to Amber Lift
-  (`#f2c982`), success to Green Lift (`#9adcae`). Ghost fills with the 10% amber
-  tint and warms its outline to the 30% amber border. Quiet and dashed fill to the
-  inset surface and lift their text one step to `#c3cad2`; quiet also moves its
-  outline from the chip step to the dashed step.
-- **Focus:** a 2px amber outline at 2px offset, on every variant. It is not
-  animated, so `prefers-reduced-motion` is honoured by construction.
-- **Disabled:** text drops to the dim step, the fill drops to the dim tint, and
-  the cursor becomes `not-allowed`. A disabled button has no hover at all.
-
-### Chips
-
-- **Style:** 1px border, 4px radius, 11px mono, a 10–12% alpha fill of the tone
-  colour with a ~25–30% alpha border.
-- **Tones:** `ok` green (`● in sync`), `drift` amber (`▲ 2 drift`), `dim` grey for
-  neutral meta such as versions and counts.
-- **State:** chips are read-only status, not interactive filters; a chip always
-  leads with its glyph.
-
-### Segmented Control
-
-The one place a filter is a control rather than a chip: a row of real buttons that
-together hold a single choice, such as the type filter above the inventory table.
-
-- **Style:** 4px radius, 1px border, 10px mono lowercase with 0.08em tracking.
-- **Inactive:** transparent with a transparent border and muted text, so only the
-  chosen segment draws a box.
-- **Hover:** inset fill, text one step to `#c3cad2`. Deliberately one step below
-  the active surface, so hovering an inactive segment can never be mistaken for
-  selecting it.
-- **Active:** active surface with a chip-step outline and primary text; announced
-  with `aria-pressed`.
-
-### Cards
-
-- **Corner Style:** 6px.
-- **Background:** card surface, one step above the surrounding chrome.
-- **Shadow Strategy:** none — see Elevation.
-- **Border:** 1px strong border; warms to `#4a3a1c` when the card's contents
-  drift, which is the only structural colour change in the system.
-- **Header:** optional mono row with an uppercase kind label (`global` in skill
-  blue, `local` in muted grey), a truncating title, and a right-aligned status
-  chip, separated by a 1px row border.
-- **Internal Padding:** 14px horizontal, 10px on headers, 9px on rows. Rows manage
-  their own padding; the card only pads when it holds free content.
-
-### Table Rows
-
-The densest surface in the cockpit — the inventory runs dozens of rows — so a row
-carries no fill of its own and is separated from its neighbour by a single row-step
-line.
-
-- **Style:** 9px vertical and 14px horizontal padding, 13px mono, a 1px row border
-  below every row except the last.
-- **Hover:** inset fill over 150ms ease-out, whenever the row is clickable. The
-  pointer cursor alone is not a hover state; a row that changes the cursor and
-  nothing else is unfinished.
-- **Selected:** active surface, one step above hover, so the standing choice always
-  reads louder than the passing pointer. Hover and selected are mutually exclusive:
-  hovering the selected row must never drag it back down the ramp.
-- **Truncation:** a clipped cell carries its full text in `title`, so the part the
-  column cuts is still reachable.
-
-### Named Rules
-
-**The One-Step Hover Rule.** Every hoverable control moves exactly one step up the
-ramp it already sits on, over 150ms ease-out, and changes nothing else. Colour is
-the only property that moves. Nothing scales, lifts, or gains a shadow. A control
-already sitting on the inset surface — the detail pane's close, the browse dialog's
-`↑ up` — has no fill step left, so it takes the border half of the rule instead:
-the outline moves from the chip step to the dashed step and the text moves one
-step up the ramp.
-
-**The Hover-Is-Not-Selection Rule.** Hover lands on the inset surface; a standing
-choice — selected row, active nav item, chosen segment — lands on the active
-surface. A hover that reaches the active surface makes the two states
-indistinguishable and is therefore wrong.
-
-### Inputs
-
-- **Style:** inset surface fill, 1px chip-step border, 4px radius, 13px mono.
-- **Focus:** border moves to the amber dim step; focus is always visibly
-  distinct, never removed.
-- **Error:** danger-red text with a leading `✕` glyph and a written message,
-  rendered directly under the field it describes and tied to it via
-  `aria-describedby` — never colour alone, never amber (that is the act colour),
-  never a red border alone.
-
-### Navigation
-
-- **Style:** a 208px sidebar of mono nav items at 13.5px, plus a 52px status bar
-  across the top.
-- **Default:** muted text with a dim glyph.
-- **Hover:** inset fill, text one step to `#c3cad2`, over 150ms ease-out — one step
-  below the active surface, so hover never impersonates the current view.
-- **Active:** active surface, chip-step outline, primary text, amber glyph;
-  announced with `aria-current="page"`.
-
-### Iconography
-
-There are no icon sets, icon fonts, or emoji. Iconography is a fixed vocabulary
-of unicode glyphs set in the mono font at 12–16px: `▤` inventory, `⇶`
-deploy-state, `⧉` compose, `▲` drift (always amber), `●` in sync or status dot,
-`→` action direction, `+` add, `✕` remove or validation error (danger red), `✓`
-done. The logo is typographic — a bold mono "M" on an amber rounded tile.
-
-## 6. Do's and Don'ts
-
-### Do:
-
-- **Do** express depth with the five surface steps and the six-step border ramp.
-- **Do** set every name, version, path, timestamp, and action label in lowercase
-  mono; reserve the sans for sentence-case chrome.
-- **Do** pair every colour signal with a glyph and a word (`▲ 2 drift`), so the
-  meaning survives without colour.
-- **Do** keep to one amber-filled primary button per view.
-- **Do** chain meta fragments with the middle dot: `agent-harness · main · 9
-  primitives`.
-- **Do** write drift as a version pair, `1.0.0 → 1.2.0`, in mono, never rounded.
-- **Do** keep transitions to 150ms ease-out on background, border, and text
-  colour, with an instant alternative under `prefers-reduced-motion`.
-- **Do** give every clickable surface a visible hover, not just a pointer cursor —
-  one step up its own ramp, colour only.
-- **Do** declare that transition once and reuse it. Retyping the duration per
-  component is how the window drifts out of the range this document states. The
-  connect gate's arrival (ADR-0022) declares its own window the same way, in one
-  place, and runs once on mount — nothing in the cockpit loops.
-- **Do** use dashed borders for additive affordances, and only for those.
-
-### Don't:
-
-- **Don't** add a `box-shadow` anywhere, in either theme.
-- **Don't** use gradients, textures, blur, backdrop-filter, or glassmorphism.
-  The connect gate's arrival is the single exception (ADR-0022): a gradient
-  fades its 1px rule out at both ends and stays on the finished screen, and
-  blur resolves the text to sharp inside that one sequence and nowhere else.
-- **Don't** build hero metric tiles, gradient accents, pill shapes, or cards
-  nested inside cards — that is the generic SaaS dashboard this system rejects.
-- **Don't** add illustrations, emoji, or reassuring marketing copy; the cockpit
-  shows state, it does not comfort.
-- **Don't** strip structure down to a bare terminal dump; mono is the voice, but
-  hierarchy and alignment still do the reading work.
-- **Don't** add entrance animations, hover scaling, or decorative motion. The
-  connect gate's welcome screen is the single exception (ADR-0022); a second one
-  amends that ADR rather than citing it.
-- **Don't** hover a control onto the active surface — that is the colour of a
-  standing choice, and reusing it makes hover and selected indistinguishable.
-- **Don't** ship a `cursor-pointer` with no colour change behind it; the cursor
-  moves, the screen must too.
-- **Don't** leave a transition un-gated by `motion-safe:`; a bare
-  `transition-colors` ignores `prefers-reduced-motion`.
-- **Don't** introduce a fourth signal colour, use danger red for anything but
-  errors, or borrow a primitive-type hue for anything other than the type tag.
-- **Don't** set any text below 10px.
-- **Don't** use `border-left` or `border-right` above 1px as a coloured accent
-  stripe.
-- **Don't** use "you" or "we" inside the cockpit, or invent synonyms for the fixed
-  vocabulary.
+- Never let colour alone carry a status.
+- Never fill a button with blue.
+- Never let amber decorate.
+- Never use a status mark on step 9.
+- Never put a link on gray 3 or darker.
+- Never write a colour, size or spacing as a literal value in a component.
+- Never go below 12px, and never set a font size in px.
+- Never animate anything that does not float, or add a second entrance
+  animation.
+- Never stack shadow levels — there is one shadow.
+- Never give a primitive type a hue.
+- Never edit `tokens.css` or `DESIGN.md` by hand; change `design.json` and
+  regenerate.

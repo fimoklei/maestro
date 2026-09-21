@@ -1,84 +1,98 @@
-/* Control Room raw colour tokens — the single source of truth in this repo for
-   the shipped dark theme (see the light-theme note below). Ported from the Claude Design
-   project 382d1f68-3ef6-49f3-a058-a6eec53e6a86 ("Maestro Design System"), read
-   through the DesignSync tool; names match it exactly so a re-sync stays a
-   straight copy. That project is upstream: when it changes, copy the new values
-   here, then refresh the repo's DESIGN.md summary with `/impeccable document`.
-   The Tailwind utility layer (theme.css, @theme inline) aliases these to clean
-   utility names; components use the utilities, never these raw names directly.
+/* Raw colour tokens — generated from `.impeccable/design.json`, never edited by
+   hand. Change a value there and regenerate (`/impeccable`), so design.json,
+   this file and DESIGN.md never disagree (ADR-0033).
 
-   Theme-independent tokens (fonts, type scale, radii, spacing) are NOT here —
-   they live as literal values in theme.css's @theme block, since they never
-   switch and Tailwind needs them declared in @theme to emit utilities. */
+   Radix Colors 3.0.0, values unchanged, light and dark on the same step
+   numbers. The neutral role is named `gray`; its values are Radix `slate`.
+   Each step has one task: 1 canvas, 2 panel, 3 control, 4 hover, 5 selected,
+   6 separator, 7 border, 8 border-hover, 9 solid, 10 solid-hover, 11 muted
+   text, 12 text. Seventeen foreground/background pairs are documented and
+   measured in `tokens-contrast.test.ts`; a pairing outside that list enters it,
+   and passes, before a component uses it.
 
-/* ── dark (default) ──────────────────────────────────────────────────────── */
+   Theme-independent tokens (fonts, type ramp, density, radii, motion) are NOT
+   here — they live in theme.css's @theme block, since they never switch and
+   Tailwind needs them declared there to emit utilities. That file also keeps
+   the Control Room token names alive as aliases onto these values, so no
+   component is rewritten before its own rebuild job. */
+
+/* ── dark (the pinned default until the Interface theme row ships) ───────── */
 :root,
 [data-theme="dark"] {
-  /* base surfaces (darkest → lightest) */
-  --bg-0: #0b0d10;
-  --bg-1: #0d1014;
-  --surface-card: #0f1318;
-  --surface-inset: #11161c;
-  --surface-active: #171d24;
+  color-scheme: dark;
 
-  /* borders */
-  --border-faint: #13181e;
-  --border-row: #161b22;
-  --border-strong: #1d232b;
-  --border-chip: #232a33;
-  --border-dashed: #2a313a;
-  --border-drift: #4a3a1c;
-  --border-amber-dim: #3a3327;
+  --gray-1: #111113;
+  --gray-2: #18191b;
+  --gray-3: #212225;
+  --gray-4: #272a2d;
+  --gray-5: #2e3135;
+  --gray-6: #363a3f;
+  --gray-7: #43484e;
+  --gray-8: #5a6169;
+  --gray-9: #696e77;
+  --gray-10: #777b84;
+  --gray-11: #b0b4ba;
+  --gray-12: #edeef0;
 
-  /* text */
-  --text-1: #e6e9ed;
-  --text-2: #c3cad2;
-  --text-3: #aeb6bf;
-  --text-muted: #8a94a0;
-  /* text-dim carries meaning-bearing micro-labels (e.g. the connected-inventory
-     line) and must clear WCAG 2.2 AA. #7d8794 measures ≥4.66:1 on every surface
-     it renders on, up from #5a6470's failing 2.82–3.24:1 (issue #209). */
-  --text-dim: #7d8794;
+  --blue-5: #004074;
+  --blue-9: #0090ff;
+  --blue-11: #70b8ff;
 
-  /* signal colours */
-  --amber: #e8a33d;
-  --amber-bg: rgba(232, 163, 61, 0.1);
-  --amber-border: rgba(232, 163, 61, 0.3);
-  --green: #62c47e;
-  --green-bg: rgba(98, 196, 126, 0.1);
-  --green-border: rgba(98, 196, 126, 0.25);
-  /* hover fills for the filled buttons. A filled button has no surface ramp to
-     climb, so DESIGN.md §5's "one step up its ramp" means one step up the
-     signal's own tonal ramp. Values are the step above each canonical in
-     `.impeccable/design.json` → extensions.colorMeta.<name>.tonalRamp, not
-     derived here; tokens-contrast.test.ts guards them against --on-accent. */
-  --amber-hover: #f2c982;
-  --green-hover: #9adcae;
-  /* danger = the error signal, kept apart from amber's "act" (issue #213). It
-     renders validation-error text, so it clears WCAG 2.2 AA (≥4.5:1) on every
-     surface it lands on — #ec5c6a measures ≥5.09:1. Errors only; never a fill
-     for a primary action. */
-  --danger: #ec5c6a;
-  --danger-bg: rgba(236, 92, 106, 0.1);
-  --danger-border: rgba(236, 92, 106, 0.3);
-  --dim-bg: rgba(138, 148, 160, 0.08);
-  --on-accent: #0b0d10;
-  /* ink = signal-as-text. On dark the bright fill already reads as text. */
-  --amber-ink: var(--amber);
-  --green-ink: var(--green);
-  --danger-ink: var(--danger);
+  --green-3: #132d21;
+  --green-7: #28684a;
+  --green-11: #3dd68c;
+  --green-12: #b1f1cb;
 
-  /* primitive type colours */
-  --type-skill: #7aa5d8;
-  --type-hook: #b48ad6;
-  --type-mcp: #5fbfb0;
-  --type-bundle: #e8a33d;
+  --amber-3: #302008;
+  --amber-7: #714f19;
+  --amber-11: #ffca16;
+  --amber-12: #ffe7b3;
+
+  --red-3: #3b1219;
+  --red-7: #8c333a;
+  --red-11: #ff9592;
+  --red-12: #ffd1d9;
+
+  --backdrop: rgba(0, 0, 0, 0.5);
+  --shadow-float-value: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 /* ── light ───────────────────────────────────────────────────────────────── */
-/* No light theme ships. index.html hard-codes data-theme="dark" and no toggle
-   exists, so a [data-theme="light"] ramp was unreachable code — and its former
-   values failed WCAG 2.2 AA on 13 of 20 text elements (issue #209). The light
-   design intent still lives upstream in the Claude Design project; when a theme
-   toggle lands, re-derive the light ramp here to AA from the start and verify it
-   in the running app before shipping it. */
+[data-theme="light"] {
+  color-scheme: light;
+
+  --gray-1: #fcfcfd;
+  --gray-2: #f9f9fb;
+  --gray-3: #f0f0f3;
+  --gray-4: #e8e8ec;
+  --gray-5: #e0e1e6;
+  --gray-6: #d9d9e0;
+  --gray-7: #cdced6;
+  --gray-8: #b9bbc6;
+  --gray-9: #8b8d98;
+  --gray-10: #80838d;
+  --gray-11: #60646c;
+  --gray-12: #1c2024;
+
+  --blue-5: #c2e5ff;
+  --blue-9: #0090ff;
+  --blue-11: #0d74ce;
+
+  --green-3: #e6f6eb;
+  --green-7: #8eceaa;
+  --green-11: #218358;
+  --green-12: #193b2d;
+
+  --amber-3: #fff7c2;
+  --amber-7: #e9c162;
+  --amber-11: #ab6400;
+  --amber-12: #4f3422;
+
+  --red-3: #feebec;
+  --red-7: #f4a9aa;
+  --red-11: #ce2c31;
+  --red-12: #641723;
+
+  --backdrop: rgba(0, 0, 0, 0.5);
+  --shadow-float-value: 0 4px 12px rgba(0, 0, 0, 0.12);
+}

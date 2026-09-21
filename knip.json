@@ -1,4 +1,5 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "ignore": ["docs/**", "scripts/**/*.d.mts"]
+  "ignore": ["docs/**", "scripts/**/*.d.mts"],
+  "ignoreDependencies": ["@fontsource-variable/geist(-mono)?"]
 }

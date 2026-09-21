@@ -3,11 +3,8 @@ import { Agentation } from "agentation";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
-// Control Room design system: self-hosted fonts (no runtime CDN) + the Tailwind
-// v4 token layer. theme.css pulls in Tailwind and the raw tokens; the dark
-// default is set via data-theme on <html> in index.html.
-import "@fontsource-variable/space-grotesk/index.css";
-import "@fontsource-variable/jetbrains-mono/index.css";
+// The token layer (ADR-0033): Tailwind, the raw tokens, the self-hosted Geist
+// faces. index.html stamps data-theme on <html> before first paint.
 import "./styles/theme.css";
 
 const root = document.getElementById("root");
