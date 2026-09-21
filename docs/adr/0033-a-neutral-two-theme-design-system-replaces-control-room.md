@@ -145,6 +145,14 @@ The values below are the record until the first build job writes them into
   act no longer exists: sentences naming **Retry check** or a reload after a
   failed read, two sentences naming the retired browse controls, and the
   visible `Loading …` sentences outside a dialog.
+- `theme.css` carries two `@theme` blocks. `@theme inline` holds the colours and
+  the one shadow, so a utility points at the raw token and flipping `data-theme`
+  re-skins the cockpit; the plain `@theme` holds the constants that never switch
+  (fonts, type ramp, density, spacing, radii, motion), which Tailwind needs
+  declared there to emit utilities. The two font faces are declared in that file
+  rather than through `@fontsource-variable/geist{,-mono}`'s `index.css`, which
+  carries five subsets and would ship all five; a runtime CDN fetch would break
+  the offline scope.
 - `DESIGN.md` still describes Control Room until job 1 regenerates it.
 - Claude Design mirrors the system and is never upstream of the repo.
 
