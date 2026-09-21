@@ -62,9 +62,9 @@ decided) → `CONTEXT.md` (what words mean) → `docs/brief.md` (why) → `PRODU
 and `DESIGN.md` (the design-facing summaries). Unresolvable conflict → stop and
 flag, do not guess.
 
-`PRODUCT.md` restates `docs/brief.md`; `DESIGN.md` restates the Control Room
-system, which is designed in Claude Design and shipped as
-`packages/web/src/styles/tokens.css`. Both rank below their source, so a stale
+`PRODUCT.md` restates `docs/brief.md`; `DESIGN.md` restates the design
+system in `.impeccable/design.json`, shipped as
+`packages/web/src/styles/tokens.css` (ADR-0033). Both rank below their source, so a stale
 summary never overrules the original.
 
 ## The five terms

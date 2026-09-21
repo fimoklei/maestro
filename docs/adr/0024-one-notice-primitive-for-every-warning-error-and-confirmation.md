@@ -2,6 +2,8 @@
 
 - **Status:** Accepted
 - **Date:** 2026-08-21
+- **Amended 2026-09-21** by ADR-0033: a success toast exists, and the warning
+  glyph in §6 is `⚠`, not `▲`. Everything else stands.
 - **Spec:** [#465](https://github.com/fimoklei/maestro/issues/465)
 - **Relates to** ADR-0004 (shadcn components are owned), ADR-0012 (`web`
   imports `core` wire types), ADR-0018 (apm prose never crosses as prose).

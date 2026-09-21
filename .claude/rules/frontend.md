@@ -26,7 +26,7 @@ React 19, TypeScript, Vite, **Tailwind v4 + shadcn/ui** (ADR-0004). The layer bo
 
 - **Tokens are the source of truth** (CSS variables via Tailwind v4 `@theme`). Never hard-coded values.
 - **shadcn/ui components are owned:** copied into the repo and restyled to our tokens. No externally-themed component library (MUI/Mantine).
-- New components land with a Storybook story (ADR-0004, amended by ADR-0008).
+- New components land with a Storybook story (ADR-0004, ADR-0033).
 - Styled UI lands in one pass *after* working behaviour (ADR-0004) — do not style ahead.
 
 ## Stories (Storybook)
@@ -46,6 +46,8 @@ A story is documentation, not a test (behaviour → `.test.tsx`, see `testing.md
   notice's heading, sentence, `detail` and action label together, keyed by error
   code. The server sends codes and HTTP statuses; its request-shape
   messages remain the exception.
+- Keep every busy label and done sentence in the shared `busy-copy.ts`, with
+  its sibling test. It is the one exception to copy per feature.
 - Share a string when its meaning and behaviour match. Write dynamic sentences
   whole and check zero, one, many and long names.
 
