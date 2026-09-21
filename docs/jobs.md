@@ -27,6 +27,7 @@ hand to *know* or *change* what is deployed? If yes, the product is failing.
 
 | Job | Main | Job story |
 |---|---|---|
+| Read and steer the whole cockpit in one frame, in either theme · [#984](https://github.com/fimoklei/maestro/issues/984) (map) → [#1033](https://github.com/fimoklei/maestro/issues/1033) (spec) | A, B | *When* I steer many skills across many targets, *I want to* read every screen in the same frame, with status I can tell apart without colour and in the theme my environment asks for, *so I can* find what needs me and act on it without relearning each screen. |
 
 ## NEXT
 
