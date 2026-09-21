@@ -54,10 +54,13 @@ export type {
 const HARNESS_KEY = ["harness", "state"] as const;
 const RELEASE_PLAN_KEY = ["harness", "release-plan"] as const;
 
-export function useHarness() {
+// Gated for callers without a connected Harness yet — the endpoint 409s until
+// one is set, and the sidebar reads it on every screen.
+export function useHarness({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: HARNESS_KEY,
     queryFn: () => requestJson<HarnessState>("/api/harness"),
+    enabled,
   });
 }
 

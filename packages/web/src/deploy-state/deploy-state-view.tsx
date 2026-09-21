@@ -1,7 +1,9 @@
 import { useNavigate } from "react-router";
 import { RegisterRepoHint } from "../registry/register-repo-hint";
 import { useRegistry } from "../registry/use-registry";
+import { Button } from "../ui/button";
 import { Notice } from "../ui/notice";
+import { Panel } from "../ui/panel";
 import { SectionHeader } from "../ui/section-header";
 import { DeployStatePanel } from "./deploy-state-panel";
 import { GlobalDeployStatePanel } from "./global-deploy-state-panel";
@@ -27,20 +29,26 @@ export function DeployStateView() {
     (globalDeployState.data?.tools.length ?? 0) + repos.length;
 
   return (
-    <section>
-      <SectionHeader
-        title="Deploy-state"
-        meta={
-          isColdStart
-            ? "Nothing deployed — deploy a skill from Inventory"
-            : isRead
-              ? `${targetCount} ${targetCount === 1 ? "target" : "targets"}`
-              : ""
-        }
-      />
-      <GlobalDeployStatePanel onStartDeploy={() => navigate("/inventory")} />
-      <RepositoriesSection onStartDeploy={() => navigate("/inventory")} />
-    </section>
+    <Panel
+      title="Deploy-state"
+      meta={
+        isColdStart
+          ? "Nothing deployed — deploy a skill from Inventory"
+          : isRead
+            ? `${targetCount} ${targetCount === 1 ? "target" : "targets"}`
+            : undefined
+      }
+      action={
+        <Button variant="primary" onClick={() => navigate("/inventory")}>
+          Deploy skill
+        </Button>
+      }
+    >
+      <div className="p-panel">
+        <GlobalDeployStatePanel onStartDeploy={() => navigate("/inventory")} />
+        <RepositoriesSection onStartDeploy={() => navigate("/inventory")} />
+      </div>
+    </Panel>
   );
 }
 
@@ -55,7 +63,7 @@ function RepositoriesSection({ onStartDeploy }: { onStartDeploy: () => void }) {
   return (
     <section className="mt-section">
       <SectionHeader
-        level={3}
+        level={2}
         title="Repositories"
         // No meta on an empty registry: RegisterRepoHint below already states
         // it, and the two lines would sit two rows apart.

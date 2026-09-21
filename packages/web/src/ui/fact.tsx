@@ -8,6 +8,7 @@ export function Fact({
   value,
   wrap = false,
   hint,
+  title,
 }: {
   label: string;
   value: string;
@@ -15,6 +16,8 @@ export function Fact({
   wrap?: boolean;
   /** What a label cannot say — read as the value's description, not beside it. */
   hint?: string;
+  /** The whole value on hover, where the visible one is shortened. */
+  title?: string;
 }) {
   const hintId = useId();
 
@@ -22,7 +25,11 @@ export function Fact({
     <div className="m-0 flex min-w-0 flex-col">
       <dt className="m-label mb-1.5">{label}</dt>
       <dd
-        className={cn("m-0 font-mono text-data text-fg", wrap && "break-all")}
+        className={cn(
+          "m-0 truncate font-mono text-data text-fg",
+          wrap && "break-all",
+        )}
+        title={title}
         aria-describedby={hint ? hintId : undefined}
       >
         {value}

@@ -38,9 +38,9 @@ function stubEmptyServer() {
   );
 }
 
-// A configured server: the header exposes the inventory-source entry, so the
-// source view is reachable from the header (issue #109) rather than a sidebar
-// nav item.
+// A configured server: the sidebar's Harness menu holds the Harness location
+// entry, so the source view is reachable from the frame (#991) rather than a
+// nav item of its own.
 function stubConfiguredServer() {
   vi.stubGlobal(
     "fetch",
@@ -48,6 +48,9 @@ function stubConfiguredServer() {
       const url = String(input);
       if (url.startsWith("/api/inventory/config")) {
         return jsonResponse({ inventoryPath: "/home/me/agent-harness" }, 200);
+      }
+      if (url.startsWith("/api/harness")) {
+        return jsonResponse(HARNESS_STATE, 200);
       }
       return jsonResponse(
         { ok: true, repos: [], primitives: [], skipped: [], behind: [] },
@@ -100,16 +103,32 @@ describe("cockpit navigation", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("opens the Harness location view from the header entry point", async () => {
+  it("opens the Harness location view from the Harness menu", async () => {
     stubConfiguredServer();
     renderApp();
 
     await userEvent.click(
-      await screen.findByRole("button", { name: /harness location/i }),
+      await screen.findByRole("button", { name: /harness menu/i }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Harness location" }),
     );
 
     expect(
       await screen.findByRole("heading", { name: /harness location/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens the Repositories screen from the sidebar", async () => {
+    stubConfiguredServer();
+    renderApp();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Repositories" }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Repositories" }),
     ).toBeInTheDocument();
   });
 });

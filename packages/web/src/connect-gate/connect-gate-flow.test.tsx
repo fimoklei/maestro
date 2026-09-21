@@ -413,10 +413,11 @@ describe("connect gate", () => {
       expect(
         await screen.findByRole("heading", { name: /deploy-state/i }),
       ).toBeInTheDocument();
-      // No gate screen rendered on the way there: the gate's <h1> is the
-      // marker, and the cockpit's own section headings are <h2>.
+      // No gate screen rendered on the way there. Every screen now names
+      // itself in its panel's band 1, so the gate's own title is the marker,
+      // not the heading rank (#991).
       expect(
-        screen.queryByRole("heading", { level: 1 }),
+        screen.queryByRole("heading", { name: /inventory not connected/i }),
       ).not.toBeInTheDocument();
     },
   );

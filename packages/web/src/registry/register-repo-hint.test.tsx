@@ -7,21 +7,14 @@ describe("RegisterRepoHint", () => {
     const { container } = render(<RegisterRepoHint />);
 
     expect(container.textContent).toBe(
-      "No repositories registered. Select + repo in the sidebar to register one.",
+      "No repositories registered. Select Register repository on the Repositories screen to register one.",
     );
   });
 
-  it("sets the control label in mono, the way the sidebar button renders it", () => {
-    // DESIGN.md §3, the Mono-Is-Data Rule: an action label is mono, so the
-    // sentence must not flatten `+ repo` into the surrounding sans.
-    render(<RegisterRepoHint />);
-
-    expect(screen.getByText("+ repo")).toHaveClass("font-mono");
-  });
-
   it("offers nothing to click", () => {
-    // ADR-0015 rejected a second registration control: `+ repo` in the sidebar
-    // stays the only one, so this line must never grow a button or a link.
+    // ADR-0015 rejected a second registration control: Register repository on
+    // the Repositories screen stays the only one, so this line must never grow
+    // a button or a link.
     render(<RegisterRepoHint />);
 
     expect(screen.queryByRole("button")).not.toBeInTheDocument();

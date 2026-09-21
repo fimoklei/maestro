@@ -4,7 +4,7 @@ import { useRegistry } from "../registry/use-registry";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import { Card } from "../ui/card";
 import { Notice, type NoticeContent } from "../ui/notice";
-import { SectionHeader } from "../ui/section-header";
+import { Panel } from "../ui/panel";
 import { INVENTORY_NOT_READ } from "./inventory-copy";
 import { InventoryList } from "./inventory-list";
 import { useDeploymentTargets } from "./use-deployment-targets";
@@ -51,37 +51,37 @@ export function InventoryPanel() {
   const skillCount = inventory.data?.primitives.length ?? 0;
 
   return (
-    // 100cqh: the table scrolls inside a bounded card so headers stay put.
-    // Below 1200px the pane stacks under the table and needs no height bound.
-    <section className="flex flex-col min-[1200px]:h-[100cqh]">
-      <SectionHeader
-        level={1}
-        title="Inventory"
-        meta={
-          inventory.isSuccess
-            ? `${skillCount} ${skillCount === 1 ? "skill" : "skills"}`
-            : undefined
-        }
-      />
-      {/* A section that failed to load is always trigger="load" — nothing here
+    <Panel
+      title="Inventory"
+      meta={
+        inventory.isSuccess
+          ? `${skillCount} ${skillCount === 1 ? "skill" : "skills"}`
+          : undefined
+      }
+    >
+      {/* 100cqh: the table scrolls inside a bounded card so headers stay put.
+          Below 1200px the pane stacks under the table and needs no bound. */}
+      <section className="flex flex-col p-panel min-[1200px]:h-[100cqh]">
+        {/* A section that failed to load is always trigger="load" — nothing here
           followed a click, and Query refetches on window focus (#465). The
           region outlives its content, so it is mounted before the failure is. */}
-      <Notice trigger="load" notice={readNotice(inventory.error, reread)} />
-      {inventory.isLoading ? (
-        <p className="px-card-x py-row-y text-dim text-tag">
-          Loading the Inventory…
-        </p>
-      ) : inventory.isError ? null : (
-        <Card fill>
-          <InventoryList
-            primitives={inventory.data?.primitives ?? []}
-            repos={repos}
-            registryReady={registry.isSuccess}
-            targets={targets}
-            onOpenHarness={() => navigate("/harness")}
-          />
-        </Card>
-      )}
-    </section>
+        <Notice trigger="load" notice={readNotice(inventory.error, reread)} />
+        {inventory.isLoading ? (
+          <p className="px-card-x py-row-y text-dim text-tag">
+            Loading the Inventory…
+          </p>
+        ) : inventory.isError ? null : (
+          <Card fill>
+            <InventoryList
+              primitives={inventory.data?.primitives ?? []}
+              repos={repos}
+              registryReady={registry.isSuccess}
+              targets={targets}
+              onOpenHarness={() => navigate("/harness")}
+            />
+          </Card>
+        )}
+      </section>
+    </Panel>
   );
 }

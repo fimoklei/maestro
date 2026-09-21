@@ -2950,12 +2950,14 @@ describe("Harness freshness and failed reads", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("fills only Create a release, so the strip states one next step", async () => {
+  it("fills only Create a release, so the screen states one next step", async () => {
     stubHarnessServer({ read: { body: RELEASED } });
     renderHarness();
 
     await screen.findByRole("button", { name: /^create a release$/i });
-    const filled = [...document.querySelectorAll("button.bg-amber")];
+    // The filled action is neutral under the new system (ADR-0033 §2); the
+    // claim is that there is exactly one of them.
+    const filled = [...document.querySelectorAll("button.bg-gray-12")];
     expect(filled.map((button) => button.textContent)).toEqual([
       "Create a release",
     ]);

@@ -1,7 +1,8 @@
 import type { ConnectOutcome } from "@maestro/core";
 import { primitiveCountLabel } from "../shell/primitive-count-label";
-import { SourceLabel } from "../shell/source-label";
+import { targetLabel } from "../shell/target-label";
 import { Button } from "../ui/button";
+import { Fact } from "../ui/fact";
 
 export type ConnectSuccessViewProps = {
   outcome: ConnectOutcome;
@@ -64,7 +65,15 @@ export function ConnectSuccessView({
         <p className="text-green-ink text-tag">{copy.title}</p>
         <p className="m-0 text-fg-2 text-tag">{copy.detail}</p>
       </div>
-      <SourceLabel path={inventoryPath} />
+      {/* The distinguishing tail, not the raw path, with the whole path on
+          hover (#211). */}
+      <dl className="m-0">
+        <Fact
+          label="Local folder"
+          value={targetLabel(inventoryPath)}
+          title={inventoryPath}
+        />
+      </dl>
       <div>
         <Button variant="primary" size="sm" onClick={onContinue}>
           {copy.continueLabel}

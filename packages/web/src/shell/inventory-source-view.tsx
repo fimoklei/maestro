@@ -3,11 +3,12 @@ import { INVENTORY_NOT_READ } from "../inventory/inventory-copy";
 import { useInventory, useInventoryConfig } from "../inventory/use-inventory";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
+import { Fact } from "../ui/fact";
 import { Notice, type NoticeContent } from "../ui/notice";
-import { SectionHeader } from "../ui/section-header";
+import { Panel } from "../ui/panel";
 import { ConnectInventoryPanel } from "./connect-inventory-panel";
 import { primitiveCountLabel } from "./primitive-count-label";
-import { SourceLabel } from "./source-label";
+import { targetLabel } from "./target-label";
 import { useRereadInventory } from "./use-reread-inventory";
 
 // Steady-state ⚙ view (#98). Offline read-on-demand: no sync job. "Change
@@ -46,18 +47,17 @@ export function InventorySourceView() {
   }
 
   return (
-    <section>
-      <SectionHeader
-        title={isChanging ? "Change Harness location" : SOURCE_TITLE}
-        meta={
-          isChanging
-            ? "Re-point at another local folder"
-            : githubRepository === null
-              ? "Local clone · GitHub repository not read"
-              : SOURCE_META
-        }
-      />
-      <Card padded className={SOURCE_CARD_WIDTH}>
+    <Panel
+      title={isChanging ? "Change Harness location" : SOURCE_TITLE}
+      meta={
+        isChanging
+          ? "Re-point at another local folder"
+          : githubRepository === null
+            ? "Local clone · GitHub repository not read"
+            : SOURCE_META
+      }
+    >
+      <Card padded className={`${SOURCE_CARD_WIDTH} m-panel`}>
         {isChanging ? (
           <ConnectInventoryPanel
             initialPath={currentPath ?? ""}
@@ -98,12 +98,21 @@ export function InventorySourceView() {
                 ● {countLabel}
               </p>
             )}
-            <SourceLabel label="Local clone" path={currentPath ?? ""} />
-            <SourceLabel
-              label="GitHub repository"
-              path={githubRepository ?? "GitHub repository not read"}
-              compact={false}
-            />
+            {/* The clone shows its distinguishing tail with the full path on
+                hover; the repository name is short enough to stand whole
+                (#211). */}
+            <dl className="m-0 flex flex-col gap-3">
+              <Fact
+                label="Local clone"
+                value={targetLabel(currentPath ?? "")}
+                title={currentPath ?? ""}
+              />
+              <Fact
+                label="GitHub repository"
+                value={githubRepository ?? "GitHub repository not read"}
+                title={githubRepository ?? "GitHub repository not read"}
+              />
+            </dl>
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="primary"
@@ -126,7 +135,7 @@ export function InventorySourceView() {
           </div>
         )}
       </Card>
-    </section>
+    </Panel>
   );
 }
 
@@ -135,9 +144,8 @@ export function InventorySourceView() {
 // Static only — no pulse (DESIGN.md's one allowed motion is the pill settle).
 function SourceSkeleton() {
   return (
-    <section>
-      <SectionHeader title={SOURCE_TITLE} meta="Loading Harness location…" />
-      <Card padded className={SOURCE_CARD_WIDTH}>
+    <Panel title={SOURCE_TITLE} meta="Loading Harness location…">
+      <Card padded className={`${SOURCE_CARD_WIDTH} m-panel`}>
         <div
           role="status"
           aria-label="Loading the Harness location…"
@@ -179,6 +187,6 @@ function SourceSkeleton() {
           </div>
         </div>
       </Card>
-    </section>
+    </Panel>
   );
 }

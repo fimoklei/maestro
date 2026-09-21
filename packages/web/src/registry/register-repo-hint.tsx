@@ -1,5 +1,5 @@
-// Information, never a control — `+ repo` in the sidebar is the single
-// registration affordance (ADR-0015).
+// Information, never a control — Register repository on the Repositories
+// screen is the single registration affordance (ADR-0015, #991).
 type RegisterRepoHintProps = {
   className?: string;
 };
@@ -8,8 +8,8 @@ type RegisterRepoHintProps = {
 export function RegisterRepoHint({ className }: RegisterRepoHintProps) {
   return (
     <span className={`text-dim text-tag ${className ?? ""}`}>
-      No repositories registered. Select{" "}
-      <span className="font-mono">+ repo</span> in the sidebar to register one.
+      No repositories registered. Select Register repository on the Repositories
+      screen to register one.
     </span>
   );
 }

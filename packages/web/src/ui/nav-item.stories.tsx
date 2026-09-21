@@ -1,10 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { FileText, LayoutList, Table2 } from "lucide-react";
 import { NavItem } from "./nav-item";
+
+const ICON = { size: 16, strokeWidth: 1.5 } as const;
 
 const meta = {
   title: "Shell/NavItem",
   component: NavItem,
-  args: { label: "Inventory", icon: "▤", active: false },
+  args: { label: "Inventory", icon: <Table2 {...ICON} />, active: false },
 } satisfies Meta<typeof NavItem>;
 
 export default meta;
@@ -18,11 +21,11 @@ export const Active: Story = { args: { active: true } };
 export const Sidebar: Story = {
   render: () => (
     <div
-      style={{ width: 208, display: "flex", flexDirection: "column", gap: 2 }}
+      style={{ width: 220, display: "flex", flexDirection: "column", gap: 2 }}
     >
-      <NavItem icon="▤" label="Inventory" active />
-      <NavItem icon="⇶" label="Deploy-state" />
-      <NavItem icon="⧉" label="Compose" />
+      <NavItem icon={<LayoutList {...ICON} />} label="Deploy-state" active />
+      <NavItem icon={<Table2 {...ICON} />} label="Inventory" />
+      <NavItem icon={<FileText {...ICON} />} label="Repositories" />
     </div>
   ),
 };

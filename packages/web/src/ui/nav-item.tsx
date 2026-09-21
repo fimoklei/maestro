@@ -2,12 +2,12 @@ import type { MouseEventHandler, ReactNode } from "react";
 import { cn } from "./cn";
 import { HOVER_TRANSITION } from "./hover-transition";
 
-// Sidebar navigation item with a unicode glyph icon. Ported from a clickable
-// <div> to a real <button> (keyboard + screen-reader reachable); the active view
-// is announced with aria-current="page", the icon is decorative (aria-hidden).
+// One sidebar navigation row, 32px (ADR-0033 §7). The active row is slate 4
+// with slate 12 text and aria-current="page" — no left-edge bar, because blue
+// is reserved for focus and selection (#991). The icon is decorative.
 
 export interface NavItemProps {
-  /** Unicode glyph, e.g. "▤" inventory, "⇶" deploy-state, "⧉" compose. */
+  /** A 16px Lucide icon. */
   icon?: ReactNode;
   /** View name in sentence case, e.g. "Deploy-state". */
   label: ReactNode;
@@ -33,25 +33,19 @@ export function NavItem({
       disabled={disabled}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex w-full items-center gap-2.5 rounded-item border px-3 py-2 text-left font-ui text-body",
+        "flex h-control w-full items-center gap-inline rounded-control px-inline text-left font-ui text-row",
         HOVER_TRANSITION,
         disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
         active
-          ? "border-line-chip bg-active text-fg"
-          : "border-transparent bg-transparent text-muted enabled:hover:bg-inset enabled:hover:text-fg-2",
+          ? "bg-gray-4 font-medium text-gray-12"
+          : "bg-transparent text-gray-11 enabled:hover:bg-gray-3 enabled:hover:text-gray-12",
         className,
       )}
     >
-      <span
-        aria-hidden="true"
-        className={cn(
-          "w-3.5 text-desc",
-          active ? "text-amber-ink" : "text-dim",
-        )}
-      >
+      <span aria-hidden="true" className="flex shrink-0 items-center">
         {icon}
       </span>
-      {label}
+      <span className="grow truncate">{label}</span>
     </button>
   );
 }

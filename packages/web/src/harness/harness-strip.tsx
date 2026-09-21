@@ -8,7 +8,8 @@ export interface HarnessStripProps {
   releasedVersion: string | null;
   defaultBranch: string | null;
   status: string;
-  /** Right-hand actions — Create a release and Retry check, and no others. */
+  /** Right-hand actions — Retry check, and no others. Create a release moved
+   * to the panel's band 1 (#991). */
   children?: ReactNode;
 }
 
