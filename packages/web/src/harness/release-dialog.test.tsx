@@ -141,13 +141,14 @@ describe("ReleaseDialog", () => {
     ).not.toBeInTheDocument();
   });
 
-  // The one publishing action in the Harness keeps the amber fill (#876).
-  it("fills the publish confirmation with amber", () => {
+  // The one publishing action in the Harness keeps the primary fill, which is
+  // neutral under the new system (#876, ADR-0033 §2).
+  it("fills the publish confirmation as the primary action", () => {
     renderReady();
 
     expect(
       screen.getByRole("button", { name: /^publish release$/i }),
-    ).toHaveClass("bg-amber");
+    ).toHaveClass("bg-gray-12");
   });
 
   it("publishes the proposed step when the author does not override it", async () => {

@@ -24,11 +24,12 @@ describe("App", () => {
     );
     renderApp();
 
-    // The status bar reflects the live server connection…
-    expect(await screen.findByText(/connected/i)).toBeInTheDocument();
-    // …and the landing route is Deploy-state.
+    // The frame stands — sidebar plus the landing screen's own panel (#991).
     expect(
-      screen.getByRole("heading", { name: /deploy-state/i }),
+      await screen.findByRole("complementary", { name: "Navigation" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Deploy-state" }),
     ).toBeInTheDocument();
   });
 });

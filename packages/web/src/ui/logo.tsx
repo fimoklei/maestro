@@ -1,59 +1,28 @@
-import type { ReactNode } from "react";
+import { cn } from "./cn";
 
-// Brand mark: an amber "M" tile, with an optional "Maestro" wordmark and a dim
-// mono context line. Every dimension scales from `size`, so those few values are
-// computed inline; colours and fonts come from token utilities.
+// The product mark: a neutral 20px outline tile over the wordmark, one 32px
+// row at the top of the sidebar (#991). No hue — the tile is slate 12 like the
+// words beside it (ADR-0033 §2).
 
-export interface LogoProps {
-  /** Tile size in px. Default 26 (status-bar scale). */
-  size?: number;
-  wordmark?: boolean;
-  /** Dim mono context after the wordmark, e.g. "agent-harness · main · 9 primitives". */
-  context?: ReactNode;
-  className?: string;
-}
-
-export function Logo({
-  size = 26,
-  wordmark = false,
-  context,
-  className,
-}: LogoProps) {
+export function Logo({ className }: { className?: string }) {
   return (
-    <div
-      className={className}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: Math.round(size * 0.55),
-      }}
-    >
-      <div
-        className="grid shrink-0 place-items-center bg-amber font-mono font-bold text-on-accent"
-        style={{
-          width: size,
-          height: size,
-          borderRadius: Math.max(4, Math.round(size * 0.19)),
-          fontSize: Math.round(size * 0.54),
-        }}
+    <div className={cn("flex h-control items-center gap-inline", className)}>
+      <svg
+        aria-hidden="true"
+        width="20"
+        height="20"
+        viewBox="0 0 20 20"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        className="shrink-0 text-gray-12"
       >
-        M
-      </div>
-      {wordmark ? (
-        <span
-          className="font-ui font-semibold text-fg"
-          style={{ fontSize: Math.round(size * 0.58), letterSpacing: "0.01em" }}
-        >
-          Maestro
-        </span>
-      ) : null}
-      {context ? (
-        // min-w-0 + overflow-hidden: without them this flex item keeps its
-        // content width and a long context overlaps whatever follows it.
-        <span className="min-w-0 overflow-hidden font-mono text-chip text-dim">
-          {context}
-        </span>
-      ) : null}
+        <rect x="2.75" y="2.75" width="14.5" height="14.5" rx="4" />
+        <path d="M6.5 13V7l3.5 3.5L13.5 7v6" />
+      </svg>
+      <span className="font-semibold font-ui text-gray-12 text-prose tracking-heading">
+        Maestro
+      </span>
     </div>
   );
 }

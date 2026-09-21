@@ -2,35 +2,35 @@ import type { ButtonHTMLAttributes } from "react";
 import { cn } from "./cn";
 import { HOVER_TRANSITION } from "./hover-transition";
 
-// Mono-typeset action button. primary/success/ghost/quiet/dashed variants —
-// see variantClasses below for what each means.
+// The one action control (ADR-0033). The primary action is neutral, the
+// destructive one is outlined red, and no fill carries a status hue.
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "success" | "ghost" | "quiet" | "dashed";
-  size?: "sm" | "md" | "lg";
+  variant?: "primary" | "success" | "ghost" | "quiet" | "dashed" | "danger";
+  /** `sm` is a control inside a row, the rest are the 32px control height. */
+  size?: "sm" | "md" | "lg" | "icon";
 }
 
-// enabled: keeps a disabled button inert. No scale/lift/shadow (DESIGN.md §5).
+// enabled: keeps a disabled button inert. `success` shares the primary
+// treatment — a green fill would be a second coloured mark (ADR-0033 §2).
 const variantClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
   primary:
-    "font-bold text-on-accent bg-amber border-amber enabled:hover:bg-amber-hover enabled:hover:border-amber-hover",
+    "text-gray-1 bg-gray-12 border-gray-12 enabled:hover:bg-gray-11 enabled:hover:border-gray-11",
   success:
-    "font-bold text-on-accent bg-green border-green enabled:hover:bg-green-hover enabled:hover:border-green-hover",
+    "text-gray-1 bg-gray-12 border-gray-12 enabled:hover:bg-gray-11 enabled:hover:border-gray-11",
   ghost:
-    "text-amber-ink bg-transparent border-line-amber-dim enabled:hover:bg-amber-bg enabled:hover:border-amber-border",
-  quiet:
-    "text-muted bg-transparent border-line-chip enabled:hover:bg-inset enabled:hover:border-line-dashed enabled:hover:text-fg-2",
+    "text-gray-11 bg-transparent border-transparent enabled:hover:bg-gray-3 enabled:hover:text-gray-12",
+  quiet: "text-gray-12 bg-transparent border-gray-7 enabled:hover:bg-gray-3",
   dashed:
-    "text-muted bg-transparent border-dashed border-line-dashed enabled:hover:bg-inset enabled:hover:text-fg-2",
+    "text-gray-11 bg-transparent border-dashed border-gray-7 enabled:hover:bg-gray-3 enabled:hover:text-gray-12",
+  danger: "text-red-11 bg-transparent border-red-7 enabled:hover:bg-red-3",
 };
 
-// sm's 10px type on 3px padding renders 23px tall — a pixel under WCAG 2.2 AA
-// 2.5.8's click-target floor. min-h-6 buys that pixel without moving the type
-// ramp or the padding rhythm; md and lg clear 24px on their own.
 const sizeClasses: Record<NonNullable<ButtonProps["size"]>, string> = {
-  sm: "min-h-6 text-tag px-2 py-[3px]",
-  md: "text-chip px-3 py-1.5",
-  lg: "text-desc px-4 py-2.5",
+  sm: "h-6 px-inline",
+  md: "h-control px-cell",
+  lg: "h-control px-cell",
+  icon: "h-8 w-8 justify-center p-0",
 };
 
 export function Button({
@@ -45,17 +45,15 @@ export function Button({
     <button
       type={type}
       className={cn(
-        "cursor-pointer border font-mono",
+        "inline-flex cursor-pointer items-center gap-inline rounded-control border font-medium font-ui text-row",
         // cn concatenates, so two whitespace utilities would leave the base one
         // winning by stylesheet order. A caller that names its own wrapping
         // (Notice's action, whose label is a sentence) takes precedence.
         /\bwhitespace-/.test(className ?? "") ? "" : "whitespace-nowrap",
         HOVER_TRANSITION,
-        // Never add outline-none: it sets --tw-outline-style to none, which
-        // focus-visible:outline-2 reads, silently hiding the ring (#227).
-        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber",
+        // No outline utility here: the ring is one :focus-visible rule on blue
+        // 9 for every control (theme.css, ADR-0033 §2).
         "disabled:cursor-not-allowed disabled:border-line-chip disabled:bg-dim-bg disabled:text-dim",
-        size === "lg" ? "rounded-item" : "rounded-control",
         variantClasses[variant],
         sizeClasses[size],
         className,

@@ -138,13 +138,13 @@ describe("DeployStateView heading structure", () => {
     renderView();
 
     expect(
-      await screen.findByRole("heading", { level: 2, name: /deploy-state/i }),
+      await screen.findByRole("heading", { level: 1, name: /deploy-state/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { level: 3, name: /global targets/i }),
+      screen.getByRole("heading", { level: 2, name: /global targets/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { level: 3, name: /repositories/i }),
+      screen.getByRole("heading", { level: 2, name: /repositories/i }),
     ).toBeInTheDocument();
   });
 });

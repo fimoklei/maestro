@@ -62,7 +62,7 @@ export function GlobalTargets({
       {/* A count, like every other section's meta — an unread section states
           none, since zero detected is a finding, not a blank. */}
       <SectionHeader
-        level={3}
+        level={2}
         title="Global targets"
         meta={isLoading || isError ? undefined : `${tools.length} detected`}
       />

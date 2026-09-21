@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse, renderWithQuery } from "../test-utils";
-import { Sidebar } from "./sidebar";
+import { RepositoriesView } from "./repositories-view";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -12,8 +12,8 @@ afterEach(() => {
 
 const repoFacts = { isGitRepo: true, hasApmManifest: false };
 
-// Stateful registry: empty until a POST registers a repo, after which the
-// Targets list refetches. A refused path answers 400.
+// Stateful registry: empty until a POST registers a repo, after which the list
+// refetches. A refused path answers 400.
 function stubServer({
   rejecting = [] as string[],
   alreadyRegistered = [] as string[],
@@ -69,16 +69,18 @@ function stubServer({
   );
 }
 
-function renderSidebar() {
+function renderView() {
   return renderWithQuery(
-    <MemoryRouter initialEntries={["/"]}>
-      <Sidebar />
+    <MemoryRouter initialEntries={["/repositories"]}>
+      <RepositoriesView />
     </MemoryRouter>,
   );
 }
 
+const REGISTER = "Register repository";
+
 async function pickBothRepos() {
-  await userEvent.click(await screen.findByRole("button", { name: "+ repo" }));
+  await userEvent.click(await screen.findByRole("button", { name: REGISTER }));
   await userEvent.click(
     await screen.findByRole("checkbox", { name: /acme-web/i }),
   );
@@ -90,25 +92,44 @@ async function pickBothRepos() {
   );
 }
 
-describe("sidebar register affordance", () => {
-  it("registers every repo checked in the picker and lists them as targets", async () => {
+describe("Repositories", () => {
+  it("names the screen and puts Register repository in band 1", async () => {
     stubServer();
-    renderSidebar();
+    renderView();
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Repositories" }),
+    ).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: REGISTER })).toBeEnabled();
+  });
+
+  it("states an empty registry as its own empty state, not as a failure", async () => {
+    stubServer();
+    renderView();
+
+    expect(await screen.findByText("No repositories yet")).toBeInTheDocument();
+  });
+
+  it("registers every repo checked in the picker and lists them", async () => {
+    stubServer();
+    renderView();
 
     await pickBothRepos();
 
-    const targets = await screen.findByRole("list", { name: "Targets" });
+    const list = await screen.findByRole("list", {
+      name: "Registered repositories",
+    });
     expect(
-      await within(targets).findByTitle("/home/me/acme-web"),
+      await within(list).findByTitle("/home/me/acme-web"),
     ).toBeInTheDocument();
     expect(
-      await within(targets).findByTitle("/home/me/payments-api"),
+      await within(list).findByTitle("/home/me/payments-api"),
     ).toBeInTheDocument();
   });
 
   it("reports a failed repo inside the picker while the rest still register", async () => {
     stubServer({ rejecting: ["/home/me/acme-web"] });
-    renderSidebar();
+    renderView();
 
     await pickBothRepos();
 
@@ -118,21 +139,21 @@ describe("sidebar register affordance", () => {
     expect(
       within(report).getByText(/Skipped · That path names a file/i),
     ).toBeInTheDocument();
-    const targets = screen.getByRole("list", { name: "Targets" });
+    const list = screen.getByRole("list", { name: "Registered repositories" });
     expect(
-      await within(targets).findByTitle("/home/me/payments-api"),
+      await within(list).findByTitle("/home/me/payments-api"),
     ).toBeInTheDocument();
     expect(
-      within(targets).queryByTitle("/home/me/acme-web"),
+      within(list).queryByTitle("/home/me/acme-web"),
     ).not.toBeInTheDocument();
   });
 
   it("hands the picker the repos already registered, so they cannot be picked twice", async () => {
     stubServer({ alreadyRegistered: ["/home/me/acme-web"] });
-    renderSidebar();
+    renderView();
 
     await userEvent.click(
-      await screen.findByRole("button", { name: "+ repo" }),
+      await screen.findByRole("button", { name: REGISTER }),
     );
 
     expect(
@@ -145,10 +166,10 @@ describe("sidebar register affordance", () => {
 
   it("shows the connected inventory as unavailable in the picker", async () => {
     stubServer({ includeInventory: true });
-    renderSidebar();
+    renderView();
 
     await userEvent.click(
-      await screen.findByRole("button", { name: "+ repo" }),
+      await screen.findByRole("button", { name: REGISTER }),
     );
 
     expect(
@@ -159,9 +180,9 @@ describe("sidebar register affordance", () => {
 
   it("has no path input of its own — the picker's paste field is the one", async () => {
     stubServer();
-    renderSidebar();
+    renderView();
 
-    await screen.findByRole("button", { name: "+ repo" });
+    await screen.findByRole("button", { name: REGISTER });
     expect(screen.queryByLabelText(/repo path/i)).not.toBeInTheDocument();
   });
 });

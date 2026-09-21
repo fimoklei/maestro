@@ -27,29 +27,27 @@ describe("Button", () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 
-  it("shows a tokenized amber focus-visible ring, not the UA default", () => {
-    // The ring lives in the shared base className, not variantClasses, so every
-    // variant inherits it — one assertion covers all five (no per-variant loop).
+  it("leaves the focus ring to the one rule every control shares", () => {
+    // ADR-0033 §2 puts the ring on blue 9 in a single :focus-visible rule
+    // (theme.css). A per-button outline utility would override it for buttons
+    // alone; outline-none would kill it outright.
     render(<Button>go</Button>);
     const button = screen.getByRole("button", { name: "go" });
-    expect(button).toHaveClass(
-      "focus-visible:outline-2",
-      "focus-visible:outline-offset-2",
-      "focus-visible:outline-amber",
-    );
-    // outline-none would set --tw-outline-style:none, which outline-2 reads —
-    // silently hiding the ring. Guard against a regression that re-adds it.
-    expect(button).not.toHaveClass("outline-none");
+    expect(button.className).not.toMatch(/outline/);
   });
 
   it("keeps the smallest size at the 24px click-target floor", () => {
-    // sm sets 10px type with 3px padding, which measured 23px tall on the real
-    // page — one pixel under WCAG 2.2 AA 2.5.8. A minimum height buys the pixel
-    // back without touching the type ramp or the padding rhythm.
+    // A control inside a row is 24px (ADR-0033 §7), which is also WCAG 2.2 AA
+    // 2.5.8's floor — it may not shrink below it.
     render(<Button size="sm">+ repo</Button>);
-    expect(screen.getByRole("button", { name: "+ repo" })).toHaveClass(
-      "min-h-6",
-    );
+    expect(screen.getByRole("button", { name: "+ repo" })).toHaveClass("h-6");
+  });
+
+  it("keeps an icon-sized button square at the 32px control height", () => {
+    render(<Button size="icon" aria-label="Re-read Inventory" />);
+    expect(
+      screen.getByRole("button", { name: "Re-read Inventory" }),
+    ).toHaveClass("h-8", "w-8");
   });
 
   describe("wrapping", () => {
@@ -77,6 +75,7 @@ describe("Button", () => {
       "ghost",
       "quiet",
       "dashed",
+      "danger",
     ] as const;
 
     it.each(variants)(

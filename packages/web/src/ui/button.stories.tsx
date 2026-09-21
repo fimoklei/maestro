@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { RefreshCw } from "lucide-react";
 import { Button } from "./button";
 
 const meta = {
@@ -8,9 +9,9 @@ const meta = {
   argTypes: {
     variant: {
       control: "inline-radio",
-      options: ["primary", "success", "ghost", "quiet", "dashed"],
+      options: ["primary", "success", "ghost", "quiet", "dashed", "danger"],
     },
-    size: { control: "inline-radio", options: ["sm", "md", "lg"] },
+    size: { control: "inline-radio", options: ["sm", "md", "lg", "icon"] },
   },
 } satisfies Meta<typeof Button>;
 
@@ -28,6 +29,7 @@ export const AllVariants: Story = {
       <Button variant="ghost">deploy →</Button>
       <Button variant="quiet">cancel</Button>
       <Button variant="dashed">+ register repo</Button>
+      <Button variant="danger">Delete</Button>
     </div>
   ),
 };
@@ -38,6 +40,9 @@ export const Sizes: Story = {
       <Button size="sm">update</Button>
       <Button size="md">deploy →</Button>
       <Button size="lg">deploy all targets</Button>
+      <Button size="icon" aria-label="Re-read Inventory">
+        <RefreshCw aria-hidden="true" size={16} strokeWidth={1.5} />
+      </Button>
     </div>
   ),
 };

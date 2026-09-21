@@ -1,4 +1,5 @@
 import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse, renderWithQuery } from "../test-utils";
@@ -8,24 +9,51 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function stubServer({ notConfigured }: { notConfigured: boolean }) {
+const HARNESS_STATE = {
+  origin: "github.com/fimoklei/agent-harness",
+  releasedVersion: "v0.5.0",
+  defaultBranch: "main",
+  releaseState: "released",
+  freshness: { outcome: null, lastFetchedAt: null },
+  stages: {
+    proposal: { outcome: "read", rows: [], bound: null },
+    review: { outcome: "read", rows: [], bound: null },
+    release: { outcome: "read", rows: [], bound: null },
+  },
+};
+
+function stubServer({
+  inventoryPath = "/home/me/agent-harness",
+  primitives = [
+    { type: "skill", name: "tdd", description: "" },
+    { type: "skill", name: "review", description: "" },
+  ],
+}: {
+  inventoryPath?: string | null;
+  primitives?: unknown[];
+} = {}) {
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (input: RequestInfo | URL) =>
-      String(input).startsWith("/api/inventory/config")
-        ? jsonResponse(
-            { inventoryPath: notConfigured ? null : "/home/me/agent-harness" },
-            200,
-          )
-        : jsonResponse(
-            { ok: true, repos: [], primitives: [], skipped: [], behind: [] },
-            200,
-          ),
-    ),
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/inventory/config")) {
+        return jsonResponse({ inventoryPath, githubRepository: null }, 200);
+      }
+      if (url.startsWith("/api/inventory/primitives")) {
+        return jsonResponse({ primitives }, 200);
+      }
+      if (url.startsWith("/api/harness")) {
+        return jsonResponse(HARNESS_STATE, 200);
+      }
+      return jsonResponse(
+        { ok: true, repos: [], primitives: [], skipped: [], behind: [] },
+        200,
+      );
+    }),
   );
 }
 
-function renderSidebar(path = "/welcome") {
+function renderSidebar(path = "/") {
   return renderWithQuery(
     <MemoryRouter initialEntries={[path]}>
       <Sidebar />
@@ -34,30 +62,26 @@ function renderSidebar(path = "/welcome") {
 }
 
 describe("Sidebar", () => {
-  it("names its landmark so it's distinct from the skill detail pane's aside", () => {
-    // Two <aside> elements on /inventory (this one and the skill detail
-    // pane) need distinct accessible names, or a screen reader's landmark
-    // list can't tell them apart.
-    stubServer({ notConfigured: true });
+  it("names its landmark so it is distinct from the skill detail pane's aside", () => {
+    stubServer();
     renderSidebar();
 
     expect(
-      screen.getByRole("complementary", { name: /navigation and targets/i }),
+      screen.getByRole("complementary", { name: "Navigation" }),
     ).toBeInTheDocument();
   });
-});
 
-describe("Sidebar grouping", () => {
-  it("keeps the author's Harness out of the consumer-facing views", async () => {
-    // Authoring state must not compete with Inventory, so the nav is grouped
-    // rather than one flat list (ADR-0021, #516).
-    stubServer({ notConfigured: false });
-    renderSidebar("/");
+  it("reaches every screen in one click", async () => {
+    // One block for what you deploy from, one for what you author (#991).
+    stubServer();
+    renderSidebar();
 
-    expect(
-      await screen.findByRole("navigation", { name: /consume/i }),
-    ).toBeInTheDocument();
-    const author = screen.getByRole("navigation", { name: /author/i });
+    const consume = screen.getByRole("navigation", { name: "Screens" });
+    for (const name of ["Deploy-state", "Inventory", "Repositories"]) {
+      expect(within(consume).getByRole("button", { name })).toBeEnabled();
+    }
+
+    const author = screen.getByRole("navigation", { name: "Author" });
     expect(
       within(author).getByRole("button", { name: "Harness" }),
     ).toBeInTheDocument();
@@ -66,74 +90,70 @@ describe("Sidebar grouping", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("dims the Harness with the rest of the nav on a first run", async () => {
-    stubServer({ notConfigured: true });
+  it("names the Harness, its release and its skill count on the menu button", async () => {
+    stubServer();
     renderSidebar();
 
-    // The empty state is the tell that the first-run read has landed; asserting
-    // before it would catch the nav in its pre-read, enabled state.
-    await screen.findByText(/no targets yet/i);
-    expect(screen.getByRole("button", { name: "Harness" })).toBeDisabled();
+    expect(await screen.findByText("v0.5.0 · 2 skills")).toBeInTheDocument();
+    expect(screen.getByText("…/me/agent-harness")).toHaveAttribute(
+      "title",
+      "/home/me/agent-harness",
+    );
   });
-});
 
-describe("Sidebar first-run rendering", () => {
-  it("dims the nav, hides register, and shows the empty state when unconfigured", async () => {
-    stubServer({ notConfigured: true });
+  it("opens the Harness location from the Harness menu", async () => {
+    stubServer();
     renderSidebar();
 
-    expect(await screen.findByText(/no targets yet/i)).toBeInTheDocument();
-    for (const name of ["Deploy-state", "Inventory"]) {
-      expect(screen.getByRole("button", { name })).toBeDisabled();
-    }
-    // Harness location lives in the header now (issue #109), not the sidebar.
-    expect(
-      screen.queryByRole("button", { name: "Harness location" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "+ repo" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("marks itself hidden below md on a gate route", async () => {
-    stubServer({ notConfigured: true });
-    renderSidebar("/welcome/connect");
-
-    await screen.findByText(/no targets yet/i);
+    await userEvent.click(
+      await screen.findByRole("button", { name: /harness menu/i }),
+    );
 
     expect(
-      screen.getByRole("complementary", { name: /navigation and targets/i }),
-    ).toHaveClass("max-md:hidden");
-  });
-
-  it("renders the interactive nav and register affordance when configured", async () => {
-    stubServer({ notConfigured: false });
-    renderSidebar("/");
-
-    expect(
-      await screen.findByRole("button", { name: "+ repo" }),
+      await screen.findByRole("menuitem", { name: "Harness location" }),
     ).toBeInTheDocument();
-    for (const name of ["Deploy-state", "Inventory"]) {
-      expect(screen.getByRole("button", { name })).toBeEnabled();
-    }
-    expect(
-      screen.queryByRole("button", { name: "Harness location" }),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText(/no targets yet/i)).not.toBeInTheDocument();
   });
 
-  it("hides the register affordance on a gate route even when configured", async () => {
-    // Connect success flips firstRun to false while the user is still reading
-    // the gate's confirmation; `+ repo` appearing mid-beat competes with the
-    // one action that screen offers (ADR-0015).
-    stubServer({ notConfigured: false });
-    renderSidebar("/welcome/connect");
+  it("carries no Targets list and no register affordance of its own", async () => {
+    // Targets are read on Deploy-state; registering moved to Repositories
+    // (#991).
+    stubServer();
+    renderSidebar();
 
+    await screen.findByText("v0.5.0 · 2 skills");
     expect(
-      await screen.findByRole("button", { name: "Deploy-state" }),
-    ).toBeEnabled();
+      screen.queryByRole("list", { name: /targets/i }),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "+ repo" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("states the missing release where the Harness has none yet", async () => {
+    stubServer();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/inventory/config")) {
+          return jsonResponse(
+            { inventoryPath: "/home/me/agent-harness", githubRepository: null },
+            200,
+          );
+        }
+        if (url.startsWith("/api/inventory/primitives")) {
+          return jsonResponse({ primitives: [] }, 200);
+        }
+        if (url.startsWith("/api/harness")) {
+          return jsonResponse({ ...HARNESS_STATE, releasedVersion: null }, 200);
+        }
+        return jsonResponse({ ok: true, repos: [] }, 200);
+      }),
+    );
+    renderSidebar();
+
+    expect(
+      await screen.findByText("No release · 0 skills"),
+    ).toBeInTheDocument();
   });
 });

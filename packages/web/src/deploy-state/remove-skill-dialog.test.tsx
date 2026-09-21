@@ -245,14 +245,14 @@ describe("RemoveSkillDialog", () => {
     });
   });
 
-  it("makes the confirm control the amber primary", () => {
-    // Green reads as rest/deploy-confirmed and would misread on a destructive
-    // action; red may never be a fill (DESIGN.md). Within this modal the amber
-    // confirm is the single filled action.
+  it("makes the confirm control the one filled action in the dialog", () => {
+    // The primary action is neutral and no status hue is ever a fill
+    // (ADR-0033 §2). Within this modal the confirm is the single filled
+    // action.
     renderDialog();
 
     expect(screen.getByRole("button", { name: /^remove/i })).toHaveClass(
-      "bg-amber",
+      "bg-gray-12",
     );
   });
 
