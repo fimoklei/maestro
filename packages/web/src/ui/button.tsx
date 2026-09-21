@@ -9,6 +9,35 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "success" | "ghost" | "quiet" | "dashed" | "danger";
   /** `sm` is a control inside a row, the rest are the 32px control height. */
   size?: "sm" | "md" | "lg" | "icon";
+  /**
+   * A write is running in this control. Children become its busy label
+   * (`busy-copy.ts`); the control stays focusable so focus is never lost.
+   */
+  busy?: boolean;
+}
+
+// The one moving thing under reduced motion (ADR-0033 §8), so it carries no
+// motion-safe guard. aria-hidden: the label beside it already says "…ing".
+function Spinner() {
+  return (
+    <svg
+      data-spinner=""
+      aria-hidden="true"
+      viewBox="0 0 16 16"
+      className="size-3.5 shrink-0 animate-spin [animation-duration:var(--motion-spin)] [animation-timing-function:linear]"
+    >
+      <circle
+        cx="8"
+        cy="8"
+        r="6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeDasharray="28 10"
+      />
+    </svg>
+  );
 }
 
 // enabled: keeps a disabled button inert. `success` shares the primary
@@ -37,13 +66,18 @@ export function Button({
   variant = "primary",
   size = "md",
   type = "button",
+  busy = false,
   className,
   children,
+  onClick,
   ...rest
 }: ButtonProps) {
   return (
     <button
       type={type}
+      aria-busy={busy || undefined}
+      aria-disabled={busy || undefined}
+      onClick={busy ? undefined : onClick}
       className={cn(
         "inline-flex cursor-pointer items-center gap-inline rounded-control border font-medium font-ui text-row",
         // cn concatenates, so two whitespace utilities would leave the base one
@@ -54,12 +88,14 @@ export function Button({
         // No outline utility here: the ring is one :focus-visible rule on blue
         // 9 for every control (theme.css, ADR-0033 §2).
         "disabled:cursor-not-allowed disabled:border-line-chip disabled:bg-dim-bg disabled:text-dim",
+        "aria-disabled:cursor-not-allowed",
         variantClasses[variant],
         sizeClasses[size],
         className,
       )}
       {...rest}
     >
+      {busy ? <Spinner /> : null}
       {children}
     </button>
   );

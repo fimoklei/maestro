@@ -18,13 +18,13 @@ describe("Notice", () => {
 
     const region = screen.getByRole("status");
     expect(region).toHaveTextContent("no global tools");
-    expect(region.textContent).not.toMatch(/[✕▲✓]/);
+    expect(region.textContent).not.toMatch(/[✕⚠✓]/);
   });
 
   // The tint is proven in a browser, never here: jsdom renders without CSS.
   it.each([
     ["success", "✓"],
-    ["warning", "▲"],
+    ["warning", "⚠"],
     ["error", "✕"],
   ] as const)("marks %s with its own glyph", (level, glyph) => {
     render(
@@ -95,6 +95,47 @@ describe("Notice", () => {
     expect(region).not.toBeNull();
     expect(region).toHaveAttribute("aria-live");
     expect(region).toBeEmptyDOMElement();
+  });
+
+  // The two halves of "a failure states itself and stays" (ADR-0033 §5): the
+  // reader is never interrupted, and never loses the message by waiting.
+  it("never moves focus to itself", () => {
+    render(
+      <Notice
+        trigger="user-action"
+        notice={{
+          level: "error",
+          label: "Could not read Inventory",
+          message: "Select Re-read Inventory to try again.",
+        }}
+      />,
+    );
+
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("is still on screen long after a toast would have gone", () => {
+    vi.useFakeTimers();
+    try {
+      render(
+        <Notice
+          trigger="user-action"
+          notice={{
+            level: "error",
+            label: "Could not read Inventory",
+            message: "Select Re-read Inventory to try again.",
+          }}
+        />,
+      );
+
+      vi.advanceTimersByTime(60_000);
+
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Could not read Inventory",
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("wires a form field's aria-describedby through id", () => {

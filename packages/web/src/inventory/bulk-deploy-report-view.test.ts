@@ -1,7 +1,8 @@
 import type { BulkDeployReport } from "@maestro/core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   type BulkDeployReportView,
+  bulkDeployReportGroups,
   bulkDeployReportView,
   bulkDeploySummary,
 } from "./bulk-deploy-report-view";
@@ -170,5 +171,137 @@ describe("bulkDeploySummary", () => {
         counts: { deployed: 0, skipped: 0, attention: 0, failed: 0 },
       }),
     ).toBe("Deployed to Global · all selected skills are up to date");
+  });
+});
+
+// The grouping BulkDeployReport used to draw. Its claims moved here when it
+// retired into the shared Report (#1038): the words a row carries are decided
+// once, where they can be read without rendering anything.
+describe("bulkDeployReportGroups", () => {
+  const view = (
+    overrides: Partial<
+      Extract<BulkDeployReportView, { tone: "success" | "attention" }>
+    > = {},
+  ): Extract<BulkDeployReportView, { tone: "success" | "attention" }> => ({
+    tone: "success",
+    targetLabel: "Global",
+    deployed: [],
+    skipped: [],
+    attention: [],
+    failed: [],
+    counts: { deployed: 0, skipped: 0, attention: 0, failed: 0 },
+    ...overrides,
+  });
+
+  const rowsOf = (
+    groups: ReturnType<typeof bulkDeployReportGroups>,
+    label: string,
+  ) => groups.find((group) => group.label === label)?.rows ?? [];
+
+  it("gives a pinned-per-skill row the reason a single deploy states", () => {
+    const groups = bulkDeployReportGroups({
+      view: view({
+        tone: "attention",
+        attention: [
+          { name: "tdd", error: "target-pinned-per-skill", forceable: false },
+        ],
+      }),
+    });
+
+    expect(rowsOf(groups, "Attention")[0]?.detail).toContain(
+      "Left alone — pinned per skill",
+    );
+  });
+
+  it("gives a busy row the reason a single deploy states", () => {
+    const groups = bulkDeployReportGroups({
+      view: view({
+        tone: "attention",
+        attention: [
+          { name: "tdd", error: "deploy-in-progress", forceable: false },
+        ],
+      }),
+    });
+
+    expect(rowsOf(groups, "Attention")[0]?.detail).toContain(
+      "A deploy is still running on this target. Wait for it to finish.",
+    );
+  });
+
+  it("names a failure the report carries no recovery step for, never its code", () => {
+    const groups = bulkDeployReportGroups({
+      view: view({
+        tone: "attention",
+        failed: [{ error: "no-supported-tool", names: ["tdd"] }],
+      }),
+    });
+
+    const detail = rowsOf(groups, "Failed")[0]?.detail ?? "";
+    expect(detail).toContain("No supported tool");
+    expect(detail).not.toContain("no-supported-tool");
+  });
+
+  it("carries every skill of a merged failure line on one row", () => {
+    const groups = bulkDeployReportGroups({
+      view: view({
+        tone: "attention",
+        failed: [{ error: "auth-required", names: ["tdd", "review"] }],
+      }),
+    });
+
+    expect(rowsOf(groups, "Failed")[0]?.name).toBe("tdd, review");
+  });
+
+  it("offers a force reinstall on a diverged attention row, with its own receipt", () => {
+    const onForce = vi.fn();
+    const receipt = "b".repeat(64);
+    const groups = bulkDeployReportGroups({
+      view: view({
+        tone: "attention",
+        attention: [
+          {
+            name: "tdd",
+            error: "deployed-diverged-from-lock",
+            forceable: true,
+            copyReceipt: receipt,
+          },
+        ],
+      }),
+      onForce,
+    });
+
+    const action = rowsOf(groups, "Attention")[0]?.action;
+    expect(action?.label).toBe("Deploy tdd again");
+    action?.onClick();
+    expect(onForce).toHaveBeenCalledWith("tdd", receipt);
+  });
+
+  it("offers no way out on a row that is not forceable", () => {
+    const groups = bulkDeployReportGroups({
+      view: view({
+        tone: "attention",
+        attention: [
+          { name: "tdd", error: "target-pinned-per-skill", forceable: false },
+        ],
+      }),
+      onForce: vi.fn(),
+    });
+
+    expect(rowsOf(groups, "Attention")[0]?.action).toBeUndefined();
+  });
+
+  // The control is retired with the branch behind it (ADR-0031, #956): a bulk
+  // run deploys at the release the target already follows.
+  it("has no updated-to-latest group", () => {
+    const groups = bulkDeployReportGroups({
+      view: view({ deployed: [{ name: "tdd", version: "v1.2.0" }] }),
+    });
+
+    expect(groups.map((group) => group.label)).toEqual([
+      "Failed",
+      "Attention",
+      "Already up to date",
+      "Deployed",
+    ]);
   });
 });

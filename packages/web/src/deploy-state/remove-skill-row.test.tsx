@@ -2,6 +2,7 @@ import { waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   CONFIRM,
+  clearToasts,
   jsonResponse,
   openRemoveDialog,
   RECEIPT,
@@ -21,6 +22,7 @@ import {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  clearToasts();
 });
 
 describe("removing a deployed skill from a row", () => {

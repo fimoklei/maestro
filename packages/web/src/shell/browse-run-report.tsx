@@ -1,4 +1,5 @@
 import type { RegistrationOutcome } from "../registry/use-register-repos";
+import { ACTIONS } from "../ui/busy-copy";
 import { targetLabel } from "./target-label";
 
 // What happened to each repo of a registration run (#175). Rows arrive in
@@ -34,7 +35,7 @@ export function BrowseRunReport({
       <p role="status" className="mb-2 font-mono text-data">
         {isRegistering ? (
           <span className="text-fg-2">
-            Registering repositories…
+            {ACTIONS.register.busy}
             {paths.length > 0 ? ` ${outcomes.length} of ${paths.length}` : ""}
           </span>
         ) : (

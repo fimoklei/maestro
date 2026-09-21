@@ -113,7 +113,7 @@ export function BrowseDialog({
       label={heading}
       // The listing is the dialog, and it names itself row by row.
       describedBy={null}
-      width={620}
+      width={640}
       height="compact"
       border="border-line"
       onClose={onClose}

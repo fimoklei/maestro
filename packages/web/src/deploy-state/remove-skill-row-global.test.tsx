@@ -2,6 +2,7 @@ import { waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   CONFIRM,
+  clearToasts,
   jsonResponse,
   openRemoveDialog,
   preflightCalls,
@@ -18,6 +19,7 @@ import {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  clearToasts();
 });
 
 // The global row. One action covers every detected tool, and the confirmation

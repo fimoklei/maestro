@@ -1,3 +1,4 @@
+import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { DialogShell } from "../ui/dialog-shell";
@@ -35,7 +36,7 @@ export function RestoreDialog({
       label={heading}
       // The consequences sit in the body, read in the order they are written.
       describedBy={null}
-      width={520}
+      width={480}
       height="tall"
       onClose={onClose}
       closeEnabled={!restoring}
@@ -90,10 +91,10 @@ export function RestoreDialog({
           className="shrink-0"
           variant="ghost"
           size="sm"
-          disabled={restoring}
+          busy={restoring}
           onClick={onConfirm}
         >
-          {restoring ? "Restoring…" : "Restore skill"}
+          {restoring ? ACTIONS.restore.busy : "Restore skill"}
         </Button>
       </div>
     </DialogShell>

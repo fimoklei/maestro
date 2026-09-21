@@ -587,7 +587,7 @@ describe("DeploySkillAction", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("disables the deploy action while a deploy is pending", async () => {
+  it("holds the deploy action unpressable while a deploy is pending", async () => {
     // Never resolves: the deploy stays pending for the rest of the test.
     vi.stubGlobal(
       "fetch",
@@ -601,7 +601,7 @@ describe("DeploySkillAction", () => {
 
     expect(
       await screen.findByRole("button", { name: /deploying/i }),
-    ).toBeDisabled();
+    ).toHaveAttribute("aria-disabled", "true");
   });
 
   it("refreshes the repo deploy-state panel after a successful deploy", async () => {

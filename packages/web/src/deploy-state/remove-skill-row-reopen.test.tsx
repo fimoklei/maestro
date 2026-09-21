@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   CONFIRM,
   checkFor,
+  clearToasts,
   jsonResponse,
   openRemoveDialog,
   RECEIPT,
@@ -15,6 +16,7 @@ import {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  clearToasts();
 });
 
 // Through the mounted row and a real QueryClient, so the whole reopen — the

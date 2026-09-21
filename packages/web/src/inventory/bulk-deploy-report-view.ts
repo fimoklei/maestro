@@ -2,6 +2,14 @@
 // distinct — the bulk request itself failing, zeroed counts never confirmed-clean.
 
 import type { BulkDeployReport, DeploySkillError } from "@maestro/core";
+import {
+  DEPLOY_STILL_RUNNING,
+  deployStateHeading,
+  LEFT_ALONE_PINNED,
+  RETRY_ON_CARD,
+  UPDATE_TO_REACH_RELEASE,
+} from "../deploy-state/notice-copy";
+import type { ReportGroup } from "../ui/report";
 
 type BulkReportCounts = {
   deployed: number;
@@ -95,4 +103,69 @@ export function bulkDeployReportView(input: {
       failed: failedCount,
     },
   };
+}
+
+// The row's words come from the deploy notice table, so a code reads the same
+// here and in a single deploy's notice, and no code can reach the screen raw.
+const RECOVERY: Partial<Record<DeploySkillError, string>> = {
+  "target-pinned-per-skill": LEFT_ALONE_PINNED,
+  "not-at-target-release": UPDATE_TO_REACH_RELEASE,
+  "operation-unfinished": RETRY_ON_CARD,
+  "deploy-in-progress": DEPLOY_STILL_RUNNING,
+  "deploy-incomplete": RETRY_ON_CARD,
+};
+
+const reasonFor = (error: DeploySkillError, packageType?: string) =>
+  [
+    `${deployStateHeading(error)}${packageType ? ` (${packageType})` : ""}`,
+    RECOVERY[error],
+  ]
+    .filter((part) => part !== undefined)
+    .join(" ");
+
+/** The run folded into the Report's groups. Empty groups are not drawn. */
+export function bulkDeployReportGroups(input: {
+  view: Extract<BulkDeployReportView, { tone: "success" | "attention" }>;
+  /** The row's own consent, so an inline deploy grants only what it read. */
+  onForce?: (name: string, confirmedCopyReceipt?: string) => void;
+}): ReportGroup[] {
+  const { view, onForce } = input;
+  return [
+    {
+      tone: "failed",
+      label: "Failed",
+      rows: view.failed.map((line) => ({
+        name: line.names.join(", "),
+        detail: reasonFor(line.error),
+      })),
+    },
+    {
+      tone: "attention",
+      label: "Attention",
+      rows: view.attention.map((row) => ({
+        name: row.name,
+        detail: reasonFor(row.error, row.packageType),
+        action:
+          onForce && row.forceable
+            ? {
+                label: `Deploy ${row.name} again`,
+                onClick: () => onForce(row.name, row.copyReceipt),
+              }
+            : undefined,
+      })),
+    },
+    {
+      tone: "neutral",
+      label: "Already up to date",
+      rows: view.skipped.map((name) => ({ name })),
+    },
+    {
+      tone: "good",
+      label: "Deployed",
+      rows: view.deployed.map((row) => ({
+        name: row.name,
+        detail: row.version,
+      })),
+    },
+  ];
 }

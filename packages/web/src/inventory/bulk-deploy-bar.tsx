@@ -5,9 +5,15 @@ import { driftViewModel } from "../drift/drift-view-model";
 import { useDrift, useGlobalDrift } from "../drift/use-drift";
 import type { RegisteredRepo } from "../registry/use-registry";
 import { targetLabel } from "../shell/target-label";
+import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
-import { BulkDeployReport } from "./bulk-deploy-report";
-import { bulkDeployReportView } from "./bulk-deploy-report-view";
+import { Notice } from "../ui/notice";
+import { Report } from "../ui/report";
+import {
+  bulkDeployReportGroups,
+  bulkDeployReportView,
+  bulkDeploySummary,
+} from "./bulk-deploy-report-view";
 import { chosenBulkDeployTargets } from "./bulk-deploy-targets";
 import { globalOptionLabel } from "./global-option-label";
 import { type BulkDeployPlan, planBulkDeploy } from "./plan-bulk-deploy";
@@ -87,7 +93,7 @@ export function BulkDeployBar({
   const buttonLabel = !registryReady
     ? "Loading targets…"
     : bulk.isPending
-      ? "Deploying skills…"
+      ? ACTIONS.deploy.busy
       : `Deploy ${stagedNames.length} ${stagedNames.length === 1 ? "skill" : "skills"}`;
 
   const onDeploy = () => {
@@ -164,12 +170,8 @@ export function BulkDeployBar({
           <Button
             variant="primary"
             size="sm"
-            disabled={
-              !registryReady ||
-              targetLoading ||
-              bulk.isPending ||
-              globalUnavailable
-            }
+            busy={bulk.isPending}
+            disabled={!registryReady || targetLoading || globalUnavailable}
             onClick={onDeploy}
           >
             {buttonLabel}
@@ -177,20 +179,35 @@ export function BulkDeployBar({
         </span>
       </div>
 
-      {reportView ? (
-        <BulkDeployReport
-          view={reportView}
-          isDeploying={bulk.isPending}
-          onForce={(name, confirmedCopyReceipt) =>
-            forceDeploy.mutate({
-              type: "skill",
-              name,
-              target,
-              confirmedCopyReceipt,
-            })
-          }
+      {reportView === null ? null : reportView.tone === "error" ? (
+        // A distinct message, never the counts summary: zeroed counts would
+        // read as a clean success the run never proved (#292).
+        <Notice
+          trigger="user-action"
+          notice={{
+            level: "error",
+            label: `Deploy to ${reportView.targetLabel} did not run`,
+            message: reportView.message,
+          }}
         />
-      ) : null}
+      ) : bulk.isPending ? null : (
+        <Report
+          heading={bulkDeploySummary({
+            targetLabel: reportView.targetLabel,
+            counts: reportView.counts,
+          })}
+          groups={bulkDeployReportGroups({
+            view: reportView,
+            onForce: (name, confirmedCopyReceipt) =>
+              forceDeploy.mutate({
+                type: "skill",
+                name,
+                target,
+                confirmedCopyReceipt,
+              }),
+          })}
+        />
+      )}
     </div>
   );
 }

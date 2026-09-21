@@ -1,7 +1,8 @@
 import { useId } from "react";
+import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
-import { DialogShell } from "../ui/dialog-shell";
+import { DIALOG_CANCEL, DialogShell } from "../ui/dialog-shell";
 import { Notice } from "../ui/notice";
 import { panelBorderFor } from "../ui/panel-border";
 import { StatusDot } from "../ui/status-dot";
@@ -261,11 +262,12 @@ export function BulkRemoveDialog({
     <DialogShell
       label={heading}
       describedBy={described === "" ? null : described}
-      width={460}
+      width={480}
       border={panelBorderFor({
         failure: failure !== null || done?.kind === "partial",
         cost: done === null && !isRemoving && (grouped?.cost.length ?? 0) > 0,
       })}
+      destructive
       onClose={onCancel}
       closeEnabled={!isRemoving}
     >
@@ -355,6 +357,7 @@ export function BulkRemoveDialog({
           variant={done?.kind === "clean" ? "success" : "quiet"}
           size="sm"
           disabled={isRemoving}
+          {...DIALOG_CANCEL}
           onClick={onCancel}
         >
           {closeLabel}
@@ -368,11 +371,12 @@ export function BulkRemoveDialog({
             className="shrink-0"
             variant="primary"
             size="sm"
-            disabled={isRemoving || !confirmable}
+            busy={isRemoving}
+            disabled={!confirmable}
             onClick={onConfirm}
           >
             {isRemoving
-              ? "Removing…"
+              ? ACTIONS.remove.busy
               : (grouped?.confirmLabel ?? `Remove from ${targetCount} targets`)}
           </Button>
         ) : null}

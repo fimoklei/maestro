@@ -1,7 +1,25 @@
-import { render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { DialogShell } from "./dialog-shell";
+
+// Radix dismisses on pointerdown, and takes pointer events off the page behind
+// a modal — so the click outside is raised as the event the layer listens for.
+const clickOutside = async () => {
+  // Radix registers its outside listener on the next tick, so the click is
+  // raised after one.
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+  fireEvent.pointerDown(document.body);
+  fireEvent.click(document.body);
+};
 
 describe("DialogShell", () => {
   it("names the panel with the heading beside it", () => {
@@ -107,9 +125,7 @@ describe("DialogShell", () => {
       </DialogShell>,
     );
 
-    const backdrop = document.querySelector("button[aria-hidden='true']");
-    if (backdrop === null) throw new Error("no backdrop");
-    await userEvent.click(backdrop);
+    await clickOutside();
 
     expect(onClose).toHaveBeenCalledOnce();
   });
@@ -133,6 +149,113 @@ describe("DialogShell", () => {
     expect(screen.getByRole("button", { name: "Last" })).toHaveFocus();
     await userEvent.tab();
     expect(screen.getByRole("button", { name: "First" })).toHaveFocus();
+  });
+
+  // A destructive dialog opens on Cancel, so Enter never deletes (ADR-0033 §6).
+  describe("where focus opens", () => {
+    it("lands on Cancel in a destructive dialog", async () => {
+      render(
+        <DialogShell
+          label="Remove tdd"
+          describedBy={null}
+          width={480}
+          destructive
+          onClose={() => {}}
+        >
+          <button type="button" data-dialog-cancel="">
+            Cancel
+          </button>
+          <button type="button">Remove skill</button>
+        </DialogShell>,
+      );
+
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus(),
+      );
+    });
+
+    it("leaves focus on the panel where nothing is destructive", async () => {
+      render(
+        <DialogShell
+          label="Update maestro"
+          describedBy={null}
+          width={480}
+          onClose={() => {}}
+        >
+          <button type="button" data-dialog-cancel="">
+            Cancel
+          </button>
+          <button type="button">Update target</button>
+        </DialogShell>,
+      );
+
+      await waitFor(() =>
+        expect(
+          screen.getByRole("button", { name: "Cancel" }),
+        ).not.toHaveFocus(),
+      );
+    });
+  });
+
+  // "Ignore a click outside once a field has changed" (ADR-0033 §6): typed
+  // work is never thrown away by a stray click, while Escape and Cancel stay.
+  describe("a click outside once a field has changed", () => {
+    it("does nothing", async () => {
+      const onClose = vi.fn();
+      render(
+        <DialogShell
+          label="Register repository"
+          describedBy={null}
+          width={480}
+          fieldsChanged
+          onClose={onClose}
+        >
+          <p>body</p>
+        </DialogShell>,
+      );
+
+      await clickOutside();
+
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it("leaves Escape working", async () => {
+      const onClose = vi.fn();
+      render(
+        <DialogShell
+          label="Register repository"
+          describedBy={null}
+          width={480}
+          fieldsChanged
+          onClose={onClose}
+        >
+          <p>body</p>
+        </DialogShell>,
+      );
+
+      await userEvent.keyboard("{Escape}");
+
+      expect(onClose).toHaveBeenCalledOnce();
+    });
+  });
+
+  it("holds the panel open against a click outside while closing is disabled", async () => {
+    const onClose = vi.fn();
+    render(
+      <DialogShell
+        label="Remove tdd"
+        describedBy={null}
+        width={480}
+        closeEnabled={false}
+        onClose={onClose}
+      >
+        <p>body</p>
+      </DialogShell>,
+    );
+
+    await clickOutside();
+
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it("takes the outline the caller computed", () => {

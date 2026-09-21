@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -20,6 +20,7 @@ function renderDialog(
   load: ComponentProps<typeof ImportDialog>["load"] = { kind: "idle" },
   imported: ComponentProps<typeof ImportDialog>["imported"] = null,
   onView: ComponentProps<typeof ImportDialog>["onView"] = vi.fn(),
+  onClose: ComponentProps<typeof ImportDialog>["onClose"] = vi.fn(),
 ) {
   render(
     <ImportDialog
@@ -28,7 +29,7 @@ function renderDialog(
       load={load}
       onPickSource={vi.fn()}
       onNameChange={vi.fn()}
-      onClose={vi.fn()}
+      onClose={onClose}
       onImport={vi.fn()}
       onView={onView}
       importing={false}
@@ -36,9 +37,39 @@ function renderDialog(
       imported={imported}
     />,
   );
+  return { onClose };
 }
 
 describe("ImportDialog", () => {
+  // Typed work is never thrown away by a stray click (ADR-0033 §6); Escape and
+  // Close still close, because those are deliberate.
+  it("ignores a click outside once the name has been typed in", async () => {
+    const onClose = vi.fn();
+    renderDialog(DEEP, { kind: "ready", check: CHECK }, null, vi.fn(), onClose);
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: /name in the harness/i }),
+      "x",
+    );
+    fireEvent.pointerDown(document.body);
+    fireEvent.click(document.body);
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("closes on a click outside while no field has been touched", async () => {
+    const onClose = vi.fn();
+    renderDialog(DEEP, { kind: "ready", check: CHECK }, null, vi.fn(), onClose);
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    fireEvent.pointerDown(document.body);
+    fireEvent.click(document.body);
+
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it("shows the tail of a deep source path and carries the whole path in its title", () => {
     renderDialog(DEEP);
 

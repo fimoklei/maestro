@@ -68,6 +68,35 @@ describe("Button", () => {
     });
   });
 
+  describe("busy state", () => {
+    it("shows the spinner beside the busy label it was given", () => {
+      render(<Button busy>Deploying…</Button>);
+      const button = screen.getByRole("button", { name: "Deploying…" });
+      expect(button).toHaveAttribute("aria-busy", "true");
+      expect(button.querySelector("[data-spinner]")).not.toBeNull();
+    });
+
+    it("does not fire onClick while busy", async () => {
+      const onClick = vi.fn();
+      render(
+        <Button busy onClick={onClick}>
+          Deploying…
+        </Button>,
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Deploying…" }));
+      expect(onClick).not.toHaveBeenCalled();
+    });
+
+    it("carries no spinner when it is not busy", () => {
+      render(<Button>Deploy skill</Button>);
+      expect(
+        screen
+          .getByRole("button", { name: "Deploy skill" })
+          .querySelector("[data-spinner]"),
+      ).toBeNull();
+    });
+  });
+
   describe("disabled state", () => {
     const variants = [
       "primary",

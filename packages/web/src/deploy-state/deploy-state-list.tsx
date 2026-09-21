@@ -13,10 +13,11 @@ import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { ActionsMenu } from "../ui/actions-menu";
 import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
+import { showSuccess } from "../ui/toast";
 import { type DeployStateNotice, removeNotice } from "./notice-copy";
 import { copyChipText, extraFilesLine } from "./release-head-copy";
+import { removalAnnouncement } from "./removal-announcement";
 import { removalOutcome } from "./removal-outcome";
-import { RemovalTrace, type TracedRemoval } from "./removal-trace";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
 import { removePreflightView } from "./remove-preflight-view";
 import { RemoveSkillDialog } from "./remove-skill-dialog";
@@ -144,7 +145,6 @@ export function DeployStateList({
   // outlives the failure it reports on (#416).
   const [news, setNews] = useState<RemovalNews | null>(null);
   const [justRemoved, setJustRemoved] = useState(false);
-  const [removed, setRemoved] = useState<TracedRemoval[]>([]);
   const queryClient = useQueryClient();
   const remove = useRemoveDeployedSkill();
   // Global's location is apm's own, resolved server-side (J07).
@@ -166,7 +166,6 @@ export function DeployStateList({
   if (
     primitives.length === 0 &&
     skipped.length === 0 &&
-    removed.length === 0 &&
     (extraFiles ?? 0) === 0
   ) {
     return null;
@@ -276,10 +275,10 @@ export function DeployStateList({
                 // open with apm's reason.
                 onSuccess: (data) => {
                   const scope = data.removed.scope;
-                  setRemoved((seen) => [
-                    ...seen,
-                    {
-                      id: seen.length,
+                  // The row this names is gone by the time the toast is read,
+                  // which is why the success travels apart from the table.
+                  showSuccess(
+                    removalAnnouncement({
                       name: data.removed.name,
                       version: data.removed.version,
                       // No scope in the response falls back to what the user
@@ -288,8 +287,8 @@ export function DeployStateList({
                         scope?.kind === "global"
                           ? { kind: "global", tools: scope.tools }
                           : target,
-                    },
-                  ]);
+                    }),
+                  );
                   setRemoving(null);
                   setJustRemoved(true);
                 },
@@ -298,7 +297,6 @@ export function DeployStateList({
           }
         />
       ) : null}
-      <RemovalTrace removed={removed} />
       {orphans.length > 0 && (
         <p className="px-card-x py-row-y text-amber-ink text-tag">
           Reported behind, not deployed here: {orphans.join(", ")}

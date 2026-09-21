@@ -65,9 +65,10 @@ describe("BulkDeployBar", () => {
       await screen.findByRole("button", { name: /deploy 2/i }),
     );
 
+    // The Report's own heading states the run (#1038).
     expect(
-      await screen.findByRole("status", { name: /bulk deploy result/i }),
-    ).toHaveTextContent(/2 deployed/);
+      await screen.findByRole("heading", { name: /2 deployed/ }),
+    ).toBeVisible();
     const fetchMock = fetch as ReturnType<typeof vi.fn>;
     const [, init] = fetchMock.mock.calls.find(
       ([url]) => url === "/api/deploy/bulk",
@@ -213,8 +214,8 @@ describe("BulkDeployBar", () => {
     );
 
     expect(
-      await screen.findByRole("status", { name: /bulk deploy result/i }),
-    ).toHaveTextContent(/1 deployed/);
+      await screen.findByRole("heading", { name: /1 deployed/ }),
+    ).toBeVisible();
   });
 
   it("names a repo target by its shortened label, never its absolute path", async () => {
@@ -255,11 +256,9 @@ describe("BulkDeployBar", () => {
       await screen.findByRole("button", { name: /deploy 1/i }),
     );
 
-    const status = await screen.findByRole("status", {
-      name: /bulk deploy result/i,
-    });
-    expect(status).toHaveTextContent("…/Projects/maestro");
-    expect(status).not.toHaveTextContent("/Users/m/Projects/maestro");
+    const heading = await screen.findByRole("heading", { level: 2 });
+    expect(heading).toHaveTextContent("…/Projects/maestro");
+    expect(heading).not.toHaveTextContent("/Users/m/Projects/maestro");
   });
 
   it("lists repo options by their shortened label, never their absolute path", async () => {
@@ -345,11 +344,11 @@ describe("BulkDeployBar", () => {
       await screen.findByRole("button", { name: /deploy 1/i }),
     );
 
-    const status = await screen.findByRole("status", {
-      name: /bulk deploy result/i,
-    });
-    expect(status).toHaveTextContent(/did not run/i);
-    expect(status).not.toHaveTextContent(/deployed/i);
-    expect(status).not.toHaveTextContent(/0 skipped/i);
+    // A Notice, never the counts summary: zeroed counts would read as a
+    // clean success the run never proved (#292).
+    const notice = await screen.findByRole("alert");
+    expect(notice).toHaveTextContent(/did not run/i);
+    expect(notice).not.toHaveTextContent(/deployed/i);
+    expect(notice).not.toHaveTextContent(/0 skipped/i);
   });
 });
