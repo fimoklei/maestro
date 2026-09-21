@@ -293,8 +293,10 @@ describe("Harness import flow", () => {
 
     await openImportWithSource(user);
     await user.click(screen.getByRole("button", { name: "Import skill" }));
+    // Behind the dialog that is still open, so hidden from the a11y tree.
     const menu = await screen.findByRole("button", {
       name: "Actions for code-review in Pending proposal",
+      hidden: true,
     });
 
     vi.useFakeTimers();

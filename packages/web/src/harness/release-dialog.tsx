@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
-import { DialogShell } from "../ui/dialog-shell";
+import { DIALOG_CANCEL, DialogShell } from "../ui/dialog-shell";
 import { Fact } from "../ui/fact";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { SegmentedControl } from "../ui/segmented-control";
@@ -77,8 +78,9 @@ export function ReleaseDialog({
       label={heading}
       // The plan is the body, and it arrives after the panel is announced.
       describedBy={null}
-      width={560}
+      width={640}
       height="tall"
+      destructive
       onClose={onClose}
     >
       <div className="flex shrink-0 items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
@@ -115,6 +117,7 @@ export function ReleaseDialog({
           className="shrink-0"
           variant="quiet"
           size="sm"
+          {...DIALOG_CANCEL}
           onClick={onClose}
         >
           Close
@@ -124,17 +127,13 @@ export function ReleaseDialog({
           className="shrink-0"
           variant="primary"
           size="sm"
-          disabled={
-            step === null ||
-            plan === null ||
-            plan.delta.length === 0 ||
-            publishing
-          }
+          busy={publishing}
+          disabled={step === null || plan === null || plan.delta.length === 0}
           onClick={() =>
             step !== null && plan !== null && onPublish(step, plan)
           }
         >
-          {publishing ? "Publishing…" : "Publish release"}
+          {publishing ? ACTIONS.create.busy : "Publish release"}
         </Button>
       </div>
     </DialogShell>

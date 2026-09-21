@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Button } from "./button";
-import { DialogShell } from "./dialog-shell";
+import { DIALOG_CANCEL, DialogShell } from "./dialog-shell";
 import { panelBorderFor } from "./panel-border";
 
 // One body for every state, so a story shows the frame rather than a dialog.
@@ -25,7 +25,7 @@ function Body({ lines = 1 }: { lines?: number }) {
       </div>
       <div className="flex shrink-0 items-center gap-2.5 border-line-row border-t px-3.5 py-3">
         <span className="flex-1" />
-        <Button type="button" variant="quiet" size="sm">
+        <Button type="button" variant="quiet" size="sm" {...DIALOG_CANCEL}>
           Cancel
         </Button>
         <Button type="button" variant="primary" size="sm">
@@ -54,8 +54,14 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
+// The second of the two widths, for a Report or a folder listing.
 export const Wide: Story = {
-  args: { width: 620, height: "compact" },
+  args: { width: 640, height: "compact" },
+};
+
+// Focus opens on Cancel, so Enter never confirms the deletion.
+export const Destructive: Story = {
+  args: { destructive: true },
 };
 
 // The outline states the panel's worst news before a word is read.

@@ -218,10 +218,14 @@ describe("ReleaseDialog", () => {
     ).toBeDisabled();
   });
 
-  it("disables publish and says so while a release is in flight", () => {
+  // Focusable, not disabled: an unavailable control stays reachable and states
+  // why (ADR-0033 §8), so the press cannot land twice and focus is not lost.
+  it("holds publish unpressable and says so while a release is in flight", () => {
     renderReady({}, { publishing: true });
 
-    expect(screen.getByRole("button", { name: /publishing/i })).toBeDisabled();
+    const button = screen.getByRole("button", { name: "Creating…" });
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).toHaveAttribute("aria-busy", "true");
   });
 
   it("states a failed publish as a readable error", () => {

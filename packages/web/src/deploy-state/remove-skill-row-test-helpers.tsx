@@ -1,8 +1,14 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { toast } from "sonner";
 import { vi } from "vitest";
 import { jsonResponse, renderWithQuery } from "../test-utils";
+import { ToastHost } from "../ui/toast";
 import { DeployStateList } from "./deploy-state-list";
+
+// Sonner keeps its toasts in a module-global store, so one made in a test
+// re-renders into the next test's host. Dismissed, it does not come back.
+export const clearToasts = () => toast.dismiss();
 
 export const tdd = { type: "skill" as const, name: "tdd", version: "v0.5.0" };
 export const REPO = "/Users/me/project";
@@ -97,13 +103,18 @@ export function renderRow({
   onRemoved?: () => void;
   primitives?: (typeof tdd)[];
 } = {}) {
+  // The toast host travels with the card here the way it does in App: a
+  // removal's success is read outside the table it emptied.
   const list = (primitives: (typeof tdd)[]) => (
-    <DeployStateList
-      primitives={primitives}
-      skipped={[]}
-      target={target}
-      onRemoved={onRemoved}
-    />
+    <>
+      <DeployStateList
+        primitives={primitives}
+        skipped={[]}
+        target={target}
+        onRemoved={onRemoved}
+      />
+      <ToastHost />
+    </>
   );
   const { rerender } = renderWithQuery(list(primitives));
   // The refetch that follows a landed removal, as the card sees it: the row is

@@ -9,6 +9,7 @@ import {
   useConnectInventory,
 } from "../inventory/use-connect-inventory";
 import { useScaffoldHarness } from "../inventory/use-scaffold-harness";
+import { ACTIONS } from "../ui/busy-copy";
 import { BrowseDialog } from "./browse-dialog";
 import { ConnectInventoryForm } from "./connect-inventory-form";
 import { useBrowsePicker } from "./use-browse-picker";
@@ -91,7 +92,9 @@ export function ConnectInventoryPanel({
         : undefined,
       action: offerPath
         ? {
-            label: scaffold.isPending ? "Scaffolding…" : "Scaffold the Harness",
+            label: scaffold.isPending
+              ? ACTIONS.scaffold.busy
+              : "Scaffold the Harness",
             disabled: scaffold.isPending,
             onClick: () =>
               scaffold.mutate(offerPath, {

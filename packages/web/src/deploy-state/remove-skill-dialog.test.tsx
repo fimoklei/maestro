@@ -1,5 +1,5 @@
 import type { ReclaimPreview, RemoveOutcome } from "@maestro/core";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { HttpError } from "../api/http";
@@ -265,10 +265,15 @@ describe("RemoveSkillDialog", () => {
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
-  it("disables both controls while the removal is in flight", () => {
+  it("holds both controls unpressable while the removal is in flight", () => {
     renderDialog({ isRemoving: true });
 
-    expect(screen.getByRole("button", { name: /removing/i })).toBeDisabled();
+    // The write's own control stays focusable and states why (ADR-0033 §8);
+    // closing is what must not happen mid-run, so Cancel is disabled outright.
+    expect(screen.getByRole("button", { name: /removing/i })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
     expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
   });
 
@@ -329,7 +334,10 @@ describe("RemoveSkillDialog", () => {
       isRemoving: true,
     });
 
-    expect(screen.getByRole("button", { name: /removing/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /removing/i })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
     expect(screen.getByRole("button", { name: "Close" })).toBeDisabled();
   });
 
@@ -358,7 +366,7 @@ describe("RemoveSkillDialog", () => {
       expect(alert.className).toContain("amber");
       expect(alert.className).not.toContain("danger");
       // Never-Colour-Alone: the glyph and the words carry it without colour.
-      expect(alert).toHaveTextContent("▲");
+      expect(alert).toHaveTextContent("⚠");
       expect(alert).toHaveTextContent(/Nothing removed/);
     });
 
@@ -926,10 +934,14 @@ describe("RemoveSkillDialog", () => {
     });
   });
 
-  it("takes focus into the panel when it opens", () => {
+  // Into the panel, and onto Cancel in particular: this dialog deletes files,
+  // so Enter on open must never remove anything (ADR-0033 §6).
+  it("takes focus onto Cancel when it opens", async () => {
     renderDialog();
 
-    expect(screen.getByRole("dialog")).toHaveFocus();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus(),
+    );
   });
 
   // Without a description a screen reader hears "Remove tdd v0.5.0?, dialog"

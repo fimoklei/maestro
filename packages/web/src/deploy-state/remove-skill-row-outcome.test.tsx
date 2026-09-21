@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   CONFIRM,
+  clearToasts,
   jsonResponse,
   openRemoveDialog,
   REPO,
@@ -15,6 +16,7 @@ import {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  clearToasts();
 });
 
 // A removal takes its own row off the screen, so absence is the only evidence
@@ -43,7 +45,9 @@ describe("removing a deployed skill from a row", () => {
       const announcement = await screen.findByText(
         `Removed tdd v0.5.0 from ${REPO}`,
       );
-      expect(announcement.closest("[role='status']")).not.toBeNull();
+      // Read out where it stands, and focus stays where the reader left it.
+      expect(announcement.closest("[aria-live]")).not.toBeNull();
+      expect(document.activeElement).toBe(document.body);
     });
 
     // The row's version can be stale by the time the user confirms — another
@@ -69,10 +73,9 @@ describe("removing a deployed skill from a row", () => {
       ).not.toBeInTheDocument();
     });
 
-    // role="status" is atomic: a region holding the whole history re-reads every
-    // earlier line on each new removal. The history stays visible; only the
-    // latest outcome is announced.
-    it("announces only the latest removal, with the earlier ones still on screen", async () => {
+    // One toast per removal, so a second success never re-reads the first and
+    // never replaces it on screen.
+    it("gives each removal its own line, the earlier one still on screen", async () => {
       const jobs = { type: "skill" as const, name: "jobs", version: "v1.2.0" };
       // Each removal is answered for the skill it named, so the two traces
       // cannot be told apart by accident.
@@ -99,9 +102,12 @@ describe("removing a deployed skill from a row", () => {
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
       await screen.findByText(`Removed jobs v1.2.0 from ${REPO}`);
 
-      const live = screen.getByRole("status");
-      expect(live).toHaveTextContent(`Removed jobs v1.2.0 from ${REPO}`);
-      expect(live).not.toHaveTextContent(`Removed tdd v0.5.0 from ${REPO}`);
+      expect(
+        screen.getByText(`Removed tdd v0.5.0 from ${REPO}`),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(`Removed jobs v1.2.0 from ${REPO}`),
+      ).toBeInTheDocument();
     });
 
     // The detected tool set is probed server-side when the removal runs, so a
@@ -162,7 +168,9 @@ describe("removing a deployed skill from a row", () => {
       expect(screen.queryByText(/^Removed tdd/)).not.toBeInTheDocument();
     });
 
-    it("stays on the card after the last skill on it is gone", async () => {
+    // The toast lives outside the table, so the sentence survives the row and
+    // the card that held it.
+    it("stays on screen after the last skill on the card is gone", async () => {
       stubFetch(null);
       const { withoutTdd } = renderRow();
 

@@ -1,6 +1,7 @@
+import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
-import { DialogShell } from "../ui/dialog-shell";
+import { DIALOG_CANCEL, DialogShell } from "../ui/dialog-shell";
 import { Fact } from "../ui/fact";
 import { Notice, type NoticeContent } from "../ui/notice";
 
@@ -36,8 +37,9 @@ export function DeletionDialog({
       label={heading}
       // The consequences sit in the body, read in the order they are written.
       describedBy={null}
-      width={520}
+      width={480}
       height="tall"
+      destructive
       onClose={onClose}
       closeEnabled={!deleting}
     >
@@ -103,6 +105,7 @@ export function DeletionDialog({
           variant="quiet"
           size="sm"
           disabled={deleting}
+          {...DIALOG_CANCEL}
           onClick={onClose}
         >
           Cancel
@@ -112,10 +115,10 @@ export function DeletionDialog({
           className="shrink-0"
           variant="ghost"
           size="sm"
-          disabled={deleting}
+          busy={deleting}
           onClick={onConfirm}
         >
-          {deleting ? "Deleting…" : "Delete skill"}
+          {deleting ? ACTIONS.delete.busy : "Delete skill"}
         </Button>
       </div>
     </DialogShell>

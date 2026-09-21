@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { BulkRemoveDialog } from "./bulk-remove-dialog";
@@ -221,10 +221,15 @@ describe("BulkRemoveDialog — during the run", () => {
     expect(screen.queryByText(/clean copies/)).toBeNull();
   });
 
-  it("disables both controls", () => {
+  it("holds both controls unpressable", () => {
     renderDialog(running);
 
-    expect(screen.getByRole("button", { name: /removing/i })).toBeDisabled();
+    // The write's own control stays focusable and states why (ADR-0033 §8);
+    // closing is what must not happen mid-run, so Cancel is disabled outright.
+    expect(screen.getByRole("button", { name: /removing/i })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
     expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
   });
 
@@ -237,11 +242,12 @@ describe("BulkRemoveDialog — during the run", () => {
   });
 
   it("ignores the backdrop for the same reason", async () => {
-    // Hidden from the a11y tree, so it is reached the way a mouse reaches it.
+    // Reached the way a mouse reaches it: Radix takes pointer events off the
+    // page behind a modal, so that check is skipped rather than worked around.
     const { onCancel } = renderDialog(running);
 
-    const backdrop = document.querySelector("[aria-hidden='true']");
-    await userEvent.click(backdrop as Element);
+    fireEvent.pointerDown(document.body);
+    fireEvent.click(document.body);
 
     expect(onCancel).not.toHaveBeenCalled();
   });

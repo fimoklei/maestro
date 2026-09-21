@@ -9,6 +9,7 @@ import { useDrift, useGlobalDrift } from "../drift/use-drift";
 import { versionColor } from "../drift/version-color";
 import type { RegisteredRepo } from "../registry/use-registry";
 import { targetLabel } from "../shell/target-label";
+import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { Notice } from "../ui/notice";
@@ -111,7 +112,7 @@ export function DeploySkillAction({
   const buttonLabel = !registryReady
     ? "Loading targets…"
     : deploy.isPending
-      ? "Deploying skill…"
+      ? ACTIONS.deploy.busy
       : "Deploy skill";
 
   return (
@@ -157,7 +158,8 @@ export function DeploySkillAction({
         <Button
           variant="ghost"
           size="sm"
-          disabled={!registryReady || deploy.isPending || globalUnavailable}
+          busy={deploy.isPending}
+          disabled={!registryReady || globalUnavailable}
           onClick={() =>
             deploy.mutate({ type: "skill", name: skillName, target })
           }

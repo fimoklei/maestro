@@ -2,6 +2,7 @@ import { waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   CONFIRM,
+  clearToasts,
   jsonResponse,
   openRemoveDialog,
   REPO,
@@ -17,6 +18,7 @@ import {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  clearToasts();
 });
 
 describe("removing a deployed skill from a row", () => {
@@ -112,7 +114,7 @@ describe("removing a deployed skill from a row", () => {
 
     expect(
       await screen.findByRole("button", { name: /removing/i }),
-    ).toBeDisabled();
+    ).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("alert")).toHaveTextContent(
       /The removal ran but proved nothing/,
     );

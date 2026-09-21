@@ -2,6 +2,7 @@
 // that decides whether Import can be pressed. Pure, so the dialog only renders
 // what this decides (#576).
 
+import { ACTIONS } from "../ui/busy-copy";
 import type { NoticeContent } from "../ui/notice";
 import { importBlockerNotice } from "./notice-copy";
 import type {
@@ -55,13 +56,13 @@ export const importLabels = (
             ? "No changes to update"
             : "Update a skill",
         confirm: "Update skill",
-        busy: "Updating…",
+        busy: ACTIONS.update.busy,
         hint: "Updating replaces the skill folder in the Harness.",
       }
     : {
         title: "Import a skill",
         confirm: "Import skill",
-        busy: "Importing…",
+        busy: ACTIONS.import.busy,
         hint: "Maestro uses this as the folder name and updates the name in SKILL.md to match.",
       };
 

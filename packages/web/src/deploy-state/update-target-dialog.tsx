@@ -304,7 +304,7 @@ export function UpdateTargetDialog({
     <DialogShell
       label={heading}
       describedBy={preview === null ? null : leadInId}
-      width={620}
+      width={640}
       onClose={onCancel}
     >
       <div className="flex shrink-0 items-start justify-between gap-2.5 border-line-row border-b px-3.5 py-3">

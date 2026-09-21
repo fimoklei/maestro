@@ -1,8 +1,9 @@
 import type { RemoveOutcome, RemoveTargetState } from "@maestro/core";
 import { useId } from "react";
+import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
-import { DialogShell } from "../ui/dialog-shell";
+import { DIALOG_CANCEL, DialogShell } from "../ui/dialog-shell";
 import { Notice } from "../ui/notice";
 import { panelBorderFor } from "../ui/panel-border";
 import { TypeTag } from "../ui/type-tag";
@@ -125,7 +126,7 @@ function LedgerRow({ row }: { row: RemoveLedgerRow & LedgerRowPlacement }) {
 }
 
 // A real modal, not an inline confirm — removal deletes files. Modal contract
-// (focus, Escape, trapped Tab) comes from useModalDialog. Presentational: the
+// (focus, Escape, trapped Tab) comes from DialogShell. Presentational: the
 // host owns the request, the in-flight flag and the error text.
 export function RemoveSkillDialog({
   skillName,
@@ -229,6 +230,7 @@ export function RemoveSkillDialog({
       describedBy={describedBy}
       width={480}
       border={panelBorder}
+      destructive
       onClose={onCancel}
       closeEnabled={!isRemoving}
     >
@@ -346,6 +348,7 @@ export function RemoveSkillDialog({
           variant="quiet"
           size="sm"
           disabled={isRemoving}
+          {...DIALOG_CANCEL}
           onClick={onCancel}
         >
           {failure ? "Close" : "Cancel"}
@@ -360,14 +363,15 @@ export function RemoveSkillDialog({
             className="shrink-0"
             variant="primary"
             size="sm"
-            disabled={isRemoving || awaitingCheck}
+            busy={isRemoving}
+            disabled={awaitingCheck}
             aria-describedby={blockedId}
             onClick={onConfirm}
           >
             {/* After a failure the label runs the notice's last instruction,
                   verb for verb: "Confirm the removal again…" (F8). */}
             {isRemoving
-              ? "Removing…"
+              ? ACTIONS.remove.busy
               : failed
                 ? "Confirm removal"
                 : "Remove skill"}

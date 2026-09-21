@@ -1,6 +1,7 @@
+import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
-import { DialogShell } from "../ui/dialog-shell";
+import { DIALOG_CANCEL, DialogShell } from "../ui/dialog-shell";
 import { Fact } from "../ui/fact";
 import { Notice, type NoticeContent } from "../ui/notice";
 
@@ -27,7 +28,8 @@ export function WithdrawDialog({
       label={`Withdraw proposal for ${skill}`}
       // The consequences sit in the body, read in the order they are written.
       describedBy={null}
-      width={520}
+      width={480}
+      destructive
       onClose={onClose}
       closeEnabled={!withdrawing}
     >
@@ -60,6 +62,7 @@ export function WithdrawDialog({
           variant="quiet"
           size="sm"
           disabled={withdrawing}
+          {...DIALOG_CANCEL}
           onClick={onClose}
         >
           Cancel
@@ -69,10 +72,10 @@ export function WithdrawDialog({
           className="shrink-0"
           variant="ghost"
           size="sm"
-          disabled={withdrawing}
+          busy={withdrawing}
           onClick={onConfirm}
         >
-          {withdrawing ? "Withdrawing…" : "Withdraw proposal"}
+          {withdrawing ? ACTIONS.withdraw.busy : "Withdraw proposal"}
         </Button>
       </div>
     </DialogShell>

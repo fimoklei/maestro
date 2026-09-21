@@ -70,7 +70,7 @@ const inkClasses: Record<NoticeLevel, string> = {
 const glyphs: Record<NoticeLevel, string | null> = {
   info: null,
   success: "✓",
-  warning: "▲",
+  warning: "⚠",
   error: "✕",
 };
 

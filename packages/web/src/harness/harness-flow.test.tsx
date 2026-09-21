@@ -4,7 +4,7 @@ import type {
   HarnessState,
   StageStatus,
 } from "@maestro/core";
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -2439,8 +2439,10 @@ describe("Harness home base", () => {
     renderHarness();
     const dialog = await openRestore();
 
-    await userEvent.click(
-      screen.getByRole("button", { name: /^retry check$/i }),
+    // Behind the open dialog, so it is reached the way the check would be
+    // reached if the reader had pressed it before opening the confirmation.
+    fireEvent.click(
+      screen.getByRole("button", { name: /^retry check$/i, hidden: true }),
     );
     // The read landed, and the confirmation it moved under still stands.
     expect(await screen.findByText("later-skill")).toBeVisible();

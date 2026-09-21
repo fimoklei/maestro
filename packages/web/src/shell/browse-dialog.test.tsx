@@ -1119,18 +1119,14 @@ describe("BrowseDialog", () => {
       const { onClose } = renderDialog();
 
       const dialog = await screen.findByRole("dialog");
-      const first = dialog.querySelector<HTMLElement>(
-        "button:not([disabled]), input:not([disabled])",
-      );
-      if (!first) throw new Error("expected a focusable control");
 
-      // Simulate the focused row unmounting: focus lands on <body>.
+      // Simulate the focused row unmounting: focus drops to <body>.
       (document.activeElement as HTMLElement | null)?.blur();
-      expect(dialog.contains(document.activeElement)).toBe(false);
 
-      // Tab from the page pulls focus back into the dialog.
-      fireEvent.keyDown(document.body, { key: "Tab" });
-      expect(first).toHaveFocus();
+      // It is pulled back inside, never to a control behind the dialog.
+      await waitFor(() =>
+        expect(dialog.contains(document.activeElement)).toBe(true),
+      );
 
       // Escape still closes, even when it fires from outside the panel.
       (document.activeElement as HTMLElement | null)?.blur();
@@ -1142,12 +1138,10 @@ describe("BrowseDialog", () => {
       stubFilesystemServer();
       const { onClose } = renderDialog();
 
-      const dialog = await screen.findByRole("dialog");
-      // The backdrop is a hidden button beside the panel; clicking it closes.
-      const backdrop = dialog.parentElement?.querySelector(
-        'button[aria-hidden="true"]',
-      ) as HTMLElement;
-      await userEvent.click(backdrop);
+      await screen.findByRole("dialog");
+      // Radix dismisses on pointerdown, the event its layer listens for.
+      fireEvent.pointerDown(document.body);
+      fireEvent.click(document.body);
 
       expect(onClose).toHaveBeenCalledOnce();
     });
@@ -1159,11 +1153,9 @@ describe("BrowseDialog", () => {
         isRegistering: true,
       });
 
-      const dialog = await screen.findByRole("dialog");
-      const backdrop = dialog.parentElement?.querySelector(
-        'button[aria-hidden="true"]',
-      ) as HTMLElement;
-      await userEvent.click(backdrop);
+      await screen.findByRole("dialog");
+      fireEvent.pointerDown(document.body);
+      fireEvent.click(document.body);
 
       expect(onClose).not.toHaveBeenCalled();
     });

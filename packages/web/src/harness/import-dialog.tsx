@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { targetLabel } from "../shell/target-label";
 import { Button } from "../ui/button";
 import { DialogShell } from "../ui/dialog-shell";
+import { Field } from "../ui/field";
 import { Notice, type NoticeContent } from "../ui/notice";
 import {
   advisoryTexts,
@@ -62,16 +64,20 @@ export function ImportDialog({
   const nameProblem = nameBlockerNotice(check?.nameBlocker ?? null);
   const advisories = advisoryTexts(check?.advisories ?? []);
   const nameErrorId = "import-name-error";
+  // A click outside must not discard a typed name (ADR-0033 §6). Once true it
+  // stays true: the reader's work is on the panel either way.
+  const [nameTouched, setNameTouched] = useState(false);
 
   return (
     <DialogShell
       label={labels.title}
       // Every field states its own hint and its own refusal beside it.
       describedBy={null}
-      width={560}
+      width={640}
       height="tall"
       onClose={onClose}
       closeEnabled={!importing}
+      fieldsChanged={nameTouched}
     >
       <div className="flex shrink-0 items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
         <h2 className="font-semibold font-ui text-fg text-subtitle">
@@ -106,23 +112,22 @@ export function ImportDialog({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="m-label" htmlFor="import-name">
-            Name in the Harness
-          </label>
-          <input
-            id="import-name"
+          {/* The directory name is the skill's identity, so the hint is stated
+              before the name is chosen, not explained after a failure. */}
+          <Field
+            label="Name in the Harness"
+            hint={labels.hint}
             value={name}
-            onChange={(event) => onNameChange(event.target.value)}
+            onChange={(next) => {
+              setNameTouched(true);
+              onNameChange(next);
+            }}
             disabled={source === null || locked}
-            aria-invalid={nameProblem !== null}
-            aria-describedby={nameProblem === null ? undefined : nameErrorId}
-            // No outline-none: it poisons --tw-outline-style and hides the
-            // ring (#227).
-            className="rounded-control border border-line bg-inset px-2 py-1.5 font-mono text-fg text-mono-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+            describedBy={nameProblem === null ? undefined : nameErrorId}
+            className="font-mono"
           />
-          {/* The directory name is the skill's identity, so it is stated
-                before it is chosen, not explained after a failure. */}
-          <span className="font-ui text-desc text-muted">{labels.hint}</span>
+          {/* A refusal with a heading and a cause is a Notice in the field's
+              own slot (`copy.md`). */}
           <Notice id={nameErrorId} trigger="user-action" notice={nameProblem} />
         </div>
 
@@ -199,7 +204,8 @@ export function ImportDialog({
           className="shrink-0"
           variant="primary"
           size="sm"
-          disabled={!importEnabled(check) || importing || imported !== null}
+          busy={importing}
+          disabled={!importEnabled(check) || imported !== null}
           onClick={onImport}
         >
           {importing ? labels.busy : labels.confirm}
