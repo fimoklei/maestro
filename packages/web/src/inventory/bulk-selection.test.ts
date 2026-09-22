@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { hiddenStagedCount, toggleStaged } from "./bulk-selection";
+import {
+  hiddenStagedCount,
+  setStagedMany,
+  toggleStaged,
+} from "./bulk-selection";
 
 describe("toggleStaged", () => {
   it("stages a name that was not staged", () => {
@@ -33,5 +37,19 @@ describe("hiddenStagedCount", () => {
 
   it("is zero when nothing is staged", () => {
     expect(hiddenStagedCount(new Set(), ["caveman", "tdd"])).toBe(0);
+  });
+});
+
+describe("setStagedMany", () => {
+  it("stages every name, keeping those staged off screen", () => {
+    expect([
+      ...setStagedMany(new Set(["hidden"]), ["tdd", "caveman"], true),
+    ]).toEqual(["hidden", "tdd", "caveman"]);
+  });
+
+  it("unstages only the names given", () => {
+    expect([
+      ...setStagedMany(new Set(["hidden", "tdd"]), ["tdd", "caveman"], false),
+    ]).toEqual(["hidden"]);
   });
 });

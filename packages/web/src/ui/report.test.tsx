@@ -32,11 +32,11 @@ const GROUPS = [
 ];
 
 describe("Report", () => {
-  it("states the outcome as its heading", () => {
+  it("states the outcome as its heading, one level under the dialog's title", () => {
     render(<Report heading="Deployed to maestro" groups={GROUPS} />);
 
     expect(
-      screen.getByRole("heading", { name: /Deployed to maestro/ }),
+      screen.getByRole("heading", { level: 3, name: /Deployed to maestro/ }),
     ).toBeVisible();
   });
 
@@ -45,7 +45,7 @@ describe("Report", () => {
 
     expect(
       screen
-        .getAllByRole("heading", { level: 3 })
+        .getAllByRole("heading", { level: 4 })
         .map((each) => each.textContent),
     ).toEqual([
       // The gaps are spacing, not text: jsdom renders without CSS.
@@ -115,5 +115,24 @@ describe("Report", () => {
     );
 
     expect(onClick).toHaveBeenCalledOnce();
+  });
+
+  it("counts the skills a group holds, where one row stands for several", () => {
+    render(
+      <Report
+        heading="Deployed to maestro"
+        groups={[
+          {
+            tone: "failed",
+            label: "Failed",
+            rows: [{ name: "tdd, review", count: 2, detail: "Deploy failed" }],
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { level: 4 })).toHaveTextContent(
+      "Failed2",
+    );
   });
 });

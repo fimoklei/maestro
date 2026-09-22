@@ -136,6 +136,7 @@ export function bulkDeployReportGroups(input: {
       label: "Failed",
       rows: view.failed.map((line) => ({
         name: line.names.join(", "),
+        count: line.names.length,
         detail: reasonFor(line.error),
       })),
     },

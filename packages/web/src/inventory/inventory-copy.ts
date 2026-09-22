@@ -41,6 +41,17 @@ export const NO_SKILLS_YET = "no skills yet";
 export const TABLE_LABEL = "Inventory table";
 export const STAGE_COLUMN_LABEL = "Select for bulk deploy";
 export const stageRowLabel = (name: string) => `Select ${name} for bulk deploy`;
+export const SELECT_ALL_LABEL = "Select all for bulk deploy";
+
+// The selection bar's action and the dialog it opens (#992, #1042).
+export const DEPLOY_SKILLS = "Deploy skills";
+export const bulkDeployTitle = (count: number): string =>
+  `Deploy ${count} ${count === 1 ? "skill" : "skills"}`;
+export const BULK_DEPLOY_TARGET = "Target";
+export const bulkDeployDidNotRun = (target: string) =>
+  `Deploy to ${target} did not run`;
+// Both deploy pickers, while the registry has not answered.
+export const LOADING_TARGETS = "Loading targets…";
 
 // The group header of rows whose status has not answered yet (CONTEXT.md → Read).
 export const NOT_READ_YET = "Not read yet";

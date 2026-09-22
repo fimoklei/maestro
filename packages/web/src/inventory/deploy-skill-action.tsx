@@ -16,7 +16,11 @@ import { Notice } from "../ui/notice";
 import { DeployRefusalNotice } from "./deploy-refusal-notice";
 import { headsReading } from "./deployed-rollup";
 import { globalOptionLabel } from "./global-option-label";
-import { DEPLOY_SKILL, targetSyncLine } from "./inventory-copy";
+import {
+  DEPLOY_SKILL,
+  LOADING_TARGETS,
+  targetSyncLine,
+} from "./inventory-copy";
 import { type DeployTarget, useDeploySkill } from "./use-deploy-skill";
 
 type DeploySkillActionProps = {
@@ -121,7 +125,7 @@ export function DeploySkillAction({
     : targetLabel(selected, repoPaths);
 
   const buttonLabel = !registryReady
-    ? "Loading targets…"
+    ? LOADING_TARGETS
     : deploy.isPending
       ? ACTIONS.deploy.busy
       : DEPLOY_SKILL;

@@ -51,6 +51,8 @@ Confirmed patterns. Apply as rules. Newest on top.
 
 Single observations. Consider but do not auto-apply. Promote to Active on reconfirmation.
 
+- **2026-09-22 · tooling/agent-browser-default-session-is-shared** — Every worktree's session drives the same default `agent-browser` browser, so another session navigated the tab to its own cockpit (`localhost:21313`) mid-check; the screenshot showed that worktree's older Inventory and read as a regression. `pnpm smoke:check` stayed green, because it checks the ports, not the tab. → Drive the browser with `agent-browser --session <worktree-name>`, and confirm `get url` names this worktree's port before each screenshot.
+
 - **2026-09-06 · apm-driver/root-package-subset-boundaries** — APM 0.29.0 installs a selected five of six `.apm/skills` from one root package, but also deploys its `.apm/instructions`; `install/transaction.py` excludes native target integrations from its rollback journal. → Do not treat `--skill` as a skills-only package filter or an install as atomic across deployed files. Evidence: `docs/research/harness-release-adoption-apm.md`.
 
 

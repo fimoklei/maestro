@@ -15,6 +15,20 @@ export function toggleStaged(
   return next;
 }
 
+// Stages or unstages several names at once; every other name keeps its state.
+export function setStagedMany(
+  staged: ReadonlySet<string>,
+  names: Iterable<string>,
+  stage: boolean,
+): Set<string> {
+  const next = new Set(staged);
+  for (const name of names) {
+    if (stage) next.add(name);
+    else next.delete(name);
+  }
+  return next;
+}
+
 // Surfaced so a bulk action's reach is never larger than what's visible (#291).
 export function hiddenStagedCount(
   staged: ReadonlySet<string>,

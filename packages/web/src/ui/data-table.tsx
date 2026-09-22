@@ -25,6 +25,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { Checkbox } from "./checkbox";
 import { cn } from "./cn";
 import { GroupHeader } from "./group-header";
 import { HOVER_TRANSITION } from "./hover-transition";
@@ -64,6 +65,10 @@ export interface DataTableSelection<T> {
   rowLabel: (row: T) => string;
   selected: ReadonlySet<string>;
   onToggle: (row: T) => void;
+  /** Accessible name of the header's checkbox, which picks every shown row. */
+  allLabel?: string;
+  /** Choose or drop several rows at once: select-all, or a Shift range. */
+  onSetSelected?: (rows: T[], select: boolean) => void;
 }
 
 export interface DataTableGroups<T> {
@@ -157,6 +162,8 @@ export function DataTable<T extends RowData>({
     if (opened !== -1) setCursor(opened);
   }
   const active = Math.min(cursor, Math.max(rows.length - 1, 0));
+  // The row last toggled; Shift picks the range from it to the next one.
+  const [anchor, setAnchor] = useState<string | null>(null);
   const showRows = !loading && rows.length > 0;
 
   const order = rows.map((row) => row.id).join("\n");
@@ -165,6 +172,27 @@ export function DataTable<T extends RowData>({
   useEffect(() => {
     reportOrder.current?.(order === "" ? [] : order.split("\n"));
   }, [order]);
+
+  const chosenShown = selection
+    ? rows.filter((row) => selection.selected.has(row.id)).length
+    : 0;
+  const allShownChosen = rows.length > 0 && chosenShown === rows.length;
+
+  const toggleRow = (index: number, shift: boolean) => {
+    const row = rows[index];
+    if (row === undefined || selection === undefined) return;
+    const from = rows.findIndex((each) => each.id === anchor);
+    setAnchor(row.id);
+    if (!shift || from === -1 || selection.onSetSelected === undefined) {
+      selection.onToggle(row.original);
+      return;
+    }
+    const [start, end] = from < index ? [from, index] : [index, from];
+    selection.onSetSelected(
+      rows.slice(start, end + 1).map((each) => each.original),
+      !selection.selected.has(row.id),
+    );
+  };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLTableElement>) => {
     if (!showRows) return;
@@ -203,9 +231,22 @@ export function DataTable<T extends RowData>({
         onRowOpen(row);
         return;
       case " ":
+      case "x":
+      case "X":
         if (row === undefined || selection === undefined) return;
         event.preventDefault();
-        selection.onToggle(row);
+        toggleRow(active, event.shiftKey);
+        return;
+      case "a":
+        // Select all, as a grid's Control+A does (WAI-ARIA APG grid pattern).
+        if (!(event.ctrlKey || event.metaKey) || !selection?.onSetSelected) {
+          return;
+        }
+        event.preventDefault();
+        selection.onSetSelected(
+          rows.map((each) => each.original),
+          !allShownChosen,
+        );
         return;
       default:
         return;
@@ -242,6 +283,29 @@ export function DataTable<T extends RowData>({
             {selection ? (
               <th scope="col" className="w-8 px-inline">
                 <span className="sr-only">{selection.label}</span>
+                {selection.allLabel === undefined ? null : (
+                  // biome-ignore lint/a11y/noLabelWithoutControl: the Radix Checkbox is a button, and a label activates the button it wraps
+                  <label className="-m-1 flex w-fit cursor-pointer p-1">
+                    <Checkbox
+                      tabIndex={-1}
+                      disabled={!showRows}
+                      checked={
+                        allShownChosen
+                          ? true
+                          : chosenShown > 0
+                            ? "indeterminate"
+                            : false
+                      }
+                      onCheckedChange={() =>
+                        selection.onSetSelected?.(
+                          rows.map((row) => row.original),
+                          !allShownChosen,
+                        )
+                      }
+                      aria-label={selection.allLabel}
+                    />
+                  </label>
+                )}
               </th>
             ) : null}
             {group.headers.map((header) => {
@@ -377,14 +441,18 @@ export function DataTable<T extends RowData>({
                       <GridCell className="px-inline">
                         {/* The padded label lifts the 16px box to the 24px
                         pointer floor (WCAG 2.2 SC 2.5.8). */}
+                        {/* biome-ignore lint/a11y/noLabelWithoutControl: the Radix Checkbox is a button, and a label activates the button it wraps */}
                         <label className="-m-1 flex w-fit cursor-pointer p-1">
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             tabIndex={-1}
                             checked={isSelected}
-                            onChange={() => selection.onToggle(row.original)}
+                            onClick={(event) => {
+                              // Radix toggles on click; the row's state is
+                              // the caller's, so the click is taken here.
+                              event.preventDefault();
+                              toggleRow(index, event.shiftKey);
+                            }}
                             aria-label={selection.rowLabel(row.original)}
-                            className="size-4 cursor-pointer accent-gray-12"
                           />
                         </label>
                       </GridCell>

@@ -2,16 +2,22 @@ import { ListFilter, RefreshCw, Search, SlidersHorizontal } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { UPDATE_TARGET } from "../deploy-state/update-target-copy";
 import type { RegisteredRepo } from "../registry/use-registry";
+import { cn } from "../ui/cn";
 import { DataTable } from "../ui/data-table";
 import { IconButton } from "../ui/icon-button";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { OptionMenu } from "../ui/option-menu";
 import { Panel } from "../ui/panel";
+import { SelectionBar } from "../ui/selection-bar";
 import { useReadAnnouncement } from "../ui/use-read-announcement";
-import { BulkDeployBar } from "./bulk-deploy-bar";
+import { BulkDeployAction } from "./bulk-deploy-action";
 import { BulkRemoveSkillAction } from "./bulk-remove-skill-action";
 import { bulkRemoveTargets } from "./bulk-remove-targets";
-import { hiddenStagedCount, toggleStaged } from "./bulk-selection";
+import {
+  hiddenStagedCount,
+  setStagedMany,
+  toggleStaged,
+} from "./bulk-selection";
 import { DeploySkillAction } from "./deploy-skill-action";
 import {
   behindTarget,
@@ -38,6 +44,7 @@ import {
   REMOVE_SKILL,
   REREAD_LABEL,
   SEARCH_LABEL,
+  SELECT_ALL_LABEL,
   STAGE_COLUMN_LABEL,
   stageRowLabel,
   TABLE_LABEL,
@@ -287,7 +294,7 @@ export function InventoryView({
       {/* Side by side from 1100px; narrower, the pane floats over the table as
           a sheet, never a block under it (#992). */}
       <div className="relative flex h-[100cqh]">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           {/* A failed read is always trigger="load" — nothing here followed a
               click (#465). The region outlives its content. */}
           <div className={notice ? "p-panel" : undefined}>
@@ -311,24 +318,17 @@ export function InventoryView({
               />
             </div>
           ) : null}
-          {/* Staging is what makes a bulk run possible, so the strip appears
-              with the first checkbox and retires with the last. */}
-          {staged.size > 0 ? (
-            <BulkDeployBar
-              stagedNames={[...staged]}
-              hiddenCount={hiddenStagedCount(
-                staged,
-                visible.map((row) => row.name),
-              )}
-              repos={repos}
-              registryReady={registryReady}
-            />
-          ) : null}
           {showTable ? (
             <div
               aria-busy={reading || undefined}
-              // Rows scroll here, not the page, so the header stays put.
-              className="min-h-0 flex-1 overflow-auto"
+              // Rows scroll here, not the page, so the header stays put. Room
+              // under the last row while the selection bar floats over it.
+              className={cn(
+                "min-h-0 flex-1 overflow-auto",
+                // Bar height plus its offset: section + page + inline.
+                staged.size > 0 &&
+                  "pb-[calc(var(--spacing-section)+var(--spacing-page)+var(--spacing-inline))]",
+              )}
             >
               <DataTable
                 ref={gridRef}
@@ -350,14 +350,41 @@ export function InventoryView({
                 onRowOrderChange={setOrder}
                 selection={{
                   label: STAGE_COLUMN_LABEL,
+                  allLabel: SELECT_ALL_LABEL,
                   rowLabel: (row) => stageRowLabel(row.name),
                   selected: staged,
                   onToggle: (row) =>
                     setStaged((current) => toggleStaged(current, row.name)),
+                  onSetSelected: (many, select) =>
+                    setStaged((current) =>
+                      setStagedMany(
+                        current,
+                        many.map((row) => row.name),
+                        select,
+                      ),
+                    ),
                 }}
                 empty={filterCount > 0 ? NO_FILTER_MATCH : NO_SEARCH_MATCH}
               />
             </div>
+          ) : null}
+          {/* Rises with the first choice and leaves with the last; it floats
+              over the table's foot, never above it (#992). */}
+          {staged.size > 0 ? (
+            <SelectionBar
+              count={staged.size}
+              hiddenCount={hiddenStagedCount(
+                staged,
+                visible.map((row) => row.name),
+              )}
+              onClear={() => setStaged(new Set())}
+            >
+              <BulkDeployAction
+                stagedNames={[...staged]}
+                repos={repos}
+                registryReady={registryReady}
+              />
+            </SelectionBar>
           ) : null}
         </div>
         {selectedPrimitive ? (
