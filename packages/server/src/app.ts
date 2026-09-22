@@ -3,6 +3,7 @@ import {
   ApmCliDriver,
   BrowseFilesystem,
   CheckVersionDrift,
+  ChooseFolder,
   ConfigStore,
   ConnectInventory,
   CopySkillFolder,
@@ -24,6 +25,7 @@ import {
   InventoryReader,
   isRepositoryRoot,
   LocalCopyGuard,
+  MacosFolderChooser,
   NodeCopyTreeFs,
   NodeFileSystem,
   PromoteSkill,
@@ -411,6 +413,13 @@ function realDeps(): AppDeps {
       connect: (path) => connect.connect(path),
     }),
     browse: new BrowseFilesystem({ fs, homeRoot: () => homedir() }),
+    // Windows gets its adapter once its invocation is measured (ADR-0032 §4);
+    // until then it has no chooser, like Linux.
+    folderChooser: new ChooseFolder({
+      chooser: process.platform === "darwin" ? new MacosFolderChooser() : null,
+      fs,
+      homeRoot: () => homedir(),
+    }),
     deployState,
     deploy,
     remove,

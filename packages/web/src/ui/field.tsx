@@ -26,6 +26,8 @@ export interface FieldProps
    * the hint and the error.
    */
   describedBy?: string;
+  /** The value is a path, ref or version: set in Geist Mono (ADR-0033 §6). */
+  mono?: boolean;
 }
 
 export function Field({
@@ -36,6 +38,7 @@ export function Field({
   onChange,
   trailing,
   describedBy: extraDescribedBy,
+  mono = false,
   className,
   ...rest
 }: FieldProps) {
@@ -72,7 +75,8 @@ export function Field({
           className={cn(
             // No outline-none: it poisons --tw-outline-style and hides the one
             // focus ring every control shares (#227).
-            "h-control min-w-0 flex-1 rounded-control border bg-canvas px-inline font-ui text-fg text-row",
+            "h-control min-w-0 flex-1 rounded-control border bg-canvas px-inline text-fg text-row",
+            mono ? "font-mono" : "font-ui",
             error === undefined ? "border-gray-9" : "border-red-7",
             className,
           )}

@@ -27,6 +27,7 @@ import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
+import { stubFolderChooser } from "../helpers/stub-folder-chooser";
 import { stubImport } from "../helpers/stub-import";
 import { stubPromotes } from "../helpers/stub-promote";
 import { stubPublish } from "../helpers/stub-publish";
@@ -149,6 +150,7 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
       connect: stubConnect(),
       scaffold: stubScaffold(),
       browse: stubBrowse(),
+      folderChooser: stubFolderChooser(),
       update: stubUpdate(),
       enforceOriginHost: false,
     });

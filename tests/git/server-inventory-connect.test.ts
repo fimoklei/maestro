@@ -34,6 +34,7 @@ import { centralInventoryPath } from "../helpers/real-registry";
 import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
+import { stubFolderChooser } from "../helpers/stub-folder-chooser";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubImport } from "../helpers/stub-import";
 import { stubPromotes } from "../helpers/stub-promote";
@@ -126,6 +127,7 @@ describe("inventory connect HTTP route", () => {
       // The real browser, ceilinged at this test's temp dir rather than the
       // user's home, so a picked path can be handed straight to connect.
       browse: new BrowseFilesystem({ fs, homeRoot: () => dir }),
+      folderChooser: stubFolderChooser(),
       update: stubUpdate(),
       enforceOriginHost: false,
     });

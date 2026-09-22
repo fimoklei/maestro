@@ -1,15 +1,19 @@
 import type { BrowseSuccess } from "@maestro/core";
 import type { Hono } from "hono";
 import type { AppDeps } from "../app-deps";
-import { browseErrorResponses } from "../error-responses";
+import {
+  browseErrorResponses,
+  chooseFolderErrorResponses,
+} from "../error-responses";
 import {
   browseBodySchema,
+  chooseFolderBodySchema,
   PATH_BODY,
   parseBody,
   registerBodySchema,
 } from "../request-bodies";
 
-type Deps = Pick<AppDeps, "registry" | "browse">;
+type Deps = Pick<AppDeps, "registry" | "browse" | "folderChooser">;
 
 // Naming a folder on disk: the read-only browser that finds one, and the
 // registry of consuming repos that records it.
@@ -37,6 +41,27 @@ export function registerFolderRoutes(app: Hono, deps: Deps) {
       breadcrumbs: result.breadcrumbs,
       entries: result.entries,
     } satisfies BrowseSuccess);
+  });
+
+  // Whether **Browse** renders at all (ADR-0032 §7).
+  app.get("/api/folder-chooser", async (c) =>
+    c.json({ available: await deps.folderChooser.available() }),
+  );
+
+  // A write: it opens a window on the reader's machine, so the origin-host
+  // guard covers it (ADR-0032 §9).
+  app.post("/api/folder-chooser", async (c) => {
+    const body = await parseBody(c, chooseFolderBodySchema, PATH_BODY);
+    if (!body.ok) {
+      return body.response;
+    }
+
+    const result = await deps.folderChooser.choose(body.data.path);
+    if (!result.ok) {
+      const { status } = chooseFolderErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
+    }
+    return c.json({ path: result.path });
   });
 
   app.get("/api/registry/repos", async (c) =>
