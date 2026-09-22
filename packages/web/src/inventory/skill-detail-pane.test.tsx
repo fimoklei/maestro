@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { SkillDeployment } from "./skill-deployments";
@@ -34,9 +34,11 @@ function renderPane(overrides: {
   );
 }
 
-// The release sits in its own MachineValue span, so the line is matched whole.
-const releaseLine = (text: string) => (_: string, element: Element | null) =>
-  element?.matches("span") === true && element.textContent === text;
+// One row per target: its name, the release it follows, its own reading.
+const targetRow = (label: string) =>
+  screen
+    .getAllByRole("listitem")
+    .find((item) => within(item).queryByText(label) !== null);
 
 describe("SkillDetailPane", () => {
   it("names the skill and shows its description", () => {
@@ -54,15 +56,8 @@ describe("SkillDetailPane", () => {
       ],
     });
 
-    // `{target} · release v0.3.2` — the separator is the spec's (story 54).
-    expect(screen.getByText("Claude Code")).toBeInTheDocument();
-    expect(
-      screen.getByText(releaseLine("· release v1.0.0")),
-    ).toBeInTheDocument();
-    expect(screen.getByText("/dev/acme-web")).toBeInTheDocument();
-    expect(
-      screen.getByText(releaseLine("· release v1.1.0")),
-    ).toBeInTheDocument();
+    expect(targetRow("Claude Code")).toHaveTextContent("v1.0.0");
+    expect(targetRow("/dev/acme-web")).toHaveTextContent("v1.1.0");
   });
 
   it("marks an in-sync target with a status word, not colour alone", () => {
@@ -75,7 +70,7 @@ describe("SkillDetailPane", () => {
       ],
     });
 
-    expect(screen.getByText(/up to date/i)).toBeInTheDocument();
+    expect(targetRow("Claude Code")).toHaveTextContent("Up to date");
   });
 
   // One release is stated once (ADR-0031): the row names the release the
@@ -88,10 +83,8 @@ describe("SkillDetailPane", () => {
       ],
     });
 
-    expect(
-      screen.getByText(releaseLine("· release v1.0.0")),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Behind")).toBeInTheDocument();
+    expect(targetRow("Claude Code")).toHaveTextContent("v1.0.0");
+    expect(targetRow("Claude Code")).toHaveTextContent("Behind");
   });
 
   it("leaves a skill the release did not change without a Behind chip", () => {
@@ -189,7 +182,7 @@ describe("SkillDetailPane", () => {
     expect(screen.getByRole("heading", { name: /tdd/i })).toHaveClass(
       "focus-visible:outline-2",
       "focus-visible:outline-offset-2",
-      "focus-visible:outline-amber",
+      "focus-visible:outline-blue-9",
     );
   });
 
@@ -208,56 +201,38 @@ describe("SkillDetailPane", () => {
     trigger.remove();
   });
 
-  it("puts the deploy control in the same flow as the deployed-to block it changes", () => {
-    // The reach and the control that changes it are one thought (#470): the
-    // control follows the list instead of being anchored to the pane's bottom
-    // edge. The resulting gap is browser-measured (testing.md).
-    renderPane({ deployAction: <button type="button">Deploy</button> });
+  it("puts the deploy and remove actions at the foot, after the reach they change", () => {
+    // The foot of the pane (#992), so a long Deployed-to list never hides them.
+    renderPane({
+      deployments: [
+        { label: "Claude Code", release: "v1.0.0", status: "up-to-date" },
+      ],
+      deployAction: <button type="button">Deploy</button>,
+      removeAction: <button type="button">remove all →</button>,
+    });
 
-    const action = screen.getByRole("button", { name: "Deploy" });
-    const pane = screen.getByRole("complementary", { name: /tdd detail/i });
-    const scroller = pane.querySelector(".overflow-y-auto");
-
-    expect(scroller).not.toBeNull();
-    expect(scroller?.contains(action)).toBe(true);
+    const reach = screen.getByText("Claude Code");
+    const deploy = screen.getByRole("button", { name: "Deploy" });
+    const remove = screen.getByRole("button", { name: "remove all →" });
+    const follows = (a: Element, b: Element) =>
+      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(follows(reach, deploy)).toBe(true);
+    expect(follows(deploy, remove)).toBe(true);
   });
 
-  it("puts the deploy control in the block that pins itself", () => {
-    // Only the wiring. Whether it pins is a browser measurement (testing.md),
-    // which jsdom cannot make.
-    renderPane({ deployAction: <button type="button">Deploy</button> });
-
-    const action = screen.getByRole("button", { name: "Deploy" });
-    const pane = screen.getByRole("complementary", { name: /tdd detail/i });
-
-    expect(pane.querySelector(".sticky")?.contains(action)).toBe(true);
-  });
-
-  it("hosts the remove action under the deploy one, in its own labelled section", () => {
-    renderPane({ removeAction: <button type="button">remove all →</button> });
-
-    // Same micro-label shape as Deploy, so the two directions read as a pair.
-    expect(screen.getByText("Remove")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "remove all →" }),
-    ).toBeInTheDocument();
-  });
-
-  it("shows no remove section when the caller offers no remove action", () => {
+  it("shows no remove action when the caller offers none", () => {
     // The bulk affordance is absent below two targets — the single remove
     // already covers one, and nothing covers zero (#422).
     renderPane({ removeAction: null });
 
-    expect(screen.queryByText("Remove")).toBeNull();
+    expect(screen.queryByRole("button", { name: /remove/i })).toBeNull();
   });
 
-  it("puts the remove action in that same pinning block", () => {
-    // A long deployed-to list must never hide the action that clears it.
-    renderPane({ removeAction: <button type="button">remove all →</button> });
+  it("names the skill's type in its plain word", () => {
+    renderPane({});
 
-    const action = screen.getByRole("button", { name: "remove all →" });
-    const pane = screen.getByRole("complementary", { name: /tdd detail/i });
-
-    expect(pane.querySelector(".sticky")?.contains(action)).toBe(true);
+    expect(screen.getByText("Type").nextElementSibling).toHaveTextContent(
+      "Skill",
+    );
   });
 });

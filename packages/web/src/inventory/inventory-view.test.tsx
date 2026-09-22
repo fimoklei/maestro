@@ -1,10 +1,10 @@
-import { act, screen, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
 import type { ReadDriftEntry } from "../drift/use-drift";
-import { renderWithQuery } from "../test-utils";
+import { jsonResponse, renderWithQuery } from "../test-utils";
 import type { DeploymentTarget } from "./deployed-rollup";
 import { InventoryView } from "./inventory-view";
 import type { Primitive } from "./use-inventory";
@@ -14,7 +14,7 @@ import type { Primitive } from "./use-inventory";
 
 const grid = () => screen.getByRole("grid", { name: "Inventory table" });
 
-// Column order: bulk checkbox, Type, Name, Description, Status, Targets.
+// Column order: bulk checkbox, Type, Name, Description, Status, Targets, ⋮.
 function cellsOf(name: string): string[] {
   const row = within(grid())
     .getAllByRole("row")
@@ -132,15 +132,15 @@ describe("InventoryView — the table", () => {
       targets: [deployedTo(["tdd"]), deployedTo(["tdd"], [tddBehind])],
     });
 
-    expect(cellsOf("tdd").slice(4)).toEqual(["↑Behind", "2"]);
-    expect(cellsOf("caveman").slice(4)).toEqual(["–Not deployed", "—"]);
+    expect(cellsOf("tdd").slice(4, 6)).toEqual(["↑Behind", "2"]);
+    expect(cellsOf("caveman").slice(4, 6)).toEqual(["–Not deployed", "—"]);
   });
 
   it("reads Up to date for a skill whose every target is clean", () => {
     stubPendingFetch();
     renderView({ targets: [deployedTo(["tdd"])] });
 
-    expect(cellsOf("tdd").slice(4)).toEqual(["✓Up to date", "1"]);
+    expect(cellsOf("tdd").slice(4, 6)).toEqual(["✓Up to date", "1"]);
   });
 
   it("shows no status while a target's deploy-state is still being read", () => {
@@ -163,13 +163,17 @@ describe("InventoryView — the table", () => {
     expect(cellsOf("tdd")[4]).toBe("");
   });
 
-  it("keeps deploy out of the rows, leaving it to the pane", () => {
+  it("keeps deploy out of the rows: a row's one control is its ⋮ menu", () => {
     stubPendingFetch();
     renderView({ targets: [deployedTo(["tdd"])] });
 
     expect(
-      within(grid()).queryByRole("columnheader", { name: "Actions" }),
-    ).not.toBeInTheDocument();
+      within(grid())
+        .getAllByRole("button")
+        .map((button) => button.getAttribute("aria-label")),
+    ).toEqual(
+      expect.arrayContaining(["Actions for tdd", "Actions for caveman"]),
+    );
     expect(
       within(grid()).queryByRole("button", { name: /deploy/i }),
     ).not.toBeInTheDocument();
@@ -868,5 +872,238 @@ describe("InventoryView — reading", () => {
 
     expect(screen.getByText("Could not read Inventory")).toBeInTheDocument();
     expect(screen.getByRole("gridcell", { name: "tdd" })).toBeInTheDocument();
+  });
+});
+
+// A registered repo following one release; `changed` names the skills that
+// release changed, which read Behind on it (ADR-0031).
+const onRepo = (
+  repoPath: string,
+  names: string[],
+  changed: string[] = [],
+): DeploymentTarget => ({
+  label: repoPath.split("/").at(-1) ?? repoPath,
+  target: { kind: "repo", repoPath },
+  deployed: { status: "ready", names, skippedCount: 0, attentionCount: 0 },
+  primitives: names.map((name) => ({
+    type: "skill" as const,
+    name,
+    version: "v0.3.2",
+  })),
+  drift: ranDrift([]),
+  releaseHead: {
+    release: "v0.3.2",
+    latestRelease: "v0.3.4",
+    changed: changed.length,
+    changedSkills: changed,
+    selection: names,
+    selected: names.length,
+    comparedAt: "2026-09-12T10:00:00.000Z",
+  },
+});
+
+const repos = [{ path: "/projects/alpha" }, { path: "/projects/beta" }];
+
+async function openMenu(name: string) {
+  await userEvent.click(
+    within(grid()).getByRole("button", { name: `Actions for ${name}` }),
+  );
+  return screen.findByRole("menu");
+}
+
+const menuItems = (menu: HTMLElement) =>
+  within(menu)
+    .getAllByRole("menuitem")
+    .map((item) => item.textContent);
+
+describe("InventoryView — row menu", () => {
+  it("offers Deploy skill, plus Update target where the skill is Behind", async () => {
+    stubPendingFetch();
+    renderView({
+      repos,
+      targets: [onRepo("/projects/beta", ["tdd"], ["tdd"])],
+    });
+
+    expect(menuItems(await openMenu("tdd"))).toEqual([
+      "Deploy skill",
+      "Update target",
+    ]);
+  });
+
+  it("offers Remove skill where the skill reaches two targets, as the pane does", async () => {
+    stubPendingFetch();
+    renderView({
+      repos,
+      targets: [
+        onRepo("/projects/alpha", ["tdd"]),
+        onRepo("/projects/beta", ["tdd"]),
+      ],
+    });
+
+    expect(menuItems(await openMenu("tdd"))).toEqual([
+      "Deploy skill",
+      "Remove skill",
+    ]);
+  });
+
+  it("opens the pane on Deploy skill with focus on the target picker", async () => {
+    stubPendingFetch();
+    renderView({ repos });
+
+    await openMenu("tdd");
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "Deploy skill" }),
+    );
+
+    const pane = await screen.findByRole("complementary", {
+      name: "tdd detail",
+    });
+    await waitFor(() =>
+      expect(
+        within(pane).getByRole("combobox", { name: "Deploy target for tdd" }),
+      ).toHaveFocus(),
+    );
+  });
+
+  it("opens Update target for the target where the skill is Behind", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/deploy-state?")) {
+          return url.includes("beta")
+            ? jsonResponse({
+                primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
+                skipped: [],
+                releaseHead: onRepo("/projects/beta", ["tdd"], ["tdd"])
+                  .releaseHead,
+              })
+            : jsonResponse({ primitives: [], skipped: [] });
+        }
+        if (url === "/api/deploy/update/preflight") {
+          return new Promise<Response>(() => {});
+        }
+        return jsonResponse({ tools: [], primitives: [], skipped: [] });
+      }),
+    );
+    renderView({
+      repos,
+      targets: [onRepo("/projects/beta", ["tdd"], ["tdd"])],
+    });
+
+    await openMenu("tdd");
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "Update target" }),
+    );
+
+    expect(await screen.findByRole("dialog")).toHaveTextContent(
+      "Update /projects/beta",
+    );
+    // The open dialog hides the pane from the accessibility tree.
+    const pane = screen.getByRole("complementary", {
+      name: "tdd detail",
+      hidden: true,
+    });
+    expect(
+      within(pane).getByRole("combobox", {
+        name: "Deploy target for tdd",
+        hidden: true,
+      }),
+    ).toHaveValue("/projects/beta");
+  });
+
+  it("opens the removal for every target on Remove skill", async () => {
+    stubPendingFetch();
+    renderView({
+      repos,
+      targets: [
+        onRepo("/projects/alpha", ["tdd"]),
+        onRepo("/projects/beta", ["tdd"]),
+      ],
+    });
+
+    await openMenu("tdd");
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "Remove skill" }),
+    );
+
+    expect(
+      await screen.findByRole("dialog", { name: "Remove tdd from 2 targets" }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("InventoryView — hover card", () => {
+  it("summarises the status on hover, naming each target and its reading", async () => {
+    stubPendingFetch();
+    renderView({ targets: [onRepo("/projects/beta", ["tdd"], ["tdd"])] });
+
+    await userEvent.hover(within(grid()).getByText("Behind"));
+
+    const card = await screen.findByText("Deployed to 1 target");
+    const row = within(card.parentElement as HTMLElement).getByRole("listitem");
+    expect(row).toHaveTextContent("beta");
+    expect(row).toHaveTextContent("v0.3.2");
+    expect(row).toHaveTextContent("Behind");
+  });
+
+  it("expands the Targets number into its targets on hover", async () => {
+    stubPendingFetch();
+    renderView({
+      targets: [
+        onRepo("/projects/alpha", ["tdd"]),
+        onRepo("/projects/beta", ["tdd"]),
+      ],
+    });
+
+    await userEvent.hover(within(grid()).getByText("2"));
+
+    expect(
+      await screen.findByText("Deployed to 2 targets"),
+    ).toBeInTheDocument();
+  });
+
+  it("opens for the row the keyboard is on", async () => {
+    stubPendingFetch();
+    renderView({ targets: [onRepo("/projects/beta", ["tdd"])] });
+
+    act(() => grid().focus());
+
+    expect(await screen.findByText("Deployed to 1 target")).toBeInTheDocument();
+  });
+});
+
+describe("InventoryView — paging the pane", () => {
+  it("states the open row's place and pages through the rows as shown", async () => {
+    stubPendingFetch();
+    renderView();
+
+    // Sorted by name: caveman, then tdd.
+    await userEvent.click(
+      within(
+        within(grid()).getByRole("columnheader", { name: /name/i }),
+      ).getByRole("button"),
+    );
+    await openRow("caveman");
+    const pane = screen.getByRole("complementary", { name: "caveman detail" });
+    expect(pane).toHaveTextContent("1 / 2");
+
+    await userEvent.keyboard("{ArrowDown}");
+
+    const next = screen.getByRole("complementary", { name: "tdd detail" });
+    expect(next).toHaveTextContent("2 / 2");
+    expect(within(next).getByRole("heading", { name: "tdd" })).toHaveFocus();
+  });
+
+  it("returns focus to the table on the row it paged to", async () => {
+    stubPendingFetch();
+    renderView();
+
+    await openRow("tdd");
+    await userEvent.keyboard("{ArrowDown}{Escape}");
+
+    expect(grid()).toHaveFocus();
+    const id = grid().getAttribute("aria-activedescendant");
+    expect(document.getElementById(id ?? "")).toHaveTextContent("caveman");
   });
 });

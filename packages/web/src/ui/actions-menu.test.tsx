@@ -85,4 +85,39 @@ describe("ActionsMenu", () => {
       screen.getByRole("button", { name: "Actions for tdd" }),
     ).toBeDisabled();
   });
+
+  it("leaves focus where a chosen item put it", async () => {
+    // An item that opens a pane and focuses a field there keeps that focus.
+    function Opener() {
+      return (
+        <>
+          <ActionsMenu
+            label="Actions for tdd"
+            items={[
+              {
+                label: "Deploy skill",
+                onSelect: () =>
+                  document.getElementById("target-picker")?.focus(),
+              },
+            ]}
+            returnFocus={false}
+          />
+          <select id="target-picker" aria-label="Deploy target" />
+        </>
+      );
+    }
+    render(<Opener />);
+
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+    await screen.findByRole("menuitem", { name: "Deploy skill" });
+    await userEvent.keyboard("{Enter}");
+
+    await waitFor(() => {
+      expect(screen.queryByRole("menuitem")).not.toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole("combobox", { name: "Deploy target" }),
+    ).toHaveFocus();
+  });
 });

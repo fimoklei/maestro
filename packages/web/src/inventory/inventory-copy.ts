@@ -49,3 +49,20 @@ export const NO_SEARCH_MATCH =
   "No skills match the search. Clear the search box to see every skill.";
 export const NO_FILTER_MATCH =
   "No skills match the filters. Select Filter to show more skills.";
+
+// The row's hover card and detail pane (#1041).
+export const deployedToLine = (count: number): string =>
+  count === 0
+    ? "Not deployed to any target."
+    : `Deployed to ${count} ${count === 1 ? "target" : "targets"}`;
+export const moreTargetsLine = (more: number, total: number): string =>
+  `${more} more. Select the row to see all ${total} targets.`;
+export const SOME_TARGETS_NOT_READ = "Some targets could not be read.";
+export const NOT_DEPLOYED_ANYWHERE =
+  "Not deployed to any target. Choose a target below, then select Deploy skill.";
+
+// The row's ⋮ menu; its items reuse the verbs of CONTEXT.md (#992).
+export const ACTIONS_COLUMN_LABEL = "Actions";
+export const rowActionsLabel = (name: string) => `Actions for ${name}`;
+export const DEPLOY_SKILL = "Deploy skill";
+export const REMOVE_SKILL = "Remove skill";

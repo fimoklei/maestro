@@ -1,5 +1,6 @@
 import { ListFilter, RefreshCw, Search, SlidersHorizontal } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { UPDATE_TARGET } from "../deploy-state/update-target-copy";
 import type { RegisteredRepo } from "../registry/use-registry";
 import { DataTable } from "../ui/data-table";
 import { IconButton } from "../ui/icon-button";
@@ -12,23 +13,29 @@ import { BulkRemoveSkillAction } from "./bulk-remove-skill-action";
 import { bulkRemoveTargets } from "./bulk-remove-targets";
 import { hiddenStagedCount, toggleStaged } from "./bulk-selection";
 import { DeploySkillAction } from "./deploy-skill-action";
-import { type DeploymentTarget, rollUpDeployment } from "./deployed-rollup";
 import {
-  columns,
+  behindTarget,
+  type DeploymentTarget,
+  rollUpDeployment,
+} from "./deployed-rollup";
+import {
   DISPLAY_OPTIONS,
   GROUP_OPTIONS,
   type Grouping,
   groupsFor,
   type InventoryRow,
+  inventoryColumns,
   STATUS_OPTIONS,
 } from "./inventory-columns";
 import {
+  DEPLOY_SKILL,
   DISPLAY_LABEL,
   FILTER_LABEL,
   NO_FILTER_MATCH,
   NO_RELEASED_SKILLS,
   NO_SEARCH_MATCH,
   NO_SKILLS_YET,
+  REMOVE_SKILL,
   REREAD_LABEL,
   SEARCH_LABEL,
   STAGE_COLUMN_LABEL,
@@ -36,6 +43,7 @@ import {
   TABLE_LABEL,
 } from "./inventory-copy";
 import { filterByName } from "./inventory-table-model";
+import type { RowAction } from "./row-menu";
 import { skillDeployments } from "./skill-deployments";
 import { SkillDetailPane } from "./skill-detail-pane";
 import { skillStatus } from "./skill-status";
@@ -90,17 +98,38 @@ export function InventoryView({
   // Held by name (from the full inventory), so a search narrowing the table
   // never closes an already-open pane (ADR-0016).
   const [selected, setSelected] = useState<string | null>(null);
+  // What the row's ⋮ menu asked the pane for. A fresh nonce remounts the
+  // pane's actions, so asking twice acts twice.
+  const [intent, setIntent] = useState<{
+    action: RowAction;
+    nonce: number;
+  } | null>(null);
+  // The table's rows as it shows them, which the pane pages through.
+  const [order, setOrder] = useState<string[]>([]);
   // Kept apart from `selected` so inspecting and staging never toggle each
   // other (Model A, #291).
   const [staged, setStaged] = useState<ReadonlySet<string>>(new Set());
   const gridRef = useRef<HTMLTableElement>(null);
   const getTriggerElement = useCallback(() => gridRef.current, []);
-  // On a narrow window the pane sits below the table — bring it into view.
-  const paneRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    if (selected === null) return;
-    paneRef.current?.scrollIntoView?.({ block: "nearest" });
-  }, [selected]);
+
+  const open = useCallback(
+    (name: string | null, action: RowAction | null = null) => {
+      setSelected(name);
+      setIntent((current) =>
+        action === null ? null : { action, nonce: (current?.nonce ?? 0) + 1 },
+      );
+    },
+    [],
+  );
+  const cardColumn = hidden.has("status") ? "targets" : "status";
+  const columns = useMemo(
+    () =>
+      inventoryColumns({
+        cardColumn,
+        onAction: (row, action) => open(row.name, action),
+      }),
+    [cardColumn, open],
+  );
 
   const announcement = useReadAnnouncement("Inventory", loading, notice);
 
@@ -112,6 +141,18 @@ export function InventoryView({
       ...primitive,
       status,
       targets: status === null ? null : rollup.targetCount,
+      deployments: skillDeployments(primitive.name, targets),
+      unreadable: Boolean(rollup.unreadable),
+      // The same offers the pane makes, so the two never disagree.
+      actions: [
+        { action: "deploy", label: DEPLOY_SKILL },
+        ...(status !== null && behindTarget(primitive.name, targets)
+          ? [{ action: "update" as const, label: UPDATE_TARGET }]
+          : []),
+        ...(bulkRemoveTargets(primitive.name, targets).length >= 2
+          ? [{ action: "remove" as const, label: REMOVE_SKILL }]
+          : []),
+      ],
     };
   });
   const filterCount = (typeFilter === "all" ? 0 : 1) + statusFilter.size;
@@ -133,6 +174,8 @@ export function InventoryView({
   const removable = selectedPrimitive
     ? bulkRemoveTargets(selectedPrimitive.name, targets)
     : [];
+  const openIndex = selected === null ? -1 : order.indexOf(selected);
+  const actionKey = `${selected}:${intent?.nonce ?? 0}`;
 
   const noSkills = all.length === 0 ? NO_SKILLS_YET : undefined;
   const band2 = (
@@ -241,9 +284,9 @@ export function InventoryView({
       >
         {announcement}
       </div>
-      {/* Side by side only ~1200px+; narrower, the pane drops below the table
-          and the panel content scrolls instead of the table. */}
-      <div className="flex flex-col min-[1200px]:h-[100cqh] min-[1200px]:flex-row">
+      {/* Side by side from 1100px; narrower, the pane floats over the table as
+          a sheet, never a block under it (#992). */}
+      <div className="relative flex h-[100cqh]">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {/* A failed read is always trigger="load" — nothing here followed a
               click (#465). The region outlives its content. */}
@@ -302,10 +345,9 @@ export function InventoryView({
                 groups={groupsFor(grouping)}
                 openRowId={selected}
                 onRowOpen={(row) =>
-                  setSelected((current) =>
-                    current === row.name ? null : row.name,
-                  )
+                  open(selected === row.name ? null : row.name)
                 }
+                onRowOrderChange={setOrder}
                 selection={{
                   label: STAGE_COLUMN_LABEL,
                   rowLabel: (row) => stageRowLabel(row.name),
@@ -319,35 +361,58 @@ export function InventoryView({
           ) : null}
         </div>
         {selectedPrimitive ? (
-          <SkillDetailPane
-            ref={paneRef}
-            primitive={selectedPrimitive}
-            deployments={skillDeployments(selectedPrimitive.name, targets)}
-            unconfirmed={Boolean(
-              selectedRollup?.pending || selectedRollup?.unreadable,
-            )}
-            deployAction={
-              // Keyed by skill: a pending pick or refusal from the previous
-              // skill can never carry over and overwrite the next one (#66).
-              <DeploySkillAction
-                key={selectedPrimitive.name}
-                skillName={selectedPrimitive.name}
-                repos={repos}
-                registryReady={registryReady}
-              />
-            }
-            removeAction={
-              removable.length >= 2 ? (
-                <BulkRemoveSkillAction
-                  key={selectedPrimitive.name}
+          <div className="absolute inset-y-0 right-0 z-20 max-w-full shadow-float min-[1100px]:static min-[1100px]:shadow-none">
+            <SkillDetailPane
+              primitive={selectedPrimitive}
+              deployments={skillDeployments(selectedPrimitive.name, targets)}
+              unconfirmed={Boolean(
+                selectedRollup?.pending || selectedRollup?.unreadable,
+              )}
+              position={
+                openIndex === -1
+                  ? null
+                  : { index: openIndex, count: order.length }
+              }
+              onPage={(step) => open(order[openIndex + step] ?? selected)}
+              // Deploy skill starts at the target picker; Update target and
+              // Remove skill open a dialog that holds focus itself.
+              initialFocus={
+                intent === null
+                  ? undefined
+                  : intent.action === "deploy"
+                    ? "select"
+                    : null
+              }
+              deployAction={
+                // Keyed by skill: a pending pick or refusal from the previous
+                // skill can never carry over and overwrite the next one (#66).
+                <DeploySkillAction
+                  key={actionKey}
                   skillName={selectedPrimitive.name}
-                  targets={removable}
+                  repos={repos}
+                  registryReady={registryReady}
+                  intent={intent?.action === "update" ? "update" : undefined}
+                  initialTarget={
+                    intent?.action === "update"
+                      ? behindTarget(selectedPrimitive.name, targets)
+                      : undefined
+                  }
                 />
-              ) : null
-            }
-            onClose={() => setSelected(null)}
-            getTriggerElement={getTriggerElement}
-          />
+              }
+              removeAction={
+                removable.length >= 2 ? (
+                  <BulkRemoveSkillAction
+                    key={actionKey}
+                    skillName={selectedPrimitive.name}
+                    targets={removable}
+                    defaultOpen={intent?.action === "remove"}
+                  />
+                ) : null
+              }
+              onClose={() => open(null)}
+              getTriggerElement={getTriggerElement}
+            />
+          </div>
         ) : null}
       </div>
     </Panel>

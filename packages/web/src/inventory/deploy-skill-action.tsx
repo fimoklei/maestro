@@ -16,7 +16,7 @@ import { Notice } from "../ui/notice";
 import { DeployRefusalNotice } from "./deploy-refusal-notice";
 import { headsReading } from "./deployed-rollup";
 import { globalOptionLabel } from "./global-option-label";
-import { targetSyncLine } from "./inventory-copy";
+import { DEPLOY_SKILL, targetSyncLine } from "./inventory-copy";
 import { type DeployTarget, useDeploySkill } from "./use-deploy-skill";
 
 type DeploySkillActionProps = {
@@ -25,6 +25,9 @@ type DeploySkillActionProps = {
   // False while the registry query is pending or failed — an unloaded
   // registry looks like an empty one and would default-select Global.
   registryReady: boolean;
+  /** The row's ⋮ menu: a target to start on, and what it asked for. */
+  initialTarget?: DeployTarget;
+  intent?: "update";
 };
 
 // A repo's value is its absolute path, so it can never collide with this literal.
@@ -34,8 +37,16 @@ export function DeploySkillAction({
   skillName,
   repos,
   registryReady,
+  initialTarget,
+  intent,
 }: DeploySkillActionProps) {
-  const [chosen, setChosen] = useState<string | null>(null);
+  const [chosen, setChosen] = useState<string | null>(
+    initialTarget === undefined
+      ? null
+      : initialTarget.kind === "global"
+        ? GLOBAL_VALUE
+        : initialTarget.repoPath,
+  );
   const deploy = useDeploySkill();
   const update = useUpdateTarget();
 
@@ -113,7 +124,7 @@ export function DeploySkillAction({
     ? "Loading targets…"
     : deploy.isPending
       ? ACTIONS.deploy.busy
-      : "Deploy skill";
+      : DEPLOY_SKILL;
 
   return (
     // Wraps: the 320px pane clips overflow, and wider states would otherwise
@@ -201,6 +212,7 @@ export function DeploySkillAction({
           target={target}
           update={update}
           add={skillName}
+          defaultOpen={intent === "update" && behindHere}
           // The refusal described a target this update just moved, so it goes
           // with the dialog rather than outliving what it stated.
           onClose={() => deploy.reset()}

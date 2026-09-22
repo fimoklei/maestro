@@ -26,6 +26,12 @@ export type DeploymentTarget = {
   releaseHead?: ReleaseHead;
 };
 
+// The Selection where the target follows one release; what is on disk only
+// where it follows none, the one case with no Selection to read (spec story 52).
+const selects = (target: DeploymentTarget, skillName: string): boolean =>
+  target.deployed.status === "ready" &&
+  (target.releaseHead?.selection ?? target.deployed.names).includes(skillName);
+
 // One per-skill reading from the Release heads a target carries. Behind means
 // this skill's own files differ at the newest release, never that the target
 // is. Undefined where no head is known (ADR-0031, #956).
@@ -93,11 +99,7 @@ export function rollUpDeployment(
     if (target.deployed.status !== "ready") {
       continue;
     }
-    // The Selection where the target follows one release; what is on disk only
-    // where it follows none, which is the one case with no Selection to read
-    // (spec story 52).
-    const selected = target.releaseHead?.selection ?? target.deployed.names;
-    if (!selected.includes(skillName)) {
+    if (!selects(target, skillName)) {
       continue;
     }
     targetCount++;
@@ -120,4 +122,17 @@ export function rollUpDeployment(
     unreadable,
     checking,
   };
+}
+
+// Where Update target would move this skill: the first target it reads Behind
+// on, in the order the roll-up counts them.
+export function behindTarget(
+  skillName: string,
+  targets: DeploymentTarget[],
+): DeployTarget | undefined {
+  return targets.find(
+    (target) =>
+      selects(target, skillName) &&
+      skillReading(target, skillName) === "behind",
+  )?.target;
 }

@@ -9,6 +9,7 @@ export function Fact({
   wrap = false,
   hint,
   title,
+  machine = true,
 }: {
   label: string;
   value: string;
@@ -18,6 +19,8 @@ export function Fact({
   hint?: string;
   /** The whole value on hover, where the visible one is shortened. */
   title?: string;
+  /** False for a plain word, which Geist Mono never sets (design.md). */
+  machine?: boolean;
 }) {
   const hintId = useId();
 
@@ -26,7 +29,8 @@ export function Fact({
       <dt className="m-label mb-1.5">{label}</dt>
       <dd
         className={cn(
-          "m-0 truncate font-mono text-data text-fg",
+          "m-0 truncate text-fg",
+          machine ? "font-mono text-data" : "font-ui text-row",
           wrap && "break-all",
         )}
         title={title}

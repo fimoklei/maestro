@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DeployedRollup } from "./deployed-rollup";
-import { skillStatus } from "./skill-status";
+import { skillStatus, targetReading } from "./skill-status";
 
 const rollup = (over: Partial<DeployedRollup>): DeployedRollup => ({
   targetCount: 0,
@@ -64,5 +64,46 @@ describe("skillStatus", () => {
   it("reads Unknown, never Not deployed, when a deploy-state read failed", () => {
     expect(word(rollup({ unreadable: true }))).toBe("Unknown");
     expect(word(rollup({ targetCount: 2, unreadable: true }))).toBe("Unknown");
+  });
+});
+
+// One target's own badge in the hover card and the detail pane (#1041).
+describe("targetReading", () => {
+  const wordFor = (status: Parameters<typeof targetReading>[0]) =>
+    targetReading(status)?.word ?? null;
+
+  it("reads Up to date for a clean copy, and for an older tag that left the skill unchanged", () => {
+    expect(wordFor("up-to-date")).toBe("Up to date");
+    // ADR-0027: the pin lags, but nothing in the skill changed.
+    expect(wordFor("older-tag")).toBe("Up to date");
+  });
+
+  it("reads Behind where the newest release changed this skill", () => {
+    expect(targetReading("behind")).toEqual({
+      word: "Behind",
+      family: "attention",
+      glyph: "↑",
+    });
+  });
+
+  it("reads No longer released as a warning, not a lag", () => {
+    expect(targetReading("no-longer-released")).toEqual({
+      word: "No longer released",
+      family: "attention",
+      glyph: "⚠",
+    });
+  });
+
+  it("never reads a check that could not answer as fine", () => {
+    expect(targetReading("unknown")?.family).toBe("unknown");
+    expect(targetReading("unverified")).toEqual({
+      word: "Unverified",
+      family: "unknown",
+      glyph: "?",
+    });
+  });
+
+  it("shows no reading while the check is still running", () => {
+    expect(targetReading("pending")).toBeNull();
   });
 });

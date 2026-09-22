@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { driftViewModel } from "../drift/drift-view-model";
 import type { DriftResponse, ReadDriftEntry } from "../drift/use-drift";
-import { type DeploymentTarget, rollUpDeployment } from "./deployed-rollup";
+import {
+  behindTarget,
+  type DeploymentTarget,
+  rollUpDeployment,
+} from "./deployed-rollup";
 
 // The deployed column is a client-side pivot: per-target deploy-state + drift
 // folded onto one row per skill (#272), one target per tool-install/repo.
@@ -297,5 +301,32 @@ describe("rollUpDeployment — unknown count (?) keeps J04 honesty", () => {
     expect(rollup.behindCount).toBe(0);
     expect(rollup.unknownCount).toBe(0);
     expect(rollup.targetCount).toBe(1);
+  });
+});
+
+describe("behindTarget", () => {
+  const inRepo = (repoPath: string, target: DeploymentTarget) => ({
+    ...target,
+    target: { kind: "repo" as const, repoPath },
+  });
+
+  it("names the first target where the skill reads Behind", () => {
+    const targets = [
+      inRepo("/a", onRelease(["tdd"], [])),
+      inRepo("/b", onRelease(["tdd"], ["tdd"])),
+      inRepo("/c", onRelease(["tdd"], ["tdd"])),
+    ];
+
+    expect(behindTarget("tdd", targets)).toEqual({
+      kind: "repo",
+      repoPath: "/b",
+    });
+  });
+
+  it("names none where the skill is behind nowhere, or not deployed there", () => {
+    expect(behindTarget("tdd", [onRelease(["tdd"], [])])).toBeUndefined();
+    expect(
+      behindTarget("tdd", [onRelease(["grill"], ["tdd"])]),
+    ).toBeUndefined();
   });
 });

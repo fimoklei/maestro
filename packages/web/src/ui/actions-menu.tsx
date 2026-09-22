@@ -1,5 +1,5 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import type { ReactNode } from "react";
+import { type ReactNode, useRef } from "react";
 import { cn } from "./cn";
 import { HOVER_TRANSITION } from "./hover-transition";
 
@@ -23,6 +23,8 @@ export interface ActionsMenuProps {
   trigger?: ReactNode;
   /** A line above the items naming what the menu acts on. */
   heading?: string;
+  /** False where every item moves focus on; Escape still returns it. */
+  returnFocus?: boolean;
 }
 
 export function ActionsMenu({
@@ -30,7 +32,11 @@ export function ActionsMenu({
   items,
   trigger,
   heading,
+  returnFocus = true,
 }: ActionsMenuProps) {
+  // Run once the menu has closed: an open menu traps focus, so an item that
+  // moves focus elsewhere would lose it.
+  const pending = useRef<(() => void) | null>(null);
   return (
     <DropdownMenu.Root>
       {trigger ? (
@@ -58,6 +64,13 @@ export function ActionsMenu({
         <DropdownMenu.Content
           align="end"
           sideOffset={4}
+          onCloseAutoFocus={(event) => {
+            const run = pending.current;
+            pending.current = null;
+            if (run === null) return;
+            event.preventDefault();
+            run();
+          }}
           // A menu floats, so it takes radius 12 and the one shadow
           // (ADR-0033 §7). bg-gray-2, not gray-3: leaves the highlighted state
           // below free to read as hover (#388).
@@ -72,7 +85,10 @@ export function ActionsMenu({
             <DropdownMenu.Item
               key={item.label}
               disabled={item.disabled}
-              onSelect={item.onSelect}
+              onSelect={() => {
+                if (returnFocus) item.onSelect?.();
+                else pending.current = item.onSelect ?? null;
+              }}
               asChild={item.href !== undefined}
               className={cn(
                 "flex h-control cursor-pointer items-center rounded-control px-inline font-ui text-gray-11 text-row no-underline outline-none",

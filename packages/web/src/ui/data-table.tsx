@@ -14,7 +14,17 @@ import {
   tableFeatures,
   useTable,
 } from "@tanstack/react-table";
-import { Fragment, type ReactNode, type Ref, useId, useState } from "react";
+import {
+  createContext,
+  Fragment,
+  type ReactNode,
+  type Ref,
+  useContext,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import { cn } from "./cn";
 import { HOVER_TRANSITION } from "./hover-transition";
 import { Skeleton } from "./skeleton";
@@ -81,8 +91,16 @@ export interface DataTableProps<T extends RowData> {
   empty?: ReactNode;
   /** Rows under a header per group, each header naming its count. */
   groups?: DataTableGroups<T>;
+  /** The row ids in the order shown, after sorting and grouping. */
+  onRowOrderChange?: (ids: string[]) => void;
   ref?: Ref<HTMLTableElement>;
 }
+
+// The grid holds focus itself, so a cell learns from here that its row is the
+// one the keyboard is on — to open its hover card or show its menu.
+const RowActiveContext = createContext(false);
+
+export const useDataTableRowActive = () => useContext(RowActiveContext);
 
 const INTERACTIVE = "a,button,input,select,textarea,label";
 
@@ -99,6 +117,7 @@ export function DataTable<T extends RowData>({
   skeletonRows = 12,
   empty,
   groups,
+  onRowOrderChange,
   ref,
 }: DataTableProps<T>) {
   const table = useTable({
@@ -129,11 +148,27 @@ export function DataTable<T extends RowData>({
   // so the controls inside a row never become Tab stops of their own.
   const [cursor, setCursor] = useState(0);
   const [gridFocused, setGridFocused] = useState(false);
+  // A row opened from outside (a detail pane's pager) takes the cursor with it.
+  const [cursorFor, setCursorFor] = useState<string | null>(null);
+  if (cursorFor !== openRowId) {
+    setCursorFor(openRowId);
+    const opened = rows.findIndex((row) => row.id === openRowId);
+    if (opened !== -1) setCursor(opened);
+  }
   const active = Math.min(cursor, Math.max(rows.length - 1, 0));
   const showRows = !loading && rows.length > 0;
 
+  const order = rows.map((row) => row.id).join("\n");
+  const reportOrder = useRef(onRowOrderChange);
+  reportOrder.current = onRowOrderChange;
+  useEffect(() => {
+    reportOrder.current?.(order === "" ? [] : order.split("\n"));
+  }, [order]);
+
   const onKeyDown = (event: React.KeyboardEvent<HTMLTableElement>) => {
     if (!showRows) return;
+    // React bubbles a portal's keys (a row's open menu) through its cell.
+    if (!event.currentTarget.contains(event.target as Node)) return;
     // A key typed into a row's own control belongs to that control.
     const target = event.target as HTMLElement;
     if (target !== event.currentTarget && target.closest(INTERACTIVE)) return;
@@ -320,7 +355,13 @@ export function DataTable<T extends RowData>({
                   id={rowDomId(index)}
                   aria-selected={selection ? isSelected : undefined}
                   aria-current={isOpen || undefined}
+                  data-active={
+                    gridFocused && index === active ? true : undefined
+                  }
                   onClick={(event) => {
+                    if (!event.currentTarget.contains(event.target as Node)) {
+                      return;
+                    }
                     setCursor(index);
                     if ((event.target as HTMLElement).closest(INTERACTIVE)) {
                       return;
@@ -328,7 +369,7 @@ export function DataTable<T extends RowData>({
                     onRowOpen?.(row.original);
                   }}
                   className={cn(
-                    "h-row border-gray-6 border-b",
+                    "group/row h-row border-gray-6 border-b",
                     onRowOpen && "cursor-pointer",
                     isOpen ? "bg-gray-5" : "hover:bg-gray-3",
                     gridFocused &&
@@ -337,37 +378,39 @@ export function DataTable<T extends RowData>({
                     HOVER_TRANSITION,
                   )}
                 >
-                  {selection ? (
-                    <GridCell className="px-inline">
-                      {/* The padded label lifts the 16px box to the 24px
+                  <RowActiveContext value={gridFocused && index === active}>
+                    {selection ? (
+                      <GridCell className="px-inline">
+                        {/* The padded label lifts the 16px box to the 24px
                         pointer floor (WCAG 2.2 SC 2.5.8). */}
-                      <label className="-m-1 flex w-fit cursor-pointer p-1">
-                        <input
-                          type="checkbox"
-                          tabIndex={-1}
-                          checked={isSelected}
-                          onChange={() => selection.onToggle(row.original)}
-                          aria-label={selection.rowLabel(row.original)}
-                          className="size-4 cursor-pointer accent-gray-12"
-                        />
-                      </label>
-                    </GridCell>
-                  ) : null}
-                  {row.getVisibleCells().map((cell) => {
-                    const meta = cell.column.columnDef.meta;
-                    return (
-                      <GridCell
-                        key={cell.id}
-                        className={cn(
-                          "truncate px-inline",
-                          meta?.align === "end" && "text-right",
-                          meta?.className,
-                        )}
-                      >
-                        <table.FlexRender cell={cell} />
+                        <label className="-m-1 flex w-fit cursor-pointer p-1">
+                          <input
+                            type="checkbox"
+                            tabIndex={-1}
+                            checked={isSelected}
+                            onChange={() => selection.onToggle(row.original)}
+                            aria-label={selection.rowLabel(row.original)}
+                            className="size-4 cursor-pointer accent-gray-12"
+                          />
+                        </label>
                       </GridCell>
-                    );
-                  })}
+                    ) : null}
+                    {row.getVisibleCells().map((cell) => {
+                      const meta = cell.column.columnDef.meta;
+                      return (
+                        <GridCell
+                          key={cell.id}
+                          className={cn(
+                            "truncate px-inline",
+                            meta?.align === "end" && "text-right",
+                            meta?.className,
+                          )}
+                        >
+                          <table.FlexRender cell={cell} />
+                        </GridCell>
+                      );
+                    })}
+                  </RowActiveContext>
                 </tr>
               </Fragment>
             );
