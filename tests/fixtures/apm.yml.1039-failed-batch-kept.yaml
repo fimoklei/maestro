@@ -1,0 +1,21 @@
+name: repo-d
+version: 1.0.0
+description: APM project for repo-d
+author: Developer
+# Which agent platforms to deploy to.
+# Resolution order: --target flag > this field > auto-detect from filesystem.
+# Accepted values: agent-skills, antigravity, claude, codex, copilot, cursor, gemini, grok-build, kiro, opencode, vscode, windsurf
+targets:
+  - claude
+  - codex
+dependencies:
+  apm:
+    - git: fimoklei/agent-harness
+      ref: v0.6.0
+      skills:
+        - '47'
+        - audit-dependencies
+        - no-such-skill
+  mcp: []
+includes: auto
+scripts: {}

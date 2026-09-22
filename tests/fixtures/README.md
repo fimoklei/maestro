@@ -234,3 +234,26 @@ Two files from the same run, copied verbatim:
 |---|---|
 | `apm.lock.957-root-selection-project.yaml` | the first project install — one `package_type: apm_package` entry, `skill_subset` holding the exact Selection sorted |
 | `apm.yml.957-narrowed-with-foreign.yaml` | after the project narrow — the root entry with a one-name `skills:` list beside the bare-string foreign dependency |
+
+## One install carrying a bulk deploy (#1039)
+
+Captured 2026-09-22 on apm 0.29.0, per repo, each run in a fresh `git init`
+folder under a sandbox `HOME` (`realpath`ed), `GITHUB_TOKEN` and
+`GITHUB_APM_PAT` from `gh auth token`, no rate-limit line in any capture, no
+`COLUMNS`. `<ref>` is `github.com/fimoklei/agent-harness#v0.6.0`. What they
+mean is in `docs/apm-behavior.md` § A batch install.
+`apm-1039-batch-symlink-skipped.txt` opens with the update banner described
+above.
+
+| Fixture | Command | Conditions | Exit | Streams |
+|---|---|---|---|---|
+| `apm-1039-batch-ok.txt` | `apm install <ref> --skill 47 --skill audit-dependencies --skill caveman -t claude,codex` | empty repo | 0 | out+err |
+| `apm-1039-batch-symlink-skipped.txt` | same | `.claude/skills/caveman` pre-created as a symlink to an empty folder | 0 | out+err |
+| `apm-1039-batch-unknown-skill.txt` | `apm install <ref> --skill 47 --skill audit-dependencies --skill no-such-skill -t claude,codex` | empty repo | 1 | out+err |
+| `apm-1039-batch-unknown-skill-over-selection.txt` | same | `47` installed first; `skills:` then written to all three names | 1 | out+err |
+
+`apm.lock.1039-batch-symlink-skipped.yaml` is the lockfile the symlink run
+wrote: `skill_subset` names `caveman`, `deployed_files` holds no
+`.claude/skills/caveman` row. `apm.yml.1039-failed-batch-kept.yaml` is the
+manifest after the failed run over a Selection: the three names written before
+the install are still there.

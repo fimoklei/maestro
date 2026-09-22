@@ -74,13 +74,23 @@ export function rootPackageApm(options: {
   ): Promise<string[]> => {
     const tree = location.treeRoot(target);
     const files: string[] = [];
-    for (const prefix of prefixesFor(tools)) {
-      if (options.placesFiles !== false) {
-        await rm(join(tree, prefix, "skills"), {
-          recursive: true,
-          force: true,
-        });
+    // Only what the previous lockfile recorded goes: apm leaves a directory it
+    // does not manage in place (apm-behavior.md § A batch install).
+    const recorded = new Set(
+      [
+        ...(
+          (await readFile(location.lockfilePath(target), "utf8").catch(
+            () => "",
+          )) as string
+        ).matchAll(/^ {2}- (\S+\/skills\/[^/\s]+)\//gm),
+      ].map((match) => match[1] as string),
+    );
+    if (options.placesFiles !== false) {
+      for (const dir of recorded) {
+        await rm(join(tree, dir), { recursive: true, force: true });
       }
+    }
+    for (const prefix of prefixesFor(tools)) {
       for (const name of names) {
         const rel = `${prefix}/skills/${name}/SKILL.md`;
         files.push(rel);
