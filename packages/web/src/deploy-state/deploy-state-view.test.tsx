@@ -1,338 +1,582 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse, renderWithQuery } from "../test-utils";
-import { DeployStateView } from "./deploy-state-view";
+import {
+  cellsOf,
+  findRow,
+  grid,
+  RECENT,
+  renderDeployState,
+  rowOf,
+  stubServer,
+} from "./deploy-state-test-helpers";
+
+// The Deploy-state screen: one table of every target (#993, #1043). Successor
+// of the retired DeployStateView, DeployStatePanel, GlobalDeployStatePanel and
+// GlobalTargets tests for what the table shows; the pane is in
+// deploy-state-view-pane.test.tsx, Update target in -update.test.tsx.
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function renderView() {
-  return renderWithQuery(
-    <MemoryRouter initialEntries={["/"]}>
-      <Routes>
-        <Route path="/" element={<DeployStateView />} />
-        <Route path="/inventory" element={<p>inventory view</p>} />
-      </Routes>
-    </MemoryRouter>,
-  );
-}
+const skill = (name: string, version = "v0.5.0") => ({
+  type: "skill",
+  name,
+  version,
+});
 
-// Serves both the empty registry and the empty global deploy-state, which is
-// the cold start: nothing deployed anywhere and no repo registered.
-function stubColdStart() {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async () =>
-      jsonResponse(
-        { repos: [], tools: [], primitives: [], skipped: [], behind: [] },
-        200,
-      ),
-    ),
-  );
-}
+const head = (release: string, latestRelease: string, changed = 1) => ({
+  release,
+  latestRelease,
+  changed,
+  changedSkills: changed === 0 ? [] : ["tdd"],
+  selection: ["tdd"],
+  selected: 5,
+  comparedAt: RECENT(),
+});
 
-function stubEmptyTargets() {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (url: string) => {
-      const target = String(url);
-      if (target.includes("/api/registry/repos")) {
-        return jsonResponse({ repos: [{ path: "/Users/me/project" }] }, 200);
-      }
-      if (target.includes("/api/deploy-state/global")) {
-        return jsonResponse(
-          {
-            tools: [
-              { tool: "claude", primitives: [] },
-              { tool: "codex", primitives: [] },
-            ],
-            skipped: [],
-          },
-          200,
-        );
-      }
-      if (target.includes("/api/deploy-state")) {
-        return jsonResponse({ primitives: [], skipped: [] }, 200);
-      }
-      return jsonResponse({ behind: [] }, 200);
-    }),
-  );
-}
+const TWO_TOOLS = {
+  tools: [
+    { tool: "claude", primitives: [skill("tdd")] },
+    { tool: "codex", primitives: [] },
+  ],
+  skipped: [],
+};
 
-describe("DeployStateView cold start", () => {
-  it("states plainly that nothing is deployed instead of counting targets", async () => {
-    stubColdStart();
-    renderView();
+describe("Deploy-state — one table of every target", () => {
+  it("lists every target under the Global and Repositories group headers", async () => {
+    stubServer(() => ({
+      repos: ["/Users/me/a", "/Users/me/b"],
+      global: TWO_TOOLS,
+    }));
+    renderDeployState();
 
-    expect(await screen.findByText(/nothing deployed/i)).toBeInTheDocument();
-  });
-
-  it("offers a deploy action in every confirmed-empty target", async () => {
-    stubEmptyTargets();
-    renderView();
-
-    await waitFor(() => {
+    await findRow("…/me/b");
+    for (const header of ["Target", "Release", "Status", "Skills"]) {
       expect(
-        screen.getAllByRole("button", { name: "Deploy a skill" }),
-      ).toHaveLength(3);
-    });
-  });
-
-  it("starts a deploy from an empty target without the sidebar", async () => {
-    stubEmptyTargets();
-    renderView();
-
-    const [action] = await screen.findAllByRole("button", {
-      name: "Deploy a skill",
-    });
-    if (!action) {
-      throw new Error("Expected an empty-target deploy action.");
+        within(grid()).getByRole("columnheader", { name: new RegExp(header) }),
+      ).toBeInTheDocument();
     }
-
-    await userEvent.click(action);
-
-    expect(screen.getByText("inventory view")).toBeInTheDocument();
+    const cells = within(grid())
+      .getAllByRole("gridcell")
+      .map((cell) => cell.textContent);
+    expect(cells).toContain("Global 2");
+    expect(cells).toContain("Repositories 2");
+    expect(cellsOf("Claude Code")[0]).toBe("Claude Code~/.claude/skills");
+    expect(cellsOf("Codex")[0]).toBe("Codex~/.agents/skills");
   });
 
-  it("does not offer a target deploy action once a skill is deployed globally", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) => {
-        const target = String(url);
-        if (target.includes("/api/deploy-state/global")) {
-          return jsonResponse(
-            {
-              tools: [
-                {
-                  tool: "claude",
-                  primitives: [
-                    { type: "skill", name: "tdd", version: "v0.5.0" },
-                  ],
-                },
-              ],
-              skipped: [],
-            },
-            200,
-          );
-        }
-        return jsonResponse({ repos: [], behind: [] }, 200);
-      }),
-    );
-    renderView();
-
-    // The global panel renders its deployed skill, so we know data has loaded.
-    expect(await screen.findByText("tdd")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Deploy a skill" })).toBeNull();
-  });
-});
-
-describe("DeployStateView heading structure", () => {
-  // The view title owns both target kinds. Global targets and Repositories are
-  // its parts, not its peers — so they nest under it and rank below it, and the
-  // page's outline reads the same way the screen looks.
-  it("ranks both target kinds below the view title", async () => {
-    stubColdStart();
-    renderView();
-
-    expect(
-      await screen.findByRole("heading", { level: 1, name: /deploy-state/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { level: 2, name: /global targets/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { level: 2, name: /repositories/i }),
-    ).toBeInTheDocument();
-  });
-});
-
-describe("DeployStateView sections", () => {
-  it("does not count targets before both reads have landed", () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() => new Promise<Response>(() => {})),
-    );
-    renderView();
-
-    // An unread target set is not a target set of zero.
-    expect(screen.queryByText(/\d+ targets?/)).toBeNull();
-  });
-
-  it("shows a loading state, not a register hint, while the registry loads", () => {
-    // A fetch that never resolves keeps the query pending.
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() => new Promise<Response>(() => {})),
-    );
-    renderView();
-
-    expect(
-      screen.getByText(/loading the registered repositories/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText(/no repositories registered\./i),
-    ).not.toBeInTheDocument();
-  });
-
-  it("shows an error, not the register hint, when the registry fails to load", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => jsonResponse({ message: "boom" }, 500)),
-    );
-    renderView();
-
-    expect(
-      await screen.findByText("Registered repositories not read"),
-    ).toBeInTheDocument();
-    // A failed registry read must not masquerade as "no repos registered".
-    expect(
-      screen.queryByText(/no repositories registered\./i),
-    ).not.toBeInTheDocument();
-  });
-
-  it("always renders the Global targets section, even when no repos are registered", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) =>
-        String(url).includes("/api/deploy-state/global")
-          ? jsonResponse(
-              { tools: [{ tool: "claude", primitives: [] }], skipped: [] },
-              200,
-            )
-          : jsonResponse({ repos: [] }, 200),
-      ),
-    );
-    renderView();
-
-    // Global is the baseline: its section (and a card for the detected tool) is
-    // present regardless of the registry.
-    expect(await screen.findByText(/global targets/i)).toBeInTheDocument();
-    expect(await screen.findByText("Claude Code")).toBeInTheDocument();
-  });
-
-  it("counts detected global tools and registered repos once something is deployed", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) =>
-        String(url).includes("/api/registry/repos")
-          ? jsonResponse(
-              { repos: [{ path: "/Users/me/a" }, { path: "/Users/me/b" }] },
-              200,
-            )
-          : String(url).includes("/api/deploy-state/global")
-            ? jsonResponse(
-                {
-                  tools: [
-                    { tool: "claude", primitives: [] },
-                    { tool: "codex", primitives: [] },
-                  ],
-                  skipped: [],
-                },
-                200,
-              )
-            : jsonResponse({ primitives: [], skipped: [] }, 200),
-      ),
-    );
-    renderView();
-
-    expect(await screen.findByText("4 targets")).toBeInTheDocument();
-  });
-
-  it("gives registered repos their own section, naming where they come from when there are none", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) =>
-        String(url).includes("/api/deploy-state/global")
-          ? jsonResponse({ tools: [], skipped: [] }, 200)
-          : jsonResponse({ repos: [] }, 200),
-      ),
-    );
-    renderView();
-
-    const hint = await screen.findByText(/no repositories registered\./i);
-    const heading = screen.getByRole("heading", { name: /repositories/i });
-    // The hint reads as a state of that section rather than a stray line under
-    // Global targets.
-    expect(heading.closest("section")).toContainElement(hint);
-    // The heading meta stays empty here: "none registered" would repeat the
-    // hint's own first sentence two lines above it.
-    expect(screen.queryByText(/none registered/i)).not.toBeInTheDocument();
-  });
-
-  it("drops the sidebar hint once a repo is registered", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) =>
-        String(url).includes("/api/registry/repos")
-          ? jsonResponse({ repos: [{ path: "/Users/me/a" }] }, 200)
-          : String(url).includes("/api/deploy-state/global")
-            ? jsonResponse({ tools: [], skipped: [] }, 200)
-            : jsonResponse({ primitives: [], skipped: [] }, 200),
-      ),
-    );
-    renderView();
-
-    // The card labels the repo by its path tail; its full path is the title (#211).
-    expect(await screen.findByTitle("/Users/me/a")).toBeInTheDocument();
-    expect(
-      screen.queryByText(/no repositories registered\./i),
-    ).not.toBeInTheDocument();
-  });
-
-  it("shows a deploy-state panel for each registered repo", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) =>
-        String(url).includes("/api/registry/repos")
-          ? jsonResponse(
-              { repos: [{ path: "/Users/me/a" }, { path: "/Users/me/b" }] },
-              200,
-            )
-          : String(url).includes("/api/deploy-state/global")
-            ? jsonResponse({ tools: [], skipped: [] }, 200)
-            : jsonResponse({ primitives: [], skipped: [] }, 200),
-      ),
-    );
-    renderView();
-
-    // Two repos sharing the "/Users/me" prefix must render as distinct cards;
-    // the tail-based label keeps them apart, the full path lives in the title (#211).
-    expect(await screen.findByTitle("/Users/me/a")).toBeInTheDocument();
-    expect(screen.getByTitle("/Users/me/b")).toBeInTheDocument();
-  });
-
-  it("labels two clones that share their tail with distinct, longer labels", async () => {
-    // Both cards share their last two segments (repos/agent-harness); only the
-    // whole registered set can tell them apart, so the view must feed each card
-    // its siblings and the labels must extend until they differ (#211).
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) =>
-        String(url).includes("/api/registry/repos")
-          ? jsonResponse(
-              {
-                repos: [
-                  { path: "/Users/me/clientA/repos/agent-harness" },
-                  { path: "/Users/me/clientB/repos/agent-harness" },
-                ],
-              },
-              200,
-            )
-          : String(url).includes("/api/deploy-state/global")
-            ? jsonResponse({ tools: [], skipped: [] }, 200)
-            : jsonResponse({ primitives: [], skipped: [] }, 200),
-      ),
-    );
-    renderView();
+  it("keeps two repositories that share a prefix apart, full path as the title", async () => {
+    stubServer(() => ({
+      repos: [
+        "/Users/me/clientA/repos/agent-harness",
+        "/Users/me/clientB/repos/agent-harness",
+      ],
+    }));
+    renderDeployState();
 
     expect(
       await screen.findByText("…/clientA/repos/agent-harness"),
     ).toBeInTheDocument();
     expect(
       screen.getByText("…/clientB/repos/agent-harness"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTitle("/Users/me/clientA/repos/agent-harness"),
+    ).toBeInTheDocument();
+  });
+
+  it("counts the targets once both reads have landed", async () => {
+    stubServer(() => ({
+      repos: ["/Users/me/a", "/Users/me/b"],
+      global: TWO_TOOLS,
+    }));
+    renderDeployState();
+
+    expect(await screen.findByText("4 targets")).toBeInTheDocument();
+  });
+
+  it("does not count targets before both reads have landed", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderDeployState();
+
+    // An unread target set is not a target set of zero.
+    expect(screen.queryByText(/\d+ targets?/)).toBeNull();
+    expect(
+      screen.queryByText(/no repositories registered\./i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("states plainly that nothing is deployed on a cold start", async () => {
+    stubServer(() => ({ repos: [], global: { tools: [], skipped: [] } }));
+    renderDeployState();
+
+    expect(
+      await screen.findByText(
+        "Nothing deployed — deploy a skill from Inventory",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("titles the screen with one h1", async () => {
+    stubServer(() => ({}));
+    renderDeployState();
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Deploy-state" }),
+    ).toBeInTheDocument();
+  });
+
+  it("names where repositories come from while none is registered", async () => {
+    stubServer(() => ({ repos: [], global: TWO_TOOLS }));
+    renderDeployState();
+
+    expect(
+      await screen.findByText(/no repositories registered\./i),
+    ).toBeInTheDocument();
+  });
+
+  it("drops that hint once a repository is registered", async () => {
+    stubServer(() => ({ repos: ["/Users/me/a"] }));
+    renderDeployState();
+
+    expect(await screen.findByTitle("/Users/me/a")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/no repositories registered\./i),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("Deploy-state — Release, Status and Skills", () => {
+  it("states the release, or the pair when a newer one exists", async () => {
+    stubServer(() => ({
+      repos: ["/Users/me/a", "/Users/me/b"],
+      repo: {
+        "/Users/me/a": {
+          primitives: [skill("tdd", "v0.3.2")],
+          skipped: [],
+          releaseHead: head("v0.3.2", "v0.3.4"),
+        },
+        "/Users/me/b": {
+          primitives: [skill("tdd", "v0.3.4")],
+          skipped: [],
+          releaseHead: head("v0.3.4", "v0.3.4", 0),
+        },
+      },
+    }));
+    renderDeployState();
+
+    await findRow("…/me/b");
+    await waitFor(() =>
+      expect(cellsOf("…/me/a").slice(1)).toEqual([
+        "v0.3.2 → v0.3.4",
+        "↑Behind",
+        "1",
+      ]),
+    );
+    expect(cellsOf("…/me/b").slice(1)).toEqual(["v0.3.4", "✓In sync", "1"]);
+  });
+
+  it("reads an empty target as Empty, with a dash for its release and skills", async () => {
+    stubServer(() => ({
+      global: { tools: [{ tool: "codex", primitives: [] }], skipped: [] },
+    }));
+    renderDeployState();
+
+    await findRow("Codex");
+    await waitFor(() =>
+      expect(cellsOf("Codex").slice(1)).toEqual(["—", "–Empty", "—"]),
+    );
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("never reads a target holding only an unsupported entry as empty", async () => {
+    stubServer(() => ({
+      repos: ["/Users/me/project"],
+      repo: {
+        "/Users/me/project": {
+          primitives: [],
+          skipped: [
+            {
+              reason: "unsupported-type",
+              virtualPath: "hooks/format",
+              packageType: "claude_hook",
+            },
+          ],
+        },
+      },
+    }));
+    renderDeployState();
+
+    await findRow("…/me/project");
+    await waitFor(() => expect(cellsOf("…/me/project")[2]).toBe("✓In sync"));
+    expect(screen.queryByText("Empty")).not.toBeInTheDocument();
+  });
+
+  it("reads a target holding an invalid record as Attention, never In sync", async () => {
+    stubServer(() => ({
+      repos: ["/Users/me/project"],
+      repo: {
+        "/Users/me/project": {
+          primitives: [],
+          skipped: [
+            {
+              reason: "invalid-package",
+              virtualPath: "skills/tdd",
+              packageType: "invalid",
+            },
+          ],
+        },
+      },
+    }));
+    renderDeployState();
+
+    await findRow("…/me/project");
+    await waitFor(() => expect(cellsOf("…/me/project")[2]).toBe("⚠Attention"));
+  });
+
+  it("reads every global tool as Attention while a global record needs it", async () => {
+    stubServer(() => ({
+      global: {
+        tools: [{ tool: "claude", primitives: [] }],
+        skipped: [
+          {
+            reason: "invalid-package",
+            virtualPath: "skills/tdd",
+            packageType: "invalid",
+          },
+        ],
+      },
+    }));
+    renderDeployState();
+
+    await findRow("Claude Code");
+    await waitFor(() => expect(cellsOf("Claude Code")[2]).toBe("⚠Attention"));
+  });
+
+  it("reads a target with a no-longer-released skill as Attention", async () => {
+    stubServer(() => ({
+      global: {
+        tools: [{ tool: "claude", primitives: [skill("tdd")] }],
+        skipped: [],
+      },
+      drift: {
+        global: {
+          behind: [
+            {
+              name: "tdd",
+              current: "v0.5.0",
+              latest: "v0.5.1",
+              reading: "no-longer-released",
+            },
+          ],
+        },
+      },
+    }));
+    renderDeployState();
+
+    await findRow("Claude Code");
+    await waitFor(() => expect(cellsOf("Claude Code")[2]).toBe("⚠Attention"));
+  });
+
+  it("names another origin instead of calling a target empty (#655)", async () => {
+    stubServer(() => ({
+      global: {
+        tools: [{ tool: "claude", primitives: [] }],
+        skipped: [],
+        otherOrigins: ["fimoklei/agent-harness"],
+      },
+    }));
+    renderDeployState();
+
+    await findRow("Claude Code");
+    await waitFor(() =>
+      expect(cellsOf("Claude Code")[2]).toBe("•Other origin"),
+    );
+  });
+
+  it("reads a target pinned per skill as a fact, with the release most skills sit on", async () => {
+    stubServer(() => ({
+      repos: ["/Users/me/project"],
+      repo: {
+        "/Users/me/project": {
+          primitives: [skill("tdd", "v0.3.1"), skill("jobs", "v0.3.0")],
+          skipped: [],
+          pinnedPerSkill: [
+            { release: "v0.3.1", skills: 1 },
+            { release: "v0.3.0", skills: 1 },
+          ],
+        },
+      },
+    }));
+    renderDeployState();
+
+    await findRow("…/me/project");
+    await waitFor(() =>
+      expect(cellsOf("…/me/project").slice(1)).toEqual([
+        "v0.3.1",
+        "•Pinned per skill",
+        "2",
+      ]),
+    );
+  });
+
+  it("maps the global drift onto the tool where the skill is deployed only", async () => {
+    stubServer(() => ({
+      global: TWO_TOOLS,
+      drift: {
+        global: {
+          behind: [
+            {
+              name: "tdd",
+              current: "v0.5.0",
+              latest: "v0.5.1",
+              reading: "behind",
+            },
+          ],
+        },
+      },
+    }));
+    renderDeployState();
+
+    await findRow("Codex");
+    await waitFor(() => expect(cellsOf("Claude Code")[2]).toBe("↑Behind"));
+    expect(cellsOf("Codex")[2]).toBe("–Empty");
+  });
+
+  it("does not read Behind when the only behind skill is not deployed here", async () => {
+    stubServer(() => ({
+      repos: ["/Users/me/project"],
+      repo: {
+        "/Users/me/project": { primitives: [skill("tdd")], skipped: [] },
+      },
+      drift: {
+        "/Users/me/project": {
+          behind: [
+            {
+              name: "foo",
+              current: "v1.0.0",
+              latest: "v1.1.0",
+              reading: "behind",
+            },
+          ],
+        },
+      },
+    }));
+    renderDeployState();
+
+    await findRow("…/me/project");
+    await waitFor(() => expect(cellsOf("…/me/project")[2]).toBe("✓In sync"));
+  });
+
+  it("reads a check that could not run as ?, never In sync", async () => {
+    stubServer(() => ({
+      repos: ["/Users/me/project"],
+      repo: {
+        "/Users/me/project": { primitives: [skill("tdd")], skipped: [] },
+      },
+      drift: { "/Users/me/project": { ok: false } },
+    }));
+    renderDeployState();
+
+    await findRow("…/me/project");
+    await waitFor(() => expect(cellsOf("…/me/project")[2]).toBe("?Unknown"));
+  });
+
+  it("claims no reading for a repository whose deploy-state was not read", async () => {
+    stubServer(() => ({
+      repos: ["/Users/me/project"],
+      repo: { "/Users/me/project": { status: 500, body: { message: "boom" } } },
+      drift: {
+        "/Users/me/project": {
+          behind: [
+            {
+              name: "tdd",
+              current: "v0.5.0",
+              latest: "v0.5.1",
+              reading: "behind",
+            },
+          ],
+        },
+      },
+    }));
+    renderDeployState();
+
+    await findRow("…/me/project");
+    await waitFor(() => expect(cellsOf("…/me/project")[2]).toBe("?Unknown"));
+  });
+
+  it("sums up the status on hover: the newer release and when it was compared", async () => {
+    stubServer(() => ({
+      repos: ["/Users/me/a"],
+      repo: {
+        "/Users/me/a": {
+          primitives: [skill("tdd", "v0.3.2")],
+          skipped: [],
+          releaseHead: { ...head("v0.3.2", "v0.3.4", 2), selected: 5 },
+        },
+      },
+    }));
+    renderDeployState();
+
+    await findRow("…/me/a");
+    await userEvent.hover(await within(rowOf("…/me/a")).findByText("Behind"));
+
+    expect(
+      await screen.findByText("Newer release v0.3.4: 2 of 5 skills changed"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Compared with the Harness, read just now"),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("Deploy-state — failed reads", () => {
+  it("states a failed global read at the top, with its re-read, never as no tools", async () => {
+    stubServer(() => ({
+      global: { status: 422, body: { error: "malformed" } },
+    }));
+    renderDeployState();
+
+    const notice = await screen.findByText("Global targets not read");
+    expect(notice.closest("[role=status]")).toHaveTextContent(
+      "Select Re-read Deploy-state to read the global targets again.",
+    );
+    expect(
+      screen.queryByText(/install claude code or codex/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("states a failed registry read, never the register hint", async () => {
+    stubServer(() => ({ repos: { status: 500, body: { message: "boom" } } }));
+    renderDeployState();
+
+    expect(
+      await screen.findByText("Registered repositories not read"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/no repositories registered\./i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows an install hint when no supported tool is detected, skipped entries still named", async () => {
+    stubServer(() => ({
+      global: {
+        tools: [],
+        skipped: [
+          {
+            reason: "unsupported-type",
+            virtualPath: "hooks/pre-commit",
+            packageType: "claude_hook",
+          },
+        ],
+      },
+    }));
+    renderDeployState();
+
+    expect(
+      await screen.findByText(/install claude code or codex/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/hooks\/pre-commit is deployed as/i),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("Deploy-state — Re-read and freshness", () => {
+  it("keeps the rows on screen while the slow Behind check still runs", async () => {
+    stubServer(() => ({
+      global: TWO_TOOLS,
+      drift: { global: new Promise(() => {}) },
+    }));
+    renderDeployState();
+    await findRow("Codex");
+
+    // Past the 1.3 s after which a running read draws skeleton rows.
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    expect(rowOf("Codex")).toBeInTheDocument();
+    expect(grid()).not.toHaveAttribute("aria-busy");
+  });
+
+  it("re-reads every target and bypasses the 5-minute Behind cache", async () => {
+    const fetchMock = stubServer(() => ({
+      repos: ["/Users/me/a"],
+      global: TWO_TOOLS,
+    }));
+    renderDeployState();
+    await findRow("…/me/a");
+    await waitFor(() => expect(cellsOf("…/me/a")[2]).toBe("–Empty"));
+    const driftReads = () =>
+      fetchMock.mock.calls.filter(([url]) =>
+        String(url).startsWith("/api/drift"),
+      ).length;
+    const before = driftReads();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Re-read Deploy-state" }),
+    );
+
+    // Both drift checks run again, well inside their five minutes.
+    await waitFor(() => expect(driftReads()).toBe(before + 2));
+  });
+
+  it("dates the oldest reading in band 2", async () => {
+    stubServer(() => ({ global: TWO_TOOLS }));
+    renderDeployState();
+
+    expect(await screen.findByText("Read just now")).toBeInTheDocument();
+  });
+});
+
+describe("Deploy-state — rows and their menu", () => {
+  it("opens Deploy skill from a row's menu in the Inventory", async () => {
+    stubServer(() => ({ global: TWO_TOOLS }));
+    renderDeployState();
+
+    await userEvent.click(
+      within(await findRow("Codex")).getByRole("button", {
+        name: "Actions for Codex",
+      }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Deploy skill" }),
+    );
+
+    expect(screen.getByText("inventory view")).toBeInTheDocument();
+  });
+
+  it("keeps rows free of buttons other than the ⋮ menu", async () => {
+    stubServer(() => ({ global: TWO_TOOLS }));
+    renderDeployState();
+
+    const row = await findRow("Claude Code");
+    expect(
+      within(row)
+        .getAllByRole("button")
+        .map((button) => button.getAttribute("aria-label")),
+    ).toEqual(["Actions for Claude Code"]);
+  });
+
+  it("filters the table by status and says why no row shows", async () => {
+    stubServer(() => ({ global: TWO_TOOLS }));
+    renderDeployState();
+    await findRow("Codex");
+    await waitFor(() => expect(cellsOf("Claude Code")[2]).toBe("✓In sync"));
+
+    await userEvent.click(screen.getByRole("button", { name: /^Filter/ }));
+    await userEvent.click(
+      await screen.findByRole("menuitemcheckbox", { name: "Behind" }),
+    );
+    await userEvent.keyboard("{Escape}");
+
+    expect(
+      await screen.findByText(
+        "No targets match the filters. Select Filter to show more targets.",
+      ),
     ).toBeInTheDocument();
   });
 });

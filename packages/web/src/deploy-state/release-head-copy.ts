@@ -1,4 +1,4 @@
-// Every word a target card's Release head shows (ADR-0025, copy.md). Pure and
+// Every word a target's Release, Status hover card and pane state (ADR-0025, copy.md). Pure and
 // clock-injected, so the read time is testable.
 import { ago } from "../harness/harness-view-model";
 import {
@@ -10,10 +10,6 @@ import type {
   PinnedPerSkill,
   ReleaseHead,
 } from "./use-deploy-state";
-
-// The mono data step in the card header, before the status chip.
-export const releaseLabel = (head: ReleaseHead): string =>
-  `Release ${head.release}`;
 
 // The meta block's first line. Null for a target on the latest release, whose
 // card carries the read time alone.

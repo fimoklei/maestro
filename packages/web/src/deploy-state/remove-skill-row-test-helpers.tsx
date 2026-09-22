@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { vi } from "vitest";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import { ToastHost } from "../ui/toast";
-import { DeployStateList } from "./deploy-state-list";
+import { SelectedSkills } from "./selected-skills";
 
 // Sonner keeps its toasts in a module-global store, so one made in a test
 // re-renders into the next test's host. Dismissed, it does not come back.
@@ -107,9 +107,8 @@ export function renderRow({
   // removal's success is read outside the table it emptied.
   const list = (primitives: (typeof tdd)[]) => (
     <>
-      <DeployStateList
+      <SelectedSkills
         primitives={primitives}
-        skipped={[]}
         target={target}
         onRemoved={onRemoved}
       />

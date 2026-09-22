@@ -1,8 +1,8 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DeployStatePanel } from "../deploy-state/deploy-state-panel";
-import { GlobalDeployStatePanel } from "../deploy-state/global-deploy-state-panel";
+import { DeployStateView } from "../deploy-state/deploy-state-view";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import { DeploySkillAction } from "./deploy-skill-action";
 
@@ -604,10 +604,13 @@ describe("DeploySkillAction", () => {
     ).toHaveAttribute("aria-disabled", "true");
   });
 
-  it("refreshes the repo deploy-state panel after a successful deploy", async () => {
+  it("refreshes the Deploy-state screen after a successful deploy", async () => {
     // fetch sequence: deploy-state (empty) → deploy → deploy-state (skill at tag).
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
+      if (url === "/api/registry/repos") {
+        return jsonResponse({ repos: [{ path: "/projects/alpha" }] });
+      }
       if (url.startsWith("/api/deploy-state")) {
         return fetchMock.mock.calls.filter((c) =>
           String(c[0]).startsWith("/api/deploy-state"),
@@ -625,7 +628,7 @@ describe("DeploySkillAction", () => {
     vi.stubGlobal("fetch", fetchMock);
     renderAction(
       <>
-        {/* Named, because the empty panel offers a `Deploy a skill` of its own (#472). */}
+        {/* Named, because Deploy-state carries controls of its own (#472). */}
         <section aria-label="Pane action">
           <DeploySkillAction
             skillName="tdd"
@@ -633,12 +636,14 @@ describe("DeploySkillAction", () => {
             registryReady
           />
         </section>
-        <DeployStatePanel repo="/projects/alpha" onStartDeploy={() => {}} />
+        <MemoryRouter>
+          <DeployStateView />
+        </MemoryRouter>
       </>,
     );
 
     // The panel has loaded and reads empty before the deploy.
-    expect(await screen.findByText("● Empty")).toBeInTheDocument();
+    expect(await screen.findByText("Empty")).toBeInTheDocument();
 
     await userEvent.click(
       within(screen.getByRole("region", { name: "Pane action" })).getByRole(
@@ -647,8 +652,10 @@ describe("DeploySkillAction", () => {
       ),
     );
 
-    // The panel updates without a reload: the deploy invalidated its query.
-    expect(await screen.findByText("v0.5.1")).toBeInTheDocument();
+    // The screen updates without a reload: the deploy invalidated its query.
+    expect(
+      await screen.findByRole("gridcell", { name: "1" }),
+    ).toBeInTheDocument();
   });
 
   it("refreshes the repo drift badge after a successful deploy", async () => {
@@ -656,6 +663,9 @@ describe("DeploySkillAction", () => {
     // it too, or a freshly deployed skill keeps its stale badge (#48).
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
+      if (url === "/api/registry/repos") {
+        return jsonResponse({ repos: [{ path: "/projects/alpha" }] });
+      }
       if (url.includes("/api/drift")) {
         return fetchMock.mock.calls.filter((c) =>
           String(c[0]).includes("/api/drift"),
@@ -685,28 +695,40 @@ describe("DeploySkillAction", () => {
     vi.stubGlobal("fetch", fetchMock);
     renderAction(
       <>
-        <DeploySkillAction
-          skillName="tdd"
-          repos={[{ path: "/projects/alpha" }]}
-          registryReady
-        />
-        <DeployStatePanel repo="/projects/alpha" onStartDeploy={() => {}} />
+        <section aria-label="Pane action">
+          <DeploySkillAction
+            skillName="tdd"
+            repos={[{ path: "/projects/alpha" }]}
+            registryReady
+          />
+        </section>
+        <MemoryRouter>
+          <DeployStateView />
+        </MemoryRouter>
       </>,
     );
 
     expect(await screen.findByText(/unknown/i)).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
+    await userEvent.click(
+      within(screen.getByRole("region", { name: "Pane action" })).getByRole(
+        "button",
+        { name: "Deploy skill" },
+      ),
+    );
 
     // The drift query refetched because the deploy invalidated it.
     expect(await screen.findByText("Behind")).toBeInTheDocument();
   });
 
-  it("refreshes the global deploy-state panel after a global deploy", async () => {
+  it("refreshes the global targets on Deploy-state after a global deploy", async () => {
     // A global deploy invalidates the global query, so the Global panel
     // refetches without a reload (J07).
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
+      if (url === "/api/registry/repos") {
+        return jsonResponse({ repos: [] });
+      }
       if (url.startsWith("/api/deploy-state/global")) {
         return fetchMock.mock.calls.filter((c) =>
           String(c[0]).startsWith("/api/deploy-state/global"),
@@ -734,16 +756,18 @@ describe("DeploySkillAction", () => {
     vi.stubGlobal("fetch", fetchMock);
     renderAction(
       <>
-        {/* Named, because the empty panel offers a `Deploy a skill` of its own (#472). */}
+        {/* Named, because Deploy-state carries controls of its own (#472). */}
         <section aria-label="Pane action">
           <DeploySkillAction skillName="tdd" repos={[]} registryReady />
         </section>
-        <GlobalDeployStatePanel onStartDeploy={() => {}} />
+        <MemoryRouter>
+          <DeployStateView />
+        </MemoryRouter>
       </>,
     );
 
     // The panel has loaded and reads empty before the deploy.
-    expect(await screen.findByText("● Empty")).toBeInTheDocument();
+    expect(await screen.findByText("Empty")).toBeInTheDocument();
 
     await userEvent.click(
       within(screen.getByRole("region", { name: "Pane action" })).getByRole(
@@ -752,7 +776,9 @@ describe("DeploySkillAction", () => {
       ),
     );
 
-    expect(await screen.findByText("v0.5.1")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("gridcell", { name: "1" }),
+    ).toBeInTheDocument();
   });
 
   it("refreshes the global drift badge after a global deploy", async () => {
@@ -760,6 +786,9 @@ describe("DeploySkillAction", () => {
     // global drift query, not only deploy-state (#48).
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
+      if (url === "/api/registry/repos") {
+        return jsonResponse({ repos: [] });
+      }
       if (url.includes("/api/drift/global")) {
         return fetchMock.mock.calls.filter((c) =>
           String(c[0]).includes("/api/drift/global"),
@@ -794,14 +823,23 @@ describe("DeploySkillAction", () => {
     vi.stubGlobal("fetch", fetchMock);
     renderAction(
       <>
-        <DeploySkillAction skillName="tdd" repos={[]} registryReady />
-        <GlobalDeployStatePanel onStartDeploy={() => {}} />
+        <section aria-label="Pane action">
+          <DeploySkillAction skillName="tdd" repos={[]} registryReady />
+        </section>
+        <MemoryRouter>
+          <DeployStateView />
+        </MemoryRouter>
       </>,
     );
 
     expect(await screen.findByText(/unknown/i)).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
+    await userEvent.click(
+      within(screen.getByRole("region", { name: "Pane action" })).getByRole(
+        "button",
+        { name: "Deploy skill" },
+      ),
+    );
 
     expect(await screen.findByText("Behind")).toBeInTheDocument();
   });
