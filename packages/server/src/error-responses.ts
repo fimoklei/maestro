@@ -5,6 +5,7 @@
 
 import type {
   BrowseError,
+  ChooseFolderError,
   ConnectInventoryError,
   DeleteLocalSkillError,
   DeploySkillError,
@@ -393,4 +394,12 @@ export const browseErrorResponses: ErrorTable<BrowseError> = {
   "not-a-directory": { status: 400 },
   // In bounds and a directory, but unreadable — 422, not 403/404.
   unreadable: { status: 422 },
+};
+
+// The sentences live in `ui/path-field-copy.ts`. 502 for a failure: the helper
+// ran and its answer did not hold (ADR-0032 §6).
+export const chooseFolderErrorResponses: ErrorTable<ChooseFolderError> = {
+  "chooser-unavailable": { status: 409 },
+  "chooser-busy": { status: 409 },
+  "chooser-failed": { status: 502 },
 };

@@ -1,9 +1,9 @@
 // Probes each tool's own config file under HOME, so a past deploy can never read
 // back as an installed tool (ADR-0011, #127). HOME is injected, so a test or
 // smoke run never probes the real home (ADR-0010).
-import { stat } from "node:fs/promises";
 import { join } from "node:path";
 import { DEPLOY_TOOLS, type SupportedTool } from "../deploy/deploy-tools";
+import { isFile } from "../filesystem/is-file";
 import { resolveHomeDirectory } from "../home-directory";
 import type { ToolPresencePort } from "./tool-presence-port";
 
@@ -26,15 +26,5 @@ export class ToolPresenceAdapter implements ToolPresencePort {
       }
     }
     return detected;
-  }
-}
-
-// A missing marker is false, not an error; a directory there is not the config
-// file, so it is not a signal either.
-async function isFile(path: string): Promise<boolean> {
-  try {
-    return (await stat(path)).isFile();
-  } catch {
-    return false;
   }
 }

@@ -117,6 +117,18 @@ export {
   NodeCopyTreeFs,
 } from "./filesystem/copy-tree-fs";
 export {
+  ChooseFolder,
+  type ChooseFolderError,
+  type ChooseFolderResult,
+} from "./folder-chooser/choose-folder";
+export type {
+  FolderChooserPort,
+  HelperOutcome,
+  RunHelper,
+} from "./folder-chooser/folder-chooser-port";
+export { MacosFolderChooser } from "./folder-chooser/macos-folder-chooser";
+export { runHelper } from "./folder-chooser/run-helper";
+export {
   DeleteLocalSkill,
   type DeleteLocalSkillError,
   type DeleteLocalSkillResult,

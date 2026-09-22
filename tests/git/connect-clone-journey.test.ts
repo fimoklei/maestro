@@ -39,6 +39,7 @@ import { centralInventoryPath } from "../helpers/real-registry";
 import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
 import { stubDrift } from "../helpers/stub-drift";
+import { stubFolderChooser } from "../helpers/stub-folder-chooser";
 import { stubHarness } from "../helpers/stub-harness";
 import { stubImport } from "../helpers/stub-import";
 import { stubPromotes } from "../helpers/stub-promote";
@@ -159,6 +160,7 @@ describe("joining a Harness by its GitHub url", () => {
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
       browse: new BrowseFilesystem({ fs, homeRoot: () => home }),
+      folderChooser: stubFolderChooser(),
       update: stubUpdate(),
       enforceOriginHost: false,
     });

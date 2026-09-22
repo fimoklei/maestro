@@ -16,6 +16,9 @@ export const connectBodySchema = z.object({
 
 export const browseBodySchema = z.object({ path: z.string() });
 
+// The field's current value: the folder the chooser opens on (ADR-0032 §2).
+export const chooseFolderBodySchema = z.object({ path: z.string() });
+
 // The destination is never sent: the connected Harness is resolved server-side.
 // `name` absent asks for Maestro's proposal (#576).
 export const importBodySchema = z.object({

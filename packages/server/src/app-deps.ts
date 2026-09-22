@@ -1,5 +1,6 @@
 import type {
   BrowseFilesystem,
+  ChooseFolder,
   ConnectInventory,
   DeleteLocalSkill,
   DeploySkill,
@@ -38,6 +39,8 @@ export type AppDeps = {
   connect: ConnectInventory;
   scaffold: ScaffoldHarness;
   browse: BrowseFilesystem;
+  // Its chooser is null on a platform with no helper (ADR-0032 §7).
+  folderChooser: ChooseFolder;
   // Serves both per-repo and global routes, so tool presence is required —
   // omitting it is a compile error here, not a 500 discovered later (#187).
   deployState: GlobalDeployStateReader;
