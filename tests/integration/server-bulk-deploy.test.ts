@@ -29,11 +29,10 @@ import { stubScaffold } from "../helpers/stub-scaffold";
 import { stubUpdate } from "../helpers/stub-update";
 
 // Integration lane: the bulk-deploy route over the real Hono app, driving the
-// real DeploySkill (its guards intact) once per staged skill. Only the ApmDriver
-// and the destination classifier are faked, per skill, so continue-and-harvest,
-// attention-marking, and failure-merging are exercised end to end. Each staged
-// skill joins one Selection on one root package, so the run's second install
-// carries the first one's name too (ADR-0031).
+// real DeploySkill (its guards intact). Only the ApmDriver and the destination
+// classifier are faked, per skill, so sorting the names, attention-marking and
+// failure-merging are exercised end to end. Every name that passes its guards
+// goes into one install on one root package (ADR-0031, #1039).
 
 describe("bulk deploy HTTP route", () => {
   let home: string;
@@ -82,8 +81,8 @@ describe("bulk deploy HTTP route", () => {
     const diverged = new Set(options?.divergedNames ?? []);
     const fails = new Set(options?.failNames ?? []);
     const locks = new InFlightLocks();
-    // A failing name never lands, so it only ever appears in the install that
-    // stages it: the Selection write fails and the lockfile keeps what landed.
+    // An install carrying a failing name fails as a whole, as real apm's does:
+    // the Selection write fails and the lockfile keeps what was there.
     const landing = rootPackageApm({ globalRoot });
     const apm = {
       ...landing,
@@ -160,7 +159,7 @@ describe("bulk deploy HTTP route", () => {
       update: stubUpdate(),
       enforceOriginHost: false,
     });
-    return { app };
+    return { app, installs: landing.installs };
   }
 
   const post = (app: ReturnType<typeof makeApp>["app"], body: unknown) =>
@@ -170,8 +169,8 @@ describe("bulk deploy HTTP route", () => {
       body: JSON.stringify(body),
     });
 
-  it("deploys every staged skill to the target and reports the successes", async () => {
-    const { app } = makeApp();
+  it("deploys every staged skill to the target in one install", async () => {
+    const { app, installs } = makeApp();
 
     const res = await post(app, {
       names: ["tdd", "review"],
@@ -188,9 +187,31 @@ describe("bulk deploy HTTP route", () => {
       attention: [],
       failed: [],
     });
+    expect(installs.map((install) => install.skills)).toEqual([
+      ["tdd", "review"],
+    ]);
   });
 
-  it("keeps going past a failure and harvests every outcome", async () => {
+  it("sorts a refused skill out and installs the rest together", async () => {
+    const { app, installs } = makeApp({ divergedNames: ["review"] });
+
+    const res = await post(app, {
+      names: ["tdd", "review", "docs"],
+      target: { kind: "global" },
+    });
+
+    const body = (await res.json()) as BulkDeployReport;
+    expect(body.deployed).toEqual([
+      { name: "tdd", version: "v0.5.1" },
+      { name: "docs", version: "v0.5.1" },
+    ]);
+    expect(body.attention.map((row) => row.name)).toEqual(["review"]);
+    expect(installs.map((install) => install.skills)).toEqual([
+      ["tdd", "docs"],
+    ]);
+  });
+
+  it("fails every installed name together when the one install fails", async () => {
     const { app } = makeApp({ divergedNames: ["review"], failNames: ["docs"] });
 
     const res = await post(app, {
@@ -200,7 +221,7 @@ describe("bulk deploy HTTP route", () => {
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as BulkDeployReport;
-    expect(body.deployed).toEqual([{ name: "tdd", version: "v0.5.1" }]);
+    expect(body.deployed).toEqual([]);
     expect(body.attention).toEqual([
       {
         name: "review",
@@ -211,7 +232,10 @@ describe("bulk deploy HTTP route", () => {
         copyReceipt: expect.stringMatching(/^[0-9a-f]{64}$/),
       },
     ]);
-    expect(body.failed).toEqual([{ error: "deploy-failed", names: ["docs"] }]);
+    // One install: docs's failure is tdd's too (apm-behavior.md § A batch).
+    expect(body.failed).toEqual([
+      { error: "deploy-failed", names: ["tdd", "docs"] },
+    ]);
     // No raw apm output (which may carry a token) leaks into the report.
     expect(JSON.stringify(body)).not.toContain("token in stderr");
   });
@@ -256,12 +280,17 @@ describe("bulk deploy HTTP route", () => {
     expect(await globalNames(app)).toEqual(["tdd@v0.5.1", "review@v0.5.1"]);
   });
 
-  it("leaves the failed skill out of the baseline while the rest lands", async () => {
-    const { app } = makeApp({ failNames: ["review"] });
+  it("leaves the baseline as it was when the one install fails", async () => {
+    const { app } = makeApp();
+    await post(app, { names: ["tdd"], target: { kind: "global" } });
+    const failing = makeApp({ failNames: ["review"] });
 
-    await post(app, { names: ["tdd", "review"], target: { kind: "global" } });
+    await post(failing.app, {
+      names: ["docs", "review"],
+      target: { kind: "global" },
+    });
 
-    expect(await globalNames(app)).toEqual(["tdd@v0.5.1"]);
+    expect(await globalNames(failing.app)).toEqual(["tdd@v0.5.1"]);
   });
 
   it("returns 400 for a body without a names array", async () => {

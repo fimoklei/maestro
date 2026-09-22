@@ -1,0 +1,13 @@
+[*] Created apm.yml
+[i] Targets set: claude, codex (persisted to apm.yml)
+[*] Validating 1 package...
+[+] fimoklei/agent-harness#v0.6.0
+[*] Updated apm.yml with 1 new package(s)
+[>] Installing 1 new package...
+[>] Resolving fimoklei/agent-harness...
+[i] Targets: claude, codex  (source: --target flag)
+  [+] fimoklei/agent-harness #v0.6.0 @f8208f12
+  |-- 3 skill(s) integrated -> .agents/skills/, .claude/skills/
+[i] Added apm_modules/ to .gitignore
+
+[*] Installed 1 APM dependency in 2.8s.
