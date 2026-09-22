@@ -30,3 +30,22 @@ export const NO_RELEASED_SKILLS = {
   message:
     "Inventory shows skills from the latest release. Open Harness, then create a release to add skills.",
 } as const;
+
+// The Inventory's band 2 and table (#1040). Control labels come from
+// CONTEXT.md; a blocked control names its cause in five words or fewer.
+export const SEARCH_LABEL = "Search the Inventory";
+export const REREAD_LABEL = "Re-read Inventory";
+export const FILTER_LABEL = "Filter";
+export const DISPLAY_LABEL = "Display";
+export const NO_SKILLS_YET = "no skills yet";
+export const TABLE_LABEL = "Inventory table";
+export const STAGE_COLUMN_LABEL = "Select for bulk deploy";
+export const stageRowLabel = (name: string) => `Select ${name} for bulk deploy`;
+
+// The group header of rows whose status has not answered yet (CONTEXT.md → Read).
+export const NOT_READ_YET = "Not read yet";
+
+export const NO_SEARCH_MATCH =
+  "No skills match the search. Clear the search box to see every skill.";
+export const NO_FILTER_MATCH =
+  "No skills match the filters. Select Filter to show more skills.";

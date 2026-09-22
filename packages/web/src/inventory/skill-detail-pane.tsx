@@ -4,6 +4,7 @@ import { versionColor } from "../drift/version-color";
 import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
 import { HOVER_TRANSITION } from "../ui/hover-transition";
+import { MachineValue } from "../ui/machine-value";
 import { TypeTag } from "../ui/type-tag";
 import type { SkillDeployment } from "./skill-deployments";
 import type { Primitive } from "./use-inventory";
@@ -197,8 +198,8 @@ function DeployedRow({ deployment }: { deployment: SkillDeployment }) {
         <span className="sr-only">Up to date</span>
       ) : null}
       <span className="flex-1 truncate text-fg-2">{label}</span>
-      <span className={cn("font-mono", versionColor[status])}>
-        · release {release}
+      <span className={versionColor[status]}>
+        · release <MachineValue>{release}</MachineValue>
       </span>
       {chip ? <Chip tone={chip.tone}>{chip.label}</Chip> : null}
     </li>
