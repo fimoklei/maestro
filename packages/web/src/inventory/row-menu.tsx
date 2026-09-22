@@ -7,14 +7,14 @@ export type RowAction = "deploy" | "update" | "remove";
 
 // A row's ⋮ menu (#992). Shown on hover, on the row the keyboard is on, and
 // always where nothing hovers; the grid keeps it out of the Tab order.
-export function RowMenu({
+export function RowMenu<A extends string = RowAction>({
   name,
   items,
   onAction,
 }: {
   name: string;
-  items: readonly { action: RowAction; label: string }[];
-  onAction: (action: RowAction) => void;
+  items: readonly { action: A; label: string }[];
+  onAction: (action: A) => void;
 }) {
   return (
     <ActionsMenu

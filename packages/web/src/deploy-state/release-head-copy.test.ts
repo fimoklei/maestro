@@ -5,7 +5,6 @@ import {
   extraFilesLine,
   pinnedTagsLine,
   RELEASE_NOT_ADOPTED,
-  releaseLabel,
   releaseSentence,
   unfinishedOperationNotice,
 } from "./release-head-copy";
@@ -21,12 +20,6 @@ const head = (over: Partial<ReleaseHead> = {}): ReleaseHead => ({
   selected: 5,
   comparedAt: "2026-09-12T09:59:30.000Z",
   ...over,
-});
-
-describe("releaseLabel", () => {
-  it("names the release the target follows", () => {
-    expect(releaseLabel(head())).toBe("Release v0.3.2");
-  });
 });
 
 describe("releaseSentence", () => {

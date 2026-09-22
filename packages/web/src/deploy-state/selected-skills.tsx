@@ -1,65 +1,33 @@
 import type { RemoveOutcome } from "@maestro/core";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { EllipsisVertical } from "lucide-react";
+import { type Ref, useEffect, useState } from "react";
 import { HttpError } from "../api/http";
 import {
-  type DriftStatus,
   type DriftViewModel,
   driftViewModel,
   lagsPin,
 } from "../drift/drift-view-model";
-import { versionColor } from "../drift/version-color";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { ActionsMenu } from "../ui/actions-menu";
-import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
+import { MachineValue } from "../ui/machine-value";
 import { showSuccess } from "../ui/toast";
 import { type DeployStateNotice, removeNotice } from "./notice-copy";
-import { copyChipText, extraFilesLine } from "./release-head-copy";
 import { removalAnnouncement } from "./removal-announcement";
 import { removalOutcome } from "./removal-outcome";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
 import { removePreflightView } from "./remove-preflight-view";
 import { RemoveSkillDialog } from "./remove-skill-dialog";
 import { restatedCost } from "./restated-cost";
-import {
-  skippedEntryKey,
-  skippedEntryText,
-  skippedNeedsAttention,
-} from "./skipped-entry-text";
-import type { DeployedPrimitive, SkippedEntry } from "./use-deploy-state";
+import { type SkillMark, skillMark } from "./skill-mark";
+import type { DeployedPrimitive } from "./use-deploy-state";
 import { useRemoveDeployedSkill } from "./use-remove-deployed-skill";
 import {
   type RemovePreflight,
   removePreflightQueryOptions,
   useRemovePreflight,
 } from "./use-remove-preflight";
-
-// Per-skill drift badge. State is carried in text, never colour alone (J04);
-// nothing renders while pending. *Older tag* is retired with the per-skill
-// release it implied (ADR-0031, #956).
-const driftBadge: Partial<
-  Record<
-    DriftStatus,
-    { tone: "ok" | "drift" | "dim"; label: string; hint?: string }
-  >
-> = {
-  behind: { tone: "drift", label: "Behind" },
-  "no-longer-released": {
-    tone: "drift",
-    label: "No longer released",
-    hint: "This deployed skill is absent from the latest release",
-  },
-  "up-to-date": { tone: "ok", label: "Up to date" },
-  unknown: { tone: "dim", label: "Unknown" },
-  // Distinct label + hint so a reachability failure reads as unreached, not a
-  // generic unknown.
-  unverified: {
-    tone: "dim",
-    label: "Unverified",
-    hint: "Could not reach the Harness location to check for updates",
-  },
-};
 
 // The target is provably clean. Read after an attempt that already failed, it
 // says that attempt landed: apm can remove a skill and still fail to prove it,
@@ -83,61 +51,52 @@ const removalFailure = (error: unknown): RemovalNews => ({
   outcome: removalOutcome(error),
 });
 
-function DriftBadge({ status }: { status: DriftStatus }) {
-  const badge = driftBadge[status];
-  if (badge === undefined) {
-    return null;
-  }
+// A shape, so the reading survives without colour; its word is its name.
+function Mark({ mark }: { mark: SkillMark | null }) {
   return (
-    <Chip tone={badge.tone} title={badge.hint}>
-      {badge.label}
-    </Chip>
+    <span className="inline-flex w-4 flex-none justify-center">
+      {mark === null ? null : (
+        <span
+          role="img"
+          aria-label={mark.word}
+          title={mark.hint ?? mark.word}
+          className={
+            mark.family === "attention"
+              ? "text-amber-11"
+              : mark.family === "good"
+                ? "text-green-11"
+                : "text-gray-11"
+          }
+        >
+          {mark.glyph}
+        </span>
+      )}
+    </span>
   );
 }
 
-// The copy's own reading, beside the drift one: a row can be up to date and
-// still hold work the next install would overwrite (#931).
-function CopyChip({ copy }: { copy: DeployedPrimitive["copy"] }) {
-  if (copy === undefined) {
-    return null;
-  }
-  const { label, hint } = copyChipText(copy);
-  return (
-    <Chip tone="drift" title={hint}>
-      {label}
-    </Chip>
-  );
-}
-
-// Presentational rows for one target. A genuinely empty target renders no
-// body — the card header's "● empty" chip already states it. Pending default
-// avoids a spurious badge before the drift query resolves.
+// Pending default avoids a spurious mark before the drift query resolves.
 const PENDING_DRIFT = driftViewModel({ data: undefined, isError: false });
 
-export function DeployStateList({
+// A target's Selected skills in its detail pane (#993): one 32px row per
+// skill carrying one mark, and the removal flow behind each row's menu.
+export function SelectedSkills({
   primitives,
-  skipped,
   drift = PENDING_DRIFT,
-  headRelease,
-  extraFiles,
   target,
   onRemoved,
+  headingRef,
 }: {
   primitives: DeployedPrimitive[];
-  skipped: SkippedEntry[];
   drift?: DriftViewModel;
-  // How many recorded files belong to no selected skill. A fact under the rows,
-  // in the shape of the skipped list — never a chip, never its own card (#950).
-  extraFiles?: number;
-  // The release the whole target follows. A row states its own release only
-  // where it disagrees with this one, so one release is stated once (ADR-0031).
-  headRelease?: string;
   // Required, not optional: a global target's tools must be present or the
   // confirmation can't render, and an optional prop could drop them (#338).
   target: RemoveDialogTarget;
   // Called after the dialog is gone — a successful removal destroys the
   // trigger the modal's own focus-restore would otherwise aim at.
   onRemoved?: () => void;
+  /** Where the owner sends focus once a removed row is gone. */
+  headingRef?: Ref<HTMLHeadingElement>;
 }) {
   const [removing, setRemoving] = useState<string | null>(null);
   // Held here, not read off the mutation: a retry clears the mutation's error
@@ -161,61 +120,74 @@ export function DeployStateList({
     }
   }, [justRemoved, onRemoved]);
 
-  // Genuinely nothing — a skipped-only target still falls through to its
-  // warning below, and a card just emptied by its own removal shows the trace.
-  if (
-    primitives.length === 0 &&
-    skipped.length === 0 &&
-    (extraFiles ?? 0) === 0
-  ) {
-    return null;
-  }
-
   // Behind names with no matching deployed skill — surfaced, never dropped.
   const orphans = drift.orphanBehind(
     primitives.map((primitive) => primitive.name),
   );
 
   return (
-    <div className="py-1.5">
-      {primitives.map((primitive) => {
-        const status = drift.skillStatus(primitive.name);
-        const latest = drift.latest(primitive.name);
-        return (
-          <div
-            key={primitive.name}
-            // Wraps rather than crushing the name: the version column drops
-            // first, then the chips move under the name (ADR-0031).
-            className="flex flex-wrap items-center gap-x-3 gap-y-1 px-card-x py-row-y"
-          >
-            <span className="min-w-[8ch] flex-1 truncate font-mono text-data text-fg">
-              {primitive.name}
-            </span>
-            {primitive.version === headRelease ? null : (
-              <span className={cn("font-mono text-tag", versionColor[status])}>
-                {lagsPin(status) && latest
-                  ? `${primitive.version} → ${latest}`
-                  : primitive.version}
+    <section className="mt-section">
+      <h3
+        ref={headingRef}
+        tabIndex={-1}
+        className="m-0 mb-inline font-normal text-gray-11 text-meta focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2"
+      >
+        Selected skills{" "}
+        <span className="text-gray-12 tabular-nums">{primitives.length}</span>
+      </h3>
+      <ul className="m-0 list-none border-gray-6 border-t p-0">
+        {primitives.map((primitive) => {
+          const status = drift.skillStatus(primitive.name);
+          const latest = drift.latest(primitive.name);
+          return (
+            <li
+              key={primitive.name}
+              className="flex h-row items-center gap-inline border-gray-6 border-b text-row"
+            >
+              <Mark mark={skillMark(primitive.copy, status)} />
+              <span className="min-w-0 flex-1 truncate text-gray-12">
+                {primitive.name}
               </span>
-            )}
-            <CopyChip copy={primitive.copy} />
-            <DriftBadge status={status} />
-            <ActionsMenu
-              label={`Actions for ${primitive.name}`}
-              items={[
-                {
-                  label: "Remove skill",
-                  onSelect: () => {
-                    remove.reset();
-                    setNews(null);
-                    setRemoving(primitive.name);
+              <span className="text-gray-11">
+                <MachineValue>
+                  {lagsPin(status) && latest
+                    ? `${primitive.version} → ${latest}`
+                    : primitive.version}
+                </MachineValue>
+              </span>
+              <ActionsMenu
+                label={`Actions for ${primitive.name}`}
+                trigger={
+                  <button
+                    type="button"
+                    className={cn(
+                      // 24×24, the pointer floor (WCAG 2.2 SC 2.5.8).
+                      "inline-flex size-6 cursor-pointer items-center justify-center rounded-control text-gray-11 hover:bg-gray-4 hover:text-gray-12",
+                      "focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2",
+                    )}
+                  >
+                    <EllipsisVertical
+                      aria-hidden="true"
+                      strokeWidth={1.5}
+                      className="size-4"
+                    />
+                  </button>
+                }
+                items={[
+                  {
+                    label: "Remove skill",
+                    onSelect: () => {
+                      remove.reset();
+                      setNews(null);
+                      setRemoving(primitive.name);
+                    },
                   },
-                },
-              ]}
-            />
-          </div>
-        );
-      })}
+                ]}
+              />
+            </li>
+          );
+        })}
+      </ul>
       {removing !== null ? (
         <RemoveSkillDialog
           skillName={removing}
@@ -298,29 +270,10 @@ export function DeployStateList({
         />
       ) : null}
       {orphans.length > 0 && (
-        <p className="px-card-x py-row-y text-amber-ink text-tag">
+        <p className="mt-inline text-amber-11 text-meta">
           Reported behind, not deployed here: {orphans.join(", ")}
         </p>
       )}
-      {extraFiles === undefined || extraFiles === 0 ? null : (
-        <p className="px-card-x py-row-y text-dim text-tag">
-          {extraFilesLine(extraFiles)}
-        </p>
-      )}
-      {skipped.length > 0 && (
-        <ul className="space-y-1 px-card-x py-row-y text-tag">
-          {skipped.map((entry, index) => (
-            <li
-              key={skippedEntryKey(entry, index)}
-              className={
-                skippedNeedsAttention(entry) ? "text-amber-ink" : "text-dim"
-              }
-            >
-              {skippedEntryText(entry)}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    </section>
   );
 }
