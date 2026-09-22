@@ -5,9 +5,9 @@ import { cn } from "./cn";
 // (ADR-0033 §6). Presentational: the caller folds its own result into groups,
 // and the worst one is drawn first whatever order it arrives in.
 
-export type ReportTone = "failed" | "attention" | "neutral" | "good";
+type ReportTone = "failed" | "attention" | "neutral" | "good";
 
-export type ReportRow = {
+type ReportRow = {
   name: string;
   /** Why this row reads the way it does, in one sentence. */
   detail?: string;
