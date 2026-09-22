@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -21,7 +21,7 @@ function RereadTrigger() {
 // is the precondition for asserting anything about its deploy control. Returns
 // the pane's scope — the standing strip above the table shares its labels (#473).
 async function openPane(name: string) {
-  await userEvent.click(await screen.findByRole("button", { name }));
+  await userEvent.click(await screen.findByRole("gridcell", { name }));
   return within(await screen.findByRole("complementary"));
 }
 
@@ -87,9 +87,9 @@ describe("InventoryPanel", () => {
     expect(screen.getByText("Diagnosis loop")).toBeInTheDocument();
   });
 
-  it("shows a type tag on each skill row", async () => {
-    // The view is type-aware (TypeTag per primitive) though only skills render
-    // today, so a future hook/mcp/bundle slots in additively (#80).
+  it("names each skill row's type", async () => {
+    // The view is type-aware (a Type column) though only skills render today,
+    // so a future hook/mcp/bundle slots in additively (#80, #987).
     stubApi(
       [
         { type: "skill", name: "tdd", description: "TDD loop" },
@@ -100,7 +100,7 @@ describe("InventoryPanel", () => {
     renderPanel();
 
     await screen.findByText("tdd");
-    expect(screen.getAllByText("skill")).toHaveLength(2);
+    expect(screen.getAllByText("Skill")).toHaveLength(2);
   });
 
   it("exposes the skills as a table, one row per skill", async () => {
@@ -117,8 +117,8 @@ describe("InventoryPanel", () => {
     renderPanel();
 
     await screen.findByText("tdd");
-    expect(screen.getByRole("table")).toBeInTheDocument();
-    expect(screen.getAllByRole("row")).toHaveLength(3); // header + 2 skills
+    const grid = screen.getByRole("grid", { name: "Inventory table" });
+    expect(within(grid).getAllByRole("row")).toHaveLength(3); // header + 2 skills
   });
 
   it("offers a deploy action with a repo choice in the detail pane", async () => {
@@ -163,10 +163,10 @@ describe("InventoryPanel", () => {
     ).toBeDisabled();
   });
 
-  it("holds the deployed column unresolved while the registry is still loading", async () => {
+  it("holds the status unresolved while the registry is still loading", async () => {
     // The repo set is unknown until the registry resolves, so a skill's repo
-    // reach is unconfirmed — the column must not read a definite "Not deployed"
-    // (J04), the same honesty the deploy button keeps.
+    // reach is unconfirmed — the row must not read a definite "Not deployed"
+    // (J04), and no status shows before the server confirms it (ADR-0033 §10).
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) =>
@@ -186,7 +186,7 @@ describe("InventoryPanel", () => {
 
     await screen.findByText("tdd");
     expect(screen.queryByText("Not deployed")).not.toBeInTheDocument();
-    expect(screen.getByText("Loading deploy-state…")).toBeInTheDocument();
+    expect(screen.queryByText("Up to date")).not.toBeInTheDocument();
   });
 
   it("disables the deploy action when the registry failed to load", async () => {
@@ -225,9 +225,11 @@ describe("InventoryPanel", () => {
 
     // A panel that failed to load announces politely: nothing here followed a
     // click, so role="status", never the assertive region (#465, decision 11).
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      /No Harness connected/i,
-    );
+    expect(
+      (await screen.findByText(/No Harness connected/i)).closest(
+        '[role="status"]',
+      ),
+    ).not.toBeNull();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -253,8 +255,10 @@ describe("InventoryPanel", () => {
     );
     renderPanel();
 
-    const notice = await screen.findByRole("status");
-    expect(notice).toHaveTextContent("Could not read Inventory");
+    const notice = (
+      await screen.findByText("Could not read Inventory")
+    ).closest<HTMLElement>('[role="status"]');
+    if (notice === null) throw new Error("the notice is not a status region");
     expect(notice).toHaveTextContent("Select Re-read Inventory to try again.");
     expect(
       within(notice).getByRole("button", { name: "Re-read Inventory" }),
@@ -269,15 +273,17 @@ describe("InventoryPanel", () => {
     );
     renderPanel();
 
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      /Could not read Inventory/i,
-    );
+    expect(
+      (await screen.findByText(/Could not read Inventory/i)).closest(
+        '[role="status"]',
+      ),
+    ).not.toBeNull();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  // A cached list would still be the working tree's answer to a question the
-  // release never answered (#841).
-  it("hides the rows and the count once a later read fails", async () => {
+  // A failed read keeps the previous rows and recovers in place (#1033 story
+  // 58, ADR-0033 §11); this reverses #841, which hid them.
+  it("keeps the rows and the count under a failed re-read, and recovers in place", async () => {
     let fail = false;
     vi.stubGlobal(
       "fetch",
@@ -309,10 +315,52 @@ describe("InventoryPanel", () => {
       screen.getByRole("button", { name: "Force re-read" }),
     );
 
-    expect(
-      await screen.findByText("Could not read Inventory"),
-    ).toBeInTheDocument();
+    const heading = await screen.findByText("Could not read Inventory");
+    expect(screen.getByText("tdd")).toBeInTheDocument();
+    expect(screen.getByText("1 skill")).toBeInTheDocument();
+
+    fail = false;
+    const notice = heading.closest<HTMLElement>('[role="status"]');
+    if (notice === null) throw new Error("the notice is not a status region");
+    await userEvent.click(
+      within(notice).getByRole("button", { name: "Re-read Inventory" }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByText("Could not read Inventory"),
+      ).not.toBeInTheDocument(),
+    );
+    expect(await screen.findByText("tdd")).toBeInTheDocument();
+  });
+
+  it("shows skeleton rows at once when Re-read Inventory is pressed", async () => {
+    let hang = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/registry")) return jsonResponse({ repos: [] });
+        if (url.startsWith("/api/deploy-state"))
+          return jsonResponse({ primitives: [], skipped: [] });
+        if (hang) return new Promise<Response>(() => undefined);
+        return jsonResponse({
+          primitives: [{ type: "skill", name: "tdd", description: "TDD loop" }],
+        });
+      }),
+    );
+    renderPanel();
+    expect(await screen.findByText("tdd")).toBeInTheDocument();
+
+    hang = true;
+    await userEvent.click(
+      screen.getByRole("button", { name: "Re-read Inventory" }),
+    );
+
+    const grid = screen.getByRole("grid", { name: "Inventory table" });
+    expect(grid).toHaveAttribute("aria-busy", "true");
     expect(screen.queryByText("tdd")).not.toBeInTheDocument();
-    expect(screen.queryByText("1 skill")).not.toBeInTheDocument();
+    expect(screen.getByTestId("inventory-status-region")).toHaveTextContent(
+      "Loading the Inventory…",
+    );
   });
 });

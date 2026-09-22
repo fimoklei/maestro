@@ -2,16 +2,15 @@ import { useNavigate } from "react-router";
 import { HttpError } from "../api/http";
 import { useRegistry } from "../registry/use-registry";
 import { useRereadInventory } from "../shell/use-reread-inventory";
-import { Card } from "../ui/card";
-import { Notice, type NoticeContent } from "../ui/notice";
-import { Panel } from "../ui/panel";
+import type { NoticeContent } from "../ui/notice";
+import { useReadSkeleton } from "../ui/use-read-skeleton";
 import { INVENTORY_NOT_READ } from "./inventory-copy";
-import { InventoryList } from "./inventory-list";
+import { InventoryView } from "./inventory-view";
 import { useDeploymentTargets } from "./use-deployment-targets";
 import { useInventory } from "./use-inventory";
 
-// Container: wires the inventory server-state hook to the presentational list.
-// The 409 "not-configured" case gets its own actionable message.
+// Container: wires the inventory server-state hooks to the presentational
+// view. The 409 "not-configured" case gets its own actionable message.
 
 // The inventory read is web's own query, not one of the server's error tables,
 // so its two headings and sentences live with it.
@@ -39,8 +38,9 @@ function readNotice(
 export function InventoryPanel() {
   const inventory = useInventory();
   const registry = useRegistry();
-  const reread = useRereadInventory();
+  const invalidate = useRereadInventory();
   const navigate = useNavigate();
+  const skeleton = useReadSkeleton(inventory.isFetching);
   const repos = registry.data?.repos ?? [];
   // Reuses the existing deploy-state + drift queries — no new server read (#272).
   const targets = useDeploymentTargets(
@@ -48,40 +48,27 @@ export function InventoryPanel() {
     { isLoading: registry.isLoading, isError: registry.isError },
   );
 
-  const skillCount = inventory.data?.primitives.length ?? 0;
+  // A pressed re-read shows its skeleton at once (design.md → Waiting).
+  const reread = () => {
+    skeleton.press();
+    invalidate();
+  };
+  // A disconnected Harness is a different list, so no row of the old one
+  // stays; any other failure keeps the previous rows (ADR-0033 §11).
+  const disconnected =
+    inventory.error instanceof HttpError && inventory.error.status === 409;
 
   return (
-    <Panel
-      title="Inventory"
-      meta={
-        inventory.isSuccess
-          ? `${skillCount} ${skillCount === 1 ? "skill" : "skills"}`
-          : undefined
-      }
-    >
-      {/* 100cqh: the table scrolls inside a bounded card so headers stay put.
-          Below 1200px the pane stacks under the table and needs no bound. */}
-      <section className="flex flex-col p-panel min-[1200px]:h-[100cqh]">
-        {/* A section that failed to load is always trigger="load" — nothing here
-          followed a click (#465). The region outlives its content, so it is
-          mounted before the failure is. */}
-        <Notice trigger="load" notice={readNotice(inventory.error, reread)} />
-        {inventory.isLoading ? (
-          <p className="px-card-x py-row-y text-dim text-tag">
-            Loading the Inventory…
-          </p>
-        ) : inventory.isError ? null : (
-          <Card fill>
-            <InventoryList
-              primitives={inventory.data?.primitives ?? []}
-              repos={repos}
-              registryReady={registry.isSuccess}
-              targets={targets}
-              onOpenHarness={() => navigate("/harness")}
-            />
-          </Card>
-        )}
-      </section>
-    </Panel>
+    <InventoryView
+      primitives={disconnected ? undefined : inventory.data?.primitives}
+      repos={repos}
+      registryReady={registry.isSuccess}
+      targets={targets}
+      notice={readNotice(inventory.error, reread)}
+      loading={skeleton.visible}
+      reading={inventory.isFetching}
+      onReread={reread}
+      onOpenHarness={() => navigate("/harness")}
+    />
   );
 }

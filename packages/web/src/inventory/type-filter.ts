@@ -9,11 +9,19 @@ export type TypeFilter = "all" | PrimitiveType;
 // Fixed order, not derived from key/insertion order, so layout never shifts.
 const TYPE_ORDER: readonly PrimitiveType[] = ["skill", "hook", "mcp", "bundle"];
 
-const TYPE_LABEL: Record<PrimitiveType, string> = {
+export const TYPE_LABEL: Record<PrimitiveType, string> = {
   skill: "Skills",
   hook: "Hooks",
   mcp: "MCP servers",
   bundle: "Bundles",
+};
+
+// A row's Type cell: the plain word, no hue and no icon (#987).
+export const TYPE_WORD: Record<PrimitiveType, string> = {
+  skill: "Skill",
+  hook: "Hook",
+  mcp: "MCP server",
+  bundle: "Bundle",
 };
 
 // Empty in, empty out: no primitives means no control at all, never a lone

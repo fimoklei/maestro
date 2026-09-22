@@ -34,6 +34,10 @@ function renderPane(overrides: {
   );
 }
 
+// The release sits in its own MachineValue span, so the line is matched whole.
+const releaseLine = (text: string) => (_: string, element: Element | null) =>
+  element?.matches("span") === true && element.textContent === text;
+
 describe("SkillDetailPane", () => {
   it("names the skill and shows its description", () => {
     renderPane({});
@@ -52,9 +56,13 @@ describe("SkillDetailPane", () => {
 
     // `{target} · release v0.3.2` — the separator is the spec's (story 54).
     expect(screen.getByText("Claude Code")).toBeInTheDocument();
-    expect(screen.getByText("· release v1.0.0")).toBeInTheDocument();
+    expect(
+      screen.getByText(releaseLine("· release v1.0.0")),
+    ).toBeInTheDocument();
     expect(screen.getByText("/dev/acme-web")).toBeInTheDocument();
-    expect(screen.getByText("· release v1.1.0")).toBeInTheDocument();
+    expect(
+      screen.getByText(releaseLine("· release v1.1.0")),
+    ).toBeInTheDocument();
   });
 
   it("marks an in-sync target with a status word, not colour alone", () => {
@@ -80,7 +88,9 @@ describe("SkillDetailPane", () => {
       ],
     });
 
-    expect(screen.getByText("· release v1.0.0")).toBeInTheDocument();
+    expect(
+      screen.getByText(releaseLine("· release v1.0.0")),
+    ).toBeInTheDocument();
     expect(screen.getByText("Behind")).toBeInTheDocument();
   });
 
