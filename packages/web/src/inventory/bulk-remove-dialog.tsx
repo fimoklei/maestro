@@ -5,7 +5,6 @@ import { cn } from "../ui/cn";
 import { DIALOG_CANCEL, DialogShell } from "../ui/dialog-shell";
 import { Notice } from "../ui/notice";
 import { panelBorderFor } from "../ui/panel-border";
-import { StatusDot } from "../ui/status-dot";
 import { TypeTag } from "../ui/type-tag";
 import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
 import type { BulkRemoveReportView } from "./bulk-remove-report-view";
@@ -33,12 +32,10 @@ function SummaryRow({
       id={id}
       className="flex items-center gap-2.5 rounded-item border border-line-row bg-inset px-3 py-2.5 font-mono text-desc text-fg-2"
     >
-      {tone === "clean" ? (
-        <StatusDot status="ok" />
-      ) : tone === "done" ? (
-        // A tick, not the dot: the run is over, and the dot states a live
-        // deploy-state everywhere else it appears.
-        <span aria-hidden="true" className="text-green-ink text-mono-sm">
+      {tone === "clean" || tone === "done" ? (
+        // The Good family's mark, uncoloured as it rests: a clean copy before
+        // the run, a finished run after it (ADR-0033 §3).
+        <span aria-hidden="true" className="text-gray-11 text-mono-sm">
           ✓
         </span>
       ) : (

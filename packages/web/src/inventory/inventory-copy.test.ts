@@ -1,12 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
+  BULK_DEPLOY_TARGET,
+  bulkDeployDidNotRun,
+  bulkDeployTitle,
+  DEPLOY_SKILLS,
   deployedToLine,
+  LOADING_TARGETS,
   moreTargetsLine,
   NO_FILTER_MATCH,
   NO_SEARCH_MATCH,
   NOT_DEPLOYED_ANYWHERE,
   NOT_READ_YET,
   rowActionsLabel,
+  SELECT_ALL_LABEL,
   SOME_TARGETS_NOT_READ,
   stageRowLabel,
 } from "./inventory-copy";
@@ -31,6 +37,24 @@ describe("Inventory copy", () => {
 
   it("names a row's checkbox after its skill", () => {
     expect(stageRowLabel("tdd")).toBe("Select tdd for bulk deploy");
+  });
+
+  it("names the header's checkbox for every shown skill", () => {
+    expect(SELECT_ALL_LABEL).toBe("Select all for bulk deploy");
+  });
+
+  it("titles the bulk deploy dialog by its count, in one and many", () => {
+    expect(DEPLOY_SKILLS).toBe("Deploy skills");
+    expect(bulkDeployTitle(1)).toBe("Deploy 1 skill");
+    expect(bulkDeployTitle(34)).toBe("Deploy 34 skills");
+    expect(BULK_DEPLOY_TARGET).toBe("Target");
+  });
+
+  it("heads a bulk deploy the server never answered, and the wait for targets", () => {
+    expect(bulkDeployDidNotRun("maestro")).toBe(
+      "Deploy to maestro did not run",
+    );
+    expect(LOADING_TARGETS).toBe("Loading targets…");
   });
 
   it("heads the hover card with the reach, in zero, one and many", () => {

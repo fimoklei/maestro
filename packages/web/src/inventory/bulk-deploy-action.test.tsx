@@ -1,8 +1,8 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse, renderWithQuery } from "../test-utils";
-import { BulkDeployBar } from "./bulk-deploy-bar";
+import { BulkDeployAction } from "./bulk-deploy-action";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -41,7 +41,26 @@ function stubReads(bulkReport: unknown) {
   );
 }
 
-describe("BulkDeployBar", () => {
+// Opens the dialog from the selection bar's control; the dialog's own control
+// shares its name, so it is found inside the dialog.
+async function openDialog() {
+  await userEvent.click(screen.getByRole("button", { name: "Deploy skills" }));
+  return screen.getByRole("dialog");
+}
+
+async function deploy() {
+  const dialog = await openDialog();
+  const button = within(dialog).getByRole("button", {
+    name: /deploy skills|loading targets/i,
+  });
+  await vi.waitFor(() => expect(button).toBeEnabled());
+  await userEvent.click(button);
+  return dialog;
+}
+
+// Successor of the retired BulkDeployBar's test (#1042): every claim it made
+// is kept here, against the dialog the selection bar opens.
+describe("BulkDeployAction", () => {
   it("deploys the staged skills to the chosen target and reports the result", async () => {
     stubReads({
       target: { kind: "global" },
@@ -53,17 +72,14 @@ describe("BulkDeployBar", () => {
       failed: [],
     });
     renderWithQuery(
-      <BulkDeployBar
+      <BulkDeployAction
         stagedNames={["tdd", "review"]}
-        hiddenCount={0}
         repos={[]}
         registryReady
       />,
     );
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: /deploy 2/i }),
-    );
+    await deploy();
 
     // The Report's own heading states the run (#1038).
     expect(
@@ -95,17 +111,14 @@ describe("BulkDeployBar", () => {
       failed: [],
     });
     renderWithQuery(
-      <BulkDeployBar
+      <BulkDeployAction
         stagedNames={["tdd", "review"]}
-        hiddenCount={0}
         repos={[]}
         registryReady
       />,
     );
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: /deploy 2/i }),
-    );
+    await deploy();
     await userEvent.click(
       await screen.findByRole("button", { name: /deploy review again/i }),
     );
@@ -146,15 +159,17 @@ describe("BulkDeployBar", () => {
     );
 
     renderWithQuery(
-      <BulkDeployBar
+      <BulkDeployAction
         stagedNames={["tdd"]}
-        hiddenCount={0}
         repos={[{ path: "/repo" }]}
         registryReady
       />,
     );
 
-    const button = await screen.findByRole("button", { name: /deploy 1/i });
+    const dialog = await openDialog();
+    const button = within(dialog).getByRole("button", {
+      name: "Deploy skills",
+    });
     expect(button).toBeDisabled();
 
     resolveDeployState?.();
@@ -201,17 +216,10 @@ describe("BulkDeployBar", () => {
     );
 
     renderWithQuery(
-      <BulkDeployBar
-        stagedNames={["tdd"]}
-        hiddenCount={0}
-        repos={[]}
-        registryReady
-      />,
+      <BulkDeployAction stagedNames={["tdd"]} repos={[]} registryReady />,
     );
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: /deploy 1/i }),
-    );
+    await deploy();
 
     expect(
       await screen.findByRole("heading", { name: /1 deployed/ }),
@@ -244,19 +252,16 @@ describe("BulkDeployBar", () => {
     );
 
     renderWithQuery(
-      <BulkDeployBar
+      <BulkDeployAction
         stagedNames={["tdd"]}
-        hiddenCount={0}
         repos={[{ path: "/Users/m/Projects/maestro" }]}
         registryReady
       />,
     );
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: /deploy 1/i }),
-    );
+    await deploy();
 
-    const heading = await screen.findByRole("heading", { level: 2 });
+    const heading = await screen.findByRole("heading", { level: 3 });
     expect(heading).toHaveTextContent("…/Projects/maestro");
     expect(heading).not.toHaveTextContent("/Users/m/Projects/maestro");
   });
@@ -283,9 +288,8 @@ describe("BulkDeployBar", () => {
     );
 
     renderWithQuery(
-      <BulkDeployBar
+      <BulkDeployAction
         stagedNames={["tdd"]}
-        hiddenCount={0}
         repos={[
           { path: "/Users/m/Projects/maestro" },
           { path: "/Users/m/Projects/agent-harness" },
@@ -294,6 +298,7 @@ describe("BulkDeployBar", () => {
       />,
     );
 
+    await openDialog();
     const option = await screen.findByRole("option", {
       name: "…/Projects/agent-harness",
     });
@@ -332,17 +337,10 @@ describe("BulkDeployBar", () => {
     );
 
     renderWithQuery(
-      <BulkDeployBar
-        stagedNames={["tdd"]}
-        hiddenCount={0}
-        repos={[]}
-        registryReady
-      />,
+      <BulkDeployAction stagedNames={["tdd"]} repos={[]} registryReady />,
     );
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: /deploy 1/i }),
-    );
+    await deploy();
 
     // A Notice, never the counts summary: zeroed counts would read as a
     // clean success the run never proved (#292).
@@ -350,5 +348,96 @@ describe("BulkDeployBar", () => {
     expect(notice).toHaveTextContent(/did not run/i);
     expect(notice).not.toHaveTextContent(/deployed/i);
     expect(notice).not.toHaveTextContent(/0 skipped/i);
+  });
+
+  it("stays open and unclosable while the deploy runs, then reads and closes", async () => {
+    let answer: (() => void) | undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/deploy-state/global")) {
+          return jsonResponse({
+            tools: [{ tool: "claude", primitives: [] }],
+            skipped: [],
+          });
+        }
+        if (url.startsWith("/api/drift/global")) {
+          return jsonResponse({ behind: [] });
+        }
+        if (url === "/api/deploy/bulk") {
+          await new Promise<void>((resolve) => {
+            answer = resolve;
+          });
+          return jsonResponse({
+            target: { kind: "global" },
+            deployed: [{ name: "tdd", version: "v1.0.0" }],
+            attention: [],
+            failed: [],
+          });
+        }
+        throw new Error(`Unexpected request: ${url}`);
+      }),
+    );
+    renderWithQuery(
+      <BulkDeployAction stagedNames={["tdd"]} repos={[]} registryReady />,
+    );
+
+    const dialog = await deploy();
+
+    expect(
+      within(dialog).getByRole("button", { name: "Deploying…" }),
+    ).toHaveAttribute("aria-busy", "true");
+    expect(
+      within(dialog).getByRole("button", { name: "Cancel" }),
+    ).toBeDisabled();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    answer?.();
+    expect(
+      await within(dialog).findByRole("heading", { name: /1 deployed/ }),
+    ).toBeVisible();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Close" }),
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("reports a partial run worst group first, a failed install as one row for every name", async () => {
+    // One install carries the batch, so an install failure fails every name it
+    // carried at once (docs/apm-behavior.md § A batch install).
+    stubReads({
+      target: { kind: "global" },
+      deployed: [{ name: "grilling", version: "v1.0.0" }],
+      attention: [
+        {
+          name: "review",
+          error: "deployed-diverged-from-lock",
+          forceable: true,
+          copyReceipt:
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        },
+      ],
+      failed: [{ error: "deploy-failed", names: ["tdd", "caveman"] }],
+    });
+    renderWithQuery(
+      <BulkDeployAction
+        stagedNames={["tdd", "caveman", "review", "grilling"]}
+        repos={[]}
+        registryReady
+      />,
+    );
+
+    const dialog = await deploy();
+
+    await within(dialog).findByRole("heading", { level: 3 });
+    const groups = within(dialog).getAllByRole("heading", { level: 4 });
+    expect(groups.map((group) => group.textContent)).toEqual([
+      "✕Failed2",
+      "⚠Attention1",
+      "✓Deployed1",
+    ]);
+    expect(within(dialog).getByText("tdd, caveman")).toBeVisible();
   });
 });

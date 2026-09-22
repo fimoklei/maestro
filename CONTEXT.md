@@ -231,7 +231,7 @@ details may name the exact APM mechanism or file.
 | Symbolic link | **Link** | A linked skill directory is a **linked skill folder**; *symlink* never reaches the screen. |
 | Directory | **Folder** | One word for the concept, on every surface. |
 | Skill detail pane | **{name} detail** | The pane is named after the skill it shows; its close control is **Close {name} detail**. |
-| Bulk staging | **Bulk deploy** | The checkbox stages a skill **for bulk deploy**; the strip above the table is **Staged for bulk deploy**. |
+| Bulk staging | **Bulk deploy** | The checkbox selects a skill **for bulk deploy**; the floating selection bar reads `N selected` and its control is **Deploy skills**, which opens the dialog that runs the deploy and shows its Report. Never *Staged for bulk deploy*. |
 
 The three Harness stages have no additional group name. One skill may appear in
 all three when each row represents different work; ordinary explanation may say

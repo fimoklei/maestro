@@ -726,14 +726,14 @@ describe("InventoryView — bulk staging", () => {
     expect(checkbox("tdd")).toBeChecked();
   });
 
-  it("reports how many staged skills the current filter hides", async () => {
+  const selectionBar = () => screen.queryByRole("group", { name: /selected/ });
+
+  it("raises the selection bar with the count and the actions on the selection", async () => {
     stubPendingFetch();
     renderView();
 
-    // Nothing staged, nothing to bulk-deploy: the strip stays out of the way.
-    expect(
-      screen.queryByRole("status", { name: /selected for bulk deploy/i }),
-    ).not.toBeInTheDocument();
+    // Nothing selected, nothing to act on: the bar stays out of the way.
+    expect(selectionBar()).not.toBeInTheDocument();
 
     await userEvent.click(checkbox("tdd"));
     await userEvent.click(checkbox("caveman"));
@@ -742,26 +742,52 @@ describe("InventoryView — bulk staging", () => {
       "cave",
     );
 
-    const bar = screen.getByRole("status", {
-      name: /selected for bulk deploy/i,
-    });
-    expect(bar).toHaveTextContent(/2 selected for bulk deploy/i);
+    const bar = screen.getByRole("group", { name: "2 selected" });
     expect(bar).toHaveTextContent(/1 hidden by the filter/i);
+    expect(
+      within(bar).getByRole("button", { name: "Deploy skills" }),
+    ).toBeInTheDocument();
   });
 
-  it("retires the bulk strip once the last skill is unstaged", async () => {
+  it("retires the selection bar once the last skill is unselected", async () => {
     stubPendingFetch();
     renderView();
 
     await userEvent.click(checkbox("tdd"));
-    expect(
-      screen.getByRole("status", { name: /selected for bulk deploy/i }),
-    ).toBeInTheDocument();
+    expect(selectionBar()).toBeInTheDocument();
 
     await userEvent.click(checkbox("tdd"));
+    expect(selectionBar()).not.toBeInTheDocument();
+  });
+
+  it("clears the whole selection from the bar", async () => {
+    stubPendingFetch();
+    renderView();
+
+    await userEvent.click(checkbox("tdd"));
+    await userEvent.click(checkbox("caveman"));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Clear selection" }),
+    );
+
+    expect(selectionBar()).not.toBeInTheDocument();
+    expect(checkbox("tdd")).not.toBeChecked();
+    expect(checkbox("caveman")).not.toBeChecked();
+  });
+
+  it("selects every shown skill from the column header", async () => {
+    stubPendingFetch();
+    renderView();
+
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Select all for bulk deploy" }),
+    );
+
+    expect(checkbox("tdd")).toBeChecked();
+    expect(checkbox("caveman")).toBeChecked();
     expect(
-      screen.queryByRole("status", { name: /selected for bulk deploy/i }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("group", { name: "2 selected" }),
+    ).toBeInTheDocument();
   });
 });
 

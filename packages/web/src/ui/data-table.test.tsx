@@ -161,6 +161,114 @@ describe("DataTable", () => {
     expect(screen.getByRole("checkbox", { name: "Pick apple" })).toBeChecked();
   });
 
+  it("selects every shown row from the header, and clears them once all are chosen", async () => {
+    const onSetSelected = vi.fn();
+    const selection = {
+      label: "Pick",
+      allLabel: "Pick all",
+      rowLabel: (fruit: Fruit) => `Pick ${fruit.name}`,
+      onToggle: () => {},
+      onSetSelected,
+    };
+    const { rerender } = render(
+      <DataTable
+        label="Fruit table"
+        columns={columns}
+        data={fruits}
+        getRowId={(fruit) => fruit.name}
+        selection={{ ...selection, selected: new Set(["apple"]) }}
+      />,
+    );
+
+    const all = screen.getByRole("checkbox", { name: "Pick all" });
+    expect(all).toHaveAttribute("aria-checked", "mixed");
+    await userEvent.click(all);
+    expect(onSetSelected).toHaveBeenLastCalledWith(fruits, true);
+
+    rerender(
+      <DataTable
+        label="Fruit table"
+        columns={columns}
+        data={fruits}
+        getRowId={(fruit) => fruit.name}
+        selection={{
+          ...selection,
+          selected: new Set(fruits.map((fruit) => fruit.name)),
+        }}
+      />,
+    );
+    expect(all).toBeChecked();
+    await userEvent.click(all);
+    expect(onSetSelected).toHaveBeenLastCalledWith(fruits, false);
+  });
+
+  it("selects every shown row with Control or Command plus A", async () => {
+    const onSetSelected = vi.fn();
+    renderTable({
+      selection: {
+        label: "Pick",
+        allLabel: "Pick all",
+        rowLabel: (fruit) => `Pick ${fruit.name}`,
+        selected: new Set(),
+        onToggle: () => {},
+        onSetSelected,
+      },
+    });
+    act(() => grid().focus());
+
+    await userEvent.keyboard("{Control>}a{/Control}");
+    expect(onSetSelected).toHaveBeenLastCalledWith(fruits, true);
+    await userEvent.keyboard("{Meta>}a{/Meta}");
+    expect(onSetSelected).toHaveBeenCalledTimes(2);
+  });
+
+  it("toggles the active row with X, as with Space", async () => {
+    const onToggle = vi.fn();
+    renderTable({
+      selection: {
+        label: "Pick",
+        rowLabel: (fruit) => `Pick ${fruit.name}`,
+        selected: new Set(),
+        onToggle,
+      },
+    });
+    act(() => grid().focus());
+
+    await userEvent.keyboard("{ArrowDown}x");
+    expect(onToggle).toHaveBeenCalledWith(fruits[1]);
+  });
+
+  it("selects a range with Shift, from the last row toggled", async () => {
+    const onToggle = vi.fn();
+    const onSetSelected = vi.fn();
+    // One session, so the held Shift carries into the next click.
+    const user = userEvent.setup();
+    renderTable({
+      selection: {
+        label: "Pick",
+        rowLabel: (fruit) => `Pick ${fruit.name}`,
+        selected: new Set(),
+        onToggle,
+        onSetSelected,
+      },
+    });
+
+    await user.click(screen.getByRole("checkbox", { name: "Pick pear" }));
+    await user.keyboard("{Shift>}");
+    await user.click(screen.getByRole("checkbox", { name: "Pick cherry" }));
+    await user.keyboard("{/Shift}");
+
+    expect(onSetSelected).toHaveBeenCalledWith(fruits, true);
+    expect(onToggle).toHaveBeenCalledTimes(1);
+
+    act(() => grid().focus());
+    await user.keyboard("{Home}{Shift>}{ArrowDown} {/Shift}");
+    expect(onSetSelected).toHaveBeenLastCalledWith(
+      [fruits[1], fruits[2]],
+      true,
+    );
+  });
+
   it("keeps the loaded order until a header is pressed, then sorts both ways", async () => {
     renderTable();
     const header = within(grid()).getByRole("columnheader", { name: /name/i });

@@ -11,6 +11,8 @@ export type ReportRow = {
   name: string;
   /** Why this row reads the way it does, in one sentence. */
   detail?: string;
+  /** How many primitives the row stands for, where one reason hit several. */
+  count?: number;
   /** This row's own way out, where the reader has one. */
   action?: { label: string; onClick: () => void };
 };
@@ -59,10 +61,11 @@ export function Report({
       <span role="status" className="sr-only">
         {heading}
       </span>
-      <h2 className="font-semibold font-ui text-fg text-heading">{heading}</h2>
+      {/* Under the dialog's own h2 title: a Report never stands alone. */}
+      <h3 className="font-ui text-fg text-prose">{heading}</h3>
       {drawn.map((group) => (
         <section key={group.label} className="flex min-w-0 flex-col gap-tight">
-          <h3
+          <h4
             className={cn(
               "flex items-center gap-tight font-medium font-ui text-meta",
               INK[group.tone],
@@ -74,8 +77,10 @@ export function Report({
               </span>
             )}
             <span>{group.label}</span>
-            <span className="tabular-nums">{group.rows.length}</span>
-          </h3>
+            <span className="tabular-nums">
+              {group.rows.reduce((total, row) => total + (row.count ?? 1), 0)}
+            </span>
+          </h4>
           <ul className="flex min-w-0 flex-col gap-tight">
             {group.rows.map((row) => (
               <li
