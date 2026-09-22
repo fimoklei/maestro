@@ -387,7 +387,7 @@ export function InventoryView({
                 // Keyed by skill: a pending pick or refusal from the previous
                 // skill can never carry over and overwrite the next one (#66).
                 <DeploySkillAction
-                  key={actionKey}
+                  key={`deploy:${actionKey}`}
                   skillName={selectedPrimitive.name}
                   repos={repos}
                   registryReady={registryReady}
@@ -402,7 +402,7 @@ export function InventoryView({
               removeAction={
                 removable.length >= 2 ? (
                   <BulkRemoveSkillAction
-                    key={actionKey}
+                    key={`remove:${actionKey}`}
                     skillName={selectedPrimitive.name}
                     targets={removable}
                     defaultOpen={intent?.action === "remove"}

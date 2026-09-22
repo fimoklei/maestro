@@ -115,7 +115,7 @@ conflict rule in `docs/operating-model.md`.
 
 ### Issue tracker
 
-Issues live in GitHub Issues for `fimoklei/maestro` (via the `gh` CLI). External PRs are not a triage surface. See `docs/agents/issue-tracker.md`.
+Issues live in GitHub Issues for `fimoklei/maestro` (via the `gh` CLI). External PRs are not a triage surface. Read `docs/agents/issue-tracker.md` before publishing tickets: it holds the sub-issue and blocked-by recipe.
 
 ### Triage labels
 
