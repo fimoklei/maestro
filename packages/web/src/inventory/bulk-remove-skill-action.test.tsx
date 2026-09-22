@@ -1,7 +1,8 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DeployStatePanel } from "../deploy-state/deploy-state-panel";
+import { DeployStateView } from "../deploy-state/deploy-state-view";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import { BulkRemoveSkillAction } from "./bulk-remove-skill-action";
 import type { BulkRemoveCandidate } from "./bulk-remove-targets";
@@ -235,6 +236,12 @@ describe("BulkRemoveSkillAction", () => {
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
+        if (url === "/api/registry/repos") {
+          return jsonResponse({ repos: [{ path: "/dev/acme-web" }] });
+        }
+        if (url.startsWith("/api/drift")) {
+          return jsonResponse({ behind: [] });
+        }
         if (url.startsWith("/api/deploy-state")) {
           return jsonResponse({
             primitives: removed
@@ -254,11 +261,15 @@ describe("BulkRemoveSkillAction", () => {
     renderWithQuery(
       <>
         <BulkRemoveSkillAction skillName="tdd" targets={[ACME_WEB]} />
-        <DeployStatePanel repo="/dev/acme-web" onStartDeploy={() => {}} />
+        <MemoryRouter>
+          <DeployStateView />
+        </MemoryRouter>
       </>,
     );
 
-    expect(await screen.findByText("v1.0.0")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("gridcell", { name: "1" }),
+    ).toBeInTheDocument();
     await userEvent.click(
       screen.getByRole("button", { name: "Remove from all 1 target" }),
     );
@@ -271,7 +282,7 @@ describe("BulkRemoveSkillAction", () => {
     // afterwards is exactly what still holds the skill.
     await userEvent.click(await screen.findByRole("button", { name: "Done" }));
 
-    expect(await screen.findByText(/empty/i)).toBeInTheDocument();
+    expect(await screen.findByText("Empty")).toBeInTheDocument();
   });
 
   it("re-checks from scratch on reopen, never confirming against the last open's answer", async () => {
@@ -324,6 +335,12 @@ describe("BulkRemoveSkillAction", () => {
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
+        if (url === "/api/registry/repos") {
+          return jsonResponse({ repos: [{ path: "/dev/acme-web" }] });
+        }
+        if (url.startsWith("/api/drift")) {
+          return jsonResponse({ behind: [] });
+        }
         if (url.startsWith("/api/deploy-state")) {
           return jsonResponse({
             primitives: ran
@@ -343,11 +360,15 @@ describe("BulkRemoveSkillAction", () => {
     renderWithQuery(
       <>
         <BulkRemoveSkillAction skillName="tdd" targets={[ACME_WEB]} />
-        <DeployStatePanel repo="/dev/acme-web" onStartDeploy={() => {}} />
+        <MemoryRouter>
+          <DeployStateView />
+        </MemoryRouter>
       </>,
     );
 
-    expect(await screen.findByText("v1.0.0")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("gridcell", { name: "1" }),
+    ).toBeInTheDocument();
     await userEvent.click(
       screen.getByRole("button", { name: "Remove from all 1 target" }),
     );
@@ -362,7 +383,7 @@ describe("BulkRemoveSkillAction", () => {
       /outcome is unrecorded/i,
     );
     await userEvent.click(screen.getByRole("button", { name: "Close" }));
-    expect(await screen.findByText(/empty/i)).toBeInTheDocument();
+    expect(await screen.findByText("Empty")).toBeInTheDocument();
   });
 
   it("says Run not started when the server refuses the request", async () => {

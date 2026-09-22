@@ -37,6 +37,19 @@ export function toolDeployedView(
   return { status: "ready", names, skippedCount: 0, attentionCount };
 }
 
+// A detected tool's view. An entry apm could not manage names no tool, so
+// every tool carries the section's attention count (#358).
+export function globalToolView(
+  names: string[],
+  skipped: readonly SkippedEntry[],
+): DeployedView {
+  return toolDeployedView(
+    names,
+    undefined,
+    skipped.filter(skippedNeedsAttention).length,
+  );
+}
+
 // The sidebar row and the global card both compute their own indicator, so
 // this is the one place that upgrades a confirmed "empty" to "foreign" —
 // otherwise the two readings of the same target could disagree (#655).

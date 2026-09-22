@@ -27,6 +27,7 @@ import {
 } from "react";
 import { Checkbox } from "./checkbox";
 import { cn } from "./cn";
+import { GroupHeader } from "./group-header";
 import { HOVER_TRANSITION } from "./hover-transition";
 import { Skeleton } from "./skeleton";
 
@@ -399,21 +400,14 @@ export function DataTable<T extends RowData>({
             return (
               <Fragment key={id}>
                 {startsGroup && groupKey !== undefined ? (
-                  <tr className="h-row border-gray-6 border-b bg-gray-2">
-                    <GridCell
-                      colSpan={columnCount}
-                      className="px-inline font-medium text-gray-12 text-meta"
-                    >
-                      {groupKey}{" "}
-                      <span className="text-gray-11 tabular-nums">
-                        {
-                          rows.filter(
-                            (r) => groups?.key(r.original) === groupKey,
-                          ).length
-                        }
-                      </span>
-                    </GridCell>
-                  </tr>
+                  <GroupHeader
+                    label={groupKey}
+                    count={
+                      rows.filter((r) => groups?.key(r.original) === groupKey)
+                        .length
+                    }
+                    columnCount={columnCount}
+                  />
                 ) : null}
                 <tr
                   id={rowDomId(index)}

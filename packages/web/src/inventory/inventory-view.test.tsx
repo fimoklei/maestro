@@ -1121,6 +1121,26 @@ describe("InventoryView — paging the pane", () => {
     expect(within(next).getByRole("heading", { name: "tdd" })).toHaveFocus();
   });
 
+  it("keeps one target picker while paging past a skill on two targets", async () => {
+    stubPendingFetch();
+    renderView({
+      targets: [
+        { ...deployedTo(["tdd"]), label: "Global" },
+        {
+          ...deployedTo(["tdd"]),
+          label: "acme-web",
+          target: { kind: "repo", repoPath: "/dev/acme-web" },
+        },
+      ],
+    });
+
+    await openRow("tdd");
+    await userEvent.keyboard("{ArrowDown}{ArrowUp}{ArrowDown}");
+
+    const pane = screen.getByRole("complementary", { name: "caveman detail" });
+    expect(within(pane).getAllByRole("combobox")).toHaveLength(1);
+  });
+
   it("returns focus to the table on the row it paged to", async () => {
     stubPendingFetch();
     renderView();
