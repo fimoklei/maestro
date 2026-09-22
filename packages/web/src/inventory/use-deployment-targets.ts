@@ -1,3 +1,4 @@
+import { targetLabel } from "../shell/target-label";
 // Gathers every deploy target (each detected tool, ADR-0011, and each
 // registered repo) into one flat list for the roll-up (#272). No new server
 // read — reuses the deploy-state and drift queries the cockpit already runs.
@@ -106,7 +107,8 @@ export function useDeploymentTargets(
   repoPaths.forEach((repoPath, index) => {
     const deploy = repoDeploy[index] ?? pending;
     targets.push({
-      label: repoPath,
+      // Shortened as the deploy picker names it (#211).
+      label: targetLabel(repoPath, repoPaths),
       target: { kind: "repo", repoPath },
       deployed: toDeployedView(deploy),
       primitives: deploy.data?.primitives ?? [],

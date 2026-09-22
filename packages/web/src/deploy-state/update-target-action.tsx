@@ -20,6 +20,7 @@ export function UpdateTargetAction({
   offered = true,
   add,
   onClose = () => {},
+  defaultOpen = false,
 }: {
   // The target's own label, as the card's header shows it.
   targetName: string;
@@ -37,8 +38,10 @@ export function UpdateTargetAction({
   // Run when the dialog closes, so an entrance that opened on a refusal can
   // drop it: the target the refusal described is gone (#955).
   onClose?: () => void;
+  /** Opened by the Inventory row's ⋮ menu, which asked for it by name. */
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const preflight = useUpdatePreflight(
     target,
     open && update.data === undefined,

@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  deployedToLine,
+  moreTargetsLine,
   NO_FILTER_MATCH,
   NO_SEARCH_MATCH,
+  NOT_DEPLOYED_ANYWHERE,
   NOT_READ_YET,
+  rowActionsLabel,
+  SOME_TARGETS_NOT_READ,
   stageRowLabel,
 } from "./inventory-copy";
 
@@ -26,5 +31,31 @@ describe("Inventory copy", () => {
 
   it("names a row's checkbox after its skill", () => {
     expect(stageRowLabel("tdd")).toBe("Select tdd for bulk deploy");
+  });
+
+  it("heads the hover card with the reach, in zero, one and many", () => {
+    expect(deployedToLine(0)).toBe("Not deployed to any target.");
+    expect(deployedToLine(1)).toBe("Deployed to 1 target");
+    expect(deployedToLine(12)).toBe("Deployed to 12 targets");
+  });
+
+  it("names the row as the way to every target the card leaves out", () => {
+    expect(moreTargetsLine(2, 5)).toBe(
+      "2 more. Select the row to see all 5 targets.",
+    );
+  });
+
+  it("says when a target's read did not answer", () => {
+    expect(SOME_TARGETS_NOT_READ).toBe("Some targets could not be read.");
+  });
+
+  it("tells the pane's reader how to deploy a skill that is nowhere yet", () => {
+    expect(NOT_DEPLOYED_ANYWHERE).toBe(
+      "Not deployed to any target. Choose a target below, then select Deploy skill.",
+    );
+  });
+
+  it("names a row's menu after its skill", () => {
+    expect(rowActionsLabel("tdd")).toBe("Actions for tdd");
   });
 });

@@ -1,7 +1,12 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { createPortal } from "react-dom";
 import { describe, expect, it, vi } from "vitest";
-import { createDataTableColumns, DataTable } from "./data-table";
+import {
+  createDataTableColumns,
+  DataTable,
+  useDataTableRowActive,
+} from "./data-table";
 
 type Fruit = { name: string; colour: string };
 
@@ -225,5 +230,113 @@ describe("DataTable", () => {
     expect(activeRowName()).toBe("apple");
     await userEvent.keyboard("{ArrowDown}{ArrowDown}");
     expect(activeRowName()).toBe("pear");
+  });
+
+  it("reports the rows in the order it shows them, after a sort", async () => {
+    const onRowOrderChange = vi.fn();
+    renderTable({ onRowOrderChange });
+
+    expect(onRowOrderChange).toHaveBeenLastCalledWith([
+      "pear",
+      "apple",
+      "cherry",
+    ]);
+
+    await userEvent.click(
+      within(
+        within(grid()).getByRole("columnheader", { name: /name/i }),
+      ).getByRole("button"),
+    );
+
+    expect(onRowOrderChange).toHaveBeenLastCalledWith([
+      "apple",
+      "cherry",
+      "pear",
+    ]);
+  });
+
+  it("moves its active row to the row opened from outside", () => {
+    const { rerender } = renderTable({ openRowId: null });
+
+    rerender(
+      <DataTable
+        label="Fruit table"
+        columns={columns}
+        data={fruits}
+        getRowId={(fruit) => fruit.name}
+        selection={{
+          label: "Pick",
+          rowLabel: (fruit) => `Pick ${fruit.name}`,
+          selected: new Set(),
+          onToggle: () => {},
+        }}
+        openRowId="cherry"
+      />,
+    );
+    act(() => grid().focus());
+
+    expect(activeRowName()).toBe("cherry");
+  });
+
+  it("tells a cell whether its row is the active one while the grid holds focus", async () => {
+    function Marker() {
+      return useDataTableRowActive() ? "active" : "idle";
+    }
+    const marked = createDataTableColumns<Fruit>((helper) => [
+      helper.accessor("name", { header: "Name" }),
+      helper.display({ id: "mark", header: "Mark", cell: () => <Marker /> }),
+    ]);
+    render(
+      <DataTable
+        label="Fruit table"
+        columns={marked}
+        data={fruits}
+        getRowId={(fruit) => fruit.name}
+      />,
+    );
+
+    expect(screen.queryByText("active")).toBeNull();
+    act(() => grid().focus());
+    expect(screen.getAllByText("active")).toHaveLength(1);
+    await userEvent.keyboard("{ArrowDown}");
+    expect(
+      within(within(grid()).getAllByRole("row")[2] as HTMLElement).getByText(
+        "active",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("ignores a click or a key from a menu a cell opened outside the table", async () => {
+    // React bubbles a portal's events through the cell that rendered it.
+    const onRowOpen = vi.fn();
+    const withPortal = createDataTableColumns<Fruit>((helper) => [
+      helper.accessor("name", { header: "Name" }),
+      helper.display({
+        id: "menu",
+        header: "Menu",
+        cell: ({ row }) =>
+          createPortal(
+            <div role="menu" tabIndex={-1} aria-label={`${row.id} menu`}>
+              {row.id} item
+            </div>,
+            document.body,
+          ),
+      }),
+    ]);
+    render(
+      <DataTable
+        label="Fruit table"
+        columns={withPortal}
+        data={fruits}
+        getRowId={(fruit) => fruit.name}
+        onRowOpen={onRowOpen}
+      />,
+    );
+
+    await userEvent.click(screen.getByText("apple item"));
+    act(() => screen.getByRole("menu", { name: "apple menu" }).focus());
+    await userEvent.keyboard("{Enter}");
+
+    expect(onRowOpen).not.toHaveBeenCalled();
   });
 });

@@ -30,11 +30,14 @@ const STILL_CHECKING: RemovePreflightView = {
 export function BulkRemoveSkillAction({
   skillName,
   targets,
+  defaultOpen = false,
 }: {
   skillName: string;
   targets: BulkRemoveCandidate[];
+  /** Opened by the Inventory row's ⋮ menu, which asked for it by name. */
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
 
   return (
     <>
