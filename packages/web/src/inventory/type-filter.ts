@@ -16,6 +16,14 @@ const TYPE_LABEL: Record<PrimitiveType, string> = {
   bundle: "Bundles",
 };
 
+// A row's Type cell: the plain word, no hue and no icon (#987).
+export const TYPE_WORD: Record<PrimitiveType, string> = {
+  skill: "Skill",
+  hook: "Hook",
+  mcp: "MCP server",
+  bundle: "Bundle",
+};
+
 // Empty in, empty out: no primitives means no control at all, never a lone
 // `all` that filters nothing.
 export function deriveTypeSegments(

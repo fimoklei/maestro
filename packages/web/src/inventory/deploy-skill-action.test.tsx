@@ -34,7 +34,7 @@ describe("DeploySkillAction", () => {
   });
 
   it("carries no register hint of its own, so a long list never repeats it", async () => {
-    // The hint belongs to the list (InventoryList), once, above every row —
+    // The hint belongs to the list (InventoryView), once, above every row —
     // one per picker would print the same sentence for every skill.
     vi.stubGlobal(
       "fetch",
