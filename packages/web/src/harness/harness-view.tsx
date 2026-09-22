@@ -1,26 +1,28 @@
-import type { HarnessState } from "@maestro/core";
-import { useEffect, useState } from "react";
-import { useBrowsePicker } from "../shell/use-browse-picker";
+import { FolderGit2, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import { Button } from "../ui/button";
-import { Card } from "../ui/card";
+import { DataTable } from "../ui/data-table";
+import { EmptyState } from "../ui/empty-state";
+import { IconButton } from "../ui/icon-button";
 import { Notice } from "../ui/notice";
 import { Panel } from "../ui/panel";
-import { SectionHeader } from "../ui/section-header";
+import { StatusBadge } from "../ui/status-badge";
+import { reading, readingRank } from "../ui/status-reading";
+import { useReadSkeleton } from "../ui/use-read-skeleton";
 import { cloneSyncNotice } from "./clone-sync-notice";
-import { HarnessDialogs, type RestoreTarget } from "./harness-dialogs";
-import { HarnessStrip } from "./harness-strip";
+import { type HarnessTableRow, harnessColumns, rowId } from "./harness-columns";
+import { HarnessDialogs } from "./harness-dialogs";
 import {
   freshnessLabel,
   harnessAnnouncement,
   journeyConfirmedEmpty,
   releaseEnabled,
+  type StageSection,
   stageSections,
 } from "./harness-view-model";
 import {
   harnessStateNotice,
-  promoteNotice,
-  proposalNotice,
   refreshNotice,
   releasePublishedNotice,
   skillRestoredNotice,
@@ -28,37 +30,39 @@ import {
   staleStatusNotice,
 } from "./notice-copy";
 import { rowItems } from "./row-actions";
-import { PROPOSAL_EMPTY } from "./stage-copy";
-import { type StageRowKey, StageTable } from "./stage-table";
-import type {
-  HarnessStage,
-  HarnessStageRow,
-  ReleasePlan,
-  SemverStep,
-} from "./use-harness";
+import { PROPOSAL_EMPTY, statusReading } from "./stage-copy";
+import { StageDetailPane } from "./stage-detail-pane";
+import type { ReleasePlan, SemverStep } from "./use-harness";
 import {
-  useDeleteLocalSkill,
   useDiscardReleasePlan,
   useHarness,
-  useImportCheck,
-  useImportSkill,
-  usePromoteDeletion,
-  usePromoteSkill,
-  useProposalAction,
   usePublishRelease,
   useRefreshHarness,
   useReleasePlan,
-  useRestoreSkill,
 } from "./use-harness";
+import { useHarnessPresses } from "./use-harness-presses";
+import { useImportFlow } from "./use-import-flow";
 
-// The Harness home base: what the released harness is, how fresh that picture
-// is, and whether anything merged is waiting. It leads with state and reads on
-// a quiet day (ADR-0021, #516).
+export const REREAD_HARNESS = "Re-read Harness";
+const TABLE_LABEL = "Harness table";
+
+// The Harness (#994): one table with a group per stage, so a skill reads from
+// local work to release top to bottom, and a row's full story in its pane.
 export function HarnessView() {
   const harness = useHarness();
   const state = harness.data;
   const refresh = useRefreshHarness();
   const { mutate: fetchRemote } = refresh;
+  const reading = refresh.isPending || harness.isFetching;
+  const skeleton = useReadSkeleton(
+    reading || (state === undefined && !harness.isError),
+  );
+  // The one way back from every failed read, so a failure never closes it.
+  const reread = () => {
+    skeleton.press();
+    fetchRemote();
+  };
+
   // Plan open/closed is UI-state; the plan itself is fetched only while the
   // dialog is open (frontend.md).
   const [planOpen, setPlanOpen] = useState(false);
@@ -81,8 +85,7 @@ export function HarnessView() {
         revision: plan.revision,
       },
       // The dialog closes on success and keeps no result of its own: what was
-      // published is stated above the strip, which is where the Inventory the
-      // release changed is read from (#849).
+      // published is stated above the table (#849).
       {
         onSuccess: () => {
           setPlanOpen(false);
@@ -92,148 +95,27 @@ export function HarnessView() {
     );
   };
 
-  // Import: the picked folder and the name are UI-state; every refusal comes
-  // from the server's check, so nothing here decides one (#576).
-  const [importOpen, setImportOpen] = useState(false);
-  const [source, setSource] = useState<string | null>(null);
-  // Null until the author types: Maestro's proposal fills the field until then,
-  // and a new folder brings a new proposal.
-  const [editedName, setEditedName] = useState<string | null>(null);
-  const importCheck = useImportCheck(source, editedName);
-  const importSkill = useImportSkill();
-  const picker = useBrowsePicker((paths) => {
-    setSource(paths[0] ?? null);
-    setEditedName(null);
-    importSkill.reset();
-  });
-  // An update's name is the recorded skill's own: provenance decides it, so a
-  // name typed before the check came back never travels with it (#732).
-  const name =
-    importCheck.data?.mode === "update"
-      ? importCheck.data.name
-      : (editedName ?? importCheck.data?.name ?? "");
-  const closeImport = () => {
-    setImportOpen(false);
-    setSource(null);
-    setEditedName(null);
-    importSkill.reset();
-  };
-  // The skill the import confirmation sent the author to. It holds the row on
-  // the active surface for about three seconds, long enough to find among the
-  // others and short enough not to read as a state of its own (#846).
-  const [landedOn, setLandedOn] = useState<string | null>(null);
+  const importFlow = useImportFlow();
+  const presses = useHarnessPresses(state);
+
+  // The row whose detail pane is open, and the table's order it pages through.
+  const [selected, setSelected] = useState<string | null>(null);
+  const [order, setOrder] = useState<string[]>([]);
+  const gridRef = useRef<HTMLTableElement>(null);
+  const getTriggerElement = useCallback(() => gridRef.current, []);
+
+  // A refused press is stated in its row's pane, which opens to show it; a
+  // landed push follows its row to Pending review, so the keyboard lands on
+  // the row that replaced the one pressed (#577, #581).
+  const failure = presses.failure();
+  const failedId = failure?.id ?? null;
   useEffect(() => {
-    if (landedOn === null) {
-      return;
-    }
-    const done = setTimeout(() => setLandedOn(null), 3000);
-    return () => clearTimeout(done);
-  }, [landedOn]);
-  // An import writes the working tree, so its row is Pending proposal's — even
-  // where the same skill also holds a row in the two remote stages (#865).
-  const imported: StageRowKey | null =
-    landedOn === null ? null : { stage: "pending-proposal", skill: landedOn };
-
-  // Promote: which row is waiting and what the last press refused are read off
-  // the mutation. The links are kept beside it, one per skill — a second
-  // promotion must not take the first one's way to GitHub with it (#577).
-  const promote = usePromoteSkill();
-  const promotedSkill = promote.variables?.name ?? null;
-  const promoteFailure = promoteNotice(promote.error);
-  // The stage the press was made in. Propose change sits in two of them, and a
-  // refusal belongs to the row it was pressed from, not to the skill (#865).
-  const [promotedFrom, setPromotedFrom] = useState<HarnessStage | null>(null);
-
-  // A deletion never publishes by the row's press alone: it opens a
-  // confirmation, which carries the origin/HEAD tree that row was painted
-  // from. The pending movement is UI-state; the push is the mutation (#580).
-  const deletion = usePromoteDeletion();
-  // The other road out of the same confirmation: a skill that exists nowhere
-  // else has no deletion to propose, so the folder goes from disk (#798).
-  const deleteLocal = useDeleteLocalSkill();
-  const [confirming, setConfirming] = useState<string | null>(null);
-  const pendingDeletion =
-    proposalRows(state).find((row) => row.skill === confirming) ?? null;
-  // Left unreset, so a landed deletion still names the row that just moved after
-  // its dialog closes. The next press resets it, which is what keeps a refusal
-  // from haunting the confirmation after this one (#580, #581).
-  const closeConfirmation = () => setConfirming(null);
-
-  // The way back from a deletion, and the one action no remote answer gates:
-  // both the folder and the commit it comes from are already in the clone
-  // (ADR-0030). The press freezes what it was made against, so a check landing
-  // while the confirmation stands cannot rewrite the source or close it (#915).
-  const restore = useRestoreSkill();
-  const [restoring, setRestoring] = useState<RestoreTarget | null>(null);
-  const closeRestore = () => setRestoring(null);
-  // What every row press shares: a read in flight is moving the rows a press
-  // would aim at, and the local deletion writes the same folders a restore does.
-  const localSettled =
-    !refresh.isPending &&
-    !harness.isFetching &&
-    deleteLocal.isPending === false;
-  // The row that just moved sections, whichever press moved it: a deletion is
-  // confirmed in a dialog that unmounts with the row it was opened from, so the
-  // promote mutation alone would drop the keyboard on the document (#581). A
-  // landed push always lands in Pending review, whichever stage it was pressed
-  // in — the branch is now ahead of the default branch (#865).
-  const movedTo = (skill: string | null): StageRowKey | null =>
-    skill === null ? null : { stage: "pending-review", skill };
-  const justMoved = promote.isSuccess
-    ? movedTo(promotedSkill)
-    : deletion.isSuccess
-      ? movedTo(deletion.variables?.name ?? null)
-      : null;
-
-  // The three GitHub-side actions share one mutation: only the route differs,
-  // and a refusal is stated on the row it was pressed from.
-  const proposalAction = useProposalAction();
-  const proposalSkill = proposalAction.variables?.name ?? null;
-  const proposalFailure = proposalNotice(proposalAction.error);
-  // Withdrawal is the one action that confirms first. The number the row
-  // showed rides with it; the server rechecks it before closing anything.
-  const [withdrawing, setWithdrawing] = useState<{
-    skill: string;
-    number: number;
-  } | null>(null);
-  const closeWithdrawal = () => setWithdrawing(null);
-  // One refusal at a time, stated on the row the press was made from. A
-  // withdrawal's refusal belongs to its dialog, where the confirmation still
-  // stands (#577, #580).
-  const rowFailure = () => {
-    if (
-      promoteFailure !== null &&
-      promotedSkill !== null &&
-      promotedFrom !== null
-    ) {
-      return {
-        row: { stage: promotedFrom, skill: promotedSkill },
-        notice: promoteFailure,
-      };
-    }
-    if (
-      withdrawing === null &&
-      proposalFailure !== null &&
-      proposalSkill !== null
-    ) {
-      // The three GitHub-side actions are Pending review's alone.
-      return {
-        row: { stage: "pending-review" as const, skill: proposalSkill },
-        notice: proposalFailure,
-      };
-    }
-    return null;
-  };
-
-  const promoteSkill = (row: HarnessStageRow) => {
-    setPromotedFrom(row.stage);
-    if (row.deletion) {
-      deletion.reset();
-      setConfirming(row.skill);
-      return;
-    }
-    promote.mutate({ name: row.skill });
-  };
+    if (failedId !== null) setSelected(failedId);
+  }, [failedId]);
+  const { movedTo } = presses;
+  useEffect(() => {
+    if (movedTo !== null) setSelected(movedTo);
+  }, [movedTo]);
 
   // The plain read paints the clone before the open-time check has caught it
   // up, so where the clone stands is stated only once a check has answered.
@@ -245,7 +127,7 @@ export function HarnessView() {
     }
   }, [checkSettled]);
 
-  // Opening the view fetches, the same act Retry check repeats. Scheduled
+  // Opening the view fetches, the same act Re-read Harness repeats. Scheduled
   // rather than called, so StrictMode's replayed first mount cancels its own
   // request in cleanup: one open, one fetch of the author's git refs.
   useEffect(() => {
@@ -253,316 +135,426 @@ export function HarnessView() {
     return () => clearTimeout(scheduled);
   }, [fetchRemote]);
 
-  // Returning to the tab is the same act as opening the view: merging happens
-  // on GitHub, and the git refs the stages read only move on a fetch. Skipped
-  // while one is already running, so a second git fetch is never started (#889).
-  const reading = refresh.isPending;
-  useEffect(() => {
-    if (reading) {
-      return;
-    }
-    const reread = () => fetchRemote();
-    window.addEventListener("focus", reread);
-    return () => window.removeEventListener("focus", reread);
-  }, [reading, fetchRemote]);
+  const now = new Date();
+  const freshness =
+    state === undefined ? null : freshnessLabel(state.freshness, now);
+  const context = {
+    defaultBranch: state?.defaultBranch ?? null,
+    releasedVersion: state?.releasedVersion ?? null,
+  };
+  const columns = useMemo(
+    () =>
+      harnessColumns({
+        context: {
+          defaultBranch: context.defaultBranch,
+          releasedVersion: context.releasedVersion,
+        },
+        freshness: freshness ?? "",
+      }),
+    [context.defaultBranch, context.releasedVersion, freshness],
+  );
+
+  // What every row press shares: a read in flight is moving the rows a press
+  // would aim at, and the local deletion writes the folders a restore does.
+  const localSettled =
+    !refresh.isPending &&
+    !harness.isFetching &&
+    presses.deleteLocal.isPending === false;
+  const sections = state === undefined ? [] : stageSections(state, now);
+  const rows: HarnessTableRow[] =
+    state === undefined
+      ? []
+      : sections.flatMap((section) =>
+          section.read.outcome !== "read"
+            ? []
+            : section.read.rows
+                .map((row) => ({
+                  ...row,
+                  id: rowId(row),
+                  group: section.title,
+                  reading: statusReading(row),
+                  items: rowItems(
+                    row,
+                    presses.handlers,
+                    // Closed with no answer from the remote: there is no tip
+                    // to build on.
+                    releaseEnabled(state.freshness) &&
+                      localSettled &&
+                      presses.promote.isPending === false &&
+                      presses.proposalAction.isPending === false,
+                    // Recovery reads the clone alone, so the remote's silence
+                    // never closes it (#915).
+                    {
+                      enabled:
+                        localSettled && presses.restore.isPending === false,
+                      commit: state.localHeadCommit,
+                    },
+                  ),
+                }))
+                // Within a stage, the rows that need the author first (#994).
+                .sort(
+                  (a, b) => readingRank(a.reading) - readingRank(b.reading),
+                ),
+        );
+  const byTitle = (key: string): StageSection | undefined =>
+    sections.find((section) => section.title === key);
+
+  const selectedRow = rows.find((row) => row.id === selected) ?? null;
+  const openIndex = selected === null ? -1 : order.indexOf(selected);
+  const stale =
+    state !== undefined && staleStatusNotice(state.freshness, reread) !== null;
+  const empty = state !== undefined && journeyConfirmedEmpty(state);
+
+  // Re-read Harness stands even before a first read: it is the way back from
+  // a read that failed on open.
+  const band2 = (
+    <>
+      {state === undefined ? null : (
+        <dl className="m-0 flex min-w-0 items-center gap-panel text-row">
+          <BandFact label="Origin" value={state.origin} yields />
+          <BandFact
+            label="Released"
+            value={state.releasedVersion ?? "None yet"}
+            machine={state.releasedVersion !== null}
+          />
+          <BandFact
+            label="Branch"
+            value={state.defaultBranch ?? "Unknown"}
+            machine={state.defaultBranch !== null}
+          />
+        </dl>
+      )}
+      <div className="ml-auto flex flex-none items-center gap-inline">
+        {freshness === null ? null : (
+          <span
+            className={
+              stale ? "text-amber-11 text-meta" : "text-gray-11 text-meta"
+            }
+          >
+            {freshness}
+          </span>
+        )}
+        <IconButton
+          label={REREAD_HARNESS}
+          busy={refresh.isPending}
+          onClick={reread}
+        >
+          {refresh.isPending ? null : (
+            <RefreshCw
+              aria-hidden="true"
+              strokeWidth={1.5}
+              className="size-4"
+            />
+          )}
+        </IconButton>
+      </div>
+    </>
+  );
 
   return (
     <Panel
       title="Harness"
-      meta={state?.origin}
       action={
         state === undefined ? null : (
-          // The screen's primary action belongs in band 1 (#991). Closed while
-          // the remote's answer is unknown — an offline or failed fetch
-          // (releaseEnabled) — and while a refresh is still rewriting the refs
-          // a plan reads. Advisory findings and server replies never gate it
-          // (#519).
-          <Button
-            variant="primary"
-            disabled={!releaseEnabled(state.freshness) || refresh.isPending}
-            onClick={() => setPlanOpen(true)}
-          >
-            Create a release
-          </Button>
+          <>
+            {/* Import touches the working tree only, so no remote answer
+                gates it. */}
+            <Button variant="quiet" onClick={importFlow.start}>
+              Import skill…
+            </Button>
+            {/* Closed while the remote's answer is unknown — an offline or
+                failed fetch — and while a re-read is still rewriting the refs
+                a plan reads. Advisory findings never gate it (#519). */}
+            <Button
+              variant="primary"
+              disabled={!releaseEnabled(state.freshness) || refresh.isPending}
+              onClick={() => setPlanOpen(true)}
+            >
+              Create a release
+            </Button>
+          </>
         )
       }
+      band2={band2}
     >
-      <section className="p-panel">
-        {/* Mounted before either failure is: the region outlives its content,
-          and a read that failed on open is trigger="load" (#465). Empty, both
-          children are out of flow and the block costs nothing. */}
-        <div className="mb-2 flex flex-col gap-2">
-          <Notice trigger="load" notice={harnessStateNotice(harness.error)} />
-          {/* A failed refresh is not a failed read: the state below stands. One
-            notice either way — a stale status is what a refused press left
-            behind, so the two never stack (#848). */}
-          <Notice
-            trigger="load"
-            notice={
-              (state === undefined
-                ? null
-                : staleStatusNotice(state.freshness, () => fetchRemote())) ??
-              refreshNotice(refresh.error)
-            }
+      {/* Off-screen, polite: a press moves a row between stages and the table
+          repaints under the keyboard, saying nothing (#868). */}
+      <span
+        role="status"
+        aria-live="polite"
+        aria-label="Harness stages"
+        className="sr-only"
+      >
+        {state === undefined ? "" : harnessAnnouncement(state, now, reading)}
+      </span>
+      <div className="relative flex h-[100cqh]">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <Notices
+            state={state}
+            readError={harness.error}
+            refreshError={refresh.error}
+            checkedOnce={checkedOnce}
+            reread={reread}
+            published={publish.data}
+            rereadInventory={rereadInventory}
+            restored={presses.restore.data}
           />
-          <Notice
-            trigger="load"
-            notice={
-              state === undefined || !checkedOnce
-                ? null
-                : cloneSyncNotice(state.cloneSync, () => fetchRemote())
-            }
-          />
-          {/* What the last publication landed. The tag is atomic, so the only
-            half that can fail is the Inventory re-read, and the notice says
-            which of the two happened (#849). */}
-          <Notice
-            trigger="user-action"
-            notice={
-              publish.data === undefined
-                ? null
-                : releasePublishedNotice(
-                    publish.data.tag,
-                    publish.data.inventoryRefreshed,
-                    rereadInventory,
-                  )
-            }
-          />
-          {/* What the last restore put back. Above the strip, so it outlives the
-            row it was pressed from — a restored skill leaves the stage it was
-            deleted in (#915). */}
-          <Notice
-            trigger="user-action"
-            notice={
-              restore.data === undefined
-                ? null
-                : skillRestoredNotice(
-                    restore.data.hasRequest,
-                    restore.data.statusRead,
-                    () => fetchRemote(),
-                  )
-            }
-          />
-        </div>
-        {harness.isError ? null : state === undefined ? (
-          <p className="text-dim text-tag">Loading the Harness…</p>
-        ) : (
-          <>
-            <HarnessStrip
-              releasedVersion={state.releasedVersion}
-              defaultBranch={state.defaultBranch}
-              // Read at render, so the age is current every time the strip paints.
-              status={freshnessLabel(state.freshness, new Date(), reading)}
-            >
-              <Button
-                variant="quiet"
-                size="sm"
-                // Never disabled by a failed fetch: it is the one way back.
-                disabled={refresh.isPending}
-                onClick={() => fetchRemote()}
-              >
-                Retry check
-              </Button>
-            </HarnessStrip>
-            {/* Off-screen, polite: a press moves a row between stages and the
-              tables repaint under the keyboard, saying nothing (#868). */}
-            <span
-              role="status"
-              aria-live="polite"
-              aria-label="Harness stages"
-              className="sr-only"
-            >
-              {harnessAnnouncement(state, new Date(), reading)}
-            </span>
-            {/* The three stages in journey order, each answering its own
-              question. One skill can hold a row in all three (ADR-0021 · 10). */}
-            {stageSections(state, new Date()).map((section) => {
-              const rows =
-                section.read.outcome === "read" ? section.read.rows : [];
-              const proposal = section.stage === "pending-proposal";
-              // Only a read stage that holds rows names its count, so a number
-              // never appears without rows beside it and can never be mistaken
-              // for an unread stage (#827, #881).
-              const heading =
-                rows.length === 0
-                  ? section.title
-                  : `${section.title} · ${rows.length}`;
-              const proposalEmpty = journeyConfirmedEmpty(state)
-                ? PROPOSAL_EMPTY.journey
-                : PROPOSAL_EMPTY.stage;
-              // Import touches the working tree only, so no remote answer gates
-              // it — and an unread stage still has a way to put work in it.
-              const importAction = proposal ? (
-                <Button
-                  variant="quiet"
-                  size="sm"
-                  onClick={() => setImportOpen(true)}
-                >
+          {empty ? (
+            <EmptyState
+              icon={
+                <FolderGit2
+                  aria-hidden="true"
+                  strokeWidth={1.5}
+                  className="size-4"
+                />
+              }
+              title={PROPOSAL_EMPTY.journey.title}
+              body={PROPOSAL_EMPTY.journey.body}
+              action={
+                <Button variant="quiet" onClick={importFlow.start}>
                   Import skill…
                 </Button>
-              ) : null;
-              // A confirmed empty stage is absent altogether, except Pending
-              // proposal, which always renders because it hosts Import skill….
-              if (
-                !proposal &&
-                section.read.outcome === "read" &&
-                rows.length === 0
-              ) {
-                return null;
               }
-              // A stage nobody could read draws no card, no count and no rows: a
-              // zero must never read as an unknown (#848). Its reading moves out
-              // of the meta slot into a notice, which is where the cockpit states
-              // a cause and a next step (#866).
-              if (section.read.outcome !== "read") {
-                return (
-                  <section key={section.stage} className="mt-4">
-                    <SectionHeader level={2} size={3} title={section.title}>
-                      {importAction}
-                    </SectionHeader>
-                    <Notice
-                      trigger="load"
-                      notice={stageReadNotice(section.read, section.meta, () =>
-                        fetchRemote(),
-                      )}
-                    />
-                  </section>
-                );
-              }
-              return (
-                <section key={section.stage} className="mt-4">
-                  <SectionHeader
-                    level={2}
-                    size={3}
-                    title={heading}
-                    meta={section.meta}
-                  >
-                    {importAction}
-                  </SectionHeader>
-                  <Card>
-                    {rows.length === 0 ? (
-                      <div className="p-card-x">
-                        <p className="m-0 font-medium text-desc text-fg">
-                          {proposalEmpty.title}
-                        </p>
-                        <p className="m-0 mt-1 text-desc text-muted">
-                          {proposalEmpty.body}
-                        </p>
-                      </div>
-                    ) : (
-                      <StageTable
-                        title={section.title}
-                        rows={rows}
-                        context={{
-                          defaultBranch: state.defaultBranch,
-                          releasedVersion: state.releasedVersion,
-                        }}
-                        actions={{
-                          items: (row) =>
-                            rowItems(
-                              row,
-                              {
-                                promote: promoteSkill,
-                                create: (skill) =>
-                                  proposalAction.mutate({
-                                    action: "create",
-                                    name: skill,
-                                  }),
-                                reopen: (skill, number) =>
-                                  proposalAction.mutate({
-                                    action: "reopen",
-                                    name: skill,
-                                    number,
-                                  }),
-                                withdraw: (skill, number) => {
-                                  proposalAction.reset();
-                                  setWithdrawing({ skill, number });
-                                },
-                                deleteLocal: (skill) => {
-                                  deleteLocal.reset();
-                                  setConfirming(skill);
-                                },
-                                restore: (row, commit) => {
-                                  restore.reset();
-                                  setRestoring({
-                                    skill: row.skill,
-                                    commit,
-                                    hasRequest: row.requests.length > 0,
-                                  });
-                                },
-                              },
-                              // Closed with no answer from the remote: there is
-                              // no tip to build on, and a read in flight is
-                              // moving the rows a press would aim at.
-                              releaseEnabled(state.freshness) &&
-                                localSettled &&
-                                promote.isPending === false &&
-                                proposalAction.isPending === false,
-                              // Recovery reads the clone alone, so the remote's
-                              // silence never closes it — only a local write or
-                              // a read moving the rows underneath does (#915).
-                              {
-                                enabled:
-                                  localSettled && restore.isPending === false,
-                                commit: state.localHeadCommit,
-                              },
-                            ),
-                          failed: rowFailure(),
-                          // Focusing the row's menu is what scrolls it into
-                          // view: the platform already does that for focus().
-                          focus: imported ?? justMoved,
-                          highlight: imported,
-                        }}
-                      />
-                    )}
-                  </Card>
-                </section>
-              );
-            })}
-            <HarnessDialogs
-              origin={state.origin}
-              importOpen={importOpen}
-              source={source}
-              name={name}
-              importCheck={importCheck}
-              importSkill={importSkill}
-              onPickSource={picker.openBrowse}
-              onNameChange={setEditedName}
-              onImport={() =>
-                source !== null && importSkill.mutate({ source, name })
-              }
-              onImported={(name) => {
-                closeImport();
-                setLandedOn(name);
-              }}
-              onImportClose={closeImport}
-              picker={picker}
-              deletionRow={pendingDeletion}
-              deletion={deletion}
-              deleteLocal={deleteLocal}
-              onDeletionClose={closeConfirmation}
-              restoring={restoring}
-              restore={restore}
-              onRestoreClose={closeRestore}
-              withdrawing={withdrawing}
-              proposalAction={proposalAction}
-              onWithdrawClose={closeWithdrawal}
-              planOpen={planOpen}
-              plan={plan}
-              publish={publish}
-              onPlanClose={closePlan}
-              onPublish={handlePublish}
             />
-          </>
-        )}
-      </section>
+          ) : state !== undefined || skeleton.visible ? (
+            <div
+              aria-busy={reading || undefined}
+              className="min-h-0 flex-1 overflow-auto"
+            >
+              <DataTable
+                ref={gridRef}
+                label={TABLE_LABEL}
+                columns={columns}
+                data={rows}
+                getRowId={(row) => row.id}
+                loading={skeleton.visible}
+                skeletonRows={Math.min(rows.length || 8, 30)}
+                groups={{
+                  key: (row) => row.group,
+                  order: sections.map((section) => section.title),
+                  meta: (key) => groupMeta(byTitle(key)),
+                  message: (key) => groupMessage(byTitle(key), reread),
+                }}
+                openRowId={selectedRow?.id ?? null}
+                onRowOpen={(row) =>
+                  setSelected(selected === row.id ? null : row.id)
+                }
+                onRowOrderChange={setOrder}
+              />
+            </div>
+          ) : null}
+        </div>
+        {selectedRow ? (
+          // Side by side from 1100px; narrower, the pane floats over the table.
+          <div className="absolute inset-y-0 right-0 z-20 max-w-full shadow-float min-[1100px]:static min-[1100px]:shadow-none">
+            <StageDetailPane
+              row={selectedRow}
+              context={context}
+              failure={failure?.id === selectedRow.id ? failure.notice : null}
+              position={
+                openIndex === -1
+                  ? null
+                  : { index: openIndex, count: order.length }
+              }
+              onPage={(step) =>
+                setSelected(order[openIndex + step] ?? selected)
+              }
+              onClose={() => setSelected(null)}
+              getTriggerElement={getTriggerElement}
+            />
+          </div>
+        ) : null}
+      </div>
+      {state === undefined ? null : (
+        <HarnessDialogs
+          origin={state.origin}
+          importFlow={importFlow}
+          onImported={(name) => {
+            importFlow.close();
+            // An import writes the working tree, so its row is Pending
+            // proposal's — even where the skill also holds a later one (#865).
+            setSelected(rowId({ stage: "pending-proposal", skill: name }));
+          }}
+          deletionRow={presses.pendingDeletion}
+          deletion={presses.deletion}
+          deleteLocal={presses.deleteLocal}
+          onDeletionClose={presses.closeConfirmation}
+          restoring={presses.restoring}
+          restore={presses.restore}
+          onRestoreClose={presses.closeRestore}
+          withdrawing={presses.withdrawing}
+          proposalAction={presses.proposalAction}
+          onWithdrawClose={presses.closeWithdrawal}
+          planOpen={planOpen}
+          plan={plan}
+          publish={publish}
+          onPlanClose={closePlan}
+          onPublish={handlePublish}
+        />
+      )}
     </Panel>
   );
 }
 
-// Pending proposal's rows, or none where the stage could not be read: a press
-// aimed at a row nobody read is refused here rather than sent.
-function proposalRows(state: HarnessState | undefined): HarnessStageRow[] {
-  const stage = state?.stages.proposal;
-  return stage?.outcome === "read" ? stage.rows : [];
+// A band-2 fact (#994): the label, then its value. Only Origin gives way on a
+// narrow band: it truncates, and leaves band 2 under 1024px.
+function BandFact({
+  label,
+  value,
+  machine = true,
+  yields = false,
+}: {
+  label: string;
+  value: string;
+  /** False for a plain word such as None yet, which Geist Mono never sets. */
+  machine?: boolean;
+  yields?: boolean;
+}) {
+  return (
+    <div
+      className={
+        yields
+          ? "flex min-w-0 gap-inline max-lg:hidden"
+          : "flex flex-none gap-inline"
+      }
+    >
+      <dt className="flex-none text-gray-11">{label}</dt>
+      <dd
+        title={value}
+        className={
+          machine
+            ? "m-0 truncate font-mono text-gray-12"
+            : "m-0 truncate text-gray-12"
+        }
+      >
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+// A stage's header carries its one reading: what was compared and when, or,
+// for a stage nobody read, the `?` badge in place of its count (#994).
+function groupMeta(section: StageSection | undefined) {
+  if (section === undefined) return null;
+  return section.read.outcome === "read" ? (
+    section.meta
+  ) : (
+    <StatusBadge reading={reading(section.meta, "unknown")} />
+  );
+}
+
+// The one line a stage without rows shows: why nobody could read it, or, for
+// Pending proposal, the two ways to put a change there. Unknown is never
+// drawn as empty (#848, #866).
+function groupMessage(section: StageSection | undefined, reread: () => void) {
+  if (section === undefined) return null;
+  if (section.read.outcome !== "read") {
+    const notice = stageReadNotice(section.read, section.meta, reread);
+    return notice === null ? null : (
+      <>
+        <span className="font-medium text-gray-12">{notice.message}</span>
+        {notice.detail ? (
+          <>
+            {" "}
+            <span>{notice.detail}</span>
+          </>
+        ) : null}
+      </>
+    );
+  }
+  if (section.stage !== "pending-proposal") return null;
+  return (
+    <>
+      <span className="font-medium text-gray-12">
+        {PROPOSAL_EMPTY.stage.title}
+      </span>{" "}
+      {PROPOSAL_EMPTY.stage.body}
+    </>
+  );
+}
+
+// Notices about the whole screen, above the table (#991).
+function Notices({
+  state,
+  readError,
+  refreshError,
+  checkedOnce,
+  reread,
+  published,
+  rereadInventory,
+  restored,
+}: {
+  state: ReturnType<typeof useHarness>["data"];
+  readError: unknown;
+  refreshError: unknown;
+  checkedOnce: boolean;
+  reread: () => void;
+  published: { tag: string; inventoryRefreshed: boolean } | undefined;
+  rereadInventory: () => void;
+  restored: { hasRequest: boolean; statusRead: boolean } | undefined;
+}) {
+  const notices = [
+    { trigger: "load" as const, notice: harnessStateNotice(readError) },
+    // A failed re-read is not a failed read: the state below stands. One
+    // notice either way — a stale status is what a refused press left
+    // behind, so the two never stack (#848).
+    {
+      trigger: "load" as const,
+      notice:
+        (state === undefined
+          ? null
+          : staleStatusNotice(state.freshness, reread)) ??
+        refreshNotice(refreshError),
+    },
+    {
+      trigger: "load" as const,
+      notice:
+        state === undefined || !checkedOnce
+          ? null
+          : cloneSyncNotice(state.cloneSync, reread),
+    },
+    // What the last publication landed. The tag is atomic, so the only half
+    // that can fail is the Inventory re-read (#849).
+    {
+      trigger: "user-action" as const,
+      notice:
+        published === undefined
+          ? null
+          : releasePublishedNotice(
+              published.tag,
+              published.inventoryRefreshed,
+              rereadInventory,
+            ),
+    },
+    // What the last restore put back. Above the table, so it outlives the row
+    // it was pressed from (#915).
+    {
+      trigger: "user-action" as const,
+      notice:
+        restored === undefined
+          ? null
+          : skillRestoredNotice(
+              restored.hasRequest,
+              restored.statusRead,
+              reread,
+            ),
+    },
+  ];
+  // Every region is mounted before its failure is: a region outlives its
+  // content, and a read that failed on open is trigger="load" (#465).
+  return (
+    <div
+      className={
+        notices.some((each) => each.notice !== null)
+          ? "flex flex-col gap-inline p-panel"
+          : "flex flex-col"
+      }
+    >
+      {notices.map((each, index) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: five fixed slots, each always mounted
+        <Notice key={index} trigger={each.trigger} notice={each.notice} />
+      ))}
+    </div>
+  );
 }

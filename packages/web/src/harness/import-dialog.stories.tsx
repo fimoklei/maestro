@@ -6,6 +6,15 @@ const meta = {
   component: ImportDialog,
   args: {
     source: "/Users/me/work/Code Review",
+    sourceText: "/Users/me/work/Code Review",
+    onSourceChange: () => {},
+    onSourceCommit: () => {},
+    chooser: {
+      available: true,
+      busy: false,
+      notice: null,
+      browse: () => {},
+    },
     name: "code-review",
     load: {
       kind: "ready",
@@ -17,7 +26,6 @@ const meta = {
         advisories: [],
       },
     },
-    onPickSource: () => {},
     onNameChange: () => {},
     onClose: () => {},
     onImport: () => {},
@@ -36,7 +44,7 @@ export const Ready: Story = {};
 
 // Nothing picked yet: the name field waits, and Import is closed.
 export const NoFolderPicked: Story = {
-  args: { source: null, name: "", load: { kind: "idle" } },
+  args: { source: null, sourceText: "", name: "", load: { kind: "idle" } },
 };
 
 // A clash belongs to the name, so it is stated on the name.

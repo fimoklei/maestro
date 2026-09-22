@@ -1,5 +1,5 @@
 import { EllipsisVertical } from "lucide-react";
-import { ActionsMenu } from "../ui/actions-menu";
+import { ActionsMenu, type ActionsMenuProps } from "../ui/actions-menu";
 import { cn } from "../ui/cn";
 import { rowActionsLabel } from "./inventory-copy";
 
@@ -17,14 +17,31 @@ export function RowMenu<A extends string = RowAction>({
   onAction: (action: A) => void;
 }) {
   return (
-    <ActionsMenu
+    <RowItemsMenu
       label={rowActionsLabel(name)}
-      // Every item opens the pane and moves focus into it.
-      returnFocus={false}
       items={items.map((item) => ({
         label: item.label,
         onSelect: () => onAction(item.action),
       }))}
+    />
+  );
+}
+
+// The same menu over items of the caller's own: links, blocked items and a
+// destructive one (#994).
+export function RowItemsMenu({
+  label,
+  items,
+}: {
+  label: string;
+  items: ActionsMenuProps["items"];
+}) {
+  return (
+    <ActionsMenu
+      label={label}
+      // Every item opens the pane and moves focus into it.
+      returnFocus={false}
+      items={items}
       trigger={
         <button
           type="button"

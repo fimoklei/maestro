@@ -1,7 +1,8 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ComponentProps } from "react";
+import { type ComponentProps, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+import type { FolderChooser } from "../ui/use-folder-chooser";
 import { ImportDialog } from "./import-dialog";
 
 // Deep enough that the head of the path says nothing the reader needs.
@@ -15,19 +16,64 @@ const CHECK = {
   advisories: [],
 };
 
+// A chooser that answers every Browse with PICKED, as the server's would.
+const PICKED = "/Users/me/Downloads/release-notes";
+const chooser: FolderChooser = {
+  available: true,
+  busy: false,
+  notice: null,
+  browse: (_start, onPicked) => onPicked(PICKED),
+};
+
 function renderDialog(
   source: string | null,
   load: ComponentProps<typeof ImportDialog>["load"] = { kind: "idle" },
   imported: ComponentProps<typeof ImportDialog>["imported"] = null,
   onView: ComponentProps<typeof ImportDialog>["onView"] = vi.fn(),
   onClose: ComponentProps<typeof ImportDialog>["onClose"] = vi.fn(),
+  onSourceCommit: ComponentProps<
+    typeof ImportDialog
+  >["onSourceCommit"] = vi.fn(),
 ) {
   render(
+    <SourceHost
+      source={source}
+      load={load}
+      imported={imported}
+      onView={onView}
+      onClose={onClose}
+      onSourceCommit={onSourceCommit}
+    />,
+  );
+  return { onClose };
+}
+
+// The field's text is the host's UI-state, as it is in the view.
+function SourceHost({
+  source,
+  load,
+  imported,
+  onView,
+  onClose,
+  onSourceCommit,
+}: {
+  source: string | null;
+  load: ComponentProps<typeof ImportDialog>["load"];
+  imported: ComponentProps<typeof ImportDialog>["imported"];
+  onView: ComponentProps<typeof ImportDialog>["onView"];
+  onClose: ComponentProps<typeof ImportDialog>["onClose"];
+  onSourceCommit: ComponentProps<typeof ImportDialog>["onSourceCommit"];
+}) {
+  const [text, setText] = useState(source ?? "");
+  return (
     <ImportDialog
       source={source}
+      sourceText={text}
+      onSourceChange={setText}
+      onSourceCommit={onSourceCommit}
+      chooser={chooser}
       name="release-notes"
       load={load}
-      onPickSource={vi.fn()}
       onNameChange={vi.fn()}
       onClose={onClose}
       onImport={vi.fn()}
@@ -35,9 +81,8 @@ function renderDialog(
       importing={false}
       importError={null}
       imported={imported}
-    />,
+    />
   );
-  return { onClose };
 }
 
 describe("ImportDialog", () => {
@@ -70,12 +115,57 @@ describe("ImportDialog", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("shows the tail of a deep source path and carries the whole path in its title", () => {
+  it("holds the whole folder path in the Folder path field", () => {
     renderDialog(DEEP);
 
-    const shown = screen.getByTitle(DEEP);
-    expect(shown).toHaveTextContent("incoming-skills/release-notes");
-    expect(shown).not.toHaveTextContent("/Users/me/Projects");
+    expect(screen.getByRole("textbox", { name: "Folder path" })).toHaveValue(
+      DEEP,
+    );
+    expect(
+      screen.getByText(
+        "Import copies this folder to the Working Harness. The original folder stays unchanged.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("checks a typed folder once the author leaves the field", async () => {
+    const onSourceCommit = vi.fn();
+    renderDialog(
+      null,
+      { kind: "idle" },
+      null,
+      vi.fn(),
+      vi.fn(),
+      onSourceCommit,
+    );
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Folder path" }),
+      DEEP,
+    );
+    expect(onSourceCommit).not.toHaveBeenCalled();
+    await userEvent.tab();
+
+    expect(onSourceCommit).toHaveBeenCalledExactlyOnceWith(DEEP);
+  });
+
+  it("checks a folder picked through Browse at once", async () => {
+    const onSourceCommit = vi.fn();
+    renderDialog(
+      null,
+      { kind: "idle" },
+      null,
+      vi.fn(),
+      vi.fn(),
+      onSourceCommit,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Browse" }));
+
+    expect(screen.getByRole("textbox", { name: "Folder path" })).toHaveValue(
+      PICKED,
+    );
+    expect(onSourceCommit).toHaveBeenCalledWith(PICKED);
   });
 
   it("reads Update skill while it is replacing a skill of this Harness", () => {
@@ -203,9 +293,12 @@ describe("ImportDialog", () => {
     expect(screen.queryByText(/skipped/)).not.toBeInTheDocument();
   });
 
-  it("says nothing has been picked before a folder is chosen", () => {
+  it("keeps the name closed until a folder is chosen", () => {
     renderDialog(null);
 
-    expect(screen.getByText("Choose a skill folder")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Folder path" })).toHaveValue(
+      "",
+    );
+    expect(screen.getByLabelText("Name in the Harness")).toBeDisabled();
   });
 });

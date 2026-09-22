@@ -6,6 +6,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useEffect, useRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { DialogShell } from "./dialog-shell";
 
@@ -91,6 +92,77 @@ describe("DialogShell", () => {
     await userEvent.keyboard("{Escape}");
 
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  // A dialog that closes by sending the reader on (View in Harness opens a
+  // pane that takes focus) must not pull focus back to the opener (#1045).
+  describe("on close", () => {
+    function Host() {
+      const [open, setOpen] = useState(false);
+      const [landed, setLanded] = useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Opener
+          </button>
+          {landed ? <Landing /> : null}
+          {open ? (
+            <DialogShell
+              label="Import a skill"
+              describedBy={null}
+              width={480}
+              onClose={() => setOpen(false)}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  setLanded(true);
+                }}
+              >
+                View in Harness
+              </button>
+            </DialogShell>
+          ) : null}
+        </>
+      );
+    }
+    function Landing() {
+      const ref = useRef<HTMLHeadingElement>(null);
+      useEffect(() => ref.current?.focus(), []);
+      return (
+        <h2 ref={ref} tabIndex={-1}>
+          code-review
+        </h2>
+      );
+    }
+
+    it("returns focus to the control that opened it", async () => {
+      render(<Host />);
+      await userEvent.click(screen.getByRole("button", { name: "Opener" }));
+
+      await userEvent.keyboard("{Escape}");
+
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: "Opener" })).toHaveFocus(),
+      );
+    });
+
+    it("leaves focus where the close sent it", async () => {
+      render(<Host />);
+      await userEvent.click(screen.getByRole("button", { name: "Opener" }));
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "View in Harness" }),
+      );
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      });
+
+      expect(
+        screen.getByRole("heading", { name: "code-review" }),
+      ).toHaveFocus();
+    });
   });
 
   it("holds the panel open while closing is disabled", async () => {

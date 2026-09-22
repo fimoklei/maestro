@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  alsoInWords,
   crossStageLine,
   detailSentence,
   PROPOSAL_EMPTY,
+  pullRequestLinkName,
+  pullRequestOpensLine,
+  pullRequestState,
+  requestedReviewers,
   reviewerLine,
+  reviewWord,
   statusReading,
-  statusTone,
 } from "./stage-copy";
 import type { HarnessStage, HarnessStageRow, StageStatus } from "./use-harness";
 
@@ -67,107 +72,109 @@ describe("the Pending proposal empty state", () => {
   });
 });
 
-describe("chip readings", () => {
-  it("leaves every expected reading in its stage colourless", () => {
+// Five families, word first (#994): the reading survives without colour.
+describe("status readings", () => {
+  it("leaves every expected reading neutral", () => {
     for (const [stage, status] of [
       ["pending-proposal", "not-yet-proposed"],
       ["pending-proposal", "new-local-work"],
       ["pending-proposal", "deleted-locally"],
       ["pending-review", "draft"],
       ["pending-review", "waiting-for-review"],
-      ["pending-review", "changes-requested"],
-      ["pending-review", "approved-awaiting-merge"],
       ["pending-review", "proposal-merged"],
       ["pending-release", "added"],
       ["pending-release", "changed"],
       ["pending-release", "renamed"],
       ["pending-release", "deleted"],
     ] as [HarnessStage, StageStatus][]) {
-      expect(statusTone(row(stage, status))).toBe("dim");
+      expect(statusReading(row(stage, status)).family).toBe("neutral");
     }
   });
 
-  it("gives the three Pending review exceptions an amber chip", () => {
+  it("never gives a stage reading the failed or unknown family", () => {
+    // A failed press is a notice, and unknown sits on a group header (#994).
+    for (const status of ALL_STATUSES) {
+      expect(["neutral", "attention", "good"]).toContain(
+        statusReading(row("pending-review", status)).family,
+      );
+    }
+  });
+
+  it("marks the four stuck Pending review readings for attention with ⚠", () => {
     for (const status of [
+      "changes-requested",
       "pull-request-missing",
       "proposal-closed",
       "multiple-pull-requests",
     ] as const) {
-      expect(statusTone(row("pending-review", status))).toBe("drift");
+      expect(statusReading(row("pending-review", status))).toMatchObject({
+        family: "attention",
+        glyph: "⚠",
+      });
     }
   });
 
-  it("never gives a stage chip green", () => {
-    for (const status of ALL_STATUSES) {
-      expect(statusTone(row("pending-review", status))).not.toBe("ok");
-    }
+  it("reads an approved proposal as good", () => {
+    expect(
+      statusReading(row("pending-review", "approved-awaiting-merge")),
+    ).toMatchObject({ family: "good", glyph: "✓" });
   });
 
-  it("carries every reading as text, never colour alone", () => {
-    expect(statusReading(row("pending-review", "pull-request-missing"))).toBe(
-      "▲ Pull request missing",
-    );
-    expect(statusReading(row("pending-release", "deleted"))).toBe("● Deleted");
-  });
-
-  // Never-Colour-Alone (DESIGN.md § 2): the three exceptions read ▲, every
-  // expected reading reads ●.
-  it("prefixes every reading with the glyph its tone carries", () => {
+  it("carries every reading as its word", () => {
     const readings: [StageStatus, string][] = [
-      ["not-yet-proposed", "● Not yet proposed"],
-      ["new-local-work", "● New local work"],
-      ["deleted-locally", "● Deleted locally"],
-      ["waiting-for-review", "● Waiting for review"],
-      ["draft", "● Draft"],
-      ["changes-requested", "● Changes requested"],
-      ["approved-awaiting-merge", "● Approved, awaiting merge"],
-      ["pull-request-missing", "▲ Pull request missing"],
-      ["proposal-merged", "● Proposal merged"],
-      ["proposal-closed", "▲ Proposal closed"],
-      ["multiple-pull-requests", "▲ Multiple pull requests"],
-      ["added", "● Added"],
-      ["changed", "● Changed"],
-      ["renamed", "● Renamed"],
-      ["deleted", "● Deleted"],
+      ["not-yet-proposed", "Not yet proposed"],
+      ["new-local-work", "New local work"],
+      ["deleted-locally", "Deleted locally"],
+      ["waiting-for-review", "Waiting for review"],
+      ["draft", "Draft"],
+      ["changes-requested", "Changes requested"],
+      ["approved-awaiting-merge", "Approved, awaiting merge"],
+      ["pull-request-missing", "Pull request missing"],
+      ["proposal-merged", "Proposal merged"],
+      ["proposal-closed", "Proposal closed"],
+      ["multiple-pull-requests", "Multiple pull requests"],
+      ["added", "Added"],
+      ["changed", "Changed"],
+      ["renamed", "Renamed"],
+      ["deleted", "Deleted"],
     ];
-    for (const [status, reading] of readings) {
-      expect(statusReading(row("pending-review", status))).toBe(reading);
+    for (const [status, word] of readings) {
+      expect(statusReading(row("pending-review", status)).word).toBe(word);
     }
   });
 
   it("gives a deletion one reading in each stage of the journey", () => {
     // The six readings of #847, each in the stage that carries it.
     const six: [HarnessStage, StageStatus, string][] = [
-      ["pending-proposal", "deleted-locally", "● Deleted locally"],
-      ["pending-review", "draft", "● Deletion in draft"],
-      ["pending-review", "waiting-for-review", "● Deletion waiting for review"],
-      ["pending-review", "changes-requested", "● Deletion changes requested"],
+      ["pending-proposal", "deleted-locally", "Deleted locally"],
+      ["pending-review", "draft", "Deletion in draft"],
+      ["pending-review", "waiting-for-review", "Deletion waiting for review"],
+      ["pending-review", "changes-requested", "Deletion changes requested"],
       [
         "pending-review",
         "approved-awaiting-merge",
-        "● Deletion approved, awaiting merge",
+        "Deletion approved, awaiting merge",
       ],
-      ["pending-release", "deleted", "● Deleted"],
-      ["pending-review", "proposal-merged", "● Deletion merged"],
+      ["pending-release", "deleted", "Deleted"],
+      ["pending-review", "proposal-merged", "Deletion merged"],
     ];
-    for (const [stage, status, reading] of six) {
-      expect(statusReading(row(stage, status, { deletion: true }))).toBe(
-        reading,
+    for (const [stage, status, word] of six) {
+      expect(statusReading(row(stage, status, { deletion: true })).word).toBe(
+        word,
       );
     }
   });
 
-  it("keeps a deletion's own reading in the stage it is in", () => {
+  it("keeps a deletion's family with its status", () => {
     expect(
       statusReading(
         row("pending-review", "changes-requested", { deletion: true }),
       ),
-    ).toBe("● Deletion changes requested");
-    expect(
-      statusReading(
-        row("pending-review", "approved-awaiting-merge", { deletion: true }),
-      ),
-    ).toBe("● Deletion approved, awaiting merge");
+    ).toEqual({
+      word: "Deletion changes requested",
+      family: "attention",
+      glyph: "⚠",
+    });
   });
 });
 
@@ -243,12 +250,12 @@ describe("Detail sentences", () => {
     [
       "proposal-merged",
       false,
-      "Pull request #45 was merged. Select Retry check to read GitHub again.",
+      "Pull request #45 was merged. Select Re-read Harness to read GitHub again.",
     ],
     [
       "proposal-merged",
       true,
-      "Pull request #45 merged the deletion. Select Retry check to read GitHub again.",
+      "Pull request #45 merged the deletion. Select Re-read Harness to read GitHub again.",
     ],
     [
       "proposal-closed",
@@ -455,5 +462,81 @@ describe("the reviewer and cross-stage lines", () => {
     expect(
       crossStageLine(row("pending-proposal", "new-local-work")),
     ).toBeNull();
+  });
+});
+
+// The Pull request cell's words (#994): the card carries only fields the gh
+// adapter already lets cross, so state and review are read off the status.
+describe("pull request words", () => {
+  it("names the link for what it opens", () => {
+    expect(pullRequestLinkName(47)).toBe(
+      "Pull request #47, opens in a new tab",
+    );
+  });
+
+  it("says where selecting the number takes the author", () => {
+    expect(pullRequestOpensLine(47)).toBe(
+      "Select #47 to open it on GitHub in a new tab.",
+    );
+  });
+
+  it("reads a request's state off the row's status", () => {
+    const states: [StageStatus, string][] = [
+      ["draft", "Draft"],
+      ["waiting-for-review", "Open"],
+      ["changes-requested", "Open"],
+      ["approved-awaiting-merge", "Open"],
+      ["multiple-pull-requests", "Open"],
+      ["proposal-merged", "Merged"],
+      ["proposal-closed", "Closed"],
+    ];
+    for (const [status, state] of states) {
+      expect(pullRequestState(row("pending-review", status))).toBe(state);
+    }
+    expect(pullRequestState(row("pending-proposal", "new-local-work"))).toBe(
+      null,
+    );
+  });
+
+  it("names the review only where GitHub gave one", () => {
+    expect(reviewWord(row("pending-review", "changes-requested"))).toBe(
+      "Changes requested",
+    );
+    expect(reviewWord(row("pending-review", "approved-awaiting-merge"))).toBe(
+      "Approved",
+    );
+    expect(reviewWord(row("pending-review", "waiting-for-review"))).toBe(
+      "Waiting for review",
+    );
+    expect(reviewWord(row("pending-review", "draft"))).toBe(null);
+  });
+
+  it("lists the requested reviewers, uncapped", () => {
+    expect(
+      requestedReviewers(
+        row("pending-review", "waiting-for-review", {
+          reviewers: [
+            { kind: "user", login: "ada" },
+            { kind: "team", slug: "fimoklei/reviewers" },
+          ],
+        }),
+      ),
+    ).toBe("@ada, @fimoklei/reviewers");
+    expect(requestedReviewers(row("pending-review", "draft"))).toBe(null);
+  });
+
+  it("names the other stages a skill is in, for the Also in column", () => {
+    expect(
+      alsoInWords(
+        row("pending-proposal", "new-local-work", {
+          alsoIn: ["pending-review", "pending-release"],
+        }),
+      ),
+    ).toBe("Pending review, Pending release");
+    expect(alsoInWords(row("pending-proposal", "new-local-work"))).toBe("");
+    // Unknown membership is never read as "only here".
+    expect(
+      alsoInWords(row("pending-proposal", "new-local-work", { alsoIn: null })),
+    ).toBe("");
   });
 });

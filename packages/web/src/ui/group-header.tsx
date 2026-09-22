@@ -1,12 +1,18 @@
+import type { ReactNode } from "react";
+
 // The row that opens a group in a DataTable (#993): the group's words, then
-// how many rows it holds. Never a stop for the grid's cursor.
+// how many rows it holds, and on the right what the group waits for (#994).
+// Never a stop for the grid's cursor.
 export function GroupHeader({
   label,
   count,
+  meta,
   columnCount,
 }: {
   label: string;
-  count: number;
+  /** Left out where the group holds no rows, so a zero never reads as unread. */
+  count?: number;
+  meta?: ReactNode;
   /** Every column of the table, so the header spans the row. */
   columnCount: number;
 }) {
@@ -16,7 +22,22 @@ export function GroupHeader({
         colSpan={columnCount}
         className="px-inline font-medium text-gray-12 text-meta"
       >
-        {label} <span className="text-gray-11 tabular-nums">{count}</span>
+        <span className="flex min-w-0 items-center gap-inline">
+          <span className="flex-none">
+            {label}
+            {count === undefined ? null : (
+              <>
+                {" "}
+                <span className="text-gray-11 tabular-nums">{count}</span>
+              </>
+            )}
+          </span>
+          {meta ? (
+            <span className="ml-auto min-w-0 truncate font-normal text-gray-11">
+              {meta}
+            </span>
+          ) : null}
+        </span>
       </HeaderCell>
     </tr>
   );

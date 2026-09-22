@@ -76,6 +76,11 @@ export interface DataTableGroups<T> {
   key: (row: T) => string;
   /** Groups in this order first; any other follows as it first appears. */
   order?: readonly string[];
+  /** Words on the right of a group's header, e.g. what its rows wait for. */
+  meta?: (key: string) => ReactNode;
+  /** One line in place of rows for an `order` group that holds none; a
+   * group with no rows and no message is not drawn. */
+  message?: (key: string) => ReactNode | null;
 }
 
 export interface DataTableProps<T extends RowData> {
@@ -137,15 +142,23 @@ export function DataTable<T extends RowData>({
   });
   const sortedRows = table.getRowModel().rows;
   // Grouping reorders the sorted rows; the cursor walks this flat order.
-  const rows =
+  const blocks =
     groups === undefined
-      ? sortedRows
+      ? undefined
       : groupKeys(
-          sortedRows.map((row) => groups.key(row.original)),
+          [
+            ...sortedRows.map((row) => groups.key(row.original)),
+            ...(groups.order ?? []).filter(
+              (key) => (groups.message?.(key) ?? null) !== null,
+            ),
+          ],
           groups.order,
-        ).flatMap((key) =>
-          sortedRows.filter((row) => groups.key(row.original) === key),
-        );
+        ).map((key) => ({
+          key,
+          rows: sortedRows.filter((row) => groups.key(row.original) === key),
+        }));
+  const rows =
+    blocks === undefined ? sortedRows : blocks.flatMap((b) => b.rows);
   const leafColumns = table.getVisibleLeafColumns();
   const gridId = useId();
   const rowDomId = (index: number) => `${gridId}-row-${index}`;
@@ -254,6 +267,79 @@ export function DataTable<T extends RowData>({
   };
 
   const columnCount = leafColumns.length + (selection ? 1 : 0);
+
+  // One data row; `index` is its place in the flat order the cursor walks.
+  const renderRow = (row: (typeof rows)[number], index: number) => {
+    const id = row.id;
+    const isSelected = selection?.selected.has(id) ?? false;
+    const isOpen = id === openRowId;
+    return (
+      <tr
+        key={id}
+        id={rowDomId(index)}
+        aria-selected={selection ? isSelected : undefined}
+        aria-current={isOpen || undefined}
+        data-active={gridFocused && index === active ? true : undefined}
+        onClick={(event) => {
+          if (!event.currentTarget.contains(event.target as Node)) {
+            return;
+          }
+          setCursor(index);
+          if ((event.target as HTMLElement).closest(INTERACTIVE)) {
+            return;
+          }
+          onRowOpen?.(row.original);
+        }}
+        className={cn(
+          "group/row h-row border-gray-6 border-b",
+          onRowOpen && "cursor-pointer",
+          isOpen ? "bg-gray-5" : "hover:bg-gray-3",
+          gridFocused &&
+            index === active &&
+            "outline-2 outline-blue-9 -outline-offset-2 outline",
+          HOVER_TRANSITION,
+        )}
+      >
+        <RowActiveContext value={gridFocused && index === active}>
+          {selection ? (
+            <GridCell className="px-inline">
+              {/* The padded label lifts the 16px box to the 24px
+                        pointer floor (WCAG 2.2 SC 2.5.8). */}
+              {/* biome-ignore lint/a11y/noLabelWithoutControl: the Radix Checkbox is a button, and a label activates the button it wraps */}
+              <label className="-m-1 flex w-fit cursor-pointer p-1">
+                <Checkbox
+                  tabIndex={-1}
+                  checked={isSelected}
+                  onClick={(event) => {
+                    // Radix toggles on click; the row's state is
+                    // the caller's, so the click is taken here.
+                    event.preventDefault();
+                    toggleRow(index, event.shiftKey);
+                  }}
+                  aria-label={selection.rowLabel(row.original)}
+                />
+              </label>
+            </GridCell>
+          ) : null}
+          {row.getVisibleCells().map((cell) => {
+            const meta = cell.column.columnDef.meta;
+            return (
+              <GridCell
+                key={cell.id}
+                className={cn(
+                  "truncate px-inline",
+                  meta?.align === "end" && "text-right",
+                  meta?.className,
+                )}
+              >
+                <table.FlexRender cell={cell} />
+              </GridCell>
+            );
+          })}
+        </RowActiveContext>
+      </tr>
+    );
+  };
 
   return (
     <table
@@ -380,6 +466,29 @@ export function DataTable<T extends RowData>({
               ))}
             </tr>
           ))
+        ) : blocks !== undefined && blocks.length > 0 ? (
+          blocks.map((block) => (
+            <Fragment key={block.key}>
+              <GroupHeader
+                label={block.key}
+                count={block.rows.length === 0 ? undefined : block.rows.length}
+                meta={groups?.meta?.(block.key)}
+                columnCount={columnCount}
+              />
+              {block.rows.length === 0 ? (
+                <tr className="h-row border-gray-6 border-b">
+                  <GridCell
+                    colSpan={columnCount}
+                    className="truncate px-inline text-gray-11"
+                  >
+                    {groups?.message?.(block.key)}
+                  </GridCell>
+                </tr>
+              ) : (
+                block.rows.map((row) => renderRow(row, rows.indexOf(row)))
+              )}
+            </Fragment>
+          ))
         ) : rows.length === 0 ? (
           <tr className="h-row">
             <GridCell colSpan={columnCount} className="px-inline text-gray-11">
@@ -387,96 +496,7 @@ export function DataTable<T extends RowData>({
             </GridCell>
           </tr>
         ) : (
-          rows.map((row, index) => {
-            const groupKey = groups?.key(row.original);
-            const previous = rows[index - 1];
-            const startsGroup =
-              groups !== undefined &&
-              (previous === undefined ||
-                groups.key(previous.original) !== groupKey);
-            const id = row.id;
-            const isSelected = selection?.selected.has(id) ?? false;
-            const isOpen = id === openRowId;
-            return (
-              <Fragment key={id}>
-                {startsGroup && groupKey !== undefined ? (
-                  <GroupHeader
-                    label={groupKey}
-                    count={
-                      rows.filter((r) => groups?.key(r.original) === groupKey)
-                        .length
-                    }
-                    columnCount={columnCount}
-                  />
-                ) : null}
-                <tr
-                  id={rowDomId(index)}
-                  aria-selected={selection ? isSelected : undefined}
-                  aria-current={isOpen || undefined}
-                  data-active={
-                    gridFocused && index === active ? true : undefined
-                  }
-                  onClick={(event) => {
-                    if (!event.currentTarget.contains(event.target as Node)) {
-                      return;
-                    }
-                    setCursor(index);
-                    if ((event.target as HTMLElement).closest(INTERACTIVE)) {
-                      return;
-                    }
-                    onRowOpen?.(row.original);
-                  }}
-                  className={cn(
-                    "group/row h-row border-gray-6 border-b",
-                    onRowOpen && "cursor-pointer",
-                    isOpen ? "bg-gray-5" : "hover:bg-gray-3",
-                    gridFocused &&
-                      index === active &&
-                      "outline-2 outline-blue-9 -outline-offset-2 outline",
-                    HOVER_TRANSITION,
-                  )}
-                >
-                  <RowActiveContext value={gridFocused && index === active}>
-                    {selection ? (
-                      <GridCell className="px-inline">
-                        {/* The padded label lifts the 16px box to the 24px
-                        pointer floor (WCAG 2.2 SC 2.5.8). */}
-                        {/* biome-ignore lint/a11y/noLabelWithoutControl: the Radix Checkbox is a button, and a label activates the button it wraps */}
-                        <label className="-m-1 flex w-fit cursor-pointer p-1">
-                          <Checkbox
-                            tabIndex={-1}
-                            checked={isSelected}
-                            onClick={(event) => {
-                              // Radix toggles on click; the row's state is
-                              // the caller's, so the click is taken here.
-                              event.preventDefault();
-                              toggleRow(index, event.shiftKey);
-                            }}
-                            aria-label={selection.rowLabel(row.original)}
-                          />
-                        </label>
-                      </GridCell>
-                    ) : null}
-                    {row.getVisibleCells().map((cell) => {
-                      const meta = cell.column.columnDef.meta;
-                      return (
-                        <GridCell
-                          key={cell.id}
-                          className={cn(
-                            "truncate px-inline",
-                            meta?.align === "end" && "text-right",
-                            meta?.className,
-                          )}
-                        >
-                          <table.FlexRender cell={cell} />
-                        </GridCell>
-                      );
-                    })}
-                  </RowActiveContext>
-                </tr>
-              </Fragment>
-            );
-          })
+          rows.map((row, index) => renderRow(row, index))
         )}
       </tbody>
     </table>

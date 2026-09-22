@@ -100,6 +100,14 @@ export function DialogShell({
           }}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
+            // A close that sent the reader on — a pane that took focus — keeps
+            // them there; only a lost focus goes back to the opener.
+            const active = document.activeElement;
+            const lost =
+              active === null ||
+              active === document.body ||
+              panelRef.current?.contains(active) === true;
+            if (!lost) return;
             const opener = openerRef.current;
             if (opener instanceof HTMLElement) opener.focus();
           }}

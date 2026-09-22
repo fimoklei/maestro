@@ -41,7 +41,7 @@ const releasePlanHeadings: NoticeTable<ReleasePlanError> = {
   "no-answer": {
     level: "error",
     label: "GitHub did not respond",
-    message: "Select Retry check, then Create a release again.",
+    message: "Select Re-read Harness, then Create a release again.",
     detail: "A release plan is measured against what GitHub holds.",
   },
 };
@@ -52,7 +52,7 @@ const publishReleaseHeadings: NoticeTable<PublishReleaseError> = {
     level: "error",
     label: "GitHub did not respond",
     message:
-      "Nothing was published. Select Retry check, then Publish release again.",
+      "Nothing was published. Select Re-read Harness, then Publish release again.",
   },
   "empty-delta": {
     level: "error",
@@ -102,12 +102,12 @@ const promoteHeadings: NoticeTable<PromoteSkillError> = {
     level: "error",
     label: "GitHub did not respond",
     message:
-      "Nothing was pushed. Select Retry check, then Propose change again.",
+      "Nothing was pushed. Select Re-read Harness, then Propose change again.",
   },
   "skill-missing": {
     level: "error",
     label: "Skill no longer in the Harness",
-    message: "Nothing was pushed. Select Retry check to repaint the list.",
+    message: "Nothing was pushed. Select Re-read Harness to repaint the list.",
   },
   "push-elsewhere": {
     level: "error",
@@ -157,11 +157,12 @@ const deletionHeadings: NoticeTable<PromoteDeletionError> = {
   "push-elsewhere": promoteHeadings["push-elsewhere"],
   "no-answer": {
     ...promoteHeadings["no-answer"],
-    message: "Nothing was pushed. Select Retry check, then Delete skill again.",
+    message:
+      "Nothing was pushed. Select Re-read Harness, then Delete skill again.",
   },
   "source-changed": {
     ...promoteHeadings["source-changed"],
-    message: "Nothing was pushed. Select Retry check to repaint the list.",
+    message: "Nothing was pushed. Select Re-read Harness to repaint the list.",
   },
   "promote-in-progress": {
     ...promoteHeadings["promote-in-progress"],
@@ -181,7 +182,8 @@ const deletionHeadings: NoticeTable<PromoteDeletionError> = {
   "confirmation-stale": {
     level: "error",
     label: "Confirmation out of date",
-    message: "Nothing was pushed. Select Retry check, then Delete skill again.",
+    message:
+      "Nothing was pushed. Select Re-read Harness, then Delete skill again.",
     detail: "The copy on the default branch moved after this confirmation.",
   },
   "not-deleted": {
@@ -234,13 +236,13 @@ const localDeletionHeadings: NoticeTable<DeleteLocalSkillError> = {
   "already-gone": {
     level: "error",
     label: "Skill already deleted",
-    message: "The Harness no longer holds this skill. Select Retry check.",
+    message: "The Harness no longer holds this skill. Select Re-read Harness.",
     detail: "Something removed the folder after this list was read.",
   },
   "not-local-only": {
     level: "error",
     label: "Skill exists elsewhere",
-    message: "Nothing was deleted. Select Retry check to repaint the list.",
+    message: "Nothing was deleted. Select Re-read Harness to repaint the list.",
     detail:
       "Maestro found this skill outside the working tree, or could not read the Harness refs.",
   },
@@ -285,7 +287,7 @@ const restorationHeadings: NoticeTable<RestoreSkillError> = nothingRestored({
   "head-moved": {
     level: "error",
     label: "Confirmation out of date",
-    message: "Select Retry check, then Restore skill again.",
+    message: "Select Re-read Harness, then Restore skill again.",
     detail: "Your clone's last commit moved after this confirmation.",
   },
   "staged-changes": {
@@ -376,39 +378,39 @@ const proposalHeadings: NoticeTable<ProposalActionError> = {
   "no-answer": {
     level: "error",
     label: "GitHub did not respond",
-    message: "Nothing changed on GitHub. Select Retry check.",
+    message: "Nothing changed on GitHub. Select Re-read Harness.",
     detail:
       "Maestro could not read the branch this proposal is opened against.",
   },
   "review-unavailable": {
     level: "error",
     label: "Review status unavailable",
-    message: "Sign in with gh auth login, then select Retry check.",
+    message: "Sign in with gh auth login, then select Re-read Harness.",
     detail: "Maestro reads pull requests through your own gh sign-in.",
   },
   "review-unknown": {
     level: "error",
     label: "Review status unknown",
-    message: "Select Retry check to read GitHub again.",
+    message: "Select Re-read Harness to read GitHub again.",
     detail: "GitHub gave no answer Maestro can act on.",
   },
   "request-gone": {
     level: "error",
     label: "Pull request moved on",
-    message: "Select Retry check to read what GitHub holds now.",
+    message: "Select Re-read Harness to read what GitHub holds now.",
     detail: "This pull request is no longer the one open over this skill.",
   },
   "extra-requests": {
     level: "error",
     label: "Multiple pull requests",
     message:
-      "Select a View pull request link to close the extras, then select Retry check.",
+      "Select a View pull request link to close the extras, then select Re-read Harness.",
     detail: "More than one open pull request matches this skill's branch.",
   },
   "request-exists": {
     level: "error",
     label: "Pull request already open",
-    message: "Select Retry check to read the open pull request.",
+    message: "Select Re-read Harness to read the open pull request.",
     detail: "GitHub already holds an open request over this skill's branch.",
   },
   "action-failed": {
@@ -443,8 +445,7 @@ const importHeadings: NoticeTable<ImportSkillError> = {
   "deployed-copy": {
     level: "error",
     label: "Copy from another Harness",
-    message:
-      "Select Change folder, then choose a folder that is not a copy deployed by another Harness.",
+    message: "Pick a folder that is not a copy deployed by another Harness.",
     detail: "Maestro can update only copies deployed by the connected Harness.",
   },
   "harness-copy-uncommitted": {
@@ -581,14 +582,14 @@ export const harnessStateNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(harnessHeadings, error, {
     label: "Harness not read",
     message:
-      "The Maestro server did not answer. Reload the page to read the Harness again.",
+      "The Maestro server did not answer. Select Re-read Harness to read the Harness again.",
   });
 
 export const refreshNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(harnessHeadings, error, {
     label: "GitHub not read",
     message:
-      "The Maestro server did not answer, so the Harness is as it was. Select Retry check.",
+      "The Maestro server did not answer, so the Harness is as it was. Select Re-read Harness.",
   });
 
 // Not a failed press but a failed read: the rows below stand, dated to the
@@ -607,12 +608,12 @@ export const staleStatusNotice = (
   return {
     level: "warning",
     label: "Status out of date",
-    message: "Select Retry check to read GitHub again.",
+    message: "Select Re-read Harness to read GitHub again.",
     detail:
       freshness.outcome === "offline"
         ? "Maestro could not reach GitHub, so these rows are from the last read."
         : "GitHub gave no answer, so these rows are from the last read.",
-    action: { label: "Retry check", onClick: onRetry },
+    action: { label: "Re-read Harness", onClick: onRetry },
   };
 };
 
@@ -637,7 +638,7 @@ export const stageReadNotice = (
     label,
     message: cause.message,
     detail: cause.detail,
-    action: { label: "Retry check", onClick: onRetry },
+    action: { label: "Re-read Harness", onClick: onRetry },
   };
 };
 
@@ -727,11 +728,11 @@ export const skillRestoredNotice = (
         level: "warning",
         label: "Skill restored",
         message:
-          "The skill folder is back, but the status is out of date. Select Retry check to read GitHub again.",
+          "The skill folder is back, but the status is out of date. Select Re-read Harness to read GitHub again.",
         detail: hasRequest
           ? "Your proposal remains unchanged."
           : "Maestro could not read GitHub after the restore.",
-        action: { label: "Retry check", onClick: onRetry },
+        action: { label: "Re-read Harness", onClick: onRetry },
       };
 
 export const proposalNotice = (error: unknown): NoticeContent | null =>

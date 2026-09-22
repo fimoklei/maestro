@@ -1,7 +1,7 @@
 import type { HarnessStageRow, HarnessState } from "@maestro/core";
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import { HarnessView } from "./harness-view";
 
@@ -90,7 +90,7 @@ const CLEAN_CHECK = {
 };
 
 // One stub for the four routes this flow touches: the harness read, the
-// picker's directory listing, the import check, and the import itself.
+// folder chooser, the import check, and the import itself.
 function stubImportServer(options: {
   check?: unknown;
   importStatus?: number;
@@ -105,32 +105,10 @@ function stubImportServer(options: {
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       calls.push(`${init?.method ?? "GET"} ${url}`);
-      if (url === "/api/filesystem/children") {
-        // Stepping into the skill folder is what picks it: the confirm button
-        // takes the folder being listed.
-        const asked = JSON.parse(String(init?.body)) as { path: string };
+      // The system folder chooser answers Browse with the skill folder.
+      if (url === "/api/folder-chooser") {
         return jsonResponse(
-          asked.path === SOURCE
-            ? {
-                path: SOURCE,
-                parent: "/home/me",
-                breadcrumbs: [
-                  { name: "~", path: "/home/me" },
-                  { name: "Code Review", path: SOURCE },
-                ],
-                entries: [],
-              }
-            : {
-                path: "/home/me",
-                breadcrumbs: [{ name: "~", path: "/home/me" }],
-                entries: [
-                  {
-                    name: "Code Review",
-                    path: SOURCE,
-                    facts: { isGitRepo: false, hasApmManifest: false },
-                  },
-                ],
-              },
+          init?.method === "POST" ? { path: SOURCE } : { available: true },
         );
       }
       if (url === "/api/harness/import/check") {
@@ -152,25 +130,23 @@ function stubImportServer(options: {
   return { calls, imports };
 }
 
-beforeEach(() => {
-  // The picker remembers the last folder per mode; each test starts at home.
-  localStorage.clear();
-});
-
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// Picks the one folder the stubbed listing offers and lands back on the import
-// dialog with the proposal filled in.
+// Picks the skill folder through Browse, which the stubbed chooser answers,
+// and waits for the check's proposal to fill the name.
 async function openImportWithSource(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(
-    await screen.findByRole("button", { name: "Import skill…" }),
-  );
-  await user.click(await screen.findByRole("button", { name: "Pick folder" }));
-  await user.click(await screen.findByRole("button", { name: "Code Review" }));
-  await user.click(
-    await screen.findByRole("button", { name: /import this folder/i }),
+  // Band 1's, first; an empty Harness repeats it in its empty state.
+  const [importSkill] = await screen.findAllByRole("button", {
+    name: "Import skill…",
+  });
+  await user.click(importSkill as HTMLElement);
+  await user.click(await screen.findByRole("button", { name: "Browse" }));
+  await waitFor(() =>
+    expect(screen.getByRole("textbox", { name: "Folder path" })).toHaveValue(
+      SOURCE,
+    ),
   );
 }
 
@@ -251,21 +227,22 @@ describe("Harness import flow", () => {
       await screen.findByRole("button", { name: "View in Harness" }),
     );
 
-    // The dialog is gone, and the row it sent the author to holds the keyboard
-    // and is painted on the active surface.
+    // The dialog is gone, and the row it sent the author to is open in its
+    // pane, which holds the keyboard (#846).
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    const menu = await screen.findByRole("button", {
-      name: "Actions for code-review in Pending proposal",
+    const pane = await screen.findByRole("complementary", {
+      name: "code-review detail",
     });
-    await waitFor(() => {
-      expect(menu).toHaveFocus();
-    });
-    expect(menu.closest("tr")).toHaveClass("bg-active");
+    await waitFor(() =>
+      expect(
+        within(pane).getByRole("heading", { level: 2, name: "code-review" }),
+      ).toHaveFocus(),
+    );
   });
 
   it("sends the author to one row of a skill that holds all three stages", async () => {
-    // The import landed in Pending proposal, so that is the row the keyboard
-    // and the active surface belong to — never a later-mounted twin (#865).
+    // The import landed in Pending proposal, so that is the row the pane
+    // opens on — never a later-mounted twin (#865).
     stubImportServer({ imported: IN_EVERY_STAGE });
     const user = userEvent.setup();
     renderWithQuery(<HarnessView />);
@@ -276,40 +253,36 @@ describe("Harness import flow", () => {
       await screen.findByRole("button", { name: "View in Harness" }),
     );
 
-    const menu = await screen.findByRole("button", {
-      name: "Actions for code-review in Pending proposal",
+    const pane = await screen.findByRole("complementary", {
+      name: "code-review detail",
     });
-    await waitFor(() => {
-      expect(menu).toHaveFocus();
-    });
-    expect(document.querySelectorAll("tr.bg-active")).toHaveLength(1);
-    expect(menu.closest("tr")).toHaveClass("bg-active");
+    expect(within(pane).getByText("Pending proposal")).toBeInTheDocument();
+    const current = document.querySelectorAll('tr[aria-current="true"]');
+    expect(current).toHaveLength(1);
+    expect(current[0]).toHaveTextContent("Not yet proposed");
   });
 
-  it("returns the imported row to normal after about three seconds", async () => {
-    stubImportServer({});
+  it("checks a typed folder once the author leaves the field", async () => {
+    const { calls } = stubImportServer({});
     const user = userEvent.setup();
     renderWithQuery(<HarnessView />);
 
-    await openImportWithSource(user);
-    await user.click(screen.getByRole("button", { name: "Import skill" }));
-    // Behind the dialog that is still open, so hidden from the a11y tree.
-    const menu = await screen.findByRole("button", {
-      name: "Actions for code-review in Pending proposal",
-      hidden: true,
+    const [importSkill] = await screen.findAllByRole("button", {
+      name: "Import skill…",
     });
+    await user.click(importSkill as HTMLElement);
+    await user.type(
+      await screen.findByRole("textbox", { name: "Folder path" }),
+      SOURCE,
+    );
+    expect(
+      calls.filter((call) => call.endsWith("/api/harness/import/check")),
+    ).toHaveLength(0);
+    await user.tab();
 
-    vi.useFakeTimers();
-    try {
-      fireEvent.click(screen.getByRole("button", { name: "View in Harness" }));
-      expect(menu.closest("tr")).toHaveClass("bg-active");
-      act(() => {
-        vi.advanceTimersByTime(3000);
-      });
-      expect(menu.closest("tr")).not.toHaveClass("bg-active");
-    } finally {
-      vi.useRealTimers();
-    }
+    expect(await screen.findByLabelText(/name in the harness/i)).toHaveValue(
+      "code-review",
+    );
   });
 
   it("asks again with the typed name", async () => {

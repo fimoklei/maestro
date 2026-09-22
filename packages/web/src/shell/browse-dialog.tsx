@@ -47,9 +47,8 @@ export function BrowseDialog({
     useBrowseNavigation(mode);
   const [pastedPath, setPastedPath] = useState("");
   // Filtered client-side — one server response shape serves both toggle
-  // states (#148). Skills live in dotfolders (~/.claude/skills,
-  // ~/.agents/skills, <repo>/.apm/skills), so import-source starts revealed (#654).
-  const [showHidden, setShowHidden] = useState(mode === "import-source");
+  // states (#148).
+  const [showHidden, setShowHidden] = useState(false);
   // Array, not a Set: confirm hands the host the order the user ticked in.
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const atCeiling =

@@ -127,12 +127,12 @@ describe("RemoveSkillDialog", () => {
     );
   });
 
-  it("tags the primitive's type beside the question", () => {
-    // The title says which build goes; the tag says what kind of thing it is,
-    // in the same chip the inventory and the detail pane use.
+  it("names the primitive's type beside the question", () => {
+    // The title says which build goes; the type says what kind of thing it
+    // is, in the plain word the Inventory's Type column uses (#987).
     renderDialog();
 
-    expect(screen.getByText("skill").className).toContain("text-type-skill");
+    expect(screen.getByText("Skill")).toBeInTheDocument();
   });
 
   // The panel asks one question and then answers only "what disappears, and

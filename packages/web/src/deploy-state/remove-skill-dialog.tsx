@@ -1,12 +1,12 @@
 import type { RemoveOutcome, RemoveTargetState } from "@maestro/core";
 import { useId } from "react";
+import { TYPE_WORD } from "../inventory/type-filter";
 import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { DIALOG_CANCEL, DialogShell } from "../ui/dialog-shell";
 import { Notice } from "../ui/notice";
 import { panelBorderFor } from "../ui/panel-border";
-import { TypeTag } from "../ui/type-tag";
 import type { DeployStateNotice } from "./notice-copy";
 import {
   type RemoveDialogTarget,
@@ -238,7 +238,9 @@ export function RemoveSkillDialog({
         <h2 className="font-semibold font-ui text-fg text-subtitle">
           Remove <span className="font-mono">{named}</span>
         </h2>
-        <TypeTag type={type} className="shrink-0" />
+        <span className="shrink-0 text-gray-11 text-meta">
+          {TYPE_WORD[type]}
+        </span>
       </div>
 
       {/* Two groups: what the removal targets, then what it costs. A refusal

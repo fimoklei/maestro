@@ -5,11 +5,7 @@ import type { ReactNode } from "react";
 import { Chip } from "../ui/chip";
 import type { BrowseEntry } from "./use-browse-filesystem";
 
-export type BrowseDialogMode =
-  | "register"
-  | "connect"
-  | "clone-parent"
-  | "import-source";
+export type BrowseDialogMode = "register" | "connect" | "clone-parent";
 
 type BrowseModeConfig = {
   title: string;
@@ -40,16 +36,6 @@ export const browseModes: Record<BrowseDialogMode, BrowseModeConfig> = {
       entry.facts.hasApmManifest ? <Chip tone="drift">◆ Inventory</Chip> : null,
     // Read-only promise is made on the connect gate itself (ADR-0015).
     writePromise: null,
-  },
-  // Picks the skill folder itself, so the badge marks a folder that already
-  // looks like a harness — a skill never is one (#576).
-  "import-source": {
-    title: "Choose a skill folder",
-    confirmLabel: () => "Import this folder",
-    badges: ({ entry }) =>
-      entry.facts.hasApmManifest ? <Chip tone="drift">◆ Inventory</Chip> : null,
-    writePromise:
-      "Import copies this folder to the Working Harness. The original folder stays unchanged.",
   },
   // Picks the folder a clone lands *in*, so the badge marks the one thing that
   // would block it: a Harness already sitting there (#555).

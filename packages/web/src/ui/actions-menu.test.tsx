@@ -120,4 +120,26 @@ describe("ActionsMenu", () => {
       screen.getByRole("combobox", { name: "Deploy target" }),
     ).toHaveFocus();
   });
+
+  it("sets a destructive item apart, behind its own separator", async () => {
+    render(
+      <ActionsMenu
+        label="Actions for tdd"
+        items={[
+          { label: "Propose change", onSelect: () => {} },
+          { label: "Delete skill", onSelect: () => {}, danger: true },
+        ]}
+      />,
+    );
+
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+    await screen.findByRole("menuitem", { name: "Delete skill" });
+
+    const menu = screen.getByRole("menu");
+    const children = [...menu.children].map(
+      (child) => child.getAttribute("role") ?? "",
+    );
+    expect(children).toEqual(["menuitem", "separator", "menuitem"]);
+  });
 });

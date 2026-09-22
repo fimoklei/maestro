@@ -326,6 +326,52 @@ describe("DataTable", () => {
     expect(pear).toHaveTextContent("pear");
   });
 
+  it("draws a group that holds no rows as its message, with no count", () => {
+    renderTable({
+      groups: {
+        key: (fruit) => (fruit.colour.includes("red") ? "Red" : "Green"),
+        order: ["Red", "Green", "Blue", "Yellow"],
+        message: (key) => (key === "Blue" ? "No blue fruit yet." : null),
+      },
+    });
+
+    const rows = within(grid()).getAllByRole("row");
+    expect(rows).toHaveLength(8);
+    expect(rows[6]).toHaveTextContent(/^Blue$/);
+    expect(rows[7]).toHaveTextContent("No blue fruit yet.");
+    // A group with no rows and nothing to say is not drawn.
+    expect(screen.queryByText("Yellow")).not.toBeInTheDocument();
+  });
+
+  it("draws its message groups in place of the empty message when no row is shown", () => {
+    renderTable({
+      data: [],
+      empty: "Nothing grows here.",
+      groups: {
+        key: (fruit) => fruit.colour,
+        order: ["Blue"],
+        message: () => "No blue fruit yet.",
+      },
+    });
+
+    expect(screen.getByText("No blue fruit yet.")).toBeInTheDocument();
+    expect(screen.queryByText("Nothing grows here.")).not.toBeInTheDocument();
+  });
+
+  it("puts a group's meta on its header", () => {
+    renderTable({
+      groups: {
+        key: (fruit) => (fruit.colour.includes("red") ? "Red" : "Green"),
+        order: ["Red", "Green"],
+        meta: (key) => (key === "Red" ? "Ripe" : null),
+      },
+    });
+
+    const [, redHeader, , , greenHeader] = within(grid()).getAllByRole("row");
+    expect(redHeader).toHaveTextContent("Red 2Ripe");
+    expect(greenHeader).toHaveTextContent(/^Green 1$/);
+  });
+
   it("moves the active row across a group header without stopping on it", async () => {
     renderTable({
       groups: {

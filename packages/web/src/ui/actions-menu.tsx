@@ -1,5 +1,5 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { type ReactNode, useRef } from "react";
+import { Fragment, type ReactNode, useRef } from "react";
 import { cn } from "./cn";
 import { HOVER_TRANSITION } from "./hover-transition";
 
@@ -13,6 +13,8 @@ interface ActionsMenuItem {
   onSelect?: () => void;
   href?: string;
   disabled?: boolean;
+  /** Deletes files: red, alone behind its own separator (#994). */
+  danger?: boolean;
 }
 
 export interface ActionsMenuProps {
@@ -82,32 +84,38 @@ export function ActionsMenu({
             </div>
           ) : null}
           {items.map((item) => (
-            <DropdownMenu.Item
-              key={item.label}
-              disabled={item.disabled}
-              onSelect={() => {
-                if (returnFocus) item.onSelect?.();
-                else pending.current = item.onSelect ?? null;
-              }}
-              asChild={item.href !== undefined}
-              className={cn(
-                "flex h-control cursor-pointer items-center rounded-control px-inline font-ui text-gray-11 text-row no-underline outline-none",
-                HOVER_TRANSITION,
-                // data-[highlighted]: Radix's combined hover + roving-focus
-                // state. gray-3, not gray-4 — a menu item is never a standing
-                // choice (#388).
-                "data-[highlighted]:bg-gray-3 data-[highlighted]:text-gray-12",
-                "data-[disabled]:cursor-not-allowed data-[disabled]:text-dim",
-              )}
-            >
-              {item.href === undefined ? (
-                item.label
-              ) : (
-                <a href={item.href} target="_blank" rel="noreferrer">
-                  {item.label}
-                </a>
-              )}
-            </DropdownMenu.Item>
+            <Fragment key={item.label}>
+              {item.danger ? (
+                <DropdownMenu.Separator className="-mx-tight my-tight h-px bg-gray-6" />
+              ) : null}
+              <DropdownMenu.Item
+                disabled={item.disabled}
+                onSelect={() => {
+                  if (returnFocus) item.onSelect?.();
+                  else pending.current = item.onSelect ?? null;
+                }}
+                asChild={item.href !== undefined}
+                className={cn(
+                  "flex h-control cursor-pointer items-center rounded-control px-inline font-ui text-row no-underline outline-none",
+                  item.danger ? "text-red-11" : "text-gray-11",
+                  HOVER_TRANSITION,
+                  // data-[highlighted]: Radix's combined hover + roving-focus
+                  // state. gray-3, not gray-4 — a menu item is never a
+                  // standing choice (#388).
+                  "data-[highlighted]:bg-gray-3",
+                  !item.danger && "data-[highlighted]:text-gray-12",
+                  "data-[disabled]:cursor-not-allowed data-[disabled]:text-dim",
+                )}
+              >
+                {item.href === undefined ? (
+                  item.label
+                ) : (
+                  <a href={item.href} target="_blank" rel="noreferrer">
+                    {item.label}
+                  </a>
+                )}
+              </DropdownMenu.Item>
+            </Fragment>
           ))}
         </DropdownMenu.Content>
       </DropdownMenu.Portal>

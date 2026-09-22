@@ -47,4 +47,15 @@ describe("IconButton", () => {
     await userEvent.click(button);
     expect(onClick).not.toHaveBeenCalled();
   });
+
+  it("stays named and focusable while busy, and ignores a second press", async () => {
+    const onClick = vi.fn();
+    renderButton({ busy: true, onClick });
+
+    const button = screen.getByRole("button", { name: "Re-read Inventory" });
+    expect(button).toHaveAttribute("aria-busy", "true");
+    await userEvent.click(button);
+
+    expect(onClick).not.toHaveBeenCalled();
+  });
 });

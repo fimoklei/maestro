@@ -4,7 +4,7 @@ import type {
   RemoveOutcome,
   RemoveTargetState,
 } from "@maestro/core";
-import type { PrimitiveType } from "../ui/type-tag";
+import type { PrimitiveType } from "../inventory/type-filter";
 import type {
   RemoveCheckState,
   RemoveRowWarning,

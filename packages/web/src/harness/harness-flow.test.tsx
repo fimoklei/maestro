@@ -282,6 +282,66 @@ function renderHarness() {
   );
 }
 
+const STAGE_TITLES = ["Pending proposal", "Pending review", "Pending release"];
+
+const harnessGrid = () => screen.findByRole("grid", { name: "Harness table" });
+
+// A group header is a row with no id of its own that starts with a stage name;
+// data rows carry the id the grid's cursor points at.
+const isStageHeader = (row: HTMLElement) =>
+  row.id === "" &&
+  STAGE_TITLES.some((title) => (row.textContent ?? "").startsWith(title));
+
+// The group headers as they read: stage name, count, then the meta slot.
+async function stageHeaders(): Promise<string[]> {
+  return within(await harnessGrid())
+    .getAllByRole("row")
+    .filter(isStageHeader)
+    .map((row) => row.textContent ?? "");
+}
+
+async function stageHeader(stage: string): Promise<HTMLElement> {
+  const header = within(await harnessGrid())
+    .getAllByRole("row")
+    .find((row) => isStageHeader(row) && row.textContent?.startsWith(stage));
+  if (header === undefined) throw new Error(`no ${stage} group`);
+  return header;
+}
+
+// The rows under one stage's header, the group's message line included.
+async function stageRows(stage: string): Promise<HTMLElement[]> {
+  const rows: HTMLElement[] = [];
+  let current: string | null = null;
+  for (const row of within(await harnessGrid())
+    .getAllByRole("row")
+    .slice(1)) {
+    if (isStageHeader(row)) {
+      current =
+        STAGE_TITLES.find((title) => row.textContent?.startsWith(title)) ??
+        null;
+      continue;
+    }
+    if (current === stage) rows.push(row);
+  }
+  return rows;
+}
+
+// Band 2: Origin, Released and Branch, then the freshness line (#994).
+const band2 = async () =>
+  (await screen.findByRole("button", { name: "Re-read Harness" })).closest(
+    '[data-band="2"]',
+  ) as HTMLElement;
+
+// A row's detail pane, opened the way a pointer opens it: a click on the row.
+async function openPane(skill: string, stage = "Pending proposal") {
+  const row = (await stageRows(stage)).find(
+    (each) => within(each).queryByText(skill) !== null,
+  );
+  if (row === undefined) throw new Error(`no ${skill} in ${stage}`);
+  await userEvent.click(within(row).getByText(skill));
+  return screen.findByRole("complementary", { name: `${skill} detail` });
+}
+
 beforeEach(() => {
   // A fixed clock, so "4 min ago" is the same sentence on every run.
   vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -308,22 +368,25 @@ describe("Harness home base", () => {
     ).toBeInTheDocument();
   });
 
-  it("puts each stage one level under the view, so the outline never skips", async () => {
+  it("puts every stage in one table, a group per stage in journey order", async () => {
     stubHarnessServer({
       read: {
         body: withStages(RELEASED, {
           proposal: [row("pending-proposal", "tdd", "not-yet-proposed")],
+          review: [row("pending-review", "lint-rules", "waiting-for-review")],
+          release: [row("pending-release", "research", "added")],
         }),
       },
     });
     renderHarness();
 
     expect(
-      await screen.findByRole("heading", {
-        level: 2,
-        name: "Pending proposal · 1",
-      }),
-    ).toBeInTheDocument();
+      (await stageHeaders()).map((header) =>
+        STAGE_TITLES.find((title) => header.startsWith(title)),
+      ),
+    ).toEqual(STAGE_TITLES);
+    // One grid, one Tab stop: the stages are its groups, not three tables.
+    expect(screen.getAllByRole("grid")).toHaveLength(1);
   });
 
   it("counts what each read stage holds, in its heading", async () => {
@@ -347,34 +410,34 @@ describe("Harness home base", () => {
 
     // Three honest numbers, never a sum: one skill can hold a row in all
     // three stages (ADR-0021 · 10).
-    expect(
-      await screen.findByRole("heading", {
-        level: 2,
-        name: "Pending proposal · 1",
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { level: 2, name: "Pending review · 2" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { level: 2, name: "Pending release · 3" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("heading", { name: /· 6/ }),
-    ).not.toBeInTheDocument();
+    expect(await stageHeader("Pending proposal")).toHaveTextContent(
+      /^Pending proposal 1(\D|$)/,
+    );
+    expect(await stageHeader("Pending review")).toHaveTextContent(
+      /^Pending review 2(\D|$)/,
+    );
+    expect(await stageHeader("Pending release")).toHaveTextContent(
+      /^Pending release 3(\D|$)/,
+    );
+    expect(screen.queryByText("6")).not.toBeInTheDocument();
   });
 
   it("gives a stage read empty no number", async () => {
     // Pending proposal is the one stage a confirmed empty read still draws, so
     // it is where a zero could be mistaken for an unread stage (#827).
-    stubHarnessServer({ read: { body: RELEASED } });
+    stubHarnessServer({
+      read: {
+        body: withStages(RELEASED, {
+          review: [row("pending-review", "lint-rules", "waiting-for-review")],
+        }),
+      },
+    });
     renderHarness();
 
+    const header = await stageHeader("Pending proposal");
+    expect(header.textContent).not.toMatch(/^Pending proposal \d/);
     expect(
-      await screen.findByRole("heading", {
-        level: 2,
-        name: "Pending proposal",
-      }),
+      screen.getByText("No changes to propose yet", { exact: false }),
     ).toBeInTheDocument();
   });
 
@@ -393,10 +456,13 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
+    // The count gives way to a `?` badge with the reading (#994).
+    const header = await stageHeader("Pending review");
+    expect(header.textContent).not.toMatch(/^Pending review \d/);
     expect(
-      await screen.findByRole("heading", { level: 2, name: "Pending review" }),
+      within(header).getByText("Review status unavailable"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Review status unavailable")).toBeInTheDocument();
+    expect(within(header).getByText("?")).toBeInTheDocument();
   });
 
   it("leaves the release summary to the tables that already say it", async () => {
@@ -449,10 +515,9 @@ describe("Harness home base", () => {
     expect(await screen.findByText("main")).toBeInTheDocument();
   });
 
-  // The strip's own facts. A stage meta slot dates the same read in the same
-  // words, so the text alone no longer picks out the strip (#850).
-  const stripFacts = async () =>
-    (await screen.findByText("Released")).closest("dl") as HTMLElement;
+  // Band 2's own facts. A stage meta slot dates the same read in the same
+  // words, so the text alone does not pick out band 2 (#850).
+  const stripFacts = band2;
 
   it("fetches when it opens, so the state is the team's and not yesterday's", async () => {
     const calls = stubHarnessServer({
@@ -481,16 +546,16 @@ describe("Harness home base", () => {
     );
   });
 
-  it("fetches again on Retry check", async () => {
+  it("fetches again on Re-read Harness", async () => {
     const calls = stubHarnessServer({ read: { body: RELEASED } });
     renderHarness();
 
-    // The open-time refresh disables the button while it runs; clicking into
-    // that window would land on nothing.
+    // The open-time refresh holds the button busy while it runs; clicking
+    // into that window would land on nothing.
     const button = await screen.findByRole("button", {
-      name: /^retry check$/i,
+      name: "Re-read Harness",
     });
-    await waitFor(() => expect(button).toBeEnabled());
+    await waitFor(() => expect(button).not.toHaveAttribute("aria-busy"));
     await userEvent.click(button);
 
     await waitFor(() =>
@@ -500,10 +565,10 @@ describe("Harness home base", () => {
     );
   });
 
-  // Merging happens in a GitHub tab, so coming back is the moment the picture
-  // is most out of date. Without this the git refs stay yesterday's until the
-  // author presses Retry check (#889).
-  it("fetches again when the author returns to the tab", async () => {
+  // A git fetch on every focus locked the row actions for 2–4 s each time the
+  // author switched tabs. Re-read Harness is the way to a fresh picture
+  // (#1033 story 31).
+  it("never fetches when the author returns to the tab", async () => {
     const calls = stubHarnessServer({ read: { body: RELEASED } });
     renderHarness();
 
@@ -513,12 +578,11 @@ describe("Harness home base", () => {
       ).toHaveLength(1),
     );
     window.dispatchEvent(new Event("focus"));
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
-    await waitFor(() =>
-      expect(
-        calls.filter((call) => call === "POST /api/harness/refresh"),
-      ).toHaveLength(2),
-    );
+    expect(
+      calls.filter((call) => call === "POST /api/harness/refresh"),
+    ).toHaveLength(1);
   });
 
   it("says the read is running while it runs", async () => {
@@ -541,9 +605,13 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
+    // Heard, not seen: the table is busy and the status region says so; no
+    // word stands in band 2 for a read (design.md → Waiting and freshness).
+    const live = await screen.findByRole("status", { name: "Harness stages" });
+    await waitFor(() => expect(live).toHaveTextContent("Reading GitHub…"));
     expect(
-      within(await stripFacts()).getByText("Reading GitHub…"),
-    ).toBeInTheDocument();
+      within(await stripFacts()).queryByText("Reading GitHub…"),
+    ).not.toBeInTheDocument();
     release();
     await waitFor(async () =>
       expect(
@@ -552,7 +620,7 @@ describe("Harness home base", () => {
     );
   });
 
-  it("lists the merged skills that are waiting, with their green readings", async () => {
+  it("lists the merged skills that are waiting, with their readings", async () => {
     // The author column is gone: #827 states no author identity line on the
     // Harness view. The plan dialog still names authors (release-dialog).
     stubHarnessServer({
@@ -570,12 +638,7 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    expect(
-      await screen.findByRole("heading", {
-        level: 2,
-        name: /pending release/i,
-      }),
-    ).toBeInTheDocument();
+    expect(await stageHeader("Pending release")).toBeInTheDocument();
     expect(screen.getByRole("row", { name: /research/ })).toHaveTextContent(
       "Added",
     );
@@ -623,11 +686,11 @@ describe("Harness home base", () => {
     expect(
       screen.queryByText(/permission|not allowed|access denied/i),
     ).not.toBeInTheDocument();
-    // Retry check is the one way back, so a failure must never disable it.
+    // Re-read Harness is the one way back, so a failure must never close it.
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: /^retry check$/i }),
-      ).toBeEnabled(),
+        screen.getByRole("button", { name: "Re-read Harness" }),
+      ).not.toHaveAttribute("aria-disabled"),
     );
   });
 
@@ -703,8 +766,8 @@ describe("Harness home base", () => {
     expect(screen.getByText("v0.5.0")).toBeInTheDocument();
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: /^retry check$/i }),
-      ).toBeEnabled(),
+        screen.getByRole("button", { name: "Re-read Harness" }),
+      ).not.toHaveAttribute("aria-disabled"),
     );
   });
 
@@ -719,21 +782,14 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    const review = (
-      await screen.findByRole("heading", { level: 2, name: /pending review/i })
-    ).closest("section");
-    const promotion = (
-      await screen.findByRole("heading", {
-        level: 2,
-        name: /pending proposal/i,
-      })
-    ).closest("section");
-    expect(
-      within(review as HTMLElement).getByText("code-review"),
-    ).toBeVisible();
-    expect(
-      within(promotion as HTMLElement).getByText("lint-rules"),
-    ).toBeVisible();
+    const review = await stageRows("Pending review");
+    const promotion = await stageRows("Pending proposal");
+    expect(review.map((each) => each.textContent)).toEqual([
+      expect.stringContaining("code-review"),
+    ]);
+    expect(promotion.map((each) => each.textContent)).toEqual([
+      expect.stringContaining("lint-rules"),
+    ]);
     // A skill in one stage keeps one row: the other stages hold none of it.
     expect(screen.getAllByText("code-review")).toHaveLength(1);
   });
@@ -749,17 +805,10 @@ describe("Harness home base", () => {
     renderHarness();
 
     expect(
-      await screen.findByRole("heading", {
-        level: 2,
-        name: /pending proposal/i,
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("heading", { level: 2, name: /pending review/i }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("heading", { level: 2, name: /pending release/i }),
-    ).not.toBeInTheDocument();
+      (await stageHeaders()).map((header) =>
+        STAGE_TITLES.find((title) => header.startsWith(title)),
+      ),
+    ).toEqual(["Pending proposal"]);
   });
 
   it("shows No changes yet on a confirmed empty journey", async () => {
@@ -774,10 +823,11 @@ describe("Harness home base", () => {
         "Skills you import or edit in your clone will appear here.",
       ),
     ).toBeInTheDocument();
+    // The empty state repeats Import skill… from band 1 (#994).
     expect(
-      screen.getByRole("button", { name: /import skill/i }),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+      screen.getAllByRole("button", { name: "Import skill…" }),
+    ).toHaveLength(2);
+    expect(screen.queryByRole("grid")).not.toBeInTheDocument();
   });
 
   it("gives one skill a row in every stage it belongs to", async () => {
@@ -812,11 +862,112 @@ describe("Harness home base", () => {
     renderHarness();
 
     expect(await screen.findAllByText("tdd")).toHaveLength(3);
-    expect(screen.getByText("● New local work")).toBeInTheDocument();
-    expect(screen.getByText("● Waiting for review")).toBeInTheDocument();
-    expect(screen.getByText("● Changed")).toBeInTheDocument();
+    expect(screen.getByText("New local work")).toBeInTheDocument();
+    expect(screen.getByText("Waiting for review")).toBeInTheDocument();
+    expect(screen.getByText("Changed")).toBeInTheDocument();
+    // The Also in column names the other stages; the pane says it in full.
     expect(
-      screen.getByText("Also in Pending review and Pending release."),
+      screen.getByText("Pending review, Pending release"),
+    ).toBeInTheDocument();
+    const pane = await openPane("tdd");
+    expect(
+      within(pane).getByText("Also in Pending review and Pending release."),
+    ).toBeInTheDocument();
+  });
+
+  // #1045: the next step is one press away, from the row and from its pane.
+  it("puts Propose change first in the row menu and at the foot of the pane", async () => {
+    stubHarnessServer({
+      read: {
+        body: withStages(RELEASED, {
+          proposal: [
+            row("pending-proposal", "tdd", "not-yet-proposed", {
+              localOnly: true,
+            }),
+          ],
+        }),
+      },
+    });
+    renderHarness();
+
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: "Actions for tdd in Pending proposal",
+      }),
+    );
+    const menu = await screen.findByRole("menu");
+    expect(
+      within(menu)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Propose change", "Delete skill"]);
+    await userEvent.keyboard("{Escape}");
+
+    const pane = await openPane("tdd");
+    expect(
+      within(pane)
+        .getAllByRole("button")
+        .map((button) => button.textContent)
+        .filter((label) => label !== ""),
+    ).toEqual(["Propose change", "Delete skill"]);
+  });
+
+  it("links a row's pull request number to GitHub, in a new tab", async () => {
+    stubHarnessServer({
+      read: {
+        body: withStages(RELEASED, {
+          review: [
+            row("pending-review", "tdd", "changes-requested", {
+              requests: [
+                {
+                  number: 47,
+                  url: "https://github.com/fimoklei/agent-harness/pull/47",
+                },
+              ],
+            }),
+          ],
+        }),
+      },
+    });
+    renderHarness();
+
+    const [tdd] = await stageRows("Pending review");
+    const link = within(tdd as HTMLElement).getByRole("link", {
+      name: "Pull request #47, opens in a new tab",
+    });
+    expect(link).toHaveAttribute(
+      "href",
+      "https://github.com/fimoklei/agent-harness/pull/47",
+    );
+    expect(link).toHaveAttribute("target", "_blank");
+  });
+
+  it("states Origin, Released and Branch in band 2, beside the freshness line and Re-read Harness", async () => {
+    stubHarnessServer({
+      read: {
+        body: {
+          ...RELEASED,
+          freshness: {
+            outcome: "fetched",
+            lastFetchedAt: "2026-08-03T11:56:00.000Z",
+          },
+        },
+      },
+    });
+    renderHarness();
+
+    const band = await band2();
+    for (const [label, value] of [
+      ["Origin", "github.com/fimoklei/agent-harness"],
+      ["Released", "v0.5.0"],
+      ["Branch", "main"],
+    ]) {
+      expect(within(band).getByText(label as string)).toBeInTheDocument();
+      expect(within(band).getByText(value as string)).toBeInTheDocument();
+    }
+    expect(within(band).getByText("Read 4 min ago")).toBeInTheDocument();
+    expect(
+      within(band).getByRole("button", { name: "Re-read Harness" }),
     ).toBeInTheDocument();
   });
 
@@ -844,8 +995,9 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
+    const pane = await openPane("tdd", "Pending review");
     expect(
-      await screen.findByText(
+      within(pane).getByText(
         "Review requested from @ada, @bo, @fimoklei/reviewers",
       ),
     ).toBeInTheDocument();
@@ -1629,15 +1781,12 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    const warned = (await screen.findByText("lint-rules")).closest(
-      "tr",
-    ) as HTMLElement;
+    // Stated in the row's own pane, and in no other row's.
+    const warned = await openPane("lint-rules");
     expect(
       within(warned).getByText(/Pull it into the Harness clone/i),
     ).toBeInTheDocument();
-    const untouched = screen
-      .getByText("code-review")
-      .closest("tr") as HTMLElement;
+    const untouched = await openPane("code-review");
     expect(
       within(untouched).queryByText(/Pull it into the Harness clone/i),
     ).not.toBeInTheDocument();
@@ -1658,11 +1807,11 @@ describe("Harness home base", () => {
 
     await promoteRow("lint-rules");
 
-    const review = (
-      await screen.findByRole("heading", { level: 2, name: /pending review/i })
-    ).closest("section") as HTMLElement;
-    expect(within(review).getByText("lint-rules")).toBeVisible();
-    expect(within(review).getByText("▲ Pull request missing")).toBeVisible();
+    await waitFor(async () =>
+      expect(
+        (await stageRows("Pending review")).map((each) => each.textContent),
+      ).toEqual([expect.stringMatching(/lint-rules.*Pull request missing/)]),
+    );
   });
 
   it("lands the keyboard on the promoted row, not on a later stage's twin", async () => {
@@ -1707,13 +1856,17 @@ describe("Harness home base", () => {
 
     await promoteRow("lint-rules");
 
+    // The pressed row moved away with its menu; the keyboard follows it to
+    // the Pending review row's pane, never the Pending release twin's.
+    const pane = await screen.findByRole("complementary", {
+      name: "lint-rules detail",
+    });
     await waitFor(() =>
       expect(
-        screen.getByRole("button", {
-          name: "Actions for lint-rules in Pending review",
-        }),
+        within(pane).getByRole("heading", { level: 2, name: "lint-rules" }),
       ).toHaveFocus(),
     );
+    expect(within(pane).getByText("Waiting for review")).toBeInTheDocument();
   });
 
   it("re-reads the harness after a promotion, rather than moving the row itself", async () => {
@@ -1867,8 +2020,9 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
+    const pane = await openPane("lint-rules", "Pending review");
     expect(
-      await screen.findByText(
+      within(pane).getByText(
         "Pull requests #41 and #44 both match this branch. Open the extra pull requests on GitHub and close them.",
       ),
     ).toBeInTheDocument();
@@ -1988,11 +2142,11 @@ describe("Harness home base", () => {
       within(dialog).getByRole("button", { name: /^delete skill$/i }),
     );
 
-    const review = (
-      await screen.findByRole("heading", { level: 2, name: /pending review/i })
-    ).closest("section") as HTMLElement;
-    expect(within(review).getByText("old-skill")).toBeVisible();
-    expect(within(review).getByText("▲ Pull request missing")).toBeVisible();
+    await waitFor(async () =>
+      expect(
+        (await stageRows("Pending review")).map((each) => each.textContent),
+      ).toEqual([expect.stringMatching(/old-skill.*Pull request missing/)]),
+    );
   });
 
   it("sends a skill restored after a proposed deletion through Update proposal", async () => {
@@ -2349,8 +2503,9 @@ describe("Harness home base", () => {
     stubHarnessServer({ read: { body: DELETED_ROW } });
     renderHarness();
 
+    const pane = await openPane("old-skill");
     expect(
-      await screen.findByText(
+      within(pane).getByText(
         "This skill is deleted in your clone but still on main. Select Propose change to propose the deletion, or Restore skill to bring it back.",
       ),
     ).toBeInTheDocument();
@@ -2442,7 +2597,7 @@ describe("Harness home base", () => {
     // Behind the open dialog, so it is reached the way the check would be
     // reached if the reader had pressed it before opening the confirmation.
     fireEvent.click(
-      screen.getByRole("button", { name: /^retry check$/i, hidden: true }),
+      screen.getByRole("button", { name: "Re-read Harness", hidden: true }),
     );
     // The read landed, and the confirmation it moved under still stands.
     expect(await screen.findByText("later-skill")).toBeVisible();
@@ -2511,7 +2666,7 @@ describe("Harness home base", () => {
     expect(await screen.findByText("Skill restored")).toBeInTheDocument();
     expect(
       await screen.findByText(
-        "The skill folder is back, but the status is out of date. Select Retry check to read GitHub again.",
+        "The skill folder is back, but the status is out of date. Select Re-read Harness to read GitHub again.",
       ),
     ).toBeInTheDocument();
   });
@@ -2573,9 +2728,15 @@ describe("Harness home base", () => {
 
     // A view that failed to load announces politely — nothing here followed
     // a press (#465).
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      /No Harness connected/i,
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole("status")
+          .map((region) => region.textContent ?? "")
+          .join(" "),
+      ).toMatch(/No Harness connected/i),
     );
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
 
@@ -2932,14 +3093,14 @@ describe("Harness freshness and failed reads", () => {
     },
   };
 
-  it("offers Retry check as the one way back, and never Refresh", async () => {
+  it("offers Re-read Harness as the one way back, and never Refresh or Retry check", async () => {
     const calls = stubHarnessServer({ read: { body: RELEASED } });
     renderHarness();
 
     const retry = await screen.findByRole("button", {
-      name: /^retry check$/i,
+      name: "Re-read Harness",
     });
-    await waitFor(() => expect(retry).toBeEnabled());
+    await waitFor(() => expect(retry).not.toHaveAttribute("aria-busy"));
     await userEvent.click(retry);
 
     await waitFor(() =>
@@ -2948,7 +3109,7 @@ describe("Harness freshness and failed reads", () => {
       ).toHaveLength(2),
     );
     expect(
-      screen.queryByRole("button", { name: /refresh/i }),
+      screen.queryByRole("button", { name: /refresh|retry check/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -2977,7 +3138,7 @@ describe("Harness freshness and failed reads", () => {
     ).toHaveLength(1);
     expect(
       screen.getByText(
-        "Your local changes are as they were. Commit or undo them in your Git tool, then select Retry check.",
+        "Your local changes are as they were. Commit or undo them in your Git tool, then select Re-read Harness.",
       ),
     ).toBeInTheDocument();
   });
@@ -3003,8 +3164,8 @@ describe("Harness freshness and failed reads", () => {
     release();
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: /^retry check$/i }),
-      ).toBeEnabled(),
+        screen.getByRole("button", { name: "Re-read Harness" }),
+      ).not.toHaveAttribute("aria-busy"),
     );
     expect(
       screen.queryByText("Harness clone not updated"),
@@ -3094,14 +3255,22 @@ describe("Harness freshness and failed reads", () => {
     });
     renderHarness();
 
-    expect(await screen.findByText("Status unknown")).toBeInTheDocument();
-    expect(screen.getByText("Review status unavailable")).toBeInTheDocument();
+    expect(
+      within(await stageHeader("Pending proposal")).getByText("Status unknown"),
+    ).toBeInTheDocument();
+    expect(
+      within(await stageHeader("Pending review")).getByText(
+        "Review status unavailable",
+      ),
+    ).toBeInTheDocument();
     // The cause and the way through, without first attempting a mutation.
     expect(
       screen.getByText("GitHub gave no answer Maestro can act on."),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Sign in with gh auth login, then select Retry check."),
+      screen.getByText(
+        "Sign in with gh auth login, then select Re-read Harness.",
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -3113,14 +3282,21 @@ describe("Harness freshness and failed reads", () => {
     expect(
       screen.queryByText("No changes to propose yet"),
     ).not.toBeInTheDocument();
-    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    // Each unread stage keeps its header and one line; neither holds a row.
+    expect(
+      within(await harnessGrid())
+        .getAllByRole("row")
+        .filter((each) => each.id !== ""),
+    ).toHaveLength(0);
     // Import touches the working tree only, so it survives an unread stage.
     expect(
       screen.getByRole("button", { name: /^import skill…$/i }),
     ).toBeInTheDocument();
   });
 
-  it("reads GitHub again from an unread stage's own Retry check", async () => {
+  // The unread stage's line names the band's Re-read Harness; the screen has
+  // one re-read control, never a second one per stage (#994).
+  it("reads GitHub again from the Re-read Harness its unread stage names", async () => {
     const calls = stubHarnessServer({
       read: {
         body: {
@@ -3135,17 +3311,15 @@ describe("Harness freshness and failed reads", () => {
     });
     renderHarness();
 
-    // The strip carries one, the unread stage its own: the notice's is the
-    // second, beside the cause it states.
-    const retries = await screen.findAllByRole("button", {
-      name: /^retry check$/i,
-    });
-    expect(retries).toHaveLength(2);
-    const inNotice = retries[1];
-    if (inNotice === undefined) {
-      throw new Error("the stage notice carries no Retry check");
-    }
-    await userEvent.click(inNotice);
+    expect(
+      await screen.findByText(
+        "Sign in with gh auth login, then select Re-read Harness.",
+      ),
+    ).toBeInTheDocument();
+    const reread = screen.getAllByRole("button", { name: "Re-read Harness" });
+    expect(reread).toHaveLength(1);
+    await waitFor(() => expect(reread[0]).not.toHaveAttribute("aria-busy"));
+    await userEvent.click(reread[0] as HTMLElement);
 
     await waitFor(() =>
       expect(

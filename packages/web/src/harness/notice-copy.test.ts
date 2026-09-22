@@ -75,7 +75,7 @@ const suites: [
       level: "error",
       label: "Harness not read",
       message:
-        "The Maestro server did not answer. Reload the page to read the Harness again.",
+        "The Maestro server did not answer. Select Re-read Harness to read the Harness again.",
     },
     [
       ["not-configured", NOT_CONFIGURED],
@@ -89,7 +89,7 @@ const suites: [
       level: "error",
       label: "GitHub not read",
       message:
-        "The Maestro server did not answer, so the Harness is as it was. Select Retry check.",
+        "The Maestro server did not answer, so the Harness is as it was. Select Re-read Harness.",
     },
     [
       ["not-configured", NOT_CONFIGURED],
@@ -113,7 +113,7 @@ const suites: [
         {
           level: "error",
           label: "GitHub did not respond",
-          message: "Select Retry check, then Create a release again.",
+          message: "Select Re-read Harness, then Create a release again.",
           detail: "A release plan is measured against what GitHub holds.",
         },
       ],
@@ -137,7 +137,7 @@ const suites: [
           level: "error",
           label: "GitHub did not respond",
           message:
-            "Nothing was published. Select Retry check, then Publish release again.",
+            "Nothing was published. Select Re-read Harness, then Publish release again.",
         },
       ],
       [
@@ -210,7 +210,7 @@ const suites: [
           level: "error",
           label: "GitHub did not respond",
           message:
-            "Nothing was pushed. Select Retry check, then Propose change again.",
+            "Nothing was pushed. Select Re-read Harness, then Propose change again.",
         },
       ],
       [
@@ -219,7 +219,7 @@ const suites: [
           level: "error",
           label: "Skill no longer in the Harness",
           message:
-            "Nothing was pushed. Select Retry check to repaint the list.",
+            "Nothing was pushed. Select Re-read Harness to repaint the list.",
         },
       ],
       [
@@ -282,7 +282,7 @@ const suites: [
           level: "error",
           label: "GitHub did not respond",
           message:
-            "Nothing was pushed. Select Retry check, then Delete skill again.",
+            "Nothing was pushed. Select Re-read Harness, then Delete skill again.",
         },
       ],
       [
@@ -291,7 +291,7 @@ const suites: [
           level: "error",
           label: "Files changed during the check",
           message:
-            "Nothing was pushed. Select Retry check to repaint the list.",
+            "Nothing was pushed. Select Re-read Harness to repaint the list.",
         },
       ],
       [
@@ -329,7 +329,7 @@ const suites: [
           level: "error",
           label: "Confirmation out of date",
           message:
-            "Nothing was pushed. Select Retry check, then Delete skill again.",
+            "Nothing was pushed. Select Re-read Harness, then Delete skill again.",
           detail:
             "The copy on the default branch moved after this confirmation.",
         },
@@ -414,7 +414,7 @@ const suites: [
           level: "error",
           label: "Skill already deleted",
           message:
-            "The Harness no longer holds this skill. Select Retry check.",
+            "The Harness no longer holds this skill. Select Re-read Harness.",
           detail: "Something removed the folder after this list was read.",
         },
       ],
@@ -424,7 +424,7 @@ const suites: [
           level: "error",
           label: "Skill exists elsewhere",
           message:
-            "Nothing was deleted. Select Retry check to repaint the list.",
+            "Nothing was deleted. Select Re-read Harness to repaint the list.",
           detail:
             "Maestro found this skill outside the working tree, or could not read the Harness refs.",
         },
@@ -641,7 +641,7 @@ const suites: [
           level: "error",
           label: "Copy from another Harness",
           message:
-            "Select Change folder, then choose a folder that is not a copy deployed by another Harness.",
+            "Pick a folder that is not a copy deployed by another Harness.",
           detail:
             "Maestro can update only copies deployed by the connected Harness.",
         },
@@ -698,7 +698,7 @@ const suites: [
         {
           level: "error",
           label: "GitHub did not respond",
-          message: "Nothing changed on GitHub. Select Retry check.",
+          message: "Nothing changed on GitHub. Select Re-read Harness.",
           detail:
             "Maestro could not read the branch this proposal is opened against.",
         },
@@ -708,7 +708,7 @@ const suites: [
         {
           level: "error",
           label: "Review status unavailable",
-          message: "Sign in with gh auth login, then select Retry check.",
+          message: "Sign in with gh auth login, then select Re-read Harness.",
           detail: "Maestro reads pull requests through your own gh sign-in.",
         },
       ],
@@ -717,7 +717,7 @@ const suites: [
         {
           level: "error",
           label: "Review status unknown",
-          message: "Select Retry check to read GitHub again.",
+          message: "Select Re-read Harness to read GitHub again.",
           detail: "GitHub gave no answer Maestro can act on.",
         },
       ],
@@ -727,7 +727,7 @@ const suites: [
           level: "error",
           label: "Multiple pull requests",
           message:
-            "Select a View pull request link to close the extras, then select Retry check.",
+            "Select a View pull request link to close the extras, then select Re-read Harness.",
           detail:
             "More than one open pull request matches this skill's branch.",
         },
@@ -768,7 +768,7 @@ const suites: [
           level: "error",
           label: "Confirmation out of date",
           message:
-            "Nothing was restored. Select Retry check, then Restore skill again.",
+            "Nothing was restored. Select Re-read Harness, then Restore skill again.",
           detail: "Your clone's last commit moved after this confirmation.",
         },
       ],
@@ -934,9 +934,9 @@ describe("staleStatusNotice", () => {
     ).toEqual({
       level: "warning",
       label: "Status out of date",
-      message: "Select Retry check to read GitHub again.",
+      message: "Select Re-read Harness to read GitHub again.",
       detail: "GitHub gave no answer, so these rows are from the last read.",
-      action: { label: "Retry check", onClick: retry },
+      action: { label: "Re-read Harness", onClick: retry },
     });
   });
 
@@ -979,9 +979,9 @@ describe("stageReadNotice", () => {
     ).toEqual({
       level: "warning",
       label: "Review status unavailable",
-      message: "Sign in with gh auth login, then select Retry check.",
+      message: "Sign in with gh auth login, then select Re-read Harness.",
       detail: "Maestro reads pull requests through your own gh sign-in.",
-      action: { label: "Retry check", onClick: retry },
+      action: { label: "Re-read Harness", onClick: retry },
     });
   });
 
@@ -991,9 +991,9 @@ describe("stageReadNotice", () => {
     ).toEqual({
       level: "warning",
       label: "Status unknown",
-      message: "Select Retry check to read GitHub again.",
+      message: "Select Re-read Harness to read GitHub again.",
       detail: "GitHub gave no answer Maestro can act on.",
-      action: { label: "Retry check", onClick: retry },
+      action: { label: "Re-read Harness", onClick: retry },
     });
   });
 
@@ -1100,9 +1100,9 @@ describe("skillRestoredNotice", () => {
       level: "warning",
       label: "Skill restored",
       message:
-        "The skill folder is back, but the status is out of date. Select Retry check to read GitHub again.",
+        "The skill folder is back, but the status is out of date. Select Re-read Harness to read GitHub again.",
       detail: "Maestro could not read GitHub after the restore.",
-      action: { label: "Retry check", onClick: retry },
+      action: { label: "Re-read Harness", onClick: retry },
     });
   });
 
@@ -1111,9 +1111,9 @@ describe("skillRestoredNotice", () => {
       level: "warning",
       label: "Skill restored",
       message:
-        "The skill folder is back, but the status is out of date. Select Retry check to read GitHub again.",
+        "The skill folder is back, but the status is out of date. Select Re-read Harness to read GitHub again.",
       detail: "Your proposal remains unchanged.",
-      action: { label: "Retry check", onClick: retry },
+      action: { label: "Re-read Harness", onClick: retry },
     });
   });
 });
