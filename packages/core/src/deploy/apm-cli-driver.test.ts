@@ -51,6 +51,35 @@ const installNoChangesOutput = [
   "[i] No changes -- install state already up to date in 1.5s.",
 ].join("\n");
 
+// Excerpt of a batch install where one `--skill` name is not in the package,
+// apm 0.29.0 (2026-09-22; full capture in
+// tests/fixtures/apm-1039-batch-unknown-skill.txt, the long list of available
+// skills dropped). Exit 1: one failing name fails every name (#1039).
+const batchUnknownSkillOutput = [
+  "[>] Resolving fimoklei/agent-harness...",
+  "[i] Targets: claude, codex  (source: --target flag)",
+  "  [+] fimoklei/agent-harness #v0.6.0 @f8208f12",
+  "[i] Removed apm.yml created by the failed install.",
+  "  [x] 1 package failed:",
+  "    +- fimoklei/agent-harness -- --skill did not match skills in ",
+  "'fimoklei/agent-harness'. Requested: no-such-skill.",
+  "[x] Installation failed with 1 error(s) in 2.5s. No install transaction changes ",
+  "were committed.",
+].join("\n");
+
+// Excerpt of a batch install over a symlinked `.claude/skills/caveman`, apm
+// 0.29.0 (2026-09-22; full capture in
+// tests/fixtures/apm-1039-batch-symlink-skipped.txt). Exit 0 with the marker:
+// the link was skipped, which the output never names (#1039).
+const batchSymlinkSkippedOutput = [
+  "  [+] fimoklei/agent-harness #v0.6.0 @f8208f12",
+  "  |-- 2 skill(s) integrated -> .agents/skills/, .claude/skills/",
+  "[i] Added apm_modules/ to .gitignore",
+  "  [!] 1 file skipped -- local files exist, not managed by APM",
+  "    Use 'apm install --force' to overwrite",
+  "[*] Installed 1 APM dependency in 2.9s.",
+].join("\n");
+
 // Captured output of a failed `apm install` on apm 0.26.0 (2026-07-20; full
 // capture in tests/fixtures/apm-install-probes-failed.txt): every probe failed,
 // nothing written, exit 1. It carries no `Installed N APM dependency` marker and
@@ -426,6 +455,34 @@ describe("ApmCliDriver.deploySkill", () => {
     await expect(
       driver.deploySkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
     ).resolves.toEqual({ ok: false, reason: "failed" });
+  });
+
+  it("fails the whole batch when one staged name fails", async () => {
+    const { run } = rejectingRun({ stdout: batchUnknownSkillOutput });
+    const driver = new ApmCliDriver({ run });
+
+    await expect(
+      driver.deploySkill({
+        target: { kind: "repo", repoPath: "/repo" },
+        ref,
+        skills: ["47", "audit-dependencies", "no-such-skill"],
+      }),
+    ).resolves.toEqual({ ok: false, reason: "failed" });
+  });
+
+  it("reads a batch that skipped a symlinked destination as a success", async () => {
+    // Why DeploySkill refuses a linked destination before the install: apm's
+    // own output cannot tell this apart from a full deploy.
+    const { run } = fakeRun(batchSymlinkSkippedOutput);
+    const driver = new ApmCliDriver({ run });
+
+    await expect(
+      driver.deploySkill({
+        target: { kind: "repo", repoPath: "/repo" },
+        ref,
+        skills: ["47", "audit-dependencies", "caveman"],
+      }),
+    ).resolves.toEqual({ ok: true });
   });
 
   it("reports success when the positive success marker is present", async () => {

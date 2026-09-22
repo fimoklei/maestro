@@ -2,25 +2,26 @@ import { describe, expect, it } from "vitest";
 import { type BulkDeployInput, BulkDeploySkills } from "./bulk-deploy-skills";
 import type { DeploySkill, DeploySkillError } from "./deploy-skill";
 
-// A stand-in for DeploySkill.execute that answers from a scripted table keyed by
-// skill name, and records the order it was called in. The real per-skill guards
-// live in DeploySkill (tested there); a bulk run only orchestrates them.
+// A stand-in for DeploySkill.executeBatch that answers from a scripted table
+// keyed by skill name, and records each batch it was handed. The real guards
+// and the one install live in DeploySkill (tested there); a bulk run only
+// groups what the batch answered.
 type Scripted = Awaited<ReturnType<DeploySkill["execute"]>>;
 
 function fakeDeploy(
   script: Record<string, Scripted>,
-  calls?: string[],
-  consentSeen?: (string | undefined)[],
-): Pick<DeploySkill, "execute"> {
+  batches?: string[][],
+): Pick<DeploySkill, "executeBatch"> {
   return {
-    async execute(input) {
-      calls?.push(input.name);
-      consentSeen?.push(input.confirmedCopyReceipt);
-      const result = script[input.name];
-      if (!result) {
-        throw new Error(`no scripted result for ${input.name}`);
-      }
-      return result;
+    async executeBatch(input) {
+      batches?.push([...input.names]);
+      return input.names.map((name) => {
+        const result = script[name];
+        if (!result) {
+          throw new Error(`no scripted result for ${name}`);
+        }
+        return { name, result };
+      });
     },
   };
 }
@@ -161,8 +162,8 @@ describe("BulkDeploySkills", () => {
     expect(report.failed).toEqual([]);
   });
 
-  it("keeps going after a failure and still attempts the rest of the batch", async () => {
-    const calls: string[] = [];
+  it("hands every staged name to one batch and groups what it answered", async () => {
+    const batches: string[][] = [];
     const bulk = new BulkDeploySkills({
       deploy: fakeDeploy(
         {
@@ -170,7 +171,7 @@ describe("BulkDeploySkills", () => {
           review: fail("deploy-failed"),
           research: ok("research", "v0.3.0"),
         },
-        calls,
+        batches,
       ),
     });
 
@@ -179,7 +180,7 @@ describe("BulkDeploySkills", () => {
       target: { kind: "global" },
     });
 
-    expect(calls).toEqual(["tdd", "review", "research"]);
+    expect(batches).toEqual([["tdd", "review", "research"]]);
     expect(report.deployed).toEqual([
       { name: "tdd", version: "v1.2.0" },
       { name: "research", version: "v0.3.0" },
@@ -229,67 +230,51 @@ describe("BulkDeploySkills", () => {
     ]);
   });
 
-  it("never forwards a batch-wide consent to individual deploys", async () => {
-    const consentSeen: (string | undefined)[] = [];
+  it("never forwards a batch-wide consent to the batch", async () => {
+    let seen: unknown;
     const bulk = new BulkDeploySkills({
-      deploy: fakeDeploy(
-        {
-          tdd: ok("tdd", "v1.2.0"),
-          review: ok("review", "v0.9.0"),
+      deploy: {
+        async executeBatch(input) {
+          seen = input;
+          return input.names.map((name) => ({ name, result: ok(name, "v1") }));
         },
-        undefined,
-        consentSeen,
-      ),
+      },
     });
 
     // A caller reaching past the type (e.g. a hand-built request body) must
-    // still never smuggle a batch-wide overwrite consent through to per-skill
-    // deploys — it stays a deliberate, per-item decision (#292, #952).
+    // still never smuggle a batch-wide overwrite consent through — it stays a
+    // deliberate, per-item decision (#292, #952).
     await bulk.execute({
       names: ["tdd", "review"],
       target: { kind: "global" },
       confirmedCopyReceipt: "a".repeat(64),
     } as unknown as BulkDeployInput);
 
-    expect(consentSeen).toEqual([undefined, undefined]);
+    expect(seen).toEqual({
+      names: ["tdd", "review"],
+      target: { kind: "global" },
+    });
   });
 
-  it("keeps going after an unexpected exception mid-batch", async () => {
-    const calls: string[] = [];
-    const inner = fakeDeploy(
-      {
-        tdd: ok("tdd", "v1.2.0"),
-        research: ok("research", "v0.3.0"),
-      },
-      calls,
-    );
+  it("fails every name when the batch throws, leaking nothing it said", async () => {
     const bulk = new BulkDeploySkills({
       deploy: {
-        async execute(input) {
-          if (input.name === "review") {
-            // A real dependency (e.g. a filesystem read) can reject outside
-            // DeploySkill's own typed-error handling; the batch must still
-            // reach the rest of the names (#292).
-            calls.push(input.name);
-            throw new Error("ENOENT: filesystem read failed");
-          }
-          return inner.execute(input);
+        async executeBatch() {
+          // A real dependency (e.g. a filesystem read) can reject outside
+          // DeploySkill's own typed-error handling (#292).
+          throw new Error("ENOENT: filesystem read failed");
         },
       },
     });
 
     const report = await bulk.execute({
-      names: ["tdd", "review", "research"],
+      names: ["tdd", "review"],
       target: { kind: "global" },
     });
 
-    expect(calls).toEqual(["tdd", "review", "research"]);
-    expect(report.deployed).toEqual([
-      { name: "tdd", version: "v1.2.0" },
-      { name: "research", version: "v0.3.0" },
-    ]);
+    expect(report.deployed).toEqual([]);
     expect(report.failed).toEqual([
-      { error: "deploy-failed", names: ["review"] },
+      { error: "deploy-failed", names: ["tdd", "review"] },
     ]);
   });
 });

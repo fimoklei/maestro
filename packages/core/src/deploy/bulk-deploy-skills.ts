@@ -1,5 +1,5 @@
-// Adds no deploy semantics: drives DeploySkill once per name and harvests the
-// results, so one failure never aborts the batch (#292).
+// Adds no deploy semantics: hands every name to DeploySkill's one batch and
+// groups what it answered (#292, #1039).
 import type {
   DeploySkill,
   DeploySkillError,
@@ -36,7 +36,7 @@ export type BulkDeployReport = {
 
 export class BulkDeploySkills {
   constructor(
-    private readonly deps: { deploy: Pick<DeploySkill, "execute"> },
+    private readonly deps: { deploy: Pick<DeploySkill, "executeBatch"> },
   ) {}
 
   async execute(input: BulkDeployInput): Promise<BulkDeployReport> {
@@ -46,19 +46,22 @@ export class BulkDeploySkills {
     // order, without losing which skills hit them.
     const failures = new Map<DeploySkillError, string[]>();
 
-    for (const name of input.names) {
-      // Caught here too, so one name's unexpected exception never aborts the
-      // rest of the batch (#292).
-      let result: Awaited<ReturnType<DeploySkill["execute"]>>;
-      try {
-        result = await this.deps.deploy.execute({
-          type: "skill",
-          name,
-          target: input.target,
-        });
-      } catch {
-        result = { ok: false, error: "deploy-failed" };
-      }
+    // Caught here too, so an unexpected exception still answers every name
+    // with a typed error rather than aborting the report (#292).
+    let rows: Awaited<ReturnType<DeploySkill["executeBatch"]>>;
+    try {
+      rows = await this.deps.deploy.executeBatch({
+        names: input.names,
+        target: input.target,
+      });
+    } catch {
+      rows = input.names.map((name) => ({
+        name,
+        result: { ok: false, error: "deploy-failed" },
+      }));
+    }
+
+    for (const { name, result } of rows) {
       if (result.ok) {
         deployed.push({ name, version: result.deployed.version });
       } else if (ATTENTION[result.error]) {

@@ -97,8 +97,9 @@ The deploy path must not trust the exit code:
    an absent marker is failure, fail-closed, regardless of exit code.
    Fixtures: `apm-install-ok.txt`, `apm-install-no-changes.txt`,
    `apm-install-probes-failed.txt`, `apm-install-symlink-refused.txt`.
-3. **`is a symlink` = destination refusal**, and only when the *leaf* skill
-   dir is a symlink — a directory-level symlink installs fine (measured in
+3. **`is a symlink` = destination refusal** for a per-skill subpath ref
+   (a root package skips the link silently, § A batch install), and only
+   when the *leaf* skill dir is a symlink — a directory-level symlink installs fine (measured in
    `docs/research/apm-0.25-symlink-topology-impact.md`). Match every phrase
    on whitespace-normalized, lowercased output: Rich wraps mid-sentence,
    `install` pins no `COLUMNS`, and the wrap point moves between versions
@@ -167,6 +168,27 @@ whole sequence (issue #957). Captures: `apm-957-*.txt`,
   while the package's other skills are already gone and `apm.yml` and the
   lockfile still list the whole Selection. Neither the exit code nor the
   markers say what is on disk.
+
+### A batch install
+
+One install carrying every staged name, measured 2026-09-22 per repo against
+`github.com/fimoklei/agent-harness#v0.6.0` for a bulk deploy (issue #1039).
+Captures: `apm-1039-*.txt`, `apm.lock.1039-batch-symlink-skipped.yaml`,
+`apm.yml.1039-failed-batch-kept.yaml`; commands in `tests/fixtures/README.md`.
+
+- **One failing name fails the whole install.** A `--skill` name the package
+  does not carry: exit 1, no success marker, `Installation failed with 1
+  error(s) … No install transaction changes were committed.` Nothing reaches
+  disk or the lockfile, and a first install removes the `apm.yml` it created.
+  Over an existing Selection the files and the lockfile stay as they were, but
+  `skills:` keeps the list written before the install, failing name included.
+- **A symlinked leaf is skipped, not refused.** With `.claude/skills/<name>` a
+  symlink, the root-package install exits 0 with the success marker, prints
+  `1 file skipped -- local files exist, not managed by APM`, deploys the other
+  names and that name's `.agents` copy, and writes nothing through the link.
+  The lockfile lists the name in `skill_subset` but has no `.claude/skills/<name>`
+  row. Neither the marker nor the exit code shows it, so Maestro refuses a
+  linked destination before the install.
 
 ## Lockfile — `apm.lock.yaml`
 

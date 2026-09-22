@@ -1,0 +1,24 @@
+[*] Created apm.yml
+[i] Targets set: claude, codex (persisted to apm.yml)
+[*] Validating 1 package...
+[+] fimoklei/agent-harness#v0.6.0
+[*] Updated apm.yml with 1 new package(s)
+[>] Installing 1 new package...
+[>] Resolving fimoklei/agent-harness...
+[i] Targets: claude, codex  (source: --target flag)
+  [+] fimoklei/agent-harness #v0.6.0 @f8208f12
+[i] Removed apm.yml created by the failed install.
+  [x] 1 package failed:
+    +- fimoklei/agent-harness -- --skill did not match skills in 
+'fimoklei/agent-harness'. Requested: no-such-skill. Available: 47, 
+audit-dependencies, brutal-critic, caveman, commanders-intent, create-issue, 
+defense-in-depth, diagnose, e2e-testing, grill-me, grill-with-docs, handoff, 
+improve-codebase-architecture, intent-explorer, intent-layer, 
+karpathy-guidelines, learnings, loop-explorer, optimize-docs, 
+plane-issue-logger, pre-mortem, prototype, security-threat-model, 
+setup-matt-pocock-skills, simplification-cascades, six-thinking-hats, 
+socratic-explorer, tdd, to-issues, to-prd, triage, workflow-commit, 
+workflow-ship, write-a-skill, writing-clearly-and-concisely, zoom-out. Choose an
+available skill or update the package manifest, then reinstall.
+[x] Installation failed with 1 error(s) in 2.5s. No install transaction changes 
+were committed.

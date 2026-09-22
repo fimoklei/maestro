@@ -1376,3 +1376,277 @@ describe("DeploySkill", () => {
     expect(deployed).toEqual([]);
   });
 });
+
+// A bulk deploy: one lock, one install carrying every name that passed its
+// guards (#1039).
+describe("DeploySkill.executeBatch", () => {
+  const skills = (...names: string[]) => ({
+    read: async () => ({
+      ok: true as const,
+      primitives: names.map((name) => ({
+        type: "skill" as const,
+        name,
+        description: name,
+      })),
+    }),
+  });
+
+  it("deploys every staged name in one install", async () => {
+    const { deps, deployed } = buildDeps({
+      inventory: skills("tdd", "review", "docs"),
+    });
+
+    const results = await new DeploySkill(deps).executeBatch({
+      names: ["tdd", "review", "docs"],
+      target: repo("/registered/repo"),
+    });
+
+    expect(results).toEqual([
+      {
+        name: "tdd",
+        result: {
+          ok: true,
+          deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+        },
+      },
+      {
+        name: "review",
+        result: {
+          ok: true,
+          deployed: { type: "skill", name: "review", version: "v0.5.1" },
+        },
+      },
+      {
+        name: "docs",
+        result: {
+          ok: true,
+          deployed: { type: "skill", name: "docs", version: "v0.5.1" },
+        },
+      },
+    ]);
+    expect(deployed).toEqual([
+      {
+        command: "install",
+        target: repo("/registered/repo"),
+        ref: "github.com/fimoklei/agent-harness#v0.5.1",
+        skills: ["tdd", "review", "docs"],
+      },
+    ]);
+  });
+
+  const okRow = (name: string, version = "v0.5.1") => ({
+    name,
+    result: { ok: true, deployed: { type: "skill", name, version } },
+  });
+
+  it("leaves a name its own guard refuses out of the one install", async () => {
+    const { deps, deployed } = buildDeps({
+      inventory: skills("tdd", "review", "docs"),
+      inventoryGit: {
+        syncBeforeDeploy: async () => {},
+        skillExistsAtTag: async () => true,
+        skillDivergesFromTag: async (_tag, name) => name === "review",
+        readSkillFilesAtTag: async () => null,
+      },
+    });
+
+    const results = await new DeploySkill(deps).executeBatch({
+      names: ["tdd", "review", "docs"],
+      target: repo("/registered/repo"),
+    });
+
+    expect(results).toEqual([
+      okRow("tdd"),
+      {
+        name: "review",
+        result: { ok: false, error: "local-diverged-from-tag" },
+      },
+      okRow("docs"),
+    ]);
+    expect(deployed.map((call) => call.skills)).toEqual([["tdd", "docs"]]);
+  });
+
+  it("holds back an edited copy with a receipt its own deploy accepts", async () => {
+    // Two held back: a receipt minted before the install would cover docs too,
+    // which a single deploy of review never reads.
+    const edited = new Set(["review", "docs"]);
+    const { deps, deployed } = buildDeps({
+      inventory: skills("tdd", "review", "docs"),
+      deployedContent: {
+        classify: async ({ name }) =>
+          edited.has(name) ? ("diverged" as const) : ("not-deployed" as const),
+        contentDigest: async () => null,
+        linkedSkillPath: async () => null,
+      },
+    });
+    const deploy = new DeploySkill(deps);
+
+    const results = await deploy.executeBatch({
+      names: ["tdd", "review", "docs"],
+      target: repo("/registered/repo"),
+    });
+
+    expect(results[1]).toEqual({
+      name: "review",
+      result: {
+        ok: false,
+        error: "deployed-diverged-from-lock",
+        copyReceipt: expect.stringMatching(/^[0-9a-f]{64}$/),
+      },
+    });
+    expect(deployed.map((call) => call.skills)).toEqual([["tdd"]]);
+    const refused = results[1]?.result;
+    if (refused === undefined || refused.ok) {
+      throw new Error("expected review to be held back");
+    }
+
+    // Minted against what landed, so the row's single deploy is licensed.
+    const single = await deploy.execute({
+      type: "skill",
+      name: "review",
+      target: repo("/registered/repo"),
+      confirmedCopyReceipt: refused.copyReceipt,
+    });
+
+    expect(single).toEqual({
+      ok: true,
+      deployed: { type: "skill", name: "review", version: "v0.5.1" },
+    });
+  });
+
+  it("installs nothing while a deployed copy outside the batch holds edits", async () => {
+    // The one install rewrites every copy in the Selection, staged or not.
+    const { deps, deployed, world } = buildDeps({
+      inventory: skills("tdd", "review", "docs"),
+      deployedContent: {
+        classify: async ({ name }) =>
+          name === "docs" ? ("diverged" as const) : ("not-deployed" as const),
+        contentDigest: async () => null,
+        linkedSkillPath: async () => null,
+      },
+    });
+    world.seed({ release: "v0.5.1", skills: ["docs"] });
+
+    const results = await new DeploySkill(deps).executeBatch({
+      names: ["tdd", "review"],
+      target: repo("/registered/repo"),
+    });
+
+    expect(results.map((row) => row.result)).toEqual([
+      expect.objectContaining({
+        ok: false,
+        error: "deployed-diverged-from-lock",
+      }),
+      expect.objectContaining({
+        ok: false,
+        error: "deployed-diverged-from-lock",
+      }),
+    ]);
+    expect(deployed).toEqual([]);
+  });
+
+  it("installs nothing while a staged name's deployed copy holds edits", async () => {
+    // Staged or not, a deployed name stays in the Selection, so the install
+    // would rewrite its copy even with the name held back.
+    const { deps, deployed, world } = buildDeps({
+      inventory: skills("tdd", "review"),
+      deployedContent: {
+        classify: async ({ name }) =>
+          name === "review" ? ("diverged" as const) : ("not-deployed" as const),
+        contentDigest: async () => null,
+        linkedSkillPath: async () => null,
+      },
+    });
+    world.seed({ release: "v0.5.1", skills: ["review"] });
+
+    const results = await new DeploySkill(deps).executeBatch({
+      names: ["tdd", "review"],
+      target: repo("/registered/repo"),
+    });
+
+    expect(results.map((row) => row.result)).toEqual([
+      expect.objectContaining({
+        ok: false,
+        error: "deployed-diverged-from-lock",
+      }),
+      expect.objectContaining({
+        ok: false,
+        error: "deployed-diverged-from-lock",
+      }),
+    ]);
+    expect(deployed).toEqual([]);
+  });
+
+  it("fails every name in the batch when the one install fails", async () => {
+    const { deps, cleaned, world } = buildDeps({
+      inventory: skills("tdd", "review"),
+    });
+    world.refuseWith("throw");
+
+    const results = await new DeploySkill(deps).executeBatch({
+      names: ["tdd", "review"],
+      target: globalTarget,
+    });
+
+    expect(results).toEqual([
+      { name: "tdd", result: { ok: false, error: "deploy-failed" } },
+      { name: "review", result: { ok: false, error: "deploy-failed" } },
+    ]);
+    expect(cleaned).toEqual([]);
+  });
+
+  it("answers every name with a refusal that belongs to the whole target", async () => {
+    const { deps, deployed } = buildDeps({
+      inventory: skills("tdd", "review"),
+      apm: {
+        resolveLatestTag: async () => ({
+          ok: false as const,
+          reason: "auth-required" as const,
+        }),
+        deploySkill: async () => ({ ok: true as const }),
+      },
+    });
+
+    const results = await new DeploySkill(deps).executeBatch({
+      names: ["tdd", "review", "Not A Slug"],
+      target: repo("/registered/repo"),
+    });
+
+    expect(results).toEqual([
+      { name: "tdd", result: { ok: false, error: "auth-required" } },
+      { name: "review", result: { ok: false, error: "auth-required" } },
+      { name: "Not A Slug", result: { ok: false, error: "invalid-name" } },
+    ]);
+    expect(deployed).toEqual([]);
+  });
+
+  it("refuses a symlinked destination before apm, which would skip it silently", async () => {
+    const { deps, deployed } = buildDeps({
+      inventory: skills("tdd", "review"),
+      deployedContent: {
+        classify: async () => "not-deployed" as const,
+        contentDigest: async () => null,
+        linkedSkillPath: async ({ name }) =>
+          name === "review" ? "/registered/repo/.claude/skills/review" : null,
+      },
+    });
+
+    const results = await new DeploySkill(deps).executeBatch({
+      names: ["tdd", "review"],
+      target: repo("/registered/repo"),
+    });
+
+    expect(results).toEqual([
+      okRow("tdd"),
+      {
+        name: "review",
+        result: {
+          ok: false,
+          error: "destination-symlinked",
+          linkedPath: "/registered/repo/.claude/skills/review",
+        },
+      },
+    ]);
+    expect(deployed.map((call) => call.skills)).toEqual([["tdd"]]);
+  });
+});

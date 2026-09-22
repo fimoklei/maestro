@@ -77,6 +77,16 @@ export type LocalCopyDecision =
       receipt: string | null;
     };
 
+// The blocking verdict a refusal names, worst first; undefined when every copy
+// is clean.
+export function worstVerdict(
+  findings: readonly CopyFinding[],
+): Exclude<CopyVerdict, "clean"> | undefined {
+  return BLOCKING.find((verdict) =>
+    findings.some((finding) => finding.verdict === verdict),
+  );
+}
+
 // Order-independent: the same copies in another order are the same consent.
 // Shared with the Update preflight token, so the two never bind different facts.
 export function copyKeys(check: LocalCopyCheck): string[] {
@@ -141,9 +151,7 @@ export class LocalCopyGuard {
     check: LocalCopyCheck,
     receipt?: string,
   ): LocalCopyDecision {
-    const blocked = BLOCKING.find((verdict) =>
-      check.findings.some((finding) => finding.verdict === verdict),
-    );
+    const blocked = worstVerdict(check.findings);
     if (blocked === undefined) {
       return { ok: true };
     }
