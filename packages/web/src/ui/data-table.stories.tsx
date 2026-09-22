@@ -57,6 +57,15 @@ export const WithSelection: Story = {
 
 export const DetailOpen: Story = { args: { openRowId: "diagnose" } };
 
+export const Grouped: Story = {
+  args: {
+    groups: {
+      key: (row: Row) => (row.release === "v1.4.0" ? "Latest" : "Older"),
+      order: ["Latest", "Older"],
+    },
+  },
+};
+
 export const Loading: Story = { args: { loading: true, skeletonRows: 6 } };
 
 export const Empty: Story = {

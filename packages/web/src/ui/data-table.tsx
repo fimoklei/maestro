@@ -14,7 +14,7 @@ import {
   tableFeatures,
   useTable,
 } from "@tanstack/react-table";
-import { type ReactNode, type Ref, useId, useState } from "react";
+import { Fragment, type ReactNode, type Ref, useId, useState } from "react";
 import { cn } from "./cn";
 import { HOVER_TRANSITION } from "./hover-transition";
 import { Skeleton } from "./skeleton";
@@ -55,6 +55,13 @@ export interface DataTableSelection<T> {
   onToggle: (row: T) => void;
 }
 
+export interface DataTableGroups<T> {
+  /** The group a row belongs to; also its header's words. */
+  key: (row: T) => string;
+  /** Groups in this order first; any other follows as it first appears. */
+  order?: readonly string[];
+}
+
 export interface DataTableProps<T extends RowData> {
   /** The grid's accessible name, e.g. "Inventory table". */
   label: string;
@@ -72,6 +79,8 @@ export interface DataTableProps<T extends RowData> {
   skeletonRows?: number;
   /** Shown in place of rows when there are none. */
   empty?: ReactNode;
+  /** Rows under a header per group, each header naming its count. */
+  groups?: DataTableGroups<T>;
   ref?: Ref<HTMLTableElement>;
 }
 
@@ -89,6 +98,7 @@ export function DataTable<T extends RowData>({
   loading = false,
   skeletonRows = 12,
   empty,
+  groups,
   ref,
 }: DataTableProps<T>) {
   const table = useTable({
@@ -100,7 +110,17 @@ export function DataTable<T extends RowData>({
     sortDescFirst: false,
     ...(columnVisibility === undefined ? {} : { state: { columnVisibility } }),
   });
-  const rows = table.getRowModel().rows;
+  const sortedRows = table.getRowModel().rows;
+  // Grouping reorders the sorted rows; the cursor walks this flat order.
+  const rows =
+    groups === undefined
+      ? sortedRows
+      : groupKeys(
+          sortedRows.map((row) => groups.key(row.original)),
+          groups.order,
+        ).flatMap((key) =>
+          sortedRows.filter((row) => groups.key(row.original) === key),
+        );
   const leafColumns = table.getVisibleLeafColumns();
   const gridId = useId();
   const rowDomId = (index: number) => `${gridId}-row-${index}`;
@@ -268,64 +288,88 @@ export function DataTable<T extends RowData>({
           </tr>
         ) : (
           rows.map((row, index) => {
+            const groupKey = groups?.key(row.original);
+            const previous = rows[index - 1];
+            const startsGroup =
+              groups !== undefined &&
+              (previous === undefined ||
+                groups.key(previous.original) !== groupKey);
             const id = row.id;
             const isSelected = selection?.selected.has(id) ?? false;
             const isOpen = id === openRowId;
             return (
-              <tr
-                key={id}
-                id={rowDomId(index)}
-                aria-selected={selection ? isSelected : undefined}
-                aria-current={isOpen || undefined}
-                onClick={(event) => {
-                  setCursor(index);
-                  if ((event.target as HTMLElement).closest(INTERACTIVE)) {
-                    return;
-                  }
-                  onRowOpen?.(row.original);
-                }}
-                className={cn(
-                  "h-row border-gray-6 border-b",
-                  onRowOpen && "cursor-pointer",
-                  isOpen ? "bg-gray-5" : "hover:bg-gray-3",
-                  gridFocused &&
-                    index === active &&
-                    "outline-2 outline-blue-9 -outline-offset-2 outline",
-                  HOVER_TRANSITION,
-                )}
-              >
-                {selection ? (
-                  <GridCell className="px-inline">
-                    {/* The padded label lifts the 16px box to the 24px
-                        pointer floor (WCAG 2.2 SC 2.5.8). */}
-                    <label className="-m-1 flex w-fit cursor-pointer p-1">
-                      <input
-                        type="checkbox"
-                        tabIndex={-1}
-                        checked={isSelected}
-                        onChange={() => selection.onToggle(row.original)}
-                        aria-label={selection.rowLabel(row.original)}
-                        className="size-4 cursor-pointer accent-gray-12"
-                      />
-                    </label>
-                  </GridCell>
-                ) : null}
-                {row.getVisibleCells().map((cell) => {
-                  const meta = cell.column.columnDef.meta;
-                  return (
+              <Fragment key={id}>
+                {startsGroup && groupKey !== undefined ? (
+                  <tr className="h-row border-gray-6 border-b bg-gray-2">
                     <GridCell
-                      key={cell.id}
-                      className={cn(
-                        "truncate px-inline",
-                        meta?.align === "end" && "text-right",
-                        meta?.className,
-                      )}
+                      colSpan={columnCount}
+                      className="px-inline font-medium text-gray-12 text-meta"
                     >
-                      <table.FlexRender cell={cell} />
+                      {groupKey}{" "}
+                      <span className="text-gray-11 tabular-nums">
+                        {
+                          rows.filter(
+                            (r) => groups?.key(r.original) === groupKey,
+                          ).length
+                        }
+                      </span>
                     </GridCell>
-                  );
-                })}
-              </tr>
+                  </tr>
+                ) : null}
+                <tr
+                  id={rowDomId(index)}
+                  aria-selected={selection ? isSelected : undefined}
+                  aria-current={isOpen || undefined}
+                  onClick={(event) => {
+                    setCursor(index);
+                    if ((event.target as HTMLElement).closest(INTERACTIVE)) {
+                      return;
+                    }
+                    onRowOpen?.(row.original);
+                  }}
+                  className={cn(
+                    "h-row border-gray-6 border-b",
+                    onRowOpen && "cursor-pointer",
+                    isOpen ? "bg-gray-5" : "hover:bg-gray-3",
+                    gridFocused &&
+                      index === active &&
+                      "outline-2 outline-blue-9 -outline-offset-2 outline",
+                    HOVER_TRANSITION,
+                  )}
+                >
+                  {selection ? (
+                    <GridCell className="px-inline">
+                      {/* The padded label lifts the 16px box to the 24px
+                        pointer floor (WCAG 2.2 SC 2.5.8). */}
+                      <label className="-m-1 flex w-fit cursor-pointer p-1">
+                        <input
+                          type="checkbox"
+                          tabIndex={-1}
+                          checked={isSelected}
+                          onChange={() => selection.onToggle(row.original)}
+                          aria-label={selection.rowLabel(row.original)}
+                          className="size-4 cursor-pointer accent-gray-12"
+                        />
+                      </label>
+                    </GridCell>
+                  ) : null}
+                  {row.getVisibleCells().map((cell) => {
+                    const meta = cell.column.columnDef.meta;
+                    return (
+                      <GridCell
+                        key={cell.id}
+                        className={cn(
+                          "truncate px-inline",
+                          meta?.align === "end" && "text-right",
+                          meta?.className,
+                        )}
+                      >
+                        <table.FlexRender cell={cell} />
+                      </GridCell>
+                    );
+                  })}
+                </tr>
+              </Fragment>
             );
           })
         )}
@@ -341,4 +385,13 @@ function GridCell(props: React.TdHTMLAttributes<HTMLTableCellElement>) {
     // biome-ignore lint/a11y/useFocusableInteractive: the grid holds focus and points at its active row with aria-activedescendant
     <td role="gridcell" {...props} />
   );
+}
+
+function groupKeys(
+  keys: readonly string[],
+  order: readonly string[] = [],
+): string[] {
+  const present = new Set(keys);
+  const first = order.filter((key) => present.has(key));
+  return [...first, ...[...present].filter((key) => !first.includes(key))];
 }

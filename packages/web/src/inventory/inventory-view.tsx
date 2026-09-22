@@ -1,13 +1,11 @@
 import { ListFilter, RefreshCw, Search, SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RegisteredRepo } from "../registry/use-registry";
-import { createDataTableColumns, DataTable } from "../ui/data-table";
+import { DataTable } from "../ui/data-table";
 import { IconButton } from "../ui/icon-button";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { OptionMenu } from "../ui/option-menu";
 import { Panel } from "../ui/panel";
-import { StatusBadge } from "../ui/status-badge";
-import { readingRank, type StatusReading } from "../ui/status-reading";
 import { useReadAnnouncement } from "../ui/use-read-announcement";
 import { BulkDeployBar } from "./bulk-deploy-bar";
 import { BulkRemoveSkillAction } from "./bulk-remove-skill-action";
@@ -15,6 +13,15 @@ import { bulkRemoveTargets } from "./bulk-remove-targets";
 import { hiddenStagedCount, toggleStaged } from "./bulk-selection";
 import { DeploySkillAction } from "./deploy-skill-action";
 import { type DeploymentTarget, rollUpDeployment } from "./deployed-rollup";
+import {
+  columns,
+  DISPLAY_OPTIONS,
+  GROUP_OPTIONS,
+  type Grouping,
+  groupsFor,
+  type InventoryRow,
+  STATUS_OPTIONS,
+} from "./inventory-columns";
 import {
   DISPLAY_LABEL,
   FILTER_LABEL,
@@ -31,80 +38,18 @@ import {
 import { filterByName } from "./inventory-table-model";
 import { skillDeployments } from "./skill-deployments";
 import { SkillDetailPane } from "./skill-detail-pane";
-import {
-  BEHIND,
-  NOT_DEPLOYED,
-  skillStatus,
-  UNKNOWN,
-  UP_TO_DATE,
-} from "./skill-status";
+import { skillStatus } from "./skill-status";
 import {
   deriveTypeSegments,
   filterByType,
-  TYPE_WORD,
   type TypeFilter,
 } from "./type-filter";
 import type { Primitive } from "./use-inventory";
 
 // Presentational; the reads come from inventory-panel.tsx (#992, #1040).
 
-type InventoryRow = Primitive & {
-  status: StatusReading | null;
-  // Null while the status is unconfirmed, so a partial reach never shows.
-  targets: number | null;
-};
-
-const unranked = Number.MAX_SAFE_INTEGER;
 // Fills the table at 1440×900 on a first read, before any row is known.
 const SKELETON_FALLBACK = 24;
-
-const columns = createDataTableColumns<InventoryRow>((helper) => [
-  helper.accessor("type", {
-    header: "Type",
-    cell: ({ row }) => TYPE_WORD[row.original.type],
-    meta: { className: "w-16 text-gray-11" },
-  }),
-  helper.accessor("name", {
-    header: "Name",
-    meta: { className: "w-55 font-medium text-gray-12" },
-  }),
-  helper.accessor("description", {
-    header: "Description",
-    // Drops out first on a narrow window (#992).
-    meta: { className: "text-gray-11 @max-[45rem]:hidden" },
-  }),
-  helper.accessor("status", {
-    header: "Status",
-    cell: ({ getValue }) => {
-      const status = getValue();
-      return status === null ? null : <StatusBadge reading={status} />;
-    },
-    sortFn: (a, b) =>
-      (a.original.status ? readingRank(a.original.status) : unranked) -
-      (b.original.status ? readingRank(b.original.status) : unranked),
-    meta: { className: "w-33" },
-  }),
-  helper.accessor("targets", {
-    header: "Targets",
-    cell: ({ getValue }) => {
-      const targets = getValue();
-      return targets === null ? null : targets === 0 ? "—" : targets;
-    },
-    sortFn: (a, b) => (a.original.targets ?? -1) - (b.original.targets ?? -1),
-    meta: { className: "w-18 tabular-nums text-gray-12", align: "end" },
-  }),
-]);
-
-const STATUS_OPTIONS = [UP_TO_DATE, BEHIND, UNKNOWN, NOT_DEPLOYED].map(
-  (reading) => ({ value: reading.word, label: reading.word }),
-);
-
-const DISPLAY_OPTIONS = [
-  { value: "type", label: "Type" },
-  { value: "description", label: "Description" },
-  { value: "status", label: "Status" },
-  { value: "targets", label: "Targets" },
-];
 
 export function InventoryView({
   primitives,
@@ -139,6 +84,7 @@ export function InventoryView({
   const [statusFilter, setStatusFilter] = useState<ReadonlySet<string>>(
     new Set(),
   );
+  const [grouping, setGrouping] = useState<Grouping>("none");
   const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
   const [query, setQuery] = useState("");
   // Held by name (from the full inventory), so a search narrowing the table
@@ -251,6 +197,13 @@ export function InventoryView({
           }
           sections={[
             {
+              kind: "radio",
+              label: "Group by",
+              options: GROUP_OPTIONS,
+              value: grouping,
+              onChange: (value) => setGrouping(value as Grouping),
+            },
+            {
               kind: "check",
               label: "Columns",
               options: DISPLAY_OPTIONS,
@@ -346,6 +299,7 @@ export function InventoryView({
                 columnVisibility={Object.fromEntries(
                   [...hidden].map((id) => [id, false]),
                 )}
+                groups={groupsFor(grouping)}
                 openRowId={selected}
                 onRowOpen={(row) =>
                   setSelected((current) =>

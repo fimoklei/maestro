@@ -333,6 +333,38 @@ describe("InventoryView — band 2", () => {
     ).toBeInTheDocument();
   });
 
+  it("groups the rows by status from Display, worst group first", async () => {
+    stubPendingFetch();
+    renderView({ targets: [deployedTo(["tdd"], [tddBehind])] });
+
+    await userEvent.click(screen.getByRole("button", { name: "Display" }));
+    await userEvent.click(
+      await screen.findByRole("menuitemradio", { name: "Status" }),
+    );
+    await userEvent.keyboard("{Escape}");
+
+    const rows = within(grid()).getAllByRole("row").slice(1);
+    expect(rows.map((row) => row.textContent)).toEqual([
+      "Behind 1",
+      expect.stringContaining("tdd"),
+      "Not deployed 1",
+      expect.stringContaining("caveman"),
+    ]);
+  });
+
+  it("groups the rows by type from Display", async () => {
+    stubPendingFetch();
+    renderView();
+
+    await userEvent.click(screen.getByRole("button", { name: "Display" }));
+    await userEvent.click(
+      await screen.findByRole("menuitemradio", { name: "Type" }),
+    );
+    await userEvent.keyboard("{Escape}");
+
+    expect(within(grid()).getAllByRole("row")[1]).toHaveTextContent("Skills 2");
+  });
+
   it("keeps Filter and Display focusable but unavailable while no skill is read", () => {
     renderView({ primitives: undefined });
 

@@ -42,6 +42,9 @@ export const TABLE_LABEL = "Inventory table";
 export const STAGE_COLUMN_LABEL = "Select for bulk deploy";
 export const stageRowLabel = (name: string) => `Select ${name} for bulk deploy`;
 
+// The group header of rows whose status has not answered yet (CONTEXT.md → Read).
+export const NOT_READ_YET = "Not read yet";
+
 export const NO_SEARCH_MATCH =
   "No skills match the search. Clear the search box to see every skill.";
 export const NO_FILTER_MATCH =

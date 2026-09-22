@@ -9,7 +9,7 @@ export type TypeFilter = "all" | PrimitiveType;
 // Fixed order, not derived from key/insertion order, so layout never shifts.
 const TYPE_ORDER: readonly PrimitiveType[] = ["skill", "hook", "mcp", "bundle"];
 
-const TYPE_LABEL: Record<PrimitiveType, string> = {
+export const TYPE_LABEL: Record<PrimitiveType, string> = {
   skill: "Skills",
   hook: "Hooks",
   mcp: "MCP servers",

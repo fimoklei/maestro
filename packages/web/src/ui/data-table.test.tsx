@@ -194,4 +194,36 @@ describe("DataTable", () => {
 
     expect(screen.getByText("Nothing grows here.")).toBeInTheDocument();
   });
+
+  it("puts rows under a header per group, naming the group and its count", () => {
+    renderTable({
+      groups: {
+        key: (fruit) => (fruit.colour.includes("red") ? "Red" : "Green"),
+        order: ["Red", "Green"],
+      },
+    });
+
+    const [, redHeader, apple, cherry, greenHeader, pear] = within(
+      grid(),
+    ).getAllByRole("row");
+    expect(redHeader).toHaveTextContent("Red 2");
+    expect(greenHeader).toHaveTextContent("Green 1");
+    expect(apple).toHaveTextContent("apple");
+    expect(cherry).toHaveTextContent("cherry");
+    expect(pear).toHaveTextContent("pear");
+  });
+
+  it("moves the active row across a group header without stopping on it", async () => {
+    renderTable({
+      groups: {
+        key: (fruit) => (fruit.colour.includes("red") ? "Red" : "Green"),
+        order: ["Red", "Green"],
+      },
+    });
+    act(() => grid().focus());
+
+    expect(activeRowName()).toBe("apple");
+    await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+    expect(activeRowName()).toBe("pear");
+  });
 });

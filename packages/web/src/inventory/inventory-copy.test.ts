@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   NO_FILTER_MATCH,
   NO_SEARCH_MATCH,
+  NOT_READ_YET,
   stageRowLabel,
 } from "./inventory-copy";
 
@@ -17,6 +18,10 @@ describe("Inventory copy", () => {
     expect(NO_FILTER_MATCH).toBe(
       "No skills match the filters. Select Filter to show more skills.",
     );
+  });
+
+  it("heads the rows whose status has not answered yet", () => {
+    expect(NOT_READ_YET).toBe("Not read yet");
   });
 
   it("names a row's checkbox after its skill", () => {
