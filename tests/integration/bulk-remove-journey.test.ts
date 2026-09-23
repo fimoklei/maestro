@@ -18,7 +18,6 @@ import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { realRegistry } from "../helpers/real-registry";
 import { makeRepoDir } from "../helpers/repo-dir";
-import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
@@ -168,7 +167,6 @@ describe("retiring a skill from every target it is deployed to", () => {
       ...stubPromotes(),
       connect: stubConnect(),
       scaffold: stubScaffold(),
-      browse: stubBrowse(),
       folderChooser: stubFolderChooser(),
       update: stubUpdate(),
       enforceOriginHost: false,

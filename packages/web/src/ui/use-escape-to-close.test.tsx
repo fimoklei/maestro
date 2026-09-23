@@ -44,9 +44,8 @@ describe("useEscapeToClose", () => {
   });
 
   it("blocks Escape entirely while the topmost panel can't close yet, instead of falling through", async () => {
-    // The browse dialog disables closing mid-registration. That must not
-    // leave Escape free to fall through and close whatever is stacked
-    // underneath it.
+    // A dialog disables closing while its action runs. That must not leave
+    // Escape free to fall through and close whatever is stacked underneath it.
     const bottomClose = vi.fn();
     const topClose = vi.fn();
     render(

@@ -1,6 +1,6 @@
 # ADR-0032 — Browse opens the operating system's folder chooser
 
-- **Status:** Accepted
+- **Status:** Accepted — supersedes ADR-0009
 - **Date:** 2026-09-20 (decided in issue #1014; the form it serves in #1009 and
   #1013; macOS measured on 26.6.2, Windows not yet measured)
 

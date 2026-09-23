@@ -1,6 +1,7 @@
 # ADR-0010 — Ephemeral smoke: test-vs-production state isolation
 
-- **Status:** Accepted
+- **Status:** Accepted. The browse endpoint and per-entry facts its #168
+  amendment names were removed in #1080 (ADR-0032); the seeding stands.
 - **Date:** 2026-07-12
 
 ## Context

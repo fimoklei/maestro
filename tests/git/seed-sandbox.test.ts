@@ -7,9 +7,8 @@ import { join, sep } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { seededPaths, seedSandbox } from "../../scripts/seed-sandbox.mjs";
 
-// The smoke rehearsal browses from the sandbox HOME down (ADR-0009's ceiling is
-// os.homedir()). Anything seeded beside HOME is unreachable through the picker,
-// which is the defect ADR-0010's #168 amendment fixes.
+// The folder chooser opens on the sandbox HOME (ADR-0032), so everything the
+// rehearsal needs is seeded under it — ADR-0010's #168 amendment.
 describe("smoke sandbox seeding", () => {
   let root: string;
   let home: string;
@@ -72,7 +71,7 @@ describe("smoke sandbox seeding", () => {
     expect(seeded.warnings).toHaveLength(1);
   });
 
-  it("seeds candidates the picker can tell apart", () => {
+  it("seeds git repos, a plain directory and a name with a space", () => {
     const { candidates } = seedSandbox({ home, inventorySource });
 
     const gitRepos = candidates.filter((path) =>

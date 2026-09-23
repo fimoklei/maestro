@@ -1,6 +1,7 @@
 # ADR-0015 — First run is a connect gate, not a wizard
 
-- **Status:** Accepted
+- **Status:** Accepted. The browse dialog it names was replaced by the system
+  folder chooser (ADR-0032) and removed in #1080.
 - **Date:** 2026-07-20
 - **Amended 2026-08-01** by ADR-0021 (issue #352) and 2026-08-09 by issue
   #557 — see *Amendments*. The headline decision stands; three points below

@@ -66,7 +66,7 @@ function harness(
     copy?: () => Promise<CopySkillFolderResult>;
     originUrl?: string | null;
     trees?: HarnessSkillTrees | null;
-    // The ceiling the picker browses under; "/" holds every seeded path.
+    // The home ceiling; "/" holds every seeded path.
     homeRoot?: string;
   } = {},
 ) {
@@ -244,7 +244,7 @@ describe("ImportSkill.check", () => {
     ).resolves.toMatchObject({ check: { sourceBlocker: "source-unreadable" } });
   });
 
-  it("refuses a folder outside the ceiling the picker browses", async () => {
+  it("refuses a folder outside the home ceiling", async () => {
     const outside = new ImportSkill({
       resolveRoot: async () => ROOT,
       homeRoot: () => "/home/me",

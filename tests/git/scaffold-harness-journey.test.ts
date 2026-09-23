@@ -13,7 +13,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import {
-  BrowseFilesystem,
   ConfigStore,
   ConnectInventory,
   GitCloneAdapter,
@@ -173,7 +172,6 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
       retryOperation: stubRetryOperation({ registry, locks }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
-      browse: new BrowseFilesystem({ fs, homeRoot: () => home }),
       folderChooser: stubFolderChooser(),
       update: stubUpdate(),
       enforceOriginHost: false,

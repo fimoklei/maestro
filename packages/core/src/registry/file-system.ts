@@ -23,14 +23,14 @@ export interface FileSystemPort {
   exists(path: string): Promise<boolean>;
 
   // A regular file and nothing else — a symlink reports false without its
-  // target being resolved, matching what browse reads off a dirent (#148).
+  // target being resolved, matching what a dirent reports (#148).
   isFileEntry(path: string): Promise<boolean>;
 
   // Null when the file does not exist; other read failures reject.
   readFile(path: string): Promise<string | null>;
 
-  // Unfiltered — callers decide which entry types they want, so browse can find
-  // symlinked directories and validate each one itself (#148). Empty when the
+  // Unfiltered — callers decide which entry types they want, so a caller can
+  // find symlinked directories and validate each one itself (#148). Empty when the
   // directory does not exist: a missing .apm/skills/ is "no skills", not an error.
   listRawEntries(path: string): Promise<RawDirEntry[]>;
 

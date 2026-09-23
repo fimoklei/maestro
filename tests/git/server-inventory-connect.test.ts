@@ -11,7 +11,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import {
-  BrowseFilesystem,
   ConfigStore,
   ConnectInventory,
   HarnessGitAdapter,
@@ -124,9 +123,6 @@ describe("inventory connect HTTP route", () => {
       retryOperation: stubRetryOperation({ registry, locks }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
-      // The real browser, ceilinged at this test's temp dir rather than the
-      // user's home, so a picked path can be handed straight to connect.
-      browse: new BrowseFilesystem({ fs, homeRoot: () => dir }),
       folderChooser: stubFolderChooser(),
       update: stubUpdate(),
       enforceOriginHost: false,
@@ -347,40 +343,6 @@ describe("inventory connect HTTP route", () => {
     });
     const primitives = await app.request("/api/inventory/primitives");
     expect(await primitives.json()).toEqual({ primitives: [] });
-  });
-
-  it("connects a clone picked out of a browse listing", async () => {
-    // The picker journey: browse the parent, take the path the listing hands
-    // back, connect with exactly that. The two routes are covered apart
-    // (server-filesystem.test.ts); this is the seam between them.
-    const clone = await makeClone();
-    const app = makeApp();
-
-    const browse = await app.request("/api/filesystem/children", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: dir }),
-    });
-    expect(browse.status).toBe(200);
-    const { entries } = (await browse.json()) as {
-      entries: { name: string; path: string }[];
-    };
-    const picked = entries.find((entry) => entry.name === "agent-harness");
-    expect(picked?.path).toBe(await nodeRealpath(clone));
-
-    const res = await postConnect(app, { path: picked?.path });
-
-    expect(res.status).toBe(200);
-    const primitives = await app.request("/api/inventory/primitives");
-    expect(await primitives.json()).toEqual({
-      primitives: [
-        {
-          type: "skill",
-          name: "tdd",
-          description: "Test-driven development loop",
-        },
-      ],
-    });
   });
 
   it("rejects a malformed body with a 400", async () => {
