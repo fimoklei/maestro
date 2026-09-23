@@ -2,8 +2,11 @@
 // (#156). Server reports facts only, never a badge decision — client decides
 // (#150). Inventory badge is a hint; connect validation is the authority.
 import type { ReactNode } from "react";
-import { Chip } from "../ui/chip";
+import { StatusBadge } from "../ui/status-badge";
+import { reading } from "../ui/status-reading";
 import type { BrowseEntry } from "./use-browse-filesystem";
+
+const INVENTORY_BADGE = reading("Inventory", "attention", "◆");
 
 export type BrowseDialogMode = "connect" | "clone-parent";
 
@@ -20,7 +23,9 @@ export const browseModes: Record<BrowseDialogMode, BrowseModeConfig> = {
     title: "Choose an Inventory folder",
     confirmLabel: "Use this folder",
     badges: ({ entry }) =>
-      entry.facts.hasApmManifest ? <Chip tone="drift">◆ Inventory</Chip> : null,
+      entry.facts.hasApmManifest ? (
+        <StatusBadge reading={INVENTORY_BADGE} />
+      ) : null,
     // Read-only promise is made on the connect gate itself (ADR-0015).
     writePromise: null,
   },
@@ -30,7 +35,9 @@ export const browseModes: Record<BrowseDialogMode, BrowseModeConfig> = {
     title: "Choose a folder for the Harness",
     confirmLabel: "Clone into this folder",
     badges: ({ entry }) =>
-      entry.facts.hasApmManifest ? <Chip tone="drift">◆ Inventory</Chip> : null,
+      entry.facts.hasApmManifest ? (
+        <StatusBadge reading={INVENTORY_BADGE} />
+      ) : null,
     writePromise:
       "The Harness is cloned into a new folder here, named after the repository. Nothing already in this folder is renamed, moved or deleted.",
   },

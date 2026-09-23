@@ -6,10 +6,11 @@ import type {
 } from "@maestro/core";
 import { type ReactNode, useId, useState } from "react";
 import { Button } from "../ui/button";
-import { Chip } from "../ui/chip";
 import { cn } from "../ui/cn";
 import { DialogShell } from "../ui/dialog-shell";
 import { Notice } from "../ui/notice";
+import { StatusBadge } from "../ui/status-badge";
+import { reading } from "../ui/status-reading";
 import type { DeployStateNotice } from "./notice-copy";
 import { type OutcomeLine, updateOutcomeLines } from "./update-outcome-lines";
 import {
@@ -318,7 +319,9 @@ export function UpdateTargetDialog({
             </p>
           ) : null}
         </div>
-        {noContentChanges ? <Chip tone="dim">{NO_CONTENT_CHANGES}</Chip> : null}
+        {noContentChanges ? (
+          <StatusBadge reading={reading(NO_CONTENT_CHANGES, "neutral")} />
+        ) : null}
       </div>
 
       <div className="flex min-h-0 flex-col gap-4 overflow-y-auto px-3.5 py-3">

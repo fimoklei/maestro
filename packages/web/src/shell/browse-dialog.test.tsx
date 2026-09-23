@@ -265,7 +265,7 @@ describe("BrowseDialog", () => {
     renderDialog({ mode: "connect" });
 
     const row = await screen.findByRole("button", { name: "agent-harness" });
-    expect(row).toHaveTextContent("◆ Inventory");
+    expect(row).toHaveTextContent("◆Inventory");
     expect(row).not.toHaveTextContent("git");
     // No mode ticks folders any more: registering moved to its own dialog.
     expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
