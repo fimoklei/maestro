@@ -358,6 +358,32 @@ describe("DataTable", () => {
     expect(screen.queryByText("Nothing grows here.")).not.toBeInTheDocument();
   });
 
+  it("collapses a group from its header, and the cursor skips its rows", async () => {
+    renderTable({
+      groups: {
+        key: (fruit) => (fruit.colour.includes("red") ? "Red" : "Green"),
+        order: ["Red", "Green"],
+      },
+    });
+    const collapse = screen.getByRole("button", { name: "Collapse Red" });
+    expect(collapse).toHaveAttribute("aria-expanded", "true");
+
+    await userEvent.click(collapse);
+
+    expect(screen.queryByText("apple")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Expand Red" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    // The header keeps its count, so a folded group still says what it holds.
+    expect(within(grid()).getAllByRole("row")[1]).toHaveTextContent("Red 2");
+    act(() => grid().focus());
+    expect(activeRowName()).toBe("pear");
+
+    await userEvent.click(screen.getByRole("button", { name: "Expand Red" }));
+    expect(screen.getByText("apple")).toBeInTheDocument();
+  });
+
   it("puts a group's meta on its header", () => {
     renderTable({
       groups: {

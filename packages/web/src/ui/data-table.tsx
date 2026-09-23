@@ -141,6 +141,13 @@ export function DataTable<T extends RowData>({
     ...(columnVisibility === undefined ? {} : { state: { columnVisibility } }),
   });
   const sortedRows = table.getRowModel().rows;
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  const toggleGroup = (key: string) =>
+    setCollapsed((current) => {
+      const next = new Set(current);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
   // Grouping reorders the sorted rows; the cursor walks this flat order.
   const blocks =
     groups === undefined
@@ -153,10 +160,13 @@ export function DataTable<T extends RowData>({
             ),
           ],
           groups.order,
-        ).map((key) => ({
-          key,
-          rows: sortedRows.filter((row) => groups.key(row.original) === key),
-        }));
+        ).map((key) => {
+          const all = sortedRows.filter(
+            (row) => groups.key(row.original) === key,
+          );
+          // A folded group keeps its count; the cursor walks none of its rows.
+          return { key, all, rows: collapsed.has(key) ? [] : all };
+        });
   const rows =
     blocks === undefined ? sortedRows : blocks.flatMap((b) => b.rows);
   const leafColumns = table.getVisibleLeafColumns();
@@ -471,11 +481,15 @@ export function DataTable<T extends RowData>({
             <Fragment key={block.key}>
               <GroupHeader
                 label={block.key}
-                count={block.rows.length === 0 ? undefined : block.rows.length}
+                count={block.all.length === 0 ? undefined : block.all.length}
                 meta={groups?.meta?.(block.key)}
                 columnCount={columnCount}
+                collapsed={
+                  block.all.length === 0 ? undefined : collapsed.has(block.key)
+                }
+                onToggle={() => toggleGroup(block.key)}
               />
-              {block.rows.length === 0 ? (
+              {block.all.length === 0 ? (
                 <tr className="h-row border-gray-6 border-b">
                   <GridCell
                     colSpan={columnCount}

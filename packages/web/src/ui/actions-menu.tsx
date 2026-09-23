@@ -83,9 +83,14 @@ export function ActionsMenu({
               {heading}
             </div>
           ) : null}
-          {items.map((item) => (
+          {items.map((item, index) => (
             <Fragment key={item.label}>
-              {item.danger ? (
+              {/* Deleting stands alone, and links to GitHub stand apart from
+                  the presses that act here (#994). */}
+              {item.danger ||
+              (index > 0 &&
+                (item.href === undefined) !==
+                  (items[index - 1]?.href === undefined)) ? (
                 <DropdownMenu.Separator className="-mx-tight my-tight h-px bg-gray-6" />
               ) : null}
               <DropdownMenu.Item

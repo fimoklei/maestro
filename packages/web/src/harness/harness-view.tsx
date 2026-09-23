@@ -1,4 +1,4 @@
-import { FolderGit2, RefreshCw } from "lucide-react";
+import { FolderGit2, FolderInput, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import { Button } from "../ui/button";
@@ -9,6 +9,7 @@ import { Notice } from "../ui/notice";
 import { Panel } from "../ui/panel";
 import { StatusBadge } from "../ui/status-badge";
 import { reading, readingRank } from "../ui/status-reading";
+import { useNarrowerThan } from "../ui/use-narrower-than";
 import { useReadSkeleton } from "../ui/use-read-skeleton";
 import { cloneSyncNotice } from "./clone-sync-notice";
 import { type HarnessTableRow, harnessColumns, rowId } from "./harness-columns";
@@ -45,6 +46,9 @@ import { useImportFlow } from "./use-import-flow";
 
 export const REREAD_HARNESS = "Re-read Harness";
 const TABLE_LABEL = "Harness table";
+// Under 1024px, and beside an open pane, only Name, Status and ⋮ stay; the
+// rest is in the pane and the hover card (#994).
+const NARROW_HIDDEN = { type: false, "pull-request": false, "also-in": false };
 
 // The Harness (#994): one table with a group per stage, so a skill reads from
 // local work to release top to bottom, and a row's full story in its pane.
@@ -103,6 +107,7 @@ export function HarnessView() {
   const [order, setOrder] = useState<string[]>([]);
   const gridRef = useRef<HTMLTableElement>(null);
   const getTriggerElement = useCallback(() => gridRef.current, []);
+  const table = useNarrowerThan(1008);
 
   // A refused press is stated in its row's pane, which opens to show it; a
   // landed push follows its row to Pending review, so the keyboard lands on
@@ -259,8 +264,18 @@ export function HarnessView() {
           <>
             {/* Import touches the working tree only, so no remote answer
                 gates it. */}
-            <Button variant="quiet" onClick={importFlow.start}>
-              Import skill…
+            <Button
+              variant="quiet"
+              onClick={importFlow.start}
+              // Under 1024px only its icon shows; the name stays (#994).
+              className="max-lg:w-8 max-lg:justify-center max-lg:px-0"
+            >
+              <FolderInput
+                aria-hidden="true"
+                strokeWidth={1.5}
+                className="size-4 lg:hidden"
+              />
+              <span className="max-lg:sr-only">Import skill…</span>
             </Button>
             {/* Closed while the remote's answer is unknown — an offline or
                 failed fetch — and while a re-read is still rewriting the refs
@@ -319,6 +334,7 @@ export function HarnessView() {
           ) : state !== undefined || skeleton.visible ? (
             <div
               aria-busy={reading || undefined}
+              ref={table.ref}
               className="min-h-0 flex-1 overflow-auto"
             >
               <DataTable
@@ -327,6 +343,7 @@ export function HarnessView() {
                 columns={columns}
                 data={rows}
                 getRowId={(row) => row.id}
+                columnVisibility={table.narrow ? NARROW_HIDDEN : undefined}
                 loading={skeleton.visible}
                 skeletonRows={Math.min(rows.length || 8, 30)}
                 groups={{

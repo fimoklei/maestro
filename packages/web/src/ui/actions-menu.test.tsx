@@ -142,4 +142,25 @@ describe("ActionsMenu", () => {
     );
     expect(children).toEqual(["menuitem", "separator", "menuitem"]);
   });
+
+  it("sets the links apart from the actions, behind a separator", async () => {
+    render(
+      <ActionsMenu
+        label="Actions for tdd"
+        items={[
+          { label: "Update proposal", onSelect: () => {} },
+          { label: "View pull request", href: "https://github.com/o/r/pull/1" },
+        ]}
+      />,
+    );
+
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+    await screen.findByRole("menuitem", { name: "Update proposal" });
+
+    const children = [...screen.getByRole("menu").children].map(
+      (child) => child.getAttribute("role") ?? "",
+    );
+    expect(children).toEqual(["menuitem", "separator", "menuitem"]);
+  });
 });

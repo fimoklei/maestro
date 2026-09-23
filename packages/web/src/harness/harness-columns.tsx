@@ -92,7 +92,7 @@ export const harnessColumns = ({
       header: "Type",
       // Every row is a skill today; hooks and MCP servers slot in (#347).
       cell: () => <span className="text-gray-11">{TYPE_WORD.skill}</span>,
-      meta: { className: "w-14 @max-[63rem]:hidden" },
+      meta: { className: "w-14" },
     }),
     helper.accessor("skill", {
       header: "Name",
@@ -121,7 +121,7 @@ export const harnessColumns = ({
       id: "pull-request",
       header: "Pull request",
       cell: ({ row }) => <PullRequestCell row={row.original} />,
-      meta: { className: "w-28 @max-[63rem]:hidden" },
+      meta: { className: "w-28" },
     }),
     helper.display({
       id: "also-in",
@@ -129,7 +129,6 @@ export const harnessColumns = ({
       cell: ({ row }) => (
         <span className="text-gray-11">{alsoInWords(row.original)}</span>
       ),
-      meta: { className: "@max-[63rem]:hidden" },
     }),
     helper.display({
       id: "actions",
