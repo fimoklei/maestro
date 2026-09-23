@@ -69,7 +69,7 @@ describe("reading a root-package target over HTTP", () => {
     apmRoot = join(home, ".apm");
     repo = join(home, "repo");
     await mkdir(apmRoot, { recursive: true });
-    await mkdir(repo, { recursive: true });
+    await mkdir(join(repo, ".git"), { recursive: true });
   });
 
   afterEach(async () => {

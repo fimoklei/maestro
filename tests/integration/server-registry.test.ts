@@ -1,16 +1,16 @@
 import {
   mkdir,
-  mkdtemp,
   realpath as nodeRealpath,
   rm,
+  stat,
   writeFile,
 } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { InFlightLocks, InventoryReader, NodeFileSystem } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { realRegistry } from "../helpers/real-registry";
+import { makeRepoDir } from "../helpers/repo-dir";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
@@ -32,7 +32,7 @@ describe("registry HTTP routes", () => {
   let dir: string;
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), "maestro-server-"));
+    dir = await makeRepoDir("maestro-server-");
   });
 
   afterEach(async () => {
@@ -94,7 +94,31 @@ describe("registry HTTP routes", () => {
     expect(await post.json()).toEqual({ repos: [{ path: real }] });
 
     const get = await app.request("/api/registry/repos");
-    expect(await get.json()).toEqual({ repos: [{ path: real }] });
+    expect(await get.json()).toEqual({
+      repos: [{ path: real, status: "ready" }],
+    });
+  });
+
+  it("GET states a folder gone from disk, or no longer a Git repository", async () => {
+    const app = makeApp();
+    const gone = await makeRepoDir("maestro-server-gone-");
+    const plain = await makeRepoDir("maestro-server-plain-");
+    for (const path of [gone, plain]) {
+      expect((await postPath(app, path)).status).toBe(201);
+    }
+    const goneReal = await nodeRealpath(gone);
+    await rm(gone, { recursive: true, force: true });
+    await rm(join(plain, ".git"), { recursive: true, force: true });
+
+    const res = await app.request("/api/registry/repos");
+
+    expect(await res.json()).toEqual({
+      repos: [
+        { path: goneReal, status: "folder-missing" },
+        { path: await nodeRealpath(plain), status: "not-a-git-repo" },
+      ],
+    });
+    await rm(plain, { recursive: true, force: true });
   });
 
   async function postPath(app: ReturnType<typeof makeApp>, path: string) {
@@ -111,18 +135,18 @@ describe("registry HTTP routes", () => {
     return repos.map((repo) => repo.path);
   };
 
-  it("registers a picker selection one path at a time, never stopping at a refusal", async () => {
-    // What the browse-picker does with a folder of repos: one POST per path, in
-    // order. A bad path is skipped, the rest still land.
+  it("refuses a repo the registry already holds, and keeps one entry", async () => {
+    // A symlinked or hand-pasted path can arrive twice, so the server is what
+    // has to hold the line (#163).
     const app = makeApp();
-    const second = await mkdtemp(join(tmpdir(), "maestro-server-second-"));
+    const second = await makeRepoDir("maestro-server-second-");
+    expect((await postPath(app, dir)).status).toBe(201);
+    expect((await postPath(app, second)).status).toBe(201);
 
-    const outcomes = [];
-    for (const path of [dir, "./not-absolute", second]) {
-      outcomes.push((await postPath(app, path)).status);
-    }
+    const again = await postPath(app, dir);
 
-    expect(outcomes).toEqual([201, 400, 201]);
+    expect(again.status).toBe(400);
+    expect(await again.json()).toEqual({ error: "already-registered" });
     expect(await listedPaths(app)).toEqual([
       await nodeRealpath(dir),
       await nodeRealpath(second),
@@ -130,23 +154,66 @@ describe("registry HTTP routes", () => {
     await rm(second, { recursive: true, force: true });
   });
 
-  it("does not duplicate a repo the registry already holds", async () => {
-    // The picker greys out what is registered, but that badge is a client-side
-    // hint: a symlinked or hand-pasted path can still arrive twice, so the
-    // server is what has to hold the line (#163).
+  it("refuses a folder that is not a Git repository and writes nothing", async () => {
     const app = makeApp();
-    const second = await mkdtemp(join(tmpdir(), "maestro-server-second-"));
+    const plain = join(dir, "notes");
+    await mkdir(plain);
+
+    const res = await postPath(app, plain);
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "not-a-git-repo" });
+    expect(await listedPaths(app)).toEqual([]);
+  });
+
+  async function checkPath(app: ReturnType<typeof makeApp>, path: string) {
+    return app.request("/api/registry/repos/check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path }),
+    });
+  }
+
+  it("checks a picked folder the way registering would, and registers nothing", async () => {
+    const app = makeApp();
+
+    const ok = await checkPath(app, dir);
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual({ path: await nodeRealpath(dir) });
+
+    const refused = await checkPath(app, join(dir, "does-not-exist"));
+    expect(refused.status).toBe(400);
+    expect(await refused.json()).toEqual({ error: "not-found" });
+
+    expect(await listedPaths(app)).toEqual([]);
+  });
+
+  async function unregisterPath(app: ReturnType<typeof makeApp>, path: string) {
+    return app.request("/api/registry/repos", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path }),
+    });
+  }
+
+  it("unregisters a repo by its listed path and leaves the folder on disk", async () => {
+    const app = makeApp();
     expect((await postPath(app, dir)).status).toBe(201);
+    const [listed] = await listedPaths(app);
 
-    for (const path of [second, dir]) {
-      expect((await postPath(app, path)).status).toBe(201);
-    }
+    const res = await unregisterPath(app, listed ?? "");
 
-    expect(await listedPaths(app)).toEqual([
-      await nodeRealpath(dir),
-      await nodeRealpath(second),
-    ]);
-    await rm(second, { recursive: true, force: true });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ repos: [] });
+    expect(await listedPaths(app)).toEqual([]);
+    expect((await stat(dir)).isDirectory()).toBe(true);
+  });
+
+  it("answers 404 for a path the registry does not hold", async () => {
+    const res = await unregisterPath(makeApp(), dir);
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: "not-registered" });
   });
 
   it("still lists a registered repo through a freshly built app (a restart)", async () => {

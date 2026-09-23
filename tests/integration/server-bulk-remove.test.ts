@@ -15,6 +15,7 @@ import {
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { realRegistry } from "../helpers/real-registry";
+import { makeRepoDir } from "../helpers/repo-dir";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
@@ -41,8 +42,8 @@ describe("bulk remove HTTP route", () => {
 
   beforeEach(async () => {
     home = await mkdtemp(join(tmpdir(), "maestro-bulk-remove-home-"));
-    repoA = await mkdtemp(join(tmpdir(), "maestro-bulk-remove-repo-a-"));
-    repoB = await mkdtemp(join(tmpdir(), "maestro-bulk-remove-repo-b-"));
+    repoA = await makeRepoDir("maestro-bulk-remove-repo-a-");
+    repoB = await makeRepoDir("maestro-bulk-remove-repo-b-");
   });
 
   afterEach(async () => {

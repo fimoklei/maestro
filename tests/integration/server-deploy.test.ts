@@ -23,6 +23,7 @@ import {
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { realRegistry } from "../helpers/real-registry";
+import { makeRepoDir } from "../helpers/repo-dir";
 import {
   rootPackageApm,
   rootPackageSelection,
@@ -58,7 +59,7 @@ describe("deploy HTTP route", () => {
   beforeEach(async () => {
     home = await mkdtemp(join(tmpdir(), "maestro-deploy-home-"));
     harness = await mkdtemp(join(tmpdir(), "maestro-harness-"));
-    repo = await mkdtemp(join(tmpdir(), "maestro-target-"));
+    repo = await makeRepoDir("maestro-target-");
     globalRoot = await mkdtemp(join(tmpdir(), "maestro-global-"));
     await mkdir(join(harness, ".apm", "skills", "tdd"), { recursive: true });
     await writeFile(

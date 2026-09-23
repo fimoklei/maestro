@@ -7,7 +7,6 @@ import { driftQueryOptions, useGlobalDrift } from "../drift/use-drift";
 import { toggleStaged } from "../inventory/bulk-selection";
 import { DEPLOY_SKILL } from "../inventory/inventory-copy";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
-import { RegisterRepoHint } from "../registry/register-repo-hint";
 import { REGISTRY_KEY, useRegistry } from "../registry/use-registry";
 import { Button } from "../ui/button";
 import { DataTable } from "../ui/data-table";
@@ -28,6 +27,7 @@ import {
   GLOBAL,
   GLOBAL_NOT_READ,
   NO_FILTER_MATCH,
+  NO_REPOSITORIES,
   NO_TOOL_DETECTED,
   NOTHING_DEPLOYED,
   REPOS_NOT_READ,
@@ -375,7 +375,7 @@ export function DeployStateView() {
           ) : null}
           {registry.isSuccess && repoPaths.length === 0 ? (
             <div className="p-panel">
-              <RegisterRepoHint />
+              <p className="m-0 text-gray-11 text-meta">{NO_REPOSITORIES}</p>
             </div>
           ) : null}
         </div>

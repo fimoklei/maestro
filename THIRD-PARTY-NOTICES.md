@@ -15,9 +15,12 @@ with a line naming its source, and was changed from the original.
 | `packages/web/src/ui/data-table.tsx` | `data-table` | `app/registry/data-table/data-table.tsx` |
 | `packages/web/src/ui/status-badge.tsx` | `status-badge` | `app/registry/status-badge/statusdemo.tsx` |
 | `packages/web/src/ui/skeleton.tsx` | `skeleton` | `components/ui/skeleton.tsx` |
+| `packages/web/src/ui/empty-state.tsx` | `table-empty` | `components/spectrumui/blocks/empty-states/empty-state-kit.tsx` |
 
 Changes: rewritten to Maestro's design tokens; the data table runs on TanStack
-Table and drops pagination, animation, clipboard and row expansion.
+Table and drops pagination, animation, clipboard and row expansion. The empty state keeps
+the kit's `EmptyState` anatomy and drops its medallion backdrop, eyebrow,
+footnote and entrance animation.
 
 ```text
                                  Apache License

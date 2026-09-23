@@ -22,6 +22,7 @@ import {
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { realRegistry } from "../helpers/real-registry";
+import { makeRepoDir } from "../helpers/repo-dir";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
@@ -88,7 +89,7 @@ describe("apm output never reaches the client", () => {
 
   beforeEach(async () => {
     home = await mkdtemp(join(tmpdir(), "maestro-apm-boundary-home-"));
-    repo = await mkdtemp(join(tmpdir(), "maestro-apm-boundary-repo-"));
+    repo = await makeRepoDir("maestro-apm-boundary-repo-");
   });
 
   afterEach(async () => {

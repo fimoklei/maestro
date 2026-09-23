@@ -1,10 +1,10 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { InFlightLocks, InventoryReader, NodeFileSystem } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { realRegistry } from "../helpers/real-registry";
+import { makeRepoDir } from "../helpers/repo-dir";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
@@ -29,7 +29,7 @@ describe("write-route Origin/Host guard", () => {
   let dir: string;
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), "maestro-security-"));
+    dir = await makeRepoDir("maestro-security-");
   });
 
   afterEach(async () => {
@@ -103,6 +103,23 @@ describe("write-route Origin/Host guard", () => {
     });
 
     expect(res.status).toBe(415);
+  });
+
+  it.each([
+    ["DELETE", "/api/registry/repos"],
+    ["POST", "/api/registry/repos/check"],
+  ])("rejects a foreign Origin on %s %s", async (method, path) => {
+    const res = await makeApp().request(path, {
+      method,
+      headers: {
+        "content-type": "application/json",
+        host: LOCAL_HOST,
+        origin: "http://evil.example.com",
+      },
+      body: JSON.stringify({ path: dir }),
+    });
+
+    expect(res.status).toBe(403);
   });
 
   it("guards a write to any route, not only the registry path", async () => {

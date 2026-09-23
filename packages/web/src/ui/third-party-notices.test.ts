@@ -17,6 +17,7 @@ const ADAPTED_FROM_SPECTRUM = [
   "ui/data-table.tsx",
   "ui/status-badge.tsx",
   "ui/skeleton.tsx",
+  "ui/empty-state.tsx",
 ];
 
 describe("Spectrum UI notices", () => {

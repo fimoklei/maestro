@@ -10,7 +10,6 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createQueryClient } from "../api/query-client";
-import type { RegistrationOutcome } from "../registry/use-register-repos";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import { BrowseDialog } from "./browse-dialog";
 import { readLastFolder, writeLastFolder } from "./browse-last-folder";
@@ -25,21 +24,9 @@ function renderDialog({
   mode = "connect" as BrowseDialogMode,
   onSelect = vi.fn(),
   onClose = vi.fn(),
-  registeredPaths = undefined as ReadonlySet<string> | undefined,
-  inventoryPath = undefined as string | undefined,
-  outcomes = undefined as readonly RegistrationOutcome[] | undefined,
-  isRegistering = undefined as boolean | undefined,
 } = {}) {
   renderWithQuery(
-    <BrowseDialog
-      mode={mode}
-      onSelect={onSelect}
-      onClose={onClose}
-      registeredPaths={registeredPaths}
-      inventoryPath={inventoryPath}
-      outcomes={outcomes}
-      isRegistering={isRegistering}
-    />,
+    <BrowseDialog mode={mode} onSelect={onSelect} onClose={onClose} />,
   );
   return { onSelect, onClose };
 }
@@ -265,42 +252,7 @@ describe("BrowseDialog", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("shows the register-mode title", async () => {
-    stubFilesystemServer();
-    renderDialog({ mode: "register" });
-
-    expect(
-      await screen.findByRole("heading", { name: "Register repositories" }),
-    ).toBeInTheDocument();
-  });
-
-  it("badges an already-registered repo in register mode, never git or the inventory badge", async () => {
-    stubFilesystemServer({
-      answer: [
-        {
-          name: "acme-web",
-          path: "/home/me/acme-web",
-          facts: { isGitRepo: true, hasApmManifest: true },
-        },
-        { name: "notes", path: "/home/me/notes", facts: noFacts },
-      ],
-    });
-    renderDialog({
-      mode: "register",
-      registeredPaths: new Set(["/home/me/acme-web"]),
-    });
-
-    const row = await screen.findByRole("button", { name: "acme-web" });
-    // Being a git repo is the norm here; only the refusal ("Not a git repository")
-    // is worth a chip.
-    expect(row).not.toHaveTextContent("git");
-    expect(row).toHaveTextContent("● Registered");
-    expect(row).not.toHaveTextContent("◆ Inventory");
-    const other = await screen.findByRole("button", { name: "notes" });
-    expect(other).not.toHaveTextContent("● Registered");
-  });
-
-  it("badges an inventory-looking folder in connect mode, never git or registered badges", async () => {
+  it("badges an inventory-looking folder in connect mode, never git, and ticks nothing", async () => {
     stubFilesystemServer({
       answer: [
         {
@@ -310,15 +262,13 @@ describe("BrowseDialog", () => {
         },
       ],
     });
-    renderDialog({
-      mode: "connect",
-      registeredPaths: new Set(["/home/me/agent-harness"]),
-    });
+    renderDialog({ mode: "connect" });
 
     const row = await screen.findByRole("button", { name: "agent-harness" });
     expect(row).toHaveTextContent("◆ Inventory");
     expect(row).not.toHaveTextContent("git");
-    expect(row).not.toHaveTextContent("● Registered");
+    // No mode ticks folders any more: registering moved to its own dialog.
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
   });
 
   it("filters hidden entries out of the listing by default and shows a hint", async () => {
@@ -529,18 +479,18 @@ describe("BrowseDialog", () => {
       );
     });
 
-    it("remembers connect and register folders independently", async () => {
+    it("remembers connect and import folders independently", async () => {
       writeLastFolder("connect", "/home/me/connect-folder");
-      writeLastFolder("register", "/home/me/register-folder");
+      writeLastFolder("import-source", "/home/me/import-folder");
       const fetchMock = stubFilesystemServer();
 
-      renderDialog({ mode: "register" });
+      renderDialog({ mode: "import-source" });
 
       await waitFor(() =>
         expect(fetchMock).toHaveBeenCalledWith(
           "/api/filesystem/children",
           expect.objectContaining({
-            body: JSON.stringify({ path: "/home/me/register-folder" }),
+            body: JSON.stringify({ path: "/home/me/import-folder" }),
           }),
         ),
       );
@@ -665,253 +615,6 @@ describe("BrowseDialog", () => {
     });
   });
 
-  describe("multi-select registration (issue #151)", () => {
-    const repoEntries = [
-      {
-        name: "acme-web",
-        path: "/home/me/acme-web",
-        isHidden: false,
-        isSymlink: false,
-        facts: { isGitRepo: true, hasApmManifest: false },
-      },
-      {
-        name: "payments-api",
-        path: "/home/me/payments-api",
-        isHidden: false,
-        isSymlink: false,
-        facts: { isGitRepo: true, hasApmManifest: false },
-      },
-      {
-        name: "scratch",
-        path: "/home/me/scratch",
-        isHidden: false,
-        isSymlink: false,
-        facts: noFacts,
-      },
-    ];
-
-    const stubRepoListing = () => stubFilesystemServer({ answer: repoEntries });
-
-    it("shows a disabled checkbox and reason for a folder that is not a Git repository", async () => {
-      stubRepoListing();
-      renderDialog({ mode: "register" });
-
-      expect(
-        await screen.findByRole("checkbox", { name: /acme-web/i }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("checkbox", { name: /payments-api/i }),
-      ).toBeInTheDocument();
-      expect(screen.getByRole("checkbox", { name: /scratch/i })).toBeDisabled();
-      expect(screen.getByText("Not a Git repository")).toBeInTheDocument();
-    });
-
-    it("shows the connected central inventory as unavailable", async () => {
-      stubRepoListing();
-      renderDialog({
-        mode: "register",
-        inventoryPath: "/home/me/acme-web",
-      });
-
-      expect(
-        await screen.findByRole("checkbox", { name: /acme-web/i }),
-      ).toBeDisabled();
-      expect(screen.getByText("Current Inventory")).toBeInTheDocument();
-    });
-
-    it("never offers checkboxes in connect mode", async () => {
-      stubRepoListing();
-      renderDialog({ mode: "connect" });
-
-      await screen.findByRole("button", { name: "acme-web" });
-      expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
-    });
-
-    it("disables the checkbox of an already-registered repo", async () => {
-      stubRepoListing();
-      renderDialog({
-        mode: "register",
-        registeredPaths: new Set(["/home/me/acme-web"]),
-      });
-
-      expect(
-        await screen.findByRole("checkbox", { name: /acme-web/i }),
-      ).toBeDisabled();
-      expect(
-        screen.getByRole("checkbox", { name: /payments-api/i }),
-      ).toBeEnabled();
-    });
-
-    it("counts the checked repos in the confirm, and disables it at zero", async () => {
-      stubRepoListing();
-      renderDialog({ mode: "register" });
-
-      const first = await screen.findByRole("checkbox", { name: /acme-web/i });
-      expect(
-        screen.getByRole("button", { name: "Register 0 repositories" }),
-      ).toBeDisabled();
-
-      await userEvent.click(first);
-      await userEvent.click(
-        screen.getByRole("checkbox", { name: /payments-api/i }),
-      );
-
-      expect(
-        screen.getByRole("button", { name: "Register 2 repositories" }),
-      ).toBeEnabled();
-    });
-
-    it("returns every checked path on confirm, and registers nothing itself", async () => {
-      const fetchMock = stubRepoListing();
-      const { onSelect } = renderDialog({ mode: "register" });
-
-      await userEvent.click(
-        await screen.findByRole("checkbox", { name: /acme-web/i }),
-      );
-      await userEvent.click(
-        screen.getByRole("checkbox", { name: /payments-api/i }),
-      );
-      await userEvent.click(
-        screen.getByRole("button", { name: /Register 2 repositories/ }),
-      );
-
-      expect(onSelect).toHaveBeenCalledWith([
-        "/home/me/acme-web",
-        "/home/me/payments-api",
-      ]);
-      // The dialog stays presentational: browsing is the only request it makes.
-      expect(
-        fetchMock.mock.calls.every(([input]) =>
-          String(input).startsWith("/api/filesystem/children"),
-        ),
-      ).toBe(true);
-    });
-
-    it("keeps a repo checked while the user navigates to another folder and back", async () => {
-      stubFilesystemServer({
-        answer: [
-          ...repoEntries,
-          {
-            name: "nested",
-            path: "/home/me/nested",
-            isHidden: false,
-            isSymlink: false,
-            facts: noFacts,
-          },
-        ],
-        paths: {
-          "/home/me/nested": [
-            {
-              name: "billing-svc",
-              path: "/home/me/nested/billing-svc",
-              isHidden: false,
-              isSymlink: false,
-              facts: { isGitRepo: true, hasApmManifest: false },
-            },
-          ],
-        },
-      });
-      const { onSelect } = renderDialog({ mode: "register" });
-
-      await userEvent.click(
-        await screen.findByRole("checkbox", { name: /acme-web/i }),
-      );
-      await userEvent.click(screen.getByRole("button", { name: "nested" }));
-      await userEvent.click(
-        await screen.findByRole("checkbox", { name: /billing-svc/i }),
-      );
-
-      // The count covers what was checked in both folders…
-      expect(
-        screen.getByRole("button", { name: /Register 2 repositories/ }),
-      ).toBeEnabled();
-
-      // …and stepping back leaves the earlier tick in place.
-      await userEvent.click(screen.getByRole("button", { name: /up/i }));
-      expect(
-        await screen.findByRole("checkbox", { name: /acme-web/i }),
-      ).toBeChecked();
-
-      await userEvent.click(
-        screen.getByRole("button", { name: /Register 2 repositories/ }),
-      );
-      expect(onSelect).toHaveBeenCalledWith([
-        "/home/me/acme-web",
-        "/home/me/nested/billing-svc",
-      ]);
-    });
-
-    it("unchecks a repo that is clicked twice", async () => {
-      stubRepoListing();
-      renderDialog({ mode: "register" });
-
-      const checkbox = await screen.findByRole("checkbox", {
-        name: /acme-web/i,
-      });
-      await userEvent.click(checkbox);
-      await userEvent.click(checkbox);
-
-      expect(checkbox).not.toBeChecked();
-      expect(
-        screen.getByRole("button", { name: "Register 0 repositories" }),
-      ).toBeDisabled();
-    });
-
-    it("counts a pasted path alongside the checked repos", async () => {
-      stubRepoListing();
-      const { onSelect } = renderDialog({ mode: "register" });
-
-      await userEvent.click(
-        await screen.findByRole("checkbox", { name: /acme-web/i }),
-      );
-      await userEvent.type(
-        screen.getByRole("textbox", { name: /paste a path/i }),
-        "/elsewhere/repo",
-      );
-
-      await userEvent.click(
-        screen.getByRole("button", { name: /Register 2 repositories/ }),
-      );
-      expect(onSelect).toHaveBeenCalledWith([
-        "/home/me/acme-web",
-        "/elsewhere/repo",
-      ]);
-    });
-
-    it("counts a pasted path that is already ticked only once", async () => {
-      stubRepoListing();
-      const { onSelect } = renderDialog({ mode: "register" });
-
-      await userEvent.click(
-        await screen.findByRole("checkbox", { name: /acme-web/i }),
-      );
-      await userEvent.type(
-        screen.getByRole("textbox", { name: /paste a path/i }),
-        "/home/me/acme-web",
-      );
-
-      await userEvent.click(
-        screen.getByRole("button", { name: /Register 1 repository/ }),
-      );
-      expect(onSelect).toHaveBeenCalledWith(["/home/me/acme-web"]);
-    });
-
-    it("keeps checking a repo separate from stepping into it", async () => {
-      stubRepoListing();
-      const { onSelect } = renderDialog({ mode: "register" });
-
-      await userEvent.click(
-        await screen.findByRole("checkbox", { name: /acme-web/i }),
-      );
-
-      // Ticking must not navigate — the listing is still the same folder.
-      expect(
-        screen.getByRole("checkbox", { name: /payments-api/i }),
-      ).toBeInTheDocument();
-      expect(onSelect).not.toHaveBeenCalled();
-    });
-  });
-
   describe("filter (issue #149)", () => {
     const stubEntries = () =>
       stubFilesystemServer({
@@ -959,27 +662,10 @@ describe("BrowseDialog", () => {
     });
   });
 
-  // The promise is tied to the register button as its accessible description,
-  // so "sits at the registration action" is asserted, not just "is somewhere
-  // in the dialog" — and a screen reader announces it with the action.
+  // A promise is tied to the confirm button as its accessible description, so
+  // a screen reader announces it with the action. Registering's own promise
+  // moved with it (`registry/repositories-register.test.tsx`).
   describe("write promise (issue #218)", () => {
-    it("describes the register action with both parts of the write promise", async () => {
-      stubFilesystemServer();
-      renderDialog({ mode: "register" });
-
-      const register = await screen.findByRole("button", {
-        name: /Register 0 repositories/,
-      });
-      expect(register).toHaveAccessibleDescription(
-        /registering changes no files/i,
-      );
-      expect(register).toHaveAccessibleDescription(
-        /files change only when you deploy/i,
-      );
-      // The deploy's own blast radius is that flow's promise, not this one's.
-      expect(register).not.toHaveAccessibleDescription(/apm's bookkeeping/i);
-    });
-
     it("omits the write promise in connect mode, which registers nothing", async () => {
       stubFilesystemServer();
       renderDialog({ mode: "connect" });
@@ -1018,11 +704,7 @@ describe("BrowseDialog", () => {
   describe("keyboard accessibility (issue #214)", () => {
     // A trigger button that mounts the dialog, so focus-restore-on-close has a
     // real element to return to — the picker's "Browse folders…" button in the app.
-    function TriggerHarness({
-      isRegistering = false,
-    }: {
-      isRegistering?: boolean;
-    } = {}) {
+    function TriggerHarness() {
       const [open, setOpen] = useState(false);
       return (
         <>
@@ -1034,7 +716,6 @@ describe("BrowseDialog", () => {
               mode="connect"
               onSelect={vi.fn()}
               onClose={() => setOpen(false)}
-              isRegistering={isRegistering}
             />
           ) : null}
         </>
@@ -1073,19 +754,6 @@ describe("BrowseDialog", () => {
       await userEvent.keyboard("{Escape}");
 
       expect(onClose).toHaveBeenCalledOnce();
-    });
-
-    it("ignores Escape while a registration is in flight", async () => {
-      stubFilesystemServer();
-      const { onClose } = renderDialog({
-        mode: "register",
-        isRegistering: true,
-      });
-
-      await screen.findByRole("dialog");
-      await userEvent.keyboard("{Escape}");
-
-      expect(onClose).not.toHaveBeenCalled();
     });
 
     it("traps Tab within the dialog", async () => {
@@ -1144,20 +812,6 @@ describe("BrowseDialog", () => {
       fireEvent.click(document.body);
 
       expect(onClose).toHaveBeenCalledOnce();
-    });
-
-    it("keeps the backdrop inert while a registration is in flight", async () => {
-      stubFilesystemServer();
-      const { onClose } = renderDialog({
-        mode: "register",
-        isRegistering: true,
-      });
-
-      await screen.findByRole("dialog");
-      fireEvent.pointerDown(document.body);
-      fireEvent.click(document.body);
-
-      expect(onClose).not.toHaveBeenCalled();
     });
 
     it("puts the modal semantics on the panel, not the overlay", async () => {

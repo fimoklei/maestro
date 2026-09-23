@@ -591,6 +591,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
       await mkdir(join(consumer, ".claude", "skills", "tdd"), {
         recursive: true,
       });
+      await mkdir(join(consumer, ".git"));
       await writeFile(deployed, "deployed copy\n", "utf8");
       expect(
         (

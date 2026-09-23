@@ -17,6 +17,7 @@ import {
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { realRegistry } from "../helpers/real-registry";
+import { makeRepoDir } from "../helpers/repo-dir";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
@@ -68,8 +69,8 @@ describe("retiring a skill from every target it is deployed to", () => {
 
   beforeEach(async () => {
     home = await mkdtemp(join(tmpdir(), "maestro-bulk-journey-home-"));
-    repoA = await mkdtemp(join(tmpdir(), "maestro-bulk-journey-repo-a-"));
-    repoB = await mkdtemp(join(tmpdir(), "maestro-bulk-journey-repo-b-"));
+    repoA = await makeRepoDir("maestro-bulk-journey-repo-a-");
+    repoB = await makeRepoDir("maestro-bulk-journey-repo-b-");
   });
 
   afterEach(async () => {

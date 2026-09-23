@@ -10,6 +10,7 @@ import {
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { realRegistry } from "../helpers/real-registry";
+import { makeRepoDir } from "../helpers/repo-dir";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
@@ -97,7 +98,7 @@ describe("drift HTTP route", () => {
   }
 
   it("returns the deployed -> latest pair for a registered repo", async () => {
-    const repo = await mkdtemp(join(tmpdir(), "maestro-repo-"));
+    const repo = await makeRepoDir("maestro-repo-");
     const { app, registry } = makeApp({ ok: true, behind: [tddBehind] });
     await registry.register(repo);
 
@@ -113,7 +114,7 @@ describe("drift HTTP route", () => {
   it("reports an empty behind list when nothing is behind the latest tag", async () => {
     // The up-to-date answer is a successful check with nothing in it — never
     // the { ok: false } a check that could not run returns.
-    const repo = await mkdtemp(join(tmpdir(), "maestro-repo-"));
+    const repo = await makeRepoDir("maestro-repo-");
     const { app, registry } = makeApp({ ok: true, behind: [] });
     await registry.register(repo);
 
@@ -127,7 +128,7 @@ describe("drift HTTP route", () => {
   });
 
   it("returns 200 with ok:false when the check could not run", async () => {
-    const repo = await mkdtemp(join(tmpdir(), "maestro-repo-"));
+    const repo = await makeRepoDir("maestro-repo-");
     const { app, registry } = makeApp({ ok: false });
     await registry.register(repo);
 
@@ -141,7 +142,7 @@ describe("drift HTTP route", () => {
   });
 
   it("forwards the unverified reason when apm could not reach the remote", async () => {
-    const repo = await mkdtemp(join(tmpdir(), "maestro-repo-"));
+    const repo = await makeRepoDir("maestro-repo-");
     const { app, registry } = makeApp({ ok: false, reason: "unverified" });
     await registry.register(repo);
 
@@ -157,7 +158,7 @@ describe("drift HTTP route", () => {
   });
 
   it("rejects a repo that is not registered", async () => {
-    const repo = await mkdtemp(join(tmpdir(), "maestro-repo-"));
+    const repo = await makeRepoDir("maestro-repo-");
     const { app } = makeApp({ ok: true, behind: [tddBehind] });
 
     const res = await app.request(
