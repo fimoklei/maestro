@@ -303,35 +303,6 @@ describe("BrowseDialog", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows hidden entries by default in import-source mode, since skills live in dotfolders", async () => {
-    stubFilesystemServer({
-      answer: [
-        {
-          name: ".claude",
-          path: "/home/me/.claude",
-          isHidden: true,
-          isSymlink: false,
-          facts: noFacts,
-        },
-        {
-          name: "projects",
-          path: "/home/me/projects",
-          isHidden: false,
-          isSymlink: false,
-          facts: noFacts,
-        },
-      ],
-    });
-    renderDialog({ mode: "import-source" });
-
-    expect(
-      await screen.findByRole("button", { name: ".claude" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /1 hidden item.*shown/i }),
-    ).toBeInTheDocument();
-  });
-
   it("omits the hidden-items hint when nothing is hidden", async () => {
     stubFilesystemServer({
       answer: [
@@ -479,18 +450,18 @@ describe("BrowseDialog", () => {
       );
     });
 
-    it("remembers connect and import folders independently", async () => {
+    it("remembers each mode's folder independently", async () => {
       writeLastFolder("connect", "/home/me/connect-folder");
-      writeLastFolder("import-source", "/home/me/import-folder");
+      writeLastFolder("clone-parent", "/home/me/clone-folder");
       const fetchMock = stubFilesystemServer();
 
-      renderDialog({ mode: "import-source" });
+      renderDialog({ mode: "clone-parent" });
 
       await waitFor(() =>
         expect(fetchMock).toHaveBeenCalledWith(
           "/api/filesystem/children",
           expect.objectContaining({
-            body: JSON.stringify({ path: "/home/me/import-folder" }),
+            body: JSON.stringify({ path: "/home/me/clone-folder" }),
           }),
         ),
       );

@@ -1,8 +1,8 @@
 // The dialogs the Harness view opens, and the two helpers that turn a query's
 // three states into the one prop each dialog reads. Every decision above them —
 // which is open, what a press does — stays in the view.
-import { BrowseDialog } from "../shell/browse-dialog";
-import type { useBrowsePicker } from "../shell/use-browse-picker";
+import type { ComponentProps } from "react";
+import { useFolderChooser } from "../ui/use-folder-chooser";
 import { DeletionDialog, type DeletionMode } from "./deletion-dialog";
 import { type ImportCheckLoad, ImportDialog } from "./import-dialog";
 import {
@@ -22,13 +22,13 @@ import type {
   SemverStep,
   useDeleteLocalSkill,
   useImportCheck,
-  useImportSkill,
   usePromoteDeletion,
   useProposalAction,
   usePublishRelease,
   useReleasePlan,
   useRestoreSkill,
 } from "./use-harness";
+import type { useImportFlow } from "./use-import-flow";
 import { WithdrawDialog } from "./withdraw-dialog";
 
 // The whole source identity one restoration is confirmed against, taken when
@@ -43,17 +43,8 @@ export type RestoreTarget = {
 
 export type HarnessDialogsProps = {
   origin: string;
-  importOpen: boolean;
-  source: string | null;
-  name: string;
-  importCheck: ReturnType<typeof useImportCheck>;
-  importSkill: ReturnType<typeof useImportSkill>;
-  onPickSource: () => void;
-  onNameChange: (name: string) => void;
-  onImport: () => void;
+  importFlow: ReturnType<typeof useImportFlow>;
   onImported: (name: string) => void;
-  onImportClose: () => void;
-  picker: ReturnType<typeof useBrowsePicker>;
   deletionRow: HarnessStageRow | null;
   deletion: ReturnType<typeof usePromoteDeletion>;
   deleteLocal: ReturnType<typeof useDeleteLocalSkill>;
@@ -78,28 +69,23 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
   const mode = deletionMode(deletionRow, props.origin);
   return (
     <>
-      {props.importOpen && !props.picker.open ? (
-        <ImportDialog
-          source={props.source}
-          name={props.name}
-          load={importLoad(props.source, props.importCheck)}
-          onPickSource={props.onPickSource}
-          onNameChange={props.onNameChange}
-          onClose={props.onImportClose}
+      {props.importFlow.open ? (
+        <ImportDialogHost
+          source={props.importFlow.source}
+          sourceText={props.importFlow.sourceText}
+          onSourceChange={props.importFlow.setSourceText}
+          onSourceCommit={props.importFlow.commitSource}
+          name={props.importFlow.name}
+          load={importLoad(props.importFlow.source, props.importFlow.check)}
+          onNameChange={props.importFlow.setEditedName}
+          onClose={props.importFlow.close}
           // The dialog stays open on success: it is where the import's
           // outcome is stated, and closing would take that with it.
-          onImport={props.onImport}
+          onImport={props.importFlow.submit}
           onView={props.onImported}
-          imported={props.importSkill.data ?? null}
-          importing={props.importSkill.isPending}
-          importError={importNotice(props.importSkill.error)}
-        />
-      ) : null}
-      {props.picker.open ? (
-        <BrowseDialog
-          mode="import-source"
-          onSelect={props.picker.selectBrowse}
-          onClose={props.picker.closeBrowse}
+          imported={props.importFlow.importSkill.data ?? null}
+          importing={props.importFlow.importSkill.isPending}
+          importError={importNotice(props.importFlow.importSkill.error)}
         />
       ) : null}
       {deletionRow !== null && mode !== null ? (
@@ -193,6 +179,14 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
       ) : null}
     </>
   );
+}
+
+// Mounted with the dialog, so the chooser's availability is asked only once
+// Import is open.
+function ImportDialogHost(
+  props: Omit<ComponentProps<typeof ImportDialog>, "chooser">,
+) {
+  return <ImportDialog {...props} chooser={useFolderChooser()} />;
 }
 
 // The Harness's own skills folder, spelled here rather than imported: `web`

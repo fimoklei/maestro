@@ -69,6 +69,12 @@ describe("BulkRemoveDialog — while the checks run", () => {
     line: "Checking 3 targets — 1 answered",
   };
 
+  it("names the primitive's type beside the question, as a plain word", () => {
+    renderDialog();
+
+    expect(screen.getByText("Skill")).toBeInTheDocument();
+  });
+
   it("holds the confirm until every check has answered", async () => {
     const { onConfirm } = renderDialog({ view: checking });
 

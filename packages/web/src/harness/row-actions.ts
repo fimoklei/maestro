@@ -75,10 +75,10 @@ function stageItems(
 
   if (row.stage === "pending-proposal") {
     return [
-      ...links,
       {
         // The same push either way; the label states which one it is, because
         // sending to an existing proposal is not the same act to the author.
+        // First, so the next step is one press away (#1045).
         label:
           row.status === "new-local-work"
             ? "Update proposal"
@@ -86,6 +86,7 @@ function stageItems(
         disabled: !enabled,
         onSelect: () => handlers.promote(row),
       },
+      ...links,
       // Only a skill that has never been proposed and sits in no ref at all:
       // reverting a change to the default branch is a different verb (#798).
       ...(row.status === "not-yet-proposed" && row.localOnly
@@ -93,6 +94,7 @@ function stageItems(
             {
               label: "Delete skill",
               disabled: !enabled,
+              danger: true,
               onSelect: () => handlers.deleteLocal(row.skill),
             },
           ]

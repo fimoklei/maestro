@@ -42,7 +42,7 @@ export const ConfirmationRefused: Story = {
       level: "error",
       label: "Confirmation out of date",
       message:
-        "Nothing was pushed. Select Retry check, then Delete skill again.",
+        "Nothing was pushed. Select Re-read Harness, then Delete skill again.",
       detail: "The copy on the default branch moved after this confirmation.",
     },
   },

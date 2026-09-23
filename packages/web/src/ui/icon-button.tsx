@@ -12,6 +12,8 @@ export interface IconButtonProps
   /** Why the control cannot be used, in five words or fewer (copy.md). */
   unavailable?: string;
   variant?: "primary" | "quiet" | "ghost" | "danger";
+  /** A write or re-read is running: the spinner stands in for the icon. */
+  busy?: boolean;
   children: ReactNode;
 }
 
@@ -19,6 +21,7 @@ export function IconButton({
   label,
   unavailable,
   variant = "quiet",
+  busy = false,
   onClick,
   children,
   ...rest
@@ -33,11 +36,12 @@ export function IconButton({
         size="icon"
         variant={variant}
         aria-label={name}
+        busy={busy}
         aria-disabled={unavailable ? true : undefined}
         onClick={unavailable ? undefined : onClick}
         {...rest}
       >
-        {children}
+        {busy ? null : children}
       </Button>
     </Tooltip>
   );

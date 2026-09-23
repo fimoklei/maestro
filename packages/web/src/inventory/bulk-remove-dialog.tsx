@@ -5,9 +5,9 @@ import { cn } from "../ui/cn";
 import { DIALOG_CANCEL, DialogShell } from "../ui/dialog-shell";
 import { Notice } from "../ui/notice";
 import { panelBorderFor } from "../ui/panel-border";
-import { TypeTag } from "../ui/type-tag";
 import type { BulkRemoveDialogView } from "./bulk-remove-dialog-view";
 import type { BulkRemoveReportView } from "./bulk-remove-report-view";
+import { TYPE_WORD } from "./type-filter";
 
 // The bulk remove's confirmation (#422), grouped by what it costs (#423), and
 // the report that replaces it once the run answers (#424). The body is the
@@ -274,7 +274,9 @@ export function BulkRemoveDialog({
           <span className="font-mono">{skillName}</span>
           {title.after}
         </h2>
-        <TypeTag type={type} className="shrink-0" />
+        <span className="shrink-0 text-gray-11 text-meta">
+          {TYPE_WORD[type]}
+        </span>
       </div>
 
       <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-3.5 py-3">

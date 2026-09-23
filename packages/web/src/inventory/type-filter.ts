@@ -1,8 +1,9 @@
 import type { Segment } from "../ui/segmented-control";
-import type { PrimitiveType } from "../ui/type-tag";
 
 // Data-driven type filter (#288): segments derive from primitives present,
 // never a hardcoded list — hooks/mcp/bundles slot in the moment they appear.
+
+export type PrimitiveType = "skill" | "hook" | "mcp" | "bundle";
 
 export type TypeFilter = "all" | PrimitiveType;
 

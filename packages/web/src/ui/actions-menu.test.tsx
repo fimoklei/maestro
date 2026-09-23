@@ -121,6 +121,28 @@ describe("ActionsMenu", () => {
     ).toHaveFocus();
   });
 
+  it("sets a destructive item apart, behind its own separator", async () => {
+    render(
+      <ActionsMenu
+        label="Actions for tdd"
+        items={[
+          { label: "Propose change", onSelect: () => {} },
+          { label: "Delete skill", onSelect: () => {}, danger: true },
+        ]}
+      />,
+    );
+
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+    await screen.findByRole("menuitem", { name: "Delete skill" });
+
+    const menu = screen.getByRole("menu");
+    const children = [...menu.children].map(
+      (child) => child.getAttribute("role") ?? "",
+    );
+    expect(children).toEqual(["menuitem", "separator", "menuitem"]);
+  });
+
   it("sets a destructive item apart behind a divider, last", async () => {
     render(
       <ActionsMenu
@@ -142,6 +164,27 @@ describe("ActionsMenu", () => {
       "Unregister",
     ]);
     expect(screen.getAllByRole("separator")).toHaveLength(1);
+  });
+
+  it("sets the links apart from the actions, behind a separator", async () => {
+    render(
+      <ActionsMenu
+        label="Actions for tdd"
+        items={[
+          { label: "Update proposal", onSelect: () => {} },
+          { label: "View pull request", href: "https://github.com/o/r/pull/1" },
+        ]}
+      />,
+    );
+
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+    await screen.findByRole("menuitem", { name: "Update proposal" });
+
+    const children = [...screen.getByRole("menu").children].map(
+      (child) => child.getAttribute("role") ?? "",
+    );
+    expect(children).toEqual(["menuitem", "separator", "menuitem"]);
   });
 
   it("draws no divider in a menu without a destructive item", async () => {

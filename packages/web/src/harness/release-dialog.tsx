@@ -6,7 +6,7 @@ import { DIALOG_CANCEL, DialogShell } from "../ui/dialog-shell";
 import { Fact } from "../ui/fact";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { SegmentedControl } from "../ui/segmented-control";
-import { PendingRelease } from "./pending-release";
+import { ReleaseDelta } from "./release-delta";
 import type { ReleasePlan, SemverStep, StructuralProblem } from "./use-harness";
 
 // Loading and error travel with the plan so the modal stays mounted — a focus
@@ -160,7 +160,7 @@ function PlanBody({
           No skill has changed since the last release.
         </p>
       ) : (
-        <PendingRelease movements={plan.delta} />
+        <ReleaseDelta movements={plan.delta} />
       )}
 
       {plan.findings.length === 0 ? null : (

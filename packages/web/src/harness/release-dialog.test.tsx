@@ -77,9 +77,8 @@ describe("ReleaseDialog", () => {
       findings: [{ skill: "broken", problem: "missing-manifest" }],
     });
 
-    // The last table, so the step follows the whole delta and not just its
-    // first section.
-    const delta = screen.getAllByRole("table").at(-1) as HTMLElement;
+    // The whole delta is one grid, so the step follows all of it.
+    const delta = screen.getByRole("grid", { name: "Pending release table" });
     const advisory = screen.getByRole("status", { name: /structural/i });
     const step = screen.getByRole("button", { name: "Major" });
 
@@ -110,6 +109,60 @@ describe("ReleaseDialog", () => {
       "Grace",
     );
     expect(screen.getByRole("row", { name: /tdd/ })).toHaveTextContent("Ada");
+    expect(
+      screen.getByRole("heading", { level: 3, name: /pending release/i }),
+    ).toBeInTheDocument();
+  });
+
+  // Moved from the retired PendingRelease (#1045).
+  it("shows a rename as one movement, naming the name it had", () => {
+    renderReady({
+      delta: [
+        {
+          kind: "renamed",
+          name: "test-first",
+          previousName: "tdd",
+          author: "Ada",
+        },
+      ],
+    });
+
+    expect(screen.getByRole("row", { name: /test-first/ })).toHaveTextContent(
+      "tdd",
+    );
+  });
+
+  it("groups the delta by what moved, and draws no group nothing moved into", () => {
+    renderReady({
+      delta: [{ kind: "removed", name: "grilling", author: "Linus" }],
+    });
+
+    // "Deleted", never "Removed": remove belongs to deployed copies alone
+    // (CONTEXT.md → Harness skill deletion).
+    expect(screen.getByText("Deleted")).toBeInTheDocument();
+    expect(screen.queryByText("Removed")).not.toBeInTheDocument();
+    expect(screen.queryByText("Added")).not.toBeInTheDocument();
+    expect(screen.queryByText("Changed")).not.toBeInTheDocument();
+    expect(screen.queryByText("Renamed")).not.toBeInTheDocument();
+  });
+
+  it("says plainly that an author is unknown rather than leaving a gap", () => {
+    renderReady({
+      delta: [{ kind: "added", name: "research", author: null }],
+    });
+
+    expect(screen.getByRole("row", { name: /research/ })).toHaveTextContent(
+      "Unknown",
+    );
+  });
+
+  it("draws no delta table when nothing merged since the release", () => {
+    renderReady({ delta: [] });
+
+    expect(screen.queryByRole("grid")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("No skill has changed since the last release."),
+    ).toBeInTheDocument();
   });
 
   it("lets the author pick a different step, and shows that version", async () => {
@@ -269,7 +322,7 @@ describe("ReleaseDialog", () => {
           notice: {
             level: "error",
             label: "no answer from GitHub",
-            message: "Select Retry check, then open the release again.",
+            message: "Select Re-read Harness, then open the release again.",
           },
         }}
         onClose={vi.fn()}
@@ -279,6 +332,8 @@ describe("ReleaseDialog", () => {
       />,
     );
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/select retry check/i);
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /select re-read harness/i,
+    );
   });
 });

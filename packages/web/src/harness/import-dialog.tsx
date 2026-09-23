@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { targetLabel } from "../shell/target-label";
 import { Button } from "../ui/button";
 import { DialogShell } from "../ui/dialog-shell";
 import { Field } from "../ui/field";
 import { Notice, type NoticeContent } from "../ui/notice";
+import { PathField } from "../ui/path-field";
+import type { FolderChooser } from "../ui/use-folder-chooser";
 import {
   advisoryTexts,
   importEnabled,
@@ -23,12 +24,15 @@ export type ImportCheckLoad =
 
 // Importing one external skill folder: the folder, the directory name it lands
 // under, what refuses it and what is only worth knowing. Presentational — the
-// host owns the picker, the check query and the import mutation (#576).
+// host owns the chooser, the check query and the import mutation (#576).
 export function ImportDialog({
   source,
+  sourceText,
+  onSourceChange,
+  onSourceCommit,
+  chooser,
   name,
   load,
-  onPickSource,
   onNameChange,
   onClose,
   onImport,
@@ -37,10 +41,16 @@ export function ImportDialog({
   importError,
   imported,
 }: {
+  /** The folder the check was asked about; null until one is chosen. */
   source: string | null;
+  /** What the Folder path field holds, typed or picked. */
+  sourceText: string;
+  onSourceChange: (text: string) => void;
+  /** A folder to check: picked through Browse, or typed and left. */
+  onSourceCommit: (path: string) => void;
+  chooser: FolderChooser;
   name: string;
   load: ImportCheckLoad;
-  onPickSource: () => void;
   onNameChange: (name: string) => void;
   onClose: () => void;
   onImport: () => void;
@@ -87,27 +97,24 @@ export function ImportDialog({
 
       <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-3.5 py-3">
         <div className="flex flex-col gap-1.5">
-          <span className="m-label">Skill folder</span>
-          <div className="flex items-center gap-2.5">
-            {/* The tail names the folder; left-anchored truncation would cut
-                  exactly that away (#211). */}
-            <span
-              title={source ?? undefined}
-              className="min-w-0 flex-1 truncate font-mono text-data text-fg"
-            >
-              {source === null ? "Choose a skill folder" : targetLabel(source)}
-            </span>
-            <Button
-              type="button"
-              variant="quiet"
-              size="sm"
-              onClick={onPickSource}
-            >
-              {source === null ? "Pick folder" : "Change folder"}
-            </Button>
-          </div>
-          {/* The answer to picking a folder, so it announces assertively —
-                the author is looking at the button they just pressed. */}
+          {/* Checked right after a pick, and once a typed path is left: a
+              check per keystroke would refuse half-typed paths (#1013). */}
+          <PathField
+            label="Folder path"
+            hint="Import copies this folder to the Working Harness. The original folder stays unchanged."
+            placeholder="/path/to/skill-folder"
+            className="placeholder:text-dim"
+            value={sourceText}
+            onChange={onSourceChange}
+            onPicked={onSourceCommit}
+            onBlur={() => {
+              const typed = sourceText.trim();
+              if (typed !== "" && typed !== source) onSourceCommit(typed);
+            }}
+            chooser={chooser}
+            disabled={importing}
+          />
+          {/* The answer to choosing a folder, so it announces assertively. */}
           <Notice trigger="user-action" notice={sourceProblem} />
         </div>
 

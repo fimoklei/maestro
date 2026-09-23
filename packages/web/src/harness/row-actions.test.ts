@@ -78,6 +78,8 @@ describe("rowItems", () => {
     );
 
     expect(labels(items)).toEqual(["Propose change", "Delete skill"]);
+    // It deletes files, so it stands apart in red (#994).
+    expect(items.at(-1)?.danger).toBe(true);
   });
 
   it.each([
@@ -140,7 +142,8 @@ describe("rowItems", () => {
       true,
     );
 
-    expect(labels(items)).toEqual(["View pull request", "Update proposal"]);
+    // The next step leads the menu; the way to GitHub follows (#1045).
+    expect(labels(items)).toEqual(["Update proposal", "View pull request"]);
   });
 
   it("offers Withdraw proposal beside the link on an open request", () => {

@@ -20,4 +20,16 @@ describe("GroupHeader", () => {
     expect(cell).toHaveTextContent("Repositories 5");
     expect(cell).toHaveAttribute("colspan", "4");
   });
+
+  it("names a group with no count, and carries its meta on the same line", () => {
+    render(
+      <table>
+        <tbody>
+          <GroupHeader label="Pending review" meta="Merged" columnCount={4} />
+        </tbody>
+      </table>,
+    );
+
+    expect(screen.getByRole("row")).toHaveTextContent(/^Pending reviewMerged$/);
+  });
 });

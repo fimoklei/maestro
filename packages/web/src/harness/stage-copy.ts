@@ -1,6 +1,10 @@
-// Every word the three stage tables show. One row per status, so a new status
+// Every word the Harness table shows. One row per status, so a new status
 // fails typecheck until it has copy (copy.md, ADR-0025).
-import type { ChipProps } from "../ui/chip";
+import {
+  reading,
+  type StatusFamily,
+  type StatusReading,
+} from "../ui/status-reading";
 import type {
   HarnessStage,
   HarnessStageRow,
@@ -28,28 +32,27 @@ export const PROPOSAL_EMPTY = {
   },
 } as const;
 
-// The table names the stage; the chip marks whether this row departs from the
-// normal path within it. Grey is the expected reading, amber the exception —
-// the three Pending review statuses CONTEXT.md holds apart from that stage's
-// definition. Green never appears here: it means rest (#876).
-const TONES: Record<StageStatus, NonNullable<ChipProps["tone"]>> = {
-  "not-yet-proposed": "dim",
-  "new-local-work": "dim",
-  "deleted-locally": "dim",
-  "waiting-for-review": "dim",
-  draft: "dim",
-  "changes-requested": "dim",
-  "approved-awaiting-merge": "dim",
-  "pull-request-missing": "drift",
-  // Grey: a merged proposal is the normal end of a review, not an exception.
-  // Only origin/HEAD lagging behind keeps the row on screen at all (#889).
-  "proposal-merged": "dim",
-  "proposal-closed": "drift",
-  "multiple-pull-requests": "drift",
-  added: "dim",
-  changed: "dim",
-  renamed: "dim",
-  deleted: "dim",
+// The group names the stage; the badge marks whether this row departs from the
+// normal path within it (#994). Amber is work stuck until the author acts,
+// green an approval; everything else is where the stage expects it.
+const FAMILIES: Record<StageStatus, StatusFamily> = {
+  "not-yet-proposed": "neutral",
+  "new-local-work": "neutral",
+  "deleted-locally": "neutral",
+  "waiting-for-review": "neutral",
+  draft: "neutral",
+  "changes-requested": "attention",
+  "approved-awaiting-merge": "good",
+  "pull-request-missing": "attention",
+  // A merged proposal is the normal end of a review, not an exception. Only
+  // origin/HEAD lagging behind keeps the row on screen at all (#889).
+  "proposal-merged": "neutral",
+  "proposal-closed": "attention",
+  "multiple-pull-requests": "attention",
+  added: "neutral",
+  changed: "neutral",
+  renamed: "neutral",
+  deleted: "neutral",
 };
 
 // A deletion keeps its own reading in every stage, so a local deletion never
@@ -80,21 +83,16 @@ const DELETION_READINGS: Partial<Record<StageStatus, string>> = {
   "proposal-merged": "Deletion merged",
 };
 
-// Read off the tone, so a chip can never show a glyph its colour contradicts
-// (DESIGN.md § 2 · Never-Colour-Alone).
-const GLYPHS: Record<NonNullable<ChipProps["tone"]>, string> = {
-  dim: "●",
-  drift: "▲",
-  ok: "●",
-};
-
-export const statusTone = (row: HarnessStageRow) => TONES[row.status];
-
-export const statusReading = (row: HarnessStageRow): string =>
-  `${GLYPHS[TONES[row.status]]} ${
+// A stuck row is a warning, not a lag, so it carries ⚠ rather than ↑.
+export const statusReading = (row: HarnessStageRow): StatusReading => {
+  const family = FAMILIES[row.status];
+  return reading(
     (row.deletion ? DELETION_READINGS[row.status] : undefined) ??
-    READINGS[row.status]
-  }`;
+      READINGS[row.status],
+    family,
+    family === "attention" ? "⚠" : undefined,
+  );
+};
 
 // The facts a sentence substitutes into: both come from the same read the rows
 // did, so a Detail never names a branch or release the rows were not read from.
@@ -161,8 +159,8 @@ export function detailSentence(
       return "The proposal branch is on GitHub without a pull request. Select Create pull request to open one.";
     case "proposal-merged":
       return row.deletion
-        ? `Pull request ${first(row)} merged the deletion. Select Retry check to read GitHub again.`
-        : `Pull request ${first(row)} was merged. Select Retry check to read GitHub again.`;
+        ? `Pull request ${first(row)} merged the deletion. Select Re-read Harness to read GitHub again.`
+        : `Pull request ${first(row)} was merged. Select Re-read Harness to read GitHub again.`;
     case "proposal-closed":
       return `Pull request ${first(row)} was closed without merging. Select Reopen proposal to continue it.`;
     case "multiple-pull-requests":
@@ -197,10 +195,49 @@ const reviewerName = (reviewer: RequestedReviewer): string =>
 
 // Uncapped: a review asked of eight people is a fact about the review, and
 // hiding the tail would leave the author guessing (#825).
-export const reviewerLine = (row: HarnessStageRow): string | null =>
+export const requestedReviewers = (row: HarnessStageRow): string | null =>
   row.reviewers.length === 0
     ? null
-    : `Review requested from ${row.reviewers.map(reviewerName).join(", ")}`;
+    : row.reviewers.map(reviewerName).join(", ");
+
+export const reviewerLine = (row: HarnessStageRow): string | null => {
+  const requested = requestedReviewers(row);
+  return requested === null ? null : `Review requested from ${requested}`;
+};
+
+// The Pull request cell (#994). Its card carries only fields the gh adapter
+// already lets cross, so the state and the review are read off the status.
+export const pullRequestLinkName = (number: number): string =>
+  `Pull request #${number}, opens in a new tab`;
+
+export const pullRequestOpensLine = (number: number): string =>
+  `Select #${number} to open it on GitHub in a new tab.`;
+
+const REQUEST_STATES: Partial<Record<StageStatus, string>> = {
+  draft: "Draft",
+  "waiting-for-review": "Open",
+  "changes-requested": "Open",
+  "approved-awaiting-merge": "Open",
+  "multiple-pull-requests": "Open",
+  "proposal-merged": "Merged",
+  "proposal-closed": "Closed",
+};
+
+export const pullRequestState = (row: HarnessStageRow): string | null =>
+  REQUEST_STATES[row.status] ?? null;
+
+const REVIEW_WORDS: Partial<Record<StageStatus, string>> = {
+  "waiting-for-review": "Waiting for review",
+  "changes-requested": "Changes requested",
+  "approved-awaiting-merge": "Approved",
+};
+
+export const reviewWord = (row: HarnessStageRow): string | null =>
+  REVIEW_WORDS[row.status] ?? null;
+
+// The Also in column: blank where membership is unknown, as the line is.
+export const alsoInWords = (row: HarnessStageRow): string =>
+  (row.alsoIn ?? []).map((stage) => STAGE_NAMES[stage]).join(", ");
 
 // Suppressed where any membership is unknown: "only here" is a claim, and an
 // unread stage cannot back it.

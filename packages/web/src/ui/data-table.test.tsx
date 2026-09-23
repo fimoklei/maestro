@@ -339,6 +339,78 @@ describe("DataTable", () => {
     expect(pear).toHaveTextContent("pear");
   });
 
+  it("draws a group that holds no rows as its message, with no count", () => {
+    renderTable({
+      groups: {
+        key: (fruit) => (fruit.colour.includes("red") ? "Red" : "Green"),
+        order: ["Red", "Green", "Blue", "Yellow"],
+        message: (key) => (key === "Blue" ? "No blue fruit yet." : null),
+      },
+    });
+
+    const rows = within(grid()).getAllByRole("row");
+    expect(rows).toHaveLength(8);
+    expect(rows[6]).toHaveTextContent(/^Blue$/);
+    expect(rows[7]).toHaveTextContent("No blue fruit yet.");
+    // A group with no rows and nothing to say is not drawn.
+    expect(screen.queryByText("Yellow")).not.toBeInTheDocument();
+  });
+
+  it("draws its message groups in place of the empty message when no row is shown", () => {
+    renderTable({
+      data: [],
+      empty: "Nothing grows here.",
+      groups: {
+        key: (fruit) => fruit.colour,
+        order: ["Blue"],
+        message: () => "No blue fruit yet.",
+      },
+    });
+
+    expect(screen.getByText("No blue fruit yet.")).toBeInTheDocument();
+    expect(screen.queryByText("Nothing grows here.")).not.toBeInTheDocument();
+  });
+
+  it("collapses a group from its header, and the cursor skips its rows", async () => {
+    renderTable({
+      groups: {
+        key: (fruit) => (fruit.colour.includes("red") ? "Red" : "Green"),
+        order: ["Red", "Green"],
+      },
+    });
+    const collapse = screen.getByRole("button", { name: "Collapse Red" });
+    expect(collapse).toHaveAttribute("aria-expanded", "true");
+
+    await userEvent.click(collapse);
+
+    expect(screen.queryByText("apple")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Expand Red" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    // The header keeps its count, so a folded group still says what it holds.
+    expect(within(grid()).getAllByRole("row")[1]).toHaveTextContent("Red 2");
+    act(() => grid().focus());
+    expect(activeRowName()).toBe("pear");
+
+    await userEvent.click(screen.getByRole("button", { name: "Expand Red" }));
+    expect(screen.getByText("apple")).toBeInTheDocument();
+  });
+
+  it("puts a group's meta on its header", () => {
+    renderTable({
+      groups: {
+        key: (fruit) => (fruit.colour.includes("red") ? "Red" : "Green"),
+        order: ["Red", "Green"],
+        meta: (key) => (key === "Red" ? "Ripe" : null),
+      },
+    });
+
+    const [, redHeader, , , greenHeader] = within(grid()).getAllByRole("row");
+    expect(redHeader).toHaveTextContent("Red 2Ripe");
+    expect(greenHeader).toHaveTextContent(/^Green 1$/);
+  });
+
   it("moves the active row across a group header without stopping on it", async () => {
     renderTable({
       groups: {
