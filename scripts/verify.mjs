@@ -9,6 +9,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { stripAnsi } from "./lib/log-file.mjs";
+import { finishRun, startRun, treeFingerprint } from "./verify-reuse.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const logDir = resolve(repoRoot, ".logs");
@@ -73,7 +74,28 @@ const runStep = (step) =>
     });
   });
 
+const fingerprint = () => {
+  try {
+    return treeFingerprint(repoRoot);
+  } catch {
+    return null;
+  }
+};
+
 mkdirSync(logDir, { recursive: true });
+
+const force = process.argv.slice(2).includes("--force");
+const before = fingerprint();
+const reusable = startRun(logDir, before, { force });
+
+if (reusable) {
+  process.stdout.write(
+    `\n=== verify ===\n  Reusing the green run that finished ${reusable.finishedAt}.\n` +
+      "  Nothing changed since. Its logs are in .logs/.\n" +
+      "  Run `pnpm verify --force` to check everything again.\n",
+  );
+  process.exit(0);
+}
 
 const results = [];
 for (const step of steps) {
@@ -90,4 +112,20 @@ for (const result of results) {
 }
 
 const failed = results.filter((result) => result.exitCode !== 0);
+const outcome = finishRun(logDir, {
+  passed: failed.length === 0,
+  before,
+  after: fingerprint(),
+  finishedAt: new Date().toISOString(),
+  logs: steps.map((step) => step.log),
+});
+const notRecorded = {
+  "tree-changed": "The tree changed during this run",
+  "no-fingerprint": "git could not fingerprint the tree",
+};
+if (notRecorded[outcome]) {
+  process.stdout.write(
+    `  ${notRecorded[outcome]}, so the next verify runs in full.\n`,
+  );
+}
 process.exit(failed.length === 0 ? 0 : 1);

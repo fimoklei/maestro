@@ -96,6 +96,7 @@ Run from the repo root.
   (`MAESTRO_HOME=.maestro-sandbox`), so it never touches the real `~/.maestro`.
 - `pnpm test` — whole suite. `test:core` / `test:web` / `test:integration` / `test:git` — one lane; `test:loop` — the three cheap lanes.
 - `pnpm verify` — lint, typecheck and test as three processes, one summary.
+  On a tree that already passed it reuses that run (ignored files do not count); `--force` runs it again.
 - Full output of the last run is in `.logs/`. Read it; never re-run with a narrower filter.
 - `typecheck`, `build`, `lint` and `format` do what their names say; `package.json` holds the rest.
 
