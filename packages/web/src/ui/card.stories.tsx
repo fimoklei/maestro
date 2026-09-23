@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Card } from "./card";
-import { Chip } from "./chip";
+import { StatusBadge } from "./status-badge";
+import { reading } from "./status-reading";
 
 const meta = {
   title: "Shell/Card",
@@ -23,7 +24,7 @@ export const WithHeader: Story = {
   args: {
     title: "Claude Code",
     kind: "global",
-    status: <Chip tone="ok">● in sync</Chip>,
+    status: <StatusBadge reading={reading("In sync", "good")} />,
     children: "deployed primitives go here",
   },
 };
@@ -33,7 +34,7 @@ export const Drift: Story = {
     title: "~/dev/acme-web",
     kind: "local",
     drift: true,
-    status: <Chip tone="drift">▲ 2 drift</Chip>,
+    status: <StatusBadge reading={reading("Local edits", "attention")} />,
     children: "a target whose contents drift warms its outline",
   },
 };

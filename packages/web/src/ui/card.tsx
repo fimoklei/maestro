@@ -12,7 +12,7 @@ export interface CardProps {
   kind?: "global" | "local";
   /** Mono data step between title and status — the target's release. */
   data?: ReactNode;
-  /** Right-aligned header slot — usually a Chip ("● in sync" / "▲ 2 drift"). */
+  /** Right-aligned header slot — usually a StatusBadge. */
   status?: ReactNode;
   /** Warm the outline to flag drift inside. */
   drift?: boolean;

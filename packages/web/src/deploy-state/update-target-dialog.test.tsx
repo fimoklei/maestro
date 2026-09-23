@@ -152,18 +152,21 @@ describe("UpdateTargetDialog", () => {
     ).toBeTruthy();
   });
 
-  it("chips a release that touches nothing selected and still offers the confirm", () => {
+  it("badges a release that touches nothing selected and still offers the confirm", () => {
     show({
       counts: { changed: 0, removed: 0, unchanged: 3 },
       changed: [],
       removed: [],
     });
 
-    expect(screen.getByText("No content changes")).toBeTruthy();
+    // A resting reading: the word plus the neutral glyph, kept out of the name.
+    const badge = screen.getByText("No content changes");
+    expect(badge).toHaveTextContent(/^–No content changes$/);
+    expect(within(badge).getByText("–")).toHaveAttribute("aria-hidden", "true");
     expect(confirmButton().hasAttribute("disabled")).toBe(false);
   });
 
-  it("chips nothing where the release changes something", () => {
+  it("badges nothing where the release changes something", () => {
     show();
 
     expect(screen.queryByText("No content changes")).toBeNull();
