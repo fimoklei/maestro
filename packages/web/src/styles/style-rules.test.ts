@@ -174,3 +174,119 @@ describe("assertive live regions", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+// ADR-0033 §8: under reduced motion only the spinner moves. A transition or
+// animation utility needs the motion-safe: variant; a CSS declaration needs a
+// no-preference media block. Toasts are sonner's, which stills itself.
+const SPINNER_FILE = "/ui/button.tsx";
+const NO_PREFERENCE = "@media (prefers-reduced-motion: no-preference)";
+
+function withoutComments(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|\s)\/\/.*$/gm, "$1");
+}
+
+/** Class tokens and inline styles that move whatever the reader asked for. */
+function unguardedMotion(source: string): string[] {
+  const stripped = withoutComments(source);
+  const utilities = (stripped.match(/[^\s"'`{}()]+/g) ?? []).filter((token) => {
+    const variants = token.split(/:(?![^[]*\])/);
+    const utility = variants.pop() ?? "";
+    return (
+      /^(transition(-|$)|animate-|\[(animation|transition))/.test(utility) &&
+      !/-none$/.test(utility) &&
+      !variants.includes("motion-safe")
+    );
+  });
+  const styles =
+    stripped.match(/\b(animation|transition)[A-Za-z]*\s*:\s*["'`\d]/g) ?? [];
+  return [...utilities, ...styles];
+}
+
+/** CSS animation and transition declarations outside a no-preference block. */
+function unguardedCssMotion(css: string): string[] {
+  const stripped = withoutComments(css);
+  const guarded: Array<[number, number]> = [];
+  for (
+    let at = stripped.indexOf(NO_PREFERENCE);
+    at !== -1;
+    at = stripped.indexOf(NO_PREFERENCE, at + 1)
+  ) {
+    const open = stripped.indexOf("{", at);
+    let depth = 0;
+    let close = open;
+    for (; close < stripped.length; close++) {
+      if (stripped[close] === "{") depth++;
+      if (stripped[close] === "}" && --depth === 0) break;
+    }
+    guarded.push([open, close]);
+  }
+  return [...stripped.matchAll(/(animation|transition)[a-z-]*\s*:[^;]*/g)]
+    .filter(
+      ({ index }) =>
+        !guarded.some(([open, close]) => index > open && index < close),
+    )
+    .map((match) => match[0]);
+}
+
+describe("reduced motion", () => {
+  it("flags a utility without motion-safe and passes one with it", () => {
+    expect(
+      unguardedMotion(
+        'className="transition-opacity data-[state=open]:animate-in [animation-duration:1s] motion-safe:transition-colors motion-safe:animate-pulse" // a transition',
+      ),
+    ).toEqual([
+      "transition-opacity",
+      "data-[state=open]:animate-in",
+      "[animation-duration:1s]",
+    ]);
+    expect(unguardedMotion('style={{ transition: "opacity 1s" }}')).toEqual([
+      'transition: "',
+    ]);
+    expect(unguardedMotion('import { X } from "./hover-transition";')).toEqual(
+      [],
+    );
+    expect(unguardedMotion('className="animate-none transition-none"')).toEqual(
+      [],
+    );
+  });
+
+  it("flags a CSS declaration outside the no-preference block", () => {
+    const css = `.a { transition: opacity 1s; }
+${NO_PREFERENCE} { .b { animation: spin 1s; } }
+.c { animation-name: spin; }`;
+    expect(unguardedCssMotion(css)).toEqual([
+      "transition: opacity 1s",
+      "animation-name: spin",
+    ]);
+  });
+
+  it("only the spinner moves without the motion-safe variant", () => {
+    const offenders = files
+      .filter(({ path }) => !path.endsWith(SPINNER_FILE))
+      .flatMap(({ path, source }) =>
+        unguardedMotion(source).map(
+          (token) => `${path.slice(SRC_DIR.length)}: ${token}`,
+        ),
+      );
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("the spinner keeps turning under reduced motion", () => {
+    const spinner = files.find(({ path }) => path.endsWith(SPINNER_FILE));
+
+    expect(unguardedMotion(spinner?.source ?? "")).toContain("animate-spin");
+  });
+
+  it.each(
+    readdirSync(join(SRC_DIR, "styles")).filter((name) =>
+      name.endsWith(".css"),
+    ),
+  )("styles/%s moves only inside the no-preference block", (name) => {
+    const css = readFileSync(join(SRC_DIR, "styles", name), "utf8");
+
+    expect(unguardedCssMotion(css)).toEqual([]);
+  });
+});
