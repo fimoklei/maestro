@@ -323,8 +323,9 @@ export function HarnessView() {
                   className="size-4"
                 />
               }
+              headingLevel={2}
               title={PROPOSAL_EMPTY.journey.title}
-              body={PROPOSAL_EMPTY.journey.body}
+              description={PROPOSAL_EMPTY.journey.body}
               action={
                 <Button variant="quiet" onClick={importFlow.start}>
                   Import skill…
