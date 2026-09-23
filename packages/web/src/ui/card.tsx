@@ -1,7 +1,7 @@
 import type { ReactNode, Ref } from "react";
 import { cn } from "./cn";
 
-// Outlined panel, the cockpit's basic container. No shadows — see DESIGN.md §5.
+// Outlined container: slate 1 on a slate 7 border, radius 6, no shadow (#995).
 
 export interface CardProps {
   /** Header title (mono) — a target name. Omit for a plain container. */
@@ -41,21 +41,21 @@ export function Card({
       className={cn(
         // clip, not hidden: hidden makes this a scroll container, which strands
         // sticky descendants (inventory's column headers) in the wrong chain.
-        "overflow-clip rounded-card border bg-card",
+        "overflow-clip rounded-control border bg-gray-1",
         fill && "flex min-h-0 flex-1 flex-col",
-        drift ? "border-line-drift" : "border-line",
+        drift ? "border-amber-7" : "border-gray-7",
         className,
       )}
     >
       {/* The header wraps rather than overflows: on a narrow card the release
           and the status chip drop to a second line (ADR-0031). */}
       {title ? (
-        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 border-b border-line-row px-card-x py-header-y">
+        <div className="flex flex-wrap items-center gap-x-inline gap-y-tight border-gray-7 border-b px-panel py-inline">
           {kind ? (
             <span
               className={cn(
-                "font-mono text-tag uppercase tracking-[0.1em]",
-                kind === "global" ? "text-type-skill" : "text-muted",
+                "font-mono text-meta uppercase tracking-tag",
+                "text-gray-11",
               )}
             >
               {kind}
@@ -66,12 +66,12 @@ export function Card({
           <h2
             ref={titleRef}
             tabIndex={-1}
-            className="min-w-0 flex-1 truncate font-mono text-data text-fg outline-none"
+            className="min-w-0 flex-1 truncate font-mono text-gray-12 text-row outline-none"
           >
             {title}
           </h2>
           {data ? (
-            <span className="ml-auto shrink-0 font-mono text-dim text-tag">
+            <span className="ml-auto shrink-0 font-mono text-gray-11 text-meta">
               {data}
             </span>
           ) : null}
@@ -80,7 +80,7 @@ export function Card({
       ) : null}
       <div
         className={cn(
-          padded && "p-card-x",
+          padded && "p-panel",
           fill && "flex min-h-0 flex-1 flex-col",
         )}
       >

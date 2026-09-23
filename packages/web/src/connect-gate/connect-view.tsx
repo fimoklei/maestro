@@ -2,13 +2,12 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { LOADING_INVENTORY_CONNECTION } from "../inventory/inventory-copy";
 import { useInventoryConfig } from "../inventory/use-inventory";
-import { ConnectInventoryPanel } from "../shell/connect-inventory-panel";
 import { Card } from "../ui/card";
-import { SectionHeader } from "../ui/section-header";
+import { ConnectFlow } from "./connect-flow";
 import { ConnectSuccessView } from "./connect-success-view";
 
-// The connect gate's second screen (ADR-0015): shares ConnectInventoryPanel
-// with Settings' re-point (PRD #93), but lands on an explicit "Continue" so
+// The connect gate's second screen (ADR-0015): shares ConnectFlow with
+// Settings' re-point (PRD #93), but lands on an explicit "Continue" so
 // the reassurance beat stays on screen long enough to read (ADR-0021).
 export function ConnectView() {
   const config = useInventoryConfig();
@@ -26,38 +25,40 @@ export function ConnectView() {
   }, [blocked, config.isSuccess, navigate]);
 
   if (blocked) {
-    return <p className="text-dim text-tag">{LOADING_INVENTORY_CONNECTION}</p>;
+    return (
+      <p className="sr-only">
+        {LOADING_INVENTORY_CONNECTION}
+      </p>
+    );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <SectionHeader
-        level={1}
-        className="flex-wrap"
-        title="Inventory connection"
-        meta="A local Harness clone or GitHub URL"
-      />
-      <Card padded className="max-w-lg">
-        <p className="mb-3 text-dim text-tag">
+    // Top-aligned, at most 640px, fluid below that (#995).
+    <div className="mx-auto flex w-full max-w-[40rem] flex-col gap-panel">
+      <div className="flex flex-col gap-tight">
+        <h1 className="m-0 font-semibold font-ui text-gray-12 text-title tracking-title">
+          Inventory connection
+        </h1>
+        <p className="m-0 font-ui text-gray-11 text-prose">
           A private Harness works only when every teammate has their own GitHub
           and APM access.
         </p>
-        <ConnectInventoryPanel
+      </div>
+      <Card padded>
+        <ConnectFlow
           onSuccess={() => setHasConnected(true)}
-          renderSuccess={(result) => {
-            return (
-              <ConnectSuccessView
-                outcome={result.outcome}
-                primitiveCount={result.primitiveCount}
-                inventoryPath={result.inventoryPath}
-                onContinue={() =>
-                  navigate(
-                    result.outcome === "scaffolded" ? "/harness" : "/inventory",
-                  )
-                }
-              />
-            );
-          }}
+          renderSuccess={(result) => (
+            <ConnectSuccessView
+              outcome={result.outcome}
+              primitiveCount={result.primitiveCount}
+              inventoryPath={result.inventoryPath}
+              onContinue={() =>
+                navigate(
+                  result.outcome === "scaffolded" ? "/harness" : "/inventory",
+                )
+              }
+            />
+          )}
         />
       </Card>
     </div>

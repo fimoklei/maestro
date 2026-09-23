@@ -33,7 +33,9 @@ export function FirstRunGate() {
     }
     if (!firstRun) {
       return (
-        <p className="text-dim text-tag">{LOADING_INVENTORY_CONNECTION}</p>
+        <p className="sr-only">
+          {LOADING_INVENTORY_CONNECTION}
+        </p>
       );
     }
   }

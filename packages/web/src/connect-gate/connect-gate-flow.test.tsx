@@ -253,15 +253,10 @@ describe("connect gate", () => {
         if (url.startsWith("/api/inventory/config")) {
           return jsonResponse({ inventoryPath: null }, 200);
         }
-        if (url.startsWith("/api/filesystem/children")) {
-          return jsonResponse(
-            {
-              path: "/home/me",
-              breadcrumbs: [{ name: "~", path: "/home/me" }],
-              entries: [],
-            },
-            200,
-          );
+        if (url.startsWith("/api/folder-chooser")) {
+          return init?.method === "POST"
+            ? jsonResponse({ path: "/home/me" }, 200)
+            : jsonResponse({ available: true }, 200);
         }
         if (
           url.startsWith("/api/inventory/connect") &&
@@ -292,16 +287,20 @@ describe("connect gate", () => {
       screen.getByRole("button", { name: /^connect inventory$/i }),
     );
 
-    // The refusal offers the one action that clears it, and it opens the
-    // picker for the parent folder — not the one for a local Harness.
+    // The refusal offers the one action that clears it: it opens the clone
+    // folder as a second field in place, and the refusal moves under it (#1013).
     await userEvent.click(
-      await screen.findByRole("button", { name: /choose another folder/i }),
+      await screen.findByRole("button", { name: "Choose another folder" }),
     );
-    await userEvent.click(
-      await screen.findByRole("button", { name: /clone into this folder/i }),
-    );
+    const cloneField = await screen.findByLabelText("Folder for the Harness");
+    expect(cloneField).toHaveAttribute("aria-invalid", "true");
+    expect(cloneField).toHaveAccessibleDescription(/destination folder taken/i);
+    const [, cloneBrowse] = screen.getAllByRole("button", { name: "Browse" });
+    await userEvent.click(cloneBrowse as HTMLElement);
 
-    expect(screen.getByText("/home/me/agent-harness")).toBeInTheDocument();
+    expect(
+      await screen.findByText("/home/me/agent-harness"),
+    ).toBeInTheDocument();
     await userEvent.click(
       screen.getByRole("button", { name: /^connect inventory$/i }),
     );

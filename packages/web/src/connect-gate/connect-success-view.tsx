@@ -3,6 +3,7 @@ import { primitiveCountLabel } from "../shell/primitive-count-label";
 import { targetLabel } from "../shell/target-label";
 import { Button } from "../ui/button";
 import { Fact } from "../ui/fact";
+import { Notice } from "../ui/notice";
 
 export type ConnectSuccessViewProps = {
   outcome: ConnectOutcome;
@@ -31,19 +32,19 @@ function completionCopy(
   switch (outcome) {
     case "found":
       return {
-        title: `✓ ${found}`,
+        title: found,
         detail: "Deploys never write back to this Harness.",
         continueLabel: "Continue to Inventory",
       };
     case "joined":
       return {
-        title: `✓ Harness connected · ${found}`,
+        title: `Harness connected · ${found}`,
         detail: "The cloned Harness is ready in Inventory.",
         continueLabel: "Continue to Inventory",
       };
     case "scaffolded":
       return {
-        title: "✓ Harness created. It has no skills yet.",
+        title: "Harness created. It has no skills yet.",
         detail:
           "Skill checks do not block releases unless the team makes them required.",
         continueLabel: "Continue to Harness",
@@ -60,11 +61,13 @@ export function ConnectSuccessView({
   const copy = completionCopy(outcome, primitiveCount);
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1">
-        <p className="text-green-ink text-tag">{copy.title}</p>
-        <p className="m-0 text-fg-2 text-tag">{copy.detail}</p>
-      </div>
+    // The same card as the form it replaces (#995): no auto-navigate, the
+    // outcome's own continue button (ADR-0015 §2).
+    <div className="flex flex-col gap-cell">
+      <Notice
+        trigger="user-action"
+        notice={{ level: "success", label: copy.title, message: copy.detail }}
+      />
       {/* The distinguishing tail, not the raw path, with the whole path on
           hover (#211). */}
       <dl className="m-0">
@@ -75,7 +78,7 @@ export function ConnectSuccessView({
         />
       </dl>
       <div>
-        <Button variant="primary" size="sm" onClick={onContinue}>
+        <Button variant="primary" onClick={onContinue}>
           {copy.continueLabel}
         </Button>
       </div>
