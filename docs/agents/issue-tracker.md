@@ -4,7 +4,7 @@ Issues and PRDs for this repo live as GitHub issues on `fimoklei/maestro`. Use t
 
 ## Conventions
 
-- **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
+- **Create an issue**: `gh issue create --title "..." --body "..."`. Pass a multi-line body as a file with `--body-file <path>`.
 - **Read an issue**: `gh issue view <number> --json number,title,body,labels,comments` (`--comments` returns empty through the rtk rewrite, `~/.claude/RTK.md`).
 - **List issues**: `gh issue list --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'` with appropriate `--label` and `--state` filters.
 - **Comment on an issue**: `gh issue comment <number> --body "..."`

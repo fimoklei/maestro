@@ -1,6 +1,6 @@
 ---
 name: find-duplicate-abstractions
-description: "Sweep the Maestro codebase for near-duplicate abstractions — two functions, hooks, types, schemas, adapters, or components that do the same job under different names or as drifted copies — and report merge candidates ranked by payoff. Report-only: it proposes merges, it never applies them. Use in the Maestro repo when the user asks to find duplicated/redundant code or abstractions, dedupe the codebase, spot copy-paste drift, or 'find near-duplicates and tell me what to merge' — e.g. 'vind dubbele abstracties', 'waar zit copy-paste', 'wat kan ik samenvoegen', 'dedupe deze codebase'. Not for diff-only reuse review (that is /simplify) or over-engineering audits (that is /ponytail-audit)."
+description: "Sweep the Maestro codebase for near-duplicate abstractions — two functions, hooks, types, schemas, adapters, or components that do the same job under different names or as drifted copies — and report merge candidates ranked by payoff. Report-only: it proposes merges, it never applies them. Use in the Maestro repo when the user asks, in any language, to find duplicated or redundant code or abstractions, spot copy-paste drift, or decide what to merge. Not for diff-only reuse review (that is /simplify) or over-engineering audits (that is /ponytail-audit)."
 ---
 
 # Find duplicate abstractions

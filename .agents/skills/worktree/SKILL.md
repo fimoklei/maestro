@@ -1,6 +1,6 @@
 ---
 name: worktree
-description: "Create and prepare a git worktree for a Maestro backlog issue, then pull the issue so the agent is ready to implement. Use in the Maestro repo when the user asks to make/set up a worktree for an issue — e.g. 'maak een worktree aan voor issue 214 te implementeren', 'worktree voor issue 214', 'start issue 214 in een worktree'. Also use for cleaning up leftover worktrees — 'welke worktrees staan er nog open', 'verwijder die worktree', 'ruim de worktrees op'. Maestro-specific: a session that already stands in a workspace worktree (~/orca/workspaces/maestro/<name>) uses it; otherwise worktrees live at ~/Projects/maestro/.claude/worktrees/issue<N> on branch feature/issue<N>."
+description: "Create and prepare a git worktree for a Maestro backlog issue, then pull the issue so the agent is ready to implement; also lists and removes leftover worktrees. Use in the Maestro repo when the user asks, in any language, to start an issue in a worktree or to clean up worktrees. Maestro-specific: a session that already stands in a workspace worktree (~/orca/workspaces/maestro/<name>) uses it; otherwise worktrees live at ~/Projects/maestro/.claude/worktrees/issue<N> on branch feature/issue<N>."
 ---
 
 # Maestro worktree
