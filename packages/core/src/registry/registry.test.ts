@@ -12,6 +12,15 @@ const resolveCentralInventoryPath = (
   config: Parameters<typeof resolveInventoryPath>[0],
 ) => resolveInventoryPath(config, {});
 
+// A Git repository: the folder plus its `.git` entry.
+const gitRepos = (...paths: string[]): Record<string, string> =>
+  Object.fromEntries(
+    paths.flatMap((path) => [
+      [path, path],
+      [`${path}/.git`, `${path}/.git`],
+    ]),
+  );
+
 function makeRegistry(fs: InMemoryFileSystem): Registry {
   return new Registry({
     fs,
@@ -23,7 +32,7 @@ function makeRegistry(fs: InMemoryFileSystem): Registry {
 describe("Registry", () => {
   it("registers a valid directory and lists it back", async () => {
     const fs = new InMemoryFileSystem({
-      directories: { "/Users/me/project": "/Users/me/project" },
+      directories: gitRepos("/Users/me/project"),
     });
     const registry = makeRegistry(fs);
 
@@ -38,26 +47,55 @@ describe("Registry", () => {
     ]);
   });
 
-  it("does not duplicate a repo registered twice", async () => {
+  it("refuses a repo registered twice and keeps one entry", async () => {
     const fs = new InMemoryFileSystem({
-      directories: { "/Users/me/project": "/Users/me/project" },
+      directories: {
+        ...gitRepos("/Users/me/project"),
+        "/Users/me/link": "/Users/me/project",
+      },
     });
     const registry = makeRegistry(fs);
 
     await registry.register("/Users/me/project");
-    await registry.register("/Users/me/project");
 
+    // A symlink to it is the same repository.
+    await expect(registry.register("/Users/me/link")).resolves.toEqual({
+      ok: false,
+      error: "already-registered",
+    });
     await expect(registry.list()).resolves.toEqual([
       { path: "/Users/me/project" },
     ]);
   });
 
+  it("refuses a folder that is not a Git repository", async () => {
+    const fs = new InMemoryFileSystem({
+      directories: { "/Users/me/notes": "/Users/me/notes" },
+    });
+    const registry = makeRegistry(fs);
+
+    await expect(registry.register("/Users/me/notes")).resolves.toEqual({
+      ok: false,
+      error: "not-a-git-repo",
+    });
+    await expect(registry.list()).resolves.toEqual([]);
+  });
+
+  it("counts a worktree, whose .git is a file, as a Git repository", async () => {
+    const fs = new InMemoryFileSystem({
+      directories: { "/Users/me/wt": "/Users/me/wt" },
+      files: { "/Users/me/wt/.git": "gitdir: /Users/me/project/.git" },
+    });
+    const registry = makeRegistry(fs);
+
+    await expect(registry.register("/Users/me/wt")).resolves.toMatchObject({
+      ok: true,
+    });
+  });
+
   it("keeps both repos when two registrations run concurrently", async () => {
     const fs = new InMemoryFileSystem({
-      directories: {
-        "/Users/me/a": "/Users/me/a",
-        "/Users/me/b": "/Users/me/b",
-      },
+      directories: gitRepos("/Users/me/a", "/Users/me/b"),
     });
     const registry = makeRegistry(fs);
 
@@ -73,7 +111,7 @@ describe("Registry", () => {
   it("preserves a previously connected inventoryPath when registering a repo", async () => {
     const configPath = CONFIG_PATH;
     const fs = new InMemoryFileSystem({
-      directories: { "/Users/me/project": "/Users/me/project" },
+      directories: gitRepos("/Users/me/project"),
       files: {
         [configPath]: JSON.stringify({ repos: [], inventoryPath: "/inv" }),
       },
@@ -91,9 +129,7 @@ describe("Registry", () => {
 
   it("refuses the connected central inventory as a consuming repo", async () => {
     const fs = new InMemoryFileSystem({
-      directories: {
-        "/Users/me/agent-harness": "/Users/me/agent-harness",
-      },
+      directories: gitRepos("/Users/me/agent-harness"),
       files: {
         [CONFIG_PATH]: JSON.stringify({
           repos: [],
@@ -119,10 +155,144 @@ describe("Registry", () => {
     await expect(registry.list()).resolves.toEqual([]);
   });
 
+  describe("check", () => {
+    it("answers what a registration would, and writes nothing", async () => {
+      const fs = new InMemoryFileSystem({
+        directories: {
+          ...gitRepos("/Users/me/project", "/Users/me/agent-harness"),
+          "/Users/me/notes": "/Users/me/notes",
+        },
+        files: {
+          [CONFIG_PATH]: JSON.stringify({
+            repos: [],
+            inventoryPath: "/Users/me/agent-harness",
+          }),
+          "/Users/me/file.txt": "",
+        },
+      });
+      const registry = makeRegistry(fs);
+
+      await expect(registry.check("/Users/me/project")).resolves.toEqual({
+        ok: true,
+        path: "/Users/me/project",
+      });
+      await expect(registry.check("/Users/me/notes")).resolves.toEqual({
+        ok: false,
+        error: "not-a-git-repo",
+      });
+      await expect(registry.check("/Users/me/agent-harness")).resolves.toEqual({
+        ok: false,
+        error: "central-inventory",
+      });
+      await expect(registry.check("/Users/me/ghost")).resolves.toEqual({
+        ok: false,
+        error: "not-found",
+      });
+      await expect(registry.check("/Users/me/file.txt")).resolves.toEqual({
+        ok: false,
+        error: "not-a-directory",
+      });
+      await expect(registry.list()).resolves.toEqual([]);
+    });
+
+    it("refuses a repo already registered", async () => {
+      const fs = new InMemoryFileSystem({
+        directories: gitRepos("/Users/me/project"),
+      });
+      const registry = makeRegistry(fs);
+      await registry.register("/Users/me/project");
+
+      await expect(registry.check("/Users/me/project")).resolves.toEqual({
+        ok: false,
+        error: "already-registered",
+      });
+    });
+  });
+
+  describe("unregister", () => {
+    it("drops the named repo and keeps the others", async () => {
+      const fs = new InMemoryFileSystem({
+        directories: gitRepos("/Users/me/a", "/Users/me/b"),
+      });
+      const registry = makeRegistry(fs);
+      await registry.register("/Users/me/a");
+      await registry.register("/Users/me/b");
+
+      await expect(registry.unregister("/Users/me/a")).resolves.toEqual({
+        ok: true,
+        repos: [{ path: "/Users/me/b" }],
+      });
+      await expect(registry.list()).resolves.toEqual([{ path: "/Users/me/b" }]);
+    });
+
+    it("drops a repo whose folder is gone, by its stored path", async () => {
+      const configPath = CONFIG_PATH;
+      const fs = new InMemoryFileSystem({
+        files: {
+          [configPath]: JSON.stringify({
+            repos: [{ path: "/Users/me/old-site" }],
+            inventoryPath: "/inv",
+          }),
+        },
+      });
+      const store = new ConfigStore({ fs, configPath: () => configPath });
+      const registry = new Registry({ fs, store, resolveCentralInventoryPath });
+
+      await expect(registry.unregister("/Users/me/old-site")).resolves.toEqual({
+        ok: true,
+        repos: [],
+      });
+      // The rest of the config survives the rewrite.
+      await expect(store.read()).resolves.toEqual({
+        repos: [],
+        inventoryPath: "/inv",
+      });
+    });
+
+    it("refuses a path that is not registered", async () => {
+      const fs = new InMemoryFileSystem({
+        directories: gitRepos("/Users/me/a"),
+      });
+      const registry = makeRegistry(fs);
+
+      await expect(registry.unregister("/Users/me/a")).resolves.toEqual({
+        ok: false,
+        error: "not-registered",
+      });
+    });
+  });
+
+  describe("listWithStatus", () => {
+    it("reads each folder: ready, missing, or no longer a Git repository", async () => {
+      const fs = new InMemoryFileSystem({
+        directories: {
+          ...gitRepos("/Users/me/ready"),
+          "/Users/me/scratch": "/Users/me/scratch",
+        },
+        files: {
+          [CONFIG_PATH]: JSON.stringify({
+            repos: [
+              { path: "/Users/me/ready" },
+              { path: "/Users/me/scratch" },
+              { path: "/Users/me/old-site" },
+            ],
+          }),
+        },
+      });
+      const registry = makeRegistry(fs);
+
+      await expect(registry.listWithStatus()).resolves.toEqual([
+        { path: "/Users/me/ready", status: "ready" },
+        { path: "/Users/me/scratch", status: "not-a-git-repo" },
+        { path: "/Users/me/old-site", status: "folder-missing" },
+      ]);
+    });
+  });
+
   describe("isRegistered", () => {
     it("is true for a path that was registered", async () => {
       const fs = new InMemoryFileSystem({
-        directories: { "/Users/me/project": "/Users/me/project" },
+        directories: gitRepos("/Users/me/project"),
       });
       const registry = makeRegistry(fs);
       await registry.register("/Users/me/project");
@@ -134,10 +304,7 @@ describe("Registry", () => {
 
     it("is false for a path that was never registered", async () => {
       const fs = new InMemoryFileSystem({
-        directories: {
-          "/Users/me/project": "/Users/me/project",
-          "/Users/me/other": "/Users/me/other",
-        },
+        directories: gitRepos("/Users/me/project", "/Users/me/other"),
       });
       const registry = makeRegistry(fs);
       await registry.register("/Users/me/project");
@@ -159,7 +326,7 @@ describe("Registry", () => {
     it("canonicalizes the input before comparing, so a symlink to a registered repo matches", async () => {
       const fs = new InMemoryFileSystem({
         directories: {
-          "/Users/me/project": "/Users/me/project",
+          ...gitRepos("/Users/me/project"),
           // A symlink whose realpath is the registered repo.
           "/Users/me/link": "/Users/me/project",
         },
@@ -175,7 +342,7 @@ describe("Registry", () => {
     it("returns the canonical registered repo for a symlinked input", async () => {
       const fs = new InMemoryFileSystem({
         directories: {
-          "/Users/me/project": "/Users/me/project",
+          ...gitRepos("/Users/me/project"),
           "/Users/me/link": "/Users/me/project",
         },
       });
@@ -189,7 +356,7 @@ describe("Registry", () => {
 
     it("returns nothing for a repo that is not registered", async () => {
       const fs = new InMemoryFileSystem({
-        directories: { "/Users/me/project": "/Users/me/project" },
+        directories: gitRepos("/Users/me/project"),
       });
       const registry = makeRegistry(fs);
 

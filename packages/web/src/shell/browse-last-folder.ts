@@ -1,7 +1,7 @@
 import type { BrowseDialogMode } from "./browse-modes";
 
 // Client-only "last folder used" memory for the browse dialog (#149). One key
-// per mode, so connect and register remember independently. localStorage
+// per mode, so connect and import remember independently. localStorage
 // wrapped so private browsing degrades to "no memory" instead of throwing.
 const storageKey = (mode: BrowseDialogMode) =>
   `maestro.browse.lastFolder.${mode}`;

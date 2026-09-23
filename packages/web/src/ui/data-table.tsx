@@ -290,11 +290,17 @@ export function DataTable<T extends RowData>({
         aria-selected={selection ? isSelected : undefined}
         aria-current={isOpen || undefined}
         data-active={gridFocused && index === active ? true : undefined}
+        // The press focuses the grid, so the cursor moves with it; on click
+        // it would ring the previous row until release.
+        onMouseDown={(event) => {
+          if (event.currentTarget.contains(event.target as Node)) {
+            setCursor(index);
+          }
+        }}
         onClick={(event) => {
           if (!event.currentTarget.contains(event.target as Node)) {
             return;
           }
-          setCursor(index);
           if ((event.target as HTMLElement).closest(INTERACTIVE)) {
             return;
           }

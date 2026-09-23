@@ -5,33 +5,20 @@ import type { ReactNode } from "react";
 import { Chip } from "../ui/chip";
 import type { BrowseEntry } from "./use-browse-filesystem";
 
-export type BrowseDialogMode = "register" | "connect" | "clone-parent";
+export type BrowseDialogMode = "connect" | "clone-parent";
 
 type BrowseModeConfig = {
   title: string;
-  confirmLabel: (count: number) => string;
-  // isRegistered resolved by the caller, so a mode ignoring the registry
-  // never has to know it exists.
-  badges: (context: { entry: BrowseEntry; isRegistered: boolean }) => ReactNode;
+  confirmLabel: string;
+  badges: (context: { entry: BrowseEntry }) => ReactNode;
   // null for a mode with no write target — states its answer, never inherits silence.
   writePromise: string | null;
 };
 
 export const browseModes: Record<BrowseDialogMode, BrowseModeConfig> = {
-  register: {
-    title: "Register repositories",
-    confirmLabel: (count) =>
-      `Register ${count} ${count === 1 ? "repository" : "repositories"}`,
-    // A git repo is what this listing is for; only the refusal earns a chip,
-    // and browse-entry-row.tsx already writes that one.
-    badges: ({ isRegistered }) =>
-      isRegistered ? <Chip tone="ok">● Registered</Chip> : null,
-    writePromise:
-      "Registering changes no files. Files change only when you deploy.",
-  },
   connect: {
     title: "Choose an Inventory folder",
-    confirmLabel: () => "Use this folder",
+    confirmLabel: "Use this folder",
     badges: ({ entry }) =>
       entry.facts.hasApmManifest ? <Chip tone="drift">◆ Inventory</Chip> : null,
     // Read-only promise is made on the connect gate itself (ADR-0015).
@@ -41,7 +28,7 @@ export const browseModes: Record<BrowseDialogMode, BrowseModeConfig> = {
   // would block it: a Harness already sitting there (#555).
   "clone-parent": {
     title: "Choose a folder for the Harness",
-    confirmLabel: () => "Clone into this folder",
+    confirmLabel: "Clone into this folder",
     badges: ({ entry }) =>
       entry.facts.hasApmManifest ? <Chip tone="drift">◆ Inventory</Chip> : null,
     writePromise:

@@ -123,6 +123,19 @@ describe("DataTable", () => {
     expect(onRowOpen).toHaveBeenCalledTimes(1);
   });
 
+  it("rings the pressed row, not the previous one, while the press focuses the grid", async () => {
+    renderTable({ onRowOpen: () => {} });
+    await userEvent.click(screen.getByRole("gridcell", { name: "green" }));
+    screen.getByRole("button", { name: "After" }).focus();
+
+    await userEvent.pointer({
+      keys: "[MouseLeft>]",
+      target: screen.getByRole("gridcell", { name: "dark red" }),
+    });
+
+    expect(activeRowName()).toBe("cherry");
+  });
+
   it("toggles the active row on Space, and a row from its checkbox", async () => {
     const onToggle = vi.fn();
     renderTable({

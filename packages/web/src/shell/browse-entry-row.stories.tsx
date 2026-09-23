@@ -1,16 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { BrowseEntryRow } from "./browse-entry-row";
 
-// The browse listing's row in the states that read differently: whether it can
-// be selected at all, and what its badges say. Presentational and
-// provider-free — the row takes everything through args (frontend.md).
+// The browse listing's row in the states that read differently: what its
+// badges say. Presentational and provider-free — the row takes everything
+// through args (frontend.md).
 const meta = {
   title: "Shell/BrowseEntryRow",
   component: BrowseEntryRow,
   args: {
-    mode: "register",
-    checked: false,
-    onToggle: () => {},
+    mode: "connect",
     onEnter: () => {},
     entry: {
       name: "acme-web",
@@ -26,44 +24,12 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-// A git repo in register mode: selectable, and unbadged — being a repo is what
-// the listing is for, so only the refusals carry a chip.
-export const SelectableRepo: Story = {};
+// A plain folder: nothing to badge.
+export const PlainFolder: Story = {};
 
-// Ticked for registration — the row highlights so a selection spread over
-// several folders stays visible at a glance.
-export const Checked: Story = { args: { checked: true } };
-
-// Already in the registry: the box stays for alignment but is dead, and the
-// badge is the reason why.
-export const AlreadyRegistered: Story = {
-  args: { registeredPaths: new Set(["/home/me/repos/acme-web"]) },
-};
-
-// Not a git repo: a disabled checkbox and an in-place reason make the refusal
-// clear without hiding the control.
-export const NotARepo: Story = {
-  args: {
-    entry: {
-      name: "scratch",
-      path: "/home/me/repos/scratch",
-      isHidden: false,
-      isSymlink: false,
-      facts: { isGitRepo: false, hasApmManifest: false },
-    },
-  },
-};
-
-// The central inventory is the source of primitives, never a consuming repo.
-export const CentralInventory: Story = {
-  args: { inventoryPath: "/home/me/repos/acme-web" },
-};
-
-// Connect mode never selects: no checkbox, no spacer, and an inventory hint as
-// its only badge.
+// An inventory hint as its only badge, beside the symlink tag.
 export const ConnectModeInventory: Story = {
   args: {
-    mode: "connect",
     entry: {
       name: "agent-harness",
       path: "/home/me/agent-harness",

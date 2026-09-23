@@ -13,9 +13,19 @@ interface ActionsMenuItem {
   onSelect?: () => void;
   href?: string;
   disabled?: boolean;
-  /** Deletes files: red, alone behind its own separator (#994). */
+  /** Drops or deletes something: red, moved last, alone behind a divider
+   * (#994, #1009). */
   danger?: boolean;
 }
+
+// Danger last, everything else in the caller's own order — reordering is the
+// only rule that changes an item's position (#1009).
+const orderedItems = (
+  items: readonly ActionsMenuItem[],
+): readonly ActionsMenuItem[] => [
+  ...items.filter((item) => !item.danger),
+  ...items.filter((item) => item.danger),
+];
 
 export interface ActionsMenuProps {
   /** Accessible name for the trigger, e.g. "Actions for tdd". */
@@ -83,45 +93,50 @@ export function ActionsMenu({
               {heading}
             </div>
           ) : null}
-          {items.map((item, index) => (
-            <Fragment key={item.label}>
-              {/* Deleting stands alone, and links to GitHub stand apart from
-                  the presses that act here (#994). */}
-              {item.danger ||
-              (index > 0 &&
-                (item.href === undefined) !==
-                  (items[index - 1]?.href === undefined)) ? (
-                <DropdownMenu.Separator className="-mx-tight my-tight h-px bg-gray-6" />
-              ) : null}
-              <DropdownMenu.Item
-                disabled={item.disabled}
-                onSelect={() => {
-                  if (returnFocus) item.onSelect?.();
-                  else pending.current = item.onSelect ?? null;
-                }}
-                asChild={item.href !== undefined}
-                className={cn(
-                  "flex h-control cursor-pointer items-center rounded-control px-inline font-ui text-row no-underline outline-none",
-                  item.danger ? "text-red-11" : "text-gray-11",
-                  HOVER_TRANSITION,
-                  // data-[highlighted]: Radix's combined hover + roving-focus
-                  // state. gray-3, not gray-4 — a menu item is never a
-                  // standing choice (#388).
-                  "data-[highlighted]:bg-gray-3",
-                  !item.danger && "data-[highlighted]:text-gray-12",
-                  "data-[disabled]:cursor-not-allowed data-[disabled]:text-dim",
-                )}
-              >
-                {item.href === undefined ? (
-                  item.label
-                ) : (
-                  <a href={item.href} target="_blank" rel="noreferrer">
-                    {item.label}
-                  </a>
-                )}
-              </DropdownMenu.Item>
-            </Fragment>
-          ))}
+          {orderedItems(items).map((item, index, ordered) => {
+            const previous = ordered[index - 1];
+            // Danger stands alone, last, behind its own divider (#1009). A
+            // link and an action never share a group without one either
+            // (#994) — the caller's own order says which comes first.
+            const separator =
+              previous !== undefined &&
+              (item.danger !== previous.danger ||
+                (!item.danger &&
+                  (item.href === undefined) !== (previous.href === undefined)));
+            return (
+              <Fragment key={item.label}>
+                {separator ? (
+                  <DropdownMenu.Separator className="-mx-tight my-tight h-px bg-gray-6" />
+                ) : null}
+                <DropdownMenu.Item
+                  disabled={item.disabled}
+                  onSelect={() => {
+                    if (returnFocus) item.onSelect?.();
+                    else pending.current = item.onSelect ?? null;
+                  }}
+                  asChild={item.href !== undefined}
+                  className={cn(
+                    "flex h-control cursor-pointer items-center rounded-control px-inline font-ui text-row no-underline outline-none",
+                    HOVER_TRANSITION,
+                    // data-[highlighted]: Radix's hover + roving focus. gray-3,
+                    // not gray-4 — an item is never a standing choice (#388).
+                    item.danger
+                      ? "text-red-11 data-[highlighted]:bg-red-3 data-[highlighted]:text-red-12"
+                      : "text-gray-11 data-[highlighted]:bg-gray-3 data-[highlighted]:text-gray-12",
+                    "data-[disabled]:cursor-not-allowed data-[disabled]:text-dim",
+                  )}
+                >
+                  {item.href === undefined ? (
+                    item.label
+                  ) : (
+                    <a href={item.href} target="_blank" rel="noreferrer">
+                      {item.label}
+                    </a>
+                  )}
+                </DropdownMenu.Item>
+              </Fragment>
+            );
+          })}
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>

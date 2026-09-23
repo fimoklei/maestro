@@ -11,6 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { app } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { makeRepoDir } from "../helpers/repo-dir";
 
 // The default `app` must resolve MAESTRO_HOME when a request arrives, not freeze
 // it at import time. Otherwise any test or tool importing { app } and POSTing
@@ -28,7 +29,7 @@ describe("default app config home", () => {
   const previousHome = process.env.MAESTRO_HOME;
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), "maestro-home-"));
+    dir = await makeRepoDir("maestro-home-");
     process.env.MAESTRO_HOME = dir;
   });
 

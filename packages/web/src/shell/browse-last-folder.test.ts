@@ -15,12 +15,12 @@ describe("browse-last-folder", () => {
     expect(readLastFolder("connect")).toBe("/home/me/dev");
   });
 
-  it("keeps connect and register memories independent", () => {
+  it("keeps each mode's memory independent", () => {
     writeLastFolder("connect", "/home/me/dev");
-    writeLastFolder("register", "/home/me/repos");
+    writeLastFolder("clone-parent", "/home/me/repos");
 
     expect(readLastFolder("connect")).toBe("/home/me/dev");
-    expect(readLastFolder("register")).toBe("/home/me/repos");
+    expect(readLastFolder("clone-parent")).toBe("/home/me/repos");
   });
 
   it("overwrites a mode's previous memory rather than accumulating", () => {

@@ -5,6 +5,7 @@ import { InFlightLocks, InventoryReader, NodeFileSystem } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { realRegistry } from "../helpers/real-registry";
+import { makeRepoDir } from "../helpers/repo-dir";
 import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
@@ -68,7 +69,7 @@ describe("deploy-state HTTP route", () => {
   }
 
   async function makeRepo(lockfile: string | null): Promise<string> {
-    const repo = await mkdtemp(join(tmpdir(), "maestro-repo-"));
+    const repo = await makeRepoDir("maestro-repo-");
     if (lockfile !== null) {
       await writeFile(join(repo, "apm.lock.yaml"), lockfile, "utf8");
     }

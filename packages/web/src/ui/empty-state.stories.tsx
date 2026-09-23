@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { GitPullRequestArrow } from "lucide-react";
+import { FolderGit2 } from "lucide-react";
 import { Button } from "./button";
 import { EmptyState } from "./empty-state";
 
@@ -7,20 +7,19 @@ const meta = {
   title: "Core/EmptyState",
   component: EmptyState,
   args: {
-    title: "No changes yet",
-    body: "Skills you import or edit in your clone will appear here.",
-    icon: (
-      <GitPullRequestArrow
-        aria-hidden="true"
-        strokeWidth={1.5}
-        className="size-4"
-      />
-    ),
-    action: <Button variant="quiet">Import skill…</Button>,
+    headingLevel: 2,
+    title: "No repositories yet",
+    description:
+      "The repositories you deploy skills to appear here, with the state of each folder.",
+    icon: <FolderGit2 strokeWidth={1.5} className="size-4" />,
+    action: <Button>Register repository</Button>,
   },
 } satisfies Meta<typeof EmptyState>;
 
 export default meta;
+
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {};
+export const WithAction: Story = {};
+
+export const WithoutAction: Story = { args: { action: undefined } };

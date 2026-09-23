@@ -18,6 +18,11 @@ export const NOTHING_DEPLOYED =
 export const targetCount = (count: number) =>
   `${count} ${count === 1 ? "target" : "targets"}`;
 
+// Information, never a control: Register repository on the Repositories screen
+// is the single registration affordance (ADR-0015).
+export const NO_REPOSITORIES =
+  "No repositories registered. Select Register repository on the Repositories screen to register one.";
+
 export const NO_FILTER_MATCH =
   "No targets match the filters. Select Filter to show more targets.";
 
