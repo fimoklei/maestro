@@ -4,7 +4,7 @@ import { ActionsMenu } from "../ui/actions-menu";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { Logo } from "../ui/logo";
-import { HARNESS_LOCATION, SCREENS } from "./screens";
+import { SCREENS, SETTINGS } from "./screens";
 import { useHarnessSummary } from "./use-harness-summary";
 
 // Below 1024px the sidebar folds into this 48px bar (#991): the mark and the
@@ -43,9 +43,9 @@ export function NarrowBar({ className }: { className?: string }) {
       <div className="ml-auto">
         <ActionsMenu
           label="Menu"
-          // One menu for both, so Harness location joins the screens here
+          // One menu for both, so Settings joins the screens here
           // rather than sitting behind a second trigger.
-          items={[...SCREENS, HARNESS_LOCATION].map((screen) => ({
+          items={[...SCREENS, SETTINGS].map((screen) => ({
             label: screen.label,
             onSelect: () => navigate(screen.to),
           }))}

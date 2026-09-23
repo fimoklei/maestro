@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
-import { connectNotice, scaffoldNotice } from "./connect-notice";
+import {
+  connectNotice,
+  scaffoldNotice,
+  scaffoldOfferExtras,
+} from "./connect-notice";
 
 // The finished notice, asserted as data (ADR-0025 §10 rejected a copy linter):
 // level, heading, sentence, detail and action label together are the reviewer's
@@ -149,6 +153,34 @@ describe("connectNotice", () => {
         "Scaffold the Harness, and Maestro pushes the first commit to the default branch.",
       detail: "Maestro would scaffold it into /repos/harness.",
       action: { label: "Scaffold the Harness", onClick: expect.any(Function) },
+    });
+  });
+
+  it("names the offer's folder and its one action, busy while it runs", () => {
+    const onAccept = () => {};
+    expect(
+      scaffoldOfferExtras("/repos/harness", { pending: false, onAccept }),
+    ).toEqual({
+      detail: "Maestro would scaffold it into /repos/harness.",
+      action: {
+        label: "Scaffold the Harness",
+        disabled: false,
+        onClick: onAccept,
+      },
+    });
+    expect(
+      scaffoldOfferExtras("/repos/harness", { pending: true, onAccept }).action,
+    ).toEqual({ label: "Scaffolding…", disabled: true, onClick: onAccept });
+    expect(scaffoldOfferExtras(null, { pending: false, onAccept })).toEqual({});
+  });
+
+  it("refuses a remote address where only a folder path is taken", () => {
+    expect(connectFor("not-a-folder-path")).toEqual({
+      level: "error",
+      label: "Not a folder path",
+      message:
+        "The location did not change. Type the path to a local Harness clone.",
+      detail: "Setting the location never clones. Clone the repository first.",
     });
   });
 

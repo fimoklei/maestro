@@ -12,6 +12,7 @@ export const registerBodySchema = z.object({ path: z.string() });
 export const connectBodySchema = z.object({
   path: z.string(),
   parent: z.string().optional(),
+  localOnly: z.boolean().optional(),
 });
 
 export const browseBodySchema = z.object({ path: z.string() });

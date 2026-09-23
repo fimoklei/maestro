@@ -134,4 +134,21 @@ describe("POST body parsing", () => {
       expect(body.detail).toMatch(/\{/);
     }
   });
+
+  // Setting the Harness location never clones (#995): the flag reaches the
+  // use case, which refuses a URL before any clone is attempted.
+  it("refuses a URL on connect when the body asks for a local clone only", async () => {
+    const res = await makeApp().request(
+      "/api/inventory/connect",
+      post(
+        JSON.stringify({
+          path: "https://github.com/fimoklei/agent-harness",
+          localOnly: true,
+        }),
+      ),
+    );
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "not-a-folder-path" });
+  });
 });

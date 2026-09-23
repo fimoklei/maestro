@@ -1,5 +1,7 @@
 import { FileText, LayoutList, Pencil, Table2 } from "lucide-react";
 import type { ReactNode } from "react";
+import { SETTINGS as SETTINGS_NAME } from "../settings/settings-copy";
+import { HARNESS_LOCATION_PAGE } from "../settings/settings-pages";
 
 // The cockpit's screens, in the order the sidebar lists them (#991). One
 // owner, because the sidebar and the narrow bar both navigate by it and a
@@ -44,6 +46,7 @@ export const SCREENS: readonly Screen[] = SCREEN_GROUPS.flatMap(
   (group) => group.items,
 );
 
-// Not a screen in the sidebar: it sits in the Harness button's menu (#991).
-// The narrow bar has one menu for both, so it names it there.
-export const HARNESS_LOCATION = { to: "/source", label: "Harness location" };
+// Not a screen in the sidebar: it sits in the Harness button's menu and opens
+// on its first page (#995). The narrow bar has one menu for both, so it names
+// it there.
+export const SETTINGS = { to: HARNESS_LOCATION_PAGE.to, label: SETTINGS_NAME };

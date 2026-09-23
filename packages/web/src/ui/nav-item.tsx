@@ -42,9 +42,11 @@ export function NavItem({
         className,
       )}
     >
-      <span aria-hidden="true" className="flex shrink-0 items-center">
-        {icon}
-      </span>
+      {icon === undefined ? null : (
+        <span aria-hidden="true" className="flex shrink-0 items-center">
+          {icon}
+        </span>
+      )}
       <span className="grow truncate">{label}</span>
     </button>
   );

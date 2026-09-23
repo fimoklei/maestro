@@ -3,12 +3,12 @@ import { useNavigate } from "react-router";
 import { ActionsMenu } from "../ui/actions-menu";
 import { cn } from "../ui/cn";
 import { HOVER_TRANSITION } from "../ui/hover-transition";
-import { HARNESS_LOCATION } from "./screens";
+import { SETTINGS } from "./screens";
 import { useHarnessSummary } from "./use-harness-summary";
 
 // The sidebar's Harness button (#991): what you are steering, without opening
 // a screen. It names the connected Harness, its release and its skill count,
-// and opens the menu that holds Harness location.
+// and opens the menu that holds Settings.
 
 const MENU_LABEL = "Harness menu";
 
@@ -22,8 +22,8 @@ export function HarnessButton() {
       heading={path === null ? undefined : label}
       items={[
         {
-          label: HARNESS_LOCATION.label,
-          onSelect: () => navigate(HARNESS_LOCATION.to),
+          label: SETTINGS.label,
+          onSelect: () => navigate(SETTINGS.to),
         },
       ]}
       trigger={

@@ -101,7 +101,7 @@ describe("Sidebar", () => {
     );
   });
 
-  it("opens the Harness location from the Harness menu", async () => {
+  it("holds Settings in the Harness menu", async () => {
     stubServer();
     renderSidebar();
 
@@ -110,7 +110,7 @@ describe("Sidebar", () => {
     );
 
     expect(
-      await screen.findByRole("menuitem", { name: "Harness location" }),
+      await screen.findByRole("menuitem", { name: "Settings" }),
     ).toBeInTheDocument();
   });
 

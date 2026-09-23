@@ -191,6 +191,7 @@ const HEADED_REPO_PATH_RESPONSES: ErrorTable<RepoPathError> = {
 export const connectErrorResponses: ErrorTable<ConnectInventoryError> = {
   ...HEADED_REPO_PATH_RESPONSES,
   "not-a-github-url": { status: 400 },
+  "not-a-folder-path": { status: 400 },
   "url-carries-credentials": { status: 400 },
   "invalid-parent": { status: 400 },
   "destination-occupied": { status: 409 },
