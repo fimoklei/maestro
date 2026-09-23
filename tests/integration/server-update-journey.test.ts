@@ -74,7 +74,7 @@ describe("update HTTP journey", () => {
   beforeEach(async () => {
     home = await mkdtemp(join(tmpdir(), "maestro-update-preflight-"));
     repo = join(home, "repo");
-    await mkdir(repo, { recursive: true });
+    await mkdir(join(repo, ".git"), { recursive: true });
   });
 
   afterEach(async () => {

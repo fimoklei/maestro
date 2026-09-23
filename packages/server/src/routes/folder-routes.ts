@@ -65,8 +65,23 @@ export function registerFolderRoutes(app: Hono, deps: Deps) {
   });
 
   app.get("/api/registry/repos", async (c) =>
-    c.json({ repos: await deps.registry.list() }),
+    c.json({ repos: await deps.registry.listWithStatus() }),
   );
+
+  // Every refusal a registration would give, stated right after a pick
+  // (#1009). POST, so the origin-host guard covers this path probe.
+  app.post("/api/registry/repos/check", async (c) => {
+    const body = await parseBody(c, registerBodySchema, PATH_BODY);
+    if (!body.ok) {
+      return body.response;
+    }
+
+    const result = await deps.registry.check(body.data.path);
+    if (!result.ok) {
+      return c.json({ error: result.error }, 400);
+    }
+    return c.json({ path: result.path });
+  });
 
   app.post("/api/registry/repos", async (c) => {
     const body = await parseBody(c, registerBodySchema, PATH_BODY);
@@ -80,5 +95,19 @@ export function registerFolderRoutes(app: Hono, deps: Deps) {
     }
 
     return c.json({ repos: result.repos }, 201);
+  });
+
+  // Matched against the stored list only, so nothing on disk is touched.
+  app.delete("/api/registry/repos", async (c) => {
+    const body = await parseBody(c, registerBodySchema, PATH_BODY);
+    if (!body.ok) {
+      return body.response;
+    }
+
+    const result = await deps.registry.unregister(body.data.path);
+    if (!result.ok) {
+      return c.json({ error: result.error }, 404);
+    }
+    return c.json({ repos: result.repos });
   });
 }

@@ -255,7 +255,11 @@ export { resolveMaestroConfigPath } from "./registry/config-path";
 export { ConfigStore } from "./registry/config-store";
 export type { FileSystemPort } from "./registry/file-system";
 export { NodeFileSystem } from "./registry/node-file-system";
-export { Registry } from "./registry/registry";
+export {
+  type RegisterError,
+  Registry,
+  type RepoStatus,
+} from "./registry/registry";
 export type { RepoPathError } from "./registry/repo-path";
 export { bindConfig } from "./server/bind-config";
 export { ToolPresenceAdapter } from "./tools/tool-presence";

@@ -120,4 +120,43 @@ describe("ActionsMenu", () => {
       screen.getByRole("combobox", { name: "Deploy target" }),
     ).toHaveFocus();
   });
+
+  it("sets a destructive item apart behind a divider, last", async () => {
+    render(
+      <ActionsMenu
+        label="Actions for old-site"
+        items={[
+          { label: "Unregister", onSelect: () => {}, danger: true },
+          { label: "View Deploy-state", onSelect: () => {} },
+        ]}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Actions for old-site" }),
+    );
+
+    const items = await screen.findAllByRole("menuitem");
+    expect(items.map((item) => item.textContent)).toEqual([
+      "View Deploy-state",
+      "Unregister",
+    ]);
+    expect(screen.getAllByRole("separator")).toHaveLength(1);
+  });
+
+  it("draws no divider in a menu without a destructive item", async () => {
+    render(
+      <ActionsMenu
+        label="Actions for tdd"
+        items={[{ label: "copy ref", onSelect: () => {} }]}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Actions for tdd" }),
+    );
+
+    await screen.findByRole("menuitem", { name: "copy ref" });
+    expect(screen.queryByRole("separator")).not.toBeInTheDocument();
+  });
 });

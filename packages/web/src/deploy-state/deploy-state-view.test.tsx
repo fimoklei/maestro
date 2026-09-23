@@ -131,13 +131,21 @@ describe("Deploy-state — one table of every target", () => {
     ).toBeInTheDocument();
   });
 
-  it("names where repositories come from while none is registered", async () => {
+  // ADR-0015 rejected a second registration control: Register repository on
+  // the Repositories screen stays the only one, so this line offers nothing
+  // to click.
+  it("names where repositories come from while none is registered, as information only", async () => {
     stubServer(() => ({ repos: [], global: TWO_TOOLS }));
     renderDeployState();
 
+    const hint = await screen.findByText(
+      "No repositories registered. Select Register repository on the Repositories screen to register one.",
+    );
+    expect(within(hint).queryByRole("button")).not.toBeInTheDocument();
+    expect(within(hint).queryByRole("link")).not.toBeInTheDocument();
     expect(
-      await screen.findByText(/no repositories registered\./i),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "Register repository" }),
+    ).not.toBeInTheDocument();
   });
 
   it("drops that hint once a repository is registered", async () => {

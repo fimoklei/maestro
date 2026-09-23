@@ -1,242 +1,307 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse, renderWithQuery } from "../test-utils";
-import { RepositoriesView } from "./repositories-view";
-import { REGISTRY_KEY } from "./use-registry";
-
-// Stands in for the screen's own Re-read control, which arrives with the
-// Repositories job: it drops the cached read so the view renders a failure over
-// content it already showed.
-function RereadTrigger() {
-  const queryClient = useQueryClient();
-  return (
-    <button
-      type="button"
-      onClick={() => queryClient.invalidateQueries({ queryKey: REGISTRY_KEY })}
-    >
-      Force re-read
-    </button>
-  );
-}
+import {
+  type FakeRegistry,
+  REGISTER,
+  renderRepositories,
+  statusRegion,
+  stubRegistry,
+} from "./repositories-test-helpers";
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  window.localStorage.clear();
 });
 
-const repoFacts = { isGitRepo: true, hasApmManifest: false };
+const threeRepos = (): FakeRegistry => ({
+  repos: [
+    { path: "/home/me/acme-web", status: "ready" },
+    { path: "/home/me/scratch", status: "not-a-git-repo" },
+    { path: "/home/me/old-site", status: "folder-missing" },
+  ],
+});
 
-// Stateful registry: empty until a POST registers a repo, after which the list
-// refetches. A refused path answers 400.
-function stubServer({
-  rejecting = [] as string[],
-  alreadyRegistered = [] as string[],
-  includeInventory = false,
-} = {}) {
-  let repos = alreadyRegistered.map((path) => ({ path }));
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const target = String(input);
-      if (target.includes("/api/inventory/config")) {
-        return jsonResponse({ inventoryPath: "/home/me/agent-harness" }, 200);
-      }
-      if (target.includes("/api/filesystem/children")) {
-        return jsonResponse(
-          {
-            path: "/home/me",
-            breadcrumbs: [{ name: "~", path: "/home/me" }],
-            entries: [
-              { name: "acme-web", path: "/home/me/acme-web", facts: repoFacts },
-              {
-                name: "payments-api",
-                path: "/home/me/payments-api",
-                facts: repoFacts,
-              },
-              ...(includeInventory
-                ? [
-                    {
-                      name: "agent-harness",
-                      path: "/home/me/agent-harness",
-                      facts: repoFacts,
-                    },
-                  ]
-                : []),
-            ],
-          },
-          200,
-        );
-      }
-      if (target.includes("/api/registry/repos")) {
-        if (init?.method === "POST") {
-          const { path } = JSON.parse(String(init.body)) as { path: string };
-          if (rejecting.includes(path)) {
-            return jsonResponse({ error: "not-a-directory" }, 400);
-          }
-          repos = [...repos, { path }];
-          return jsonResponse({ repos }, 201);
-        }
-        return jsonResponse({ repos }, 200);
-      }
-      return jsonResponse({ primitives: [], skipped: [], behind: [] }, 200);
-    }),
-  );
-}
-
-function renderView() {
-  return renderWithQuery(
-    <MemoryRouter initialEntries={["/repositories"]}>
-      <RepositoriesView />
-    </MemoryRouter>,
-  );
-}
-
-const REGISTER = "Register repository";
-
-async function pickBothRepos() {
-  await userEvent.click(await screen.findByRole("button", { name: REGISTER }));
-  await userEvent.click(
-    await screen.findByRole("checkbox", { name: /acme-web/i }),
-  );
-  await userEvent.click(
-    screen.getByRole("checkbox", { name: /payments-api/i }),
-  );
-  await userEvent.click(
-    screen.getByRole("button", { name: /Register 2 repositories/ }),
-  );
-}
+const rowOf = async (label: string) => {
+  const grid = await screen.findByRole("grid", { name: "Repositories table" });
+  const cell = await within(grid).findByText(label);
+  const row = cell.closest("tr");
+  if (row === null) throw new Error(`no row for ${label}`);
+  return row;
+};
 
 describe("Repositories", () => {
   it("names the screen and puts Register repository in band 1", async () => {
-    stubServer();
-    renderView();
+    stubRegistry({ repos: [] });
+    renderRepositories();
 
     expect(
       screen.getByRole("heading", { level: 1, name: "Repositories" }),
     ).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: REGISTER })).toBeEnabled();
+    expect(
+      await screen.findAllByRole("button", { name: REGISTER }),
+    ).not.toHaveLength(0);
   });
 
-  it("states an empty registry as its own empty state, not as a failure", async () => {
-    stubServer();
-    renderView();
+  it("states an empty registry as its own empty state, with the action repeated", async () => {
+    stubRegistry({ repos: [] });
+    renderRepositories();
 
-    expect(await screen.findByText("No repositories yet")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", {
+        level: 2,
+        name: "No repositories yet",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "The repositories you deploy skills to appear here, with the state of each folder.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: REGISTER })).toHaveLength(2);
+    expect(screen.queryByRole("grid")).not.toBeInTheDocument();
   });
 
-  it("registers every repo checked in the picker and lists them", async () => {
-    stubServer();
-    renderView();
+  it("lists each registration with its label, its path and its own reading", async () => {
+    stubRegistry(threeRepos());
+    renderRepositories();
 
-    await pickBothRepos();
-
-    const list = await screen.findByRole("list", {
-      name: "Registered repositories",
+    const grid = await screen.findByRole("grid", {
+      name: "Repositories table",
     });
     expect(
-      await within(list).findByTitle("/home/me/acme-web"),
-    ).toBeInTheDocument();
+      within(grid)
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent),
+    ).toEqual(["Repository", "Folder path", "Status", "Actions"]);
+
+    expect(await rowOf("…/me/acme-web")).toHaveTextContent(
+      "…/me/acme-web/home/me/acme-web✓Ready",
+    );
+    expect(await rowOf("…/me/scratch")).toHaveTextContent(
+      "…/me/scratch/home/me/scratch⚠Not a Git repository",
+    );
+    expect(await rowOf("…/me/old-site")).toHaveTextContent(
+      "…/me/old-site/home/me/old-site✕Folder missing",
+    );
+  });
+
+  it("keeps two repos with one folder name apart by their labels", async () => {
+    stubRegistry({
+      repos: [
+        { path: "/home/me/a/web", status: "ready" },
+        { path: "/home/me/b/web", status: "ready" },
+      ],
+    });
+    renderRepositories();
+
+    expect(await rowOf("…/a/web")).toBeInTheDocument();
+    expect(await rowOf("…/b/web")).toBeInTheDocument();
+  });
+
+  it("puts Unregister alone behind a divider, after View Deploy-state", async () => {
+    stubRegistry(threeRepos());
+    renderRepositories();
+
+    await userEvent.click(
+      within(await rowOf("…/me/old-site")).getByRole("button", {
+        name: "Actions for …/me/old-site",
+      }),
+    );
+
+    const items = await screen.findAllByRole("menuitem");
+    expect(items.map((item) => item.textContent)).toEqual([
+      "View Deploy-state",
+      "Unregister",
+    ]);
+    expect(screen.getAllByRole("separator")).toHaveLength(1);
+  });
+
+  it("goes to Deploy-state from the row menu", async () => {
+    stubRegistry(threeRepos());
+    renderRepositories();
+
+    await userEvent.click(
+      within(await rowOf("…/me/acme-web")).getByRole("button", {
+        name: "Actions for …/me/acme-web",
+      }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "View Deploy-state" }),
+    );
+
     expect(
-      await within(list).findByTitle("/home/me/payments-api"),
+      await screen.findByRole("heading", { name: "Deploy-state screen" }),
     ).toBeInTheDocument();
   });
 
-  it("reports a failed repo inside the picker while the rest still register", async () => {
-    stubServer({ rejecting: ["/home/me/acme-web"] });
-    renderView();
+  async function chooseUnregister(name: string) {
+    await userEvent.click(
+      within(await rowOf(name)).getByRole("button", {
+        name: `Actions for ${name}`,
+      }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Unregister" }),
+    );
+    return screen.findByRole("dialog", { name: `Unregister ${name}` });
+  }
 
-    await pickBothRepos();
+  // Unregister is confirmed (design-principles.md → Feedback), with the
+  // folder's fate stated before the reader agrees.
+  it("asks before unregistering, focus on Cancel, the folder's fate stated", async () => {
+    const { calls } = stubRegistry(threeRepos());
+    renderRepositories();
 
-    const report = await screen.findByRole("list", {
-      name: "Registration results",
+    const dialog = await chooseUnregister("…/me/old-site");
+
+    expect(dialog).toHaveTextContent(
+      "Maestro stops tracking this folder and no longer shows it on Deploy-state.",
+    );
+    expect(dialog).toHaveTextContent(
+      "The folder stays on disk, and everything deployed in it stays where it is.",
+    );
+    await waitFor(() =>
+      expect(
+        within(dialog).getByRole("button", { name: "Cancel" }),
+      ).toHaveFocus(),
+    );
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Cancel" }),
+    );
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(calls("/api/registry/repos", "DELETE")).toEqual([]);
+    expect(screen.getByText("/home/me/old-site")).toBeInTheDocument();
+  });
+
+  it("unregisters a repo by its listed path, drops its row and says so in a toast", async () => {
+    const { calls } = stubRegistry(threeRepos());
+    renderRepositories();
+    const dialog = await chooseUnregister("…/me/old-site");
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Unregister repository" }),
+    );
+
+    expect(
+      await screen.findByText("Unregistered …/me/old-site."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(calls("/api/registry/repos", "DELETE")).toEqual([
+      { path: "/home/me/old-site" },
+    ]);
+    await waitFor(() =>
+      expect(screen.queryByText("/home/me/old-site")).not.toBeInTheDocument(),
+    );
+  });
+
+  it("shows Unregistering… in the pressed control and cannot be closed while it runs", async () => {
+    let release = () => {};
+    stubRegistry({
+      ...threeRepos(),
+      holdUnregister: new Promise<void>((resolve) => {
+        release = resolve;
+      }),
     });
+    renderRepositories();
+    const dialog = await chooseUnregister("…/me/old-site");
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Unregister repository" }),
+    );
+
     expect(
-      within(report).getByText(/Skipped · That path names a file/i),
+      await within(dialog).findByRole("button", { name: "Unregistering…" }),
     ).toBeInTheDocument();
-    const list = screen.getByRole("list", { name: "Registered repositories" });
+    expect(statusRegion()).toHaveTextContent("Unregistering…");
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /^Close/ }),
+    );
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    release();
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+  });
+
+  it("states a failed unregister in the dialog that ran it, and the row stays", async () => {
+    stubRegistry({
+      ...threeRepos(),
+      unregisterFails: { status: 404, error: "not-registered" },
+    });
+    renderRepositories();
+    const dialog = await chooseUnregister("…/me/scratch");
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Unregister repository" }),
+    );
+
     expect(
-      await within(list).findByTitle("/home/me/payments-api"),
+      await within(dialog).findByText("Repository not unregistered"),
     ).toBeInTheDocument();
     expect(
-      within(list).queryByTitle("/home/me/acme-web"),
+      within(dialog).getByText(
+        "It is no longer on the list. Select Re-read Repositories to read the list again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("/home/me/scratch")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Unregistered …/me/scratch."),
     ).not.toBeInTheDocument();
-  });
-
-  it("hands the picker the repos already registered, so they cannot be picked twice", async () => {
-    stubServer({ alreadyRegistered: ["/home/me/acme-web"] });
-    renderView();
-
-    await userEvent.click(
-      await screen.findByRole("button", { name: REGISTER }),
-    );
-
-    expect(
-      await screen.findByRole("checkbox", { name: /acme-web/i }),
-    ).toBeDisabled();
-    expect(
-      screen.getByRole("checkbox", { name: /payments-api/i }),
-    ).toBeEnabled();
-  });
-
-  it("shows the connected inventory as unavailable in the picker", async () => {
-    stubServer({ includeInventory: true });
-    renderView();
-
-    await userEvent.click(
-      await screen.findByRole("button", { name: REGISTER }),
-    );
-
-    expect(
-      await screen.findByRole("checkbox", { name: /agent-harness/i }),
-    ).toBeDisabled();
-    expect(screen.getByText("Current Inventory")).toBeInTheDocument();
   });
 
   // The read rules (#1037): no retry, so the notice lands on the first
   // failure, and the rows the reader already had stay put.
   it("states a failed re-read after one failed request, rows still on screen", async () => {
-    let fail = false;
-    const fetchRegistry = vi.fn();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL) => {
-        if (!String(input).includes("/api/registry/repos")) {
-          return jsonResponse({ primitives: [], skipped: [] }, 200);
-        }
-        fetchRegistry();
-        return fail
-          ? jsonResponse({ error: "unreadable" }, 503)
-          : jsonResponse({ repos: [{ path: "/home/me/acme-web" }] }, 200);
-      }),
-    );
-    renderWithQuery(
-      <MemoryRouter initialEntries={["/repositories"]}>
-        <RepositoriesView />
-        <RereadTrigger />
-      </MemoryRouter>,
-    );
-    expect(await screen.findByTitle("/home/me/acme-web")).toBeInTheDocument();
+    const state = threeRepos();
+    const { calls } = stubRegistry(state);
+    renderRepositories();
+    expect(await rowOf("…/me/acme-web")).toBeInTheDocument();
 
-    fail = true;
+    state.readFails = 503;
     await userEvent.click(
-      screen.getByRole("button", { name: "Force re-read" }),
+      screen.getAllByRole("button", {
+        name: "Re-read Repositories",
+      })[0] as HTMLElement,
     );
 
     expect(
       await screen.findByText("Registered repositories not read"),
     ).toBeInTheDocument();
-    expect(screen.getByTitle("/home/me/acme-web")).toBeInTheDocument();
-    expect(fetchRegistry).toHaveBeenCalledTimes(2);
+    // Past the pressed re-read's skeleton, the rows the reader had return.
+    expect(await screen.findByText("/home/me/acme-web")).toBeInTheDocument();
+    expect(calls("/api/registry/repos", "GET")).toHaveLength(2);
   });
 
-  it("has no path input of its own — the picker's paste field is the one", async () => {
-    stubServer();
-    renderView();
+  it("recovers a failed read with the notice's own Re-read Repositories", async () => {
+    const state: FakeRegistry = { ...threeRepos(), readFails: 503 };
+    stubRegistry(state);
+    renderRepositories();
+    await screen.findByText("Registered repositories not read");
 
-    await screen.findByRole("button", { name: REGISTER });
-    expect(screen.queryByLabelText(/repo path/i)).not.toBeInTheDocument();
+    state.readFails = undefined;
+    // Two now: band 2's control and the notice's own action.
+    const [, noticeAction] = screen.getAllByRole("button", {
+      name: "Re-read Repositories",
+    });
+    await userEvent.click(noticeAction as HTMLElement);
+
+    expect(await rowOf("…/me/acme-web")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.queryByText("Registered repositories not read"),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it("has no path field outside the Register repository dialog", async () => {
+    stubRegistry(threeRepos());
+    renderRepositories();
+
+    await rowOf("…/me/acme-web");
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 });

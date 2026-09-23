@@ -11,6 +11,7 @@ import {
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { realRegistry } from "../helpers/real-registry";
+import { makeRepoDir } from "../helpers/repo-dir";
 import {
   rootPackageApm,
   rootPackageSelection,
@@ -43,7 +44,7 @@ describe("the tracer journey through one cockpit", () => {
   beforeEach(async () => {
     home = await mkdtemp(join(tmpdir(), "maestro-tracer-home-"));
     harness = await mkdtemp(join(tmpdir(), "maestro-tracer-harness-"));
-    repo = await mkdtemp(join(tmpdir(), "maestro-tracer-repo-"));
+    repo = await makeRepoDir("maestro-tracer-repo-");
     await mkdir(join(harness, ".apm", "skills", "tdd"), { recursive: true });
     await writeFile(join(harness, "apm.yml"), "dependencies: []\n", "utf8");
     await writeFile(
