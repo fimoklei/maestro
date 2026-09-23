@@ -207,10 +207,9 @@ if (smoke) {
     console.warn(UNAUTHENTICATED);
   }
 
-  // Everything the picker must reach is seeded under the redirected HOME —
-  // the browse ceiling is os.homedir() (ADR-0009), so anything beside it is
-  // invisible. Nothing is pre-registered: connect and registration stay UI
-  // use-cases the rehearsal exercises (ADR-0010).
+  // Everything the rehearsal needs is seeded under the redirected HOME, where
+  // the folder chooser opens (ADR-0032). Nothing is pre-registered: connect
+  // and registration stay UI use-cases the rehearsal exercises (ADR-0010).
   const seeded = seedSandbox({
     home: env.HOME,
     inventorySource: join(homedir(), "Projects", "agent-harness"),

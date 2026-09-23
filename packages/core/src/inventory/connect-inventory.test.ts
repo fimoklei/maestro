@@ -386,8 +386,8 @@ describe("ConnectInventory", () => {
       expect(clone.calls).toEqual([]);
     });
 
-    // The picker cannot reach past the home ceiling, and neither may a
-    // hand-made request: this is where a clone gets written (security.md).
+    // A hand-made request may not reach past the home ceiling: this is where
+    // a clone gets written (security.md).
     it("refuses a parent outside the home ceiling", async () => {
       const fs = new InMemoryFileSystem({
         directories: { "/etc": "/etc" },

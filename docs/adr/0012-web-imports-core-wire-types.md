@@ -1,7 +1,8 @@
 # ADR-0012 — `web` imports `core`'s wire types, and only its types (amends ADR-0002)
 
 - **Status:** Accepted — amends ADR-0002 (the three-package shape stands; `web`
-  gains a build-time edge to `core`)
+  gains a build-time edge to `core`). The browse types it cites as the example
+  were removed in #1080 (ADR-0032); the rule stands.
 - **Date:** 2026-07-18
 
 ## Context

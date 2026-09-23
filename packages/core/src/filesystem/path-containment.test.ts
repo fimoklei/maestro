@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { isWithinRoot } from "./browse-path";
+import { isWithinRoot } from "./path-containment";
 
-// The security predicate behind the browse capability (ADR-0009): given two
-// already-resolved absolute paths, is the candidate the root itself or nested
-// inside it? Both inputs are realpath output, so traversal and symlink escapes
-// have already collapsed to a plain prefix question here.
+// The security predicate behind every home-ceiling check: both inputs are
+// realpath output, so traversal and symlink escapes are already a plain prefix
+// question here.
 describe("isWithinRoot", () => {
   it("accepts the root itself", () => {
     expect(isWithinRoot("/home/user", "/home/user")).toBe(true);

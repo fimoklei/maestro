@@ -51,13 +51,9 @@ describe("default app config home", () => {
   });
 });
 
-// The production dependency factory wires five interchangeable async thunks —
-// config path, central inventory path, inventory path, browse ceiling, global
-// apm root. Their types are mutually assignable, so a mis-wiring compiles.
-// Every root below is a distinct sandbox directory, so each route can only
-// answer correctly through its own closure. HOME is sandboxed alongside
-// MAESTRO_HOME because the last two routes read the home directory and ~/.apm
-// (LEARNINGS · spike-isolation).
+// Four mutually assignable path thunks, so a mis-wiring compiles: each root is
+// a distinct sandbox dir, so a route answers correctly only through its own.
+// HOME is sandboxed because the last route reads ~/.apm (LEARNINGS · spike-isolation).
 const GLOBAL_LOCKFILE = readFileSync(
   new URL("../fixtures/apm.lock.global-single-tool.yaml", import.meta.url),
   "utf8",
@@ -79,9 +75,8 @@ describe("production wiring", () => {
     maestroHome = join(root, "maestro-home");
     inventory = join(root, "inventory");
 
-    // The browse ceiling, the global apm root and the tool-presence probe all
-    // hang off this one sandbox home.
-    await mkdir(join(home, "projects"), { recursive: true });
+    // The global apm root and the tool-presence probe both hang off this one
+    // sandbox home.
     await mkdir(join(home, ".apm"), { recursive: true });
     await writeFile(join(home, ".claude.json"), "{}", "utf8");
     await writeFile(
@@ -146,23 +141,16 @@ describe("production wiring", () => {
     expect(await res.json()).toEqual({ error: "unreadable" });
   });
 
-  it("browses the home directory as the picker's ceiling", async () => {
+  // ADR-0032 retired the listing route; nothing on disk is listed any more.
+  it("answers the retired folder listing route with the catch-all", async () => {
     const res = await app.request("/api/filesystem/children", {
       method: "POST",
       headers: LOCAL,
       body: JSON.stringify({ path: home }),
     });
 
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as {
-      path: string;
-      parent?: string;
-      entries: { name: string }[];
-    };
-    expect(body.path).toBe(home);
-    // Absent `parent` is the "up is disabled" contract: this is the ceiling.
-    expect(body.parent).toBeUndefined();
-    expect(body.entries.map((entry) => entry.name)).toContain("projects");
+    expect(res.status).toBe(404);
+    expect(await res.text()).toBe("404 Not Found");
   });
 
   it("reads the global deploy-state from the home apm root", async () => {

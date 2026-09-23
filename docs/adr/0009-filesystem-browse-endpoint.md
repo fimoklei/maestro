@@ -1,7 +1,8 @@
 # ADR-0009 — Filesystem-browse endpoint for path selection
 
-- **Status:** Accepted — overrides roadmap `01.5`'s "paste-a-path only"
-  deferral, on the owner's deliberate call.
+- **Status:** Superseded by ADR-0032 (2026-09-20); the listing route and the
+  browse dialog were removed in #1080. Was: Accepted — overrides roadmap
+  `01.5`'s "paste-a-path only" deferral, on the owner's deliberate call.
 - **Date:** 2026-06-29
 
 ## Context

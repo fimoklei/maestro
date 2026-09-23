@@ -1,5 +1,4 @@
 import type {
-  BrowseFilesystem,
   ChooseFolder,
   ConnectInventory,
   DeleteLocalSkill,
@@ -38,7 +37,6 @@ export type AppDeps = {
   proposals: ProposalActions;
   connect: ConnectInventory;
   scaffold: ScaffoldHarness;
-  browse: BrowseFilesystem;
   // Its chooser is null on a platform with no helper (ADR-0032 §7).
   folderChooser: ChooseFolder;
   // Serves both per-repo and global routes, so tool presence is required —

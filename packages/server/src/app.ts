@@ -1,7 +1,6 @@
 import { homedir } from "node:os";
 import {
   ApmCliDriver,
-  BrowseFilesystem,
   CheckVersionDrift,
   ChooseFolder,
   ConfigStore,
@@ -301,8 +300,7 @@ function realDeps(): AppDeps {
     defaultBranch: resolveDefaultBranch,
     isRepositoryRoot,
     probeHead,
-    // The default ceiling, which the picker can move (#555). Browsing uses the
-    // same one, so a cloned Harness lands where it can reach it (#554).
+    // The default clone parent, which the author can move (#555).
     homeRoot: () => homedir(),
     clone: new GitCloneAdapter(),
   });
@@ -316,7 +314,7 @@ function realDeps(): AppDeps {
     importSkill: new ImportSkill({
       resolveRoot: harnessRoot,
       fs,
-      // The picker's ceiling, so what can be imported is what can be browsed.
+      // The home ceiling every picked path is allowlisted against.
       homeRoot: () => homedir(),
       copy: new CopySkillFolder({ fs: copyTreeFs }),
       // The same reader the copy walks with, for the one mode bit git tracks.
@@ -412,7 +410,6 @@ function realDeps(): AppDeps {
       originUrl: readConfiguredGitOriginUrl,
       connect: (path) => connect.connect(path),
     }),
-    browse: new BrowseFilesystem({ fs, homeRoot: () => homedir() }),
     // Windows gets its adapter once its invocation is measured (ADR-0032 §4);
     // until then it has no chooser, like Linux.
     folderChooser: new ChooseFolder({

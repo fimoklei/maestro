@@ -17,13 +17,9 @@ Each worktree serves on its own pair of ports, derived from its path — there i
 
 Owning it at start does not settle it. → Run `pnpm smoke:check` before each screenshot; it re-asks who holds *this* worktree's two ports — including the one the browser renders from — and seeds nothing, so it is safe to repeat.
 
-## Wrong path: the browse ceiling is HOME
-
-The filesystem-browse endpoint's root ceiling is `os.homedir()` (ADR-0009). Under `pnpm smoke` that's `.maestro-sandbox/home` — a seeded repo placed beside it, not under it, makes the picker look empty. → When a browse flow looks empty, check the path sits under sandbox `HOME`, not beside it.
-
 ## Wrong session: leaked browser state
 
-`localStorage` is scoped to the origin, so a worktree keeps its own — but a value left by an earlier run of *this* worktree (e.g. the last browsed folder) survives a restart and reads as a product bug. → Clear it before trusting: `agent-browser eval "localStorage.clear(); location.reload()"`.
+`localStorage` is scoped to the origin, so a worktree keeps its own — but a value left by an earlier run of *this* worktree survives a restart and reads as a product bug. → Clear it before trusting: `agent-browser eval "localStorage.clear(); location.reload()"`.
 
 ## Wrong signal: chained commands flake
 
