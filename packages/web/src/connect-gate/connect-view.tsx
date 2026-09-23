@@ -25,11 +25,7 @@ export function ConnectView() {
   }, [blocked, config.isSuccess, navigate]);
 
   if (blocked) {
-    return (
-      <p className="sr-only">
-        {LOADING_INVENTORY_CONNECTION}
-      </p>
-    );
+    return <p className="sr-only">{LOADING_INVENTORY_CONNECTION}</p>;
   }
 
   return (
