@@ -4,7 +4,6 @@
 // (ADR-0025).
 
 import type {
-  BrowseError,
   ChooseFolderError,
   ConnectInventoryError,
   DeleteLocalSkillError,
@@ -360,7 +359,7 @@ export const restoreErrorResponses: ErrorTable<RestoreSkillError> = {
 export const importErrorResponses: ErrorTable<ImportSkillError> = {
   "not-configured": { status: 409 },
   "source-unreadable": { status: 422 },
-  // 403 like browse: the same ceiling, and the reply names no path.
+  // 403: outside the home ceiling, and the reply names no path.
   "outside-root": { status: 403 },
   "deployed-copy": { status: 409 },
   "missing-manifest": { status: 422 },
@@ -381,19 +380,9 @@ export const importErrorResponses: ErrorTable<ImportSkillError> = {
   "destination-unsafe": { status: 409 },
   // The harness moved under the author, like name-taken and source-changed.
   "harness-copy-uncommitted": { status: 409 },
-  // In bounds and connected, but unreadable — 422, like a browse that fails.
+  // In bounds and connected, but unreadable — 422.
   "harness-unreadable": { status: 422 },
   "nothing-to-carry-back": { status: 409 },
-};
-
-// outside-root is 403 (the info-disclosure boundary); the reply names no path
-// (security.md). The sentences live in `shell/browse-notice.ts`.
-export const browseErrorResponses: ErrorTable<BrowseError> = {
-  "outside-root": { status: 403 },
-  "not-found": { status: 404 },
-  "not-a-directory": { status: 400 },
-  // In bounds and a directory, but unreadable — 422, not 403/404.
-  unreadable: { status: 422 },
 };
 
 // The sentences live in `ui/path-field-copy.ts`. 502 for a failure: the helper

@@ -10,8 +10,8 @@ import { join } from "node:path";
 const PROJECTS_DIR = "Projects";
 const INVENTORY_DIR = "agent-harness";
 
-// A mix the picker can visibly tell apart: git repos, a plain directory, and a
-// name with a space (ADR-0009's per-entry facts have something to report).
+// Git repos, a plain directory, and a name with a space: the cases a picked
+// path has to survive.
 const CANDIDATES = [
   { name: "checkout-service", git: true },
   { name: "design-system", git: true },

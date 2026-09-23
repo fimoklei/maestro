@@ -32,13 +32,11 @@ function stubApi({
   githubRepository = "fimoklei/agent-harness",
   primitives = () => [] as unknown[],
   connect,
-  browse,
 }: {
   configPath?: string | null;
   githubRepository?: string | null;
   primitives?: () => unknown[];
   connect?: () => Response;
-  browse?: () => Response;
 } = {}) {
   const fetchMock = vi.fn(
     async (input: RequestInfo | URL, _init?: RequestInit) => {
@@ -51,18 +49,6 @@ function stubApi({
       }
       if (url.startsWith("/api/inventory/primitives")) {
         return jsonResponse({ primitives: primitives() }, 200);
-      }
-      if (url.startsWith("/api/filesystem/children")) {
-        return browse
-          ? browse()
-          : jsonResponse(
-              {
-                path: "/home/me",
-                breadcrumbs: [{ name: "~", path: "/home/me" }],
-                entries: [],
-              },
-              200,
-            );
       }
       return connect
         ? connect()
@@ -202,14 +188,7 @@ describe("InventorySourceView", () => {
             resolvePrimitives = resolve;
           });
         }
-        return jsonResponse(
-          {
-            path: "/home/me",
-            breadcrumbs: [{ name: "~", path: "/home/me" }],
-            entries: [],
-          },
-          200,
-        );
+        return jsonResponse({}, 200);
       }),
     );
     renderView();
@@ -252,14 +231,7 @@ describe("InventorySourceView", () => {
             resolveSecond = resolve;
           });
         }
-        return jsonResponse(
-          {
-            path: "/home/me",
-            breadcrumbs: [{ name: "~", path: "/home/me" }],
-            entries: [],
-          },
-          200,
-        );
+        return jsonResponse({}, 200);
       }),
     );
     renderView();
@@ -319,14 +291,7 @@ describe("InventorySourceView", () => {
         if (url.startsWith("/api/inventory/primitives")) {
           return new Promise<Response>(() => {});
         }
-        return jsonResponse(
-          {
-            path: "/home/me",
-            breadcrumbs: [{ name: "~", path: "/home/me" }],
-            entries: [],
-          },
-          200,
-        );
+        return jsonResponse({}, 200);
       }),
     );
     renderView();
@@ -349,14 +314,7 @@ describe("InventorySourceView", () => {
         if (url.startsWith("/api/inventory/primitives")) {
           return jsonResponse({ message: "cannot read inventory" }, 500);
         }
-        return jsonResponse(
-          {
-            path: "/home/me",
-            breadcrumbs: [{ name: "~", path: "/home/me" }],
-            entries: [],
-          },
-          200,
-        );
+        return jsonResponse({}, 200);
       }),
     );
     renderView();
@@ -393,14 +351,7 @@ describe("InventorySourceView", () => {
               )
             : jsonResponse({ message: "cannot read inventory" }, 500);
         }
-        return jsonResponse(
-          {
-            path: "/home/me",
-            breadcrumbs: [{ name: "~", path: "/home/me" }],
-            entries: [],
-          },
-          200,
-        );
+        return jsonResponse({}, 200);
       }),
     );
     renderView();
@@ -437,14 +388,7 @@ describe("InventorySourceView", () => {
         if (url.startsWith("/api/inventory/primitives")) {
           return jsonResponse({ message: "cannot read inventory" }, 500);
         }
-        return jsonResponse(
-          {
-            path: "/home/me",
-            breadcrumbs: [{ name: "~", path: "/home/me" }],
-            entries: [],
-          },
-          200,
-        );
+        return jsonResponse({}, 200);
       }),
     );
     renderView();
@@ -478,14 +422,7 @@ describe("InventorySourceView", () => {
             resolveRetry = resolve;
           });
         }
-        return jsonResponse(
-          {
-            path: "/home/me",
-            breadcrumbs: [{ name: "~", path: "/home/me" }],
-            entries: [],
-          },
-          200,
-        );
+        return jsonResponse({}, 200);
       }),
     );
     renderView();
@@ -535,14 +472,7 @@ describe("InventorySourceView", () => {
             resolveRetry = resolve;
           });
         }
-        return jsonResponse(
-          {
-            path: "/home/me",
-            breadcrumbs: [{ name: "~", path: "/home/me" }],
-            entries: [],
-          },
-          200,
-        );
+        return jsonResponse({}, 200);
       }),
     );
     renderView();
@@ -589,16 +519,6 @@ describe("InventorySourceView", () => {
         }
         if (url.startsWith("/api/inventory/primitives")) {
           return jsonResponse({ primitives: [skill("tdd")] }, 200);
-        }
-        if (url.startsWith("/api/filesystem/children")) {
-          return jsonResponse(
-            {
-              path: "/home/me",
-              breadcrumbs: [{ name: "~", path: "/home/me" }],
-              entries: [],
-            },
-            200,
-          );
         }
         const body = JSON.parse(String(init?.body)) as { path: string };
         configPath = body.path;

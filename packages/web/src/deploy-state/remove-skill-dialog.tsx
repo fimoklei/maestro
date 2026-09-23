@@ -212,8 +212,8 @@ export function RemoveSkillDialog({
     : unledgered
       ? null
       : [leadInId, ...detectedRows.map((row) => row.id)].join(" ");
-  // Ties the disabled reason to the control (same wiring as browse dialog's
-  // `↑ up`). Only for the running check — a refusal removes the control instead.
+  // Ties the disabled reason to the control. Only for the running check — a
+  // refusal removes the control instead.
   const blockedId = awaitingCheck ? `${dialogId}-blocked` : undefined;
   // The outline states the panel's worst news, and a cost is now a property of
   // the rows rather than of a block beside them.

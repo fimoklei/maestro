@@ -2,7 +2,6 @@ import { InFlightLocks, InventoryReader, NodeFileSystem } from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { describe, expect, it } from "vitest";
 import { realRegistry } from "../helpers/real-registry";
-import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
@@ -47,7 +46,7 @@ describe("POST body parsing", () => {
 
   const routes = [
     { path: "/api/inventory/connect", shape: PATH_SHAPE },
-    { path: "/api/filesystem/children", shape: PATH_SHAPE },
+    { path: "/api/folder-chooser", shape: PATH_SHAPE },
     { path: "/api/registry/repos", shape: PATH_SHAPE },
     { path: "/api/deploy", shape: TARGET_SHAPE },
     { path: "/api/deploy/remove", shape: TARGET_SHAPE },
@@ -75,7 +74,6 @@ describe("POST body parsing", () => {
       ...stubPromotes(),
       connect: stubConnect(),
       scaffold: stubScaffold(),
-      browse: stubBrowse(),
       folderChooser: stubFolderChooser(),
       deployState: stubDeployState({ fs }),
       deploy: stubDeploy({ inventory, registry, locks }),

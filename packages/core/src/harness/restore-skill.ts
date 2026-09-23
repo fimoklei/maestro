@@ -3,8 +3,8 @@
 // exception to "authors edit folders outside the cockpit" (ADR-0030, #888).
 import { join } from "node:path";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
-import { isWithinRoot } from "../filesystem/browse-path";
 import type { CopyTreeFsPort } from "../filesystem/copy-tree-fs";
+import { isWithinRoot } from "../filesystem/path-containment";
 import { HARNESS_SKILLS_DIR } from "../inventory/harness-layout";
 import type { FileSystemPort } from "../registry/file-system";
 import { isPromotableSkillName } from "./promote-branch";

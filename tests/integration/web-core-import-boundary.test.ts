@@ -18,7 +18,7 @@ describe("valueImportsFromCore", () => {
   });
 
   it("flags a value import from core", () => {
-    const src = `import { BrowseFilesystem } from "@maestro/core";`;
+    const src = `import { ConnectInventory } from "@maestro/core";`;
     expect(valueImportsFromCore(src)).toHaveLength(1);
   });
 
@@ -41,7 +41,7 @@ describe("valueImportsFromCore", () => {
     const src = [
       "import type {",
       "  VersionDrift,",
-      "  BrowseCrumb,",
+      "  DriftReading,",
       '} from "@maestro/core";',
     ].join("\n");
     expect(valueImportsFromCore(src)).toEqual([]);
@@ -55,7 +55,7 @@ describe("valueImportsFromCore", () => {
   it("flags the value import while leaving a sibling type import alone", () => {
     const src = [
       'import type { VersionDrift } from "@maestro/core";',
-      'import { BrowseFilesystem } from "@maestro/core";',
+      'import { ConnectInventory } from "@maestro/core";',
     ].join("\n");
     expect(valueImportsFromCore(src)).toHaveLength(1);
   });
@@ -76,7 +76,7 @@ describe("valueImportsFromCore", () => {
   });
 
   it("ignores a core mention inside a line comment", () => {
-    const src = `// import { BrowseFilesystem } from "@maestro/core";`;
+    const src = `// import { ConnectInventory } from "@maestro/core";`;
     expect(valueImportsFromCore(src)).toEqual([]);
   });
 
@@ -123,7 +123,7 @@ describe("valueImportsFromCore", () => {
   const WEB_FILE = "/repo/packages/web/src/drift/use-thing.ts";
 
   it("flags a relative value import that resolves into packages/core", () => {
-    const src = `import { BrowseFilesystem } from "../../../core/src/index";`;
+    const src = `import { ConnectInventory } from "../../../core/src/index";`;
     expect(valueImportsFromCore(src, WEB_FILE)).toHaveLength(1);
   });
 
@@ -138,7 +138,7 @@ describe("valueImportsFromCore", () => {
   });
 
   it("ignores relative imports when no file path is given", () => {
-    const src = `import { BrowseFilesystem } from "../../../core/src/index";`;
+    const src = `import { ConnectInventory } from "../../../core/src/index";`;
     expect(valueImportsFromCore(src)).toEqual([]);
   });
 

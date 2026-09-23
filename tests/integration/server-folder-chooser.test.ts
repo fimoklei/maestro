@@ -15,7 +15,6 @@ import {
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { realRegistry } from "../helpers/real-registry";
-import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
@@ -87,7 +86,6 @@ describe("folder chooser HTTP route", () => {
       retryOperation: stubRetryOperation({ registry, locks }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
-      browse: stubBrowse(),
       folderChooser: new ChooseFolder({ chooser, fs, homeRoot: () => home }),
       update: stubUpdate(),
       enforceOriginHost: false,

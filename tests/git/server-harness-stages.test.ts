@@ -29,7 +29,6 @@ import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
 import { realRegistry } from "../helpers/real-registry";
-import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
@@ -170,7 +169,6 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
       resolveGlobalRoot: () => "/nonexistent-apm-root",
       connect: stubConnect(),
       scaffold: stubScaffold(),
-      browse: stubBrowse(),
       folderChooser: stubFolderChooser(),
       update: stubUpdate(),
       enforceOriginHost: false,

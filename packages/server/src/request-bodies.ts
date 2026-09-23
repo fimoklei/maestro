@@ -14,8 +14,6 @@ export const connectBodySchema = z.object({
   parent: z.string().optional(),
 });
 
-export const browseBodySchema = z.object({ path: z.string() });
-
 // The field's current value: the folder the chooser opens on (ADR-0032 §2).
 export const chooseFolderBodySchema = z.object({ path: z.string() });
 

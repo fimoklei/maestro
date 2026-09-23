@@ -19,7 +19,6 @@ import {
   rootPackageLocation,
   rootPackageSelection,
 } from "../helpers/root-package-apm";
-import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
@@ -130,7 +129,6 @@ describe("update HTTP journey", () => {
       ...stubPromotes(),
       connect: stubConnect(),
       scaffold: stubScaffold(),
-      browse: stubBrowse(),
       folderChooser: stubFolderChooser(),
       update: new UpdateTarget({
         registry,

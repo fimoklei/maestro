@@ -1,9 +1,9 @@
 // One skill folder copied whole or not at all: judged before written, staged,
 // and exposed as one rename (#573).
 import { join, relative, sep } from "node:path";
-import { isWithinRoot } from "./browse-path";
 import type { CopyEntryFacts, CopyTreeFsPort } from "./copy-tree-fs";
 import { isOperatingSystemFile } from "./operating-system-files";
+import { isWithinRoot } from "./path-containment";
 
 const MAX_FILES = 1000;
 const MAX_BYTES = 50 * 1024 * 1024;

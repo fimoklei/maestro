@@ -16,7 +16,6 @@ import {
   rootPackageApm,
   rootPackageSelection,
 } from "../helpers/root-package-apm";
-import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubRetryOperation } from "../helpers/stub-deploy";
 import { stubDrift } from "../helpers/stub-drift";
@@ -136,7 +135,6 @@ describe("the tracer journey through one cockpit", () => {
       ...stubPromotes(),
       connect: stubConnect(),
       scaffold: stubScaffold(),
-      browse: stubBrowse(),
       folderChooser: stubFolderChooser(),
       update: stubUpdate(),
       enforceOriginHost: false,

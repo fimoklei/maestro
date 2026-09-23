@@ -9,13 +9,13 @@ import {
   DEPLOY_SKILL_PREFIXES,
   isRootPackage,
 } from "../deploy-state/root-package-skills";
-import { isWithinRoot } from "../filesystem/browse-path";
 import type {
   CopySkillFolderError,
   CopySkillFolderInput,
   CopySkillFolderResult,
 } from "../filesystem/copy-skill-folder";
 import type { CopyTreeFsPort } from "../filesystem/copy-tree-fs";
+import { isWithinRoot } from "../filesystem/path-containment";
 import { type SameTreeFs, sameTree } from "../filesystem/same-tree";
 import { HARNESS_SKILLS_DIR } from "../inventory/harness-layout";
 import {
@@ -120,8 +120,8 @@ export class ImportSkill {
     // Mode bits, which FileSystemPort does not carry: an executable bit is a
     // change git records, so a comparison blind to it would refuse a real one.
     facts: Pick<CopyTreeFsPort, "describe">;
-    // The same ceiling the picker browses under: an import takes a path from
-    // the browser, so it is allowlisted like every other one (security.md).
+    // An import takes a path from the browser, so it is allowlisted against
+    // the home ceiling like every other one (security.md).
     homeRoot: () => string;
     copy: { copy(input: CopyRequest): Promise<CopySkillFolderResult> };
     // The harness's own git: where it was cloned from, which is what a
@@ -423,8 +423,8 @@ export class ImportSkill {
     return parsed.ok ? parsed.entries : [];
   }
 
-  // Canonical on both sides, so a symlinked home (/var -> /private/var) is the
-  // same ceiling the browse route answers for.
+  // Canonical on both sides, so a symlinked home (/var -> /private/var) is
+  // still one ceiling.
   private async withinHome(source: string): Promise<boolean> {
     try {
       return isWithinRoot(

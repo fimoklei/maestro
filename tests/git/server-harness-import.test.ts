@@ -27,7 +27,6 @@ import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { initGitClone } from "../helpers/git-fixture";
 import { realRegistry } from "../helpers/real-registry";
-import { stubBrowse } from "../helpers/stub-browse";
 import { stubConnect } from "../helpers/stub-connect";
 import { stubDeploy, stubRetryOperation } from "../helpers/stub-deploy";
 import { stubDeployState } from "../helpers/stub-deploy-state";
@@ -105,7 +104,6 @@ describe("harness import HTTP route", () => {
       retryOperation: stubRetryOperation({ registry, locks }),
       drift: stubDrift({ registry }),
       resolveGlobalRoot: () => "/nonexistent-apm-root",
-      browse: stubBrowse(),
       folderChooser: stubFolderChooser(),
       update: stubUpdate(),
       enforceOriginHost: false,
@@ -288,7 +286,7 @@ describe("harness import HTTP route", () => {
     expect(await readFile(landed, "utf8")).toContain("name: reviewer");
   });
 
-  it("refuses a folder outside the ceiling the picker browses", async () => {
+  it("refuses a folder outside the home ceiling", async () => {
     const app = makeApp();
 
     const response = await importSkill(app, { source: "/etc" });

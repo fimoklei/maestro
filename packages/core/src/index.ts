@@ -97,14 +97,6 @@ export {
   type ReadDriftEntry,
 } from "./drift/read-drift";
 export {
-  type BrowseCrumb,
-  type BrowseEntry,
-  type BrowseEntryFacts,
-  type BrowseError,
-  BrowseFilesystem,
-  type BrowseSuccess,
-} from "./filesystem/browse-filesystem";
-export {
   CopySkillFolder,
   type CopySkillFolderError,
   type CopySkillFolderInput,

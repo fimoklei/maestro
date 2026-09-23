@@ -3,7 +3,7 @@
 // Errors are typed and path-free (security.md).
 import { join } from "node:path";
 import { parseGitOrigin } from "../deploy/git-origin";
-import { isWithinRoot } from "../filesystem/browse-path";
+import { isWithinRoot } from "../filesystem/path-containment";
 import type { ConfigStore } from "../registry/config-store";
 import type { FileSystemPort } from "../registry/file-system";
 import {
@@ -73,8 +73,7 @@ export class ConnectInventory {
     // Separates a usable clone already on disk from the shell an interrupted
     // one leaves behind (#555).
     probeHead: (path: string) => Promise<HeadProbe>;
-    // The same ceiling browsing uses, so a proposed clone destination sits
-    // where the picker can reach it (#554).
+    // The ceiling a proposed clone destination must sit under (#554).
     homeRoot: () => string;
     clone: CloneRepositoryPort;
     // Where a `scaffoldable` refusal records the path it just offered, which
@@ -155,7 +154,7 @@ export class ConnectInventory {
   }
 
   // The chosen parent crosses a trust boundary and is where a clone gets
-  // written, so it runs the picker's own order: refuse lexically outside the
+  // written, so it runs the ceiling check's order: refuse lexically outside the
   // home ceiling before touching disk, resolve, then check containment again
   // against the canonical ceiling (ADR-0009, security.md).
   private async resolveParent(chosen?: string): Promise<string | null> {
@@ -195,8 +194,8 @@ export class ConnectInventory {
     const origin = originUrl === null ? null : parseGitOrigin(originUrl);
 
     // A real file, so a directory or a symlink wearing the manifest's name is
-    // refused here exactly as the picker refuses it (#148). Repository truth is
-    // read before the offer, so an arbitrary folder never gets one (#556).
+    // refused here (#148). Repository truth is read before the offer, so an
+    // arbitrary folder never gets one (#556).
     const manifest = join(validated.path, HARNESS_MANIFEST);
     if (!(await this.fs.isFileEntry(manifest))) {
       if (origin === null || !(await this.isRepositoryRoot(validated.path))) {
