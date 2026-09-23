@@ -1,18 +1,19 @@
 import { useState } from "react";
+import { ConnectFlow } from "../connect-gate/connect-flow";
 import { INVENTORY_NOT_READ } from "../inventory/inventory-copy";
 import { useInventory, useInventoryConfig } from "../inventory/use-inventory";
+import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { Fact } from "../ui/fact";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { Panel } from "../ui/panel";
-import { ConnectInventoryPanel } from "./connect-inventory-panel";
 import { primitiveCountLabel } from "./primitive-count-label";
 import { targetLabel } from "./target-label";
 import { useRereadInventory } from "./use-reread-inventory";
 
 // Steady-state ⚙ view (#98). Offline read-on-demand: no sync job. "Change
-// Harness location" flips the same card to ConnectInventoryPanel (PRD #93).
+// Harness location" flips the same card to ConnectFlow (PRD #93).
 
 // Shared by skeleton and settled view so the loading frame can't drift and
 // reintroduce the layout jump this view exists to prevent (#231).
@@ -59,10 +60,11 @@ export function InventorySourceView() {
     >
       <Card padded className={`${SOURCE_CARD_WIDTH} m-panel`}>
         {isChanging ? (
-          <ConnectInventoryPanel
+          <ConnectFlow
             initialPath={currentPath ?? ""}
             onSuccess={() => setIsChanging(false)}
             submitLabel="Set Harness location"
+            busyLabel={ACTIONS.setLocation.busy}
             secondaryAction={
               <Button
                 type="button"

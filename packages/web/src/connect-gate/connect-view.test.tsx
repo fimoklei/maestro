@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -11,30 +11,24 @@ afterEach(() => {
 
 function stubApi({
   connect,
-  browse,
+  picked = "/home/me/agent-harness",
   configuredPath = null,
 }: {
   connect?: () => Response;
-  browse?: () => Response;
+  /** What the system folder chooser returns; null is a cancel. */
+  picked?: string | null;
   configuredPath?: string | null;
 } = {}) {
   const fetchMock = vi.fn(
-    async (input: RequestInfo | URL, _init?: RequestInit) => {
+    async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.startsWith("/api/inventory/config")) {
         return jsonResponse({ inventoryPath: configuredPath }, 200);
       }
-      if (url.startsWith("/api/filesystem/children")) {
-        return browse
-          ? browse()
-          : jsonResponse(
-              {
-                path: "/home/me",
-                breadcrumbs: [{ name: "~", path: "/home/me" }],
-                entries: [],
-              },
-              200,
-            );
+      if (url.startsWith("/api/folder-chooser")) {
+        return init?.method === "POST"
+          ? jsonResponse({ path: picked }, 200)
+          : jsonResponse({ available: true }, 200);
       }
       return connect
         ? connect()
@@ -156,9 +150,16 @@ describe("ConnectView", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/no apm\.yml/i);
     expect(screen.queryByText("deploy-state-landed")).not.toBeInTheDocument();
+    // A plain refusal carries no action: neither the offer nor a recovery.
+    expect(
+      screen.queryByRole("button", { name: "Scaffold the Harness" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /choose another/i }),
+    ).not.toBeInTheDocument();
   });
 
-  it("shows the no-usable-origin card and reopens browse from its call to action", async () => {
+  it("shows the no-usable-origin notice and opens the folder chooser from its action", async () => {
     stubApi({
       connect: () =>
         jsonResponse(
@@ -184,41 +185,71 @@ describe("ConnectView", () => {
       /No GitHub origin/i,
     );
     await userEvent.click(
-      screen.getByRole("button", { name: /Choose another clone/i }),
+      screen.getByRole("button", { name: "Choose another clone" }),
     );
-    expect(
-      await screen.findByRole("button", { name: /use this folder/i }),
-    ).toBeInTheDocument();
+    expect(await screen.findByLabelText(/inventory path/i)).toHaveValue(
+      "/home/me/agent-harness",
+    );
   });
 
-  it("fills the path field from a folder picked via browse", async () => {
-    stubApi({
-      browse: () =>
-        jsonResponse(
-          {
-            path: "/home/me/agent-harness",
-            parent: "/home/me",
-            breadcrumbs: [
-              { name: "~", path: "/home/me" },
-              { name: "agent-harness", path: "/home/me/agent-harness" },
-            ],
-            entries: [],
-          },
-          200,
-        ),
-    });
+  it("fills the path field from a folder picked in the system chooser", async () => {
+    stubApi();
     renderView();
 
     await userEvent.click(
-      await screen.findByRole("button", { name: /browse/i }),
-    );
-    await userEvent.click(
-      await screen.findByRole("button", { name: /use this folder/i }),
+      await screen.findByRole("button", { name: "Browse" }),
     );
 
-    expect(screen.getByLabelText(/inventory path/i)).toHaveValue(
-      "/home/me/agent-harness",
+    await waitFor(() =>
+      expect(screen.getByLabelText(/inventory path/i)).toHaveValue(
+        "/home/me/agent-harness",
+      ),
     );
+  });
+
+  it("leaves the field as it was when the chooser is cancelled", async () => {
+    stubApi({ picked: null });
+    renderView();
+
+    await userEvent.type(
+      await screen.findByLabelText(/inventory path/i),
+      "/home/me/typed",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Browse" }));
+
+    expect(screen.getByLabelText(/inventory path/i)).toHaveValue(
+      "/home/me/typed",
+    );
+  });
+
+  // A clone folder set for a URL does not ride along once the path is local:
+  // the reader can no longer see it, so its refusal would have no field.
+  it("sends no clone folder for a local path", async () => {
+    const fetchMock = stubApi({ picked: "/home/me/Work" });
+    renderView();
+
+    const path = await screen.findByLabelText(/inventory path/i);
+    await userEvent.type(path, "https://github.com/fimoklei/agent-harness");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Change folder…" }),
+    );
+    await userEvent.type(
+      screen.getByLabelText("Folder for the Harness"),
+      "/home/me/Work",
+    );
+    await userEvent.clear(path);
+    await userEvent.type(path, "/home/me/agent-harness");
+    await userEvent.click(
+      screen.getByRole("button", { name: /^connect inventory$/i }),
+    );
+
+    await screen.findByText(/7 primitives found/i);
+    const connectCall = fetchMock.mock.calls.find((call) =>
+      String(call[0]).startsWith("/api/inventory/connect"),
+    );
+    expect(JSON.parse(String(connectCall?.[1]?.body))).toEqual({
+      path: "/home/me/agent-harness",
+    });
   });
 
   it("redirects an already-configured user away instead of showing the connect form", async () => {

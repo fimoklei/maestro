@@ -32,9 +32,7 @@ export function FirstRunGate() {
       return <ConfigUnreachableNotice onRetry={() => config.refetch()} />;
     }
     if (!firstRun) {
-      return (
-        <p className="text-dim text-tag">{LOADING_INVENTORY_CONNECTION}</p>
-      );
+      return <p className="sr-only">{LOADING_INVENTORY_CONNECTION}</p>;
     }
   }
 

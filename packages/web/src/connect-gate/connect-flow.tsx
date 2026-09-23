@@ -1,0 +1,134 @@
+import { type ReactNode, useState } from "react";
+import {
+  connectErrorCode,
+  scaffoldOfferPath,
+} from "../inventory/connect-error-message";
+import { connectNotice, scaffoldNotice } from "../inventory/connect-notice";
+import {
+  type ConnectResponse,
+  useConnectInventory,
+} from "../inventory/use-connect-inventory";
+import { useScaffoldHarness } from "../inventory/use-scaffold-harness";
+import { previewCloneChild } from "../shell/clone-destination-preview";
+import { ACTIONS } from "../ui/busy-copy";
+import { useFolderChooser } from "../ui/use-folder-chooser";
+import { ConnectForm } from "./connect-form";
+
+// The refusals of the clone folder: stated under that field, not the path's,
+// and cleared by choosing another folder there (#1013).
+const CLONE_REFUSALS = new Set([
+  "invalid-parent",
+  "destination-occupied",
+  "destination-partial-clone",
+]);
+
+// Shared by the connect gate and the ⚙ re-point step. renderSuccess is a
+// slot, not a flag — supply it for an in-place confirmation, omit it to lean
+// on onSuccess alone (ADR-0015).
+type ConnectFlowProps = {
+  /** Seeds the path field once, at mount. */
+  initialPath?: string;
+  onSuccess?: (result: ConnectResponse) => void;
+  renderSuccess?: (result: ConnectResponse) => ReactNode;
+  submitLabel?: string;
+  busyLabel?: string;
+  secondaryAction?: ReactNode;
+};
+
+export function ConnectFlow({
+  initialPath = "",
+  onSuccess,
+  renderSuccess,
+  submitLabel,
+  busyLabel,
+  secondaryAction,
+}: ConnectFlowProps) {
+  const connect = useConnectInventory();
+  const scaffold = useScaffoldHarness();
+  const pathChooser = useFolderChooser();
+  const cloneChooser = useFolderChooser();
+  const [path, setPath] = useState(initialPath);
+  const [cloneParent, setCloneParent] = useState("");
+  const [cloneOpen, setCloneOpen] = useState(false);
+
+  function handleSubmit() {
+    scaffold.reset();
+    // Only a URL is cloned; a folder the reader can no longer see stays home.
+    const parent = previewCloneChild(path) === null ? "" : cloneParent.trim();
+    connect.mutate(
+      // Omitted, the server clones into the home folder (#555).
+      { path, parent: parent === "" ? undefined : parent },
+      { onSuccess: (result) => onSuccess?.(result) },
+    );
+  }
+
+  // Both routes end the same way, so the success slot does not care which
+  // mutation got there (#556).
+  const succeeded = scaffold.isSuccess ? scaffold.data : connect.data;
+  if (succeeded && renderSuccess) return renderSuccess(succeeded);
+
+  const code = connectErrorCode(connect.error) ?? "";
+  const cloneRefused = scaffold.error === null && CLONE_REFUSALS.has(code);
+  // A failed scaffold replaces the offer with what went wrong; the field stays
+  // editable so another path can be submitted.
+  const offerPath = scaffold.error ? null : scaffoldOfferPath(connect.error);
+
+  const cloneNotice = cloneRefused
+    ? connectNotice(connect.error, {
+        action: !cloneOpen
+          ? {
+              label: "Choose another folder",
+              onClick: () => setCloneOpen(true),
+            }
+          : undefined,
+      })
+    : null;
+
+  const notice = cloneRefused
+    ? null
+    : (scaffoldNotice(scaffold.error) ??
+      connectNotice(connect.error, {
+        // The offer's own detail: the folder is what the offer is about.
+        detail: offerPath
+          ? `Maestro would scaffold it into ${offerPath}.`
+          : undefined,
+        action: offerPath
+          ? {
+              label: scaffold.isPending
+                ? ACTIONS.scaffold.busy
+                : "Scaffold the Harness",
+              disabled: scaffold.isPending,
+              onClick: () =>
+                scaffold.mutate(offerPath, {
+                  onSuccess: (result) => onSuccess?.(result),
+                }),
+            }
+          : code === "no-usable-origin" && pathChooser.available
+            ? {
+                label: "Choose another clone",
+                onClick: () => pathChooser.browse(path, setPath),
+              }
+            : undefined,
+      }));
+
+  return (
+    <ConnectForm
+      path={path}
+      onPathChange={setPath}
+      pathChooser={pathChooser}
+      notice={notice}
+      cloneParent={cloneParent}
+      onCloneParentChange={setCloneParent}
+      cloneChooser={cloneChooser}
+      cloneNotice={cloneNotice}
+      cloneOpen={cloneOpen}
+      onOpenClone={() => setCloneOpen(true)}
+      onSubmit={handleSubmit}
+      isPending={connect.isPending}
+      submitDisabled={scaffold.isPending}
+      submitLabel={submitLabel}
+      busyLabel={busyLabel}
+      secondaryAction={secondaryAction}
+    />
+  );
+}

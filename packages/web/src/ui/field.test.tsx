@@ -12,6 +12,20 @@ describe("Field", () => {
     expect(screen.getByRole("textbox", { name: "Folder path" })).toBeVisible();
   });
 
+  // outline-none sets --tw-outline-style:none, which hides the one shared
+  // focus ring every control draws (#227).
+  it("never suppresses the focus ring", () => {
+    render(<Field label="Folder path" value="" onChange={() => {}} />);
+
+    expect(screen.getByRole("textbox")).not.toHaveClass("outline-none");
+  });
+
+  it("marks a field refused by a notice in its slot as invalid", () => {
+    render(<Field label="Folder path" value="" onChange={() => {}} invalid />);
+
+    expect(screen.getByRole("textbox")).toHaveAttribute("aria-invalid", "true");
+  });
+
   it("puts the hint between the label and the field", () => {
     render(
       <Field

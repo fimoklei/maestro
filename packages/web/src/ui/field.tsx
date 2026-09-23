@@ -1,4 +1,9 @@
-import { type InputHTMLAttributes, type ReactNode, useId } from "react";
+import {
+  type InputHTMLAttributes,
+  type ReactNode,
+  type Ref,
+  useId,
+} from "react";
 import { cn } from "./cn";
 
 // One text field: a visible label, a hint between the label and the field, the
@@ -28,6 +33,10 @@ export interface FieldProps
   describedBy?: string;
   /** The value is a path, ref or version: set in Geist Mono (ADR-0033 §6). */
   mono?: boolean;
+  /** Refused by a `Notice` in the slot rather than by `error`. */
+  invalid?: boolean;
+  /** For a host that hands focus back to the field after a refusal. */
+  inputRef?: Ref<HTMLInputElement>;
 }
 
 export function Field({
@@ -39,12 +48,15 @@ export function Field({
   trailing,
   describedBy: extraDescribedBy,
   mono = false,
+  invalid = false,
+  inputRef,
   className,
   ...rest
 }: FieldProps) {
   const id = useId();
   const hintId = `${id}-hint`;
   const errorId = `${id}-error`;
+  const refused = invalid || error !== undefined;
   const describedBy =
     [
       hint === undefined ? null : hintId,
@@ -66,18 +78,19 @@ export function Field({
       )}
       <div className="flex items-center gap-inline">
         <input
+          ref={inputRef}
           id={id}
           type="text"
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          aria-invalid={error === undefined ? undefined : true}
+          aria-invalid={refused ? true : undefined}
           aria-describedby={describedBy}
           className={cn(
             // No outline-none: it poisons --tw-outline-style and hides the one
             // focus ring every control shares (#227).
             "h-control min-w-0 flex-1 rounded-control border bg-canvas px-inline text-fg text-row",
             mono ? "font-mono" : "font-ui",
-            error === undefined ? "border-gray-9" : "border-red-7",
+            refused ? "border-red-7" : "border-gray-9",
             className,
           )}
           {...rest}
