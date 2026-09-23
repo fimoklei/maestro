@@ -47,6 +47,19 @@ a job on the board changes it. Before measuring anything, read `docs/research/`
 The harness the cockpit reads is not in this repo. Its path is `inventoryPath`
 in `~/.maestro/config.json`.
 
+### Where to look first
+
+- **Adapter wiring** (which real class backs a port): `realDeps()` in
+  `packages/server/src/app.ts`. Routes: `packages/server/src/routes/<feature>-routes.ts`.
+- **Harness git** port and `HarnessGitAdapter`: `packages/core/src/harness/harness-git.ts`;
+  there is no `-adapter` file. `gh`: `gh-cli-adapter.ts` beside it.
+- **Visible sentences**: `packages/web/src/<feature>/*-copy.ts` (`busy-copy.ts` in `ui/`).
+  Grep those modules first.
+- **Harness strip status text**: `packages/web/src/harness/harness-view-model.ts`;
+  `harness-view.tsx` only renders it.
+- **Error code** → status: `packages/server/src/error-responses.ts`; → sentence:
+  `packages/web/src/<feature>/notice-copy.ts`, keyed by the same code.
+
 ## Behavioral Rules
 
 ### When touching package boundaries (core/server/web) → Read `.claude/rules/architecture.md`
