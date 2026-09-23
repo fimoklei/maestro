@@ -2,6 +2,7 @@ import type {
   ConnectInventoryError,
   ScaffoldHarnessError,
 } from "@maestro/core";
+import { ACTIONS } from "../ui/busy-copy";
 import type { NoticeContent } from "../ui/notice";
 import {
   type NoticeExtras,
@@ -100,6 +101,14 @@ const connectHeadings: NoticeTable<ConnectInventoryError> = {
     message:
       "Check disk space and write access to the destination folder, then connect again.",
     detail: "A dropped connection causes this too.",
+  },
+  // Setting the Harness location never clones (#995).
+  "not-a-folder-path": {
+    level: "error",
+    label: "Not a folder path",
+    message:
+      "The location did not change. Type the path to a local Harness clone.",
+    detail: "Setting the location never clones. Clone the repository first.",
   },
   "not-an-inventory": {
     level: "error",
@@ -233,4 +242,21 @@ export function scaffoldNotice(error: unknown): NoticeContent | null {
     message: "No files were written. Scaffold it again.",
     detail: "The Maestro server did not answer.",
   });
+}
+
+// The scaffold offer's own detail and action, for every surface a connect can
+// come back with one on: the folder is what the offer is about (#556).
+export function scaffoldOfferExtras(
+  offerPath: string | null,
+  { pending, onAccept }: { pending: boolean; onAccept: () => void },
+): NoticeExtras {
+  if (offerPath === null) return {};
+  return {
+    detail: `Maestro would scaffold it into ${offerPath}.`,
+    action: {
+      label: pending ? ACTIONS.scaffold.busy : "Scaffold the Harness",
+      disabled: pending,
+      onClick: onAccept,
+    },
+  };
 }

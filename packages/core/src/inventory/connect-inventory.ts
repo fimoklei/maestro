@@ -32,6 +32,7 @@ export type ConnectInventoryError =
   | "destination-partial-clone"
   | "clone-in-progress"
   | "not-an-inventory"
+  | "not-a-folder-path"
   | "scaffoldable"
   | "no-usable-origin"
   | "no-default-branch";
@@ -93,12 +94,16 @@ export class ConnectInventory {
 
   // `parent` is the folder a clone lands *in*; the child folder is always the
   // repository's own name. Modelled that way so the destination itself is
-  // never put through existing-path validation (#555).
+  // never put through existing-path validation (#555). `localOnly` refuses
+  // every remote address: setting the Harness location never clones (#995).
   async connect(
     input: string,
-    options: { parent?: string } = {},
+    options: { parent?: string; localOnly?: boolean } = {},
   ): Promise<ConnectInventoryResult> {
     const route = classifyConnectInput(input);
+    if (options.localOnly && !(route.ok && route.kind === "path")) {
+      return { ok: false, error: "not-a-folder-path" };
+    }
     if (!route.ok) {
       return { ok: false, error: route.error };
     }

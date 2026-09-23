@@ -312,17 +312,6 @@ describe("ConnectForm", () => {
     ).toBeDisabled();
   });
 
-  it("uses a caller-supplied submit label so re-pointing reads honestly", () => {
-    renderForm({ submitLabel: "Set Harness location" });
-
-    expect(
-      screen.getByRole("button", { name: "Set Harness location" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Connect Inventory" }),
-    ).not.toBeInTheDocument();
-  });
-
   it("submits from the button and from Enter in the field", async () => {
     const onSubmit = vi.fn();
     renderForm({ path: "/home/me/agent-harness", onSubmit });

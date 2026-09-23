@@ -29,6 +29,14 @@ describe("NavItem", () => {
     );
   });
 
+  it("keeps no icon slot where the item has no icon", () => {
+    // A Settings page row is text only, and an empty slot shifts it one gap.
+    render(<NavItem label="Appearance" />);
+    expect(
+      screen.getByRole("button", { name: "Appearance" }).children,
+    ).toHaveLength(1);
+  });
+
   it("does not call onClick when disabled", async () => {
     const onClick = vi.fn();
     render(<NavItem label="Inventory" onClick={onClick} disabled />);

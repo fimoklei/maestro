@@ -3,14 +3,17 @@ import {
   connectErrorCode,
   scaffoldOfferPath,
 } from "../inventory/connect-error-message";
-import { connectNotice, scaffoldNotice } from "../inventory/connect-notice";
+import {
+  connectNotice,
+  scaffoldNotice,
+  scaffoldOfferExtras,
+} from "../inventory/connect-notice";
 import {
   type ConnectResponse,
   useConnectInventory,
 } from "../inventory/use-connect-inventory";
 import { useScaffoldHarness } from "../inventory/use-scaffold-harness";
 import { previewCloneChild } from "../shell/clone-destination-preview";
-import { ACTIONS } from "../ui/busy-copy";
 import { useFolderChooser } from "../ui/use-folder-chooser";
 import { ConnectForm } from "./connect-form";
 
@@ -22,32 +25,20 @@ const CLONE_REFUSALS = new Set([
   "destination-partial-clone",
 ]);
 
-// Shared by the connect gate and the ⚙ re-point step. renderSuccess is a
-// slot, not a flag — supply it for an in-place confirmation, omit it to lean
-// on onSuccess alone (ADR-0015).
+// The connect gate's form and its mutations. renderSuccess is a slot, not a
+// flag — supply it for an in-place confirmation, omit it to lean on onSuccess
+// alone (ADR-0015).
 type ConnectFlowProps = {
-  /** Seeds the path field once, at mount. */
-  initialPath?: string;
   onSuccess?: (result: ConnectResponse) => void;
   renderSuccess?: (result: ConnectResponse) => ReactNode;
-  submitLabel?: string;
-  busyLabel?: string;
-  secondaryAction?: ReactNode;
 };
 
-export function ConnectFlow({
-  initialPath = "",
-  onSuccess,
-  renderSuccess,
-  submitLabel,
-  busyLabel,
-  secondaryAction,
-}: ConnectFlowProps) {
+export function ConnectFlow({ onSuccess, renderSuccess }: ConnectFlowProps) {
   const connect = useConnectInventory();
   const scaffold = useScaffoldHarness();
   const pathChooser = useFolderChooser();
   const cloneChooser = useFolderChooser();
-  const [path, setPath] = useState(initialPath);
+  const [path, setPath] = useState("");
   const [cloneParent, setCloneParent] = useState("");
   const [cloneOpen, setCloneOpen] = useState(false);
 
@@ -87,29 +78,25 @@ export function ConnectFlow({
   const notice = cloneRefused
     ? null
     : (scaffoldNotice(scaffold.error) ??
-      connectNotice(connect.error, {
-        // The offer's own detail: the folder is what the offer is about.
-        detail: offerPath
-          ? `Maestro would scaffold it into ${offerPath}.`
-          : undefined,
-        action: offerPath
-          ? {
-              label: scaffold.isPending
-                ? ACTIONS.scaffold.busy
-                : "Scaffold the Harness",
-              disabled: scaffold.isPending,
-              onClick: () =>
+      connectNotice(
+        connect.error,
+        offerPath
+          ? scaffoldOfferExtras(offerPath, {
+              pending: scaffold.isPending,
+              onAccept: () =>
                 scaffold.mutate(offerPath, {
                   onSuccess: (result) => onSuccess?.(result),
                 }),
-            }
+            })
           : code === "no-usable-origin" && pathChooser.available
             ? {
-                label: "Choose another clone",
-                onClick: () => pathChooser.browse(path, setPath),
+                action: {
+                  label: "Choose another clone",
+                  onClick: () => pathChooser.browse(path, setPath),
+                },
               }
-            : undefined,
-      }));
+            : {},
+      ));
 
   return (
     <ConnectForm
@@ -126,9 +113,6 @@ export function ConnectFlow({
       onSubmit={handleSubmit}
       isPending={connect.isPending}
       submitDisabled={scaffold.isPending}
-      submitLabel={submitLabel}
-      busyLabel={busyLabel}
-      secondaryAction={secondaryAction}
     />
   );
 }

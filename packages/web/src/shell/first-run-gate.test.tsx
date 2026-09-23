@@ -92,20 +92,20 @@ describe("first-run gate", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("keeps the Harness location view reachable when configured", async () => {
+  it("keeps the Harness location page reachable when configured", async () => {
     stubServer({ notConfigured: false });
-    renderAt("/source");
+    renderAt("/settings/harness-location");
 
     expect(
       await screen.findByRole("heading", { name: /harness location/i }),
     ).toBeInTheDocument();
   });
 
-  it("routes an unconfigured user off the source view into the connect gate", async () => {
-    // The source view is connected-only ("connected · N primitives"), so an
-    // unconfigured visitor belongs in the connect gate, not on an empty source view.
+  it("routes an unconfigured user off Settings into the connect gate", async () => {
+    // Settings describes a connected Harness, so an unconfigured visitor
+    // belongs in the connect gate, not on an empty page.
     stubServer({ notConfigured: true });
-    renderAt("/source");
+    renderAt("/settings/harness-location");
 
     expect(
       await screen.findByRole("heading", {

@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -38,9 +38,9 @@ function stubEmptyServer() {
   );
 }
 
-// A configured server: the sidebar's Harness menu holds the Harness location
-// entry, so the source view is reachable from the frame (#991) rather than a
-// nav item of its own.
+// A configured server: the sidebar's Harness menu holds Settings, so the
+// Harness location page is reachable from the frame (#995) rather than a nav
+// item of its own.
 function stubConfiguredServer() {
   vi.stubGlobal(
     "fetch",
@@ -60,9 +60,9 @@ function stubConfiguredServer() {
   );
 }
 
-function renderApp() {
+function renderApp(path = "/") {
   return renderWithQuery(
-    <MemoryRouter initialEntries={["/"]}>
+    <MemoryRouter initialEntries={[path]}>
       <AppRoutes />
     </MemoryRouter>,
   );
@@ -103,19 +103,110 @@ describe("cockpit navigation", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("opens the Harness location view from the Harness menu", async () => {
+  it("opens Settings on the Harness location page from the Harness menu", async () => {
     stubConfiguredServer();
     renderApp();
 
     await userEvent.click(
       await screen.findByRole("button", { name: /harness menu/i }),
     );
+    const menu = await screen.findByRole("menu");
+    // Settings replaced it (#995): two entries to one page would be one too many.
+    expect(
+      within(menu).queryByRole("menuitem", { name: "Harness location" }),
+    ).not.toBeInTheDocument();
     await userEvent.click(
-      await screen.findByRole("menuitem", { name: "Harness location" }),
+      within(menu).getByRole("menuitem", { name: "Settings" }),
     );
 
     expect(
-      await screen.findByRole("heading", { name: /harness location/i }),
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Harness location",
+      }),
+    ).toBeInTheDocument();
+    const settings = screen.getByRole("complementary", { name: "Settings" });
+    expect(
+      within(settings).getByRole("button", { name: "Harness location" }),
+    ).toHaveAttribute("aria-current", "page");
+    expect(
+      screen.queryByRole("complementary", { name: "Navigation" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("holds Settings in the narrow bar's menu too", async () => {
+    stubConfiguredServer();
+    renderApp();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Menu" }));
+    const menu = await screen.findByRole("menu");
+    expect(
+      within(menu).queryByRole("menuitem", { name: "Harness location" }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(
+      within(menu).getByRole("menuitem", { name: "Settings" }),
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Harness location",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens Appearance from the Settings sidebar and returns with Back to app", async () => {
+    stubConfiguredServer();
+    renderApp("/settings/harness-location");
+    const settings = await screen.findByRole("complementary", {
+      name: "Settings",
+    });
+
+    await userEvent.click(
+      within(settings).getByRole("button", { name: "Appearance" }),
+    );
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Appearance" }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      within(settings).getByRole("button", { name: "Back to app" }),
+    );
+    expect(
+      await screen.findByRole("heading", { name: /deploy-state/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("reaches the Settings pages and Back to app from the narrow bar", async () => {
+    stubConfiguredServer();
+    renderApp("/settings/appearance");
+    const bar = await screen.findByRole("banner");
+
+    await userEvent.click(within(bar).getByRole("button", { name: "Menu" }));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Harness location" }),
+    );
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Harness location",
+      }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      within(bar).getByRole("button", { name: "Back to app" }),
+    );
+    expect(
+      await screen.findByRole("heading", { name: /deploy-state/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("sends the old Harness location address to the landing route", async () => {
+    stubConfiguredServer();
+    renderApp("/source");
+
+    expect(
+      await screen.findByRole("heading", { name: /deploy-state/i }),
     ).toBeInTheDocument();
   });
 

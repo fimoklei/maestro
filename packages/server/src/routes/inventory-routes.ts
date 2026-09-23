@@ -38,6 +38,7 @@ export function registerInventoryRoutes(app: Hono, deps: Deps) {
 
     const result = await deps.connect.connect(body.data.path, {
       parent: body.data.parent,
+      localOnly: body.data.localOnly,
     });
     if (!result.ok) {
       const { status } = connectErrorResponses[result.error];

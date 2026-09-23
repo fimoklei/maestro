@@ -12,6 +12,7 @@ export const registerBodySchema = z.object({ path: z.string() });
 export const connectBodySchema = z.object({
   path: z.string(),
   parent: z.string().optional(),
+  localOnly: z.boolean().optional(),
 });
 
 // The field's current value: the folder the chooser opens on (ADR-0032 §2).

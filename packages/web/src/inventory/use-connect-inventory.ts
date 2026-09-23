@@ -3,6 +3,7 @@
 import type { ConnectOutcome } from "@maestro/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
+import { HARNESS_QUERIES } from "../harness/use-harness";
 import { INVENTORY_CONFIG_KEY, INVENTORY_KEY } from "./use-inventory";
 
 // `outcome` is the server's name for what connecting did, carried through so
@@ -18,8 +19,12 @@ export function useConnectInventory() {
   const queryClient = useQueryClient();
   return useMutation({
     // `parent` is the folder a cloned Harness lands in; omitted, the server
-    // uses the home ceiling (#555).
-    mutationFn: (variables: { path: string; parent?: string }) =>
+    // uses the home ceiling (#555). `localOnly` refuses any URL (#995).
+    mutationFn: (variables: {
+      path: string;
+      parent?: string;
+      localOnly?: boolean;
+    }) =>
       requestJson<ConnectResponse>("/api/inventory/connect", {
         method: "POST",
         body: JSON.stringify(variables),
@@ -32,6 +37,7 @@ export function useConnectInventory() {
       });
       queryClient.invalidateQueries({ queryKey: INVENTORY_KEY });
       queryClient.invalidateQueries({ queryKey: INVENTORY_CONFIG_KEY });
+      queryClient.invalidateQueries({ queryKey: HARNESS_QUERIES });
     },
   });
 }

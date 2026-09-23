@@ -2,6 +2,7 @@
 // so it invalidates exactly what connecting does (frontend.md, #556).
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
+import { HARNESS_QUERIES } from "../harness/use-harness";
 import type { ConnectResponse } from "./use-connect-inventory";
 import { INVENTORY_CONFIG_KEY, INVENTORY_KEY } from "./use-inventory";
 
@@ -21,6 +22,7 @@ export function useScaffoldHarness() {
       });
       queryClient.invalidateQueries({ queryKey: INVENTORY_KEY });
       queryClient.invalidateQueries({ queryKey: INVENTORY_CONFIG_KEY });
+      queryClient.invalidateQueries({ queryKey: HARNESS_QUERIES });
     },
   });
 }

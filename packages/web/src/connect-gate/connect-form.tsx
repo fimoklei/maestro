@@ -1,10 +1,4 @@
-import {
-  type FormEvent,
-  type ReactNode,
-  useEffect,
-  useId,
-  useRef,
-} from "react";
+import { type FormEvent, useEffect, useId, useRef } from "react";
 import { previewCloneChild } from "../shell/clone-destination-preview";
 import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
@@ -38,9 +32,6 @@ export type ConnectFormProps = {
   isPending?: boolean;
   /** A scaffold running beside the form takes submit down with it (#556). */
   submitDisabled?: boolean;
-  submitLabel?: string;
-  busyLabel?: string;
-  secondaryAction?: ReactNode;
 };
 
 export function ConnectForm({
@@ -57,9 +48,6 @@ export function ConnectForm({
   onSubmit,
   isPending = false,
   submitDisabled = false,
-  submitLabel = "Connect Inventory",
-  busyLabel = ACTIONS.connect.busy,
-  secondaryAction,
 }: ConnectFormProps) {
   const noticeId = useId();
   const cloneNoticeId = useId();
@@ -167,9 +155,8 @@ export function ConnectForm({
           busy={isPending}
           disabled={submitDisabled}
         >
-          {isPending ? busyLabel : submitLabel}
+          {isPending ? ACTIONS.connect.busy : "Connect Inventory"}
         </Button>
-        {secondaryAction}
       </div>
     </form>
   );

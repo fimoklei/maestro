@@ -298,6 +298,25 @@ describe("ConnectInventory", () => {
     expect(clone.calls).toEqual([]);
   });
 
+  it("refuses every remote address when asked for a local clone only, cloning nothing", async () => {
+    // Setting the Harness location never clones (#995).
+    const fs = new InMemoryFileSystem();
+    const clone = new FakeClone(fs);
+    const connect = makeConnect(fs, PARSEABLE_ORIGIN, "main", clone);
+
+    for (const url of [
+      "https://github.com/fimoklei/agent-harness.git",
+      "git@github.com:fimoklei/agent-harness.git",
+      "https://gitlab.com/o/r.git",
+    ]) {
+      expect(await connect.connect(url, { localOnly: true })).toEqual({
+        ok: false,
+        error: "not-a-folder-path",
+      });
+    }
+    expect(clone.calls).toEqual([]);
+  });
+
   it("reports a clone refused for credentials and persists nothing", async () => {
     const fs = new InMemoryFileSystem();
     const connect = makeConnect(

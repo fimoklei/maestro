@@ -51,6 +51,9 @@ export type {
   StructuralProblem,
 };
 
+// Every Harness read, by prefix: all of them belong to one location, so a
+// re-point drops them together.
+export const HARNESS_QUERIES = ["harness"] as const;
 const HARNESS_KEY = ["harness", "state"] as const;
 const RELEASE_PLAN_KEY = ["harness", "release-plan"] as const;
 
