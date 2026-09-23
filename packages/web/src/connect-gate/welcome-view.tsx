@@ -1,9 +1,7 @@
 import { useNavigate } from "react-router";
 import { Button } from "../ui/button";
 
-// The connect gate's first screen (ADR-0015). <h1> is hand-rolled rather than
-// SectionHeader: SectionHeader's left-aligned row + meta slot fights this
-// screen's centred-hero layout. Only the title's type classes are shared.
+// The connect gate's first screen (ADR-0015), a centred hero with its own <h1>.
 export function WelcomeView() {
   const navigate = useNavigate();
 

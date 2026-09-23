@@ -57,9 +57,7 @@ function stubApi(primitives: unknown[], repos: unknown[]) {
 
 describe("InventoryPanel", () => {
   it("titles the page with a single h1", async () => {
-    // Heading navigation has no starting point without one, and the section
-    // header underneath it (SectionHeader) defaults to h2 for every other
-    // view — this route needs to opt in explicitly (ADR-0015 precedent).
+    // Heading navigation has no starting point without one (ADR-0015 precedent).
     stubApi([{ type: "skill", name: "tdd", description: "TDD loop" }], []);
     renderPanel();
 
