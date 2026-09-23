@@ -1,3 +1,5 @@
+import { execFileSync } from "node:child_process";
+import { delimiter } from "node:path";
 import { defineConfig } from "vitest/config";
 
 // One runner, four lanes (see .claude/rules/testing.md): pure/unit, integration,
@@ -9,6 +11,12 @@ import { defineConfig } from "vitest/config";
 // time ~10x; the default 5s times that contention, not the code. A project does
 // not inherit `test` options from this file's root, so each lane sets its own.
 const testTimeout = 20_000;
+
+// Git's exec-path holds the real binary, so the git lane skips macOS's xcrun
+// launcher on every spawn (docs/research/1093-git-lane-cost.md).
+const gitExecPath = execFileSync("git", ["--exec-path"], {
+  encoding: "utf8",
+}).trim();
 export default defineConfig({
   test: {
     // Runs once per run, before any lane: a killed run never reaches its
@@ -56,6 +64,7 @@ export default defineConfig({
           root: "./tests/git",
           environment: "node",
           include: ["**/*.test.ts"],
+          env: { PATH: [gitExecPath, process.env.PATH].join(delimiter) },
           testTimeout,
         },
       },
