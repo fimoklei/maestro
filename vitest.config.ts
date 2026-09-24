@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { delimiter } from "node:path";
+import { fileURLToPath } from "node:url";
 import { configDefaults, defineConfig } from "vitest/config";
 
 // One runner, four lanes (see .claude/rules/testing.md): pure/unit, integration,
@@ -22,10 +23,11 @@ export default defineConfig({
     // `afterEach`, so its temp trees are swept here instead.
     globalSetup: ["./tests/helpers/sweep-temp-trees.ts"],
     // Tests read fixtures through `fs`, which `vitest related` cannot follow,
-    // so a fixture change reruns the whole suite (#1111).
+    // so a fixture change reruns the whole suite (#1111). Anchored: `**` skips
+    // dot folders such as `.claude/worktrees/` (picomatch 4.0.7).
     forceRerunTriggers: [
       ...configDefaults.forceRerunTriggers,
-      "**/tests/fixtures/**",
+      `${fileURLToPath(new URL("./tests/fixtures/", import.meta.url))}**`,
     ],
     // On-demand map of which files never run (`pnpm test:coverage`), no
     // threshold. Without `include` a run reports only the files a test
