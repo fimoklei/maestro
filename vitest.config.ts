@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { delimiter } from "node:path";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 // One runner, four lanes (see .claude/rules/testing.md): pure/unit, integration,
 // the web component lane (happy-dom, its own config for the React plugin), and git.
@@ -22,6 +22,12 @@ export default defineConfig({
     // Runs once per run, before any lane: a killed run never reaches its
     // `afterEach`, so its temp trees are swept here instead.
     globalSetup: ["./tests/helpers/sweep-temp-trees.ts"],
+    // Tests read fixtures through `fs`, which `vitest related` cannot follow,
+    // so a fixture change reruns the whole suite (#1111).
+    forceRerunTriggers: [
+      ...configDefaults.forceRerunTriggers,
+      "**/tests/fixtures/**",
+    ],
     // On-demand map of which files never run (`pnpm test:coverage`), no
     // threshold. Without `include` a run reports only the files a test
     // imported, which answers the wrong question (vitest 4.1 coverage docs).
