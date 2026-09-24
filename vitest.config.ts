@@ -7,11 +7,6 @@ import { defineConfig } from "vitest/config";
 // The first three encode an architectural boundary; `git` encodes cost — a file
 // that spawns a real repository lands there and stays out of the coding loop.
 
-// The slowest test nears the 5s default under load; a worker cap only slowed the
-// suite (docs/research/1095-vitest-worker-cap.md). A project does not inherit
-// `test` options from this file's root, so each lane sets its own.
-const testTimeout = 20_000;
-
 // Git's exec-path holds the real binary, so the git lane skips macOS's xcrun
 // launcher on every spawn (docs/research/1093-git-lane-cost.md).
 const gitExecPath = execFileSync("git", ["--exec-path"], {
@@ -19,6 +14,10 @@ const gitExecPath = execFileSync("git", ["--exec-path"], {
 }).trim();
 export default defineConfig({
   test: {
+    // The slowest test nears the 5s default under load; a worker cap only slowed
+    // the suite (docs/research/1095-vitest-worker-cap.md). Inline lanes inherit
+    // it (vitest 5); the web lane's config file does not, so it repeats it.
+    testTimeout: 20_000,
     // Runs once per run, before any lane: a killed run never reaches its
     // `afterEach`, so its temp trees are swept here instead.
     globalSetup: ["./tests/helpers/sweep-temp-trees.ts"],
@@ -46,7 +45,6 @@ export default defineConfig({
           root: "./packages/core",
           environment: "node",
           include: ["src/**/*.test.ts"],
-          testTimeout,
         },
       },
       {
@@ -55,7 +53,6 @@ export default defineConfig({
           root: "./tests/integration",
           environment: "node",
           include: ["**/*.test.ts"],
-          testTimeout,
         },
       },
       {
@@ -65,7 +62,6 @@ export default defineConfig({
           environment: "node",
           include: ["**/*.test.ts"],
           env: { PATH: [gitExecPath, process.env.PATH].join(delimiter) },
-          testTimeout,
         },
       },
     ],
