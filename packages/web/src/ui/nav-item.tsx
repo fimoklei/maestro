@@ -1,4 +1,5 @@
 import type { MouseEventHandler, ReactNode } from "react";
+import { UNKNOWN_COUNT } from "../shell/sidebar-copy";
 import { cn } from "./cn";
 import { HOVER_TRANSITION } from "./hover-transition";
 
@@ -54,7 +55,7 @@ export function NavItem({
       {counter === null ? null : counter.unknown ? (
         <span className="shrink-0 text-gray-11 text-meta">
           <span aria-hidden="true">{counter.text}</span>
-          <span className="sr-only">Unknown</span>
+          <span className="sr-only">{UNKNOWN_COUNT.spoken}</span>
         </span>
       ) : (
         <span className="shrink-0 whitespace-nowrap text-amber-11 text-meta">

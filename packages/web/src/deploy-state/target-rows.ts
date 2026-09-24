@@ -78,6 +78,13 @@ export const isBehind = (
   head.latestRelease !== head.release &&
   pending === undefined;
 
+// One lockfile and one release for every detected tool, so any tool reading
+// behind puts the whole global target, every tool row, behind (#951).
+export const isGlobalBehind = (
+  tools: readonly { releaseHead?: ReleaseHead }[],
+  pending?: PendingOperation,
+) => tools.some((tool) => isBehind(tool.releaseHead, pending));
+
 const releaseOf = (
   head: ReleaseHead | undefined,
   pinned: PinnedPerSkill | undefined,
@@ -88,8 +95,6 @@ const releaseOf = (
       ? { current: pinned[0].release, latest: null }
       : null;
 
-// One lockfile and one release for every detected tool, so any tool reading
-// behind puts the whole global target behind (#951).
 export function globalRows(
   data: GlobalDeployStateView,
   drift: DriftViewModel,
@@ -97,9 +102,7 @@ export function globalRows(
 ): TargetRow[] {
   const pending = data.pendingOperation;
   const tools = data.tools.map((group) => group.tool);
-  const behind = data.tools.some((group) =>
-    isBehind(group.releaseHead, pending),
-  );
+  const behind = isGlobalBehind(data.tools, pending);
   return data.tools.map((group) => {
     const { label, destination } = toolPresentation(group.tool);
     const names = group.primitives.map((primitive) => primitive.name);

@@ -2,32 +2,35 @@
 // name already hold. Nothing shows before every read answered, `?` where one
 // failed, and nothing at zero: a resting row carries no mark.
 import { useQueries } from "@tanstack/react-query";
-import { isBehind } from "../deploy-state/target-rows";
+import { isBehind, isGlobalBehind } from "../deploy-state/target-rows";
+import type {
+  PendingOperation,
+  ReleaseHead,
+} from "../deploy-state/use-deploy-state";
 import { deployStateQueryOptions } from "../deploy-state/use-deploy-state";
 import { useGlobalDeployState } from "../deploy-state/use-global-deploy-state";
 import { type HarnessState, useHarness } from "../harness/use-harness";
 import { useInventoryConfig } from "../inventory/use-inventory";
 import { useRegistry } from "../registry/use-registry";
+import { behindCount, UNKNOWN_COUNT } from "./sidebar-copy";
 
 export type NavCounter = { text: string; unknown: boolean };
 
-const UNKNOWN: NavCounter = { text: "?", unknown: true };
+const UNKNOWN: NavCounter = { text: UNKNOWN_COUNT.shown, unknown: true };
 
 const count = (text: string): NavCounter => ({ text, unknown: false });
 
 type Read<T> = { data: T | undefined; isError: boolean };
 
-type TargetRead = Parameters<typeof isBehind>;
-
 // One per Deploy-state row: a behind global target puts every tool row behind.
 export function deployStateCounter(
   global: Read<{
-    tools: { releaseHead?: TargetRead[0] }[];
-    pending?: TargetRead[1];
+    tools: { releaseHead?: ReleaseHead }[];
+    pending?: PendingOperation;
   }>,
   repos: readonly Read<{
-    releaseHead?: TargetRead[0];
-    pendingOperation?: TargetRead[1];
+    releaseHead?: ReleaseHead;
+    pendingOperation?: PendingOperation;
   }>[],
 ): NavCounter | null {
   const reads = [global, ...repos];
@@ -39,15 +42,13 @@ export function deployStateCounter(
     return null;
   }
   const { tools, pending } = global.data;
-  const globalBehind = tools.some((tool) => isBehind(tool.releaseHead, pending))
-    ? tools.length
-    : 0;
+  const globalBehind = isGlobalBehind(tools, pending) ? tools.length : 0;
   const behind =
     globalBehind +
     repos.filter((one) =>
       isBehind(one.data?.releaseHead, one.data?.pendingOperation),
     ).length;
-  return behind === 0 ? null : count(`${behind} behind`);
+  return behind === 0 ? null : count(behindCount(behind));
 }
 
 // Skills waiting on the operator: Pending review plus Pending release, each

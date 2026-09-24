@@ -67,6 +67,10 @@ import type { Primitive } from "./use-inventory";
 // Fills the table at 1440×900 on a first read, before any row is known.
 const SKELETON_FALLBACK = 24;
 
+// The row's ⋮ and the pane's foot open the same dialog per action (#1065).
+const rowDialog = (action: RowAction): PaneDialog =>
+  action === "deploy" ? { kind: "deploy" } : { kind: "remove-all" };
+
 export function InventoryView({
   primitives,
   repos,
@@ -122,13 +126,7 @@ export function InventoryView({
   const open = useCallback(
     (name: string | null, action: RowAction | null = null) => {
       setSelected(name);
-      setDialog(
-        action === "deploy"
-          ? { kind: "deploy" }
-          : action === "remove"
-            ? { kind: "remove-all" }
-            : null,
-      );
+      setDialog(action === null ? null : rowDialog(action));
     },
     [],
   );
@@ -194,32 +192,35 @@ export function InventoryView({
     ? bulkRemoveTargets(selectedPrimitive.name, targets)
     : [];
   const openIndex = selected === null ? -1 : order.indexOf(selected);
-  const targetItems = (deployment: SkillDeployment): ActionsMenuItem[] => [
-    ...(deployment.updatable
-      ? [
-          {
-            label: UPDATE_TARGET,
-            onSelect: () => setDialog({ kind: "update", deployment }),
-          },
-        ]
-      : []),
-    ...(onShowTarget === undefined
-      ? []
-      : [
-          {
-            label: SHOW_IN_DEPLOY_STATE,
-            onSelect: () => onShowTarget(deployment.rowId),
-          },
-        ]),
-    {
-      label:
-        deployment.removeTarget.kind === "global"
-          ? removeFromToolsLabel(deployment.removeTarget.tools)
-          : REMOVE_FROM_TARGET,
-      danger: true,
-      onSelect: () => setDialog({ kind: "remove", deployment }),
-    },
-  ];
+  const targetItems = (deployment: SkillDeployment): ActionsMenuItem[] => {
+    const { rowId } = deployment;
+    return [
+      ...(deployment.updatable
+        ? [
+            {
+              label: UPDATE_TARGET,
+              onSelect: () => setDialog({ kind: "update", deployment }),
+            },
+          ]
+        : []),
+      ...(onShowTarget === undefined || rowId === null
+        ? []
+        : [
+            {
+              label: SHOW_IN_DEPLOY_STATE,
+              onSelect: () => onShowTarget(rowId),
+            },
+          ]),
+      {
+        label:
+          deployment.removeTarget.kind === "global"
+            ? removeFromToolsLabel(deployment.removeTarget.tools)
+            : REMOVE_FROM_TARGET,
+        danger: true,
+        onSelect: () => setDialog({ kind: "remove", deployment }),
+      },
+    ];
+  };
 
   const noSkills = all.length === 0 ? NO_SKILLS_YET : undefined;
   const band2 = (
@@ -446,12 +447,7 @@ export function InventoryView({
               footItems={(selectedRow?.actions ?? []).map((item) => ({
                 label: item.label,
                 danger: item.danger,
-                onSelect: () =>
-                  setDialog(
-                    item.action === "deploy"
-                      ? { kind: "deploy" }
-                      : { kind: "remove-all" },
-                  ),
+                onSelect: () => setDialog(rowDialog(item.action)),
               }))}
               onClose={() => open(null)}
               getTriggerElement={getTriggerElement}

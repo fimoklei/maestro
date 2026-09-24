@@ -90,7 +90,7 @@ export function SkillDetailPane({
             <ul className="m-0 list-none border-gray-6 border-t p-0">
               {deployments.map((deployment) => (
                 <SubListRow
-                  key={deployment.rowId}
+                  key={deployment.rowId ?? deployment.label}
                   mark={targetReading(deployment.status)}
                   name={deployment.label}
                   value={deployment.release}

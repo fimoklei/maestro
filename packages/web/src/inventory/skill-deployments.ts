@@ -23,8 +23,8 @@ export type SkillDeployment = {
   removeTarget: RemoveDialogTarget;
   /** The name Update target's dialog carries. */
   updateName: string;
-  /** The Deploy-state row this target is (#1065). */
-  rowId: string;
+  /** The Deploy-state row this target is (#1065); null where it names none. */
+  rowId: string | null;
   // A newer release changed this skill here, and the target follows one
   // release, so Update target can move it (ADR-0031).
   updatable: boolean;
@@ -66,7 +66,9 @@ export function skillDeployments(
       rowId:
         wire.kind === "repo"
           ? repoRowId(wire.repoPath)
-          : globalRowId(target.tool ?? ""),
+          : target.tool === undefined
+            ? null
+            : globalRowId(target.tool),
       updatable: target.releaseHead !== undefined && status === "behind",
     });
   }

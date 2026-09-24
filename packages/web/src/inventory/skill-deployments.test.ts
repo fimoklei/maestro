@@ -186,6 +186,18 @@ describe("skillDeployments", () => {
     ]);
   });
 
+  // "global:" opens no row, so a global target naming no tool names none.
+  it("names no Deploy-state row for a global target without its tool", () => {
+    const [deployment] = skillDeployments("tdd", [
+      {
+        ...target("Global", [{ name: "tdd", version: "v1.0.0" }]),
+        target: { kind: "global" },
+      },
+    ]);
+
+    expect(deployment?.rowId).toBeNull();
+  });
+
   it("skips targets whose deploy-state has not resolved or could not be read", () => {
     const targets: DeploymentTarget[] = [
       {

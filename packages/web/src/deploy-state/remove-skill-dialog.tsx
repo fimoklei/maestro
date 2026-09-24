@@ -4,7 +4,7 @@ import { TYPE_WORD } from "../inventory/type-filter";
 import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
-import { DIALOG_CANCEL, DialogShell } from "../ui/dialog-shell";
+import { DIALOG_CANCEL, DIALOG_FOOTER, DialogShell } from "../ui/dialog-shell";
 import { Notice } from "../ui/notice";
 import { panelBorderFor } from "../ui/panel-border";
 import type { DeployStateNotice } from "./notice-copy";
@@ -325,7 +325,7 @@ export function RemoveSkillDialog({
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center justify-between gap-inline border-gray-7 border-t px-panel py-cell">
+      <div className={DIALOG_FOOTER}>
         {/* "close" once refused or failed — no pending action left to
               cancel, only a panel to leave. */}
         <Button

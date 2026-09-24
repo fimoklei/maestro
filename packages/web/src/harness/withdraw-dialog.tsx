@@ -1,7 +1,7 @@
 import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
-import { DIALOG_CANCEL, DialogShell } from "../ui/dialog-shell";
+import { DIALOG_CANCEL, DIALOG_FOOTER, DialogShell } from "../ui/dialog-shell";
 import { Fact } from "../ui/fact";
 import { Notice, type NoticeContent } from "../ui/notice";
 
@@ -54,7 +54,7 @@ export function WithdrawDialog({
         <Notice trigger="user-action" notice={withdrawError} />
       </div>
 
-      <div className="flex shrink-0 items-center justify-between gap-inline border-gray-7 border-t px-panel py-cell">
+      <div className={DIALOG_FOOTER}>
         <Button
           type="button"
           className="shrink-0"

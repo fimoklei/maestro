@@ -2,7 +2,7 @@ import { useId } from "react";
 import { CLOSE } from "../deploy-state/update-target-copy";
 import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
-import { DialogShell } from "../ui/dialog-shell";
+import { DIALOG_FOOTER, DialogShell } from "../ui/dialog-shell";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { Report, type ReportGroup } from "../ui/report";
 import {
@@ -115,7 +115,7 @@ export function BulkDeployDialog({
           </>
         )}
       </div>
-      <div className="flex shrink-0 items-center justify-between gap-inline border-gray-7 border-t px-panel py-cell">
+      <div className={DIALOG_FOOTER}>
         {report === null ? (
           <>
             <Button variant="quiet" disabled={busy} onClick={onClose}>
