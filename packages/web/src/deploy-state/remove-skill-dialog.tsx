@@ -325,57 +325,56 @@ export function RemoveSkillDialog({
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2.5 border-gray-7 border-t px-3.5 py-3">
-        {/* Beside the control it holds, not in the body: keeps panel height
-              steady between "checking" and the answer, so confirm doesn't jump. */}
-        {awaitingCheck ? (
-          <p
-            id={blockedId}
-            role="status"
-            aria-label="Local edits check"
-            className="min-w-0 truncate font-ui text-meta text-gray-11"
-          >
-            {CHECKING_TEXT}
-          </p>
-        ) : null}
-        <span className="flex-1" />
+      <div className="flex shrink-0 items-center justify-between gap-inline border-gray-7 border-t px-panel py-cell">
         {/* "close" once refused or failed — no pending action left to
               cancel, only a panel to leave. */}
         <Button
           type="button"
           className="shrink-0"
           variant="quiet"
-          size="sm"
           disabled={isRemoving}
           {...DIALOG_CANCEL}
           onClick={onCancel}
         >
           {failure ? "Close" : "Cancel"}
         </Button>
-        {/* Absent, not disabled, once refused: disabled reads as shut for
+        <div className="flex min-w-0 items-center gap-inline">
+          {/* Beside the control it holds, not in the body: keeps panel height
+              steady between "checking" and the answer, so confirm doesn't jump. */}
+          {awaitingCheck ? (
+            <p
+              id={blockedId}
+              role="status"
+              aria-label="Local edits check"
+              className="min-w-0 truncate font-ui text-meta text-gray-11"
+            >
+              {CHECKING_TEXT}
+            </p>
+          ) : null}
+          {/* Absent, not disabled, once refused: disabled reads as shut for
               now; this is shut for good. Absent too while a restated price is
               on screen — that block carries the same confirm, and two of them
               would ask the same question twice. */}
-        {refused || restated !== null ? null : (
-          <Button
-            type="button"
-            className="shrink-0"
-            variant="primary"
-            size="sm"
-            busy={isRemoving}
-            disabled={awaitingCheck}
-            aria-describedby={blockedId}
-            onClick={onConfirm}
-          >
-            {/* After a failure the label runs the notice's last instruction,
+          {refused || restated !== null ? null : (
+            <Button
+              type="button"
+              className="shrink-0"
+              variant="danger"
+              busy={isRemoving}
+              disabled={awaitingCheck}
+              aria-describedby={blockedId}
+              onClick={onConfirm}
+            >
+              {/* After a failure the label runs the notice's last instruction,
                   verb for verb: "Confirm the removal again…" (F8). */}
-            {isRemoving
-              ? ACTIONS.remove.busy
-              : failed
-                ? "Confirm removal"
-                : "Remove skill"}
-          </Button>
-        )}
+              {isRemoving
+                ? ACTIONS.remove.busy
+                : failed
+                  ? "Confirm removal"
+                  : "Remove skill"}
+            </Button>
+          )}
+        </div>
       </div>
     </DialogShell>
   );

@@ -54,13 +54,11 @@ export function WithdrawDialog({
         <Notice trigger="user-action" notice={withdrawError} />
       </div>
 
-      <div className="flex shrink-0 items-center gap-2.5 border-gray-7 border-t px-3.5 py-3">
-        <span className="flex-1" />
+      <div className="flex shrink-0 items-center justify-between gap-inline border-gray-7 border-t px-panel py-cell">
         <Button
           type="button"
           className="shrink-0"
           variant="quiet"
-          size="sm"
           disabled={withdrawing}
           {...DIALOG_CANCEL}
           onClick={onClose}
@@ -70,8 +68,7 @@ export function WithdrawDialog({
         <Button
           type="button"
           className="shrink-0"
-          variant="ghost"
-          size="sm"
+          variant="danger"
           busy={withdrawing}
           onClick={onConfirm}
         >

@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { BulkRemoveDialog } from "./bulk-remove-dialog";
@@ -141,6 +147,26 @@ describe("BulkRemoveDialog — once the checks answer", () => {
     expect(refused).toHaveTextContent("/dev/legacy-etl");
     expect(refused).toHaveTextContent("Repository not registered");
     expect(within(refused).queryByText(/^v\d/)).toBeNull();
+  });
+
+  // The footer every dialog shares (design.md, ADR-0033 §2, #1116).
+  it("confirms with the outlined danger button, Cancel on the leading side", () => {
+    renderDialog();
+
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    expect(cancel.parentElement?.firstElementChild).toBe(cancel);
+    expect(cancel.parentElement).toHaveClass("justify-between");
+    const confirm = screen.getByRole("button", { name: "remove from 3 →" });
+    expect(confirm).toHaveClass("text-red-11", "border-red-7");
+    expect(confirm).not.toHaveClass("bg-gray-12");
+  });
+
+  it("opens with focus on Cancel, so Enter removes nothing", async () => {
+    renderDialog();
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus(),
+    );
   });
 
   it("keeps the confirm live beside a refusal, carrying the cost on it", () => {

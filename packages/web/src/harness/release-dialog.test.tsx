@@ -1,5 +1,5 @@
 import type { ReleasePlan } from "@maestro/core";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { NoticeContent } from "../ui/notice";
@@ -213,6 +213,17 @@ describe("ReleaseDialog", () => {
     expect(
       screen.getByRole("button", { name: /^publish release$/i }),
     ).toHaveClass("bg-gray-12");
+  });
+
+  // The footer every dialog shares (design.md, #1116). It pushes a tag, so it
+  // opens on Close, as every dialog that writes to GitHub does.
+  it("puts Close on the leading side and opens with focus on it", async () => {
+    renderReady();
+
+    const close = screen.getByRole("button", { name: "Close" });
+    expect(close.parentElement?.firstElementChild).toBe(close);
+    expect(close.parentElement).toHaveClass("justify-between");
+    await waitFor(() => expect(close).toHaveFocus());
   });
 
   it("publishes the proposed step when the author does not override it", async () => {

@@ -194,6 +194,7 @@ export function BulkRemoveDialog({
   // is closed, not finished.
   const closeLabel =
     done?.kind === "clean" ? "Done" : report === null ? "Cancel" : "Close";
+  const confirmOffered = report === null || report.kind === "never-started";
   // Only skills reach this dialog today, same as the single one.
   const type = "skill" as const;
 
@@ -347,14 +348,15 @@ export function BulkRemoveDialog({
         )}
       </div>
 
-      <div className="flex shrink-0 items-center justify-end gap-2.5 border-gray-7 border-t px-3.5 py-3">
+      <div className="flex shrink-0 items-center justify-between gap-inline border-gray-7 border-t px-panel py-cell">
         <Button
           type="button"
-          className="shrink-0"
+          // Alone once the run is over: it closes the report, so it sits
+          // trailing, as bulk deploy's Close does.
+          className={cn("shrink-0", confirmOffered ? null : "ml-auto")}
           // Success only where the run finished clean: it is then the one
           // control on the panel, and a quiet button would read as a dismiss.
           variant={done?.kind === "clean" ? "success" : "quiet"}
-          size="sm"
           disabled={isRemoving}
           {...DIALOG_CANCEL}
           onClick={onCancel}
@@ -364,12 +366,11 @@ export function BulkRemoveDialog({
         {/* Absent, not disabled, once the run is over or its outcome is
               unknown: there is nothing left to confirm, and a control beside
               either would rerun a removal already made or unseen. */}
-        {report === null || report.kind === "never-started" ? (
+        {confirmOffered ? (
           <Button
             type="button"
             className="shrink-0"
-            variant="primary"
-            size="sm"
+            variant="danger"
             busy={isRemoving}
             disabled={!confirmable}
             onClick={onConfirm}
