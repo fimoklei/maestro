@@ -84,7 +84,7 @@ function Section({
       <h3
         className={cn(
           "font-mono text-meta uppercase leading-5 tracking-[0.08em]",
-          signal ? "text-amber-11" : "text-gray-11",
+          signal ? "text-amber-12" : "text-gray-11",
         )}
       >
         {heading}
@@ -194,7 +194,7 @@ function ConsentRow({
 }) {
   return (
     <li className="flex flex-col gap-1 rounded-control border border-amber-7 bg-amber-3 px-3 py-2">
-      <p className="font-ui text-amber-11 text-meta">{sentence}</p>
+      <p className="font-ui text-amber-12 text-meta">{sentence}</p>
       <label className="flex cursor-pointer items-center gap-2 font-ui text-meta text-gray-12">
         <input
           type="checkbox"
@@ -219,7 +219,7 @@ function OutcomeTrace({ lines }: { lines: readonly OutcomeLine[] }) {
             key={line.key}
             className={cn(
               "flex items-start gap-1.5 font-mono text-meta",
-              line.ok ? "text-green-11" : "text-amber-11",
+              line.ok ? "text-green-12" : "text-amber-12",
             )}
           >
             <span aria-hidden="true">{line.ok ? "✓" : "✗"}</span>

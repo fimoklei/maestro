@@ -144,7 +144,7 @@ export function ImportDialog({
             aria-label="Convention checks"
             className="flex flex-col gap-1.5 rounded-control border border-amber-7 bg-amber-3 px-2.5 py-2.5"
           >
-            <span className="font-semibold font-ui text-amber-11 text-meta">
+            <span className="font-semibold font-ui text-amber-12 text-meta">
               Skill checks found issues. You can still import the skill.
             </span>
             <ul className="m-0 flex list-none flex-col gap-1 p-0">
