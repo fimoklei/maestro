@@ -7,9 +7,9 @@ import { defineConfig } from "vitest/config";
 // The first three encode an architectural boundary; `git` encodes cost — a file
 // that spawns a real repository lands there and stays out of the coding loop.
 
-// The lanes' worker pools oversubscribe the machine, stretching one test's wall
-// time ~10x; the default 5s times that contention, not the code. A project does
-// not inherit `test` options from this file's root, so each lane sets its own.
+// The slowest test nears the 5s default under load; a worker cap only slowed the
+// suite (docs/research/1095-vitest-worker-cap.md). A project does not inherit
+// `test` options from this file's root, so each lane sets its own.
 const testTimeout = 20_000;
 
 // Git's exec-path holds the real binary, so the git lane skips macOS's xcrun
