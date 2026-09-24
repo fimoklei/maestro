@@ -48,7 +48,7 @@ describe("Report", () => {
         .getAllByRole("heading", { level: 4 })
         .map((each) => each.textContent),
     ).toEqual([
-      // The gaps are spacing, not text: jsdom renders without CSS.
+      // The gaps are spacing, not text: happy-dom renders without CSS.
       "✕Failed1",
       "⚠Attention1",
       "Already up to date1",

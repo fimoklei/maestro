@@ -7,3 +7,10 @@ import "@testing-library/jest-dom/vitest";
 // loading — it asserts before the first query settles. Kept under the lane's
 // 20s testTimeout so a genuinely absent element still fails the test.
 configure({ asyncUtilTimeout: 5_000 });
+
+// happy-dom 20 fetches relative URLs from localhost:3000 (research 1096).
+// Assigned, not stubbed, so `vi.unstubAllGlobals()` restores this refusal.
+globalThis.fetch = () =>
+  Promise.reject(
+    new TypeError("The web test lane has no network: stub fetch in the test."),
+  );

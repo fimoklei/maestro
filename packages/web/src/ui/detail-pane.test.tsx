@@ -45,7 +45,7 @@ describe("DetailPane", () => {
 
   it("keeps its actions outside the region that scrolls", () => {
     // A long body never hides them. Whether the region scrolls is a browser
-    // measurement (testing.md); jsdom proves only the wiring.
+    // measurement (testing.md); happy-dom proves only the wiring.
     renderPane();
 
     const scroller = screen

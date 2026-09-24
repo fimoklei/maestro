@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-// DESIGN.md rules that no rendering test can see. The vitest/jsdom lane
+// DESIGN.md rules that no rendering test can see. The vitest/happy-dom lane
 // renders without CSS (LEARNINGS · web/styling-is-test-invisible), so a dropped
 // utility stays green forever; these guards read the source instead.
 
