@@ -1,4 +1,5 @@
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { DriftViewModel } from "../drift/drift-view-model";
 import { driftViewModel } from "../drift/drift-view-model";
@@ -73,11 +74,45 @@ describe("SelectedSkills marks", () => {
   it("carries one mark per row, named by its word, never two", () => {
     renderList(behindTdd, [{ ...tdd, copy: "local-edits" }]);
 
-    expect(screen.getByRole("img", { name: "Local edits" })).toHaveAttribute(
-      "title",
+    expect(
+      screen.getByRole("img", { name: "Local edits" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("img")).toHaveLength(1);
+  });
+
+  it("shows a mark's word and reason in a tooltip on focus, and closes it on Escape", async () => {
+    const user = userEvent.setup();
+    renderList(behindTdd, [{ ...tdd, copy: "local-edits" }]);
+    const mark = screen.getByRole("img", { name: "Local edits" });
+
+    await user.tab();
+    expect(mark).toHaveFocus();
+    const tooltip = await screen.findByRole("tooltip", { hidden: true });
+    expect(tooltip).toHaveTextContent(
       "This copy differs from the release it was deployed from",
     );
-    expect(screen.getAllByRole("img")).toHaveLength(1);
+    expect(document.body).toHaveTextContent(
+      /Local edits\s*This copy differs from the release it was deployed from/,
+    );
+    // The word is the name; the reason is said once, as the description.
+    expect(mark).toHaveAccessibleName("Local edits");
+    expect(mark).toHaveAccessibleDescription(
+      "This copy differs from the release it was deployed from",
+    );
+    expect(mark).not.toHaveAttribute("title");
+
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("tooltip", { hidden: true })).toBeNull();
+  });
+
+  it("shows a mark with no reason as its word alone, on hover", async () => {
+    const user = userEvent.setup();
+    renderList(behindTdd);
+
+    await user.hover(screen.getByRole("img", { name: "Behind" }));
+    expect(
+      await screen.findByRole("tooltip", { hidden: true }),
+    ).toHaveTextContent(/^Behind$/);
   });
 
   it("marks a behind skill and states its deployed → latest pair", () => {

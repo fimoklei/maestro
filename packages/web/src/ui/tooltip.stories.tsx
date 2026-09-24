@@ -16,3 +16,12 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+// A status mark: its word, then the reason behind it.
+export const WithDetail: Story = {
+  args: {
+    label: "Local edits",
+    detail: "This copy differs from the release it was deployed from",
+    children: <Button variant="quiet">Local edits</Button>,
+  },
+};
