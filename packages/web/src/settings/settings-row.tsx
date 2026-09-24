@@ -14,10 +14,13 @@ export interface SettingsRowProps {
   /** False for a plain word, which Geist Mono never sets (design.md). */
   machine?: boolean;
   control?: ReactNode;
+  /** An id for the name, so the control can take it as its label. */
+  nameId?: string;
 }
 
 export function SettingsRow({
   name,
+  nameId,
   description,
   value,
   machine = true,
@@ -26,7 +29,7 @@ export function SettingsRow({
   return (
     <div className="flex flex-wrap items-center gap-x-panel gap-y-inline border-gray-7 border-b px-panel py-cell last:border-b-0">
       <div className="flex min-w-0 grow basis-[220px] flex-col">
-        <span className="font-medium font-ui text-gray-12 text-row">
+        <span id={nameId} className="font-medium font-ui text-gray-12 text-row">
           {name}
         </span>
         {description === undefined ? null : (
