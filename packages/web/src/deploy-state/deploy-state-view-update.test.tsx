@@ -131,6 +131,31 @@ describe("Deploy-state — Update target on a repository", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("keeps Update target and the retry in an In sync target's menu, disabled with their causes", async () => {
+    stubServer(() => ({ repos: [REPO], repo: { [REPO]: repoAt("v0.3.5") } }));
+    renderDeployState();
+
+    await userEvent.click(
+      within(await findRow("…/me/project")).getByRole("button", {
+        name: "Actions for …/me/project",
+      }),
+    );
+    const update = await screen.findByRole("menuitem", {
+      name: "Update target — on the latest release",
+    });
+    const retry = screen.getByRole("menuitem", {
+      name: "Retry update — nothing to retry",
+    });
+    expect(update).toHaveAttribute("aria-disabled", "true");
+    expect(retry).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(update);
+
+    expect(
+      screen.queryByRole("dialog", { name: "Update …/me/project" }),
+    ).not.toBeInTheDocument();
+    expect(update).toBeInTheDocument();
+  });
+
   it("opens Update target straight from the row's menu", async () => {
     stubServer(() => ({
       repos: [REPO],

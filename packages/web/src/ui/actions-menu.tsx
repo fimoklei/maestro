@@ -108,9 +108,16 @@ export function ActionsMenu({
                 {separator ? (
                   <DropdownMenu.Separator className="-mx-tight my-tight h-px bg-gray-6" />
                 ) : null}
+                {/* Not Radix's `disabled`: that drops the item from the
+                    keyboard, and design.md keeps it focusable (#1067). */}
                 <DropdownMenu.Item
-                  disabled={item.disabled}
-                  onSelect={() => {
+                  aria-disabled={item.disabled || undefined}
+                  data-disabled={item.disabled ? "" : undefined}
+                  onSelect={(event) => {
+                    if (item.disabled) {
+                      event.preventDefault();
+                      return;
+                    }
                     if (returnFocus) item.onSelect?.();
                     else pending.current = item.onSelect ?? null;
                   }}
@@ -123,7 +130,8 @@ export function ActionsMenu({
                     item.danger
                       ? "text-red-11 data-[highlighted]:bg-red-3 data-[highlighted]:text-red-12"
                       : "text-gray-11 data-[highlighted]:bg-gray-3 data-[highlighted]:text-gray-12",
-                    "data-[disabled]:cursor-not-allowed data-[disabled]:text-dim",
+                    // Stacked so a focused disabled item still reads dim.
+                    "data-[disabled]:cursor-not-allowed data-[disabled]:text-dim data-[disabled]:data-[highlighted]:text-dim",
                   )}
                 >
                   {item.href === undefined ? (
