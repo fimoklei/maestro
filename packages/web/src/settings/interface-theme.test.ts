@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
-import { INTERFACE_THEME_KEY, resolveTheme } from "./interface-theme";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  chooseInterfaceTheme,
+  INTERFACE_THEME_KEY,
+  resolveTheme,
+} from "./interface-theme";
 
 // Stored choice × system preference → the theme stamped on <html>. Nothing
 // stored and an unknown value both mean System (#996).
@@ -71,5 +75,36 @@ describe("index.html's inline theme script", () => {
       throw new Error("SecurityError");
     };
     expect(runInlineScript(blocked, true)).toBe("dark");
+  });
+});
+
+describe("chooseInterfaceTheme", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    document.documentElement.removeAttribute("data-theme");
+    localStorage.removeItem(INTERFACE_THEME_KEY);
+  });
+
+  const transitionMutes = () =>
+    [...document.head.querySelectorAll("style")].filter((style) =>
+      style.textContent?.includes("transition:none"),
+    );
+
+  it("mutes transitions around a switch and restores them two frames later", () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal("requestAnimationFrame", (frame: FrameRequestCallback) =>
+      frames.push(frame),
+    );
+    vi.stubGlobal("matchMedia", () => ({ matches: false }));
+    document.documentElement.setAttribute("data-theme", "light");
+
+    chooseInterfaceTheme("dark");
+
+    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
+    expect(transitionMutes()).toHaveLength(1);
+    frames.shift()?.(0);
+    expect(transitionMutes()).toHaveLength(1);
+    frames.shift()?.(0);
+    expect(transitionMutes()).toHaveLength(0);
   });
 });
