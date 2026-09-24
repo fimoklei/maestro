@@ -217,6 +217,23 @@ describe("letter-spacing", () => {
   });
 });
 
+// design.md §1: blue only for focus, selection and links; every ring is blue-9.
+describe("focus ring colour", () => {
+  it("every focus outline is blue-9", () => {
+    const offenders = files.flatMap(({ path, source }) =>
+      [
+        ...source.matchAll(
+          /focus(?:-visible)?:outline-(?!offset|none|\d)[\w-]+/g,
+        ),
+      ]
+        .filter((match) => match[0] !== "focus-visible:outline-blue-9")
+        .map((match) => `${path.slice(SRC_DIR.length)}: ${match[0]}`),
+    );
+
+    expect(offenders).toEqual([]);
+  });
+});
+
 // #465: every warning, error and confirmation is stated through Notice, which
 // derives the role — so no allowlist, the literal occurs nowhere, not even in
 // the primitive. role="status" is unguarded on purpose (#615).

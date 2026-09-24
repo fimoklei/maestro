@@ -55,7 +55,8 @@ const removalFailure = (error: unknown): RemovalNews => ({
 // A shape, so the reading survives without colour; its word is its name.
 function Mark({ mark }: { mark: SkillMark | null }) {
   return (
-    <span className="inline-flex w-4 flex-none justify-center">
+    // 24×24, the pointer floor (WCAG 2.2 SC 2.5.8), inside the 32px row.
+    <span className="inline-flex w-6 flex-none justify-center">
       {mark === null ? null : (
         <Tooltip label={mark.word} detail={mark.hint}>
           <span
@@ -64,7 +65,7 @@ function Mark({ mark }: { mark: SkillMark | null }) {
             // biome-ignore lint/a11y/noNoninteractiveTabindex: a tooltip trigger, so its reading opens from the keyboard too (#1068)
             tabIndex={0}
             className={cn(
-              "rounded-control focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2",
+              "inline-flex size-6 items-center justify-center rounded-control focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2",
               mark.family === "attention"
                 ? "text-amber-11"
                 : mark.family === "good"

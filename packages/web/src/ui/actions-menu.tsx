@@ -65,7 +65,7 @@ export function ActionsMenu({
             "inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-control border border-transparent bg-transparent font-mono text-gray-11 text-meta leading-none",
             HOVER_TRANSITION,
             "enabled:hover:border-gray-7 enabled:hover:bg-gray-3 enabled:hover:text-gray-12",
-            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-11",
+            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-9",
             "disabled:cursor-not-allowed disabled:text-gray-11",
           )}
         >
