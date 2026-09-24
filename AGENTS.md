@@ -107,7 +107,7 @@ Run from the repo root.
   address).
 - `pnpm smoke` — same as `dev` but against an isolated sandbox config
   (`MAESTRO_HOME=.maestro-sandbox`), so it never touches the real `~/.maestro`.
-- `pnpm test` — whole suite. `test:core` / `test:web` / `test:integration` / `test:git` — one lane; `test:loop` — the three cheap lanes.
+- `pnpm test` — whole suite. `test:core` / `test:web` / `test:integration` / `test:git` — one lane; `test:affected` — the coding loop: only tests the uncommitted work reaches; `test:loop` — the three cheap lanes whole.
 - `pnpm verify` — lint, typecheck and test as three processes, one summary.
   On a tree that already passed it reuses that run (ignored files do not count); `--force` runs it again.
 - Full output of the last run is in `.logs/`. Read it; never re-run with a narrower filter.
