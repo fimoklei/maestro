@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { FileText, LayoutList, Table2 } from "lucide-react";
+import { FileText, LayoutList, Pencil, Table2 } from "lucide-react";
 import { NavItem } from "./nav-item";
 
 const ICON = { size: 16, strokeWidth: 1.5 } as const;
@@ -18,12 +18,33 @@ export const Inactive: Story = {};
 
 export const Active: Story = { args: { active: true } };
 
+export const WithCounter: Story = {
+  args: {
+    label: "Deploy-state",
+    icon: <LayoutList {...ICON} />,
+    counter: { text: "3 behind", unknown: false },
+  },
+};
+
+export const UnknownCounter: Story = {
+  args: {
+    label: "Harness",
+    icon: <Pencil {...ICON} />,
+    counter: { text: "?", unknown: true },
+  },
+};
+
 export const Sidebar: Story = {
   render: () => (
     <div
       style={{ width: 220, display: "flex", flexDirection: "column", gap: 2 }}
     >
-      <NavItem icon={<LayoutList {...ICON} />} label="Deploy-state" active />
+      <NavItem
+        icon={<LayoutList {...ICON} />}
+        label="Deploy-state"
+        active
+        counter={{ text: "3 behind", unknown: false }}
+      />
       <NavItem icon={<Table2 {...ICON} />} label="Inventory" />
       <NavItem icon={<FileText {...ICON} />} label="Repositories" />
     </div>

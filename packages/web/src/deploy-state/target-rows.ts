@@ -69,7 +69,10 @@ export type TargetRow = {
 export const globalRowId = (tool: string) => `global:${tool}`;
 export const repoRowId = (repoPath: string) => `repo:${repoPath}`;
 
-const isBehind = (head: ReleaseHead | undefined, pending?: PendingOperation) =>
+export const isBehind = (
+  head: ReleaseHead | undefined,
+  pending?: PendingOperation,
+) =>
   head !== undefined &&
   head.latestRelease !== null &&
   head.latestRelease !== head.release &&
