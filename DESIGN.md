@@ -139,9 +139,8 @@ neutral Radix-grammar palette in a light and a dark theme, Geist type, one
 fixed density and one frame per screen. Colour is the third cue behind the
 word and the glyph, never the first.
 
-Both themes ship. The cockpit is pinned to dark until the Interface theme row
-lands in the last rebuild job — this is a rollout order, not a dark-only
-design.
+Both themes ship. The reader picks one with the Interface theme row on
+Appearance; System follows the operating system.
 
 Key characteristics:
 
