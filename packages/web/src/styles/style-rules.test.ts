@@ -189,8 +189,8 @@ describe("Control Room token aliases", () => {
   });
 });
 
-// DESIGN.md §3: the type ramp is a fixed vocabulary (--text-title … --text-tag)
-// and the 10px Floor Rule forbids anything smaller. An arbitrary `text-[…]`
+// DESIGN.md § Typography: the type ramp is a fixed vocabulary (--text-meta …
+// --text-title) and The rem Rule forbids anything below 12px. An arbitrary `text-[…]`
 // value escapes both at once — and the colour ramp with them — so none pass.
 describe("type ramp", () => {
   it("no component sets an arbitrary text value", () => {

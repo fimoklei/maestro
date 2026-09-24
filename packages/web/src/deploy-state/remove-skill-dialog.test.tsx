@@ -618,9 +618,9 @@ describe("RemoveSkillDialog", () => {
     });
 
     it("fills only that row with amber, and pairs it with the glyph", () => {
-      // Red is reserved for validation errors; lost work is a consequence, not
-      // an error (DESIGN.md). The glyph keeps colour from being the only signal
-      // (Never-Colour-Alone).
+      // Lost work is a consequence, not a failure, so it takes amber, not red
+      // (DESIGN.md § Colors). The glyph keeps colour from being the only signal
+      // (The Third Cue Rule).
       renderDialog({
         target: globalTarget,
         preflight: toolChecks({ claude: "none", codex: "cannot-verify" }),
@@ -724,8 +724,8 @@ describe("RemoveSkillDialog", () => {
     });
   });
 
-  // Amber and ▲ mean "this removal will cost something" (DESIGN.md § The Two
-  // Signals Rule) — an unanswered check has claimed nothing yet.
+  // Amber and ▲ mean "this removal will cost something" (DESIGN.md § Colors:
+  // amber means Attention) — an unanswered check has claimed nothing yet.
   describe("while the check is still running", () => {
     it("leaves every row plain, with no fill and no glyph", () => {
       renderDialog({
@@ -799,8 +799,8 @@ describe("RemoveSkillDialog", () => {
     );
   });
 
-  // The cockpit's voice: terse, technical, second person nowhere (DESIGN.md
-  // § Fixed Vocabulary, PRODUCT.md § Voice). This dialog is prose-heavy, so it
+  // The cockpit's voice: terse, technical, second person nowhere (PRODUCT.md
+  // § Brand Personality). This dialog is prose-heavy, so it
   // is where the rule slips first.
   describe("its voice", () => {
     it("addresses nobody as 'you' or 'we', in any state", () => {

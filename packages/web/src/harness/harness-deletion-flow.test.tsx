@@ -41,7 +41,7 @@ describe("Harness deletion proposal", () => {
     return screen.findByRole("dialog", { name: /delete old-skill/i });
   };
 
-  // Amber owns *do this* alone (DESIGN.md § 2), so a retracting confirmation
+  // Amber owns *do this* alone (DESIGN.md § Colors), so a retracting confirmation
   // never takes the amber fill a publishing one does (#876).
   it("leaves the deletion confirmation unfilled", async () => {
     stubHarnessServer({ read: { body: DELETED }, deletion: { body: REMOVED } });
