@@ -13,6 +13,7 @@ import {
   NOT_READ_YET,
   REMOVE_FROM_TARGET,
   removeFromAllLabel,
+  removeFromToolsLabel,
   rowActionsLabel,
   SELECT_ALL_LABEL,
   SHOW_IN_DEPLOY_STATE,
@@ -90,6 +91,15 @@ describe("Inventory copy", () => {
     expect(SHOW_IN_DEPLOY_STATE).toBe("Show in Deploy-state");
     expect(removeFromAllLabel(3)).toBe("Remove from all 3 targets");
     expect(removeFromAllLabel(2)).toBe("Remove from all 2 targets");
+  });
+
+  // A global removal takes every detected tool (ADR-0013), so a global row
+  // names them all rather than claim its own tool alone.
+  it("names every tool a global row's removal takes", () => {
+    expect(removeFromToolsLabel(["claude", "codex"])).toBe(
+      "Remove from Claude Code and Codex",
+    );
+    expect(removeFromToolsLabel(["claude"])).toBe("Remove from Claude Code");
   });
 
   it("names a row's menu after its skill", () => {

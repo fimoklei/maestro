@@ -41,6 +41,7 @@ import {
   REMOVE_FROM_TARGET,
   REREAD_LABEL,
   removeFromAllLabel,
+  removeFromToolsLabel,
   SEARCH_LABEL,
   SELECT_ALL_LABEL,
   SHOW_IN_DEPLOY_STATE,
@@ -211,7 +212,10 @@ export function InventoryView({
           },
         ]),
     {
-      label: REMOVE_FROM_TARGET,
+      label:
+        deployment.removeTarget.kind === "global"
+          ? removeFromToolsLabel(deployment.removeTarget.tools)
+          : REMOVE_FROM_TARGET,
       danger: true,
       onSelect: () => setDialog({ kind: "remove", deployment }),
     },

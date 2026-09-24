@@ -231,7 +231,7 @@ details may name the exact APM mechanism or file.
 | Symbolic link | **Link** | A linked skill directory is a **linked skill folder**; *symlink* never reaches the screen. |
 | Directory | **Folder** | One word for the concept, on every surface. |
 | Skill detail pane | **{name} detail** | The pane is named after the skill it shows; its close control is **Close {name} detail**. |
-| A target in a skill's pane | **Remove from target** / **Show in Deploy-state** | A target row's ⋮ in a skill's detail pane: **Update target** where the skill reads **Behind** there, **Show in Deploy-state**, which opens that target's row, and **Remove from target**. The foot holds **Deploy skill** and **Remove from all N targets**; N counts the targets the pane lists, a global deploy being one target per detected tool (#1065). |
+| A target in a skill's pane | **Remove from target** / **Show in Deploy-state** | A target row's ⋮ in a skill's detail pane: **Update target** where the skill reads **Behind** there, **Show in Deploy-state**, which opens that target's row, and **Remove from target**. A global tool row reads **Remove from {tools}**, naming every detected tool, because a global removal takes them all (ADR-0013). The foot holds **Deploy skill** and **Remove from all N targets**; N counts the targets the pane lists, a global deploy being one target per detected tool (#1065). |
 | Bulk staging | **Bulk deploy** | The checkbox selects a skill **for bulk deploy**; the floating selection bar reads `N selected` and its control is **Deploy skills**, which opens the dialog that runs the deploy and shows its Report. Never *Staged for bulk deploy*. |
 
 The three Harness stages have no additional group name. One skill may appear in

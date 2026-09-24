@@ -1,3 +1,5 @@
+import { toolNameList } from "../deploy-state/tool-labels";
+
 // Shown by both gates while the inventory config read is still in flight; one
 // string, so the two cannot drift (copy.md → "Where copy lives").
 export const LOADING_INVENTORY_CONNECTION = "Loading the Inventory connection…";
@@ -64,6 +66,9 @@ export const NOT_DEPLOYED_ANYWHERE =
 // A target row's ⋮ in the pane, and the foot's removal (#1065). The count is
 // the targets the pane lists: a global deploy is one target per tool.
 export const REMOVE_FROM_TARGET = "Remove from target";
+// A global row's removal takes every detected tool (ADR-0013).
+export const removeFromToolsLabel = (tools: readonly string[]): string =>
+  `Remove from ${toolNameList(tools)}`;
 export const SHOW_IN_DEPLOY_STATE = "Show in Deploy-state";
 export const removeFromAllLabel = (count: number): string =>
   `Remove from all ${count} targets`;

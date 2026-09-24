@@ -1196,6 +1196,33 @@ describe("InventoryView — a target row in the pane", () => {
     );
   });
 
+  // apm's uninstall has no -t: a global removal takes every detected tool
+  // (ADR-0013), so a tool row's label says so instead of naming its tool alone.
+  it("names every global tool on a global row's removal", async () => {
+    stubPendingFetch();
+    renderView({
+      targets: [
+        {
+          ...deployedTo(["tdd"]),
+          target: { kind: "global" },
+          label: "Claude Code",
+          tool: "claude",
+        },
+        {
+          ...deployedTo(["tdd"]),
+          target: { kind: "global" },
+          label: "Codex",
+          tool: "codex",
+        },
+      ],
+    });
+    await openRow("tdd");
+
+    expect(menuItems(await targetMenu("Claude Code"))).toEqual([
+      "Remove from Claude Code and Codex",
+    ]);
+  });
+
   it("opens the removal from that one target, confirmed", async () => {
     vi.stubGlobal(
       "fetch",
