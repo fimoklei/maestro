@@ -21,7 +21,7 @@ describe("Notice", () => {
     expect(region.textContent).not.toMatch(/[✕⚠✓]/);
   });
 
-  // The tint is proven in a browser, never here: jsdom renders without CSS.
+  // The tint is proven in a browser, never here: happy-dom renders without CSS.
   it.each([
     ["success", "✓"],
     ["warning", "⚠"],

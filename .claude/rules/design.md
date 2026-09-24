@@ -126,4 +126,4 @@ Mandatory for any change that alters what `packages/web` renders:
 6. Record the evidence in the commit body: every absolute screenshot path and the
    cockpit URL from `pnpm cockpit:url`.
 
-Only a screenshot proves visual fidelity — the vitest/jsdom suite renders without CSS.
+Only a screenshot proves visual fidelity — the vitest/happy-dom suite renders without CSS.

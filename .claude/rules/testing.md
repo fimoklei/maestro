@@ -13,7 +13,7 @@ Runner: **Vitest**, all lanes (ADR-0002).
   replacement test in the handoff. Deleting tests or assertions, loosening
   matchers, and adding `.skip` or conditional exclusion are never fixes for
   production code.
-- **Layout is proven in a browser, not jsdom.** jsdom measures nothing — verify a CSS/layout change with an `agent-browser` measurement.
+- **Layout is proven in a browser, not happy-dom.** happy-dom measures nothing — verify a CSS/layout change with an `agent-browser` measurement.
 - Never chain `lint && typecheck && test` — run `pnpm verify`. The full output of the last run is on disk in `.logs/`; read it instead of re-running with a different filter.
 - Repeat the mutation audit only after a bug reaches `main` that the suite should have caught; `docs/research/739-mutation-audit.md` records how to run it.
 - A composition root (`main.tsx`, `server.ts`) is covered as far as it is reachable without a subprocess; the remainder is deliberately uncovered and `pnpm smoke` is its proof (ADR-0010), so `packages/server`'s function coverage is a decision, not an oversight.
@@ -21,7 +21,7 @@ Runner: **Vitest**, all lanes (ADR-0002).
 ## The four lanes
 
 - **Pure (unit)** (`pnpm test:core`) — sibling file next to source, no fs/git/network. Default in the `/tdd` loop; most tests live here.
-- **Web component** (`pnpm test:web`) — sibling `.test.tsx` in `packages/web`, **jsdom** + Testing Library (own `packages/web/vitest.config.ts`); `fetch` stubbed. Browser end-to-end (Playwright) stays deferred.
+- **Web component** (`pnpm test:web`) — sibling `.test.tsx` in `packages/web`, **happy-dom** + Testing Library (own `packages/web/vitest.config.ts`); `fetch` stubbed. Browser end-to-end (Playwright) stays deferred.
 - **Integration** (`pnpm test:integration`) — `tests/integration/`, a journey across modules with real I/O. Anything that drives APM or reads real lockfiles is integration.
 - **Git** (`pnpm test:git`) — `tests/git/`. Choose it on one checkable fact: does this test create a real repository? If yes, it lands here and stays out of the coding loop.
 

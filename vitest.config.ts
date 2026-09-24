@@ -3,7 +3,7 @@ import { delimiter } from "node:path";
 import { defineConfig } from "vitest/config";
 
 // One runner, four lanes (see .claude/rules/testing.md): pure/unit, integration,
-// the web component lane (jsdom, its own config for the React plugin), and git.
+// the web component lane (happy-dom, its own config for the React plugin), and git.
 // The first three encode an architectural boundary; `git` encodes cost — a file
 // that spawns a real repository lands there and stays out of the coding loop.
 
