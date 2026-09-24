@@ -114,6 +114,20 @@ describe("Sidebar", () => {
     ).toBeInTheDocument();
   });
 
+  it("does not repeat the Harness name inside its menu", async () => {
+    // The button above already names it, as Linear's workspace menu does.
+    stubServer();
+    renderSidebar();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /harness menu/i }),
+    );
+
+    expect(
+      within(await screen.findByRole("menu")).queryByText("…/me/agent-harness"),
+    ).not.toBeInTheDocument();
+  });
+
   it("carries no Targets list and no register affordance of its own", async () => {
     // Targets are read on Deploy-state; registering moved to Repositories
     // (#991).
