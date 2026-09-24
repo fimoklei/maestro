@@ -194,13 +194,11 @@ export function ImportDialog({
         <Notice trigger="user-action" notice={importError} />
       </div>
 
-      <div className="flex shrink-0 items-center gap-2.5 border-gray-7 border-t px-3.5 py-3">
-        <span className="flex-1" />
+      <div className="flex shrink-0 items-center justify-between gap-inline border-gray-7 border-t px-panel py-cell">
         <Button
           type="button"
           className="shrink-0"
           variant="quiet"
-          size="sm"
           onClick={onClose}
           disabled={importing}
         >
@@ -210,7 +208,6 @@ export function ImportDialog({
           type="button"
           className="shrink-0"
           variant="primary"
-          size="sm"
           busy={importing}
           disabled={!importEnabled(check) || imported !== null}
           onClick={onImport}
