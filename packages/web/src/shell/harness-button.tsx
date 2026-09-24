@@ -19,7 +19,7 @@ export function HarnessButton() {
   return (
     <ActionsMenu
       label={MENU_LABEL}
-      heading={path === null ? undefined : label}
+      fitTrigger
       items={[
         {
           label: SETTINGS.label,
@@ -33,6 +33,7 @@ export function HarnessButton() {
             "flex h-12 w-full items-center gap-inline rounded-control border border-transparent px-inline text-left",
             HOVER_TRANSITION,
             "cursor-pointer hover:border-gray-7 hover:bg-gray-3",
+            "data-[state=open]:border-gray-7 data-[state=open]:bg-gray-3",
           )}
         >
           <span className="flex min-w-0 grow flex-col">
