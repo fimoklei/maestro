@@ -90,6 +90,7 @@ export function SelectedSkills({
   primitives,
   drift = PENDING_DRIFT,
   target,
+  targetName,
   onRemoved,
   headingRef,
 }: {
@@ -98,6 +99,8 @@ export function SelectedSkills({
   // Required, not optional: a global target's tools must be present or the
   // confirmation can't render, and an optional prop could drop them (#338).
   target: RemoveDialogTarget;
+  /** The target as the table names it, for the removal's toast. */
+  targetName: string;
   // Called after the dialog is gone — a successful removal destroys the
   // trigger the modal's own focus-restore would otherwise aim at.
   onRemoved?: () => void;
@@ -264,7 +267,9 @@ export function SelectedSkills({
                       target:
                         scope?.kind === "global"
                           ? { kind: "global", tools: scope.tools }
-                          : target,
+                          : target.kind === "global"
+                            ? target
+                            : { kind: "repo", name: targetName },
                     }),
                   );
                   setRemoving(null);

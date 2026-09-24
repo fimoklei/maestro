@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HttpError } from "../api/http";
 import { UpdateTargetAction } from "../deploy-state/update-target-action";
 import { useDeployState } from "../deploy-state/use-deploy-state";
@@ -9,10 +9,9 @@ import { useDrift, useGlobalDrift } from "../drift/use-drift";
 import { versionColor } from "../drift/version-color";
 import type { RegisteredRepo } from "../registry/use-registry";
 import { targetLabel } from "../shell/target-label";
-import { ACTIONS } from "../ui/busy-copy";
+import { ACTIONS, doneSentence } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
-import { Notice } from "../ui/notice";
 import { DeployRefusalNotice } from "./deploy-refusal-notice";
 import { headsReading } from "./deployed-rollup";
 import { globalOptionLabel } from "./global-option-label";
@@ -32,6 +31,8 @@ type DeploySkillActionProps = {
   /** The row's ⋮ menu: a target to start on, and what it asked for. */
   initialTarget?: DeployTarget;
   intent?: "update";
+  /** The screen's status region: a busy label, then the done sentence or "". */
+  onWrite?: (text: string) => void;
 };
 
 // A repo's value is its absolute path, so it can never collide with this literal.
@@ -43,6 +44,7 @@ export function DeploySkillAction({
   registryReady,
   initialTarget,
   intent,
+  onWrite = () => {},
 }: DeploySkillActionProps) {
   const [chosen, setChosen] = useState<string | null>(
     initialTarget === undefined
@@ -124,6 +126,33 @@ export function DeploySkillAction({
     ? globalOptionLabel(globalTools)
     : targetLabel(selected, repoPaths);
 
+  // The row changes in view, so the region's done sentence is the only
+  // success word; a failure is its notice (#1118).
+  // Closing the pane unmounts this mid-deploy, and a per-call callback never
+  // fires after that; a pending busy label would otherwise stay in the region.
+  const pending = useRef(false);
+  pending.current = deploy.isPending;
+  const writeRef = useRef(onWrite);
+  writeRef.current = onWrite;
+  useEffect(
+    () => () => {
+      if (pending.current) writeRef.current("");
+    },
+    [],
+  );
+
+  const run = (confirmedCopyReceipt?: string) => {
+    onWrite(ACTIONS.deploy.busy);
+    deploy.mutate(
+      { type: "skill", name: skillName, target, confirmedCopyReceipt },
+      {
+        onSuccess: (data) =>
+          onWrite(doneSentence("deploy", data.deployed.name)),
+        onError: () => onWrite(""),
+      },
+    );
+  };
+
   const buttonLabel = !registryReady
     ? LOADING_TARGETS
     : deploy.isPending
@@ -175,36 +204,17 @@ export function DeploySkillAction({
           size="sm"
           busy={deploy.isPending}
           disabled={!registryReady || globalUnavailable}
-          onClick={() =>
-            deploy.mutate({ type: "skill", name: skillName, target })
-          }
+          onClick={() => run()}
         >
           {buttonLabel}
         </Button>
       )}
-      {deploy.isSuccess ? (
-        <Notice
-          trigger="user-action"
-          notice={{
-            level: "success",
-            label: "Deployed",
-            message: `${deploy.data.deployed.name} ${deploy.data.deployed.version} is deployed on this target.`,
-          }}
-        />
-      ) : null}
       {deploy.isError ? (
         // Offers an inline confirmed reinstall instead of dead-ending (ADR-0006, #66).
         <DeployRefusalNotice
           error={deploy.error}
           reinstalling={deploy.isPending}
-          onReinstall={(confirmedCopyReceipt) =>
-            deploy.mutate({
-              type: "skill",
-              name: skillName,
-              target,
-              confirmedCopyReceipt,
-            })
-          }
+          onReinstall={run}
         />
       ) : null}
       {/* Two ways into one preview: the refusal another release clears, and a

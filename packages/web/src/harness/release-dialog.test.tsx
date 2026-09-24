@@ -60,6 +60,17 @@ describe("ReleaseDialog", () => {
     ).toBeInTheDocument();
   });
 
+  // Geist Mono is for the tag, never the plain word naming it (design.md, #1117).
+  it("sets the Releasing as label in the sans face and its version in mono", () => {
+    renderReady();
+
+    const label = screen.getByText("Releasing as");
+    expect(label).toHaveClass("font-ui");
+    expect(label).not.toHaveClass("font-mono");
+    expect(label).not.toHaveClass("uppercase");
+    expect(screen.getByText("v1.3.0")).toHaveClass("font-mono");
+  });
+
   it("names the previous tag, default branch, and exact revision", () => {
     renderReady();
 

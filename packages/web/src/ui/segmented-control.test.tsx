@@ -23,6 +23,23 @@ describe("SegmentedControl", () => {
     expect(screen.getByRole("button", { name: "skills" })).toBeInTheDocument();
   });
 
+  // A segment names a choice in plain words, which Geist Mono never sets
+  // (design.md, #1117).
+  it("sets its segments in the sans face", () => {
+    render(
+      <SegmentedControl
+        label="Filter by type"
+        segments={segments}
+        value="all"
+        onChange={() => {}}
+      />,
+    );
+
+    const segment = screen.getByRole("button", { name: "skills" });
+    expect(segment).toHaveClass("font-ui");
+    expect(segment).not.toHaveClass("font-mono");
+  });
+
   it("marks the active segment as pressed and the others as not", () => {
     render(
       <SegmentedControl

@@ -10,6 +10,7 @@ import { OptionMenu } from "../ui/option-menu";
 import { Panel } from "../ui/panel";
 import { SelectionBar } from "../ui/selection-bar";
 import { useReadAnnouncement } from "../ui/use-read-announcement";
+import { useStatusRegion } from "../ui/use-status-region";
 import { BulkDeployAction } from "./bulk-deploy-action";
 import { BulkRemoveSkillAction } from "./bulk-remove-skill-action";
 import { bulkRemoveTargets } from "./bulk-remove-targets";
@@ -138,7 +139,9 @@ export function InventoryView({
     [cardColumn, open],
   );
 
-  const announcement = useReadAnnouncement("Inventory", loading, notice);
+  const [announcement, setWrite] = useStatusRegion(
+    useReadAnnouncement("Inventory", loading, notice),
+  );
 
   const all = primitives ?? [];
   const rows: InventoryRow[] = all.map((primitive) => {
@@ -418,6 +421,7 @@ export function InventoryView({
                   skillName={selectedPrimitive.name}
                   repos={repos}
                   registryReady={registryReady}
+                  onWrite={setWrite}
                   intent={intent?.action === "update" ? "update" : undefined}
                   initialTarget={
                     intent?.action === "update"

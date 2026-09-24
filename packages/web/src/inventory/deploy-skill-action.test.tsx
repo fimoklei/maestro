@@ -167,8 +167,14 @@ describe("DeploySkillAction", () => {
         }),
     );
     vi.stubGlobal("fetch", fetchMock);
+    const onWrite = vi.fn();
     renderAction(
-      <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
+      <DeploySkillAction
+        skillName="tdd"
+        repos={repos}
+        registryReady
+        onWrite={onWrite}
+      />,
     );
 
     await userEvent.selectOptions(
@@ -177,9 +183,13 @@ describe("DeploySkillAction", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
 
-    expect(
-      await screen.findByText(/tdd v0.5.1 is deployed/i),
-    ).toBeInTheDocument();
+    // The screen's status region says the busy label, then the done sentence
+    // once. The row already shows the result, so no success Notice (#1118).
+    await vi.waitFor(() =>
+      expect(onWrite.mock.calls).toEqual([["Deploying…"], ["Deployed tdd."]]),
+    );
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.queryByText(/is deployed/i)).not.toBeInTheDocument();
     const [url, init] = fetchMock.mock.calls.find(
       ([url]) => url === "/api/deploy",
     ) as unknown as [string, RequestInit];
@@ -401,6 +411,34 @@ describe("DeploySkillAction", () => {
     expect(screen.queryByText(/in sync/)).not.toBeInTheDocument();
   });
 
+  // Closing the pane mid-deploy unmounts this action, and a per-call callback
+  // never fires after that: the region must not keep saying Deploying….
+  it("clears the status region when it unmounts during a deploy", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input) === "/api/deploy"
+          ? new Promise<Response>(() => {})
+          : jsonResponse({ primitives: [], skipped: [], behind: [] }),
+      ),
+    );
+    const onWrite = vi.fn();
+    const view = renderAction(
+      <DeploySkillAction
+        skillName="tdd"
+        repos={repos}
+        registryReady
+        onWrite={onWrite}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
+    expect(onWrite).toHaveBeenLastCalledWith("Deploying…");
+    view.unmount();
+
+    expect(onWrite).toHaveBeenLastCalledWith("");
+  });
+
   it("shows the server's error message when a deploy is refused", async () => {
     // The server crafts an actionable message per typed error (issue #15);
     // a generic "Deploy failed." would throw that guidance away.
@@ -419,8 +457,14 @@ describe("DeploySkillAction", () => {
           ),
       ),
     );
+    const onWrite = vi.fn();
     renderAction(
-      <DeploySkillAction skillName="tdd" repos={repos} registryReady />,
+      <DeploySkillAction
+        skillName="tdd"
+        repos={repos}
+        registryReady
+        onWrite={onWrite}
+      />,
     );
 
     await userEvent.click(screen.getByRole("button", { name: /deploy/i }));
@@ -428,6 +472,8 @@ describe("DeploySkillAction", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       /Publish a release, then deploy again/i,
     );
+    // The notice says the failure; the region clears rather than say it twice.
+    expect(onWrite).toHaveBeenLastCalledWith("");
   });
 
   it("names the recorded package type, and offers no force that cannot help", async () => {

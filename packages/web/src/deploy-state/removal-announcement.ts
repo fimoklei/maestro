@@ -1,5 +1,6 @@
 // What a landed removal says, since the row itself is gone by then. Pure and
 // framework-free: wording is unit-tested here, the live region is the host's job.
+import { doneSentence } from "../ui/busy-copy";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
 import { toolNameList } from "./tool-labels";
 
@@ -10,7 +11,10 @@ export type RemovedSkill = {
   version: string | undefined;
   // As the server resolved it, not as the screen had it — the detected tool
   // set is probed at execution time and can differ from what was confirmed.
-  target: RemoveDialogTarget;
+  // A repo goes by the table's name for it, never its absolute path (#1119).
+  target:
+    | Exclude<RemoveDialogTarget, { kind: "repo" }>
+    | { kind: "repo"; name: string };
 };
 
 export function removalAnnouncement({
@@ -20,9 +24,12 @@ export function removalAnnouncement({
 }: RemovedSkill): string {
   const scope =
     target.kind === "repo"
-      ? target.repoPath
+      ? target.name
       : // The set is detected, so it can be empty (ADR-0011) — fall back rather
         // than trail off.
         toolNameList(target.tools) || "every detected tool";
-  return `Removed ${name} ${version ?? "(version unknown)"} from ${scope}`;
+  return doneSentence(
+    "remove",
+    `${name} ${version ?? "(version unknown)"} from ${scope}`,
+  );
 }

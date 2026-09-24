@@ -1,5 +1,4 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
 import { HARNESS_QUERIES, useHarness } from "../harness/use-harness";
 import {
   INVENTORY_NOT_READ,
@@ -20,6 +19,7 @@ import { Notice } from "../ui/notice";
 import { Skeleton } from "../ui/skeleton";
 import { useReadAnnouncement } from "../ui/use-read-announcement";
 import { useReadSkeleton } from "../ui/use-read-skeleton";
+import { useStatusRegion } from "../ui/use-status-region";
 import { SetLocationDialog } from "./set-location-dialog";
 import {
   CHANGE_LOCATION,
@@ -51,8 +51,6 @@ export function HarnessLocationPage() {
   const reading =
     config.isFetching || inventory.isFetching || harness.isFetching;
   const skeleton = useReadSkeleton(reading);
-  // A write's done sentence, until the next read (design.md → Keyboard).
-  const [write, setWrite] = useState("");
   const dialog = useSetLocationDialog({
     onSet: (stored) =>
       setWrite(doneSentence("setLocation", targetLabel(stored))),
@@ -71,7 +69,10 @@ export function HarnessLocationPage() {
   // leaves the release off the Latest release line. The notice names Re-read
   // Inventory rather than carrying it, as the control sits beside the facts.
   const readNotice = inventory.isError ? INVENTORY_NOT_READ : null;
-  const read = useReadAnnouncement(SCREEN, skeleton.visible, readNotice);
+  // A write's done sentence, until the next read (design.md → Keyboard).
+  const [region, setWrite] = useStatusRegion(
+    useReadAnnouncement(SCREEN, skeleton.visible, readNotice),
+  );
   const release =
     harnessMetaLine(
       harness.isSuccess ? harness.data.releasedVersion : undefined,
@@ -90,7 +91,7 @@ export function HarnessLocationPage() {
   return (
     <SettingsPanel title={SCREEN}>
       <div role="status" className="sr-only">
-        {dialog.busy ? ACTIONS.setLocation.busy : write || read}
+        {dialog.busy ? ACTIONS.setLocation.busy : region}
       </div>
       {/* Mounted before a failure is, so it is announced (#465). */}
       <Notice trigger="load" notice={readNotice} />

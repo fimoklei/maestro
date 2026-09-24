@@ -37,6 +37,7 @@ function renderList(
       primitives={primitives}
       drift={drift}
       target={{ kind: "repo", repoPath: "/Users/me/project" }}
+      targetName="…/me/project"
     />,
   );
 }

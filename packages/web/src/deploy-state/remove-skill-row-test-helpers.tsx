@@ -12,6 +12,8 @@ export const clearToasts = () => toast.dismiss();
 
 export const tdd = { type: "skill" as const, name: "tdd", version: "v0.5.0" };
 export const REPO = "/Users/me/project";
+// The table's name for REPO, which the removal toast repeats (#1119).
+export const REPO_NAME = "…/me/project";
 
 // The confirmation's own control. Fixed text: the skill name left the label
 // with #411, because the dialog's title already carries it. Only one dialog is
@@ -110,6 +112,7 @@ export function renderRow({
       <SelectedSkills
         primitives={primitives}
         target={target}
+        targetName={REPO_NAME}
         onRemoved={onRemoved}
       />
       <ToastHost />

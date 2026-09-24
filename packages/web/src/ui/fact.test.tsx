@@ -26,6 +26,20 @@ describe("Fact", () => {
     expect(screen.getByText("9f1c2b")).toHaveClass("break-all");
   });
 
+  // A label is a plain word, which Geist Mono never sets (design.md, #1117).
+  it("sets its label in the sans face, as written", () => {
+    render(
+      <dl>
+        <Fact label="Previous tag" value="v1.2.3" />
+      </dl>,
+    );
+
+    const label = screen.getByText("Previous tag");
+    expect(label).toHaveClass("font-ui");
+    expect(label).not.toHaveClass("font-mono");
+    expect(label).not.toHaveClass("uppercase");
+  });
+
   it("leaves a short value unwrapped", () => {
     render(
       <dl>

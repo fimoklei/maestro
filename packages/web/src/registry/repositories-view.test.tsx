@@ -187,6 +187,13 @@ describe("Repositories", () => {
     expect(
       await screen.findByText("Unregistered …/me/old-site."),
     ).toBeInTheDocument();
+    // The toast is the end; the region neither says it twice nor falls back to
+    // repeating the earlier read.
+    expect(
+      screen
+        .getAllByRole("status")
+        .find((region) => region.classList.contains("sr-only")),
+    ).toBeEmptyDOMElement();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(calls("/api/registry/repos", "DELETE")).toEqual([
       { path: "/home/me/old-site" },
