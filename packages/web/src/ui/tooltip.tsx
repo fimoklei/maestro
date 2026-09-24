@@ -20,7 +20,13 @@ export function Tooltip({
   return (
     <TooltipPrimitive.Provider delayDuration={400} skipDelayDuration={150}>
       <TooltipPrimitive.Root>
-        <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
+        <TooltipPrimitive.Trigger
+          asChild
+          // A label-only tooltip repeats the name; Radix would describe with it.
+          {...(detail === undefined ? { "aria-describedby": undefined } : {})}
+        >
+          {children}
+        </TooltipPrimitive.Trigger>
         <TooltipPrimitive.Portal>
           <TooltipPrimitive.Content
             sideOffset={6}

@@ -29,4 +29,39 @@ describe("Tooltip", () => {
     await user.keyboard("{Escape}");
     expect(onClose).toHaveBeenCalledOnce();
   });
+
+  it("adds no description that repeats a label-only tooltip's name", async () => {
+    const user = userEvent.setup();
+    render(
+      <Tooltip label="Behind">
+        <button type="button" aria-label="Behind">
+          ↓
+        </button>
+      </Tooltip>,
+    );
+
+    await user.tab();
+    await screen.findByRole("tooltip", { hidden: true });
+
+    const trigger = screen.getByRole("button", { name: "Behind" });
+    expect(trigger).not.toHaveAccessibleDescription();
+  });
+
+  it("describes the trigger with the reason alone when there is one", async () => {
+    const user = userEvent.setup();
+    render(
+      <Tooltip label="Local edits" detail="This copy changed">
+        <button type="button" aria-label="Local edits">
+          ✎
+        </button>
+      </Tooltip>,
+    );
+
+    await user.tab();
+    await screen.findByRole("tooltip", { hidden: true });
+
+    expect(
+      screen.getByRole("button", { name: "Local edits" }),
+    ).toHaveAccessibleDescription("This copy changed");
+  });
 });

@@ -109,10 +109,13 @@ describe("SelectedSkills marks", () => {
     const user = userEvent.setup();
     renderList(behindTdd);
 
-    await user.hover(screen.getByRole("img", { name: "Behind" }));
+    const mark = screen.getByRole("img", { name: "Behind" });
+    await user.hover(mark);
     expect(
       await screen.findByRole("tooltip", { hidden: true }),
     ).toHaveTextContent(/^Behind$/);
+    // The word is the name already; it is not read a second time (#1068).
+    expect(mark).not.toHaveAccessibleDescription();
   });
 
   it("marks a behind skill and states its deployed → latest pair", () => {
