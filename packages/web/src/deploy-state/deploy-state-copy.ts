@@ -7,7 +7,6 @@ export const FILTER_LABEL = "Filter";
 export const DISPLAY_LABEL = "Display";
 export const TABLE_LABEL = "Deploy-state table";
 export const ACTIONS_COLUMN_LABEL = "Actions";
-export const rowActionsLabel = (name: string) => `Actions for ${name}`;
 
 // The two group headers (CONTEXT.md → Target).
 export const GLOBAL = "Global";
