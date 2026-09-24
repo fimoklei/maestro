@@ -81,6 +81,7 @@ export function SelectedSkills({
               items={[
                 {
                   label: "Remove skill",
+                  danger: true,
                   onSelect: () => setRemoving(primitive.name),
                 },
               ]}
