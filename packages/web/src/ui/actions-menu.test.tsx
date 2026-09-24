@@ -56,6 +56,37 @@ describe("ActionsMenu", () => {
     expect(onSelect).toHaveBeenCalledTimes(1);
   });
 
+  // design.md (Keyboard): an unavailable control stays focusable and says why.
+  it("keeps a disabled item focusable, marked, and inert when chosen", async () => {
+    const onSelect = vi.fn();
+    render(
+      <ActionsMenu
+        label="Actions for tdd"
+        items={[
+          {
+            label: "Retry update — nothing to retry",
+            onSelect,
+            disabled: true,
+          },
+          { label: "copy ref", onSelect: () => {} },
+        ]}
+      />,
+    );
+
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+    const blocked = await screen.findByRole("menuitem", {
+      name: "Retry update — nothing to retry",
+    });
+    await waitFor(() => expect(blocked).toHaveFocus());
+    expect(blocked).toHaveAttribute("aria-disabled", "true");
+    await userEvent.keyboard("{Enter}");
+    await userEvent.click(blocked);
+
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(blocked).toBeInTheDocument();
+  });
+
   it("closes on Escape and puts focus back on the trigger", async () => {
     render(
       <ActionsMenu

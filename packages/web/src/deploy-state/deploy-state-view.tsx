@@ -38,11 +38,11 @@ import {
 } from "./deploy-state-copy";
 import { freshnessLine } from "./freshness-line";
 import { skippedEntryKey, skippedEntryText } from "./skipped-entry-text";
-import { RETRY_LABELS, TargetDetailPane } from "./target-detail-pane";
+import { TargetDetailPane } from "./target-detail-pane";
+import { targetMenuItems } from "./target-menu";
 import { globalRows, repoRow, type TargetRow } from "./target-rows";
 import { TARGET_STATUS_WORDS } from "./target-status";
 import { UpdateTargetAction } from "./update-target-action";
-import { UPDATE_TARGET } from "./update-target-copy";
 import { deployStateQueryOptions } from "./use-deploy-state";
 import { useGlobalDeployState } from "./use-global-deploy-state";
 import { useRetryOperation } from "./use-retry-operation";
@@ -147,16 +147,8 @@ export function DeployStateView() {
   ];
   const rows: TargetTableRow[] = targets.map((row) => ({
     ...row,
-    actions: [
-      { action: "deploy", label: DEPLOY_SKILL },
-      ...(row.behind
-        ? [{ action: "update" as const, label: UPDATE_TARGET }]
-        : []),
-      // Gone while its retry runs, so the menu never starts a second one.
-      ...(row.pending && !retrying(row.wire)
-        ? [{ action: "retry" as const, label: RETRY_LABELS[row.pending.kind] }]
-        : []),
-    ],
+    // Disabled while its retry runs, so the menu never starts a second one.
+    actions: targetMenuItems(row, retrying(row.wire)),
   }));
 
   const onAction = useCallback(

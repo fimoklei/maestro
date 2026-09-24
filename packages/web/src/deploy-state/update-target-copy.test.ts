@@ -15,12 +15,16 @@ import {
   OVERWRITE_UNVERIFIED,
   outcomeLine,
   RETRY_UPDATE,
+  RETRY_UPDATE_NOT_READ,
+  RETRY_UPDATE_NOTHING,
   releaseMoveLine,
+  retryRunning,
   SECTION_HEADINGS,
   selectionAfterLine,
   UPDATE_INCOMPLETE,
   UPDATE_INCOMPLETE_SENTENCE,
   UPDATE_TARGET,
+  UPDATE_TARGET_BLOCKED,
   UPDATE_TARGET_NO_ORIGIN,
   unverifiedSentence,
   updateDialogTitle,
@@ -34,6 +38,25 @@ describe("Update target copy", () => {
 
   it("states the cause on the control an origin-less Harness blocks", () => {
     expect(UPDATE_TARGET_NO_ORIGIN).toBe("Update target — no GitHub origin");
+  });
+
+  it("states why Update target cannot run, in five words or fewer", () => {
+    expect(UPDATE_TARGET_BLOCKED).toEqual({
+      notRead: "Update target — target not read",
+      unfinished: "Update target — unfinished operation",
+      pinned: "Update target — pinned per skill",
+      empty: "Update target — nothing deployed",
+      latestUnknown: "Update target — latest release unknown",
+      onLatest: "Update target — on the latest release",
+    });
+  });
+
+  it("states why a retry cannot run", () => {
+    expect(RETRY_UPDATE_NOTHING).toBe("Retry update — nothing to retry");
+    expect(RETRY_UPDATE_NOT_READ).toBe("Retry update — target not read");
+    expect(retryRunning("Retry removal")).toBe(
+      "Retry removal — already running",
+    );
   });
 
   it("titles the dialog with the target it acts on", () => {
