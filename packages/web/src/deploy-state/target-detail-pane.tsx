@@ -132,6 +132,7 @@ export function TargetDetailPane({
           primitives={row.primitives}
           drift={row.drift}
           target={row.target}
+          targetName={row.name}
           headingRef={skillsHeading}
           onRemoved={() => skillsHeading.current?.focus()}
         />

@@ -196,9 +196,7 @@ function PlanBody({
         </dl>
         <div className="mt-4 flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
           <div className="flex flex-col gap-1.5">
-            <span className="font-mono text-meta leading-[inherit] tracking-mono-wide text-gray-11 uppercase">
-              Releasing as
-            </span>
+            <span className="font-ui text-gray-11 text-meta">Releasing as</span>
             <span className="font-mono text-gray-12 text-title">
               {plan.versions[step]}
             </span>

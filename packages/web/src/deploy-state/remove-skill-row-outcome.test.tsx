@@ -4,7 +4,7 @@ import {
   clearToasts,
   jsonResponse,
   openRemoveDialog,
-  REPO,
+  REPO_NAME,
   renderRow,
   screen,
   stubFetch,
@@ -31,7 +31,7 @@ describe("removing a deployed skill from a row", () => {
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       expect(
-        await screen.findByText(`Removed tdd v0.5.0 from ${REPO}`),
+        await screen.findByText(`Removed tdd v0.5.0 from ${REPO_NAME}.`),
       ).toBeInTheDocument();
     });
 
@@ -43,7 +43,7 @@ describe("removing a deployed skill from a row", () => {
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       const announcement = await screen.findByText(
-        `Removed tdd v0.5.0 from ${REPO}`,
+        `Removed tdd v0.5.0 from ${REPO_NAME}.`,
       );
       // Read out where it stands, and focus stays where the reader left it.
       expect(announcement.closest("[aria-live]")).not.toBeNull();
@@ -66,10 +66,10 @@ describe("removing a deployed skill from a row", () => {
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       expect(
-        await screen.findByText(`Removed tdd v0.9.0 from ${REPO}`),
+        await screen.findByText(`Removed tdd v0.9.0 from ${REPO_NAME}.`),
       ).toBeInTheDocument();
       expect(
-        screen.queryByText(`Removed tdd v0.5.0 from ${REPO}`),
+        screen.queryByText(`Removed tdd v0.5.0 from ${REPO_NAME}.`),
       ).not.toBeInTheDocument();
     });
 
@@ -96,17 +96,17 @@ describe("removing a deployed skill from a row", () => {
 
       await openRemoveDialog();
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
-      await screen.findByText(`Removed tdd v0.5.0 from ${REPO}`);
+      await screen.findByText(`Removed tdd v0.5.0 from ${REPO_NAME}.`);
 
       await openRemoveDialog("jobs");
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
-      await screen.findByText(`Removed jobs v1.2.0 from ${REPO}`);
+      await screen.findByText(`Removed jobs v1.2.0 from ${REPO_NAME}.`);
 
       expect(
-        screen.getByText(`Removed tdd v0.5.0 from ${REPO}`),
+        screen.getByText(`Removed tdd v0.5.0 from ${REPO_NAME}.`),
       ).toBeInTheDocument();
       expect(
-        screen.getByText(`Removed jobs v1.2.0 from ${REPO}`),
+        screen.getByText(`Removed jobs v1.2.0 from ${REPO_NAME}.`),
       ).toBeInTheDocument();
     });
 
@@ -134,7 +134,7 @@ describe("removing a deployed skill from a row", () => {
 
       expect(
         await screen.findByText(
-          "Removed tdd v0.5.0 from Claude Code and Codex",
+          "Removed tdd v0.5.0 from Claude Code and Codex.",
         ),
       ).toBeInTheDocument();
     });
@@ -151,7 +151,9 @@ describe("removing a deployed skill from a row", () => {
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
 
       expect(
-        await screen.findByText(`Removed tdd (version unknown) from ${REPO}`),
+        await screen.findByText(
+          `Removed tdd (version unknown) from ${REPO_NAME}.`,
+        ),
       ).toBeInTheDocument();
     });
 
@@ -176,11 +178,11 @@ describe("removing a deployed skill from a row", () => {
 
       await openRemoveDialog();
       await userEvent.click(screen.getByRole("button", { name: CONFIRM }));
-      await screen.findByText(`Removed tdd v0.5.0 from ${REPO}`);
+      await screen.findByText(`Removed tdd v0.5.0 from ${REPO_NAME}.`);
       withoutTdd();
 
       expect(
-        screen.getByText(`Removed tdd v0.5.0 from ${REPO}`),
+        screen.getByText(`Removed tdd v0.5.0 from ${REPO_NAME}.`),
       ).toBeInTheDocument();
     });
   });

@@ -13,6 +13,7 @@ import { Panel } from "../ui/panel";
 import { showSuccess } from "../ui/toast";
 import { useReadAnnouncement } from "../ui/use-read-announcement";
 import { useReadSkeleton } from "../ui/use-read-skeleton";
+import { useStatusRegion } from "../ui/use-status-region";
 import { RegisterRepositoryDialog } from "./register-repository-dialog";
 import {
   type RepositoryAction,
@@ -42,8 +43,6 @@ export function RepositoriesView() {
   const registry = useRegistry();
   const unregister = useUnregisterRepo();
   const skeleton = useReadSkeleton(registry.isFetching);
-  // A write's busy label, then its done sentence (design.md → Keyboard).
-  const [write, setWrite] = useState("");
   const [unregistering, setUnregistering] = useState<RepositoryRow | null>(
     null,
   );
@@ -100,7 +99,10 @@ export function RepositoriesView() {
   const readNotice = registry.isError
     ? { ...REPOS_NOT_READ, action: { label: REREAD_LABEL, onClick: reread } }
     : null;
-  const read = useReadAnnouncement(SCREEN, skeleton.visible, readNotice);
+  // A write's busy label, then its done sentence (design.md → Keyboard).
+  const [region, setWrite] = useStatusRegion(
+    useReadAnnouncement(SCREEN, skeleton.visible, readNotice),
+  );
   const registerButton = (
     <Button variant="primary" onClick={register.openDialog}>
       {REGISTER_REPOSITORY}
@@ -124,7 +126,7 @@ export function RepositoriesView() {
       }
     >
       <div role="status" className="sr-only">
-        {register.registering ? ACTIONS.register.busy : write || read}
+        {register.registering ? ACTIONS.register.busy : region}
       </div>
       {/* Mounted before a failure is, so it is announced (#465); the
           padding comes only with the notice. */}

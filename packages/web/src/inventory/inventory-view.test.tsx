@@ -596,6 +596,44 @@ describe("InventoryView — detail pane", () => {
     ).not.toBeInTheDocument();
   });
 
+  // The refusal's notice says the end; the region must not fall back to
+  // announcing the earlier read again.
+  it("leaves the status region silent after a refused deploy", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url === "/api/deploy") {
+          return new Response(
+            JSON.stringify({ error: "local-diverged-from-tag" }),
+            { status: 409, headers: { "content-type": "application/json" } },
+          );
+        }
+        if (url.startsWith("/api/deploy-state/global")) {
+          return jsonResponse({
+            tools: [{ tool: "claude-code", primitives: [] }],
+            primitives: [],
+            skipped: [],
+          });
+        }
+        return jsonResponse({ behind: [] });
+      }),
+    );
+    const view = renderView({ primitives: undefined, loading: true });
+    view.rerender(<InventoryView {...baseProps} />);
+    const region = screen.getByTestId("inventory-status-region");
+    expect(region).toHaveTextContent("Inventory loaded.");
+
+    await openRow("tdd");
+    const pane = screen.getByRole("complementary", { name: /tdd detail/i });
+    await userEvent.click(
+      within(pane).getByRole("button", { name: /deploy/i }),
+    );
+
+    expect(await within(pane).findByRole("alert")).toBeInTheDocument();
+    expect(region).toBeEmptyDOMElement();
+  });
+
   it("deploys the skill from the pane", async () => {
     const fetchMock = vi.fn(
       async (input: RequestInfo | URL, _init?: RequestInit) => {
@@ -641,6 +679,12 @@ describe("InventoryView — detail pane", () => {
           String(init.body).includes("tdd"),
       ),
     ).toBe(true);
+    // The screen's one region ends the write; the pane adds no Notice (#1118).
+    expect(
+      await within(screen.getByTestId("inventory-status-region")).findByText(
+        "Deployed tdd.",
+      ),
+    ).toBeInTheDocument();
   });
 });
 
