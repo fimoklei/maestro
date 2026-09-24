@@ -37,7 +37,7 @@ const respond = (answer: Answer): Response | Promise<Response> =>
       ? jsonResponse(answer.body, answer.status)
       : jsonResponse(answer, 200);
 
-export const EMPTY_TARGET = { primitives: [], skipped: [] };
+const EMPTY_TARGET = { primitives: [], skipped: [] };
 
 // Reads the state on every request, so a test can move it between reads.
 export function stubServer(read: () => ServerState) {
