@@ -310,10 +310,10 @@ describe("Deploy-state pane — Selected skills", () => {
     renderDeployState();
 
     const pane = await openPane(LABEL);
-    expect(
-      await within(pane).findByRole("img", { name: "Unverified" }),
-    ).toHaveAttribute(
-      "title",
+    const mark = await within(pane).findByRole("img", { name: "Unverified" });
+    await userEvent.hover(mark);
+    await screen.findByRole("tooltip", { hidden: true });
+    expect(mark).toHaveAccessibleDescription(
       "Could not reach the Harness location to check for updates",
     );
   });
