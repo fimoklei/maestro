@@ -210,6 +210,43 @@ describe("BulkDeploySkills", () => {
     expect(report.failed).toEqual([]);
   });
 
+  // Each link has its own path, and the Report spells out the one rm per link
+  // (#748), so linked skills never merge into one line.
+  it("keeps the link apm refused on its own failure line, one per skill", async () => {
+    const bulk = new BulkDeploySkills({
+      deploy: fakeDeploy({
+        tdd: {
+          ok: false,
+          error: "destination-symlinked",
+          linkedPath: "/home/.claude/skills/tdd",
+        },
+        grill: {
+          ok: false,
+          error: "destination-symlinked",
+          linkedPath: "/home/.claude/skills/grill",
+        },
+      }),
+    });
+
+    const report = await bulk.execute({
+      names: ["tdd", "grill"],
+      target: { kind: "global" },
+    });
+
+    expect(report.failed).toEqual([
+      {
+        error: "destination-symlinked",
+        names: ["tdd"],
+        linkedPath: "/home/.claude/skills/tdd",
+      },
+      {
+        error: "destination-symlinked",
+        names: ["grill"],
+        linkedPath: "/home/.claude/skills/grill",
+      },
+    ]);
+  });
+
   it("merges identical failures into one line carrying every affected skill", async () => {
     const bulk = new BulkDeploySkills({
       deploy: fakeDeploy({

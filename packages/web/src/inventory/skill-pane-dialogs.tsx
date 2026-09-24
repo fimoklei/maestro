@@ -93,7 +93,6 @@ function PaneUpdate({
       update={update}
       // Priced with this skill, as the Inventory's entrance always was (#955).
       add={skillName}
-      offered={false}
       defaultOpen
       onClose={onClose}
     />

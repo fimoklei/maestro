@@ -3,6 +3,7 @@ import { HttpError } from "../api/http";
 import {
   type DeployStateNotice,
   deployNotice,
+  linkedFolderRecovery,
   removeNotice,
   updatePreviewNotice,
 } from "./notice-copy";
@@ -606,6 +607,13 @@ describe("every deploy and remove notice", () => {
       deployNotice(refusal(code)),
       removeNotice(refusal(code)),
     ]),
+    // Built at a call site rather than read off the table, so the same rules
+    // run over it (#748).
+    {
+      label: "Linked skill folder",
+      message: linkedFolderRecovery("/home/.claude"),
+      detail: undefined,
+    },
   ];
 
   it("never addresses the reader as you", () => {
@@ -622,5 +630,13 @@ describe("every deploy and remove notice", () => {
         `${notice.label} ${notice.message} ${notice.detail ?? ""}`,
       ).not.toMatch(/\bin?valid\b/i);
     }
+  });
+});
+
+describe("linkedFolderRecovery", () => {
+  it("spells out the rm for the path the server read", () => {
+    expect(linkedFolderRecovery("/Users/dev/.claude/skills/tdd")).toBe(
+      "Run rm /Users/dev/.claude/skills/tdd and then deploy again. This removes the link only. The folder it points at remains on disk.",
+    );
   });
 });

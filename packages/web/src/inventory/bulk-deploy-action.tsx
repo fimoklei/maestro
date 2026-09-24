@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { deployNotice } from "../deploy-state/notice-copy";
+import { toolNameList } from "../deploy-state/tool-labels";
+import { UpdateTargetAction } from "../deploy-state/update-target-action";
 import { useDeployState } from "../deploy-state/use-deploy-state";
 import { useGlobalDeployState } from "../deploy-state/use-global-deploy-state";
+import { useUpdateTarget } from "../deploy-state/use-update-target";
 import { driftViewModel } from "../drift/drift-view-model";
 import { useDrift, useGlobalDrift } from "../drift/use-drift";
 import type { RegisteredRepo } from "../registry/use-registry";
@@ -60,6 +63,10 @@ export function BulkDeployRun({
   // Reuses the single-deploy path with the row's own receipt — one behaviour,
   // two entry points (ADR-0006, #66).
   const forceDeploy = useDeploySkill();
+  // The skill a refused row asked Update target to add (#955). Set, the Update
+  // dialog takes this one's place: the Report described a target it may move.
+  const [updateFor, setUpdateFor] = useState<string | null>(null);
+  const update = useUpdateTarget();
 
   const isKnown =
     chosen === GLOBAL_VALUE || repos.some((repo) => repo.path === chosen);
@@ -134,6 +141,19 @@ export function BulkDeployRun({
           requestFailed: bulk.isError,
         });
 
+  if (updateFor !== null) {
+    return (
+      <UpdateTargetAction
+        targetName={isGlobal ? toolNameList(globalTools ?? []) : chosenLabel}
+        target={target}
+        update={update}
+        add={updateFor}
+        defaultOpen
+        onClose={onClose}
+      />
+    );
+  }
+
   return (
     <BulkDeployDialog
       count={stagedNames.length}
@@ -183,6 +203,7 @@ export function BulkDeployRun({
                     target,
                     confirmedCopyReceipt,
                   }),
+                onUpdate: setUpdateFor,
               }),
             }
       }

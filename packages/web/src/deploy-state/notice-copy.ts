@@ -58,6 +58,11 @@ export const DELETE_LINKED_FOLDER = `Delete the linked skill folder in the targe
 const LINK_TARGET_SURVIVES =
   "This removes the link only. The folder it points at remains on disk.";
 
+// The same recovery with the path the server read (#748). No comma after the
+// path: a reader copying the command would paste it.
+export const linkedFolderRecovery = (path: string) =>
+  `Run rm ${path} and ${DEPLOY_AGAIN} ${LINK_TARGET_SURVIVES}`;
+
 type Heading = { level: NoticeLevel; label: string };
 type Body = { message: string; detail?: string };
 

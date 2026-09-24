@@ -442,7 +442,6 @@ function TargetActions({
           targetName={row.updateName}
           target={row.wire}
           update={update}
-          offered={false}
           defaultOpen={openUpdate}
         />
       ) : null}

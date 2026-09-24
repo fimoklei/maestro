@@ -243,6 +243,27 @@ describe("bulkDeployReportGroups", () => {
     );
   });
 
+  // "Delete the linked skill folder" named no path and no command, so a reader
+  // with 47 linked skills could not act on it (#748).
+  it("spells out the one rm for the link apm refused", () => {
+    const groups = bulkDeployReportGroups({
+      view: view({
+        tone: "attention",
+        failed: [
+          {
+            error: "destination-symlinked",
+            names: ["tdd"],
+            linkedPath: "/Users/dev/.claude/skills/tdd",
+          },
+        ],
+      }),
+    });
+
+    expect(rowsOf(groups, "Failed")[0]?.detail).toBe(
+      "Linked skill folder Run rm /Users/dev/.claude/skills/tdd and then deploy again. This removes the link only. The folder it points at remains on disk.",
+    );
+  });
+
   it("names a failure the report carries no recovery step for, never its code", () => {
     const groups = bulkDeployReportGroups({
       view: view({
