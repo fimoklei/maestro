@@ -1,6 +1,6 @@
 import { DEPLOY_SKILL } from "../inventory/inventory-copy";
 import type { TargetTableRow } from "./deploy-state-columns";
-import { RETRY_LABELS } from "./target-detail-pane";
+import { RETRY_LABELS } from "./release-head-copy";
 import type { TargetRow } from "./target-rows";
 import {
   RETRY_UPDATE_NOT_READ,
@@ -10,8 +10,7 @@ import {
   UPDATE_TARGET_BLOCKED,
 } from "./update-target-copy";
 
-// A Deploy-state row's ⋮ menu (#1067): every item stays, and one that cannot
-// run is disabled with its cause.
+// A Deploy-state row's ⋮ menu (#1067); a blocked item stays, with its cause.
 
 export type MenuFacts = Pick<
   TargetRow,

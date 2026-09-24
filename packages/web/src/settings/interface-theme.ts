@@ -1,6 +1,4 @@
-// The Interface theme (#996, ADR-0033 §5): the reader's choice, stored per
-// browser, and the theme it resolves to. index.html's inline script resolves
-// the same way before first paint; interface-theme.test.ts runs both.
+// The Interface theme (#996, ADR-0033 §5); index.html's inline script resolves it the same way.
 
 export type InterfaceTheme = "system" | "light" | "dark";
 export type Theme = "light" | "dark";

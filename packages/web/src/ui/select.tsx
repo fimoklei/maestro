@@ -3,8 +3,7 @@ import { Check, ChevronDown } from "lucide-react";
 import { cn } from "./cn";
 import { HOVER_TRANSITION } from "./hover-transition";
 
-// shadcn's select on Radix Select (ADR-0004), restyled to the tokens: one
-// value from a short list, named by a visible label elsewhere on the row.
+// shadcn's select on Radix Select (ADR-0004), restyled to the tokens.
 
 export interface SelectOption {
   value: string;

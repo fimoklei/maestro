@@ -12,7 +12,7 @@
         var stored = null;
         try {
           stored = localStorage.getItem("maestro.interface-theme");
-        } catch (blocked) {}
+        } catch {}
         var theme =
           stored === "light" || stored === "dark"
             ? stored

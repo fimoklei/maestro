@@ -53,11 +53,10 @@ export function DeletionDialog({
         {mode.kind === "propose" ? (
           <>
             <p className="m-0 font-ui text-meta text-gray-12">
-              You deleted{" "}
-              <span className="font-mono text-gray-12">{skill}</span> from the
+              You deleted <span className="font-mono">{skill}</span> from the
               Harness working tree. Confirming proposes that deletion to{" "}
-              <span className="font-mono text-gray-12">{mode.origin}</span> on
-              its own branch.
+              <span className="font-mono">{mode.origin}</span> on its own
+              branch.
             </p>
             <p className="m-0 font-ui text-meta text-gray-11">
               Nobody loses the skill until the pull request is merged.
@@ -67,9 +66,9 @@ export function DeletionDialog({
           // No second sentence: the propose mode has one because nothing is
           // lost until a merge, and here something is.
           <p className="m-0 font-ui text-meta text-gray-12">
-            <span className="font-mono text-gray-12">{skill}</span> is in the
-            Harness working tree and nowhere else. Confirming removes the folder
-            from disk for good.
+            <span className="font-mono">{skill}</span> is in the Harness working
+            tree and nowhere else. Confirming removes the folder from disk for
+            good.
           </p>
         )}
         <Card padded>

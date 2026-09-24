@@ -31,8 +31,8 @@ export function Fact({
       </dt>
       <dd
         className={cn(
-          "m-0 truncate text-gray-12",
-          machine ? "font-mono text-row" : "font-ui text-row",
+          "m-0 truncate text-gray-12 text-row",
+          machine ? "font-mono" : "font-ui",
           wrap && "break-all",
         )}
         title={title}

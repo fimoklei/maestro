@@ -2,7 +2,7 @@ import { useId, useState } from "react";
 import { Select } from "../ui/select";
 import {
   chooseInterfaceTheme,
-  type InterfaceTheme,
+  parseInterfaceTheme,
   readInterfaceTheme,
 } from "./interface-theme";
 import {
@@ -27,7 +27,7 @@ export function AppearancePage() {
   const [choice, setChoice] = useState(readInterfaceTheme);
 
   const choose = (value: string) => {
-    const next = value as InterfaceTheme;
+    const next = parseInterfaceTheme(value);
     chooseInterfaceTheme(next);
     setChoice(next);
   };
