@@ -2,7 +2,7 @@
    hand; change a value there and regenerate (`/impeccable`). Step semantics, the
    17 measured pairs and the theme-independent tokens: ADR-0033. */
 
-/* ── dark (the pinned default until the Interface theme row ships) ───────── */
+/* ── dark (also the fallback before index.html stamps data-theme) ───────── */
 :root,
 [data-theme="dark"] {
   color-scheme: dark;
