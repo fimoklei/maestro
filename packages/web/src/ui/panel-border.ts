@@ -10,7 +10,7 @@ export function panelBorderFor({
   cost: boolean;
 }): string {
   if (failure) {
-    return "border-danger-border";
+    return "border-red-7";
   }
-  return cost ? "border-line-drift" : "border-line";
+  return cost ? "border-amber-7" : "border-gray-7";
 }

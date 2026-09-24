@@ -51,7 +51,7 @@ describe("Harness deletion proposal", () => {
 
     expect(
       within(dialog).getByRole("button", { name: /^delete skill$/i }),
-    ).not.toHaveClass("bg-amber");
+    ).not.toHaveClass("bg-amber-11");
   });
 
   it("confirms a deletion in the Harness's own words, never Remove", async () => {

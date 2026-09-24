@@ -59,8 +59,8 @@ function SectionHeading({
   return (
     <h3
       className={cn(
-        "font-mono text-tag uppercase tracking-tag",
-        inline ? "inline text-inherit" : "text-dim",
+        "font-mono text-meta uppercase tracking-[0.08em]",
+        inline ? "inline text-inherit" : "text-gray-11",
       )}
     >
       {children}
@@ -83,8 +83,8 @@ function Section({
     <section className="grid grid-cols-1 gap-x-4 gap-y-1 py-2.5 sm:grid-cols-[10.5rem_1fr]">
       <h3
         className={cn(
-          "font-mono text-tag uppercase leading-5 tracking-tag",
-          signal ? "text-amber-ink" : "text-dim",
+          "font-mono text-meta uppercase leading-5 tracking-[0.08em]",
+          signal ? "text-amber-11" : "text-gray-11",
         )}
       >
         {heading}
@@ -112,10 +112,10 @@ function FoldedSection({
 }) {
   return (
     <details className="flex flex-col gap-1">
-      <summary className="cursor-pointer font-mono text-dim text-tag hover:text-fg-2 motion-safe:transition-colors">
+      <summary className="cursor-pointer font-mono text-gray-11 text-meta hover:text-gray-12 motion-safe:transition-colors">
         <SectionHeading inline>{foldedHeading(heading, count)}</SectionHeading>
         {note === null ? null : (
-          <span className="font-mono text-tag">
+          <span className="font-mono text-meta">
             <span aria-hidden="true"> · </span>
             <span>{note}</span>
           </span>
@@ -136,7 +136,7 @@ function NameList({
   return (
     <ul className={listClass(inline)}>
       {names.map((name) => (
-        <li key={name} className="font-mono text-data text-fg">
+        <li key={name} className="font-mono text-row text-gray-12">
           {name}
         </li>
       ))}
@@ -157,7 +157,7 @@ function SkillRows({
   return (
     <ul className={listClass(inline)}>
       {rows.map((row) => (
-        <li key={row.name} className="font-mono text-data text-fg">
+        <li key={row.name} className="font-mono text-row text-gray-12">
           {row.url === null ? (
             row.name
           ) : (
@@ -165,7 +165,7 @@ function SkillRows({
               href={row.url}
               target="_blank"
               rel="noreferrer"
-              className="underline decoration-dim decoration-dotted underline-offset-2 hover:decoration-fg motion-safe:transition-colors"
+              className="underline decoration-gray-11 decoration-dotted underline-offset-2 hover:decoration-gray-12 motion-safe:transition-colors"
             >
               {row.name}
             </a>
@@ -193,14 +193,14 @@ function ConsentRow({
   onToggle: () => void;
 }) {
   return (
-    <li className="flex flex-col gap-1 rounded-item border border-amber-border bg-amber-bg px-3 py-2">
-      <p className="font-ui text-amber-ink text-desc">{sentence}</p>
-      <label className="flex cursor-pointer items-center gap-2 font-ui text-desc text-fg">
+    <li className="flex flex-col gap-1 rounded-control border border-amber-7 bg-amber-3 px-3 py-2">
+      <p className="font-ui text-amber-11 text-meta">{sentence}</p>
+      <label className="flex cursor-pointer items-center gap-2 font-ui text-meta text-gray-12">
         <input
           type="checkbox"
           checked={checked}
           onChange={onToggle}
-          className="accent-amber"
+          className="accent-amber-11"
         />
         {`${label} for ${consentRowName(row)}`}
       </label>
@@ -218,8 +218,8 @@ function OutcomeTrace({ lines }: { lines: readonly OutcomeLine[] }) {
           <li
             key={line.key}
             className={cn(
-              "flex items-start gap-1.5 font-mono text-tag",
-              line.ok ? "text-green-ink" : "text-amber-ink",
+              "flex items-start gap-1.5 font-mono text-meta",
+              line.ok ? "text-green-11" : "text-amber-11",
             )}
           >
             <span aria-hidden="true">{line.ok ? "✓" : "✗"}</span>
@@ -308,13 +308,13 @@ export function UpdateTargetDialog({
       width={640}
       onClose={onCancel}
     >
-      <div className="flex shrink-0 items-start justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
+      <div className="flex shrink-0 items-start justify-between gap-2.5 border-gray-7 border-b px-3.5 py-3">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <h2 className="font-semibold font-ui text-fg text-subtitle">
+          <h2 className="font-semibold font-ui text-gray-12 text-prose">
             Update <span className="break-all font-mono">{targetName}</span>
           </h2>
           {preview !== null && lines === null ? (
-            <p className="font-mono text-dim text-mono-sm">
+            <p className="font-mono text-gray-11 text-meta">
               {releaseMoveLine(preview.release, preview.chosenRelease)}
             </p>
           ) : null}
@@ -341,16 +341,16 @@ export function UpdateTargetDialog({
             ) : null}
           </>
         ) : preview === null ? (
-          <p className="font-ui text-desc text-dim">
+          <p className="font-ui text-meta text-gray-11">
             {isLoading ? LOADING_PREVIEW : null}
           </p>
         ) : (
           <>
             <div className="flex flex-col gap-1">
-              <p id={leadInId} className="font-ui text-desc text-fg">
+              <p id={leadInId} className="font-ui text-meta text-gray-12">
                 {countingSentence(preview.counts)}
               </p>
-              <p className="font-ui text-desc text-muted">
+              <p className="font-ui text-meta text-gray-11">
                 {preview.selection.desired.length === 0
                   ? BECOMES_EMPTY
                   : selectionAfterLine(preview.selection.desired)}
@@ -358,7 +358,7 @@ export function UpdateTargetDialog({
             </div>
 
             {/* The fixed order, whichever sections this preview has. */}
-            <div className="flex flex-col divide-y divide-line-row border-line-row border-y empty:hidden">
+            <div className="flex flex-col divide-y divide-gray-7 border-gray-7 border-y empty:hidden">
               {preview.addedByThisDeploy.length > 0 ? (
                 <Section heading={ADDED_BY_THIS_DEPLOY}>
                   <SkillRows rows={preview.addedByThisDeploy} inline={true} />
@@ -402,7 +402,7 @@ export function UpdateTargetDialog({
                     ))}
                   </ul>
                   {preview.localEdits.discard.length > 0 ? (
-                    <p className="font-ui text-desc text-muted">
+                    <p className="font-ui text-meta text-gray-11">
                       {KEEP_WORK_BY_IMPORTING}
                     </p>
                   ) : null}
@@ -438,7 +438,7 @@ export function UpdateTargetDialog({
         />
       </div>
 
-      <div className="flex shrink-0 items-center justify-end gap-2.5 border-line-row border-t px-3.5 py-3">
+      <div className="flex shrink-0 items-center justify-end gap-2.5 border-gray-7 border-t px-3.5 py-3">
         <Button type="button" variant="quiet" size="sm" onClick={onCancel}>
           {lines === null ? "Cancel" : CLOSE}
         </Button>

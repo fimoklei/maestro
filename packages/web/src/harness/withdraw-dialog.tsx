@@ -33,14 +33,14 @@ export function WithdrawDialog({
       onClose={onClose}
       closeEnabled={!withdrawing}
     >
-      <div className="flex shrink-0 items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
-        <h2 className="font-semibold font-ui text-fg text-subtitle">
+      <div className="flex shrink-0 items-center justify-between gap-2.5 border-gray-7 border-b px-3.5 py-3">
+        <h2 className="font-semibold font-ui text-gray-12 text-prose">
           Withdraw proposal for <span className="font-mono">{skill}</span>
         </h2>
       </div>
 
       <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-3.5 py-3">
-        <p className="m-0 font-ui text-desc text-fg-2">
+        <p className="m-0 font-ui text-meta text-gray-12">
           This closes the pull request. Your local files and proposal branch
           remain unchanged.
         </p>
@@ -54,7 +54,7 @@ export function WithdrawDialog({
         <Notice trigger="user-action" notice={withdrawError} />
       </div>
 
-      <div className="flex shrink-0 items-center gap-2.5 border-line-row border-t px-3.5 py-3">
+      <div className="flex shrink-0 items-center gap-2.5 border-gray-7 border-t px-3.5 py-3">
         <span className="flex-1" />
         <Button
           type="button"
