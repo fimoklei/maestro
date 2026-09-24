@@ -4,6 +4,7 @@ import { Logo } from "../ui/logo";
 import { NavItem } from "../ui/nav-item";
 import { HarnessButton } from "./harness-button";
 import { SCREEN_GROUPS } from "./screens";
+import { useSidebarCounters } from "./use-sidebar-counters";
 
 // The sidebar (#991): the product mark, the Harness button and its menu, then
 // the screens. Two groups, because the two jobs are different: the first block
@@ -12,6 +13,7 @@ import { SCREEN_GROUPS } from "./screens";
 export function Sidebar({ className }: { className?: string }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const counters = useSidebarCounters();
 
   return (
     <aside
@@ -36,6 +38,7 @@ export function Sidebar({ className }: { className?: string }) {
                 key={item.to}
                 icon={item.icon}
                 label={item.label}
+                counter={counters[item.to] ?? null}
                 active={pathname === item.to}
                 onClick={() => navigate(item.to)}
               />

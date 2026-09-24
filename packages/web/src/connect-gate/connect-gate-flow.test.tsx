@@ -9,6 +9,33 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// Every read the connected frame makes that a test does not answer itself.
+// The sidebar reads the Harness stages for its counter, so those answer in
+// shape.
+function fallback(url: string) {
+  if (url.startsWith("/api/harness")) {
+    return jsonResponse(
+      {
+        origin: "github.com/fimoklei/agent-harness",
+        releasedVersion: null,
+        defaultBranch: "main",
+        releaseState: "never-released",
+        freshness: { outcome: null, lastFetchedAt: null },
+        stages: {
+          proposal: { outcome: "read", rows: [], bound: null },
+          review: { outcome: "read", rows: [], bound: null },
+          release: { outcome: "read", rows: [], bound: null },
+        },
+      },
+      200,
+    );
+  }
+  return jsonResponse(
+    { ok: true, repos: [], primitives: [], skipped: [], behind: [] },
+    200,
+  );
+}
+
 // Stateful: config starts unconfigured, "connects" once POSTed — mirrors
 // server-state (frontend.md), not a static fixture.
 function stubServer() {
@@ -27,10 +54,7 @@ function stubServer() {
           200,
         );
       }
-      return jsonResponse(
-        { ok: true, repos: [], primitives: [], skipped: [], behind: [] },
-        200,
-      );
+      return fallback(url);
     }),
   );
 }
@@ -115,10 +139,7 @@ describe("connect gate", () => {
             200,
           );
         }
-        return jsonResponse(
-          { ok: true, repos: [], primitives: [], skipped: [], behind: [] },
-          200,
-        );
+        return fallback(url);
       }),
     );
     renderApp("/welcome/connect");
@@ -201,10 +222,7 @@ describe("connect gate", () => {
             200,
           );
         }
-        return jsonResponse(
-          { ok: true, repos: [], primitives: [], skipped: [], behind: [] },
-          200,
-        );
+        return fallback(url);
       }),
     );
     renderApp("/welcome/connect");
@@ -271,10 +289,7 @@ describe("connect gate", () => {
             409,
           );
         }
-        return jsonResponse(
-          { ok: true, repos: [], primitives: [], skipped: [], behind: [] },
-          200,
-        );
+        return fallback(url);
       }),
     );
     renderApp("/welcome/connect");
@@ -348,10 +363,7 @@ describe("connect gate", () => {
         ) {
           return new Promise<Response>(() => {});
         }
-        return jsonResponse(
-          { ok: true, repos: [], primitives: [], skipped: [], behind: [] },
-          200,
-        );
+        return fallback(url);
       }),
     );
     renderApp("/welcome/connect");
@@ -448,10 +460,7 @@ describe("connect gate", () => {
             200,
           );
         }
-        return jsonResponse(
-          { ok: true, repos: [], primitives: [], skipped: [], behind: [] },
-          200,
-        );
+        return fallback(url);
       }),
     );
     renderApp("/welcome/connect");

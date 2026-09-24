@@ -65,7 +65,10 @@ export type TargetRow = {
   behind: boolean;
 };
 
-const isBehind = (head: ReleaseHead | undefined, pending?: PendingOperation) =>
+export const isBehind = (
+  head: ReleaseHead | undefined,
+  pending?: PendingOperation,
+) =>
   head !== undefined &&
   head.latestRelease !== null &&
   head.latestRelease !== head.release &&
