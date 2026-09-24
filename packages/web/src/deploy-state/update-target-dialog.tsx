@@ -7,7 +7,7 @@ import type {
 import { type ReactNode, useId, useState } from "react";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
-import { DialogShell } from "../ui/dialog-shell";
+import { DIALOG_FOOTER, DialogShell } from "../ui/dialog-shell";
 import { Notice } from "../ui/notice";
 import { StatusBadge } from "../ui/status-badge";
 import { reading } from "../ui/status-reading";
@@ -438,21 +438,26 @@ export function UpdateTargetDialog({
         />
       </div>
 
-      <div className="flex shrink-0 items-center justify-end gap-2.5 border-gray-7 border-t px-3.5 py-3">
-        <Button type="button" variant="quiet" size="sm" onClick={onCancel}>
+      <div className={DIALOG_FOOTER}>
+        {/* Cancel leads; a Close standing alone sits trailing (design.md). */}
+        <Button
+          type="button"
+          variant="quiet"
+          className={lines === null ? undefined : "ml-auto"}
+          onClick={onCancel}
+        >
           {lines === null ? "Cancel" : CLOSE}
         </Button>
         {/* The one amber fill in this view; the card's own control is the ghost
             variant (ADR-0031, design.md § the signal rule). */}
         {blocked !== null ? (
-          <Button type="button" variant="primary" size="sm" disabled={true}>
+          <Button type="button" variant="primary" disabled={true}>
             {blocked}
           </Button>
         ) : preview === null || lines !== null ? null : (
           <Button
             type="button"
             variant="primary"
-            size="sm"
             disabled={!consentComplete || isRunning}
             onClick={onConfirm}
           >
