@@ -21,6 +21,7 @@ from what a mock happens to paint. See `.claude/rules/design.md`.
 | Feedback patterns | `feedback-patterns.html` | [#1003](https://github.com/fimoklei/maestro/issues/1003) | [297a3aca](https://claude.ai/code/artifact/297a3aca-1938-4e87-ad14-452fddc66a3b) |
 | Folder picker in Import and the gate | `folder-picker.html` | [#1013](https://github.com/fimoklei/maestro/issues/1013) | [d4084fad](https://claude.ai/code/artifact/d4084fad-bceb-419b-849d-116a9c4fddc7) |
 | Loading | `loading.html` | [#898](https://github.com/fimoklei/maestro/issues/898) | [e03c14f8](https://claude.ai/code/artifact/e03c14f8-a028-4cd5-81fb-1139bcb012ff) |
+| Detail pane | `detail-pane.html` | [#1065](https://github.com/fimoklei/maestro/issues/1065) | None: a static page written here on 2026-09-24 |
 
 ## Opening one
 
@@ -30,3 +31,4 @@ artifact. The only network request is Geist from `fonts.googleapis.com`; without
 it the page still renders, in the fallback system font.
 
 To change a mock, edit the artifact and export it here again, with the date above.
+`detail-pane.html` ([#1065](https://github.com/fimoklei/maestro/issues/1065)) is the exception: a plain page, edited here.
