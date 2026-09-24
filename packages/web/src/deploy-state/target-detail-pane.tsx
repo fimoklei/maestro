@@ -128,7 +128,7 @@ export function TargetDetailPane({
             <li
               key={skippedEntryKey(entry, index)}
               className={
-                skippedNeedsAttention(entry) ? "text-amber-11" : "text-gray-11"
+                skippedNeedsAttention(entry) ? "text-amber-12" : "text-gray-11"
               }
             >
               {skippedEntryText(entry)}

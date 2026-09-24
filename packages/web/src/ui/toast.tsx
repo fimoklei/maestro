@@ -28,7 +28,7 @@ export function ToastHost() {
         unstyled: true,
         classNames: {
           toast:
-            "flex w-[360px] max-w-full items-start gap-inline rounded-control border border-green-7 bg-green-3 px-cell py-inline font-ui text-green-11 text-row shadow-float",
+            "flex w-[360px] max-w-full items-start gap-inline rounded-control border border-green-7 bg-green-3 px-cell py-inline font-ui text-green-12 text-row shadow-float",
         },
       }}
     />

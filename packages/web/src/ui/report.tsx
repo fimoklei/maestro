@@ -36,7 +36,15 @@ const GLYPH: Record<ReportTone, string | null> = {
   good: "✓",
 };
 
+// The group's words on step 12, its glyph on step 11 (ADR-0033 §1).
 const INK: Record<ReportTone, string> = {
+  failed: "text-red-12",
+  attention: "text-amber-12",
+  neutral: "text-gray-11",
+  good: "text-green-12",
+};
+
+const MARK: Record<ReportTone, string> = {
   failed: "text-red-11",
   attention: "text-amber-11",
   neutral: "text-gray-11",
@@ -72,7 +80,10 @@ export function Report({
             )}
           >
             {GLYPH[group.tone] === null ? null : (
-              <span aria-hidden="true" className="font-mono">
+              <span
+                aria-hidden="true"
+                className={cn("font-mono", MARK[group.tone])}
+              >
                 {GLYPH[group.tone]}
               </span>
             )}

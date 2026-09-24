@@ -60,13 +60,13 @@ function SummaryRow({
 // would let the box and its rows drift apart.
 const GROUP_TONE = {
   cost: {
-    ink: "text-amber-11",
+    ink: "text-amber-12",
     border: "border-amber-7",
     fill: "bg-amber-3",
     divider: "border-amber-7 border-b",
   },
   refusal: {
-    ink: "text-red-11",
+    ink: "text-red-12",
     border: "border-red-7",
     fill: "bg-red-3",
     divider: "border-red-7 border-b",

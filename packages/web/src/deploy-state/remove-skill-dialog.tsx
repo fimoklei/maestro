@@ -38,8 +38,8 @@ const OUTCOME_GLYPH: Record<RemoveTargetState, string> = {
 };
 
 const OUTCOME_INK: Record<RemoveTargetState, string> = {
-  removed: "text-green-11",
-  "not-removed": "text-red-11",
+  removed: "text-green-12",
+  "not-removed": "text-red-12",
   unknown: "text-gray-11",
 };
 
@@ -76,7 +76,7 @@ function RowStatus({ row }: { row: RemoveLedgerRow }) {
     );
   }
   return row.status === null ? null : (
-    <span className="shrink-0 font-ui text-amber-11 text-meta">
+    <span className="shrink-0 font-ui text-amber-12 text-meta">
       {row.status}
     </span>
   );

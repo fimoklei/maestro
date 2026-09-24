@@ -334,3 +334,43 @@ ${NO_PREFERENCE} { .b { animation: spin 1s; } }
     expect(unguardedCssMotion(css)).toEqual([]);
   });
 });
+
+// ADR-0033 §1: a status scale puts text on step 12 and the mark on step 11. In
+// light, green and amber 11 miss 4.5:1 on gray 2 and on their own tint (#1086),
+// so step 11 colours only a glyph: aria-hidden, role="img", or a MARK constant.
+const STEP_ELEVEN = /text-(?:green|amber)-11\b/;
+const MARK_CONTEXT = /aria-hidden="true"|role="img"|\bglyph:|const \w*MARK\w*/;
+
+function wordsOnStepEleven(source: string): string[] {
+  const lines = source.split("\n");
+  return lines.flatMap((line, index) => {
+    if (!STEP_ELEVEN.test(line)) return [];
+    const context = lines.slice(Math.max(0, index - 10), index + 1).join("\n");
+    return MARK_CONTEXT.test(context) ? [] : [line.trim()];
+  });
+}
+
+describe("status step 11 marks, never words", () => {
+  it("flags a word on step 11 and passes a mark", () => {
+    expect(
+      wordsOnStepEleven(`const INK = { good: "text-green-11" };
+<p className="text-amber-11">Behind</p>
+<span aria-hidden="true" className="text-green-11">✓</span>
+const MARK = { good: "text-green-11" };
+  attention: { glyph: "text-amber-11" },`),
+    ).toEqual([
+      'const INK = { good: "text-green-11" };',
+      '<p className="text-amber-11">Behind</p>',
+    ]);
+  });
+
+  it("no source file colours a word with green or amber 11", () => {
+    const offenders = files.flatMap(({ path, source }) =>
+      wordsOnStepEleven(source).map(
+        (line) => `${path.slice(SRC_DIR.length)}: ${line}`,
+      ),
+    );
+
+    expect(offenders).toEqual([]);
+  });
+});

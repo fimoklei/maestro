@@ -57,7 +57,15 @@ const fillClasses: Record<NoticeLevel, string> = {
   error: "bg-red-3",
 };
 
+// Text on step 12, the glyph on step 11 (ADR-0033 §1).
 const inkClasses: Record<NoticeLevel, string> = {
+  info: "text-gray-11",
+  success: "text-green-12",
+  warning: "text-amber-12",
+  error: "text-red-12",
+};
+
+const MARK_CLASSES: Record<NoticeLevel, string> = {
   info: "text-gray-11",
   success: "text-green-11",
   warning: "text-amber-11",
@@ -107,7 +115,7 @@ export function Notice({
       {glyph === null ? null : (
         <span
           aria-hidden="true"
-          className={`font-mono text-meta ${inkClasses[level]}`}
+          className={`font-mono text-meta ${MARK_CLASSES[level]}`}
         >
           {glyph}
         </span>

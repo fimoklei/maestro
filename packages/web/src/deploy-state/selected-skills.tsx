@@ -275,7 +275,7 @@ export function SelectedSkills({
         />
       ) : null}
       {orphans.length > 0 && (
-        <p className="mt-inline text-amber-11 text-meta">
+        <p className="mt-inline text-amber-12 text-meta">
           Reported behind, not deployed here: {orphans.join(", ")}
         </p>
       )}
