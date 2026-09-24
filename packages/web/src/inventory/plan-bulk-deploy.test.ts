@@ -22,6 +22,33 @@ function target(
 }
 
 describe("planBulkDeploy", () => {
+  // The Release head answers first (#956): a skill the newest release changed
+  // is never "Already up to date", whatever the per-skill drift says. The
+  // Inventory pane's single deploy runs through this plan now (#1065).
+  it("never skips a skill the newest release changed as clean", () => {
+    const onRelease = (changedSkills: string[]): DeploymentTarget => ({
+      ...target("Claude Code", ["tdd"], []),
+      releaseHead: {
+        release: "v0.3.2",
+        latestRelease: "v0.3.4",
+        changed: changedSkills.length,
+        changedSkills,
+        selection: ["tdd"],
+        selected: 1,
+        comparedAt: "2026-09-12T10:00:00.000Z",
+      },
+    });
+
+    expect(planBulkDeploy(["tdd"], [onRelease(["tdd"])])).toEqual({
+      toDeploy: ["tdd"],
+      skippedClean: [],
+    });
+    expect(planBulkDeploy(["tdd"], [onRelease([])])).toEqual({
+      toDeploy: [],
+      skippedClean: ["tdd"],
+    });
+  });
+
   // ADR-0027 §6: the pin still lags, so the skill is not clean. A bulk run
   // deploys it at the target's own release and never claims it moved (#956).
   it("deploys a skill that only lags a tag", () => {

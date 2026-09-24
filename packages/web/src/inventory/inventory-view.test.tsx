@@ -549,66 +549,13 @@ describe("InventoryView — detail pane", () => {
     ).not.toBeInTheDocument();
   });
 
+  // #66: a forced reinstall is the refused skill's own. The dialog is mounted
+  // only while open, so the next skill's dialog starts without it (#1065).
   it("clears a stale reinstall action when the selected skill changes", async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input);
-      if (url.startsWith("/api/deploy-state/global")) {
-        return new Response(
-          JSON.stringify({
-            tools: [{ tool: "claude-code", primitives: [] }],
-            primitives: [],
-            skipped: [],
-          }),
-          { status: 200, headers: { "content-type": "application/json" } },
-        );
-      }
-      if (url.startsWith("/api/drift")) {
-        return new Response(JSON.stringify({ behind: [] }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        });
-      }
-      // The deploy refuses with a forceable, not-proven-clean refusal.
-      return new Response(
-        JSON.stringify({
-          message: "deployed copy diverged from its lock",
-          error: "deployed-diverged-from-lock",
-        }),
-        { status: 409, headers: { "content-type": "application/json" } },
-      );
-    });
-    vi.stubGlobal("fetch", fetchMock);
-    renderView();
-
-    await openRow("tdd");
-    const tddPane = screen.getByRole("complementary", { name: /tdd detail/i });
-    await userEvent.click(
-      within(tddPane).getByRole("button", { name: /deploy/i }),
-    );
-    await screen.findByRole("button", { name: "Deploy again" });
-
-    // Switch to another skill: the reinstall action must not carry over, or a
-    // click would force-overwrite the new skill without its own refusal (#66).
-    await openRow("caveman");
-
-    expect(
-      screen.queryByRole("button", { name: "Deploy again" }),
-    ).not.toBeInTheDocument();
-  });
-
-  // The refusal's notice says the end; the region must not fall back to
-  // announcing the earlier read again.
-  it("leaves the status region silent after a refused deploy", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
-        if (url === "/api/deploy") {
-          return new Response(
-            JSON.stringify({ error: "local-diverged-from-tag" }),
-            { status: 409, headers: { "content-type": "application/json" } },
-          );
-        }
         if (url.startsWith("/api/deploy-state/global")) {
           return jsonResponse({
             tools: [{ tool: "claude-code", primitives: [] }],
@@ -616,75 +563,107 @@ describe("InventoryView — detail pane", () => {
             skipped: [],
           });
         }
+        if (url === "/api/deploy/bulk") {
+          // A forceable, not-proven-clean refusal for the skill sent.
+          return jsonResponse({
+            target: { kind: "global" },
+            deployed: [],
+            attention: [
+              {
+                name: "tdd",
+                error: "deployed-diverged-from-lock",
+                forceable: true,
+                copyReceipt: "c".repeat(64),
+              },
+            ],
+            failed: [],
+          });
+        }
         return jsonResponse({ behind: [] });
       }),
     );
-    const view = renderView({ primitives: undefined, loading: true });
-    view.rerender(<InventoryView {...baseProps} />);
-    const region = screen.getByTestId("inventory-status-region");
-    expect(region).toHaveTextContent("Inventory loaded.");
+    renderView();
 
     await openRow("tdd");
-    const pane = screen.getByRole("complementary", { name: /tdd detail/i });
     await userEvent.click(
-      within(pane).getByRole("button", { name: /deploy/i }),
+      within(
+        screen.getByRole("complementary", { name: "tdd detail" }),
+      ).getByRole("button", { name: "Deploy skill" }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Deploy 1 skill",
+    });
+    const run = within(dialog).getByRole("button", { name: /^Deploy skill/ });
+    await waitFor(() => expect(run).toBeEnabled());
+    await userEvent.click(run);
+    await within(dialog).findByRole("button", { name: "Deploy tdd again" });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Close" }),
     );
 
-    expect(await within(pane).findByRole("alert")).toBeInTheDocument();
-    expect(region).toBeEmptyDOMElement();
+    // Another skill: the reinstall action must not carry over, or a click
+    // would force-overwrite the new skill without its own refusal.
+    await openRow("caveman");
+    await userEvent.click(
+      within(
+        screen.getByRole("complementary", { name: "caveman detail" }),
+      ).getByRole("button", { name: "Deploy skill" }),
+    );
+    await screen.findByRole("dialog", { name: "Deploy 1 skill" });
+
+    expect(screen.queryByRole("button", { name: /again/ })).toBeNull();
   });
 
-  it("deploys the skill from the pane", async () => {
+  it("deploys the skill from the pane, through the deploy dialog", async () => {
     const fetchMock = vi.fn(
       async (input: RequestInfo | URL, _init?: RequestInit) => {
         const url = String(input);
         if (url.startsWith("/api/deploy-state/global")) {
-          return new Response(
-            JSON.stringify({
-              tools: [{ tool: "claude-code", primitives: [] }],
-              primitives: [],
-              skipped: [],
-            }),
-            { status: 200, headers: { "content-type": "application/json" } },
-          );
-        }
-        if (url.startsWith("/api/drift")) {
-          return new Response(JSON.stringify({ behind: [] }), {
-            status: 200,
-            headers: { "content-type": "application/json" },
+          return jsonResponse({
+            tools: [{ tool: "claude-code", primitives: [] }],
+            primitives: [],
+            skipped: [],
           });
         }
-        return new Response(
-          JSON.stringify({
-            deployed: { type: "skill", name: "tdd", version: "v1.0.0" },
-          }),
-          { status: 200, headers: { "content-type": "application/json" } },
-        );
+        if (url === "/api/deploy/bulk") {
+          return jsonResponse({
+            target: { kind: "global" },
+            deployed: [{ name: "tdd", version: "v1.0.0" }],
+            attention: [],
+            failed: [],
+          });
+        }
+        return jsonResponse({ behind: [] });
       },
     );
     vi.stubGlobal("fetch", fetchMock);
     renderView();
 
     await openRow("tdd");
-    const pane = screen.getByRole("complementary", { name: /tdd detail/i });
     await userEvent.click(
-      within(pane).getByRole("button", { name: /deploy/i }),
+      within(
+        screen.getByRole("complementary", { name: "tdd detail" }),
+      ).getByRole("button", { name: "Deploy skill" }),
     );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Deploy 1 skill",
+    });
+    const run = within(dialog).getByRole("button", { name: /^Deploy skill/ });
+    await waitFor(() => expect(run).toBeEnabled());
+    await userEvent.click(run);
 
     expect(
       fetchMock.mock.calls.some(
         ([input, init]) =>
-          String(input) === "/api/deploy" &&
+          String(input) === "/api/deploy/bulk" &&
           init?.method === "POST" &&
-          String(init.body).includes("tdd"),
+          JSON.parse(String(init.body)).names.join() === "tdd",
       ),
     ).toBe(true);
-    // The screen's one region ends the write; the pane adds no Notice (#1118).
+    // The outcome is the dialog's Report, heading and announcement (#1065).
     expect(
-      await within(screen.getByTestId("inventory-status-region")).findByText(
-        "Deployed tdd.",
-      ),
-    ).toBeInTheDocument();
+      await within(dialog).findAllByText("Deployed to Global · 1 deployed"),
+    ).not.toHaveLength(0);
   });
 });
 
@@ -882,6 +861,58 @@ describe("InventoryView — bulk remove entry point (#422)", () => {
     ).toBeNull();
   });
 
+  // #1066: a global deploy is one target per detected tool (CONTEXT.md), so
+  // the pane lists each tool and the foot counts the same targets.
+  it("counts the targets the pane lists, each global tool among them", async () => {
+    viewWith([
+      {
+        ...onTarget({ kind: "global" }, ["tdd"]),
+        label: "Claude Code",
+        tool: "claude",
+      },
+      {
+        ...onTarget({ kind: "global" }, ["tdd"]),
+        label: "Codex",
+        tool: "codex",
+      },
+      onTarget({ kind: "repo", repoPath: "/dev/acme-web" }, ["tdd"]),
+    ]);
+
+    await openRow("tdd");
+
+    const pane = screen.getByRole("complementary", { name: "tdd detail" });
+    expect(
+      within(pane)
+        .getAllByRole("listitem")
+        .map((row) => row.textContent?.replace(/v1\.0\.0.*$/, "")),
+    ).toHaveLength(3);
+    expect(
+      within(pane).getByRole("button", { name: "Remove from all 3 targets" }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers none where every listed target is one global removal", async () => {
+    viewWith([
+      {
+        ...onTarget({ kind: "global" }, ["tdd"]),
+        label: "Claude Code",
+        tool: "claude",
+      },
+      {
+        ...onTarget({ kind: "global" }, ["tdd"]),
+        label: "Codex",
+        tool: "codex",
+      },
+    ]);
+
+    await openRow("tdd");
+
+    // Each tool row's own Remove from target already removes from both.
+    expect(
+      screen.queryByRole("button", { name: /remove from all/i }),
+    ).toBeNull();
+  });
+
   it("leaves a target whose deploy-state has not loaded out of the count (J04)", async () => {
     viewWith([
       onTarget({ kind: "global" }, ["tdd"]),
@@ -987,20 +1018,19 @@ const menuItems = (menu: HTMLElement) =>
     .map((item) => item.textContent);
 
 describe("InventoryView — row menu", () => {
-  it("offers Deploy skill, plus Update target where the skill is Behind", async () => {
+  // #1065: the row's ⋮ and the pane's foot hold the same items. A target's
+  // own Update target sits on that target's row in the pane.
+  it("offers Deploy skill, and leaves Update target to the Behind target's row", async () => {
     stubPendingFetch();
     renderView({
       repos,
       targets: [onRepo("/projects/beta", ["tdd"], ["tdd"])],
     });
 
-    expect(menuItems(await openMenu("tdd"))).toEqual([
-      "Deploy skill",
-      "Update target",
-    ]);
+    expect(menuItems(await openMenu("tdd"))).toEqual(["Deploy skill"]);
   });
 
-  it("offers Remove skill where the skill reaches two targets, as the pane does", async () => {
+  it("offers the removal where the skill reaches two targets, as the pane does", async () => {
     stubPendingFetch();
     renderView({
       repos,
@@ -1012,11 +1042,22 @@ describe("InventoryView — row menu", () => {
 
     expect(menuItems(await openMenu("tdd"))).toEqual([
       "Deploy skill",
-      "Remove skill",
+      "Remove from all 2 targets",
     ]);
+    await userEvent.keyboard("{Escape}");
+    await openRow("tdd");
+    const pane = screen.getByRole("complementary", { name: "tdd detail" });
+    expect(
+      within(pane)
+        .getAllByRole("button")
+        .map((button) => button.textContent)
+        .filter(
+          (label) => label === "Deploy skill" || /^Remove/.test(label ?? ""),
+        ),
+    ).toEqual(["Deploy skill", "Remove from all 2 targets"]);
   });
 
-  it("opens the pane on Deploy skill with focus on the target picker", async () => {
+  it("opens the deploy dialog for this skill alone on Deploy skill", async () => {
     stubPendingFetch();
     renderView({ repos });
 
@@ -1025,32 +1066,110 @@ describe("InventoryView — row menu", () => {
       screen.getByRole("menuitem", { name: "Deploy skill" }),
     );
 
-    const pane = await screen.findByRole("complementary", {
-      name: "tdd detail",
-    });
-    await waitFor(() =>
-      expect(
-        within(pane).getByRole("combobox", { name: "Deploy target for tdd" }),
-      ).toHaveFocus(),
-    );
+    expect(
+      await screen.findByRole("dialog", { name: "Deploy 1 skill" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("complementary", { name: "tdd detail", hidden: true }),
+    ).toBeInTheDocument();
   });
 
-  it("opens Update target for the target where the skill is Behind", async () => {
+  it("opens the same dialog from the pane's foot", async () => {
+    stubPendingFetch();
+    renderView({ repos });
+
+    await openRow("tdd");
+    await userEvent.click(
+      within(
+        screen.getByRole("complementary", { name: "tdd detail" }),
+      ).getByRole("button", { name: "Deploy skill" }),
+    );
+
+    expect(
+      await screen.findByRole("dialog", { name: "Deploy 1 skill" }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens the removal for every target on its menu item", async () => {
+    stubPendingFetch();
+    renderView({
+      repos,
+      targets: [
+        onRepo("/projects/alpha", ["tdd"]),
+        onRepo("/projects/beta", ["tdd"]),
+      ],
+    });
+
+    await openMenu("tdd");
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "Remove from all 2 targets" }),
+    );
+
+    expect(
+      await screen.findByRole("dialog", { name: "Remove tdd from 2 targets" }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("InventoryView — a target row in the pane", () => {
+  const targetMenu = async (label: string) => {
+    const pane = screen.getByRole("complementary", { name: "tdd detail" });
+    await userEvent.click(
+      within(pane).getByRole("button", { name: `Actions for ${label}` }),
+    );
+    return screen.findByRole("menu");
+  };
+
+  it("offers Update target only on a target where the skill is Behind", async () => {
+    stubPendingFetch();
+    renderView({
+      repos,
+      targets: [
+        onRepo("/projects/alpha", ["tdd"]),
+        onRepo("/projects/beta", ["tdd"], ["tdd"]),
+      ],
+    });
+    await openRow("tdd");
+
+    expect(menuItems(await targetMenu("beta"))).toEqual([
+      "Update target",
+      "Remove from target",
+    ]);
+    await userEvent.keyboard("{Escape}");
+    expect(menuItems(await targetMenu("alpha"))).toEqual([
+      "Remove from target",
+    ]);
+  });
+
+  it("names Show in Deploy-state where the screen can open that row", async () => {
+    stubPendingFetch();
+    const onShowTarget = vi.fn();
+    renderView({
+      repos,
+      targets: [onRepo("/projects/beta", ["tdd"])],
+      onShowTarget,
+    });
+    await openRow("tdd");
+
+    const menu = await targetMenu("beta");
+    expect(menuItems(menu)).toEqual([
+      "Show in Deploy-state",
+      "Remove from target",
+    ]);
+    await userEvent.click(
+      within(menu).getByRole("menuitem", { name: "Show in Deploy-state" }),
+    );
+    expect(onShowTarget).toHaveBeenCalledWith("repo:/projects/beta");
+  });
+
+  // Priced with this skill, as the Inventory's entrance always was (#955).
+  it("opens Update target for that target, priced with this skill", async () => {
+    const previews: unknown[] = [];
     vi.stubGlobal(
       "fetch",
-      vi.fn(async (input: RequestInfo | URL) => {
-        const url = String(input);
-        if (url.startsWith("/api/deploy-state?")) {
-          return url.includes("beta")
-            ? jsonResponse({
-                primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
-                skipped: [],
-                releaseHead: onRepo("/projects/beta", ["tdd"], ["tdd"])
-                  .releaseHead,
-              })
-            : jsonResponse({ primitives: [], skipped: [] });
-        }
-        if (url === "/api/deploy/update/preflight") {
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input) === "/api/deploy/update/preflight") {
+          previews.push(JSON.parse(String(init?.body)));
           return new Promise<Response>(() => {});
         }
         return jsonResponse({ tools: [], primitives: [], skipped: [] });
@@ -1060,30 +1179,33 @@ describe("InventoryView — row menu", () => {
       repos,
       targets: [onRepo("/projects/beta", ["tdd"], ["tdd"])],
     });
+    await openRow("tdd");
 
-    await openMenu("tdd");
+    await targetMenu("beta");
     await userEvent.click(
       screen.getByRole("menuitem", { name: "Update target" }),
     );
 
-    expect(await screen.findByRole("dialog")).toHaveTextContent(
-      "Update /projects/beta",
-    );
-    // The open dialog hides the pane from the accessibility tree.
-    const pane = screen.getByRole("complementary", {
-      name: "tdd detail",
-      hidden: true,
-    });
     expect(
-      within(pane).getByRole("combobox", {
-        name: "Deploy target for tdd",
-        hidden: true,
-      }),
-    ).toHaveValue("/projects/beta");
+      await screen.findByRole("dialog", { name: "Update beta" }),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(previews).toEqual([
+        { target: { kind: "repo", repoPath: "/projects/beta" }, add: "tdd" },
+      ]),
+    );
   });
 
-  it("opens the removal for every target on Remove skill", async () => {
-    stubPendingFetch();
+  it("opens the removal from that one target, confirmed", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input) === "/api/deploy/remove/preflight") {
+          return new Promise<Response>(() => {});
+        }
+        return jsonResponse({ tools: [], primitives: [], skipped: [] });
+      }),
+    );
     renderView({
       repos,
       targets: [
@@ -1091,15 +1213,16 @@ describe("InventoryView — row menu", () => {
         onRepo("/projects/beta", ["tdd"]),
       ],
     });
+    await openRow("tdd");
 
-    await openMenu("tdd");
+    await targetMenu("beta");
     await userEvent.click(
-      screen.getByRole("menuitem", { name: "Remove skill" }),
+      screen.getByRole("menuitem", { name: "Remove from target" }),
     );
 
-    expect(
-      await screen.findByRole("dialog", { name: "Remove tdd from 2 targets" }),
-    ).toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("tdd");
+    expect(dialog).toHaveTextContent("/projects/beta");
   });
 });
 
@@ -1165,7 +1288,7 @@ describe("InventoryView — paging the pane", () => {
     expect(within(next).getByRole("heading", { name: "tdd" })).toHaveFocus();
   });
 
-  it("keeps one target picker while paging past a skill on two targets", async () => {
+  it("keeps one foot while paging past a skill on two targets", async () => {
     stubPendingFetch();
     renderView({
       targets: [
@@ -1182,7 +1305,9 @@ describe("InventoryView — paging the pane", () => {
     await userEvent.keyboard("{ArrowDown}{ArrowUp}{ArrowDown}");
 
     const pane = screen.getByRole("complementary", { name: "caveman detail" });
-    expect(within(pane).getAllByRole("combobox")).toHaveLength(1);
+    expect(
+      within(pane).getAllByRole("button", { name: "Deploy skill" }),
+    ).toHaveLength(1);
   });
 
   it("returns focus to the table on the row it paged to", async () => {

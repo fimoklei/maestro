@@ -49,21 +49,14 @@ export const DEPLOY_STILL_RUNNING =
 export const UPDATE_TO_REACH_RELEASE =
   "Select Update target to reach this release.";
 
-// The symlink refusal, in two spellings of one recovery: the exact `rm` when the
-// server names the link, the folder-shaped fallback when it cannot (#748). Both
-// live here so neither drifts from the other.
 const DEPLOY_AGAIN = "then deploy again.";
+
+// The symlink refusal's recovery (#748), shared by a deploy's notice and the
+// bulk report's row.
+export const DELETE_LINKED_FOLDER = `Delete the linked skill folder in the target, ${DEPLOY_AGAIN}`;
 
 const LINK_TARGET_SURVIVES =
   "This removes the link only. The folder it points at remains on disk.";
-
-export function linkedFolderNotice(path: string): Body {
-  return {
-    // No comma after the path: a reader copying the command would paste it.
-    message: `Nothing was written. Run rm ${path} and ${DEPLOY_AGAIN}`,
-    detail: LINK_TARGET_SURVIVES,
-  };
-}
 
 type Heading = { level: NoticeLevel; label: string };
 type Body = { message: string; detail?: string };
@@ -253,7 +246,7 @@ const DEPLOY: Record<DeploySkillError, Body> = {
     detail: "GitHub refused the download.",
   },
   "destination-symlinked": {
-    message: `Nothing was written. Delete the linked skill folder in the target, ${DEPLOY_AGAIN}`,
+    message: `Nothing was written. ${DELETE_LINKED_FOLDER}`,
     detail: LINK_TARGET_SURVIVES,
   },
   "deploy-failed": {

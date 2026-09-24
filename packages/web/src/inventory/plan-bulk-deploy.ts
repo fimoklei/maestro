@@ -4,7 +4,7 @@
 // moves a target's release, so it plans no update either (ADR-0031, #956).
 
 import type { DeployedView } from "../deploy-state/deployed-view";
-import type { DeploymentTarget } from "./deployed-rollup";
+import { type DeploymentTarget, skillReading } from "./deployed-rollup";
 
 export type BulkDeployPlan = {
   // Names to send to the target, in the caller's order.
@@ -16,11 +16,12 @@ function deployedOn(deployed: DeployedView, name: string): boolean {
   return deployed.status === "ready" && deployed.names.includes(name);
 }
 
-// Deployed here and proven current. Every other reading — behind, lagging a
-// tag, un-run — keeps the skill attempted rather than assumed clean.
+// Deployed here and proven current, the Release head answering first (#956).
+// Every other reading — behind, lagging a tag, un-run — keeps the skill
+// attempted rather than assumed clean.
 const isClean = (target: DeploymentTarget, name: string): boolean =>
   deployedOn(target.deployed, name) &&
-  target.drift.skillStatus(name) === "up-to-date";
+  skillReading(target, name) === "up-to-date";
 
 export function planBulkDeploy(
   names: string[],

@@ -228,6 +228,21 @@ describe("bulkDeployReportGroups", () => {
     );
   });
 
+  // The Inventory pane's single deploy reads its refusal here now (#1065), so
+  // the linked-folder recovery a single deploy stated stays with it (#748).
+  it("gives a linked skill folder the recovery a single deploy states", () => {
+    const groups = bulkDeployReportGroups({
+      view: view({
+        tone: "attention",
+        failed: [{ error: "destination-symlinked", names: ["tdd"] }],
+      }),
+    });
+
+    expect(rowsOf(groups, "Failed")[0]?.detail).toBe(
+      "Linked skill folder Delete the linked skill folder in the target, then deploy again.",
+    );
+  });
+
   it("names a failure the report carries no recovery step for, never its code", () => {
     const groups = bulkDeployReportGroups({
       view: view({

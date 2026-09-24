@@ -110,6 +110,38 @@ describe("chosenBulkDeployTargets", () => {
     ]);
   });
 
+  // The plan reads the Release head first (#956), so the target carries it.
+  it("carries each target's Release head into the plan", () => {
+    const head = {
+      release: "v0.3.2",
+      latestRelease: "v0.3.4",
+      changed: 1,
+      changedSkills: ["tdd"],
+      selected: 1,
+      comparedAt: "2026-09-12T10:00:00.000Z",
+    };
+    const global = chosenBulkDeployTargets({
+      isGlobal: true,
+      target: { kind: "global" },
+      targetLabel: "Global",
+      globalTools: [{ tool: "claude", primitives: [], releaseHead: head }],
+      repoPrimitives: undefined,
+      drift: drift(),
+    });
+    const repo = chosenBulkDeployTargets({
+      isGlobal: false,
+      target: { kind: "repo", repoPath: "/dev/acme-web" },
+      targetLabel: "/repo",
+      globalTools: undefined,
+      repoPrimitives: [],
+      repoReleaseHead: head,
+      drift: drift(),
+    });
+
+    expect(global[0]?.releaseHead).toEqual(head);
+    expect(repo[0]?.releaseHead).toEqual(head);
+  });
+
   it("builds one ready target for a repo run", () => {
     const d = drift();
 

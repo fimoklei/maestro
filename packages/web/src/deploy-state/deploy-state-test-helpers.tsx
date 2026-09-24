@@ -75,9 +75,11 @@ export function stubServer(read: () => ServerState) {
   return fetchMock;
 }
 
-export function renderDeployState() {
+// `state` is what another screen sent along, as the Inventory's
+// Show in Deploy-state does.
+export function renderDeployState(state?: { openTarget: string }) {
   return renderWithQuery(
-    <MemoryRouter initialEntries={["/"]}>
+    <MemoryRouter initialEntries={[{ pathname: "/", state }]}>
       <Routes>
         <Route
           path="/"

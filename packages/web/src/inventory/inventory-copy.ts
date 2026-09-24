@@ -11,17 +11,6 @@ export const INVENTORY_NOT_READ = {
   message: "Select Re-read Inventory to try again.",
 } as const;
 
-// The deploy picker's state line for a skill already deployed on the chosen
-// target: a fact about the copy, never a control. Behind is the target's
-// Release head reading (ADR-0031, #956).
-export const targetSyncLine = (
-  reading: "in-sync" | "behind",
-  release: string | undefined,
-): string => {
-  const head = reading === "behind" ? "▲ Behind" : "● In sync";
-  return release === undefined ? head : `${head} · ${release}`;
-};
-
 // Empty is an offer, not a failure: the heading names what is on offer and the
 // action is the one step that fills the list (copy.md → R-B).
 export const NO_RELEASED_SKILLS = {
@@ -70,7 +59,14 @@ export const moreTargetsLine = (more: number, total: number): string =>
   `${more} more. Select the row to see all ${total} targets.`;
 export const SOME_TARGETS_NOT_READ = "Some targets could not be read.";
 export const NOT_DEPLOYED_ANYWHERE =
-  "Not deployed to any target. Choose a target below, then select Deploy skill.";
+  "Not deployed to any target. Select Deploy skill to choose a target.";
+
+// A target row's ⋮ in the pane, and the foot's removal (#1065). The count is
+// the targets the pane lists: a global deploy is one target per tool.
+export const REMOVE_FROM_TARGET = "Remove from target";
+export const SHOW_IN_DEPLOY_STATE = "Show in Deploy-state";
+export const removeFromAllLabel = (count: number): string =>
+  `Remove from all ${count} targets`;
 
 // The row's ⋮ menu; its items reuse the verbs of CONTEXT.md (#992).
 export const ACTIONS_COLUMN_LABEL = "Actions";

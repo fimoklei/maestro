@@ -61,6 +61,26 @@ describe("useEscapeToClose", () => {
     expect(bottomClose).not.toHaveBeenCalled();
   });
 
+  // A ⋮ menu inside a detail pane (#1065): its Escape closes the menu alone.
+  it("leaves an Escape typed in an open menu to that menu", async () => {
+    const onClose = vi.fn();
+    const { getByRole } = render(
+      <>
+        <EscapePanel onClose={onClose} />
+        <div role="menu">
+          <button type="button" role="menuitem">
+            Remove from target
+          </button>
+        </div>
+      </>,
+    );
+
+    getByRole("menuitem").focus();
+    await userEvent.keyboard("{Escape}");
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("hands Escape back to the panel underneath once the top one unmounts", async () => {
     const bottomClose = vi.fn();
     const topClose = vi.fn();

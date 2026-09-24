@@ -3,7 +3,6 @@ import { HttpError } from "../api/http";
 import {
   type DeployStateNotice,
   deployNotice,
-  linkedFolderNotice,
   removeNotice,
   updatePreviewNotice,
 } from "./notice-copy";
@@ -607,9 +606,6 @@ describe("every deploy and remove notice", () => {
       deployNotice(refusal(code)),
       removeNotice(refusal(code)),
     ]),
-    // The one body built at a call site rather than read off the table, so the
-    // same rules run over it (#748).
-    { label: "Linked skill folder", ...linkedFolderNotice("/home/.claude") },
   ];
 
   it("never addresses the reader as you", () => {

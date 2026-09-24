@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import { Button } from "../ui/button";
 import { DataTable } from "../ui/data-table";
+import { DetailPaneSlot } from "../ui/detail-pane";
 import { EmptyState } from "../ui/empty-state";
 import { IconButton } from "../ui/icon-button";
 import { Notice } from "../ui/notice";
@@ -363,8 +364,7 @@ export function HarnessView() {
           ) : null}
         </div>
         {selectedRow ? (
-          // Side by side from 1100px; narrower, the pane floats over the table.
-          <div className="absolute inset-y-0 right-0 z-20 max-w-full shadow-float min-[1100px]:static min-[1100px]:shadow-none">
+          <DetailPaneSlot>
             <StageDetailPane
               row={selectedRow}
               context={context}
@@ -380,7 +380,7 @@ export function HarnessView() {
               onClose={() => setSelected(null)}
               getTriggerElement={getTriggerElement}
             />
-          </div>
+          </DetailPaneSlot>
         ) : null}
       </div>
       {state === undefined ? null : (

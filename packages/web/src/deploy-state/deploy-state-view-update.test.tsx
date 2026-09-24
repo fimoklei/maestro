@@ -126,8 +126,14 @@ describe("Deploy-state — Update target on a repository", () => {
     renderDeployState();
 
     const pane = await openPane("…/me/project");
+    // Kept at the foot as the menu keeps it: blocked, with its cause (#1065).
+    const blocked = within(pane).getByRole("button", {
+      name: "Update target — on the latest release",
+    });
+    expect(blocked).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(blocked);
     expect(
-      within(pane).queryByRole("button", { name: /Update target/ }),
+      screen.queryByRole("dialog", { name: "Update …/me/project" }),
     ).not.toBeInTheDocument();
   });
 

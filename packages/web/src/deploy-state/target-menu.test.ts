@@ -42,13 +42,14 @@ describe("targetMenuItems", () => {
     ]);
   });
 
-  it("offers the retry of the operation that stopped, and blocks Update target", () => {
+  // #1066: an operation that stands is the next step, so its retry leads.
+  it("offers the retry of the operation that stopped first, and blocks Update target", () => {
     expect(
       menu({ pending: { kind: "remove", release: "v0.3.4", desired: [] } }),
     ).toEqual([
+      "Retry removal",
       "Deploy skill",
       "Update target — unfinished operation (disabled)",
-      "Retry removal",
     ]);
   });
 
@@ -59,9 +60,9 @@ describe("targetMenuItems", () => {
         true,
       ),
     ).toEqual([
+      "Retry deploy — already running (disabled)",
       "Deploy skill",
       "Update target — unfinished operation (disabled)",
-      "Retry deploy — already running (disabled)",
     ]);
   });
 

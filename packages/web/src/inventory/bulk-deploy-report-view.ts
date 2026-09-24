@@ -3,6 +3,7 @@
 
 import type { BulkDeployReport, DeploySkillError } from "@maestro/core";
 import {
+  DELETE_LINKED_FOLDER,
   DEPLOY_STILL_RUNNING,
   deployStateHeading,
   LEFT_ALONE_PINNED,
@@ -113,6 +114,7 @@ const RECOVERY: Partial<Record<DeploySkillError, string>> = {
   "operation-unfinished": RETRY_ON_CARD,
   "deploy-in-progress": DEPLOY_STILL_RUNNING,
   "deploy-incomplete": RETRY_ON_CARD,
+  "destination-symlinked": DELETE_LINKED_FOLDER,
 };
 
 const reasonFor = (error: DeploySkillError, packageType?: string) =>

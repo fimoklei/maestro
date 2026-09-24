@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { deployNotice } from "../deploy-state/notice-copy";
 import { useDeployState } from "../deploy-state/use-deploy-state";
 import { useGlobalDeployState } from "../deploy-state/use-global-deploy-state";
 import { driftViewModel } from "../drift/drift-view-model";
@@ -47,7 +48,7 @@ const GLOBAL_VALUE = "global";
 
 // Plans, executes and reports over the selection, skipping what is already up
 // to date on the chosen target.
-function BulkDeployRun({
+export function BulkDeployRun({
   stagedNames,
   repos,
   registryReady,
@@ -101,6 +102,7 @@ function BulkDeployRun({
     target,
     globalTools: globalDeployState.data?.tools,
     repoPrimitives: repoDeployState.data?.primitives,
+    repoReleaseHead: repoDeployState.data?.releaseHead,
     drift,
   });
 
@@ -183,6 +185,11 @@ function BulkDeployRun({
                   }),
               }),
             }
+      }
+      reportFailure={
+        forceDeploy.isError
+          ? { ...deployNotice(forceDeploy.error), level: "error" }
+          : null
       }
       onDeploy={onDeploy}
       onClose={onClose}

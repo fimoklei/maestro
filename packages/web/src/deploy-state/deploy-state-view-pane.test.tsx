@@ -39,6 +39,13 @@ const BEHIND = {
   comparedAt: RECENT(),
 };
 
+// A fact row: its label beside its value (#1065).
+const fact = (pane: HTMLElement, label: string) =>
+  within(pane)
+    .queryAllByText(label)
+    .find((element) => element.tagName === "DT")?.nextElementSibling
+    ?.textContent ?? null;
+
 const repoWith = (body: object, drift: object = { behind: [] }) =>
   stubServer(() => ({
     repos: [REPO],
@@ -56,15 +63,37 @@ describe("Deploy-state pane — facts", () => {
     expect(
       within(pane).getByRole("heading", { level: 2, name: LABEL }),
     ).toBeInTheDocument();
-    expect(within(pane).getByText("Repository")).toBeInTheDocument();
-    expect(within(pane).getByText(REPO)).toBeInTheDocument();
-    expect(within(pane).getByText("v0.3.4")).toBeInTheDocument();
+    expect(fact(pane, "Kind")).toBe("Repository");
+    expect(fact(pane, "Path")).toBe(REPO);
+    expect(fact(pane, "Release")).toBe("v0.3.2");
+    expect(fact(pane, "Latest release")).toBe("v0.3.4");
+    expect(fact(pane, "Changed")).toBe("2 of 5 skills");
+    expect(fact(pane, "Compared")).toBe("Read just now");
+    // The sentence that explains the state leads the "why" paragraph.
     expect(
       within(pane).getByText("Newer release v0.3.4: 2 of 5 skills changed"),
     ).toBeInTheDocument();
+  });
+
+  // #1065: one grammar across panes; no label stands over its value.
+  it("states every fact as one label/value row, in the order the pane reads", async () => {
+    repoWith({ releaseHead: BEHIND, extraFiles: 2 });
+    renderDeployState();
+
+    const pane = await openPane(LABEL);
+    const list = within(pane).getByText("Kind").closest("dl");
+    expect(list).toHaveClass("grid-cols-[auto_1fr]");
     expect(
-      within(pane).getByText("Compared with the Harness, read just now"),
-    ).toBeInTheDocument();
+      [...(list?.querySelectorAll("dt") ?? [])].map((dt) => dt.textContent),
+    ).toEqual([
+      "Kind",
+      "Path",
+      "Release",
+      "Latest release",
+      "Changed",
+      "Compared",
+      "Extra files",
+    ]);
   });
 
   it("still states a release that changes nothing selected", async () => {
@@ -72,6 +101,7 @@ describe("Deploy-state pane — facts", () => {
     renderDeployState();
 
     const pane = await openPane(LABEL);
+    expect(fact(pane, "Changed")).toBe("0 of 5 skills");
     expect(
       within(pane).getByText("Newer release v0.3.4: 0 of 5 skills changed"),
     ).toBeInTheDocument();
@@ -89,10 +119,9 @@ describe("Deploy-state pane — facts", () => {
     renderDeployState();
 
     const pane = await openPane(LABEL);
-    expect(
-      within(pane).getByText("Compared with the Harness, read just now"),
-    ).toBeInTheDocument();
-    expect(within(pane).queryByText(/skills changed/)).not.toBeInTheDocument();
+    expect(fact(pane, "Compared")).toBe("Read just now");
+    expect(fact(pane, "Latest release")).toBeNull();
+    expect(fact(pane, "Changed")).toBeNull();
   });
 
   it("names both releases and the last read time when the changes could not be read", async () => {
@@ -107,13 +136,14 @@ describe("Deploy-state pane — facts", () => {
     renderDeployState();
 
     const pane = await openPane(LABEL);
+    expect(fact(pane, "Release")).toBe("v0.3.2");
+    expect(fact(pane, "Latest release")).toBe("v0.3.4");
+    expect(fact(pane, "Changed")).toBe("Could not be read");
+    expect(fact(pane, "Compared")).toBe("Read 30 min ago");
     expect(
       within(pane).getByText(
         "Newer release v0.3.4. Changes could not be read.",
       ),
-    ).toBeInTheDocument();
-    expect(
-      within(pane).getByText("Compared with the Harness, read 30 min ago"),
     ).toBeInTheDocument();
   });
 
@@ -122,10 +152,8 @@ describe("Deploy-state pane — facts", () => {
     renderDeployState();
 
     const pane = await openPane(LABEL);
-    expect(within(pane).queryByText("Release")).not.toBeInTheDocument();
-    expect(
-      within(pane).queryByText(/Compared with the Harness/),
-    ).not.toBeInTheDocument();
+    expect(fact(pane, "Release")).toBeNull();
+    expect(fact(pane, "Compared")).toBeNull();
     // The row's own release is the only reading left, so it stays.
     expect(within(pane).getByText("v0.3.2")).toBeInTheDocument();
   });
@@ -141,19 +169,19 @@ describe("Deploy-state pane — facts", () => {
     renderDeployState();
 
     const pane = await openPane(LABEL);
-    expect(
-      within(pane).getByText("1 skill at v0.3.1, 1 at v0.3.0"),
-    ).toBeInTheDocument();
-    expect(
-      within(pane).getByText(
-        "Release not adopted. Select Remove skill for each, then Deploy skill.",
-      ),
-    ).toBeInTheDocument();
+    // One "why" paragraph under the facts (#1065).
+    const tags = within(pane).getByText("1 skill at v0.3.1, 1 at v0.3.0.");
+    const way = within(pane).getByText(
+      "Release not adopted. Select Remove skill for each, then Deploy skill.",
+    );
+    expect(tags.closest("p")).toBe(way.closest("p"));
     expect(within(pane).queryByRole("status")).not.toBeInTheDocument();
-    // No mechanism stands behind an Update here (#950).
+    // No mechanism stands behind an Update here (#950): blocked, with its cause.
     expect(
-      within(pane).queryByRole("button", { name: /update target/i }),
-    ).not.toBeInTheDocument();
+      within(pane).getByRole("button", {
+        name: "Update target — pinned per skill",
+      }),
+    ).toHaveAttribute("aria-disabled", "true");
   });
 
   it("says nothing about pins a target on one release does not hold", async () => {
@@ -174,11 +202,7 @@ describe("Deploy-state pane — facts", () => {
     renderDeployState();
 
     const pane = await openPane(LABEL);
-    expect(
-      within(pane).getByText(
-        "Extra files deployed: 2 files outside the selected skills.",
-      ),
-    ).toBeInTheDocument();
+    expect(fact(pane, "Extra files")).toBe("2 files");
   });
 
   it("warns about an entry it skipped instead of dropping it", async () => {
@@ -415,13 +439,16 @@ describe("Deploy-state pane — an unfinished operation", () => {
         "Update to v0.3.4 incomplete: 1 of 2 skills now use this release.",
       ),
     ).toBeInTheDocument();
+    // In its notice, after its cause, and at the foot (#1065).
     expect(
-      within(pane).getByRole("button", { name: "Retry update" }),
-    ).toBeInTheDocument();
+      within(pane).getAllByRole("button", { name: "Retry update" }),
+    ).toHaveLength(2);
     // One unfinished change is converged before another starts (#951).
     expect(
-      within(pane).queryByRole("button", { name: /Update target/ }),
-    ).toBeNull();
+      within(pane).getByRole("button", {
+        name: "Update target — unfinished operation",
+      }),
+    ).toHaveAttribute("aria-disabled", "true");
     expect(within(grid()).getByText("Mixed releases")).toBeInTheDocument();
   });
 
@@ -445,8 +472,8 @@ describe("Deploy-state pane — an unfinished operation", () => {
     const pane = await openPane(LABEL);
     expect(within(pane).getByText("Removal incomplete")).toBeInTheDocument();
     expect(
-      within(pane).getByRole("button", { name: "Retry removal" }),
-    ).toBeInTheDocument();
+      within(pane).getAllByRole("button", { name: "Retry removal" }),
+    ).toHaveLength(2);
   });
 
   it("runs the retry once, and blocks a second while it runs", async () => {
@@ -472,8 +499,9 @@ describe("Deploy-state pane — an unfinished operation", () => {
     renderDeployState();
 
     const pane = await openPane(LABEL);
+    const notice = within(pane).getByRole("status");
     await userEvent.click(
-      within(pane).getByRole("button", { name: "Retry deploy" }),
+      within(notice).getByRole("button", { name: "Retry deploy" }),
     );
 
     expect(retries).toEqual([
@@ -481,8 +509,19 @@ describe("Deploy-state pane — an unfinished operation", () => {
     ]);
     await waitFor(() =>
       expect(
-        within(pane).getByRole("button", { name: "Retry deploy" }),
+        within(notice).getByRole("button", { name: "Retry deploy" }),
       ).toBeDisabled(),
+    );
+    // The foot's copy of the menu item is blocked, with its cause.
+    expect(
+      within(pane).getByRole("button", {
+        name: "Retry deploy — already running",
+      }),
+    ).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(
+      within(pane).getByRole("button", {
+        name: "Retry deploy — already running",
+      }),
     );
     // Nor can the row's menu start a second one (#1067: kept, disabled).
     await userEvent.click(
@@ -498,6 +537,39 @@ describe("Deploy-state pane — an unfinished operation", () => {
     expect(retries).toHaveLength(1);
   });
 
+  // #1065: the foot is the row's ⋮ menu as buttons; the first enabled is
+  // primary, and a standing operation's retry leads the menu (#1066).
+  it("holds the row's menu at the foot, in its order, Retry update primary", async () => {
+    pendingRepo({ kind: "update", release: "v0.3.4", desired: ["tdd"] });
+    renderDeployState();
+
+    const pane = await openPane(LABEL);
+    const foot = within(pane)
+      .getByRole("button", { name: "Deploy skill" })
+      .closest("div") as HTMLElement;
+    expect(
+      within(foot)
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual([
+      "Retry update",
+      "Deploy skill",
+      "Update target — unfinished operation",
+    ]);
+    expect(
+      within(foot).getByRole("button", { name: "Retry update" }),
+    ).toHaveClass("bg-gray-12", "h-control");
+    expect(
+      within(foot).getByRole("button", { name: "Deploy skill" }),
+    ).not.toHaveClass("bg-gray-12");
+    // The notice carries the same control after its cause (#1065 mock).
+    expect(
+      within(within(pane).getByRole("status")).getByRole("button", {
+        name: "Retry update",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("offers the retry in the row's menu too", async () => {
     pendingRepo({ kind: "update", release: "v0.3.4", desired: ["tdd"] });
     renderDeployState();
@@ -510,9 +582,9 @@ describe("Deploy-state pane — an unfinished operation", () => {
     expect(
       (await screen.findAllByRole("menuitem")).map((item) => item.textContent),
     ).toEqual([
+      "Retry update",
       "Deploy skill",
       "Update target — unfinished operation",
-      "Retry update",
     ]);
   });
 });

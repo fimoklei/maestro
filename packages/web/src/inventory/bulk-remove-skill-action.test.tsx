@@ -1,10 +1,11 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DeployStateView } from "../deploy-state/deploy-state-view";
 import { jsonResponse, renderWithQuery } from "../test-utils";
-import { BulkRemoveSkillAction } from "./bulk-remove-skill-action";
+import { BulkRemoveRun } from "./bulk-remove-skill-action";
 import type { BulkRemoveCandidate } from "./bulk-remove-targets";
 import type { DeployTarget } from "./use-deploy-skill";
 
@@ -67,17 +68,35 @@ function stubServer(
   return calls;
 }
 
+// Stands in for the Inventory pane's foot, which opens the run (#1065); the
+// button's own label and count are the pane's claim (skill-detail-pane.test).
+function Opener({ targets }: { targets: BulkRemoveCandidate[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        Open removal
+      </button>
+      {open ? (
+        <BulkRemoveRun
+          skillName="tdd"
+          targets={targets}
+          onClose={() => setOpen(false)}
+        />
+      ) : null}
+    </>
+  );
+}
+
 function renderAction(targets = TARGETS) {
-  renderWithQuery(<BulkRemoveSkillAction skillName="tdd" targets={targets} />);
+  renderWithQuery(<Opener targets={targets} />);
 }
 
 const openDialog = async () => {
-  await userEvent.click(
-    screen.getByRole("button", { name: "Remove from all 2 targets" }),
-  );
+  await userEvent.click(screen.getByRole("button", { name: "Open removal" }));
 };
 
-describe("BulkRemoveSkillAction", () => {
+describe("BulkRemoveRun", () => {
   it("checks every target the moment the dialog opens", async () => {
     const calls = stubServer();
     renderAction();
@@ -260,7 +279,7 @@ describe("BulkRemoveSkillAction", () => {
 
     renderWithQuery(
       <>
-        <BulkRemoveSkillAction skillName="tdd" targets={[ACME_WEB]} />
+        <Opener targets={[ACME_WEB]} />
         <MemoryRouter>
           <DeployStateView />
         </MemoryRouter>
@@ -270,9 +289,7 @@ describe("BulkRemoveSkillAction", () => {
     expect(
       await screen.findByRole("gridcell", { name: "1" }),
     ).toBeInTheDocument();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Remove from all 1 target" }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Open removal" }));
     const confirm = await screen.findByRole("button", {
       name: "Remove from 1 targets",
     });
@@ -305,9 +322,7 @@ describe("BulkRemoveSkillAction", () => {
     );
     renderAction([ACME_WEB]);
     const openIt = async () =>
-      userEvent.click(
-        screen.getByRole("button", { name: "Remove from all 1 target" }),
-      );
+      userEvent.click(screen.getByRole("button", { name: "Open removal" }));
 
     await openIt();
     await waitFor(() =>
@@ -359,7 +374,7 @@ describe("BulkRemoveSkillAction", () => {
 
     renderWithQuery(
       <>
-        <BulkRemoveSkillAction skillName="tdd" targets={[ACME_WEB]} />
+        <Opener targets={[ACME_WEB]} />
         <MemoryRouter>
           <DeployStateView />
         </MemoryRouter>
@@ -369,9 +384,7 @@ describe("BulkRemoveSkillAction", () => {
     expect(
       await screen.findByRole("gridcell", { name: "1" }),
     ).toBeInTheDocument();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Remove from all 1 target" }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Open removal" }));
     const confirm = await screen.findByRole("button", {
       name: "Remove from 1 targets",
     });
@@ -397,9 +410,7 @@ describe("BulkRemoveSkillAction", () => {
         ),
     });
     renderAction([ACME_WEB]);
-    await userEvent.click(
-      screen.getByRole("button", { name: "Remove from all 1 target" }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Open removal" }));
     const confirm = await screen.findByRole("button", {
       name: "Remove from 1 targets",
     });

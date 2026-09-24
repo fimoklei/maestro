@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { DetailPane } from "./detail-pane";
+import { DetailPane, DetailPaneSlot } from "./detail-pane";
 
 type Props = ComponentProps<typeof DetailPane>;
 
@@ -24,6 +24,25 @@ function renderPane(props: Partial<Props> = {}) {
 
 const pane = () => screen.getByRole("complementary", { name: "tdd detail" });
 const heading = () => screen.getByRole("heading", { level: 2, name: "tdd" });
+
+// Whether it floats is a browser measurement (testing.md); this proves the
+// breakpoint the #1065 decision names: a sheet at 1100px and below.
+describe("DetailPaneSlot", () => {
+  it("floats as a sheet up to 1100px and sits beside the table above it", () => {
+    render(
+      <DetailPaneSlot>
+        <p>pane</p>
+      </DetailPaneSlot>,
+    );
+
+    expect(screen.getByText("pane").parentElement).toHaveClass(
+      "absolute",
+      "inset-y-0",
+      "right-0",
+      "min-[1101px]:static",
+    );
+  });
+});
 
 describe("DetailPane", () => {
   it("is a landmark named for its subject, headed by that subject", () => {

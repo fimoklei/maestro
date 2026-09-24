@@ -12,6 +12,8 @@ let listenerAttached = false;
 
 function handleDocumentKeyDown(event: KeyboardEvent) {
   if (event.key !== "Escape") return;
+  // An open menu's Escape closes that menu alone, never the panel behind it.
+  if ((event.target as Element | null)?.closest?.("[role=menu]")) return;
   const top = stack[stack.length - 1];
   if (!top) return;
   if (!top.closeEnabledRef.current) return;

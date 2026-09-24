@@ -65,6 +65,10 @@ export type TargetRow = {
   behind: boolean;
 };
 
+// A row's id, which another screen names to open that row's pane (#1065).
+export const globalRowId = (tool: string) => `global:${tool}`;
+export const repoRowId = (repoPath: string) => `repo:${repoPath}`;
+
 const isBehind = (head: ReleaseHead | undefined, pending?: PendingOperation) =>
   head !== undefined &&
   head.latestRelease !== null &&
@@ -105,7 +109,7 @@ export function globalRows(
           data.otherOrigins,
         );
     return {
-      id: `global:${group.tool}`,
+      id: globalRowId(group.tool),
       group: GLOBAL,
       name: label,
       path: destination,
@@ -166,7 +170,7 @@ export function repoRow(
   const behind = isBehind(head, pending);
   const label = targetLabel(repoPath, siblings);
   return {
-    id: `repo:${repoPath}`,
+    id: repoRowId(repoPath),
     group: REPOSITORIES,
     name: label,
     path: repoPath,

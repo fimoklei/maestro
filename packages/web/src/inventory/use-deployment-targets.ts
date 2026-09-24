@@ -80,6 +80,7 @@ export function useDeploymentTargets(
         // One removal covers every tool, so each tool row names the same
         // global target (ADR-0013).
         target: { kind: "global" },
+        tool: tool.tool,
         deployed: globalToolView(names, globalDeploy.data?.skipped ?? []),
         primitives: tool.primitives,
         drift: globalDrift.forTool(names),
