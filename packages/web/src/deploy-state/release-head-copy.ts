@@ -2,11 +2,13 @@
 // clock-injected, so the read time is testable.
 import { ago } from "../harness/harness-view-model";
 import {
+  RETRY_UPDATE,
   UPDATE_INCOMPLETE,
   UPDATE_INCOMPLETE_SENTENCE,
 } from "./update-target-copy";
 import type {
   DeployedPrimitive,
+  PendingOperation,
   PinnedPerSkill,
   ReleaseHead,
 } from "./use-deploy-state";
@@ -54,6 +56,11 @@ export const RELEASE_NOT_ADOPTED =
 // stopped (copy.md). Shared with the sentences below, so label and step agree.
 export const RETRY_DEPLOY = "Retry deploy";
 export const RETRY_REMOVAL = "Retry removal";
+export const RETRY_LABELS: Record<PendingOperation["kind"], string> = {
+  deploy: RETRY_DEPLOY,
+  remove: RETRY_REMOVAL,
+  update: RETRY_UPDATE,
+};
 
 // The three notices an unfinished operation carries. Warning, not error: the
 // files are in a state one control converges, and the action names the

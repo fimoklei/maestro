@@ -83,8 +83,8 @@ export function ReleaseDialog({
       destructive
       onClose={onClose}
     >
-      <div className="flex shrink-0 items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
-        <h2 className="font-semibold font-ui text-fg text-subtitle">
+      <div className="flex shrink-0 items-center justify-between gap-2.5 border-gray-7 border-b px-3.5 py-3">
+        <h2 className="font-semibold font-ui text-gray-12 text-prose">
           Publish release for <span className="font-mono">{origin}</span>
         </h2>
       </div>
@@ -97,7 +97,7 @@ export function ReleaseDialog({
           notice={load.kind === "error" ? load.notice : null}
         />
         {load.kind === "loading" ? (
-          <p className="font-ui text-desc text-muted">
+          <p className="font-ui text-meta text-gray-11">
             Loading the release plan…
           </p>
         ) : load.kind === "ready" ? (
@@ -110,7 +110,7 @@ export function ReleaseDialog({
         <Notice trigger="user-action" notice={publishError} />
       </div>
 
-      <div className="flex shrink-0 items-center gap-2.5 border-line-row border-t px-3.5 py-3">
+      <div className="flex shrink-0 items-center gap-2.5 border-gray-7 border-t px-3.5 py-3">
         <span className="flex-1" />
         <Button
           type="button"
@@ -156,7 +156,7 @@ function PlanBody({
   return (
     <>
       {plan.delta.length === 0 ? (
-        <p className="font-ui text-desc text-muted">
+        <p className="font-ui text-meta text-gray-11">
           No skill has changed since the last release.
         </p>
       ) : (
@@ -167,15 +167,18 @@ function PlanBody({
         <div
           role="status"
           aria-label="Structural checks"
-          className="flex flex-col gap-1.5 rounded-control border border-line-drift bg-amber-bg px-2.5 py-2.5"
+          className="flex flex-col gap-1.5 rounded-control border border-amber-7 bg-amber-3 px-2.5 py-2.5"
         >
-          <span className="font-semibold font-ui text-amber-ink text-desc">
+          <span className="font-semibold font-ui text-amber-12 text-meta">
             Skill checks need attention
           </span>
           <ul className="m-0 flex list-none flex-col gap-1 p-0">
             {plan.findings.map((finding) => (
-              <li key={finding.skill} className="font-ui text-desc text-fg-2">
-                <span className="font-mono text-fg">{finding.skill}</span>{" "}
+              <li
+                key={finding.skill}
+                className="font-ui text-meta text-gray-12"
+              >
+                <span className="font-mono text-gray-12">{finding.skill}</span>{" "}
                 {FINDING_TEXT[finding.problem]}
               </li>
             ))}
@@ -193,13 +196,15 @@ function PlanBody({
         </dl>
         <div className="mt-4 flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
           <div className="flex flex-col gap-1.5">
-            <span className="m-label">Releasing as</span>
-            <span className="font-mono text-fg text-title">
+            <span className="font-mono text-meta leading-[inherit] tracking-mono-wide text-gray-11 uppercase">
+              Releasing as
+            </span>
+            <span className="font-mono text-gray-12 text-title">
               {plan.versions[step]}
             </span>
             {/* Maestro's proposal is a fact about the delta, so it stands
                 unchanged beside whatever the author picks. */}
-            <span className="font-ui text-desc text-muted">
+            <span className="font-ui text-meta text-gray-11">
               {`Suggested: ${plan.versions[plan.proposedStep]}. ${plan.reason}`}
             </span>
           </div>

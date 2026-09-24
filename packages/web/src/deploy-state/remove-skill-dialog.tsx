@@ -38,17 +38,17 @@ const OUTCOME_GLYPH: Record<RemoveTargetState, string> = {
 };
 
 const OUTCOME_INK: Record<RemoveTargetState, string> = {
-  removed: "text-green-ink",
-  "not-removed": "text-danger-ink",
-  unknown: "text-dim",
+  removed: "text-green-12",
+  "not-removed": "text-red-12",
+  unknown: "text-gray-11",
 };
 
 // A target the removal came off has nothing left to act on, so it recedes; one
 // it did not keeps its weight and takes the danger fill.
 const OUTCOME_ROW: Record<RemoveTargetState, string> = {
-  removed: "bg-inset",
-  "not-removed": "bg-danger-bg",
-  unknown: "bg-inset",
+  removed: "bg-gray-3",
+  "not-removed": "bg-red-3",
+  unknown: "bg-gray-3",
 };
 
 // One fill per row, never two — `cn` concatenates, so a second bg- utility
@@ -57,7 +57,7 @@ function rowFill(row: RemoveLedgerRow): string {
   if (row.outcome !== null) {
     return OUTCOME_ROW[row.outcome];
   }
-  return row.drift ? "bg-amber-bg" : "bg-inset";
+  return row.drift ? "bg-amber-3" : "bg-gray-3";
 }
 
 // The right-hand slot: a cost the removal has yet to charge, or the outcome it
@@ -66,10 +66,7 @@ function RowStatus({ row }: { row: RemoveLedgerRow }) {
   if (row.outcome !== null) {
     return (
       <span
-        className={cn(
-          "shrink-0 font-ui text-mono-sm",
-          OUTCOME_INK[row.outcome],
-        )}
+        className={cn("shrink-0 font-ui text-meta", OUTCOME_INK[row.outcome])}
       >
         <span aria-hidden="true" className="font-mono">
           {OUTCOME_GLYPH[row.outcome]}
@@ -79,7 +76,7 @@ function RowStatus({ row }: { row: RemoveLedgerRow }) {
     );
   }
   return row.status === null ? null : (
-    <span className="shrink-0 font-ui text-amber-ink text-mono-sm">
+    <span className="shrink-0 font-ui text-amber-12 text-meta">
       {row.status}
     </span>
   );
@@ -94,12 +91,12 @@ function LedgerRow({ row }: { row: RemoveLedgerRow & LedgerRowPlacement }) {
       id={row.id}
       className={cn(
         "flex items-baseline gap-1.5 px-3 py-2.5",
-        row.last ? null : "border-line-faint border-b",
+        row.last ? null : "border-gray-6 border-b",
         rowFill(row),
       )}
     >
       {row.drift ? (
-        <span aria-hidden="true" className="font-mono text-amber-ink text-desc">
+        <span aria-hidden="true" className="font-mono text-amber-11 text-meta">
           ▲
         </span>
       ) : null}
@@ -108,14 +105,14 @@ function LedgerRow({ row }: { row: RemoveLedgerRow & LedgerRowPlacement }) {
             recedes; every other row keeps its weight. */}
         <span
           className={cn(
-            "break-all font-mono text-data",
-            outcome === "removed" ? "text-muted" : "text-fg",
+            "break-all font-mono text-row",
+            outcome === "removed" ? "text-gray-11" : "text-gray-12",
           )}
         >
           {row.name}
         </span>
         {row.path === null ? null : (
-          <span className="break-all font-mono text-fg-2 text-mono-sm">
+          <span className="break-all font-mono text-gray-12 text-meta">
             {row.path}
           </span>
         )}
@@ -234,8 +231,8 @@ export function RemoveSkillDialog({
       onClose={onCancel}
       closeEnabled={!isRemoving}
     >
-      <div className="flex shrink-0 items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
-        <h2 className="font-semibold font-ui text-fg text-subtitle">
+      <div className="flex shrink-0 items-center justify-between gap-2.5 border-gray-7 border-b px-3.5 py-3">
+        <h2 className="font-semibold font-ui text-gray-12 text-prose">
           Remove <span className="font-mono">{named}</span>
         </h2>
         <span className="shrink-0 text-gray-11 text-meta">
@@ -252,10 +249,10 @@ export function RemoveSkillDialog({
             {/* Not a second live region: the rows below already announce the
                   outcome this line only counts, and two would talk over each
                   other. */}
-            <span id={leadInId} className="font-ui text-desc text-muted">
+            <span id={leadInId} className="font-ui text-meta text-gray-11">
               {removeLedgerLeadIn(outcome, type)}
             </span>
-            <div className="flex flex-col overflow-hidden rounded-item border border-line-row">
+            <div className="flex flex-col overflow-hidden rounded-control border border-gray-7">
               {/* Announced: a row's cost can answer late, and a status
                     nobody hears is seen only by those who can see it. Named
                     apart, or a reader hears three identical regions. */}
@@ -328,7 +325,7 @@ export function RemoveSkillDialog({
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2.5 border-line-row border-t px-3.5 py-3">
+      <div className="flex shrink-0 items-center gap-2.5 border-gray-7 border-t px-3.5 py-3">
         {/* Beside the control it holds, not in the body: keeps panel height
               steady between "checking" and the answer, so confirm doesn't jump. */}
         {awaitingCheck ? (
@@ -336,7 +333,7 @@ export function RemoveSkillDialog({
             id={blockedId}
             role="status"
             aria-label="Local edits check"
-            className="min-w-0 truncate font-ui text-desc text-dim"
+            className="min-w-0 truncate font-ui text-meta text-gray-11"
           >
             {CHECKING_TEXT}
           </p>

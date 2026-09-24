@@ -173,7 +173,7 @@ describe("Harness location page", () => {
     expect(block).toHaveTextContent(
       /^✕Could not read InventorySelect Re-read Inventory to try again\.$/,
     );
-    expect(block).toHaveClass("border-danger-border", "bg-danger-bg");
+    expect(block).toHaveClass("border-red-7", "bg-red-3");
     expect(reread()).toBeInTheDocument();
     expect(screen.queryByText(/loading the count/i)).not.toBeInTheDocument();
   });

@@ -1,6 +1,6 @@
 /* Maestro web styling entry: Tailwind v4, the raw colour tokens, then the
-   utility names. Why two @theme blocks and why the Control Room aliases stay
-   until job 11: ADR-0033. style-rules.test.ts fails if an alias is dropped. */
+   utility names. Why two @theme blocks: ADR-0033. style-rules.test.ts fails if
+   a Control Room alias comes back. */
 
 @import "tailwindcss";
 @import "./tokens.css";
@@ -63,53 +63,6 @@
 
   /* the one shadow, for a menu, a popover or a dialog (ADR-0033 §7) */
   --shadow-float: var(--shadow-float-value);
-
-  /* ── Control Room aliases ─────────────────────────────────────────────── */
-  /* surfaces */
-  --color-canvas: var(--gray-1);
-  --color-chrome: var(--gray-2);
-  --color-card: var(--gray-2);
-  --color-inset: var(--gray-3);
-  --color-active: var(--gray-4);
-
-  /* text — the old five-step ramp collapses onto the two the system has */
-  --color-fg: var(--gray-12);
-  --color-fg-2: var(--gray-12);
-  --color-fg-3: var(--gray-11);
-  --color-muted: var(--gray-11);
-  --color-dim: var(--gray-11);
-
-  /* borders */
-  --color-line-faint: var(--gray-6);
-  --color-line-row: var(--gray-7);
-  --color-line: var(--gray-7);
-  --color-line-chip: var(--gray-7);
-  --color-line-dashed: var(--gray-7);
-  --color-line-drift: var(--amber-7);
-  --color-line-amber-dim: var(--amber-7);
-
-  /* signals — the mark sits on step 11, its surface on 3, its border on 7 */
-  --color-amber: var(--amber-11);
-  --color-amber-hover: var(--amber-12);
-  --color-amber-ink: var(--amber-11);
-  --color-amber-bg: var(--amber-3);
-  --color-amber-border: var(--amber-7);
-  --color-green: var(--green-11);
-  --color-green-hover: var(--green-12);
-  --color-green-ink: var(--green-11);
-  --color-green-bg: var(--green-3);
-  --color-green-border: var(--green-7);
-  --color-danger-ink: var(--red-11);
-  --color-danger-bg: var(--red-3);
-  --color-danger-border: var(--red-7);
-  --color-dim-bg: var(--gray-3);
-  --color-on-accent: var(--gray-1);
-
-  /* a primitive type is its plain word in gray 11, with no hue (#987) */
-  --color-type-skill: var(--gray-11);
-  --color-type-hook: var(--gray-11);
-  --color-type-mcp: var(--gray-11);
-  --color-type-bundle: var(--gray-11);
 }
 
 @theme {
@@ -130,32 +83,16 @@
   --text-title: 1.25rem;
   --text-title--line-height: 1.75rem;
 
-  /* Control Room type aliases. Nothing goes below the 12px floor, so the four
-     sizes under it all land on meta. --text-title is an alias by identity. */
-  --text-subtitle: var(--text-prose);
-  --text-body: var(--text-prose);
-  --text-data: var(--text-row);
-  --text-desc: var(--text-meta);
-  --text-mono-sm: var(--text-meta);
-  --text-chip: var(--text-meta);
-  --text-tag: var(--text-meta);
-
-  /* letter-spacing → tracking-heading / tracking-title */
+  /* letter-spacing → tracking-heading / tracking-title / tracking-mono / tracking-mono-wide */
   --tracking-heading: -0.2px;
   --tracking-title: -0.4px;
-  /* Control Room aliases: the uppercase mono micro-label retires with its last
-     user (job 9), so its tracking keeps its own value until then. */
-  --tracking-label: 0.12em;
-  --tracking-tag: 0.08em;
+  --tracking-mono: 0.08em;
+  --tracking-mono-wide: 0.12em;
 
   /* corner radii (ADR-0033 §7) → rounded-chip / rounded-control / rounded-float */
   --radius-chip: 4px;
   --radius-control: 6px;
   --radius-float: 12px;
-  /* Control Room aliases */
-  --radius-tag: var(--radius-chip);
-  --radius-item: var(--radius-control);
-  --radius-card: var(--radius-control);
 
   /* density (ADR-0033 §7) → h-row / h-control / h-control-row */
   --spacing-row: 2rem;
@@ -169,11 +106,6 @@
   --spacing-panel: 1rem;
   --spacing-section: 1.5rem;
   --spacing-page: 2rem;
-  /* Control Room aliases. A 32px row is a 20px line plus 6px above and below,
-     which is the padding the old row and header tokens carried. */
-  --spacing-card-x: var(--spacing-cell);
-  --spacing-row-y: 0.375rem;
-  --spacing-header-y: 0.375rem;
 
   /* motion (ADR-0033 §8). Only what floats moves, by opacity alone. */
   --motion-quick: 150ms;
@@ -213,21 +145,6 @@
     outline: 2px solid var(--blue-9);
     outline-offset: 2px;
   }
-}
-
-/* uppercase mono micro-label, e.g. "TARGETS", "DEPLOY TO". Retires with its
-   last user; the system's own column header is sentence-case Geist. */
-.m-label {
-  font-family: var(--font-mono);
-  font-size: var(--text-meta);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-  color: var(--gray-11);
-}
-
-/* mono data text */
-.m-mono {
-  font-family: var(--font-mono);
 }
 
 /* The connect gate's arrival, the one entrance animation (ADR-0022). Its rule

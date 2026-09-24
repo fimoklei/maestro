@@ -13,7 +13,12 @@ export function RowMenu<A extends string = RowAction>({
   onAction,
 }: {
   name: string;
-  items: readonly { action: A; label: string; danger?: boolean }[];
+  items: readonly {
+    action: A;
+    label: string;
+    danger?: boolean;
+    disabled?: boolean;
+  }[];
   onAction: (action: A) => void;
 }) {
   return (
@@ -22,6 +27,7 @@ export function RowMenu<A extends string = RowAction>({
       items={items.map((item) => ({
         label: item.label,
         danger: item.danger,
+        disabled: item.disabled,
         onSelect: () => onAction(item.action),
       }))}
     />

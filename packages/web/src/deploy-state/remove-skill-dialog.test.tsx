@@ -28,13 +28,13 @@ const REFUSAL = noticeFor("repo-not-registered");
 // protecting is the ordering, not the sizes it currently resolves to.
 const SCALE = [
   "text-title",
-  "text-subtitle",
-  "text-body",
-  "text-data",
-  "text-desc",
-  "text-mono-sm",
-  "text-chip",
-  "text-tag",
+  "text-prose",
+  "text-prose",
+  "text-row",
+  "text-meta",
+  "text-meta",
+  "text-meta",
+  "text-meta",
 ];
 const stepOf = (element: HTMLElement) =>
   SCALE.findIndex((size) => element.className.includes(size));
@@ -364,7 +364,7 @@ describe("RemoveSkillDialog", () => {
 
       const alert = screen.getByRole("alert");
       expect(alert.className).toContain("amber");
-      expect(alert.className).not.toContain("danger");
+      expect(alert.className).not.toContain("-red-");
       // Never-Colour-Alone: the glyph and the words carry it without colour.
       expect(alert).toHaveTextContent("⚠");
       expect(alert).toHaveTextContent(/Nothing removed/);
@@ -419,7 +419,7 @@ describe("RemoveSkillDialog", () => {
     renderDialog({ error: FAILURE });
 
     const alert = screen.getByRole("alert");
-    expect(alert.className).toContain("danger");
+    expect(alert.className).toContain("-red-");
     expect(alert.className).not.toContain("amber");
     expect(alert).toHaveTextContent("✕");
   });
@@ -495,7 +495,7 @@ describe("RemoveSkillDialog", () => {
 
       const claude = rowFor("Claude Code");
       expect(claude).toHaveTextContent("Removed");
-      expect(claude.className).not.toContain("bg-danger-bg");
+      expect(claude.className).not.toContain("bg-red-3");
     });
 
     it("fills a target it did not come off with danger, keeping its weight", () => {
@@ -503,7 +503,7 @@ describe("RemoveSkillDialog", () => {
 
       const codex = rowFor("Codex");
       expect(codex).toHaveTextContent("Not removed");
-      expect(codex.className).toContain("bg-danger-bg");
+      expect(codex.className).toContain("bg-red-3");
     });
 
     it("carries each outcome in a glyph too, so colour is never the signal", () => {
@@ -697,9 +697,7 @@ describe("RemoveSkillDialog", () => {
     it("warms the panel outline while a row states a cost", () => {
       renderDialog({ preflight: repoCheck("cannot-verify") });
 
-      expect(screen.getByRole("dialog").className).toContain(
-        "border-line-drift",
-      );
+      expect(screen.getByRole("dialog").className).toContain("border-amber-7");
     });
 
     it("keeps the neutral outline once every row came back clean", () => {
@@ -915,8 +913,8 @@ describe("RemoveSkillDialog", () => {
       expect(stepOf(name)).toBeLessThan(stepOf(leadIn));
       // The second half of the step: the introducing line also drops down the
       // text ramp, so size is not carrying the difference alone.
-      expect(leadIn.className).toContain("text-muted");
-      expect(name.className).not.toContain("text-muted");
+      expect(leadIn.className).toContain("text-gray-11");
+      expect(name.className).not.toContain("text-gray-11");
     });
 
     // The failure block used to name its problem in the panel's smallest text
@@ -1071,7 +1069,7 @@ describe("RemoveSkillDialog", () => {
       renderDialog({ preflight: refused });
 
       const alert = screen.getByRole("alert");
-      expect(alert.className).toContain("danger");
+      expect(alert.className).toContain("-red-");
       expect(alert).toHaveTextContent("✕");
     });
 
@@ -1095,9 +1093,7 @@ describe("RemoveSkillDialog", () => {
       // the refusal, so the whole screen wears it.
       renderDialog({ preflight: refused });
 
-      expect(screen.getByRole("dialog").className).toContain(
-        "border-danger-border",
-      );
+      expect(screen.getByRole("dialog").className).toContain("border-red-7");
     });
 
     it("describes itself with the refusal, now that it is the whole panel", () => {
@@ -1127,7 +1123,7 @@ describe("RemoveSkillDialog", () => {
     // still has a question to ask must not borrow it.
     renderDialog();
 
-    expect(screen.getByRole("dialog").className).not.toContain("danger");
+    expect(screen.getByRole("dialog").className).not.toContain("-red-");
   });
 
   it("carries a failed removal in the panel's own outline", () => {
@@ -1135,9 +1131,7 @@ describe("RemoveSkillDialog", () => {
     // the failure more quietly than the panel states its question.
     renderDialog({ error: FAILURE });
 
-    expect(screen.getByRole("dialog").className).toContain(
-      "border-danger-border",
-    );
+    expect(screen.getByRole("dialog").className).toContain("border-red-7");
   });
 
   // The global scope. The user clicked inside one tool's card, so the modal has
@@ -1250,7 +1244,7 @@ describe("RemoveSkillDialog", () => {
         renderWithLeftover();
 
         expect(screen.getByRole("dialog").className).toContain(
-          "border-line-drift",
+          "border-amber-7",
         );
       });
 

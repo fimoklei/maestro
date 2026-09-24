@@ -199,7 +199,7 @@ export function InventoryView({
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder={SEARCH_LABEL}
-          className="h-control w-full rounded-control border border-gray-9 bg-gray-1 pr-inline pl-7 font-ui text-gray-12 text-row placeholder:text-dim"
+          className="h-control w-full rounded-control border border-gray-9 bg-gray-1 pr-inline pl-7 font-ui text-gray-12 text-row placeholder:text-gray-11"
         />
       </div>
       <div className="ml-auto flex items-center gap-inline">

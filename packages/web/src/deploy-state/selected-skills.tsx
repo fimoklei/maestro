@@ -13,6 +13,7 @@ import { ActionsMenu } from "../ui/actions-menu";
 import { cn } from "../ui/cn";
 import { MachineValue } from "../ui/machine-value";
 import { showSuccess } from "../ui/toast";
+import { Tooltip } from "../ui/tooltip";
 import { type DeployStateNotice, removeNotice } from "./notice-copy";
 import { removalAnnouncement } from "./removal-announcement";
 import { removalOutcome } from "./removal-outcome";
@@ -54,22 +55,27 @@ const removalFailure = (error: unknown): RemovalNews => ({
 // A shape, so the reading survives without colour; its word is its name.
 function Mark({ mark }: { mark: SkillMark | null }) {
   return (
-    <span className="inline-flex w-4 flex-none justify-center">
+    // 24×24, the pointer floor (WCAG 2.2 SC 2.5.8), inside the 32px row.
+    <span className="inline-flex w-6 flex-none justify-center">
       {mark === null ? null : (
-        <span
-          role="img"
-          aria-label={mark.word}
-          title={mark.hint ?? mark.word}
-          className={
-            mark.family === "attention"
-              ? "text-amber-11"
-              : mark.family === "good"
-                ? "text-green-11"
-                : "text-gray-11"
-          }
-        >
-          {mark.glyph}
-        </span>
+        <Tooltip label={mark.word} detail={mark.hint}>
+          <span
+            role="img"
+            aria-label={mark.word}
+            // biome-ignore lint/a11y/noNoninteractiveTabindex: a tooltip trigger, so its reading opens from the keyboard too (#1068)
+            tabIndex={0}
+            className={cn(
+              "inline-flex size-6 items-center justify-center rounded-control focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2",
+              mark.family === "attention"
+                ? "text-amber-11"
+                : mark.family === "good"
+                  ? "text-green-11"
+                  : "text-gray-11",
+            )}
+          >
+            {mark.glyph}
+          </span>
+        </Tooltip>
       )}
     </span>
   );
@@ -270,7 +276,7 @@ export function SelectedSkills({
         />
       ) : null}
       {orphans.length > 0 && (
-        <p className="mt-inline text-amber-11 text-meta">
+        <p className="mt-inline text-amber-12 text-meta">
           Reported behind, not deployed here: {orphans.join(", ")}
         </p>
       )}

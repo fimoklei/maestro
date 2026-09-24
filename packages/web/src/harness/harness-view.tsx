@@ -233,7 +233,7 @@ export function HarnessView() {
         {freshness === null ? null : (
           <span
             className={
-              stale ? "text-amber-11 text-meta" : "text-gray-11 text-meta"
+              stale ? "text-amber-12 text-meta" : "text-gray-11 text-meta"
             }
           >
             {freshness}

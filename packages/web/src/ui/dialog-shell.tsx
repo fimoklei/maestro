@@ -55,7 +55,7 @@ export function DialogShell({
   describedBy,
   width,
   height = "viewport",
-  border = "border-line-row",
+  border = "border-gray-7",
   onClose,
   closeEnabled = true,
   destructive = false,
@@ -117,7 +117,7 @@ export function DialogShell({
           className={cn(
             // Top-aligned at 96px (ADR-0033 §6), not centred: a dialog that
             // grows keeps its header where the reader's eye already is.
-            "-translate-x-1/2 fixed top-24 left-1/2 z-50 flex w-[calc(100%-2rem)] flex-col overflow-hidden rounded-float border bg-chrome shadow-float outline-none",
+            "-translate-x-1/2 fixed top-24 left-1/2 z-50 flex w-[calc(100%-2rem)] flex-col overflow-hidden rounded-float border bg-gray-2 shadow-float outline-none",
             WIDTH[width],
             HEIGHT[height],
             border,

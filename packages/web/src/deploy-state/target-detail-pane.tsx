@@ -13,8 +13,7 @@ import {
   extraFilesLine,
   pinnedTagsLine,
   RELEASE_NOT_ADOPTED,
-  RETRY_DEPLOY,
-  RETRY_REMOVAL,
+  RETRY_LABELS,
   releaseSentence,
   unfinishedOperationNotice,
 } from "./release-head-copy";
@@ -25,14 +24,6 @@ import {
   skippedNeedsAttention,
 } from "./skipped-entry-text";
 import type { TargetRow } from "./target-rows";
-import { RETRY_UPDATE } from "./update-target-copy";
-import type { PendingOperation } from "./use-deploy-state";
-
-export const RETRY_LABELS: Record<PendingOperation["kind"], string> = {
-  deploy: RETRY_DEPLOY,
-  remove: RETRY_REMOVAL,
-  update: RETRY_UPDATE,
-};
 
 // A target's full reading (#993): facts, then its notice, then its Selected
 // skills. Presentational: the foot's controls arrive as `actions`.
@@ -128,7 +119,7 @@ export function TargetDetailPane({
             <li
               key={skippedEntryKey(entry, index)}
               className={
-                skippedNeedsAttention(entry) ? "text-amber-11" : "text-gray-11"
+                skippedNeedsAttention(entry) ? "text-amber-12" : "text-gray-11"
               }
             >
               {skippedEntryText(entry)}

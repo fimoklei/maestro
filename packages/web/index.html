@@ -5,12 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Maestro</title>
     <!-- The theme is stamped on <html> before first paint, so the wrong theme
-         never flashes (ADR-0033 §5). The token layer sets color-scheme on the
-         same selectors, so native controls follow. Pinned to dark until the
-         Interface theme row ships; that job reads localStorage and
-         prefers-color-scheme here instead of the constant. -->
+         never flashes (ADR-0033 §5). Mirrors resolveTheme in
+         src/settings/interface-theme.ts; its test runs this script. -->
     <script>
-      document.documentElement.setAttribute("data-theme", "dark");
+      (() => {
+        var stored = null;
+        try {
+          stored = localStorage.getItem("maestro.interface-theme");
+        } catch {}
+        var theme =
+          stored === "light" || stored === "dark"
+            ? stored
+            : matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
+        document.documentElement.setAttribute("data-theme", theme);
+      })();
     </script>
   </head>
   <body>

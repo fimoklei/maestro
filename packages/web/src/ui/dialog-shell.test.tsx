@@ -336,13 +336,13 @@ describe("DialogShell", () => {
         label="Remove tdd"
         describedBy={null}
         width={480}
-        border="border-danger-border"
+        border="border-red-7"
         onClose={() => {}}
       >
         <p>body</p>
       </DialogShell>,
     );
 
-    expect(screen.getByRole("dialog")).toHaveClass("border-danger-border");
+    expect(screen.getByRole("dialog")).toHaveClass("border-red-7");
   });
 });

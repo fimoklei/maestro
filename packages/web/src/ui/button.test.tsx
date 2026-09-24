@@ -118,12 +118,12 @@ describe("Button", () => {
         const button = screen.getByRole("button", { name: "go" });
         expect(button).toHaveClass(
           "disabled:cursor-not-allowed",
-          "disabled:border-line-chip",
-          "disabled:bg-dim-bg",
-          "disabled:text-dim",
+          "disabled:border-gray-7",
+          "disabled:bg-gray-3",
+          "disabled:text-gray-11",
         );
-        expect(button).not.toHaveClass("disabled:bg-amber");
-        expect(button).not.toHaveClass("disabled:bg-green");
+        expect(button).not.toHaveClass("disabled:bg-amber-11");
+        expect(button).not.toHaveClass("disabled:bg-green-11");
       },
     );
   });

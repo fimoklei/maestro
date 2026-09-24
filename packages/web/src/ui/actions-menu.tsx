@@ -62,11 +62,11 @@ export function ActionsMenu({
           className={cn(
             // 24×24 is the floor a pointer target may not go under
             // (WCAG 2.2 SC 2.5.8); the glyph is smaller than its target.
-            "inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-control border border-transparent bg-transparent font-mono text-muted text-tag leading-none",
+            "inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-control border border-transparent bg-transparent font-mono text-gray-11 text-meta leading-none",
             HOVER_TRANSITION,
-            "enabled:hover:border-line-chip enabled:hover:bg-inset enabled:hover:text-fg-2",
-            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber",
-            "disabled:cursor-not-allowed disabled:text-dim",
+            "enabled:hover:border-gray-7 enabled:hover:bg-gray-3 enabled:hover:text-gray-12",
+            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-9",
+            "disabled:cursor-not-allowed disabled:text-gray-11",
           )}
         >
           ⋯
@@ -108,9 +108,16 @@ export function ActionsMenu({
                 {separator ? (
                   <DropdownMenu.Separator className="-mx-tight my-tight h-px bg-gray-6" />
                 ) : null}
+                {/* Not Radix's `disabled`: that drops the item from the
+                    keyboard, and design.md keeps it focusable (#1067). */}
                 <DropdownMenu.Item
-                  disabled={item.disabled}
-                  onSelect={() => {
+                  aria-disabled={item.disabled || undefined}
+                  data-disabled={item.disabled ? "" : undefined}
+                  onSelect={(event) => {
+                    if (item.disabled) {
+                      event.preventDefault();
+                      return;
+                    }
                     if (returnFocus) item.onSelect?.();
                     else pending.current = item.onSelect ?? null;
                   }}
@@ -123,7 +130,8 @@ export function ActionsMenu({
                     item.danger
                       ? "text-red-11 data-[highlighted]:bg-red-3 data-[highlighted]:text-red-12"
                       : "text-gray-11 data-[highlighted]:bg-gray-3 data-[highlighted]:text-gray-12",
-                    "data-[disabled]:cursor-not-allowed data-[disabled]:text-dim",
+                    // Stacked so a focused disabled item still reads dim.
+                    "data-[disabled]:cursor-not-allowed data-[disabled]:text-gray-11 data-[disabled]:data-[highlighted]:text-gray-11",
                   )}
                 >
                   {item.href === undefined ? (

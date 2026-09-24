@@ -37,9 +37,9 @@ it("reads the web source tree", () => {
 });
 
 // Preflight's ::placeholder mix (tailwindcss 4.3.2, preflight.css:282-296)
-// falls under the 4.5:1 PRODUCT.md floor (PRODUCT.md:99); --text-dim clears it.
+// falls under the 4.5:1 PRODUCT.md floor (PRODUCT.md:99); gray 11 clears it.
 describe("placeholder colour", () => {
-  it("every input with a placeholder sets placeholder:text-dim", () => {
+  it("every input with a placeholder sets placeholder:text-gray-11", () => {
     // Counted, not merely present: a file that gains a second input must
     // colour that one too, and a bare presence check would miss it.
     const count = (source: string, needle: string) =>
@@ -49,7 +49,7 @@ describe("placeholder colour", () => {
       .filter(
         ({ source }) =>
           count(source, 'placeholder="') >
-          count(source, "placeholder:text-dim"),
+          count(source, "placeholder:text-gray-11"),
       )
       .map(({ path }) => path.slice(SRC_DIR.length));
 
@@ -75,73 +75,117 @@ describe("native control colour scheme", () => {
   });
 });
 
-// ADR-0033: the token layer is replaced before any component is. Every
-// Control Room name stays as an alias onto a new value until the job that
-// rebuilds its last user, so a screen that was never touched still paints.
-// The list is the pre-rebuild @theme block, written out so a dropped alias
-// fails here instead of silently rendering an unstyled utility.
-describe("Control Room token aliases", () => {
-  const themeCss = readFileSync(join(SRC_DIR, "styles/theme.css"), "utf8");
+// ADR-0033 job 11 deleted the Control Room aliases. Each name below is one the
+// pre-rebuild @theme block carried and the new system does not, so neither
+// theme.css nor a utility, variable or class may bring one back.
+const ALIASES: Record<string, string[]> = {
+  color: [
+    "canvas",
+    "chrome",
+    "card",
+    "inset",
+    "active",
+    "fg",
+    "fg-2",
+    "fg-3",
+    "muted",
+    "dim",
+    "line-faint",
+    "line-row",
+    "line",
+    "line-chip",
+    "line-dashed",
+    "line-drift",
+    "line-amber-dim",
+    "amber",
+    "amber-hover",
+    "amber-ink",
+    "amber-bg",
+    "amber-border",
+    "green",
+    "green-hover",
+    "green-ink",
+    "green-bg",
+    "green-border",
+    "danger-ink",
+    "danger-bg",
+    "danger-border",
+    "dim-bg",
+    "on-accent",
+    "type-skill",
+    "type-hook",
+    "type-mcp",
+    "type-bundle",
+  ],
+  text: ["subtitle", "body", "data", "desc", "mono-sm", "chip", "tag"],
+  tracking: ["label", "tag"],
+  radius: ["tag", "item", "card"],
+  spacing: ["card-x", "row-y", "header-y"],
+};
 
-  const aliases = [
-    ...[
-      "canvas",
-      "chrome",
-      "card",
-      "inset",
-      "active",
-      "fg",
-      "fg-2",
-      "fg-3",
-      "muted",
-      "dim",
-      "line-faint",
-      "line-row",
-      "line",
-      "line-chip",
-      "line-dashed",
-      "line-drift",
-      "line-amber-dim",
-      "amber",
-      "amber-hover",
-      "amber-ink",
-      "amber-bg",
-      "amber-border",
-      "green",
-      "green-hover",
-      "green-ink",
-      "green-bg",
-      "green-border",
-      "danger-ink",
-      "danger-bg",
-      "danger-border",
-      "dim-bg",
-      "on-accent",
-      "type-skill",
-      "type-hook",
-      "type-mcp",
-      "type-bundle",
-    ].map((name) => `--color-${name}`),
-    ...["ui", "mono"].map((name) => `--font-${name}`),
-    ...[
-      "title",
-      "subtitle",
-      "body",
-      "data",
-      "desc",
-      "mono-sm",
-      "chip",
-      "tag",
-    ].map((name) => `--text-${name}`),
-    ...["label", "tag"].map((name) => `--tracking-${name}`),
-    ...["tag", "control", "item", "card"].map((name) => `--radius-${name}`),
-    ...["card-x", "row-y", "header-y", "section"].map(
-      (name) => `--spacing-${name}`,
+const either = (names: string[]) => `(?:${names.join("|")})`;
+const COLOR_UTILITY =
+  "(?:bg|text|border(?:-[trblxyse])?|ring|ring-offset|outline|divide|fill|stroke|decoration|accent|caret|shadow|from|via|to)";
+const aliasPattern = new RegExp(
+  `(?<![\\w-])(?:${[
+    `${COLOR_UTILITY}-${either(ALIASES.color ?? [])}`,
+    `text-${either(ALIASES.text ?? [])}`,
+    `tracking-${either(ALIASES.tracking ?? [])}`,
+    `rounded(?:-[trblse]{1,2})?-${either(ALIASES.radius ?? [])}`,
+    `[a-z-]+-${either(ALIASES.spacing ?? [])}`,
+    "m-label",
+    "m-mono",
+    ...Object.entries(ALIASES).map(
+      ([kind, names]) => `--${kind}-${either(names)}`,
     ),
-  ];
+  ].join("|")})(?![\\w-])`,
+  "g",
+);
+const aliasesIn = (source: string) =>
+  [...source.matchAll(aliasPattern)].map((match) => match[0]);
 
-  it.each(aliases)("%s still resolves", (alias) => {
-    expect(themeCss).toContain(`${alias}:`);
+describe("Control Room token aliases", () => {
+  it("flags an alias and passes the token it resolved to", () => {
+    expect(
+      aliasesIn(
+        'className="text-fg-2 hover:bg-amber-bg/50 rounded-item m-label" style={{ color: "var(--color-muted)" }}',
+      ),
+    ).toEqual([
+      "text-fg-2",
+      "bg-amber-bg",
+      "rounded-item",
+      "m-label",
+      "--color-muted",
+    ]);
+    expect(
+      aliasesIn(
+        'className="text-gray-12 bg-amber-3 text-amber-11 rounded-control text-meta tracking-heading"',
+      ),
+    ).toEqual([]);
+  });
+
+  it("theme.css declares no alias", () => {
+    const themeCss = readFileSync(join(SRC_DIR, "styles/theme.css"), "utf8");
+
+    expect(aliasesIn(themeCss)).toEqual([]);
+  });
+
+  it("no source, test, story or stylesheet names an alias", () => {
+    const webDir = resolve(SRC_DIR, "..");
+    const offenders = [SRC_DIR, join(webDir, ".storybook")]
+      .flatMap((dir) =>
+        readdirSync(dir, { recursive: true, encoding: "utf8" })
+          .filter((entry) => /\.(tsx?|css|mdx)$/.test(entry))
+          .map((entry) => join(dir, entry)),
+      )
+      .filter((path) => !path.endsWith("style-rules.test.ts"))
+      .flatMap((path) =>
+        aliasesIn(readFileSync(path, "utf8")).map(
+          (alias) => `${path.slice(webDir.length)}: ${alias}`,
+        ),
+      );
+
+    expect(offenders).toEqual([]);
   });
 });
 
@@ -154,6 +198,36 @@ describe("type ramp", () => {
       [...source.matchAll(/text-\[[^\]]+\]/g)].map(
         (match) => `${path.slice(SRC_DIR.length)}: ${match[0]}`,
       ),
+    );
+
+    expect(offenders).toEqual([]);
+  });
+});
+
+// Letter-spacing is a token too (frontend.md): tracking-heading … tracking-mono-wide.
+describe("letter-spacing", () => {
+  it("no component sets an arbitrary tracking value", () => {
+    const offenders = files.flatMap(({ path, source }) =>
+      [...source.matchAll(/tracking-\[[^\]]+\]/g)].map(
+        (match) => `${path.slice(SRC_DIR.length)}: ${match[0]}`,
+      ),
+    );
+
+    expect(offenders).toEqual([]);
+  });
+});
+
+// design.md §1: blue only for focus, selection and links; every ring is blue-9.
+describe("focus ring colour", () => {
+  it("every focus outline is blue-9", () => {
+    const offenders = files.flatMap(({ path, source }) =>
+      [
+        ...source.matchAll(
+          /focus(?:-visible)?:outline-(?!offset|none|\d)[\w-]+/g,
+        ),
+      ]
+        .filter((match) => match[0] !== "focus-visible:outline-blue-9")
+        .map((match) => `${path.slice(SRC_DIR.length)}: ${match[0]}`),
     );
 
     expect(offenders).toEqual([]);
@@ -288,5 +362,45 @@ ${NO_PREFERENCE} { .b { animation: spin 1s; } }
     const css = readFileSync(join(SRC_DIR, "styles", name), "utf8");
 
     expect(unguardedCssMotion(css)).toEqual([]);
+  });
+});
+
+// ADR-0033 §1: a status scale puts text on step 12 and the mark on step 11. In
+// light, green and amber 11 miss 4.5:1 on gray 2 and on their own tint (#1086),
+// so step 11 colours only a glyph: aria-hidden, role="img", or a MARK constant.
+const STEP_ELEVEN = /text-(?:green|amber)-11\b/;
+const MARK_CONTEXT = /aria-hidden="true"|role="img"|\bglyph:|const \w*MARK\w*/;
+
+function wordsOnStepEleven(source: string): string[] {
+  const lines = source.split("\n");
+  return lines.flatMap((line, index) => {
+    if (!STEP_ELEVEN.test(line)) return [];
+    const context = lines.slice(Math.max(0, index - 10), index + 1).join("\n");
+    return MARK_CONTEXT.test(context) ? [] : [line.trim()];
+  });
+}
+
+describe("status step 11 marks, never words", () => {
+  it("flags a word on step 11 and passes a mark", () => {
+    expect(
+      wordsOnStepEleven(`const INK = { good: "text-green-11" };
+<p className="text-amber-11">Behind</p>
+<span aria-hidden="true" className="text-green-11">✓</span>
+const MARK = { good: "text-green-11" };
+  attention: { glyph: "text-amber-11" },`),
+    ).toEqual([
+      'const INK = { good: "text-green-11" };',
+      '<p className="text-amber-11">Behind</p>',
+    ]);
+  });
+
+  it("no source file colours a word with green or amber 11", () => {
+    const offenders = files.flatMap(({ path, source }) =>
+      wordsOnStepEleven(source).map(
+        (line) => `${path.slice(SRC_DIR.length)}: ${line}`,
+      ),
+    );
+
+    expect(offenders).toEqual([]);
   });
 });

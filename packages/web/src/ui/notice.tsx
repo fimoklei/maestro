@@ -44,24 +44,32 @@ export interface NoticeProps {
 }
 
 const borderClasses: Record<NoticeLevel, string> = {
-  info: "border-line-chip",
-  success: "border-green-border",
-  warning: "border-amber-border",
-  error: "border-danger-border",
+  info: "border-gray-7",
+  success: "border-green-7",
+  warning: "border-amber-7",
+  error: "border-red-7",
 };
 
 const fillClasses: Record<NoticeLevel, string> = {
-  info: "bg-dim-bg",
-  success: "bg-green-bg",
-  warning: "bg-amber-bg",
-  error: "bg-danger-bg",
+  info: "bg-gray-3",
+  success: "bg-green-3",
+  warning: "bg-amber-3",
+  error: "bg-red-3",
 };
 
+// Text on step 12, the glyph on step 11 (ADR-0033 §1).
 const inkClasses: Record<NoticeLevel, string> = {
-  info: "text-muted",
-  success: "text-green-ink",
-  warning: "text-amber-ink",
-  error: "text-danger-ink",
+  info: "text-gray-11",
+  success: "text-green-12",
+  warning: "text-amber-12",
+  error: "text-red-12",
+};
+
+const MARK_CLASSES: Record<NoticeLevel, string> = {
+  info: "text-gray-11",
+  success: "text-green-11",
+  warning: "text-amber-11",
+  error: "text-red-11",
 };
 
 // Nothing is wrong at info, so there is nothing to mark. The rest carry
@@ -107,26 +115,26 @@ export function Notice({
       {glyph === null ? null : (
         <span
           aria-hidden="true"
-          className={`font-mono text-desc ${inkClasses[level]}`}
+          className={`font-mono text-meta ${MARK_CLASSES[level]}`}
         >
           {glyph}
         </span>
       )}
       <div className="flex min-w-0 flex-col gap-1">
         <span
-          className={`font-semibold font-ui text-desc ${inkClasses[level]}`}
+          className={`font-semibold font-ui text-meta ${inkClasses[level]}`}
         >
           {label}
         </span>
         {/* Inline the notice is an aside beside the row's own sentence, so it
             sits on the same step; the panel has a surface to lift off. */}
         <span
-          className={`font-ui text-desc ${variant === "inline" ? "text-muted" : "text-fg-2"}`}
+          className={`font-ui text-meta ${variant === "inline" ? "text-gray-11" : "text-gray-12"}`}
         >
           {message}
         </span>
         {detail === undefined ? null : (
-          <span className="font-ui text-desc text-dim">{detail}</span>
+          <span className="font-ui text-meta text-gray-11">{detail}</span>
         )}
         {action === undefined ? null : (
           <Button

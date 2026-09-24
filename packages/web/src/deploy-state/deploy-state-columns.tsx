@@ -16,7 +16,7 @@ export type TargetAction = "deploy" | "update" | "retry";
 
 export type TargetTableRow = TargetRow & {
   /** The ⋮ menu's items, in order; the pane's foot offers the same. */
-  actions: { action: TargetAction; label: string }[];
+  actions: { action: TargetAction; label: string; disabled?: boolean }[];
 };
 
 const unranked = Number.MAX_SAFE_INTEGER;

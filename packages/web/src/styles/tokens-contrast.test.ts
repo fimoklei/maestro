@@ -126,6 +126,18 @@ const PAIRS: readonly Pair[] = [
     foregrounds: ["red-11"],
     backgrounds: ["gray-1", "gray-2"],
   },
+  {
+    name: "Status text on the page: green / amber / red 12 on slate 1-3",
+    floor: AA_TEXT,
+    foregrounds: ["green-12", "amber-12", "red-12"],
+    backgrounds: ["gray-1", "gray-2", "gray-3"],
+  },
+  {
+    name: "Text in a status box: slate 12 / 11 on green / amber / red 3",
+    floor: AA_TEXT,
+    foregrounds: ["gray-12", "gray-11"],
+    backgrounds: ["green-3", "amber-3", "red-3"],
+  },
 ];
 
 function channel(value: number): number {

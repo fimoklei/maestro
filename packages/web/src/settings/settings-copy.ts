@@ -39,3 +39,14 @@ export function setLocationMessage(code: string | null): string | undefined {
     code ?? ""
   ];
 }
+
+// The Appearance page (#996). The setting and its values come from CONTEXT.md.
+export const THEME = "Theme";
+export const INTERFACE_THEME = "Interface theme";
+export const INTERFACE_THEME_SENTENCE =
+  "Select System to follow your operating system.";
+export const INTERFACE_THEME_LABELS = {
+  system: "System",
+  light: "Light",
+  dark: "Dark",
+} as const;

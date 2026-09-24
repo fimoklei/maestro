@@ -154,7 +154,7 @@ and the button at the foot of the pane, never a button in the row.
 ### 10. Build from the tokens, never a new value
 
 Five type sizes, three weights, six spacing steps, three radii, one shadow,
-four motion tokens, and 17 measured colour pairs, all AA in both themes. A
+four motion tokens, and the measured colour pairs, all AA in both themes. A
 value or a colour pairing outside them is a change to `design.json` with its
 contrast measured, never an exception on one screen. Light and dark are equal:
 every screen is checked in both, from the job that makes Light reachable.

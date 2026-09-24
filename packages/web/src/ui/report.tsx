@@ -36,7 +36,15 @@ const GLYPH: Record<ReportTone, string | null> = {
   good: "✓",
 };
 
+// The group's words on step 12, its glyph on step 11 (ADR-0033 §1).
 const INK: Record<ReportTone, string> = {
+  failed: "text-red-12",
+  attention: "text-amber-12",
+  neutral: "text-gray-11",
+  good: "text-green-12",
+};
+
+const MARK: Record<ReportTone, string> = {
   failed: "text-red-11",
   attention: "text-amber-11",
   neutral: "text-gray-11",
@@ -62,7 +70,7 @@ export function Report({
         {heading}
       </span>
       {/* Under the dialog's own h2 title: a Report never stands alone. */}
-      <h3 className="font-ui text-fg text-prose">{heading}</h3>
+      <h3 className="font-ui text-gray-12 text-prose">{heading}</h3>
       {drawn.map((group) => (
         <section key={group.label} className="flex min-w-0 flex-col gap-tight">
           <h4
@@ -72,7 +80,10 @@ export function Report({
             )}
           >
             {GLYPH[group.tone] === null ? null : (
-              <span aria-hidden="true" className="font-mono">
+              <span
+                aria-hidden="true"
+                className={cn("font-mono", MARK[group.tone])}
+              >
                 {GLYPH[group.tone]}
               </span>
             )}
@@ -88,9 +99,9 @@ export function Report({
                 className="flex min-w-0 items-baseline justify-between gap-inline font-ui text-row"
               >
                 <span className="flex min-w-0 flex-wrap items-baseline gap-inline">
-                  <span className="font-medium text-fg">{row.name}</span>
+                  <span className="font-medium text-gray-12">{row.name}</span>
                   {row.detail === undefined ? null : (
-                    <span className="text-muted">{row.detail}</span>
+                    <span className="text-gray-11">{row.detail}</span>
                   )}
                 </span>
                 {row.action === undefined ? null : (

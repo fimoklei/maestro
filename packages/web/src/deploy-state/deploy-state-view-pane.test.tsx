@@ -310,10 +310,10 @@ describe("Deploy-state pane — Selected skills", () => {
     renderDeployState();
 
     const pane = await openPane(LABEL);
-    expect(
-      await within(pane).findByRole("img", { name: "Unverified" }),
-    ).toHaveAttribute(
-      "title",
+    const mark = await within(pane).findByRole("img", { name: "Unverified" });
+    await userEvent.hover(mark);
+    await screen.findByRole("tooltip", { hidden: true });
+    expect(mark).toHaveAccessibleDescription(
       "Could not reach the Harness location to check for updates",
     );
   });
@@ -484,15 +484,18 @@ describe("Deploy-state pane — an unfinished operation", () => {
         within(pane).getByRole("button", { name: "Retry deploy" }),
       ).toBeDisabled(),
     );
-    // Nor can the row's menu start a second one.
+    // Nor can the row's menu start a second one (#1067: kept, disabled).
     await userEvent.click(
       within(await findRow(LABEL)).getByRole("button", {
         name: `Actions for ${LABEL}`,
       }),
     );
-    expect(
-      (await screen.findAllByRole("menuitem")).map((item) => item.textContent),
-    ).toEqual(["Deploy skill"]);
+    const running = await screen.findByRole("menuitem", {
+      name: "Retry deploy — already running",
+    });
+    expect(running).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(running);
+    expect(retries).toHaveLength(1);
   });
 
   it("offers the retry in the row's menu too", async () => {
@@ -506,6 +509,10 @@ describe("Deploy-state pane — an unfinished operation", () => {
     );
     expect(
       (await screen.findAllByRole("menuitem")).map((item) => item.textContent),
-    ).toEqual(["Deploy skill", "Retry update"]);
+    ).toEqual([
+      "Deploy skill",
+      "Update target — unfinished operation",
+      "Retry update",
+    ]);
   });
 });
