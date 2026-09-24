@@ -20,6 +20,7 @@
     "test:integration": "node scripts/run-tests.mjs --project integration",
     "test:git": "node scripts/run-tests.mjs --project git",
     "test:loop": "node scripts/run-tests.mjs --project core --project web --project integration",
+    "test:affected": "node scripts/run-tests.mjs --affected --project core --project web --project integration",
     "test:coverage": "node scripts/run-tests.mjs --coverage",
     "test:watch": "vitest --project core --project web --project integration",
     "typecheck": "pnpm -r typecheck && tsc -p tsconfig.json --noEmit",
