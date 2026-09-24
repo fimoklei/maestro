@@ -206,12 +206,12 @@ describe("BulkRemoveDialog — once the checks answer", () => {
 
   it("warms its outline only while a cost group exists", () => {
     renderDialog({ view: withCost });
-    expect(screen.getByRole("dialog")).toHaveClass("border-line-drift");
+    expect(screen.getByRole("dialog")).toHaveClass("border-amber-7");
   });
 
   it("keeps its plain outline when the removal costs nothing", () => {
     renderDialog();
-    expect(screen.getByRole("dialog")).not.toHaveClass("border-line-drift");
+    expect(screen.getByRole("dialog")).not.toHaveClass("border-amber-7");
   });
 });
 
@@ -361,7 +361,7 @@ describe("BulkRemoveDialog — once the run reports", () => {
 
   it("takes the danger outline once a target was left behind", () => {
     renderDialog({ report: partial });
-    expect(screen.getByRole("dialog")).toHaveClass("border-danger-border");
+    expect(screen.getByRole("dialog")).toHaveClass("border-red-7");
   });
 
   // Nothing left to confirm: the run is over, and a control that reran it

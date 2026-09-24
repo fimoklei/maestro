@@ -89,8 +89,8 @@ export function ImportDialog({
       closeEnabled={!importing}
       fieldsChanged={nameTouched}
     >
-      <div className="flex shrink-0 items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
-        <h2 className="font-semibold font-ui text-fg text-subtitle">
+      <div className="flex shrink-0 items-center justify-between gap-2.5 border-gray-7 border-b px-3.5 py-3">
+        <h2 className="font-semibold font-ui text-gray-12 text-prose">
           {labels.title}
         </h2>
       </div>
@@ -103,7 +103,7 @@ export function ImportDialog({
             label="Folder path"
             hint="Import copies this folder to the Working Harness. The original folder stays unchanged."
             placeholder="/path/to/skill-folder"
-            className="placeholder:text-dim"
+            className="placeholder:text-gray-11"
             value={sourceText}
             onChange={onSourceChange}
             onPicked={onSourceCommit}
@@ -142,14 +142,14 @@ export function ImportDialog({
           <div
             role="status"
             aria-label="Convention checks"
-            className="flex flex-col gap-1.5 rounded-control border border-line-drift bg-amber-bg px-2.5 py-2.5"
+            className="flex flex-col gap-1.5 rounded-control border border-amber-7 bg-amber-3 px-2.5 py-2.5"
           >
-            <span className="font-semibold font-ui text-amber-ink text-desc">
+            <span className="font-semibold font-ui text-amber-11 text-meta">
               Skill checks found issues. You can still import the skill.
             </span>
             <ul className="m-0 flex list-none flex-col gap-1 p-0">
               {advisories.map((advisory) => (
-                <li key={advisory} className="font-ui text-desc text-fg-2">
+                <li key={advisory} className="font-ui text-meta text-gray-12">
                   {advisory}
                 </li>
               ))}
@@ -182,7 +182,7 @@ export function ImportDialog({
               }}
             />
             {imported.skipped === 0 ? null : (
-              <p className="m-0 font-ui text-desc text-dim">
+              <p className="m-0 font-ui text-meta text-gray-11">
                 {imported.skipped === 1
                   ? "1 entry was skipped: .git and operating-system files."
                   : `${imported.skipped} entries were skipped: .git and operating-system files.`}
@@ -194,7 +194,7 @@ export function ImportDialog({
         <Notice trigger="user-action" notice={importError} />
       </div>
 
-      <div className="flex shrink-0 items-center gap-2.5 border-line-row border-t px-3.5 py-3">
+      <div className="flex shrink-0 items-center gap-2.5 border-gray-7 border-t px-3.5 py-3">
         <span className="flex-1" />
         <Button
           type="button"

@@ -80,7 +80,7 @@ export function ConnectForm({
         <PathField
           label={PATH_LABEL}
           placeholder="/path/to/harness or https://github.com/owner/repo"
-          className="placeholder:text-dim"
+          className="placeholder:text-gray-11"
           value={path}
           onChange={onPathChange}
           chooser={pathChooser}
@@ -102,7 +102,7 @@ export function ConnectForm({
                 label={CLONE_LABEL}
                 hint={CLONE_HINT}
                 placeholder="your home folder"
-                className="placeholder:text-dim"
+                className="placeholder:text-gray-11"
                 value={cloneParent}
                 onChange={onCloneParentChange}
                 chooser={cloneChooser}

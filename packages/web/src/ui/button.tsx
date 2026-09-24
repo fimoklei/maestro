@@ -87,7 +87,7 @@ export function Button({
         HOVER_TRANSITION,
         // No outline utility here: the ring is one :focus-visible rule on blue
         // 9 for every control (theme.css, ADR-0033 §2).
-        "disabled:cursor-not-allowed disabled:border-line-chip disabled:bg-dim-bg disabled:text-dim",
+        "disabled:cursor-not-allowed disabled:border-gray-7 disabled:bg-gray-3 disabled:text-gray-11",
         "aria-disabled:cursor-not-allowed",
         variantClasses[variant],
         sizeClasses[size],

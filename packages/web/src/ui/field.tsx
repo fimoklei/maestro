@@ -68,11 +68,11 @@ export function Field({
 
   return (
     <div className="flex flex-col gap-tight">
-      <label htmlFor={id} className="font-medium font-ui text-fg text-row">
+      <label htmlFor={id} className="font-medium font-ui text-gray-12 text-row">
         {label}
       </label>
       {hint === undefined ? null : (
-        <span id={hintId} className="font-ui text-meta text-muted">
+        <span id={hintId} className="font-ui text-meta text-gray-11">
           {hint}
         </span>
       )}
@@ -88,7 +88,7 @@ export function Field({
           className={cn(
             // No outline-none: it poisons --tw-outline-style and hides the one
             // focus ring every control shares (#227).
-            "h-control min-w-0 flex-1 rounded-control border bg-canvas px-inline text-fg text-row",
+            "h-control min-w-0 flex-1 rounded-control border bg-gray-1 px-inline text-gray-12 text-row",
             mono ? "font-mono" : "font-ui",
             refused ? "border-red-7" : "border-gray-9",
             className,

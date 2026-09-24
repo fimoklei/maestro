@@ -26,11 +26,13 @@ export function Fact({
 
   return (
     <div className="m-0 flex min-w-0 flex-col">
-      <dt className="m-label mb-1.5">{label}</dt>
+      <dt className="mb-1.5 font-mono text-meta leading-[inherit] tracking-[0.12em] text-gray-11 uppercase">
+        {label}
+      </dt>
       <dd
         className={cn(
-          "m-0 truncate text-fg",
-          machine ? "font-mono text-data" : "font-ui text-row",
+          "m-0 truncate text-gray-12",
+          machine ? "font-mono text-row" : "font-ui text-row",
           wrap && "break-all",
         )}
         title={title}
@@ -39,7 +41,7 @@ export function Fact({
         {value}
       </dd>
       {hint ? (
-        <p className="m-0 mt-1.5 font-ui text-desc text-muted" id={hintId}>
+        <p className="m-0 mt-1.5 font-ui text-meta text-gray-11" id={hintId}>
           {hint}
         </p>
       ) : null}

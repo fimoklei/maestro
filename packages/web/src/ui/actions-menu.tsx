@@ -62,11 +62,11 @@ export function ActionsMenu({
           className={cn(
             // 24×24 is the floor a pointer target may not go under
             // (WCAG 2.2 SC 2.5.8); the glyph is smaller than its target.
-            "inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-control border border-transparent bg-transparent font-mono text-muted text-tag leading-none",
+            "inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-control border border-transparent bg-transparent font-mono text-gray-11 text-meta leading-none",
             HOVER_TRANSITION,
-            "enabled:hover:border-line-chip enabled:hover:bg-inset enabled:hover:text-fg-2",
-            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber",
-            "disabled:cursor-not-allowed disabled:text-dim",
+            "enabled:hover:border-gray-7 enabled:hover:bg-gray-3 enabled:hover:text-gray-12",
+            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-11",
+            "disabled:cursor-not-allowed disabled:text-gray-11",
           )}
         >
           ⋯
@@ -123,7 +123,7 @@ export function ActionsMenu({
                     item.danger
                       ? "text-red-11 data-[highlighted]:bg-red-3 data-[highlighted]:text-red-12"
                       : "text-gray-11 data-[highlighted]:bg-gray-3 data-[highlighted]:text-gray-12",
-                    "data-[disabled]:cursor-not-allowed data-[disabled]:text-dim",
+                    "data-[disabled]:cursor-not-allowed data-[disabled]:text-gray-11",
                   )}
                 >
                   {item.href === undefined ? (

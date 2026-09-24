@@ -13,7 +13,7 @@ const withTheme: Decorator = (Story, context) => {
   }, [theme]);
   return (
     <div
-      className="bg-canvas text-fg font-ui"
+      className="bg-gray-1 text-gray-12 font-ui"
       style={{ minHeight: "100vh", padding: 24 }}
     >
       <Story />

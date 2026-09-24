@@ -43,8 +43,8 @@ export function DeletionDialog({
       onClose={onClose}
       closeEnabled={!deleting}
     >
-      <div className="flex shrink-0 items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
-        <h2 className="font-semibold font-ui text-fg text-subtitle">
+      <div className="flex shrink-0 items-center justify-between gap-2.5 border-gray-7 border-b px-3.5 py-3">
+        <h2 className="font-semibold font-ui text-gray-12 text-prose">
           Delete <span className="font-mono">{skill}</span>
         </h2>
       </div>
@@ -52,23 +52,24 @@ export function DeletionDialog({
       <div className="flex min-h-0 flex-col gap-3 overflow-y-auto px-3.5 py-3">
         {mode.kind === "propose" ? (
           <>
-            <p className="m-0 font-ui text-desc text-fg-2">
-              You deleted <span className="font-mono text-fg">{skill}</span>{" "}
-              from the Harness working tree. Confirming proposes that deletion
-              to <span className="font-mono text-fg">{mode.origin}</span> on its
-              own branch.
+            <p className="m-0 font-ui text-meta text-gray-12">
+              You deleted{" "}
+              <span className="font-mono text-gray-12">{skill}</span> from the
+              Harness working tree. Confirming proposes that deletion to{" "}
+              <span className="font-mono text-gray-12">{mode.origin}</span> on
+              its own branch.
             </p>
-            <p className="m-0 font-ui text-desc text-muted">
+            <p className="m-0 font-ui text-meta text-gray-11">
               Nobody loses the skill until the pull request is merged.
             </p>
           </>
         ) : (
           // No second sentence: the propose mode has one because nothing is
           // lost until a merge, and here something is.
-          <p className="m-0 font-ui text-desc text-fg-2">
-            <span className="font-mono text-fg">{skill}</span> is in the Harness
-            working tree and nowhere else. Confirming removes the folder from
-            disk for good.
+          <p className="m-0 font-ui text-meta text-gray-12">
+            <span className="font-mono text-gray-12">{skill}</span> is in the
+            Harness working tree and nowhere else. Confirming removes the folder
+            from disk for good.
           </p>
         )}
         <Card padded>
@@ -97,7 +98,7 @@ export function DeletionDialog({
         <Notice trigger="user-action" notice={deleteError} />
       </div>
 
-      <div className="flex shrink-0 items-center gap-2.5 border-line-row border-t px-3.5 py-3">
+      <div className="flex shrink-0 items-center gap-2.5 border-gray-7 border-t px-3.5 py-3">
         <span className="flex-1" />
         <Button
           type="button"

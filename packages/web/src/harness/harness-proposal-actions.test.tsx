@@ -116,7 +116,7 @@ describe("proposal actions", () => {
     // Retracting is not the publishing action, so it takes no amber fill (#876).
     expect(
       within(dialog).getByRole("button", { name: "Withdraw proposal" }),
-    ).not.toHaveClass("bg-amber");
+    ).not.toHaveClass("bg-amber-11");
     expect(proposals).toEqual([]);
 
     await userEvent.click(

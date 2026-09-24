@@ -62,7 +62,7 @@ export function Report({
         {heading}
       </span>
       {/* Under the dialog's own h2 title: a Report never stands alone. */}
-      <h3 className="font-ui text-fg text-prose">{heading}</h3>
+      <h3 className="font-ui text-gray-12 text-prose">{heading}</h3>
       {drawn.map((group) => (
         <section key={group.label} className="flex min-w-0 flex-col gap-tight">
           <h4
@@ -88,9 +88,9 @@ export function Report({
                 className="flex min-w-0 items-baseline justify-between gap-inline font-ui text-row"
               >
                 <span className="flex min-w-0 flex-wrap items-baseline gap-inline">
-                  <span className="font-medium text-fg">{row.name}</span>
+                  <span className="font-medium text-gray-12">{row.name}</span>
                   {row.detail === undefined ? null : (
-                    <span className="text-muted">{row.detail}</span>
+                    <span className="text-gray-11">{row.detail}</span>
                   )}
                 </span>
                 {row.action === undefined ? null : (

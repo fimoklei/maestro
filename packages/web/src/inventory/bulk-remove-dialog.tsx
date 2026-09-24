@@ -30,12 +30,12 @@ function SummaryRow({
   return (
     <p
       id={id}
-      className="flex items-center gap-2.5 rounded-item border border-line-row bg-inset px-3 py-2.5 font-mono text-desc text-fg-2"
+      className="flex items-center gap-2.5 rounded-control border border-gray-7 bg-gray-3 px-3 py-2.5 font-mono text-meta text-gray-12"
     >
       {tone === "clean" || tone === "done" ? (
         // The Good family's mark, uncoloured as it rests: a clean copy before
         // the run, a finished run after it (ADR-0033 §3).
-        <span aria-hidden="true" className="text-gray-11 text-mono-sm">
+        <span aria-hidden="true" className="text-gray-11 text-meta">
           ✓
         </span>
       ) : (
@@ -44,8 +44,8 @@ function SummaryRow({
         <span
           aria-hidden="true"
           className={cn(
-            "text-mono-sm",
-            tone === "running" ? "text-amber-ink" : "text-dim",
+            "text-meta",
+            tone === "running" ? "text-amber-11" : "text-gray-11",
           )}
         >
           ◐
@@ -60,16 +60,16 @@ function SummaryRow({
 // would let the box and its rows drift apart.
 const GROUP_TONE = {
   cost: {
-    ink: "text-amber-ink",
-    border: "border-amber-border",
-    fill: "bg-amber-bg",
-    divider: "border-amber-border border-b",
+    ink: "text-amber-11",
+    border: "border-amber-7",
+    fill: "bg-amber-3",
+    divider: "border-amber-7 border-b",
   },
   refusal: {
-    ink: "text-danger-ink",
-    border: "border-danger-border",
-    fill: "bg-danger-bg",
-    divider: "border-danger-border border-b",
+    ink: "text-red-11",
+    border: "border-red-7",
+    fill: "bg-red-3",
+    divider: "border-red-7 border-b",
   },
 } as const;
 
@@ -102,7 +102,7 @@ function ReasonGroup({
     <fieldset id={id} className="flex min-w-0 flex-col gap-1.5">
       <legend
         className={cn(
-          "font-mono font-semibold text-tag tracking-[0.12em]",
+          "font-mono font-semibold text-meta tracking-[0.12em]",
           colours.ink,
         )}
       >
@@ -110,7 +110,7 @@ function ReasonGroup({
       </legend>
       <ul
         className={cn(
-          "flex flex-col overflow-hidden rounded-item border font-mono text-desc",
+          "flex flex-col overflow-hidden rounded-control border font-mono text-meta",
           colours.border,
         )}
       >
@@ -125,19 +125,19 @@ function ReasonGroup({
           >
             <span className="flex items-center justify-between gap-2.5">
               <span className="flex min-w-0 items-baseline gap-2.5">
-                <span className="truncate text-fg">{row.label}</span>
+                <span className="truncate text-gray-12">{row.label}</span>
                 {row.version === undefined ? null : (
-                  <span className="shrink-0 text-dim text-mono-sm">
+                  <span className="shrink-0 text-gray-11 text-meta">
                     {row.version}
                   </span>
                 )}
               </span>
-              <span className={cn("shrink-0 text-mono-sm", colours.ink)}>
+              <span className={cn("shrink-0 text-meta", colours.ink)}>
                 {row.reason}
               </span>
             </span>
             {row.detail === undefined ? null : (
-              <span className="text-fg-2 text-mono-sm">{row.detail}</span>
+              <span className="text-gray-12 text-meta">{row.detail}</span>
             )}
           </li>
         ))}
@@ -268,8 +268,8 @@ export function BulkRemoveDialog({
       onClose={onCancel}
       closeEnabled={!isRemoving}
     >
-      <div className="flex shrink-0 items-center justify-between gap-2.5 border-line-row border-b px-3.5 py-3">
-        <h2 className="font-semibold font-ui text-fg text-subtitle">
+      <div className="flex shrink-0 items-center justify-between gap-2.5 border-gray-7 border-b px-3.5 py-3">
+        <h2 className="font-semibold font-ui text-gray-12 text-prose">
           {title.before}
           <span className="font-mono">{skillName}</span>
           {title.after}
@@ -347,7 +347,7 @@ export function BulkRemoveDialog({
         )}
       </div>
 
-      <div className="flex shrink-0 items-center justify-end gap-2.5 border-line-row border-t px-3.5 py-3">
+      <div className="flex shrink-0 items-center justify-end gap-2.5 border-gray-7 border-t px-3.5 py-3">
         <Button
           type="button"
           className="shrink-0"

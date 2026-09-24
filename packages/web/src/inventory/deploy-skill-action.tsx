@@ -146,7 +146,7 @@ export function DeploySkillAction({
           deploy.reset();
           setChosen(event.target.value);
         }}
-        className="max-w-64 truncate rounded-control border border-line-chip bg-transparent px-2 py-[3px] font-mono text-muted text-tag"
+        className="max-w-64 truncate rounded-control border border-gray-7 bg-transparent px-2 py-[3px] font-mono text-gray-11 text-meta"
       >
         <option value={GLOBAL_VALUE} disabled={globalDisabled}>
           {globalOptionLabel(globalTools)}
@@ -163,7 +163,7 @@ export function DeploySkillAction({
            the control implied a release of its own (ADR-0031, #956). */
         <span
           className={cn(
-            "basis-full font-mono text-tag",
+            "basis-full font-mono text-meta",
             versionColor[behindHere ? "behind" : "up-to-date"],
           )}
         >
