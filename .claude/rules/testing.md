@@ -25,7 +25,7 @@ Runner: **Vitest**, all lanes (ADR-0002).
 - **Integration** (`pnpm test:integration`) — `tests/integration/`, a journey across modules with real I/O. Anything that drives APM or reads real lockfiles is integration.
 - **Git** (`pnpm test:git`) — `tests/git/`. Choose it on one checkable fact: does this test create a real repository? If yes, it lands here and stays out of the coding loop.
 
-`pnpm test:loop` is the coding loop — the three cheap lanes; `pnpm test` runs all four.
+`pnpm test:affected` is the coding loop: the tests of the three cheap lanes that the uncommitted work reaches, selected as the commit gate selects them. `pnpm test:loop` runs those three lanes whole; `pnpm test` runs all four.
 
 Storybook stories are **not** a lane: documentation, not coverage. Behaviour is tested in the sibling `.test.tsx` (`frontend.md`).
 

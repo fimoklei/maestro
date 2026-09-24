@@ -7,22 +7,37 @@ import { createWriteStream, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { changedFiles } from "./lib/changed-files.mjs";
 import { stripAnsi } from "./lib/log-file.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const logPath = resolve(repoRoot, ".logs/test.log");
-const args = process.argv.slice(2);
+const flags = process.argv.slice(2);
+
+// `--affected` runs only the tests the uncommitted work reaches, with the
+// commit gate's selection (`vitest related --passWithNoTests`).
+const affected = flags.includes("--affected");
+const rest = flags.filter((flag) => flag !== "--affected");
+const args = affected
+  ? [
+      "related",
+      "--run",
+      "--passWithNoTests",
+      ...rest,
+      ...changedFiles(repoRoot),
+    ]
+  : ["run", ...rest];
 
 mkdirSync(dirname(logPath), { recursive: true });
 const log = createWriteStream(logPath, { flags: "w" });
 
-const command = `vitest run ${args.join(" ")}`.trim();
+const command = `vitest ${args.join(" ")}`;
 log.write(`command: pnpm exec ${command}\n`);
 log.write(`started: ${new Date().toISOString()}\n`);
 log.write("---\n");
 
 // Colour stays on screen; the file gets plain text so it greps cleanly.
-const child = spawn("vitest", ["run", ...args], {
+const child = spawn("vitest", args, {
   cwd: repoRoot,
   env: { ...process.env, FORCE_COLOR: "1" },
   stdio: ["inherit", "pipe", "pipe"],
