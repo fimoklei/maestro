@@ -102,7 +102,7 @@ function ReasonGroup({
     <fieldset id={id} className="flex min-w-0 flex-col gap-1.5">
       <legend
         className={cn(
-          "font-mono font-semibold text-meta tracking-[0.12em]",
+          "font-mono font-semibold text-meta tracking-mono-wide",
           colours.ink,
         )}
       >

@@ -389,6 +389,16 @@
         "purpose": "The outer edge of the screen."
       }
     },
+    "trackingMeta": {
+      "mono": {
+        "value": "0.08em",
+        "purpose": "Geist Mono set in a small uppercase header or a segmented option."
+      },
+      "mono-wide": {
+        "value": "0.12em",
+        "purpose": "Geist Mono set as a fact label or a group legend in a dialog."
+      }
+    },
     "radiusMeta": {
       "chip": {
         "value": "4px",

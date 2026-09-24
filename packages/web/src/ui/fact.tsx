@@ -26,7 +26,7 @@ export function Fact({
 
   return (
     <div className="m-0 flex min-w-0 flex-col">
-      <dt className="mb-1.5 font-mono text-meta leading-[inherit] tracking-[0.12em] text-gray-11 uppercase">
+      <dt className="mb-1.5 font-mono text-meta leading-[inherit] tracking-mono-wide text-gray-11 uppercase">
         {label}
       </dt>
       <dd

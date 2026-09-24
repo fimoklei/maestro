@@ -59,7 +59,7 @@ function SectionHeading({
   return (
     <h3
       className={cn(
-        "font-mono text-meta uppercase tracking-[0.08em]",
+        "font-mono text-meta uppercase tracking-mono",
         inline ? "inline text-inherit" : "text-gray-11",
       )}
     >
@@ -83,7 +83,7 @@ function Section({
     <section className="grid grid-cols-1 gap-x-4 gap-y-1 py-2.5 sm:grid-cols-[10.5rem_1fr]">
       <h3
         className={cn(
-          "font-mono text-meta uppercase leading-5 tracking-[0.08em]",
+          "font-mono text-meta uppercase leading-5 tracking-mono",
           signal ? "text-amber-12" : "text-gray-11",
         )}
       >

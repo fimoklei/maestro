@@ -204,6 +204,19 @@ describe("type ramp", () => {
   });
 });
 
+// Letter-spacing is a token too (frontend.md): tracking-heading … tracking-mono-wide.
+describe("letter-spacing", () => {
+  it("no component sets an arbitrary tracking value", () => {
+    const offenders = files.flatMap(({ path, source }) =>
+      [...source.matchAll(/tracking-\[[^\]]+\]/g)].map(
+        (match) => `${path.slice(SRC_DIR.length)}: ${match[0]}`,
+      ),
+    );
+
+    expect(offenders).toEqual([]);
+  });
+});
+
 // #465: every warning, error and confirmation is stated through Notice, which
 // derives the role — so no allowlist, the literal occurs nowhere, not even in
 // the primitive. role="status" is unguarded on purpose (#615).

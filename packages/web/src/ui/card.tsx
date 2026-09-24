@@ -54,7 +54,7 @@ export function Card({
           {kind ? (
             <span
               className={cn(
-                "font-mono text-meta uppercase tracking-[0.08em]",
+                "font-mono text-meta uppercase tracking-mono",
                 "text-gray-11",
               )}
             >

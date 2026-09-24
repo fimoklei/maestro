@@ -83,9 +83,11 @@
   --text-title: 1.25rem;
   --text-title--line-height: 1.75rem;
 
-  /* letter-spacing → tracking-heading / tracking-title */
+  /* letter-spacing → tracking-heading / tracking-title / tracking-mono / tracking-mono-wide */
   --tracking-heading: -0.2px;
   --tracking-title: -0.4px;
+  --tracking-mono: 0.08em;
+  --tracking-mono-wide: 0.12em;
 
   /* corner radii (ADR-0033 §7) → rounded-chip / rounded-control / rounded-float */
   --radius-chip: 4px;
