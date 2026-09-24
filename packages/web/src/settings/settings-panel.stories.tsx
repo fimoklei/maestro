@@ -20,7 +20,7 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-// A page with its heading only, as Appearance is until its row lands.
+// A page with its heading only.
 export const Empty: Story = { args: { title: "Appearance" } };
 
 export const WithSection: Story = {
