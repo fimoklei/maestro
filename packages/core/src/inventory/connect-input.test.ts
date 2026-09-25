@@ -78,8 +78,7 @@ describe("classifyConnectInput", () => {
     });
   });
 
-  // git writes the clone url into the clone's own config, so a pasted token
-  // would be stored on disk — Maestro never keeps a credential (security.md).
+  // git stores the clone url on disk, so a pasted token would be stored too.
   it("refuses a url carrying credentials rather than cloning with them", () => {
     expect(
       classifyConnectInput("https://user:token@github.com/fimoklei/harness"),
@@ -93,8 +92,6 @@ describe("classifyConnectInput", () => {
     });
   });
 
-  // The ssh user is not a credential: it is how every scp-like GitHub remote
-  // is spelled, and no secret is stored by accepting it.
   it("keeps accepting the ssh user in the scp-like form", () => {
     expect(classifyConnectInput("git@github.com:o/r.git")).toEqual({
       ok: true,

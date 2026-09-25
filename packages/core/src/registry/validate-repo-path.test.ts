@@ -2,9 +2,6 @@ import { describe, expect, it } from "vitest";
 import { InMemoryFileSystem } from "./file-system.fake";
 import { validateRepoPath } from "./repo-path";
 
-// validateRepoPath layers the filesystem checks on top of the pure
-// normalization. Driven here against an in-memory FileSystemPort fake — no
-// real disk (that path is exercised in tests/integration).
 describe("validateRepoPath", () => {
   it("returns the canonical realpath for an existing directory", async () => {
     const fs = new InMemoryFileSystem({

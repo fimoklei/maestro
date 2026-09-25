@@ -3,8 +3,7 @@ import { promisify } from "node:util";
 
 const run = promisify(execFile);
 
-// Empty output or any failure means unknown. Callers keep their existing
-// invocation policy: local reads have no options; scaffold reads are bounded.
+// Empty output or any failure means unknown (null).
 export async function runGitText(
   root: string,
   args: string[],

@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { GhCliAdapter, REVIEW_READ_LIMIT } from "./gh-cli-adapter";
 
-// The adapter shells out via an injected `run` (promisify(execFile) in
-// production). These tests pin the command construction, the shape check and
-// the failure classification without spawning gh and without a GitHub account:
-// every payload below is built from a real `gh --json` capture replayed
-// through `run` (gh-driver.md § Testing).
+// Payloads are real `gh --json` captures replayed through `run`; gh never runs.
 type RunCall = {
   file: string;
   args: string[];
@@ -15,19 +11,12 @@ type RunCall = {
 
 const origin = { host: "github.com", ownerRepo: "fimoklei/harness" };
 
-// The head commit of `fimoklei/harness` #8, from the `gh pr view 8 --repo
-// fimoklei/harness --json …headRefOid` capture in
-// `docs/research/806-gh-pull-request-status.md` § 2 (gh 2.86.0, 2026-09-08).
-// The list captures below predate the field, so this one value is added to
-// both rows; `cli/cli` #14398 has no head commit of its own on record.
+// From a real `gh pr view --json headRefOid` capture (gh 2.86.0). The list
+// captures below predate the field, so this value is added to both rows.
 const capturedHeadOid = "a7cbf2efbd0eb978503342906593ef81ca724894";
 
-// Captured verbatim from `gh pr list --repo fimoklei/harness --state all
-// --limit 3 --json number,url,state,isDraft,reviewDecision,reviewRequests,
-// headRefName,baseRefName,headRepository,headRepositoryOwner` on gh 2.86.0
-// (2026-09-08), reduced to one row, with `headRefOid` added from the capture
-// above. Note `nameWithOwner` is empty in a list read — the head repository's
-// owner only arrives in `headRepositoryOwner`.
+// Captured verbatim from `gh pr list --json …` (gh 2.86.0), one row kept.
+// `nameWithOwner` is empty in a list read; the owner is in `headRepositoryOwner`.
 const mergedRow = {
   baseRefName: "main",
   headRefName: "maestro/agent-native-cli",
@@ -42,9 +31,7 @@ const mergedRow = {
   url: "https://github.com/fimoklei/harness/pull/8",
 };
 
-// Captured verbatim from the same command against `cli/cli` on gh 2.86.0
-// (2026-09-08), `headRefOid` added the same way: an open request from a fork,
-// awaiting a named reviewer.
+// Same capture against `cli/cli`: an open request from a fork.
 const openForkRow = {
   baseRefName: "trunk",
   headRefName: "issue-12195",
@@ -386,9 +373,7 @@ describe("GhCliAdapter", () => {
   });
 
   it("opens a request over a named branch, never the current one", async () => {
-    // `--head` is what makes gh skip its push-or-fork prompt entirely, and
-    // `--repo` is what keeps the call off whatever repository the cwd is
-    // (gh 2.86.0 `gh pr create --help`).
+    // `--head` skips gh's push-or-fork prompt; `--repo` ignores the cwd's repo.
     const { calls, run } = fakeRun(
       "https://github.com/fimoklei/harness/pull/9\n",
     );
@@ -420,8 +405,7 @@ describe("GhCliAdapter", () => {
   });
 
   it("reopens and closes a request by its number, keeping the branch", async () => {
-    // No `--delete-branch`: withdrawal leaves the proposal branch standing,
-    // which is what keeps a closed proposal recoverable (#827).
+    // No `--delete-branch`: a closed proposal must stay recoverable (#827).
     const reopen = fakeRun("");
     const close = fakeRun("");
 

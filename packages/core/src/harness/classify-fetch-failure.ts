@@ -1,12 +1,8 @@
 import { normalizeCommandOutput } from "../normalize-command-output";
 
-// Turns git's failure text into one of Maestro's two no-answer classes. The
-// text is read here and thrown away: nothing derived from it but the class
-// crosses into a response (security.md).
+// Only the class leaves this file, never git's text.
 
-// No answer arrived at all. Anything else — including a rejected key — is a
-// reply, and stays an ordinary failed fetch: whether GitHub lets this user in
-// is GitHub's answer to give, not a gate Maestro invents (ADR-0021).
+// No answer at all. A rejected key is a reply, so an ordinary failed fetch.
 const OFFLINE_PHRASES = [
   "could not resolve host",
   "could not resolve proxy",

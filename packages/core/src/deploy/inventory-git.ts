@@ -1,5 +1,4 @@
-// Asks the local inventory clone the git questions apm cannot answer. The `--`
-// separator keeps tag and name data, never command text (security.md).
+// The `--` separator keeps tag and name data, never command text.
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
@@ -15,7 +14,6 @@ const run = promisify(execFile);
 
 export class InventoryGitAdapter implements InventoryGitPort {
   private readonly deps: {
-    // Resolved per call, so a path saved after startup is picked up.
     resolveRoot: () => Promise<string | undefined>;
   };
 
@@ -23,9 +21,7 @@ export class InventoryGitAdapter implements InventoryGitPort {
     this.deps = deps;
   }
 
-  // Catches the clone up with what a merged promotion actually released
-  // (#666), by the same rule as the Harness Read (#978). An offline fetch
-  // still catches up to the refs this clone already holds.
+  // An offline fetch still catches up to the refs this clone holds (#666).
   async syncBeforeDeploy(): Promise<void> {
     const root = await this.root();
     await run(
@@ -38,8 +34,8 @@ export class InventoryGitAdapter implements InventoryGitPort {
 
   async skillExistsAtTag(tag: string, name: string): Promise<boolean> {
     const root = await this.root();
-    // ls-tree rejects for a tag the clone does not have, so a stale clone
-    // surfaces as an error instead of masquerading as "not published".
+    // Rejects for a tag the clone lacks, so a stale clone is an error, not
+    // "not published".
     const { stdout } = await run("git", [
       "-C",
       root,
@@ -52,9 +48,7 @@ export class InventoryGitAdapter implements InventoryGitPort {
     return stdout.trim().length > 0;
   }
 
-  // What is on disk under the skill, tracked or not, against the tag's own
-  // tree: reading only the tracked tree called promote's untracked but
-  // byte-identical copy a divergence (#750).
+  // Compares disk, tracked or not, against the tag's tree (#750).
   async skillDivergesFromTag(tag: string, name: string): Promise<boolean> {
     const root = await this.root();
     const subtree = harnessSkillSubpath(name);
@@ -62,15 +56,12 @@ export class InventoryGitAdapter implements InventoryGitPort {
     const options = indexOptions(join(indexDir, "index"));
 
     try {
-      // Seeded from HEAD, because git exempts only already-tracked files from
-      // the ignore rules.
+      // Seeded from HEAD: git exempts only tracked files from the ignore rules.
       await run("git", ["-C", root, "read-tree", "HEAD"], options);
       // No pathspec: one naming the skill is fatal where neither HEAD nor the
-      // disk has it, which is the state that must read as diverged.
+      // disk has it, which must read as diverged.
       await run("git", ["-C", root, "add", "-A"], options);
-      // Exit 1 is a difference and only here; any other non-zero, and every
-      // failure of the two commands above, is a real git failure that must
-      // propagate rather than read as one answer or the other.
+      // Only exit 1 means a difference; every other failure propagates.
       return await run(
         "git",
         ["-C", root, "diff-index", "--quiet", "--cached", tag, "--", subtree],
@@ -89,9 +80,8 @@ export class InventoryGitAdapter implements InventoryGitPort {
     }
   }
 
-  // The release side of the local-copy guard: blob bytes hashed the way apm
-  // records a deployed file. Null for every failure alike, which the guard
-  // reads as no proof of equality (#952).
+  // Blob bytes hashed the way apm records a deployed file. Null for every
+  // failure, which the guard reads as no proof of equality (#952).
   async readSkillFilesAtTag(
     tag: string,
     name: string,

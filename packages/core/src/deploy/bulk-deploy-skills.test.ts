@@ -2,10 +2,7 @@ import { describe, expect, it } from "vitest";
 import { type BulkDeployInput, BulkDeploySkills } from "./bulk-deploy-skills";
 import type { DeploySkill, DeploySkillError } from "./deploy-skill";
 
-// A stand-in for DeploySkill.executeBatch that answers from a scripted table
-// keyed by skill name, and records each batch it was handed. The real guards
-// and the one install live in DeploySkill (tested there); a bulk run only
-// groups what the batch answered.
+// Stands in for DeploySkill.executeBatch; the guards and the install are tested there.
 type Scripted = Awaited<ReturnType<DeploySkill["execute"]>>;
 
 function fakeDeploy(
@@ -36,8 +33,8 @@ function fail(error: DeploySkillError): Scripted {
 
 describe("BulkDeploySkills", () => {
   it("reports a target pinned per skill as attention, with no force to offer", async () => {
-    // A bulk deploy never grants the reader's consent and never moves a
-    // target's release, so this row is read, not forced (ADR-0031, #951).
+    // A bulk deploy never grants consent or moves a release, so this row is read,
+    // not forced (#951).
     const bulk = new BulkDeploySkills({
       deploy: fakeDeploy({ tdd: fail("target-pinned-per-skill") }),
     });
@@ -53,8 +50,6 @@ describe("BulkDeploySkills", () => {
     expect(report.failed).toEqual([]);
   });
 
-  // A busy target is a reasoned skip, not a failure: nothing went wrong and
-  // the reader's step is to wait (spec story 51).
   it("reports a busy target as attention, with no force to offer", async () => {
     const bulk = new BulkDeploySkills({
       deploy: fakeDeploy({ tdd: fail("deploy-in-progress") }),
@@ -86,8 +81,6 @@ describe("BulkDeploySkills", () => {
     ]);
   });
 
-  // Story 51: a bulk run skips a target needing recovery, or one holding a
-  // manifest Maestro will not edit, and states the reason (#956).
   it("reports an unfinished operation and an unrecognised manifest as attention", async () => {
     const bulk = new BulkDeploySkills({
       deploy: fakeDeploy({
@@ -210,8 +203,6 @@ describe("BulkDeploySkills", () => {
     expect(report.failed).toEqual([]);
   });
 
-  // Each link has its own path, and the Report spells out the one rm per link
-  // (#748), so linked skills never merge into one line.
   it("keeps the link apm refused on its own failure line, one per skill", async () => {
     const bulk = new BulkDeploySkills({
       deploy: fakeDeploy({
@@ -278,9 +269,8 @@ describe("BulkDeploySkills", () => {
       },
     });
 
-    // A caller reaching past the type (e.g. a hand-built request body) must
-    // still never smuggle a batch-wide overwrite consent through — it stays a
-    // deliberate, per-item decision (#292, #952).
+    // A hand-built request body must still never smuggle a batch-wide overwrite
+    // consent through (#292, #952).
     await bulk.execute({
       names: ["tdd", "review"],
       target: { kind: "global" },
@@ -297,8 +287,6 @@ describe("BulkDeploySkills", () => {
     const bulk = new BulkDeploySkills({
       deploy: {
         async executeBatch() {
-          // A real dependency (e.g. a filesystem read) can reject outside
-          // DeploySkill's own typed-error handling (#292).
           throw new Error("ENOENT: filesystem read failed");
         },
       },

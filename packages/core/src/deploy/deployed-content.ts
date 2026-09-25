@@ -1,6 +1,4 @@
-// Classifies a deployed copy against the lockfile's deployed_file_hashes, and
-// names a destination apm refuses as a symlink. Touches node:fs directly: no
-// port models walking and hashing a tree (#56).
+// Touches node:fs directly: no port models walking and hashing a tree (#56).
 
 import { createHash } from "node:crypto";
 import { constants } from "node:fs";
@@ -25,23 +23,17 @@ import type { DeployedLocation } from "./deployed-location";
 // would read as "nothing deployed" and let a deploy overwrite blindly (#59).
 class DeployedSubtreeUnreadableError extends Error {}
 
-// ENOENT is the intended "nothing deployed here"; every other failure must fail
-// loud, not pass as empty.
 function isMissing(error: unknown): boolean {
   return (error as NodeJS.ErrnoException)?.code === "ENOENT";
 }
 
-// `fileCount` tells a first deploy from a copy on disk independent of whether
-// anything was hashed; `hashes` is empty unless hashing was requested.
+// `hashes` is empty unless hashing was requested; `fileCount` is always set.
 type SubtreeScan = { hashes: DeployedFileHashes; fileCount: number };
 
 export class DeployedContentAdapter implements DeployedContentPort {
   private readonly deps: {
-    // Shared with DeployedCleanupAdapter so the guard and the cleanup always
-    // agree on the tree.
     location: Pick<DeployedLocation, "treeRoot" | "lockfilePath">;
-    // The release side of the comparison. Absent, a copy is only ever measured
-    // against its recorded baseline — never a pass the guard did not prove.
+    // Absent, a copy is only measured against its recorded baseline.
     inventoryGit?: Pick<InventoryGitPort, "readSkillFilesAtTag">;
   };
 
@@ -56,8 +48,7 @@ export class DeployedContentAdapter implements DeployedContentPort {
     release?: string;
   }): Promise<DeployedContentState> {
     const subtrees = deployTargetSubtrees(input.name, input.tools);
-    // Baseline first: with no recorded hashes only existence matters, so the
-    // scan can skip hashing entirely (#63).
+    // Baseline first: with no recorded hashes the scan skips hashing (#63).
     const baseline = await this.readBaseline(
       input.target,
       input.name,
@@ -81,28 +72,23 @@ export class DeployedContentAdapter implements DeployedContentPort {
     if (baseline.kind === "malformed") {
       return "lockfile-malformed";
     }
-    // Nothing on disk outranks recorded hashes: a fully-deleted copy is restored,
-    // never refused as "local edits" (ADR-0006, #65).
+    // A fully-deleted copy is restored, never refused as "local edits" (#65).
     if (scan.fileCount === 0) {
       return "not-deployed";
     }
-    // Files with no baseline to verify them: a deploy would overwrite blindly.
     if (baseline.kind !== "hashes") {
       return "unverifiable";
     }
     if (classifyDeployedDrift(baseline.hashes, scan.hashes) === "clean") {
       return "clean";
     }
-    // Second chance, never a first one: a copy the record no longer describes
-    // is still clean when its whole tree is the release about to be installed
-    // — an upstream change is not the reader's edit (#952).
+    // Second chance: a copy equal to the release about to be installed is not
+    // the reader's edit (#952).
     return (await this.equalsRelease(input.release, input.name, subtrees, scan))
       ? "clean"
       : "diverged";
   }
 
-  // The bytes themselves, hashed per file and folded into one string. Null
-  // where the copy could not be read, which no consent may cover anyway.
   async contentDigest(input: {
     target: DeployTarget;
     name: string;
@@ -121,9 +107,7 @@ export class DeployedContentAdapter implements DeployedContentPort {
           .join("\n");
   }
 
-  // Whole-tree equality, per targeted subtree: an extra, missing or differing
-  // file anywhere leaves the copy protected. A release that cannot be read
-  // answers false — fail closed, never a pass on a guess (#952).
+  // Whole-tree equality per subtree. An unreadable release answers false.
   private async equalsRelease(
     release: string | undefined,
     name: string,
@@ -141,8 +125,7 @@ export class DeployedContentAdapter implements DeployedContentPort {
     }
     for (const subtree of subtrees) {
       const deployed = stripSubtree(scan.hashes, subtree);
-      // A subtree the write never landed in is not a missing copy; only the
-      // ones holding files have to match.
+      // A subtree the write never landed in is not a missing copy.
       if (Object.keys(deployed).length === 0) {
         continue;
       }
@@ -153,9 +136,8 @@ export class DeployedContentAdapter implements DeployedContentPort {
     return true;
   }
 
-  // apm refuses the install when the *leaf* skill dir is a symlink, naming the
-  // path only in prose Maestro never forwards (apm-behavior.md § Install
-  // signals (3), ADR-0018). lstat, not stat — a link resolves to a dir (#748).
+  // apm refuses when the leaf skill dir is a symlink. lstat, not stat: a link
+  // resolves to a dir (#748).
   async linkedSkillPath(input: {
     target: DeployTarget;
     name: string;
@@ -172,8 +154,6 @@ export class DeployedContentAdapter implements DeployedContentPort {
     return null;
   }
 
-  // "none" covers no lockfile, no entry, and a pre-0.20.0 entry alike: all three
-  // mean no per-file baseline, and the distinction changes no outcome (#63).
   private async readBaseline(
     target: DeployTarget,
     name: string,
@@ -187,8 +167,7 @@ export class DeployedContentAdapter implements DeployedContentPort {
     try {
       raw = await readFile(this.deps.location.lockfilePath(target), "utf8");
     } catch (error) {
-      // A lockfile that is there but unreadable is a visible error, not an
-      // absent baseline (#58).
+      // Present but unreadable is an error, not an absent baseline (#58).
       if (isMissing(error)) {
         return { kind: "none" };
       }
@@ -204,9 +183,8 @@ export class DeployedContentAdapter implements DeployedContentPort {
       return { kind: "malformed" };
     }
 
-    // By name, never by package_type (#358). A root package records every skill
-    // it deployed in one row, so its hashes are this skill's baseline too,
-    // scoped to the subtrees below (ADR-0031).
+    // By name, never by package_type (#358). A root package's one row holds
+    // every skill's hashes, scoped to the subtrees below.
     const entry =
       parsed.entries.find(
         (e) =>
@@ -219,8 +197,7 @@ export class DeployedContentAdapter implements DeployedContentPort {
     if (recorded === undefined || Object.keys(recorded).length === 0) {
       return { kind: "none" };
     }
-    // Drops an untargeted tool's recorded copy, so its absence on disk is not
-    // read as drift (ADR-0011, #136).
+    // Drops untargeted tools, so their absence on disk is not drift (#136).
     const hashes = scopeHashesToSubtrees(recorded, subtrees);
     if (Object.keys(hashes).length === 0) {
       return { kind: "none" };
@@ -228,8 +205,7 @@ export class DeployedContentAdapter implements DeployedContentPort {
     return { kind: "hashes", hashes };
   }
 
-  // Hash keys are relative to <root> with forward slashes, matching the
-  // lockfile's own keys.
+  // Keys use forward slashes, matching the lockfile's own keys.
   private async scanSubtrees(
     root: string,
     subtrees: string[],
@@ -255,9 +231,7 @@ export class DeployedContentAdapter implements DeployedContentPort {
         fileCount++;
         const abs = join(root, childRel);
         if (opts.hash) {
-          // Raw bytes, never utf8: apm records a byte-for-byte sha256, and
-          // decoding would flag a binary asset as drift (apm-behavior.md
-          // § Lockfile).
+          // Raw bytes, never utf8: decoding would flag a binary asset as drift.
           let bytes: Buffer;
           try {
             bytes = await readFile(abs);
@@ -267,8 +241,7 @@ export class DeployedContentAdapter implements DeployedContentPort {
           hashes[childRel] =
             `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
         } else {
-          // Probe readability without reading the bytes, so the unreadable
-          // refusal (#59) survives skipping the hash (#63).
+          // Probe readability, so the unreadable refusal survives (#59).
           try {
             await access(abs, constants.R_OK);
           } catch {
@@ -284,8 +257,7 @@ export class DeployedContentAdapter implements DeployedContentPort {
   }
 }
 
-// Re-keys one subtree's scanned hashes relative to the skill directory, which
-// is how the release names its own files.
+// Re-keys hashes relative to the skill directory, as the release names them.
 function stripSubtree(
   hashes: DeployedFileHashes,
   subtree: string,
@@ -299,7 +271,7 @@ function stripSubtree(
   return stripped;
 }
 
-// The trailing "/" matters: without it ".claude/skills/tddx" matches ".../tdd".
+// The trailing "/" matters: without it "skills/tddx" matches "skills/tdd".
 function scopeHashesToSubtrees(
   hashes: DeployedFileHashes,
   subtrees: string[],

@@ -28,8 +28,7 @@ const FRESHNESS: HarnessFreshness = {
   lastFetchedAt: "2026-08-01T07:00:00.000Z",
 };
 
-// The skill the author deleted: still at origin/HEAD and at local HEAD, gone
-// from the working tree. `seen` is the origin/HEAD hash the row showed them.
+// `seen` is the origin/HEAD hash the row showed the author.
 const SEEN = "remote-tree";
 
 const EMPTY_REVIEW: HarnessReviewRead = {
@@ -179,8 +178,7 @@ describe("PromoteSkillDeletion", () => {
       pullRequestUrl:
         "https://github.com/fimoklei/agent-harness/compare/main...maestro/tdd?expand=1",
     });
-    // The commit removes the subtree from the tip this call just fetched, never
-    // from local HEAD: unrelated local commits must not ride into the removal.
+    // Built on the fetched tip, never local HEAD: local commits must not ride along.
     expect(pushed).toEqual(["/harness", "tdd", "head"]);
   });
 
@@ -238,8 +236,7 @@ describe("PromoteSkillDeletion", () => {
     });
   });
 
-  // Each ambiguity keeps its own name, so the copy can say which one it is
-  // rather than one shrug covering four different working trees (#580).
+  // Each ambiguity keeps its own name so the copy can say which one (#580).
   it.each([
     "sparse-checkout",
     "merge-in-progress",
@@ -293,8 +290,7 @@ describe("PromoteSkillDeletion", () => {
     expect(pushed).toEqual([]);
   });
 
-  // The push's own classes, stated in this route's words. Every one leaves the
-  // clone as it was, so a retry is another confirmation (#577).
+  // Every push failure leaves the clone as it was, so a retry is safe (#577).
   it.each([
     ["push-elsewhere", "push-elsewhere"],
     ["source-changed", "source-changed"],

@@ -62,8 +62,7 @@ function buildPromote(overrides?: {
   trees?: Record<string, HarnessSkillTree[]>;
   mergeBase?: string | null;
   onMergeBaseCommit?: (remoteCommit: string) => void;
-  // Facts per call, in order — a teammate's push landing between the two
-  // in-promote checks, in the same shape a real re-fetch would surface.
+  // Facts per call, in order, so a teammate's push can land between checks.
   factsPerCall?: Partial<HarnessFacts>[];
   onFetch?: () => void;
   review?: HarnessReviewRead;
@@ -153,8 +152,7 @@ describe("PromoteSkill", () => {
       pullRequestUrl:
         "https://github.com/fimoklei/agent-harness/compare/main...maestro/tdd?expand=1",
     });
-    // The commit is built on the tip this call just fetched, never on local
-    // HEAD: unrelated local commits must not ride into the pull request.
+    // Built on the fetched tip, never local HEAD: local commits must not ride along.
     expect(pushed).toEqual(["/harness", "tdd", "head"]);
   });
 
@@ -176,8 +174,7 @@ describe("PromoteSkill", () => {
   });
 
   it("sends an update to the open proposal without touching the request", async () => {
-    // Update proposal is the same push. Leaving the request alone is what
-    // keeps GitHub's review verdict standing (#827 · user story 14).
+    // Leaving the request alone keeps GitHub's review verdict standing (#827).
     const created: NewReviewRequest[] = [];
     const promote = buildPromote({
       review: { ...EMPTY_REVIEW, requests: [openRequest()] },
@@ -208,8 +205,7 @@ describe("PromoteSkill", () => {
   });
 
   it("still pushes when GitHub cannot be asked, leaving the request missing", async () => {
-    // A gh failure degrades the review capability alone (gh-driver.md): the
-    // branch still lands, and the row reads Pull request missing.
+    // A gh failure degrades the review capability alone; the branch still lands.
     const pushed: string[] = [];
     const promote = buildPromote({
       review: { outcome: "unavailable" },
@@ -384,9 +380,7 @@ describe("PromoteSkill", () => {
   });
 
   it("never lets a teammate's change to a different skill block this promotion", async () => {
-    // origin/HEAD diverged from local HEAD, but only `jobs` moved there since
-    // the fork — `tdd`'s tree at the fork point still matches origin/HEAD's,
-    // so this skill was never a teammate's doing (#579).
+    // Only `jobs` moved on origin/HEAD since the fork, so `tdd` is ours (#579).
     const pushed: string[] = [];
     const promote = buildPromote({
       onPush: (root, name, base) => pushed.push(root, name, base),
@@ -413,10 +407,7 @@ describe("PromoteSkill", () => {
   });
 
   it("refetches and rechecks right before the push, catching a teammate's push landing in between", async () => {
-    // The first check finds nothing concurrent, at "head-1". A teammate
-    // pushes before this promotion's own pre-push refetch, moving the
-    // default branch to "head-2" with a new tree for this skill — the
-    // second check must catch it, and the push must never run (#579).
+    // A teammate pushes between the two checks; the second must catch it (#579).
     let fetches = 0;
     const pushed: string[] = [];
     const promote = buildPromote({
@@ -467,9 +458,7 @@ describe("PromoteSkill", () => {
   });
 
   it("asks for the merge base against the exact commit each check just read, never a mutable ref", async () => {
-    // Both checks pass a captured commit, one per read of the default
-    // branch — never a shared ref that a concurrent fetch elsewhere could
-    // have re-pointed in between (#579).
+    // One captured commit per read, never a shared ref a fetch could move (#579).
     const remoteCommits: string[] = [];
     const promote = buildPromote({
       onMergeBaseCommit: (remoteCommit) => remoteCommits.push(remoteCommit),

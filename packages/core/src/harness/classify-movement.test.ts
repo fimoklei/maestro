@@ -5,8 +5,6 @@ import {
   type SkillTreeHashes,
 } from "./classify-movement";
 
-// A skill whose content is the same everywhere: the released, quiet case each
-// test moves one hash away from. No promote branch carries it.
 const SETTLED: SkillTreeHashes = {
   remote: "same",
   promote: null,
@@ -38,8 +36,7 @@ describe("isLocalDeletion", () => {
   });
 
   it("never reads a skill this clone has not pulled yet as a deletion", () => {
-    // Present on the remote, absent locally and at local HEAD: a clone that is
-    // behind, never the author's own deletion (#575).
+    // A clone that is behind, never the author's own deletion (#575).
     expect(
       isLocalDeletion({
         remote: "newer",
@@ -71,9 +68,7 @@ describe("isConcurrentlyChanged", () => {
   });
 
   it("never reads an unmerged promote branch alone as a concurrent change", () => {
-    // A branch differing from origin/HEAD is exactly what the review stage
-    // reads as the author's own open proposal. Flagging it here would relabel
-    // that as a teammate's change.
+    // The review stage reads this as the author's own proposal, not a teammate's.
     expect(
       isConcurrentlyChanged({ ...SETTLED, promote: branch("newer") }),
     ).toBe(false);
@@ -86,9 +81,6 @@ describe("isConcurrentlyChanged", () => {
   });
 
   it("reads origin/HEAD as moved past local HEAD even on a clone that is only behind", () => {
-    // The content fact alone does not know whether this row is promotable —
-    // that gate is the proposal stage's, applied before this answer is shown
-    // as #579's warning.
     expect(
       isConcurrentlyChanged({
         remote: "newer",
@@ -111,10 +103,7 @@ describe("isConcurrentlyChanged", () => {
   });
 
   it("never reads the author's own unpushed commit as a teammate's change", () => {
-    // remote differs from local HEAD here only because local is ahead, not
-    // behind — origin/HEAD never moved this skill since the fork point, so
-    // the difference is this author's own unpushed commit (#579's false
-    // positive).
+    // Local is ahead, not behind: the author's own unpushed commit (#579).
     expect(
       isConcurrentlyChanged(
         { remote: "old", promote: null, local: "mine", working: "mine" },
@@ -130,9 +119,7 @@ describe("isConcurrentlyChanged", () => {
   });
 
   it("never lets an unrelated commit on origin/HEAD block a different skill's promotion", () => {
-    // The two branches diverged, but origin/HEAD's tree for this skill is
-    // exactly what it was at the fork point — a teammate changed some other
-    // skill, not this one (#579's other false positive).
+    // origin/HEAD never moved this skill; a teammate changed another (#579).
     expect(
       isConcurrentlyChanged(
         { remote: "same", promote: null, local: "mine", working: "mine" },

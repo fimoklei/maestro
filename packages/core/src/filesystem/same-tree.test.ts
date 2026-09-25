@@ -3,8 +3,6 @@ import { type SameTreeFs, sameTree } from "./same-tree";
 
 type File = { text: string; executable?: boolean; symlink?: boolean };
 
-// One in-memory disk: every key is a file, and a folder exists wherever a key
-// sits under it.
 function disk(files: Record<string, File>): SameTreeFs {
   const dirs = new Set<string>();
   for (const path of Object.keys(files)) {

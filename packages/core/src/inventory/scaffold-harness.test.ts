@@ -15,8 +15,6 @@ const REPO = "/Users/me/agent-harness";
 const CONFIG_PATH = "/home/me/.maestro/config.json";
 const ORIGIN = "git@github.com:fimoklei/agent-harness.git";
 
-// Records every git call so a test can prove what the scaffold asked for, not
-// merely what it returned.
 class FakeGit implements HarnessScaffoldGitPort {
   readonly commits: { paths: string[]; message: string }[] = [];
   readonly pushes: string[] = [];
@@ -76,8 +74,7 @@ function make(
     inventoryPath: path,
   }),
 ) {
-  // Pre-offered: every test but the one below reaches the scaffold through a
-  // connect that already refused this path and offered it.
+  // Pre-offered: every test but the one below arrives from a refused connect.
   const offers = new ScaffoldOffers();
   offers.offer(REPO);
   return new ScaffoldHarness({
@@ -162,8 +159,7 @@ describe("ScaffoldHarness", () => {
   });
 
   it("scaffolds onto the unborn branch of a freshly cloned empty repository", async () => {
-    // An empty clone has no refs, so origin/HEAD names nothing; the branch it
-    // landed on is the one the remote advertised (#552 G2).
+    // An empty clone has no origin/HEAD; the branch is the one the remote advertised.
     const git = new FakeGit({
       default: null,
       current: "trunk",
@@ -280,9 +276,7 @@ describe("ScaffoldHarness", () => {
     ).resolves.toEqual({ ok: false, error: "not-a-repository" });
   });
 
-  // `git config --get remote.origin.url` answers from the enclosing repository,
-  // so a subdirectory reads as a GitHub clone. Scaffolding one would write into
-  // it and push to that repository's default branch.
+  // A subdirectory reads as a GitHub clone: the enclosing repo answers origin.
   it("refuses a subdirectory of a repository, which reads as one", async () => {
     const git = new FakeGit();
     git.repositoryRootAnswer = false;
@@ -294,8 +288,7 @@ describe("ScaffoldHarness", () => {
     expect(git.pushes).toEqual([]);
   });
 
-  // The endpoint writes, commits and pushes with ambient git credentials, so
-  // the path may not be the client's to pick (security.md, #556).
+  // It pushes with ambient credentials, so the client may not pick the path (#556).
   it("refuses a path connect never offered to scaffold", async () => {
     const fs = emptyRepo();
     const git = new FakeGit();
@@ -356,8 +349,7 @@ describe("ScaffoldHarness", () => {
     expect(git.pushes).toEqual([]);
   });
 
-  // A half-scaffold is unretryable: the apm.yml it left behind makes the next
-  // attempt answer already-a-harness, and the message says to retry (#556).
+  // A half-scaffold would answer already-a-harness on retry (#556).
   it("removes everything it wrote when the commit fails", async () => {
     const fs = emptyRepo();
     const git = new FakeGit(undefined, { commit: "commit-failed" });

@@ -1,7 +1,4 @@
-// One repository-wide semantic version proposed from the team delta: major for
-// a removed or renamed skill, minor for a new one, patch when only existing
-// skills changed. The author may still pick any step, so all three candidate
-// versions travel with the proposal (ADR-0021, #519).
+// Proposes one repository-wide version from the team delta (#519).
 import { RELEASE_TAG_PATTERN } from "./release-tag";
 import type { SkillMovement } from "./skill-movements";
 
@@ -11,18 +8,13 @@ export type VersionProposal = {
   previousTag: string | null;
   proposedStep: SemverStep;
   reason: string;
-  // The version each step would produce, so the selector never re-derives
-  // semver in the browser.
   versions: Record<SemverStep, string>;
 };
 
-// BigInt, not Number: a version part may be any run of digits, and past the
-// safe integer range Number rounds it or prints it as `1e+21`.
+// BigInt: past the safe integer range Number rounds or prints `1e+21`.
 type SemverParts = { major: bigint; minor: bigint; patch: bigint };
 
-// Null where there is no version to bump from — no tag, or a tag that is not a
-// semantic version. Both are a first release, never a bump from an invented
-// number.
+// Null (no tag, or not semver) means a first release.
 const parseTag = (tag: string | null): SemverParts | null => {
   const match = tag === null ? null : RELEASE_TAG_PATTERN.exec(tag);
   if (match === null) {
@@ -48,8 +40,6 @@ const REASONS: Record<SemverStep, string> = {
   patch: "Only existing skills changed.",
 };
 
-// An empty delta is not a change: saying "only existing skills changed" would
-// state a fact the delta does not carry (#519).
 const NOTHING_CHANGED = "Nothing has changed since the last release.";
 
 const stepFromMovements = (movements: SkillMovement[]): SemverStep => {
@@ -72,8 +62,7 @@ export const proposeReleaseVersion = (
     patch: bump(from, "patch"),
   };
 
-  // A never-tagged harness starts at v0.1.0 whatever moved, so the first
-  // release has an explicit starting point (#519). The minor step lands there.
+  // A never-tagged harness starts at v0.1.0, the minor step.
   if (parts === null) {
     return {
       previousTag: null,

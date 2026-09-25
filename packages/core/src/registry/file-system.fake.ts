@@ -1,26 +1,19 @@
-// In-memory FileSystemPort for unit tests: real Maps, no disk. Kept out of the
-// build (tsconfig.build excludes *.fake.ts) but typechecked like any source.
+// Kept out of the build (tsconfig.build excludes *.fake.ts).
 import type { FileSystemPort, RawDirEntry } from "./file-system";
 
 type FakeSeed = {
-  // Maps an input path to the canonical path realpath should return.
+  // Input path → canonical path. Self-mapped is a genuine directory, a
+  // differing value a symlink.
   directories?: Record<string, string>;
-  // Paths that exist but are not directories (e.g. files).
   files?: Record<string, string>;
-  // Maps a directory path to the entry names directly inside it.
   listings?: Record<string, string[]>;
-  // Directories that exist but reject when listed (permission denied).
+  // Reject when listed.
   unreadable?: string[];
-  // Models the TOCTOU race: a genuine directory when listed, no longer one on
-  // the later isDirectoryEntry recheck (ADR-0009).
+  // A directory when listed, no longer one on the isDirectoryEntry recheck.
   racedAwayAsDirectory?: string[];
-  // Full entry paths registered nowhere else: a Dirent reports the type, but
-  // realpath() throws (#148).
   danglingSymlinks?: string[];
-  // Models the write-side TOCTOU race: absent to exists(), yet an exclusive
-  // create finds the path already taken.
+  // Absent to exists(), yet taken for an exclusive create.
   racedIntoExistence?: string[];
-  // Paths whose write rejects, so a caller's partial-failure path can be run.
   unwritable?: string[];
 };
 
@@ -56,8 +49,6 @@ export class InMemoryFileSystem implements FileSystemPort {
     throw new Error(`ENOENT: no such file or directory, realpath '${path}'`);
   }
 
-  // Self-mapping is the seeding convention for a genuine directory. Narrower
-  // than "appears in directories.values()", which a symlink target also does.
   private isKnownDirectory(path: string): boolean {
     return this.directories.get(path) === path;
   }
@@ -66,8 +57,6 @@ export class InMemoryFileSystem implements FileSystemPort {
     return this.isKnownDirectory(path);
   }
 
-  // The fake has no symlink concept, so the seed is the only way to model a
-  // directory that stops being one between two checks.
   async isDirectoryEntry(path: string): Promise<boolean> {
     if (this.racedAwayAsDirectory.has(path)) {
       return false;
@@ -79,8 +68,6 @@ export class InMemoryFileSystem implements FileSystemPort {
     return this.isKnownDirectory(path) || this.files.has(path);
   }
 
-  // The fake has no symlink concept for a bare path, so a seeded file is the
-  // only regular file it can model.
   async isFileEntry(path: string): Promise<boolean> {
     return this.files.has(path);
   }
@@ -89,8 +76,6 @@ export class InMemoryFileSystem implements FileSystemPort {
     return this.files.get(path) ?? null;
   }
 
-  // Type facts come from the same seed realpath reads: self-mapped is a
-  // directory, a differing value is a symlink, anything else is neither.
   async listRawEntries(path: string): Promise<RawDirEntry[]> {
     if (this.unreadable.has(path)) {
       throw new Error(`EACCES: permission denied, scandir '${path}'`);

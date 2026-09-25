@@ -1,11 +1,7 @@
-// One owner for clearing global copies apm left for a tool this machine does
-// not have — the rule cannot drift between the deploy and remove callers.
-// See ADR-0011, ADR-0013, #136, #339.
+// Clears global copies apm left for a tool this machine does not have (#136).
 import type { DeployedCleanupPort, DeployTarget } from "./deploy-skill";
 import { reclaimableUntargetedTools, type SupportedTool } from "./deploy-tools";
 
-// The deploy path's entry: it knows only which tools the machine has, so the
-// rule picks the leftovers for it.
 export async function reclaimUntargetedCopies(input: {
   cleanup: DeployedCleanupPort;
   target: DeployTarget;
@@ -22,8 +18,8 @@ export async function reclaimUntargetedCopies(input: {
   });
 }
 
-// The remove path's entry: tools come from the consent the user gave, never
-// re-derived here — two derivations can drift apart (#390).
+// On removal, pass the tools from the user's consent; never re-derive them
+// (#390).
 export async function reclaimTools(input: {
   cleanup: DeployedCleanupPort;
   target: DeployTarget;
@@ -33,8 +29,8 @@ export async function reclaimTools(input: {
   if (input.tools.length === 0) {
     return;
   }
-  // Best-effort by design: the caller's action already succeeded, so a failed
-  // reclaim must not invert it. The next global write retries it (#136).
+  // Best-effort: the caller's action already succeeded, so a failed reclaim
+  // must not invert it. The next global write retries it.
   try {
     await input.cleanup.removeSkillTargets({
       target: input.target,
@@ -42,6 +38,6 @@ export async function reclaimTools(input: {
       tools: input.tools,
     });
   } catch {
-    // Intentionally ignored — see above.
+    // Intentionally ignored.
   }
 }

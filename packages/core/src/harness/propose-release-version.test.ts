@@ -28,8 +28,7 @@ describe("proposeReleaseVersion", () => {
     const proposal = proposeReleaseVersion("v1.2.3", [changed, removed]);
     expect(proposal.proposedStep).toBe("major");
     expect(proposal.versions.major).toBe("v2.0.0");
-    // "Deleted", never "removed": remove names a deployed copy alone
-    // (CONTEXT.md → Harness skill deletion).
+    // "Deleted", never "removed": remove names a deployed copy alone.
     expect(proposal.reason).toBe("A skill was deleted or renamed.");
   });
 
@@ -74,8 +73,6 @@ describe("proposeReleaseVersion", () => {
   });
 
   it("reads a leading-zero tag as no release at all", () => {
-    // `v01.2.3` is not a semantic version. Counting it as one would bump from
-    // a number nobody published.
     const proposal = proposeReleaseVersion("v01.2.3", [changed]);
 
     expect(proposal.versions[proposal.proposedStep]).toBe("v0.1.0");

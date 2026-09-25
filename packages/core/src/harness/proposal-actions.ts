@@ -17,16 +17,12 @@ export type ProposalActionError =
   | "not-configured"
   | "invalid-skill"
   | "no-usable-origin"
-  // Git could not say what the default branch is, so nothing can be matched.
   | "no-answer"
-  // No answer from GitHub is possible at all: no gh, no sign-in, no network.
+  // No gh, no sign-in, or no network.
   | "review-unavailable"
-  // GitHub was asked and the answer cannot be trusted to be complete. Absence
-  // is exactly what a bounded or failed read cannot prove (ADR-0029).
+  // A bounded or failed read: it cannot prove absence.
   | "review-unknown"
-  // The number the row named is not the request the fresh read matches.
   | "request-gone"
-  // More than one open request matches: picking one would be arbitrary.
   | "extra-requests"
   | "request-exists"
   | "action-failed";
@@ -56,8 +52,7 @@ export class ProposalActions {
     this.deps = deps;
   }
 
-  // Opening the request a prepared branch never got. Nothing is pushed, so the
-  // review sees the branch as it stands and no newer local edit rides along.
+  // Pushes nothing: no newer local edit rides along.
   async create(name: string): Promise<ProposalActionResult> {
     const checked = await this.checkedFacts(name);
     if (!checked.ok) {
@@ -76,15 +71,11 @@ export class ProposalActions {
     );
   }
 
-  // Resuming the same request, which keeps its discussion. A merged one is not
-  // resumable, and neither is one this skill's branch no longer owns.
   async reopen(name: string, number: number): Promise<ProposalActionResult> {
     const checked = await this.checkedFacts(name);
     if (!checked.ok) {
       return checked;
     }
-    // Ambiguity blocks a write here as it does on withdrawal: reopening beside
-    // two open requests would leave a third nobody asked for (gh-driver.md).
     if (openOf(checked.matching).length > 1) {
       return { ok: false, error: "extra-requests" };
     }
@@ -97,8 +88,7 @@ export class ProposalActions {
     return settle(await this.deps.review.reopenRequest(checked.origin, number));
   }
 
-  // Closing the request. The remote branch and the author's files are left
-  // exactly as they are — the closed proposal is what stays recoverable.
+  // Leaves the remote branch and the author's files as they are.
   async withdraw(name: string, number: number): Promise<ProposalActionResult> {
     const checked = await this.checkedFacts(name);
     if (!checked.ok) {
@@ -114,7 +104,6 @@ export class ProposalActions {
     return settle(await this.deps.review.closeRequest(checked.origin, number));
   }
 
-  // The facts every action is checked against, read fresh each time.
   private async checkedFacts(name: string): Promise<CheckedFacts> {
     if (!isPromotableSkillName(name)) {
       return { ok: false, error: "invalid-skill" };

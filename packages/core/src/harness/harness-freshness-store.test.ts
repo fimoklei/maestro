@@ -65,8 +65,6 @@ describe("HarnessFreshnessStore", () => {
       lastFetchedAt: "2026-08-03T09:14:00.000Z",
     });
 
-    // Connecting a second harness must not inherit the first one's age — the
-    // freshness label would then date a fetch that never happened here.
     await expect(freshness.read("/home/me/other-harness")).resolves.toEqual({
       outcome: null,
       lastFetchedAt: null,

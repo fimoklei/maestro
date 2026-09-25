@@ -1,12 +1,7 @@
 import { normalizeCommandOutput } from "../normalize-command-output";
 
-// Turns a failed `git clone` into one of Maestro's three classes. The text is
-// read here and thrown away: nothing derived from it but the class crosses
-// into a response (security.md). Git runs under a fixed locale, so the phrases
-// below are the ones it prints (`non-interactive.ts`).
-
-// Git proving it had no credentials to offer, or that the ones it offered were
-// refused.
+// Only the class crosses into a response, never the text. The phrases assume
+// git's fixed `LC_ALL=C` locale.
 const AUTH_PHRASES = [
   "could not read username",
   "could not read password",
@@ -16,9 +11,7 @@ const AUTH_PHRASES = [
   "invalid username or token",
 ];
 
-// The remote answering that there is no repository there for you. GitHub
-// answers a private, a missing and a mistyped one identically, so telling
-// those apart would be a guess (#555).
+// GitHub answers private, missing and mistyped repositories identically.
 const UNAVAILABLE_PHRASES = [
   "repository not found",
   "does not appear to be a git repository",
@@ -35,9 +28,7 @@ export const classifyCloneFailure = (stderr: string): CloneFailure => {
   if (AUTH_PHRASES.some((phrase) => normalized.includes(phrase))) {
     return "clone-auth-failed";
   }
-  // Anything unrecognised is a failure and nothing more. Naming the repository
-  // for a full disk, a dropped connection or an unwritable folder sends the
-  // user to check a URL that was never the problem.
+  // Unrecognised is a plain failure: blaming the URL would mislead.
   return UNAVAILABLE_PHRASES.some((phrase) => normalized.includes(phrase))
     ? "clone-unavailable"
     : "clone-failed";

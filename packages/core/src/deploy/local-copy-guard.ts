@@ -1,6 +1,5 @@
 // The one guard between a write and a deployed copy carrying work: every write
-// classifies through `check` and is licensed through `admits` (ADR-0006,
-// ADR-0031 § How the code follows it).
+// classifies through `check` and is licensed through `admits`.
 import type {
   DeployedContentPort,
   DeployedContentState,
@@ -9,9 +8,7 @@ import type {
 import type { SupportedTool } from "./deploy-tools";
 import { ConsentSigner } from "./signed-consent";
 
-// Named for what the reader is told, not for the classifier state behind it
-// (CONTEXT.md § Content drift). "clean" covers a copy equal to its recorded
-// baseline, a copy equal in full to the chosen release, and no copy at all.
+// "clean" also covers a copy equal in full to the chosen release, and no copy.
 export type CopyVerdict =
   | "clean"
   | "local-edits"
@@ -37,20 +34,17 @@ const BLOCKING: readonly Exclude<CopyVerdict, "clean">[] = [
   "unverified",
 ];
 
-// The two a reader can consent to. With no readable evidence there is nothing
-// to consent about, so those block outright (fail closed, #952).
+// Everything else has no readable evidence to consent to: fail closed (#952).
 const CONSENTABLE = new Set<CopyVerdict>(["local-edits", "unverified"]);
 
-// One copy: one skill in one tool's subtree, or the whole copy where the write
-// does not split by tool (`tool: null` on the repo scope).
+// `tool: null` is the whole copy, where the write does not split by tool.
 export type CopyFinding = {
   name: string;
   tool: SupportedTool | null;
   verdict: CopyVerdict;
 };
 
-// Which write the consent is for. A deploy's receipt never licenses a removal:
-// the reader agreed to one effect, not to any effect.
+// A deploy's receipt never licenses a removal.
 export type LocalCopyWrite = "deploy" | "remove" | "update";
 
 export type LocalCopyScope = {
@@ -58,16 +52,13 @@ export type LocalCopyScope = {
   target: DeployTarget;
 };
 
-// `digest` fingerprints the bytes of every copy consent would cover, so a
-// second edit under the same verdict retires the consent (spec story 41).
-// Null where no copy needs consent.
+// `digest` binds the bytes consent would cover, so a second edit under the same
+// verdict retires the consent.
 export type LocalCopyCheck = {
   findings: readonly CopyFinding[];
   digest: string | null;
 };
 
-// `receipt` is null where no consent exists, so a caller cannot offer a way
-// past a refusal that has none.
 export type LocalCopyDecision =
   | { ok: true }
   | {
@@ -77,8 +68,6 @@ export type LocalCopyDecision =
       receipt: string | null;
     };
 
-// The blocking verdict a refusal names, worst first; undefined when every copy
-// is clean.
 export function worstVerdict(
   findings: readonly CopyFinding[],
 ): Exclude<CopyVerdict, "clean"> | undefined {
@@ -87,7 +76,6 @@ export function worstVerdict(
   );
 }
 
-// Order-independent: the same copies in another order are the same consent.
 // Shared with the Update preflight token, so the two never bind different facts.
 export function copyKeys(check: LocalCopyCheck): string[] {
   return check.findings
@@ -107,14 +95,12 @@ export class LocalCopyGuard {
     this.deps = deps;
   }
 
-  // One finding per copy the write would land on. `release` is the release the
-  // write installs: a copy that differs from its record but equals that release
-  // in full is clean, and a release that cannot be read grants no such pass.
+  // A copy equal in full to `release` is clean; an unreadable release grants no
+  // such pass.
   async check(
     input: LocalCopyScope & {
       names: readonly string[];
-      // Given, the check asks per tool, which is the grain consent is stated
-      // at (#952). Absent, one answer covers the whole copy.
+      // Absent, one answer covers the whole copy.
       tools?: readonly SupportedTool[];
       release?: string;
     },
@@ -123,8 +109,6 @@ export class LocalCopyGuard {
       ? [...input.tools]
       : [null];
     const findings: CopyFinding[] = [];
-    // Only consentable copies are fingerprinted: nothing else can be waved
-    // through, so nothing else needs its bytes bound.
     const bytes: string[] = [];
     for (const name of input.names) {
       for (const tool of scopes) {
@@ -143,9 +127,7 @@ export class LocalCopyGuard {
     };
   }
 
-  // The verdict against the copies just read, and the receipt that would
-  // license it. A receipt minted for other content is no consent for this
-  // (#364, #952).
+  // A receipt minted for other content is no consent for this (#364, #952).
   admits(
     scope: LocalCopyScope,
     check: LocalCopyCheck,
@@ -164,9 +146,7 @@ export class LocalCopyGuard {
       : { ok: false, blocked, check, receipt: expected };
   }
 
-  // The proof that this server read these copies itself, for this write, on
-  // this target. Every fact it covers is in the signature, so changing any of
-  // them retires the consent.
+  // Every fact the consent covers is signed, so changing any retires it.
   receipt(scope: LocalCopyScope, check: LocalCopyCheck): string {
     return this.signer.sign({
       kind: "local-copy",
@@ -175,15 +155,12 @@ export class LocalCopyGuard {
         scope.target.kind === "repo"
           ? { kind: "repo", repoPath: scope.target.repoPath }
           : { kind: "global" },
-      // Order-independent: the same copies in another order are the same
-      // consent.
       copies: copyKeys(check),
       content: check.digest,
     });
   }
 
-  // Null is "nothing could be read", which is never consentable: it can only
-  // widen a refusal, never license a write (fail closed).
+  // Null can only widen a refusal, never license a write.
   private async digest(
     input: LocalCopyScope,
     name: string,
@@ -198,8 +175,7 @@ export class LocalCopyGuard {
       .catch(() => null);
   }
 
-  // Caught per copy: one unreadable subtree answers for itself, and a check
-  // that threw is never reported as a clean copy (J04).
+  // A check that threw is never reported as a clean copy.
   private async classify(
     input: LocalCopyScope & { release?: string },
     name: string,

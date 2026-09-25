@@ -1,15 +1,12 @@
-// What the latest release ships, read from git rather than from the working
-// tree: Inventory describes what a consumer can deploy (ADR-0021 §7).
+// Read from git, never the working tree: Inventory shows what can be deployed.
 import type { HarnessTag } from "../harness/read-harness-state";
 import { highestReleaseTag } from "../harness/release-tag";
 import type { HarnessSkillTree } from "../harness/skill-movements";
 
-// `manifest` is the raw SKILL.md at the release, or null where that release
-// ships the directory without one. Parsing stays in the reader.
+// `manifest` is the raw SKILL.md, or null where the release ships none.
 export type ReleasedSkill = { name: string; manifest: string | null };
 
-// Null is a release that could not be read — never a harness with no release.
-// An empty array is only ever "looked, found none".
+// Null is an unreadable release; an empty array is "looked, found none".
 export type ReadReleasedSkills = (
   root: string,
 ) => Promise<ReleasedSkill[] | null>;

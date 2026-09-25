@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { classifyFetchFailure } from "./classify-fetch-failure";
 
-// Real captures from git 2.51 (see tests/fixtures/README.md), never retyped.
+// Real captures from git 2.51, never retyped.
 describe("classifyFetchFailure", () => {
   it("reads an unresolvable host as offline", () => {
     expect(
@@ -28,8 +28,7 @@ describe("classifyFetchFailure", () => {
   });
 
   it("reads a rejected key as a failed fetch, not as a permission gate of ours", () => {
-    // Whether GitHub lets this user push is GitHub's answer to give, so a
-    // rejected key stays an ordinary failed fetch (ADR-0021, #516).
+    // A rejected key stays an ordinary failed fetch (#516).
     expect(
       classifyFetchFailure(
         "git@github.com: Permission denied (publickey).\nfatal: Could not read from remote repository.\n",

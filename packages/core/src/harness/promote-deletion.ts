@@ -1,6 +1,5 @@
-// Moving one skill's removal into review: the promotion route with the subtree
-// taken out of the fetched tip instead of replaced. Publishing by absence is
-// never inferred — it takes a confirmation (ADR-0021, #580).
+// Pushes one skill's removal to its promote branch. A deletion is never
+// inferred from absence: it takes a confirmation (#580).
 import { parseGitOrigin } from "../deploy/git-origin";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { type HarnessReviewPort, matchesProposal } from "./harness-review-port";
@@ -24,20 +23,11 @@ export type PromoteDeletionError =
   | "invalid-skill"
   | "no-answer"
   | "promote-in-progress"
-  // origin/HEAD's copy of this skill is not the one the confirmation was given
-  // against: a teammate's change landed, or the skill is already gone. Either
-  // way the author confirmed removing something else (#580).
   | "confirmation-stale"
-  // Not the movement the row named: the skill is back on disk, or local HEAD
-  // never tracked it. `isLocalDeletion`'s two facts, re-read at the press.
   | "not-deleted"
-  // An incomplete working tree must not masquerade as intent: each ambiguity
-  // arrives under its own name, so the copy can say which one it is.
   | WorktreeAmbiguity
   | "push-elsewhere"
   | "source-changed"
-  // Two open requests already match this branch, so sending the removal to it
-  // would update a proposal nobody chose (#827 · Multiple pull requests).
   | "extra-requests"
   | "promote-failed";
 
@@ -58,9 +48,7 @@ export class PromoteSkillDeletion {
     this.deps = deps;
   }
 
-  // Shares the promotion lock, keyed by harness root: a removal and an edit
-  // building commits from the same fetched tip would each answer for refs the
-  // other moved.
+  // Shares the promotion lock, keyed by harness root.
   async execute(
     name: string,
     seenRemoteTree: string,
@@ -103,16 +91,13 @@ export class PromoteSkillDeletion {
       return { ok: false, error: "no-answer" };
     }
 
-    // Asked before the deletion itself is read: every fact below comes from a
-    // working tree, and one of these makes the whole tree unable to answer.
+    // First: an ambiguous working tree makes every fact below unreadable.
     const ambiguity = await this.deps.git.readWorktreeAmbiguity(root);
     if (ambiguity !== null) {
       return { ok: false, error: ambiguity };
     }
 
-    // The deletion re-read at the press, never taken from the row: tracked at
-    // local HEAD and gone from the working tree, `isLocalDeletion`'s two facts
-    // (#575). A skill that came back is an edit, and takes the other route.
+    // Re-read at the press, never taken from the row (#575).
     const localTrees = await this.deps.git.readSkillTrees(root, "HEAD");
     const trees = await this.deps.git.readMovementTrees(root);
     if (localTrees === null || trees === null) {
@@ -125,9 +110,7 @@ export class PromoteSkillDeletion {
       return { ok: false, error: "not-deleted" };
     }
 
-    // Read from the refs this call just fetched, never from what the row was
-    // painted with: the whole point of carrying the hash is that the picture
-    // the author confirmed against can be stale by the time it lands here.
+    // From the refs just fetched: the confirmed hash may be stale.
     const remoteTrees = await this.deps.git.readSkillTrees(root, head);
     if (remoteTrees === null) {
       return { ok: false, error: "no-answer" };
@@ -137,9 +120,7 @@ export class PromoteSkillDeletion {
       return { ok: false, error: "confirmation-stale" };
     }
 
-    // What GitHub says about this branch, read now rather than taken from the
-    // cockpit: it decides whether this removal updates a proposal or opens
-    // one, and an ambiguity blocks it before anything is pushed.
+    // Read now, not from the cockpit: decides update versus open.
     const review = await this.deps.review.readReviews(origin);
     const open =
       review.outcome !== "read" || !review.complete
@@ -160,8 +141,7 @@ export class PromoteSkillDeletion {
     const push = await this.deps.git.pushSkillDeletion(root, name, head);
     switch (push) {
       case "pushed":
-        // Only where the branch has no proposal of its own; an open request
-        // keeps its discussion and GitHub's verdict (gh-driver.md).
+        // Only when GitHub answered that the branch has no request.
         if (open !== null && open.length === 0) {
           await this.deps.review.createRequest(origin, {
             head: promoteBranch(name),
