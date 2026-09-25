@@ -9,6 +9,7 @@ import {
   updatePreviewErrorResponses,
   updateRunErrorResponses,
 } from "../error-responses";
+import { checkedPrimitives, githubPageField } from "../github-page-response";
 import { requireRegisteredRepo } from "../registered-repo-route";
 import { cardReadingFields } from "../release-head-response";
 import {
@@ -74,12 +75,14 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
       return c.json({ error: result.error }, 422);
     }
     return c.json({
-      primitives: result.primitives,
+      primitives: checkedPrimitives(result.primitives),
       skipped: result.skipped,
       ...(result.pendingOperation
         ? { pendingOperation: result.pendingOperation }
         : {}),
       ...cardReadingFields(result),
+      ...githubPageField("github", result.github),
+      ...githubPageField("releaseGitHub", result.releaseGitHub),
     });
   });
 
@@ -91,9 +94,18 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     }
     return c.json({
       tools: result.tools.map(
-        ({ releaseHead, pinnedPerSkill, extraFiles, ...group }) => ({
+        ({
+          releaseHead,
+          pinnedPerSkill,
+          extraFiles,
+          releaseGitHub,
+          primitives,
+          ...group
+        }) => ({
           ...group,
+          primitives: checkedPrimitives(primitives),
           ...cardReadingFields({ releaseHead, pinnedPerSkill, extraFiles }),
+          ...githubPageField("releaseGitHub", releaseGitHub),
         }),
       ),
       skipped: result.skipped,

@@ -2,6 +2,7 @@
 // working tree and never the network. A malformed SKILL.md is skipped.
 import { z } from "zod";
 import { parseGitOrigin } from "../deploy/git-origin";
+import { type GitHubPage, githubPageFromOriginUrl } from "../git/github-page";
 import { readFrontmatter } from "../harness/validate-skill-structure";
 import type { FileSystemPort } from "../registry/file-system";
 import type { ReadReleasedSkills } from "./released-skills";
@@ -63,6 +64,7 @@ export class InventoryReader {
   async configuredLocation(): Promise<{
     inventoryPath: string | null;
     githubRepository: string | null;
+    github?: GitHubPage;
   }> {
     const inventoryPath = await this.configuredPath();
     if (inventoryPath === null) {
@@ -76,7 +78,8 @@ export class InventoryReader {
       originUrl === null
         ? null
         : (parseGitOrigin(originUrl)?.ownerRepo ?? null);
-    return { inventoryPath, githubRepository };
+    const github = githubPageFromOriginUrl(originUrl) ?? undefined;
+    return { inventoryPath, githubRepository, github };
   }
 
   async read(): Promise<InventoryResult> {

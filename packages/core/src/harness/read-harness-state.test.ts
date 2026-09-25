@@ -145,6 +145,10 @@ describe("ReadHarnessState", () => {
       ok: true,
       state: {
         origin: "github.com/fimoklei/agent-harness",
+        github: {
+          kind: "link",
+          url: "https://github.com/fimoklei/agent-harness",
+        },
         releasedVersion: "v0.5.0",
         defaultBranch: "main",
         releaseState: "released",

@@ -36,7 +36,9 @@ building it.
   without a visible word keeps its family's glyph.
 - Use the five families: Good ✓ green, Attention ↑/⚠ amber, Failed ✕ red,
   Unknown ? slate, Neutral slate. Neutral and Unknown differ by word only.
-- Show one badge per row: the worst reading. Put the others in the detail pane.
+- Show one status badge per row: the worst reading of the row's own state.
+  Put the others in the detail pane. A column that reads a separate fact, such
+  as the GitHub column, shows its own Unknown badge when that read failed.
 - Show an unknown reading as an Unknown badge, never as a notice.
 
 **Disclosure.**
@@ -139,7 +141,10 @@ Pick the form from this table. Add no other form, and no banner.
 - Put the primary action in band 1, right of the title; Re-read, Filter and
   Display in band 2, icon-only; a row's actions in its ⋮ menu and at the foot
   of its detail pane; actions on a selection in the floating selection bar.
-- Put no button in a table row.
+- Put no button in a table row. A link to an external page may sit in one.
+- Link a row's own GitHub page from a `GitHub` column: GitHub's mark in slate
+  11, named `View {name} on GitHub`, mouse only; the same destination is a ⋮
+  item for the keyboard. No GitHub page: empty cell. In a fact, link the value.
 
 **Tokens.**
 - Use only the documented colour pairs. A new pairing enters `design.json` and

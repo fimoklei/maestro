@@ -1,9 +1,11 @@
 import { type ReactNode, useRef } from "react";
 import { DetailPane } from "../ui/detail-pane";
 import { FactList, FactRow } from "../ui/fact-list";
+import { GitHubFactLink } from "../ui/github-fact-link";
 import { Notice, type NoticeContent } from "../ui/notice";
 import {
   GLOBAL,
+  ORIGIN_NOT_READ,
   otherOriginLine,
   REPO_NOT_READ,
   REREAD_LABEL,
@@ -75,6 +77,7 @@ export function TargetDetailPane({
     ...(row.primitives.length === 0 && row.otherOrigins.length > 0
       ? [otherOriginLine(row.otherOrigins)]
       : []),
+    ...(row.github?.kind === "unknown" ? [ORIGIN_NOT_READ] : []),
   ];
 
   return (
@@ -99,7 +102,7 @@ export function TargetDetailPane({
         ) : null}
         {head ? (
           <FactRow label="Release" machine>
-            {head.release}
+            <GitHubFactLink page={row.releaseGitHub} value={head.release} />
           </FactRow>
         ) : null}
         {head?.latestRelease && head.latestRelease !== head.release ? (

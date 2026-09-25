@@ -41,6 +41,14 @@ export const REPO_NOT_READ = {
   message: `Select ${REREAD_LABEL} to read this repository's deploy-state again.`,
 } as const;
 
+// The GitHub column's keyboard way to the same page, and its Unknown's cause.
+export const VIEW_REPOSITORY_ON_GITHUB = "View repository on GitHub";
+export const ORIGIN_NOT_READ = `The origin of this repository could not be read. Select ${REREAD_LABEL} to read it again.`;
+
+// A selected skill's folder on GitHub: its menu item, and its Unknown's cause.
+export const VIEW_SKILL_ON_GITHUB = "View skill on GitHub";
+export const HARNESS_ORIGIN_NOT_READ = `The origin of the Harness could not be read. Select ${REREAD_LABEL} to read it again.`;
+
 export const NO_TOOL_DETECTED = {
   level: "info",
   label: "No supported tool detected",

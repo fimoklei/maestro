@@ -99,20 +99,30 @@ describe("UpdateTargetDialog", () => {
   it("links a changed and a new skill to its folder at the chosen release", () => {
     show();
 
-    expect(screen.getByRole("link", { name: "tdd" }).getAttribute("href")).toBe(
+    expect(
+      screen
+        .getByRole("link", { name: "View tdd on GitHub" })
+        .getAttribute("href"),
+    ).toBe(
       "https://github.com/fimoklei/agent-harness/tree/v0.3.4/.apm/skills/tdd",
     );
     expect(
-      screen.getByRole("link", { name: "wizard" }).getAttribute("href"),
+      screen
+        .getByRole("link", { name: "View wizard on GitHub" })
+        .getAttribute("href"),
     ).toBe(
       "https://github.com/fimoklei/agent-harness/tree/v0.3.4/.apm/skills/wizard",
     );
+    // GitHub's mark carries the link; the name is plain text (#1181).
+    expect(screen.queryByRole("link", { name: "tdd" })).toBeNull();
   });
 
   it("names a skill with no readable origin without a link", () => {
     show({ changed: [{ name: "tdd", url: null }] });
 
-    expect(screen.queryByRole("link", { name: "tdd" })).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: "View tdd on GitHub" }),
+    ).toBeNull();
     expect(screen.getByText("tdd")).toBeTruthy();
   });
 

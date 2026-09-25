@@ -1,5 +1,6 @@
 // No git stdout, stderr, or remote text reaches this use-case, so none can reach a response.
 import { parseGitOrigin } from "../deploy/git-origin";
+import { type GitHubPage, githubPageFromOriginUrl } from "../git/github-page";
 import type { HarnessReviewPort } from "./harness-review-port";
 import { buildStages, type HarnessStages } from "./harness-stages";
 import {
@@ -163,6 +164,8 @@ export type PendingSkillMovement = SkillMovement & { author: string | null };
 
 export type HarnessState = {
   origin: string;
+  /** The Origin fact's link; absent where the origin names no GitHub page. */
+  github?: GitHubPage;
   releasedVersion: string | null;
   defaultBranch: string | null;
   releaseState: HarnessReleaseState;
@@ -368,6 +371,7 @@ export class ReadHarnessState {
       ok: true,
       state: {
         origin: `${origin.host}/${origin.ownerRepo}`,
+        github: githubPageFromOriginUrl(facts.originUrl) ?? undefined,
         releasedVersion: released?.name ?? null,
         defaultBranch: facts.defaultBranch,
         releaseState:

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 import type {
   DeployedPrimitive,
+  GitHubPage,
   PendingOperation,
   PinnedPerSkill,
   ReleaseHead,
@@ -15,6 +16,8 @@ export type ToolDeployState = {
   releaseHead?: ReleaseHead;
   pinnedPerSkill?: PinnedPerSkill;
   extraFiles?: number;
+  // Absent where the release has no page on GitHub (#1181).
+  releaseGitHub?: GitHubPage;
 };
 
 // Not Zod-validated here: `tools` is defaulted once in `select`. Present-but-empty

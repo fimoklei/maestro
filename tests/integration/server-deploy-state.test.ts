@@ -1,7 +1,12 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { InFlightLocks, InventoryReader, NodeFileSystem } from "@maestro/core";
+import {
+  type DeployStateExtras,
+  InFlightLocks,
+  InventoryReader,
+  NodeFileSystem,
+} from "@maestro/core";
 import { createApp } from "@maestro/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { realRegistry } from "../helpers/real-registry";
@@ -30,7 +35,7 @@ describe("deploy-state HTTP route", () => {
     await rm(home, { recursive: true, force: true });
   });
 
-  function makeApp() {
+  function makeApp(githubPage?: DeployStateExtras["githubPage"]) {
     const fs = new NodeFileSystem();
     const registry = realRegistry(fs, join(home, "config.json"));
     const inventory = new InventoryReader({
@@ -38,7 +43,7 @@ describe("deploy-state HTTP route", () => {
       resolvePath: () => undefined,
       readReleasedSkills: async () => [],
     });
-    const deployState = stubDeployState({ fs });
+    const deployState = stubDeployState({ fs, githubPage });
     const locks = new InFlightLocks();
     const app = createApp({
       importSkill: stubImport(),
@@ -153,5 +158,47 @@ describe("deploy-state HTTP route", () => {
     const body = (await res.json()) as { error: string };
     expect(body.error).toBe("malformed");
     await rm(repo, { recursive: true, force: true });
+  });
+
+  describe("the repository's GitHub page", () => {
+    async function readGithub(
+      githubPage: DeployStateExtras["githubPage"],
+    ): Promise<unknown> {
+      const repo = await makeRepo(tddLockfile);
+      const { app, registry } = makeApp(githubPage);
+      await registry.register(repo);
+      const res = await app.request(
+        `/api/deploy-state?repo=${encodeURIComponent(repo)}`,
+      );
+      await rm(repo, { recursive: true, force: true });
+      expect(res.status).toBe(200);
+      return ((await res.json()) as { github?: unknown }).github;
+    }
+
+    it("sends the link beside the rest of the reading", async () => {
+      const page = { kind: "link", url: "https://github.com/o/r" } as const;
+      expect(await readGithub(async () => page)).toEqual(page);
+    });
+
+    it("sends a failed origin read as unknown", async () => {
+      expect(
+        await readGithub(async () => {
+          throw new Error("git unavailable");
+        }),
+      ).toEqual({ kind: "unknown" });
+    });
+
+    it("sends a link that fails the shape check as unknown, never as a link", async () => {
+      expect(
+        await readGithub(async () => ({
+          kind: "link",
+          url: "https://evil.example/o/r",
+        })),
+      ).toEqual({ kind: "unknown" });
+    });
+
+    it("sends no key where the repository has no GitHub page", async () => {
+      expect(await readGithub(async () => null)).toBeUndefined();
+    });
   });
 });

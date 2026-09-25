@@ -202,6 +202,10 @@ describe("joining a Harness by its GitHub url", () => {
     expect(await res.json()).toEqual({
       inventoryPath: join(home, "agent-harness"),
       githubRepository: "fimoklei/agent-harness",
+      github: {
+        kind: "link",
+        url: "https://github.com/fimoklei/agent-harness",
+      },
     });
   });
 

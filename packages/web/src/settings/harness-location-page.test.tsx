@@ -76,6 +76,36 @@ describe("Harness location page", () => {
     expect(screen.getByText(clone)).toHaveAttribute("title", clone);
   });
 
+  it("links the GitHub repository to its page on GitHub", async () => {
+    stubServer({
+      github: {
+        kind: "link",
+        url: "https://github.com/fimoklei/agent-harness",
+      },
+    });
+    renderPage();
+
+    const link = await screen.findByRole("link", {
+      name: "fimoklei/agent-harness on GitHub",
+    });
+    expect(link).toHaveAttribute(
+      "href",
+      "https://github.com/fimoklei/agent-harness",
+    );
+    expect(link).toHaveTextContent("fimoklei/agent-harness");
+    expect(link).toHaveAttribute("title", "fimoklei/agent-harness");
+  });
+
+  it("keeps the GitHub repository plain text where it has no page", async () => {
+    stubServer({ github: { kind: "unknown" } });
+    renderPage();
+
+    expect(
+      await screen.findByText("fimoklei/agent-harness"),
+    ).toBeInTheDocument();
+    expect(within(connected()).queryByRole("link")).not.toBeInTheDocument();
+  });
+
   it("keeps the local clone and says when the GitHub repository was not read", async () => {
     stubServer({ githubRepository: null });
     renderPage();

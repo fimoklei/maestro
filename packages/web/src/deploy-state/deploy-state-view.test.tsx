@@ -60,8 +60,9 @@ describe("Deploy-state — one table of every target", () => {
       .map((cell) => cell.textContent);
     expect(cells).toContain("Global 2");
     expect(cells).toContain("Repositories 2");
-    expect(cellsOf("Claude Code")[0]).toBe("Claude Code~/.claude/skills");
-    expect(cellsOf("Codex")[0]).toBe("Codex~/.agents/skills");
+    // #1180: the name only; the path is the pane's Path fact.
+    expect(cellsOf("Claude Code")[0]).toBe("Claude Code");
+    expect(cellsOf("Codex")[0]).toBe("Codex");
   });
 
   it("keeps two repositories that share a prefix apart, full path as the title", async () => {
@@ -587,7 +588,7 @@ describe("Deploy-state — rows and their menu", () => {
       await screen.findByRole("menuitem", { name: "Deploy skill" }),
     );
 
-    expect(screen.getByText("inventory view")).toBeInTheDocument();
+    expect(await screen.findByText("inventory view")).toBeInTheDocument();
   });
 
   it("keeps rows free of buttons other than the ⋮ menu", async () => {

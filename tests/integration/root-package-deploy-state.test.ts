@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  type DeployStateExtras,
   GlobalDeployStateReader,
   InFlightLocks,
   InventoryReader,
@@ -81,7 +82,10 @@ describe("reading a root-package target over HTTP", () => {
     }
   }
 
-  async function makeApp(head: ReleaseHead | undefined = HEAD) {
+  async function makeApp(
+    head: ReleaseHead | undefined = HEAD,
+    harnessPage?: DeployStateExtras["harnessPage"],
+  ) {
     const fs = new NodeFileSystem();
     const registry = realRegistry(fs, join(home, "config.json"));
     const inventory = new InventoryReader({
@@ -99,6 +103,7 @@ describe("reading a root-package target over HTTP", () => {
         toolPresence: { detectGlobalTools: async () => ["claude", "codex"] },
         treeRoot: () => home,
         releaseHead: { read: async () => head ?? HEAD },
+        harnessPage,
         harnessOrigin: async () => ({
           host: "github.com",
           ownerRepo: "fimoklei/agent-harness",
@@ -325,6 +330,88 @@ describe("reading a root-package target over HTTP", () => {
       ],
       skipped: [],
       otherOrigins: [],
+    });
+  });
+
+  describe("the Harness's GitHub pages", () => {
+    const HARNESS = "https://github.com/fimoklei/agent-harness";
+    const SKILL = `${HARNESS}/tree/v0.3.2/.apm/skills/tdd`;
+    const RELEASE = `${HARNESS}/releases/tag/v0.3.2`;
+    const files = [".claude/skills/tdd/SKILL.md"];
+
+    async function read(
+      harnessPage: DeployStateExtras["harnessPage"],
+      path = `/api/deploy-state?repo=${encodeURIComponent(repo)}`,
+    ): Promise<unknown> {
+      await seedFiles(repo, files);
+      await seedFiles(home, files);
+      const lockfile = rootPackageLockfile("v0.3.2", files, ["tdd"]);
+      await writeFile(join(repo, "apm.lock.yaml"), lockfile, "utf8");
+      await writeFile(join(apmRoot, "apm.lock.yaml"), lockfile, "utf8");
+      const res = await (await makeApp(HEAD, harnessPage)).request(path);
+      expect(res.status).toBe(200);
+      return await res.json();
+    }
+
+    it("sends each skill's folder and the release's page", async () => {
+      expect(
+        await read(async () => ({ kind: "link", url: HARNESS })),
+      ).toMatchObject({
+        primitives: [{ name: "tdd", github: { kind: "link", url: SKILL } }],
+        releaseGitHub: { kind: "link", url: RELEASE },
+      });
+    });
+
+    it("sends them per global tool card", async () => {
+      expect(
+        await read(
+          async () => ({ kind: "link", url: HARNESS }),
+          "/api/deploy-state/global",
+        ),
+      ).toMatchObject({
+        tools: [
+          {
+            tool: "claude",
+            primitives: [{ name: "tdd", github: { kind: "link", url: SKILL } }],
+            releaseGitHub: { kind: "link", url: RELEASE },
+          },
+          { tool: "codex", primitives: [] },
+        ],
+      });
+    });
+
+    it("sends a failed Harness origin read as unknown", async () => {
+      expect(
+        await read(async () => {
+          throw new Error("git unavailable");
+        }),
+      ).toMatchObject({
+        primitives: [{ name: "tdd", github: { kind: "unknown" } }],
+        releaseGitHub: { kind: "unknown" },
+      });
+    });
+
+    it("sends a link that fails the shape check as unknown, never as a link", async () => {
+      await seedFiles(repo, files);
+      await writeFile(
+        join(repo, "apm.lock.yaml"),
+        rootPackageLockfile("v0.3.2", files, ["tdd"]).replace(
+          "repo_url: fimoklei/agent-harness",
+          "repo_url: o/r#x",
+        ),
+        "utf8",
+      );
+      const app = await makeApp(HEAD, async () => ({
+        kind: "link",
+        url: "https://github.com/o/r#x",
+      }));
+      const res = await app.request(
+        `/api/deploy-state?repo=${encodeURIComponent(repo)}`,
+      );
+      expect(await res.json()).toMatchObject({
+        primitives: [{ name: "tdd", github: { kind: "unknown" } }],
+        releaseGitHub: { kind: "unknown" },
+      });
     });
   });
 });

@@ -5,6 +5,7 @@ import type { DeployedContentPort, DeployTarget } from "../deploy/deploy-skill";
 import type { SupportedTool } from "../deploy/deploy-tools";
 import type { GitOrigin } from "../deploy/git-origin";
 import type { PendingOperation } from "../deploy/retry-target-operation";
+import { type GitHubPage, UNKNOWN_PAGE } from "../git/github-page";
 import { resolveHomeDirectory } from "../home-directory";
 import {
   type LockfileEntry,
@@ -25,6 +26,7 @@ import {
   groupPrimitivesByTool,
   type ToolDeployState,
 } from "./group-primitives-by-tool";
+import { harnessPages, perSkillPage } from "./harness-pages";
 import { harnessSkillPin, type SkillPin, tallyPins } from "./pinned-per-skill";
 import type { ReleaseHeadReader } from "./release-head";
 import {
@@ -42,6 +44,10 @@ type DeployStateResult =
       pinnedPerSkill?: PinnedPerSkill;
       extraFiles?: number;
       pendingOperation?: PendingOperation;
+      // Absent where the repository has no page on GitHub (#1180).
+      github?: GitHubPage;
+      // The release's page in the connected Harness; absent where nothing links.
+      releaseGitHub?: GitHubPage;
     }
   | { ok: false; error: "malformed" };
 
@@ -66,6 +72,11 @@ export type DeployStateExtras = {
   operations?: {
     pending(target: DeployTarget): Promise<PendingOperation | null>;
   };
+  // The repository's own page on GitHub, read from its origin (#1180).
+  githubPage?: (repoPath: string) => Promise<GitHubPage | null>;
+  // The connected Harness's own page on GitHub, which its release and skill
+  // links hang off (#1181).
+  harnessPage?: () => Promise<GitHubPage | null>;
 };
 
 export class DeployStateReader {
@@ -79,6 +90,8 @@ export class DeployStateReader {
       content: deps.content,
       harnessOrigin: deps.harnessOrigin,
       operations: deps.operations,
+      githubPage: deps.githubPage,
+      harnessPage: deps.harnessPage,
     };
   }
 
@@ -87,7 +100,19 @@ export class DeployStateReader {
     return (await this.extras.harnessOrigin?.().catch(() => null)) ?? null;
   }
 
+  // Read at most once per call, and only once an entry could link to it.
+  protected connectedPage(): () => Promise<GitHubPage | null> {
+    let page: Promise<GitHubPage | null> | undefined;
+    return () => {
+      page ??= readPage(() => this.extras.harnessPage?.());
+      return page;
+    };
+  }
+
   async read(repoPath: string): Promise<DeployStateResult> {
+    const github = readPage(() => this.extras.githubPage?.(repoPath)).then(
+      (page) => (page === null ? {} : { github: page }),
+    );
     const raw = await this.fs.readFile(join(repoPath, "apm.lock.yaml"));
     if (raw === null) {
       // A first Deploy that stopped leaves no lockfile; its retry must survive.
@@ -97,6 +122,7 @@ export class DeployStateReader {
         primitives: [],
         skipped: [],
         ...(unfinished === undefined ? {} : { pendingOperation: unfinished }),
+        ...(await github),
       };
     }
 
@@ -108,6 +134,7 @@ export class DeployStateReader {
     const primitives: DeployedPrimitive[] = [];
     const skipped: SkippedEntry[] = unreadableAsSkipped(parsed.unreadable);
     const origin = await this.connectedOrigin();
+    const harnessPage = this.connectedPage();
     const pins: SkillPin[] = [];
     let root: LockfileEntry | undefined;
     // The root package's own skills; a leftover per-skill row is not selected.
@@ -126,13 +153,17 @@ export class DeployStateReader {
       if (pin !== null) {
         pins.push(pin);
       }
+      const github = perSkillPage(entry, reading.name, await harnessPage());
       primitives.push({
         type: "skill",
         name: reading.name,
         version: entry.resolved_ref,
+        ...(github === undefined ? {} : { github }),
       });
     }
 
+    const pages =
+      root === undefined ? undefined : harnessPages(root, await harnessPage());
     if (root !== undefined) {
       const deployed = await deployedRootPackageSkills(
         root,
@@ -141,7 +172,13 @@ export class DeployStateReader {
       );
       for (const name of new Set(deployed.map((skill) => skill.name))) {
         selection.push(name);
-        primitives.push({ type: "skill", name, version: root.resolved_ref });
+        const github = pages?.skill(name);
+        primitives.push({
+          type: "skill",
+          name,
+          version: root.resolved_ref,
+          ...(github === undefined ? {} : { github }),
+        });
       }
     }
 
@@ -167,6 +204,8 @@ export class DeployStateReader {
       ...(pinnedPerSkill === undefined ? {} : { pinnedPerSkill }),
       ...(extraFiles === 0 ? {} : { extraFiles }),
       ...(pendingOperation === undefined ? {} : { pendingOperation }),
+      ...(await github),
+      ...(pages === undefined ? {} : { releaseGitHub: pages.release }),
     };
   }
 
@@ -214,6 +253,18 @@ export class DeployStateReader {
     selection: readonly string[],
   ): Promise<ReleaseHead | undefined> {
     return await this.extras.releaseHead?.read({ key, release, selection });
+  }
+}
+
+// Unlike an origin, a failed read stays apart from no page: the link cell
+// shows it as its own Unknown, never a failed Deploy-state read (#1180, #1181).
+async function readPage(
+  read: () => Promise<GitHubPage | null> | undefined,
+): Promise<GitHubPage | null> {
+  try {
+    return (await read()) ?? null;
+  } catch {
+    return UNKNOWN_PAGE;
   }
 }
 
@@ -269,6 +320,7 @@ export class GlobalDeployStateReader extends DeployStateReader {
     const grouped = await groupPrimitivesByTool(parsed.entries, detected, {
       fileExists: (file) => this.fs.isFileEntry(join(tree, file)),
       origin: await this.connectedOrigin(),
+      harnessPage: this.connectedPage(),
     });
     for (const group of grouped.tools) {
       await this.markCopies(group.primitives, { kind: "global" }, [group.tool]);

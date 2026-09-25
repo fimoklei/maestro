@@ -75,6 +75,7 @@ export {
   UpdateTarget,
 } from "./deploy/update-target";
 export {
+  type DeployStateExtras,
   DeployStateReader,
   GlobalDeployStateReader,
 } from "./deploy-state/deploy-state-reader";
@@ -118,6 +119,13 @@ export type {
 } from "./folder-chooser/folder-chooser-port";
 export { MacosFolderChooser } from "./folder-chooser/macos-folder-chooser";
 export { runHelper } from "./folder-chooser/run-helper";
+export {
+  type GitHubPage,
+  githubPageFromOriginUrl,
+  OWNER_REPO_PATTERN,
+  readGitHubPage,
+  UNKNOWN_PAGE,
+} from "./git/github-page";
 export {
   DeleteLocalSkill,
   type DeleteLocalSkillError,

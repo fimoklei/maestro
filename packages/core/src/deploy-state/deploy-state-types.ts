@@ -1,3 +1,4 @@
+import type { GitHubPage } from "../git/github-page";
 import type { PackageClass, PackageReading } from "../lockfile/lockfile";
 
 export type DeployedPrimitive = {
@@ -6,6 +7,9 @@ export type DeployedPrimitive = {
   version: string;
   // Absent means "clean", never "not checked": an unread copy carries no key.
   copy?: "local-edits" | "unverified";
+  // The skill's folder in the connected Harness at this release; absent where
+  // nothing links (#1181).
+  github?: GitHubPage;
 };
 
 // Null is always "not known", never a count that was not measured.

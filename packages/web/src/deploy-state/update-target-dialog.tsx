@@ -8,6 +8,7 @@ import { type ReactNode, useId, useState } from "react";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { DIALOG_FOOTER, DialogShell } from "../ui/dialog-shell";
+import { GitHubMarkLink } from "../ui/github-mark-link";
 import { Notice } from "../ui/notice";
 import { StatusBadge } from "../ui/status-badge";
 import { reading } from "../ui/status-reading";
@@ -150,19 +151,16 @@ function SkillRows({
   return (
     <ul className={listClass(inline)}>
       {rows.map((row) => (
-        <li key={row.name} className="font-mono text-row text-gray-12">
-          {row.url === null ? (
-            row.name
-          ) : (
-            <a
-              href={row.url}
-              target="_blank"
-              rel="noreferrer"
-              className="underline decoration-gray-11 decoration-dotted underline-offset-2 hover:decoration-gray-12 motion-safe:transition-colors"
-            >
-              {row.name}
-            </a>
-          )}
+        <li
+          key={row.name}
+          className="inline-flex items-center gap-1 font-mono text-row text-gray-12"
+        >
+          {row.name}
+          <GitHubMarkLink
+            page={row.url === null ? undefined : { kind: "link", url: row.url }}
+            name={row.name}
+            focusable={true}
+          />
         </li>
       ))}
     </ul>

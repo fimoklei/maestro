@@ -10,6 +10,7 @@ import {
   publishReleaseErrorResponses,
   releasePlanErrorResponses,
 } from "../error-responses";
+import { githubPageField } from "../github-page-response";
 import {
   parseBody,
   publishReleaseBodySchema,
@@ -25,7 +26,8 @@ export function registerHarnessRoutes(app: Hono, deps: Deps) {
       const { status } = harnessErrorResponses[result.error];
       return c.json({ error: result.error }, status);
     }
-    return c.json(result.state);
+    const { github, ...state } = result.state;
+    return c.json({ ...state, ...githubPageField("github", github) });
   };
 
   app.get("/api/harness", async (c) =>

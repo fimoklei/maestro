@@ -999,3 +999,230 @@ describe("DeployStateReader on a target with an unfinished operation", () => {
     expect(result).not.toHaveProperty("pendingOperation");
   });
 });
+
+describe("DeployStateReader on a repository's GitHub page", () => {
+  const page = { kind: "link", url: "https://github.com/o/r" } as const;
+  const deployed = { [LOCKFILE]: lockfile(skillEntry("v0.1.0", "skills/tdd")) };
+  const readerWith = (
+    githubPage: DeployStateExtras["githubPage"],
+    files: Record<string, string> = {},
+  ) =>
+    new DeployStateReader({
+      fs: new InMemoryFileSystem({ files }),
+      githubPage,
+    });
+
+  it("carries the page the repository's origin names, lockfile or not", async () => {
+    const asked: string[] = [];
+    const reader = readerWith(async (path) => {
+      asked.push(path);
+      return page;
+    });
+    await expect(reader.read(REPO)).resolves.toMatchObject({ github: page });
+    await expect(
+      readerWith(async () => page, deployed).read(REPO),
+    ).resolves.toMatchObject({ ok: true, github: page });
+    expect(asked).toEqual([REPO]);
+  });
+
+  it("carries no key where the repository has no GitHub page", async () => {
+    const result = await readerWith(async () => null).read(REPO);
+    expect(result).not.toHaveProperty("github");
+  });
+
+  it("reads a failed origin read as unknown and still reads the rest", async () => {
+    const reader = readerWith(async () => {
+      throw new Error("git unavailable");
+    }, deployed);
+    await expect(reader.read(REPO)).resolves.toMatchObject({
+      ok: true,
+      primitives: [{ name: "tdd" }],
+      github: { kind: "unknown" },
+    });
+  });
+});
+
+describe("DeployStateReader on the Harness's GitHub pages", () => {
+  const files = [".claude/skills/tdd/SKILL.md"];
+  const HARNESS = "https://github.com/fimoklei/agent-harness";
+  const repoAt = (ref: string) =>
+    new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(rootPackageEntry(ref, files, ["tdd"])),
+        ...onDisk(REPO, files),
+      },
+    });
+  const read = (
+    fs: InMemoryFileSystem,
+    harnessPage: DeployStateExtras["harnessPage"],
+  ) => new DeployStateReader({ fs, harnessPage }).read(REPO);
+
+  it("links each selected skill to its folder, and the release to its page", async () => {
+    const result = await read(repoAt("v0.3.2"), async () => ({
+      kind: "link",
+      url: HARNESS,
+    }));
+    expect(result).toMatchObject({
+      primitives: [
+        {
+          name: "tdd",
+          github: {
+            kind: "link",
+            url: `${HARNESS}/tree/v0.3.2/.apm/skills/tdd`,
+          },
+        },
+      ],
+      releaseGitHub: { kind: "link", url: `${HARNESS}/releases/tag/v0.3.2` },
+    });
+  });
+
+  it("links nothing on a root package from another repository", async () => {
+    const result = await read(repoAt("v0.3.2"), async () => ({
+      kind: "link",
+      url: "https://github.com/someone/else",
+    }));
+    expect(result).not.toHaveProperty("releaseGitHub");
+    expect(result).not.toHaveProperty("primitives.0.github");
+  });
+
+  it("links nothing at a ref that is not a release tag", async () => {
+    const result = await read(repoAt("main"), async () => ({
+      kind: "link",
+      url: HARNESS,
+    }));
+    expect(result).not.toHaveProperty("releaseGitHub");
+    expect(result).not.toHaveProperty("primitives.0.github");
+  });
+
+  it("links nothing where the Harness has no GitHub page", async () => {
+    const result = await read(repoAt("v0.3.2"), async () => null);
+    expect(result).not.toHaveProperty("releaseGitHub");
+    expect(result).not.toHaveProperty("primitives.0.github");
+  });
+
+  it("reads a failed Harness origin read as unknown and still reads the rest", async () => {
+    const result = await read(repoAt("v0.3.2"), async () => {
+      throw new Error("git unavailable");
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      primitives: [{ name: "tdd", github: { kind: "unknown" } }],
+      releaseGitHub: { kind: "unknown" },
+    });
+  });
+
+  it("links nothing at a non-release ref, even when the Harness origin read failed", async () => {
+    // No known tag is decidable without the origin (#1181).
+    const result = await read(repoAt("main"), async () => {
+      throw new Error("git unavailable");
+    });
+    expect(result).not.toHaveProperty("releaseGitHub");
+    expect(result).not.toHaveProperty("primitives.0.github");
+  });
+
+  // A per-skill dependency from before the root-package model, pinned at its own tag.
+  const legacyAt = (ref: string, virtualPath = ".apm/skills/tdd") =>
+    `- repo_url: fimoklei/agent-harness\n  host: github.com\n  resolved_commit: ec491f154c9d5c9a6c5db56d1946c4c34f3899bb\n  resolved_ref: ${ref}\n  virtual_path: ${virtualPath}\n  is_virtual: true\n  package_type: claude_skill\n  deployed_files:\n  - .claude/skills/tdd\n  content_hash: sha256:abc\n`;
+  const legacyRepo = (ref: string, virtualPath?: string) =>
+    new InMemoryFileSystem({
+      files: { [LOCKFILE]: lockfile(legacyAt(ref, virtualPath)) },
+    });
+
+  it("links a per-skill dependency on the Harness to its folder at its own tag", async () => {
+    const result = await read(legacyRepo("v0.2.0"), async () => ({
+      kind: "link",
+      url: HARNESS,
+    }));
+    expect(result).toMatchObject({
+      primitives: [
+        {
+          name: "tdd",
+          github: {
+            kind: "link",
+            url: `${HARNESS}/tree/v0.2.0/.apm/skills/tdd`,
+          },
+        },
+      ],
+    });
+  });
+
+  it("links no per-skill dependency off the Harness layout or a release tag", async () => {
+    const page = async () => ({ kind: "link", url: HARNESS }) as const;
+    for (const fs of [legacyRepo("main"), legacyRepo("v0.2.0", "skills/tdd")]) {
+      const result = await read(fs, page);
+      expect(result).toMatchObject({ primitives: [{ name: "tdd" }] });
+      expect(result).not.toHaveProperty("primitives.0.github");
+    }
+  });
+
+  it("reads a per-skill dependency as unknown when the Harness origin read failed", async () => {
+    const result = await read(legacyRepo("v0.2.0"), async () => {
+      throw new Error("git unavailable");
+    });
+    expect(result).toMatchObject({
+      primitives: [{ name: "tdd", github: { kind: "unknown" } }],
+    });
+  });
+
+  it("links a global tool's per-skill dependency the same way", async () => {
+    const reader = new GlobalDeployStateReader({
+      fs: new InMemoryFileSystem({
+        files: { [GLOBAL_LOCKFILE]: lockfile(legacyAt("v0.2.0")) },
+      }),
+      toolPresence: fakePresence(["claude"]),
+      treeRoot: () => "/home",
+      harnessPage: async () => ({ kind: "link", url: HARNESS }),
+    });
+    await expect(reader.readGlobal(GLOBAL_ROOT)).resolves.toMatchObject({
+      tools: [
+        {
+          tool: "claude",
+          primitives: [
+            {
+              name: "tdd",
+              github: {
+                kind: "link",
+                url: `${HARNESS}/tree/v0.2.0/.apm/skills/tdd`,
+              },
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("links a global tool's skills and release the same way", async () => {
+    const fs = new InMemoryFileSystem({
+      files: {
+        [GLOBAL_LOCKFILE]: lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])),
+        ...onDisk("/home", files),
+      },
+    });
+    const reader = new GlobalDeployStateReader({
+      fs,
+      toolPresence: fakePresence(["claude"]),
+      treeRoot: () => "/home",
+      harnessPage: async () => ({ kind: "link", url: HARNESS }),
+    });
+    await expect(reader.readGlobal(GLOBAL_ROOT)).resolves.toMatchObject({
+      tools: [
+        {
+          tool: "claude",
+          primitives: [
+            {
+              name: "tdd",
+              github: {
+                kind: "link",
+                url: `${HARNESS}/tree/v0.3.2/.apm/skills/tdd`,
+              },
+            },
+          ],
+          releaseGitHub: {
+            kind: "link",
+            url: `${HARNESS}/releases/tag/v0.3.2`,
+          },
+        },
+      ],
+    });
+  });
+});

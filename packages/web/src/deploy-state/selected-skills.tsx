@@ -4,7 +4,12 @@ import {
   driftViewModel,
   lagsPin,
 } from "../drift/drift-view-model";
+import { GitHubMarkLink } from "../ui/github-mark-link";
 import { SubListRow } from "../ui/sub-list-row";
+import {
+  HARNESS_ORIGIN_NOT_READ,
+  VIEW_SKILL_ON_GITHUB,
+} from "./deploy-state-copy";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
 import { RemoveSkillFlow } from "./remove-skill-flow";
 import { skillMark } from "./skill-mark";
@@ -73,7 +78,23 @@ export function SelectedSkills({
                   : primitive.version
               }
               menuLabel={`Actions for ${primitive.name}`}
+              link={
+                <GitHubMarkLink
+                  page={primitive.github}
+                  name={primitive.name}
+                  unknownCause={HARNESS_ORIGIN_NOT_READ}
+                />
+              }
               items={[
+                // The link cell is mouse only; this is the keyboard's way.
+                ...(primitive.github?.kind === "link"
+                  ? [
+                      {
+                        label: VIEW_SKILL_ON_GITHUB,
+                        href: primitive.github.url,
+                      },
+                    ]
+                  : []),
                 {
                   label: "Remove skill",
                   danger: true,

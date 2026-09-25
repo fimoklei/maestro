@@ -1,5 +1,6 @@
 import type {
   DeployedPrimitive,
+  GitHubPage,
   PendingOperation,
   PinnedPerSkill,
   ReleaseHead,
@@ -10,6 +11,7 @@ import { requestJson } from "../api/http";
 
 export type {
   DeployedPrimitive,
+  GitHubPage,
   PendingOperation,
   PinnedPerSkill,
   ReleaseHead,
@@ -23,6 +25,10 @@ type DeployStateResponse = {
   pinnedPerSkill?: PinnedPerSkill;
   extraFiles?: number;
   pendingOperation?: PendingOperation;
+  // Absent where the repository has no page on GitHub (#1180).
+  github?: GitHubPage;
+  // Absent where the release has no page on GitHub (#1181).
+  releaseGitHub?: GitHubPage;
 };
 
 // Shared so every reader uses the same key and fetch; diverging would make two

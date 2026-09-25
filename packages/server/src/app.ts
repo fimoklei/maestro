@@ -42,6 +42,7 @@ import {
   RestoreSkill,
   RetryTargetOperation,
   readConfiguredGitOriginUrl,
+  readGitHubPage,
   readGitOriginUrl,
   releasedSkillsFromGit,
   resolveApmGlobalRoot,
@@ -141,6 +142,12 @@ function realDeps(): AppDeps {
     // Read per request, not captured at construction: the retry use-case is
     // built further down, and the record it reads changes with every write.
     operations: { pending: (target) => retryOperation.pending(target) },
+    githubPage: readGitHubPage,
+    // What a target's release and skills link to (#1181).
+    harnessPage: async () => {
+      const root = await harnessRoot();
+      return root === undefined ? null : await readGitHubPage(root);
+    },
   });
   // A scratch dir under MAESTRO_HOME, so apm's .gitignore edit never lands in a real repo.
   const apm = new ApmCliDriver({

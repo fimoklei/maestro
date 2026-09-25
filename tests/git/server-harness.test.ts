@@ -162,6 +162,10 @@ describe("harness HTTP routes", { timeout: 30_000 }, () => {
 
     await expect(readHarness(app)).resolves.toMatchObject({
       origin: "github.com/fimoklei/agent-harness",
+      github: {
+        kind: "link",
+        url: "https://github.com/fimoklei/agent-harness",
+      },
       releasedVersion: "v0.1.0",
       defaultBranch: "main",
       releaseState: "released",

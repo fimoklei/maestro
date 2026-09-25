@@ -654,6 +654,42 @@ describe("Harness home base", () => {
     ).toBeInTheDocument();
   });
 
+  it("links the Origin fact to the Harness repository on GitHub", async () => {
+    stubHarnessServer({
+      read: {
+        body: {
+          ...RELEASED,
+          github: {
+            kind: "link",
+            url: "https://github.com/fimoklei/agent-harness",
+          },
+        },
+      },
+    });
+    renderHarness();
+
+    const link = within(await band2()).getByRole("link", {
+      name: "github.com/fimoklei/agent-harness on GitHub",
+    });
+    expect(link).toHaveAttribute(
+      "href",
+      "https://github.com/fimoklei/agent-harness",
+    );
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).not.toHaveAttribute("tabindex");
+  });
+
+  it("keeps the Origin fact plain text where it has no GitHub page", async () => {
+    stubHarnessServer({ read: { body: RELEASED } });
+    renderHarness();
+
+    const band = await band2();
+    expect(
+      within(band).getByText("github.com/fimoklei/agent-harness"),
+    ).toBeInTheDocument();
+    expect(within(band).queryByRole("link")).not.toBeInTheDocument();
+  });
+
   it("names the requested reviewers, uncapped", async () => {
     stubHarnessServer({
       read: {

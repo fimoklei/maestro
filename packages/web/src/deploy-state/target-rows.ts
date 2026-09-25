@@ -31,6 +31,7 @@ import { toolNameList } from "./tool-labels";
 import { toolPresentation } from "./tool-presentation";
 import type {
   DeployedPrimitive,
+  GitHubPage,
   PendingOperation,
   PinnedPerSkill,
   ReleaseHead,
@@ -65,6 +66,10 @@ export type TargetRow = {
   readFailed: boolean;
   /** A newer release exists and nothing unfinished stands before it. */
   behind: boolean;
+  /** A repository's own GitHub page; absent for Global and where none exists. */
+  github?: GitHubPage;
+  /** The Release fact's page on GitHub; absent where none exists. */
+  releaseGitHub?: GitHubPage;
 };
 
 // A row's id, which another screen names to open that row's pane.
@@ -139,6 +144,7 @@ export function globalRows(
       }),
       skills: group.primitives.length,
       ...(group.releaseHead ? { head: group.releaseHead } : {}),
+      ...(group.releaseGitHub ? { releaseGitHub: group.releaseGitHub } : {}),
       ...(group.pinnedPerSkill ? { pinned: group.pinnedPerSkill } : {}),
       ...(pending ? { pending } : {}),
       primitives: group.primitives,
@@ -164,6 +170,8 @@ type RepoRead = {
         pinnedPerSkill?: PinnedPerSkill;
         extraFiles?: number;
         pendingOperation?: PendingOperation;
+        github?: GitHubPage;
+        releaseGitHub?: GitHubPage;
       }
     | undefined;
   isError: boolean;
@@ -210,6 +218,8 @@ export function repoRow(
     ...(data?.extraFiles === undefined ? {} : { extraFiles: data.extraFiles }),
     readFailed: read.isError,
     behind,
+    ...(data?.github ? { github: data.github } : {}),
+    ...(data?.releaseGitHub ? { releaseGitHub: data.releaseGitHub } : {}),
   };
 }
 

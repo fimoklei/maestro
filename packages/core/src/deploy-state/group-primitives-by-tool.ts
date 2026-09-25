@@ -2,6 +2,7 @@
 // copies in deployed_files, so an entry is attributed per prefix found there.
 import { DEPLOY_TOOLS, type SupportedTool } from "../deploy/deploy-tools";
 import type { GitOrigin } from "../deploy/git-origin";
+import type { GitHubPage } from "../git/github-page";
 import { type LockfileEntry, readPackage } from "../lockfile/lockfile";
 import {
   type DeployedPrimitive,
@@ -10,6 +11,7 @@ import {
   type SkippedEntry,
   skippedFromReading,
 } from "./deploy-state-types";
+import { harnessPages, perSkillPage } from "./harness-pages";
 import { harnessSkillPin, type SkillPin, tallyPins } from "./pinned-per-skill";
 import {
   countExtraRootPackageFiles,
@@ -22,6 +24,8 @@ export type ToolDeployState = {
   releaseHead?: ReleaseHead;
   pinnedPerSkill?: PinnedPerSkill;
   extraFiles?: number;
+  // The release's page in the connected Harness; absent where nothing links.
+  releaseGitHub?: GitHubPage;
 };
 
 const SKILLS_DIR_PREFIX = new Map<SupportedTool, string>(
@@ -34,6 +38,8 @@ export async function groupPrimitivesByTool(
   deps: {
     fileExists: (path: string) => Promise<boolean>;
     origin?: GitOrigin | null;
+    // The connected Harness's page, read only once an entry could link to it.
+    harnessPage?: () => Promise<GitHubPage | null>;
   },
 ): Promise<{
   tools: ToolDeployState[];
@@ -62,6 +68,7 @@ export async function groupPrimitivesByTool(
         continue;
       }
       release = entry.resolved_ref;
+      const pages = harnessPages(entry, (await deps.harnessPage?.()) ?? null);
       const deployed = await deployedRootPackageSkills(
         entry,
         tools.map((group) => SKILLS_DIR_PREFIX.get(group.tool) ?? ""),
@@ -76,12 +83,17 @@ export async function groupPrimitivesByTool(
         if (extra > 0) {
           group.extraFiles = extra;
         }
+        if (pages !== undefined) {
+          group.releaseGitHub = pages.release;
+        }
         for (const skill of deployed) {
           if (skill.prefix === prefix) {
+            const github = pages?.skill(skill.name);
             group.primitives.push({
               type: "skill",
               name: skill.name,
               version: entry.resolved_ref,
+              ...(github === undefined ? {} : { github }),
             });
           }
         }
@@ -93,6 +105,11 @@ export async function groupPrimitivesByTool(
       continue;
     }
     const pin = harnessSkillPin(entry, deps.origin ?? null);
+    const github = perSkillPage(
+      entry,
+      reading.name,
+      (await deps.harnessPage?.()) ?? null,
+    );
     let claimed = false;
     for (const group of tools) {
       const prefix = SKILLS_DIR_PREFIX.get(group.tool);
@@ -102,6 +119,7 @@ export async function groupPrimitivesByTool(
           type: "skill",
           name: reading.name,
           version: entry.resolved_ref,
+          ...(github === undefined ? {} : { github }),
         });
         if (pin !== null) {
           pins.get(group.tool)?.push(pin);
