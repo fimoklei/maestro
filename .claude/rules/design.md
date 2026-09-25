@@ -3,7 +3,7 @@
 ## Sources
 
 - **Design system** — `.impeccable/design.json` (ADR-0033), managed via `/impeccable`. Chain: `design.json` → `packages/web/src/styles/tokens.css` (ships) → `DESIGN.md` (regenerated, never hand-edited). On token conflict, `design.json` wins.
-- **Flow screens** — Claude Design, via `DesignSync` (`list_projects`, `get_file`), read live by default. A static export under `docs/design/` is frozen; re-fetch via DesignSync for current state.
+- **Flow screens** — Claude Design, via `DesignSync` (`list_projects`, `get_file`), read live by default.
 
 Never take design values (colour, size, spacing) from a flow screen; build from the tokens.
 
