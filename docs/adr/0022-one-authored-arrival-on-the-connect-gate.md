@@ -65,7 +65,7 @@ surface keeps the ban unchanged.**
   narrower and still checkable: **two motions, each named, each owned by one
   file.** A third needs an ADR.
 - The gate is now the one screen where a jsdom test proves nothing. Its motion
-  is verified by a browser screenshot, per `.claude/rules/design.md`.
+  is verified by a browser screenshot.
 
 ## Rejected alternatives
 
