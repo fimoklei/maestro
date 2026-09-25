@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GitHubLinkCell } from "./github-link-cell";
-import { GITHUB_COLUMN, viewOnGitHub } from "./github-link-copy";
+import { factOnGitHub, GITHUB_COLUMN, viewOnGitHub } from "./github-link-copy";
 
 const CAUSE = "The origin of this repository could not be read.";
 
@@ -13,6 +13,13 @@ describe("GitHub link copy", () => {
   it("names the column and the link", () => {
     expect(GITHUB_COLUMN).toBe("GitHub");
     expect(viewOnGitHub("maestro")).toBe("View maestro on GitHub");
+  });
+
+  // #1182: a fact's value is the link, so its name starts with that value.
+  it("names a fact's link by its value", () => {
+    expect(factOnGitHub("fimoklei/agent-harness")).toBe(
+      "fimoklei/agent-harness on GitHub",
+    );
   });
 });
 

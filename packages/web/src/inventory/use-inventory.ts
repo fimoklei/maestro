@@ -1,4 +1,5 @@
 // Server-state hook for the central inventory (frontend.md — no fetch-in-effect).
+import type { GitHubPage } from "@maestro/core";
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 
@@ -27,6 +28,7 @@ export function useInventory({ enabled = true }: { enabled?: boolean } = {}) {
 type InventoryConfigResponse = {
   inventoryPath: string | null;
   githubRepository: string | null;
+  github?: GitHubPage;
 };
 
 // Exported so the connect mutation invalidates it after a re-point.

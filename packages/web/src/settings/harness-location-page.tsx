@@ -1,3 +1,4 @@
+import type { GitHubPage } from "@maestro/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { HARNESS_QUERIES, useHarness } from "../harness/use-harness";
 import {
@@ -81,11 +82,21 @@ export function HarnessLocationPage() {
   const github = config.data?.githubRepository ?? null;
 
   // Placeholder bars while a read runs, then the facts it read.
-  const fact = (name: string, value: string, machine = true) =>
+  const fact = (
+    name: string,
+    value: string,
+    machine = true,
+    github?: GitHubPage,
+  ) =>
     skeleton.visible ? (
       <SettingsRow name={name} control={<Skeleton className="w-40" />} />
     ) : (
-      <SettingsRow name={name} value={value} machine={machine} />
+      <SettingsRow
+        name={name}
+        value={value}
+        machine={machine}
+        github={github}
+      />
     );
 
   return (
@@ -105,7 +116,9 @@ export function HarnessLocationPage() {
         }
       >
         {fact(LOCAL_CLONE, path ?? NOT_READ_YET, path !== null)}
-        {fact(GITHUB_REPOSITORY, github ?? GITHUB_NOT_READ, github !== null)}
+        {github === null
+          ? fact(GITHUB_REPOSITORY, GITHUB_NOT_READ, false)
+          : fact(GITHUB_REPOSITORY, github, true, config.data?.github)}
         {fact(LATEST_RELEASE, release)}
       </SettingsSection>
       <SettingsSection title={LOCATION}>

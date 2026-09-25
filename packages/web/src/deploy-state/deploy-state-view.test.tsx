@@ -598,7 +598,7 @@ describe("Deploy-state — rows and their menu", () => {
       await screen.findByRole("menuitem", { name: "Deploy skill" }),
     );
 
-    expect(screen.getByText("inventory view")).toBeInTheDocument();
+    expect(await screen.findByText("inventory view")).toBeInTheDocument();
   });
 
   it("keeps rows free of buttons other than the ⋮ menu", async () => {

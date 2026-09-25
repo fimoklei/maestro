@@ -193,6 +193,10 @@ describe("inventory HTTP route", () => {
     expect(await res.json()).toEqual({
       inventoryPath: await nodeRealpath(dir),
       githubRepository: "fimoklei/agent-harness",
+      github: {
+        kind: "link",
+        url: "https://github.com/fimoklei/agent-harness",
+      },
     });
   });
 

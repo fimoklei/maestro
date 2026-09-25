@@ -1,5 +1,7 @@
+import type { GitHubPage } from "@maestro/core";
 import type { ReactNode } from "react";
 import { cn } from "../ui/cn";
+import { GitHubFactLink } from "../ui/github-fact-link";
 
 // One row of a Settings section (#995): the name and at most one sentence
 // left, a value or one control right. The row wraps, so the right side drops
@@ -11,6 +13,8 @@ export interface SettingsRowProps {
   description?: string;
   /** Truncated, with the whole value on hover. */
   value?: string;
+  /** Links the value to its GitHub page. */
+  github?: GitHubPage;
   /** False for a plain word, which Geist Mono never sets (design.md). */
   machine?: boolean;
   control?: ReactNode;
@@ -23,6 +27,7 @@ export function SettingsRow({
   nameId,
   description,
   value,
+  github,
   machine = true,
   control,
 }: SettingsRowProps) {
@@ -44,7 +49,7 @@ export function SettingsRow({
             machine ? "font-mono text-meta" : "font-ui text-row",
           )}
         >
-          {value}
+          <GitHubFactLink page={github} value={value} />
         </span>
       )}
       {control}

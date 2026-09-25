@@ -1,3 +1,4 @@
+import type { GitHubPage } from "@maestro/core";
 import { MemoryRouter } from "react-router";
 import { vi } from "vitest";
 import { jsonResponse, renderWithQuery } from "../test-utils";
@@ -28,6 +29,7 @@ type Answer = Response | Promise<Response>;
 export type FakeServer = {
   inventoryPath?: string;
   githubRepository?: string | null;
+  github?: GitHubPage;
   /** Called per read, so a re-read can see another answer. */
   primitives?: () => Answer;
   /** The connect answer for the path sent; by default it connects it. */
@@ -58,6 +60,7 @@ export function stubServer(state: FakeServer = {}) {
             state.githubRepository === undefined
               ? "fimoklei/agent-harness"
               : state.githubRepository,
+          github: state.github,
         });
       }
       if (url === "/api/inventory/primitives") {

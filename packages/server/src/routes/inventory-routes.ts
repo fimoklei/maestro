@@ -2,6 +2,7 @@ import type { Hono } from "hono";
 import type { AppDeps } from "../app-deps";
 import { countPrimitives } from "../count-primitives";
 import { connectErrorResponses } from "../error-responses";
+import { githubPageField } from "../github-page-response";
 import { connectBodySchema, PATH_BODY, parseBody } from "../request-bodies";
 
 type Deps = Pick<AppDeps, "inventory" | "connect">;
@@ -25,7 +26,8 @@ export function registerInventoryRoutes(app: Hono, deps: Deps) {
   // A GET, so it bypasses the Origin/Host guard — returning the user's own
   // configured path is intentional, not an attacker probe.
   app.get("/api/inventory/config", async (c) => {
-    return c.json(await deps.inventory.configuredLocation());
+    const { github, ...location } = await deps.inventory.configuredLocation();
+    return c.json({ ...location, ...githubPageField(github) });
   });
 
   // Connect: a pasted path is persisted offline; a GitHub URL is cloned to a

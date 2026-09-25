@@ -1,3 +1,4 @@
+import type { GitHubPage } from "@maestro/core";
 import { FolderGit2, FolderInput, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRereadInventory } from "../shell/use-reread-inventory";
@@ -5,6 +6,7 @@ import { Button } from "../ui/button";
 import { DataTable } from "../ui/data-table";
 import { DetailPaneSlot } from "../ui/detail-pane";
 import { EmptyState } from "../ui/empty-state";
+import { GitHubFactLink } from "../ui/github-fact-link";
 import { IconButton } from "../ui/icon-button";
 import { Notice } from "../ui/notice";
 import { Panel } from "../ui/panel";
@@ -217,7 +219,12 @@ export function HarnessView() {
     <>
       {state === undefined ? null : (
         <dl className="m-0 flex min-w-0 items-center gap-panel text-row">
-          <BandFact label="Origin" value={state.origin} yields />
+          <BandFact
+            label="Origin"
+            value={state.origin}
+            github={state.github}
+            yields
+          />
           <BandFact
             label="Released"
             value={state.releasedVersion ?? "None yet"}
@@ -421,9 +428,12 @@ function BandFact({
   value,
   machine = true,
   yields = false,
+  github,
 }: {
   label: string;
   value: string;
+  /** Links the value to its GitHub page. */
+  github?: GitHubPage;
   /** False for a plain word such as None yet, which Geist Mono never sets. */
   machine?: boolean;
   yields?: boolean;
@@ -445,7 +455,7 @@ function BandFact({
             : "m-0 truncate text-gray-12"
         }
       >
-        {value}
+        <GitHubFactLink page={github} value={value} />
       </dd>
     </div>
   );
