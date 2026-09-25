@@ -4,6 +4,7 @@ import { targetLabel } from "../shell/target-label";
 import type { StatusReading } from "../ui/status-reading";
 import {
   GLOBAL,
+  localEditsLine,
   otherOriginLine,
   REPO_NOT_READ,
   REPOSITORIES,
@@ -79,6 +80,11 @@ export const isBehind = (
   head.latestRelease !== head.release &&
   pending === undefined;
 
+const editedSkills = (primitives: readonly DeployedPrimitive[]) =>
+  primitives
+    .filter((primitive) => primitive.copy === "local-edits")
+    .map((primitive) => primitive.name);
+
 // One lockfile and one release for every detected tool, so any tool reading
 // behind puts every tool row behind (#951).
 export const isGlobalBehind = (
@@ -129,6 +135,7 @@ export function globalRows(
         pinnedPerSkill: group.pinnedPerSkill !== undefined,
         behind,
         mixedReleases: pending?.kind === "update",
+        localEdits: !readFailed && editedSkills(group.primitives).length > 0,
       }),
       skills: group.primitives.length,
       ...(group.releaseHead ? { head: group.releaseHead } : {}),
@@ -189,6 +196,8 @@ export function repoRow(
       pinnedPerSkill: pinned !== undefined,
       behind,
       mixedReleases: pending?.kind === "update",
+      localEdits:
+        !read.isError && editedSkills(data?.primitives ?? []).length > 0,
     }),
     skills: data === undefined ? null : data.primitives.length,
     ...(head ? { head } : {}),
@@ -209,10 +218,13 @@ export function statusSummary(row: TargetRow, now: Date): string[] {
     return [REPO_NOT_READ.label];
   }
   const lines: string[] = [];
+  // An unfinished operation's notice stays the card's heading.
   if (row.pending) {
     const notice = unfinishedOperationNotice(row.pending, row.primitives);
     lines.push(notice.label, notice.message);
   }
+  const edited = editedSkills(row.primitives);
+  if (edited.length > 0) lines.push(localEditsLine(edited));
   if (row.pinned) {
     lines.push(pinnedTagsLine(row.pinned), RELEASE_NOT_ADOPTED);
   }

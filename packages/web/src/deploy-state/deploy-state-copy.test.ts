@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   GLOBAL_NOT_READ,
+  localEditsLine,
   NO_FILTER_MATCH,
   NO_LONGER_RELEASED_HINT,
   NO_TOOL_DETECTED,
@@ -79,6 +80,17 @@ describe("Deploy-state copy", () => {
     );
     expect(UNREACHED_HINT).toBe(
       "Could not reach the Harness location to check for updates",
+    );
+  });
+
+  it("names every skill with local edits in one sentence", () => {
+    expect(localEditsLine(["tdd"])).toBe("1 skill has local edits: tdd.");
+    expect(localEditsLine(["tdd", "grill", "review"])).toBe(
+      "3 skills have local edits: tdd, grill and review.",
+    );
+    const long = "write-a-very-long-skill-name-that-keeps-going-on-and-on";
+    expect(localEditsLine([long, "tdd"])).toBe(
+      `2 skills have local edits: ${long} and tdd.`,
     );
   });
 });
