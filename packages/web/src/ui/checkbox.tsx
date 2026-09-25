@@ -3,9 +3,7 @@ import { Check, Minus } from "lucide-react";
 import type { ComponentProps } from "react";
 import { cn } from "./cn";
 
-// shadcn/ui's checkbox on Radix, restyled to the tokens (ADR-0033). Checked
-// takes the primary pair, gray 1 on gray 12: white on blue 9 is not a
-// documented pair; the selected row carries the blue.
+// Checked is gray 1 on gray 12: white on blue 9 is not a documented pair.
 
 export function Checkbox({
   className,

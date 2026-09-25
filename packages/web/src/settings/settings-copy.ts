@@ -1,8 +1,5 @@
 import type { ConnectInventoryError } from "@maestro/core";
 
-// The words of Settings and its Harness location page (#995). Control and
-// page names come from CONTEXT.md.
-
 export const SETTINGS = "Settings";
 export const BACK_TO_APP = "Back to app";
 /** A sidebar group heading, not a page name. */
@@ -19,7 +16,7 @@ export const CHANGE_LOCATION = "Change Harness location";
 export const CHANGE_LOCATION_SENTENCE =
   "Point Maestro at another local Harness clone.";
 
-// The dialog: title and confirm share the verb Set (copy.md → Dialog).
+// The dialog: title and confirm share the verb Set.
 export const SET_LOCATION = "Set Harness location";
 export const FOLDER_LABEL = "Folder path";
 export const FOLDER_HINT = "Must be a local Harness clone.";
@@ -40,7 +37,7 @@ export function setLocationMessage(code: string | null): string | undefined {
   ];
 }
 
-// The Appearance page (#996). The setting and its values come from CONTEXT.md.
+// The Appearance page (#996).
 export const THEME = "Theme";
 export const INTERFACE_THEME = "Interface theme";
 export const INTERFACE_THEME_SENTENCE =

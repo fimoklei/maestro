@@ -19,8 +19,6 @@ import {
   staleStatusNotice,
 } from "./notice-copy";
 
-// The finished notice as data: level, heading, sentence, detail (ADR-0025 §10
-// rejected a copy linter, so nothing here asserts capitalisation or length).
 type Case = [code: string, expected: NoticeContent];
 
 const notice = (
@@ -688,8 +686,8 @@ const suites: [
       message:
         "The Maestro server did not answer, and GitHub is as it was. Start the change again.",
     },
-    // Every way through names a control the reader can see: the three actions
-    // share one table, so no row may name one action's button (copy.md).
+    // The three actions share one table, so no row may name one action's
+    // button.
     [
       ["not-configured", NOT_CONFIGURED],
       ["invalid-skill", UNUSABLE_NAME],
@@ -1010,7 +1008,6 @@ describe("stageReadNotice", () => {
 
 describe("the deletion vocabulary", () => {
   it("never calls a Harness deletion a removal", () => {
-    // Remove belongs to deployed copies alone (CONTEXT.md · Screen names).
     const codes = [
       "not-configured",
       "no-usable-origin",

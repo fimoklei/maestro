@@ -30,8 +30,6 @@ describe("requestJson", () => {
     expect(caught?.message).toBe("Path must be an absolute path.");
   });
 
-  // Some failures carry a payload beyond a code and a sentence — a removal's
-  // per-target outcome, say. It rides along raw; reading it is the caller's.
   it("keeps the whole error body, not just its message and code", async () => {
     vi.stubGlobal(
       "fetch",

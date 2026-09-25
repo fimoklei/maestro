@@ -1,7 +1,7 @@
 import { toolDisplayName } from "../deploy-state/tool-labels";
 
-// #134, ADR-0011. undefined = not yet loaded/unreadable → plain "Global",
-// never claim a tool set we can't prove. Empty = zero detected tools.
+// undefined = not loaded or unreadable → plain "Global"; empty = zero detected
+// tools (#134).
 export function globalOptionLabel(
   tools: readonly string[] | undefined,
 ): string {

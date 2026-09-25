@@ -1,9 +1,7 @@
 // Adapted from Spectrum UI (Apache-2.0)
 import { cn } from "./cn";
 
-// One placeholder bar in a skeleton row. It pulses on the loop token and
-// stands still under reduced motion (ADR-0033 §8); decorative, since the
-// status region already says a read is running.
+// Decorative: the status region already says a read is running.
 export function Skeleton({
   className,
   style,

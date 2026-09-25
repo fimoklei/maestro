@@ -81,8 +81,6 @@ describe("RestoreDialog", () => {
   it("reads as pending while the restore runs", () => {
     renderDialog({ restoring: true });
 
-    // The write's own control stays focusable and states why (ADR-0033 §8);
-    // Cancel is disabled, because closing is what must not happen mid-run.
     expect(screen.getByRole("button", { name: "Restoring…" })).toHaveAttribute(
       "aria-disabled",
       "true",

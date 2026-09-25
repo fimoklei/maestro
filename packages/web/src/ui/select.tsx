@@ -3,15 +3,13 @@ import { Check, ChevronDown } from "lucide-react";
 import { cn } from "./cn";
 import { HOVER_TRANSITION } from "./hover-transition";
 
-// shadcn's select on Radix Select (ADR-0004), restyled to the tokens.
-
 export interface SelectOption {
   value: string;
   label: string;
 }
 
 export interface SelectProps {
-  /** The id of the visible label that names this control (design.md). */
+  /** The id of the visible label that names this control. */
   labelledBy: string;
   value: string;
   options: readonly SelectOption[];

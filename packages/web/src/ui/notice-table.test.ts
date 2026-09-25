@@ -26,8 +26,6 @@ describe("noticeFromTable", () => {
     expect(notice?.message).toBe("Give the file a name, then save it again.");
   });
 
-  // The sentence is the row's or the caller's fallback — never the error's, so
-  // `Request failed with status 422.` cannot reach the screen (ADR-0025).
   it("never reads the sentence off the error", () => {
     const notice = noticeFromTable(
       headings,
@@ -42,8 +40,6 @@ describe("noticeFromTable", () => {
     });
   });
 
-  // The one sentence the server writes (ADR-0025 §8). Every builder routes it
-  // through `requestShapeNotice`, so no table needs a row for it.
   it("hands a request-shape refusal to the shared path", () => {
     const notice = noticeFromTable(
       headings,

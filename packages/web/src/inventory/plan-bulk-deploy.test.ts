@@ -4,9 +4,8 @@ import type { ReadDriftEntry } from "../drift/use-drift";
 import type { DeploymentTarget } from "./deployed-rollup";
 import { planBulkDeploy } from "./plan-bulk-deploy";
 
-// One target: confirmed-ready deployed set + drift check listing behind
-// skills. A repo target is always alone; global is one per detected tool
-// (mirrors use-deployment-targets.ts), since apm tracks installs separately (#292).
+// One target: a confirmed-ready deployed set + drift listing behind skills.
+// Global is one target per detected tool, since apm tracks installs separately.
 function target(
   label: string,
   names: string[],
@@ -23,8 +22,7 @@ function target(
 
 describe("planBulkDeploy", () => {
   // The Release head answers first (#956): a skill the newest release changed
-  // is never "Already up to date", whatever the per-skill drift says. The
-  // Inventory pane's single deploy runs through this plan now (#1065).
+  // is never "Already up to date", whatever the per-skill drift says.
   it("never skips a skill the newest release changed as clean", () => {
     const onRelease = (changedSkills: string[]): DeploymentTarget => ({
       ...target("Claude Code", ["tdd"], []),
@@ -49,8 +47,8 @@ describe("planBulkDeploy", () => {
     });
   });
 
-  // ADR-0027 §6: the pin still lags, so the skill is not clean. A bulk run
-  // deploys it at the target's own release and never claims it moved (#956).
+  // The pin still lags, so the skill is not clean. A bulk run deploys it at the
+  // target's own release and never claims it moved (#956).
   it("deploys a skill that only lags a tag", () => {
     const targets = [
       target(
@@ -204,8 +202,8 @@ describe("planBulkDeploy", () => {
     expect(plan.skippedClean).toEqual([]);
   });
 
-  // A bulk run never moves a target's release (ADR-0031, #956), so no plan
-  // entry may read as an update to the latest one.
+  // A bulk run never moves a target's release (#956), so no plan entry reads as
+  // an update.
   it("plans nothing but names to deploy and names already clean", () => {
     const plan = planBulkDeploy(
       ["tdd", "review"],

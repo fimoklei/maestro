@@ -2,9 +2,7 @@ import { createDataTableColumns, DataTable } from "../ui/data-table";
 import { MachineValue } from "../ui/machine-value";
 import type { PendingSkillMovement, SkillMovementKind } from "./use-harness";
 
-// What a release would carry, and who moved it (ADR-0021): one table, a group
-// per kind of movement in the order an author reads them. "Deleted", never
-// "Removed": remove belongs to deployed copies alone (CONTEXT.md).
+// "Deleted", never "Removed": remove belongs to deployed copies alone.
 const KINDS: Record<SkillMovementKind, string> = {
   added: "Added",
   changed: "Changed",

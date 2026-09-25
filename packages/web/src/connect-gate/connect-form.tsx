@@ -11,9 +11,8 @@ export const CLONE_LABEL = "Folder for the Harness";
 const CLONE_HINT =
   "The Harness is cloned into a new folder here, named after the repository. Nothing already in this folder is renamed, moved or deleted.";
 
-// The connect gate's card (#995, #1013): one field for a path or a GitHub URL,
-// and for a URL the folder it is cloned into. Each field owns the one notice
-// slot under it. Presentational: `ConnectFlow` owns the mutations.
+// Each field owns the one notice slot under it (#1013); `ConnectFlow` owns the
+// mutations.
 export type ConnectFormProps = {
   path: string;
   onPathChange: (path: string) => void;
@@ -53,8 +52,7 @@ export function ConnectForm({
   const cloneNoticeId = useId();
   const pathRef = useRef<HTMLInputElement>(null);
   const cloneRef = useRef<HTMLInputElement>(null);
-  // Only a URL is cloned, so only a URL has a destination. The server
-  // classifies the input again and stays the authority on both.
+  // Only a URL has a destination; the server classifies the input again.
   const cloneChild = previewCloneChild(path);
 
   // A refused submit hands focus back to the field to fix (#214). Keyed on
@@ -140,8 +138,7 @@ export function ConnectForm({
       )}
 
       {isPending ? (
-        // A clone has no honest percentage and nothing safe to cancel midway,
-        // so the wait is stated in words (#554).
+        // No honest percentage and nothing safe to cancel midway (#554).
         <p role="status" className="m-0 font-ui text-gray-11 text-meta">
           Connecting. A GitHub URL is cloned first, which can take a minute.
         </p>

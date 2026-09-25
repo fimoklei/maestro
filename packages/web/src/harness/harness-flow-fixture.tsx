@@ -37,8 +37,6 @@ export const withStages = (
   },
 });
 
-// One stub for both routes, so a test states what the read says and what the
-// refresh finds, and nothing else.
 export function stubHarnessServer(options: {
   read: {
     body: unknown;
@@ -64,48 +62,29 @@ export function stubHarnessServer(options: {
     status?: number;
     holds?: (Promise<void> | undefined)[];
   };
-  // A confirmed publish. `afterPublish` on either route is what that route
-  // answers once it has gone through, so a test can say which of the two the
-  // quiet state is painted from. `retry` answers every call after the first, so
-  // a refusal followed by a retry is one stub.
+  // `afterPublish` on either route is what it answers once a publish has gone
+  // through. `retry` answers every call after the first.
   publish?: {
     body: unknown;
     status?: number;
     retry?: { body: unknown; status?: number };
   };
-  // A promotion of one skill. `afterPromote` on the read is the picture the
-  // invalidated query then paints, so a test can state where the row moved to.
   promote?: { body: unknown; status?: number };
-  // Every promotion's parsed body, in order, so a test can state which skill
-  // the row action named.
   promotions?: Record<string, unknown>[];
-  // Publishing a deletion, and every confirmation's parsed body in order — so a
-  // test can state what the confirmation carried without reading it back off
-  // the screen. `retry` answers every call after the first.
+  // `retry` answers every call after the first.
   deletion?: {
     body: unknown;
     status?: number;
     retry?: { body: unknown; status?: number };
   };
   deletions?: Record<string, unknown>[];
-  // Deleting a skill that exists nowhere else, and every request's parsed body,
-  // so a test can state that no push route was taken instead (#798).
   localDeletion?: { body: unknown; status?: number };
   localDeletions?: Record<string, unknown>[];
-  // Putting a deleted folder back from the clone's last commit, and every
-  // request's parsed body, so a test can state which commit the confirmation
-  // was given against without reading it back off the screen (#915).
   restore?: { body: unknown; status?: number };
   restores?: Record<string, unknown>[];
-  // The three GitHub-side proposal mutations, and every one the browser sent,
-  // recorded with the route it took.
   proposal?: { body: unknown; status?: number };
   proposals?: { action: string; body: Record<string, unknown> }[];
-  // Every release confirmation's parsed body, in order, so a test can state
-  // what the browser sent without reading it back off the screen.
   confirmations?: Record<string, unknown>[];
-  // What the Inventory read answers, and what it answers once a release has
-  // gone through — the half of a publication that can fail on its own.
   inventory?: {
     body?: unknown;
     status?: number;
@@ -224,7 +203,7 @@ export function stubHarnessServer(options: {
         return jsonResponse(answer(refresh), refresh.status);
       }
       // Held by the test rather than by a timer, so the race is decided by
-      // hand and not by the clock (testing.md — deterministic).
+      // hand and not by the clock.
       await options.read.heldUntil;
       return jsonResponse(answer(options.read), options.read.status);
     }),
@@ -257,7 +236,6 @@ const isStageHeader = (row: HTMLElement) =>
   row.id === "" &&
   STAGE_TITLES.some((title) => (row.textContent ?? "").startsWith(title));
 
-// The group headers as they read: stage name, count, then the meta slot.
 export async function stageHeaders(): Promise<string[]> {
   return within(await harnessGrid())
     .getAllByRole("row")
@@ -273,7 +251,6 @@ export async function stageHeader(stage: string): Promise<HTMLElement> {
   return header;
 }
 
-// The rows under one stage's header, the group's message line included.
 export async function stageRows(stage: string): Promise<HTMLElement[]> {
   const rows: HTMLElement[] = [];
   let current: string | null = null;
@@ -291,7 +268,6 @@ export async function stageRows(stage: string): Promise<HTMLElement[]> {
   return rows;
 }
 
-// A row's detail pane, opened the way a pointer opens it: a click on the row.
 export async function openPane(skill: string, stage = "Pending proposal") {
   const row = (await stageRows(stage)).find(
     (each) => within(each).queryByText(skill) !== null,
@@ -301,9 +277,6 @@ export async function openPane(skill: string, stage = "Pending proposal") {
   return screen.findByRole("complementary", { name: `${skill} detail` });
 }
 
-// One skill waiting on disk, and the picture once it has been pushed: the row
-// moves because the harness read says so, never because the browser kept a
-// receipt of the press (#577).
 export const ON_DISK: HarnessState = {
   ...RELEASED,
   freshness: {
@@ -324,7 +297,6 @@ export const ON_DISK: HarnessState = {
   },
 };
 
-// Every action lives in the row menu now, so a press opens it first.
 export const openRowMenu = async (
   skill: string,
   stage = "Pending proposal",

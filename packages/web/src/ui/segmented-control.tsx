@@ -1,9 +1,6 @@
 import { cn } from "./cn";
 import { HOVER_TRANSITION } from "./hover-transition";
 
-// A row of buttons holding one choice (e.g. #288's type filter). Presentational
-// — caller owns the value. <fieldset>/<legend> name the group for assistive tech.
-
 export interface Segment<V extends string> {
   value: V;
   label: string;
@@ -41,7 +38,6 @@ export function SegmentedControl<V extends string>({
             className={cn(
               "cursor-pointer rounded-control border px-3 py-1 font-ui text-meta",
               HOVER_TRANSITION,
-              // Hover stays a step below the active surface (DESIGN.md § Navigation).
               active
                 ? "border-gray-7 bg-gray-4 text-gray-12"
                 : "border-transparent bg-transparent text-gray-11 hover:bg-gray-3 hover:text-gray-12",

@@ -1,5 +1,4 @@
-// Every busy label and done sentence the cockpit uses (#1026). One owner, not
-// one per feature: `Deploying…` is the Inventory's word and Deploy-state's.
+// Every busy label and done sentence the cockpit uses (#1026).
 
 export type ActionKey =
   | "deploy"
@@ -18,8 +17,6 @@ export type ActionKey =
   | "connect"
   | "setLocation";
 
-// `busy` is the verb of the control's own label with no object; `done` is the
-// word the status region ends on. Paired so neither can drift from the other.
 export const ACTIONS: Record<ActionKey, { busy: string; done: string }> = {
   deploy: { busy: "Deploying…", done: "Deployed" },
   update: { busy: "Updating…", done: "Updated" },

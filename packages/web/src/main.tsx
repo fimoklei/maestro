@@ -4,8 +4,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import { createQueryClient } from "./api/query-client";
-// The token layer (ADR-0033): Tailwind, the raw tokens, the self-hosted Geist
-// faces. index.html stamps data-theme on <html> before first paint.
+// The token layer; index.html stamps data-theme on <html> before first paint.
 import "./styles/theme.css";
 
 const root = document.getElementById("root");

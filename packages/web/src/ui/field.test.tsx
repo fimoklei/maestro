@@ -2,9 +2,6 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { Field } from "./field";
 
-// Label, hint, field, refusal — in that order, because a hint the reader meets
-// after the field arrives too late (ADR-0033 §6).
-
 describe("Field", () => {
   it("names the field with its visible label", () => {
     render(<Field label="Folder path" value="" onChange={() => {}} />);

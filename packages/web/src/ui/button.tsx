@@ -2,22 +2,15 @@ import type { ButtonHTMLAttributes } from "react";
 import { cn } from "./cn";
 import { HOVER_TRANSITION } from "./hover-transition";
 
-// The one action control (ADR-0033). The primary action is neutral, the
-// destructive one is outlined red, and no fill carries a status hue.
-
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "success" | "ghost" | "quiet" | "dashed" | "danger";
   /** `sm` is a control inside a row, the rest are the 32px control height. */
   size?: "sm" | "md" | "lg" | "icon";
-  /**
-   * A write is running in this control. Children become its busy label
-   * (`busy-copy.ts`); the control stays focusable so focus is never lost.
-   */
+  /** A write is running: children are its busy label; focus is never lost. */
   busy?: boolean;
 }
 
-// The one moving thing under reduced motion (ADR-0033 §8), so it carries no
-// motion-safe guard. aria-hidden: the label beside it already says "…ing".
+// The one thing that moves under reduced motion, so no motion-safe guard.
 function Spinner() {
   return (
     <svg
@@ -41,7 +34,7 @@ function Spinner() {
 }
 
 // enabled: keeps a disabled button inert. `success` shares the primary
-// treatment — a green fill would be a second coloured mark (ADR-0033 §2).
+// treatment: a green fill would be a second coloured mark.
 const variantClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
   primary:
     "text-gray-1 bg-gray-12 border-gray-12 enabled:hover:bg-gray-11 enabled:hover:border-gray-11",
@@ -85,8 +78,7 @@ export function Button({
         // (Notice's action, whose label is a sentence) takes precedence.
         /\bwhitespace-/.test(className ?? "") ? "" : "whitespace-nowrap",
         HOVER_TRANSITION,
-        // No outline utility here: the ring is one :focus-visible rule on blue
-        // 9 for every control (theme.css, ADR-0033 §2).
+        // No outline utility: the ring is one shared :focus-visible rule.
         "disabled:cursor-not-allowed disabled:border-gray-7 disabled:bg-gray-3 disabled:text-gray-11",
         "aria-disabled:cursor-not-allowed",
         variantClasses[variant],

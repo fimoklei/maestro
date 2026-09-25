@@ -6,15 +6,13 @@ import { Card } from "../ui/card";
 import { ConnectFlow } from "./connect-flow";
 import { ConnectSuccessView } from "./connect-success-view";
 
-// The connect gate's second screen (ADR-0015): shares ConnectFlow with
-// Settings' re-point (PRD #93), but lands on an explicit "Continue" so
-// the reassurance beat stays on screen long enough to read (ADR-0021).
+// Lands on an explicit "Continue" so the confirmation stays long enough to read.
 export function ConnectView() {
   const config = useInventoryConfig();
   const navigate = useNavigate();
   const [hasConnected, setHasConnected] = useState(false);
   // Keyed off this session's own connect, so a mid-flow success still shows
-  // its confirmation rather than being yanked to "/" (first-run-gate.tsx).
+  // its confirmation rather than being yanked to "/" by the first-run gate.
   const blocked =
     !hasConnected && (config.isPending || config.data?.inventoryPath);
 

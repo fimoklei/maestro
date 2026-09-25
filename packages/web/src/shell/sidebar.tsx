@@ -6,9 +6,7 @@ import { HarnessButton } from "./harness-button";
 import { SCREEN_GROUPS } from "./screens";
 import { useSidebarCounters } from "./use-sidebar-counters";
 
-// The sidebar (#991): the product mark, the Harness button and its menu, then
-// the screens. Two groups, because the two jobs are different: the first block
-// is what you deploy from, *Author* is the harness you write (ADR-0021, #516).
+// Two groups: what you deploy from, and *Author*, the harness you write (#516).
 
 export function Sidebar({ className }: { className?: string }) {
   const navigate = useNavigate();

@@ -1,5 +1,4 @@
-// Every word a target's Release, Status hover card and pane state (ADR-0025, copy.md). Pure and
-// clock-injected, so the read time is testable.
+// Every word a target's Release, Status hover card and pane state. Clock-injected.
 import { ago } from "../harness/harness-view-model";
 import {
   RETRY_UPDATE,
@@ -14,8 +13,6 @@ import type {
   ReleaseHead,
 } from "./use-deploy-state";
 
-// The meta block's first line. Null for a target on the latest release, whose
-// card says so instead (ON_LATEST_RELEASE).
 export function releaseSentence(head: ReleaseHead): string | null {
   if (head.latestRelease === null) {
     return head.changed === null ? "Changes could not be read." : null;
@@ -28,22 +25,16 @@ export function releaseSentence(head: ReleaseHead): string | null {
     : `Newer release ${head.latestRelease}: ${head.changed} of ${head.selected} skills changed`;
 }
 
-// The hover card's line where releaseSentence has none, and its next step on a
-// behind target: why the ⋮ menu offers or omits Update target (#1125).
 export const ON_LATEST_RELEASE = "On the latest release.";
 export const LATEST_RELEASE_UNKNOWN = "Latest release could not be read.";
 export const updateNextStep = (release: string): string =>
   `Select ${UPDATE_TARGET} to use release ${release}.`;
 
-// The meta block's second line: the fact, then when it was read (copy.md).
 export function comparedLine(head: ReleaseHead, now: Date): string {
   const since = head.comparedAt === null ? null : ago(head.comparedAt, now);
   return `Compared with the Harness, ${since === null ? "not read yet" : `read ${since}`}`;
 }
 
-// The meta line under a *Pinned per skill* chip: the release most of the target
-// sits on, then every tag that disagrees with it. Never a *Mixed releases*
-// sentence — nothing here is half-landed (ADR-0031).
 export function pinnedTagsLine(pinned: PinnedPerSkill): string {
   return pinned
     .map((group, index) => {
@@ -54,14 +45,9 @@ export function pinnedTagsLine(pinned: PinnedPerSkill): string {
     .join(", ");
 }
 
-// The meta block's second line under a *Pinned per skill* chip: the way to one
-// release, through the two controls that already live on the rows and in the
-// Inventory (#933, #962).
 export const RELEASE_NOT_ADOPTED =
   "Release not adopted. Select Remove skill for each, then Deploy skill.";
 
-// The control each unfinished operation offers, named for the operation that
-// stopped (copy.md). Shared with the sentences below, so label and step agree.
 export const RETRY_DEPLOY = "Retry deploy";
 export const RETRY_REMOVAL = "Retry removal";
 export const RETRY_LABELS: Record<PendingOperation["kind"], string> = {
@@ -70,17 +56,13 @@ export const RETRY_LABELS: Record<PendingOperation["kind"], string> = {
   update: RETRY_UPDATE,
 };
 
-// The three notices an unfinished operation carries. Warning, not error: the
-// files are in a state one control converges, and the action names the
-// operation that stopped (copy.md, #951, #954).
+// Warning, not error: one control converges the files.
 export function unfinishedOperationNotice(
   pending: {
     kind: "deploy" | "remove" | "update";
     release: string;
     desired?: readonly string[];
   },
-  // What the target holds now, so the update's detail can measure what landed
-  // rather than restate the intent (spec story 8).
   primitives: readonly DeployedPrimitive[] = [],
 ): { level: "warning"; label: string; message: string; detail?: string } {
   if (pending.kind === "update") {
@@ -115,13 +97,9 @@ export function unfinishedOperationNotice(
       };
 }
 
-// A fact to know, not an action to take: the Harness is skills-only, and a
-// deploy carries whatever else the release holds (ADR-0031 § Accepted limits).
 export const extraFilesFact = (count: number): string =>
   `${count} file${count === 1 ? "" : "s"}`;
 
-// The pane's Changed fact (#1065): what releaseSentence says, as a value.
-// Null where no newer release stands and the count was read.
 export function changedFact(head: ReleaseHead): string | null {
   if (head.changed === null) return "Could not be read";
   if (head.latestRelease === null || head.latestRelease === head.release) {
@@ -130,7 +108,6 @@ export function changedFact(head: ReleaseHead): string | null {
   return `${head.changed} of ${head.selected} skills`;
 }
 
-// The pane's Compared fact: when the comparison with the Harness was read.
 export function comparedFact(head: ReleaseHead, now: Date): string {
   const since = head.comparedAt === null ? null : ago(head.comparedAt, now);
   return since === null ? "Not read yet" : `Read ${since}`;

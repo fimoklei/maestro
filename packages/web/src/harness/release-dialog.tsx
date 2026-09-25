@@ -9,8 +9,8 @@ import { SegmentedControl } from "../ui/segmented-control";
 import { ReleaseDelta } from "./release-delta";
 import type { ReleasePlan, SemverStep, StructuralProblem } from "./use-harness";
 
-// Loading and error travel with the plan so the modal stays mounted — a focus
-// trap that unmounts between states loses the author's place (remove dialog).
+// Loading and error travel with the plan so the modal stays mounted: a focus
+// trap that unmounts between states loses the author's place.
 export type ReleasePlanLoad =
   | { kind: "loading" }
   | { kind: "error"; notice: NoticeContent }
@@ -30,10 +30,6 @@ const FINDING_TEXT: Record<StructuralProblem, string> = {
   "empty-description": "has an empty description.",
 };
 
-// The consequences-first release plan: what the tag would carry, the proposed
-// number and why, and the exact revision it points at, then the author's
-// chosen step and the action that tags it. Presentational — the host owns
-// both the plan query and the publish mutation.
 export function ReleaseDialog({
   origin,
   load,
@@ -50,8 +46,6 @@ export function ReleaseDialog({
   publishError: NoticeContent | null;
 }) {
   const heading = `Publish release for ${origin}`;
-  // `null` until the author overrides it; the proposal fills in until then, so
-  // one state serves both the display and what Publish sends.
   const [chosenStep, setChosenStep] = useState<SemverStep | null>(null);
   // A step chosen against one previous tag names a different release under
   // the recomputed one, so the choice is dropped with the plan it belonged
@@ -137,10 +131,8 @@ export function ReleaseDialog({
   );
 }
 
-// Consequences first: what the tag would carry, then what is risky about it,
-// and only then the number. The chosen step is lifted to the dialog, which
-// also needs it for Publish. Every version comes from the plan's map, so the
-// browser never re-derives semver.
+// Every version comes from the plan's map, so the browser never re-derives
+// semver.
 function PlanBody({
   plan,
   step,

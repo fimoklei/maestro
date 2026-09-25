@@ -1,12 +1,8 @@
 // Adapted from Spectrum UI (Apache-2.0)
 import type { ReactNode } from "react";
 
-// Spectrum's anatomy — icon tile, heading, one sentence, the way out — with no
-// entrance animation (only what floats moves, ADR-0033 §8) and no card of its
-// own: the panel frames it (#1009).
-
 export interface EmptyStateProps {
-  /** `No {things} yet` (copy.md → Empty state). */
+  /** `No {things} yet`. */
   title: string;
   /** One sentence saying what appears here. */
   description: string;

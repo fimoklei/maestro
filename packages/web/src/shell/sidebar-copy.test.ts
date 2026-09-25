@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { behindCount, UNKNOWN_COUNT } from "./sidebar-copy";
 
-// The sidebar counters' words (#1115), as exact strings (copy.md).
 describe("sidebar counter copy", () => {
   it("counts the behind targets", () => {
     expect(behindCount(1)).toBe("1 behind");

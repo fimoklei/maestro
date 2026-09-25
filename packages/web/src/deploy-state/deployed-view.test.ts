@@ -4,7 +4,6 @@ import type { DeployedPrimitive, SkippedEntry } from "./use-deploy-state";
 
 type Response = { primitives: DeployedPrimitive[]; skipped: SkippedEntry[] };
 
-// The query-state the mapper reads: just the two fields toDeployedView uses.
 const query = (state: {
   data?: Response;
   isError?: boolean;
@@ -51,8 +50,6 @@ describe("toDeployedView", () => {
   });
 
   it("carries the skipped count so a skipped-only target is not read as empty", () => {
-    // Zero primitives but a non-empty skipped set is not an empty deployment —
-    // the roll-up needs the count to keep such a target off the "empty" reading.
     expect(
       toDeployedView(
         query({
@@ -74,8 +71,6 @@ describe("toDeployedView", () => {
   });
 
   it("maps a read error to unknown, never to a confirmed-empty deployment", () => {
-    // The J04 failure mode: a failed read must read as unknown, never as a
-    // ready+empty set that the roll-up would join into a false "in sync".
     expect(toDeployedView(query({ isError: true }))).toEqual({
       status: "unknown",
     });
@@ -84,8 +79,6 @@ describe("toDeployedView", () => {
 
 describe("toolDeployedView", () => {
   it("maps a tool's names to ready when no read state is given", () => {
-    // The global-targets cards only render a tool once the read succeeded (their
-    // container gates the error state), so a bare names call is always ready.
     expect(toolDeployedView(["tdd"])).toEqual({
       status: "ready",
       names: ["tdd"],
@@ -104,9 +97,6 @@ describe("toolDeployedView", () => {
   });
 
   it("maps a failed global read to unknown, ignoring stale cached names", () => {
-    // TanStack keeps the last-good tools after a refetch fails; marking those
-    // stale names "ready" would let a tool read "in sync"/▲N from data the read
-    // could no longer confirm — the J04 lie. A failed read is unknown.
     expect(toolDeployedView(["tdd"], { data: {}, isError: true })).toEqual({
       status: "unknown",
     });

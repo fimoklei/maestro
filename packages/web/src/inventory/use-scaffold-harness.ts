@@ -1,5 +1,5 @@
-// Accepting the scaffold offer the connect refusal carried. It ends connected,
-// so it invalidates exactly what connecting does (frontend.md, #556).
+// Accepts the scaffold offer the connect refusal carried; it ends connected, so
+// it invalidates exactly what connecting does (#556).
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 import { HARNESS_QUERIES } from "../harness/use-harness";

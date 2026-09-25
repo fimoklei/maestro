@@ -364,8 +364,6 @@ describe("rowItems", () => {
       expect(disabled(items)).toContain("Restore skill");
     });
 
-    // Row and commit together: the press hands on the whole source identity
-    // the menu was painted from, so a later read cannot rewrite it (ADR-0030).
     it("names the row it was pressed on and the commit it was painted at", () => {
       const pressed: [string, string][] = [];
       const items = rowItems(

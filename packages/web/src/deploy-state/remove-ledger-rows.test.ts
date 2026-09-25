@@ -10,7 +10,6 @@ const leftoverCodex = [
   { tool: "codex" as const, path: "/Users/me/.agents/skills/tdd" },
 ];
 
-// The check while it is still running: it has made no claim about any row.
 const RUNNING: RemoveCheckState = { kind: "unanswered", warning: "checking" };
 
 const perTool = (
@@ -76,8 +75,6 @@ describe("removeLedgerRows", () => {
     });
   });
 
-  // The cost belongs on the row that carries it, so the panel needs no block
-  // underneath saying which target the sentence was about (#414).
   describe("what the check says about a detected tool", () => {
     const rowsFor = (check: RemoveCheckState) =>
       removeLedgerRows(
@@ -122,8 +119,6 @@ describe("removeLedgerRows", () => {
     });
 
     it("never reads a tool the answer left out as a clean copy", () => {
-      // The card detected two tools and the check reported on one. The tool
-      // nobody answered for is unchecked, which is not the same as clean (J04).
       const [, codex] = rowsFor(perTool({ claude: "none" }));
 
       expect(codex?.status).toBe("Check did not run — may lose work");
@@ -141,9 +136,6 @@ describe("removeLedgerRows", () => {
     });
   });
 
-  // The reclaim deletes a leftover copy whole either way, but "the copy goes"
-  // and "work nothing else holds goes" are different prices, and the row is
-  // where the difference is stated (#414).
   describe("what the check says about a leftover copy", () => {
     const leftoverRow = (check: RemoveCheckState) =>
       removeLedgerRows(
@@ -189,9 +181,6 @@ describe("removeLedgerRows", () => {
     });
   });
 
-  // After a failed removal the server probes the disk itself and says, per
-  // target, whether the copy is still there. What the rows carried before the
-  // user confirmed was a price for something that did not happen (#416).
   describe("what the server proved after a failed removal", () => {
     const globalOutcome: RemoveOutcome = {
       scope: "global",
@@ -214,8 +203,6 @@ describe("removeLedgerRows", () => {
     });
 
     it("keeps the order the ledger showed before the user confirmed", () => {
-      // The screen listed Codex first; the report answers Claude Code first.
-      // The rows are the user's, so they do not reshuffle under the answer.
       expect(
         removeLedgerRows(
           { kind: "global", tools: ["codex", "claude"] },
@@ -242,8 +229,6 @@ describe("removeLedgerRows", () => {
     });
 
     it("drops a leftover copy the failure never reached", () => {
-      // The reclaim runs only after apm confirms, so nothing touched this copy
-      // and the report has nothing to say about it.
       expect(
         removeLedgerRows(
           { kind: "global", tools: ["claude", "codex"] },
@@ -254,9 +239,6 @@ describe("removeLedgerRows", () => {
       ).toEqual(["Claude Code", "Codex"]);
     });
 
-    // The server detects its tools again at execution time, so the report can
-    // name a tool the card never showed — or leave one out. Rows and lead-in
-    // read the same report, or the count would disagree with what is drawn.
     it("draws a row for a target only the report names", () => {
       expect(
         removeLedgerRows(
@@ -294,8 +276,6 @@ describe("removeLedgerRows", () => {
     });
   });
 
-  // Counted from what the server proved, never from what is on screen — the
-  // screen's own rows can outnumber the targets apm ever reached.
   describe("removeLedgerLeadIn", () => {
     it("asks the question while nothing has been attempted", () => {
       expect(removeLedgerLeadIn(null, "skill")).toBe(
@@ -344,8 +324,6 @@ describe("removeLedgerRows", () => {
     });
   });
 
-  // A repo has one row, and its deployed copy spans several tool subtrees, so
-  // the aggregate answer is the honest thing to state — on that one row.
   it("puts the repo scope's aggregate answer on its single row", () => {
     const [repo] = removeLedgerRows(
       { kind: "repo", repoPath: "/Users/me/project" },

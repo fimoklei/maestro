@@ -62,7 +62,7 @@ import {
 } from "./type-filter";
 import type { Primitive } from "./use-inventory";
 
-// Presentational; the reads come from inventory-panel.tsx (#992, #1040).
+// Presentational; the container supplies the reads (#992, #1040).
 
 // Fills the table at 1440×900 on a first read, before any row is known.
 const SKELETON_FALLBACK = 24;
@@ -90,15 +90,14 @@ export function InventoryView({
   // Every deploy target, for the per-row status and reach (#272). Empty until
   // reads resolve — the roll-up treats that as unconfirmed.
   targets: DeploymentTarget[];
-  /** A failed read; the previous rows stay under it (ADR-0033 §11). */
+  /** A failed read; the previous rows stay under it. */
   notice: NoticeContent | null;
-  /** Skeleton rows are up (use-read-skeleton.ts). */
+  /** Skeleton rows are up. */
   loading: boolean;
   /** A read is running, shown or not. */
   reading: boolean;
   onReread: () => void;
-  // The one step that fills an empty Inventory. Supplied by the container, so
-  // this component stays routerless and storyable.
+  // Supplied by the container, so this component stays routerless and storyable.
   onOpenHarness?: () => void;
   /** Opens a target's row on Deploy-state; absent where no router is. */
   onShowTarget?: (rowId: string) => void;
@@ -110,15 +109,11 @@ export function InventoryView({
   const [grouping, setGrouping] = useState<Grouping>("none");
   const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
   const [query, setQuery] = useState("");
-  // Held by name (from the full inventory), so a search narrowing the table
-  // never closes an already-open pane (ADR-0016).
+  // Held by name, so a search narrowing the table never closes an open pane.
   const [selected, setSelected] = useState<string | null>(null);
-  // The dialog the row's ⋮, the pane's foot or a target row opened (#1065).
   const [dialog, setDialog] = useState<PaneDialog | null>(null);
-  // The table's rows as it shows them, which the pane pages through.
   const [order, setOrder] = useState<string[]>([]);
-  // Kept apart from `selected` so inspecting and staging never toggle each
-  // other (Model A, #291).
+  // Apart from `selected`, so inspecting and staging never toggle each other.
   const [staged, setStaged] = useState<ReadonlySet<string>>(new Set());
   const gridRef = useRef<HTMLTableElement>(null);
   const getTriggerElement = useCallback(() => gridRef.current, []);
@@ -156,9 +151,8 @@ export function InventoryView({
       targets: status === null ? null : rollup.targetCount,
       deployments,
       unreadable: Boolean(rollup.unreadable),
-      // The pane's foot holds these same items (#1065). The removal counts the
-      // targets the pane lists; it is offered from two removals, or it would
-      // repeat the one a target row already has (#422).
+      // The pane's foot holds these same items (#1065). The removal is offered only
+      // from two targets, or it would repeat a target row's own (#422).
       actions: [
         { action: "deploy", label: DEPLOY_SKILL },
         ...(bulkRemoveTargets(primitive.name, targets).length >= 2

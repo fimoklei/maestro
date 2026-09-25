@@ -6,8 +6,7 @@ describe("targetLabel", () => {
     const a = targetLabel("/Users/dev/Projects/client-a/agent-harness");
     const b = targetLabel("/Users/dev/Projects/client-b/agent-harness");
 
-    // The prefix truncation this replaces made these byte-identical; the tail
-    // is the only part that tells the two clones apart, so it must survive.
+    // The tail is the only part that tells the two clones apart.
     expect(a).not.toBe(b);
     expect(a).toBe("…/client-a/agent-harness");
     expect(b).toBe("…/client-b/agent-harness");
@@ -32,9 +31,7 @@ describe("targetLabel", () => {
   });
 
   it("grows the tail until it is unique among sibling paths", () => {
-    // Both clones share their last two segments; a fixed-length tail would
-    // render them identically (#211, relocated) — must extend to the first
-    // segment that tells them apart.
+    // Both clones share their last two segments, so the tail must grow (#211).
     const a = "/Users/me/clientA/repos/agent-harness";
     const b = "/Users/me/clientB/repos/agent-harness";
     const siblings = [a, b];
@@ -47,14 +44,12 @@ describe("targetLabel", () => {
   it("keeps the two-segment tail when no sibling shares it", () => {
     const a = "/Users/me/work/acme-web";
     const b = "/Users/me/work/acme-api";
-    // Same parent, different basename: the two-segment tail already distinguishes.
     expect(targetLabel(a, [a, b])).toBe("…/work/acme-web");
     expect(targetLabel(b, [a, b])).toBe("…/work/acme-api");
   });
 
   it("falls back to the full path when a sibling shares the whole tail", () => {
-    // A shorter clone whose entire path is the tail of a deeper one: no proper
-    // shortened suffix is unique, so the full (always-unique) path stands.
+    // No shortened suffix is unique, so the full path stands.
     const shallow = "/repos/agent-harness";
     const deep = "/Users/me/repos/agent-harness";
     expect(targetLabel(shallow, [shallow, deep])).toBe("/repos/agent-harness");

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 
-// Escape-closes half of the keyboard contract. A shared stack, not a
-// per-panel listener, so with two panels open Escape acts only on the top one.
+// A shared stack, so with two panels open Escape acts only on the top one.
 type StackEntry = {
   closeEnabledRef: { readonly current: boolean };
   onCloseRef: { readonly current: () => void };

@@ -11,7 +11,7 @@ export interface SettingsRowProps {
   description?: string;
   /** Truncated, with the whole value on hover. */
   value?: string;
-  /** False for a plain word, which Geist Mono never sets (design.md). */
+  /** False for a plain word, which Geist Mono never sets. */
   machine?: boolean;
   control?: ReactNode;
   /** An id for the name, so the control can take it as its label. */

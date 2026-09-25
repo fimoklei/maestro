@@ -8,9 +8,7 @@ import {
   updatePreviewNotice,
 } from "./notice-copy";
 
-// Asserted as data, never as prose: ADR-0025 §10 rejected a copy linter, so a
-// test that measured capitalisation or word count would be that linter under
-// another name. What is pinned here is the finished notice per code.
+// Pins the finished notice per code as data, never measuring the prose itself.
 const refusal = (code: string) => new HttpError(422, "unused", code);
 
 describe("deploy notices", () => {
@@ -607,8 +605,6 @@ describe("every deploy and remove notice", () => {
       deployNotice(refusal(code)),
       removeNotice(refusal(code)),
     ]),
-    // Built at a call site rather than read off the table, so the same rules
-    // run over it (#748).
     {
       label: "Linked skill folder",
       message: linkedFolderRecovery("/home/.claude"),

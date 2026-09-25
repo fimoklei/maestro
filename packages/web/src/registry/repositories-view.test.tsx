@@ -146,8 +146,7 @@ describe("Repositories", () => {
     return screen.findByRole("dialog", { name: `Unregister ${name}` });
   }
 
-  // Unregister is confirmed (design.md → Feedback and dialogs), with the
-  // folder's fate stated before the reader agrees.
+  // Unregister is confirmed, with the folder's fate stated first.
   it("asks before unregistering, focus on Cancel, the folder's fate stated", async () => {
     const { calls } = stubRegistry(threeRepos());
     renderRepositories();

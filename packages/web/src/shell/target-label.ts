@@ -1,6 +1,5 @@
-// Shortest unique suffix among sibling targets, min 2 segments, prefixed with
-// an ellipsis when dropped — deep repo paths share a long prefix, so
-// left-anchored truncation would drop the part that tells clones apart (#211).
+// Shortest unique suffix, min 2 segments: deep repo paths share a long prefix,
+// so left-anchored truncation would drop the part that tells clones apart (#211).
 const MIN_SEGMENTS = 2;
 
 export function targetLabel(
@@ -14,7 +13,6 @@ export function targetLabel(
     .filter((sibling) => sibling !== path)
     .map((sibling) => sibling.split("/").filter(Boolean));
 
-  // Grow the tail until no sibling ends with the same suffix.
   for (let take = MIN_SEGMENTS; take < segments.length; take++) {
     const suffix = segments.slice(-take);
     if (!others.some((other) => endsWith(other, suffix))) {
@@ -22,12 +20,10 @@ export function targetLabel(
     }
   }
 
-  // No proper suffix is unique (a shorter clone nested inside a deeper one) —
-  // the full path stands.
+  // No proper suffix is unique (a shorter clone nested inside a deeper one).
   return path;
 }
 
-// Whether `segments` ends with `suffix`, segment for segment.
 function endsWith(segments: string[], suffix: string[]): boolean {
   if (suffix.length > segments.length) return false;
   const tail = segments.slice(-suffix.length);

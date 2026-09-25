@@ -1,6 +1,5 @@
-// What would this removal destroy? Read-only despite the POST — path goes in
-// the body, like the filesystem browse route. Kept out of the mutation so the
-// answer is on screen before the user commits (#337).
+// Read-only despite the POST: the path goes in the body. Kept out of the
+// mutation so the answer is on screen before the user commits (#337).
 import type { ReclaimConsent, RemoveCheck } from "@maestro/core";
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
@@ -9,20 +8,15 @@ import {
   targetQueryKey,
 } from "../inventory/use-deploy-skill";
 
-// Named by core's own vocabulary, not a copy (architecture.md — types only).
 export type RemovePreflight = {
-  // One aggregate answer for a repo, one per detected tool on global (#414).
   check: RemoveCheck;
-  // Null when there's nothing to reclaim (always true on a repo target). One
-  // field, not two, so the screen can never show a path it has no token for.
+  // One field, not two, so the screen can never show a path it has no token for.
   reclaim: ReclaimConsent | null;
-  // Optional on the wire: a server that predates the guard sends none, and the
-  // removal then refuses rather than the screen inventing one (#458).
+  // Optional: an older server sends none, and the removal then refuses (#458).
   receipt?: string;
 };
 
-// Shared with the bulk path, which runs one of these per target through
-// useQueries — one owner for the key and for the never-cached contract (#422).
+// Shared with the bulk path: one owner for the key and the never-cached contract.
 export function removePreflightQueryOptions(
   skillName: string | null,
   target: DeployTarget,

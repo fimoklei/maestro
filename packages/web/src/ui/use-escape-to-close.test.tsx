@@ -25,9 +25,6 @@ describe("useEscapeToClose", () => {
   });
 
   it("gives Escape to only the most recently opened panel when two are stacked", async () => {
-    // Two panels can be open at once, each mounting its own useEscapeToClose.
-    // Both used to register an independent document listener, so one Escape
-    // closed both; only the topmost should react.
     const bottomClose = vi.fn();
     const topClose = vi.fn();
     render(
@@ -44,8 +41,6 @@ describe("useEscapeToClose", () => {
   });
 
   it("blocks Escape entirely while the topmost panel can't close yet, instead of falling through", async () => {
-    // A dialog disables closing while its action runs. That must not leave
-    // Escape free to fall through and close whatever is stacked underneath it.
     const bottomClose = vi.fn();
     const topClose = vi.fn();
     render(

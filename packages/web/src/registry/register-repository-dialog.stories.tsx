@@ -41,7 +41,7 @@ export const Registering: Story = {
   args: { path: "/Users/me/Projects/maestro-docs", busy: true },
 };
 
-// Where no chooser helper exists, the field stands alone (ADR-0032).
+// Where no chooser helper exists, the field stands alone.
 export const NoChooser: Story = {
   args: { chooser: { ...chooser, available: false } },
 };

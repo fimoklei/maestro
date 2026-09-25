@@ -36,8 +36,6 @@ const row = (facts: Partial<TargetRow>): TargetRow => ({
   ...facts,
 });
 
-// #1125: the card says why the ⋮ menu offers no update or retry, and names
-// the follow-up where one exists.
 describe("statusSummary", () => {
   it("states that a target on the latest release is on it", () => {
     expect(statusSummary(row({ head: ON_LATEST }), NOW)).toEqual([
@@ -97,8 +95,6 @@ describe("statusSummary", () => {
     ]);
   });
 
-  // A tool on the latest release is still behind when a sibling tool is: one
-  // Update target moves every detected tool (#951).
   it("claims no latest release on a tool whose global target is behind", () => {
     expect(
       statusSummary(row({ group: GLOBAL, head: ON_LATEST, behind: true }), NOW),

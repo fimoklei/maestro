@@ -1,7 +1,5 @@
-// Runs the target's unfinished Deploy or Remove again, at the release and
-// Selection the server recorded. On success the target's deploy-state and
-// drift queries are invalidated, so the card stops offering the retry
-// (frontend.md, #951).
+// Retries at the release and Selection the server recorded; invalidates on
+// success so the card stops offering the retry (#951).
 import type { PendingOperation } from "@maestro/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
@@ -12,8 +10,6 @@ import {
 
 export type RetryRequest = {
   target: DeployTarget;
-  // The receipt this retry's own refusal minted: content that changed since
-  // the interruption retires the old one (#952).
   confirmedCopyReceipt?: string;
 };
 

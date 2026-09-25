@@ -1,8 +1,7 @@
 import { ago } from "../harness/harness-view-model";
 
-// Band 2's freshness line: the oldest answered reading, so the line never
-// claims more freshness than the stalest row has (CONTEXT.md → Read).
-// A time is a query's `dataUpdatedAt`; 0 or undefined has not answered yet.
+// The oldest answered reading, so the line never claims more freshness than the
+// stalest row. A time of 0 or undefined has not answered yet.
 export function freshnessLine(
   readAt: readonly (number | undefined)[],
   now: Date,

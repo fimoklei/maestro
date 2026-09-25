@@ -8,8 +8,6 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// Every shell query (health, registry, drift, deploy-state) resolves to an
-// empty-but-valid body so the router can render without a real server.
 function stubEmptyServer() {
   vi.stubGlobal(
     "fetch",

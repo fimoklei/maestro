@@ -13,9 +13,8 @@ import {
   LOADING_TARGETS,
 } from "./inventory-copy";
 
-// The bulk deploy the selection bar opens (#1003, #1018): pick a target, run,
-// and read the Report in the same dialog. Presentational — the action owns the
-// reads, the plan and the request.
+// The bulk deploy the selection bar opens: pick a target, run, read the Report.
+// Presentational — the action owns the reads, the plan and the request.
 
 export type BulkDeployTargetOption = {
   value: string;
@@ -65,7 +64,7 @@ export function BulkDeployDialog({
       describedBy={bodyId}
       width={640}
       onClose={onClose}
-      // Its outcome is readable nowhere else while the run goes (ADR-0033 §6).
+      // Its outcome is readable nowhere else while the run goes.
       closeEnabled={!busy}
     >
       <div className="flex shrink-0 items-center border-gray-7 border-b px-panel py-cell">
@@ -131,8 +130,7 @@ export function BulkDeployDialog({
                 ? LOADING_TARGETS
                 : busy
                   ? ACTIONS.deploy.busy
-                  : // Title and confirm share verb and object (copy.md).
-                    count === 1
+                  : count === 1
                     ? DEPLOY_SKILL
                     : DEPLOY_SKILLS}
             </Button>

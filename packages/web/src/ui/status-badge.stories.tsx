@@ -14,7 +14,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Attention: Story = {};
 
-// One per family: a word, then a dot in its colour (ADR-0033 §3).
+// One per family.
 export const EveryFamily: Story = {
   render: () => (
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>

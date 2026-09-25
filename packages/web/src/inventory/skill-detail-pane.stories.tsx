@@ -3,8 +3,6 @@ import type { DriftStatus } from "../drift/drift-view-model";
 import type { SkillDeployment } from "./skill-deployments";
 import { SkillDetailPane } from "./skill-detail-pane";
 
-// Deployed-across-targets (one behind) and not-deployed-anywhere states, in the
-// one pane shape (#1065). Actions are static items — stories carry no hooks.
 const target = (
   label: string,
   release: string,
@@ -76,8 +74,6 @@ export const NotDeployed: Story = {
   },
 };
 
-// One target loaded, others still pending or unreadable: the known target shows,
-// but the pane warns the reach is not yet complete (J04).
 export const PartialReach: Story = {
   args: {
     targetCount: null,

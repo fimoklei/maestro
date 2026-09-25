@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-// Timings from design.md → Waiting and freshness.
 const SHOW_AFTER_MS = 1300;
 const HOLD_MS = 500;
 
