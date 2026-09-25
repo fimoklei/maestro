@@ -1,25 +1,17 @@
-// Server-state hook for one repo's version drift (server runs `apm outdated`).
-// Separate query from deploy-state: the skill list renders immediately, the
-// badge fills in later (frontend.md). Long staleTime — a drift check isn't free.
-
 import type { ReadDriftEntry } from "@maestro/core";
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 
-// Type-only re-export: verbatimModuleSyntax erases it, so no core runtime
-// reaches the bundle (#248, ADR-0012).
+// Type-only: a value re-export would pull core runtime into the bundle (#248).
 export type { ReadDriftEntry };
 
-// Mirrors core's DriftResult at the HTTP boundary (web never imports core
-// values, ADR-0012). Never up-to-date.
 export type DriftResponse =
   | { behind: ReadDriftEntry[] }
   | { ok: false; reason?: "unverified" };
 
 const FIVE_MINUTES = 5 * 60 * 1000;
 
-// Shared so single-repo and multi-repo readers run identically — a diverging
-// key would re-shell the same check.
+// Shared by single- and multi-repo readers: a diverging key re-runs the check.
 export function driftQueryOptions(repo: string) {
   return {
     queryKey: ["drift", repo] as const,

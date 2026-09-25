@@ -114,15 +114,15 @@ input[type=text] { flex:1; min-width:0; background:var(--surface-inset); border:
 <script>
 // The scenario every variant renders: one selection of five, mid-outcome.
 const OUTCOMES = [
-  { path:"/Users/michielmerks/Projects/maestro",       ok:true,  reason:"registered" },
-  { path:"/Users/michielmerks/Projects/agent-harness", ok:true,  reason:"registered" },
-  { path:"/Users/michielmerks/Projects/old-api",       ok:false, reason:"not a git repo" },
-  { path:"/Users/michielmerks/Projects/cockpit-spike", ok:true,  reason:"registered" },
-  { path:"/Users/michielmerks/tmp/scratch",            ok:false, reason:"path does not exist" },
+  { path:"/Users/dev/Projects/maestro",       ok:true,  reason:"registered" },
+  { path:"/Users/dev/Projects/agent-harness", ok:true,  reason:"registered" },
+  { path:"/Users/dev/Projects/old-api",       ok:false, reason:"not a git repo" },
+  { path:"/Users/dev/Projects/cockpit-spike", ok:true,  reason:"registered" },
+  { path:"/Users/dev/tmp/scratch",            ok:false, reason:"path does not exist" },
 ];
 const REGISTERED = OUTCOMES.filter(o => o.ok);
 const FAILED     = OUTCOMES.filter(o => !o.ok);
-const short = p => p.replace("/Users/michielmerks", "~");
+const short = p => p.replace("/Users/dev", "~");
 // Left-truncation: the tail of an absolute path is the part that identifies it,
 // so a 256px column drops the head, not the repo name.
 const clip = (p, max) => { const s = short(p); return s.length <= max ? s : "…" + s.slice(-max); };

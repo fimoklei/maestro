@@ -1,7 +1,5 @@
-// Test support: one in-memory world behind `SelectionWriter` — a manifest, a
-// lockfile, the files under a tree root, and an apm that moves all three the
-// way the real one does. It keeps real apm out of the fast lane while the
-// Selection lifecycle is still proven end to end (testing.md, #951).
+// Test support: an in-memory manifest, lockfile and tree behind
+// `SelectionWriter`, with an apm that moves all three like the real one.
 import { ConfigStore } from "../registry/config-store";
 import { SelectionWriter } from "./apply-selection";
 import type { DeploySkillDriverResult, DeployTarget } from "./deploy-skill";
@@ -21,10 +19,8 @@ export type SelectionWorld = {
   operations: TargetOperationStore;
   calls: SelectionCall[];
   files: Map<string, string>;
-  // What the next install actually places, whatever it was asked for: the
-  // half-landed install the operation record exists for.
+  // What the next install actually places, whatever it was asked for.
   landsOnly(skills: string[] | null): void;
-  // What the next apm call answers with, for the refusals a driver classifies.
   // "throw" is the run that never returned at all.
   refuseWith(result: DeploySkillDriverResult | "throw" | null): void;
   seed(input: { release: string; skills: string[] }): void;
@@ -119,7 +115,7 @@ ${
       }
       files.set(lockfilePath, lockfile(input.ref.split("#")[1] ?? "", landed));
       // apm persists the Selection it was asked for, creating the dependency
-      // when it is absent (apm-behavior.md § Root package and its Selection).
+      // when it is absent.
       files.set(manifestPath, manifest(input.skills ?? []));
       return { ok: true };
     },

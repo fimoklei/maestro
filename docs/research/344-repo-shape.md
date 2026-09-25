@@ -188,11 +188,11 @@ the single sharpest thing this ticket surfaces.
 Read-only, no apm involved:
 
 ```
-$ ls /Users/michielmerks/Projects/agent-harness/skills | wc -l
+$ ls /Users/dev/Projects/agent-harness/skills | wc -l
       36
-$ git -C /Users/michielmerks/Projects/agent-harness tag --list
+$ git -C /Users/dev/Projects/agent-harness tag --list
 v0.1.0 v0.2.0 v0.2.1 v0.3.0 v0.4.0 v0.4.1 v0.5.0 v0.5.1
-$ ls /Users/michielmerks/Projects/agent-harness
+$ ls /Users/dev/Projects/agent-harness
 .claude/ .out-of-scope/ agents/ bundles/ docs/ hooks/ skills/ apm.yml …
 ```
 

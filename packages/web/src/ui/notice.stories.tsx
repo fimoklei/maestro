@@ -77,8 +77,7 @@ export const WithPath: Story = {
   },
 };
 
-// What a stage row's Detail column holds: no fill and no outline, so the
-// notice never reads as a card inside the card the table already sits in.
+// What a stage row's Detail column holds: no fill and no outline.
 export const Inline: Story = {
   args: {
     variant: "inline",

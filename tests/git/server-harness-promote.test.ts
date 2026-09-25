@@ -1,7 +1,5 @@
-// Promoting one skill, driven through the real Hono app against a real clone
-// and a real bare remote. Extends the core journey in harness-promote.test.ts
-// with the route the row action presses: what the browser sends is a name, and
-// what comes back is a branch, a link, or Maestro's own words (#577).
+// What the browser sends is a name; what comes back is a branch, a link, or
+// Maestro's own words (#577).
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -69,16 +67,14 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     await git(root, "config", "user.email", "test@example.com");
     await git(root, "config", "user.name", "Test");
     // git resolves the GitHub origin to the bare repo next door, so the suite
-    // stays offline while the pull-request link is built from a real origin
-    // (LEARNINGS · git-remote-get-url).
+    // stays offline while the link is built from a real origin.
     await git(root, "config", `url.${remote}.insteadOf`, ORIGIN_URL);
     await git(root, "remote", "set-url", "origin", ORIGIN_URL);
     await writeSkill("tdd", "as published");
     await writeFile(join(root, "apm.yml"), "name: agent-harness\n", "utf8");
     await git(root, "add", ".");
     await git(root, "commit", "-m", "first skill");
-    // Released once already, so a merged promotion reads as work waiting for
-    // the next release rather than a harness that never had one.
+    // Released once already, so a merged promotion waits for the next release.
     await git(root, "tag", "v0.1.0");
     await git(root, "push", "--tags", "origin", "HEAD:main");
     await new HarnessGitAdapter().fetch(root);
@@ -96,8 +92,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     const inventory = new InventoryReader({
       fs,
       resolvePath: () => harnessPath,
-      // The real released read: these suites build real repositories,
-      // so Inventory answers from `refs/maestro/tags` as it does live (#841).
+      // Real released read: Inventory answers from `refs/maestro/tags` (#841).
       readReleasedSkills: releasedSkillsFromGit(new HarnessGitAdapter()),
     });
     const locks = new InFlightLocks();
@@ -168,8 +163,6 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       body: JSON.stringify(body),
     });
 
-  // The remote's own view of the pushed branch, so nothing is proved from the
-  // clone that pushed it.
   const promoted = async (...args: string[]) =>
     (await git(remote, ...args, "refs/heads/maestro/tdd")).stdout.trim();
 
@@ -228,8 +221,6 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       rows: [],
     });
 
-    // Merged the way a reviewer would, in the fixture's own remote: the row is
-    // then the team's, not the author's, and no receipt was ever stored.
     await git(
       remote,
       "update-ref",
@@ -249,9 +240,8 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
   });
 
   it("never forces the promote branch, whatever a second press answers", async () => {
-    // A reply the browser never saw: the author presses again with nothing
-    // changed. The branch already carries this content, so the second press
-    // publishes no new commit and never rewrites the branch (#578).
+    // The branch already carries this content, so a second press publishes
+    // nothing new and never rewrites the branch (#578).
     await writeSkill("tdd", "edited on disk");
     const app = makeApp(root);
     await promote(app, { name: "tdd" });
@@ -292,9 +282,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
   });
 
   it("states a build failure in Maestro's words, leaking no git output or path", async () => {
-    // An ignore rule over the skill's own directory: `git add` stages
-    // nothing, so there is no tree to build the commit from. Whatever git
-    // says about it is git's to keep — the caller gets a class.
+    // `git add` stages nothing, so there is no tree; the caller gets a class.
     await writeFile(join(root, ".gitignore"), ".apm/skills/draft/\n", "utf8");
     await writeSkill("draft", "ignored on disk");
 
@@ -310,8 +298,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
   });
 
   it("flags a skill a teammate already changed on GitHub before it is promoted", async () => {
-    // The teammate never touches a promote branch — a direct push to the
-    // default branch is enough to make replacing it visible (#579).
+    // A direct push to the default branch makes replacing visible (#579).
     const other = join(base, "other");
     await run("git", ["clone", remote, other]);
     await git(other, "config", "user.email", "mate@example.com");
@@ -368,10 +355,8 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
   });
 
   it("refuses to push over a teammate's change its own fetch just found, never silently replacing it", async () => {
-    // The teammate's push lands after this test's setup already fetched once —
-    // exactly the window between the cockpit's last read and the press. Promote
-    // re-fetches on its own, so the refusal must come from that fresh read, not
-    // from a stale warning (#579).
+    // The refusal must come from Promote's own fresh fetch, not a stale
+    // warning (#579).
     const other = join(base, "other");
     await run("git", ["clone", remote, other]);
     await git(other, "config", "user.email", "mate@example.com");
@@ -448,8 +433,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     const app = makeApp(root);
     await promote(app, { name: "tdd" });
 
-    // A push that errors out after the remote already applied it — a timeout
-    // on the way back, a receive-pack that fails at the end (#577).
+    // The push errors after the remote applied it (#577).
     const script = join(base, "receive-pack.sh");
     await writeFile(script, '#!/bin/sh\ngit-receive-pack "$@"\nexit 1\n', {
       encoding: "utf8",
@@ -479,7 +463,6 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     await promote(app, { name: "tdd" });
     const first = await promoted("rev-parse");
 
-    // A hook that refuses every push, so the rejection is deterministic.
     await writeFile(
       join(remote, "hooks", "pre-receive"),
       "#!/bin/sh\nexit 1\n",
@@ -506,7 +489,6 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     expect((await git(root, "status", "--porcelain")).stdout).toBe(status);
     expect((await git(root, "branch", "--list")).stdout).toBe(branches);
 
-    // Never automatic: this is a fresh press, made by the test.
     await rm(join(remote, "hooks", "pre-receive"));
     const retry = await promote(app, { name: "tdd" });
 
@@ -519,8 +501,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
   });
 
   it("closes promote while the remote's answer is unknown", async () => {
-    // The origin stays a GitHub URL — only what git resolves it to is gone, so
-    // this is an unreachable remote, the same rule that closes Release.
+    // Only what git resolves the origin to is gone: unreachable, as in Release.
     await git(root, "config", "--unset", `url.${remote}.insteadOf`);
     await git(
       root,
@@ -536,9 +517,7 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
     expect(await response.json()).toMatchObject({ error: "no-answer" });
   });
 
-  // Publishing a removal through the route the confirmation presses. The body
-  // carries the origin/HEAD tree the author was shown, and nothing else — the
-  // harness is still resolved server-side (#580).
+  // The body carries only the origin/HEAD tree the author was shown (#580).
   describe("publishing a deletion", () => {
     const publishDeletion = async (
       app: ReturnType<typeof makeApp>,
@@ -550,8 +529,6 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
         body: JSON.stringify(body),
       });
 
-    // The tree the `deleted locally` row states, read the same way the view
-    // reads it: origin/HEAD's own copy of the skill.
     const seenTree = async (app: ReturnType<typeof makeApp>) => {
       await app.request("/api/harness/refresh", { method: "POST" });
       return (await new HarnessGitAdapter().readMovementTrees(root))?.remote
@@ -592,7 +569,6 @@ describe("harness promote HTTP route", { timeout: 30_000 }, () => {
       });
       expect(seen).toEqual(expect.any(String));
 
-      // Merged the way a reviewer would, in the fixture's own remote.
       await git(
         remote,
         "update-ref",

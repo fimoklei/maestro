@@ -44,8 +44,7 @@ import {
   updatingLine,
 } from "./update-target-copy";
 
-// One consent, identified by the copy it licenses — the same grain the guard
-// reads at, so one checkbox can never stand for two copies (#952).
+// The same grain the guard reads at, so one checkbox never stands for two copies (#952).
 const consentKey = (row: CopyConsentRow) => `${row.name}:${row.tool ?? ""}`;
 
 // `inline` keeps a folded section's heading on the disclosure triangle's own
@@ -69,8 +68,6 @@ function SectionHeading({
   );
 }
 
-// Open by construction: the work is what the dialog opens on (spec story 19).
-// One ruled row: the kind of change in a label column, its content beside it.
 function Section({
   heading,
   signal = false,
@@ -98,8 +95,6 @@ function Section({
 const listClass = (inline: boolean) =>
   inline ? "flex flex-wrap gap-x-4 gap-y-0.5" : "flex flex-col gap-1";
 
-// Folded behind its count, so a selection of forty-seven skills still opens on
-// the work rather than on a list. `details` carries the toggle natively.
 function FoldedSection({
   heading,
   count,
@@ -145,8 +140,7 @@ function NameList({
   );
 }
 
-// GitHub's mark links each skill to its folder (#1181). A row with no readable
-// origin keeps the name and drops the link rather than pointing at a guess.
+// A row with no readable origin drops the link rather than point at a guess.
 function SkillRows({
   rows,
   inline = false,
@@ -173,9 +167,7 @@ function SkillRows({
   );
 }
 
-// The section that takes input. Each copy states its own cost and carries its
-// own consent: confirmation covers every copy at risk, never a set of them
-// (spec story 37).
+// Each copy carries its own consent, never a set of them.
 function ConsentRow({
   row,
   label,
@@ -205,8 +197,6 @@ function ConsentRow({
   );
 }
 
-// One line per skill, from what the server read back — never from what the
-// update asked for (spec story 28, in the shape of the removal trace).
 function OutcomeTrace({ lines }: { lines: readonly OutcomeLine[] }) {
   return (
     <div role="status">
@@ -228,8 +218,7 @@ function OutcomeTrace({ lines }: { lines: readonly OutcomeLine[] }) {
   );
 }
 
-// Prices an Update, asks for what it costs, and states what landed. The host
-// owns the request; this reads what came back (#953, #954).
+// Prices an Update, asks for consent, and states what landed. The host owns the request.
 export function UpdateTargetDialog({
   targetName,
   preview,
@@ -243,18 +232,12 @@ export function UpdateTargetDialog({
   onCancel,
   onConfirm,
 }: {
-  // The target's own label, as the card shows it.
   targetName: string;
-  // Null while the preview is being read, and after a refusal — the dialog
-  // never prices an update from a reading it did not get (J04).
+  // Null while loading and after a refusal: never price from a missing reading.
   preview: UpdatePreview | null;
   isLoading: boolean;
   error: DeployStateNotice | null;
-  // The confirm's label where the refusal has no way through inside this
-  // dialog: the control stays on screen, disabled, stating its cause (#960).
   blocked?: string | null;
-  // Present once apm ran: what every copy reads as now. It replaces the
-  // sections, so the reader is never shown a plan beside its result.
   outcome?: readonly UpdateOutcomeRow[] | null;
   isRunning?: boolean;
   incomplete?: boolean;
@@ -262,16 +245,12 @@ export function UpdateTargetDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  // UI state: which copies the reader has agreed to overwrite in this dialog.
-  // It never leaves the screen — the proof the server acts on is the receipt
-  // the preview carried (frontend.md, #952).
+  // Never leaves the screen: the server acts on the preview's receipt (#952).
   const [consented, setConsented] = useState<readonly string[]>([]);
   const dialogId = useId();
   const leadInId = `${dialogId}-lead-in`;
 
   const heading = updateDialogTitle(targetName);
-  // The outcome replaces the plan: one screen states either what an update
-  // would do, or what it did.
   const lines =
     outcome && preview
       ? updateOutcomeLines(outcome, {
@@ -286,8 +265,6 @@ export function UpdateTargetDialog({
           consentKey,
         );
   const consentComplete = required.every((key) => consented.includes(key));
-  // Maestro's own reading from content hashes, never apm's: a release that
-  // touches nothing selected is still adoptable (spec story 21).
   const noContentChanges =
     preview !== null &&
     preview.counts.changed === 0 &&
@@ -354,7 +331,6 @@ export function UpdateTargetDialog({
               </p>
             </div>
 
-            {/* The fixed order, whichever sections this preview has. */}
             <div className="flex flex-col divide-y divide-gray-7 border-gray-7 border-y empty:hidden">
               {preview.addedByThisDeploy.length > 0 ? (
                 <Section heading={ADDED_BY_THIS_DEPLOY}>
@@ -415,7 +391,6 @@ export function UpdateTargetDialog({
                   <NameList names={preview.unchanged} />
                 </FoldedSection>
               ) : null}
-              {/* No checkbox here: Update adds no skill automatically (story 18). */}
               {preview.newInRelease.length > 0 ? (
                 <FoldedSection
                   heading={NEW_IN_THIS_RELEASE}
@@ -436,7 +411,6 @@ export function UpdateTargetDialog({
       </div>
 
       <div className={DIALOG_FOOTER}>
-        {/* Cancel leads; a Close standing alone sits trailing (design.md). */}
         <Button
           type="button"
           variant="quiet"
@@ -445,8 +419,6 @@ export function UpdateTargetDialog({
         >
           {lines === null ? "Cancel" : CLOSE}
         </Button>
-        {/* The one amber fill in this view; the card's own control is the ghost
-            variant (ADR-0031, design.md § the signal rule). */}
         {blocked !== null ? (
           <Button type="button" variant="primary" disabled={true}>
             {blocked}

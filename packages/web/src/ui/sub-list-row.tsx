@@ -6,8 +6,7 @@ import { MachineValue } from "./machine-value";
 import type { StatusReading } from "./status-reading";
 import { Tooltip } from "./tooltip";
 
-// One row of a detail pane's sub-list (#1065): mark · name · machine value · ⋮.
-// A badge belongs to the table's row; inside the pane a row carries a mark.
+// Inside the pane a row carries a mark, never a badge (#1065).
 export type RowMark = StatusReading & { hint?: string };
 
 export function SubListRow({

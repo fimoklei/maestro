@@ -1,7 +1,4 @@
-// Shared test helper: the drift dependency createApp asks for, with the
-// content check answered by nothing — every behind row falls back to Behind
-// (ADR-0027 §4). For tests that exercise other routes, and for drift tests that
-// only assert what `apm outdated` reported.
+// The content check is answered by nothing, so every behind row falls back to Behind.
 import {
   CheckVersionDrift,
   DeployedLocation,

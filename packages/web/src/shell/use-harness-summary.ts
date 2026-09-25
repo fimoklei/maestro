@@ -1,14 +1,10 @@
-// What the frame says about the connected Harness: its name, and the release
-// and skill count beneath it (#991). One owner, because the sidebar's Harness
-// button and the narrow bar both name the same two facts.
+// The Harness name, release and skill count, shared by sidebar and narrow bar.
 import { useHarness } from "../harness/use-harness";
 import { useInventory, useInventoryConfig } from "../inventory/use-inventory";
 import { targetLabel } from "./target-label";
 
-// Both facts come from their own read, and either can be missing while the
-// other is known — the line states what it has, never a number nothing
-// confirmed (#841). `undefined` is "not read yet"; `null` is a read that found
-// no release.
+// Each fact has its own read (#841): `undefined` is "not read yet"; `null` is
+// a read that found no release.
 export function harnessMetaLine(
   release: string | null | undefined,
   skillCount: number | undefined,

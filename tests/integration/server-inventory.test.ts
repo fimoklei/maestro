@@ -29,9 +29,6 @@ import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
 import { stubUpdate } from "../helpers/stub-update";
 
-// Integration lane: drives the real Hono app via app.request against a real
-// agent-harness-shaped clone on a temp dir. The Origin/Host guard is disabled
-// (its enforcement lives in server-security.test.ts).
 describe("inventory HTTP route", () => {
   let dir: string;
 
@@ -56,8 +53,7 @@ describe("inventory HTTP route", () => {
     );
   }
 
-  // The release the route answers from. Null is a release that could not be
-  // read; the skills written to disk above are deliberately never its source.
+  // Null is an unreadable release; the skills on disk are never its source.
   function makeApp(
     inventoryPath: string | undefined,
     {
@@ -121,8 +117,6 @@ describe("inventory HTTP route", () => {
   });
 
   it("skips a skill with no frontmatter without hiding the valid ones", async () => {
-    // A SKILL.md the parser cannot read is dropped from the listing, never
-    // turned into an error that blanks the whole inventory.
     const app = makeApp(dir, {
       released: [
         { name: "broken", manifest: "# broken\nno frontmatter\n" },
@@ -155,7 +149,7 @@ describe("inventory HTTP route", () => {
     expect(res.status).toBe(409);
     const body = (await res.json()) as { error: string };
     expect(body.error).toBe("not-configured");
-    // The path is never echoed back — it may be a misconfigured secret.
+    // The path is never echoed back: it may be a misconfigured secret.
     expect(JSON.stringify(body)).not.toContain(dir);
   });
 
@@ -167,7 +161,6 @@ describe("inventory HTTP route", () => {
     expect(res.status).toBe(503);
     const body = (await res.json()) as { error: string };
     expect(body.error).toBe("unreadable");
-    // The path is never echoed back — it may be a misconfigured secret.
     expect(JSON.stringify(body)).not.toContain(dir);
   });
 

@@ -1,12 +1,10 @@
-// Builds the tag-pinned ref apm installs from (ADR-0003). The slug check is the
-// gate that keeps a hostile name out of command text or a path (security.md).
+// The slug check keeps a hostile name out of command text or a path.
 
 import { harnessSkillSubpath } from "../inventory/harness-layout";
 
 const skillSlugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-// A directory name, a git refname component and a package ref segment all at
-// once, so it stays short enough for every one of them.
+// Also a directory name and a git refname component: keep it short for all.
 const MAX_SLUG_LENGTH = 64;
 
 export const isValidSkillSlug = (name: string): boolean =>
@@ -14,8 +12,6 @@ export const isValidSkillSlug = (name: string): boolean =>
 
 export { MAX_SLUG_LENGTH };
 
-// The repository root, with no subpath: one dependency carrying a Selection,
-// which is the shape a target follows one release in (ADR-0031).
 export const buildHarnessPackageRef = (input: {
   host: string;
   ownerRepo: string;

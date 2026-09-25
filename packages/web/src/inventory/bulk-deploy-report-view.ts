@@ -38,9 +38,7 @@ export type BulkDeployReportView =
       message: string;
     };
 
-// Zeroed outcomes are noise: four counts read as a form to decode, where the
-// one or two that happened read as a sentence. Severity order, so the half
-// that needs the user comes first.
+// Zeroed outcomes are dropped; the rest in severity order, what needs the user first.
 export function bulkDeploySummary(input: {
   targetLabel: string;
   counts: BulkReportCounts;
@@ -70,9 +68,8 @@ export function bulkDeployReportView(input: {
   const { report, skippedClean, targetLabel } = input;
 
   if (input.requestFailed) {
-    // Never the error's own text: the bulk route answers 200 with a report, so
-    // a thrown error is a dropped connection or a request this build got
-    // wrong, and neither has a sentence worth showing (ADR-0018).
+    // Never the error's own text: the bulk route answers 200 with a report, so a
+    // thrown error is a dropped connection or a malformed request.
     return {
       tone: "error",
       targetLabel,

@@ -47,8 +47,6 @@ export function Card({
         className,
       )}
     >
-      {/* The header wraps rather than overflows: on a narrow card the release
-          and the status chip drop to a second line (ADR-0031). */}
       {title ? (
         <div className="flex flex-wrap items-center gap-x-inline gap-y-tight border-gray-7 border-b px-panel py-inline">
           {kind ? (
@@ -61,8 +59,7 @@ export function Card({
               {kind}
             </span>
           ) : null}
-          {/* tabIndex -1: out of tab order, but a script can still land focus
-              here when an action destroys the control that triggered it. */}
+          {/* tabIndex -1: a script lands focus here when an action destroys its trigger. */}
           <h2
             ref={titleRef}
             tabIndex={-1}

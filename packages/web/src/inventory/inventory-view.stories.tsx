@@ -101,12 +101,10 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
-// A read past 1.3 s, or a pressed Re-read: skeleton rows in the table's shape.
 export const Reading: Story = {
   args: { primitives: undefined, loading: true, reading: true },
 };
 
-// A failed re-read keeps the previous rows under its notice (ADR-0033 §11).
 export const ReadFailed: Story = {
   args: {
     notice: {
@@ -116,7 +114,6 @@ export const ReadFailed: Story = {
   },
 };
 
-// No released skills: the offer that fills the list, not a failure (#841).
 export const Empty: Story = {
   args: { primitives: [], targets: [], onOpenHarness: () => {} },
 };

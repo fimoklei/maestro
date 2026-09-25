@@ -5,11 +5,11 @@
 
 ## Context
 
-Roadmap 01 promises versions (`J02`), drift (`J04`), and update (`J08`). None of
+Roadmap 01 promises versions, drift, and update. None of
 these are free: whether they exist at all depends on *how* Maestro tells `apm` to
 reference a primitive from the central inventory. Before designing the tracer
-(sub-step `01.1`), this was observed directly against `apm` 0.16.0 — not guessed
-(the `apm-driver.md` discipline in `AGENTS.md`). Three reference modes produce
+(sub-step `01.1`), this was observed directly against `apm` 0.16.0 — not guessed.
+Three reference modes produce
 three different lockfiles and three different drift outcomes:
 
 - **Local path** (`apm install /path/to/agent-harness/skills/tdd`). The lockfile
@@ -42,8 +42,8 @@ resolved from the central inventory's Git remote.**
   hash.
 - **Drift is delegated to `apm outdated`** (per ADR-0001); Maestro never computes
   it. **Update re-installs at the latest tag** (`apm install …#<latest-tag>`),
-  **not** `apm update` — which is a no-op on an exact tag pin (spiked apm 0.20.0;
-  see `.claude/rules/apm-driver.md` → "Update"). Corrected from the original
+  **not** `apm update` — which is a no-op on an exact tag pin (spiked apm 0.20.0).
+  Corrected from the original
   "Update is `apm update`" on that evidence.
 - The "see central" inventory view reads the **local** `agent-harness` clone;
   **deploy** pulls the tagged ref from the **remote**. Maestro must surface any
@@ -81,7 +81,7 @@ observed during the `01.1` build, not assumed here.
 ## Rejected alternatives
 
 - **Local-path deploy.** Instant and offline, but the lockfile carries no version
-  and `apm` ignores it for drift — it kills `J02` version, `J04`, and `J08`. The
+  and `apm` ignores it for drift — it kills versions, drift, and update. The
   apparent simplicity is a trap.
 - **Git ref, unpinned (track `main`).** Drift fires on every commit, the version
   is an opaque sha, and `apm` itself recommends against it — a worse product than

@@ -1,6 +1,4 @@
-// The Harness home base's git surface: fine-grained reads and one fetch, always
-// through argument arrays (security.md). Nothing leaves as stdout or stderr — a
-// failure leaves as a class, a read as a named field (ADR-0021).
+// Nothing leaves as stdout or stderr: a failure leaves as a class, a read as a named field.
 import { execFile } from "node:child_process";
 import { access, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -46,34 +44,24 @@ const run = promisify(execFile);
 
 const REMOTE_HEAD = "refs/remotes/origin/HEAD";
 
-// Remote tags land in a namespace Maestro owns, never in `refs/tags`: an
-// unpushed local tag must not be read as a release, and pruning here can never
-// delete a tag the author made (#516).
+// Never `refs/tags`: an unpushed local tag must not read as a release, and
+// pruning must never delete a tag the author made (#516).
 const MAESTRO_TAGS = "refs/maestro/tags";
 const TAG_REFSPEC = `+refs/tags/*:${MAESTRO_TAGS}/*`;
 const BRANCH_REFSPEC = "+refs/heads/*:refs/remotes/origin/*";
 
-// One branch per skill under review, named after the skill it carries. Fetched
-// by the branch refspec above, so what is read here is what the team pushed.
 const PROMOTE_BRANCHES = `refs/remotes/origin/${PROMOTE_NAMESPACE}`;
 
-// Tab-separated so a branch name containing spaces stays one field. The second
-// field is the branch's tip commit, read beside the tree under review (#918).
+// Tab-separated so a name containing spaces stays one field.
 const PROMOTE_FORMAT = `%(refname:lstrip=${PROMOTE_BRANCHES.split("/").length})\t%(objectname)`;
 
-// Fixed, so a pull request starts legibly without Maestro asking for a message.
 const PROMOTE_SUBJECT = "Promote skill: ";
 const REMOVE_SUBJECT = "Remove skill: ";
 
-// Tab-separated so a tag name containing spaces stays one field. The third
-// field is the commit an annotated tag points at; lightweight tags leave it
-// empty.
+// The third field is the commit an annotated tag points at; empty for a lightweight tag.
 const TAG_FORMAT = `%(refname:lstrip=${MAESTRO_TAGS.split("/").length})\t%(objectname)\t%(*objectname)`;
 
 export class HarnessGitAdapter implements HarnessGitPort {
-  // Fetches the remote's commits and tags, then re-points the local
-  // `origin/HEAD` at the remote's current default branch. Neither touches HEAD,
-  // the index, or the working tree.
   async fetch(root: string): Promise<HarnessFetchOutcome> {
     const options = gitOptions();
     try {
@@ -93,12 +81,8 @@ export class HarnessGitAdapter implements HarnessGitPort {
     }
   }
 
-  // Pushes `<commit>:refs/tags/<name>` directly: the tag is created on the
-  // remote by the push itself, so no local tag object exists to clean up, and
-  // nothing here can move HEAD, the index, or the working tree (#520).
-  //
   // The branch refspec is a lease on the tip, never an update: `--atomic`
-  // refuses the tag along with a lease git finds stale — see ADR-0023.
+  // refuses the tag along with a stale lease.
   async publishTag(
     root: string,
     name: string,
@@ -130,11 +114,8 @@ export class HarnessGitAdapter implements HarnessGitPort {
         return settled;
       }
     }
-    // The push already made this true on the remote — that is the commit
-    // point. Mirroring it locally is a same-process optimisation, not part of
-    // the outcome: a lock collision here must never turn an already-published
-    // release into a reported failure. A later fetch reconciles the mirror
-    // from the real tag either way (#520).
+    // The push is the commit point: a failed local mirror must never report a
+    // published release as failed. A later fetch reconciles it (#520).
     await run(
       "git",
       ["-C", root, "update-ref", `${MAESTRO_TAGS}/${name}`, commit],
@@ -143,9 +124,8 @@ export class HarnessGitAdapter implements HarnessGitPort {
     return "pushed";
   }
 
-  // A push can time out on the way back from a remote that already wrote the
-  // tag, and reported as a failure it strands the author: their own retry then
-  // reads that tag. So anything but a worded refusal asks the remote (#520).
+  // A push can time out after the remote already wrote the tag, so anything
+  // but a worded refusal asks the remote (#520).
   private async settlePush(
     root: string,
     name: string,
@@ -155,9 +135,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
     if (failure === "already-exists" || failure === "stale-tip") {
       return failure;
     }
-    // Not `read`: the remote may be unreachable here, so this needs the same
-    // timeout and no-prompt env every other reach out has. An unasked question
-    // reads the same as an absent tag — both leave the failure standing.
+    // Not `read`: the remote may be unreachable, so this needs gitOptions' timeout and no-prompt env.
     const listing = await run(
       "git",
       ["-C", root, "ls-remote", "origin", `refs/tags/${name}`],
@@ -170,15 +148,12 @@ export class HarnessGitAdapter implements HarnessGitPort {
       return failure;
     }
     const [published] = listing.split("\t");
-    // A different object under that name is another author's tag, annotated or
-    // not: never this push's, and never one to force over.
+    // A different object is another author's tag: never force over it.
     return published === commit ? "pushed" : "already-exists";
   }
 
-  // The promotion commit, built entirely in loose objects and two throwaway
-  // indexes: `base`'s tree with exactly this skill's directory replaced by
-  // what is on disk. Nothing here checks out, stages in the author's index,
-  // moves HEAD, or names a local branch (#574, #578).
+  // Built in throwaway indexes only: never checks out, stages in the author's
+  // index, moves HEAD, or names a local branch (#574, #578).
   async pushSkillPromotion(
     root: string,
     name: string,
@@ -186,14 +161,12 @@ export class HarnessGitAdapter implements HarnessGitPort {
   ): Promise<PromoteSkillOutcome> {
     const subpath = harnessSkillSubpath(name);
     if (!(await pathExists(join(root, subpath)))) {
-      // A skill that is not on disk is a deletion, and a deletion is its own
-      // confirmed route (#580) — never something a promotion infers.
+      // A deletion is its own confirmed route (#580), never inferred here.
       return "skill-missing";
     }
 
-    // Asked before any object is written: `git push origin` resolves its own
-    // destination, and one that is not where the fetch came from would publish
-    // this skill under a link naming somewhere else.
+    // Before any object is written: a push to another destination than the
+    // fetch would publish this skill somewhere else.
     if (!(await this.pushLandsWhereItFetched(root))) {
       return "push-elsewhere";
     }
@@ -202,11 +175,8 @@ export class HarnessGitAdapter implements HarnessGitPort {
     try {
       const skillTree = await this.hashWorkingSkill(root, subpath, indexDir);
 
-      // The branch this fetch already brought back can be stale by now: local
-      // object work between that fetch and here takes time, and another
-      // author's own promotion can land on the real branch in that window.
-      // Re-fetching this one ref, right before trusting it, closes most of
-      // that window (#578).
+      // Re-fetched right before trusting it: another author's promotion may
+      // have landed since the last fetch (#578).
       const branchRef = `${PROMOTE_BRANCHES}/${name}`;
       await this.refreshPromoteBranchRef(root, name);
       const existingTip = await this.read(root, ["rev-parse", branchRef]);
@@ -215,10 +185,8 @@ export class HarnessGitAdapter implements HarnessGitPort {
           "rev-parse",
           `${branchRef}:${subpath}`,
         ]);
-        // Already carries exactly this content: a press with nothing changed
-        // leaves no new commit behind. Re-hashed once more first: the working
-        // directory can still mutate under a clean filter or a concurrent
-        // save between the read above and this decision.
+        // Unchanged content leaves no new commit. Re-hash first: the directory
+        // can still change under a concurrent save.
         if (existingTree === skillTree) {
           if (
             (await this.hashWorkingSkill(root, subpath, indexDir)) !== skillTree
@@ -237,40 +205,30 @@ export class HarnessGitAdapter implements HarnessGitPort {
         indexDir,
         `${PROMOTE_SUBJECT}${name}`,
       );
-      // `git add` walks the directory file by file, so a save landing halfway
-      // through leaves a tree mixing two revisions. Read again and refuse a
-      // tree that moved: a pushed branch is not something to take back.
-      // ponytail: detects the race, does not prevent it — a promotion of a
-      // directory being written to is refused, never silently repaired.
+      // A save halfway through `git add` mixes two revisions: refuse a tree
+      // that moved, since a pushed branch cannot be taken back.
+      // ponytail: detects the race, does not prevent it.
       if (
         (await this.hashWorkingSkill(root, subpath, indexDir)) !== skillTree
       ) {
         return "source-changed";
       }
-      // The push classifies its own reply; everything above it is local object
-      // work, and any way git refuses that is one failure to retry. Whatever it
-      // said about it stays here: a class crosses, never git's words or a path
-      // (ADR-0021, security.md).
       return await this.pushPromotion(root, name, commit);
     } catch {
+      // Only the class crosses, never git's words or a path.
       return "push-failed";
     } finally {
       await rm(indexDir, { recursive: true, force: true });
     }
   }
 
-  // The removal commit, built in one throwaway index: `base`'s tree with this
-  // skill's directory taken out. Nothing here checks out, stages in the
-  // author's index, moves HEAD, or names a local branch (#580).
   async pushSkillDeletion(
     root: string,
     name: string,
     base: string,
   ): Promise<SkillPushOutcome> {
     const subpath = harnessSkillSubpath(name);
-    // A skill that is back on disk is an edit, and takes the promotion route.
-    // The use-case already read this; re-read here because the directory is
-    // the author's to restore while the confirmation is in flight.
+    // Re-read: the author may restore the directory while confirmation is in flight.
     if (await pathExists(join(root, subpath))) {
       return "source-changed";
     }
@@ -284,8 +242,6 @@ export class HarnessGitAdapter implements HarnessGitPort {
       await this.refreshPromoteBranchRef(root, name);
       const existingTip = await this.read(root, ["rev-parse", branchRef]);
       if (existingTip !== null) {
-        // The branch already carries the removal: a second confirmation with
-        // nothing left to remove leaves no new commit behind.
         const existingTree = await this.read(root, [
           "rev-parse",
           `${branchRef}:${subpath}`,
@@ -303,9 +259,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
         indexDir,
         `${REMOVE_SUBJECT}${name}`,
       );
-      // The directory reappearing between the guard above and here would make
-      // this a removal the author no longer intends. Refuse rather than push:
-      // a pushed branch is not something to take back.
+      // Reappeared since the guard: refuse, a pushed branch cannot be taken back.
       if (await pathExists(join(root, subpath))) {
         return "source-changed";
       }
@@ -317,12 +271,10 @@ export class HarnessGitAdapter implements HarnessGitPort {
     }
   }
 
-  // Every way the working tree stops answering for the author's whole intent,
-  // asked in a fixed order so a tree that is several at once always refuses
-  // under the same name. A check that could not run is fail-closed (#580).
+  // Fixed order, so a tree that is several at once always refuses under the
+  // same name. A check that could not run is fail-closed (#580).
   async readWorktreeAmbiguity(root: string): Promise<WorktreeAmbiguity | null> {
-    // `--type=bool` normalises git's own spellings, so `1` and `on` read the
-    // same as `true`. Absent is exit 1, which `read` reports as null.
+    // `--type=bool` normalises `1` and `on` to `true`.
     const sparse = await this.read(root, [
       "config",
       "--type=bool",
@@ -341,9 +293,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
         return "rebase-in-progress";
       }
     }
-    // Raw stdout: an empty listing is a tree with nothing unmerged, and only a
-    // failed command is null — collapsing the two would read a git failure as
-    // a clean working tree.
+    // Raw stdout: empty means nothing unmerged; only a failed command is null.
     const unmerged = await this.readOutput(root, ["ls-files", "--unmerged"]);
     if (unmerged === null) {
       return "unreadable";
@@ -358,9 +308,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
     );
   }
 
-  // Both sides as git itself resolves them: `--push --all` names every push
-  // destination after `pushurl` and `pushInsteadOf`, and `get-url` the fetch one
-  // after `insteadOf`. An unreadable side is no destination at all.
+  // Both sides as git resolves them, after `pushurl`, `pushInsteadOf` and `insteadOf`.
   private async pushLandsWhereItFetched(root: string): Promise<boolean> {
     const listed = await this.read(root, [
       "remote",
@@ -375,10 +323,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
     );
   }
 
-  // Updates just this one remote-tracking ref to the branch's live tip,
-  // rather than trusting whatever the harness's last general fetch found.
-  // Failure (offline, branch deleted) leaves the existing local ref standing
-  // — the caller's own read of it then answers exactly as before this call.
+  // Failure (offline, branch deleted) leaves the existing local ref standing.
   private async refreshPromoteBranchRef(
     root: string,
     name: string,
@@ -396,17 +341,15 @@ export class HarnessGitAdapter implements HarnessGitPort {
     ).catch(() => {});
   }
 
-  // The skill exactly as it sits on disk. Seeded from HEAD for the same reason
-  // `workingSkillTrees` is: git exempts only already-tracked files from the
-  // ignore rules, so an index built from nothing would drop them.
+  // Seeded from HEAD: git exempts only tracked files from the ignore rules, so
+  // an index built from nothing would drop tracked-but-ignored files.
   private async hashWorkingSkill(
     root: string,
     subpath: string,
     indexDir: string,
   ): Promise<string> {
     const options = indexOptions(join(indexDir, "working"));
-    // Only an unborn HEAD has no tree to seed from; every other failure here is
-    // left to the caller's own classification.
+    // Only an unborn HEAD fails here.
     await run("git", ["-C", root, "read-tree", "HEAD"], options).catch(
       () => {},
     );
@@ -421,13 +364,9 @@ export class HarnessGitAdapter implements HarnessGitPort {
     ).stdout.trim();
   }
 
-  // `read-tree --prefix` refuses a path the index already holds, so the tree
-  // base's own copy is dropped from the index first. `treeBase` is always the
-  // freshly fetched tip; `parent` is the existing promote branch's own tip
-  // when there is one, so the push that follows is a fast-forward (#578).
-  //
-  // `tree: null` stops after the drop, which is the whole of a removal: the
-  // base's tree with exactly this one subpath gone (#580).
+  // `read-tree --prefix` refuses a path the index already holds, so the base's
+  // copy is dropped first; `tree: null` stops there (a removal). `parent` is the
+  // promote branch's tip when one exists, so the push fast-forwards (#578).
   private async commitSkillOnto(
     root: string,
     skill: { subpath: string; tree: string | null },
@@ -466,8 +405,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
       ["-C", root, "write-tree"],
       options,
     );
-    // No author, no signing flag: whatever the author's own git is configured
-    // to do is what this commit carries (#574).
+    // No author, no signing flag: the author's own git config applies (#574).
     const { stdout: commit } = await run(
       "git",
       ["-C", root, "commit-tree", tree.trim(), "-p", parent, "-m", subject],
@@ -476,9 +414,8 @@ export class HarnessGitAdapter implements HarnessGitPort {
     return commit.trim();
   }
 
-  // Never `--force`: a branch this commit does not descend from is a refusal
-  // to report, not a history to overwrite. A cumulative commit descends from
-  // the branch's own tip, so its push is an ordinary fast-forward (#578).
+  // Never `--force`: a branch this commit does not descend from is a refusal,
+  // not a history to overwrite (#578).
   private async pushPromotion(
     root: string,
     name: string,
@@ -507,15 +444,9 @@ export class HarnessGitAdapter implements HarnessGitPort {
     }
   }
 
-  // The lost reply `settlePush` settles for a tag: a push can fail on the way
-  // back from a remote that already moved the branch, and reported as a failure
-  // it strands the author — their retry builds a second commit on the same tip,
-  // which their own pushed branch then refuses. So the remote is asked (#577).
-  //
-  // The live tip need not equal this push's own commit to count as settled: a
-  // teammate's own promotion can fast-forward the branch again in the time it
-  // takes the reply to come back, and this commit is still on the branch,
-  // just no longer its tip.
+  // A push can fail after the remote already moved the branch, so the remote is
+  // asked (#577). A teammate may have fast-forwarded past this commit since, so
+  // being an ancestor of the tip also counts as pushed.
   private async settlePromotion(
     root: string,
     name: string,
@@ -538,8 +469,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
     if (pushed === commit) {
       return "pushed";
     }
-    // The tip moved past this commit — fetch it locally so ancestry can
-    // actually be checked; without the object, `merge-base` cannot answer.
+    // `merge-base` needs the tip's object locally.
     const fetched = await run(
       "git",
       [
@@ -577,9 +507,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
     };
   }
 
-  // The four places one skill's content can sit, read through the same ref
-  // reader the release delta uses. Null where a ref could not be read, so an
-  // unreadable clone never reads as one with nothing waiting.
+  // Null where a ref could not be read, so an unreadable clone never reads as one with nothing waiting.
   async readMovementTrees(root: string): Promise<HarnessSkillTrees | null> {
     const remote = await this.readSkillTrees(root, REMOTE_HEAD);
     const local = await this.readSkillTrees(root, "HEAD");
@@ -595,14 +523,8 @@ export class HarnessGitAdapter implements HarnessGitPort {
     };
   }
 
-  // The fork point local HEAD and one exact remote commit last agreed on —
-  // the one commit-level fact tree hashes alone cannot give (ADR-0021). Takes
-  // the commit rather than resolving `origin/HEAD` itself: that ref is
-  // mutable, and a concurrent fetch elsewhere in the app can re-point it
-  // between the caller's own read of it and this call — comparing against a
-  // ref instead of the exact commit the caller already has would then mix
-  // two different snapshots of the remote (#579). Null is unreadable —
-  // unrelated histories, or a clone this fetch never reached.
+  // Takes the exact commit, never `origin/HEAD`: a concurrent fetch can re-point
+  // that ref and mix two snapshots of the remote (#579).
   async mergeBaseCommit(
     root: string,
     remoteCommit: string,
@@ -613,15 +535,12 @@ export class HarnessGitAdapter implements HarnessGitPort {
   catchUp = catchUpClone;
   readCloneSync = readCloneSync;
 
-  // Local restoration's three reads, whole in their own module (ADR-0030).
   readLocalHeadCommit = readLocalHead;
   readStagedSkillDifference = readStagedDifference;
   writeSkillTreeInto = writeSkillTree;
 
-  // Each promote branch is asked only about the skill it is named for: a
-  // branch carrying anything else is not that skill's review. Every branch
-  // gets a key; a null tree is a branch proposing to delete its skill. The tip
-  // commit comes from the same listing, so it costs no extra call.
+  // Each branch is read only for the skill it is named for; a null tree is a
+  // branch proposing to delete its skill.
   private async promoteRefs(
     root: string,
   ): Promise<Record<string, HarnessPromoteRef>> {
@@ -647,15 +566,12 @@ export class HarnessGitAdapter implements HarnessGitPort {
     return Object.fromEntries(named);
   }
 
-  // Writes to a throwaway index, so `add` sees untracked files and deletions
-  // without the author's staged work moving. Only the objects git writes for
-  // the hashes survive, and those are unreferenced.
+  // A throwaway index, so the author's staged work never moves.
   private async workingSkillTrees(
     root: string,
   ): Promise<HarnessSkillTree[] | null> {
-    // No skills path is an empty harness. Every other failure below is left to
-    // throw: reading one as "nothing on disk" would show the author's whole
-    // harness as locally deleted, which is a confident wrong answer.
+    // Every other failure below must throw: read as "nothing on disk" it would
+    // show the whole harness as locally deleted.
     if (!(await pathExists(join(root, HARNESS_SKILLS_DIR)))) {
       return [];
     }
@@ -663,9 +579,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
     const indexDir = await mkdtemp(join(tmpdir(), "maestro-harness-index-"));
     const options = indexOptions(join(indexDir, "index"));
     try {
-      // Seeded from HEAD, because git exempts only already-tracked files from
-      // the ignore rules — from an empty index a tracked-but-ignored skill
-      // file would silently drop out of the hash. An unborn HEAD has none.
+      // Seeded from HEAD, as in `hashWorkingSkill`.
       await run("git", ["-C", root, "read-tree", "HEAD"], options).catch(
         () => {},
       );
@@ -681,15 +595,11 @@ export class HarnessGitAdapter implements HarnessGitPort {
     }
   }
 
-  // The repository the connected clone releases from, in the terms apm's ref
-  // names it. Null where it cannot be read or cannot carry a deploy (ADR-0014).
   async readOrigin(root: string): Promise<GitOrigin | null> {
     const url = await readConfiguredGitOriginUrl(root);
     return url === null ? null : parseGitOrigin(url);
   }
 
-  // Skill trees at a published tag. Read from the namespace `fetch` brings
-  // remote tags into, so an unpushed local `refs/tags/<name>` never answers.
   async readSkillTreesAtTag(
     root: string,
     tag: string,
@@ -697,8 +607,6 @@ export class HarnessGitAdapter implements HarnessGitPort {
     return this.readSkillTrees(root, `${MAESTRO_TAGS}/${tag}`);
   }
 
-  // Each named skill's SKILL.md at a published tag, read from the same
-  // namespace `readSkillTreesAtTag` reads.
   async readSkillManifestsAtTag(
     root: string,
     tag: string,
@@ -707,27 +615,20 @@ export class HarnessGitAdapter implements HarnessGitPort {
     return this.readSkillManifests(root, `${MAESTRO_TAGS}/${tag}`, names);
   }
 
-  // Reads the skills directory as it stands *inside* `ref`, so a ref that is
-  // not an ancestor of anything is still readable. Null on anything the caller
-  // must not read as a delta: an unreadable ref, or a listing git worded in a
-  // way this parser does not recognise.
+  // Null on an unreadable ref or a listing this parser does not recognise.
   async readSkillTrees(
     root: string,
     ref: string,
   ): Promise<HarnessSkillTree[] | null> {
-    // `-z`: without it git quotes and escapes any name outside plain ASCII,
-    // and the quoted form would then be used as a path and shown on screen.
+    // `-z`: otherwise git quotes any non-ASCII name.
     const listing = await this.readOutput(root, [
       "ls-tree",
       "-z",
       `${ref}:${HARNESS_SKILLS_DIR}`,
     ]);
     if (listing === null) {
-      // The same failure covers a ref that does not resolve and a ref carrying
-      // no skills directory. Only the second is an empty set.
-      // `^{tree}`, not `^{commit}`: `workingSkillTrees` passes a bare tree
-      // hash, and deleting the last skill leaves nothing git tracks there —
-      // asked as a commit, an empty harness reads as unreadable (#580).
+      // Tells an unresolvable ref from one with no skills directory. `^{tree}`:
+      // `workingSkillTrees` passes a bare tree hash (#580).
       const resolves = await this.readOutput(root, [
         "rev-parse",
         "--verify",
@@ -742,12 +643,10 @@ export class HarnessGitAdapter implements HarnessGitPort {
       if (entry === "") {
         continue;
       }
-      // `<mode> <type> <object>\t<name>` — only a directory is a skill.
       const [meta = "", name = ""] = entry.split("\t");
       const [mode, type, treeHash] = meta.split(" ");
       if (!mode || !type || !treeHash || !name) {
-        // A line this parser cannot read would silently drop a skill, and a
-        // missing skill reads as a removal nobody made.
+        // Skipping the line would read as a removal nobody made.
         return null;
       }
       if (type === "tree") {
@@ -780,10 +679,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
     return Object.fromEntries(authors);
   }
 
-  // Each named skill's SKILL.md read from `ref`'s own tree, so an uncommitted
-  // edit never counts toward a structural finding. Null where `git show` cannot
-  // find the file — a missing manifest, which the plan reports rather than fails
-  // on. Raw stdout: the frontmatter is parsed in core, never here.
+  // Null where the SKILL.md is missing at `ref`.
   async readSkillManifests(
     root: string,
     ref: string,
@@ -801,8 +697,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
     return Object.fromEntries(manifests);
   }
 
-  // Null only when the command itself failed, so an empty answer stays an
-  // answer. Raw stdout: a `-z` listing carries names this must not touch.
+  // Null only when the command failed; raw stdout, since `-z` names must stay untouched.
   private async readOutput(
     root: string,
     args: string[],
@@ -815,15 +710,11 @@ export class HarnessGitAdapter implements HarnessGitPort {
     }
   }
 
-  // Null on any failure, so an unset `origin/HEAD` reads as "not known"
-  // rather than failing the whole screen. Output is trimmed, never parsed here.
   private read(root: string, args: string[]): Promise<string | null> {
     return runGitText(root, args);
   }
 
-  // `readOutput`, not `read`: an empty listing is a namespace with no tags,
-  // and only a failed command is null. Collapsing the two would read a git
-  // failure as a harness that has never been released (#519).
+  // `readOutput`, not `read`: a failed command must not read as a harness never released (#519).
   async readTags(root: string): Promise<HarnessTag[] | null> {
     const listing = await this.readOutput(root, [
       "for-each-ref",
@@ -846,9 +737,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
   }
 }
 
-// A run we cut off got no answer at all, which is the offline class —
-// reading it as a reply would put words in the remote's mouth. Anything else
-// is a reply, worded by the caller's own classifier.
+// A run we cut off got no answer, so it is offline, never a reply.
 const classifyGitError = <T>(
   error: unknown,
   classify: (stderr: string) => T,

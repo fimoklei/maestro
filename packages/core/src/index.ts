@@ -1,5 +1,4 @@
-// Only what crosses the package boundary. Anything used solely inside `core`
-// stays off this list, so the surface reads as a contract, not an index.
+// Only what crosses the package boundary; keep core-internal exports off it.
 export { ApmCliDriver } from "./deploy/apm-cli-driver";
 export { resolveApmScratchCwd } from "./deploy/apm-scratch-cwd";
 export { SelectionWriter } from "./deploy/apply-selection";
@@ -13,8 +12,7 @@ export {
   type BulkRemoveTarget,
 } from "./deploy/bulk-remove-deployed-skill";
 export {
-  // The apm boundary itself: the integration lane fakes it to prove a write
-  // landed on disk (tests/helpers/root-package-apm.ts).
+  // Exported for the integration lane's apm fake.
   type ApmDriverPort,
   type DeployedContentState,
   DeploySkill,

@@ -17,9 +17,7 @@ function RereadTrigger() {
   );
 }
 
-// Deploy moved from the row into the detail pane (ADR-0016), so opening the pane
-// is the precondition for asserting anything about its deploy control. Returns
-// the pane's scope — the standing strip above the table shares its labels (#473).
+// Opens the detail pane, where Deploy lives, and returns its scope.
 async function openPane(name: string) {
   await userEvent.click(await screen.findByRole("gridcell", { name }));
   return within(await screen.findByRole("complementary"));
@@ -65,7 +63,7 @@ function stubApi(primitives: unknown[], repos: unknown[]) {
 
 describe("InventoryPanel", () => {
   it("titles the page with a single h1", async () => {
-    // Heading navigation has no starting point without one (ADR-0015 precedent).
+    // Heading navigation has no starting point without one.
     stubApi([{ type: "skill", name: "tdd", description: "TDD loop" }], []);
     renderPanel();
 
@@ -94,8 +92,7 @@ describe("InventoryPanel", () => {
   });
 
   it("names each skill row's type", async () => {
-    // The view is type-aware (a Type column) though only skills render today,
-    // so a future hook/mcp/bundle slots in additively (#80, #987).
+    // Type-aware though only skills render today (#80, #987).
     stubApi(
       [
         { type: "skill", name: "tdd", description: "TDD loop" },
@@ -110,9 +107,7 @@ describe("InventoryPanel", () => {
   });
 
   it("exposes the skills as a table, one row per skill", async () => {
-    // The inventory is a real table, so it keeps table semantics for
-    // assistive tech (frontend.md a11y baseline) — not generic divs (#80,
-    // Codex P2; table shape per #285).
+    // A real table keeps table semantics for assistive tech (#80, #285).
     stubApi(
       [
         { type: "skill", name: "tdd", description: "TDD loop" },
@@ -174,9 +169,9 @@ describe("InventoryPanel", () => {
   });
 
   it("holds the status unresolved while the registry is still loading", async () => {
-    // The repo set is unknown until the registry resolves, so a skill's repo
-    // reach is unconfirmed — the row must not read a definite "Not deployed"
-    // (J04), and no status shows before the server confirms it (ADR-0033 §10).
+    // The repo set is unknown until the registry resolves, so the row must not
+    // read a definite "Not deployed", and no status shows before the server
+    // confirms it.
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) =>
@@ -233,8 +228,7 @@ describe("InventoryPanel", () => {
     );
     renderPanel();
 
-    // A panel that failed to load announces politely: nothing here followed a
-    // click, so role="status", never the assertive region (#465, decision 11).
+    // A panel that failed to load announces politely: nothing followed a click (#465).
     expect(
       (await screen.findByText(/No Harness connected/i)).closest(
         '[role="status"]',
@@ -291,8 +285,7 @@ describe("InventoryPanel", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  // A failed read keeps the previous rows and recovers in place (#1033 story
-  // 58, ADR-0033 §11); this reverses #841, which hid them.
+  // A failed read keeps the previous rows and recovers in place; this reverses #841.
   it("keeps the rows and the count under a failed re-read, and recovers in place", async () => {
     let fail = false;
     vi.stubGlobal(

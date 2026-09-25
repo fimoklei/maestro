@@ -1,7 +1,6 @@
 // The pre-flight plan for a bulk deploy. A skill skips as a no-op only once
-// confirmed present AND up-to-date on every target — a skill missing from a
-// newly-added tool is never mistaken for fully clean (#292). A bulk run never
-// moves a target's release, so it plans no update either (ADR-0031, #956).
+// confirmed present and up to date on every target (#292). A bulk run never
+// moves a target's release, so it plans no update (#956).
 
 import type { DeployedView } from "../deploy-state/deployed-view";
 import { type DeploymentTarget, skillReading } from "./deployed-rollup";
@@ -17,8 +16,6 @@ function deployedOn(deployed: DeployedView, name: string): boolean {
 }
 
 // Deployed here and proven current, the Release head answering first (#956).
-// Every other reading — behind, lagging a tag, un-run — keeps the skill
-// attempted rather than assumed clean.
 const isClean = (target: DeploymentTarget, name: string): boolean =>
   deployedOn(target.deployed, name) &&
   skillReading(target, name) === "up-to-date";
@@ -31,8 +28,7 @@ export function planBulkDeploy(
   const skippedClean: string[] = [];
 
   for (const name of names) {
-    // A single un-run or missing target keeps the skill attempted, not
-    // assumed clean (J04).
+    // A single un-run or missing target keeps the skill attempted.
     const allUpToDate =
       targets.length > 0 && targets.every((target) => isClean(target, name));
 

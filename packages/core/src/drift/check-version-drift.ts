@@ -1,7 +1,5 @@
-// The version-drift use-case. The judgment is `apm outdated`'s — Maestro never
-// computes a version diff itself (ADR-0001).
+// The judgment is `apm outdated`'s; Maestro never computes a version diff.
 import type { ApmDriverPort, DeployTarget } from "../deploy/deploy-skill";
-// Forwarded unchanged, so the outcome has one owner.
 import type { OutdatedResult } from "./parse-outdated";
 
 type CheckVersionDriftInput = {
@@ -23,12 +21,10 @@ export class CheckVersionDrift {
   async execute(input: CheckVersionDriftInput): Promise<OutdatedResult> {
     let target = input.target;
     if (target.kind === "repo") {
-      // Before any apm access (security.md).
+      // Before any apm access.
       if (!(await this.deps.registry.isRegistered(target.repoPath))) {
         return { ok: false };
       }
-      // Registration guarantees the path exists, so this is the catch-all for a
-      // broken environment.
       try {
         target = {
           kind: "repo",

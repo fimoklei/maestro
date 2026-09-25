@@ -5,19 +5,14 @@ import { type DeployStateNotice, removeNotice } from "./notice-copy";
 import type { RemoveRowWarning } from "./remove-preflight-view";
 import { RemoveSkillDialog } from "./remove-skill-dialog";
 
-// Every notice a story shows is the shipped one for that code, not a retyped
-// copy of it.
 const noticeFor = (code: string): DeployStateNotice =>
   removeNotice(new HttpError(500, "unused", code));
 
-// The repo scope answered: one verdict for its one row, and any leftover copies
-// it named travel with that answer.
 const repoCheck = (
   warning: RemoveRowWarning,
   reclaim: readonly ReclaimPreview[] = [],
 ) => ({ kind: "offered", check: { kind: "repo", warning }, reclaim }) as const;
 
-// The global scope answered, one verdict per detected tool.
 const toolChecks = (
   warnings: Record<string, RemoveRowWarning>,
   reclaim: readonly ReclaimPreview[] = [],
@@ -28,15 +23,13 @@ const toolChecks = (
     reclaim,
   }) as const;
 
-// The check is still running, so it has claimed nothing about any row.
 const CHECKING = {
   kind: "offered",
   check: { kind: "unanswered", warning: "checking" },
   reclaim: [],
 } as const;
 
-// The copy of a tool this machine no longer detects, which a global removal
-// force-deletes beyond apm's own scoped uninstall (#339).
+// A tool this machine no longer detects; a global removal force-deletes its copy.
 const LEFTOVER: readonly ReclaimPreview[] = [
   { tool: "claude", path: "/Users/me/.claude/skills/tdd" },
 ];
@@ -62,21 +55,14 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-// The question as it is asked: the skill, the exact build going, and the target
-// in full, so two similar rows can be told apart before confirming.
 export const Confirming: Story = {};
 
-// A row that carries no version. The question drops it rather than invent one.
 export const WithoutVersion: Story = { args: { version: null } };
 
-// Longest name the panel carries — moved from footer (ellipsis, #388) to
-// title; proves heading and type tag share the header (#411).
 export const LongSkillName: Story = {
   args: { skillName: "some-very-long-skill-name-that-keeps-going" },
 };
 
-// A path with no spaces to break at. The ledger row wraps it mid-token rather
-// than letting it set the panel's width.
 export const LongRepoPath: Story = {
   args: {
     target: {
@@ -87,23 +73,16 @@ export const LongRepoPath: Story = {
   },
 };
 
-// Mid-removal: both controls are inert and the dialog cannot be dismissed, so
-// the outcome cannot be missed.
 export const Removing: Story = { args: { isRemoving: true } };
 
-// A removal apm did not confirm. The dialog stays put with apm's own reason,
-// and the footer offers the attempt again — `Close` and `Confirm removal`, because the
-// removal has already been confirmed once. Danger red with its own ✕, so a
-// failure never reads as one more amber warning.
+// A removal apm did not confirm: danger red, and the footer offers it again.
 export const Failed: Story = {
   args: {
     error: noticeFor("remove-failed"),
   },
 };
 
-// A removal that came off one tool and not the other. apm reports one outcome
-// for every tool at once, so this ledger is the server's own probe of the disk
-// (ADR-0013) — the lead-in counts from it, never from the rows on screen.
+// The server's own per-target probe after a failure; the lead-in counts from it.
 export const FailedPerTarget: Story = {
   args: {
     target: { kind: "global", tools: ["claude", "codex"] },
@@ -119,8 +98,6 @@ export const FailedPerTarget: Story = {
   },
 };
 
-// The probe itself could not answer. Reported as unknown, never as removed: a
-// check that did not run proves nothing (J04).
 export const FailedOutcomeUnknown: Story = {
   args: {
     error: noticeFor("remove-failed"),
@@ -128,8 +105,6 @@ export const FailedOutcomeUnknown: Story = {
   },
 };
 
-// A retry the user has already pressed. Same footer, both controls inert: the
-// second attempt is as uninterruptible as the first.
 export const Retrying: Story = {
   args: {
     isRemoving: true,
@@ -137,9 +112,7 @@ export const Retrying: Story = {
   },
 };
 
-// The copy changed between the check and the click, so the removal stopped
-// having done nothing (#364). Amber, not red: the ledger states what it costs
-// now, and the footer still offers the first removal rather than a retry.
+// The copy changed between the check and the click; nothing ran (#364).
 export const CostRestated: Story = {
   args: {
     preflight: repoCheck("cannot-verify"),
@@ -147,18 +120,13 @@ export const CostRestated: Story = {
   },
 };
 
-// A confirmed removal refused before apm ran: the deployed copy could not be
-// read at all. The same footer — retrying a refusal costs a round-trip and
-// nothing else.
 export const RemovalRefused: Story = {
   args: {
     error: noticeFor("deployed-unreadable"),
   },
 };
 
-// The loudest panel this dialog can render: a leftover copy, a local-edits
-// warning and a failed removal at once — the state that proves the amber
-// warnings and the red failure still read as different objects when stacked.
+// The loudest state: amber warnings and a red failure stacked.
 export const FailedWithWarnings: Story = {
   args: {
     target: { kind: "global", tools: ["codex"] },
@@ -167,32 +135,20 @@ export const FailedWithWarnings: Story = {
   },
 };
 
-// The check has not answered yet, so the confirm control waits with it: an
-// unfinished check has not warned about anything, and apm deletes an edited copy
-// without a word. Cancel stays open, so waiting is never a trap.
 export const Checking: Story = { args: { preflight: CHECKING } };
 
-// The deployed copy carries edits apm would delete without a word. Amber, not
-// danger red — and the confirm control stays usable, because destroying the
-// copy is what the user came here to do.
 export const WithUnverifiableCopy: Story = {
   args: { preflight: repoCheck("cannot-verify") },
 };
 
-// No baseline to check against. A distinct wording: calling this copy "edited"
-// would claim something we never saw.
 export const Unverifiable: Story = {
   args: { preflight: repoCheck("cannot-verify") },
 };
 
-// The check itself never ran. Its own wording: borrowing the one above would
-// blame a missing baseline nothing ever looked for.
 export const CheckFailed: Story = {
   args: { preflight: repoCheck("check-failed") },
 };
 
-// Server refused the request itself, not a failed check: removal is already
-// known impossible, so no ledger and no confirm control at all (#385, #412).
 export const CheckRefused: Story = {
   args: {
     preflight: {
@@ -203,9 +159,6 @@ export const CheckRefused: Story = {
   },
 };
 
-// The copy carries local edits: apm 0.29.0 would keep the edited file and
-// abort after deleting the rest, so the check refuses and names Deploy again
-// as the way through (#775).
 export const CheckRefusedLocalEdits: Story = {
   args: {
     preflight: {
@@ -216,8 +169,6 @@ export const CheckRefusedLocalEdits: Story = {
   },
 };
 
-// Global scope: ledger lists every detected tool the removal reaches.
-// No row carries a control — there is no per-tool remove to offer.
 export const GlobalScope: Story = {
   args: {
     target: { kind: "global", tools: ["claude", "codex"] },
@@ -225,8 +176,6 @@ export const GlobalScope: Story = {
   },
 };
 
-// A leftover copy a global removal force-deletes beyond apm's own scoped
-// uninstall (#339) — its own ledger row, named by path.
 export const GlobalScopeWithReclaim: Story = {
   args: {
     target: { kind: "global", tools: ["codex"] },
@@ -234,9 +183,6 @@ export const GlobalScopeWithReclaim: Story = {
   },
 };
 
-// A leftover copy that also carries local edits — the two loudest things this
-// dialog can say, stacked, which is the state worth looking at before shipping
-// a wording change to either.
 export const GlobalScopeWithReclaimAndUnverifiableCopy: Story = {
   args: {
     target: { kind: "global", tools: ["codex"] },

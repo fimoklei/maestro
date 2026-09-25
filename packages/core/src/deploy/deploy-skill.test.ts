@@ -14,24 +14,19 @@ import { selectionWorld } from "./selection-writer-fake";
 const repo = (repoPath: string): DeployTarget => ({ kind: "repo", repoPath });
 const globalTarget: DeployTarget = { kind: "global" };
 
-// A destination in one state with no symlinked copy — what every guard test
-// but the symlink one needs.
 const contentState = (state: DeployedContentState): DeployedContentPort => ({
   classify: async () => state,
   contentDigest: async () => null,
   linkedSkillPath: async () => null,
 });
 
-// In-memory fakes: real objects honoring the ports, no I/O. `deployedContent`
-// is the whole port here, because the guard built below reads its `classify`
-// while the use-case only ever asks it for a linked destination.
+// `deployedContent` is the whole port: the guard reads its `classify`, the
+// use-case only asks it for a linked destination.
 const buildDeps = (
   overrides?: Partial<
     Omit<ConstructorParameters<typeof DeploySkill>[0], "deployedContent">
   > & { deployedContent?: DeployedContentPort },
 ) => {
-  // The Selection lifecycle behind the use-case: apm's calls, the manifest and
-  // the files all live here, so a deploy is judged by what landed (#951).
   const world = selectionWorld();
   const deployed = world.calls;
   const classified: Array<{
@@ -65,8 +60,7 @@ const buildDeps = (
         ok: true as const,
         tag: "v0.5.1",
       }),
-      // Never reached: the install runs inside the Selection writer, which is
-      // the one owner of a write over a deployed copy (#951).
+      // Never reached: the install runs inside the Selection writer (#951).
       deploySkill: async () => ({ ok: true as const }),
     },
     inventoryOriginUrl: async () => "git@github.com:fimoklei/agent-harness.git",
@@ -97,8 +91,6 @@ const buildDeps = (
         cleaned.push(input);
       },
     },
-    // A two-tool machine by default; individual tests narrow this to prove the
-    // global `-t` follows detected presence (ADR-0011, #131).
     toolPresence: {
       detectGlobalTools: async (): Promise<SupportedTool[]> => [
         "claude",
@@ -117,8 +109,6 @@ const buildDeps = (
     selection: world.writer,
     ...overrides,
   };
-  // The real guard over the fake classifier: the refusal and consent rules are
-  // the guard's, and the use-case tests prove it is wired to them (#952).
   const copyGuard = new LocalCopyGuard({ content: base.deployedContent });
   const deps = { ...base, copyGuard };
   return { deps, deployed, classified, cleaned, copyGuard, world };
@@ -126,8 +116,7 @@ const buildDeps = (
 
 describe("DeploySkill", () => {
   it("refuses to call an install that placed nothing a clean deploy", async () => {
-    // apm prints its success marker whatever landed, so the disk and the
-    // deployment record are the only honest verdict (#358, #951).
+    // apm prints its success marker whatever landed (#358, #951).
     const { deps, cleaned, world } = buildDeps();
     world.landsOnly([]);
 
@@ -192,9 +181,8 @@ describe("DeploySkill", () => {
   });
 
   it("deploys a corrected release over a copy apm itself left unverifiable", async () => {
-    // The standing copy has no baseline of its own, which the guard would
-    // normally refuse as unverifiable — but it is apm's own, not local work, so
-    // the corrected release goes through unforced (#358).
+    // Without a baseline the guard would refuse this copy as unverifiable, but it
+    // is apm's own, not local work (#358).
     const { deps } = buildDeps({
       deployedContent: {
         classify: async () => "unverifiable" as const,
@@ -222,8 +210,6 @@ describe("DeploySkill", () => {
   });
 
   it("installs nothing when the target's deployment record cannot be read", async () => {
-    // With no readable record there is no selection to add to, so the write
-    // fails closed rather than installing over an unknown target (#58, #951).
     const { deps, deployed, world } = buildDeps();
     world.files.set("/target/apm.lock.yaml", "dependencies: [\n");
 
@@ -249,8 +235,7 @@ describe("DeploySkill", () => {
       ok: true,
       deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
     });
-    // The repository root with the whole Selection, never a per-skill subpath
-    // ref (ADR-0031).
+    // The repository root with the whole Selection, never a per-skill subpath ref.
     expect(deployed).toEqual([
       {
         command: "install",
@@ -348,8 +333,6 @@ describe("DeploySkill", () => {
   });
 
   it("deploys a known skill globally at the latest tag", async () => {
-    // Global carries no path, so the registry never gates it; it shares the
-    // inventory, origin, tag, and drift checks with a repo deploy (J07).
     const { deps, deployed } = buildDeps();
     const result = await new DeploySkill(deps).execute({
       type: "skill",
@@ -373,9 +356,7 @@ describe("DeploySkill", () => {
   });
 
   it("targets only the detected tool on a single-tool machine", async () => {
-    // ADR-0011: a Claude-only machine must get -t claude, never claude,codex —
-    // otherwise apm writes a dead .agents/ tree for a tool the user lacks. The
-    // detected subset is passed straight through to the driver (#131).
+    // Anything wider makes apm write a copy for a tool the user lacks (#131).
     const { deps, deployed } = buildDeps({
       toolPresence: { detectGlobalTools: async () => ["claude"] },
     });
@@ -398,9 +379,8 @@ describe("DeploySkill", () => {
   });
 
   it("scopes the destination guard to the detected tools on a global deploy", async () => {
-    // #136: a Claude-only machine must ask the guard about the claude copy only,
-    // so an untargeted .agents copy left by a prior two-tool install cannot force
-    // a false refusal. The detected set is passed straight into classify.
+    // A leftover .agents copy from a two-tool install must not force a false
+    // refusal (#136).
     const { deps, classified } = buildDeps({
       toolPresence: { detectGlobalTools: async () => ["claude"] },
     });
@@ -421,8 +401,6 @@ describe("DeploySkill", () => {
   });
 
   it("passes no tool scope to the guard for a repo deploy", async () => {
-    // The repo path scans every DEPLOY_TOOLS copy (#136): classify is called
-    // without a tools scope, preserving the pre-#136 behaviour.
     const { deps, classified } = buildDeps();
     await new DeploySkill(deps).execute({
       type: "skill",
@@ -430,8 +408,8 @@ describe("DeploySkill", () => {
       target: repo("/registered/repo"),
     });
 
-    // No tool scope, and the release the deploy is about to install, so a copy
-    // already equal to it is not read as local edits (#952).
+    // The release about to install, so a copy already equal to it is not read as
+    // local edits (#952).
     expect(classified).toEqual([
       {
         target: repo("/registered/repo"),
@@ -443,10 +421,8 @@ describe("DeploySkill", () => {
   });
 
   it("removes the untargeted tool's copy when that tool owns its directory", async () => {
-    // ADR-0011 / #136: a Codex-only machine that once ran a two-tool global
-    // install has a .claude copy apm leaves behind. Claude Code is the only
-    // reader of .claude/skills/, so its absence proves that copy is dead wood
-    // and the narrowed install removes exactly it.
+    // Only Claude Code reads the Claude skills folder, so its absence proves that
+    // copy dead (#136).
     const { deps, cleaned, deployed } = buildDeps({
       toolPresence: { detectGlobalTools: async () => ["codex"] },
     });
@@ -464,9 +440,8 @@ describe("DeploySkill", () => {
   });
 
   it("keeps the untargeted tool's copy when other tools read its directory", async () => {
-    // #202: an undetected Codex leaves .agents/skills/ behind, but Cursor,
-    // Copilot, Gemini and others read that same directory. Maestro cannot prove
-    // the tree is dead, so a Claude-only narrowing removes nothing at all.
+    // Cursor, Copilot, Gemini and others read .agents/skills/ too, so Maestro cannot
+    // prove it dead (#202).
     const { deps, cleaned, deployed } = buildDeps({
       toolPresence: { detectGlobalTools: async () => ["claude"] },
     });
@@ -482,8 +457,6 @@ describe("DeploySkill", () => {
   });
 
   it("cleans nothing when the global deploy targets every tool", async () => {
-    // A full two-tool machine narrows nothing away — there is no obsolete copy,
-    // so the cleanup step is skipped entirely.
     const { deps, cleaned } = buildDeps();
     await new DeploySkill(deps).execute({
       type: "skill",
@@ -495,8 +468,6 @@ describe("DeploySkill", () => {
   });
 
   it("never cleans on a repo deploy", async () => {
-    // Obsolete-target reconciliation is the global path only (#136); a repo
-    // deploy targets every tool and touches no untargeted copy.
     const { deps, cleaned } = buildDeps();
     await new DeploySkill(deps).execute({
       type: "skill",
@@ -508,9 +479,7 @@ describe("DeploySkill", () => {
   });
 
   it("does not clean when the global install fails", async () => {
-    // Cleanup runs only after a proven-successful install: a failed apm install
-    // must not trigger removal of an untargeted copy (no half-reconciled state).
-    // Codex-only, so a successful install here would have cleaned .claude.
+    // Codex-only, so a successful install here would have cleaned the Claude copy.
     const { deps, cleaned, world } = buildDeps({
       toolPresence: { detectGlobalTools: async () => ["codex"] },
     });
@@ -526,10 +495,6 @@ describe("DeploySkill", () => {
   });
 
   it("still reports success when the obsolete-copy cleanup fails", async () => {
-    // The install already succeeded; reconciling the dead copy is best-effort.
-    // A cleanup failure must not invert a proven-successful deploy to
-    // deploy-failed — it leaves the pre-existing dead tree, which the next
-    // deploy retries idempotently (#136).
     const { deps, deployed } = buildDeps({
       toolPresence: { detectGlobalTools: async () => ["codex"] },
       deployedCleanup: {
@@ -552,10 +517,7 @@ describe("DeploySkill", () => {
   });
 
   it("refuses a global deploy when no supported tool is detected, before apm", async () => {
-    // No Claude, no Codex → there is nothing to deploy to. Refuse with a typed
-    // error and never invoke apm (proven by making both apm methods throw) — a
-    // bare install would otherwise fail on "Multiple harnesses" or write nothing
-    // (ADR-0011, #131).
+    // Both apm methods throw, proving apm is never invoked (#131).
     const { deps, deployed } = buildDeps({
       toolPresence: { detectGlobalTools: async () => [] },
       apm: {
@@ -578,8 +540,6 @@ describe("DeploySkill", () => {
   });
 
   it("never consults tool presence for a repo deploy", async () => {
-    // Presence gating is the global path only; a repo deploy is unaffected
-    // (#131). Proven by making detection throw if touched.
     const { deps, deployed } = buildDeps({
       toolPresence: {
         detectGlobalTools: async () => {
@@ -594,7 +554,6 @@ describe("DeploySkill", () => {
     });
 
     expect(result.ok).toBe(true);
-    // The repo path passes no tools; the driver keeps its own -t claude,codex.
     expect(deployed).toEqual([
       {
         command: "install",
@@ -606,8 +565,6 @@ describe("DeploySkill", () => {
   });
 
   it("deploys globally without consulting the registry", async () => {
-    // A global deploy crosses no client-supplied path, so the registry gate
-    // must not run — proven by making it throw if touched (security.md, J07).
     const { deps, deployed } = buildDeps({
       registry: {
         isRegistered: async () => {
@@ -629,9 +586,7 @@ describe("DeploySkill", () => {
   });
 
   it("rejects a non-skill primitive type, before touching any port", async () => {
-    // Skill-only is a business rule in core, not a schema shape at the edge:
-    // the edge accepts any string so the user gets an honest message instead
-    // of a generic 400 (issue #15).
+    // The edge accepts any string, so the skill-only rule lives in core (#15).
     const { deps, deployed } = buildDeps();
     const result = await new DeploySkill(deps).execute({
       type: "hook",
@@ -668,8 +623,6 @@ describe("DeploySkill", () => {
   });
 
   it("deploys one named skill out of an inventory that holds several", async () => {
-    // The inventory check asks whether the name is among the primitives, not
-    // whether every primitive carries it: a real inventory holds many.
     const { deps, deployed } = buildDeps({
       inventory: {
         read: async () => ({
@@ -717,8 +670,7 @@ describe("DeploySkill", () => {
     expect(result).toEqual({ ok: false, error: "inventory-not-configured" });
   });
 
-  // A release Maestro could not read says nothing about the connection; calling
-  // it "not configured" would send the author to re-connect a live harness.
+  // Calling it "not configured" would send the author to re-connect a live harness.
   it("reports an unreadable inventory apart from an unconfigured one", async () => {
     const { deps } = buildDeps({
       inventory: {
@@ -750,9 +702,6 @@ describe("DeploySkill", () => {
   });
 
   it("gates on registry membership before reading the inventory", async () => {
-    // Security rule: a path-taking endpoint must reject an unregistered repo
-    // before any filesystem access. So an unregistered path must never even
-    // reach inventory.read() — proven by making that read throw if called.
     const { deps } = buildDeps({
       inventory: {
         read: async () => {
@@ -805,9 +754,6 @@ describe("DeploySkill", () => {
   });
 
   it("reports auth-required when apm cannot authenticate to GitHub", async () => {
-    // Missing/expired GitHub auth bites at resolveLatestTag (apm view), never
-    // reaching install. Surface it as its own error, not the generic
-    // deploy-failed, so the cockpit tells the user to re-auth (#119).
     const { deps, deployed } = buildDeps({
       apm: {
         resolveLatestTag: async () => ({ ok: false, reason: "auth-required" }),
@@ -827,11 +773,7 @@ describe("DeploySkill", () => {
   });
 
   it("reports destination-symlinked, with no path when no destination is a link", async () => {
-    // apm refuses to deploy into a skill directory that is a symlink. Surface
-    // that classification instead of the generic deploy-failed, so the cockpit
-    // can name the destination and the directory-level symlink fix (#180).
-    // Fail-closed on the path: a link that vanished between apm's refusal and
-    // the probe leaves the generic sentence, never a guessed path (#748).
+    // A link that vanished before the probe leaves no path, never a guessed one (#748).
     const { deps, world } = buildDeps();
     world.refuseWith({ ok: false, reason: "destination-symlinked" });
     const result = await new DeploySkill(deps).execute({
@@ -844,8 +786,6 @@ describe("DeploySkill", () => {
   });
 
   it("names the link apm refused, so the notice can spell out one rm", async () => {
-    // The refusal is only actionable with the exact path: "the link" is the
-    // leaf skill dir, and the reader has no other way to learn which one (#748).
     const { deps, world } = buildDeps({
       deployedContent: {
         classify: async () => "not-deployed" as const,
@@ -868,8 +808,6 @@ describe("DeploySkill", () => {
   });
 
   it("reports deploy-failed for an unclassified install failure", async () => {
-    // Fail-closed: only a recognised refusal gets a typed error; everything else
-    // stays the catch-all (#180).
     const { deps, world } = buildDeps();
     world.refuseWith({ ok: false, reason: "failed" });
     const result = await new DeploySkill(deps).execute({
@@ -882,8 +820,6 @@ describe("DeploySkill", () => {
   });
 
   it("falls back to deploy-failed for a generic resolve failure", async () => {
-    // Network down / host unreachable / CLI missing — anything that is not auth
-    // stays the generic apm failure (auth-only classification scope, #119).
     const { deps, deployed } = buildDeps({
       apm: {
         resolveLatestTag: async () => ({ ok: false, reason: "failed" }),
@@ -903,9 +839,8 @@ describe("DeploySkill", () => {
   });
 
   it("reports no-published-tag when the latest tag does not contain the skill", async () => {
-    // apm view is repo-level: a tag existing says nothing about it containing
-    // skills/<name>. A skill added centrally but never tagged must yield a
-    // "tag and push central" error, not deploy something else (issue #15).
+    // apm view is repo-level: a tag existing says nothing about it containing the
+    // skill (#15).
     const { deps, deployed } = buildDeps({
       inventoryGit: {
         syncBeforeDeploy: async () => {},
@@ -925,9 +860,6 @@ describe("DeploySkill", () => {
   });
 
   it("refuses to deploy a skill whose local tree diverges from the tag", async () => {
-    // Deploying would silently ship the tag's (stale) content while the user
-    // looks at their edited local version — refuse and tell them to tag &
-    // push instead (ADR-0003: surface the gap, never hide it).
     const { deps, deployed } = buildDeps({
       inventoryGit: {
         syncBeforeDeploy: async () => {},
@@ -950,8 +882,6 @@ describe("DeploySkill", () => {
   });
 
   it("refuses a global deploy when the local tree diverges from the tag", async () => {
-    // The content-drift guard is target-agnostic: shipping stale content
-    // globally is as wrong as shipping it to a repo (J07).
     const { deps, deployed } = buildDeps({
       inventoryGit: {
         syncBeforeDeploy: async () => {},
@@ -971,10 +901,7 @@ describe("DeploySkill", () => {
   });
 
   it("refuses to deploy when the deployed copy diverges from the lockfile", async () => {
-    // The source guard checks the inventory clone; this guards the destination.
-    // A same-ref apm install silently resets a locally-edited deployed subtree
-    // to the tag (apm-driver.md). Refuse so those edits are never dropped
-    // unannounced — refuse-only, the user reconciles before re-deploying (#56).
+    // A same-ref apm install silently resets a locally edited deployed copy (#56).
     const { deps, deployed } = buildDeps({
       deployedContent: contentState("diverged"),
     });
@@ -992,10 +919,6 @@ describe("DeploySkill", () => {
   });
 
   it("refuses when the deployed copy cannot be verified (legacy lockfile)", async () => {
-    // A pre-0.20.0 entry has no deployed_file_hashes, so we have no baseline to
-    // tell whether the deployed copy was edited. Refuse rather than let a
-    // same-ref install silently reset possible local edits — the user reconciles
-    // (e.g. removes the deployed copy) so a clean re-install can proceed (#56).
     const { deps, deployed } = buildDeps({
       deployedContent: contentState("unverifiable"),
     });
@@ -1013,10 +936,6 @@ describe("DeploySkill", () => {
   });
 
   it("refuses when the deployed copy cannot be read", async () => {
-    // The destination exists but cannot be walked or read (permission denied, a
-    // file where a directory was expected). We cannot prove it safe to
-    // overwrite, so refuse with a distinct error rather than proceed or
-    // miscategorise it as a generic apm execution failure (#59).
     const { deps, deployed } = buildDeps({
       deployedContent: contentState("unreadable"),
     });
@@ -1031,10 +950,6 @@ describe("DeploySkill", () => {
   });
 
   it("refuses when the target lockfile cannot be parsed", async () => {
-    // A present but malformed apm.lock.yaml gives no trustworthy baseline. The
-    // guard surfaces it distinctly so a deploy never proceeds against an unknown
-    // recorded state — a malformed lockfile is a visible error, not "nothing
-    // deployed" (#58).
     const { deps, deployed } = buildDeps({
       deployedContent: contentState("lockfile-malformed"),
     });
@@ -1049,10 +964,7 @@ describe("DeploySkill", () => {
   });
 
   it("offers no consent past a malformed lockfile", async () => {
-    // Consent covers the two not-proven-clean states (local edits, unverified).
-    // A malformed lockfile is not non-precious drift: we cannot read the
-    // baseline at all, so the overwrite would be blind. The refusal therefore
-    // mints no receipt, and a made-up one clears nothing (#58, #952).
+    // The refusal mints no receipt, and a made-up one clears nothing (#58, #952).
     const { deps, deployed } = buildDeps({
       deployedContent: contentState("lockfile-malformed"),
     });
@@ -1068,8 +980,6 @@ describe("DeploySkill", () => {
   });
 
   it("deploys when the deployed copy is clean (an unedited re-deploy)", async () => {
-    // A clean deployed copy has nothing to lose to a same-ref install, so an
-    // update/re-deploy proceeds — the guard bites only on local edits (#56).
     const { deps, deployed } = buildDeps({
       deployedContent: contentState("clean"),
     });
@@ -1084,8 +994,6 @@ describe("DeploySkill", () => {
   });
 
   it("refuses a global deploy when the deployed copy diverges", async () => {
-    // The destination guard is target-agnostic: a locally-edited global subtree
-    // (~/.claude/skills/<name>) must not be silently reset either (J07, #56).
     const { deps, deployed } = buildDeps({
       deployedContent: contentState("diverged"),
     });
@@ -1103,10 +1011,6 @@ describe("DeploySkill", () => {
   });
 
   it("deploys past a locally edited copy once its own receipt comes back", async () => {
-    // ADR-0006: a not-proven-clean deployed copy is non-precious generated
-    // content. The refusal mints the receipt that licenses overwriting exactly
-    // the copies it read; sending it back reinstalls at the latest tag and
-    // discards the local edits — never the default, always opt-in (#66, #952).
     const { deps, deployed } = buildDeps({
       deployedContent: contentState("diverged"),
     });
@@ -1136,9 +1040,6 @@ describe("DeploySkill", () => {
   });
 
   it("deploys past an unverified copy once its own receipt comes back", async () => {
-    // A pre-0.20.0 copy has no baseline to verify; the consented reinstall
-    // lands fresh, after which apm writes deployed_file_hashes and the copy
-    // becomes verifiable on the next pass (ADR-0006, #952).
     const { deps, deployed } = buildDeps({
       deployedContent: contentState("unverifiable"),
     });
@@ -1164,8 +1065,6 @@ describe("DeploySkill", () => {
   });
 
   it("refuses a receipt minted for another skill on the same target", async () => {
-    // The consent names the copies it was read against, so it can never be
-    // lifted off one refusal and spent on another (#952).
     const { deps, deployed } = buildDeps({
       deployedContent: contentState("diverged"),
       inventory: {
@@ -1202,9 +1101,6 @@ describe("DeploySkill", () => {
   });
 
   it("consents to the copy only — source divergence still refuses", async () => {
-    // Consent is a narrow licence for the destination, not a master switch. A
-    // source tree that diverges from the tag would ship stale content, so that
-    // guard still bites (#66).
     const { deps, deployed } = buildDeps({
       inventoryGit: {
         syncBeforeDeploy: async () => {},
@@ -1226,9 +1122,6 @@ describe("DeploySkill", () => {
   });
 
   it("offers no consent past an unreadable deployed copy", async () => {
-    // unreadable (#59) is not non-precious drift — we cannot read what is
-    // there, so the overwrite would be blind, not an informed choice. The
-    // refusal carries no receipt at all (ADR-0006, #952).
     const { deps, deployed } = buildDeps({
       deployedContent: contentState("unreadable"),
     });
@@ -1244,8 +1137,8 @@ describe("DeploySkill", () => {
   });
 
   it("rejects a concurrent deploy to the same repo while one is in progress", async () => {
-    // The lock keys on the canonical path, so a symlinked spelling of the
-    // same repo cannot race the same apm.lock.yaml (issue #15).
+    // The lock keys on the canonical path, so a symlinked spelling of the repo
+    // cannot race the same lockfile (#15).
     let release: () => void = () => undefined;
     const gate = new Promise<void>((resolve) => {
       release = resolve;
@@ -1283,8 +1176,6 @@ describe("DeploySkill", () => {
   });
 
   it("rejects a concurrent global deploy while one is in progress", async () => {
-    // Global locks on its own fixed key, so two clicks on "Global" cannot race
-    // the user-scope apm.lock.yaml (J07).
     let release: () => void = () => undefined;
     const gate = new Promise<void>((resolve) => {
       release = resolve;
@@ -1334,8 +1225,7 @@ describe("DeploySkill", () => {
       ok: false,
       error: "deploy-failed",
     });
-    // The second attempt is refused for what the first one left behind, not
-    // because the lock was never given back.
+    // Refused for what the first attempt left behind, not for a lock never released.
     await expect(useCase.execute(input)).resolves.toEqual({
       ok: false,
       error: "operation-unfinished",
@@ -1343,9 +1233,6 @@ describe("DeploySkill", () => {
   });
 
   it("turns an apm install failure into a typed deploy-failed error", async () => {
-    // apm can reject (CLI missing, no auth/network, skill absent at the tag).
-    // The use-case must own that as a typed error, never let it escape as an
-    // unhandled rejection the route would surface as a raw 500.
     const { deps, world } = buildDeps();
     world.refuseWith("throw");
     const result = await new DeploySkill(deps).execute({
@@ -1377,8 +1264,6 @@ describe("DeploySkill", () => {
   });
 });
 
-// A bulk deploy: one lock, one install carrying every name that passed its
-// guards (#1039).
 describe("DeploySkill.executeBatch", () => {
   const skills = (...names: string[]) => ({
     read: async () => ({
@@ -1500,7 +1385,6 @@ describe("DeploySkill.executeBatch", () => {
       throw new Error("expected review to be held back");
     }
 
-    // Minted against what landed, so the row's single deploy is licensed.
     const single = await deploy.execute({
       type: "skill",
       name: "review",
@@ -1546,8 +1430,6 @@ describe("DeploySkill.executeBatch", () => {
   });
 
   it("installs nothing while a staged name's deployed copy holds edits", async () => {
-    // Staged or not, a deployed name stays in the Selection, so the install
-    // would rewrite its copy even with the name held back.
     const { deps, deployed, world } = buildDeps({
       inventory: skills("tdd", "review"),
       deployedContent: {

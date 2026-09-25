@@ -59,8 +59,6 @@ describe("DialogShell", () => {
     );
   });
 
-  // Four of the six dialogs describe nothing; the prop is required, so each
-  // one says so rather than omitting it in silence (#752).
   it("leaves the panel undescribed where the caller names no element", () => {
     render(
       <DialogShell
@@ -223,7 +221,6 @@ describe("DialogShell", () => {
     expect(screen.getByRole("button", { name: "First" })).toHaveFocus();
   });
 
-  // A destructive dialog opens on Cancel, so Enter never deletes (ADR-0033 §6).
   describe("where focus opens", () => {
     it("lands on Cancel in a destructive dialog", async () => {
       render(
@@ -269,8 +266,6 @@ describe("DialogShell", () => {
     });
   });
 
-  // "Ignore a click outside once a field has changed" (ADR-0033 §6): typed
-  // work is never thrown away by a stray click, while Escape and Cancel stay.
   describe("a click outside once a field has changed", () => {
     it("does nothing", async () => {
       const onClose = vi.fn();

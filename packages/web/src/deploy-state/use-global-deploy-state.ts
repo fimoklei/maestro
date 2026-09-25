@@ -1,6 +1,4 @@
-// Server-state hook for the global deploy-state (no path — server resolves its
-// own location). Exposes both the per-tool `tools` grouping (#132) and a
-// flattened `primitives` list for callers that predate it.
+// Exposes both the per-tool `tools` grouping and a flattened `primitives` list.
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 import type {
@@ -15,32 +13,26 @@ import type {
 export type ToolDeployState = {
   tool: string;
   primitives: DeployedPrimitive[];
-  // Absent where the target follows no single release (ADR-0031).
   releaseHead?: ReleaseHead;
-  // Absent unless this tool still holds per-skill dependencies (#950).
   pinnedPerSkill?: PinnedPerSkill;
-  // Absent where this tool's subtree holds no file outside the selection.
   extraFiles?: number;
   // Absent where the release has no page on GitHub (#1181).
   releaseGitHub?: GitHubPage;
 };
 
-// Not Zod-validated here (architecture.md — that's the server's job): `tools`
-// is defaulted once in `select`. Present-but-empty means "detected zero
-// tools"; absent means "not read yet".
+// Not Zod-validated here: `tools` is defaulted once in `select`. Present-but-empty
+// means "detected zero tools"; absent means "not read yet".
 type GlobalDeployStateResponse = {
   tools?: ToolDeployState[];
   skipped: SkippedEntry[];
-  // Repos named on a lockfile entry no detected tool's prefix covers (#655).
+  // Repos named on a lockfile entry no detected tool's prefix covers.
   otherOrigins?: string[];
-  // One record for the whole global target, whatever the tool count (#951).
   pendingOperation?: PendingOperation;
 };
 
 export type GlobalDeployStateView = {
   tools: ToolDeployState[];
-  // For the deploy picker's Global option (#134): undefined until resolved,
-  // empty once resolved means no supported tool.
+  // Undefined until resolved; empty once resolved means no supported tool.
   detectedTools: string[] | undefined;
   primitives: DeployedPrimitive[];
   skipped: SkippedEntry[];
@@ -48,8 +40,7 @@ export type GlobalDeployStateView = {
   pendingOperation?: PendingOperation;
 };
 
-// Shaped like the per-repo options so both reads stay one pair. The one other
-// query that opts back into focus, against the root's default (#1037).
+// The one other query that opts back into refetch on focus (#1037).
 export function globalDeployStateQueryOptions() {
   return {
     queryKey: ["deploy-state", "global"] as const,
@@ -76,7 +67,6 @@ export function useGlobalDeployState(enabled = true) {
   return useQuery({ ...globalDeployStateQueryOptions(), enabled });
 }
 
-// Dedupe by name+version, preserving first-seen order.
 function flattenPrimitives(tools: ToolDeployState[]): DeployedPrimitive[] {
   const seen = new Set<string>();
   const flat: DeployedPrimitive[] = [];

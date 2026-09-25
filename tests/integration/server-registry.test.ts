@@ -24,9 +24,6 @@ import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
 import { stubUpdate } from "../helpers/stub-update";
 
-// Integration lane: drives the real Hono app via app.request, backed by a real
-// Registry on a temp config dir. The Origin/Host guard is constructed disabled
-// here — its enforcement is exercised in server-security.test.ts.
 describe("registry HTTP routes", () => {
   let dir: string;
 
@@ -134,8 +131,7 @@ describe("registry HTTP routes", () => {
   };
 
   it("refuses a repo the registry already holds, and keeps one entry", async () => {
-    // A symlinked or hand-pasted path can arrive twice, so the server is what
-    // has to hold the line (#163).
+    // A path can arrive twice, so the server holds the line (#163).
     const app = makeApp();
     const second = await makeRepoDir("maestro-server-second-");
     expect((await postPath(app, dir)).status).toBe(201);
@@ -215,8 +211,7 @@ describe("registry HTTP routes", () => {
   });
 
   it("still lists a registered repo through a freshly built app (a restart)", async () => {
-    // registry-config-store.test.ts proves the store round-trips; this proves
-    // the route reads the persisted config rather than in-process state.
+    // Proves the route reads the persisted config, not in-process state.
     expect((await postPath(makeApp(), dir)).status).toBe(201);
 
     expect(await listedPaths(makeApp())).toEqual([await nodeRealpath(dir)]);

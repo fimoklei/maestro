@@ -78,8 +78,7 @@ export const LongBody: Story = {
   args: { children: <Body lines={40} /> },
 };
 
-// Closing is held while a request is in flight — Escape and the backdrop
-// do nothing until it answers.
+// Closing is held while a request is in flight.
 export const Busy: Story = {
   args: { closeEnabled: false },
 };

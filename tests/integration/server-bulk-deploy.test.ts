@@ -28,11 +28,8 @@ import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
 import { stubUpdate } from "../helpers/stub-update";
 
-// Integration lane: the bulk-deploy route over the real Hono app, driving the
-// real DeploySkill (its guards intact). Only the ApmDriver and the destination
-// classifier are faked, per skill, so sorting the names, attention-marking and
-// failure-merging are exercised end to end. Every name that passes its guards
-// goes into one install on one root package (ADR-0031, #1039).
+// Only the ApmDriver and the destination classifier are faked. Every name
+// that passes its guards goes into one install on one root package (#1039).
 
 describe("bulk deploy HTTP route", () => {
   let home: string;
@@ -61,9 +58,7 @@ describe("bulk deploy HTTP route", () => {
 
   function makeApp(options?: {
     authRequired?: boolean;
-    // Names whose deployed copy is diverged (destination guard → attention).
     divergedNames?: string[];
-    // Names whose apm install throws (a hard failure → failed).
     failNames?: string[];
   }) {
     const fs = new NodeFileSystem();
@@ -81,8 +76,7 @@ describe("bulk deploy HTTP route", () => {
     const diverged = new Set(options?.divergedNames ?? []);
     const fails = new Set(options?.failNames ?? []);
     const locks = new InFlightLocks();
-    // An install carrying a failing name fails as a whole, as real apm's does:
-    // the Selection write fails and the lockfile keeps what was there.
+    // A failing name fails the whole install, as with real apm.
     const landing = rootPackageApm({ globalRoot });
     const apm = {
       ...landing,
@@ -115,7 +109,6 @@ describe("bulk deploy HTTP route", () => {
         skillDivergesFromTag: async () => false,
         readSkillFilesAtTag: async () => null,
       },
-      // A proven skill record: this journey is not about the post-install read.
       recordedPackage: {
         read: async () => ({
           kind: "recorded" as const,
@@ -141,8 +134,7 @@ describe("bulk deploy HTTP route", () => {
       deployState: new GlobalDeployStateReader({
         fs,
         toolPresence: { detectGlobalTools: async () => ["claude", "codex"] },
-        // A root package's recorded files are probed on disk, so the read has
-        // to look under this run's temp root and never the real HOME.
+        // Recorded files are probed under this run's temp root, never the real HOME.
         treeRoot: () => globalRoot,
       }),
       deploy,
@@ -227,16 +219,14 @@ describe("bulk deploy HTTP route", () => {
         name: "review",
         error: "deployed-diverged-from-lock",
         forceable: true,
-        // The row's own consent, so its inline deploy grants no more than the
-        // reader was shown (#952).
+        // The row's own consent grants no more than the reader was shown (#952).
         copyReceipt: expect.stringMatching(/^[0-9a-f]{64}$/),
       },
     ]);
-    // One install: docs's failure is tdd's too (apm-behavior.md § A batch).
+    // One install: docs's failure is tdd's too.
     expect(body.failed).toEqual([
       { error: "deploy-failed", names: ["tdd", "docs"] },
     ]);
-    // No raw apm output (which may carry a token) leaks into the report.
     expect(JSON.stringify(body)).not.toContain("token in stderr");
   });
 
@@ -256,8 +246,7 @@ describe("bulk deploy HTTP route", () => {
     expect(body.deployed).toEqual([]);
   });
 
-  // The deployed names the global deploy-state route reads back, deduped
-  // across tool groups — a two-tool skill lands in both.
+  // Deduped across tool groups: a two-tool skill lands in both.
   const globalNames = async (app: ReturnType<typeof makeApp>["app"]) => {
     const res = await app.request("/api/deploy-state/global");
     const { tools } = (await res.json()) as {

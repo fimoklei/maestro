@@ -12,9 +12,8 @@ ADR-0002 fixed the three packages and the direction between them: `web` → HTTP
 HTTP boundary, because at the time each screen declared its own.
 
 That silence cost something. `BrowseEntry` and `BrowseEntryFacts` — what the
-browse endpoint returns — were written out twice: once in
-`packages/core/src/filesystem/browse-filesystem.ts`, which produces them, and
-once in `packages/web/src/shell/use-browse-filesystem.ts`, which renders them.
+browse endpoint returns — were written out twice: once in the `core` module
+that produced them, and once in the `web` hook that rendered them.
 Nothing kept the two in step. Adding a fact meant editing both and finding out
 at runtime if you forgot (issue #156, deferred from #150's review).
 
@@ -28,10 +27,9 @@ Opening the edge for types opens it for values too.
 **`web` declares `@maestro/core` as a `devDependency` and imports types from it
 with `import type`. Values stay forbidden.**
 
-- The wire shape lives in `core`, which produces it. `web` re-exports it from
-  `use-browse-filesystem.ts`, so every component in `web` still imports it from
-  its own package and there is one place to look when this decision is
-  revisited.
+- The wire shape lives in `core`, which produces it. `web` re-exported it from
+  the browse hook, so every component in `web` still imported it from its own
+  package and there was one place to look when this decision is revisited.
 - `verbatimModuleSyntax` (set repo-wide in `tsconfig.base.json`) erases an
   `import type`, so no `core` runtime — and no Node built-in behind it — can
   reach the browser bundle. Verified: after the change, `vite build` emitted a
@@ -52,7 +50,7 @@ with `import type`. Values stay forbidden.**
   reviewable by eye; several are not. At that point add a lint boundary rule
   (Biome or an ESLint import plugin) that permits `import type` from `core` and
   rejects value imports, and this ADR becomes enforced rather than agreed.
-- `.claude/rules/architecture.md` carries the instruction and stands alone: an
+- The repo's architecture rule for agents carries the instruction and stands alone: an
   agent following the rule never has to open this file. The reasoning, the
   rejected options, and the revisit trigger live only here.
 

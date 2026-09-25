@@ -1,9 +1,7 @@
 import * as HoverCardPrimitive from "@radix-ui/react-hover-card";
 import { type ReactNode, useEffect, useState } from "react";
 
-// shadcn/ui's hover card on Radix, restyled to the tokens (ADR-0033). It sums
-// up what its trigger compresses and holds no control: the detail pane keeps
-// the full reading (design.md → Disclosure).
+// Holds no control: the detail pane keeps the full reading.
 
 const OPEN_DELAY = 400;
 const CLOSE_DELAY = 150;
@@ -19,7 +17,6 @@ export function HoverCard({
   /** One element; it becomes the trigger. */
   children: ReactNode;
 }) {
-  // Hover, the trigger's own focus and dismissal arrive through Radix.
   const [pointerOpen, setPointerOpen] = useState(false);
   const [focusOpen, setFocusOpen] = useState(false);
 
@@ -55,7 +52,6 @@ export function HoverCard({
           side="bottom"
           align="start"
           sideOffset={6}
-          // It floats, so radius 12 and the one shadow (ADR-0033 §7).
           className="z-50 w-72 rounded-float border border-gray-7 bg-gray-2 p-cell font-ui text-gray-12 text-meta shadow-float"
         >
           {content}

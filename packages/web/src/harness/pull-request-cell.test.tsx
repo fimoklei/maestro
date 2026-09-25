@@ -84,7 +84,6 @@ describe("PullRequestCell", () => {
     expect(screen.getByText("@sanne, @joris")).toBeInTheDocument();
     // The link's own name already says where it goes (#1076).
     expect(screen.queryByText(/to open it on GitHub/)).not.toBeInTheDocument();
-    // A summary, never a control (design.md → Disclosure).
     expect(screen.getAllByRole("link")).toHaveLength(1);
   });
 

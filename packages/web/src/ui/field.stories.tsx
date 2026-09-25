@@ -25,8 +25,6 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
-// The hint sits between the label and the field, where it is read before the
-// reader acts.
 export const WithHint: Story = {
   args: { hint: "Maestro reads this folder. It never writes to it." },
 };

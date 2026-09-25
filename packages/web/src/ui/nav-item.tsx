@@ -3,12 +3,9 @@ import { UNKNOWN_COUNT } from "../shell/sidebar-copy";
 import { cn } from "./cn";
 import { HOVER_TRANSITION } from "./hover-transition";
 
-// One sidebar navigation row, 32px (ADR-0033 §7). The active row is slate 4
-// with slate 12 text and aria-current="page" — no left-edge bar, because blue
-// is reserved for focus and selection (#991). The icon is decorative.
+// No left-edge bar on the active row: blue is reserved for focus and selection (#991).
 
 export interface NavItemProps {
-  /** A 16px Lucide icon. */
   icon?: ReactNode;
   /** View name in sentence case, e.g. "Deploy-state". */
   label: ReactNode;

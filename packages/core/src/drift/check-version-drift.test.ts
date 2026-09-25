@@ -15,8 +15,7 @@ const tddBehind: VersionDrift = {
   latest: "v0.5.1",
 };
 
-// Plain-object fakes (the house style — no mocking framework). `calls` records
-// the targets apm was asked about, so a test can assert apm was never reached.
+// `calls` records the targets apm was asked about.
 const makeDeps = (overrides?: {
   isRegistered?: (path: string) => Promise<boolean>;
   outcome?: OutdatedResult;
@@ -72,9 +71,6 @@ describe("CheckVersionDrift", () => {
   });
 
   it("propagates the driver's unverified reason unchanged", async () => {
-    // A reachability failure apm reported (could-not-check) must reach the web
-    // as its own reason, not be flattened to a bare failure — so the cockpit can
-    // show "unverified" rather than a generic "unknown".
     const { deps } = makeDeps({ outcome: { ok: false, reason: "unverified" } });
     const useCase = new CheckVersionDrift(deps);
 

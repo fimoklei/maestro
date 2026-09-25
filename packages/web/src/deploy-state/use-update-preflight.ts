@@ -1,6 +1,5 @@
-// What would this update change? Read-only despite the POST — the target goes
-// in the body, like the removal's own preflight. Kept out of any mutation, so
-// the answer is on screen before the reader commits (#953).
+// Read-only despite the POST: the target goes in the body. Kept out of any
+// mutation, so the answer is on screen before the reader commits (#953).
 import type { UpdatePreview } from "@maestro/core";
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
@@ -14,8 +13,7 @@ type UpdatePreflight = { preview: UpdatePreview };
 function updatePreflightQueryOptions(
   target: DeployTarget,
   enabled: boolean,
-  // The skill the Inventory's entrance asks for beside the release move. Part
-  // of the key: a preview priced without it answers another question (#955).
+  // Part of the key: a preview priced without it answers another question (#955).
   add?: string,
 ) {
   return {

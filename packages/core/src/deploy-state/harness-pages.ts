@@ -42,8 +42,8 @@ export function harnessPages(
   };
 }
 
-// A per-skill dependency from before ADR-0031 links to its own folder at its
-// own tag, the way a root package's skills do.
+// A per-skill dependency from before the root-package model links to its own
+// folder at its own tag, the way a root package's skills do.
 export const perSkillPage = (
   entry: LockfileEntry,
   name: string,

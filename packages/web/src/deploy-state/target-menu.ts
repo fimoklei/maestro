@@ -6,9 +6,6 @@ import { RETRY_LABELS } from "./release-head-copy";
 import type { TargetRow } from "./target-rows";
 import { UPDATE_TARGET } from "./update-target-copy";
 
-// A Deploy-state row's ⋮ menu (#1067): only what the row's state calls for;
-// the Status hover card says why the rest is absent (#1125).
-
 export type MenuFacts = Pick<TargetRow, "behind" | "pending">;
 
 export function targetMenuItems(

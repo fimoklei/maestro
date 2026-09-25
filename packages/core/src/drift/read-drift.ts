@@ -1,5 +1,5 @@
-// Joins apm's Behind judgment with the release-tree facts ADR-0027 and ADR-0028
-// separate from it. Behind is the fallback wherever those facts are unanswered.
+// Joins apm's Behind judgment with release-tree content facts. Behind is the
+// fallback wherever those facts are unanswered.
 
 import type { DeployTarget } from "../deploy/deploy-skill";
 import type { DeployedLocation } from "../deploy/deployed-location";
@@ -22,13 +22,11 @@ export type DriftResult =
   | { ok: true; behind: ReadDriftEntry[] }
   | { ok: false; reason?: "unverified" };
 
-// The content side of the join. Structural, not `HarnessGitPort`: only these
-// three reads answer the content question.
 export type HarnessContentPort = {
   fetch(root: string): Promise<unknown>;
   readOrigin(root: string): Promise<GitOrigin | null>;
-  // Read at a published tag, resolved in the namespace Maestro fetches tags
-  // into — never `refs/tags`, which may hold an unpushed local tag (#516).
+  // Resolved in Maestro's tag namespace, never `refs/tags`, which may hold an
+  // unpushed local tag (#516).
   readSkillTreesAtTag(
     root: string,
     tag: string,
@@ -73,9 +71,7 @@ export class ReadDrift {
     };
   }
 
-  // Names proven identical at both tags, and names proven absent from the
-  // latest release. Every other name falls back to Behind, so an unreadable
-  // clone, ref or pin never invents a content answer.
+  // Every name not proven unmoved or absent falls back to Behind.
   private async contentReadings(
     target: DeployTarget,
     behind: readonly VersionDrift[],
@@ -86,9 +82,8 @@ export class ReadDrift {
     if (root === undefined) {
       return { unmoved, noLongerReleased };
     }
-    // The latest tag is a remote fact and the trees are read locally, so the
-    // tags must be current before any ref resolves (ADR-0027 §5). A fetch that
-    // fails leaves the read to the tags already on disk.
+    // Tags must be current before any ref resolves; a failed fetch falls back
+    // to the tags on disk.
     await this.deps.git.fetch(root).catch(() => undefined);
     const origin = await this.deps.git.readOrigin(root);
     if (origin === null) {
@@ -96,7 +91,6 @@ export class ReadDrift {
     }
 
     const pins = await this.readPins(target);
-    // One ls-tree per tag, not per skill: a target's skills share few tags.
     const byTag = new Map<string, Promise<Map<string, string> | null>>();
     const treesAt = (tag: string) => {
       const cached = byTag.get(tag);
@@ -116,8 +110,7 @@ export class ReadDrift {
 
     for (const entry of behind) {
       const pin = pins.get(entry.name);
-      // A skill pinned to another repository never gets a content answer; its
-      // name matching one here proves nothing (ADR-0027 §5).
+      // A skill pinned to another repository never gets a content answer.
       if (
         pin === undefined ||
         pin.host !== origin.host ||
@@ -150,9 +143,7 @@ export class ReadDrift {
     return { unmoved, noLongerReleased };
   }
 
-  // Which repository each deployed skill is pinned to, read from the target's
-  // own lockfile. A name pinned twice gets no answer: picking one of the two
-  // would decide the reading on a guess.
+  // A name pinned twice gets no answer: picking one would be a guess.
   private async readPins(
     target: DeployTarget,
   ): Promise<Map<string, GitOrigin>> {
@@ -175,7 +166,6 @@ export class ReadDrift {
         name === null ||
         entry.host === undefined ||
         entry.repo_url === undefined ||
-        // The row names one skill; the pin must name that same skill.
         entry.virtual_path !== harnessSkillSubpath(name)
       ) {
         continue;

@@ -5,9 +5,9 @@ max_score: 40
 na_heuristics: 
 p0_count: 0
 p1_count: 4
-target_identity: "file:/Users/michielmerks/Projects/maestro/packages/web/src/harness/harness-view.tsx"
+target_identity: "file:/Users/dev/Projects/maestro/packages/web/src/harness/harness-view.tsx"
 target_fingerprint: "sha256:c21950dcc5b3116c186af034b00162bfa989f32591d9cb991900b7b055722e9a"
-target_path: /Users/michielmerks/Projects/maestro/packages/web/src/harness/harness-view.tsx
+target_path: /Users/dev/Projects/maestro/packages/web/src/harness/harness-view.tsx
 timestamp: 2026-09-09T17-50-38Z
 slug: packages-web-src-harness-harness-view-tsx
 ---

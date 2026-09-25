@@ -19,7 +19,7 @@ import {
   VIEW_SKILL_ON_GITHUB,
 } from "./deploy-state-copy";
 
-// Approved sentences, as exact strings (copy.md).
+// Approved sentences, as exact strings.
 describe("Deploy-state copy", () => {
   // #1123: a row is a Target; the column, its split and the pane's fact say so.
   it("names a target Target wherever the screen labels one", () => {

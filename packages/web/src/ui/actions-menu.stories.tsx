@@ -26,8 +26,6 @@ export const SeveralActions: Story = {
   },
 };
 
-// Nothing to act on yet: the trigger keeps its place in the row and states its
-// own inertness, rather than opening onto an empty box.
 export const NoActions: Story = {
   args: { items: [] },
 };

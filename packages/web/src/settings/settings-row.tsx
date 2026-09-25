@@ -15,7 +15,7 @@ export interface SettingsRowProps {
   value?: string;
   /** Links the value to its GitHub page. */
   github?: GitHubPage;
-  /** False for a plain word, which Geist Mono never sets (design.md). */
+  /** False for a plain word, which Geist Mono never sets. */
   machine?: boolean;
   control?: ReactNode;
   /** An id for the name, so the control can take it as its label. */

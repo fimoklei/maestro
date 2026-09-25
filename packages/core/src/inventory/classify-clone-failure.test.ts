@@ -26,8 +26,7 @@ describe("classifyCloneFailure", () => {
     ).toBe("clone-auth-failed");
   });
 
-  // GitHub answers a private repository the same way it answers a missing one,
-  // so the two cannot be told apart and must not be guessed at.
+  // GitHub answers private and missing repositories alike; never guess.
   it("names a repository GitHub will not admit to as unavailable", () => {
     expect(
       classifyCloneFailure(
@@ -44,8 +43,6 @@ describe("classifyCloneFailure", () => {
     ).toBe("clone-unavailable");
   });
 
-  // Blaming the repository for a local or network failure sends the user to
-  // check a URL that was never the problem.
   it("names an unreachable host as a plain failure, not an unavailable repository", () => {
     expect(
       classifyCloneFailure(
@@ -66,8 +63,7 @@ describe("classifyCloneFailure", () => {
     expect(classifyCloneFailure("")).toBe("clone-failed");
   });
 
-  // Git wraps and cases its own text freely; a phrase split across a line
-  // break must still match (LEARNINGS · rich-wraps-phrases-mid-sentence).
+  // Git wraps its own text; a phrase split across a line break must still match.
   it("matches a phrase broken across lines and casing", () => {
     expect(
       classifyCloneFailure("fatal: AUTHENTICATION\n   FAILED for 'https://…'"),

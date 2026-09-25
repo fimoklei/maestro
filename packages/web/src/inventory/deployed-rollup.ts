@@ -1,6 +1,5 @@
-// The deployed column's pivot: per-target deploy-state + drift folded onto
-// one row per skill (#272, ADR-0005/0007). Pure — the cell reads it, never
-// re-derives.
+// The deployed column's pivot: per-target deploy-state + drift folded onto one
+// row per skill (#272).
 
 import type { DeployedView } from "../deploy-state/deployed-view";
 import type {
@@ -10,33 +9,32 @@ import type {
 import type { DriftStatus, DriftViewModel } from "../drift/drift-view-model";
 import type { DeployTarget } from "./use-deploy-skill";
 
-// Count roll-up reads `deployed` + `drift`; the skill detail pane reads
-// `label` + `primitives`. Both fold the same fetched data, so they can't
-// disagree (ADR-0016). `primitives` meaningful only when status is "ready".
+// The count reads `deployed` + `drift`; the detail pane reads `label` +
+// `primitives`, meaningful only when status is "ready".
 export type DeploymentTarget = {
   label: string;
-  // Which target a write would name. Global's per-tool rows all carry
-  // `{ kind: "global" }` — one apm removal covers every tool (ADR-0013).
+  // Which target a write would name; every global per-tool row carries
+  // `{ kind: "global" }`: one apm removal covers every tool.
   target: DeployTarget;
   /** The detected tool a global row stands for; absent on a repository. */
   tool?: string;
   deployed: DeployedView;
   primitives: DeployedPrimitive[];
   drift: DriftViewModel;
-  // The one release this target follows (ADR-0031). Absent where it follows
-  // none — a target still pinned per skill, or one whose read has not landed.
+  // The one release this target follows. Absent where it follows none — pinned
+  // per skill, or its read has not landed.
   releaseHead?: ReleaseHead;
 };
 
-// The Selection where the target follows one release; what is on disk only
-// where it follows none, the one case with no Selection to read (spec story 52).
+// The Selection where the target follows one release; what is on disk where it
+// follows none.
 const selects = (target: DeploymentTarget, skillName: string): boolean =>
   target.deployed.status === "ready" &&
   (target.releaseHead?.selection ?? target.deployed.names).includes(skillName);
 
-// One per-skill reading from the Release heads a target carries. Behind means
-// this skill's own files differ at the newest release, never that the target
-// is. Undefined where no head is known (ADR-0031, #956).
+// One per-skill reading from the target's Release heads: behind means this
+// skill's own files differ at the newest release (#956). Undefined where no
+// head is known.
 export function headsReading(
   heads: readonly (ReleaseHead | undefined)[],
   skillName: string,
@@ -46,7 +44,7 @@ export function headsReading(
     return undefined;
   }
   // One behind copy makes the skill behind; an unread comparison beats a clean
-  // one, so a partial answer never reads as up to date (J04).
+  // one, so a partial answer never reads as up to date.
   if (known.some((head) => head.changedSkills?.includes(skillName))) {
     return "behind";
   }
@@ -56,7 +54,7 @@ export function headsReading(
 }
 
 // The Inventory's two lenses share this, so the count and the detail pane can
-// never disagree (ADR-0016).
+// never disagree.
 export const skillReading = (
   target: DeploymentTarget,
   skillName: string,
@@ -64,8 +62,7 @@ export const skillReading = (
   headsReading([target.releaseHead], skillName) ??
   target.drift.skillStatus(skillName);
 
-// No mark means confirmed up-to-date on every target — silence never stands
-// for "we couldn't check" (J04).
+// No mark means confirmed up to date on every target, never "we couldn't check".
 export type DeployedRollup = {
   targetCount: number;
   behindCount: number;

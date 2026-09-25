@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
 import { chooserNotice } from "./path-field-copy";
 
-// The approved sentences for a folder chooser that did not answer (ADR-0025),
-// pinned as the finished notice per code.
 const refusal = (code: string) => new HttpError(409, "unused", code);
 
 describe("folder chooser notices", () => {

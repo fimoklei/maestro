@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ACTIONS, doneSentence, loadedText, loadingText } from "./busy-copy";
 
-// The approved strings, one place (#1026). A change to any of them is a copy
-// decision, so it changes here first.
-
 describe("busy labels", () => {
   it.each([
     ["deploy", "Deploying…"],

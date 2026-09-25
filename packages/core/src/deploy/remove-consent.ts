@@ -1,5 +1,4 @@
 // Consents only preflight can mint: reclaim (#339, #390), receipt (#458).
-// Stateless by design — see ADR-0020.
 import { join } from "node:path";
 import type { DeployTarget } from "./deploy-skill";
 import {
@@ -15,35 +14,30 @@ export type ReclaimPreview = {
   path: string;
 };
 
-// Order-independent, like the reclaim's own paths: the tool probe orders its
-// answer, and the same answers in another order are the same cost.
 function canonicalCheck(check: RemoveCheck): string[] {
   return check.scope === "repo"
     ? [`repo:${check.warning ?? "none"}`]
     : check.tools.map((row) => `${row.tool}:${row.warning ?? "none"}`).sort();
 }
 
-// One type, so a named path can never reach the screen without the token that
-// authorizes deleting it, nor a token authorize paths nobody was shown.
+// One type, so a named path never reaches the screen without the token that
+// authorizes deleting it, nor a token authorizes paths nobody was shown.
 export type ReclaimConsent = {
   previews: readonly ReclaimPreview[];
   token: string;
 };
 
-// What one removal is about, before any question of leftovers.
 export type RemoveScope = {
   target: DeployTarget;
   name: string;
 };
 
-// `detected` is the live tool probe; undefined on the per-repo path, where
-// nothing is ever reclaimed.
+// `detected` is undefined on the per-repo path, where nothing is reclaimed.
 export type ReclaimScope = RemoveScope & {
   detected: readonly SupportedTool[] | undefined;
 };
 
 export class RemoveConsentIssuer {
-  // Never exposed over the wire, never persisted (ADR-0020).
   private readonly signer = new ConsentSigner();
   private readonly treeRoot: (target: DeployTarget) => string;
 
@@ -59,9 +53,8 @@ export class RemoveConsentIssuer {
       : { previews, token: this.token(scope, previews) };
   }
 
-  // Returns the paths, not a yes/no, so the caller deletes the set the
-  // confirmation named rather than deriving its own (#390). Rebuild the preview
-  // here; never compare against a caller-supplied set (ADR-0020).
+  // Returns the paths, so the caller deletes the set the confirmation named
+  // (#390). Rebuild the preview here; never trust a caller-supplied set.
   grants(
     scope: ReclaimScope,
     token: string | undefined,
@@ -75,9 +68,7 @@ export class RemoveConsentIssuer {
       : null;
   }
 
-  // The proof that this server priced the removal itself. It names no paths:
-  // it authorizes deleting the copy the request already names, at the cost the
-  // check found (#458, #364).
+  // Proves this server priced the removal itself (#458).
   receipt(scope: RemoveScope, check: RemoveCheck): string {
     return this.sign({
       kind: "receipt",
@@ -86,8 +77,8 @@ export class RemoveConsentIssuer {
     });
   }
 
-  // `check` is what the removal found just now, not what the caller claims: a
-  // receipt minted for a different cost is no consent for this one (#364).
+  // `check` is what the removal found just now, never what the caller claims
+  // (#364).
   accepts(
     scope: RemoveScope,
     check: RemoveCheck,
@@ -110,8 +101,6 @@ export class RemoveConsentIssuer {
     try {
       root = this.treeRoot(scope.target);
     } catch {
-      // Unnameable, so unreclaimable — this is the only builder `grants`
-      // consults.
       return [];
     }
     const previews: ReclaimPreview[] = [];
@@ -124,8 +113,6 @@ export class RemoveConsentIssuer {
     return previews;
   }
 
-  // Order-independent, so the same set of leftovers always yields the same
-  // token however the tool list was ordered.
   private token(
     scope: ReclaimScope,
     previews: readonly ReclaimPreview[],
@@ -147,8 +134,7 @@ export class RemoveConsentIssuer {
     };
   }
 
-  // `kind` keeps the two apart: neither token may ever pass as the other, since
-  // they authorize different destruction.
+  // `kind` keeps the two tokens apart: they authorize different destruction.
   private sign(payload: Record<string, unknown>): string {
     return this.signer.sign(payload);
   }

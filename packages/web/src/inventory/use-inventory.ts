@@ -1,4 +1,3 @@
-// Server-state hook for the central inventory (frontend.md — no fetch-in-effect).
 import type { GitHubPage } from "@maestro/core";
 import { useQuery } from "@tanstack/react-query";
 import { requestJson } from "../api/http";

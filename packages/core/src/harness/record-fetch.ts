@@ -1,6 +1,4 @@
-// Every reach at the remote is also a freshness reading: what this call found,
-// and — untouched by a failure — when one last succeeded. That last time is what
-// makes a stale picture readable, so a failed fetch never overwrites it (#516).
+// A failed fetch never overwrites the last success time (#516).
 import type {
   HarnessFetchOutcome,
   HarnessFreshnessPort,

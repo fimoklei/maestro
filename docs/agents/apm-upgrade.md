@@ -40,8 +40,7 @@ treat them as hypotheses, not facts.
    section's content with what the new version does; bump the version and
    date in the header. Never append version deltas — `git log` on the file
    is the changelog. A claim that no longer holds is rewritten, not
-   annotated. Bump the apm pin in `.github/workflows/apm-canary.yml` to the
-   same version, so the weekly run keeps testing what the header describes.
+   annotated.
 5. **Sweep the dependents.**
    - ADR-0013: does apm now prune ghost entries? If so the `rm` becomes more
      necessary, not less — see the "both halves" clause before touching

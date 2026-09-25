@@ -1,12 +1,9 @@
 import type { ReactNode } from "react";
 
-// The content panel every connected screen sits in (#991): two 48px bands over
-// the one region that scrolls. Band 1 carries the screen title, its count and
-// the primary action; band 2 the screen's tabs, freshness line and read
-// controls. A band with nothing to show is not drawn.
+// Two bands over the one region that scrolls; an empty band is not drawn (#991).
 
 export interface PanelProps {
-  /** The screen name, from CONTEXT.md. */
+  /** The screen name. */
   title: string;
   /** The screen's own count or state line, beside the title. */
   meta?: ReactNode;

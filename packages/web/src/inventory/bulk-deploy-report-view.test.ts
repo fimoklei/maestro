@@ -17,9 +17,8 @@ function report(overrides: Partial<BulkDeployReport>): BulkDeployReport {
   };
 }
 
-// Narrows the view union to its success/attention branch — every test below
-// but the dedicated error-branch test drives a real report and never expects
-// the distinct "error" tone (#292).
+// Narrows the view to its success/attention branch; only the error-branch test
+// expects the "error" tone.
 function expectReportView(
   view: BulkDeployReportView,
 ): Extract<BulkDeployReportView, { tone: "success" | "attention" }> {
@@ -78,8 +77,8 @@ describe("bulkDeployReportView", () => {
     ]);
   });
 
-  // A bulk run never moves a target's release (ADR-0031, #956), so every
-  // success is one deploy at the release the target already follows.
+  // A bulk run never moves a target's release (#956), so every success is one
+  // deploy at the release the target already follows.
   it("names every success as a deploy, never as an update to latest", () => {
     const view = expectReportView(
       bulkDeployReportView({
@@ -174,9 +173,6 @@ describe("bulkDeploySummary", () => {
   });
 });
 
-// The grouping BulkDeployReport used to draw. Its claims moved here when it
-// retired into the shared Report (#1038): the words a row carries are decided
-// once, where they can be read without rendering anything.
 describe("bulkDeployReportGroups", () => {
   const view = (
     overrides: Partial<
@@ -228,8 +224,7 @@ describe("bulkDeployReportGroups", () => {
     );
   });
 
-  // The Inventory pane's single deploy reads its refusal here now (#1065), so
-  // the linked-folder recovery a single deploy stated stays with it (#748).
+  // The linked-folder recovery a single deploy stated stays with it (#748).
   it("gives a linked skill folder the recovery a single deploy states", () => {
     const groups = bulkDeployReportGroups({
       view: view({
@@ -326,8 +321,8 @@ describe("bulkDeployReportGroups", () => {
     expect(rowsOf(groups, "Attention")[0]?.action).toBeUndefined();
   });
 
-  // The control is retired with the branch behind it (ADR-0031, #956): a bulk
-  // run deploys at the release the target already follows.
+  // The control is retired: a bulk run deploys at the release the target already
+  // follows (#956).
   it("has no updated-to-latest group", () => {
     const groups = bulkDeployReportGroups({
       view: view({ deployed: [{ name: "tdd", version: "v1.2.0" }] }),

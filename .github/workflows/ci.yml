@@ -1,14 +1,13 @@
 name: CI
 
 # The only enforced gate (no local git hooks): install -> lint -> typecheck -> test -> build -> build-storybook.
-# Pull requests only: every merge reaches main through one, so a push trigger
-# would bill the same tree twice.
+# Runs on every pull request, so the required `verify` check always reports.
+# No push trigger: every merge reaches main through a pull request.
 on:
   pull_request:
-    paths-ignore:
-      - "docs/**"
-      - ".claude/**"
-      - "*.md"
+
+permissions:
+  contents: read
 
 # A new push supersedes the run it interrupts.
 concurrency:

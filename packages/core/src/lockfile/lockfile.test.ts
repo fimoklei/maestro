@@ -6,8 +6,6 @@ import {
   unreadableCovers,
 } from "./lockfile";
 
-// A tag-pinned claude_skill entry the way apm writes it (apm-driver.md): the
-// human tag, the virtual path, the type, and the optional per-file hashes.
 function skillEntry(opts?: { hashes?: boolean }): string {
   const hashes = opts?.hashes
     ? [
@@ -168,8 +166,7 @@ describe("classifyPackageType", () => {
 
 describe("parseLockfile package_type shape", () => {
   it("refuses an entry whose package_type is not a bounded token", () => {
-    // The one apm-derived field that crosses to the browser, so it is checked
-    // where apm's output is first read (ADR-0018).
+    // The one apm-derived field that reaches the browser, so its shape is checked here.
     const raw = [
       "dependencies:",
       "- resolved_ref: v0.5.0",

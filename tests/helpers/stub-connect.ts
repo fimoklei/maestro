@@ -1,8 +1,5 @@
-// Shared test helper: a ConnectInventory wired to a throwaway config path, for
-// tests that exercise other routes but must satisfy createApp's connect
-// dependency. The connect route is never hit in those scenarios, so the path is
-// inert; the connect endpoint itself is covered in
-// server-inventory-connect.test.ts.
+// A ConnectInventory on an inert config path, for tests that must satisfy
+// createApp's connect dependency without calling the connect route.
 import {
   ConfigStore,
   ConnectInventory,

@@ -40,8 +40,6 @@ import { useSetLocationDialog } from "./use-set-location-dialog";
 
 const SCREEN = HARNESS_LOCATION_PAGE.label;
 
-// The Settings page for the connected Harness (#995): what Maestro reads from,
-// Re-read Inventory beside those facts, and the one control that re-points it.
 export function HarnessLocationPage() {
   const queryClient = useQueryClient();
   const config = useInventoryConfig();
@@ -70,7 +68,7 @@ export function HarnessLocationPage() {
   // leaves the release off the Latest release line. The notice names Re-read
   // Inventory rather than carrying it, as the control sits beside the facts.
   const readNotice = inventory.isError ? INVENTORY_NOT_READ : null;
-  // A write's done sentence, until the next read (design.md → Keyboard).
+  // A write's done sentence, until the next read.
   const [region, setWrite] = useStatusRegion(
     useReadAnnouncement(SCREEN, skeleton.visible, readNotice),
   );
@@ -81,7 +79,6 @@ export function HarnessLocationPage() {
     ) ?? NOT_READ_YET;
   const github = config.data?.githubRepository ?? null;
 
-  // Placeholder bars while a read runs, then the facts it read.
   const fact = (
     name: string,
     value: string,

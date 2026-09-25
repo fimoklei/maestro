@@ -1,6 +1,4 @@
-// Copying one external skill folder into the connected Working harness, and
-// nothing after it: no branch, no commit, no push. What lands shows up as a
-// pending promotion, the same route as any other edit (#576).
+// Copies one external skill folder into the Working harness: no branch, commit or push.
 import { basename, join } from "node:path";
 import { parseGitOrigin } from "../deploy/git-origin";
 import { isValidSkillSlug } from "../deploy/package-ref";
@@ -33,7 +31,6 @@ import {
 import { proposeSkillSlug } from "./skill-slug";
 import { validateSkillStructure } from "./validate-skill-structure";
 
-// What the source folder itself is refused for.
 export type ImportSourceBlocker =
   | "source-unreadable"
   | "outside-root"
@@ -41,38 +38,26 @@ export type ImportSourceBlocker =
   | "missing-manifest"
   | "invalid-frontmatter"
   | "empty-description"
-  // Only in update mode: the harness's own copy of that skill differs from the
-  // commit it sits on, and replacing it would destroy work git cannot give back.
+  // Update mode only: replacing would destroy uncommitted work in the harness copy.
   | "harness-copy-uncommitted"
-  // Only in update mode: the clone's committed state could not be read at all,
-  // so the guard above could not be run. Its own code because its own way out.
   | "harness-unreadable"
-  // Only in update mode: the copy holds what the harness holds already, so the
-  // replacement would leave no pending proposal and nothing to review.
   | "nothing-to-carry-back";
 
-// What the chosen destination name is refused for. Kept apart from the source
-// blockers so the cockpit can state a clash on the name field itself.
 export type ImportNameBlocker = "invalid-name" | "name-taken";
 
 export type ImportSkillError =
   | "not-configured"
-  // The harness's own skills directory does not resolve inside the harness —
-  // a symlinked `.apm` would place the copy somewhere else entirely.
   | "destination-unsafe"
   | ImportSourceBlocker
   | ImportNameBlocker
   | CopySkillFolderError;
 
-// Adding a skill the harness does not hold, or replacing one it does with an
-// edited copy of its own deployed output (#732).
+// Add a new skill, or replace one with an edited copy of its own deployed output (#732).
 export type ImportMode = "add" | "update";
 
 export type ImportCheck = {
   mode: ImportMode;
-  // The proposal when the caller named none, echoed back either way. In update
-  // mode it is the recorded skill's own name: provenance decides it, not the
-  // caller.
+  // In update mode, the recorded skill's name, never the caller's.
   name: string;
   sourceBlocker: ImportSourceBlocker | null;
   nameBlocker: ImportNameBlocker | null;
@@ -84,17 +69,14 @@ export type ImportCheckResult =
   | { ok: false; error: "not-configured" };
 
 export type ImportSkillResult =
-  // `skipped` is what the copy left behind: the `.git` entries, counted at
-  // every depth, so the author is told what did not come along.
+  // `skipped` counts the `.git` entries left out, at every depth.
   | { ok: true; mode: ImportMode; name: string; skipped: number }
   | { ok: false; error: ImportSkillError };
 
 export type ImportSkillInput = { source: string; name?: string };
 
-// One place apm could have deployed into: its lockfile is the provenance
-// record, and its tree root is what deployed_files entries are relative to
-// (#667). Global splits the two — apm writes the lockfile under ~/.apm but
-// keys paths HOME-relative (DeployedLocation).
+// `deployed_files` are relative to `treeRoot`, which for global installs is
+// HOME, not the lockfile's folder (#667).
 export type DeployedTarget = { treeRoot: string; lockfilePath: string };
 
 type ImportFs = Pick<
@@ -108,8 +90,7 @@ type ImportFs = Pick<
   | "listRawEntries"
 >;
 
-// The manifest is compared apart, name stamped in. `.git` is skipped by
-// `sameTree` itself, under the copy port's own policy.
+// The manifest is compared apart, with the name stamped in.
 const MANIFEST_ONLY = new Set(["SKILL.md"]);
 
 export class ImportSkill {
@@ -117,19 +98,13 @@ export class ImportSkill {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
     fs: ImportFs;
-    // Mode bits, which FileSystemPort does not carry: an executable bit is a
-    // change git records, so a comparison blind to it would refuse a real one.
+    // Mode bits: git records an executable bit, so the comparison must see it.
     facts: Pick<CopyTreeFsPort, "describe">;
-    // An import takes a path from the browser, so it is allowlisted against
-    // the home ceiling like every other one (security.md).
+    // The source path comes from the browser: keep it inside this ceiling.
     homeRoot: () => string;
     copy: { copy(input: CopyRequest): Promise<CopySkillFolderResult> };
-    // The harness's own git: where it was cloned from, which is what a
-    // deployment record's origin is proved against, and whether its copy of a
-    // skill still matches the commit it sits on.
     git: Pick<HarnessGitPort, "readFacts" | "readMovementTrees">;
-    // Every lockfile a deploy can have written: the global install and each
-    // registered repository (ADR-0011).
+    // The global install and each registered repository.
     deployedTargets: () => Promise<DeployedTarget[]>;
   };
 
@@ -142,8 +117,7 @@ export class ImportSkill {
     };
   }
 
-  // Judges the source and the name without writing anything, so the cockpit can
-  // refuse at the button and say why beside the field that owns the refusal.
+  // Judges the source and the name without writing anything.
   async check(input: ImportSkillInput): Promise<ImportCheckResult> {
     const root = await this.deps.resolveRoot();
     if (root === undefined) {
@@ -157,8 +131,7 @@ export class ImportSkill {
     if (root === undefined) {
       return { ok: false, error: "not-configured" };
     }
-    // Judged again here, never trusting the check the browser saw: the source
-    // and the harness both move between the two calls (security.md).
+    // Judged again: never trust the check the browser saw.
     const { check, source } = await this.inspect(root, input);
     if (check.sourceBlocker !== null) {
       return { ok: false, error: check.sourceBlocker };
@@ -175,16 +148,12 @@ export class ImportSkill {
       return { ok: false, error: "destination-unsafe" };
     }
     const copied = await this.deps.copy.copy({
-      // The canonical source the checks were made against, never the path the
-      // browser sent: a link retargeted since would otherwise pick the tree.
+      // The checked canonical path, never the browser's: a link may have moved.
       source,
       destinationParent,
       name: check.name,
-      // Opted into only where provenance proved this is the harness's own
-      // skill coming home; adding never writes over anything (#732).
+      // Only where provenance proved it is the harness's own skill (#732).
       replaceExisting: check.mode === "update",
-      // Inside the staging tree, so a manifest that cannot be made to agree
-      // with the directory name refuses the whole import (#576).
       finalize: (payload) => this.stampName(payload, check.name),
     });
     if (!copied.ok) {
@@ -199,9 +168,7 @@ export class ImportSkill {
     };
   }
 
-  // The harness's skills directory, created and then proved to resolve inside
-  // the harness itself. Null where it does not: a symlinked `.apm` is a
-  // destination outside the fixed root (security.md).
+  // Null where a symlinked `.apm` resolves outside the harness.
   private async skillsDir(root: string): Promise<string | null> {
     const lexical = join(root, HARNESS_SKILLS_DIR);
     try {
@@ -224,8 +191,7 @@ export class ImportSkill {
         ? null
         : await this.readManifest(join(source, "SKILL.md"));
     const within = source !== null && (await this.withinHome(source));
-    // Only a folder inside the ceiling is worth asking the record about: an
-    // unreachable one is refused for that before anything else is read.
+    // Only a folder inside the ceiling is read for provenance.
     const provenance: Provenance =
       source === null || !within
         ? { kind: "none" }
@@ -244,7 +210,7 @@ export class ImportSkill {
         raw,
         provenance,
       }),
-      // A taken name is what update mode requires, so only adding refuses one.
+      // Update mode requires a taken name.
       nameBlocker:
         provenance.kind === "own" ? null : await this.judgeName(root, name),
       advisories: raw === null ? [] : manifestAdvisories(raw),
@@ -252,8 +218,6 @@ export class ImportSkill {
     return { check, source };
   }
 
-  // Canonical, so the deployed-copy rule compares what the author picked with
-  // where a deploy writes, not two spellings of one path.
   private async realSource(source: string): Promise<string | null> {
     let real: string;
     try {
@@ -288,8 +252,7 @@ export class ImportSkill {
     if (!within) {
       return "outside-root";
     }
-    // Before the manifest is judged: a deployed copy this harness cannot claim
-    // is refused for what it is, whatever it happens to contain.
+    // Before the manifest: a foreign deployed copy is refused whatever it holds.
     if (provenance.kind === "foreign") {
       return "deployed-copy";
     }
@@ -302,8 +265,7 @@ export class ImportSkill {
       : null;
   }
 
-  // What refuses a replacement: work the harness holds that git cannot give
-  // back, and a copy that would change nothing. The data-loss guard runs first.
+  // The data-loss guard runs first.
   private async judgeUpdate(
     root: string,
     source: string,
@@ -318,17 +280,13 @@ export class ImportSkill {
       : null;
   }
 
-  // True where the replacement would write back exactly what is there: git
-  // would see no change, so no pending proposal would appear (#733). Anything
-  // unreadable counts as a difference, and the review is where it is read.
+  // Anything unreadable counts as a difference (#733).
   private async carriesNoChange(
     root: string,
     source: string,
     name: string,
   ): Promise<boolean> {
     const held = join(root, HARNESS_SKILLS_DIR, name);
-    // The manifest is compared as the copy would write it, name stamped in:
-    // an edit to the name alone is stamped back out, and is no change at all.
     const raw = await this.readManifest(join(source, "SKILL.md"));
     const stamped = raw === null ? null : rewriteFrontmatterName(raw, name);
     if (
@@ -340,7 +298,7 @@ export class ImportSkill {
     return await sameTree(this.tree, source, held, MANIFEST_ONLY);
   }
 
-  // The guard on the write; an uncheckable guard fails closed. see ADR-0026
+  // An uncheckable guard fails closed.
   private async judgeHarnessCopy(
     root: string,
     name: string,
@@ -355,8 +313,7 @@ export class ImportSkill {
       : "harness-copy-uncommitted";
   }
 
-  // What some lockfile records about this folder — provenance, never a guess
-  // from where the folder sits (#667). see ADR-0026
+  // From the lockfiles, never guessed from where the folder sits (#667).
   private async readProvenance(
     root: string,
     source: string,
@@ -378,8 +335,7 @@ export class ImportSkill {
     return { kind: "none" };
   }
 
-  // The skill this harness would be updating, or null where the entry cannot
-  // prove both origin and name. see ADR-0026
+  // Null where the entry cannot prove both origin and name.
   private async ownSkillName(
     root: string,
     entry: LockfileEntry,
@@ -392,8 +348,7 @@ export class ImportSkill {
     if (entry.host === undefined || entry.repo_url === undefined) {
       return null;
     }
-    // Parsed on both sides, so two spellings of one remote are one origin
-    // (ADR-0014). `repo_url` is owner/repo, with the host beside it.
+    // Parsed, so two spellings of one remote match. `repo_url` is owner/repo.
     const facts = await this.deps.git.readFacts(root).catch(() => null);
     const origin =
       facts == null || facts.originUrl === null
@@ -411,9 +366,7 @@ export class ImportSkill {
       : null;
   }
 
-  // Every entry in one lockfile. A missing or unparseable lockfile records no
-  // deploys — it blocks nothing, it never widens the refusal, and it never
-  // opens the update route either.
+  // A missing or unparseable lockfile records no deploys.
   private async readEntries(lockfilePath: string): Promise<LockfileEntry[]> {
     const raw = await this.deps.fs.readFile(lockfilePath).catch(() => null);
     if (raw === null) {
@@ -423,8 +376,7 @@ export class ImportSkill {
     return parsed.ok ? parsed.entries : [];
   }
 
-  // Canonical on both sides, so a symlinked home (/var -> /private/var) is
-  // still one ceiling.
+  // Canonical on both sides: a symlinked home is still one ceiling.
   private async withinHome(source: string): Promise<boolean> {
     try {
       return isWithinRoot(
@@ -448,9 +400,7 @@ export class ImportSkill {
       : null;
   }
 
-  // The directory name is the skill's identity, so the staged manifest is made
-  // to agree with it. False refuses the import: a copy whose manifest names a
-  // different skill is not the thing the author asked to import.
+  // Makes the staged manifest's name match the directory; false refuses the import.
   private async stampName(payload: string, name: string): Promise<boolean> {
     const manifest = join(payload, "SKILL.md");
     const raw = await this.readManifest(manifest);
@@ -473,14 +423,12 @@ export class ImportSkill {
   }
 }
 
-// The copy's own input shape, minus the fields this use-case never sends.
 type CopyRequest = Pick<
   CopySkillFolderInput,
   "source" | "destinationParent" | "name" | "replaceExisting" | "finalize"
 >;
 
-// The skill a matched record row names. A Root package names no one skill, so
-// only the directory row of a skill it deployed does (ADR-0031).
+// A Root package names no one skill: only a deployed skill's directory row does.
 function recordedSkillName(entry: LockfileEntry, file: string): string | null {
   if (!isRootPackage(entry)) {
     return claudeSkillName(entry);
@@ -491,9 +439,6 @@ function recordedSkillName(entry: LockfileEntry, file: string): string | null {
   return skill?.name ?? null;
 }
 
-// What the deployment records say about the picked folder: nothing at all, an
-// entry this harness cannot claim, or one that proves the folder is a copy of
-// the named skill this harness itself deployed.
 type Provenance =
   | { kind: "none" }
   | { kind: "foreign" }

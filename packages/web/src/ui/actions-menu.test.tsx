@@ -40,7 +40,6 @@ describe("ActionsMenu", () => {
   });
 
   // #1124: a pane's slot carries z-20, so an unlayered menu opened behind it.
-  // happy-dom paints nothing; the browser measurement is in the commit.
   it("opens on the floating layer, above a detail pane", async () => {
     render(
       <ActionsMenu
@@ -73,7 +72,6 @@ describe("ActionsMenu", () => {
     expect(onSelect).toHaveBeenCalledTimes(1);
   });
 
-  // design.md (Keyboard): an unavailable control stays focusable and says why.
   it("keeps a disabled item focusable, marked, and inert when chosen", async () => {
     const onSelect = vi.fn();
     render(

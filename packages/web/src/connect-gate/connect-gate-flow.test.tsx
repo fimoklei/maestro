@@ -9,9 +9,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// Every read the connected frame makes that a test does not answer itself.
-// The sidebar reads the Harness stages for its counter, so those answer in
-// shape.
+// Every read of the connected frame a test does not answer itself.
 function fallback(url: string) {
   if (url.startsWith("/api/harness")) {
     return jsonResponse(
@@ -36,8 +34,7 @@ function fallback(url: string) {
   );
 }
 
-// Stateful: config starts unconfigured, "connects" once POSTed — mirrors
-// server-state (frontend.md), not a static fixture.
+// Stateful: config starts unconfigured and "connects" once POSTed.
 function stubServer() {
   let inventoryPath: string | null = null;
   vi.stubGlobal(
@@ -104,8 +101,7 @@ describe("connect gate", () => {
       screen.getByText(/deploys never write back to this harness/i),
     ).toBeInTheDocument();
 
-    // The beat holds until the continue action is taken — it does not
-    // auto-navigate the instant the mutation resolves (ADR-0015).
+    // The beat holds until continue is pressed; no auto-navigate.
     expect(
       screen.queryByRole("heading", { name: /^inventory$/i }),
     ).not.toBeInTheDocument();
@@ -116,8 +112,6 @@ describe("connect gate", () => {
     ).toBeInTheDocument();
   });
 
-  // Joining by URL is the same gate, the same field and the same landing: only
-  // the server's outcome differs (#554).
   it("joins a Harness pasted as a GitHub url and lands on Inventory", async () => {
     let inventoryPath: string | null = null;
     const connectBodies: string[] = [];
@@ -167,8 +161,6 @@ describe("connect gate", () => {
     ).toBeInTheDocument();
   });
 
-  // Scaffolding is the same gate and the same field too: the refusal to
-  // connect carries the offer, and accepting it lands on Harness (#556).
   it("scaffolds an empty GitHub repository and lands on Harness", async () => {
     let inventoryPath: string | null = null;
     const scaffoldBodies: string[] = [];
@@ -192,7 +184,6 @@ describe("connect gate", () => {
             422,
           );
         }
-        // A freshly scaffolded Harness: nothing released, nothing pending.
         // The view refreshes on mount, so both routes must answer in shape.
         if (url === "/api/harness" || url === "/api/harness/refresh") {
           return jsonResponse(
@@ -260,8 +251,7 @@ describe("connect gate", () => {
     ).toBeInTheDocument();
   });
 
-  // The whole recovery journey for #555: the refused destination hands the
-  // user the parent picker, and the retry carries the folder they chose.
+  // #555: the retry carries the parent folder the user chose.
   it("recovers from an occupied destination by cloning into another folder", async () => {
     const connectBodies: string[] = [];
     vi.stubGlobal(
@@ -302,8 +292,7 @@ describe("connect gate", () => {
       screen.getByRole("button", { name: /^connect inventory$/i }),
     );
 
-    // The refusal offers the one action that clears it: it opens the clone
-    // folder as a second field in place, and the refusal moves under it (#1013).
+    // The refusal opens the clone folder field and moves under it (#1013).
     await userEvent.click(
       await screen.findByRole("button", { name: "Choose another folder" }),
     );
@@ -333,8 +322,6 @@ describe("connect gate", () => {
 
     expect(screen.queryByText(/register repos/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/step 1 of 3/i)).not.toBeInTheDocument();
-    // The retired strip numbered its steps ("1 · connect inventory",
-    // "2 · register repos", "3 · deploy"); nothing numbers a step now.
     expect(screen.queryByText(/\d\s·\s/)).not.toBeInTheDocument();
   });
 
@@ -384,9 +371,7 @@ describe("connect gate", () => {
   it.each(["/welcome/repos", "/nonsense"])(
     "sends %s somewhere real rather than rendering nothing",
     async (route) => {
-      // /welcome/repos was the retired register step's URL, so a stale
-      // bookmark or a resumed session can still ask for it. With no route
-      // matching and no catch-all, the user would get a blank page.
+      // A stale bookmark can still ask for the retired /welcome/repos.
       stubServer();
       renderApp(route);
 
@@ -424,9 +409,8 @@ describe("connect gate", () => {
       expect(
         await screen.findByRole("heading", { name: /deploy-state/i }),
       ).toBeInTheDocument();
-      // No gate screen rendered on the way there. Every screen now names
-      // itself in its panel's band 1, so the gate's own title is the marker,
-      // not the heading rank (#991).
+      // No gate screen rendered on the way there; the gate's title is the
+      // marker, since every screen names itself in band 1.
       expect(
         screen.queryByRole("heading", { name: /inventory not connected/i }),
       ).not.toBeInTheDocument();
@@ -434,9 +418,8 @@ describe("connect gate", () => {
   );
 
   it("lands on Inventory even when the config refetch after connect is still in flight", async () => {
-    // Race (Codex review finding): invalidateQueries schedules a refetch but
-    // doesn't update the cache synchronously, so useFirstRun could still
-    // bounce to /welcome. Holds the refetch open to prove landing doesn't need it.
+    // invalidateQueries does not update the cache synchronously, so useFirstRun
+    // could bounce to /welcome. The refetch is held open to prove it does not.
     let inventoryPath: string | null = null;
     let configRequests = 0;
     vi.stubGlobal(
@@ -479,9 +462,7 @@ describe("connect gate", () => {
     expect(
       await screen.findByRole("heading", { name: /^inventory$/i }),
     ).toBeInTheDocument();
-    // Inventory carries its own <h1> now (heading navigation needs a starting
-    // point on that route) — the invariant this guards is that it's the only
-    // one, so no stray gate heading rode along.
+    // Inventory's own <h1> must be the only one: no gate heading rode along.
     const h1s = screen.getAllByRole("heading", { level: 1 });
     expect(h1s).toHaveLength(1);
     expect(h1s[0]).toHaveTextContent(/^inventory$/i);

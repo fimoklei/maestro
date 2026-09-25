@@ -1,8 +1,5 @@
-// Joining a Harness by its GitHub URL, driven through the real Hono connect
-// route. The input is spelled as the GitHub URL Maestro must accept and
-// redirected to a local bare repo with `url.<path>.insteadOf` through git's
-// env config channel, so the whole journey stays offline (LEARNINGS.md ·
-// git-config-key-channel-survives-isolation).
+// The GitHub URL is redirected to a local bare repo with `url.<path>.insteadOf`
+// through git's env config channel, so the journey stays offline.
 import { execFile } from "node:child_process";
 import {
   mkdir,
@@ -69,8 +66,7 @@ describe("joining a Harness by its GitHub url", () => {
     run("git", args, { cwd, env: { ...process.env, ...IDENTITY } });
 
   beforeEach(async () => {
-    // Realpath'd: on macOS the temp dir is a symlink, and connect canonicalizes
-    // the path it stores.
+    // On macOS the temp dir is a symlink, and connect stores the real path.
     base = await realpath(await mkdtemp(join(tmpdir(), "maestro-join-")));
     home = join(base, "home");
     remote = join(base, "remote.git");
@@ -91,13 +87,12 @@ describe("joining a Harness by its GitHub url", () => {
     await git(seed, "remote", "add", "origin", remote);
     await git(seed, "push", "origin", "main");
 
-    // Applies to every git this process starts, the clone included, and
-    // survives apm's own `GIT_CONFIG_GLOBAL` isolation.
+    // Reaches every git this process starts and survives apm's
+    // `GIT_CONFIG_GLOBAL` isolation.
     process.env.GIT_CONFIG_COUNT = "2";
     process.env.GIT_CONFIG_KEY_0 = `url.${remote}.insteadOf`;
     process.env.GIT_CONFIG_VALUE_0 = GITHUB_URL;
-    // A second GitHub-shaped url redirected at a repository that does not
-    // exist, so the failing clone never leaves this machine either.
+    // A redirect at a missing repository, so the failing clone stays local.
     process.env.GIT_CONFIG_KEY_1 = `url.${join(base, "gone.git")}.insteadOf`;
     process.env.GIT_CONFIG_VALUE_1 = MISSING_URL;
   });
@@ -126,8 +121,7 @@ describe("joining a Harness by its GitHub url", () => {
       fs,
       resolvePath: async () => resolveInventoryPath(await store.read(), {}),
       originUrl: readConfiguredGitOriginUrl,
-      // The real released read: these suites build real repositories,
-      // so Inventory answers from `refs/maestro/tags` as it does live (#841).
+      // Real released read: Inventory answers from `refs/maestro/tags` (#841).
       readReleasedSkills: releasedSkillsFromGit(new HarnessGitAdapter()),
     });
     const locks = new InFlightLocks();
@@ -138,8 +132,6 @@ describe("joining a Harness by its GitHub url", () => {
       harness: stubHarness(),
       publish: stubPublish(),
       ...stubPromotes(),
-      // Wired exactly as production does, with the ceiling pointed at this
-      // test's temp home so the proposed destination lands inside it.
       connect: new ConnectInventory({
         fs,
         store,
@@ -176,9 +168,8 @@ describe("joining a Harness by its GitHub url", () => {
     const res = await postConnect(makeApp(), { path: GITHUB_URL });
 
     expect(res.status).toBe(200);
-    // Zero, and confirmed: a fresh clone has no `refs/maestro/tags` until the
-    // Harness view fetches, and Inventory answers from the release (#841). The
-    // empty Inventory sends the reader to the Harness view, where that happens.
+    // A fresh clone has no `refs/maestro/tags` until the Harness view
+    // fetches (#841).
     expect(await res.json()).toEqual({
       outcome: "joined",
       inventoryPath: join(home, "agent-harness"),
@@ -186,8 +177,6 @@ describe("joining a Harness by its GitHub url", () => {
     });
   });
 
-  // The clone is a real repository: nothing here may delete it, and the
-  // default branch has to be readable from what the clone left behind.
   it("leaves the clone on disk with a resolvable default branch", async () => {
     await postConnect(makeApp(), { path: GITHUB_URL });
     const clone = join(home, "agent-harness");
@@ -234,8 +223,7 @@ describe("joining a Harness by its GitHub url", () => {
     ).rejects.toThrow();
   });
 
-  // git writes the clone url into the clone's config, so a pasted token would
-  // land on disk. It has to be refused before any git runs (security.md).
+  // git writes the clone url to disk, so a token is refused before git runs.
   it("refuses a url carrying a token, so git never sees or stores it", async () => {
     const res = await postConnect(makeApp(), {
       path: "https://user:t0ken@github.com/fimoklei/agent-harness",
@@ -244,15 +232,13 @@ describe("joining a Harness by its GitHub url", () => {
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: string };
     expect(body.error).toBe("url-carries-credentials");
-    // The whole reply, not just a sentence: nothing in it may carry the token.
     expect(JSON.stringify(body)).not.toContain("t0ken");
     await expect(
       readFile(join(home, "agent-harness", ".git", "config")),
     ).rejects.toThrow();
   });
 
-  // Missing, private and mistyped are indistinguishable from the outside, so
-  // they share one code rather than being guessed apart (#555).
+  // Missing, private and mistyped share one code (#555).
   it("reports a GitHub url that cannot be cloned without exposing git's output", async () => {
     const res = await postConnect(makeApp(), {
       path: MISSING_URL,
@@ -292,8 +278,6 @@ describe("joining a Harness by its GitHub url", () => {
       );
     });
 
-    // A forgotten local copy is connected, never duplicated — and the marker
-    // proves the folder on disk was left exactly as it was found.
     it("connects an existing clone of the same repository instead of re-cloning", async () => {
       await postConnect(makeApp(), { path: GITHUB_URL });
       const clone = join(home, "agent-harness");
@@ -326,8 +310,7 @@ describe("joining a Harness by its GitHub url", () => {
       );
     });
 
-    // What an interrupted clone leaves: a repository with a remote and no
-    // commit at HEAD. Reported with recovery guidance, never cloned over.
+    // An interrupted clone: a remote and no commit at HEAD.
     it("reports a partial clone and leaves it on disk", async () => {
       const partial = join(home, "agent-harness");
       await run("git", ["init", "-b", "main", partial]);
@@ -344,8 +327,6 @@ describe("joining a Harness by its GitHub url", () => {
       ).resolves.toContain("origin");
     });
 
-    // A fresh repository of someone else's is not this clone's leftover, and
-    // the partial-clone message would tell the user to delete it.
     it("reports a commitless repository of another origin as occupied", async () => {
       const other = join(home, "agent-harness");
       await run("git", ["init", "-b", "main", other]);

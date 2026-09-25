@@ -9,9 +9,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// The config endpoint drives the gate: it answers 200 with inventoryPath null
-// when nothing is connected (no retry delay, unlike an error signal). Every other
-// shell query resolves to an empty-but-valid body.
+// Nothing connected: config answers 200 with inventoryPath null.
 function stubServer({ notConfigured }: { notConfigured: boolean }) {
   vi.stubGlobal(
     "fetch",
@@ -29,9 +27,7 @@ function stubServer({ notConfigured }: { notConfigured: boolean }) {
   );
 }
 
-// The config endpoint fails its first call, then recovers. Every other shell
-// query resolves to an empty-but-valid body throughout. Drives the "readable
-// error + retry" path: the gate can't wait for a success that never comes.
+// Config fails its first call, then recovers: the error + retry path.
 function stubServerConfigFailsOnce({
   notConfigured,
 }: {
@@ -121,8 +117,7 @@ describe("first-run gate", () => {
     stubServer({ notConfigured: false });
     renderAt("/welcome");
 
-    // Checked before the config fetch resolves — must not render Welcome
-    // even during the pending window (Codex review finding, mirrors connect-view.tsx).
+    // Checked before config resolves: no Welcome in the pending window.
     expect(
       screen.queryByRole("heading", {
         name: /inventory not connected/i,

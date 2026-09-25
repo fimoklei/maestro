@@ -1,5 +1,5 @@
 // Reads a target's apm.lock.yaml plus what is on disk under it, keeping absent,
-// skipped, phantom and malformed apart (ADR-0031, #58, #358, #941).
+// skipped, phantom and malformed apart.
 import { join } from "node:path";
 import type { DeployedContentPort, DeployTarget } from "../deploy/deploy-skill";
 import type { SupportedTool } from "../deploy/deploy-tools";
@@ -40,15 +40,9 @@ type DeployStateResult =
       ok: true;
       primitives: DeployedPrimitive[];
       skipped: SkippedEntry[];
-      // Absent for a target that follows no single release, and for one read
-      // without a Release-head reader wired in.
       releaseHead?: ReleaseHead;
-      // Absent unless the target still holds per-skill dependencies on the
-      // connected Harness (#950).
       pinnedPerSkill?: PinnedPerSkill;
-      // Absent where the record holds no file outside the selected skills.
       extraFiles?: number;
-      // Absent unless a Deploy or Remove on this target never finished (#951).
       pendingOperation?: PendingOperation;
       // Absent where the repository has no page on GitHub (#1180).
       github?: GitHubPage;
@@ -57,31 +51,24 @@ type DeployStateResult =
     }
   | { ok: false; error: "malformed" };
 
-// Grouped per detected tool, which also carries the detected set (ADR-0011).
-// `otherOrigins`: a skill entry no detected tool's prefix claims, named by its
-// repo rather than silently dropped (#655).
+// `otherOrigins`: skill entries no detected tool's prefix claims, named by
+// their repo rather than silently dropped.
 type GlobalDeployStateResult =
   | {
       ok: true;
       tools: ToolDeployState[];
       skipped: SkippedEntry[];
       otherOrigins: string[];
-      // One record for the whole global target, whatever the tool count (#951).
       pendingOperation?: PendingOperation;
     }
   | { ok: false; error: "malformed" };
 
-// The optional readings a target card leads with. Omitting any of them leaves
-// an honest unknown — a missing Release head, a row with no copy chip, no
-// status on a pin — never a claim the reader did not measure (J04).
+// Omitting any of these leaves an unknown reading, never an unmeasured claim.
 export type DeployStateExtras = {
   releaseHead?: Pick<ReleaseHeadReader, "read">;
   content?: Pick<DeployedContentPort, "classify">;
-  // Which Harness the cockpit is connected to. Without it a per-skill pin gets
-  // no reading at all: attributing one to this Harness would be a guess (#950).
+  // Without it a per-skill pin gets no reading: attributing one would be a guess.
   harnessOrigin?: () => Promise<GitOrigin | null>;
-  // What a Deploy or Remove on this target set out to do and never finished,
-  // so the card can offer the retry (#951).
   operations?: {
     pending(target: DeployTarget): Promise<PendingOperation | null>;
   };
@@ -108,8 +95,7 @@ export class DeployStateReader {
     };
   }
 
-  // Null on every failure: an origin that could not be read is unknown, which
-  // reads the same as no Harness connected (J04).
+  // Null on every failure: an unreadable origin reads as no Harness connected.
   protected async connectedOrigin(): Promise<GitOrigin | null> {
     return (await this.extras.harnessOrigin?.().catch(() => null)) ?? null;
   }
@@ -129,8 +115,7 @@ export class DeployStateReader {
     );
     const raw = await this.fs.readFile(join(repoPath, "apm.lock.yaml"));
     if (raw === null) {
-      // Still read the record: a first Deploy that stopped leaves no lockfile,
-      // and its Retry deploy has to survive that (#951).
+      // A first Deploy that stopped leaves no lockfile; its retry must survive.
       const unfinished = await this.readPending({ kind: "repo", repoPath });
       return {
         ok: true,
@@ -152,19 +137,15 @@ export class DeployStateReader {
     const harnessPage = this.connectedPage();
     const pins: SkillPin[] = [];
     let root: LockfileEntry | undefined;
-    // The Selection: the root package's own skills. A leftover per-skill row
-    // from before migration is deployed but selected by nothing (story 4).
+    // The root package's own skills; a leftover per-skill row is not selected.
     const selection: string[] = [];
     for (const entry of parsed.entries) {
       const reading = readPackage(entry);
       if (reading.kind === "package") {
-        // More than one root package is a shape this read cannot attribute;
-        // the first is the Harness dependency in every shape apm writes today.
         root ??= entry;
         continue;
       }
       if (reading.kind !== "skill") {
-        // Parsing rejects a non-root row that names no path, so this one has it.
         skipped.push(skippedFromReading(reading, entry.virtual_path ?? ""));
         continue;
       }
@@ -189,7 +170,6 @@ export class DeployStateReader {
         DEPLOY_SKILL_PREFIXES,
         (file) => this.fs.isFileEntry(join(repoPath, file)),
       );
-      // One row per skill, whatever the number of tool subtrees holding it.
       for (const name of new Set(deployed.map((skill) => skill.name))) {
         selection.push(name);
         const github = pages?.skill(name);
@@ -205,9 +185,7 @@ export class DeployStateReader {
     const target: DeployTarget = { kind: "repo", repoPath };
     await this.markCopies(primitives, target);
     const pinnedPerSkill = tallyPins(pins);
-    // The two statuses are exclusive: a target still holding per-skill pins
-    // reads as Pinned per skill and follows no single release, so no Update
-    // target is offered where there is no mechanism for one (stories 59, 60).
+    // Exclusive with Pinned per skill: such a target follows no single release.
     const releaseHead =
       root === undefined || pinnedPerSkill !== undefined
         ? undefined
@@ -217,8 +195,7 @@ export class DeployStateReader {
         ? 0
         : countExtraRootPackageFiles(root, DEPLOY_SKILL_PREFIXES);
     const pendingOperation = await this.readPending(target);
-    // Spread, never a null key: a reading this target has not got must not
-    // survive JSON as one the cockpit reads as measured (#416).
+    // Spread, never a null key: a missing reading must not reach JSON (#416).
     return {
       ok: true,
       primitives,
@@ -232,8 +209,6 @@ export class DeployStateReader {
     };
   }
 
-  // Undefined on every failure: a record the reader could not reach is not an
-  // operation it can claim never finished (J04).
   protected async readPending(
     target: DeployTarget,
   ): Promise<PendingOperation | undefined> {
@@ -243,16 +218,13 @@ export class DeployStateReader {
     );
   }
 
-  // The chip a row carries when its copy disagrees with the recorded baseline,
-  // or has none to check it against. An unreadable copy carries no chip: the
-  // write path is where that refusal belongs, not the reading.
+  // An unreadable copy carries no chip: the write path refuses it instead.
   protected async markCopies(
     primitives: DeployedPrimitive[],
     target: DeployTarget,
     tools?: readonly SupportedTool[],
   ): Promise<void> {
-    // Called on the port, never detached: the adapter's classify reads its own
-    // injected location off `this`.
+    // Call classify on the port, never detached: it reads `this`.
     const content = this.extras.content;
     if (content === undefined) {
       return;
@@ -305,8 +277,7 @@ function unreadableAsSkipped(
   }));
 }
 
-// A separate type so the tool-presence dependency is required by the
-// constructor: omitting it fails to compile rather than 500 at runtime (#187).
+// A separate class so a missing tool-presence dependency fails to compile (#187).
 export class GlobalDeployStateReader extends DeployStateReader {
   private readonly toolPresence: ToolPresencePort;
   private readonly treeRoot: () => string;
@@ -315,9 +286,8 @@ export class GlobalDeployStateReader extends DeployStateReader {
     deps: {
       fs: FileSystemPort;
       toolPresence: ToolPresencePort;
-      // What deployed_files are relative to. A global install splits lockfile
-      // from tree: apm writes the lockfile under ~/.apm and the files under
-      // HOME (apm-behavior.md § Global scope).
+      // What deployed_files are relative to: a global install writes the
+      // lockfile under ~/.apm and the files under HOME.
       treeRoot?: () => string;
     } & DeployStateExtras,
   ) {
@@ -326,15 +296,12 @@ export class GlobalDeployStateReader extends DeployStateReader {
     this.treeRoot = deps.treeRoot ?? (() => resolveHomeDirectory(process.env));
   }
 
-  // `rootPath` is server-resolved; no client path reaches here. Detection is
-  // live per read, so a tool installed since startup needs no restart.
+  // `rootPath` is server-resolved; no client path reaches here.
   async readGlobal(rootPath: string): Promise<GlobalDeployStateResult> {
     const detected = await this.toolPresence.detectGlobalTools();
     const raw = await this.fs.readFile(join(rootPath, "apm.lock.yaml"));
     if (raw === null) {
-      // Nothing deployed yet: an empty group per detected tool, never an error
-      // and never a tool the machine does not have. The record is still read: a
-      // first Deploy that stopped leaves no lockfile (#951).
+      // A first Deploy that stopped leaves no lockfile; its retry must survive.
       const unfinished = await this.readPending({ kind: "global" });
       return {
         ok: true,
@@ -357,7 +324,7 @@ export class GlobalDeployStateReader extends DeployStateReader {
     });
     for (const group of grouped.tools) {
       await this.markCopies(group.primitives, { kind: "global" }, [group.tool]);
-      // Exclusive with Pinned per skill, as on the repo card (stories 59, 60).
+      // Exclusive with Pinned per skill, as on the repo card.
       if (grouped.release !== undefined && group.pinnedPerSkill === undefined) {
         group.releaseHead = await this.readHead(
           `global:${group.tool}`,

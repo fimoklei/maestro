@@ -30,14 +30,9 @@ import { stubPublish } from "../helpers/stub-publish";
 import { stubScaffold } from "../helpers/stub-scaffold";
 import { stubUpdate } from "../helpers/stub-update";
 
-// Integration lane: the remove route over the real Hono app, a real registry and
-// a real lockfile on disk. Only the apm driver is faked — what it is handed is
-// the assertion, since the ref is what decides whether apm removes the right
-// package or silently nothing. Origin/Host guard enforcement lives in
-// server-security.test.ts.
-// A deployed file and the sha256 apm would have recorded for it, so a lockfile
-// fixture can claim a clean copy without the test recomputing the hash the way
-// the guard does.
+// Only the apm driver is faked: the ref it is handed decides whether apm
+// removes the right package or silently nothing.
+// A fixed file and its recorded sha256, so a lockfile can claim a clean copy.
 const SKILL_FILE_CONTENT = "# tdd\n";
 const TDD_SKILL_SHA256 =
   "5c35b2b6a904c72893741b59eaf0a591f5b13810d0286949128c2e1888acfba2";
@@ -71,15 +66,11 @@ describe("remove HTTP route", () => {
 
   function makeApp(options?: {
     removed?: boolean;
-    // What the destination guard finds on disk. "clean" by default — the guard
-    // itself is covered in the core lane; here it only has to reach the wire.
+    // "clean" by default; the guard itself is covered in the core lane.
     deployedState?: DeployedContentState;
-    // The tools the machine is pretending to have. Only the global route reads
-    // it; an empty list is the no-supported-tool refusal.
+    // Only the global route reads it; empty is the no-supported-tool refusal.
     detectedTools?: SupportedTool[];
-    // Swap the stubbed guard for the real one, so a test can prove what an
-    // actual tree on disk classifies as. Off by default: most tests here are
-    // about the route, not the walk.
+    // Swaps the stubbed guard for the real one. Off by default.
     realDeployedContent?: boolean;
   }) {
     const fs = new NodeFileSystem();
@@ -97,8 +88,8 @@ describe("remove HTTP route", () => {
       locks,
       deployedRef: new DeployedRefAdapter({
         fs,
-        // HOME redirected at the sandbox, so the global lockfile this resolves
-        // is the test's own — never the real ~/.apm (apm-driver.md § Danger).
+        // HOME is the sandbox, so the global lockfile is the test's own,
+        // never the real ~/.apm.
         location: new DeployedLocation({ HOME: home }),
       }),
       deployedContent: options?.realDeployedContent
@@ -118,9 +109,7 @@ describe("remove HTTP route", () => {
           return (options?.removed ?? true) ? { ok: true } : { ok: false };
         },
       },
-      // The real reclaim on the real tree, pointed at the sandbox home: what a
-      // global removal leaves behind is a fact about directories, so faking it
-      // would prove nothing (#339).
+      // The real reclaim on the sandbox home: faking it would prove nothing (#339).
       deployedCleanup: new DeployedCleanupAdapter({
         location: new DeployedLocation({ HOME: home }),
       }),
@@ -128,8 +117,6 @@ describe("remove HTTP route", () => {
         detectGlobalTools: async () => options?.detectedTools ?? ["claude"],
       },
       canonicalPath: (path) => fs.realpath(path),
-      // The same sandbox HOME the cleanup and the real guard resolve against,
-      // so a reclaim preview names exactly the path the cleanup would delete.
       location: new DeployedLocation({ HOME: home }),
     });
     const app = createApp({
@@ -164,9 +151,8 @@ describe("remove HTTP route", () => {
       body: JSON.stringify(body),
     });
 
-  // The pair the cockpit drives: price the removal, then run it at the cost
-  // that was priced. Every removal needs its own preflight's receipt (#364), so
-  // a test about anything else sends both halves.
+  // Every removal needs its own preflight's receipt (#364), so a test
+  // about anything else sends both halves.
   const removeTdd = async (
     app: ReturnType<typeof makeApp>["app"],
     repoPath: string,
@@ -218,13 +204,10 @@ describe("remove HTTP route", () => {
 
     expect(response.status).toBe(403);
     expect(removeCalls).toEqual([]);
-    // Nothing about the unregistered repo's lockfile leaks back.
     expect(JSON.stringify(await response.json())).not.toContain("v0.5.1");
   });
 
   it("refuses a symlinked spelling of an unregistered repo just the same", async () => {
-    // The gate canonicalizes with realpath before comparing, so a path that
-    // resolves outside the registry cannot slip past by spelling.
     const { app, removeCalls } = makeApp();
     await writeFile(
       join(repo, "apm.lock.yaml"),
@@ -294,9 +277,7 @@ describe("remove HTTP route", () => {
     expect(removeCalls).toEqual([]);
   });
 
-  // The receipt this app's own preflight route issues, never hand-built: what
-  // these tests prove is the route-to-route contract, so a forged one would
-  // prove nothing.
+  // Issued by this app's own preflight route, never hand-built.
   async function receiptFromPreflight(
     app: ReturnType<typeof makeApp>["app"],
     repoPath: string,
@@ -315,9 +296,6 @@ describe("remove HTTP route", () => {
   }
 
   it("removes a copy with local edits the user already confirmed", async () => {
-    // The confirmation stated the consequence through the preflight route
-    // below, and this request carries that answer's own receipt — so it is the
-    // user's informed word rather than a caller's claim (#337, #458).
     const { app, registry, removeCalls } = makeApp({
       deployedState: "unverifiable",
     });
@@ -357,14 +335,10 @@ describe("remove HTTP route", () => {
     });
 
     expect(response.status).toBe(409);
-    // The cost rides along with the refusal, so the confirmation can state what
-    // was found without asking again (#364).
     expect(await response.json()).toEqual({
       error: "cost-not-acknowledged",
       check: { scope: "repo", warning: "cannot-verify-local-edits" },
       receipt: expect.stringMatching(/^[0-9a-f]{64}$/),
-      // Null on a repo, whose targets are its own apm.yml — but present, so the
-      // confirmation replaces the whole consent rather than half of it (#364).
       reclaim: null,
     });
     expect(removeCalls).toEqual([]);
@@ -388,8 +362,7 @@ describe("remove HTTP route", () => {
     });
 
     expect(response.status).toBe(409);
-    // Never the diverged wording: the check found no edits, only no way to
-    // look for them (J04).
+    // Never the diverged wording: nothing was found, only no way to look.
     expect((await response.json()) as unknown).toMatchObject({
       check: { scope: "repo", warning: "cannot-verify-local-edits" },
     });
@@ -467,8 +440,7 @@ describe("remove HTTP route", () => {
     expect(removeCalls).toEqual([]);
   });
 
-  // The window #364 closes, over the real guard on a real tree: the file the
-  // confirmation priced as clean is edited before the click lands.
+  // The file priced as clean is edited before the click lands (#364).
   it("refuses and restates the cost when the copy changed after the check", async () => {
     const { app, registry, removeCalls } = makeApp({
       realDeployedContent: true,
@@ -489,7 +461,6 @@ describe("remove HTTP route", () => {
     await writeFile(deployed, SKILL_FILE_CONTENT, "utf8");
     await registry.register(repo);
     const stale = await receiptFromPreflight(app, repo);
-    // The baseline goes, not the file: nothing rules out local work any more.
     await writeFile(
       join(repo, "apm.lock.yaml"),
       lockfileWith([skillEntry("tdd")]),
@@ -513,9 +484,8 @@ describe("remove HTTP route", () => {
     expect(removeCalls).toEqual([]);
   });
 
-  // An edit landing between the check and the click is not a restated price:
-  // apm 0.29.0 would keep the edited file and abort after deleting the rest,
-  // so the copy is refused until it is deployed again (#775).
+  // apm 0.29.0 would keep the edited file and abort after deleting the
+  // rest, so the copy is refused until it is deployed again (#775).
   it("refuses outright when the copy gained local edits after the check", async () => {
     const { app, registry, removeCalls } = makeApp({
       realDeployedContent: true,
@@ -552,8 +522,6 @@ describe("remove HTTP route", () => {
     expect(removeCalls).toEqual([]);
   });
 
-  // Not a lock: the refusal's own receipt is what the confirmation sends back,
-  // so agreeing to the new cost is one more click.
   it("removes the changed copy once the restated cost is confirmed", async () => {
     const { app, registry, removeCalls } = makeApp({
       realDeployedContent: true,
@@ -625,8 +593,6 @@ describe("remove HTTP route", () => {
   });
 
   it("still refuses a copy it cannot read, confirmed or not", async () => {
-    // Not a divergence the user can consent to: we cannot tell what is there,
-    // and apm would delete it anyway.
     const { app, registry, removeCalls } = makeApp({
       deployedState: "unreadable",
     });
@@ -657,8 +623,8 @@ describe("remove HTTP route", () => {
     expect(body.error).toBe("remove-failed");
   });
 
-  // apm reports one outcome for every tool at once, so a failed removal's
-  // per-target answer is read off the disk (ADR-0013, #416).
+  // apm reports one outcome for every tool, so a failed removal's
+  // per-target answer is read off the disk (#416).
   it("reports the repo's copy as still there when a failed removal left it", async () => {
     const { app, registry } = makeApp({
       removed: false,
@@ -677,8 +643,6 @@ describe("remove HTTP route", () => {
     );
     await registry.register(repo);
 
-    // The real guard reads a lockfile with no content baseline, so this copy is
-    // unverifiable and needs its receipt like any other priced removal.
     const response = await removeRequest(app, {
       type: "skill",
       name: "tdd",
@@ -741,11 +705,9 @@ describe("remove HTTP route", () => {
     expect((await removeRequest(app, { name: "tdd" })).status).toBe(400);
   });
 
-  // The user scope. Its lockfile location is apm's own, resolved server-side, so
-  // the request carries no path at all (J07, #338).
+  // The user scope: apm resolves its lockfile, so the request carries no path (#338).
   describe("the global target", () => {
-    // Resolved per call, not at collection time: `home` is a fresh sandbox per
-    // test.
+    // Resolved per call: `home` is a fresh sandbox per test.
     async function writeGlobalLockfile(entries: string[]) {
       const apmRoot = join(home, ".apm");
       await mkdir(apmRoot, { recursive: true });
@@ -756,8 +718,6 @@ describe("remove HTTP route", () => {
       );
     }
 
-    // One deployed file, written wherever a test needs a copy to exist. Its
-    // content is fixed so the recorded hash can be a literal.
     async function writeSkillFile(relativePath: string) {
       const absolute = join(home, relativePath);
       await mkdir(dirname(absolute), { recursive: true });
@@ -787,9 +747,6 @@ describe("remove HTTP route", () => {
         ...(confirmedReclaimToken ? { confirmedReclaimToken } : {}),
       });
 
-    // The token a real preflight against this app would return — never
-    // hand-built, so a test proves the actual execute→preflight contract
-    // rather than a path the implementation would never issue.
     async function reclaimTokenFromPreflight(
       app: ReturnType<typeof makeApp>["app"],
     ): Promise<string | undefined> {
@@ -832,8 +789,6 @@ describe("remove HTTP route", () => {
     });
 
     it("takes no path from the client, even one that is offered", async () => {
-      // A repoPath alongside a global kind must not widen what the route reads:
-      // the discriminated union drops it, and the location stays apm's own.
       const { app, removeCalls } = makeApp();
       await writeGlobalLockfile([skillEntry("tdd")]);
 
@@ -864,10 +819,7 @@ describe("remove HTTP route", () => {
     });
 
     it("answers per detected tool against a real tree", async () => {
-      // The real guard, on a tree where the two tools disagree: Claude's copy
-      // matches the lockfile exactly, and the Codex copy beside it was never
-      // recorded there at all. One aggregate answer would have to pick one of
-      // those and state it about both rows (#414).
+      // Claude's copy matches the lockfile; the Codex copy was never recorded (#414).
       const { app } = makeApp({
         realDeployedContent: true,
         detectedTools: ["claude", "codex"],
@@ -893,19 +845,15 @@ describe("remove HTTP route", () => {
             { tool: "codex", warning: "cannot-verify-local-edits" },
           ],
         },
-        // Codex is not exclusive to its skills dir (ten apm targets share
-        // .agents), so a detected Codex is never a nameable reclaim either.
+        // Codex shares .agents with other apm targets, so it is never a nameable reclaim.
         reclaim: null,
         receipt: expect.any(String),
       });
     });
 
     it("names the leftover Claude Code copy and issues a token for it", async () => {
-      // A machine where Claude Code has dropped off still carries a global
-      // deploy's .claude copy. Naming it here is what lets the dialog state
-      // it before the user confirms, rather than deleting a larger set than
-      // the dialog ever promised. The token is what the execute route
-      // requires back before it will actually reclaim that path.
+      // Claude Code has dropped off, but its global copy remains: the preview
+      // names it, and the token is required back before it is reclaimed.
       const { app } = makeApp({ detectedTools: ["codex"] });
       await writeGlobalLockfile([skillEntry("tdd")]);
 
@@ -931,10 +879,8 @@ describe("remove HTTP route", () => {
     });
 
     it("refuses the check when the leftover copy it would reclaim carries edits", async () => {
-      // Claude Code has dropped off this machine, so its .claude tree is the
-      // reclaim — and it carries edits against the recorded hash. apm's own
-      // lockfile still lists that copy, so its uninstall would retain the
-      // edited file and abort; the refusal comes before any consent (#775).
+      // The dropped tool's copy carries edits, so apm would keep the file and
+      // abort: the refusal comes before any consent (#775).
       const { app } = makeApp({
         realDeployedContent: true,
         detectedTools: ["codex"],
@@ -957,8 +903,6 @@ describe("remove HTTP route", () => {
     });
 
     it("leaves an unrelated skill's copy out of the answer", async () => {
-      // The scan widened to every tool, never to every skill: another skill's
-      // tree under the same directories says nothing about this removal.
       const { app } = makeApp({
         realDeployedContent: true,
         detectedTools: ["claude"],
@@ -982,8 +926,6 @@ describe("remove HTTP route", () => {
       });
     });
 
-    // Whether a path still exists under the sandbox home, so a test can state
-    // what the removal reclaimed and what it left alone.
     const existsUnderHome = async (relativePath: string) => {
       try {
         await access(join(home, relativePath));
@@ -994,11 +936,8 @@ describe("remove HTTP route", () => {
     };
 
     it("reclaims the copy left for a tool this machine no longer detects, once confirmed", async () => {
-      // apm's uninstall deletes by the targets its own apm.yml lists, so the
-      // copy for a tool that has since dropped off survives it. Removing that
-      // tree is what makes the removal complete (#339) — but only once the
-      // request echoes back the token this same scope's preflight issued,
-      // never a client-guessed path (#390).
+      // apm's uninstall spares a dropped tool's copy; removing it completes
+      // the removal (#339), but only with this scope's preflight token (#390).
       const { app } = makeApp({ detectedTools: ["codex"] });
       await writeGlobalLockfile([skillEntry("tdd")]);
       await writeSkillFile(".claude/skills/tdd/SKILL.md");
@@ -1015,8 +954,6 @@ describe("remove HTTP route", () => {
     });
 
     it("leaves the leftover copy alone when nothing confirmed it", async () => {
-      // Without a confirmed token, a global removal must not
-      // delete more than the dialog named.
       const { app } = makeApp({ detectedTools: ["codex"] });
       await writeGlobalLockfile([skillEntry("tdd")]);
       await writeSkillFile(".claude/skills/tdd/SKILL.md");
@@ -1027,8 +964,6 @@ describe("remove HTTP route", () => {
     });
 
     it("leaves the leftover copy alone for a token the caller merely guessed", async () => {
-      // The bypass the review flagged: a direct request that never called
-      // preflight but echoes back a plausible-looking token.
       const { app } = makeApp({ detectedTools: ["codex"] });
       await writeGlobalLockfile([skillEntry("tdd")]);
       await writeSkillFile(".claude/skills/tdd/SKILL.md");
@@ -1039,8 +974,7 @@ describe("remove HTTP route", () => {
     });
 
     it("keeps a skills directory several tools read", async () => {
-      // Codex is undetected, but nine other apm targets deploy under .agents.
-      // An absent Codex proves nothing about them, so its copy stays (#202).
+      // Other apm targets deploy under .agents too, so an absent Codex proves nothing (#202).
       const { app } = makeApp({ detectedTools: ["claude"] });
       await writeGlobalLockfile([skillEntry("tdd")]);
       await writeSkillFile(".agents/skills/tdd/SKILL.md");
@@ -1070,8 +1004,6 @@ describe("remove HTTP route", () => {
       // Only Codex still has a copy: apm came off Claude Code and could not say so.
       await writeSkillFile(".agents/skills/tdd/SKILL.md");
 
-      // Unverifiable against a baseline-less lockfile, so the run carries the
-      // receipt its own preflight issued.
       const response = await removeRequest(app, {
         type: "skill",
         name: "tdd",
@@ -1137,8 +1069,6 @@ describe("remove HTTP route", () => {
     });
   });
 
-  // The check the confirmation runs before the user commits. It answers what
-  // the removal would destroy; it never removes anything itself.
   describe("preflight", () => {
     const preflightTdd = (
       app: ReturnType<typeof makeApp>["app"],
@@ -1164,8 +1094,6 @@ describe("remove HTTP route", () => {
 
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({
-        // A repo has one row, and its deployed copy spans several tool
-        // subtrees, so one aggregate answer is the honest thing to state.
         check: { scope: "repo", warning: "cannot-verify-local-edits" },
         reclaim: null,
         receipt: expect.any(String),
@@ -1184,8 +1112,7 @@ describe("remove HTTP route", () => {
       });
     });
 
-    // Refused, never priced: the confirmation would otherwise offer a removal
-    // apm 0.29.0 aborts part-way through (#775).
+    // Refused, never priced: apm 0.29.0 aborts part-way through (#775).
     it("refuses a copy with local edits, offering nothing to confirm", async () => {
       const { app, registry, removeCalls } = makeApp({
         deployedState: "diverged",

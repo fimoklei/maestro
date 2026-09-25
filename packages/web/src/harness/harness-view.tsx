@@ -53,8 +53,6 @@ const TABLE_LABEL = "Harness table";
 // rest is in the pane and the hover card (#994).
 const NARROW_HIDDEN = { type: false, "pull-request": false, "also-in": false };
 
-// The Harness (#994): one table with a group per stage, so a skill reads from
-// local work to release top to bottom, and a row's full story in its pane.
 export function HarnessView() {
   const harness = useHarness();
   const state = harness.data;
@@ -70,8 +68,6 @@ export function HarnessView() {
     fetchRemote();
   };
 
-  // Plan open/closed is UI-state; the plan itself is fetched only while the
-  // dialog is open (frontend.md).
   const [planOpen, setPlanOpen] = useState(false);
   const plan = useReleasePlan(planOpen);
   const discardPlan = useDiscardReleasePlan();
@@ -105,7 +101,6 @@ export function HarnessView() {
   const importFlow = useImportFlow();
   const presses = useHarnessPresses(state);
 
-  // The row whose detail pane is open, and the table's order it pages through.
   const [selected, setSelected] = useState<string | null>(null);
   const [order, setOrder] = useState<string[]>([]);
   const gridRef = useRef<HTMLTableElement>(null);
@@ -270,12 +265,9 @@ export function HarnessView() {
       action={
         state === undefined ? null : (
           <>
-            {/* Import touches the working tree only, so no remote answer
-                gates it. */}
             <Button
               variant="quiet"
               onClick={importFlow.start}
-              // Under 1024px only its icon shows; the name stays (#994).
               className="max-lg:w-8 max-lg:justify-center max-lg:px-0"
             >
               <FolderInput
@@ -421,8 +413,8 @@ export function HarnessView() {
   );
 }
 
-// A band-2 fact (#994): the label, then its value. Only Origin gives way on a
-// narrow band: it truncates, and leaves band 2 under 1024px.
+// Only Origin gives way on a narrow band: it truncates, then leaves band 2
+// under 1024px.
 function BandFact({
   label,
   value,
@@ -461,8 +453,6 @@ function BandFact({
   );
 }
 
-// A stage's header carries its one reading: what was compared and when, or,
-// for a stage nobody read, the `?` badge in place of its count (#994).
 function groupMeta(section: StageSection | undefined) {
   if (section === undefined) return null;
   return section.read.outcome === "read" ? (
@@ -472,9 +462,7 @@ function groupMeta(section: StageSection | undefined) {
   );
 }
 
-// The one line a stage without rows shows: why nobody could read it, or, for
-// Pending proposal, the two ways to put a change there. Unknown is never
-// drawn as empty (#848, #866).
+// Unknown is never drawn as empty (#848, #866).
 function groupMessage(section: StageSection | undefined, reread: () => void) {
   if (section === undefined) return null;
   if (section.read.outcome !== "read") {
@@ -502,7 +490,6 @@ function groupMessage(section: StageSection | undefined, reread: () => void) {
   );
 }
 
-// Notices about the whole screen, above the table (#991).
 function Notices({
   state,
   readError,
@@ -542,8 +529,7 @@ function Notices({
           ? null
           : cloneSyncNotice(state.cloneSync, reread),
     },
-    // What the last publication landed. The tag is atomic, so the only half
-    // that can fail is the Inventory re-read (#849).
+    // The tag is atomic, so only the Inventory re-read can fail (#849).
     {
       trigger: "user-action" as const,
       notice:
@@ -555,8 +541,7 @@ function Notices({
               rereadInventory,
             ),
     },
-    // What the last restore put back. Above the table, so it outlives the row
-    // it was pressed from (#915).
+    // Above the table, so it outlives the row it was pressed from (#915).
     {
       trigger: "user-action" as const,
       notice:

@@ -169,7 +169,6 @@ describe("UpdateTargetDialog", () => {
       removed: [],
     });
 
-    // A resting reading: the word alone is the badge's text.
     const badge = screen.getByText("No content changes");
     expect(badge).toHaveTextContent(/^No content changes$/);
     expect(confirmButton().hasAttribute("disabled")).toBe(false);
@@ -233,7 +232,6 @@ describe("UpdateTargetDialog", () => {
     ).toBeTruthy();
   });
 
-  // Story 36: two ways out, so the one this dialog cannot host names its place.
   it("names importing as the way to keep the work, beside discarding it", () => {
     show({
       localEdits: { discard: [{ name: "tdd", tool: null }], unverified: [] },
@@ -243,7 +241,7 @@ describe("UpdateTargetDialog", () => {
     const keep = screen.getByText(
       "To keep the edits instead, select Cancel, then Import skill… on the Harness screen.",
     );
-    // Cause first, then the step (copy.md): the consent precedes the way out.
+    // Cause first, then the step: the consent precedes the way out.
     const consent = screen.getByRole("checkbox", {
       name: "Discard local edits for tdd",
     });
@@ -292,7 +290,6 @@ describe("UpdateTargetDialog", () => {
   });
 });
 
-// What the reader sees once apm ran: the ledger replaces the plan (#954).
 describe("UpdateTargetDialog outcome", () => {
   const showOutcome = (
     outcome: {

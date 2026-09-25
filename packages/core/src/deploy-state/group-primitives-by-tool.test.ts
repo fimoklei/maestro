@@ -5,9 +5,7 @@ import { groupPrimitivesByTool } from "./group-primitives-by-tool";
 // Per-skill entries are never probed on disk; a root-package one is (#941).
 const ALL_ON_DISK = { fileExists: async () => true };
 
-// Builds a claude_skill lockfile entry the way apm writes it: a human tag, a
-// virtual_path (whose basename is the skill name), and the deployed_files list
-// whose prefixes decide which tool the copy belongs to.
+// deployed_files prefixes decide which tool the copy belongs to.
 function skillEntry(
   name: string,
   ref: string,

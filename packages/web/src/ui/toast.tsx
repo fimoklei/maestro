@@ -1,8 +1,6 @@
 import { Toaster, toast } from "sonner";
 
-// Success only (ADR-0033 §6). A failure, a warning and anything with an action
-// is a Notice, which stays until the reader resolves it — so this module
-// exposes no other level, and none can be added at a call site.
+// Success only: everything else is a Notice, so no other level is exposed.
 
 /** Announce a success the reader may miss: a removed row, a result elsewhere. */
 export function showSuccess(sentence: string): void {
@@ -15,7 +13,6 @@ export function ToastHost() {
     <Toaster
       position="bottom-right"
       duration={5000}
-      // Only what floats fades, by opacity alone (ADR-0033 §8).
       gap={8}
       icons={{
         success: (

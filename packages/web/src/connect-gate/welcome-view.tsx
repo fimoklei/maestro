@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router";
 import { Button } from "../ui/button";
 
-// The connect gate's first screen (ADR-0015), a centred hero with its own <h1>.
 export function WelcomeView() {
   const navigate = useNavigate();
 

@@ -40,8 +40,7 @@ describe("previewCloneChild", () => {
     expect(previewCloneChild("")).toBeNull();
   });
 
-  // The server refuses both of these, so proposing a destination for them
-  // would promise something Maestro will not do.
+  // The server refuses both, so no destination is proposed.
   it("has nothing to preview for a url carrying credentials", () => {
     expect(previewCloneChild("https://user:t0ken@github.com/o/r")).toBeNull();
   });
@@ -50,8 +49,7 @@ describe("previewCloneChild", () => {
     expect(previewCloneChild("https://github.com:8443/o/r")).toBeNull();
   });
 
-  // The server clones these, so hiding the destination picker for them would
-  // send the clone to the default parent with no way to change it.
+  // The server clones these, so the destination picker must show.
   it("names the folder for an ssh url spelling out the default port", () => {
     expect(previewCloneChild("ssh://github.com:22/o/r.git")).toBe("r");
   });

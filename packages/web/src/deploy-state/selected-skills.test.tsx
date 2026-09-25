@@ -8,8 +8,7 @@ import { renderWithQuery } from "../test-utils";
 import { SelectedSkills } from "./selected-skills";
 import type { DeployedPrimitive } from "./use-deploy-state";
 
-// Successor of the retired DeployStateList's test. The removal flow behind a
-// row's menu is covered by the remove-skill-row-*.test.tsx files.
+// The removal flow behind a row's menu is covered by remove-skill-row-*.test.tsx.
 
 const tdd: DeployedPrimitive = {
   type: "skill",
@@ -51,7 +50,6 @@ describe("SelectedSkills row actions", () => {
     ).toBeInTheDocument();
   });
 
-  // It deletes files, like the Inventory's Remove from target (design.md).
   it("draws Remove skill as a danger item", async () => {
     renderList(upToDate);
 
@@ -64,8 +62,7 @@ describe("SelectedSkills row actions", () => {
     ).toHaveClass("text-red-11");
   });
 
-  // A target follows one release, so a row carries no update of its own: the
-  // whole target moves through Update target (spec story 12, #954).
+  // A target follows one release, so a row carries no update of its own (#954).
   it("offers no per-row update on a behind row", () => {
     renderList(behindTdd);
 

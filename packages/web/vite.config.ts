@@ -4,10 +4,8 @@ import { defineConfig } from "vite";
 
 import { cockpitPorts } from "../../scripts/cockpit-ports.mjs";
 
-// Ports belong to the worktree, not to this file: the launcher passes them in,
-// and a bare `pnpm --filter @maestro/web dev` derives the same pair here. The
-// dev proxy keeps the client<->server HTTP boundary real and CORS-free —
-// everything under /api goes to the Hono server on the resolved port.
+// The launcher passes the worktree's ports in; a bare
+// `pnpm --filter @maestro/web dev` derives the same pair here.
 const ports = cockpitPorts();
 
 export default defineConfig({

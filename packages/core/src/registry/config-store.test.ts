@@ -4,9 +4,6 @@ import { InMemoryFileSystem } from "./file-system.fake";
 
 const CONFIG_PATH = "/home/me/.maestro/config.json";
 
-// ConfigStore is the only reader/writer of ~/.maestro/config.json. Driven here
-// against the in-memory fake; the real-disk atomic write is covered in
-// tests/integration.
 describe("ConfigStore", () => {
   it("reads a missing config as an empty registry", async () => {
     const fs = new InMemoryFileSystem();
@@ -32,8 +29,7 @@ describe("ConfigStore", () => {
     const store = new ConfigStore({ fs, configPath: () => path });
 
     await store.write({ repos: [{ path: "/Users/me/project" }] });
-    // Repoint the location after construction: a fresh read must use the new
-    // path, proving the path is resolved per access, not frozen at construction.
+    // Proves the path is resolved per access, not frozen at construction.
     path = "/sandbox/.maestro/config.json";
 
     await expect(store.read()).resolves.toEqual({ repos: [] });
@@ -58,9 +54,7 @@ describe("ConfigStore", () => {
   });
 
   it("reads a fetch time that is not a real moment as no record at all", async () => {
-    // The config is hand-editable, and a bad timestamp reaches a date
-    // formatter that throws. Dropping the record costs an age label; refusing
-    // the file would take the registry and the inventory down with it.
+    // A bad timestamp costs an age label; refusing the file would take the registry down.
     const fs = new InMemoryFileSystem({
       files: {
         [CONFIG_PATH]: JSON.stringify({

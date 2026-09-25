@@ -3,15 +3,13 @@ import type { ReactNode } from "react";
 import { SETTINGS as SETTINGS_NAME } from "../settings/settings-copy";
 import { HARNESS_LOCATION_PAGE } from "../settings/settings-pages";
 
-// The cockpit's screens, in the order the sidebar lists them (#991). One
-// owner, because the sidebar and the narrow bar both navigate by it and a
-// second copy would drift (LEARNINGS.md · duplicated-invariant-drifts).
+// In sidebar order; the sidebar and narrow bar both navigate by this one list.
 
 const ICON = { size: 16, strokeWidth: 1.5 } as const;
 
 export interface Screen {
   to: string;
-  /** The screen name, from CONTEXT.md. */
+  /** The screen name. */
   label: string;
   icon: ReactNode;
 }
@@ -46,7 +44,5 @@ export const SCREENS: readonly Screen[] = SCREEN_GROUPS.flatMap(
   (group) => group.items,
 );
 
-// Not a screen in the sidebar: it sits in the Harness button's menu and opens
-// on its first page (#995). The narrow bar has one menu for both, so it names
-// it there.
+// Not in the sidebar list: it opens from the Harness button's menu (#995).
 export const SETTINGS = { to: HARNESS_LOCATION_PAGE.to, label: SETTINGS_NAME };

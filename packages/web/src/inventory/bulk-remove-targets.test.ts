@@ -55,7 +55,7 @@ describe("bulkRemoveTargets", () => {
     ).toEqual([repo("/dev/acme-web")]);
   });
 
-  it("leaves out a target whose deploy-state has not been read (J04)", () => {
+  it("leaves out a target whose deploy-state has not been read", () => {
     expect(
       bulkRemoveTargets("tdd", [
         unread({ kind: "global" }, "pending"),
@@ -65,7 +65,7 @@ describe("bulkRemoveTargets", () => {
   });
 
   // apm's uninstall has no -t: one global removal covers every tool, so the
-  // pane's per-tool rows are one entry in the run (ADR-0013).
+  // pane's per-tool rows are one entry in the run.
   it("folds global's per-tool rows into one global target", () => {
     expect(
       bulkRemoveTargets("tdd", [

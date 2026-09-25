@@ -1,6 +1,5 @@
 /* Raw colour tokens, generated from `.impeccable/design.json` — never edited by
-   hand; change a value there and regenerate (`/impeccable`). Step semantics, the
-   17 measured pairs and the theme-independent tokens: ADR-0033. */
+   hand; change a value there and regenerate (`/impeccable`). */
 
 /* ── dark (also the fallback before index.html stamps data-theme) ───────── */
 :root,

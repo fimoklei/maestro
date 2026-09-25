@@ -47,13 +47,8 @@ type Deps = Pick<
   | "scaffold"
 >;
 
-// Everything that changes what the connected Harness holds: a promotion, its
-// pull request, an import, and the scaffold that creates a harness.
 export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
-  // Promoting one skill: a POST behind the Origin/Host guard, since it fetches
-  // and pushes. Takes the skill's name and nothing else — the harness is
-  // resolved server-side, and the reply carries the branch and the link that
-  // opens GitHub's own pull-request flow (#577).
+  // Takes the skill's name only; the harness is resolved server-side (#577).
   app.post("/api/harness/promote", async (c) => {
     const body = await parseBody(c, promoteBodySchema, PROMOTE_BODY);
     if (!body.ok) {
@@ -73,9 +68,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     });
   });
 
-  // Publishing a skill's removal: the same POST one step stricter. The body
-  // carries the origin/HEAD tree the author confirmed against, so a remote
-  // that moved under it is refused rather than removed (#580).
+  // The origin/HEAD tree the author confirmed against, so a remote that moved is refused (#580).
   app.post("/api/harness/promote/deletion", async (c) => {
     const body = await parseBody(c, deletionBodySchema, DELETION_BODY);
     if (!body.ok) {
@@ -96,9 +89,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     });
   });
 
-  // Deleting a skill that exists nowhere else: the one Harness mutation that
-  // never reaches GitHub. The name is a claim — core re-reads the local refs
-  // and re-resolves the folder before anything leaves the disk (#798).
+  // The name is a claim: core re-reads the local refs and folder before deleting (#798).
   app.post("/api/harness/skill/delete", async (c) => {
     const body = await parseBody(c, promoteBodySchema, LOCAL_DELETION_BODY);
     if (!body.ok) {
@@ -114,10 +105,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     return c.json({ name: result.name });
   });
 
-  // Putting a deleted skill folder back from the clone's last local commit.
-  // The commit in the body is the one the row read eligibility at: core
-  // compares it with a freshly read local HEAD and restores from that, so the
-  // browser names a source no more than it names a path (ADR-0030).
+  // The commit is compared with a freshly read HEAD, so the browser names no source.
   app.post("/api/harness/skill/restore", async (c) => {
     const body = await parseBody(c, restoreBodySchema, RESTORE_BODY);
     if (!body.ok) {
@@ -134,8 +122,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     return c.json({ name: result.name, commit: result.commit });
   });
 
-  // The three mutations that touch only GitHub. Each rechecks identity and the
-  // request against a fresh read, so the browser's picture authorizes nothing.
+  // Each rechecks identity and the request against a fresh read.
   const proposalResponse = (c: Context, result: ProposalActionResult) => {
     if (!result.ok) {
       const { status } = proposalErrorResponses[result.error];
@@ -174,10 +161,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     );
   });
 
-  // What Import would do, before it does it: the proposed name, the refusals,
-  // and the advisory findings. A POST like every other path-taking read, so the
-  // Origin/Host guard covers it. A refusal is data here, not a failure — only
-  // an unconnected harness is a status.
+  // A refusal is data here, not a failure; only an unconnected harness is a status.
   app.post("/api/harness/import/check", async (c) => {
     const body = await parseBody(c, importBodySchema, IMPORT_BODY);
     if (!body.ok) {
@@ -192,8 +176,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     return c.json(result.check);
   });
 
-  // Importing itself. Re-judges everything the check judged, so a source or a
-  // harness that moved since is refused rather than copied (security.md).
+  // Re-judges everything the check judged, so a source or harness that moved is refused.
   app.post("/api/harness/import", async (c) => {
     const body = await parseBody(c, importBodySchema, IMPORT_BODY);
     if (!body.ok) {
@@ -212,9 +195,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     });
   });
 
-  // Accepting the scaffold offer connect handed out. The path is re-checked
-  // from scratch in core — this endpoint takes one from the client, and the
-  // offer that carried it is not evidence (security.md, #556).
+  // The path is re-checked from scratch: the offer that carried it is not evidence (#556).
   app.post("/api/harness/scaffold", async (c) => {
     const body = await parseBody(c, connectBodySchema, PATH_BODY);
     if (!body.ok) {

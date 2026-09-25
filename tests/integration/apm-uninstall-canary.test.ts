@@ -1,18 +1,6 @@
-// The real per-repo uninstall canary (issue #336): proves the genuine
-// `apm uninstall <ref>` round-trip the automated suite otherwise only exercises
-// against captured output. When enabled it installs two skills into a throwaway
-// sandbox repo, removes one through the driver, and asserts what only real apm
-// can prove: the removed skill's deployed files and its lockfile entry are gone,
-// while the unrelated skill survives untouched.
-//
-// The uninstall half needs neither network nor credentials (apm-behavior.md
-// § Remove); the install that sets it up does, so the whole file sits behind
-// MAESTRO_REAL_APM=1 with the other canaries and stays out of the fast loop.
-//
-// Safety: the repo is a temp directory and HOME is redirected to a sandbox for
-// every apm subprocess, so no real project or home is touched, and the removal
-// always names its package — a bare `apm uninstall -g` is never run
-// (.claude/rules/apm-driver.md § Danger).
+// The install that sets this up needs network and credentials, so the file
+// runs only with MAESTRO_REAL_APM=1 (#336). Every removal names its package;
+// never run a bare `apm uninstall -g`.
 import { execFile } from "node:child_process";
 import {
   access,
@@ -33,12 +21,9 @@ const run = promisify(execFile);
 const enabled = process.env.MAESTRO_REAL_APM === "1";
 
 const HARNESS = "fimoklei/agent-harness";
-// The canonical skill subpath (ADR-0021); the harness dropped its old root
-// `skills/` tree at v0.6.0, so asking apm for that fails validation.
+// The old root `skills/` tree was dropped at v0.6.0; asking apm for it fails.
 const SUBPATH = ".apm/skills";
 const REMOVED = "tdd";
-// A second skill that exists in the harness alongside tdd, so the canary can
-// prove a removal is scoped to its own package.
 const KEPT = "prototype";
 
 describe.runIf(enabled)("real apm uninstall canary", () => {
@@ -93,7 +78,6 @@ describe.runIf(enabled)("real apm uninstall canary", () => {
     });
     expect(removed).toEqual({ ok: true });
 
-    // The deployed copy is gone from every tool directory the install wrote.
     for (const toolDir of [".claude", ".agents"]) {
       await expect(
         access(join(repo, toolDir, "skills", REMOVED)),
@@ -103,9 +87,7 @@ describe.runIf(enabled)("real apm uninstall canary", () => {
       ).resolves.toBeUndefined();
     }
 
-    // And so is its lockfile bookkeeping — deploy-state reads that file, so an
-    // entry left behind would keep the row on screen for a skill that is no
-    // longer there.
+    // deploy-state reads this file: an entry left behind keeps the row on screen.
     const lock = await readFile(join(repo, "apm.lock.yaml"), "utf8");
     expect(lock).not.toContain(`virtual_path: ${SUBPATH}/${REMOVED}`);
     expect(lock).toContain(`virtual_path: ${SUBPATH}/${KEPT}`);
@@ -114,8 +96,7 @@ describe.runIf(enabled)("real apm uninstall canary", () => {
   it("does not claim a removal for a package that was never installed", {
     timeout: 60_000,
   }, async () => {
-    // The driver classifies on apm's markers, not its exit code, so a package
-    // apm never had must come back as a failure rather than a clean removal.
+    // The driver classifies on apm's markers, not its exit code.
     const driver = new ApmCliDriver({
       run: (file, args, options) =>
         run(file, args, { ...options, env: { ...process.env, HOME: home } }),
@@ -130,18 +111,13 @@ describe.runIf(enabled)("real apm uninstall canary", () => {
   });
 });
 
-// The global half of the same canary (issue #338). apm's user-scope install and
-// uninstall both operate on Path.home(), so HOME is redirected at a throwaway
-// sandbox for every subprocess and the removal always names its package — a bare
-// `apm uninstall -g` is never run (.claude/rules/apm-driver.md § Danger). What
-// only real apm can prove: the removed skill's copies are gone from every tool
-// directory it wrote and from ~/.apm's lockfile, while the unrelated skill
-// survives in both.
+// apm's user-scope install and uninstall both operate on Path.home(), so HOME
+// points at a throwaway sandbox (#338).
 describe.runIf(enabled)("real apm global uninstall canary", () => {
   let home: string;
 
   beforeEach(async () => {
-    // A symlinked HOME makes apm ≥0.29.0 deploy nothing (docs/research/772-apm-0.29.0-findings.md § F1).
+    // A symlinked HOME makes apm ≥0.29.0 deploy nothing.
     home = await realpath(
       await mkdtemp(join(tmpdir(), "maestro-uninstall-global-home-")),
     );
@@ -157,9 +133,8 @@ describe.runIf(enabled)("real apm global uninstall canary", () => {
     const { stdout: tokenOut } = await run("gh", ["auth", "token"]);
     const token = tokenOut.trim();
 
-    // The scratch cwd lives under the sandbox too: apm appends apm_modules/ to
-    // the cwd's .gitignore even for -g, so it must never be a real repo
-    // (apm-driver.md).
+    // apm appends apm_modules/ to the cwd's .gitignore even for -g, so the cwd
+    // must never be a real repo.
     const scratchCwd = join(home, ".apm-scratch");
     const driver = new ApmCliDriver({
       run: (file, args, options) =>
@@ -184,7 +159,6 @@ describe.runIf(enabled)("real apm global uninstall canary", () => {
       const installed = await driver.deploySkill({
         target: { kind: "global" },
         ref: refFor(skill),
-        // Both tools, so the removal has more than one copy to account for.
         tools: ["claude", "codex"],
       });
       expect(installed).toEqual({ ok: true });
@@ -196,9 +170,7 @@ describe.runIf(enabled)("real apm global uninstall canary", () => {
     });
     expect(removed).toEqual({ ok: true });
 
-    // One action, every tool: the copy is gone under both directories apm
-    // deployed to, and the unrelated skill still holds its file — asserting the
-    // file, not the directory, because apm can leave an empty directory behind.
+    // Assert the file, not the directory: apm can leave an empty directory behind.
     for (const toolDir of [".claude", ".agents"]) {
       await expect(
         access(join(home, toolDir, "skills", REMOVED)),

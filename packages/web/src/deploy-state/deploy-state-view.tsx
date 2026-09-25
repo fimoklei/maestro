@@ -54,9 +54,6 @@ import { useGlobalDeployState } from "./use-global-deploy-state";
 import { useRetryOperation } from "./use-retry-operation";
 import { useUpdateTarget } from "./use-update-target";
 
-// The landing screen (#993): every target in one table, grouped Global /
-// Repositories, and a target's full reading in its detail pane.
-
 type KindFilter = "all" | typeof GLOBAL | typeof REPOSITORIES;
 
 const KIND_OPTIONS = [
@@ -92,16 +89,15 @@ export function DeployStateView() {
   const repoDrift = useQueries({ queries: repoPaths.map(driftQueryOptions) });
   const retry = useRetryOperation();
 
-  // Drift is left out: its apm run is slow, and a row reads without a Status
-  // until it answers, so the rows never wait for it.
+  // Drift is left out: its apm run is slow, so the rows never wait for it.
   const reading =
     registry.isFetching ||
     globalDeploy.isFetching ||
     repoDeploy.some((query) => query.isFetching);
   const skeleton = useReadSkeleton(reading);
 
-  // Invalidated, not refetched by hand: that drops drift's 5-minute cache
-  // too, so a pressed re-read is really fresh (#1033 story 26).
+  // Invalidated, not refetched by hand: that also drops drift's 5-minute cache,
+  // so a pressed re-read is really fresh.
   const reread = () => {
     skeleton.press();
     queryClient.invalidateQueries({ queryKey: REGISTRY_KEY });
@@ -116,7 +112,6 @@ export function DeployStateView() {
   );
   const [grouping, setGrouping] = useState<"kind" | "none">("kind");
   const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
-  // Another screen can send the reader to one target's row (#1065).
   const location = useLocation();
   const [selected, setSelected] = useState<string | null>(
     () =>
@@ -159,7 +154,6 @@ export function DeployStateView() {
   ];
   const rows: TargetTableRow[] = targets.map((row) => ({
     ...row,
-    // Disabled while its retry runs, so the menu never starts a second one.
     actions: targetMenuItems(row, retrying(row.wire)),
     links: targetLinkItems(row),
   }));
@@ -328,7 +322,6 @@ export function DeployStateView() {
       </div>
       <div className="relative flex h-[100cqh]">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          {/* Notices about the whole screen stay above the table (#991). */}
           {notices.length > 0 || noTools ? (
             <div className="flex flex-col gap-inline p-panel">
               {notices.map((notice) => (
@@ -337,7 +330,6 @@ export function DeployStateView() {
               {noTools ? (
                 <>
                   <Notice trigger="load" notice={NO_TOOL_DETECTED} />
-                  {/* No tool row carries them, so they stand here (J03). */}
                   {globalDeploy.data.skipped.map((entry, index) => (
                     <p
                       key={skippedEntryKey(entry, index)}
@@ -396,7 +388,6 @@ export function DeployStateView() {
               onPage={(step) => open(order[openIndex + step] ?? selected)}
               onClose={() => open(null)}
               getTriggerElement={getTriggerElement}
-              // Update target opens a dialog that holds focus itself.
               initialFocus={intent?.update ? null : undefined}
               onRetry={() => retry.mutate({ target: selectedRow.wire })}
               isRetrying={retrying(selectedRow.wire)}
@@ -418,9 +409,8 @@ export function DeployStateView() {
   );
 }
 
-// The pane's foot: the row's ⋮ items as buttons (#1065). It owns the Update
-// mutation, so the dialog stays mounted through the run and keeps the outcome
-// the reader just earned (#954, #980).
+// The pane's foot. It owns the Update mutation, so the dialog stays mounted
+// through the run and keeps its outcome (#980).
 function TargetActions({
   row,
   openUpdate,

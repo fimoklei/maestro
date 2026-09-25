@@ -25,8 +25,7 @@ const lockfile = (release: string, skills: string[]) => `dependencies:
 ${skills.map((skill) => `  - .claude/skills/${skill}/SKILL.md`).join("\n")}
 `;
 
-// One in-memory world: the manifest, the lockfile and the files on disk, all
-// moved by the fake apm exactly as the real one moves them.
+// The manifest, lockfile and files, moved by the fake apm as the real one moves them.
 function world() {
   const files = new Map<string, string>();
   const calls: { command: string; ref: string; skills?: string[] }[] = [];
@@ -51,8 +50,7 @@ function world() {
       files.set(`/repo/.claude/skills/${skill}/SKILL.md`, "content");
     }
     files.set("/repo/apm.lock.yaml", lockfile(release, landed));
-    // apm persists the Selection into apm.yml itself, creating the dependency
-    // when it is absent (apm-behavior.md § Root package and its Selection).
+    // apm persists the Selection into apm.yml itself, creating the dependency when absent.
     files.set("/repo/apm.yml", manifest([...skills].sort()));
   };
 

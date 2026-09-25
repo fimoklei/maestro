@@ -37,8 +37,7 @@ describe("parseGitOrigin", () => {
   });
 
   it("strips embedded credentials from an HTTPS host so no token leaks", () => {
-    // A credentialed remote must never put its token into the host (and thus
-    // into the apm package ref / argv). Only the real hostname survives.
+    // A token in the host would reach the apm package ref and argv.
     expect(
       parseGitOrigin(
         "https://x-access-token:ghs_secret@github.com/fimoklei/agent-harness.git",
@@ -56,9 +55,8 @@ describe("parseGitOrigin", () => {
   });
 
   it("returns null for an origin on a non-default port", () => {
-    // A port cannot reach apm through a skill ref (issue #152; the observed
-    // grammar is in `.claude/rules/apm-driver.md`), and dropping it silently
-    // would send apm to the default port and fail at the first deploy.
+    // A skill ref cannot carry a port, and dropping it would send apm to the
+    // default port (#152).
     expect(parseGitOrigin("ssh://git.example:2222/acme/inventory")).toBeNull();
     expect(
       parseGitOrigin("https://git.example:8443/acme/inventory.git"),
@@ -66,9 +64,8 @@ describe("parseGitOrigin", () => {
   });
 
   it("returns null for a GitHub origin on a non-default port", () => {
-    // The port rejection has to bite on the one host deploys resolve against:
-    // on any other host the origin is already refused for the host alone, so
-    // the branch would go unproven (#152, ADR-0014).
+    // Other hosts are already refused for the host alone, so only this one proves
+    // the port branch (#152).
     expect(
       parseGitOrigin("https://github.com:8443/fimoklei/agent-harness.git"),
     ).toBeNull();
@@ -78,9 +75,7 @@ describe("parseGitOrigin", () => {
   });
 
   it("parses an origin that spells out its scheme's default port", () => {
-    // Such a remote reaches the same host apm's default transport would, so
-    // it is representable. `URL` normalises the port away for https but not
-    // for ssh, which it does not know — hence the explicit `:22` case.
+    // `URL` normalises the port away for https but not for ssh.
     expect(
       parseGitOrigin("ssh://git@github.com:22/fimoklei/agent-harness.git"),
     ).toEqual({ host: "github.com", ownerRepo: "fimoklei/agent-harness" });
@@ -90,21 +85,16 @@ describe("parseGitOrigin", () => {
   });
 
   it("returns null for a host outside the GitHub model deploys resolve against", () => {
-    // apm reads `skills/<name>` as a virtual package only for the host shapes
-    // it knows; on any other host the subpath silently becomes part of the
-    // repo name (`gitlab.com/o/r/skills/tdd` -> repo `o/r/skills/tdd`, no
-    // virtual_path). Tag resolution is GitHub-only besides (ADR-0003), so a
-    // non-GitHub origin can only fail at deploy — refuse it at connect.
+    // On other hosts apm silently folds the `skills/<name>` subpath into the repo
+    // name, so a non-GitHub origin could only fail at deploy.
     expect(parseGitOrigin("https://gitlab.com/acme/inventory")).toBeNull();
     expect(parseGitOrigin("ssh://git.example/acme/inventory")).toBeNull();
     expect(parseGitOrigin("git@bitbucket.org:acme/inventory.git")).toBeNull();
   });
 
   it("accepts a host however it is cased, and reports it lowercased", () => {
-    // DNS is case-insensitive, but `URL` lowercases the host only for the
-    // schemes it knows — ssh:// and the scp-like form keep whatever the remote
-    // was written as. Without normalising, a valid GitHub remote would be
-    // refused on spelling alone.
+    // `URL` lowercases the host only for schemes it knows, so ssh and scp-like
+    // remotes need normalising.
     expect(parseGitOrigin("ssh://git@GitHub.com/acme/inventory.git")).toEqual({
       host: "github.com",
       ownerRepo: "acme/inventory",
@@ -116,11 +106,7 @@ describe("parseGitOrigin", () => {
   });
 
   it("returns null for remote schemes apm cannot resolve", () => {
-    // These parse cleanly (file://server/owner/repo even carries a hostname)
-    // but can never become a resolvable apm package ref: file remotes are
-    // unreachable for apm, git:// daemon refs are unsupported by apm 0.20, and
-    // an http:-only remote can state its plaintext transport only in the ref
-    // form that refuses a skill's subpath (issue #152; see apm-driver.md).
+    // These parse but can never become a resolvable apm package ref (#152).
     expect(parseGitOrigin("file:///tmp/agent-harness")).toBeNull();
     expect(parseGitOrigin("file://server/owner/repo")).toBeNull();
     expect(parseGitOrigin("git://git.example/acme/inventory.git")).toBeNull();

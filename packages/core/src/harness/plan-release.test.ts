@@ -37,8 +37,6 @@ function buildRead(overrides?: {
   freshness?: HarnessFreshness;
   trees?: TreesByRef;
   authors?: Record<string, string>;
-  // Who the released ref's own history names, where the default branch's
-  // history names nobody.
   authorsAtRelease?: Record<string, string>;
   manifests?: Record<string, string | null>;
   onReadSkillTrees?: (ref: string) => void;
@@ -82,7 +80,6 @@ function buildRead(overrides?: {
       publishTag: async () => {
         throw new Error("git port's publishTag was reached");
       },
-      // Reading state never promotes; reaching this would mean a read wrote.
       pushSkillPromotion: async () => {
         throw new Error("git port's pushSkillPromotion was reached");
       },
@@ -143,8 +140,7 @@ describe("ReadHarnessState.planRelease", () => {
   });
 
   it("names a removal's author from the release when the branch never had it", async () => {
-    // A tag on another history carries a skill the default branch never saw,
-    // so a log of that path at the branch answers nothing.
+    // A tag on another history: a log at the branch answers nothing.
     const read = buildRead({
       trees: { old: [{ name: "grilling", treeHash: "g1" }], head: [] },
       authorsAtRelease: { grilling: "Linus" },
@@ -233,8 +229,7 @@ describe("ReadHarnessState.planRelease", () => {
   });
 
   it("has no answer when the release tags could not be read", async () => {
-    // An unreadable tag namespace is not an unreleased harness: planning from
-    // it would propose v0.1.0 over a release that already exists (#519).
+    // An unreadable tag namespace is not an unreleased harness (#519).
     const read = buildRead({ facts: { tags: null } });
 
     await expect(read.planRelease()).resolves.toEqual({
@@ -244,8 +239,7 @@ describe("ReadHarnessState.planRelease", () => {
   });
 
   it("reads origin/HEAD's skills once, so the delta and the checks agree", async () => {
-    // Two reads of the same ref can disagree, and a failed second read once
-    // reported "no advisories" for checks that never ran.
+    // A failed second read once reported "no advisories" for checks never run.
     const refs: string[] = [];
     const read = buildRead({
       trees: { old: [], head: [{ name: "tdd", treeHash: "t1" }] },

@@ -7,7 +7,6 @@ export function resolveHomeDirectory(
   return env.HOME ?? homedir();
 }
 
-// Maestro state has its own override; preserve the OS-home fallback.
 export function resolveMaestroHome(
   env: NodeJS.ProcessEnv = process.env,
 ): string {

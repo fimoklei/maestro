@@ -38,9 +38,7 @@ function stubEmptyServer() {
   );
 }
 
-// A configured server: the sidebar's Harness menu holds Settings, so the
-// Harness location page is reachable from the frame (#995) rather than a nav
-// item of its own.
+// A configured server; the Harness menu holds Settings (#995).
 function stubConfiguredServer() {
   vi.stubGlobal(
     "fetch",

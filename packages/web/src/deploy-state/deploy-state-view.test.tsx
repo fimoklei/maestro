@@ -11,10 +11,7 @@ import {
   stubServer,
 } from "./deploy-state-test-helpers";
 
-// The Deploy-state screen: one table of every target (#993, #1043). Successor
-// of the retired DeployStateView, DeployStatePanel, GlobalDeployStatePanel and
-// GlobalTargets tests for what the table shows; the pane is in
-// deploy-state-view-pane.test.tsx, Update target in -update.test.tsx.
+// The Deploy-state table. The pane is in deploy-state-view-pane.test.tsx.
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -105,7 +102,6 @@ describe("Deploy-state — one table of every target", () => {
     );
     renderDeployState();
 
-    // An unread target set is not a target set of zero.
     expect(screen.queryByText(/\d+ targets?/)).toBeNull();
     expect(
       screen.queryByText(/no repositories registered\./i),
@@ -132,9 +128,6 @@ describe("Deploy-state — one table of every target", () => {
     ).toBeInTheDocument();
   });
 
-  // ADR-0015 rejected a second registration control: Register repository on
-  // the Repositories screen stays the only one, so this line offers nothing
-  // to click.
   it("names where repositories come from while none is registered, as information only", async () => {
     stubServer(() => ({ repos: [], global: TWO_TOOLS }));
     renderDeployState();
@@ -527,7 +520,6 @@ describe("Deploy-state — Re-read and freshness", () => {
       screen.getByRole("button", { name: "Re-read Deploy-state" }),
     );
 
-    // Both drift checks run again, well inside their five minutes.
     await waitFor(() => expect(driftReads()).toBe(before + 2));
   });
 
@@ -538,7 +530,6 @@ describe("Deploy-state — Re-read and freshness", () => {
     expect(await screen.findByText("Read just now")).toBeInTheDocument();
   });
 
-  // #1123: every "read … ago" on the screen ages without a re-read.
   it("ticks band 2 and the status hover card while the screen stays open", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
@@ -575,7 +566,6 @@ describe("Deploy-state — Re-read and freshness", () => {
 });
 
 describe("Deploy-state — rows and their menu", () => {
-  // The Inventory's target row sends the reader here with that row open (#1065).
   it("opens the pane of the target another screen asked for", async () => {
     stubServer(() => ({ global: TWO_TOOLS }));
     renderDeployState({ openTarget: "global:codex" });
@@ -613,7 +603,6 @@ describe("Deploy-state — rows and their menu", () => {
     ).toEqual(["Actions for Claude Code"]);
   });
 
-  // #1123: a row is a Target; its Global/Repository split carries that name.
   it("names the Global/Repository split Target in Filter and Display", async () => {
     stubServer(() => ({ global: TWO_TOOLS }));
     renderDeployState();

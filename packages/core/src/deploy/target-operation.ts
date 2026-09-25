@@ -1,7 +1,5 @@
-// The durable intent behind a write: what Maestro set out to do to one target,
-// written before the first mutation and cleared only once disk, the manifest
-// and the deployment record agree with it. It records intent for recovery,
-// never a second source of deployed truth (ADR-0031, #951).
+// The durable intent behind a write, for recovery only: never a second source
+// of deployed truth (#951).
 import type { ConfigStore } from "../registry/config-store";
 import type { DeployTarget } from "./deploy-skill";
 import type { SupportedTool } from "./deploy-tools";
@@ -9,8 +7,7 @@ import type { SupportedTool } from "./deploy-tools";
 export type TargetOperationKind = "deploy" | "remove" | "update";
 
 export type TargetOperation = {
-  // The target's lock key: the canonical repo path, or "global". One
-  // operation per key, so a second one cannot start beside an unfinished one.
+  // The target's lock key: the canonical repo path, or "global".
   key: string;
   target: DeployTarget;
   harness: string;
@@ -18,8 +15,7 @@ export type TargetOperation = {
   release: string;
   previous: string[];
   desired: string[];
-  // The detected tools the write ran against; null on the repo path, which
-  // always targets every DEPLOY_TOOLS tool.
+  // Null on the repo path, which always targets every DEPLOY_TOOLS tool.
   tools: SupportedTool[] | null;
   startedAt: string;
 };
@@ -39,8 +35,7 @@ export class TargetOperationStore {
       null) as TargetOperation | null;
   }
 
-  // Overwrites: one target holds at most one unfinished operation, and the
-  // caller has already refused a second one.
+  // Overwrites: the caller has already refused a second operation.
   async begin(
     operation: Omit<TargetOperation, "startedAt">,
   ): Promise<TargetOperation> {

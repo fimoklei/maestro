@@ -79,8 +79,7 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    // Three honest numbers, never a sum: one skill can hold a row in all
-    // three stages (ADR-0021 · 10).
+    // Three numbers, never a sum: one skill can hold a row in all three stages.
     expect(await stageHeader("Pending proposal")).toHaveTextContent(
       /^Pending proposal 1(\D|$)/,
     );
@@ -275,8 +274,6 @@ describe("Harness home base", () => {
     });
     renderHarness();
 
-    // Heard, not seen: the table is busy and the status region says so; no
-    // word stands in band 2 for a read (design.md → Waiting and freshness).
     const live = await screen.findByRole("status", { name: "Harness stages" });
     await waitFor(() => expect(live).toHaveTextContent("Reading GitHub…"));
     expect(

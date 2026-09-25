@@ -41,8 +41,7 @@ describe("RemoveConsentIssuer.offer", () => {
   });
 
   it("keeps a skills directory several tools read, even when its tool is gone", () => {
-    // Codex is undetected, but nine other apm targets deploy under .agents, so
-    // its absence proves nothing about the copy (#202).
+    // Other apm targets deploy under .agents too, so an absent Codex proves nothing (#202).
     expect(
       issuer().offer({ target: GLOBAL, name: "tdd", detected: ["claude"] }),
     ).toBeNull();
@@ -57,9 +56,7 @@ describe("RemoveConsentIssuer.offer", () => {
   });
 });
 
-// The token exists so `execute` can prove the confirmation the user saw came
-// from this same server's own preflight, over exactly the paths it named. A
-// client-supplied path list would authorize a reclaim a caller merely guessed.
+// A client-supplied path list would authorize a reclaim a caller merely guessed.
 describe("RemoveConsentIssuer.grants", () => {
   const scope = {
     target: GLOBAL,
@@ -71,8 +68,7 @@ describe("RemoveConsentIssuer.grants", () => {
     const consent = issuer();
     const offer = consent.offer(scope);
 
-    // The granted set is handed back rather than a yes/no: the caller deletes
-    // this, never a set it derives a second time and that could drift.
+    // The caller deletes this set, never one it derives again and that could drift.
     expect(consent.grants(scope, offer?.token)).toEqual(offer?.previews);
   });
 
@@ -89,8 +85,7 @@ describe("RemoveConsentIssuer.grants", () => {
   });
 
   it("refuses a token-shaped prefix of the token it issued", () => {
-    // Hex that parses cleanly but is shorter than a token: the comparison must
-    // refuse it on length, never on the bytes the two happen to share.
+    // Must refuse on length, never on the bytes the two share.
     const consent = issuer();
     const offer = consent.offer(scope);
 
@@ -101,7 +96,6 @@ describe("RemoveConsentIssuer.grants", () => {
     const consent = issuer();
     const offer = consent.offer({ ...scope, detected: ["claude"] });
 
-    // Claude was detected then and is gone now, so the paths differ.
     expect(consent.grants(scope, offer?.token)).toBeNull();
   });
 
@@ -113,8 +107,6 @@ describe("RemoveConsentIssuer.grants", () => {
   });
 
   it("refuses a token issued by another instance", () => {
-    // The key never leaves the process, so a token can only exist because this
-    // instance's own preflight issued it.
     const offer = issuer().offer(scope);
 
     expect(issuer().grants(scope, offer?.token)).toBeNull();
@@ -128,14 +120,11 @@ describe("RemoveConsentIssuer.grants", () => {
   });
 });
 
-// The receipt proves the removal itself was priced, where the reclaim token
-// proves a named set of leftover paths was. Same secret, same instance, but
-// never interchangeable: they authorize different destruction (#458).
+// Receipt and reclaim token share one secret but authorize different
+// destruction, so they are never interchangeable (#458).
 describe("RemoveConsentIssuer receipts", () => {
   const scope = { target: GLOBAL, name: "tdd" };
 
-  // The cost the confirmation stated. A receipt is minted against one of these,
-  // so a copy that changed since cannot pass as the one the user agreed to (#364).
   const CLEAN = {
     scope: "global",
     tools: [
@@ -203,9 +192,6 @@ describe("RemoveConsentIssuer receipts", () => {
     ).toBe(false);
   });
 
-  // The window #364 closes: the copy was clean when the user was warned and
-  // has lost its baseline by the time the removal runs, so the consent no
-  // longer describes what would be destroyed.
   it("refuses a receipt minted for a cost the copy no longer carries", () => {
     const consent = issuer();
 
@@ -214,8 +200,6 @@ describe("RemoveConsentIssuer receipts", () => {
     ).toBe(false);
   });
 
-  // The tool probe orders its own answer, and the same set of answers in
-  // another order is the same cost — refusing it would cost a click for nothing.
   it("accepts a receipt whose tools answered in a different order", () => {
     const consent = issuer();
     const reordered: RemoveCheck = {
@@ -234,8 +218,6 @@ describe("RemoveConsentIssuer receipts", () => {
     );
   });
 
-  // Each token names the destruction it authorizes; one standing in for the
-  // other would let a reclaim confirmation license the removal itself.
   it("never accepts a reclaim token in place of a receipt", () => {
     const consent = issuer();
     const offer = consent.offer({ ...scope, detected: ["codex"] });

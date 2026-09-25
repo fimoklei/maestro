@@ -1,9 +1,7 @@
 import { Logo } from "../ui/logo";
 import { FirstRunGate } from "./first-run-gate";
 
-// The connect gate is its own frame (#991, #995): the mark in a 48px row, then
-// one block. No sidebar and no panel: nothing is connected, so a frame would
-// offer screens that cannot open (ADR-0015).
+// No sidebar: nothing is connected, so it would offer screens that cannot open.
 export function GateShell() {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-y-auto bg-gray-1">

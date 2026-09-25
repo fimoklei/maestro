@@ -148,8 +148,7 @@ describe("RetryTargetOperation", () => {
     });
   });
 
-  // An Update recovers the same way: the record names the release the reader
-  // previewed, and a release published since is not it (#954, spec story 30).
+  // A release published since the preview is not the one the reader chose (#954).
   it("reruns an interrupted update at the release the reader chose", async () => {
     const { world, retry } = buildUseCase();
     world.seed({ release: "v0.5.0", skills: ["prototype", "review"] });

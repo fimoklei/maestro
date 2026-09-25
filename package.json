@@ -25,7 +25,8 @@
     "test:watch": "vitest --project core --project web --project integration",
     "typecheck": "pnpm -r typecheck && tsc -p tsconfig.json --noEmit",
     "knip": "knip",
-    "lint": "biome check .",
+    "comment-guard": "node scripts/comment-guard.mjs",
+    "lint": "biome check . && node scripts/comment-guard.mjs",
     "format": "biome check --write .",
     "verify": "node scripts/verify.mjs"
   },

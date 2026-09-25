@@ -125,8 +125,8 @@ describe("bulkRemoveDialogView — what the removal costs", () => {
     ]);
   });
 
-  // J04 on consent: an unknown is never quietly reported as safe. Both of
-  // these leave the copy unmeasured, so both are priced as a possible loss.
+  // An unknown is never reported as safe: both leave the copy unmeasured, so both
+  // are priced as a possible loss.
   it("puts an unverifiable copy and a check that never ran under cost", () => {
     const view = bulkRemoveDialogView([
       target("/dev/acme-web", repoCheck("cannot-verify")),
@@ -164,8 +164,8 @@ describe("bulkRemoveDialogView — what the removal costs", () => {
     ]);
   });
 
-  // An answer naming no tool at all has measured nothing. Reading its empty
-  // map as "no warnings found" would price the loudest unknown as clean (J04).
+  // An answer naming no tool measured nothing; its empty map must not price the
+  // loudest unknown as clean.
   it("prices a global answer that named no tool as unchecked", () => {
     const view = bulkRemoveDialogView([target("global", perTool({}))]);
 

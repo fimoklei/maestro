@@ -1,7 +1,6 @@
 import { execFile } from "node:child_process";
 import type { RunHelper } from "./folder-chooser-port";
 
-// The real process behind every chooser adapter; tests pass their own.
 export const runHelper: RunHelper = (file, args, options) =>
   new Promise((resolve) => {
     execFile(

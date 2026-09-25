@@ -24,13 +24,8 @@ import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
 import { stubUpdate } from "../helpers/stub-update";
 
-// Integration lane for global (user-scope) deploy-state, now grouped per detected
-// tool (ADR-0011, J03). The server resolves the user-scope location itself — no
-// client-supplied path crosses the boundary — so the route takes no query. Both
-// the lockfile root and tool-presence detection point at a sandbox HOME, so this
-// test never reads the real ~/.apm or the real ~/.claude.json (apm-driver.md
-// safety note). Presence is the real filesystem adapter: seeding a tool's config
-// marker under the sandbox HOME is what makes it "detected".
+// The server resolves the user-scope location itself, so the route takes
+// no query. Lockfile root and tool presence point at a sandbox HOME.
 const SINGLE_TOOL_LOCKFILE = readFileSync(
   new URL("../fixtures/apm.lock.global-single-tool.yaml", import.meta.url),
   "utf8",
@@ -59,8 +54,6 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
     await rm(home, { recursive: true, force: true });
   });
 
-  // Seeds a tool's deploy-immune presence marker under the sandbox HOME so the
-  // real ToolPresenceAdapter detects it (spike #127).
   async function installClaude() {
     await writeFile(join(home, ".claude.json"), "{}", "utf8");
   }
@@ -148,7 +141,6 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
   });
 
   it("lists a detected tool with nothing deployed as an empty group", async () => {
-    // Codex is present; a claude-only install must not back-fill under it.
     await installClaude();
     await installCodex();
     await writeFile(
@@ -174,7 +166,7 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
   });
 
   it("shows each detected tool an empty group when nothing is deployed globally", async () => {
-    // No global apm.lock.yaml: an honest empty state per detected tool, not an error.
+    // No global lockfile: an empty state per detected tool, not an error.
     await installClaude();
 
     const res = await makeApp().request("/api/deploy-state/global");
@@ -188,8 +180,7 @@ describe("global deploy-state HTTP route (per detected tool)", () => {
   });
 
   it("names the origin of a foreign lockfile entry instead of calling the target empty (#655)", async () => {
-    // The exact shape a pre-deployed_files-attribution install left behind:
-    // a real repo_url, but deployed_files no detected tool's prefix covers.
+    // A pre-attribution install: deployed_files no detected tool's prefix covers.
     await installClaude();
     await writeFile(
       join(apmRoot, "apm.lock.yaml"),

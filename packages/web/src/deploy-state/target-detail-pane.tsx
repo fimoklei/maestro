@@ -25,9 +25,7 @@ import { SelectedSkills } from "./selected-skills";
 import { skippedEntryKey, skippedEntryText } from "./skipped-entry-text";
 import type { TargetRow } from "./target-rows";
 
-// A target's full reading (#993, #1065): facts, the paragraph that explains
-// its state, its notice, then its Selected skills. Presentational: the foot's
-// controls arrive as `actions`.
+// A target's full reading. Presentational: the foot's controls arrive as `actions`.
 export function TargetDetailPane({
   row,
   position,
@@ -55,8 +53,6 @@ export function TargetDetailPane({
   actions: ReactNode;
 }) {
   const skillsHeading = useRef<HTMLHeadingElement>(null);
-  // The retry sits in its notice, after its cause, and at the foot as the
-  // row's menu holds it (#1065).
   const notice: NoticeContent | null =
     row.readFailed && row.group !== GLOBAL
       ? { ...REPO_NOT_READ, action: { label: REREAD_LABEL, onClick: onReread } }
@@ -72,7 +68,6 @@ export function TargetDetailPane({
         : null;
   const head = row.head;
   const changed = head ? changedFact(head) : null;
-  // Sentences that explain a state form one paragraph; a fact is a value.
   const sentence = head ? releaseSentence(head) : null;
   const why = [
     ...(sentence === null ? [] : [sentence]),

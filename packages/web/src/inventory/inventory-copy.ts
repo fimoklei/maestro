@@ -1,20 +1,17 @@
 import { toolNameList } from "../deploy-state/tool-labels";
 
-// Shown by both gates while the inventory config read is still in flight; one
-// string, so the two cannot drift (copy.md → "Where copy lives").
+// Shown by both gates while the inventory config read is in flight.
 export const LOADING_INVENTORY_CONNECTION = "Loading the Inventory connection…";
 
-// The Inventory read that failed, on every surface that shows it: one string,
-// so the panel and the Harness location screen cannot drift (copy.md). The
-// action rides at the call site.
+// The failed Inventory read on every surface that shows it; the action rides at
+// the call site.
 export const INVENTORY_NOT_READ = {
   level: "error",
   label: "Could not read Inventory",
   message: "Select Re-read Inventory to try again.",
 } as const;
 
-// Empty is an offer, not a failure: the heading names what is on offer and the
-// action is the one step that fills the list (copy.md → R-B).
+// Empty is an offer, not a failure: the action is the one step that fills the list.
 export const NO_RELEASED_SKILLS = {
   level: "info",
   label: "No released skills",
@@ -22,8 +19,7 @@ export const NO_RELEASED_SKILLS = {
     "Inventory shows skills from the latest release. Open Harness, then create a release to add skills.",
 } as const;
 
-// The Inventory's band 2 and table (#1040). Control labels come from
-// CONTEXT.md; a blocked control names its cause in five words or fewer.
+// The Inventory's band 2 and table (#1040).
 export const SEARCH_LABEL = "Search the Inventory";
 export const REREAD_LABEL = "Re-read Inventory";
 export const FILTER_LABEL = "Filter";
@@ -44,7 +40,7 @@ export const bulkDeployDidNotRun = (target: string) =>
 // Both deploy pickers, while the registry has not answered.
 export const LOADING_TARGETS = "Loading targets…";
 
-// The group header of rows whose status has not answered yet (CONTEXT.md → Read).
+// The group header of rows whose status has not answered yet.
 export const NOT_READ_YET = "Not read yet";
 
 export const NO_SEARCH_MATCH =
@@ -66,14 +62,14 @@ export const NOT_DEPLOYED_ANYWHERE =
 // A target row's ⋮ in the pane, and the foot's removal (#1065). The count is
 // the targets the pane lists: a global deploy is one target per tool.
 export const REMOVE_FROM_TARGET = "Remove from target";
-// A global row's removal takes every detected tool (ADR-0013).
+// A global row's removal takes every detected tool.
 export const removeFromToolsLabel = (tools: readonly string[]): string =>
   `Remove from ${toolNameList(tools)}`;
 export const SHOW_IN_DEPLOY_STATE = "Show in Deploy-state";
 export const removeFromAllLabel = (count: number): string =>
   `Remove from all ${count} targets`;
 
-// The row's ⋮ menu; its items reuse the verbs of CONTEXT.md (#992).
+// The row's ⋮ menu (#992).
 export const ACTIONS_COLUMN_LABEL = "Actions";
 export const rowActionsLabel = (name: string) => `Actions for ${name}`;
 export const DEPLOY_SKILL = "Deploy skill";

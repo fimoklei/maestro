@@ -1,9 +1,5 @@
 import { cn } from "./cn";
 
-// The product mark: a neutral 20px outline tile over the wordmark, one 32px
-// row at the top of the sidebar (#991). No hue — the tile is slate 12 like the
-// words beside it (ADR-0033 §2).
-
 export function Logo({ className }: { className?: string }) {
   return (
     <div className={cn("flex h-control items-center gap-inline", className)}>

@@ -23,7 +23,7 @@ anchor tie-breaker and checklist with the short guidance in `copy.md`.
    APM. ASD-STE100 principles guide the writing; full compliance with the
    standard and its dictionary is not required. GOV.UK and Polaris research
    remains background, rather than an additional set of mandatory rules.
-2. `.claude/rules/copy.md` is the writing and review guide for every word the
+2. The repo's copy rule for agents is the writing and review guide for every word the
    cockpit shows. Review the whole message in context for first-reading
    comprehension and agreement with the implemented behaviour. Enforcement
    remains human or agent review; a copy linter is out of scope.
@@ -36,8 +36,8 @@ anchor tie-breaker and checklist with the short guidance in `copy.md`.
 5. A Notice retains one always-visible `detail` slot and one action.
    `detail` explains why the event happened. Progressive disclosure remains
    deferred until a real message needs it.
-6. `.claude/rules/frontend.md` owns copy implementation conventions;
-   `.claude/rules/design.md` owns accessibility and browser verification.
+6. The frontend rule for agents owns copy implementation conventions; the
+   design rule owns accessibility and browser verification.
 
 ## Amendment to ADR-0018
 

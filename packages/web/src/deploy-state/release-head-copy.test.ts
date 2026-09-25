@@ -15,7 +15,7 @@ import {
 } from "./release-head-copy";
 import type { ReleaseHead } from "./use-deploy-state";
 
-// The approved sentences, pinned as exact strings (copy.md).
+// The approved sentences, pinned as exact strings.
 const NOW = new Date("2026-09-12T10:00:00.000Z");
 
 const head = (over: Partial<ReleaseHead> = {}): ReleaseHead => ({
@@ -130,7 +130,6 @@ describe("RELEASE_NOT_ADOPTED", () => {
   });
 });
 
-// The pane's fact values (#1065): short values beside their labels.
 describe("extraFilesFact", () => {
   it("counts the deployed files that belong to no selected skill", () => {
     expect(extraFilesFact(2)).toBe("2 files");
@@ -198,8 +197,6 @@ describe("unfinishedOperationNotice", () => {
     });
   });
 
-  // Story 8: the half-landed Update states what landed, not just that it
-  // stopped. The chip names the state; this sentence measures it.
   it("counts what a half-landed update landed", () => {
     expect(
       unfinishedOperationNotice(

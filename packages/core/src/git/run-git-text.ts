@@ -5,8 +5,7 @@ const run = promisify(execFile);
 
 type GitOptions = Pick<ExecFileOptions, "env" | "timeout">;
 
-// Trimmed stdout, or the exit code for a caller that tells failures apart
-// (null where git never exited: missing binary, timeout).
+// exitCode is null where git never exited (missing binary, timeout).
 export type GitRun =
   | { ok: true; stdout: string }
   | { ok: false; exitCode: number | null };
@@ -28,8 +27,7 @@ export async function runGit(
   }
 }
 
-// Empty output or any failure means unknown. Callers keep their existing
-// invocation policy: local reads have no options; scaffold reads are bounded.
+// Empty output or any failure means unknown (null).
 export async function runGitText(
   root: string,
   args: string[],

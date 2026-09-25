@@ -1,5 +1,5 @@
-// A GitHub page, shape-checked at the edge (ADR-0014, ADR-0018). A link
-// failing the check crosses as unknown: dropping it would claim no page exists.
+// A GitHub page, shape-checked at the edge. A link failing the check crosses
+// as unknown: dropping it would claim no page exists.
 import {
   type DeployedPrimitive,
   type GitHubPage,

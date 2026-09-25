@@ -24,8 +24,7 @@ const FRESHNESS: HarnessFreshness = {
   lastFetchedAt: "2026-08-01T07:00:00.000Z",
 };
 
-// What a replan finds after the refusal: a remote one release further along.
-// Distinct from FACTS in every field a stale dialog would still be showing.
+// Distinct from FACTS in every field a stale dialog would still show.
 const RECOMPUTED: ReleasePlan = {
   delta: [],
   previousTag: "v1.3.0",
@@ -38,8 +37,7 @@ const RECOMPUTED: ReleasePlan = {
   findings: [],
 };
 
-// The plan the author confirmed: the tag and revision their dialog last
-// showed. Both travel so a remote that moved under either one is refused.
+// Both travel so a remote that moved under either one is refused.
 const CONFIRMED: ReleaseConfirmation = {
   step: "patch",
   previousTag: "v1.2.3",
@@ -52,8 +50,6 @@ function buildPublish(overrides?: {
   facts?: Partial<HarnessFacts>;
   freshness?: HarnessFreshness;
   fetchOutcome?: "fetched" | "offline" | "fetch-failed";
-  // One entry per fetch, so a test can let the confirmation's own reach
-  // succeed and the one behind the refusal fail.
   fetchOutcomes?: ("fetched" | "offline" | "fetch-failed")[];
   fetchHold?: Promise<void>;
   publishTagOutcome?: PublishTagOutcome;
@@ -81,9 +77,7 @@ function buildPublish(overrides?: {
       catchUp: async () => {},
       readCloneSync: async () => "current" as const,
       readFacts: async () => ({ ...FACTS, ...overrides?.facts }),
-      // Distinct content at the default branch's own tip, so every scenario
-      // not explicitly about an empty delta gets one movement to publish
-      // rather than an accidental empty-delta refusal.
+      // Distinct content, so no scenario hits an accidental empty-delta refusal.
       readSkillTrees: async (_root: string, ref: string) =>
         overrides?.skillTrees?.(ref) ??
         (ref ===
@@ -108,8 +102,6 @@ function buildPublish(overrides?: {
         overrides?.onPublishTag?.(name, commit, branch);
         return overrides?.publishTagOutcome ?? "pushed";
       },
-      // Publishing a release never promotes; reaching this would mean one call
-      // took the other's route.
       pushSkillPromotion: async () => {
         throw new Error("git port's pushSkillPromotion was reached");
       },
@@ -237,8 +229,6 @@ describe("PublishRelease", () => {
   });
 
   it("reports someone else's race to the same version as already released", async () => {
-    // Retryable, not terminal: the name was taken, so what the author needs is
-    // the recomputed plan to confirm again — never a dead end (#521).
     const publish = buildPublish({ publishTagOutcome: "already-exists" });
 
     await expect(publish.execute(CONFIRMED, AT)).resolves.toEqual({
@@ -267,9 +257,7 @@ describe("PublishRelease", () => {
   });
 
   it("refuses a release whose branch tip moved between the read and the push", async () => {
-    // The lease git refused: what this confirmation read as the tip is not
-    // what the remote still has, so the tag would name a commit the branch has
-    // already moved past. `--atomic` means nothing was created (#520).
+    // `--atomic` means nothing was created (#520).
     const publish = buildPublish({ publishTagOutcome: "stale-tip" });
 
     await expect(publish.execute(CONFIRMED, AT)).resolves.toEqual({
@@ -280,10 +268,6 @@ describe("PublishRelease", () => {
   });
 
   it("refuses a plan whose previous tag no longer matches the freshly read remote", async () => {
-    // The remote moved past what the author's dialog last showed them —
-    // someone else released, or an earlier retry of this same confirmation
-    // already did. Publishing the step blindly would price a second release
-    // off a previous tag that no longer exists (#520).
     const publish = buildPublish({
       facts: { tags: [{ name: "v1.3.0", commit: "new" }] },
     });
@@ -296,9 +280,6 @@ describe("PublishRelease", () => {
   });
 
   it("refuses a plan whose revision the default branch has already moved past", async () => {
-    // The tip moved between the plan and this confirmation. Tagging the freshly
-    // read tip would publish commits the author never saw priced, so the plan is
-    // refused rather than quietly re-pointed (#521).
     const calls: string[] = [];
     const publish = buildPublish({
       facts: { defaultBranchCommit: "moved" },
@@ -314,9 +295,7 @@ describe("PublishRelease", () => {
   });
 
   it("refuses a plan whose previous tag was force-moved to another commit", async () => {
-    // The name is unchanged, so nothing about the version looks stale — but
-    // the delta the author read was computed from where that tag used to
-    // point. Publishing it would ship a comparison nobody reviewed (#521).
+    // The tag name is unchanged but now points elsewhere (#521).
     const calls: string[] = [];
     const publish = buildPublish({
       facts: { tags: [{ name: "v1.2.3", commit: "moved" }] },
@@ -332,8 +311,6 @@ describe("PublishRelease", () => {
   });
 
   it("refuses a plan whose proposed version the remote already carries", async () => {
-    // A tag the fetch already shows is not this release to make, whatever the
-    // highest tag says. Refused here, so the push is never asked (#521).
     const calls: string[] = [];
     const publish = buildPublish({
       facts: {
@@ -354,8 +331,7 @@ describe("PublishRelease", () => {
   });
 
   it("fetches again before recomputing, so the refused plan is not handed back", async () => {
-    // A push the remote refused means the local refs are already behind. A
-    // recompute from them would propose the very plan that was just refused.
+    // The local refs are already behind; a recompute would repeat the refused plan.
     let fetches = 0;
     const publish = buildPublish({
       publishTagOutcome: "stale-tip",
@@ -370,8 +346,6 @@ describe("PublishRelease", () => {
   });
 
   it("recomputes a pre-push refusal from the refs it already fetched", async () => {
-    // The mismatch was found in this call's own fetch, so those refs already
-    // carry the replacement plan — a second reach at the remote buys nothing.
     let fetches = 0;
     const publish = buildPublish({
       facts: { defaultBranchCommit: "moved" },
@@ -386,9 +360,7 @@ describe("PublishRelease", () => {
   });
 
   it("recomputes nothing when the fetch behind the refusal could not reach the remote", async () => {
-    // A plan read from refs the remote has already refused is the refused plan
-    // wearing a new label. `planRelease` reads local refs and only asks that
-    // something was once fetched, so it cannot notice this itself (#521).
+    // `planRelease` reads local refs, so it cannot notice this itself (#521).
     const publish = buildPublish({
       publishTagOutcome: "stale-tip",
       fetchOutcomes: ["fetched", "offline"],
@@ -401,8 +373,6 @@ describe("PublishRelease", () => {
   });
 
   it("recomputes against the harness it locked, not whichever is connected now", async () => {
-    // Connecting a second harness mid-flight must not let a refusal for one
-    // repository answer with a plan for another (#521).
     const roots: string[] = [];
     const publish = buildPublish({
       publishTagOutcome: "stale-tip",
@@ -439,8 +409,6 @@ describe("PublishRelease", () => {
   });
 
   it("refuses to publish a release with nothing to release", async () => {
-    // The freshly read head carries the same skill trees the previous release
-    // tagged: nothing changed, so there is no release to make (#970).
     const publish = buildPublish({ skillTrees: () => [] });
 
     await expect(publish.execute(CONFIRMED, AT)).resolves.toEqual({

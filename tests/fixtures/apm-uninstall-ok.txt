@@ -2,7 +2,7 @@
 [+] fimoklei/agent-harness/skills/tdd - found in apm.yml
 [i] Cleaned 14 stale files from fimoklei/agent-harness/skills/tdd
 [i] Removed fimoklei/agent-harness/skills/tdd from dependencies.apm in apm.yml
-[*] Updated /private/tmp/claude-501/-Users-michielmerks-orca-workspaces-maestro-finback/7138170a-ec42-4bae-8afb-80b5ae09959f/scratchpad/sb/repo-ok/apm.yml (removed 1 package(s))
+[*] Updated /private/tmp/claude-501/-Users-dev-orca-workspaces-maestro-finback/7138170a-ec42-4bae-8afb-80b5ae09959f/scratchpad/sb/repo-ok/apm.yml (removed 1 package(s))
 [i] Removed fimoklei/agent-harness/skills/tdd from apm_modules/
     Path: fimoklei/agent-harness/skills/tdd
   |-- (files unchanged)

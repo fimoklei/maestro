@@ -5,25 +5,18 @@ import type { ActionsMenuProps } from "../ui/actions-menu";
 import type { HarnessStageRow, ReviewRequestLink } from "./use-harness";
 
 export type RowActionHandlers = {
-  // Pushes this skill's working content to its proposal branch, and opens a
-  // request where the branch has none. The one press behind both Propose
-  // change and Update proposal. It takes the row, not the name: two stages
-  // carry the press, and a refusal belongs to the one it was made in (#865).
+  // Takes the row, not the name: two stages carry the press, and a refusal
+  // belongs to the one it was made in (#865).
   promote: (row: HarnessStageRow) => void;
   create: (skill: string) => void;
   reopen: (skill: string, number: number) => void;
   withdraw: (skill: string, number: number) => void;
-  // Removes the skill's folder from the Working Harness. Offered only where
-  // the skill exists nowhere else, so there is no deletion to propose (#798).
   deleteLocal: (skill: string) => void;
-  // Puts the folder back from the clone's last local commit. Local either way,
-  // so it is offered on both local stages and survives a silent GitHub (#915).
   // Takes the commit the menu was painted at: that is the source the author
-  // confirms, and a later read must not rewrite it (ADR-0030).
+  // confirms, and a later read must not rewrite it (#915).
   restore: (row: HarnessStageRow, commit: string) => void;
 };
 
-// Whether the press is open, and the local commit it would be given against.
 // A null commit takes the item off the menu: there is nothing to confirm.
 export type RestoreGate = { enabled: boolean; commit: string | null };
 
@@ -72,8 +65,6 @@ function stageItems(
   if (row.stage === "pending-proposal") {
     return [
       {
-        // The same push either way; the label states which one it is, because
-        // sending to an existing proposal is not the same act to the author.
         // First, so the next step is one press away (#1045).
         label:
           row.status === "new-local-work"
@@ -99,8 +90,6 @@ function stageItems(
   }
 
   if (row.stage !== "pending-review") {
-    // Merged work: the link is the way to GitHub's own Revert route, and there
-    // is no direct undo of merged content.
     return links;
   }
 

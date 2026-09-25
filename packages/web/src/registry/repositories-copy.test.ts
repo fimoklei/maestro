@@ -12,8 +12,7 @@ import {
 const refusal = (code: string, status = 400) =>
   new HttpError(status, "ignored", code);
 
-// Approved sentences, as exact strings (copy.md). The refusals are #1009's:
-// each is stated under the folder field right after the pick.
+// Approved sentences, as exact strings.
 describe("registerMessage", () => {
   it("names a repository already on the list", () => {
     expect(registerMessage(refusal("already-registered"))).toBe(

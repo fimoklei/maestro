@@ -19,8 +19,6 @@ import {
 import { targetRowItems } from "./target-menu";
 import { statusSummary, type TargetRow } from "./target-rows";
 
-// The Deploy-state table's columns (#993): the kind is the group, not a column.
-
 export type TargetAction = "deploy" | "update" | "retry";
 
 export type TargetTableRow = TargetRow & {
@@ -32,7 +30,6 @@ export type TargetTableRow = TargetRow & {
 
 const unranked = Number.MAX_SAFE_INTEGER;
 
-// The Status cell's hover card: the badge's summary, never a control.
 function StatusCard({ row }: { row: TargetTableRow }) {
   const active = useDataTableRowActive();
   const now = useNow();

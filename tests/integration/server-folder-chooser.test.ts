@@ -27,9 +27,7 @@ import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
 import { stubUpdate } from "../helpers/stub-update";
 
-// The system folder chooser's route (ADR-0032), driven with controlled process
-// outcomes: the helper is a fake runner, so no real chooser ever opens. The
-// returned path is checked against a real sandbox disk.
+// The helper is a fake runner, so no real chooser ever opens.
 describe("folder chooser HTTP route", () => {
   let home: string;
 
@@ -48,7 +46,6 @@ describe("folder chooser HTTP route", () => {
     timeout: number;
   };
 
-  // Answers every run with `outcome`, recording what it was asked to start.
   function fakeRunner(outcome: Partial<HelperOutcome>) {
     const calls: Call[] = [];
     const run: RunHelper = async (file, args, options) => {
@@ -155,9 +152,7 @@ describe("folder chooser HTTP route", () => {
     expect(call?.args[0]).toBe("-e");
     expect(call?.args[2]).toBe(start);
     expect(call?.args[1]).not.toContain("quoted");
-    // The same script whatever the start folder: nothing typed becomes code.
     expect(second.calls[0]?.args[1]).toBe(call?.args[1]);
-    // Closed after 5 minutes.
     expect(call?.timeout).toBe(5 * 60 * 1000);
   });
 
@@ -229,7 +224,6 @@ describe("folder chooser HTTP route", () => {
   });
 
   it("opens one chooser at a time", async () => {
-    // Each run stays open until the test releases it.
     const releases: ((outcome: HelperOutcome) => void)[] = [];
     let started: () => void = () => {};
     const run: RunHelper = () =>
@@ -254,7 +248,6 @@ describe("folder chooser HTTP route", () => {
     releases[0]?.(cancel);
     expect((await first).status).toBe(200);
 
-    // Free again once the first one closed.
     const thirdOpen = opened();
     const third = choose(app, home);
     await thirdOpen;
@@ -263,8 +256,7 @@ describe("folder chooser HTTP route", () => {
     expect(releases).toHaveLength(2);
   });
 
-  // The one real process in this file: how the runner reports each way a
-  // helper can end, without opening a chooser.
+  // The one real process in this file, and it opens no chooser.
   describe("the helper runner", () => {
     const node = process.execPath;
     const opts = { env: process.env, timeout: 10_000 };

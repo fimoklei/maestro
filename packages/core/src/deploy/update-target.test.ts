@@ -39,8 +39,6 @@ const TREES: Record<string, HarnessSkillTree[]> = {
 
 const SELECTION = ["tdd", "grill", "jobs", "review", "brief"];
 
-// What the guard reads back on a target whose copies all match: the state
-// #954 re-checks against before it may act on a token.
 const CLEAN_COPIES = {
   findings: SELECTION.map((name) => ({
     name,
@@ -61,11 +59,8 @@ type Options = {
   registered?: boolean;
   copies?: Record<string, DeployedContentState>;
   target?: DeployTarget;
-  // Read after apm ran, where the disk cannot answer for itself.
   copiesAfter?: Record<string, DeployedContentState>;
-  // The skill the Inventory's entrance asks for beside the release move (#955).
   add?: string;
-  // What the copies read as byte for byte, re-read on every check.
   bytes?: () => string | null;
 };
 
@@ -74,8 +69,7 @@ const TREE_ROOT = "/target";
 
 function subject(options: Options = {}) {
   const world = selectionWorld({ harness: HARNESS, treeRoot: TREE_ROOT });
-  // `selection: null` leaves the world unseeded: no lockfile is a target that
-  // follows no release, which is what the reading answers with.
+  // `selection: null` leaves no lockfile: a target that follows no release.
   if (options.selection !== null) {
     world.seed({
       release: options.release ?? "v0.3.2",
@@ -83,8 +77,8 @@ function subject(options: Options = {}) {
     });
   }
   const locks = new InFlightLocks();
-  // Before the write the recorded baseline decides, which is what the guard
-  // reads; afterwards the disk and the deployment record do.
+  // Before the write the recorded baseline decides; afterwards the disk and the
+  // deployment record do.
   const classify = async (input: { name: string; release?: string }) => {
     if (world.calls.length === 0) {
       return options.copies?.[input.name] ?? "clean";
@@ -180,8 +174,6 @@ describe("UpdateTarget.preview", () => {
     expect(preview.newInRelease.map((row) => row.name)).toStrictEqual([
       "wizard",
     ]);
-    // The Inventory's second entrance fills this; an Update from the card adds
-    // no skill of its own (#955).
     expect(preview.addedByThisDeploy).toStrictEqual([]);
   });
 
@@ -248,9 +240,6 @@ describe("UpdateTarget.preview", () => {
   });
 });
 
-// The Inventory's entrance: the reader asked for one skill the target's own
-// release does not hold, so the release move and the addition are priced
-// together (#955).
 describe("UpdateTarget.preview with a requested skill", () => {
   it("names the requested skill and adds it to the desired Selection", async () => {
     const preview = await previewed({ add: "wizard" });
@@ -541,8 +530,6 @@ describe("UpdateTarget preflight token", () => {
   });
 });
 
-// The confirm: what the reader saw, re-read under the target lock and written
-// through the one Selection lifecycle (#954).
 async function confirmed(options: Options = {}) {
   const running = subject(options);
   const answer = await running.preview();
@@ -629,8 +616,6 @@ describe("UpdateTarget.run", () => {
     });
   });
 
-  // A copy equal to its own record proves only that the two agree: which
-  // release the record names is the other half of "updated" (#954).
   it("claims no skill moved while the record still names the old release", async () => {
     const running = await confirmed({ copiesAfter: { tdd: "clean" } });
     running.world.refuseWith({ ok: false, reason: "failed" });

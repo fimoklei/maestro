@@ -1,5 +1,4 @@
-// The consuming-repo registry, and the path allowlist every path-taking
-// endpoint checks against (security.md).
+// The consuming-repo registry: the allowlist every path-taking endpoint checks.
 import { join } from "node:path";
 import type { ConfigStore, MaestroConfig } from "./config-store";
 import type { FileSystemPort } from "./file-system";
@@ -50,8 +49,6 @@ export class Registry {
     return (await this.store.read()).repos;
   }
 
-  // One stat per path on every read: a list that lies about the disk is worse
-  // than none (#1009).
   async listWithStatus(): Promise<(RegisteredRepo & { status: RepoStatus })[]> {
     const repos = await this.list();
     return Promise.all(
@@ -75,8 +72,7 @@ export class Registry {
     return this.fs.exists(join(path, ".git"));
   }
 
-  // Called before any filesystem or apm access. Exact match after realpath, and
-  // never throws: a missing path is simply not registered (security.md).
+  // Call before any filesystem or apm access. Exact match after realpath.
   async resolveRegistered(input: string): Promise<RegisteredRepo | undefined> {
     let real: string;
     try {
@@ -123,8 +119,8 @@ export class Registry {
     return validated;
   }
 
-  // Read-modify-write through the store's one lock, so a registration landing
-  // beside a connect or a freshness record cannot drop either.
+  // Read-modify-write through the store's one lock, so a concurrent connect or
+  // freshness record is never dropped.
   async register(input: string): Promise<RegisterResult> {
     return this.store.update<RegisterResult>(async (config) => {
       const checked = await this.checkAgainst(input, config);
@@ -133,8 +129,7 @@ export class Registry {
       }
       const next = [...config.repos, { path: checked.path }];
 
-      // Spread, because the store rewrites the whole file: without it a
-      // registration wipes a value another use-case persisted.
+      // Spread: the store rewrites the whole file.
       return {
         config: { ...config, repos: next },
         result: { ok: true, repos: next },
@@ -142,8 +137,7 @@ export class Registry {
     });
   }
 
-  // By the stored path, never a realpath: a folder that is gone must still be
-  // droppable. Deployed files and operation records stay as they are.
+  // By the stored path, never a realpath: a gone folder must still be droppable.
   async unregister(path: string): Promise<UnregisterResult> {
     return this.store.update<UnregisterResult>(async (config) => {
       if (!config.repos.some((repo) => repo.path === path)) {

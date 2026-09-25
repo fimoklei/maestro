@@ -1,6 +1,3 @@
-// Turns the Harness state the server sends into the two sentences the home
-// base shows. Pure and clock-injected, so the age is testable.
-
 import { STAGE_NAMES } from "./stage-copy";
 import type {
   HarnessFreshness,
@@ -60,16 +57,14 @@ export const freshnessLabel = (
     return since === null ? "Not read yet" : `Read ${since}`;
   }
   // A failure never claims a verdict GitHub has not given: no permission gate,
-  // no expired-token guess (ADR-0021, #516).
+  // no expired-token guess (#516).
   const cause = freshness.outcome === "offline" ? "Offline" : "Read failed";
   return since === null
     ? `${cause} — never read`
     : `${cause} — last read ${since}`;
 };
 
-// The stage header's meta slot carries exactly one reading, never two: either
-// what was compared and when, or the label that replaces the whole slot when
-// the stage was not read (#827 — Screen design; decision #838).
+// The stage header's meta slot carries exactly one reading, never two (#838).
 export type StageSection = {
   stage: HarnessStage;
   title: string;
@@ -77,8 +72,6 @@ export type StageSection = {
   read: HarnessStageRead;
 };
 
-// "4 min ago", or null when no read has ever succeeded — then the slot names
-// what was compared and stops, rather than dating a read that never happened.
 const readAge = (freshness: HarnessFreshness, now: Date): string | null =>
   freshness.lastFetchedAt === null ? null : ago(freshness.lastFetchedAt, now);
 
@@ -175,9 +168,7 @@ export const stageSections = (
   ].map((section) => ({ ...section, title: STAGE_NAMES[section.stage] }));
 };
 
-// What the three stages hold, in the words a screen reader hears when a press
-// moves a row between them or a refresh re-dates the picture (#868). Counts,
-// never statuses: the row itself states why it is where it is.
+// Counts, never statuses: the row itself states why it is where it is (#868).
 export const harnessAnnouncement = (
   state: HarnessState,
   now: Date,
@@ -196,8 +187,7 @@ export const harnessAnnouncement = (
   return `${stages.join(" ")} ${freshnessLabel(state.freshness, now, reading)}.`;
 };
 
-// Nothing anywhere, and every stage answered for itself. Only then is "No
-// changes yet" a fact rather than a picture nobody could read.
+// Only when every stage answered is "No changes yet" a fact.
 export const journeyConfirmedEmpty = (state: HarnessState): boolean =>
   [state.stages.proposal, state.stages.review, state.stages.release].every(
     (stage) => stage.outcome === "read" && stage.rows.length === 0,

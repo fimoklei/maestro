@@ -96,8 +96,8 @@ The values below are the record until the first build job writes them into
 9. **The frame.** Three frames: a 244px sidebar plus one panel, the connect
    gate, and Settings. The panel has two 48px bands, one table and a 360px
    detail pane, and only its content scrolls. Each kind of action has one
-   place, and no button sits in a table row. The rules in
-   `.claude/rules/design.md` carry the rest.
+   place, and no button sits in a table row. The design rules for
+   agents carry the rest.
 10. **The cockpit waits for the server.** No status shows before the server
     confirms it, for every class of action. Only UI-state that never reaches
     the server (selection, filter, theme, a closing menu) reacts at once. A

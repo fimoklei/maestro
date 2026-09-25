@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-// Runs vitest and keeps the complete output on disk, so a truncated console
-// never forces a second run with a narrower filter (see .claude/rules/testing.md).
+// Runs vitest and keeps the complete output on disk in `.logs/`.
 
 import { spawn } from "node:child_process";
 import { createWriteStream, mkdirSync } from "node:fs";

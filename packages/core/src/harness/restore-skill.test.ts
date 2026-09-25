@@ -214,8 +214,7 @@ describe("RestoreSkill", () => {
     expect(written).toEqual([]);
   });
 
-  // The window between the first look and the move: something else created the
-  // folder while this restore was building its copy.
+  // Something created the folder between the first look and the move.
   it("refuses a destination that appeared while the copy was built", async () => {
     const { restore, moved, removed } = build({ describes: [null, FOLDER] });
     await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
@@ -243,13 +242,11 @@ describe("RestoreSkill", () => {
       ok: false,
       error: "restore-failed",
     });
-    // Nothing published and nothing half-written left behind.
     expect(moved).toEqual([]);
     expect(removed).toEqual([STAGING]);
   });
 
-  // The commit's own trees said the skill is there, so git failing to resolve
-  // it now is a read that broke — never proof the skill was never committed.
+  // The trees said the skill is there, so this is a broken read, not absence.
   it("refuses when the committed subtree could no longer be read", async () => {
     const { restore, moved, removed } = build({ write: "missing" });
     await expect(restore.execute("tdd", HEAD)).resolves.toEqual({
@@ -260,8 +257,7 @@ describe("RestoreSkill", () => {
     expect(removed).toEqual([STAGING]);
   });
 
-  // Absent is one answer the destination can give; unreadable is no answer at
-  // all, and an unread destination is never an empty one.
+  // An unread destination is never an empty one.
   it("refuses when the skills folder cannot be read at all", async () => {
     const { restore, written } = build({
       realpath: async (path) => {
@@ -278,8 +274,7 @@ describe("RestoreSkill", () => {
     expect(written).toEqual([]);
   });
 
-  // Asked before anything else, so a working tree that cannot answer for the
-  // author's intent refuses under its own name (`promote-deletion.ts`).
+  // Asked first, so an unanswerable working tree refuses under its own name.
   describe("an ambiguous working tree", () => {
     const ambiguities: WorktreeAmbiguity[] = [
       "sparse-checkout",
@@ -293,8 +288,7 @@ describe("RestoreSkill", () => {
       it(`refuses under ${ambiguity}, before any other fact is read`, async () => {
         const { restore, written, moved } = build({
           ambiguity,
-          // Facts that would each refuse under their own code: none of them is
-          // reached, so the answer proves the order.
+          // Each would refuse under its own code; none is reached, proving the order.
           head: "commit-xyz",
           staged: true,
         });

@@ -1,12 +1,9 @@
 // The consumer's apm.yml, read and rewritten around one key: the Selection
-// under the single dependency on the connected Harness (ADR-0031,
-// apm-behavior.md § Root package and its Selection).
+// under the single dependency on the connected Harness.
 import { isMap, isSeq, parseDocument, type YAMLMap } from "yaml";
 import { isValidSkillSlug } from "./package-ref";
 
-// "absent" is the first-Deploy path, where apm creates the dependency itself.
-// "not-recognised" is every shape Maestro will not edit; it stops the write
-// before anything is touched.
+// "absent": apm creates the dependency itself on the first Deploy.
 export type ManifestSelection =
   | { kind: "absent" }
   | { kind: "selection"; skills: string[] }
@@ -14,14 +11,11 @@ export type ManifestSelection =
 
 const NOT_RECOGNISED = { kind: "not-recognised" } as const;
 
-// A ref string naming the repository root, with or without the host and with
-// any tag: `<owner>/<repo>#vX.Y.Z`. A ref carrying a subpath names one skill,
-// which is a per-skill dependency and no business of this editor.
+// The repository root, with or without the host, any tag. A ref with a subpath
+// is a per-skill dependency, not this editor's.
 const rootRefFor = (ownerRepo: string) =>
   new RegExp(`^(?:[^/]+/)?${escapeForPattern(ownerRepo)}(?:#.*)?$`);
 
-// Null is "no apm.yml at all", which is the same answer as a manifest holding
-// no Harness dependency: apm may create one.
 export function readHarnessSelection(
   raw: string | null,
   ownerRepo: string,
@@ -43,9 +37,8 @@ export function readHarnessSelection(
   return skillsOf(entries[0] as YAMLMap);
 }
 
-// The rewritten document, or null where the shape is not this editor's to edit.
-// An empty selection is refused too: apm rejects `skills: []` outright, so the
-// last removal is a named uninstall instead (apm-behavior.md).
+// Null where the shape is not this editor's to edit. An empty selection is
+// refused too: apm rejects `skills: []`.
 export function writeHarnessSelection(
   raw: string,
   ownerRepo: string,
@@ -63,15 +56,13 @@ export function writeHarnessSelection(
   if (skillsOf(entry).kind !== "selection") {
     return null;
   }
-  // Sorted, as apm rewrites it, so the list Maestro writes and the list read
-  // back after the install are the same order.
+  // Sorted, as apm rewrites it.
   entry.set("skills", doc.createNode([...skills].sort()));
   return doc.toString();
 }
 
-// Every `dependencies.apm` item naming the Harness root, as a map this editor
-// could edit. Null where the document, the list or a matching item is a shape
-// Maestro refuses to touch.
+// Null where the document, the list or a matching item is a shape Maestro
+// refuses to touch.
 function harnessEntries(
   raw: string,
   ownerRepo: string,
@@ -98,8 +89,7 @@ function harnessEntries(
       }
       continue;
     }
-    // A bare string naming the Harness root carries no editable `skills:`; one
-    // naming a skill subpath is a per-skill dependency, not this dependency.
+    // A bare string naming the Harness root carries no editable `skills:`.
     const ref = plainString(item);
     if (ref !== null && rootRef.test(ref)) {
       return null;

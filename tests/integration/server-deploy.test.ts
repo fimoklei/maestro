@@ -41,11 +41,8 @@ import { stubRemove } from "../helpers/stub-remove";
 import { stubScaffold } from "../helpers/stub-scaffold";
 import { stubUpdate } from "../helpers/stub-update";
 
-// Integration lane: the deploy route over the real Hono app, real temp dirs,
-// real inventory files. Only the ApmDriver is faked — its deploySkill writes
-// the root package's manifest, lockfile and deployed copies into the target
-// (repo or global root), so a deploy is proven from disk (ADR-0031, #951).
-// Origin/Host guard enforcement lives in server-security.test.ts.
+// Only the ApmDriver is faked: its deploySkill writes the root package's
+// manifest, lockfile and copies, so a deploy is proven from disk (#951).
 
 // The one ref every install names: the Harness root at the resolved release.
 const HARNESS_REF = "github.com/fimoklei/agent-harness#v0.5.1";
@@ -101,8 +98,6 @@ describe("deploy HTTP route", () => {
   function makeApp(options?: {
     failApm?: boolean;
     authRequired?: boolean;
-    // apm refused the install because the destination skill dir is a symlink,
-    // classified by the driver from apm's fixed phrase (#180).
     symlinkRefused?: boolean;
     skillAtTag?: boolean;
     diverged?: boolean;
@@ -111,11 +106,9 @@ describe("deploy HTTP route", () => {
     destUnreadable?: boolean;
     destLockfileMalformed?: boolean;
     holdApm?: Promise<void>;
-    // Which tools a global deploy detects on the machine (ADR-0011). Defaults to
-    // both; an empty list drives the no-supported-tool refusal (#131).
+    // Defaults to both tools; an empty list drives the no-supported-tool refusal (#131).
     globalTools?: SupportedTool[];
-    // What the install actually leaves on disk, whatever it was asked for: the
-    // half-landed install a Selection write is proven against (#951).
+    // What the install leaves on disk, whatever it was asked for (#951).
     lands?: (skills: readonly string[]) => readonly string[];
   }) {
     const fs = new NodeFileSystem();
@@ -140,8 +133,6 @@ describe("deploy HTTP route", () => {
       tools: readonly SupportedTool[];
     }> = [];
     const locks = new InFlightLocks();
-    // Writes the root package the way apm does: the manifest, the lockfile and
-    // the deployed copies, under the repo or the user-scope root.
     const landing = rootPackageApm({
       globalRoot,
       ...(options?.lands === undefined ? {} : { lands: options.lands }),
@@ -153,9 +144,8 @@ describe("deploy HTTP route", () => {
           throw new Error("apm install failed: token in stderr");
         }
         if (options?.symlinkRefused) {
-          // The real driver, fed apm's real refusal output (captured fixture,
-          // with a token-bearing URL appended). Classification and the
-          // no-leak guarantee are then exercised end to end, not stubbed.
+          // The real driver, fed apm's captured refusal with a token-bearing URL,
+          // so classification and the no-leak guarantee run end to end.
           return await new ApmCliDriver({
             run: async () => {
               throw Object.assign(new Error("Command failed: apm install"), {
@@ -206,8 +196,7 @@ describe("deploy HTTP route", () => {
           if (options?.destUnverifiable) return "unverifiable";
           return options?.destDiverged ? "diverged" : "not-deployed";
         },
-        // Real, over this run's temp roots: the path the notice spells out is
-        // read off disk, so the route can never forward a guessed one (#748).
+        // Real, so the path the notice names is read off disk, never guessed (#748).
         linkedSkillPath: (input) =>
           new DeployedContentAdapter({
             location: {
@@ -228,8 +217,7 @@ describe("deploy HTTP route", () => {
       },
       recordedPackage: new RecordedPackageAdapter({
         fs,
-        // Mirrors DeployedLocation, aimed at this run's temp roots: the fake
-        // apm writes its lockfile where the real one would.
+        // Aimed at this run's temp roots: the fake apm writes where the real one would.
         location: {
           lockfilePath: (target) =>
             join(
@@ -294,15 +282,14 @@ describe("deploy HTTP route", () => {
     expect(installs).toEqual([
       { target: repoTarget(repo), ref: HARNESS_REF, skills: ["tdd"] },
     ]);
-    // The deploy-state read now sees the skill at its tag — the see-back half.
     expect(await readFile(join(repo, "apm.lock.yaml"), "utf8")).toContain(
       "v0.5.1",
     );
   });
 
   it("reports an install that landed nothing as incomplete, never a success", async () => {
-    // apm returned success and placed none of the Selection. A deploy is what
-    // is on disk, so the route answers the incomplete write (ADR-0031, #951).
+    // apm returned success and placed none of the Selection; the route
+    // answers the incomplete write (#951).
     const { app, registry } = makeApp({ lands: () => [] });
     await registry.register(repo);
 
@@ -317,10 +304,8 @@ describe("deploy HTTP route", () => {
   });
 
   it("deploys a corrected release over an unsupported result, unforced", async () => {
-    // The state an unsupported deploy leaves: hybrid files on disk with no
-    // baseline of their own, which the destination guard calls unverifiable.
-    // They are apm's, not local work, so the corrected release goes through
-    // without a forced overwrite (#358).
+    // Hybrid files with no baseline of their own are apm's, not local work,
+    // so the corrected release goes through without a forced overwrite (#358).
     const { app, registry } = makeApp({ destUnverifiable: true });
     await registry.register(repo);
     await writeFile(
@@ -342,8 +327,7 @@ describe("deploy HTTP route", () => {
   });
 
   it("leaves the unfinished operation standing after an incomplete install", async () => {
-    // The record is what Retry deploy converges on, so it survives the write
-    // that never finished rather than being tidied away (#951).
+    // Retry deploy converges on the record, so it survives the unfinished write (#951).
     const { app, registry, selection } = makeApp({ lands: () => [] });
     await registry.register(repo);
 
@@ -357,8 +341,7 @@ describe("deploy HTTP route", () => {
   });
 
   it("deploys a skill globally, with no repo registered", async () => {
-    // Global crosses no client path, so it needs no registry entry: the deploy
-    // succeeds against zero registered repos (J07).
+    // Global crosses no client path, so it needs no registry entry.
     const { app, installs } = makeApp();
 
     const res = await post(app, {
@@ -376,7 +359,6 @@ describe("deploy HTTP route", () => {
         target: globalTarget,
         ref: HARNESS_REF,
         skills: ["tdd"],
-        // Both tools present on this machine, so both are targeted (ADR-0011).
         tools: ["claude", "codex"],
       },
     ]);
@@ -386,8 +368,7 @@ describe("deploy HTTP route", () => {
   });
 
   it("targets only the detected tool for a single-tool machine", async () => {
-    // ADR-0011: a Claude-only machine gets -t claude, never a dead .agents/
-    // tree. The route passes the detected subset through to the driver (#131).
+    // A Claude-only machine gets -t claude, never a dead .agents tree (#131).
     const { app, installs, cleanupCalls } = makeApp({
       globalTools: ["claude"],
     });
@@ -407,14 +388,13 @@ describe("deploy HTTP route", () => {
         tools: ["claude"],
       },
     ]);
-    // The untargeted codex copy sits in the shared .agents/skills/, which other
-    // tools read, so nothing is reconciled away (#202).
+    // The shared .agents copy is read by other tools, so nothing is reconciled away (#202).
     expect(cleanupCalls).toEqual([]);
   });
 
   it("reconciles away the untargeted tool's exclusive copy", async () => {
-    // Claude Code alone reads .claude/skills/, so narrowing to codex leaves
-    // that copy provably dead and the route removes it (#136, #202).
+    // Only Claude Code reads its skills folder, so narrowing to codex leaves that
+    // copy dead and the route removes it (#136, #202).
     const { app, cleanupCalls } = makeApp({ globalTools: ["codex"] });
 
     const res = await post(app, {
@@ -430,8 +410,6 @@ describe("deploy HTTP route", () => {
   });
 
   it("cleans no obsolete copy when both tools are present", async () => {
-    // A full two-tool machine narrows nothing away, so the cleanup step is
-    // skipped entirely (#136).
     const { app, cleanupCalls } = makeApp({ globalTools: ["claude", "codex"] });
 
     const res = await post(app, {
@@ -445,8 +423,6 @@ describe("deploy HTTP route", () => {
   });
 
   it("refuses a global deploy when no supported tool is detected", async () => {
-    // No Claude, no Codex → 409 with its own code and no apm invocation
-    // (ADR-0011, #131).
     const { app, installs } = makeApp({ globalTools: [] });
 
     const res = await post(app, {
@@ -505,9 +481,8 @@ describe("deploy HTTP route", () => {
     expect(installs).toEqual([]);
   });
 
-  // Pins ADR-0025 §8 at the wire: a refusal is a code and a status, and the
-  // sentence for it lives in `packages/web`. Asserted by absence, not by a
-  // whole-body match that would pass for the wrong reason.
+  // A refusal is a code and a status; its sentence lives in `packages/web`.
+  // Asserted by absence, not by a whole-body match that could pass wrongly.
   it("answers a refusal with a code and a status, and no sentence", async () => {
     const { app, registry } = makeApp();
     await registry.register(repo);
@@ -576,13 +551,10 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(409);
     const body = (await res.json()) as { error: string };
     expect(body.error).toBe("local-diverged-from-tag");
-    // The sentence — and the voice rule it carries — now lives in
-    // `deploy-state/notice-copy.ts`, asserted in its sibling test (#684).
     expect(installs).toEqual([]);
   });
 
   it("refuses a global deploy when the local skill diverges from the tag", async () => {
-    // The content-drift guard is target-agnostic — global gets the same 409.
     const { app, installs } = makeApp({ diverged: true });
 
     const res = await post(app, {
@@ -599,8 +571,8 @@ describe("deploy HTTP route", () => {
   });
 
   it("returns 409 when the deployed copy has local edits vs the lockfile", async () => {
-    // Destination guard: refuse rather than let a same-ref apm install silently
-    // reset a locally-edited deployed subtree (apm-driver.md, #56).
+    // Refuse rather than let a same-ref apm install silently reset a
+    // locally-edited deployed subtree (#56).
     const { app, registry, installs } = makeApp({ destDiverged: true });
     await registry.register(repo);
 
@@ -611,8 +583,6 @@ describe("deploy HTTP route", () => {
     });
 
     expect(res.status).toBe(409);
-    // The refusal carries the consent its own reading minted, so the reader's
-    // next attempt licenses exactly these copies (#952).
     expect(await res.json()).toEqual({
       error: "deployed-diverged-from-lock",
       copyReceipt: expect.stringMatching(/^[0-9a-f]{64}$/),
@@ -621,9 +591,7 @@ describe("deploy HTTP route", () => {
   });
 
   it("surfaces a distinct code for an unverifiable deployed copy", async () => {
-    // diverged and unverifiable share the confirm-and-proceed action but carry
-    // distinct codes: one knows there is drift, the other cannot tell. The
-    // user must be able to tell the two apart (ADR-0006, #66).
+    // diverged and unverifiable share an action but carry distinct codes (#66).
     const { app, registry } = makeApp({ destUnverifiable: true });
     await registry.register(repo);
 
@@ -641,9 +609,6 @@ describe("deploy HTTP route", () => {
   });
 
   it("deploys past a diverged copy on the receipt its refusal minted", async () => {
-    // The whole journey over the wire: the route answers a refusal with the
-    // consent, and carries that consent back to the use-case, which reinstalls
-    // at the latest tag (#66, #952).
     const { app, registry, installs } = makeApp({ destDiverged: true });
     await registry.register(repo);
 
@@ -669,9 +634,6 @@ describe("deploy HTTP route", () => {
   });
 
   it("returns 409 when the deployed copy cannot be read", async () => {
-    // The destination exists but cannot be walked/read; we cannot prove it safe
-    // to overwrite. Surface a distinct refusal, not the generic deploy-failed
-    // (502) that an apm execution error would produce (#59).
     const { app, registry, installs } = makeApp({ destUnreadable: true });
     await registry.register(repo);
 
@@ -689,9 +651,6 @@ describe("deploy HTTP route", () => {
   });
 
   it("returns 409 when the target lockfile cannot be parsed", async () => {
-    // A present but malformed apm.lock.yaml leaves no trustworthy baseline, so
-    // the guard refuses distinctly rather than letting a deploy proceed against
-    // an unknown recorded state (#58).
     const { app, registry, installs } = makeApp({
       destLockfileMalformed: true,
     });
@@ -742,8 +701,7 @@ describe("deploy HTTP route", () => {
   });
 
   it("returns 409 for a concurrent global deploy", async () => {
-    // Two clicks on "Global" race the same user-scope lockfile — the second is
-    // refused, like the repo case (J07).
+    // The second of two racing global deploys is refused, like the repo case.
     let release: () => void = () => undefined;
     const holdApm = new Promise<void>((resolve) => {
       release = resolve;
@@ -787,7 +745,6 @@ describe("deploy HTTP route", () => {
     expect(body).toEqual({
       error: "deploy-failed",
     });
-    // The raw apm error (which may carry a token) never reaches the client.
     expect(JSON.stringify(body)).not.toContain("token in stderr");
   });
 
@@ -809,9 +766,6 @@ describe("deploy HTTP route", () => {
   });
 
   it("surfaces missing GitHub auth as a distinct 502", async () => {
-    // Auth failure is classified in the driver (at apm view) and mapped to its
-    // own 502 code — distinct from the generic deploy-failed so the cockpit
-    // points at auth, not a vague apm error (#119).
     const { app, registry } = makeApp({ authRequired: true });
     await registry.register(repo);
 
@@ -828,9 +782,6 @@ describe("deploy HTTP route", () => {
   });
 
   it("surfaces a symlinked destination as its own status", async () => {
-    // apm refuses to deploy into a skill directory that is a symlink. The
-    // cockpit names that case from its own code; the sentence that points at
-    // the supported pattern lives in `deploy-state/notice-copy.ts` (#180).
     const { app, registry } = makeApp({ symlinkRefused: true });
     await registry.register(repo);
     await mkdir(join(repo, ".claude/skills"), { recursive: true });
@@ -848,8 +799,7 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(409);
     const body = (await res.json()) as { error: string; linkedPath?: string };
     expect(body.error).toBe("destination-symlinked");
-    // The path is Maestro's own, recomputed from the deploy's subtrees, so the
-    // notice can spell out one `rm` without forwarding apm's prose (#748).
+    // The path is recomputed by Maestro, so the notice never forwards apm's prose (#748).
     expect(body.linkedPath).toBe(join(repo, ".claude/skills/tdd"));
     // No raw apm output reaches the client; the reply is a code and a status.
     expect(JSON.stringify(body)).not.toContain("ghp_secret");

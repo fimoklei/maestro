@@ -12,9 +12,8 @@ export type ChooseFolderResult =
   | { ok: true; path: string | null }
   | { ok: false; error: ChooseFolderError };
 
-// Opens the system folder chooser, one at a time, and checks its answer exactly
-// as a typed path is checked (ADR-0032 §6). `chooser` is null on a platform
-// with no helper.
+// One chooser at a time; its answer is checked exactly as a typed path is.
+// `chooser` is null on a platform with no helper.
 export class ChooseFolder {
   private readonly chooser: FolderChooserPort | null;
   private readonly fs: FileSystemPort;
@@ -65,7 +64,6 @@ export class ChooseFolder {
     }
   }
 
-  // The field's current value when it names a folder, else the home folder.
   private async startFolder(start: string): Promise<string> {
     const checked = await validateRepoPath(start, this.fs);
     return checked.ok ? checked.path : this.homeRoot();

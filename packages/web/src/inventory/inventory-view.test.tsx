@@ -9,9 +9,6 @@ import type { DeploymentTarget } from "./deployed-rollup";
 import { InventoryView } from "./inventory-view";
 import type { Primitive } from "./use-inventory";
 
-// The Inventory screen on the shared DataTable (#1040). Successor of the
-// retired InventoryList's test: every claim it made is kept here.
-
 const grid = () => screen.getByRole("grid", { name: "Inventory table" });
 
 // Column order: bulk checkbox, Type, Name, Description, Status, Targets, ⋮.
@@ -158,7 +155,7 @@ describe("InventoryView — the table", () => {
       ],
     });
 
-    // Never a definite "Not deployed" before every read has answered (J04).
+    // Never a definite "Not deployed" before every read has answered.
     expect(screen.queryByText("Not deployed")).not.toBeInTheDocument();
     expect(cellsOf("tdd")[4]).toBe("");
   });
@@ -258,7 +255,6 @@ describe("InventoryView — band 2", () => {
     expect(
       screen.getByRole("menuitemradio", { name: "Skills" }),
     ).toBeInTheDocument();
-    // Skills-only data yields exactly all + skills, never a hardcoded list.
     expect(
       screen.queryByRole("menuitemradio", { name: "Hooks" }),
     ).not.toBeInTheDocument();
@@ -458,7 +454,6 @@ describe("InventoryView — detail pane", () => {
     stubPendingFetch();
     renderView({ targets: [deployedTo(["tdd"])] });
 
-    // No pane until a row is picked — the table is a pure scan surface (ADR-0016).
     expect(
       screen.queryByRole("complementary", { name: /tdd detail/i }),
     ).not.toBeInTheDocument();
@@ -549,8 +544,7 @@ describe("InventoryView — detail pane", () => {
     ).not.toBeInTheDocument();
   });
 
-  // #66: a forced reinstall is the refused skill's own. The dialog is mounted
-  // only while open, so the next skill's dialog starts without it (#1065).
+  // The dialog is mounted only while open, so the next skill's starts clean (#66).
   it("clears a stale reinstall action when the selected skill changes", async () => {
     vi.stubGlobal(
       "fetch",
@@ -660,7 +654,6 @@ describe("InventoryView — detail pane", () => {
           JSON.parse(String(init.body)).names.join() === "tdd",
       ),
     ).toBe(true);
-    // The outcome is the dialog's Report, heading and announcement (#1065).
     expect(
       await within(dialog).findAllByText("Deployed to Global · 1 deployed"),
     ).not.toHaveLength(0);
@@ -755,7 +748,6 @@ describe("InventoryView — bulk staging", () => {
     stubPendingFetch();
     renderView();
 
-    // Nothing selected, nothing to act on: the bar stays out of the way.
     expect(selectionBar()).not.toBeInTheDocument();
 
     await userEvent.click(checkbox("tdd"));
@@ -861,8 +853,8 @@ describe("InventoryView — bulk remove entry point (#422)", () => {
     ).toBeNull();
   });
 
-  // #1066: a global deploy is one target per detected tool (CONTEXT.md), so
-  // the pane lists each tool and the foot counts the same targets.
+  // #1066: a global deploy is one target per detected tool, so the pane lists
+  // each tool and the foot counts the same targets.
   it("counts the targets the pane lists, each global tool among them", async () => {
     viewWith([
       {
@@ -913,7 +905,7 @@ describe("InventoryView — bulk remove entry point (#422)", () => {
     ).toBeNull();
   });
 
-  it("leaves a target whose deploy-state has not loaded out of the count (J04)", async () => {
+  it("leaves a target whose deploy-state has not loaded out of the count", async () => {
     viewWith([
       onTarget({ kind: "global" }, ["tdd"]),
       onTarget({ kind: "repo", repoPath: "/dev/acme-web" }, ["tdd"]),
@@ -977,7 +969,7 @@ describe("InventoryView — reading", () => {
 });
 
 // A registered repo following one release; `changed` names the skills that
-// release changed, which read Behind on it (ADR-0031).
+// release changed, which read Behind on it.
 const onRepo = (
   repoPath: string,
   names: string[],
@@ -1018,8 +1010,7 @@ const menuItems = (menu: HTMLElement) =>
     .map((item) => item.textContent);
 
 describe("InventoryView — row menu", () => {
-  // #1065: the row's ⋮ and the pane's foot hold the same items. A target's
-  // own Update target sits on that target's row in the pane.
+  // #1065: the row's ⋮ and the pane's foot hold the same items.
   it("offers Deploy skill, and leaves Update target to the Behind target's row", async () => {
     stubPendingFetch();
     renderView({
@@ -1196,8 +1187,8 @@ describe("InventoryView — a target row in the pane", () => {
     );
   });
 
-  // apm's uninstall has no -t: a global removal takes every detected tool
-  // (ADR-0013), so a tool row's label says so instead of naming its tool alone.
+  // apm's uninstall has no -t: a global removal takes every detected tool, so a
+  // tool row's label says so instead of naming its tool alone.
   it("names every global tool on a global row's removal", async () => {
     stubPendingFetch();
     renderView({

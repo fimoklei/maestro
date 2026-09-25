@@ -14,7 +14,7 @@ describe("glyphFor", () => {
 });
 
 describe("reading", () => {
-  it("pairs a CONTEXT.md word with its family's glyph", () => {
+  it("pairs a status word with its family's glyph", () => {
     expect(reading("Behind", "attention")).toEqual({
       word: "Behind",
       family: "attention",
