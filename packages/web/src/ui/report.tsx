@@ -1,9 +1,7 @@
 import { Button } from "./button";
 import { cn } from "./cn";
 
-// What one action did to several primitives, inside the dialog that ran it
-// (ADR-0033 §6). Presentational: the caller folds its own result into groups,
-// and the worst one is drawn first whatever order it arrives in.
+// What one action did to several primitives, worst group first.
 
 type ReportTone = "failed" | "attention" | "neutral" | "good";
 
@@ -27,8 +25,6 @@ export type ReportGroup = {
 // Worst first: the reader meets what needs them before what went well.
 const ORDER: ReportTone[] = ["failed", "attention", "neutral", "good"];
 
-// A status reads without colour: the word carries it, the glyph repeats it,
-// and the colour is the third channel (ADR-0033 §3). Neutral states nothing.
 const GLYPH: Record<ReportTone, string | null> = {
   failed: "✕",
   attention: "⚠",
@@ -36,7 +32,6 @@ const GLYPH: Record<ReportTone, string | null> = {
   good: "✓",
 };
 
-// The group's words on step 12, its glyph on step 11 (ADR-0033 §1).
 const INK: Record<ReportTone, string> = {
   failed: "text-red-12",
   attention: "text-amber-12",

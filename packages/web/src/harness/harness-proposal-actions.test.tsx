@@ -38,8 +38,6 @@ describe("proposal actions", () => {
   };
 
   it("names one skill's two menus apart, by the stage each belongs to", async () => {
-    // A skill can hold a row in every stage, so a menu named only after the
-    // skill would name three different sets of actions (copy.md · R-A).
     stubHarnessServer({
       read: {
         body: withStages(CONNECTED, {

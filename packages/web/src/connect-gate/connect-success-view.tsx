@@ -61,15 +61,13 @@ export function ConnectSuccessView({
   const copy = completionCopy(outcome, primitiveCount);
 
   return (
-    // The same card as the form it replaces (#995): no auto-navigate, the
-    // outcome's own continue button (ADR-0015 §2).
+    // No auto-navigate: the outcome has its own continue button.
     <div className="flex flex-col gap-cell">
       <Notice
         trigger="user-action"
         notice={{ level: "success", label: copy.title, message: copy.detail }}
       />
-      {/* The distinguishing tail, not the raw path, with the whole path on
-          hover (#211). */}
+      {/* The distinguishing tail, with the whole path on hover (#211). */}
       <dl className="m-0">
         <Fact
           label="Local folder"

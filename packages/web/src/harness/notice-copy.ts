@@ -16,9 +16,7 @@ import type {
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 
-// Every Harness notice, heading and sentence together (ADR-0025) — a new code
-// in core fails typecheck here until it has a row. Screen names and control
-// labels: `CONTEXT.md` → Screen names, `.claude/rules/copy.md` → R-D.
+// A new code in core fails typecheck here until it has a row.
 
 // The state read's two refusals ride in every other table below: a plan, a
 // release and a proposed change all read the same harness first.
@@ -227,9 +225,8 @@ const deletionHeadings: NoticeTable<PromoteDeletionError> = {
   },
 };
 
-// Deleting a skill that exists nowhere else. Nothing here reaches GitHub, so
-// no sentence names a push or a pull request: every refusal leaves the folder
-// on disk, and the way on is another press (#798).
+// Nothing here reaches GitHub, so no sentence names a push or a pull request
+// (#798).
 const localDeletionHeadings: NoticeTable<DeleteLocalSkillError> = {
   "not-configured": harnessHeadings["not-configured"],
   "invalid-skill": promoteHeadings["invalid-skill"],
@@ -267,10 +264,8 @@ const localDeletionHeadings: NoticeTable<DeleteLocalSkillError> = {
   },
 };
 
-// Putting a deleted skill folder back from the clone's last local commit.
-// Nothing here reaches GitHub and every refusal leaves the working tree as it
-// was, so every sentence opens by saying so — written once, over the whole
-// table (ADR-0030, #915).
+// Every refusal leaves the working tree as it was, so every sentence opens by
+// saying so, written once over the whole table (#915).
 const nothingRestored = (
   table: NoticeTable<RestoreSkillError>,
 ): NoticeTable<RestoreSkillError> =>
@@ -369,9 +364,8 @@ const restorationHeadings: NoticeTable<RestoreSkillError> = nothingRestored({
   },
 });
 
-// The three GitHub-side mutations. Each refusal leaves the pull request and
-// the clone as they were, so every sentence ends on another press of the same
-// control (ADR-0025).
+// Each refusal leaves the pull request and the clone as they were, so every
+// sentence ends on another press of the same control.
 const proposalHeadings: NoticeTable<ProposalActionError> = {
   ...harnessHeadings,
   "invalid-skill": promoteHeadings["invalid-skill"],
@@ -568,9 +562,8 @@ const importHeadings: NoticeTable<ImportSkillError> = {
   },
 };
 
-// The same words the promote table refuses a press with, painted on the row
-// before any press. Info, not warning: a warning is a way through at a cost
-// (#465, decision 3), and pulling the teammate's change is the only way here.
+// Info, not warning: a warning is a way through at a cost, and pulling the
+// teammate's change is the only way here (#465).
 export const CONCURRENT_CHANGE_NOTICE: NoticeContent = {
   ...promoteHeadings["concurrent-change"],
   level: "info",
@@ -592,9 +585,7 @@ export const refreshNotice = (error: unknown): NoticeContent | null =>
       "The Maestro server did not answer, so the Harness is as it was. Select Re-read Harness.",
   });
 
-// Not a failed press but a failed read: the rows below stand, dated to the
-// last read that answered. Null before any read has ever succeeded — nothing
-// is out of date yet, and the stage labels carry that state instead (#848).
+// Null before any read has ever succeeded: nothing is out of date yet (#848).
 export const staleStatusNotice = (
   freshness: HarnessFreshness,
   onRetry: () => void,
@@ -617,10 +608,8 @@ export const staleStatusNotice = (
   };
 };
 
-// A stage nobody could read, stated where it happened. The cause and the way
-// through are the proposal table's own — reachable here without first pressing
-// a control that would be refused for the same reason (#866). Warning, not
-// error: the rest of the picture stands, and one more read is a way through.
+// Warning, not error: the rest of the picture stands, and one more read is a
+// way through (#866).
 export const stageReadNotice = (
   read: HarnessStageRead,
   label: string,
@@ -642,10 +631,8 @@ export const stageReadNotice = (
   };
 };
 
-// What a publication landed, and the one place the cockpit states that a
-// release is final (#827). The tag is atomic, so the Inventory re-read is the
-// only half that can fail on its own: both outcomes keep the heading, the
-// subject and the detail, and the way back is written into the sentence (#849).
+// The one place the cockpit states that a release is final (#827). The tag is
+// atomic, so only the Inventory re-read can fail on its own (#849).
 export const releasePublishedNotice = (
   tag: string,
   inventoryRefreshed: boolean,
@@ -708,10 +695,8 @@ export const restoreNotice = (error: unknown): NoticeContent | null =>
       "Nothing was restored. The Maestro server did not answer. Restore skill again.",
   });
 
-// What a restore landed. The folder came from the clone's own last commit, so
-// the local half is final either way: both arms keep the heading, and only the
-// status the cockpit could not read again turns the notice into a warning
-// (#915, modelled on releasePublishedNotice).
+// The local half is final either way: only a status the cockpit could not read
+// again turns the notice into a warning (#915).
 export const skillRestoredNotice = (
   hasRequest: boolean,
   statusRead: boolean,

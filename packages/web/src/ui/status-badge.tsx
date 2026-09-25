@@ -2,8 +2,6 @@
 import { cn } from "./cn";
 import type { StatusFamily, StatusReading } from "./status-reading";
 
-// Spectrum's data-table badge (soft border, room around the word, one dot) at
-// our density: 20px tall, radius 4. The word carries the status (ADR-0033 §3).
 const familyClasses: Record<StatusFamily, { badge: string; dot: string }> = {
   good: {
     badge: "border-green-7/50 bg-green-3 text-green-12",

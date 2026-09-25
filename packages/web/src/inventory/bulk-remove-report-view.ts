@@ -1,8 +1,6 @@
-// What the bulk remove states once the run answers (#424). One rule mirrors
-// the confirmation it replaces (bulk-remove-dialog-view.ts): a target the run
-// came off is a number, a target it left behind is a row with its reason. A
-// run that never produced a report states no counts at all — zeroes would read
-// as a clean run that removed nothing.
+// What the bulk remove states once the run answers (#424): a removed target is
+// a number, a target left behind is a row with its reason. A run with no
+// report states no counts — zeroes would read as a clean run.
 
 import type {
   BulkRemoveReport,
@@ -14,9 +12,8 @@ import { REFUSAL_REASON } from "./bulk-remove-dialog-view";
 import type { BulkRemoveCandidate } from "./bulk-remove-targets";
 import { targetQueryKey } from "./use-deploy-skill";
 
-// Never "nothing was removed": a lost answer does not prove the walk never
-// ran, and the server removes one target at a time. The pane behind this is
-// re-read either way, so the honest instruction is to go and look.
+// Never "nothing was removed": a lost answer does not prove the walk never ran,
+// so the honest instruction is to go and look.
 const OUTCOME_UNKNOWN =
   "The run's outcome is unrecorded. Check the targets before removing again.";
 
@@ -29,7 +26,6 @@ type BulkRemoveLeftAloneRow = {
 };
 
 export type BulkRemoveReportView =
-  // Every target came off. The counts line is the whole body.
   | { kind: "clean"; title: { before: string; after: string }; counts: string }
   | {
       kind: "partial";
@@ -40,12 +36,10 @@ export type BulkRemoveReportView =
   // The server answered before the walk began, so nothing was removed and the
   // same attempt can simply be made again.
   | { kind: "never-started"; label: string; message: string; detail: string }
-  // No answer at all. What the run did is unobserved, so it is not stated.
   | { kind: "outcome-unknown"; label: string; message: string; detail: string };
 
-// Terse where the server's own sentence is prose — a report row has one line
-// for the reason. Keyed by core's union, so a new error there is a type error
-// here rather than a blank row.
+// Terse where the server's sentence is prose. Keyed by core's union, so a new
+// error there is a type error here.
 const FAILURE_REASON: Record<RemoveDeployedSkillError, string> = {
   "unsupported-primitive-type": "Type cannot be removed",
   "invalid-name": "Unusable skill name",
@@ -57,8 +51,7 @@ const FAILURE_REASON: Record<RemoveDeployedSkillError, string> = {
   "deployed-unreadable": "Deployed copy could not be read",
   "deployed-diverged-from-lock": "Local changes in deployed files",
   "deployed-diverged-pinned-per-skill": "Local changes in deployed files",
-  // Never "its copy changed": the run may have agreed to nothing at all, and a
-  // row has no ledger to state what the check found instead (J04, #364).
+  // Never "its copy changed": the run may have agreed to nothing at all (#364).
   "cost-not-acknowledged": "What it would delete was never confirmed",
   "remove-in-progress": "Target held by another operation",
   "manifest-not-recognised": "apm.yml holds an unexpected shape",
@@ -116,8 +109,7 @@ export function bulkRemoveReportView(input: {
 }
 
 // What the server's probe of the disk found after apm failed, appended to the
-// reason: "go and look" and "nothing left to do" are opposite instructions.
-// Silence where the probe proved nothing (J04).
+// reason. Silence where the probe proved nothing.
 function probed(outcome: RemoveOutcome | undefined): string {
   if (outcome === undefined) {
     return "";
@@ -136,9 +128,8 @@ function probed(outcome: RemoveOutcome | undefined): string {
     : "";
 }
 
-// In the order the confirmation listed them, so the rows sit where the user
-// just read them. A target the run names but the caller did not list still
-// gets a row — under its own key rather than dropped.
+// In the confirmation's order; a target the caller did not list still gets a
+// row under its own key.
 function orderedLeftAlone(
   report: BulkRemoveReport,
   targets: readonly BulkRemoveCandidate[],
@@ -156,8 +147,7 @@ function orderedLeftAlone(
     rows.set(key, {
       label: labels.get(key) ?? key,
       outcome: "refused",
-      // A code this build cannot name still says something; a blank slot
-      // would read as no reason at all.
+      // A code this build cannot name still gets a non-blank slot.
       reason: REFUSAL_REASON[row.reason] ?? row.reason,
     });
   }

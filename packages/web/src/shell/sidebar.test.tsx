@@ -115,7 +115,6 @@ describe("Sidebar", () => {
   });
 
   it("does not repeat the Harness name inside its menu", async () => {
-    // The button above already names it, as Linear's workspace menu does.
     stubServer();
     renderSidebar();
 
@@ -129,8 +128,6 @@ describe("Sidebar", () => {
   });
 
   it("carries no Targets list and no register affordance of its own", async () => {
-    // Targets are read on Deploy-state; registering moved to Repositories
-    // (#991).
     stubServer();
     renderSidebar();
 

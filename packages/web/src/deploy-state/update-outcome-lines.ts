@@ -1,6 +1,4 @@
-// What the reader sees after an Update: one line per skill, and one per tool
-// only where the tools disagree — a failing copy names where to look, a set of
-// copies that all landed states the skill once (spec stories 28, 33).
+// One line per skill, and one per tool only where the tools disagree.
 import type { UpdateOutcomeRow } from "@maestro/core";
 import { HttpError } from "../api/http";
 import { outcomeLine } from "./update-target-copy";
@@ -13,9 +11,8 @@ const STATES = new Set([
   "unknown",
 ]);
 
-// The ledger a refused update sends with its code. A report this build cannot
-// read is dropped whole rather than half-drawn: a line built on a guess states
-// an outcome the server never proved (J04).
+// A report this build cannot read is dropped whole: a line built on a guess
+// states an outcome the server never proved.
 export function updateOutcomeRows(error: unknown): UpdateOutcomeRow[] | null {
   if (!(error instanceof HttpError)) {
     return null;

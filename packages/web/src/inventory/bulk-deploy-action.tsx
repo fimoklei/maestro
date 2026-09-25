@@ -49,8 +49,7 @@ export function BulkDeployAction(props: BulkDeployProps) {
 // A repo's value is its absolute path, so it can never collide with this literal.
 const GLOBAL_VALUE = "global";
 
-// Plans, executes and reports over the selection, skipping what is already up
-// to date on the chosen target.
+// Skips what is already up to date on the chosen target.
 export function BulkDeployRun({
   stagedNames,
   repos,
@@ -60,8 +59,7 @@ export function BulkDeployRun({
   const [chosen, setChosen] = useState<string | null>(null);
   const [plan, setPlan] = useState<BulkDeployPlan | null>(null);
   const bulk = useBulkDeploy();
-  // Reuses the single-deploy path with the row's own receipt — one behaviour,
-  // two entry points (ADR-0006, #66).
+  // Reuses the single-deploy path with the row's own receipt (#66).
   const forceDeploy = useDeploySkill();
   // The skill a refused row asked Update target to add (#955). Set, the Update
   // dialog takes this one's place: the Report described a target it may move.
@@ -94,8 +92,8 @@ export function BulkDeployRun({
   const deployState = isGlobal ? globalDeployState : repoDeployState;
   const rawDrift = isGlobal ? globalDrift : repoDrift;
   const drift = driftViewModel(rawDrift);
-  // The plan waits rather than guessing, or every skill reads "not deployed"
-  // and gets sent for a pointless reinstall (J04).
+  // The plan waits rather than guessing, or every skill reads "not deployed" and
+  // gets a pointless reinstall.
   const targetLoading =
     registryReady &&
     (deployState.data === undefined || rawDrift.data === undefined);
@@ -118,7 +116,6 @@ export function BulkDeployRun({
     bulk.reset();
     const next = planBulkDeploy(stagedNames, chosenTargets);
     setPlan(next);
-    // A clean-and-latest-only plan is a no-op.
     if (next.toDeploy.length > 0) {
       bulk.mutate({ names: next.toDeploy, target });
     }

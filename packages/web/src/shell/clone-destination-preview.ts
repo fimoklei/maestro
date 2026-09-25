@@ -1,8 +1,5 @@
-// The child folder a pasted GitHub url would clone into, for display beside
-// the chosen parent (#555). Display only: the server re-classifies the input
-// and is the authority on what Maestro will clone. It is repeated here rather
-// than imported because `web` may take types from `core`, never values
-// (architecture.md).
+// Display only (#555): the server decides what Maestro clones. Repeated from
+// `core` because `web` may import only types from it.
 
 // The scp-like ssh form; the capture is everything after the colon.
 const SCP_LIKE = /^[^/\s]+@([^/\s:]+):(.+)$/;
@@ -30,10 +27,8 @@ function splitHostAndPath(
   if (input.includes("://")) {
     try {
       const url = new URL(input);
-      // Refused by the server, so neither may be shown a destination it will
-      // never clone into (core's `parseGitOrigin`). A port only counts against
-      // the url when it is not the transport's own default — `URL` blanks that
-      // for https but not for ssh.
+      // Refused by the server. `URL` blanks a default port for https but not
+      // ssh, so a port counts only when it is not the transport's default.
       if (
         url.username !== "" ||
         url.password !== "" ||

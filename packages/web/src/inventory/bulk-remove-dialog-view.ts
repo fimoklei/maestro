@@ -1,7 +1,5 @@
-// What the bulk remove's confirmation states, grouped by what it costs (#423).
-// One rule: a clean target is a number, never a row. A target that costs
-// something, or that cannot be touched at all, is a row with its reason on it.
-// Nothing else appears, so the weight of the decision is the whole body.
+// What the bulk remove's confirmation states, grouped by cost (#423): a clean
+// target is a number, a costly or untouchable one is a row with its reason.
 
 import type {
   RefusalCode,
@@ -17,8 +15,7 @@ export type BulkRemoveCheckedTarget = {
 
 type BulkRemoveCostRow = {
   label: string;
-  // Only here: this is the group where "which version am I destroying" is a
-  // real question.
+  // Only here is "which version am I destroying" a real question.
   version: string;
   reason: string;
 };
@@ -26,18 +23,15 @@ type BulkRemoveCostRow = {
 type BulkRemoveRefusalRow = { label: string; reason: string };
 
 export type BulkRemoveDialogView =
-  // No target has been priced yet, so no group can be drawn. Answered-of-total
-  // rather than a spinner: a slow check reads as progress, not as a hang.
+  // Answered-of-total rather than a spinner: a slow check reads as progress.
   | { kind: "checking"; line: string }
   | {
       kind: "grouped";
-      // Null when nothing is clean — a block with a count of zero is absent,
-      // not empty.
+      // Null when nothing is clean: an empty block is absent.
       cleanLine: string | null;
       cost: BulkRemoveCostRow[];
       refused: BulkRemoveRefusalRow[];
-      // Targets the run will actually walk: the refused ones are skipped by
-      // it, so the control names what it does (#423 settles this).
+      // Refused targets are skipped, so the control names only what it walks.
       removableCount: number;
       confirmLabel: string;
     };
@@ -56,9 +50,8 @@ const COST_ORDER: Exclude<RemoveRowWarning, "none">[] = [
   "check-failed",
 ];
 
-// Terse where the server's own sentence is prose — the row has one line and
-// the message is the wrong length for it. An unrecognised code falls back to
-// itself rather than to silence.
+// Terse where the server's sentence is prose; an unrecognised code falls back
+// to itself.
 export const REFUSAL_REASON: Record<RefusalCode, string> = {
   "repo-not-registered": "Repository not registered",
   "no-supported-tool": "No supported tool here",
@@ -74,7 +67,7 @@ export const REFUSAL_REASON: Record<RefusalCode, string> = {
 };
 
 // What this target costs, or null when the check found nothing to lose. A
-// target nobody could check is a cost, never a clean copy (J04).
+// target nobody could check is a cost, never a clean copy.
 function costOf(preflight: RemovePreflightView): string | null {
   if (preflight.kind !== "offered") {
     return null;
@@ -84,8 +77,7 @@ function costOf(preflight: RemovePreflightView): string | null {
     check.kind === "per-tool" ? Object.values(check.warnings) : [];
   const warnings: RemoveRowWarning[] =
     check.kind === "per-tool"
-      ? // An answer that named no tool measured nothing — an empty map is the
-        // absence of a claim, never a clean one (J04).
+      ? // An answer that named no tool measured nothing: an empty map is no claim.
         perTool.length === 0
         ? ["check-failed"]
         : perTool

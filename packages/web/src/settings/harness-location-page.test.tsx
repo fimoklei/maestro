@@ -179,7 +179,7 @@ describe("Harness location page", () => {
   });
 
   it("states a failed re-read after a count was shown, and keeps the facts it had", async () => {
-    // design.md → Failures: the previous rows stay after a failed read.
+    // The previous rows stay after a failed read.
     let reads = 0;
     stubServer({ primitives: () => (++reads === 1 ? skills(2) : failed()) });
     renderPage();

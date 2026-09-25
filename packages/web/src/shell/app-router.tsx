@@ -12,11 +12,8 @@ import { SettingsShell } from "../settings/settings-shell";
 import { AppShell } from "./app-shell";
 import { GateShell } from "./gate-shell";
 
-// Deploy-state is the landing route. /welcome + /welcome/connect are the
-// connect gate's two screens (ADR-0015) and sit in their own frame (#991);
-// Settings is the third frame (#995).
-// Catch-all sends unmatched URLs to the landing route, where the first-run
-// gate decides cockpit vs connect gate.
+// Unmatched URLs go to the landing route, where the first-run gate decides
+// cockpit vs connect gate.
 export function AppRoutes() {
   return (
     <Routes>

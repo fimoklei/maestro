@@ -3,9 +3,6 @@ import type { ReactNode } from "react";
 import { IconButton } from "./icon-button";
 import { useDetailPaneFocus } from "./use-detail-pane-focus";
 
-// The 360px pane a table row opens (ADR-0033 §9, #992): the full reading of
-// one row, its actions at the foot, and a pager through the table's rows.
-
 // Where a screen puts its pane (#1065): side by side above 1100px; at 1100px
 // and below a full-height sheet over the table's right edge.
 export function DetailPaneSlot({ children }: { children: ReactNode }) {

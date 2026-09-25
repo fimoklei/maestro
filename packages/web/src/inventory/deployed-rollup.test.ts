@@ -3,9 +3,6 @@ import { driftViewModel } from "../drift/drift-view-model";
 import type { DriftResponse, ReadDriftEntry } from "../drift/use-drift";
 import { type DeploymentTarget, rollUpDeployment } from "./deployed-rollup";
 
-// The deployed column is a client-side pivot: per-target deploy-state + drift
-// folded onto one row per skill (#272), one target per tool-install/repo.
-
 const ranDrift = (behind: ReadDriftEntry[]) =>
   driftViewModel({ data: { behind }, isError: false });
 
@@ -19,8 +16,7 @@ const pair = (name: string): ReadDriftEntry => ({
   reading: "behind",
 });
 
-// The count roll-up ignores the pane-only fields (label, primitives); spread this
-// so the targets here stay focused on what the count reads.
+// Spread this so the targets stay focused on what the count reads.
 const paneFields: Pick<DeploymentTarget, "label" | "target"> & {
   primitives: [];
 } = {
@@ -29,8 +25,7 @@ const paneFields: Pick<DeploymentTarget, "label" | "target"> & {
   primitives: [],
 };
 
-// A target that is deployed (deploy-state read cleanly) with the given names, and
-// whose drift check produced the given behind set.
+// A cleanly read target with the given names and drift's behind set.
 const deployedTarget = (
   names: string[],
   behind: ReadDriftEntry[] = [],
@@ -75,8 +70,8 @@ describe("rollUpDeployment — target count", () => {
     expect(rollUpDeployment("tdd", targets).targetCount).toBe(0);
   });
 
-  // Story 52: the roll-up answers "where is this selected?", so a leftover copy
-  // the Selection no longer holds is not a target this skill is deployed to.
+  // The roll-up answers "where is this selected?", so a leftover copy the
+  // Selection no longer holds is not a deployed target.
   it("counts the Selection, not what is left on disk", () => {
     const target: DeploymentTarget = {
       ...paneFields,
@@ -121,8 +116,7 @@ describe("rollUpDeployment — target count", () => {
 
 describe("rollUpDeployment — pending keeps a zero reach honest (J04)", () => {
   it("flags the roll-up pending while a target's deploy-state is still loading", () => {
-    // A skill's reach is not yet known while any target's local read is in
-    // flight; a 0 count then is "unconfirmed", not a confirmed "deployed
+    // A 0 count while any local read is in flight is unconfirmed, not "deployed
     // nowhere".
     const targets: DeploymentTarget[] = [
       { ...paneFields, deployed: { status: "pending" }, drift: ranDrift([]) },
@@ -137,8 +131,7 @@ describe("rollUpDeployment — pending keeps a zero reach honest (J04)", () => {
   });
 
   it("flags the roll-up unreadable when a target's deploy-state read failed", () => {
-    // A failed read (a malformed lockfile) leaves the reach unconfirmed just as a
-    // still-loading read does — a 0 count is not a confirmed "deployed nowhere".
+    // A failed read leaves the reach unconfirmed, as a still-loading read does.
     const targets: DeploymentTarget[] = [
       { ...paneFields, deployed: { status: "unknown" }, drift: ranDrift([]) },
       deployedTarget(["caveman"]),
@@ -162,8 +155,8 @@ describe("rollUpDeployment — behind count (▲N)", () => {
     expect(rollUpDeployment("tdd", targets).behindCount).toBe(2);
   });
 
-  // ADR-0027 §2: the count is moved skills only, and it must not fall into the
-  // unknown bucket either — the check ran and answered.
+  // The count is moved skills only, and never the unknown bucket: the check
+  // answered.
   it("counts a skill that only lags a tag as neither behind nor unknown", () => {
     const lagging: ReadDriftEntry = { ...pair("tdd"), reading: "older-tag" };
     const rollup = rollUpDeployment("tdd", [
@@ -176,15 +169,14 @@ describe("rollUpDeployment — behind count (▲N)", () => {
   });
 
   it("does not count a behind name that is not deployed at that target", () => {
-    // An orphan-behind (the check names tdd, but tdd is not deployed here) must
-    // not inflate the chip.
+    // An orphan-behind (named by drift, not deployed here) must not inflate the chip.
     const targets = [deployedTarget(["caveman"], [pair("tdd")])];
     expect(rollUpDeployment("tdd", targets).behindCount).toBe(0);
   });
 });
 
-// One release per target (ADR-0031): the mark speaks about this skill's own
-// content at the newest release, never about the target being behind (#956).
+// One release per target: the mark speaks about this skill's own content at
+// the newest release, never about the target being behind (#956).
 describe("rollUpDeployment — behind count under one release", () => {
   it("counts a target whose release changed this skill's content", () => {
     const targets = [onRelease(["tdd", "grill"], ["tdd"])];
@@ -269,8 +261,7 @@ describe("rollUpDeployment — unknown count (?) keeps J04 honesty", () => {
 
   it("flags checking while a deployed target's drift check is still running", () => {
     // Deploy-state can resolve before the drift check; a no-marks row must not
-    // read as "confirmed up-to-date on every target" while a check is still in
-    // flight (or stalled forever) — #272 invariant, J04.
+    // read as confirmed up to date while a check is in flight (#272).
     const targets: DeploymentTarget[] = [
       {
         ...paneFields,

@@ -6,9 +6,6 @@ import type { HarnessStageRead } from "../harness/use-harness";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import { Sidebar } from "./sidebar";
 
-// The two sidebar counters (#1115): how many targets are behind, and how many
-// skills wait on the operator in Pending review or Pending release.
-
 afterEach(() => {
   vi.unstubAllGlobals();
 });

@@ -14,7 +14,7 @@ import {
   userEvent,
 } from "./remove-skill-row-test-helpers";
 
-// Split from one 32-test file (#723) — see remove-skill-row.test.tsx.
+// Split from one file (#723); see remove-skill-row.test.tsx.
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -34,8 +34,6 @@ describe("removing a deployed skill from a row", () => {
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
-    // The trigger the modal would normally restore focus to disappears with the
-    // row, so the card's header takes it instead.
     await waitFor(() => {
       expect(onRemoved).toHaveBeenCalledTimes(1);
     });
@@ -57,9 +55,6 @@ describe("removing a deployed skill from a row", () => {
     expect(onRemoved).not.toHaveBeenCalled();
   });
 
-  // The retry is the same removal, not a fresh one the user has to describe
-  // again: same skill, same target, straight from the panel that reported the
-  // failure (#415).
   it("re-fires the same removal against the same target when retried", async () => {
     let attempts = 0;
     const fetchMock = stubFetch(null, () => {
@@ -80,8 +75,6 @@ describe("removing a deployed skill from a row", () => {
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
-    // Both requests, asserted as one list: what makes this a retry rather than
-    // a second removal is that the two are the same request.
     const sameRemoval = expect.objectContaining({
       name: "tdd",
       target: { kind: "repo", repoPath: REPO },
@@ -94,9 +87,6 @@ describe("removing a deployed skill from a row", () => {
     expect(onRemoved).toHaveBeenCalledTimes(1);
   });
 
-  // The mutation drops its error the moment the retry starts, which would take
-  // the failure block, the red outline and `close` with it — the panel would
-  // leave its failed state during the very attempt that state offered (#415).
   it("keeps stating the failure while the retry is in flight", async () => {
     let attempts = 0;
     stubFetch(null, () => {
@@ -121,10 +111,6 @@ describe("removing a deployed skill from a row", () => {
     expect(screen.getByRole("button", { name: "Close" })).toBeDisabled();
   });
 
-  // apm can remove a skill and still fail to prove it, which leaves the entry
-  // gone from the lockfile. The retry then finds nothing to remove — the first
-  // attempt did land, so reporting a second failure would be the cockpit
-  // calling a finished removal broken (#415).
   it("settles the removal when the retry finds nothing left", async () => {
     let attempts = 0;
     stubFetch(null, () => {
@@ -143,14 +129,9 @@ describe("removing a deployed skill from a row", () => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
     expect(onRemoved).toHaveBeenCalledTimes(1);
-    // No trace line: the server never named the version this removal ran
-    // against, and the screen's own guess is not its answer (#383). The row
-    // leaving the refetched card is the evidence.
     expect(screen.queryByText(/Removed tdd/)).toBeNull();
   });
 
-  // The same answer on a first attempt means the skill was never deployed here.
-  // Nothing landed, so there is nothing to settle.
   it("keeps a first attempt open when the skill is not deployed", async () => {
     stubFetch(null, () => jsonResponse({ error: "not-deployed" }, 404));
     const { onRemoved } = renderRow();

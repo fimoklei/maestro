@@ -1,7 +1,6 @@
 import { Button } from "./button";
 
-// The one block every warning, error and confirmation is stated in — see #465
-// for the standard and what it rejected.
+// The one block every warning, error and confirmation is stated in (#465).
 
 export type NoticeLevel = "info" | "success" | "warning" | "error";
 
@@ -14,10 +13,7 @@ export type NoticeAction = {
 type NoticeBase = {
   label: string;
   message: string;
-  /**
-   * Why this happened, or the alternative recovery — one sentence, never a
-   * second problem (`.claude/rules/copy.md`).
-   */
+  /** Why this happened, or the alternative recovery; never a second problem. */
   detail?: string;
 };
 
@@ -33,11 +29,7 @@ export interface NoticeProps {
   /** Did the user just act, or did this appear on load? Always a literal. */
   trigger: "load" | "user-action";
   notice: NoticeContent | null;
-  /**
-   * `inline` for a notice inside a table row: a filled, outlined panel there is
-   * a card inside a card (DESIGN.md § Notice). The rule
-   * on its left carries the level instead.
-   */
+  /** `inline` inside a table row: no panel; a rule on its left carries the level. */
   variant?: "block" | "inline";
   /** For a form field's aria-describedby. */
   id?: string;
@@ -57,7 +49,6 @@ const fillClasses: Record<NoticeLevel, string> = {
   error: "bg-red-3",
 };
 
-// Text on step 12, the glyph on step 11 (ADR-0033 §1).
 const inkClasses: Record<NoticeLevel, string> = {
   info: "text-gray-11",
   success: "text-green-12",
@@ -72,9 +63,6 @@ const MARK_CLASSES: Record<NoticeLevel, string> = {
   error: "text-red-11",
 };
 
-// Nothing is wrong at info, so there is nothing to mark. The rest carry
-// severity without colour (WCAG 1.4.1); all are aria-hidden, the heading
-// carries the same fact for everyone else.
 const glyphs: Record<NoticeLevel, string | null> = {
   info: null,
   success: "✓",
@@ -103,8 +91,7 @@ export function Notice({
   return (
     <div
       id={id}
-      // Derived, never chosen — which is why the literal string "alert" is
-      // built here rather than written at any call site.
+      // The only place the "alert" role may be written (#465).
       role={assertive ? "alert" : "status"}
       className={
         variant === "inline"
@@ -126,8 +113,6 @@ export function Notice({
         >
           {label}
         </span>
-        {/* Inline the notice is an aside beside the row's own sentence, so it
-            sits on the same step; the panel has a surface to lift off. */}
         <span
           className={`font-ui text-meta ${variant === "inline" ? "text-gray-11" : "text-gray-12"}`}
         >

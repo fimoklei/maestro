@@ -42,8 +42,6 @@ describe("removalOutcome", () => {
     expect(removalOutcome(new TypeError("network down"))).toBeNull();
   });
 
-  // An outcome this build cannot read is one it cannot draw: a ledger built on
-  // a guess would state something the server never proved (J04).
   it("drops a report carrying a state it does not recognise", () => {
     expect(
       removalOutcome(failure({ outcome: { scope: "repo", state: "maybe" } })),

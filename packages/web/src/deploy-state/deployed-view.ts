@@ -3,10 +3,8 @@ import type { TargetDriftIndicator } from "../drift/drift-view-model";
 import { skippedNeedsAttention } from "./skipped-entry-text";
 import type { DeployedPrimitive, SkippedEntry } from "./use-deploy-state";
 
-// Pending/unknown must stay distinct from confirmed-empty, or the drift
-// roll-up reads "in sync" while a real behind entry is hidden (the J04 lie).
-// `skippedCount`: a target with 0 primitives but skipped entries isn't empty.
-// `attentionCount`: skipped entries the user can act on (#358).
+// Pending/unknown must stay distinct from confirmed-empty, or the drift roll-up
+// reads "in sync" while a real behind entry is hidden.
 export type DeployedView =
   | { status: "pending" }
   | { status: "unknown" }
@@ -17,12 +15,8 @@ export type DeployedView =
       attentionCount: number;
     };
 
-// `read` is optional: pass it only when the caller renders stale rows after a
-// failed refetch (the sidebar does), so that case maps to "unknown", not a
-// false "ready" (J04, see above). Omitting it stays "ready".
-// `attentionCount` is the global section's, not this tool's: an entry apm
-// could not manage names no tool, and every card reads the same lockfile — so
-// they all carry it rather than one card guessing (#358).
+// Pass `read` only when the caller renders stale rows after a failed refetch, so
+// that case maps to "unknown", not a false "ready".
 export function toolDeployedView(
   names: string[],
   read?: { data: unknown; isError: boolean },
@@ -37,8 +31,6 @@ export function toolDeployedView(
   return { status: "ready", names, skippedCount: 0, attentionCount };
 }
 
-// A detected tool's view. An entry apm could not manage names no tool, so
-// every tool carries the section's attention count (#358).
 export function globalToolView(
   names: string[],
   skipped: readonly SkippedEntry[],
@@ -50,9 +42,8 @@ export function globalToolView(
   );
 }
 
-// The sidebar row and the global card both compute their own indicator, so
-// this is the one place that upgrades a confirmed "empty" to "foreign" —
-// otherwise the two readings of the same target could disagree (#655).
+// The one place that upgrades a confirmed "empty" to "foreign", so the sidebar
+// and the card never disagree (#655).
 export function withOtherOrigins(
   indicator: TargetDriftIndicator,
   otherOrigins: string[],

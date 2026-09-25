@@ -3,9 +3,6 @@ import type { DeployedPrimitive } from "../deploy-state/use-deploy-state";
 import { driftViewModel } from "./drift-view-model";
 import type { DriftResponse } from "./use-drift";
 
-// driftViewModel absorbs what was previously spread across toDriftView,
-// deriveSyncedState, skillDriftStatus, orphanBehind, and targetDriftIndicator.
-
 const query = (state: {
   data?: DriftResponse;
   isError?: boolean;
@@ -29,7 +26,7 @@ const pair = (name: string): BehindEntry => ({
   reading: "behind",
 });
 
-// Same release, content unchanged between the two tags (ADR-0027 §1).
+// Same release, content unchanged between the two tags.
 const laggingPin = (name: string): BehindEntry => ({
   ...pair(name),
   reading: "older-tag",
@@ -224,8 +221,6 @@ describe("driftViewModel — targetIndicator", () => {
 });
 
 describe("driftViewModel — orphanBehind", () => {
-  // The lagging pin is stated on the row and nowhere else (ADR-0027 §2), so a
-  // skill that only lags a tag never reappears in this list worded as Behind.
   it("leaves out a name that only lags a tag", () => {
     expect(ran([laggingPin("foo"), pair("bar")]).orphanBehind([])).toEqual([
       "bar",
@@ -252,8 +247,6 @@ describe("driftViewModel — driftCount", () => {
     expect(ran([]).driftCount(deployedNames(["tdd"]))).toBe(0);
   });
 
-  // The roll-up counts moved skills only, so a release cannot mark a whole
-  // target Behind on a lagging pin alone (ADR-0027 §2).
   it("excludes a skill that only lags a tag from the count", () => {
     expect(
       ran([pair("tdd"), laggingPin("diagnose")]).driftCount(
@@ -399,9 +392,7 @@ describe("driftViewModel — forTool (per-tool slice of the global check)", () =
     const global = ran([
       { name: "tdd", current: "v0.5.0", latest: "v0.5.1", reading: "behind" },
     ]);
-    // codex's card has no tdd; the global behind must not spill onto it.
     expect(global.forTool([]).targetIndicator(deployedNames([]))).toBe("empty");
-    // and tdd no longer reads as behind through the narrowed model.
     expect(global.forTool([]).skillStatus("tdd")).toBe("up-to-date");
   });
 

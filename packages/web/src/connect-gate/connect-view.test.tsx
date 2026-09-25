@@ -90,9 +90,7 @@ describe("ConnectView", () => {
   });
 
   it("names the connected source on the confirmation, beyond its basename", async () => {
-    // The surface that confirms the connection must identify the source itself
-    // (#211): the shortened path tail is visible, and the whole path stays
-    // reachable on hover, without navigating to the source view.
+    // The path tail is visible, the whole path on hover (#211).
     stubApi();
     renderView();
 
@@ -256,8 +254,7 @@ describe("ConnectView", () => {
     stubApi({ configuredPath: "/home/me/agent-harness" });
     renderView();
 
-    // Checked before the config fetch resolves — the form must not flash
-    // during the pending window either (Codex review finding).
+    // Checked before config resolves: the form must not flash while pending.
     expect(screen.queryByLabelText(/inventory path/i)).not.toBeInTheDocument();
 
     expect(await screen.findByText("deploy-state-landed")).toBeInTheDocument();

@@ -1,4 +1,4 @@
-// A status is a CONTEXT.md word, then a glyph, then a colour (ADR-0033 §3).
+// A status is a word, then a glyph, then a colour.
 
 export type StatusFamily =
   | "good"

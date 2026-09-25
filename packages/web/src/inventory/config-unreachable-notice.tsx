@@ -1,8 +1,7 @@
 import { Notice } from "../ui/notice";
 
-// Shown when the config query errors on a first-run surface, which otherwise
-// waits on an indefinite "Loading…" with no way out (#103). Presentational —
-// caller owns the query and passes its refetch as onRetry.
+// Shown when the config query errors on a first-run surface, which would
+// otherwise wait on "Loading…" forever (#103).
 export function ConfigUnreachableNotice({ onRetry }: { onRetry: () => void }) {
   return (
     // The surface failed to load; nothing here followed a click (#465).

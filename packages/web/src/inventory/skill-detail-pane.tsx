@@ -10,9 +10,8 @@ import { targetReading } from "./skill-status";
 import { TYPE_WORD } from "./type-filter";
 import type { Primitive } from "./use-inventory";
 
-// The "do" surface to the table's "see" (ADR-0016), in the one pane shape
-// (#1065): facts, description, the targets, and the row's ⋮ at the foot.
-// Presentational: rows arrive already folded and actions as items.
+// The "do" surface to the table's "see": facts, description, the targets, and
+// the row's ⋮ at the foot. Presentational: rows arrive folded, actions as items.
 export function SkillDetailPane({
   primitive,
   targetCount,
@@ -28,11 +27,11 @@ export function SkillDetailPane({
   getTriggerElement,
 }: {
   primitive: Primitive;
-  /** The Targets column's number; null until every read has answered (J04). */
+  /** The Targets column's number; null until every read has answered. */
   targetCount: number | null;
   deployments: SkillDeployment[];
-  // True while any target's read is still pending — an empty list is then
-  // "not known yet", not a confirmed absence (J04).
+  // True while any target's read is pending — an empty list is then "not known
+  // yet".
   unconfirmed: boolean;
   /** One target row's ⋮ items. */
   targetItems: (deployment: SkillDeployment) => readonly ActionsMenuItem[];
@@ -99,7 +98,6 @@ export function SkillDetailPane({
                 />
               ))}
             </ul>
-            {/* Partial set — never lets it read as the full reach (J04). */}
             {unconfirmed ? (
               <p className="mt-inline text-gray-11 text-meta">
                 Loading more targets…

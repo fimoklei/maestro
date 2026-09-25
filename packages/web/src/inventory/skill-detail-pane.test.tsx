@@ -123,9 +123,8 @@ describe("SkillDetailPane", () => {
   });
 
   it("marks an in-sync target with a status word, not colour alone", () => {
-    // An up-to-date copy signalled only by green version text fails users who
-    // can't perceive colour (PRODUCT.md: colour is never the only carrier of
-    // meaning). The mark carries its word as its name (#1065).
+    // The mark carries its word as its name: colour is never the only carrier of
+    // meaning.
     renderPane({ deployments: [dep("Claude Code", "v1.0.0", "up-to-date")] });
 
     expect(
@@ -133,9 +132,8 @@ describe("SkillDetailPane", () => {
     ).toHaveTextContent("✓");
   });
 
-  // One release is stated once (ADR-0031): the row names the release the
-  // target follows, and the Behind mark marks only a skill this release
-  // actually changed — no per-skill version pair any more (#956).
+  // One release is stated once: the Behind mark marks only a skill this release
+  // changed (#956).
   it("marks a target Behind where this skill changed, naming only its release", () => {
     renderPane({ deployments: [dep("Claude Code", "v1.0.0", "behind")] });
 
@@ -182,9 +180,8 @@ describe("SkillDetailPane", () => {
   });
 
   it("holds off on 'Not deployed' while the reach is still unconfirmed (J04)", () => {
-    // Every target's deploy-state read is still pending or unreadable, so an empty
-    // list is "not known yet", never a confirmed "deployed nowhere" — the same
-    // honesty the row's deployed cell keeps.
+    // Every read is pending or unreadable, so an empty list is "not known yet",
+    // never "deployed nowhere".
     renderPane({ deployments: [], unconfirmed: true });
 
     expect(
@@ -194,9 +191,8 @@ describe("SkillDetailPane", () => {
   });
 
   it("warns the reach is incomplete when a target is still unconfirmed alongside known deployments", () => {
-    // One target read succeeded while another is still pending or unreadable. The
-    // known target must show, but the pane must not pass a partial list off as
-    // the whole reach (J04) — so it still warns more targets may exist.
+    // One read succeeded while another is pending: the known target shows, but the
+    // pane still warns more targets may exist.
     renderPane({
       deployments: [dep("Claude Code", "v1.0.0", "up-to-date")],
       unconfirmed: true,
@@ -216,9 +212,7 @@ describe("SkillDetailPane", () => {
   });
 
   it("closes when Escape is pressed", async () => {
-    // The pane is not a modal (ADR-0016), but it still needs an escape route:
-    // without one a keyboard user who opens it has no way back except tabbing
-    // through the whole thing.
+    // The pane is not a modal, but a keyboard user still needs an escape route.
     const onClose = vi.fn();
     renderPane({ onClose });
 
@@ -228,9 +222,7 @@ describe("SkillDetailPane", () => {
   });
 
   it("moves focus to its heading when it opens", () => {
-    // A keyboard user who opens the pane lands somewhere predictable and a
-    // screen reader announces the skill's name, instead of focus staying on
-    // the row button behind whatever now covers it.
+    // Focus lands somewhere predictable and a screen reader announces the skill.
     renderPane({});
 
     expect(document.activeElement).toBe(
@@ -239,8 +231,7 @@ describe("SkillDetailPane", () => {
   });
 
   it("gives the heading a visible focus ring, so a keyboard user can see where focus landed", () => {
-    // Focus must be visible: the standard focus-visible ring, same as
-    // every other focusable control here (Codex review finding).
+    // Focus must be visible: the standard focus-visible ring.
     renderPane({});
 
     expect(screen.getByRole("heading", { name: /tdd/i })).toHaveClass(

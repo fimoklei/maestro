@@ -1,7 +1,6 @@
-// What a bulk remove would act on (#422): the deploy targets holding this
-// skill, in pane order, each with the name and version the confirmation puts
-// on its row (#423). A removal is per DeployTarget, not per pane row — apm's
-// uninstall has no -t, so global's per-tool rows are one removal (ADR-0013).
+// The deploy targets holding this skill that a bulk remove acts on (#422), in
+// pane order. Per DeployTarget, not per row: apm's uninstall has no -t, so
+// global's per-tool rows are one removal.
 
 import { targetLabel } from "../shell/target-label";
 import type { DeploymentTarget } from "./deployed-rollup";
@@ -30,7 +29,7 @@ export function bulkRemoveTargets(
     .map((target) => target.repoPath);
 
   for (const target of targets) {
-    // Unread is unknown, not "deployed here" — left out of the run (J04).
+    // Unread is unknown, not "deployed here" — left out of the run.
     if (target.deployed.status !== "ready") {
       continue;
     }

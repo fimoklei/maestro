@@ -32,9 +32,6 @@ describe("IconButton", () => {
   });
 
   it("stays focusable and states why while it is unavailable", async () => {
-    // An unavailable control keeps its Tab stop and says what blocks it, so a
-    // keyboard reader learns the reason instead of losing the control
-    // (design.md → Keyboard and screen reader).
     const onClick = vi.fn();
     renderButton({ unavailable: "No Harness connected", onClick });
 

@@ -13,19 +13,15 @@ import type { BulkRemoveCandidate } from "./bulk-remove-targets";
 import { useBulkRemove } from "./use-bulk-remove";
 import { invalidateTarget } from "./use-deploy-skill";
 
-// useQueries returns one result per query, so this stands in for nothing. It
-// is a running check rather than a clean copy, because a missing answer has
-// proved nothing about the copy behind it (J04).
+// Stands in for a missing result: a running check, never a clean copy.
 const STILL_CHECKING: RemovePreflightView = {
   kind: "offered",
   check: { kind: "unanswered", warning: "checking" },
   reclaim: [],
 };
 
-// Mounted only while the dialog is open, and that is the point: the checks
-// unmount with it, so a reopen measures the copies again instead of handing
-// out a confirm against the last open's answer. A disabled query keeps its
-// observer, and an observed query keeps its data whatever gcTime says.
+// Mounted only while the dialog is open: the checks unmount with it, so a
+// reopen measures again. A disabled query keeps its observer and its data.
 export function BulkRemoveRun({
   skillName,
   targets,
@@ -39,8 +35,7 @@ export function BulkRemoveRun({
   const queryClient = useQueryClient();
 
   // On the way out, not when the request settles: the report is still being
-  // read while the run is over, and the pane behind it is what the user
-  // returns to. A dialog that removed nothing has nothing to re-read.
+  // read. A dialog that removed nothing has nothing to re-read.
   const close = () => {
     if (!run.isIdle) {
       for (const candidate of targets) {
@@ -50,9 +45,8 @@ export function BulkRemoveRun({
     onClose();
   };
 
-  // Every target's own check, in parallel and never cached (#337 applied to a
-  // whole list). One view per target, read by both the screen and the run —
-  // what the user was shown is what the run is told.
+  // Every target's own check, parallel and never cached (#337). The screen and
+  // the run read the same view.
   const checks = useQueries({
     queries: targets.map((candidate) =>
       removePreflightQueryOptions(skillName, candidate.target),
@@ -77,8 +71,7 @@ export function BulkRemoveRun({
     targets.map((candidate, index) => ({
       label: candidate.label,
       version: candidate.version,
-      // A short read cannot happen — useQueries returns one result per query
-      // — but a missing answer is a running check, never a clean copy (J04).
+      // A missing answer is a running check, never a clean copy.
       preflight: checks[index]?.view ?? STILL_CHECKING,
     })),
   );

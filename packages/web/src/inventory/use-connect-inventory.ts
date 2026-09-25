@@ -1,5 +1,5 @@
 // A successful connect invalidates the inventory query so the cockpit
-// refetches the now-readable skills (frontend.md).
+// refetches the now-readable skills.
 import type { ConnectOutcome } from "@maestro/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
@@ -30,8 +30,8 @@ export function useConnectInventory() {
         body: JSON.stringify(variables),
       }),
     onSuccess: (data) => {
-      // Seeded synchronously — invalidateQueries alone wouldn't land before
-      // the gate navigates on Continue, bouncing the user back (Codex finding).
+      // Seeded synchronously: invalidateQueries alone wouldn't land before the gate
+      // navigates on Continue, bouncing the user back.
       queryClient.setQueryData(INVENTORY_CONFIG_KEY, {
         inventoryPath: data.inventoryPath,
       });

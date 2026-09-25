@@ -172,7 +172,7 @@ describe("Set Harness location", () => {
     expect(
       await screen.findByRole("button", { name: "Setting…" }),
     ).toBeInTheDocument();
-    // The status region states the write while it runs (design.md → Keyboard).
+    // The status region states the write while it runs.
     expect(
       screen.getByText("Setting…", { selector: "[role=status]" }),
     ).toBeInTheDocument();

@@ -3,8 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { ConfigUnreachableNotice } from "./config-unreachable-notice";
 
 describe("ConfigUnreachableNotice", () => {
-  // The surface failed to load; nothing here followed a click, so the region
-  // is polite (#465, decision 11).
+  // Nothing here followed a click, so the region is polite (#465).
   it("states the unreachable server politely, not as an assertive alert", () => {
     render(<ConfigUnreachableNotice onRetry={() => {}} />);
 

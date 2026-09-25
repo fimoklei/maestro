@@ -11,7 +11,7 @@ import {
   THEME,
 } from "./settings-copy";
 
-// Approved sentences, as exact strings (copy.md). The first four are #995's.
+// Approved sentences, as exact strings.
 describe("Harness location copy", () => {
   it("names the two sections", () => {
     expect(CONNECTED_HARNESS).toBe("Connected Harness");

@@ -94,8 +94,6 @@ describe("bulkRemoveReportView — a partial run", () => {
     });
   });
 
-  // Both halves of "why was this left": the class that skipped it, and the
-  // reason under that class. One without the other says nothing to act on.
   it("carries each left-alone target's class and its own reason", () => {
     expect(partial).toMatchObject({
       leftAlone: [
@@ -113,8 +111,6 @@ describe("bulkRemoveReportView — a partial run", () => {
     });
   });
 
-  // A row nobody can name is still a target the run left behind; dropping it
-  // would report a cleaner run than the one that happened.
   // A failed removal can still have taken the copy off disk. The row says so:
   // "go and look" and "nothing left to do" are opposite instructions.
   it("adds what the probe proved about a failed target's copy", () => {
@@ -137,7 +133,7 @@ describe("bulkRemoveReportView — a partial run", () => {
     expect(
       probed({ scope: "repo", state: "not-removed" }).leftAlone[0]?.reason,
     ).toBe("Removal not completed by apm — still there");
-    // A probe that could not answer proves nothing, so it says nothing (J04).
+    // A probe that could not answer proves nothing, so it says nothing.
     expect(
       probed({ scope: "repo", state: "unknown" }).leftAlone[0]?.reason,
     ).toBe("Removal not completed by apm");
@@ -187,8 +183,7 @@ describe("bulkRemoveReportView — a partial run", () => {
     expect(changed.leftAlone[0]?.reason).toMatch(/\S/);
   });
 
-  // A row whose reason this build cannot name is still a target left behind;
-  // a blank slot beside it would read as no reason at all.
+  // A reason this build cannot name still gets a non-blank slot.
   it("falls back to the raw code when the run names a reason it does not know", () => {
     const unknown = view({
       report: report({

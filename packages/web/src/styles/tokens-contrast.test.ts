@@ -1,9 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-// The allowlist of foreground/background pairings (ADR-0033 §4). A pairing
-// outside this table is not used in a component; it enters here, and passes,
-// first. Floors and the measured values are in issue #988.
+// A new foreground/background pairing enters this table, and passes, first (#988).
 
 const AA_TEXT = 4.5;
 const AA_NON_TEXT = 3;
@@ -161,8 +159,7 @@ function contrastRatio(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-// Vitest runs this project from either the repo root or packages/web depending
-// on how it is invoked, so resolve tokens.css from whichever cwd applies.
+// Vitest runs from the repo root or packages/web depending on invocation.
 const tokensCssPath = [
   "packages/web/src/styles/tokens.css",
   "src/styles/tokens.css",

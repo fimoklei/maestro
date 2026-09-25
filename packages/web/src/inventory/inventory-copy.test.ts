@@ -21,7 +21,7 @@ import {
   stageRowLabel,
 } from "./inventory-copy";
 
-// Approved sentences, as exact strings (copy.md → Patterns).
+// Approved sentences, as exact strings.
 describe("Inventory copy", () => {
   it("says how to see every skill when the search matches none", () => {
     expect(NO_SEARCH_MATCH).toBe(
@@ -78,8 +78,7 @@ describe("Inventory copy", () => {
   });
 
   it("tells the pane's reader how to deploy a skill that is nowhere yet", () => {
-    // The pane holds no target picker any more: Deploy skill opens the dialog
-    // where the target is chosen (#1065).
+    // Deploy skill opens the dialog where the target is chosen (#1065).
     expect(NOT_DEPLOYED_ANYWHERE).toBe(
       "Not deployed to any target. Select Deploy skill to choose a target.",
     );
@@ -93,8 +92,7 @@ describe("Inventory copy", () => {
     expect(removeFromAllLabel(2)).toBe("Remove from all 2 targets");
   });
 
-  // A global removal takes every detected tool (ADR-0013), so a global row
-  // names them all rather than claim its own tool alone.
+  // A global removal takes every detected tool, so a global row names them all.
   it("names every tool a global row's removal takes", () => {
     expect(removeFromToolsLabel(["claude", "codex"])).toBe(
       "Remove from Claude Code and Codex",

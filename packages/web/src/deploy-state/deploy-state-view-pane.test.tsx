@@ -11,9 +11,7 @@ import {
   stubServer,
 } from "./deploy-state-test-helpers";
 
-// A target's detail pane on Deploy-state (#993, #1043). Successor of the
-// retired DeployStatePanel, GlobalTargets, PinnedPerSkillHead,
-// ReleaseHeadMeta and UnfinishedOperationHead tests for what a target states.
+// A target's detail pane on Deploy-state (#993, #1043).
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -39,7 +37,6 @@ const BEHIND = {
   comparedAt: RECENT(),
 };
 
-// A fact row: its label beside its value (#1065).
 const fact = (pane: HTMLElement, label: string) =>
   within(pane)
     .queryAllByText(label)
@@ -69,7 +66,6 @@ describe("Deploy-state pane — facts", () => {
     expect(fact(pane, "Latest release")).toBe("v0.3.4");
     expect(fact(pane, "Changed")).toBe("2 of 5 skills");
     expect(fact(pane, "Compared")).toBe("Read just now");
-    // The sentence that explains the state leads the "why" paragraph.
     expect(
       within(pane).getByText("Newer release v0.3.4: 2 of 5 skills changed"),
     ).toBeInTheDocument();
@@ -99,7 +95,6 @@ describe("Deploy-state pane — facts", () => {
     ).toHaveTextContent(REPO);
   });
 
-  // #1123: the reading ages while the pane stays open, without a re-read.
   it("ticks the Compared fact while the pane stays open", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
@@ -118,7 +113,6 @@ describe("Deploy-state pane — facts", () => {
     }
   });
 
-  // #1065: one grammar across panes; no label stands over its value.
   it("states every fact as one label/value row, in the order the pane reads", async () => {
     repoWith({ releaseHead: BEHIND, extraFiles: 2 });
     renderDeployState();
@@ -197,7 +191,6 @@ describe("Deploy-state pane — facts", () => {
     const pane = await openPane(LABEL);
     expect(fact(pane, "Release")).toBeNull();
     expect(fact(pane, "Compared")).toBeNull();
-    // The row's own release is the only reading left, so it stays.
     expect(within(pane).getByText("v0.3.2")).toBeInTheDocument();
   });
 
@@ -212,14 +205,12 @@ describe("Deploy-state pane — facts", () => {
     renderDeployState();
 
     const pane = await openPane(LABEL);
-    // One "why" paragraph under the facts (#1065).
     const tags = within(pane).getByText("1 skill at v0.3.1, 1 at v0.3.0.");
     const way = within(pane).getByText(
       "Release not adopted. Select Remove skill for each, then Deploy skill.",
     );
     expect(tags.closest("p")).toBe(way.closest("p"));
     expect(within(pane).queryByRole("status")).not.toBeInTheDocument();
-    // No mechanism stands behind an Update here (#950), so none is offered (#1125).
     expect(
       within(pane).queryByRole("button", { name: /^Update target/ }),
     ).not.toBeInTheDocument();
@@ -410,7 +401,6 @@ describe("Deploy-state pane — Selected skills", () => {
     ).toBeInTheDocument();
   });
 
-  // #1124: the pane's Escape also fired, so one key closed dialog and pane.
   it("closes only the removal dialog on Escape, leaving the pane open", async () => {
     stubServer(() => ({
       repos: [REPO],
@@ -480,7 +470,6 @@ describe("Deploy-state pane — Selected skills", () => {
     await waitFor(() =>
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
     );
-    // The trigger went with the row, so focus never falls to the page body.
     await waitFor(() =>
       expect(
         screen.getByRole("heading", { level: 3, name: /Selected skills/ }),
@@ -512,11 +501,9 @@ describe("Deploy-state pane — an unfinished operation", () => {
         "Update to v0.3.4 incomplete: 1 of 2 skills now use this release.",
       ),
     ).toBeInTheDocument();
-    // In its notice, after its cause, and at the foot (#1065).
     expect(
       within(pane).getAllByRole("button", { name: "Retry update" }),
     ).toHaveLength(2);
-    // One unfinished change is converged before another starts (#951).
     expect(
       within(pane).queryByRole("button", { name: /^Update target/ }),
     ).not.toBeInTheDocument();
@@ -583,8 +570,6 @@ describe("Deploy-state pane — an unfinished operation", () => {
         within(notice).getByRole("button", { name: "Retry deploy" }),
       ).toBeDisabled(),
     );
-    // The foot and the row's menu drop the retry while it runs (#1125); the
-    // notice's disabled copy is the only one left.
     expect(
       within(pane).getAllByRole("button", { name: /^Retry deploy/ }),
     ).toHaveLength(1);
@@ -599,8 +584,6 @@ describe("Deploy-state pane — an unfinished operation", () => {
     expect(retries).toHaveLength(1);
   });
 
-  // #1065: the foot is the row's ⋮ menu as buttons; the first enabled is
-  // primary, and a standing operation's retry leads the menu (#1066).
   it("holds the row's menu at the foot, in its order, Retry update primary", async () => {
     pendingRepo({ kind: "update", release: "v0.3.4", desired: ["tdd"] });
     renderDeployState();
@@ -620,7 +603,6 @@ describe("Deploy-state pane — an unfinished operation", () => {
     expect(
       within(foot).getByRole("button", { name: "Deploy skill" }),
     ).not.toHaveClass("bg-gray-12");
-    // The notice carries the same control after its cause (#1065 mock).
     expect(
       within(within(pane).getByRole("status")).getByRole("button", {
         name: "Retry update",

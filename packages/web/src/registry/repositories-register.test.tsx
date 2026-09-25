@@ -9,9 +9,6 @@ import {
   stubRegistry,
 } from "./repositories-test-helpers";
 
-// Registering is one folder per dialog (#1009): a folder field plus Browse,
-// every refusal under the field right after the pick.
-
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -48,7 +45,7 @@ describe("Register repository", () => {
     expect(within(dialog).getAllByRole("textbox")).toHaveLength(1);
   });
 
-  // ADR-0015 point 5: the write promise sits at the registration action.
+  // The write promise sits at the registration action.
   it("promises at the confirm that registering changes no files", async () => {
     stubRegistry({ repos: [] });
     renderRepositories();

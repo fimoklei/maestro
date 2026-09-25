@@ -35,8 +35,6 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
-// The system chooser is open: Browse spins and is locked, the field stays
-// typeable.
 export const ChooserOpen: Story = {
   args: { chooser: { ...chooser, busy: true } },
 };

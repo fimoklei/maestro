@@ -14,11 +14,7 @@ import {
   useRestoreSkill,
 } from "./use-harness";
 
-// Every row press the Harness offers, the confirmations some of them open, and
-// what the last one refused. The view decides where each lands on screen.
 export function useHarnessPresses(state: HarnessState | undefined) {
-  // Promote: which row is waiting and what the last press refused are read off
-  // the mutation (#577).
   const promote = usePromoteSkill();
   const promotedSkill = promote.variables?.name ?? null;
   const promoteFailure = promoteNotice(promote.error);
@@ -27,28 +23,21 @@ export function useHarnessPresses(state: HarnessState | undefined) {
   const [promotedFrom, setPromotedFrom] = useState<HarnessStage | null>(null);
 
   // A deletion never publishes by the row's press alone: it opens a
-  // confirmation, which carries the origin/HEAD tree that row was painted
-  // from. The pending movement is UI-state; the push is the mutation (#580).
+  // confirmation carrying the origin/HEAD tree the row was painted from (#580).
   const deletion = usePromoteDeletion();
-  // The other road out of the same confirmation: a skill that exists nowhere
-  // else has no deletion to propose, so the folder goes from disk (#798).
   const deleteLocal = useDeleteLocalSkill();
   const [confirming, setConfirming] = useState<string | null>(null);
   const pendingDeletion =
     proposalRows(state).find((row) => row.skill === confirming) ?? null;
 
-  // The way back from a deletion, and the one action no remote answer gates.
   // The press freezes what it was made against, so a check landing while the
   // confirmation stands cannot rewrite the source or close it (#915).
   const restore = useRestoreSkill();
   const [restoring, setRestoring] = useState<RestoreTarget | null>(null);
 
-  // The three GitHub-side actions share one mutation: only the route differs.
   const proposalAction = useProposalAction();
   const proposalSkill = proposalAction.variables?.name ?? null;
   const proposalFailure = proposalNotice(proposalAction.error);
-  // Withdrawal is the one action that confirms first. The number the row
-  // showed rides with it; the server rechecks it before closing anything.
   const [withdrawing, setWithdrawing] = useState<{
     skill: string;
     number: number;
@@ -73,7 +62,6 @@ export function useHarnessPresses(state: HarnessState | undefined) {
       proposalFailure !== null &&
       proposalSkill !== null
     ) {
-      // The three GitHub-side actions are Pending review's alone.
       return {
         id: rowId({ stage: "pending-review", skill: proposalSkill }),
         notice: proposalFailure,

@@ -35,8 +35,6 @@ import { UnregisterDialog } from "./unregister-dialog";
 import { useRegisterDialog } from "./use-register-dialog";
 import { REGISTRY_KEY, useRegistry, useUnregisterRepo } from "./use-registry";
 
-// The Repositories screen (#1009): which folders Maestro tracks, whether each
-// is still there, and the controls that add or drop one.
 export function RepositoriesView() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -99,7 +97,7 @@ export function RepositoriesView() {
   const readNotice = registry.isError
     ? { ...REPOS_NOT_READ, action: { label: REREAD_LABEL, onClick: reread } }
     : null;
-  // A write's busy label, then its done sentence (design.md → Keyboard).
+  // A write's busy label, then its done sentence.
   const [region, setWrite] = useStatusRegion(
     useReadAnnouncement(SCREEN, skeleton.visible, readNotice),
   );

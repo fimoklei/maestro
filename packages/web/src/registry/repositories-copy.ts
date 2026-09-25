@@ -8,8 +8,6 @@ import {
 } from "../ui/notice-table";
 import { reading, type StatusReading } from "../ui/status-reading";
 
-// Every word the Repositories screen and its dialog show (ADR-0025, #1009).
-
 export const SCREEN = "Repositories";
 export const REGISTER_REPOSITORY = "Register repository";
 export const REGISTER_TITLE = "Register a repository";
@@ -92,7 +90,7 @@ export function unregisterNotice(error: unknown): NoticeContent | null {
   });
 }
 
-// ADR-0015 point 5: the promise sits at the registration action.
+// The write promise sits at the registration action.
 export const WRITE_PROMISE =
   "Registering changes no files. Files change only when you deploy.";
 export const CANCEL = "Cancel";

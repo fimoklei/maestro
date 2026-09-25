@@ -1,12 +1,9 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-// DESIGN.md rules that no rendering test can see. The vitest/happy-dom lane
-// renders without CSS (LEARNINGS · web/styling-is-test-invisible), so a dropped
-// utility stays green forever; these guards read the source instead.
+// happy-dom renders without CSS, so these guards read the source instead.
 
-// jsdom's import.meta.url isn't a file URL and cwd varies by invocation, so
-// resolve the source root from whichever cwd applies (tokens-contrast.test.ts too).
+// import.meta.url isn't a file URL here and cwd varies by invocation.
 const srcDirCandidate = ["packages/web/src", "src"]
   .map((candidate) => resolve(process.cwd(), candidate))
   .find((candidate) => existsSync(candidate));
@@ -36,12 +33,9 @@ it("reads the web source tree", () => {
   expect(files.length).toBeGreaterThan(0);
 });
 
-// Preflight's ::placeholder mix (tailwindcss 4.3.2, preflight.css:282-296)
-// falls under the 4.5:1 PRODUCT.md floor (PRODUCT.md:99); gray 11 clears it.
+// Preflight's ::placeholder mix (tailwindcss 4.3.2) falls under 4.5:1; gray 11 clears it.
 describe("placeholder colour", () => {
   it("every input with a placeholder sets placeholder:text-gray-11", () => {
-    // Counted, not merely present: a file that gains a second input must
-    // colour that one too, and a bare presence check would miss it.
     const count = (source: string, needle: string) =>
       source.split(needle).length - 1;
 
@@ -57,10 +51,8 @@ describe("placeholder colour", () => {
   });
 });
 
-// The UA paints native controls (checkbox, select popup, scrollbar, autofill)
-// from color-scheme, not from data-theme, so without it an unchecked checkbox
-// is pure white on the dark cockpit (issue #468). Both themes ship, so both
-// blocks declare it beside their values (ADR-0033 §5).
+// Native controls follow color-scheme, not data-theme: without it an unchecked
+// checkbox is pure white on the dark cockpit (#468).
 describe("native control colour scheme", () => {
   const tokensCss = readFileSync(join(SRC_DIR, "styles/tokens.css"), "utf8");
 
@@ -75,9 +67,7 @@ describe("native control colour scheme", () => {
   });
 });
 
-// ADR-0033 job 11 deleted the Control Room aliases. Each name below is one the
-// pre-rebuild @theme block carried and the new system does not, so neither
-// theme.css nor a utility, variable or class may bring one back.
+// Retired pre-rebuild token names; nothing may bring one back.
 const ALIASES: Record<string, string[]> = {
   color: [
     "canvas",
@@ -189,9 +179,6 @@ describe("Control Room token aliases", () => {
   });
 });
 
-// DESIGN.md § Typography: the type ramp is a fixed vocabulary (--text-meta …
-// --text-title) and The rem Rule forbids anything below 12px. An arbitrary `text-[…]`
-// value escapes both at once — and the colour ramp with them — so none pass.
 describe("type ramp", () => {
   it("no component sets an arbitrary text value", () => {
     const offenders = files.flatMap(({ path, source }) =>
@@ -204,7 +191,6 @@ describe("type ramp", () => {
   });
 });
 
-// Letter-spacing is a token too (frontend.md): tracking-heading … tracking-mono-wide.
 describe("letter-spacing", () => {
   it("no component sets an arbitrary tracking value", () => {
     const offenders = files.flatMap(({ path, source }) =>
@@ -217,7 +203,6 @@ describe("letter-spacing", () => {
   });
 });
 
-// design.md §1: blue only for focus, selection and links; every ring is blue-9.
 describe("focus ring colour", () => {
   it("every focus outline is blue-9", () => {
     const offenders = files.flatMap(({ path, source }) =>
@@ -234,9 +219,8 @@ describe("focus ring colour", () => {
   });
 });
 
-// #465: every warning, error and confirmation is stated through Notice, which
-// derives the role — so no allowlist, the literal occurs nowhere, not even in
-// the primitive. role="status" is unguarded on purpose (#615).
+// Notice derives the alert role, so the literal occurs nowhere (#465).
+// role="status" is unguarded on purpose (#615).
 describe("assertive live regions", () => {
   it("no component writes a literal alert role", () => {
     const offenders = files.flatMap(({ path, source }) =>
@@ -249,9 +233,8 @@ describe("assertive live regions", () => {
   });
 });
 
-// ADR-0033 §8: under reduced motion only the spinner moves. A transition or
-// animation utility needs the motion-safe: variant; a CSS declaration needs a
-// no-preference media block. Toasts are sonner's, which stills itself.
+// Under reduced motion only the spinner moves. Toasts are sonner's, which
+// stills itself.
 const SPINNER_FILE = "/ui/button.tsx";
 const NO_PREFERENCE = "@media (prefers-reduced-motion: no-preference)";
 
@@ -365,9 +348,8 @@ ${NO_PREFERENCE} { .b { animation: spin 1s; } }
   });
 });
 
-// ADR-0033 §1: a status scale puts text on step 12 and the mark on step 11. In
-// light, green and amber 11 miss 4.5:1 on gray 2 and on their own tint (#1086),
-// so step 11 colours only a glyph: aria-hidden, role="img", or a MARK constant.
+// Light green and amber 11 miss 4.5:1 (#1086), so step 11 colours only a glyph:
+// aria-hidden, role="img", or a MARK constant.
 const STEP_ELEVEN = /text-(?:green|amber)-11\b/;
 const MARK_CONTEXT = /aria-hidden="true"|role="img"|\bglyph:|const \w*MARK\w*/;
 

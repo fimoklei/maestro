@@ -25,8 +25,6 @@ function renderPane(props: Partial<Props> = {}) {
 const pane = () => screen.getByRole("complementary", { name: "tdd detail" });
 const heading = () => screen.getByRole("heading", { level: 2, name: "tdd" });
 
-// Whether it floats is a browser measurement (testing.md); this proves the
-// breakpoint the #1065 decision names: a sheet at 1100px and below.
 describe("DetailPaneSlot", () => {
   it("floats as a sheet up to 1100px and sits beside the table above it", () => {
     render(
@@ -63,8 +61,6 @@ describe("DetailPane", () => {
   });
 
   it("keeps its actions outside the region that scrolls", () => {
-    // A long body never hides them. Whether the region scrolls is a browser
-    // measurement (testing.md); happy-dom proves only the wiring.
     renderPane();
 
     const scroller = screen
@@ -88,7 +84,7 @@ describe("DetailPane", () => {
   });
 
   it("closes on Escape", async () => {
-    // Not a modal (ADR-0016), but a keyboard user still needs a way back.
+    // Not a modal, but a keyboard user still needs a way back.
     const onClose = vi.fn();
     renderPane({ onClose });
 

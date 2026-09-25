@@ -32,7 +32,7 @@ export const rowId = (row: Pick<HarnessStageRow, "stage" | "skill">) =>
   `${row.stage}:${row.skill}`;
 
 // The ⋮ trigger is named by its stage too: three menus called "Actions for
-// tdd" would name the same thing three times (design.md → Accessible labels).
+// tdd" would name the same thing three times.
 export const rowMenuLabel = (row: HarnessStageRow) =>
   `Actions for ${row.skill} in ${STAGE_NAMES[row.stage]}`;
 

@@ -10,8 +10,7 @@ export function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-// A fresh client per render, so no test inherits another's cache, with the
-// cockpit's own read rules — a test must see what the reader sees (#1037).
+// A fresh client per render with the cockpit's own read rules (#1037).
 // Passed as `wrapper` so the provider survives `rerender`.
 export function renderWithQuery(ui: ReactNode) {
   const queryClient = createQueryClient();

@@ -1,6 +1,5 @@
-// A global target's name + destination path. Destinations mirror core's
-// DEPLOY_TOOLS skillsDirPrefix (apm-driver.md). Unknown token shown verbatim,
-// never dropped (J03).
+// Destinations mirror core's DEPLOY_TOOLS skillsDirPrefix. An unknown token is
+// shown verbatim, never dropped.
 
 export type ToolPresentation = {
   label: string;

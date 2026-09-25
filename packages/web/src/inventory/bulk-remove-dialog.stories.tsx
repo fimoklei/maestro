@@ -11,7 +11,6 @@ const allClean: BulkRemoveDialogView = {
   confirmLabel: "remove from 4 →",
 };
 
-// One story per state this dialog ships (#422, #423, #424).
 const meta = {
   title: "Inventory/BulkRemoveDialog",
   component: BulkRemoveDialog,
@@ -30,18 +29,14 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-// Checks still running: the count climbs and the confirm is held.
 export const Checking: Story = {
   args: {
     view: { kind: "checking", line: "checking 4 targets — 1 answered" },
   },
 };
 
-// Nothing costs anything, so the panel says so and shows no group at all.
 export const AllClean: Story = {};
 
-// Two copies carry work the removal deletes; the outline warms and the cost
-// travels on the confirm.
 export const LosesWork: Story = {
   args: {
     view: {
@@ -66,8 +61,6 @@ export const LosesWork: Story = {
   },
 };
 
-// One target cannot be touched. It is skipped by the run rather than blocking
-// it, so the confirm stays live and counts only the three it will walk.
 export const CannotBeRemoved: Story = {
   args: {
     view: {
@@ -83,13 +76,10 @@ export const CannotBeRemoved: Story = {
   },
 };
 
-// Mid-run: both controls dead, escape and backdrop blocked, no per-target
-// progress to read.
 export const Running: Story = {
   args: { isRemoving: true },
 };
 
-// The answer was lost. What the run did is unknown, so the panel says so.
 export const OutcomeUnknown: Story = {
   args: {
     report: {
@@ -102,7 +92,6 @@ export const OutcomeUnknown: Story = {
   },
 };
 
-// Every target came off: one line, no group, and nothing left to do but leave.
 export const ReportClean: Story = {
   args: {
     report: {
@@ -113,8 +102,6 @@ export const ReportClean: Story = {
   },
 };
 
-// The split is in the title, and every target left behind carries both the
-// class that skipped it and its own reason.
 export const ReportPartial: Story = {
   args: {
     report: {
@@ -137,8 +124,6 @@ export const ReportPartial: Story = {
   },
 };
 
-// The server answered before the walk began, so nothing was removed anywhere
-// and the confirm body it would act on comes back with the failure.
 export const ReportNeverStarted: Story = {
   args: {
     report: {

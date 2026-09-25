@@ -149,7 +149,7 @@ describe("BulkRemoveDialog — once the checks answer", () => {
     expect(within(refused).queryByText(/^v\d/)).toBeNull();
   });
 
-  // The footer every dialog shares (design.md, ADR-0033 §2, #1116).
+  // The footer every dialog shares (#1116).
   it("confirms with the outlined danger button, Cancel on the leading side", () => {
     renderDialog();
 
@@ -256,8 +256,8 @@ describe("BulkRemoveDialog — during the run", () => {
   it("holds both controls unpressable", () => {
     renderDialog(running);
 
-    // The write's own control stays focusable and states why (ADR-0033 §8);
-    // closing is what must not happen mid-run, so Cancel is disabled outright.
+    // The write's own control stays focusable and states why; closing must not
+    // happen mid-run, so Cancel is disabled outright.
     expect(screen.getByRole("button", { name: /removing/i })).toHaveAttribute(
       "aria-disabled",
       "true",
@@ -305,8 +305,7 @@ describe("BulkRemoveDialog — during the run", () => {
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
-  // The server answered before the walk began, so the same attempt can simply
-  // be made again — and the body it would act on is still on screen.
+  // Answered before the walk began, so the same attempt can be made again.
   it("keeps the confirm live when Run not started", async () => {
     const { onConfirm } = renderDialog({
       view: withCost,
@@ -390,8 +389,7 @@ describe("BulkRemoveDialog — once the run reports", () => {
     expect(screen.getByRole("dialog")).toHaveClass("border-red-7");
   });
 
-  // Nothing left to confirm: the run is over, and a control that reran it
-  // would recount targets the pane behind is already re-reading.
+  // Nothing left to confirm once the run is over.
   it("leaves one way out and no retry, whatever the run left behind", async () => {
     const { onCancel } = renderDialog({ report: clean });
     expect(

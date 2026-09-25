@@ -3,7 +3,6 @@ import { requestJson } from "../api/http";
 import type { NoticeContent } from "./notice";
 import { chooserNotice } from "./path-field-copy";
 
-/** What `PathField` needs from the system folder chooser (ADR-0032). */
 export type FolderChooser = {
   /** False until the server confirms a chooser: no **Browse** before then. */
   available: boolean;
@@ -14,7 +13,6 @@ export type FolderChooser = {
 };
 
 export function useFolderChooser(): FolderChooser {
-  // Whether a helper exists does not change while the server runs.
   const availability = useQuery({
     queryKey: ["folder-chooser"],
     queryFn: () => requestJson<{ available: boolean }>("/api/folder-chooser"),

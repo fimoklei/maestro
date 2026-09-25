@@ -1,6 +1,5 @@
-// The sidebar's counters (#991, #1115), read from the queries the screens they
-// name already hold. Nothing shows before every read answered, `?` where one
-// failed, and nothing at zero: a resting row carries no mark.
+// Nothing shows before every read answered, `?` where one failed, and nothing
+// at zero (#1115).
 import { useQueries } from "@tanstack/react-query";
 import { isBehind, isGlobalBehind } from "../deploy-state/target-rows";
 import type {

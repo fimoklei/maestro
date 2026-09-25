@@ -45,7 +45,6 @@ type Story = StoryObj<typeof meta>;
 
 export const Priced: Story = {};
 
-// The release touches nothing selected, and the confirm is still on offer.
 export const NoContentChanges: Story = {
   args: {
     preview: {
@@ -61,8 +60,6 @@ export const NoContentChanges: Story = {
   },
 };
 
-// Copies stand in the way: each one states its cost and carries its own
-// consent, and the confirm waits for both.
 export const ConsentRequired: Story = {
   args: {
     preview: {
@@ -76,7 +73,6 @@ export const ConsentRequired: Story = {
   },
 };
 
-// Every selected skill disappears at the chosen release.
 export const BecomesEmpty: Story = {
   args: {
     preview: {
@@ -90,8 +86,6 @@ export const BecomesEmpty: Story = {
   },
 };
 
-// The Inventory's entrance: one skill added beside the release move, named
-// first and gone from New in this release (#955).
 export const AddedByThisDeploy: Story = {
   args: {
     preview: {
@@ -113,7 +107,6 @@ export const Refused: Story = {
   },
 };
 
-// What landed, read back per copy. The ledger replaces the sections (#954).
 export const Outcome: Story = {
   args: {
     outcome: [
@@ -124,7 +117,6 @@ export const Outcome: Story = {
   },
 };
 
-// A partial landing, with the tool named where the copies disagree.
 export const IncompleteOutcome: Story = {
   args: {
     incomplete: true,
