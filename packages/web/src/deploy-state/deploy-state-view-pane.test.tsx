@@ -219,12 +219,10 @@ describe("Deploy-state pane — facts", () => {
     );
     expect(tags.closest("p")).toBe(way.closest("p"));
     expect(within(pane).queryByRole("status")).not.toBeInTheDocument();
-    // No mechanism stands behind an Update here (#950): blocked, with its cause.
+    // No mechanism stands behind an Update here (#950), so none is offered (#1125).
     expect(
-      within(pane).getByRole("button", {
-        name: "Update target — pinned per skill",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
+      within(pane).queryByRole("button", { name: /^Update target/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("says nothing about pins a target on one release does not hold", async () => {
@@ -520,10 +518,8 @@ describe("Deploy-state pane — an unfinished operation", () => {
     ).toHaveLength(2);
     // One unfinished change is converged before another starts (#951).
     expect(
-      within(pane).getByRole("button", {
-        name: "Update target — unfinished operation",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
+      within(pane).queryByRole("button", { name: /^Update target/ }),
+    ).not.toBeInTheDocument();
     expect(within(grid()).getByText("Mixed releases")).toBeInTheDocument();
   });
 
@@ -551,7 +547,7 @@ describe("Deploy-state pane — an unfinished operation", () => {
     ).toHaveLength(2);
   });
 
-  it("runs the retry once, and blocks a second while it runs", async () => {
+  it("runs the retry once, and offers no second while it runs", async () => {
     const retries: string[] = [];
     stubServer(() => ({
       repos: [REPO],
@@ -587,28 +583,19 @@ describe("Deploy-state pane — an unfinished operation", () => {
         within(notice).getByRole("button", { name: "Retry deploy" }),
       ).toBeDisabled(),
     );
-    // The foot's copy of the menu item is blocked, with its cause.
+    // The foot and the row's menu drop the retry while it runs (#1125); the
+    // notice's disabled copy is the only one left.
     expect(
-      within(pane).getByRole("button", {
-        name: "Retry deploy — already running",
-      }),
-    ).toHaveAttribute("aria-disabled", "true");
-    await userEvent.click(
-      within(pane).getByRole("button", {
-        name: "Retry deploy — already running",
-      }),
-    );
-    // Nor can the row's menu start a second one (#1067: kept, disabled).
+      within(pane).getAllByRole("button", { name: /^Retry deploy/ }),
+    ).toHaveLength(1);
     await userEvent.click(
       within(await findRow(LABEL)).getByRole("button", {
         name: `Actions for ${LABEL}`,
       }),
     );
-    const running = await screen.findByRole("menuitem", {
-      name: "Retry deploy — already running",
-    });
-    expect(running).toHaveAttribute("aria-disabled", "true");
-    await userEvent.click(running);
+    expect(
+      (await screen.findAllByRole("menuitem")).map((item) => item.textContent),
+    ).toEqual(["Deploy skill"]);
     expect(retries).toHaveLength(1);
   });
 
@@ -626,11 +613,7 @@ describe("Deploy-state pane — an unfinished operation", () => {
       within(foot)
         .getAllByRole("button")
         .map((button) => button.textContent),
-    ).toEqual([
-      "Retry update",
-      "Deploy skill",
-      "Update target — unfinished operation",
-    ]);
+    ).toEqual(["Retry update", "Deploy skill"]);
     expect(
       within(foot).getByRole("button", { name: "Retry update" }),
     ).toHaveClass("bg-gray-12", "h-control");
@@ -656,10 +639,6 @@ describe("Deploy-state pane — an unfinished operation", () => {
     );
     expect(
       (await screen.findAllByRole("menuitem")).map((item) => item.textContent),
-    ).toEqual([
-      "Retry update",
-      "Deploy skill",
-      "Update target — unfinished operation",
-    ]);
+    ).toEqual(["Retry update", "Deploy skill"]);
   });
 });

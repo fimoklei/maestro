@@ -121,45 +121,36 @@ describe("Deploy-state — Update target on a repository", () => {
     ).toBeInTheDocument();
   });
 
+  // #1125: the foot holds only what the target's state calls for.
   it("offers no Update target on a target already on the latest release", async () => {
     stubServer(() => ({ repos: [REPO], repo: { [REPO]: repoAt("v0.3.5") } }));
     renderDeployState();
 
     const pane = await openPane("…/me/project");
-    // Kept at the foot as the menu keeps it: blocked, with its cause (#1065).
-    const blocked = within(pane).getByRole("button", {
-      name: "Update target — on the latest release",
-    });
-    expect(blocked).toHaveAttribute("aria-disabled", "true");
-    await userEvent.click(blocked);
     expect(
-      screen.queryByRole("dialog", { name: "Update …/me/project" }),
+      within(pane).queryByRole("button", { name: /^Update target/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(pane).queryByRole("button", { name: /^Retry/ }),
     ).not.toBeInTheDocument();
   });
 
-  it("keeps Update target and the retry in an In sync target's menu, disabled with their causes", async () => {
+  it("lists only Deploy skill in an In sync target's menu, and says why on hover", async () => {
     stubServer(() => ({ repos: [REPO], repo: { [REPO]: repoAt("v0.3.5") } }));
     renderDeployState();
 
+    const row = await findRow("…/me/project");
     await userEvent.click(
-      within(await findRow("…/me/project")).getByRole("button", {
-        name: "Actions for …/me/project",
-      }),
+      within(row).getByRole("button", { name: "Actions for …/me/project" }),
     );
-    const update = await screen.findByRole("menuitem", {
-      name: "Update target — on the latest release",
-    });
-    const retry = screen.getByRole("menuitem", {
-      name: "Retry update — nothing to retry",
-    });
-    expect(update).toHaveAttribute("aria-disabled", "true");
-    expect(retry).toHaveAttribute("aria-disabled", "true");
-    await userEvent.click(update);
+    const items = await screen.findAllByRole("menuitem");
+    expect(items.map((item) => item.textContent)).toEqual(["Deploy skill"]);
+    await userEvent.keyboard("{Escape}");
 
+    await userEvent.hover(within(row).getByText("In sync"));
     expect(
-      screen.queryByRole("dialog", { name: "Update …/me/project" }),
-    ).not.toBeInTheDocument();
-    expect(update).toBeInTheDocument();
+      await screen.findByText("On the latest release."),
+    ).toBeInTheDocument();
   });
 
   it("opens Update target straight from the row's menu", async () => {

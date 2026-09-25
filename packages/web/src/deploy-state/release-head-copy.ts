@@ -5,6 +5,7 @@ import {
   RETRY_UPDATE,
   UPDATE_INCOMPLETE,
   UPDATE_INCOMPLETE_SENTENCE,
+  UPDATE_TARGET,
 } from "./update-target-copy";
 import type {
   DeployedPrimitive,
@@ -14,7 +15,7 @@ import type {
 } from "./use-deploy-state";
 
 // The meta block's first line. Null for a target on the latest release, whose
-// card carries the read time alone.
+// card says so instead (ON_LATEST_RELEASE).
 export function releaseSentence(head: ReleaseHead): string | null {
   if (head.latestRelease === null) {
     return head.changed === null ? "Changes could not be read." : null;
@@ -26,6 +27,13 @@ export function releaseSentence(head: ReleaseHead): string | null {
     ? `Newer release ${head.latestRelease}. Changes could not be read.`
     : `Newer release ${head.latestRelease}: ${head.changed} of ${head.selected} skills changed`;
 }
+
+// The hover card's line where releaseSentence has none, and its next step on a
+// behind target: why the ⋮ menu offers or omits Update target (#1125).
+export const ON_LATEST_RELEASE = "On the latest release.";
+export const LATEST_RELEASE_UNKNOWN = "Latest release could not be read.";
+export const updateNextStep = (release: string): string =>
+  `Select ${UPDATE_TARGET} to use release ${release}.`;
 
 // The meta block's second line: the fact, then when it was read (copy.md).
 export function comparedLine(head: ReleaseHead, now: Date): string {

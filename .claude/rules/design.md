@@ -43,6 +43,9 @@ building it.
 - Keep a row to one line. Put the summary in the hover card and the rest in
   the 360px detail pane.
 - Open a hover card on focus as well as hover. Put no control in it.
+- List in a row's ⋮ menu and pane foot only the actions its state calls for;
+  omit the rest. The Status hover card states that state and names the next
+  action.
 - Build every detail pane in one order: three to seven facts, one paragraph
   explaining the state, the notice, then the sub-list. A fact is a label in
   slate 11 `meta` beside a short value, in a two-column grid. A sub-list row is
@@ -118,6 +121,7 @@ Pick the form from this table. Add no other form, and no banner.
 - Open a menu button with Enter, Space or Down Arrow, landing on the first
   item.
 - Keep an unavailable control focusable with `aria-disabled`, and state why.
+  A row's ⋮ menu keeps only an item another write locks; it omits the rest.
 - Make every pointer target at least 24×24px. Hold every screen at 200% zoom
   and a narrow width.
 - Mount one `role="status"` region per screen before its content changes. Set

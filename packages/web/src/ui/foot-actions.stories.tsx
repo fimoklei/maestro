@@ -25,17 +25,12 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
-// A standing operation leads; a blocked item stays, with its cause.
+// A standing operation leads.
 export const StandingOperation: Story = {
   args: {
     items: [
       { label: "Retry update", onSelect: () => {} },
       { label: "Deploy skill", onSelect: () => {} },
-      {
-        label: "Update target — unfinished operation",
-        disabled: true,
-        onSelect: () => {},
-      },
     ],
   },
 };
