@@ -602,6 +602,32 @@ describe("Harness home base", () => {
     expect(link).toHaveAttribute("target", "_blank");
   });
 
+  it("links a Pending proposal row to the open request its local work follows", async () => {
+    stubHarnessServer({
+      read: {
+        body: withStages(RELEASED, {
+          proposal: [
+            row("pending-proposal", "tdd", "new-local-work", {
+              requests: [pullRequest(47)],
+              comparison: { kind: "proposal", number: 47 },
+            }),
+          ],
+        }),
+      },
+    });
+    renderHarness();
+
+    const [tdd] = await stageRows("Pending proposal");
+    expect(
+      within(tdd as HTMLElement).getByRole("link", {
+        name: "Pull request #47, opens in a new tab",
+      }),
+    ).toHaveAttribute(
+      "href",
+      "https://github.com/fimoklei/agent-harness/pull/47",
+    );
+  });
+
   it("states Origin, Released and Branch in band 2, beside the freshness line and Re-read Harness", async () => {
     stubHarnessServer({
       read: {

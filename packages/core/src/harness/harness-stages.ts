@@ -310,6 +310,9 @@ const proposalStage = (
     const open = (matches.get(skill) ?? []).filter(
       (request) => request.state === "open",
     );
+    // Several open requests leave nothing to follow: the row's sentence names
+    // that ambiguity, and linking one would be an arbitrary choice.
+    const sole = open.length === 1 ? open[0] : undefined;
     rows.push({
       ...blankRow(
         "pending-proposal",
@@ -322,13 +325,11 @@ const proposalStage = (
       ),
       deletion: isLocalDeletion(hashes),
       restorable: isRestorable(trees, skill),
+      requests: sole === undefined ? [] : [link(sole)],
       comparison:
         proposal === null
           ? { kind: "default-branch" }
-          : {
-              kind: "proposal",
-              number: open.length === 1 ? (open[0]?.number ?? null) : null,
-            },
+          : { kind: "proposal", number: sole?.number ?? null },
       concurrentChange: isConcurrentlyChanged(
         hashes,
         atMergeBase === null ? undefined : (atMergeBase[skill] ?? null),

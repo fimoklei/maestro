@@ -4,7 +4,6 @@ import { MachineValue } from "../ui/machine-value";
 import {
   PULL_REQUEST_CARD,
   pullRequestLinkName,
-  pullRequestOpensLine,
   pullRequestState,
   requestedReviewers,
   reviewWord,
@@ -94,9 +93,6 @@ function RequestCard({
           <MachineValue>{request.baseBranch}</MachineValue>
         </dd>
       </dl>
-      <p className="m-0 border-gray-6 border-t pt-inline text-gray-11">
-        {pullRequestOpensLine(request.number)}
-      </p>
     </div>
   );
 }

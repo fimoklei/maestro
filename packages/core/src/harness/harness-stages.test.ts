@@ -248,6 +248,47 @@ describe("Pending proposal membership", () => {
     expect(row.comparison).toEqual({ kind: "proposal", number: 45 });
   });
 
+  it("links the one open request the local work follows", () => {
+    const trees = {
+      remote: { tdd: "same" },
+      promote: { tdd: onBranch("pushed") },
+      local: { tdd: "same" },
+      working: { tdd: "edited" },
+    };
+    const row = oneRow(
+      stages({ trees, review: reviewOf([request()]) }).proposal,
+    );
+    expect(row.requests).toEqual([
+      {
+        number: 45,
+        url: "https://github.com/fimoklei/agent-harness/pull/45",
+        headBranch: "maestro/tdd",
+        baseBranch: "main",
+      },
+    ]);
+  });
+
+  it("links no request when several open ones match, or none does", () => {
+    const trees = {
+      remote: { tdd: "same" },
+      promote: { tdd: onBranch("pushed") },
+      local: { tdd: "same" },
+      working: { tdd: "edited" },
+    };
+    const several = oneRow(
+      stages({
+        trees,
+        review: reviewOf([request(), request({ number: 46 })]),
+      }).proposal,
+    );
+    const closed = oneRow(
+      stages({ trees, review: reviewOf([request({ state: "closed" })]) })
+        .proposal,
+    );
+    expect(several.requests).toEqual([]);
+    expect(closed.requests).toEqual([]);
+  });
+
   it("names the default branch when no proposal exists", () => {
     const trees = { ...SETTLED, working: { tdd: "edited" } };
     const row = oneRow(stages({ trees }).proposal);

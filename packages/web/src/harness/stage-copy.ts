@@ -210,9 +210,6 @@ export const reviewerLine = (row: HarnessStageRow): string | null => {
 export const pullRequestLinkName = (number: number): string =>
   `Pull request #${number}, opens in a new tab`;
 
-export const pullRequestOpensLine = (number: number): string =>
-  `Select #${number} to open it on GitHub in a new tab.`;
-
 // `into` stands in for the arrow between the branches, which is not read out.
 export const PULL_REQUEST_CARD = {
   review: "Review",

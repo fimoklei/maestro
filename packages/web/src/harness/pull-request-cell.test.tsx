@@ -82,11 +82,31 @@ describe("PullRequestCell", () => {
     expect(screen.getByText("Open")).toBeInTheDocument();
     expect(screen.getByText("Changes requested")).toBeInTheDocument();
     expect(screen.getByText("@sanne, @joris")).toBeInTheDocument();
-    expect(
-      screen.getByText("Select #47 to open it on GitHub in a new tab."),
-    ).toBeInTheDocument();
+    // The link's own name already says where it goes (#1076).
+    expect(screen.queryByText(/to open it on GitHub/)).not.toBeInTheDocument();
     // A summary, never a control (design.md → Disclosure).
     expect(screen.getAllByRole("link")).toHaveLength(1);
+  });
+
+  it("shows only the number and branch on a Pending proposal row", () => {
+    // The row's status is the local work's, not the request's (#1076).
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    render(
+      <PullRequestCell
+        row={row({
+          stage: "pending-proposal",
+          status: "new-local-work",
+          reviewers: [],
+        })}
+      />,
+    );
+
+    fireEvent.pointerEnter(screen.getByRole("link"), { pointerType: "mouse" });
+    act(() => vi.advanceTimersByTime(400));
+
+    expect(screen.getByText("Branch")).toBeInTheDocument();
+    expect(screen.queryByText("Open")).not.toBeInTheDocument();
+    expect(screen.queryByText("Review")).not.toBeInTheDocument();
   });
 
   it("names the branch the request carries and the branch it goes into", () => {
