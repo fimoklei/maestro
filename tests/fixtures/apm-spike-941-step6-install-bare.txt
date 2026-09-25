@@ -1,6 +1,6 @@
 [>] Installing dependencies from apm.yml...
 [i] Targets: claude, codex  (source: --target flag)
-  [+] /private/tmp/claude-501/-Users-michielmerks-Projects-maestro/6604b510-2317-4b1e-9173-02d38d5b76c3/scratchpad/localpkg (local)
+  [+] /private/tmp/claude-501/-Users-dev-Projects-maestro/6604b510-2317-4b1e-9173-02d38d5b76c3/scratchpad/localpkg (local)
   [+] fimoklei/apm-spike-833 #v2.0.0 @4beb0720 (cached)
   |-- 1 skill(s) integrated -> .agents/skills/, .claude/skills/
   |-- 3 skill(s) integrated -> .agents/skills/, .claude/skills/

@@ -20,7 +20,7 @@ Measured live against `pnpm smoke` (sandbox `MAESTRO_HOME`, true first-run state
 | 3 | User Control and Freedom | 1 | No Escape handler anywhere in `packages/web/src/shell/` (grep exit 1, confirmed in-browser twice). No backdrop dismiss, no focus trap, no initial focus into the dialog, no focus restore. No back link between wizard steps. |
 | 4 | Consistency and Standards | 2 | Disabled buttons are visually identical to enabled ones (`register 0 selected →`: `disabled: true`, `opacity: 1`, `background: rgb(232,163,61)`). Welcome is centred, every later step left-aligned — the layout lurches on the first click. Error has no glyph; success does. |
 | 5 | Error Prevention | 2 | `agent-harness/` — the central inventory itself — is offered as a selectable consuming repo. `scratch-notes/` renders with no checkbox and no explanation. |
-| 6 | Recognition Rather Than Recall | 3 | Breadcrumbs, `git` chips and per-row path echo are good. But two distinct repos render in the sidebar as byte-identical truncated strings (`/Users/michielmerks/P…`), because truncation drops the distinguishing tail. |
+| 6 | Recognition Rather Than Recall | 3 | Breadcrumbs, `git` chips and per-row path echo are good. But two distinct repos render in the sidebar as byte-identical truncated strings (`/Users/dev/P…`), because truncation drops the distinguishing tail. |
 | 7 | Flexibility and Efficiency | 2 | Filter-this-folder is genuinely fast. No Escape, no keyboard route into the dialog, no shortcut to the paste field, one flat listing for a many-repo user. |
 | 8 | Aesthetic and Minimalist Design | 4 | Strongest axis. Nothing decorative anywhere. Detector confirms: only 2 advisory findings in the whole surface, none in the wizard. |
 | 9 | Error Recovery | 2 | Copy is correct and terse. Delivery is wrong: 10px, no glyph, positioned below the submit button rather than under the field, and focus drops to `BODY` instead of returning to the invalid input. ARIA wiring (`aria-invalid`, `aria-describedby`, `role="alert"`) is correct — semantics beat visuals. |
@@ -101,7 +101,7 @@ The single biggest opportunity: **make onboarding end in a deployed primitive, n
 **Suggested command:** `/impeccable colorize`
 
 ### [P2] Long paths truncate at the tail, making distinct targets identical
-**What:** Two different registered repos render in the sidebar as byte-identical `/Users/michielmerks/P…`. In the cockpit both `LOCAL` cards truncate as `…/.maestro-sandbox/home/Pr…`.
+**What:** Two different registered repos render in the sidebar as byte-identical `/Users/dev/P…`. In the cockpit both `LOCAL` cards truncate as `…/.maestro-sandbox/home/Pr…`.
 **Why it matters:** "One power user, many repos" is the stated user. Deep, similarly-prefixed paths are the normal case, not the edge case — and deploy-state is read *per target*.
 **Fix:** Basename as the primary label with the parent path as dim secondary text, or middle-truncate (`/Users/…/Projects/checkout-service`). Add `title` for the full string on hover.
 **Suggested command:** `/impeccable clarify`

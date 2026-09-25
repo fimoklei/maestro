@@ -43,6 +43,8 @@ Phrases a fixture comment must never contain: `is a symlink`,
   symlink component in `HOME` makes a 0.29.0 `-g` install deploy nothing
   (`docs/apm-behavior.md` § Global scope). No `-g` command ever ran against the
   real home (`LEARNINGS.md`).
+- The operator's home is replaced by `/Users/dev` after capture, including its
+  dash-encoded form in sandbox paths (`-Users-dev-`). Nothing else is edited.
 - Auth, where needed, via `GITHUB_APM_PAT` + `GITHUB_TOKEN` from `gh auth token`
   — the `HOME` redirect strips the gh credential helper. "No credentials" means
   both unset, plus `GH_TOKEN`.
