@@ -63,6 +63,7 @@ in `~/.maestro/config.json`.
 
 ### When touching package boundaries (core/server/web) → Read `.claude/rules/architecture.md`
 ### When writing tests → Read `.claude/rules/testing.md`
+### When writing or trimming a code comment → Read `.claude/rules/comments.md`
 ### When shelling out to APM or reading external files/lockfiles → Read `.claude/rules/security.md`
 ### When writing a React component or client-side data access → Read `.claude/rules/frontend.md`
 ### When designing a screen, dialog or use case, or changing what `packages/web` renders → Read `.claude/rules/design.md`
