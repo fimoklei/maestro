@@ -25,6 +25,14 @@ async function openPane(name: string) {
   return within(await screen.findByRole("complementary"));
 }
 
+// The pane's Deploy skill opens the deploy dialog with this skill alone, where
+// the target is chosen (#1065). Returns the dialog's scope.
+async function openDeployDialog(name: string) {
+  const pane = await openPane(name);
+  await userEvent.click(pane.getByRole("button", { name: "Deploy skill" }));
+  return within(await screen.findByRole("dialog", { name: "Deploy 1 skill" }));
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -119,19 +127,23 @@ describe("InventoryPanel", () => {
     expect(within(grid).getAllByRole("row")).toHaveLength(3); // header + 2 skills
   });
 
-  it("offers a deploy action with a repo choice in the detail pane", async () => {
+  it("offers a deploy action with a repo choice from the detail pane", async () => {
     stubApi(
       [{ type: "skill", name: "tdd", description: "TDD loop" }],
       [{ path: "/projects/alpha" }],
     );
     renderPanel();
 
-    const pane = await openPane("tdd");
+    const dialog = await openDeployDialog("tdd");
 
     expect(
-      await screen.findByLabelText(/deploy target for tdd/i),
+      await dialog.findByRole("option", { name: /alpha/ }),
     ).toBeInTheDocument();
-    expect(pane.getByRole("button", { name: /deploy/i })).toBeEnabled();
+    await waitFor(() =>
+      expect(
+        dialog.getByRole("button", { name: /^Deploy skill/ }),
+      ).toBeEnabled(),
+    );
   });
 
   it("disables the deploy action while the registry is still loading", async () => {
@@ -154,10 +166,10 @@ describe("InventoryPanel", () => {
     );
     renderPanel();
 
-    const pane = await openPane("tdd");
+    const dialog = await openDeployDialog("tdd");
 
     expect(
-      await pane.findByRole("button", { name: /loading targets/i }),
+      await dialog.findByRole("button", { name: /loading targets/i }),
     ).toBeDisabled();
   });
 
@@ -205,10 +217,10 @@ describe("InventoryPanel", () => {
     );
     renderPanel();
 
-    const pane = await openPane("tdd");
+    const dialog = await openDeployDialog("tdd");
 
     expect(
-      await pane.findByRole("button", { name: /loading targets/i }),
+      await dialog.findByRole("button", { name: /loading targets/i }),
     ).toBeDisabled();
   });
 

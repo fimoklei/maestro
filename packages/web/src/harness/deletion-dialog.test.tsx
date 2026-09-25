@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { NoticeContent } from "../ui/notice";
 import { DeletionDialog, type DeletionMode } from "./deletion-dialog";
@@ -53,6 +53,25 @@ describe("DeletionDialog", () => {
 
     expect(screen.getByText(TREE)).toHaveAccessibleDescription(
       "The copy on the default branch now. If it moves before you confirm, nothing is pushed.",
+    );
+  });
+
+  // The footer every dialog shares (design.md, ADR-0033 §2, #1116).
+  it("confirms with the outlined danger button, Cancel on the leading side", () => {
+    renderDialog();
+
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    expect(cancel.parentElement?.firstElementChild).toBe(cancel);
+    expect(cancel.parentElement).toHaveClass("justify-between");
+    const confirm = screen.getByRole("button", { name: "Delete skill" });
+    expect(confirm).toHaveClass("text-red-11", "border-red-7");
+  });
+
+  it("opens with focus on Cancel, so Enter deletes nothing", async () => {
+    renderDialog();
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus(),
     );
   });
 

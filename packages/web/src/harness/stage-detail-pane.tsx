@@ -1,8 +1,6 @@
-import { ArrowUpRight } from "lucide-react";
-import type { ActionsMenuProps } from "../ui/actions-menu";
-import { Button } from "../ui/button";
-import { cn } from "../ui/cn";
 import { DetailPane } from "../ui/detail-pane";
+import { FactList, FactRow } from "../ui/fact-list";
+import { FootActions } from "../ui/foot-actions";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { StatusBadge } from "../ui/status-badge";
 import type { HarnessTableRow } from "./harness-columns";
@@ -52,24 +50,16 @@ export function StageDetailPane({
         row.items.length === 0 ? undefined : <FootActions items={row.items} />
       }
     >
-      <dl className="m-0 grid grid-cols-[auto_1fr] items-center gap-x-panel gap-y-inline text-row">
-        <dt className="text-gray-11">Stage</dt>
-        <dd className="m-0 text-gray-12">{STAGE_NAMES[row.stage]}</dd>
-        <dt className="text-gray-11">Status</dt>
-        <dd className="m-0 flex">
+      <FactList>
+        <FactRow label="Stage">{STAGE_NAMES[row.stage]}</FactRow>
+        <FactRow label="Status">
           <StatusBadge reading={row.reading} />
-        </dd>
-        <dt className="text-gray-11">Pull request</dt>
-        <dd className="m-0">
+        </FactRow>
+        <FactRow label="Pull request">
           <PullRequestCell row={row} />
-        </dd>
-        {alsoIn === "" ? null : (
-          <>
-            <dt className="text-gray-11">Also in</dt>
-            <dd className="m-0 text-gray-12">{alsoIn}</dd>
-          </>
-        )}
-      </dl>
+        </FactRow>
+        {alsoIn === "" ? null : <FactRow label="Also in">{alsoIn}</FactRow>}
+      </FactList>
       <div className="mt-section flex flex-col gap-tight text-prose">
         <p className="m-0 text-gray-12">{detailSentence(row, context)}</p>
         {reviewers === null ? null : (
@@ -93,50 +83,5 @@ export function StageDetailPane({
         </div>
       ) : null}
     </DetailPane>
-  );
-}
-
-// The ⋮ menu's items as buttons, in the same order. A press that leads the
-// menu is the stage's next step, so it alone is primary (#1045).
-function FootActions({ items }: { items: ActionsMenuProps["items"] }) {
-  const lead = items[0];
-  const first =
-    lead !== undefined && lead.href === undefined && !lead.disabled ? 0 : -1;
-  return (
-    <>
-      {items.map((item, index) =>
-        item.href === undefined ? (
-          <Button
-            key={item.label}
-            size="md"
-            variant={
-              item.danger ? "danger" : index === first ? "primary" : "quiet"
-            }
-            aria-disabled={item.disabled || undefined}
-            onClick={item.disabled ? undefined : item.onSelect}
-          >
-            {item.label}
-          </Button>
-        ) : (
-          <a
-            key={item.label}
-            href={item.href}
-            target="_blank"
-            rel="noreferrer"
-            className={cn(
-              "inline-flex h-control items-center gap-tight rounded-control border border-gray-7 px-cell font-ui text-gray-12 text-row no-underline hover:bg-gray-3",
-              "focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2",
-            )}
-          >
-            {item.label}
-            <ArrowUpRight
-              aria-hidden="true"
-              strokeWidth={1.5}
-              className="size-4"
-            />
-          </a>
-        ),
-      )}
-    </>
   );
 }

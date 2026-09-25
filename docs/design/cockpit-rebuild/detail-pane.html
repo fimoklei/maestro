@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Maestro Detail pane</title>
+<!-- #1065: the one detail-pane shape, Inventory and Deploy-state side by side, dark, 1440x900. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+/* Copied from packages/web/src/styles/tokens.css (dark) and theme.css (scale). */
+:root {
+  color-scheme: dark;
+  --gray-1: #111113; --gray-3: #212225; --gray-4: #272a2d; --gray-5: #2e3135;
+  --gray-6: #363a3f; --gray-7: #43484e; --gray-11: #b0b4ba; --gray-12: #edeef0;
+  --amber-3: #302008; --amber-7: #714f19; --amber-11: #ffca16; --amber-12: #ffe7b3;
+  --red-7: #8c333a; --red-11: #ff9592;
+  --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --font-ui: "Geist", "Helvetica Neue", Helvetica, sans-serif;
+  --font-mono: "Geist Mono", "SFMono-Regular", Menlo, monospace;
+  --text-meta: 0.75rem; --lh-meta: 1rem;
+  --text-row: 0.8125rem; --lh-row: 1.25rem;
+  --text-prose: 0.875rem; --lh-prose: 1.25rem;
+  --text-heading: 1rem; --lh-heading: 1.5rem;
+  --radius-chip: 4px; --radius-control: 6px; --radius-float: 12px;
+  --row: 2rem; --control: 2rem;
+  --tight: 0.25rem; --inline: 0.5rem; --cell: 0.75rem; --panel: 1rem; --section: 1.5rem;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { width: 1440px; height: 900px; overflow: hidden; display: flex; background: var(--gray-1); color: var(--gray-12); font-family: var(--font-ui); font-size: var(--text-row); line-height: var(--lh-row); }
+.mono { font-family: var(--font-mono); }
+.muted { color: var(--gray-11); }
+p { margin: 0; }
+
+/* one screen: a sliver of its table, then the 360px pane */
+.screen { flex: 1 1 0; display: flex; min-width: 0; border-right: 1px solid var(--gray-7); }
+.screen:last-child { border-right: 0; }
+.table { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.band { height: 48px; flex: none; display: flex; align-items: center; gap: var(--inline); padding: 0 var(--panel); border-bottom: 1px solid var(--gray-7); }
+.band h1 { margin: 0; font-size: var(--text-heading); line-height: var(--lh-heading); font-weight: 600; letter-spacing: -0.2px; }
+.thead, .tr { display: flex; align-items: center; gap: var(--cell); height: var(--row); padding: 0 var(--panel); border-bottom: 1px solid var(--gray-6); }
+.thead { color: var(--gray-11); font-size: var(--text-meta); }
+.tr .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tr.open { background: var(--gray-5); }
+.group { height: var(--row); display: flex; align-items: center; padding: 0 var(--panel); color: var(--gray-11); font-size: var(--text-meta); border-bottom: 1px solid var(--gray-6); }
+.badge { display: inline-flex; align-items: center; gap: var(--tight); height: 20px; padding: 0 var(--tight); border: 1px solid transparent; border-radius: var(--radius-chip); font-size: var(--text-meta); font-weight: 500; color: var(--gray-11); white-space: nowrap; }
+.badge.attention { border-color: var(--amber-7); background: var(--amber-3); color: var(--amber-12); }
+.badge.attention .g { color: var(--amber-11); }
+
+/* the pane */
+.pane { width: 360px; flex: none; display: flex; flex-direction: column; border-left: 1px solid var(--gray-7); background: var(--gray-1); position: relative; }
+.pane-head { height: 48px; flex: none; display: flex; align-items: center; gap: var(--inline); padding: 0 var(--panel); border-bottom: 1px solid var(--gray-7); }
+.pane-head h2 { flex: 1; margin: 0; font-size: var(--text-heading); line-height: var(--lh-heading); font-weight: 600; letter-spacing: -0.2px; }
+.pos { color: var(--gray-11); font-size: var(--text-meta); font-variant-numeric: tabular-nums; }
+.icon { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; color: var(--gray-11); border-radius: var(--radius-control); }
+.pane-body { flex: 1; min-height: 0; overflow: hidden; padding: var(--panel); }
+.pane-foot { flex: none; display: flex; flex-wrap: wrap; gap: var(--inline); padding: var(--panel); border-top: 1px solid var(--gray-7); }
+
+/* facts: label beside value, one component on every pane */
+dl.facts { margin: 0; display: grid; grid-template-columns: auto 1fr; column-gap: var(--panel); row-gap: var(--inline); align-items: center; }
+dl.facts dt { color: var(--gray-11); font-size: var(--text-meta); line-height: var(--lh-meta); }
+dl.facts dd { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.why { margin-top: var(--section); font-size: var(--text-prose); line-height: var(--lh-prose); }
+.desc { margin-top: var(--section); font-size: var(--text-prose); line-height: var(--lh-prose); color: var(--gray-11); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.more { margin-top: var(--tight); font-size: var(--text-meta); color: var(--gray-11); }
+
+.notice { margin-top: var(--cell); display: flex; gap: 6px; padding: 10px; border: 1px solid var(--amber-7); background: var(--amber-3); border-radius: var(--radius-control); font-size: var(--text-meta); line-height: var(--lh-meta); }
+.notice .g { color: var(--amber-11); font-family: var(--font-mono); }
+.notice .body { display: flex; flex-direction: column; gap: var(--tight); }
+.notice .label { font-weight: 600; color: var(--amber-12); }
+
+section.sub { margin-top: var(--section); }
+section.sub h3 { margin: 0 0 var(--inline); font-weight: 400; font-size: var(--text-meta); line-height: var(--lh-meta); color: var(--gray-11); }
+section.sub h3 .n { color: var(--gray-12); font-variant-numeric: tabular-nums; }
+ul.rows { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--gray-6); }
+ul.rows li { display: flex; align-items: center; gap: var(--inline); height: var(--row); border-bottom: 1px solid var(--gray-6); position: relative; }
+.mark { width: 24px; height: 24px; flex: none; display: inline-flex; align-items: center; justify-content: center; }
+.mark.good { color: var(--gray-11); }
+.mark.attention { color: var(--amber-11); }
+ul.rows .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ul.rows .mv { color: var(--gray-11); }
+.kebab { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; color: var(--gray-11); border-radius: var(--radius-control); }
+.kebab.on { background: var(--gray-4); color: var(--gray-12); }
+
+.menu { position: absolute; right: 0; top: 30px; z-index: 2; min-width: 208px; padding: var(--tight); background: var(--gray-3); border: 1px solid var(--gray-7); border-radius: var(--radius-float); box-shadow: var(--shadow-float); }
+.menu div { height: var(--row); display: flex; align-items: center; padding: 0 var(--inline); border-radius: var(--radius-control); white-space: nowrap; }
+.menu div.focus { background: var(--gray-5); }
+.menu div.danger { color: var(--red-11); }
+
+.btn { display: inline-flex; align-items: center; height: var(--control); padding: 0 var(--cell); border: 1px solid var(--gray-7); border-radius: var(--radius-control); font: 500 var(--text-row)/var(--lh-row) var(--font-ui); color: var(--gray-12); background: transparent; white-space: nowrap; }
+.btn.primary { background: var(--gray-12); border-color: var(--gray-12); color: var(--gray-1); }
+.btn.danger { color: var(--red-11); border-color: var(--red-7); }
+.btn.blocked { background: var(--gray-3); color: var(--gray-11); }
+.btn.sm { height: 24px; padding: 0 var(--inline); }
+</style>
+</head>
+<body>
+
+<!-- ── Inventory ───────────────────────────────────────────────────────── -->
+<div class="screen">
+  <div class="table">
+    <div class="band"><h1>Inventory</h1><span class="muted" style="font-size:var(--text-meta)">36 skills</span></div>
+    <div class="thead"><span style="flex:1">Name</span><span>Status</span><span style="width:48px;text-align:right">Targets</span></div>
+    <div class="tr"><span class="name">grill-me</span><span class="badge"><span class="g">✓</span>Up to date</span><span style="width:48px;text-align:right">3</span></div>
+    <div class="tr"><span class="name">handoff</span><span class="badge"><span class="g">✓</span>Up to date</span><span style="width:48px;text-align:right">2</span></div>
+    <div class="tr"><span class="name">prototype</span><span class="badge"><span class="g">✓</span>Up to date</span><span style="width:48px;text-align:right">1</span></div>
+    <div class="tr open"><span class="name">tdd</span><span class="badge attention"><span class="g">↑</span>Behind</span><span style="width:48px;text-align:right">3</span></div>
+    <div class="tr"><span class="name">workflow-commit</span><span class="badge"><span class="g">✓</span>Up to date</span><span style="width:48px;text-align:right">3</span></div>
+    <div class="tr"><span class="name">zoom-out</span><span class="badge"><span class="g">–</span>Not deployed</span><span style="width:48px;text-align:right">0</span></div>
+  </div>
+  <aside class="pane" aria-label="tdd detail">
+    <div class="pane-head"><h2>tdd</h2><span class="pos">4 / 36</span><span class="icon">✕</span></div>
+    <div class="pane-body">
+      <dl class="facts">
+        <dt>Type</dt><dd>Skill</dd>
+        <dt>Targets</dt><dd>3</dd>
+      </dl>
+      <p class="desc">Test-driven development. Use when the user wants to build features or fix bugs test-first, mentions "red-green-refactor", or wants integration tests. Writes the failing test, then the smallest code that passes it, then refactors.</p>
+      <p class="more">More ›</p>
+      <section class="sub">
+        <h3>Deployed to</h3>
+        <ul class="rows">
+          <li><span class="mark good">✓</span><span class="nm">Claude Code</span><span class="mv mono">v1.4.0</span><span class="kebab">⋮</span></li>
+          <li><span class="mark attention">↑</span><span class="nm">Codex</span><span class="mv mono">v1.3.2</span><span class="kebab on">⋮</span>
+            <div class="menu" role="menu">
+              <div class="focus">Update target</div>
+              <div>Show in Deploy-state</div>
+              <div class="danger">Remove from Claude Code and Codex</div>
+            </div>
+          </li>
+          <li><span class="mark good">✓</span><span class="nm">maestro</span><span class="mv mono">v1.4.0</span><span class="kebab">⋮</span></li>
+        </ul>
+      </section>
+    </div>
+    <div class="pane-foot">
+      <span class="btn primary">Deploy skill</span>
+      <span class="btn danger">Remove from all 3 targets</span>
+    </div>
+  </aside>
+</div>
+
+<!-- ── Deploy-state ────────────────────────────────────────────────────── -->
+<div class="screen">
+  <div class="table">
+    <div class="band"><h1>Deploy-state</h1><span class="muted" style="font-size:var(--text-meta)">7 targets</span></div>
+    <div class="thead"><span style="flex:1">Target</span><span>Status</span></div>
+    <div class="group">Global 2</div>
+    <div class="tr"><span class="name">Claude Code</span><span class="badge"><span class="g">✓</span>In sync</span></div>
+    <div class="tr"><span class="name">Codex</span><span class="badge attention"><span class="g">↑</span>Behind</span></div>
+    <div class="group">Repositories 5</div>
+    <div class="tr"><span class="name">maestro</span><span class="badge"><span class="g">✓</span>In sync</span></div>
+    <div class="tr open"><span class="name">orca</span><span class="badge attention"><span class="g">⚠</span>Attention</span></div>
+    <div class="tr"><span class="name">notes-cli</span><span class="badge"><span class="g">–</span>Pinned per skill</span></div>
+  </div>
+  <aside class="pane" aria-label="orca detail">
+    <div class="pane-head"><h2>orca</h2><span class="pos">4 / 7</span><span class="icon">✕</span></div>
+    <div class="pane-body">
+      <dl class="facts">
+        <dt>Kind</dt><dd>Repository</dd>
+        <dt>Path</dt><dd class="mono">~/Projects/orca</dd>
+        <dt>Release</dt><dd class="mono">v1.2.0</dd>
+        <dt>Latest release</dt><dd class="mono">v1.4.0</dd>
+        <dt>Changed</dt><dd>3 of 5 skills</dd>
+        <dt>Compared</dt><dd>Read 4 min ago</dd>
+        <dt>Extra files</dt><dd>2 files</dd>
+      </dl>
+      <p class="why">Newer release v1.4.0: 3 of 5 skills changed</p>
+      <div class="notice" role="status">
+        <span class="g" aria-hidden="true">⚠</span>
+        <div class="body">
+          <span class="label">Update incomplete</span>
+          <span>The update is incomplete. Select Retry update to run the same release again.</span>
+          <span class="muted">Update to v1.4.0 incomplete: 2 of 5 skills now use this release.</span>
+          <span class="btn sm" style="align-self:flex-start">Retry update</span>
+        </div>
+      </div>
+      <section class="sub">
+        <h3>Selected skills <span class="n">5</span></h3>
+        <ul class="rows">
+          <li><span class="mark attention">↑</span><span class="nm">grill-me</span><span class="mv mono">v1.2.0 → v1.4.0</span><span class="kebab">⋮</span></li>
+          <li><span class="mark attention">✎</span><span class="nm">handoff</span><span class="mv mono">v1.2.0</span><span class="kebab">⋮</span></li>
+          <li><span class="mark good">✓</span><span class="nm">tdd</span><span class="mv mono">v1.4.0</span><span class="kebab">⋮</span></li>
+          <li><span class="mark good">✓</span><span class="nm">workflow-commit</span><span class="mv mono">v1.4.0</span><span class="kebab">⋮</span></li>
+          <li><span class="mark attention">↑</span><span class="nm">zoom-out</span><span class="mv mono">v1.2.0 → v1.4.0</span><span class="kebab">⋮</span></li>
+        </ul>
+      </section>
+    </div>
+    <div class="pane-foot">
+      <span class="btn primary">Retry update</span>
+      <span class="btn">Deploy skill</span>
+      <span class="btn blocked" aria-disabled="true">Update target — unfinished operation</span>
+    </div>
+  </aside>
+</div>
+
+</body>
+</html>

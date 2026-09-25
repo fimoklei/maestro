@@ -13,19 +13,22 @@ export type BulkDeployInput = {
 };
 
 type BulkDeployedRow = { name: string; version: string };
-// `forceable` keeps the offer honest: a per-item force clears a not-proven-clean
-// refusal, but re-running the same install over an unsupported package type only
-// records it again (#358).
+// `forceable` keeps the offer honest: a per-item force clears only a
+// not-proven-clean refusal (#358).
 type BulkAttentionRow = {
   name: string;
   error: DeploySkillError;
-  packageType?: string;
   forceable: boolean;
   // The receipt this row's own refusal minted, so the row's inline deploy
   // grants exactly what that refusal read and nothing else (#952).
   copyReceipt?: string;
 };
-type BulkFailure = { error: DeploySkillError; names: string[] };
+// `linkedPath` is Maestro's own reading of the link apm refused (ADR-0018).
+type BulkFailure = {
+  error: DeploySkillError;
+  names: string[];
+  linkedPath?: string;
+};
 
 export type BulkDeployReport = {
   target: DeployTarget;
@@ -42,9 +45,9 @@ export class BulkDeploySkills {
   async execute(input: BulkDeployInput): Promise<BulkDeployReport> {
     const deployed: BulkDeployedRow[] = [];
     const attention: BulkAttentionRow[] = [];
-    // Keyed by error so identical failures collapse to one line, in first-seen
-    // order, without losing which skills hit them.
-    const failures = new Map<DeploySkillError, string[]>();
+    // Keyed by error (and link) so identical failures collapse to one line, in
+    // first-seen order, without losing which skills hit them.
+    const failures = new Map<string, BulkFailure>();
 
     // Caught here too, so an unexpected exception still answers every name
     // with a typed error rather than aborting the report (#292).
@@ -68,23 +71,27 @@ export class BulkDeploySkills {
         attention.push({
           name,
           error: result.error,
-          ...(result.packageType ? { packageType: result.packageType } : {}),
           ...(result.copyReceipt ? { copyReceipt: result.copyReceipt } : {}),
           forceable: ATTENTION[result.error]?.forceable ?? false,
         });
       } else {
-        const names = failures.get(result.error) ?? [];
-        names.push(name);
-        failures.set(result.error, names);
+        const key = `${result.error}\0${result.linkedPath ?? ""}`;
+        const line = failures.get(key) ?? {
+          error: result.error,
+          names: [],
+          ...(result.linkedPath ? { linkedPath: result.linkedPath } : {}),
+        };
+        line.names.push(name);
+        failures.set(key, line);
       }
     }
 
-    const failed: BulkFailure[] = [...failures].map(([error, names]) => ({
-      error,
-      names,
-    }));
-
-    return { target: input.target, deployed, attention, failed };
+    return {
+      target: input.target,
+      deployed,
+      attention,
+      failed: [...failures.values()],
+    };
   }
 }
 

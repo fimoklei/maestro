@@ -1,13 +1,11 @@
 import type { BulkRemoveTarget } from "@maestro/core";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
 import {
   type RemovePreflightView,
   refusedPreflightCode,
   removePreflightView,
 } from "../deploy-state/remove-preflight-view";
 import { removePreflightQueryOptions } from "../deploy-state/use-remove-preflight";
-import { Button } from "../ui/button";
 import { BulkRemoveDialog } from "./bulk-remove-dialog";
 import { bulkRemoveDialogView } from "./bulk-remove-dialog-view";
 import { bulkRemoveReportView } from "./bulk-remove-report-view";
@@ -24,48 +22,11 @@ const STILL_CHECKING: RemovePreflightView = {
   reclaim: [],
 };
 
-// The pane's REMOVE section (#422). The caller decides whether there is a bulk
-// to offer at all; this owns the button, and the run below owns everything the
-// dialog needs.
-export function BulkRemoveSkillAction({
-  skillName,
-  targets,
-  defaultOpen = false,
-}: {
-  skillName: string;
-  targets: BulkRemoveCandidate[];
-  /** Opened by the Inventory row's ⋮ menu, which asked for it by name. */
-  defaultOpen?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-
-  return (
-    <>
-      <Button
-        variant="quiet"
-        size="sm"
-        className="w-full"
-        onClick={() => setOpen(true)}
-      >
-        Remove from all {targets.length}{" "}
-        {targets.length === 1 ? "target" : "targets"}
-      </Button>
-      {open ? (
-        <BulkRemoveRun
-          skillName={skillName}
-          targets={targets}
-          onClose={() => setOpen(false)}
-        />
-      ) : null}
-    </>
-  );
-}
-
 // Mounted only while the dialog is open, and that is the point: the checks
 // unmount with it, so a reopen measures the copies again instead of handing
 // out a confirm against the last open's answer. A disabled query keeps its
 // observer, and an observed query keeps its data whatever gcTime says.
-function BulkRemoveRun({
+export function BulkRemoveRun({
   skillName,
   targets,
   onClose,

@@ -3,12 +3,15 @@
 
 import type { BulkDeployReport, DeploySkillError } from "@maestro/core";
 import {
+  DELETE_LINKED_FOLDER,
   DEPLOY_STILL_RUNNING,
   deployStateHeading,
   LEFT_ALONE_PINNED,
+  linkedFolderRecovery,
   RETRY_ON_CARD,
   UPDATE_TO_REACH_RELEASE,
 } from "../deploy-state/notice-copy";
+import { UPDATE_TARGET } from "../deploy-state/update-target-copy";
 import type { ReportGroup } from "../ui/report";
 
 type BulkReportCounts = {
@@ -26,7 +29,7 @@ export type BulkDeployReportView =
       deployed: { name: string; version: string }[];
       skipped: string[];
       attention: BulkDeployReport["attention"];
-      failed: { error: DeploySkillError; names: string[] }[];
+      failed: BulkDeployReport["failed"];
       counts: BulkReportCounts;
     }
   | {
@@ -113,12 +116,13 @@ const RECOVERY: Partial<Record<DeploySkillError, string>> = {
   "operation-unfinished": RETRY_ON_CARD,
   "deploy-in-progress": DEPLOY_STILL_RUNNING,
   "deploy-incomplete": RETRY_ON_CARD,
+  "destination-symlinked": DELETE_LINKED_FOLDER,
 };
 
-const reasonFor = (error: DeploySkillError, packageType?: string) =>
+const reasonFor = (error: DeploySkillError, linkedPath?: string) =>
   [
-    `${deployStateHeading(error)}${packageType ? ` (${packageType})` : ""}`,
-    RECOVERY[error],
+    deployStateHeading(error),
+    linkedPath ? linkedFolderRecovery(linkedPath) : RECOVERY[error],
   ]
     .filter((part) => part !== undefined)
     .join(" ");
@@ -128,8 +132,10 @@ export function bulkDeployReportGroups(input: {
   view: Extract<BulkDeployReportView, { tone: "success" | "attention" }>;
   /** The row's own consent, so an inline deploy grants only what it read. */
   onForce?: (name: string, confirmedCopyReceipt?: string) => void;
+  /** Update target priced with this skill: the release move the deploy lacked (#955). */
+  onUpdate?: (name: string) => void;
 }): ReportGroup[] {
-  const { view, onForce } = input;
+  const { view, onForce, onUpdate } = input;
   return [
     {
       tone: "failed",
@@ -137,7 +143,7 @@ export function bulkDeployReportGroups(input: {
       rows: view.failed.map((line) => ({
         name: line.names.join(", "),
         count: line.names.length,
-        detail: reasonFor(line.error),
+        detail: reasonFor(line.error, line.linkedPath),
       })),
     },
     {
@@ -145,14 +151,16 @@ export function bulkDeployReportGroups(input: {
       label: "Attention",
       rows: view.attention.map((row) => ({
         name: row.name,
-        detail: reasonFor(row.error, row.packageType),
+        detail: reasonFor(row.error),
         action:
           onForce && row.forceable
             ? {
                 label: `Deploy ${row.name} again`,
                 onClick: () => onForce(row.name, row.copyReceipt),
               }
-            : undefined,
+            : onUpdate && row.error === "not-at-target-release"
+              ? { label: UPDATE_TARGET, onClick: () => onUpdate(row.name) }
+              : undefined,
       })),
     },
     {

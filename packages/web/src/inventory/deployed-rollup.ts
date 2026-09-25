@@ -18,6 +18,8 @@ export type DeploymentTarget = {
   // Which target a write would name. Global's per-tool rows all carry
   // `{ kind: "global" }` — one apm removal covers every tool (ADR-0013).
   target: DeployTarget;
+  /** The detected tool a global row stands for; absent on a repository. */
+  tool?: string;
   deployed: DeployedView;
   primitives: DeployedPrimitive[];
   drift: DriftViewModel;
@@ -122,17 +124,4 @@ export function rollUpDeployment(
     unreadable,
     checking,
   };
-}
-
-// Where Update target would move this skill: the first target it reads Behind
-// on, in the order the roll-up counts them.
-export function behindTarget(
-  skillName: string,
-  targets: DeploymentTarget[],
-): DeployTarget | undefined {
-  return targets.find(
-    (target) =>
-      selects(target, skillName) &&
-      skillReading(target, skillName) === "behind",
-  )?.target;
 }

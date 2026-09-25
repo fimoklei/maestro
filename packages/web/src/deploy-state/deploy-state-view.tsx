@@ -1,15 +1,15 @@
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { ListFilter, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { driftViewModel } from "../drift/drift-view-model";
 import { driftQueryOptions, useGlobalDrift } from "../drift/use-drift";
 import { toggleStaged } from "../inventory/bulk-selection";
-import { DEPLOY_SKILL } from "../inventory/inventory-copy";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { REGISTRY_KEY, useRegistry } from "../registry/use-registry";
-import { Button } from "../ui/button";
 import { DataTable } from "../ui/data-table";
+import { DetailPaneSlot } from "../ui/detail-pane";
+import { FootActions, type FootItem } from "../ui/foot-actions";
 import { IconButton } from "../ui/icon-button";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { OptionMenu } from "../ui/option-menu";
@@ -43,6 +43,7 @@ import { targetMenuItems } from "./target-menu";
 import { globalRows, repoRow, type TargetRow } from "./target-rows";
 import { TARGET_STATUS_WORDS } from "./target-status";
 import { UpdateTargetAction } from "./update-target-action";
+import { UPDATE_TARGET } from "./update-target-copy";
 import { deployStateQueryOptions } from "./use-deploy-state";
 import { useGlobalDeployState } from "./use-global-deploy-state";
 import { useRetryOperation } from "./use-retry-operation";
@@ -109,7 +110,12 @@ export function DeployStateView() {
   );
   const [grouping, setGrouping] = useState<"kind" | "none">("kind");
   const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
-  const [selected, setSelected] = useState<string | null>(null);
+  // Another screen can send the reader to one target's row (#1065).
+  const location = useLocation();
+  const [selected, setSelected] = useState<string | null>(
+    () =>
+      (location.state as { openTarget?: string } | null)?.openTarget ?? null,
+  );
   const [intent, setIntent] = useState<{
     update: boolean;
     nonce: number;
@@ -372,7 +378,7 @@ export function DeployStateView() {
           ) : null}
         </div>
         {selectedRow ? (
-          <div className="absolute inset-y-0 right-0 z-20 max-w-full shadow-float min-[1100px]:static min-[1100px]:shadow-none">
+          <DetailPaneSlot>
             <TargetDetailPane
               row={selectedRow}
               position={
@@ -393,32 +399,42 @@ export function DeployStateView() {
                   key={`${selectedRow.id}:${intent?.nonce ?? 0}`}
                   row={selectedRow}
                   openUpdate={intent?.update ?? false}
-                  onDeploy={() => navigate("/inventory")}
+                  items={selectedRow.actions.map((item) => ({
+                    label: item.label,
+                    // Update target names the target it moves (spec story 32).
+                    ...(item.action === "update" && !item.disabled
+                      ? { name: `${UPDATE_TARGET} ${selectedRow.updateName}` }
+                      : {}),
+                    disabled: item.disabled,
+                    onSelect: () => onAction(selectedRow, item.action),
+                  }))}
                 />
               }
             />
-          </div>
+          </DetailPaneSlot>
         ) : null}
       </div>
     </Panel>
   );
 }
 
-// The pane's foot. It owns the Update mutation, so the dialog stays mounted
-// through the run and keeps the outcome the reader just earned (#954, #980).
+// The pane's foot: the row's ⋮ items as buttons (#1065). It owns the Update
+// mutation, so the dialog stays mounted through the run and keeps the outcome
+// the reader just earned (#954, #980).
 function TargetActions({
   row,
   openUpdate,
-  onDeploy,
+  items,
 }: {
   row: TargetRow;
   openUpdate: boolean;
-  onDeploy: () => void;
+  items: FootItem[];
 }) {
   const update = useUpdateTarget();
   return (
     <>
-      {row.behind ||
+      <FootActions items={items} />
+      {openUpdate ||
       update.isPending ||
       update.data !== undefined ||
       update.isError ? (
@@ -426,13 +442,9 @@ function TargetActions({
           targetName={row.updateName}
           target={row.wire}
           update={update}
-          offered={row.behind}
           defaultOpen={openUpdate}
         />
       ) : null}
-      <Button variant="quiet" size="sm" onClick={onDeploy}>
-        {DEPLOY_SKILL}
-      </Button>
     </>
   );
 }

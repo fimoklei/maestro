@@ -115,6 +115,17 @@ describe("ImportDialog", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  // The footer every dialog shares (design.md, #1116). An import deletes
+  // nothing, so its confirm keeps the neutral fill.
+  it("puts Close on the leading side and fills the import confirm", () => {
+    renderDialog(DEEP, { kind: "ready", check: CHECK });
+
+    const close = screen.getByRole("button", { name: "Close" });
+    expect(close.parentElement?.firstElementChild).toBe(close);
+    expect(close.parentElement).toHaveClass("justify-between");
+    expect(close.parentElement?.lastElementChild).toHaveClass("bg-gray-12");
+  });
+
   it("holds the whole folder path in the Folder path field", () => {
     renderDialog(DEEP);
 

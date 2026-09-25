@@ -8,7 +8,7 @@ import { HOVER_TRANSITION } from "./hover-transition";
 
 // An item either runs something here or leaves for somewhere else. A link is a
 // real anchor, so the browser's own open-in-new-tab and focus behaviour apply.
-interface ActionsMenuItem {
+export interface ActionsMenuItem {
   label: string;
   onSelect?: () => void;
   href?: string;
@@ -20,9 +20,9 @@ interface ActionsMenuItem {
 
 // Danger last, everything else in the caller's own order — reordering is the
 // only rule that changes an item's position (#1009).
-const orderedItems = (
-  items: readonly ActionsMenuItem[],
-): readonly ActionsMenuItem[] => [
+export const orderedItems = <T extends ActionsMenuItem>(
+  items: readonly T[],
+): readonly T[] => [
   ...items.filter((item) => !item.danger),
   ...items.filter((item) => item.danger),
 ];

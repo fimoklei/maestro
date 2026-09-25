@@ -54,11 +54,13 @@ export function targetMenuItems(
   retrying: boolean,
 ): TargetTableRow["actions"] {
   const blocked = updateBlocked(row);
-  return [
+  const items: TargetTableRow["actions"] = [
     { action: "deploy", label: DEPLOY_SKILL },
     blocked === null
       ? { action: "update", label: UPDATE_TARGET }
       : { action: "update", label: blocked, disabled: true },
-    retryItem(row, retrying),
   ];
+  const retry = retryItem(row, retrying);
+  // A standing operation is the next step, so its retry leads (#1066).
+  return row.pending ? [retry, ...items] : [...items, retry];
 }

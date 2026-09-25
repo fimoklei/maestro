@@ -228,6 +228,42 @@ describe("bulkDeployReportGroups", () => {
     );
   });
 
+  // The Inventory pane's single deploy reads its refusal here now (#1065), so
+  // the linked-folder recovery a single deploy stated stays with it (#748).
+  it("gives a linked skill folder the recovery a single deploy states", () => {
+    const groups = bulkDeployReportGroups({
+      view: view({
+        tone: "attention",
+        failed: [{ error: "destination-symlinked", names: ["tdd"] }],
+      }),
+    });
+
+    expect(rowsOf(groups, "Failed")[0]?.detail).toBe(
+      "Linked skill folder Delete the linked skill folder in the target, then deploy again.",
+    );
+  });
+
+  // "Delete the linked skill folder" named no path and no command, so a reader
+  // with 47 linked skills could not act on it (#748).
+  it("spells out the one rm for the link apm refused", () => {
+    const groups = bulkDeployReportGroups({
+      view: view({
+        tone: "attention",
+        failed: [
+          {
+            error: "destination-symlinked",
+            names: ["tdd"],
+            linkedPath: "/Users/dev/.claude/skills/tdd",
+          },
+        ],
+      }),
+    });
+
+    expect(rowsOf(groups, "Failed")[0]?.detail).toBe(
+      "Linked skill folder Run rm /Users/dev/.claude/skills/tdd and then deploy again. This removes the link only. The folder it points at remains on disk.",
+    );
+  });
+
   it("names a failure the report carries no recovery step for, never its code", () => {
     const groups = bulkDeployReportGroups({
       view: view({

@@ -1,12 +1,14 @@
 import { render, screen, within } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { describe, expect, it } from "vitest";
 import { ReachCard } from "./reach-card";
-import type { SkillDeployment } from "./skill-deployments";
+
+type Deployment = ComponentProps<typeof ReachCard>["deployments"][number];
 
 const deployment = (
   label: string,
-  status: SkillDeployment["status"] = "up-to-date",
-): SkillDeployment => ({ label, release: "v1.4.0", status });
+  status: Deployment["status"] = "up-to-date",
+): Deployment => ({ label, release: "v1.4.0", status });
 
 describe("ReachCard", () => {
   it("expands the Targets number into each target, its release and its reading", () => {

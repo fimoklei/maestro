@@ -69,6 +69,8 @@ export function InventoryPanel() {
       reading={inventory.isFetching}
       onReread={reread}
       onOpenHarness={() => navigate("/harness")}
+      // Deploy-state is the index route; it opens the row it is sent (#1065).
+      onShowTarget={(rowId) => navigate("/", { state: { openTarget: rowId } })}
     />
   );
 }

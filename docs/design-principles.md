@@ -54,6 +54,19 @@ makes a tall row.
 *Maestro:* the Harness's Detail column was retired into the Status hover card
 and the pane.
 
+**The detail pane has one shape on every screen** (#1065,
+`docs/design/cockpit-rebuild/detail-pane.html`). Top to bottom: the facts,
+then one paragraph of the sentences that explain the state, then the notice,
+then the sub-list. Facts run three to seven rows, so the notice stays in view
+and still sits after its cause. A fact is a label beside a short value in a
+two-column grid, the label in slate 11 `meta`. A sub-list row is 32px: mark,
+name, machine value, ⋮. The foot is fixed and only the content scrolls. It
+holds the row's ⋮ items as 32px buttons in the same order: the first enabled
+one is primary and a destructive one stays danger. At 1100px and below the
+pane becomes a sheet over the table on the right: full height,
+`min(360px, 100%)` wide, same content and order. Esc or ✕ closes it, and focus
+returns to the row.
+
 ## What happens when the reader acts
 
 ### 5. A failure states itself where it happened, and stays
@@ -74,7 +87,7 @@ Pick the form from the table; do not design a new one.
 
 | Kind | Form | Placement |
 |---|---|---|
-| Failure or warning about one control, row or region | `Notice` | After its cause. In a dialog: above the footer. From a row's ⋮ menu: top of the detail pane. |
+| Failure or warning about one control, row or region | `Notice` | After its cause. In a dialog: above the footer. In the detail pane: after the facts and the paragraph that explains them, before the sub-list. |
 | Screen-wide failure | `Notice` | Top of the panel content. No banner. |
 | Field hint | One sentence in `meta`, slate 11: what the reader must know before acting | Between the label and the field, as Vercel and Linear place it. Only a refusal sits under the field. |
 | Field error | One `✕` line in red 11, shown on submit, cleared once the field is valid. A field that names a folder checks right after the pick, because the fields after it wait on that answer. A refusal with a heading and a cause is a `Notice` in the same slot. | Under the field |

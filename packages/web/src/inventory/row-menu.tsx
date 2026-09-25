@@ -3,7 +3,7 @@ import { ActionsMenu, type ActionsMenuProps } from "../ui/actions-menu";
 import { cn } from "../ui/cn";
 import { rowActionsLabel } from "./inventory-copy";
 
-export type RowAction = "deploy" | "update" | "remove";
+export type RowAction = "deploy" | "remove";
 
 // A row's ⋮ menu (#992). Shown on hover, on the row the keyboard is on, and
 // always where nothing hovers; the grid keeps it out of the Tab order.

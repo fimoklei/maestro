@@ -51,7 +51,7 @@ async function openDialog() {
 async function deploy() {
   const dialog = await openDialog();
   const button = within(dialog).getByRole("button", {
-    name: /deploy skills|loading targets/i,
+    name: /deploy skills?|loading targets/i,
   });
   await vi.waitFor(() => expect(button).toBeEnabled());
   await userEvent.click(button);
@@ -136,6 +136,47 @@ describe("BulkDeployAction", () => {
     });
   });
 
+  // The Inventory pane's single deploy runs here now (#1065), so a refused
+  // reinstall states itself as that deploy's notice did, never silently.
+  it("states a refused reinstall in the dialog, from the deploy notice table", async () => {
+    stubReads({
+      target: { kind: "global" },
+      deployed: [],
+      attention: [
+        {
+          name: "review",
+          error: "deployed-diverged-from-lock",
+          forceable: true,
+          copyReceipt: "b".repeat(64),
+        },
+      ],
+      failed: [],
+    });
+    const reads = fetch;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+        String(input) === "/api/deploy"
+          ? jsonResponse({ error: "deploy-in-progress" }, 409)
+          : reads(input, init),
+      ),
+    );
+    renderWithQuery(
+      <BulkDeployAction stagedNames={["review"]} repos={[]} registryReady />,
+    );
+
+    const dialog = await deploy();
+    await userEvent.click(
+      await within(dialog).findByRole("button", {
+        name: /deploy review again/i,
+      }),
+    );
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Another change is running",
+    );
+  });
+
   it("keeps the deploy button disabled until the chosen target's state has loaded", async () => {
     // The repo's deploy-state read never resolves in this test, standing in
     // for the window right after switching targets — the registry is ready,
@@ -168,7 +209,7 @@ describe("BulkDeployAction", () => {
 
     const dialog = await openDialog();
     const button = within(dialog).getByRole("button", {
-      name: "Deploy skills",
+      name: "Deploy skill",
     });
     expect(button).toBeDisabled();
 
@@ -439,5 +480,164 @@ describe("BulkDeployAction", () => {
       "✓Deployed1",
     ]);
     expect(within(dialog).getByText("tdd, caveman")).toBeVisible();
+  });
+});
+
+// Successor of the retired DeploySkillAction's target-picker claims (#1065):
+// the Inventory pane's Deploy skill opens this dialog with one skill staged.
+describe("BulkDeployAction — the target it deploys to", () => {
+  const twoRepos = [{ path: "/projects/alpha" }, { path: "/projects/beta" }];
+
+  function stubTools(tools: { tool: string; primitives: unknown[] }[]) {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/deploy-state/global")) {
+        return jsonResponse({ tools, skipped: [] });
+      }
+      if (url.startsWith("/api/drift")) {
+        return jsonResponse({ behind: [] });
+      }
+      if (url.startsWith("/api/deploy-state")) {
+        return jsonResponse({ primitives: [], skipped: [] });
+      }
+      return jsonResponse({
+        target: { kind: "global" },
+        deployed: [{ name: "tdd", version: "v1.0.0" }],
+        attention: [],
+        failed: [],
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  const openOne = async (repos: { path: string }[]) => {
+    renderWithQuery(
+      <BulkDeployAction stagedNames={["tdd"]} repos={repos} registryReady />,
+    );
+    return openDialog();
+  };
+
+  const sentTarget = (fetchMock: ReturnType<typeof vi.fn>) => {
+    const call = fetchMock.mock.calls.find(
+      ([url]) => url === "/api/deploy/bulk",
+    ) as unknown as [string, RequestInit];
+    return JSON.parse(call[1].body as string).target;
+  };
+
+  it("confirms one skill with the singular verb and object", async () => {
+    stubTools([{ tool: "claude", primitives: [] }]);
+    const dialog = await openOne([]);
+
+    expect(
+      within(dialog).getByRole("heading", { name: "Deploy 1 skill" }),
+    ).toBeInTheDocument();
+    await vi.waitFor(() =>
+      expect(
+        within(dialog).getByRole("button", { name: "Deploy skill" }),
+      ).toBeEnabled(),
+    );
+  });
+
+  it("offers Global as the first target option", async () => {
+    stubTools([{ tool: "claude", primitives: [] }]);
+    const dialog = await openOne(twoRepos);
+
+    const options = within(
+      within(dialog).getByRole("combobox", { name: "Target" }),
+    ).getAllByRole("option");
+    expect(options[0]).toHaveTextContent("Global");
+  });
+
+  // #134: the Global option says where it lands before anything runs.
+  it("names the tools the Global option will hit on a two-tool machine", async () => {
+    stubTools([
+      { tool: "claude", primitives: [] },
+      { tool: "codex", primitives: [] },
+    ]);
+    const dialog = await openOne(twoRepos);
+
+    expect(
+      await within(dialog).findByRole("option", {
+        name: /Global \(Claude Code \+ Codex\)/,
+      }),
+    ).toBeEnabled();
+  });
+
+  it("names the single tool the Global option will hit on a one-tool machine", async () => {
+    stubTools([{ tool: "claude", primitives: [] }]);
+    const dialog = await openOne(twoRepos);
+
+    expect(
+      await within(dialog).findByRole("option", {
+        name: /Global \(Claude Code\)/,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("disables the Global option and the deploy when no tool is detected", async () => {
+    stubTools([]);
+    const dialog = await openOne([]);
+
+    expect(
+      await within(dialog).findByRole("option", {
+        name: /Global \(no tool detected\)/,
+      }),
+    ).toBeDisabled();
+    expect(
+      within(dialog).getByRole("button", { name: /^Deploy skill|Loading/ }),
+    ).toBeDisabled();
+  });
+
+  // J07: Global needs no repo, so a deploy never waits on a registration.
+  it("deploys globally when no repo is registered", async () => {
+    const fetchMock = stubTools([{ tool: "claude", primitives: [] }]);
+    await openOne([]);
+    const dialog = screen.getByRole("dialog");
+    const run = within(dialog).getByRole("button", { name: /^Deploy skill/ });
+    await vi.waitFor(() => expect(run).toBeEnabled());
+    await userEvent.click(run);
+
+    await vi.waitFor(() =>
+      expect(sentTarget(fetchMock)).toEqual({ kind: "global" }),
+    );
+  });
+
+  it("deploys globally when Global is chosen even with repos present", async () => {
+    const fetchMock = stubTools([{ tool: "claude", primitives: [] }]);
+    const dialog = await openOne(twoRepos);
+    await userEvent.selectOptions(
+      within(dialog).getByRole("combobox", { name: "Target" }),
+      "global",
+    );
+    const run = within(dialog).getByRole("button", { name: /^Deploy skill/ });
+    await vi.waitFor(() => expect(run).toBeEnabled());
+    await userEvent.click(run);
+
+    await vi.waitFor(() =>
+      expect(sentTarget(fetchMock)).toEqual({ kind: "global" }),
+    );
+  });
+
+  // #48: a deploy refetches the target's deploy-state and its drift, or a
+  // badge outlives the change that made it wrong.
+  it("re-reads the chosen target's deploy-state and drift after a deploy", async () => {
+    const fetchMock = stubTools([{ tool: "claude", primitives: [] }]);
+    const dialog = await openOne([{ path: "/projects/alpha" }]);
+    const run = within(dialog).getByRole("button", { name: /^Deploy skill/ });
+    await vi.waitFor(() => expect(run).toBeEnabled());
+    const reads = (prefix: string) =>
+      fetchMock.mock.calls.filter(([url]) => String(url).startsWith(prefix))
+        .length;
+    const before = {
+      state: reads("/api/deploy-state?repo="),
+      drift: reads("/api/drift?repo="),
+    };
+    await userEvent.click(run);
+
+    await vi.waitFor(() => {
+      expect(reads("/api/deploy-state?repo=")).toBeGreaterThan(before.state);
+      expect(reads("/api/drift?repo=")).toBeGreaterThan(before.drift);
+    });
   });
 });

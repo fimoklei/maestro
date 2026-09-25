@@ -2,12 +2,13 @@ import { useId } from "react";
 import { CLOSE } from "../deploy-state/update-target-copy";
 import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
-import { DialogShell } from "../ui/dialog-shell";
+import { DIALOG_FOOTER, DialogShell } from "../ui/dialog-shell";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { Report, type ReportGroup } from "../ui/report";
 import {
   BULK_DEPLOY_TARGET,
   bulkDeployTitle,
+  DEPLOY_SKILL,
   DEPLOY_SKILLS,
   LOADING_TARGETS,
 } from "./inventory-copy";
@@ -32,6 +33,7 @@ export function BulkDeployDialog({
   busy,
   failure,
   report,
+  reportFailure = null,
   onDeploy,
   onClose,
 }: {
@@ -48,6 +50,8 @@ export function BulkDeployDialog({
   failure: NoticeContent | null;
   /** The run's result. Once set, the dialog only reads and closes. */
   report: { heading: string; groups: ReportGroup[] } | null;
+  /** A reinstall from the Report that was refused: it changed nothing. */
+  reportFailure?: NoticeContent | null;
   onDeploy: () => void;
   onClose: () => void;
 }) {
@@ -105,10 +109,13 @@ export function BulkDeployDialog({
             </div>
           </>
         ) : (
-          <Report heading={report.heading} groups={report.groups} />
+          <>
+            <Notice trigger="user-action" notice={reportFailure} />
+            <Report heading={report.heading} groups={report.groups} />
+          </>
         )}
       </div>
-      <div className="flex shrink-0 items-center justify-between gap-inline border-gray-7 border-t px-panel py-cell">
+      <div className={DIALOG_FOOTER}>
         {report === null ? (
           <>
             <Button variant="quiet" disabled={busy} onClick={onClose}>
@@ -124,7 +131,10 @@ export function BulkDeployDialog({
                 ? LOADING_TARGETS
                 : busy
                   ? ACTIONS.deploy.busy
-                  : DEPLOY_SKILLS}
+                  : // Title and confirm share verb and object (copy.md).
+                    count === 1
+                    ? DEPLOY_SKILL
+                    : DEPLOY_SKILLS}
             </Button>
           </>
         ) : (

@@ -109,8 +109,24 @@ export function unfinishedOperationNotice(
 
 // A fact to know, not an action to take: the Harness is skills-only, and a
 // deploy carries whatever else the release holds (ADR-0031 § Accepted limits).
-export const extraFilesLine = (count: number): string =>
-  `Extra files deployed: ${count} file${count === 1 ? "" : "s"} outside the selected skills.`;
+export const extraFilesFact = (count: number): string =>
+  `${count} file${count === 1 ? "" : "s"}`;
+
+// The pane's Changed fact (#1065): what releaseSentence says, as a value.
+// Null where no newer release stands and the count was read.
+export function changedFact(head: ReleaseHead): string | null {
+  if (head.changed === null) return "Could not be read";
+  if (head.latestRelease === null || head.latestRelease === head.release) {
+    return null;
+  }
+  return `${head.changed} of ${head.selected} skills`;
+}
+
+// The pane's Compared fact: when the comparison with the Harness was read.
+export function comparedFact(head: ReleaseHead, now: Date): string {
+  const since = head.comparedAt === null ? null : ago(head.comparedAt, now);
+  return since === null ? "Not read yet" : `Read ${since}`;
+}
 
 const COPY_CHIPS = {
   "local-edits": {

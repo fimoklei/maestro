@@ -1,6 +1,6 @@
 import { type ReactNode, useRef } from "react";
 import { DetailPane } from "../ui/detail-pane";
-import { Fact } from "../ui/fact";
+import { FactList, FactRow } from "../ui/fact-list";
 import { Notice, type NoticeContent } from "../ui/notice";
 import {
   GLOBAL,
@@ -9,8 +9,9 @@ import {
   REREAD_LABEL,
 } from "./deploy-state-copy";
 import {
-  comparedLine,
-  extraFilesLine,
+  changedFact,
+  comparedFact,
+  extraFilesFact,
   pinnedTagsLine,
   RELEASE_NOT_ADOPTED,
   RETRY_LABELS,
@@ -18,15 +19,12 @@ import {
   unfinishedOperationNotice,
 } from "./release-head-copy";
 import { SelectedSkills } from "./selected-skills";
-import {
-  skippedEntryKey,
-  skippedEntryText,
-  skippedNeedsAttention,
-} from "./skipped-entry-text";
+import { skippedEntryKey, skippedEntryText } from "./skipped-entry-text";
 import type { TargetRow } from "./target-rows";
 
-// A target's full reading (#993): facts, then its notice, then its Selected
-// skills. Presentational: the foot's controls arrive as `actions`.
+// A target's full reading (#993, #1065): facts, the paragraph that explains
+// its state, its notice, then its Selected skills. Presentational: the foot's
+// controls arrive as `actions`.
 export function TargetDetailPane({
   row,
   position,
@@ -52,6 +50,8 @@ export function TargetDetailPane({
 }) {
   const skillsHeading = useRef<HTMLHeadingElement>(null);
   const now = new Date();
+  // The retry sits in its notice, after its cause, and at the foot as the
+  // row's menu holds it (#1065).
   const notice: NoticeContent | null =
     row.readFailed && row.group !== GLOBAL
       ? { ...REPO_NOT_READ, action: { label: REREAD_LABEL, onClick: onReread } }
@@ -65,7 +65,19 @@ export function TargetDetailPane({
             },
           }
         : null;
-  const sentence = row.head ? releaseSentence(row.head) : null;
+  const head = row.head;
+  const changed = head ? changedFact(head) : null;
+  // Sentences that explain a state form one paragraph; a fact is a value.
+  const sentence = head ? releaseSentence(head) : null;
+  const why = [
+    ...(sentence === null ? [] : [sentence]),
+    ...(row.pinned
+      ? [`${pinnedTagsLine(row.pinned)}.`, RELEASE_NOT_ADOPTED]
+      : []),
+    ...(row.primitives.length === 0 && row.otherOrigins.length > 0
+      ? [otherOriginLine(row.otherOrigins)]
+      : []),
+  ];
 
   return (
     <DetailPane
@@ -78,54 +90,51 @@ export function TargetDetailPane({
       initialFocus={initialFocus}
       actions={actions}
     >
-      <dl className="m-0 flex flex-col gap-cell">
-        <Fact
-          label="Kind"
-          value={row.group === GLOBAL ? "Global" : "Repository"}
-          machine={false}
-        />
+      <FactList>
+        <FactRow label="Kind">
+          {row.group === GLOBAL ? "Global" : "Repository"}
+        </FactRow>
         {row.path ? (
-          <Fact label="Path" value={row.path} title={row.path} />
+          <FactRow label="Path" machine title={row.path}>
+            {row.path}
+          </FactRow>
         ) : null}
-        {row.head ? <Fact label="Release" value={row.head.release} /> : null}
-        {row.head?.latestRelease ? (
-          <Fact label="Latest release" value={row.head.latestRelease} />
+        {head ? (
+          <FactRow label="Release" machine>
+            {head.release}
+          </FactRow>
         ) : null}
-      </dl>
-      <div className="mt-cell flex flex-col gap-tight text-gray-11 text-meta">
-        {sentence ? <p className="m-0">{sentence}</p> : null}
-        {row.head ? <p className="m-0">{comparedLine(row.head, now)}</p> : null}
-        {row.pinned ? (
-          <>
-            <p className="m-0">{pinnedTagsLine(row.pinned)}</p>
-            <p className="m-0">{RELEASE_NOT_ADOPTED}</p>
-          </>
+        {head?.latestRelease && head.latestRelease !== head.release ? (
+          <FactRow label="Latest release" machine>
+            {head.latestRelease}
+          </FactRow>
         ) : null}
-        {row.primitives.length === 0 && row.otherOrigins.length > 0 ? (
-          <p className="m-0">{otherOriginLine(row.otherOrigins)}</p>
+        {changed === null ? null : <FactRow label="Changed">{changed}</FactRow>}
+        {head ? (
+          <FactRow label="Compared">{comparedFact(head, now)}</FactRow>
         ) : null}
         {row.extraFiles ? (
-          <p className="m-0">{extraFilesLine(row.extraFiles)}</p>
+          <FactRow label="Extra files">
+            {extraFilesFact(row.extraFiles)}
+          </FactRow>
         ) : null}
-      </div>
+      </FactList>
+      {why.length > 0 || row.skipped.length > 0 ? (
+        <p className="m-0 mt-section text-gray-12 text-prose">
+          {why.map((sentence) => (
+            <span key={sentence}>{sentence} </span>
+          ))}
+          {row.skipped.map((entry, index) => (
+            <span key={skippedEntryKey(entry, index)}>
+              {skippedEntryText(entry)}{" "}
+            </span>
+          ))}
+        </p>
+      ) : null}
       {notice ? (
         <div className="mt-cell">
           <Notice trigger="load" notice={notice} />
         </div>
-      ) : null}
-      {row.skipped.length > 0 ? (
-        <ul className="m-0 mt-cell flex list-none flex-col gap-tight p-0 text-meta">
-          {row.skipped.map((entry, index) => (
-            <li
-              key={skippedEntryKey(entry, index)}
-              className={
-                skippedNeedsAttention(entry) ? "text-amber-12" : "text-gray-11"
-              }
-            >
-              {skippedEntryText(entry)}
-            </li>
-          ))}
-        </ul>
       ) : null}
       {row.readFailed && row.primitives.length === 0 ? null : (
         <SelectedSkills

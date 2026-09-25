@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
-import { DIALOG_CANCEL, DialogShell } from "../ui/dialog-shell";
+import { DIALOG_CANCEL, DIALOG_FOOTER, DialogShell } from "../ui/dialog-shell";
 import { Fact } from "../ui/fact";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { SegmentedControl } from "../ui/segmented-control";
@@ -110,13 +110,11 @@ export function ReleaseDialog({
         <Notice trigger="user-action" notice={publishError} />
       </div>
 
-      <div className="flex shrink-0 items-center gap-2.5 border-gray-7 border-t px-3.5 py-3">
-        <span className="flex-1" />
+      <div className={DIALOG_FOOTER}>
         <Button
           type="button"
           className="shrink-0"
           variant="quiet"
-          size="sm"
           {...DIALOG_CANCEL}
           onClick={onClose}
         >
@@ -126,7 +124,6 @@ export function ReleaseDialog({
           type="button"
           className="shrink-0"
           variant="primary"
-          size="sm"
           busy={publishing}
           disabled={step === null || plan === null || plan.delta.length === 0}
           onClick={() =>

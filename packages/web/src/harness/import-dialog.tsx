@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "../ui/button";
-import { DialogShell } from "../ui/dialog-shell";
+import { DIALOG_FOOTER, DialogShell } from "../ui/dialog-shell";
 import { Field } from "../ui/field";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { PathField } from "../ui/path-field";
@@ -194,13 +194,11 @@ export function ImportDialog({
         <Notice trigger="user-action" notice={importError} />
       </div>
 
-      <div className="flex shrink-0 items-center gap-2.5 border-gray-7 border-t px-3.5 py-3">
-        <span className="flex-1" />
+      <div className={DIALOG_FOOTER}>
         <Button
           type="button"
           className="shrink-0"
           variant="quiet"
-          size="sm"
           onClick={onClose}
           disabled={importing}
         >
@@ -210,7 +208,6 @@ export function ImportDialog({
           type="button"
           className="shrink-0"
           variant="primary"
-          size="sm"
           busy={importing}
           disabled={!importEnabled(check) || imported !== null}
           onClick={onImport}

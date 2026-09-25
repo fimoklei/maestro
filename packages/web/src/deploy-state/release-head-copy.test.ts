@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  changedFact,
+  comparedFact,
   comparedLine,
   copyChipText,
-  extraFilesLine,
+  extraFilesFact,
   pinnedTagsLine,
   RELEASE_NOT_ADOPTED,
   releaseSentence,
@@ -125,17 +127,48 @@ describe("RELEASE_NOT_ADOPTED", () => {
   });
 });
 
-describe("extraFilesLine", () => {
+// The pane's fact values (#1065): short values beside their labels.
+describe("extraFilesFact", () => {
   it("counts the deployed files that belong to no selected skill", () => {
-    expect(extraFilesLine(2)).toBe(
-      "Extra files deployed: 2 files outside the selected skills.",
-    );
+    expect(extraFilesFact(2)).toBe("2 files");
   });
 
   it("counts one file as one", () => {
-    expect(extraFilesLine(1)).toBe(
-      "Extra files deployed: 1 file outside the selected skills.",
+    expect(extraFilesFact(1)).toBe("1 file");
+  });
+});
+
+describe("changedFact", () => {
+  it("counts the selected skills the newer release changed", () => {
+    expect(changedFact(head())).toBe("2 of 5 skills");
+  });
+
+  it("still counts a newer release that changed none", () => {
+    expect(changedFact(head({ changed: 0 }))).toBe("0 of 5 skills");
+  });
+
+  it("says the count could not be read, never a zero", () => {
+    expect(changedFact(head({ changed: null }))).toBe("Could not be read");
+    expect(changedFact(head({ latestRelease: null, changed: null }))).toBe(
+      "Could not be read",
     );
+  });
+
+  it("states nothing on the latest release", () => {
+    expect(changedFact(head({ release: "v0.3.4", changed: 0 }))).toBeNull();
+  });
+});
+
+describe("comparedFact", () => {
+  it("says when the comparison was read", () => {
+    expect(comparedFact(head(), NOW)).toBe("Read just now");
+    expect(
+      comparedFact(head({ comparedAt: "2026-09-12T09:30:00.000Z" }), NOW),
+    ).toBe("Read 30 min ago");
+  });
+
+  it("says so when no comparison has ever succeeded", () => {
+    expect(comparedFact(head({ comparedAt: null }), NOW)).toBe("Not read yet");
   });
 });
 

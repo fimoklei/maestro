@@ -2,7 +2,7 @@ import { useId } from "react";
 import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { DialogHeader } from "../ui/dialog-header";
-import { DialogShell } from "../ui/dialog-shell";
+import { DIALOG_FOOTER, DialogShell } from "../ui/dialog-shell";
 import { PathField } from "../ui/path-field";
 import type { FolderChooser } from "../ui/use-folder-chooser";
 import {
@@ -74,7 +74,7 @@ export function RegisterRepositoryDialog({
             {WRITE_PROMISE}
           </p>
         </div>
-        <div className="flex shrink-0 items-center justify-between gap-inline border-gray-7 border-t px-panel py-cell">
+        <div className={DIALOG_FOOTER}>
           <Button
             type="button"
             variant="quiet"

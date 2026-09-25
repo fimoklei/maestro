@@ -11,8 +11,12 @@ import {
   NO_SEARCH_MATCH,
   NOT_DEPLOYED_ANYWHERE,
   NOT_READ_YET,
+  REMOVE_FROM_TARGET,
+  removeFromAllLabel,
+  removeFromToolsLabel,
   rowActionsLabel,
   SELECT_ALL_LABEL,
+  SHOW_IN_DEPLOY_STATE,
   SOME_TARGETS_NOT_READ,
   stageRowLabel,
 } from "./inventory-copy";
@@ -74,9 +78,28 @@ describe("Inventory copy", () => {
   });
 
   it("tells the pane's reader how to deploy a skill that is nowhere yet", () => {
+    // The pane holds no target picker any more: Deploy skill opens the dialog
+    // where the target is chosen (#1065).
     expect(NOT_DEPLOYED_ANYWHERE).toBe(
-      "Not deployed to any target. Choose a target below, then select Deploy skill.",
+      "Not deployed to any target. Select Deploy skill to choose a target.",
     );
+  });
+
+  // A target row's ⋮ and the pane's foot (#1065).
+  it("names a target row's actions and the foot's removal", () => {
+    expect(REMOVE_FROM_TARGET).toBe("Remove from target");
+    expect(SHOW_IN_DEPLOY_STATE).toBe("Show in Deploy-state");
+    expect(removeFromAllLabel(3)).toBe("Remove from all 3 targets");
+    expect(removeFromAllLabel(2)).toBe("Remove from all 2 targets");
+  });
+
+  // A global removal takes every detected tool (ADR-0013), so a global row
+  // names them all rather than claim its own tool alone.
+  it("names every tool a global row's removal takes", () => {
+    expect(removeFromToolsLabel(["claude", "codex"])).toBe(
+      "Remove from Claude Code and Codex",
+    );
+    expect(removeFromToolsLabel(["claude"])).toBe("Remove from Claude Code");
   });
 
   it("names a row's menu after its skill", () => {

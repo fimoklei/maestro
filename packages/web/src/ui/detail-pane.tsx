@@ -6,6 +6,16 @@ import { useDetailPaneFocus } from "./use-detail-pane-focus";
 // The 360px pane a table row opens (ADR-0033 §9, #992): the full reading of
 // one row, its actions at the foot, and a pager through the table's rows.
 
+// Where a screen puts its pane (#1065): side by side above 1100px; at 1100px
+// and below a full-height sheet over the table's right edge.
+export function DetailPaneSlot({ children }: { children: ReactNode }) {
+  return (
+    <div className="absolute inset-y-0 right-0 z-20 max-w-full shadow-float min-[1101px]:static min-[1101px]:shadow-none">
+      {children}
+    </div>
+  );
+}
+
 // A key typed into one of these belongs to it, not to the pager.
 const OWNS_ARROWS = "input,select,textarea,[role=menu],[role=listbox]";
 

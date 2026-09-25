@@ -541,6 +541,16 @@ describe("Deploy-state — Re-read and freshness", () => {
 });
 
 describe("Deploy-state — rows and their menu", () => {
+  // The Inventory's target row sends the reader here with that row open (#1065).
+  it("opens the pane of the target another screen asked for", async () => {
+    stubServer(() => ({ global: TWO_TOOLS }));
+    renderDeployState({ openTarget: "global:codex" });
+
+    expect(
+      await screen.findByRole("complementary", { name: "Codex detail" }),
+    ).toBeInTheDocument();
+  });
+
   it("opens Deploy skill from a row's menu in the Inventory", async () => {
     stubServer(() => ({ global: TWO_TOOLS }));
     renderDeployState();

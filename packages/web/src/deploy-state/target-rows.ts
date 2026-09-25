@@ -65,11 +65,25 @@ export type TargetRow = {
   behind: boolean;
 };
 
-const isBehind = (head: ReleaseHead | undefined, pending?: PendingOperation) =>
+// A row's id, which another screen names to open that row's pane (#1065).
+export const globalRowId = (tool: string) => `global:${tool}`;
+export const repoRowId = (repoPath: string) => `repo:${repoPath}`;
+
+export const isBehind = (
+  head: ReleaseHead | undefined,
+  pending?: PendingOperation,
+) =>
   head !== undefined &&
   head.latestRelease !== null &&
   head.latestRelease !== head.release &&
   pending === undefined;
+
+// One lockfile and one release for every detected tool, so any tool reading
+// behind puts the whole global target, every tool row, behind (#951).
+export const isGlobalBehind = (
+  tools: readonly { releaseHead?: ReleaseHead }[],
+  pending?: PendingOperation,
+) => tools.some((tool) => isBehind(tool.releaseHead, pending));
 
 const releaseOf = (
   head: ReleaseHead | undefined,
@@ -81,8 +95,6 @@ const releaseOf = (
       ? { current: pinned[0].release, latest: null }
       : null;
 
-// One lockfile and one release for every detected tool, so any tool reading
-// behind puts the whole global target behind (#951).
 export function globalRows(
   data: GlobalDeployStateView,
   drift: DriftViewModel,
@@ -90,9 +102,7 @@ export function globalRows(
 ): TargetRow[] {
   const pending = data.pendingOperation;
   const tools = data.tools.map((group) => group.tool);
-  const behind = data.tools.some((group) =>
-    isBehind(group.releaseHead, pending),
-  );
+  const behind = isGlobalBehind(data.tools, pending);
   return data.tools.map((group) => {
     const { label, destination } = toolPresentation(group.tool);
     const names = group.primitives.map((primitive) => primitive.name);
@@ -105,7 +115,7 @@ export function globalRows(
           data.otherOrigins,
         );
     return {
-      id: `global:${group.tool}`,
+      id: globalRowId(group.tool),
       group: GLOBAL,
       name: label,
       path: destination,
@@ -166,7 +176,7 @@ export function repoRow(
   const behind = isBehind(head, pending);
   const label = targetLabel(repoPath, siblings);
   return {
-    id: `repo:${repoPath}`,
+    id: repoRowId(repoPath),
     group: REPOSITORIES,
     name: label,
     path: repoPath,

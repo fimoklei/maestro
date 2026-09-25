@@ -12,6 +12,9 @@ import { targetReading } from "./skill-status";
 // the only copy — the detail pane lists every target (#992).
 const SHOWN = 3;
 
+// What a card row reads: the target, its release, its own reading.
+type TargetReading = Pick<SkillDeployment, "label" | "release" | "status">;
+
 export function ReachCard({
   count,
   deployments,
@@ -19,7 +22,7 @@ export function ReachCard({
 }: {
   /** The Targets number, so the card and the column never disagree. */
   count: number;
-  deployments: SkillDeployment[];
+  deployments: TargetReading[];
   unreadable: boolean;
 }) {
   const more = deployments.length - SHOWN;
@@ -45,12 +48,12 @@ export function ReachCard({
   );
 }
 
-// One target: its name, the release it follows, its own reading. Shared with
-// the detail pane, so the two never read a target differently.
+// One target: its name, the release it follows, its own reading. The pane
+// reads the same fold as a mark (#1065), so the two never disagree.
 export function TargetReadingRow({
   deployment,
 }: {
-  deployment: SkillDeployment;
+  deployment: TargetReading;
 }) {
   const reading = targetReading(deployment.status);
   return (

@@ -1,4 +1,5 @@
 import type { MouseEventHandler, ReactNode } from "react";
+import { UNKNOWN_COUNT } from "../shell/sidebar-copy";
 import { cn } from "./cn";
 import { HOVER_TRANSITION } from "./hover-transition";
 
@@ -14,6 +15,8 @@ export interface NavItemProps {
   active?: boolean;
   /** Inert (first-run welcome): visually dimmed and non-interactive. */
   disabled?: boolean;
+  /** What waits on this screen (#1115); `unknown` is a read that failed. */
+  counter?: { text: string; unknown: boolean } | null;
   onClick?: MouseEventHandler<HTMLButtonElement>;
   className?: string;
 }
@@ -23,6 +26,7 @@ export function NavItem({
   label,
   active = false,
   disabled = false,
+  counter = null,
   onClick,
   className,
 }: NavItemProps) {
@@ -48,6 +52,16 @@ export function NavItem({
         </span>
       )}
       <span className="grow truncate">{label}</span>
+      {counter === null ? null : counter.unknown ? (
+        <span className="shrink-0 text-gray-11 text-meta">
+          <span aria-hidden="true">{counter.text}</span>
+          <span className="sr-only">{UNKNOWN_COUNT.spoken}</span>
+        </span>
+      ) : (
+        <span className="shrink-0 whitespace-nowrap text-amber-11 text-meta">
+          {counter.text}
+        </span>
+      )}
     </button>
   );
 }

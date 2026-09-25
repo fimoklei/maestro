@@ -58,7 +58,7 @@ describe("skillDeployments", () => {
       target("/dev/acme-web", [{ name: "tdd", version: "v1.1.0" }]),
     ];
 
-    expect(skillDeployments("tdd", targets)).toEqual([
+    expect(skillDeployments("tdd", targets)).toMatchObject([
       { label: "Claude Code", release: "v1.0.0", status: "up-to-date" },
       { label: "/dev/acme-web", release: "v1.1.0", status: "up-to-date" },
     ]);
@@ -70,7 +70,7 @@ describe("skillDeployments", () => {
       target("/dev/acme-web", [{ name: "tdd", version: "v1.0.0" }]),
     ];
 
-    expect(skillDeployments("tdd", targets)).toEqual([
+    expect(skillDeployments("tdd", targets)).toMatchObject([
       { label: "/dev/acme-web", release: "v1.0.0", status: "up-to-date" },
     ]);
   });
@@ -78,15 +78,31 @@ describe("skillDeployments", () => {
   it("names the target's release and reads behind where this skill changed", () => {
     const targets = [onRelease("Claude Code", ["tdd", "grill"], ["tdd"])];
 
-    expect(skillDeployments("tdd", targets)).toEqual([
+    expect(skillDeployments("tdd", targets)).toMatchObject([
       { label: "Claude Code", release: "v0.3.2", status: "behind" },
     ]);
+  });
+
+  // Update target moves a whole target to its newer release (ADR-0031): only
+  // a target following one release can take it.
+  it("offers an update only where this skill changed on a target following one release", () => {
+    const behindOnRelease = onRelease("Claude Code", ["tdd", "grill"], ["tdd"]);
+    expect(skillDeployments("tdd", [behindOnRelease])[0]?.updatable).toBe(true);
+    expect(skillDeployments("grill", [behindOnRelease])[0]?.updatable).toBe(
+      false,
+    );
+    const behindByDrift = target(
+      "Claude Code",
+      [{ name: "tdd", version: "v1.0.0" }],
+      [{ name: "tdd", current: "v1.0.0", latest: "v1.2.0", reading: "behind" }],
+    );
+    expect(skillDeployments("tdd", [behindByDrift])[0]?.updatable).toBe(false);
   });
 
   it("reads a skill the release left alone as up to date on a behind target", () => {
     const targets = [onRelease("Claude Code", ["tdd", "grill"], ["tdd"])];
 
-    expect(skillDeployments("grill", targets)).toEqual([
+    expect(skillDeployments("grill", targets)).toMatchObject([
       { label: "Claude Code", release: "v0.3.2", status: "up-to-date" },
     ]);
   });
@@ -94,7 +110,7 @@ describe("skillDeployments", () => {
   it("reads a target whose comparison could not be read as unknown", () => {
     const targets = [onRelease("Claude Code", ["tdd"], undefined)];
 
-    expect(skillDeployments("tdd", targets)).toEqual([
+    expect(skillDeployments("tdd", targets)).toMatchObject([
       { label: "Claude Code", release: "v0.3.2", status: "unknown" },
     ]);
   });
@@ -115,9 +131,71 @@ describe("skillDeployments", () => {
       ),
     ];
 
-    expect(skillDeployments("tdd", targets)).toEqual([
+    expect(skillDeployments("tdd", targets)).toMatchObject([
       { label: "Claude Code", release: "v1.0.0", status: "behind" },
     ]);
+  });
+
+  // What the target row's ⋮ acts on (#1065): the write's target, the removal's
+  // target with every detected tool, the Deploy-state row it opens.
+  it("names what each target row's actions act on", () => {
+    const tool = (name: string, label: string): DeploymentTarget => ({
+      ...target(label, [{ name: "tdd", version: "v1.0.0" }]),
+      tool: name,
+    });
+    const targets = [
+      tool("claude", "Claude Code"),
+      tool("codex", "Codex"),
+      target("/dev/acme-web", [{ name: "tdd", version: "v1.1.0" }]),
+    ];
+
+    expect(skillDeployments("tdd", targets)).toEqual([
+      {
+        label: "Claude Code",
+        release: "v1.0.0",
+        version: "v1.0.0",
+        status: "up-to-date",
+        target: { kind: "global" },
+        removeTarget: { kind: "global", tools: ["claude", "codex"] },
+        updateName: "Claude Code and Codex",
+        rowId: "global:claude",
+        updatable: false,
+      },
+      {
+        label: "Codex",
+        release: "v1.0.0",
+        version: "v1.0.0",
+        status: "up-to-date",
+        target: { kind: "global" },
+        removeTarget: { kind: "global", tools: ["claude", "codex"] },
+        updateName: "Claude Code and Codex",
+        rowId: "global:codex",
+        updatable: false,
+      },
+      {
+        label: "/dev/acme-web",
+        release: "v1.1.0",
+        version: "v1.1.0",
+        status: "up-to-date",
+        target: { kind: "repo", repoPath: "/dev/acme-web" },
+        removeTarget: { kind: "repo", repoPath: "/dev/acme-web" },
+        updateName: "/dev/acme-web",
+        rowId: "repo:/dev/acme-web",
+        updatable: false,
+      },
+    ]);
+  });
+
+  // "global:" opens no row, so a global target naming no tool names none.
+  it("names no Deploy-state row for a global target without its tool", () => {
+    const [deployment] = skillDeployments("tdd", [
+      {
+        ...target("Global", [{ name: "tdd", version: "v1.0.0" }]),
+        target: { kind: "global" },
+      },
+    ]);
+
+    expect(deployment?.rowId).toBeNull();
   });
 
   it("skips targets whose deploy-state has not resolved or could not be read", () => {
@@ -139,7 +217,7 @@ describe("skillDeployments", () => {
       target("Claude Code", [{ name: "tdd", version: "v1.0.0" }]),
     ];
 
-    expect(skillDeployments("tdd", targets)).toEqual([
+    expect(skillDeployments("tdd", targets)).toMatchObject([
       { label: "Claude Code", release: "v1.0.0", status: "up-to-date" },
     ]);
   });

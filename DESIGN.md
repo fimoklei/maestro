@@ -190,10 +190,10 @@ neutral Radix-grammar palette in a light and a dark theme, Geist type, one
 fixed density and one frame per screen. Colour is the third cue behind the
 word and the glyph, never the first.
 
-Both themes ship. The cockpit is pinned to dark until the Interface theme row
-lands; that is a rollout order, not a dark-only design. Component tokens in
-the frontmatter reference the dark values for that reason; every step number
-means the same in light.
+Both themes ship. The reader picks one with the Interface theme row on
+Appearance; System follows the operating system. Component tokens in the
+frontmatter reference the dark values; every step number means the same in
+light.
 
 **Key Characteristics:**
 

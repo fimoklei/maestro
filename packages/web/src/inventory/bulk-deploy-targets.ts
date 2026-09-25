@@ -3,7 +3,10 @@
 // (#292). Still-loading stays "pending", so a skill is attempted, not assumed clean.
 
 import { toolPresentation } from "../deploy-state/tool-presentation";
-import type { DeployedPrimitive } from "../deploy-state/use-deploy-state";
+import type {
+  DeployedPrimitive,
+  ReleaseHead,
+} from "../deploy-state/use-deploy-state";
 import type { ToolDeployState } from "../deploy-state/use-global-deploy-state";
 import type { DriftViewModel } from "../drift/drift-view-model";
 import type { DeploymentTarget } from "./deployed-rollup";
@@ -17,10 +20,19 @@ export function chosenBulkDeployTargets(params: {
   globalTools: ToolDeployState[] | undefined;
   // Ignored when isGlobal is true.
   repoPrimitives: DeployedPrimitive[] | undefined;
+  /** The repo's Release head, which the plan reads first (#956). */
+  repoReleaseHead?: ReleaseHead;
   drift: DriftViewModel;
 }): DeploymentTarget[] {
-  const { isGlobal, targetLabel, target, globalTools, repoPrimitives, drift } =
-    params;
+  const {
+    isGlobal,
+    targetLabel,
+    target,
+    globalTools,
+    repoPrimitives,
+    repoReleaseHead,
+    drift,
+  } = params;
 
   if (isGlobal) {
     if (globalTools === undefined) {
@@ -47,6 +59,7 @@ export function chosenBulkDeployTargets(params: {
         },
         primitives: tool.primitives,
         drift: drift.forTool(names),
+        ...(tool.releaseHead ? { releaseHead: tool.releaseHead } : {}),
       };
     });
   }
@@ -66,6 +79,7 @@ export function chosenBulkDeployTargets(params: {
             },
       primitives: repoPrimitives ?? [],
       drift,
+      ...(repoReleaseHead ? { releaseHead: repoReleaseHead } : {}),
     },
   ];
 }

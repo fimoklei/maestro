@@ -51,6 +51,19 @@ describe("SelectedSkills row actions", () => {
     ).toBeInTheDocument();
   });
 
+  // It deletes files, like the Inventory's Remove from target (design.md).
+  it("draws Remove skill as a danger item", async () => {
+    renderList(upToDate);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Actions for tdd" }),
+    );
+
+    expect(
+      await screen.findByRole("menuitem", { name: "Remove skill" }),
+    ).toHaveClass("text-red-11");
+  });
+
   // A target follows one release, so a row carries no update of its own: the
   // whole target moves through Update target (spec story 12, #954).
   it("offers no per-row update on a behind row", () => {

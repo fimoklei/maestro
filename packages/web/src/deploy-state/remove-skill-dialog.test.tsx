@@ -245,15 +245,22 @@ describe("RemoveSkillDialog", () => {
     });
   });
 
-  it("makes the confirm control the one filled action in the dialog", () => {
-    // The primary action is neutral and no status hue is ever a fill
-    // (ADR-0033 §2). Within this modal the confirm is the single filled
-    // action.
+  // A removal deletes files: its confirm is the outlined red button, never a
+  // fill (ADR-0033 §2, #1116).
+  it("confirms with the outlined danger button", () => {
     renderDialog();
 
-    expect(screen.getByRole("button", { name: /^remove/i })).toHaveClass(
-      "bg-gray-12",
-    );
+    const confirm = screen.getByRole("button", { name: /^remove/i });
+    expect(confirm).toHaveClass("text-red-11", "border-red-7");
+    expect(confirm).not.toHaveClass("bg-gray-12");
+  });
+
+  it("puts Cancel on the leading side of the footer", () => {
+    renderDialog({ preflight: CHECKING });
+
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    expect(cancel.parentElement?.firstElementChild).toBe(cancel);
+    expect(cancel.parentElement).toHaveClass("justify-between");
   });
 
   it("cancels without confirming", async () => {

@@ -2,8 +2,10 @@ import { ListFilter, RefreshCw, Search, SlidersHorizontal } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { UPDATE_TARGET } from "../deploy-state/update-target-copy";
 import type { RegisteredRepo } from "../registry/use-registry";
+import type { ActionsMenuItem } from "../ui/actions-menu";
 import { cn } from "../ui/cn";
 import { DataTable } from "../ui/data-table";
+import { DetailPaneSlot } from "../ui/detail-pane";
 import { IconButton } from "../ui/icon-button";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { OptionMenu } from "../ui/option-menu";
@@ -12,19 +14,13 @@ import { SelectionBar } from "../ui/selection-bar";
 import { useReadAnnouncement } from "../ui/use-read-announcement";
 import { useStatusRegion } from "../ui/use-status-region";
 import { BulkDeployAction } from "./bulk-deploy-action";
-import { BulkRemoveSkillAction } from "./bulk-remove-skill-action";
 import { bulkRemoveTargets } from "./bulk-remove-targets";
 import {
   hiddenStagedCount,
   setStagedMany,
   toggleStaged,
 } from "./bulk-selection";
-import { DeploySkillAction } from "./deploy-skill-action";
-import {
-  behindTarget,
-  type DeploymentTarget,
-  rollUpDeployment,
-} from "./deployed-rollup";
+import { type DeploymentTarget, rollUpDeployment } from "./deployed-rollup";
 import {
   DISPLAY_OPTIONS,
   GROUP_OPTIONS,
@@ -42,18 +38,22 @@ import {
   NO_RELEASED_SKILLS,
   NO_SEARCH_MATCH,
   NO_SKILLS_YET,
-  REMOVE_SKILL,
+  REMOVE_FROM_TARGET,
   REREAD_LABEL,
+  removeFromAllLabel,
+  removeFromToolsLabel,
   SEARCH_LABEL,
   SELECT_ALL_LABEL,
+  SHOW_IN_DEPLOY_STATE,
   STAGE_COLUMN_LABEL,
   stageRowLabel,
   TABLE_LABEL,
 } from "./inventory-copy";
 import { filterByName } from "./inventory-table-model";
 import type { RowAction } from "./row-menu";
-import { skillDeployments } from "./skill-deployments";
+import { type SkillDeployment, skillDeployments } from "./skill-deployments";
 import { SkillDetailPane } from "./skill-detail-pane";
+import { type PaneDialog, SkillPaneDialog } from "./skill-pane-dialogs";
 import { skillStatus } from "./skill-status";
 import {
   deriveTypeSegments,
@@ -67,6 +67,10 @@ import type { Primitive } from "./use-inventory";
 // Fills the table at 1440×900 on a first read, before any row is known.
 const SKELETON_FALLBACK = 24;
 
+// The row's ⋮ and the pane's foot open the same dialog per action (#1065).
+const rowDialog = (action: RowAction): PaneDialog =>
+  action === "deploy" ? { kind: "deploy" } : { kind: "remove-all" };
+
 export function InventoryView({
   primitives,
   repos,
@@ -77,6 +81,7 @@ export function InventoryView({
   reading,
   onReread,
   onOpenHarness,
+  onShowTarget,
 }: {
   /** Undefined until the Inventory has been read once. */
   primitives: Primitive[] | undefined;
@@ -95,6 +100,8 @@ export function InventoryView({
   // The one step that fills an empty Inventory. Supplied by the container, so
   // this component stays routerless and storyable.
   onOpenHarness?: () => void;
+  /** Opens a target's row on Deploy-state; absent where no router is. */
+  onShowTarget?: (rowId: string) => void;
 }) {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [statusFilter, setStatusFilter] = useState<ReadonlySet<string>>(
@@ -106,12 +113,8 @@ export function InventoryView({
   // Held by name (from the full inventory), so a search narrowing the table
   // never closes an already-open pane (ADR-0016).
   const [selected, setSelected] = useState<string | null>(null);
-  // What the row's ⋮ menu asked the pane for. A fresh nonce remounts the
-  // pane's actions, so asking twice acts twice.
-  const [intent, setIntent] = useState<{
-    action: RowAction;
-    nonce: number;
-  } | null>(null);
+  // The dialog the row's ⋮, the pane's foot or a target row opened (#1065).
+  const [dialog, setDialog] = useState<PaneDialog | null>(null);
   // The table's rows as it shows them, which the pane pages through.
   const [order, setOrder] = useState<string[]>([]);
   // Kept apart from `selected` so inspecting and staging never toggle each
@@ -123,12 +126,11 @@ export function InventoryView({
   const open = useCallback(
     (name: string | null, action: RowAction | null = null) => {
       setSelected(name);
-      setIntent((current) =>
-        action === null ? null : { action, nonce: (current?.nonce ?? 0) + 1 },
-      );
+      setDialog(action === null ? null : rowDialog(action));
     },
     [],
   );
+  const listHeading = useRef<HTMLHeadingElement>(null);
   const cardColumn = hidden.has("status") ? "targets" : "status";
   const columns = useMemo(
     () =>
@@ -139,7 +141,7 @@ export function InventoryView({
     [cardColumn, open],
   );
 
-  const [announcement, setWrite] = useStatusRegion(
+  const [announcement] = useStatusRegion(
     useReadAnnouncement("Inventory", loading, notice),
   );
 
@@ -147,20 +149,26 @@ export function InventoryView({
   const rows: InventoryRow[] = all.map((primitive) => {
     const rollup = rollUpDeployment(primitive.name, targets);
     const status = skillStatus(rollup);
+    const deployments = skillDeployments(primitive.name, targets);
     return {
       ...primitive,
       status,
       targets: status === null ? null : rollup.targetCount,
-      deployments: skillDeployments(primitive.name, targets),
+      deployments,
       unreadable: Boolean(rollup.unreadable),
-      // The same offers the pane makes, so the two never disagree.
+      // The pane's foot holds these same items (#1065). The removal counts the
+      // targets the pane lists; it is offered from two removals, or it would
+      // repeat the one a target row already has (#422).
       actions: [
         { action: "deploy", label: DEPLOY_SKILL },
-        ...(status !== null && behindTarget(primitive.name, targets)
-          ? [{ action: "update" as const, label: UPDATE_TARGET }]
-          : []),
         ...(bulkRemoveTargets(primitive.name, targets).length >= 2
-          ? [{ action: "remove" as const, label: REMOVE_SKILL }]
+          ? [
+              {
+                action: "remove" as const,
+                label: removeFromAllLabel(deployments.length),
+                danger: true,
+              },
+            ]
           : []),
       ],
     };
@@ -176,16 +184,43 @@ export function InventoryView({
     selected === null
       ? null
       : (all.find((primitive) => primitive.name === selected) ?? null);
+  const selectedRow = rows.find((row) => row.name === selected) ?? null;
   const selectedRollup = selectedPrimitive
     ? rollUpDeployment(selectedPrimitive.name, targets)
     : null;
-  // Two or more, or the bulk would duplicate a remove that already exists on
-  // the one target (#422).
   const removable = selectedPrimitive
     ? bulkRemoveTargets(selectedPrimitive.name, targets)
     : [];
   const openIndex = selected === null ? -1 : order.indexOf(selected);
-  const actionKey = `${selected}:${intent?.nonce ?? 0}`;
+  const targetItems = (deployment: SkillDeployment): ActionsMenuItem[] => {
+    const { rowId } = deployment;
+    return [
+      ...(deployment.updatable
+        ? [
+            {
+              label: UPDATE_TARGET,
+              onSelect: () => setDialog({ kind: "update", deployment }),
+            },
+          ]
+        : []),
+      ...(onShowTarget === undefined || rowId === null
+        ? []
+        : [
+            {
+              label: SHOW_IN_DEPLOY_STATE,
+              onSelect: () => onShowTarget(rowId),
+            },
+          ]),
+      {
+        label:
+          deployment.removeTarget.kind === "global"
+            ? removeFromToolsLabel(deployment.removeTarget.tools)
+            : REMOVE_FROM_TARGET,
+        danger: true,
+        onSelect: () => setDialog({ kind: "remove", deployment }),
+      },
+    ];
+  };
 
   const noSkills = all.length === 0 ? NO_SKILLS_YET : undefined;
   const band2 = (
@@ -391,59 +426,51 @@ export function InventoryView({
           ) : null}
         </div>
         {selectedPrimitive ? (
-          <div className="absolute inset-y-0 right-0 z-20 max-w-full shadow-float min-[1100px]:static min-[1100px]:shadow-none">
+          <DetailPaneSlot>
             <SkillDetailPane
               primitive={selectedPrimitive}
-              deployments={skillDeployments(selectedPrimitive.name, targets)}
+              targetCount={selectedRow?.targets ?? null}
+              deployments={selectedRow?.deployments ?? []}
               unconfirmed={Boolean(
                 selectedRollup?.pending || selectedRollup?.unreadable,
               )}
+              listHeadingRef={listHeading}
               position={
                 openIndex === -1
                   ? null
                   : { index: openIndex, count: order.length }
               }
               onPage={(step) => open(order[openIndex + step] ?? selected)}
-              // Deploy skill starts at the target picker; Update target and
-              // Remove skill open a dialog that holds focus itself.
-              initialFocus={
-                intent === null
-                  ? undefined
-                  : intent.action === "deploy"
-                    ? "select"
-                    : null
-              }
-              deployAction={
-                // Keyed by skill: a pending pick or refusal from the previous
-                // skill can never carry over and overwrite the next one (#66).
-                <DeploySkillAction
-                  key={`deploy:${actionKey}`}
-                  skillName={selectedPrimitive.name}
-                  repos={repos}
-                  registryReady={registryReady}
-                  onWrite={setWrite}
-                  intent={intent?.action === "update" ? "update" : undefined}
-                  initialTarget={
-                    intent?.action === "update"
-                      ? behindTarget(selectedPrimitive.name, targets)
-                      : undefined
-                  }
-                />
-              }
-              removeAction={
-                removable.length >= 2 ? (
-                  <BulkRemoveSkillAction
-                    key={`remove:${actionKey}`}
-                    skillName={selectedPrimitive.name}
-                    targets={removable}
-                    defaultOpen={intent?.action === "remove"}
-                  />
-                ) : null
-              }
+              // A dialog the row's ⋮ opened holds focus itself.
+              initialFocus={dialog === null ? undefined : null}
+              targetItems={targetItems}
+              footItems={(selectedRow?.actions ?? []).map((item) => ({
+                label: item.label,
+                danger: item.danger,
+                onSelect: () => setDialog(rowDialog(item.action)),
+              }))}
               onClose={() => open(null)}
               getTriggerElement={getTriggerElement}
             />
-          </div>
+            {dialog === null ? null : (
+              <SkillPaneDialog
+                // Keyed by skill: a refusal from the previous skill can never
+                // carry over and overwrite the next one (#66).
+                key={selectedPrimitive.name}
+                dialog={dialog}
+                skillName={selectedPrimitive.name}
+                repos={repos}
+                registryReady={registryReady}
+                removable={removable}
+                onClose={() => setDialog(null)}
+                // The row that opened it is gone, so focus goes to its list.
+                onRemoved={() => {
+                  setDialog(null);
+                  requestAnimationFrame(() => listHeading.current?.focus());
+                }}
+              />
+            )}
+          </DetailPaneSlot>
         ) : null}
       </div>
     </Panel>

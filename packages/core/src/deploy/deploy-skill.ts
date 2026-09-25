@@ -206,12 +206,11 @@ export type DeploySkillError =
 
 export type DeploySkillResult =
   | { ok: true; deployed: { type: "skill"; name: string; version: string } }
-  // `packageType` and `linkedPath` are Maestro's own readings, never apm prose
+  // `linkedPath` is Maestro's own reading, never apm prose
   // (ADR-0018); `copyReceipt` licenses exactly the copies just read (#952).
   | {
       ok: false;
       error: DeploySkillError;
-      packageType?: string;
       linkedPath?: string;
       copyReceipt?: string;
     };
