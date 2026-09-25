@@ -1,6 +1,7 @@
 import { type ReactNode, useRef } from "react";
 import { DetailPane } from "../ui/detail-pane";
 import { FactList, FactRow } from "../ui/fact-list";
+import { GitHubFactLink } from "../ui/github-fact-link";
 import { Notice, type NoticeContent } from "../ui/notice";
 import {
   GLOBAL,
@@ -106,7 +107,7 @@ export function TargetDetailPane({
         ) : null}
         {head ? (
           <FactRow label="Release" machine>
-            {head.release}
+            <GitHubFactLink page={row.releaseGitHub} value={head.release} />
           </FactRow>
         ) : null}
         {head?.latestRelease && head.latestRelease !== head.release ? (

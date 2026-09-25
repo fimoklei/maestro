@@ -35,6 +35,8 @@ type DeployStateResponse = {
   pendingOperation?: PendingOperation;
   // Absent where the repository has no page on GitHub (#1180).
   github?: GitHubPage;
+  // Absent where the release has no page on GitHub (#1181).
+  releaseGitHub?: GitHubPage;
 };
 
 // Shared so single-repo and multi-repo readers use the same key/fetch — they

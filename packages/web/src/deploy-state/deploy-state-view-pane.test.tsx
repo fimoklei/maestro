@@ -75,6 +75,54 @@ describe("Deploy-state pane — facts", () => {
     ).toBeInTheDocument();
   });
 
+  // #1182: the value is the link, so its name starts with the tag.
+  it("links a repository's Release fact to its release page on GitHub", async () => {
+    const url = "https://github.com/fimoklei/agent-harness/releases/tag/v0.3.2";
+    repoWith({ releaseHead: BEHIND, releaseGitHub: { kind: "link", url } });
+    renderDeployState();
+    const pane = await openPane(LABEL);
+
+    const link = within(pane).getByRole("link", { name: "v0.3.2 on GitHub" });
+    expect(link).toHaveAttribute("href", url);
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).not.toHaveAttribute("tabindex");
+    expect(fact(pane, "Release")).toBe("v0.3.2");
+  });
+
+  it("links a global tool's Release fact to its release page on GitHub", async () => {
+    const url = "https://github.com/fimoklei/agent-harness/releases/tag/v0.3.2";
+    stubServer(() => ({
+      global: {
+        tools: [
+          {
+            tool: "claude",
+            primitives: [skill("tdd")],
+            releaseHead: BEHIND,
+            releaseGitHub: { kind: "link", url },
+          },
+        ],
+        skipped: [],
+      },
+    }));
+    renderDeployState();
+    const pane = await openPane("Claude Code");
+
+    expect(
+      within(pane).getByRole("link", { name: "v0.3.2 on GitHub" }),
+    ).toHaveAttribute("href", url);
+  });
+
+  it("keeps the Release fact plain text where its page is unknown or absent", async () => {
+    repoWith({ releaseHead: BEHIND, releaseGitHub: { kind: "unknown" } });
+    renderDeployState();
+    const pane = await openPane(LABEL);
+
+    expect(fact(pane, "Release")).toBe("v0.3.2");
+    expect(
+      within(pane).queryByRole("link", { name: /on GitHub$/ }),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows the whole Path when its value is focused", async () => {
     repoWith({ releaseHead: BEHIND });
     renderDeployState();

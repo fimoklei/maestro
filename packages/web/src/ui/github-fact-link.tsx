@@ -18,7 +18,8 @@ export function GitHubFactLink({
       rel="noreferrer"
       title={value}
       aria-label={factOnGitHub(value)}
-      className="text-blue-11 no-underline underline-offset-2 hover:underline"
+      // Inset ring: every fact slot truncates, which clips an outset one.
+      className="rounded-control text-blue-11 no-underline underline-offset-2 hover:underline focus-visible:-outline-offset-2"
     >
       {value}
     </a>
