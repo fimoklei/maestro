@@ -165,6 +165,8 @@ export class HarnessGitAdapter implements HarnessGitPort {
       return "skill-missing";
     }
 
+    // Before any object is written: a push to another destination than the
+    // fetch would publish this skill somewhere else.
     if (!(await this.pushLandsWhereItFetched(root))) {
       return "push-elsewhere";
     }
@@ -213,6 +215,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
       }
       return await this.pushPromotion(root, name, commit);
     } catch {
+      // Only the class crosses, never git's words or a path.
       return "push-failed";
     } finally {
       await rm(indexDir, { recursive: true, force: true });
