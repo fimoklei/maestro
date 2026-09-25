@@ -3,11 +3,16 @@ import { cn } from "./cn";
 import type { StatusFamily, StatusReading } from "./status-reading";
 
 // Spectrum's status-badge anatomy (fill, 1px border, weight 500, mark plus
-// word) at our density: 20px tall, radius 4, colour third (ADR-0033 §3). A
-// resting reading carries no fill and no hue (design.md → Meaning and emphasis).
+// word) at our density: 20px tall, radius 4, colour third (ADR-0033 §3).
 const familyClasses: Record<StatusFamily, { badge: string; glyph: string }> = {
-  good: { badge: "border-transparent text-gray-11", glyph: "text-gray-11" },
-  neutral: { badge: "border-transparent text-gray-11", glyph: "text-gray-11" },
+  good: {
+    badge: "border-green-7 bg-green-3 text-green-12",
+    glyph: "text-green-11",
+  },
+  neutral: {
+    badge: "border-gray-7 bg-gray-3 text-gray-12",
+    glyph: "text-gray-11",
+  },
   unknown: {
     badge: "border-gray-7 bg-gray-3 text-gray-12",
     glyph: "text-gray-11",

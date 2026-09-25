@@ -27,18 +27,19 @@ Status badge and a Targets number. *Re-read* is the only word for reading again;
 
 ### 2. Emphasis is scarce
 
-The resting state is plain text on a neutral surface. Colour marks what needs
-the reader. The primary action is neutral (slate 12), so colour stays free for
-status. At most one coloured mark per row.
+Colour makes a status legible and decorates nothing else. The primary action is
+neutral (slate 12), so colour stays free for status. At most one coloured mark
+per row: the status badge.
 
-*Maestro:* Up to date rows carry no colour; Pinned per skill and Other origin
-turned neutral because neither asks for an action.
+*Maestro:* Pinned per skill and Other origin turned neutral because neither asks
+for an action.
 
 ### 3. A status is a word and a shape, then a colour
 
 Every status reads without colour: a word from `CONTEXT.md` plus a glyph. Five
 families: Good ✓ green, Attention ↑/⚠ amber, Failed ✕ red, Unknown ? slate,
-Neutral slate. Two readings never become two badges; the worst one wins the row
+Neutral slate. Neutral and Unknown share the slate badge and differ by word and
+glyph. Two readings never become two badges; the worst one wins the row
 and the rest go to the detail pane. Unknown is a status, never a notice.
 
 *Maestro:* a Deploy-state target with local edits and a newer release shows
