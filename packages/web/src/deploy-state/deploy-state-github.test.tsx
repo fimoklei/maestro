@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -105,10 +105,25 @@ describe("Deploy-state — GitHub column", () => {
     expect(githubCell(NAME)).toHaveTextContent("Unknown");
     expect(within(githubCell(NAME)).queryByRole("link")).toBeNull();
 
-    // The keyboard reaches the cause through the pane, not the hover card.
     const pane = await openPane(NAME);
     expect(
       within(pane).getByText(/The origin of this repository could not be read/),
+    ).toBeInTheDocument();
+  });
+
+  // design.md → Disclosure: a hover card opens on focus as well as hover.
+  it("opens the Unknown badge's cause when the grid's active row is the repository", async () => {
+    serve({ kind: "unknown" });
+    renderDeployState();
+    await findRow(NAME);
+
+    act(() => screen.getByRole("grid").focus());
+    await userEvent.keyboard("{ArrowDown}");
+
+    expect(
+      await screen.findByText(
+        /The origin of this repository could not be read/,
+      ),
     ).toBeInTheDocument();
   });
 });

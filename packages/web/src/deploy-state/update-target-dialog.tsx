@@ -8,7 +8,7 @@ import { type ReactNode, useId, useState } from "react";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { DIALOG_FOOTER, DialogShell } from "../ui/dialog-shell";
-import { GitHubLinkCell } from "../ui/github-link-cell";
+import { GitHubMarkLink } from "../ui/github-mark-link";
 import { Notice } from "../ui/notice";
 import { StatusBadge } from "../ui/status-badge";
 import { reading } from "../ui/status-reading";
@@ -162,11 +162,9 @@ function SkillRows({
           className="inline-flex items-center gap-1 font-mono text-row text-gray-12"
         >
           {row.name}
-          <GitHubLinkCell
+          <GitHubMarkLink
             page={row.url === null ? undefined : { kind: "link", url: row.url }}
             name={row.name}
-            // A preview row is a link or nothing; it is never unknown.
-            unknownCause=""
             focusable={true}
           />
         </li>

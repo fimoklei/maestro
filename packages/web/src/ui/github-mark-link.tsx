@@ -7,26 +7,38 @@ import { reading } from "./status-reading";
 
 const UNKNOWN = reading("Unknown", "unknown");
 
+export type GitHubLink = Extract<GitHubPage, { kind: "link" }>;
+
 // A row's own GitHub page (design.md → Frame): GitHub's mark as a mouse-only
 // link, since the grid is one Tab stop and the ⋮ menu is the keyboard's way.
 // Nothing where there is no page; its own Unknown badge where the read failed.
-export function GitHubLinkCell({
+export function GitHubMarkLink({
   page,
   name,
   unknownCause,
+  focused = false,
   focusable = false,
 }: {
-  page: GitHubPage | undefined;
   name: string;
-  /** The hover card's sentence when the page could not be read. */
-  unknownCause: string;
   /** Outside a grid, where no ⋮ menu offers the same page to the keyboard. */
   focusable?: boolean;
-}) {
+  /** The grid's active row, which opens the Unknown hover card as focus would. */
+  focused?: boolean;
+} & (
+  | {
+      page: GitHubPage | undefined;
+      /** The hover card's sentence when the page could not be read. */
+      unknownCause: string;
+    }
+  | { page: GitHubLink | undefined; unknownCause?: never }
+)) {
   if (page === undefined) return null;
   if (page.kind === "unknown") {
     return (
-      <HoverCard content={<p className="m-0 text-gray-11">{unknownCause}</p>}>
+      <HoverCard
+        focused={focused}
+        content={<p className="m-0 text-gray-11">{unknownCause}</p>}
+      >
         <span className="inline-flex align-middle">
           <StatusBadge reading={UNKNOWN} />
         </span>

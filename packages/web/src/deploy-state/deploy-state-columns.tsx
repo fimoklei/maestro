@@ -4,8 +4,8 @@ import {
   createDataTableColumns,
   useDataTableRowActive,
 } from "../ui/data-table";
-import { GitHubLinkCell } from "../ui/github-link-cell";
 import { GITHUB_COLUMN } from "../ui/github-link-copy";
+import { GitHubMarkLink } from "../ui/github-mark-link";
 import { HoverCard } from "../ui/hover-card";
 import { MachineValue } from "../ui/machine-value";
 import { StatusBadge } from "../ui/status-badge";
@@ -16,6 +16,7 @@ import {
   ORIGIN_NOT_READ,
   TARGET_LABEL,
 } from "./deploy-state-copy";
+import { targetRowItems } from "./target-menu";
 import { statusSummary, type TargetRow } from "./target-rows";
 
 // The Deploy-state table's columns (#993): the kind is the group, not a column.
@@ -60,6 +61,19 @@ function StatusCard({ row }: { row: TargetTableRow }) {
         <StatusBadge reading={row.status} />
       </span>
     </HoverCard>
+  );
+}
+
+// The GitHub cell: its Unknown card opens with the active row, as Status does.
+function GitHubCell({ row }: { row: TargetTableRow }) {
+  const active = useDataTableRowActive();
+  return (
+    <GitHubMarkLink
+      page={row.github}
+      name={row.name}
+      unknownCause={ORIGIN_NOT_READ}
+      focused={active}
+    />
   );
 }
 
@@ -136,13 +150,7 @@ export const deployStateColumns = ({
     helper.display({
       id: "github",
       header: GITHUB_COLUMN,
-      cell: ({ row }) => (
-        <GitHubLinkCell
-          page={row.original.github}
-          name={row.original.name}
-          unknownCause={ORIGIN_NOT_READ}
-        />
-      ),
+      cell: ({ row }) => <GitHubCell row={row.original} />,
       // Drops out on a narrow panel; the ⋮ menu keeps the same link.
       meta: { className: "w-28 @max-[40rem]:hidden" },
     }),
@@ -152,14 +160,7 @@ export const deployStateColumns = ({
       cell: ({ row }) => (
         <RowItemsMenu
           label={rowActionsLabel(row.original.name)}
-          items={[
-            ...row.original.actions.map((item) => ({
-              label: item.label,
-              disabled: item.disabled,
-              onSelect: () => onAction(row.original, item.action),
-            })),
-            ...row.original.links,
-          ]}
+          items={targetRowItems(row.original, onAction)}
         />
       ),
       meta: { className: "w-10" },

@@ -1,5 +1,6 @@
 import { DEPLOY_SKILL } from "../inventory/inventory-copy";
-import type { TargetTableRow } from "./deploy-state-columns";
+import type { FootItem } from "../ui/foot-actions";
+import type { TargetAction, TargetTableRow } from "./deploy-state-columns";
 import { VIEW_REPOSITORY_ON_GITHUB } from "./deploy-state-copy";
 import { RETRY_LABELS } from "./release-head-copy";
 import type { TargetRow } from "./target-rows";
@@ -34,3 +35,20 @@ export const targetLinkItems = (
   row.github?.kind === "link"
     ? [{ label: VIEW_REPOSITORY_ON_GITHUB, href: row.github.url }]
     : [];
+
+// One row's items, the same in its ⋮ menu and at its pane's foot.
+export const targetRowItems = (
+  row: TargetTableRow,
+  onAction: (row: TargetTableRow, action: TargetAction) => void,
+): FootItem[] => [
+  ...row.actions.map((item) => ({
+    label: item.label,
+    // Update target names the target it moves (spec story 32).
+    ...(item.action === "update" && !item.disabled
+      ? { name: `${UPDATE_TARGET} ${row.updateName}` }
+      : {}),
+    disabled: item.disabled,
+    onSelect: () => onAction(row, item.action),
+  })),
+  ...row.links,
+];

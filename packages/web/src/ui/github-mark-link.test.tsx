@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { GitHubLinkCell } from "./github-link-cell";
 import { factOnGitHub, GITHUB_COLUMN, viewOnGitHub } from "./github-link-copy";
+import { GitHubMarkLink } from "./github-mark-link";
 
 const CAUSE = "The origin of this repository could not be read.";
 
@@ -23,10 +23,10 @@ describe("GitHub link copy", () => {
   });
 });
 
-describe("GitHubLinkCell", () => {
+describe("GitHubMarkLink", () => {
   it("links GitHub's mark to the page in a new tab, out of the Tab order", () => {
     render(
-      <GitHubLinkCell
+      <GitHubMarkLink
         name="maestro"
         page={{ kind: "link", url: "https://github.com/o/maestro" }}
         unknownCause={CAUSE}
@@ -42,7 +42,7 @@ describe("GitHubLinkCell", () => {
   // Outside a grid there is no ⋮ menu to carry the keyboard's way (#1181).
   it("stays in the Tab order when it is the only way to the page", () => {
     render(
-      <GitHubLinkCell
+      <GitHubMarkLink
         name="tdd"
         page={{ kind: "link", url: "https://github.com/o/r" }}
         unknownCause={CAUSE}
@@ -56,7 +56,7 @@ describe("GitHubLinkCell", () => {
 
   it("stays empty where there is no page", () => {
     const { container } = render(
-      <GitHubLinkCell name="maestro" page={undefined} unknownCause={CAUSE} />,
+      <GitHubMarkLink name="maestro" page={undefined} unknownCause={CAUSE} />,
     );
     expect(container).toBeEmptyDOMElement();
   });
@@ -64,7 +64,7 @@ describe("GitHubLinkCell", () => {
   it("shows an Unknown badge with its cause in the hover card", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     render(
-      <GitHubLinkCell
+      <GitHubMarkLink
         name="maestro"
         page={{ kind: "unknown" }}
         unknownCause={CAUSE}

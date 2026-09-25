@@ -4,7 +4,7 @@ import {
   driftViewModel,
   lagsPin,
 } from "../drift/drift-view-model";
-import { GitHubLinkCell } from "../ui/github-link-cell";
+import { GitHubMarkLink } from "../ui/github-mark-link";
 import { SubListRow } from "../ui/sub-list-row";
 import {
   HARNESS_ORIGIN_NOT_READ,
@@ -84,7 +84,7 @@ export function SelectedSkills({
               }
               menuLabel={`Actions for ${primitive.name}`}
               link={
-                <GitHubLinkCell
+                <GitHubMarkLink
                   page={primitive.github}
                   name={primitive.name}
                   unknownCause={HARNESS_ORIGIN_NOT_READ}

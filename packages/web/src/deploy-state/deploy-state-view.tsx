@@ -41,11 +41,14 @@ import {
 import { freshnessLine } from "./freshness-line";
 import { skippedEntryKey, skippedEntryText } from "./skipped-entry-text";
 import { TargetDetailPane } from "./target-detail-pane";
-import { targetLinkItems, targetMenuItems } from "./target-menu";
+import {
+  targetLinkItems,
+  targetMenuItems,
+  targetRowItems,
+} from "./target-menu";
 import { globalRows, repoRow, type TargetRow } from "./target-rows";
 import { TARGET_STATUS_WORDS } from "./target-status";
 import { UpdateTargetAction } from "./update-target-action";
-import { UPDATE_TARGET } from "./update-target-copy";
 import { deployStateQueryOptions } from "./use-deploy-state";
 import { useGlobalDeployState } from "./use-global-deploy-state";
 import { useRetryOperation } from "./use-retry-operation";
@@ -404,18 +407,7 @@ export function DeployStateView() {
                   key={`${selectedRow.id}:${intent?.nonce ?? 0}`}
                   row={selectedRow}
                   openUpdate={intent?.update ?? false}
-                  items={[
-                    ...selectedRow.actions.map((item) => ({
-                      label: item.label,
-                      // Update target names the target it moves (spec story 32).
-                      ...(item.action === "update" && !item.disabled
-                        ? { name: `${UPDATE_TARGET} ${selectedRow.updateName}` }
-                        : {}),
-                      disabled: item.disabled,
-                      onSelect: () => onAction(selectedRow, item.action),
-                    })),
-                    ...selectedRow.links,
-                  ]}
+                  items={targetRowItems(selectedRow, onAction)}
                 />
               }
             />
