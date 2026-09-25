@@ -1,11 +1,14 @@
 // `pnpm comment-guard [root]`: prints `file:line: match` for every comment that
-// points at a workshop document and every line naming the operator's home.
+// points at a workshop document, every line citing an ADR or story ID, and every
+// line naming the operator's home.
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript-6";
 
-const ADR_POINTERS = [/ADR-/, /ADR 00/];
+// Matched anywhere in a line; bracketed so the guard passes its own source.
+const ADR_POINTERS = [/ADR[-]/, /ADR[ ]00/];
+const STORY_ID = /\(J\d+\)/;
 const DOCUMENT_POINTERS = [
   /docs\/research/,
   /LEARNINGS/,
@@ -13,7 +16,6 @@ const DOCUMENT_POINTERS = [
   /\.claude\//,
   /docs\/jobs\.md/,
   /design-principles/,
-  /\(J\d+\)/,
 ];
 const HOME = /\/Users\/michielmerks/;
 const SKIPPED_DIRS = new Set([
@@ -42,8 +44,18 @@ function* filesUnder(dir) {
 
 /** Line number (1-based) → comment text on that line. */
 function commentsByLine(path, text) {
-  const kind = path.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
-  const source = ts.createSourceFile(path, text, 99, false, kind);
+  const kind = path.endsWith(".tsx")
+    ? ts.ScriptKind.TSX
+    : /\.m?js$/.test(path)
+      ? ts.ScriptKind.JS
+      : ts.ScriptKind.TS;
+  const source = ts.createSourceFile(
+    path,
+    text,
+    ts.ScriptTarget.Latest,
+    false,
+    kind,
+  );
   const ranges = new Map();
   const visit = (node) => {
     for (const range of [
@@ -86,15 +98,16 @@ function findOffenders(root) {
 
   for (const top of ["packages", "tests", "scripts"]) {
     for (const path of filesUnder(join(root, top))) {
-      if (!/\.(tsx?|mts|mjs|js)$/.test(path)) continue;
+      const markup = top === "packages" && /\.(css|html)$/.test(path);
+      if (!markup && !/\.(tsx?|mts|mjs|js)$/.test(path)) continue;
       const text = readFileSync(path, "utf8");
-      const comments = commentsByLine(path, text);
+      const comments = markup ? null : commentsByLine(path, text);
       text.split("\n").forEach((line, i) => {
         const match =
-          firstMatch([HOME], line) ??
+          firstMatch([HOME, ...ADR_POINTERS, STORY_ID], line) ??
           firstMatch(
-            [...ADR_POINTERS, ...DOCUMENT_POINTERS],
-            comments.get(i + 1) ?? "",
+            DOCUMENT_POINTERS,
+            markup ? line : (comments.get(i + 1) ?? ""),
           );
         if (match) report(path, i + 1, match);
       });
@@ -105,7 +118,7 @@ function findOffenders(root) {
     readFileSync(path, "utf8")
       .split("\n")
       .forEach((line, i) => {
-        const match = firstMatch([HOME, ...DOCUMENT_POINTERS], line);
+        const match = firstMatch([HOME, STORY_ID, ...DOCUMENT_POINTERS], line);
         if (match) report(path, i + 1, match);
       });
   }
