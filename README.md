@@ -1,118 +1,108 @@
 # Maestro
 
-**See and steer your AI agent setup from one screen.**
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/fimoklei/maestro)](https://github.com/fimoklei/maestro/releases)
 
-Your agents (Claude Code, Codex and others) read skills from folders on your
-machine, some per project, some global. Maestro shows what you have, where
-each copy runs, and which copies are behind. From the same screen you deploy,
-update and publish.
+**See and steer your AI agent skills from one screen.**
 
-[APM](https://microsoft.github.io/apm/), the package manager for agent skills,
-does the installing, pinning and tracking. Maestro reads APM's lockfiles and
-runs its commands; it reimplements nothing
-([ADR-0001](docs/adr/0001-apm-is-the-engine-maestro-is-the-cockpit.md)).
+![The Inventory screen: every skill in the Harness, with its status and the number of targets it is deployed to](docs/images/inventory.png)
 
-## Three words you will meet
+> **Alpha.** Maestro works for skills today. Hooks and MCP servers are not
+> supported yet. Expect rough edges and breaking changes between releases.
 
-- **Harness** — the git repository on GitHub that holds every skill your team
-  shares. Each release is a git tag. Maestro reads from it and publishes to it.
-- **Target** — a place a skill is deployed to: a project you registered, or the
-  global folder a tool reads on your machine.
-- **Deploy** — copy one skill, at one tagged version, into one target. APM does
-  the copying; Maestro tells it what to copy.
+Your coding agents (Claude Code, Codex and others) read skills from folders on
+your machine: some per project, some global. After a few weeks you have copies
+everywhere, at different versions, and no single place that shows them.
 
-## Install
+Maestro is a local web app that shows every skill you have, where each copy
+is deployed and which copies are behind. From the same screen you deploy,
+update and publish skills for your whole team.
 
-Maestro needs APM. Install APM first.
+Maestro does not install anything itself. [APM](https://microsoft.github.io/apm/),
+the package manager for agent skills, does the installing, pinning and
+tracking. Maestro reads APM's lockfiles and runs its commands.
+
+## Quick start
+
+You need git, [Node](https://nodejs.org/) 24 or newer, and
+[APM](https://microsoft.github.io/apm/).
 
 **1. Install APM**
 
-macOS and Linux, in a terminal:
+macOS and Linux:
 
 ```sh
 curl -sSL https://aka.ms/apm-unix | sh
-apm --version
 ```
 
-Windows, in PowerShell:
+Windows (PowerShell):
 
 ```powershell
 irm https://aka.ms/apm-windows | iex
-apm --version
 ```
 
-If `apm --version` prints no version, stop and fix that first. Other options
-are in the [APM docs](https://microsoft.github.io/apm/).
+Run `apm --version`. If it prints no version, fix that before you continue.
 
-**2. Have these ready**
-
-- git and a terminal.
-- [Node](https://nodejs.org/) 24 or newer, then `corepack enable` once for
-  `pnpm`.
-- A GitHub account that can read the Harness. Run `gh auth login` so git
-  fetches without prompting.
-
-**3. Install and start Maestro**
+**2. Get Maestro and start it**
 
 ```sh
-git clone https://github.com/fimoklei/maestro.git
+git clone --branch v0.1.0 https://github.com/fimoklei/maestro.git
 cd maestro
+corepack enable
 node scripts/bootstrap.mjs
 ```
 
-That checks Node, pnpm and apm; if anything is missing it prints the exact
-command to fix it and stops, without installing anything itself. Otherwise it
-installs Maestro's dependencies (first run only) and prints the cockpit's
-address. Open it in your browser. `node scripts/bootstrap.mjs --check` runs
-just the checks.
+The script checks Node, pnpm and APM. If something is missing, it prints the
+command that fixes it and stops. If all is present, it installs Maestro's
+dependencies and prints the address of the cockpit. Open that address in your
+browser.
 
-Prefer to do it by hand, or the fast path found a gap and you fixed it?
+To update later, check out the newer tag and run the script again. The
+[releases](https://github.com/fimoklei/maestro/releases) page lists every tag.
 
-```sh
-pnpm install
-pnpm dev
-```
+## How it works
 
-`pnpm dev` prints the cockpit's address the same way.
+Three words appear everywhere in the cockpit:
 
-## Your first harness
+- **Harness** — a GitHub repository that holds the skills your team shares.
+  Each release of the Harness is a git tag.
+- **Target** — a place a skill is deployed to: a project you registered, or
+  the global folder a tool reads.
+- **Deploy** — copy one skill, at one released version, into one target.
 
-The cockpit opens on **Inventory not connected** and asks for a Harness.
-Give it one of these:
+The first screen asks for a Harness. Give it one of these:
 
-- **The URL of an empty GitHub repository you created.** Maestro scaffolds it
-  into a Harness: the folder layout, a `README.md` and a `CONTRIBUTING.md`.
-  One person per team does this once.
-- **The URL or local clone of a Harness that already exists.** Everyone else
-  on the team does this.
+- **The URL of an empty GitHub repository.** Maestro sets it up as a new
+  Harness. One person per team does this once.
+- **The URL or local clone of an existing Harness.** Everyone else on the
+  team does this.
 
-From there the cockpit guides you. The Harness view shows what the Harness
-holds and what waits for a release. Inventory shows what you can deploy. Each
-target's page shows what it holds and which copies are behind.
+After that, the daily loop is:
 
-## Daily use
+1. **Deploy** a skill from the Inventory to a project or to your global folder.
+2. **Update** a target when the Harness has a newer release.
+3. **Import** a skill you wrote into the Harness and **propose the change**.
+   Maestro opens a pull request on the Harness.
+4. After the pull request is merged, **publish a release**. Maestro cuts a new
+   tag, and the skill can now be deployed.
 
-- **Deploy a skill** from Inventory to a project or to your global folder.
-- **Update a target** when the Harness moves ahead of it.
-- **Import a skill** you wrote in `~/.claude/skills/` into the Harness, then
-  **propose the change**. That opens a pull request on the Harness. The
-  curator merges it; you **publish a release**, which cuts a new tag. The
-  Harness's `CONTRIBUTING.md` says what may enter it.
-- **Deploy that skill** once it is released. A release puts the skill in the
-  Harness, not on your machine — deploying it is what your tools read.
+## Requirements
 
-## For contributors to Maestro itself
+- macOS, Linux or Windows
+- git, and Node 24 or newer with pnpm (through `corepack enable`)
+- APM
+- A GitHub account that can read your Harness. Run `gh auth login` once, so
+  git can fetch without a password prompt. The `gh` CLI is optional; without
+  it, Maestro does not show pull request status.
 
-Read in this order:
+Maestro runs on your machine only. Its server listens on `127.0.0.1`, and it
+stores no tokens. APM, git and `gh` use the credentials you already set up.
 
-1. [`CONTEXT.md`](CONTEXT.md) — glossary
-2. [`docs/brief.md`](docs/brief.md) — why Maestro exists
-3. [`docs/jobs.md`](docs/jobs.md) — the board: now, next, later, done
-4. [`docs/operating-model.md`](docs/operating-model.md) — how the product is run
-5. [`docs/adr/`](docs/adr/) — binding decisions
+## Contributing
 
-`pnpm verify` runs lint, typecheck and tests. `pnpm smoke` starts the cockpit
-against a sandbox that never touches your real setup.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before you open a pull request. To
+report a security problem, see [SECURITY.md](SECURITY.md).
 
-> **Status:** the cockpit works for skills. Hooks and MCP servers are on
-> [the board](docs/jobs.md).
+## License
+
+[MIT](LICENSE)
