@@ -6,7 +6,6 @@ import {
   PROPOSAL_EMPTY,
   PULL_REQUEST_CARD,
   pullRequestLinkName,
-  pullRequestOpensLine,
   pullRequestState,
   requestedReviewers,
   reviewerLine,
@@ -476,12 +475,6 @@ describe("pull request words", () => {
       branch: "Branch",
       into: "into",
     });
-  });
-
-  it("says where selecting the number takes the author", () => {
-    expect(pullRequestOpensLine(47)).toBe(
-      "Select #47 to open it on GitHub in a new tab.",
-    );
   });
 
   it("reads a request's state off the row's status", () => {

@@ -46,6 +46,15 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
     expect(rowsOf(state.stages.release)).toMatchObject([
       { skill: "tdd", status: "changed" },
     ]);
+    // The new local work follows the open request, so it links to it too.
+    expect(rowsOf(state.stages.proposal)[0]?.requests).toEqual([
+      {
+        number: 45,
+        url: "https://github.com/fimoklei/agent-harness/pull/45",
+        headBranch: "maestro/tdd",
+        baseBranch: "main",
+      },
+    ]);
     // Every row names the other two, in journey order.
     expect(rowsOf(state.stages.proposal)[0]?.alsoIn).toEqual([
       "pending-review",
