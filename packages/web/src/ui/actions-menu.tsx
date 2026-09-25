@@ -47,7 +47,8 @@ export function ActionsMenu({
   returnFocus = true,
 }: ActionsMenuProps) {
   // Run once the menu has closed: an open menu traps focus, so an item that
-  // moves focus elsewhere would lose it.
+  // moves focus elsewhere would lose it, and a dialog it opens would remember
+  // the vanished item as its opener (#1124).
   const pending = useRef<(() => void) | null>(null);
   return (
     <DropdownMenu.Root>
@@ -80,14 +81,16 @@ export function ActionsMenu({
             const run = pending.current;
             pending.current = null;
             if (run === null) return;
-            event.preventDefault();
+            // Radix focuses the trigger after this handler, before the action's
+            // render (react-focus-scope 1.1.16), so a dialog sees it as opener.
+            if (!returnFocus) event.preventDefault();
             run();
           }}
           // A menu floats, so it takes radius 12 and the one shadow
           // (ADR-0033 §7). bg-gray-2, not gray-3: leaves the highlighted state
-          // below free to read as hover (#388).
+          // below free to read as hover (#388). z-50: above a pane's z-20 (#1124).
           className={cn(
-            "min-w-32 rounded-float border border-gray-7 bg-gray-2 p-tight shadow-float",
+            "z-50 min-w-32 rounded-float border border-gray-7 bg-gray-2 p-tight shadow-float",
             fitTrigger && "w-(--radix-dropdown-menu-trigger-width)",
           )}
         >
@@ -116,8 +119,7 @@ export function ActionsMenu({
                       event.preventDefault();
                       return;
                     }
-                    if (returnFocus) item.onSelect?.();
-                    else pending.current = item.onSelect ?? null;
+                    pending.current = item.onSelect ?? null;
                   }}
                   asChild={item.href !== undefined}
                   className={cn(

@@ -45,9 +45,15 @@ describe("removing a deployed skill from a row", () => {
       const announcement = await screen.findByText(
         `Removed tdd v0.5.0 from ${REPO_NAME}.`,
       );
-      // Read out where it stands, and focus stays where the reader left it.
+      // Read out where it stands, and focus goes back to the ⋮ the reader
+      // left it on, never to the announcement (#1124).
       expect(announcement.closest("[aria-live]")).not.toBeNull();
-      expect(document.activeElement).toBe(document.body);
+      expect(
+        screen.getByRole("button", { name: "Actions for tdd" }),
+      ).toHaveFocus();
+      expect(announcement.closest("[aria-live]")).not.toContainElement(
+        document.activeElement as HTMLElement,
+      );
     });
 
     // The row's version can be stale by the time the user confirms — another

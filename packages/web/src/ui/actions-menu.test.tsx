@@ -39,6 +39,23 @@ describe("ActionsMenu", () => {
     ).toBeInTheDocument();
   });
 
+  // #1124: a pane's slot carries z-20, so an unlayered menu opened behind it.
+  // happy-dom paints nothing; the browser measurement is in the commit.
+  it("opens on the floating layer, above a detail pane", async () => {
+    render(
+      <ActionsMenu
+        label="Actions for tdd"
+        items={[{ label: "remove…", onSelect: () => {} }]}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Actions for tdd" }),
+    );
+
+    expect(await screen.findByRole("menu")).toHaveClass("z-50");
+  });
+
   it("runs an item's action when it is chosen with the keyboard", async () => {
     const onSelect = vi.fn();
     render(

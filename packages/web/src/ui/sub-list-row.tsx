@@ -25,7 +25,7 @@ export function SubListRow({
   items: readonly ActionsMenuItem[];
 }) {
   return (
-    <li className="flex h-row items-center gap-inline border-gray-6 border-b text-row">
+    <li className="group/sub flex h-row items-center gap-inline border-gray-6 border-b text-row">
       <Mark mark={mark} />
       <span className="min-w-0 flex-1 truncate text-gray-12">{name}</span>
       <span className="text-gray-11">
@@ -41,6 +41,8 @@ export function SubListRow({
               className={cn(
                 // 24×24, the pointer floor (WCAG 2.2 SC 2.5.8).
                 "inline-flex size-6 cursor-pointer items-center justify-center rounded-control text-gray-11 hover:bg-gray-4 hover:text-gray-12",
+                // As the table's row menu (#1124); stays in the Tab order.
+                "opacity-0 group-hover/sub:opacity-100 group-focus-within/sub:opacity-100 data-[state=open]:opacity-100 [@media(hover:none)]:opacity-100",
                 "focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2",
               )}
             >
