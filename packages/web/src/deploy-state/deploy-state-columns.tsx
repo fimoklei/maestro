@@ -1,14 +1,21 @@
-import { RowMenu } from "../inventory/row-menu";
+import { rowActionsLabel } from "../inventory/inventory-copy";
+import { RowItemsMenu } from "../inventory/row-menu";
 import {
   createDataTableColumns,
   useDataTableRowActive,
 } from "../ui/data-table";
+import { GitHubLinkCell } from "../ui/github-link-cell";
+import { GITHUB_COLUMN } from "../ui/github-link-copy";
 import { HoverCard } from "../ui/hover-card";
 import { MachineValue } from "../ui/machine-value";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank } from "../ui/status-reading";
 import { useNow } from "../ui/use-now";
-import { ACTIONS_COLUMN_LABEL, TARGET_LABEL } from "./deploy-state-copy";
+import {
+  ACTIONS_COLUMN_LABEL,
+  ORIGIN_NOT_READ,
+  TARGET_LABEL,
+} from "./deploy-state-copy";
 import { statusSummary, type TargetRow } from "./target-rows";
 
 // The Deploy-state table's columns (#993): the kind is the group, not a column.
@@ -18,6 +25,8 @@ export type TargetAction = "deploy" | "update" | "retry";
 export type TargetTableRow = TargetRow & {
   /** The ⋮ menu's items, in order; the pane's foot offers the same. */
   actions: { action: TargetAction; label: string; disabled?: boolean }[];
+  /** Pages elsewhere, after the actions in the menu and at the foot. */
+  links: { label: string; href: string }[];
 };
 
 const unranked = Number.MAX_SAFE_INTEGER;
@@ -80,18 +89,13 @@ export const deployStateColumns = ({
   createDataTableColumns<TargetTableRow>((helper) => [
     helper.accessor("name", {
       header: TARGET_LABEL,
+      // The name only; the path is a fact in the detail pane (#1180).
       cell: ({ row }) => (
-        <span className="flex min-w-0 items-baseline gap-inline">
-          <span
-            title={row.original.title}
-            className="flex-none font-medium text-gray-12"
-          >
-            {row.original.name}
-          </span>
-          {/* The path drops out first on a narrow window (#993). */}
-          <span className="truncate text-gray-11 @max-[45rem]:hidden">
-            <MachineValue>{row.original.path}</MachineValue>
-          </span>
+        <span
+          title={row.original.title}
+          className="block truncate font-medium text-gray-12"
+        >
+          {row.original.name}
         </span>
       ),
     }),
@@ -130,13 +134,32 @@ export const deployStateColumns = ({
       meta: { className: "w-18 tabular-nums", align: "end" },
     }),
     helper.display({
+      id: "github",
+      header: GITHUB_COLUMN,
+      cell: ({ row }) => (
+        <GitHubLinkCell
+          page={row.original.github}
+          name={row.original.name}
+          unknownCause={ORIGIN_NOT_READ}
+        />
+      ),
+      // Drops out on a narrow panel; the ⋮ menu keeps the same link.
+      meta: { className: "w-28 @max-[40rem]:hidden" },
+    }),
+    helper.display({
       id: "actions",
       header: () => <span className="sr-only">{ACTIONS_COLUMN_LABEL}</span>,
       cell: ({ row }) => (
-        <RowMenu
-          name={row.original.name}
-          items={row.original.actions}
-          onAction={(action) => onAction(row.original, action)}
+        <RowItemsMenu
+          label={rowActionsLabel(row.original.name)}
+          items={[
+            ...row.original.actions.map((item) => ({
+              label: item.label,
+              disabled: item.disabled,
+              onSelect: () => onAction(row.original, item.action),
+            })),
+            ...row.original.links,
+          ]}
         />
       ),
       meta: { className: "w-10" },

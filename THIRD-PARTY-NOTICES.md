@@ -3,6 +3,15 @@
 Maestro includes code adapted from the projects below. Each adapted file opens
 with a line naming its source, and was changed from the original.
 
+## Octicons
+
+- Source: https://github.com/primer/octicons
+- Copied at commit `90af1f14984832de34e94b2d530043fbcf85eb7f` (2026-09-25):
+  `icons/mark-github-16.svg`, as the path in
+  `packages/web/src/ui/github-link-cell.tsx`.
+- Licence: MIT License, Copyright (c) 2026 GitHub Inc. The full text is at
+  https://github.com/primer/octicons/blob/main/LICENSE.
+
 ## Spectrum UI
 
 - Source: https://github.com/arihantcodes/spectrum-ui

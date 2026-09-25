@@ -5,6 +5,7 @@ import {
   NO_LONGER_RELEASED_HINT,
   NO_TOOL_DETECTED,
   NOTHING_DEPLOYED,
+  ORIGIN_NOT_READ,
   otherOriginLine,
   REPO_NOT_READ,
   REPOS_NOT_READ,
@@ -12,6 +13,7 @@ import {
   TARGET_LABEL,
   targetCount,
   UNREACHED_HINT,
+  VIEW_REPOSITORY_ON_GITHUB,
 } from "./deploy-state-copy";
 
 // Approved sentences, as exact strings (copy.md).
@@ -56,6 +58,14 @@ describe("Deploy-state copy", () => {
     });
     expect(NO_FILTER_MATCH).toBe(
       "No targets match the filters. Select Filter to show more targets.",
+    );
+  });
+
+  // #1180: the GitHub column's menu item and its Unknown badge's cause.
+  it("keeps the GitHub column's sentences", () => {
+    expect(VIEW_REPOSITORY_ON_GITHUB).toBe("View repository on GitHub");
+    expect(ORIGIN_NOT_READ).toBe(
+      "The origin of this repository could not be read. Select Re-read Deploy-state to read it again.",
     );
   });
 

@@ -1021,3 +1021,45 @@ describe("DeployStateReader on a target with an unfinished operation", () => {
     expect(result).not.toHaveProperty("pendingOperation");
   });
 });
+
+describe("DeployStateReader on a repository's GitHub page", () => {
+  const page = { kind: "link", url: "https://github.com/o/r" } as const;
+  const deployed = { [LOCKFILE]: lockfile(skillEntry("v0.1.0", "skills/tdd")) };
+  const readerWith = (
+    githubPage: DeployStateExtras["githubPage"],
+    files: Record<string, string> = {},
+  ) =>
+    new DeployStateReader({
+      fs: new InMemoryFileSystem({ files }),
+      githubPage,
+    });
+
+  it("carries the page the repository's origin names, lockfile or not", async () => {
+    const asked: string[] = [];
+    const reader = readerWith(async (path) => {
+      asked.push(path);
+      return page;
+    });
+    await expect(reader.read(REPO)).resolves.toMatchObject({ github: page });
+    await expect(
+      readerWith(async () => page, deployed).read(REPO),
+    ).resolves.toMatchObject({ ok: true, github: page });
+    expect(asked).toEqual([REPO]);
+  });
+
+  it("carries no key where the repository has no GitHub page", async () => {
+    const result = await readerWith(async () => null).read(REPO);
+    expect(result).not.toHaveProperty("github");
+  });
+
+  it("reads a failed origin read as unknown and still reads the rest", async () => {
+    const reader = readerWith(async () => {
+      throw new Error("git unavailable");
+    }, deployed);
+    await expect(reader.read(REPO)).resolves.toMatchObject({
+      ok: true,
+      primitives: [{ name: "tdd" }],
+      github: { kind: "unknown" },
+    });
+  });
+});

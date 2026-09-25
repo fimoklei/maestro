@@ -5,6 +5,7 @@ import type { DeployedContentPort, DeployTarget } from "../deploy/deploy-skill";
 import type { SupportedTool } from "../deploy/deploy-tools";
 import type { GitOrigin } from "../deploy/git-origin";
 import type { PendingOperation } from "../deploy/retry-target-operation";
+import type { GitHubPage } from "../git/github-page";
 import { resolveHomeDirectory } from "../home-directory";
 import {
   type LockfileEntry,
@@ -48,6 +49,8 @@ type DeployStateResult =
       extraFiles?: number;
       // Absent unless a Deploy or Remove on this target never finished (#951).
       pendingOperation?: PendingOperation;
+      // Absent where the repository has no page on GitHub (#1180).
+      github?: GitHubPage;
     }
   | { ok: false; error: "malformed" };
 
@@ -79,6 +82,8 @@ export type DeployStateExtras = {
   operations?: {
     pending(target: DeployTarget): Promise<PendingOperation | null>;
   };
+  // The repository's own page on GitHub, read from its origin (#1180).
+  githubPage?: (repoPath: string) => Promise<GitHubPage | null>;
 };
 
 export class DeployStateReader {
@@ -92,6 +97,7 @@ export class DeployStateReader {
       content: deps.content,
       harnessOrigin: deps.harnessOrigin,
       operations: deps.operations,
+      githubPage: deps.githubPage,
     };
   }
 
@@ -102,6 +108,13 @@ export class DeployStateReader {
   }
 
   async read(repoPath: string): Promise<DeployStateResult> {
+    // A failed origin read is its own Unknown, never a failed Deploy-state read.
+    const github = (
+      this.extras.githubPage?.(repoPath) ?? Promise.resolve(null)
+    ).then(
+      (page) => (page === null ? {} : { github: page }),
+      () => ({ github: { kind: "unknown" } as const }),
+    );
     const raw = await this.fs.readFile(join(repoPath, "apm.lock.yaml"));
     if (raw === null) {
       // Still read the record: a first Deploy that stopped leaves no lockfile,
@@ -112,6 +125,7 @@ export class DeployStateReader {
         primitives: [],
         skipped: [],
         ...(unfinished === undefined ? {} : { pendingOperation: unfinished }),
+        ...(await github),
       };
     }
 
@@ -190,6 +204,7 @@ export class DeployStateReader {
       ...(pinnedPerSkill === undefined ? {} : { pinnedPerSkill }),
       ...(extraFiles === 0 ? {} : { extraFiles }),
       ...(pendingOperation === undefined ? {} : { pendingOperation }),
+      ...(await github),
     };
   }
 

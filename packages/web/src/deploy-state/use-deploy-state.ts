@@ -2,6 +2,7 @@
 // (frontend.md).
 import type {
   DeployedPrimitive,
+  GitHubPage,
   PendingOperation,
   PinnedPerSkill,
   ReleaseHead,
@@ -14,6 +15,7 @@ import { requestJson } from "../api/http";
 // (architecture.md).
 export type {
   DeployedPrimitive,
+  GitHubPage,
   PendingOperation,
   PinnedPerSkill,
   ReleaseHead,
@@ -31,6 +33,8 @@ type DeployStateResponse = {
   extraFiles?: number;
   // Absent unless a Deploy or Remove on this target never finished (#951).
   pendingOperation?: PendingOperation;
+  // Absent where the repository has no page on GitHub (#1180).
+  github?: GitHubPage;
 };
 
 // Shared so single-repo and multi-repo readers use the same key/fetch — they

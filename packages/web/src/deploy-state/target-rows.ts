@@ -30,6 +30,7 @@ import { toolNameList } from "./tool-labels";
 import { toolPresentation } from "./tool-presentation";
 import type {
   DeployedPrimitive,
+  GitHubPage,
   PendingOperation,
   PinnedPerSkill,
   ReleaseHead,
@@ -67,6 +68,8 @@ export type TargetRow = {
   readFailed: boolean;
   /** A newer release exists and nothing unfinished stands before it. */
   behind: boolean;
+  /** A repository's own GitHub page; absent for Global and where none exists. */
+  github?: GitHubPage;
 };
 
 // A row's id, which another screen names to open that row's pane (#1065).
@@ -162,6 +165,7 @@ type RepoRead = {
         pinnedPerSkill?: PinnedPerSkill;
         extraFiles?: number;
         pendingOperation?: PendingOperation;
+        github?: GitHubPage;
       }
     | undefined;
   isError: boolean;
@@ -206,6 +210,7 @@ export function repoRow(
     ...(data?.extraFiles === undefined ? {} : { extraFiles: data.extraFiles }),
     readFailed: read.isError,
     behind,
+    ...(data?.github ? { github: data.github } : {}),
   };
 }
 

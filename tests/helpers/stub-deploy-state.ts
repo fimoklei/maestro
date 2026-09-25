@@ -6,11 +6,19 @@
 // `{ tools: [], skipped: [] }` would let it pass vacuously — the same silent
 // pass #187 exists to close. Tests that do assert the global route wire a real
 // ToolPresenceAdapter (or their own fake) against their sandbox home instead.
-import { type FileSystemPort, GlobalDeployStateReader } from "@maestro/core";
+import {
+  type DeployStateExtras,
+  type FileSystemPort,
+  GlobalDeployStateReader,
+} from "@maestro/core";
 
-export const stubDeployState = (deps: { fs: FileSystemPort }) =>
+export const stubDeployState = (deps: {
+  fs: FileSystemPort;
+  githubPage?: DeployStateExtras["githubPage"];
+}) =>
   new GlobalDeployStateReader({
     fs: deps.fs,
+    githubPage: deps.githubPage,
     toolPresence: {
       detectGlobalTools: async () => {
         throw new Error(

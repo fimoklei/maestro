@@ -9,6 +9,7 @@ import {
   updatePreviewErrorResponses,
   updateRunErrorResponses,
 } from "../error-responses";
+import { githubPageField } from "../github-page-response";
 import { requireRegisteredRepo } from "../registered-repo-route";
 import { cardReadingFields } from "../release-head-response";
 import {
@@ -84,6 +85,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
         ? { pendingOperation: result.pendingOperation }
         : {}),
       ...cardReadingFields(result),
+      ...githubPageField(result.github),
     });
   });
 

@@ -4,6 +4,7 @@ import { FactList, FactRow } from "../ui/fact-list";
 import { Notice, type NoticeContent } from "../ui/notice";
 import {
   GLOBAL,
+  ORIGIN_NOT_READ,
   otherOriginLine,
   REPO_NOT_READ,
   REREAD_LABEL,
@@ -80,6 +81,7 @@ export function TargetDetailPane({
     ...(row.primitives.length === 0 && row.otherOrigins.length > 0
       ? [otherOriginLine(row.otherOrigins)]
       : []),
+    ...(row.github?.kind === "unknown" ? [ORIGIN_NOT_READ] : []),
   ];
 
   return (
