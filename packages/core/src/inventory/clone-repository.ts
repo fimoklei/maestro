@@ -1,3 +1,4 @@
+// Git's own output never leaves this file: an outcome is a class.
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { NON_INTERACTIVE } from "../git/non-interactive";

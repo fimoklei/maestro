@@ -119,6 +119,8 @@ export class Registry {
     return validated;
   }
 
+  // Read-modify-write through the store's one lock, so a concurrent connect or
+  // freshness record is never dropped.
   async register(input: string): Promise<RegisterResult> {
     return this.store.update<RegisterResult>(async (config) => {
       const checked = await this.checkAgainst(input, config);

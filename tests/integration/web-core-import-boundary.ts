@@ -1,8 +1,5 @@
-// Finds the runtime edges to `@maestro/core` in one web source file. Only a
-// statement-level `import type` or `export type ... from` is allowed; an inline
-// `import { type X }` is not. Parsed with TypeScript 6, which keeps the in-process
-// parser that 7.0 dropped. Deliberate evasion (eval, computed specifiers) is
-// out of scope.
+// Finds runtime edges to `@maestro/core` in one web source file: only a
+// statement-level `import type` or `export type ... from` is allowed.
 import { dirname, resolve } from "node:path";
 import ts from "typescript-6";
 

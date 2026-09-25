@@ -24,7 +24,7 @@ describe("SegmentedControl", () => {
   });
 
   // A segment names a choice in plain words, which Geist Mono never sets
-  // (design.md, #1117).
+  // (#1117).
   it("sets its segments in the sans face", () => {
     render(
       <SegmentedControl

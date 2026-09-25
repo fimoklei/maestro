@@ -114,7 +114,7 @@ describe("rollUpDeployment — target count", () => {
   });
 });
 
-describe("rollUpDeployment — pending keeps a zero reach honest (J04)", () => {
+describe("rollUpDeployment — pending keeps a zero reach honest", () => {
   it("flags the roll-up pending while a target's deploy-state is still loading", () => {
     // A 0 count while any local read is in flight is unconfirmed, not "deployed
     // nowhere".

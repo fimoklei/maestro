@@ -905,7 +905,7 @@ describe("InventoryView — bulk remove entry point (#422)", () => {
     ).toBeNull();
   });
 
-  it("leaves a target whose deploy-state has not loaded out of the count (J04)", async () => {
+  it("leaves a target whose deploy-state has not loaded out of the count", async () => {
     viewWith([
       onTarget({ kind: "global" }, ["tdd"]),
       onTarget({ kind: "repo", repoPath: "/dev/acme-web" }, ["tdd"]),

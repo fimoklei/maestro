@@ -17,7 +17,7 @@ type ReportRow = {
 
 export type ReportGroup = {
   tone: ReportTone;
-  /** The group's word, from `CONTEXT.md`. The count is drawn beside it. */
+  /** The group's status word. The count is drawn beside it. */
   label: string;
   rows: readonly ReportRow[];
 };

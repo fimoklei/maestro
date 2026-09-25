@@ -76,6 +76,7 @@ export class ProposalActions {
     if (!checked.ok) {
       return checked;
     }
+    // More than one open request blocks the write: reopening would add a third.
     if (openOf(checked.matching).length > 1) {
       return { ok: false, error: "extra-requests" };
     }

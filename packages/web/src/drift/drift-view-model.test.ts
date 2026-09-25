@@ -82,7 +82,7 @@ describe("driftViewModel — query mapping", () => {
     ).toBe("unverified");
   });
 
-  it("never derives up-to-date from a check that could not run (J04)", () => {
+  it("never derives up-to-date from a check that could not run", () => {
     expect(
       driftViewModel(query({ data: { ok: false } })).skillStatus("tdd"),
     ).not.toBe("up-to-date");
@@ -94,7 +94,7 @@ describe("driftViewModel — skillStatus", () => {
     expect(ran([pair("diagnose")]).skillStatus("tdd")).toBe("up-to-date");
   });
 
-  it("never derives up-to-date from an unverified check (J04)", () => {
+  it("never derives up-to-date from an unverified check", () => {
     expect(
       driftViewModel(
         query({ data: { ok: false, reason: "unverified" } }),

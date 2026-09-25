@@ -85,6 +85,7 @@ export class InventoryReader {
       return { ok: false, error: "not-configured" };
     }
 
+    // Fail-closed: a thrown git call is an unread release, never an empty one.
     const released = await this.readReleasedSkills(root).catch(() => null);
     if (released === null) {
       return { ok: false, error: "unreadable" };

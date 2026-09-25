@@ -1,13 +1,11 @@
 /* Maestro web styling entry: Tailwind v4, the raw colour tokens, then the
-   utility names. Why two @theme blocks: ADR-0033. style-rules.test.ts fails if
-   a Control Room alias comes back. */
+   utility names. A test fails if a Control Room alias comes back. */
 
 @import "tailwindcss";
 @import "./tokens.css";
 
 /* Geist and Geist Mono (OFL 1.1), self-hosted, one variable woff2 per family.
-   The face is declared here, not through the package's five-subset index.css
-   (ADR-0033). */
+   The face is declared here, not through the package's five-subset index.css. */
 @font-face {
   font-family: "Geist Variable";
   font-style: normal;
@@ -26,7 +24,7 @@
 }
 
 @theme inline {
-  /* ── the scale, by step (ADR-0033 §1) ─────────────────────────────────── */
+  /* ── the scale, by step ─────────────────────────────────────────── */
   --color-gray-1: var(--gray-1);
   --color-gray-2: var(--gray-2);
   --color-gray-3: var(--gray-3);
@@ -61,7 +59,7 @@
 
   --color-backdrop: var(--backdrop);
 
-  /* the one shadow, for a menu, a popover or a dialog (ADR-0033 §7) */
+  /* the one shadow, for a menu, a popover or a dialog */
   --shadow-float: var(--shadow-float-value);
 }
 
@@ -71,7 +69,7 @@
   --font-mono:
     "Geist Mono Variable", "Geist Mono", "SFMono-Regular", Menlo, monospace;
 
-  /* type ramp, five sizes in rem (ADR-0033 §6) → text-meta … text-title */
+  /* type ramp, five sizes in rem → text-meta … text-title */
   --text-meta: 0.75rem;
   --text-meta--line-height: 1rem;
   --text-row: 0.8125rem;
@@ -89,12 +87,12 @@
   --tracking-mono: 0.08em;
   --tracking-mono-wide: 0.12em;
 
-  /* corner radii (ADR-0033 §7) → rounded-chip / rounded-control / rounded-float */
+  /* corner radii → rounded-chip / rounded-control / rounded-float */
   --radius-chip: 4px;
   --radius-control: 6px;
   --radius-float: 12px;
 
-  /* density (ADR-0033 §7) → h-row / h-control / h-control-row */
+  /* density → h-row / h-control / h-control-row */
   --spacing-row: 2rem;
   --spacing-control: 2rem;
   --spacing-control-row: 1.5rem;
@@ -107,7 +105,7 @@
   --spacing-section: 1.5rem;
   --spacing-page: 2rem;
 
-  /* motion (ADR-0033 §8). Only what floats moves, by opacity alone. */
+  /* motion. Only what floats moves, by opacity alone. */
   --motion-quick: 150ms;
   --motion-float-in: 300ms;
   --motion-float-out: 200ms;
@@ -138,17 +136,16 @@
     color: var(--gray-12);
     font-family: var(--font-ui);
   }
-  /* One keyboard focus ring for every control, on blue 9 (ADR-0033 §2); its
-     contrast is guarded in tokens-contrast.test.ts. A control that needs no
-     ring opts out with `outline-none`. */
+  /* One keyboard focus ring for every control, on blue 9; a test guards its
+     contrast. A control that needs no ring opts out with `outline-none`. */
   :focus-visible {
     outline: 2px solid var(--blue-9);
     outline-offset: 2px;
   }
 }
 
-/* The connect gate's arrival, the one entrance animation (ADR-0022). Its rule
-   is gray, since amber never decorates (ADR-0033 amends ADR-0022). */
+/* The connect gate's arrival, the one entrance animation. Its rule is gray,
+   since amber never decorates. */
 @keyframes connect-gate-rule {
   from {
     transform: scaleX(0);
@@ -171,7 +168,7 @@
 }
 
 /* Declared once. The last delay plus the duration is the sequence's total;
-   ADR-0022 caps it at 600ms so the action never sits invisible while it is
+   keep it at or under 600ms so the action never sits invisible while it is
    already clickable. */
 :root {
   --gate-arrival-duration: 420ms;
