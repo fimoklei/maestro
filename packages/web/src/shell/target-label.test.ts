@@ -3,12 +3,8 @@ import { targetLabel } from "./target-label";
 
 describe("targetLabel", () => {
   it("keeps the distinguishing tail for paths sharing a long common prefix", () => {
-    const a = targetLabel(
-      "/Users/michielmerks/Projects/client-a/agent-harness",
-    );
-    const b = targetLabel(
-      "/Users/michielmerks/Projects/client-b/agent-harness",
-    );
+    const a = targetLabel("/Users/dev/Projects/client-a/agent-harness");
+    const b = targetLabel("/Users/dev/Projects/client-b/agent-harness");
 
     // The prefix truncation this replaces made these byte-identical; the tail
     // is the only part that tells the two clones apart, so it must survive.

@@ -37,7 +37,7 @@ This experiment proves selection and deployment shape, not Git-tag upgrades,
 global installs, migration or failure recovery. No real deployment was changed.
 
 Installed source lives under
-`/Users/michielmerks/.local/share/uv/tools/apm-cli/lib/python3.11/site-packages/apm_cli/`:
+`/Users/dev/.local/share/uv/tools/apm-cli/lib/python3.11/site-packages/apm_cli/`:
 
 - `integration/skill_integrator.py:1457` passes `skill_subset` when promoting
   `.apm/skills/` from an ordinary APM package, confirming that this is not
