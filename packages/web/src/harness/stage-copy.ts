@@ -213,6 +213,14 @@ export const pullRequestLinkName = (number: number): string =>
 export const pullRequestOpensLine = (number: number): string =>
   `Select #${number} to open it on GitHub in a new tab.`;
 
+// `into` stands in for the arrow between the branches, which is not read out.
+export const PULL_REQUEST_CARD = {
+  review: "Review",
+  requested: "Requested",
+  branch: "Branch",
+  into: "into",
+} as const;
+
 const REQUEST_STATES: Partial<Record<StageStatus, string>> = {
   draft: "Draft",
   "waiting-for-review": "Open",

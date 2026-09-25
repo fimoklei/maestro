@@ -4,6 +4,7 @@ import {
   type RestoreGate,
   type RowActionHandlers,
 } from "./row-actions";
+import { pullRequest } from "./stage-row-fixture";
 import type { HarnessStage, HarnessStageRow, StageStatus } from "./use-harness";
 
 // The restore gate defaults to the open one here, and only here: the view has
@@ -20,7 +21,7 @@ const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
   skill: "tdd",
   status: "waiting-for-review" as StageStatus,
   deletion: false,
-  requests: [{ number: 45, url: "https://github.com/o/r/pull/45" }],
+  requests: [pullRequest(45)],
   reviewers: [],
   comparison: null,
   alsoIn: null,
@@ -202,10 +203,7 @@ describe("rowItems", () => {
     const items = rowItems(
       row({
         status: "proposal-closed",
-        requests: [
-          { number: 41, url: "https://github.com/o/r/pull/41" },
-          { number: 44, url: "https://github.com/o/r/pull/44" },
-        ],
+        requests: [pullRequest(41), pullRequest(44)],
       }),
       handlers,
       true,
@@ -224,10 +222,7 @@ describe("rowItems", () => {
     const items = rowItems(
       row({
         status: "multiple-pull-requests",
-        requests: [
-          { number: 41, url: "https://github.com/o/r/pull/41" },
-          { number: 44, url: "https://github.com/o/r/pull/44" },
-        ],
+        requests: [pullRequest(41), pullRequest(44)],
       }),
       handlers,
       true,

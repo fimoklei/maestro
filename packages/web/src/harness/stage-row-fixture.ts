@@ -1,4 +1,9 @@
-import type { HarnessStage, HarnessStageRow, StageStatus } from "./use-harness";
+import type {
+  HarnessStage,
+  HarnessStageRow,
+  ReviewRequestLink,
+  StageStatus,
+} from "./use-harness";
 
 // One stage row with every field a story does not care about already settled.
 export const stageRow = (
@@ -23,7 +28,12 @@ export const stageRow = (
   ...over,
 });
 
-export const pullRequest = (number: number) => ({
+export const pullRequest = (
+  number: number,
+  skill = "tdd",
+): ReviewRequestLink => ({
   number,
   url: `https://github.com/fimoklei/agent-harness/pull/${number}`,
+  headBranch: `maestro/${skill}`,
+  baseBranch: "main",
 });

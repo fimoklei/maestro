@@ -4,6 +4,7 @@ import {
   crossStageLine,
   detailSentence,
   PROPOSAL_EMPTY,
+  PULL_REQUEST_CARD,
   pullRequestLinkName,
   pullRequestOpensLine,
   pullRequestState,
@@ -12,6 +13,7 @@ import {
   reviewWord,
   statusReading,
 } from "./stage-copy";
+import { pullRequest } from "./stage-row-fixture";
 import type { HarnessStage, HarnessStageRow, StageStatus } from "./use-harness";
 
 const row = (
@@ -54,7 +56,7 @@ const ALL_STATUSES: StageStatus[] = [
 ];
 
 const CONTEXT = { defaultBranch: "main", releasedVersion: "v1.4.0" };
-const request = { number: 45, url: "https://github.com/o/r/pull/45" };
+const request = pullRequest(45);
 
 describe("the Pending proposal empty state", () => {
   it("states a confirmed empty journey", () => {
@@ -344,10 +346,7 @@ describe("Detail sentences", () => {
     expect(
       detailSentence(
         row("pending-review", "multiple-pull-requests", {
-          requests: [
-            { number: 41, url: "https://github.com/o/r/pull/41" },
-            { number: 44, url: "https://github.com/o/r/pull/44" },
-          ],
+          requests: [pullRequest(41), pullRequest(44)],
         }),
         CONTEXT,
       ),
@@ -362,11 +361,7 @@ describe("Detail sentences", () => {
     expect(
       detailSentence(
         row("pending-review", "multiple-pull-requests", {
-          requests: [
-            { number: 41, url: "https://github.com/o/r/pull/41" },
-            { number: 44, url: "https://github.com/o/r/pull/44" },
-            { number: 47, url: "https://github.com/o/r/pull/47" },
-          ],
+          requests: [pullRequest(41), pullRequest(44), pullRequest(47)],
         }),
         CONTEXT,
       ),
@@ -472,6 +467,15 @@ describe("pull request words", () => {
     expect(pullRequestLinkName(47)).toBe(
       "Pull request #47, opens in a new tab",
     );
+  });
+
+  it("labels the card's facts, and reads the branch arrow as a word", () => {
+    expect(PULL_REQUEST_CARD).toEqual({
+      review: "Review",
+      requested: "Requested",
+      branch: "Branch",
+      into: "into",
+    });
   });
 
   it("says where selecting the number takes the author", () => {

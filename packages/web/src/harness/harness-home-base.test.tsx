@@ -14,6 +14,7 @@ import {
   stubHarnessServer,
   withStages,
 } from "./harness-flow-fixture";
+import { pullRequest } from "./stage-row-fixture";
 
 installHarnessHooks();
 
@@ -511,12 +512,7 @@ describe("Harness home base", () => {
           ],
           review: [
             row("pending-review", "tdd", "waiting-for-review", {
-              requests: [
-                {
-                  number: 45,
-                  url: "https://github.com/fimoklei/agent-harness/pull/45",
-                },
-              ],
+              requests: [pullRequest(45)],
               alsoIn: ["pending-proposal", "pending-release"],
             }),
           ],
@@ -587,12 +583,7 @@ describe("Harness home base", () => {
         body: withStages(RELEASED, {
           review: [
             row("pending-review", "tdd", "changes-requested", {
-              requests: [
-                {
-                  number: 47,
-                  url: "https://github.com/fimoklei/agent-harness/pull/47",
-                },
-              ],
+              requests: [pullRequest(47)],
             }),
           ],
         }),
@@ -646,12 +637,7 @@ describe("Harness home base", () => {
         body: withStages(RELEASED, {
           review: [
             row("pending-review", "tdd", "waiting-for-review", {
-              requests: [
-                {
-                  number: 45,
-                  url: "https://github.com/fimoklei/agent-harness/pull/45",
-                },
-              ],
+              requests: [pullRequest(45)],
               reviewers: [
                 { kind: "user", login: "ada" },
                 { kind: "user", login: "bo" },

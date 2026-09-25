@@ -280,11 +280,16 @@ describe("Pending review membership", () => {
     ]);
   });
 
-  it("carries the request's durable URL on the row", () => {
+  it("carries the request's durable URL and its branches on the row", () => {
     const review = reviewOf([request()]);
     const row = oneRow(stages({ trees: pushed, review }).review);
     expect(row.requests).toEqual([
-      { number: 45, url: "https://github.com/fimoklei/agent-harness/pull/45" },
+      {
+        number: 45,
+        url: "https://github.com/fimoklei/agent-harness/pull/45",
+        headBranch: "maestro/tdd",
+        baseBranch: "main",
+      },
     ]);
   });
 
@@ -339,6 +344,8 @@ describe("Pending review membership", () => {
       {
         number: 45,
         url: "https://github.com/fimoklei/agent-harness/pull/45",
+        headBranch: "maestro/tdd",
+        baseBranch: "main",
       },
     ]);
   });

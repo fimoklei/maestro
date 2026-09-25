@@ -10,6 +10,7 @@ import {
   stubHarnessServer,
   withStages,
 } from "./harness-flow-fixture";
+import { pullRequest } from "./stage-row-fixture";
 
 installHarnessHooks();
 
@@ -21,11 +22,6 @@ describe("proposal actions", () => {
       lastFetchedAt: "2026-08-03T11:56:00.000Z",
     },
   };
-
-  const link = (number: number) => ({
-    number,
-    url: `https://github.com/fimoklei/agent-harness/pull/${number}`,
-  });
 
   const openRowMenu = async (skill: string, stage = "Pending review") => {
     await userEvent.click(
@@ -50,7 +46,7 @@ describe("proposal actions", () => {
           proposal: [row("pending-proposal", "tdd", "new-local-work")],
           review: [
             row("pending-review", "tdd", "waiting-for-review", {
-              requests: [link(45)],
+              requests: [pullRequest(45)],
             }),
           ],
         }),
@@ -74,7 +70,7 @@ describe("proposal actions", () => {
         body: withStages(CONNECTED, {
           review: [
             row("pending-review", "tdd", "waiting-for-review", {
-              requests: [link(45)],
+              requests: [pullRequest(45)],
             }),
           ],
         }),
@@ -98,7 +94,7 @@ describe("proposal actions", () => {
         body: withStages(CONNECTED, {
           review: [
             row("pending-review", "tdd", "waiting-for-review", {
-              requests: [link(45)],
+              requests: [pullRequest(45)],
             }),
           ],
         }),
@@ -137,7 +133,7 @@ describe("proposal actions", () => {
         body: withStages(CONNECTED, {
           review: [
             row("pending-review", "tdd", "waiting-for-review", {
-              requests: [link(45)],
+              requests: [pullRequest(45)],
             }),
           ],
         }),
@@ -191,7 +187,7 @@ describe("proposal actions", () => {
         body: withStages(CONNECTED, {
           review: [
             row("pending-review", "tdd", "multiple-pull-requests", {
-              requests: [link(41), link(44)],
+              requests: [pullRequest(41), pullRequest(44)],
             }),
           ],
         }),
@@ -234,7 +230,7 @@ describe("proposal actions", () => {
         body: withStages(CONNECTED, {
           review: [
             row("pending-review", "tdd", "proposal-closed", {
-              requests: [link(45)],
+              requests: [pullRequest(45)],
             }),
           ],
         }),
@@ -267,7 +263,7 @@ describe("proposal actions", () => {
         body: withStages(CONNECTED, {
           review: [
             row("pending-review", "tdd", "waiting-for-review", {
-              requests: [link(45)],
+              requests: [pullRequest(45)],
             }),
           ],
         }),
@@ -295,7 +291,7 @@ describe("proposal actions", () => {
         body: withStages(CONNECTED, {
           review: [
             row("pending-review", "tdd", "waiting-for-review", {
-              requests: [link(45)],
+              requests: [pullRequest(45)],
             }),
           ],
         }),

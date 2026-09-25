@@ -13,6 +13,7 @@ import {
   stubHarnessServer,
   withStages,
 } from "./harness-flow-fixture";
+import { pullRequest } from "./stage-row-fixture";
 
 installHarnessHooks();
 
@@ -136,10 +137,7 @@ describe("Harness deletion proposal", () => {
     // work to send, and no confirmation stands between it and the push (#847).
     const promotions: Record<string, unknown>[] = [];
     const deletions: Record<string, unknown>[] = [];
-    const request = {
-      number: 45,
-      url: "https://github.com/fimoklei/agent-harness/pull/45",
-    };
+    const request = pullRequest(45);
     stubHarnessServer({
       read: {
         body: withStages(ON_DISK, {

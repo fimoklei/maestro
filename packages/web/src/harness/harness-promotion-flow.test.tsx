@@ -16,6 +16,7 @@ import {
   withStages,
 } from "./harness-flow-fixture";
 import { HarnessView } from "./harness-view";
+import { pullRequest } from "./stage-row-fixture";
 
 installHarnessHooks();
 
@@ -104,10 +105,7 @@ describe("Harness promotion", () => {
     // lint-rules holds a row in every stage. The press made a Pending review
     // row, so that is where the keyboard goes — Pending release only mounts
     // last (#865).
-    const request = {
-      number: 45,
-      url: "https://github.com/fimoklei/agent-harness/pull/45",
-    };
+    const request = pullRequest(45);
     stubHarnessServer({
       read: {
         body: withStages(ON_DISK, {
@@ -252,12 +250,7 @@ describe("Harness promotion", () => {
     const OPEN_REQUEST = withStages(ON_DISK, {
       review: [
         row("pending-review", "lint-rules", "waiting-for-review", {
-          requests: [
-            {
-              number: 45,
-              url: "https://github.com/fimoklei/agent-harness/pull/45",
-            },
-          ],
+          requests: [pullRequest(45)],
         }),
       ],
     });
@@ -289,16 +282,7 @@ describe("Harness promotion", () => {
         body: withStages(ON_DISK, {
           review: [
             row("pending-review", "lint-rules", "multiple-pull-requests", {
-              requests: [
-                {
-                  number: 41,
-                  url: "https://github.com/fimoklei/agent-harness/pull/41",
-                },
-                {
-                  number: 44,
-                  url: "https://github.com/fimoklei/agent-harness/pull/44",
-                },
-              ],
+              requests: [pullRequest(41), pullRequest(44)],
             }),
           ],
         }),

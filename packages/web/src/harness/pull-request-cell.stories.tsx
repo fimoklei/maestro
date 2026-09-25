@@ -7,7 +7,7 @@ const meta = {
   component: PullRequestCell,
   args: {
     row: stageRow("pending-review", "code-review", "changes-requested", {
-      requests: [pullRequest(47)],
+      requests: [pullRequest(47, "code-review")],
       reviewers: [
         { kind: "user", login: "sanne" },
         { kind: "user", login: "joris" },
@@ -24,7 +24,7 @@ export const OneRequest: Story = {};
 export const SeveralRequests: Story = {
   args: {
     row: stageRow("pending-review", "show-me", "multiple-pull-requests", {
-      requests: [pullRequest(51), pullRequest(52)],
+      requests: [pullRequest(51, "show-me"), pullRequest(52, "show-me")],
     }),
   },
 };

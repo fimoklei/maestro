@@ -36,9 +36,11 @@ that degrades instead of blocking.**
 3. **github.com only.** `gh` sends an unknown host's query onward as if it were
    GitHub Enterprise, so the host gate of ADR-0014 runs before any call.
 4. **`gh` output crosses only as shape-checked fields** — request identity, URL,
-   state, draft flag, review decision, requested reviewers — validated with Zod
-   where the output is first read. No raw output reaches a response, a notice or
-   a log. This is ADR-0018's carve-out, applied to a second binary.
+   state, draft flag, review decision, requested reviewers, head and base
+   branch — validated with Zod where the output is first read. A branch name
+   must be one `git check-ref-format` accepts (issue #1075). No raw output
+   reaches a response, a notice or a log. This is ADR-0018's carve-out, applied
+   to a second binary.
 5. **Maestro holds no credential.** `gh` receives ambient environment only.
    Maestro never stores, reads or forwards a token, and adds no token-bridging
    path. That is what makes preferring `gh` a decision rather than a workaround.

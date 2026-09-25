@@ -1,6 +1,7 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PullRequestCell } from "./pull-request-cell";
+import { pullRequest } from "./stage-row-fixture";
 import type { HarnessStageRow } from "./use-harness";
 
 const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
@@ -8,7 +9,7 @@ const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
   skill: "code-review",
   status: "changes-requested",
   deletion: false,
-  requests: [{ number: 47, url: "https://github.com/o/r/pull/47" }],
+  requests: [pullRequest(47, "code-review")],
   reviewers: [
     { kind: "user", login: "sanne" },
     { kind: "user", login: "joris" },
@@ -34,7 +35,10 @@ describe("PullRequestCell", () => {
     const link = screen.getByRole("link", {
       name: "Pull request #47, opens in a new tab",
     });
-    expect(link).toHaveAttribute("href", "https://github.com/o/r/pull/47");
+    expect(link).toHaveAttribute(
+      "href",
+      "https://github.com/fimoklei/agent-harness/pull/47",
+    );
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveTextContent("#47");
   });
@@ -44,10 +48,7 @@ describe("PullRequestCell", () => {
       <PullRequestCell
         row={row({
           status: "multiple-pull-requests",
-          requests: [
-            { number: 51, url: "https://github.com/o/r/pull/51" },
-            { number: 52, url: "https://github.com/o/r/pull/52" },
-          ],
+          requests: [pullRequest(51), pullRequest(52)],
         })}
       />,
     );
@@ -86,5 +87,25 @@ describe("PullRequestCell", () => {
     ).toBeInTheDocument();
     // A summary, never a control (design.md → Disclosure).
     expect(screen.getAllByRole("link")).toHaveLength(1);
+  });
+
+  it("names the branch the request carries and the branch it goes into", () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    render(<PullRequestCell row={row()} />);
+
+    fireEvent.pointerEnter(screen.getByRole("link"), { pointerType: "mouse" });
+    act(() => vi.advanceTimersByTime(400));
+
+    const branch = screen.getByText("Branch").nextElementSibling as HTMLElement;
+    expect(within(branch).getByText("maestro/code-review")).toHaveClass(
+      "font-mono",
+    );
+    expect(within(branch).getByText("main")).toHaveClass("font-mono");
+    // Heard as "maestro/code-review into main", seen as the arrow.
+    expect(within(branch).getByText("→")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+    expect(within(branch).getByText("into")).toHaveClass("sr-only");
   });
 });

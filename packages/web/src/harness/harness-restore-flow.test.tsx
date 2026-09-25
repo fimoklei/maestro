@@ -12,6 +12,7 @@ import {
   stubHarnessServer,
   withStages,
 } from "./harness-flow-fixture";
+import { pullRequest } from "./stage-row-fixture";
 
 installHarnessHooks();
 
@@ -68,7 +69,7 @@ describe("Harness restore", () => {
             row("pending-review", "old-skill", "waiting-for-review", {
               deletion: true,
               restorable: true,
-              requests: [{ number: 45, url: "https://github.com/o/r/pull/45" }],
+              requests: [pullRequest(45)],
             }),
           ],
         }),
@@ -237,7 +238,7 @@ describe("Harness restore", () => {
         row("pending-proposal", "old-skill", "deleted-locally", {
           deletion: true,
           restorable: true,
-          requests: [{ number: 45, url: "https://github.com/o/r/pull/45" }],
+          requests: [pullRequest(45)],
         }),
       ],
     });

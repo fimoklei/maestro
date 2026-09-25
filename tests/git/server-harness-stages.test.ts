@@ -76,7 +76,7 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
     );
   });
 
-  it("keeps the pull-request URL across a fresh read, never in the browser", async () => {
+  it("keeps the pull-request URL and branches across a fresh read, never in the browser", async () => {
     const app = makeApp();
     await writeSkill("tdd", "edited on disk");
     await promote(app, "tdd");
@@ -98,6 +98,8 @@ describe("harness stages over HTTP", { timeout: 40_000 }, () => {
           {
             number: 45,
             url: "https://github.com/fimoklei/agent-harness/pull/45",
+            headBranch: "maestro/tdd",
+            baseBranch: "main",
           },
         ],
       },
