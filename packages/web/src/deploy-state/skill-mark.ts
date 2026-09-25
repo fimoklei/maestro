@@ -3,6 +3,7 @@ import { targetReading } from "../inventory/skill-status";
 import { reading, type StatusReading } from "../ui/status-reading";
 import { NO_LONGER_RELEASED_HINT, UNREACHED_HINT } from "./deploy-state-copy";
 import { copyChipText } from "./release-head-copy";
+import { LOCAL_EDITS } from "./target-status";
 import type { DeployedPrimitive } from "./use-deploy-state";
 
 // The one mark a skill row in a target's pane carries (#993): a copy that can
@@ -10,7 +11,7 @@ import type { DeployedPrimitive } from "./use-deploy-state";
 export type SkillMark = StatusReading & { hint?: string };
 
 const COPY_MARKS = {
-  "local-edits": reading("Local edits", "attention", "✎"),
+  "local-edits": LOCAL_EDITS,
   unverified: reading("Unverified", "unknown"),
 } satisfies Record<NonNullable<DeployedPrimitive["copy"]>, StatusReading>;
 
