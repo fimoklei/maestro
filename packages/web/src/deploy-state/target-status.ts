@@ -4,6 +4,7 @@ import { MIXED_RELEASES } from "./update-target-copy";
 
 const MIXED = reading(MIXED_RELEASES, "attention", "⚠");
 const ATTENTION = reading("Attention", "attention", "⚠");
+export const LOCAL_EDITS = reading("Local edits", "attention", "✎");
 const BEHIND = reading("Behind", "attention");
 const UNKNOWN = reading("Unknown", "unknown");
 const IN_SYNC = reading("In sync", "good");
@@ -15,6 +16,7 @@ const EMPTY = reading("Empty", "neutral");
 export const TARGET_STATUS_WORDS = [
   MIXED,
   ATTENTION,
+  LOCAL_EDITS,
   BEHIND,
   UNKNOWN,
   IN_SYNC,
@@ -30,6 +32,7 @@ export function targetStatus({
   pinnedPerSkill = false,
   behind = false,
   mixedReleases = false,
+  localEdits = false,
 }: {
   indicator: TargetDriftIndicator;
   // Deployed one skill at a time: no release was adopted here (#950).
@@ -38,8 +41,12 @@ export function targetStatus({
   behind?: boolean;
   // An Update that stopped part-way (#954).
   mixedReleases?: boolean;
+  // A deployed skill's files changed after deployment: it blocks the next step.
+  localEdits?: boolean;
 }): StatusReading | null {
   if (mixedReleases) return MIXED;
+  if (localEdits && indicator === "attention") return ATTENTION;
+  if (localEdits && indicator !== "pending") return LOCAL_EDITS;
   if (pinnedPerSkill) return PINNED;
   switch (indicator) {
     case "ok":
